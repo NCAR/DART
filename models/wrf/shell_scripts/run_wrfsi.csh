@@ -15,13 +15,22 @@
  setenv SOUTH_NORTH_GRIDS $7
  setenv VERTICAL_GRIDS	  $8
  setenv GRID_DISTANCE	  $9
+ setenv MY_MOAD_KNOWN_LAT $10
+ setenv MY_MOAD_KNOWN_LON $11
+ setenv MY_MOAD_STAND_LONS $12
+ setenv MY_NUM_DOMAINS    $13
+ setenv LLI2              $14
+ setenv LLJ2              $15
+ setenv URI2              $16
+ setenv URJ2              $17
+ setenv DATASOURCE        $18
+ setenv CASE_NAME         $19
+ setenv GRIB_DATA         $20
+
+ set MY_NUM_ACTIVE_SUBNESTS = `expr ${MY_NUM_DOMAINS} \- 1`
 
 ### setenv	MACHINE		"ibmncar"
 
- set DATASOURCE      = AVN
- set CASE_NAME	     = conus
- 
- setenv	GRIB_DATA     AVN
  setenv SOURCE_ROOT   $INSTALLROOT
  setenv GEOG_DATAROOT /usr/local/wrfsi/SI_GEOG
  setenv GRIB_DATADIR  ${DATAROOT}/${GRIB_DATA}
@@ -62,10 +71,7 @@
  setenv INTERVAL_IN_HOUR ${INTERVAL_IN_HOUR}
 
  setenv	MY_PROJECTION		lambert
- setenv MY_MOAD_KNOWN_LAT	"40.0"
- setenv MY_MOAD_KNOWN_LON	"-98.0"
  setenv MY_MOAD_STAND_LATS	"30.0, 60.0"
- setenv MY_MOAD_STAND_LONS	"-98.0"
  set    VERTIVAL_LEVELS	=	( "1.000, 0.990, 0.978, 0.964, 0.946," \
                                   "0.922, 0.894, 0.860, 0.817, 0.766," \
                                   "0.707, 0.644, 0.576, 0.507, 0.444," \
@@ -104,7 +110,7 @@ install_wrfsi:
 
  set need_install = yes 
 
-#If any of the fellowing executable missing, we need to install.
+#If any of the following executable is missing, we need to install.
 
  foreach f ( \
 	grib_prep.exe		\
@@ -158,7 +164,12 @@ cat > script.sed << EOF
  s/MY_END_MINUTE/00/g
  s/MY_END_SECOND/00/g
  s/MY_INTERVAL/${INTERVAL_IN_SECOND}/g
+ s/MY_NUM_DOMAINS/${MY_NUM_DOMAINS}/g
  s/MY_PROJECTION/${MY_PROJECTION}/g
+ s/LLI2/${LLI2}/g
+ s/LLJ2/${LLJ2}/g
+ s/URI2/${URI2}/g
+ s/URJ2/${URJ2}/g
  s/MY_MOAD_KNOWN_LAT/${MY_MOAD_KNOWN_LAT}/g
  s/MY_MOAD_KNOWN_LON/${MY_MOAD_KNOWN_LON}/g
  s/MY_MOAD_STAND_LATS/${MY_MOAD_STAND_LATS}/g
@@ -167,6 +178,7 @@ cat > script.sed << EOF
  s/WEST_EAST_GRIDS/${WEST_EAST_GRIDS}/g
  s/SOUTH_NORTH_GRIDS/${SOUTH_NORTH_GRIDS}/g
  s/VERTIVAL_LEVELS/${VERTIVAL_LEVELS}/g
+ s/MY_NUM_ACTIVE_SUBNESTS/${MY_NUM_ACTIVE_SUBNESTS}/g
 EOF
 
  sed -f script.sed \

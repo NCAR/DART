@@ -20,20 +20,22 @@
 
 setenv RPC_UNSUPPORTED_NETIFS eth0
 
-setenv DOMAIN CONUS90                         # Domain name.
-setenv RUN_ID TEST                            # Character string.
-#setenv START_DATE_ASSIM 2002110200            # Start time of period.
-setenv START_DATE_ASSIM 2003010100            # Start time of period.
-setenv NCYCLE 4                              # Number of assimilation cycles.
-setenv FCST_RANGE 6                           # Forecast range (hours).
-setenv INTERVAL 6                             # Interval between analyses (hours)
-setenv WRF_DT 600                             # Model timestep (seconds)
+setenv CASE_NAME	     RADAR
+setenv START_DATE_ASSIM 2003072112            # Start time of period.
+setenv NCYCLE 1                               # Number of assimilation cycles.
+setenv FCST_RANGE 12                           # Forecast range (hours).
+setenv INTERVAL 12                             # Interval between analyses (hours)
 
-setenv AVN_DIR     /ocotillo1/wrfdev/AVN      # Global analysis directory
+setenv GRIB_DATA ETA                        # AVN = (NCEP/FNL - 1deg res.)
+                                              # ETA = (GCIP NCEP Eta - ~40 km res.)
 
-setenv S_AVAIL_DATE 1999122500
-setenv E_AVAIL_DATE 2004060700
-setenv BACK_YEAR       5000000
+setenv DATASOURCE AWIP
+
+setenv DATA_DIR     /ocotillo1/wrfdev/${GRIB_DATA}      # Global analysis directory
+
+setenv S_AVAIL_DATE 1996072112
+setenv E_AVAIL_DATE 2004072512
+setenv BACK_YEAR       8000000
 
 setenv DAT_DIR     `pwd`                      # Scratch data space.
 
@@ -45,20 +47,66 @@ setenv VARTMP         /var/tmp                # Remote work directory
 set startnode = 1
 set endnode = 10
 
-set ES = 80
-set SCALE = 0.5
+set ES = 40
+set SCALE = 0.2
 
-setenv WEST_EAST_GRIDS	  45
-setenv SOUTH_NORTH_GRIDS  45
-setenv VERTICAL_GRIDS	  28
-setenv GRID_DISTANCE	  200000
+setenv WRF_DT 75                               # Model timestep (seconds)
+setenv WEST_EAST_GRIDS	 117
+setenv SOUTH_NORTH_GRIDS 108
+setenv VERTICAL_GRIDS	 28
+setenv GRID_DISTANCE     15000
+setenv MY_MOAD_KNOWN_LAT	"40.5"
+setenv MY_MOAD_KNOWN_LON	"-86.0"
+setenv MY_MOAD_STAND_LONS	"-86.0"
+setenv MY_NUM_DOMAINS    2
 
-set seconds = 0
-set days = 146827
+setenv SF_SURFACE_PHYSICS 2
 
-echo $seconds $days > wrf.info
+if ( $SF_SURFACE_PHYSICS == 1 ) then
+   setenv NUM_SOIL_LAYERS 5
+else
+   setenv NUM_SOIL_LAYERS 4
+endif
+
+set LLI = (   1 39 39 )
+set LLJ = (   1 36 36 )
+set URI = ( 117 78 78 )
+set URJ = ( 108 72 72 )
+
+set grid_ratio = ( 1 3 3 )
+set time_step_ratio = ( 1 3 3 )
+
+set seconds = 43200
+set days = 147028
+
+set nextmem = 24                # Advance this many hours for the next member.
 
 # End of user modifications.
+
+set e_we = ( 0 0 0 )
+set e_sn = ( 0 0 0 )
+set dx = ( 0 0 0 )
+set dt = ( 0 0 0 )
+
+set dn = 1
+while ( $dn <= $MY_NUM_DOMAINS )
+   @ e_we[$dn] = ($URI[$dn] - $LLI[$dn]) * $grid_ratio[$dn] + 1
+   @ e_sn[$dn] = ($URJ[$dn] - $LLJ[$dn]) * $grid_ratio[$dn] + 1
+   if ( $dn == 1 ) then
+      set dx[$dn] = $GRID_DISTANCE
+      set dt[$dn] = $WRF_DT
+      set dxn1 = $GRID_DISTANCE
+      set dtn1 = $WRF_DT
+   else
+      @ dx[$dn] = $dxn1 / $grid_ratio[$dn]
+      set dxn1 = $dx[$dn]
+      @ dt[$dn] = $dtn1 / $time_step_ratio[$dn]
+      set dtn1 = $dt[$dn]
+   endif
+   @ dn ++
+end
+
+echo $seconds $days > wrf.info
 
 setenv INSTALLROOT $WRFSI_DIR_SRC
 setenv FCST_RANGE_SEC `expr $FCST_RANGE \* 3600`
@@ -70,11 +118,9 @@ if ( $seconds >= 86400) then
    set days = `expr $days \+ 1`
 endif
 
-# Write the target time at the beginning of wrf.info
+# Write the target time at the end of wrf.info
 
-echo $seconds $days > temp
-cat wrf.info >> temp
-mv temp wrf.info
+echo $seconds $days >> wrf.info
 
 echo "${ES}"     > ens.info
 echo "${SCALE}" >> ens.info
@@ -99,32 +145,43 @@ while ( $ICYC <= $NCYCLE )
    set DAT_DIR_MEM = ${VARTMP}/${user}_GEN_INIT_ENS_${NC}
 
 #---------------------------------------------------
-# 1) Prepare global analysis (NCEP/FNL - 1deg res.).
+# 1) Prepare global analysis.
 #---------------------------------------------------
 
-    echo "1) Prepare global analysis (NCEP/FNL - 1deg res.)."
+    echo "1) Prepare global analysis from ${GRIB_DATA}."
 
     set DATE = $START_DATE
-    (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir ${DAT_DIR_MEM} ; mkdir ${DAT_DIR_MEM}/AVN" )
+    (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir ${DAT_DIR_MEM} ; mkdir ${DAT_DIR_MEM}/${GRIB_DATA}" )
 
     while ( $DATE <= $END_DATE )
-	set YY = `echo $DATE | cut -c3-4`
+
 	set MM = `echo $DATE | cut -c5-6`
 	set DD = `echo $DATE | cut -c7-8`
 	set HH = `echo $DATE | cut -c9-10`
 
-	set AVN_FILE = fnl_${YY}${MM}${DD}_${HH}_00
+      if ($GRIB_DATA == AVN) then
+	set YY = `echo $DATE | cut -c3-4`
+	set GRIB_FILE = fnl_${YY}${MM}${DD}_${HH}_00
+      else
+	set YY = `echo $DATE | cut -c1-4`
+	set GRIB_FILE = ${YY}${MM}${DD}${HH}.AWIP3D00.tm00
+      endif
 
-	if ( -e ${AVN_DIR}/$AVN_FILE ) then
-	    echo "   File $AVN_FILE exists in ${AVN_DIR}/"
+	if ( -e ${DATA_DIR}/$GRIB_FILE ) then
+	    echo "   File $GRIB_FILE exists in ${DATA_DIR}/"
 	else 
-	    echo "   Retrieving $AVN_FILE to $AVN_DIR"
-#	    msrcp mss:/DSS/DS083.2/data/$AVN_FILE $AVN_DIR/.
-            rsh -n bay "rm -f /mmmtmp/${USER}/migs/$AVN_FILE"
-            rsh -n bay "msrcp mss:/DSS/DS083.2/data/$AVN_FILE /mmmtmp/${USER}/migs/. ; rcp /mmmtmp/${USER}/migs/$AVN_FILE ocotillo:$AVN_DIR/."
-            rsh -n bay "rm -f /mmmtmp/${USER}/migs/$AVN_FILE"
+      if ($GRIB_DATA == AVN) then
+	    echo "   Retrieving $GRIB_FILE to $DATA_DIR"
+#	    msrcp mss:/DSS/DS083.2/data/$GRIB_FILE $DATA_DIR/.
+            rsh -n bay "rm -f /mmmtmp/${USER}/migs/$GRIB_FILE"
+            rsh -n bay "msrcp mss:/DSS/DS083.2/data/$GRIB_FILE /mmmtmp/${USER}/migs/. ; rcp /mmmtmp/${USER}/migs/$GRIB_FILE ocotillo:$DATA_DIR/."
+            rsh -n bay "rm -f /mmmtmp/${USER}/migs/$GRIB_FILE"
+	else 
+	    echo "Please put $GRIB_FILE to $DATA_DIR first."
+            exit
 	endif
-        rcp ${AVN_DIR}/$AVN_FILE node${inode}:${DAT_DIR_MEM}/AVN/$AVN_FILE
+	endif
+        rcp ${DATA_DIR}/$GRIB_FILE node${inode}:${DAT_DIR_MEM}/${GRIB_DATA}/$GRIB_FILE
 
 	set DATE=`advance_cymdh ${DATE} ${INTERVAL}`
 
@@ -147,16 +204,16 @@ while ( $ICYC <= $NCYCLE )
    set INSTALLROOT = $WRFSI_DIR
 
    set workdir = `pwd`
-   (rsh -n node$inode "cd $workdir; ./run_wrfsi.csh $START_DATE $FCST_RANGE $INTERVAL $DAT_DIR_MEM $INSTALLROOT $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE >& preprocess_${NC}" ) &
+   (rsh -n node$inode "cd $workdir; ./run_wrfsi.csh $START_DATE $FCST_RANGE $INTERVAL $DAT_DIR_MEM $INSTALLROOT $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE $MY_MOAD_KNOWN_LAT $MY_MOAD_KNOWN_LON $MY_MOAD_STAND_LONS $MY_NUM_DOMAINS $LLI[2] $LLJ[2] $URI[2] $URJ[2] $DATASOURCE $CASE_NAME $GRIB_DATA >& preprocess_${NC}" ) &
 
     if (`expr ${START_DATE} \+ 1000000` <= $E_AVAIL_DATE) then
-       set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
+       set START_DATE = `expr ${START_DATE} \+ 1000000`           # Go to next year
     else
        set START_DATE = `expr ${START_DATE} \- ${BACK_YEAR}`
        while (${START_DATE} < ${S_AVAIL_DATE})
-          set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
+          set START_DATE = `expr ${START_DATE} \+ 1000000`        # Go to next year
        end
-       set START_DATE = `advance_cymdh ${START_DATE} 72`     # Go to next member (+3days)
+       set START_DATE = `advance_cymdh ${START_DATE} ${nextmem}`  # Go to next member
     endif
 
    @ NC ++
@@ -193,32 +250,182 @@ while ( $NC <= $ES )
 # 3) Second stage of preprocessing into WRF format (runs WRF real.exe). 
 #--------------------------------------------------------------------
 
-   rm ${WRF_DIR}/test/em_real/wrf_real_input_em*
-   rcp -r node${inode}:${VARTMP}/${user}_GEN_INIT_ENS_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
+#-----------------------------------------------------------------------
+# Create WRF namelist.input:
+#-----------------------------------------------------------------------
 
+source ./get_date_range.csh $START_DATE $FCST_RANGE
+
+setenv INTERVAL_SS `expr $INTERVAL \* 3600`
+
+rcp -r node${inode}:${VARTMP}/${user}_GEN_INIT_ENS_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
 ########   (rsh -n node$inode "rm -rf ${VARTMP}/${user}_GEN_INIT_ENS_${NC}" )
 
-   mv ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em* ${WRF_DIR}/test/em_real/.
+set dn = 1
+while ( $dn <= $MY_NUM_DOMAINS )
+
+if ( $dx[$dn] < 5000 ) then
+   setenv CU_PHYSICS 0
+else
+   setenv CU_PHYSICS 1
+endif
+
+cat >! ${WRF_DIR}/test/em_real/namelist.input << EOF
+ &time_control
+ run_days                   = 0,
+ run_hours                  = ${FCST_RANGE},
+ run_minutes                = 0,
+ run_seconds                = 0,
+ start_year                 = ${START_YEAR},
+ start_month                = ${START_MONTH},
+ start_day                  = ${START_DAY},
+ start_hour                 = ${START_HOUR},
+ start_minute               = 00,
+ start_second               = 00,
+ end_year                   = ${END_YEAR},
+ end_month                  = ${END_MONTH},
+ end_day                    = ${END_DAY},
+ end_hour                   = ${END_HOUR},
+ end_minute                 = 00,
+ end_second                 = 00,
+ interval_seconds           = ${INTERVAL_SS},
+ input_from_file            = .true.,
+ history_interval           = 360,
+ frames_per_outfile         = 1000,
+ restart                    = .false.,
+ restart_interval           = 5000,
+ io_form_history            = 2
+ io_form_restart            = 2
+ io_form_input              = 2
+ io_form_boundary           = 2
+ debug_level                = 0
+ /
+
+ &domains
+ time_step                  = $dt[$dn],
+ time_step_fract_num        = 0,
+ time_step_fract_den        = 1,
+ max_dom                    = 1,
+ s_we                       = 1,
+ e_we                       = $e_we[$dn],
+ s_sn                       = 1,
+ e_sn                       = $e_sn[$dn],
+ s_vert                     = 1,
+ e_vert                     = ${VERTICAL_GRIDS},
+ dx                         = $dx[$dn],
+ dy                         = $dx[$dn],
+ grid_id                    = 1,
+ level                      = 1,
+ parent_id                  = 0,
+ i_parent_start             = 0,
+ j_parent_start             = 0,
+ parent_grid_ratio          = 1,
+ parent_time_step_ratio     = 1,
+ feedback                   = 1,
+ smooth_option              = 1
+ /
+
+ &physics
+ mp_physics                 = 3,
+ ra_lw_physics              = 1,
+ ra_sw_physics              = 1,
+ radt                       = 30,
+ sf_sfclay_physics          = 1,
+ sf_surface_physics         = ${SF_SURFACE_PHYSICS},
+ bl_pbl_physics             = 1,
+ bldt                       = 0,
+ cu_physics                 = ${CU_PHYSICS},
+ cudt                       = 5,
+ isfflx                     = 1,
+ ifsnow                     = 0,
+ icloud                     = 1,
+ surface_input_source       = 1,
+ num_soil_layers            = ${NUM_SOIL_LAYERS},
+ maxiens                    = 1,
+ maxens                     = 3,
+ maxens2                    = 3,
+ maxens3                    = 16,
+ ensdim                     = 144,
+ /
+
+ &dynamics
+ dyn_opt                    = 2,
+ rk_ord                     = 3,
+ w_damping                  = 0,
+ diff_opt                   = 0,
+ km_opt                     = 1,
+ damp_opt                   = 0,
+ zdamp                      = 5000.,
+ dampcoef                   = 0.2,
+ khdif                      = 0,
+ kvdif                      = 0,
+ smdiv                      = 0.1,
+ emdiv                      = 0.01,
+ epssm                      = 0.1,
+ non_hydrostatic            = .true.,
+ time_step_sound            = 4,
+ h_mom_adv_order            = 5,
+ v_mom_adv_order            = 3,
+ h_sca_adv_order            = 5,
+ v_sca_adv_order            = 3,
+ /
+
+ &bdy_control
+ spec_bdy_width             = 5,
+ spec_zone                  = 1,
+ relax_zone                 = 4,
+ specified                  = .true.,
+ periodic_x                 = .false.,
+ symmetric_xs               = .false.,
+ symmetric_xe               = .false.,
+ open_xs                    = .false.,
+ open_xe                    = .false.,
+ periodic_y                 = .false.,
+ symmetric_ys               = .false.,
+ symmetric_ye               = .false.,
+ open_ys                    = .false.,
+ open_ye                    = .false.,
+ nested                     = .false.,
+ /
+
+ &namelist_quilt
+ nio_tasks_per_group = 0,
+ nio_groups = 1,
+ /
+
+EOF
+
+   rm ${WRF_DIR}/test/em_real/wrf_real_input_em*
+
+   mv ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em.d0${dn}.* ${WRF_DIR}/test/em_real/.
+   if ($dn > 1) then
+      mv ${WRF_DIR}/test/em_real/wrf_real_input_em.d0${dn}.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00 \
+         ${WRF_DIR}/test/em_real/wrf_real_input_em.d01.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00
+   endif
+
+   ./run_wrfreal.csh $NC $WRF_DIR
+
+   mv ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_d0${dn}_${NC}
+   if ($dn == 1) then
+      mv ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
+   endif
+
+   @ dn ++
+
+end
+
    rm -r ${WRF_DIR}/test/em_real/siprd
+########   (rsh -n node$inode "rm -rf ${VARTMP}/${user}_wrfsi_${NC}")
 
-   ./run_wrfreal.csh $NC $START_DATE $FCST_RANGE $INTERVAL $WRF_DT $OUT_FREQ $WRF_DIR $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE
-
-##############   (rsh -n node$inode "rm -rf ${VARTMP}/${user}_wrfsi_${NC}")
-
-   mv ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_${NC}
-   mv ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
-#   mv ${WRF_DIR}/test/em_real/namelist.input ${DAT_DIR}/namelist.input_${days}_${seconds}_${NC}
-   rm ${WRF_DIR}/test/em_real/namelist.input
-
-    if (`expr ${START_DATE} \+ 1000000` <= $E_AVAIL_DATE) then
-       set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
-    else
-       set START_DATE = `expr ${START_DATE} \- ${BACK_YEAR}`
-       while (${START_DATE} < ${S_AVAIL_DATE})
-          set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
-       end
-       set START_DATE = `advance_cymdh ${START_DATE} 72`   # Go to next member (+3days)
-    endif
+   if (`expr ${START_DATE} \+ 1000000` <= $E_AVAIL_DATE) then
+      set START_DATE = `expr ${START_DATE} \+ 1000000`            # Go to next year
+   else
+      set START_DATE = `expr ${START_DATE} \- ${BACK_YEAR}`
+      while (${START_DATE} < ${S_AVAIL_DATE})
+         set START_DATE = `expr ${START_DATE} \+ 1000000`         # Go to next year
+      end
+      set START_DATE = `advance_cymdh ${START_DATE} ${nextmem}`   # Go to next member
+   endif
 
    @ NC ++
 
@@ -232,7 +439,11 @@ end
 
 # Prepare to do the ensemble initial conditions file.
 if ( $ICYC == 1 ) then
-   cp ${DAT_DIR}/wrfinput_1 ${DAT_DIR}/wrfinput_mean
+   set dn = 1
+   while ( $dn <= $MY_NUM_DOMAINS )
+      cp ${DAT_DIR}/wrfinput_d0${dn}_1 ${DAT_DIR}/wrfinput_d0${dn}_mean
+      @ dn ++
+   end
    rm -f filter_ics
 endif
 cp ${DAT_DIR}/wrfbdy_1 ${DAT_DIR}/wrfbdy_mean
@@ -244,23 +455,31 @@ mv ${DAT_DIR}/wrfbdy_mean ${DAT_DIR}/wrfbdy_mean_${days}_${seconds}
 set NC = 1
 # Loop over the ensemble members
 while ( $NC <= $ES )
+
+   set dn = 1
+   while ( $dn <= $MY_NUM_DOMAINS )
+      mv ${DAT_DIR}/wrfinput_d0${dn}_${NC} wrfinput_d0${dn}
+      @ dn ++
+   end
+
    if ( $ICYC == 1 ) then
 #---------------------------------------------------
 # Convert wrfinput (netcdf) files into dart readable
 #---------------------------------------------------
-      mv ${DAT_DIR}/wrfinput_${NC} wrfinput
 
-# create new input to DART (taken from "wrfinput")
+# create new input to DART (taken from "wrfinput_d0x")
       echo ".false." | dart_tf_wrf >& out.wrf_to_dart
 
       cat dart_wrf_vector >> filter_ics
 
       rm dart_wrf_vector
-   else
-      rm ${DAT_DIR}/wrfinput_${NC}
+
    endif
+
    mv ${DAT_DIR}/wrfbdy_${NC} ${DAT_DIR}/wrfbdy_${days}_${seconds}_${NC}
-@ NC ++
+
+   @ NC ++
+
 end
 
 ##########endif
@@ -276,11 +495,9 @@ if ( $seconds >= 86400) then
    set days = `expr $days \+ 1`
 endif
 
-# Write the target time at the beginning of wrf.info
+# Write the target time at the end of wrf.info
 
-echo $seconds $days > temp
-cat wrf.info >> temp
-mv temp wrf.info
+echo $seconds $days >> wrf.info
 
 end
 
