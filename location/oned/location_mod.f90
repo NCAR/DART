@@ -9,14 +9,15 @@ module location_mod
 ! implementation has domain 'longitude' running from 0 to 1. May want to investigate
 ! allowing an arbitrary real domain size at some point.
 
-use types_mod
-use utilities_mod, only : output_err, E_ERR
+use      types_mod
+use  utilities_mod, only : output_err, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+
 
 private
 
-public location_type, get_dist, get_location, set_location, write_location, read_location, &
-   interactive_location
+public location_type, get_dist, get_location, set_location, &
+       write_location, read_location, interactive_location
 
 type location_type
    private
@@ -67,8 +68,6 @@ get_location = loc%x
 
 end function get_location
 
-!----------------------------------------------------------------------------
-
 
 
 function set_location(x)
@@ -91,9 +90,8 @@ end function set_location
 
 
 
-
 subroutine write_location(file, loc)
-!---------------------------------------------------------------------------------
+!----------------------------------------------------------------------------
 !
 ! Writes a oned location to the file. Implemented as a subroutine but  could
 ! rewrite as a function with error control info returned. For initial implementation,
@@ -166,27 +164,34 @@ write(*, *) 'Input location for this obs: value 0 to 1 or a negative number for 
 write(*, *) 'Uniformly distributed random location'
 read(*, *) x
 
-do while(x > 1.0) 
+do while(x > 1.0_r8)
    write(*, *) 'Input value greater than 1.0 is illegal, please try again'
    read(*, *) x
 end do
 
-if(x < 0.0) then
-! Need to make sure random sequence is initialized
+if(x < 0.0_r8) then
+
+   ! Need to make sure random sequence is initialized
+
    if(.not. ran_seq_init) then
       call init_random_seq(ran_seq)
       ran_seq_init = .TRUE.
    endif
-! Uniform location from 0 to 1 for this location type
+
+   ! Uniform location from 0 to 1 for this location type
+
    location%x = random_uniform(ran_seq)
    write(*, *) 'random location is ', location%x
+
 else
    location%x = x
 end if
 
 end subroutine interactive_location
-   
 
+!
 !----------------------------------------------------------------------------
-
+! end of location/oned/location_mod.f90
+!----------------------------------------------------------------------------
+!
 end module location_mod
