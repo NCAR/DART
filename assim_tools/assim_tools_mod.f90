@@ -947,7 +947,7 @@ Observations : do jjj = 1, num_obs_in_set
       ! Compute distance dependent envelope
       cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
       ! WARNING: TEST FOR REPRODUCING with next line
-      if(cov_factor <= 0) cycle CLOSE_STATE
+      if(cov_factor <= 0.0_r8) cycle CLOSE_STATE
 
       ! Get the ensemble elements for this state variable and do regression
       swath = ens(:, inv_indices(ind))
