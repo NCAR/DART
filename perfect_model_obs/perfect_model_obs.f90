@@ -52,22 +52,18 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
-type(obs_def_type)      :: obs_def
-type(set_def_list_type) :: set_def_list
-type(obs_set_def_type)  :: obs_set_def
-type(obs_set_type)      :: obs_set
 type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
-integer :: i, j, obs_set_def_index, iunit, unit_out, num_obs_in_set
-integer :: ierr, state_unit, StateUnit, io
+integer :: i, j, iunit, unit_out, num_obs_in_set
+integer :: ierr, StateUnit, io
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer :: model_size, num_obs_sets
 
 type(assim_model_type) :: x(1)
 real(r8), allocatable :: obs_err_cov(:), obs(:), true_obs(:)
-character(len=129) :: copy_meta_data(2), file_name
+character(len=129) :: copy_meta_data(2)
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values

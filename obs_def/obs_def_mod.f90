@@ -10,7 +10,7 @@ module obs_def_mod
 ! $Date$
 ! $Author$
 
-use       types_mod, only : r8, pi
+use       types_mod, only : r8, deg2rad
 use   utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use    obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
                             IDENTITY_OBSERVATION, set_ncep_obs_kind, get_obs_kind
@@ -434,7 +434,6 @@ implicit none
 real(r8), intent(out) :: obsloc0(3)
 type(obs_def_type), intent(in) :: obs_def
 
-type(location_type) :: location                           
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure                     
 
    if ( .not. module_initialized ) call initialize_module
@@ -460,23 +459,22 @@ implicit none
 real(r8), intent(out) :: obsloc0(3)
 type(obs_def_type), intent(in) :: obs_def
 
-type(location_type) :: location                           
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure       
 
    if ( .not. module_initialized ) call initialize_module
 
-   lon_lat_lev = get_location(obs_def%location)                                       
-   lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
-                                                    
-   if(vert_is_level(obs_def%location)) then                                           
-      level = lon_lat_lev(3)                    
-   else                      
-      pressure = lon_lat_lev(3)       
-   endif                                                                                        
-   obsloc0(1) = lon*pi/180.0_r8    ! degree
-   obsloc0(2) = lat*pi/180.0_r8    ! degree
+   lon_lat_lev = get_location(obs_def%location)
+   lon = lon_lat_lev(1); lat = lon_lat_lev(2);
+
+   if(vert_is_level(obs_def%location)) then
+      level = lon_lat_lev(3)
+   else
+      pressure = lon_lat_lev(3)
+   endif
+   obsloc0(1) = lon*deg2rad        ! degree
+   obsloc0(2) = lat*deg2rad        ! degree
    obsloc0(3) = pressure           ! Pascal
-                                       
+
 end subroutine get_obs_location4
 
 
@@ -484,12 +482,11 @@ subroutine get_obs_kind4(obs_def, obskind0)
 implicit none
 real(r8), intent(out) :: obskind0
 type(obs_def_type), intent(in) :: obs_def
-type(obs_kind_type) :: kind                           
 
    if ( .not. module_initialized ) call initialize_module
 
-   obskind0 = get_obs_kind(obs_def%kind)                                       
-                                       
+   obskind0 = get_obs_kind(obs_def%kind)
+
 end subroutine get_obs_kind4
 
 

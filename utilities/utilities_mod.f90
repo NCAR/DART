@@ -79,7 +79,7 @@ contains
 
    subroutine initialize_utilities
    ! integer :: logfileunit -- private module variable
-   integer :: i, iunit, io
+   integer :: iunit, io
    logical :: lfile
 
       if ( module_initialized ) then ! nothing to do

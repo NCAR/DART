@@ -70,7 +70,6 @@ real(r8)             :: comp_cov_factor
 
 real(r8)           :: z, r
 integer            :: iunit, ierr, io
-character(len=129) :: errstring
 
 z = abs(z_in)
 

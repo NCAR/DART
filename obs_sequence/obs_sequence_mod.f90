@@ -97,7 +97,7 @@ integer,            intent(in) :: max_obs_sets
 integer, optional,  intent(in) :: num_copies_in
 character(len = *), intent(in), optional :: copy_meta_data(:)
 
-integer :: file_id, num_copies, i
+integer :: num_copies, i
 
 if ( .not. module_initialized ) call initialize_module
 

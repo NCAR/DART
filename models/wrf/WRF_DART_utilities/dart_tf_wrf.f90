@@ -46,7 +46,7 @@ integer       :: seconds, days
 !  misc stuff
 
 include 'netcdf.inc'
-logical, parameter :: debug = .false.
+logical, parameter :: debug = .true.
 integer :: mode, io, ierr
 
 !---
@@ -157,6 +157,7 @@ logical :: debug
 map = 1
 start = 1
 stride = 1
+count = 1
 
 count(4) = 1
 count(3) = wrf%bt

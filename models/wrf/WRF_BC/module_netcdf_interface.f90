@@ -140,6 +140,12 @@ contains
     character (len=80) :: varnam
     integer :: ndims, natts, idims(10), dimids(10)
     integer :: i, ivtype
+    integer, dimension(5) :: count, start, stride, map
+
+    count  = 1
+    start  = 1
+    stride = 1
+    map    = 1
 
     cdfid = ncopn(file, NCNOWRIT, rcode )
 
@@ -183,9 +189,13 @@ contains
 
     end if
 
+    count(1)  = i1
+    count(2)  = i2
+    count(3)  = i3
+
     !  get the data
 
-    call check( nf90_get_var(cdfid,id_data,data) )
+    call check( nf90_get_var(cdfid, id_data, data, start, count, stride, map) )
 
     if(debug) then
        write(unit=*, fmt='(a,e24.12)') ' Sample data=', data(1,1,1)
@@ -309,6 +319,12 @@ contains
     character (len=80) :: varnam
     integer :: ndims, natts, idims(10), dimids(10)
     integer :: i, ivtype
+    integer, dimension(5) :: count, start, stride, map
+
+    count  = 1
+    start  = 1
+    stride = 1
+    map    = 1
 
     cdfid = ncopn(file, NCWRITE, rcode )
 
@@ -347,9 +363,13 @@ contains
 
     end if
 
+    count(1)  = i1
+    count(2)  = i2
+    count(3)  = i3
+
     !  write the data
 
-    call check( nf90_put_var(cdfid,id_data,data) )
+    call check( nf90_put_var(cdfid, id_data, data, start, count, stride, map) )
 
     call ncclos(cdfid,rcode)
 

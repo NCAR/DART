@@ -62,7 +62,6 @@ implicit none
 
 integer :: iunit, ierr, io
 
-character(len=129) :: errstring
 call register_module(source, revision, revdate)
 
 ! Read namelist for run time control
@@ -294,8 +293,8 @@ real(r8), intent(in)            :: slope
 real(r8), intent(out)           :: a
 real(r8), intent(out), optional :: bias_ratio_out
 
-real(r8) :: ens2(1, ens_size), obs_var_inv, cov(1, 1)
-real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
+real(r8) :: obs_var_inv
+real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
 real(r8) :: sx, s_x2, prior_cov
 real(r8) :: temp_mean, temp_obs(ens_size)
 integer  :: ens_index(ens_size), new_index(ens_size)
@@ -371,8 +370,8 @@ real(r8), intent(in)            :: slope
 real(r8), intent(out)           :: a
 real(r8), intent(out), optional :: bias_ratio_out
 
-real(r8) :: ens2(1, ens_size), obs_var_inv, cov(1, 1)
-real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, prior_cov
+real(r8) :: obs_var_inv
+real(r8) :: prior_mean, prior_cov_inv, new_cov, prior_cov
 real(r8) :: sx, s_x2
 real(r8) :: weight(ens_size), new_mean(ens_size)
 real(r8) :: cum_weight, total_weight, cum_frac(ens_size)
@@ -471,9 +470,9 @@ real(r8), intent(out)           :: state_inc(ens_size), reg_coef
 real(r8), intent(out), optional :: correl_out
 
 real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty
-real(r8) :: mean_inc, inf_state(ens_size), correl
+real(r8) :: inf_state(ens_size), correl
 
-real(r8) :: sum_y, sum_y2, sum_x2
+real(r8) :: sum_y, sum_y2
 real(r8) :: factor, state_var_norm
 
 

@@ -423,6 +423,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       if (obs(j) == missing_r) num_close_ptr(1) = 0
 
+      write(*, *) 'Variables updated: ', num_close_ptr(1)
 
       ! Now loop through each close state variable for this observation
       do k = 1, num_close_ptr(1)

@@ -11,7 +11,7 @@ module obs_set_def_mod
 ! $Author$
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, register_module
+use utilities_mod, only : register_module, error_handler, E_ERR
 use   obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
                         write_obs_def, get_error_variance, &
                         od_get_expected_obs => get_expected_obs, &
@@ -453,8 +453,6 @@ implicit none
 type(obs_set_def_type), intent(in) :: set
 real(r8), intent(out) :: obsloc0(:)
 integer, intent(in), optional :: num
-
-integer :: i
 
 if ( .not. module_initialized ) call initialize_module
 

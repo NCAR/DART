@@ -56,7 +56,7 @@ ${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 ${PBS_O_WORKDIR}/wrf.exe >>& out_wrf_integration
 mv wrfout_d01_000000 wrfinput
 
-rm dart_wrf_vector
+mv dart_wrf_vector dart_wrf_vector.input
 
 # create new input to DART (taken from "wrfinput")
 ${PBS_O_WORKDIR}/dart_tf_wrf < input_wrf_to_dart >& out.wrf_to_dart

@@ -766,8 +766,8 @@ implicit none
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
-integer :: m,t,dyear,dmonth,dday,nday,nleapyr,nfh,nhund,nfour
-integer ndiy,nex,ibaseyr, num_days, iyear, days_this_month, days_this_year
+integer :: m,t
+integer :: num_days, iyear, days_this_month, days_this_year
 logical :: leap
 
 integer, parameter :: base_year= 1601
@@ -1929,7 +1929,6 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_gregorian
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2045,8 +2044,6 @@ implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year_gregorian
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2277,8 +2274,6 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_gregorian
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2532,7 +2527,7 @@ type(time_type), intent(in) :: time
 integer                     :: len
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer  :: TimeVarID, i,ierr
+integer  :: TimeVarID
 integer  :: secs, days
 real(r8) :: r8time         ! gets promoted to nf90_double ...
 
@@ -2799,8 +2794,6 @@ implicit none
 
 integer, intent(in) :: ncFileID, TimeVarID
 integer             :: ierr
-
-type(time_type) :: statetime
 
 integer  :: unlimitedDimID
 integer  :: length

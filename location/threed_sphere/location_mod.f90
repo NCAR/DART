@@ -362,7 +362,7 @@ implicit none
 
 type(location_type), intent(out) :: location
 
-real(r8) :: lon, lat, vloc, minlon, maxlon, minlat, maxlat
+real(r8) :: lon, lat, minlon, maxlon, minlat, maxlat
 
 if ( .not. module_initialized ) call initialize_module
 

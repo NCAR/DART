@@ -61,7 +61,7 @@ implicit none
 
 integer, intent(in) :: temp
 type(random_seq_type), intent(out) :: s
-integer iff, j
+integer j
 
 if ( .not. module_initialized ) call initialize_module
 

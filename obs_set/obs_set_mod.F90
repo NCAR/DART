@@ -656,7 +656,7 @@ implicit none
 type(obs_set_type), intent(in) :: set
 integer, intent(in) :: file_id
 
-integer :: i, j
+integer :: i
 
 if ( .not. module_initialized ) call initialize_module
 

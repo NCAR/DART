@@ -444,7 +444,6 @@ integer, intent(in) :: file_id
 
 character(len=5) :: header
 integer :: i, num_sets
-type(list_element_type) :: list_element
 character(len=129) :: stringerror
 
 if ( .not. module_initialized ) call initialize_module

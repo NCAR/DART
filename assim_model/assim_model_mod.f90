@@ -117,7 +117,7 @@ subroutine static_init_assim_model()
 
 implicit none
 
-integer :: i, iunit, ierr, io
+integer :: iunit, ierr, io
 
 ! First thing to do is echo info to logfile ... 
 
@@ -183,11 +183,10 @@ character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 integer                      :: ncFileID
 
 integer             :: i, metadata_length
-type(location_type) :: state_loc
 
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID
-integer :: LocationDimID, LocationVarID
+integer :: LocationDimID
 integer :: MetadataDimID, MetadataVarID
 
 if(.not. byteSizesOK()) then
@@ -329,8 +328,6 @@ integer :: init_diag_input
 character(len = *), intent(in)  :: file_name
 character(len = *), intent(out) :: global_meta_data
 integer,            intent(out) :: model_size, copies_of_field_per_time
-
-integer :: i
 
 init_diag_input = get_unit()
 open(unit = init_diag_input, file = file_name)
@@ -982,7 +979,6 @@ type(time_type), intent(in)                   :: model_time
 real(r8), intent(in)                          :: model_state(:)
 integer,                 intent(in)           :: funit
 character(len=*),        intent(in), optional :: fform
-integer           :: days, seconds
 character(len=32) :: fileformat
 
 fileformat = "ascii"
@@ -1041,7 +1037,6 @@ real(r8), intent(out)                        :: model_state(:)
 integer,                intent(in)           :: funit
 character(len=*),       intent(in), optional :: fform
 
-integer           :: seconds, days
 character(len=32) :: fileformat
 
 
@@ -1130,7 +1125,7 @@ type(time_type),   intent(in) :: model_time
 real(r8),          intent(in) :: model_state(:)
 integer, optional, intent(in) :: copy_index
 
-integer :: i,ierr, timeindex, copyindex
+integer :: i, timeindex, copyindex
 
 character(len=129) :: errstring
 integer :: is1,id1
