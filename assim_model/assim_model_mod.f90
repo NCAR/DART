@@ -657,7 +657,7 @@ implicit none
 integer,                intent(in)    :: num
 type(assim_model_type), intent(inout) :: assim_model(num)
 type(time_type),        intent(in)    :: target_time
-logical,                intent(in)    :: asynch
+integer,                intent(in)    :: asynch
 
 type(time_type) :: model_time(num)
 real(r8) :: model_state(num, size(assim_model(1)%state_vector))
@@ -695,7 +695,7 @@ integer,         intent(in)    :: num
 type(time_type), intent(inout) :: model_time(num)
 real(r8),        intent(inout) :: model_state(:, :)
 type(time_type), intent(in)    :: target_time
-logical,         intent(in) :: asynch
+integer,         intent(in)    :: asynch
 
 type(time_type) :: time_step
 
@@ -738,7 +738,7 @@ return
 ! At some point probably need to push the determination of the time back
 ! into the model itself and out of assim_model
 
-   if(.not. asynch) then
+   if(asynch == 0) then
 
       time_step = get_model_time_step()
       call get_time(time_step, seconds, days)
@@ -803,9 +803,11 @@ end do
 
 
 ! Also need synchronization block at the end for the asynch
-if(asynch) then
+
+if(asynch /= 0) then
 
    ! Write out the file names to a control file
+
    control_unit = get_unit()
    open(unit = control_unit, file = 'filter_control')
    write(control_unit, *) num
@@ -815,19 +817,47 @@ if(asynch) then
    end do
    close(control_unit)
 
-   ! Create the file async_may_go to allow the async model integrations
-   control_unit = get_unit()
-   open(unit = control_unit, file = 'async_may_go')
-   call write_time(control_unit, target_time)
-   close(control_unit)
+   if(asynch == 1) then
 
-   ! Suspend on a read from standard in for integer value
-   do 
-      read(*, *) input_string
-      if(trim(input_string) == 'All_done:Please_proceed') exit
-      ! Following line can allow diagnostic pass through of output
-      write(*, *) 'ECHO:', input_string
-   end do
+      ! We sleep 1 second here for the following reason:
+      ! The first time async_filter.csh is executed,
+      ! it removes the file async_may_go that may be left over.
+      ! With small models, perfect_model_obs and filter can come
+      ! to this point before the script async_filter.csh has time to
+      ! remove the file async_may_go.
+
+      call system('sleep 1')
+
+      ! Create the file async_may_go to allow the async model integrations
+      control_unit = get_unit()
+      open(unit = control_unit, file = 'async_may_go')
+      call write_time(control_unit, target_time)
+      close(control_unit)
+
+! Suspend on a read from standard in for integer value
+      do
+         read(*, '(a80)') input_string
+         if(trim(input_string) == 'All_done:Please_proceed') exit
+! Following line can allow diagnostic pass through of output
+         write(*, *) input_string
+      end do
+
+      ! This sleep is necessary to insure that all files coming from
+      ! remote systems are completely written.
+
+      call system('sleep 1')
+
+   elseif(asynch == 2) then
+
+      call system('./advance_ens.csh ; sleep 1')
+
+   else
+
+      write(*, *) 'async = ',asynch,' is not allowed.'
+      write(*, *) 'Set async = 0, 1, or 2 in input.nml'
+      stop
+
+   endif
 
    write(*, *) 'got clearance to proceed in Aadvance_state'
 
@@ -1050,7 +1080,7 @@ subroutine output_diagnostics(ncFileID, state, copy_index)
 !     substantially modified to handle time in a much better manner
 ! TJH 24 Jun 2003 made model_mod do all the netCDF writing.
 !                 Still need an error handler for nc_write_model_vars
-!      
+!
 
 implicit none
 
@@ -1109,7 +1139,7 @@ timeindex = nc_get_tindex(ncFileID, model_time)
 if ( timeindex < 0 ) then
    write(*,*)'ERROR: ',trim(adjustl(source))
    write(*,*)'ERROR: aoutput_diagnostics: model_time not in netcdf file'
-   write(*,*)'ERROR: model_time : '
+   write(*,*)'ERROR: model_time (seconds, days) : '
    call write_time(6,model_time) ! hardwired unit will change with error handler
    write(*,*)'ERROR: netcdf file ID ',ncFileID
    stop
