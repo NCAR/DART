@@ -3,9 +3,10 @@
 
 subroutine parse_namelist
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------- 
 ! 
@@ -53,11 +54,11 @@ subroutine parse_namelist
 
    implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 #include <comadj.h>
 #include <comctl.h>

@@ -1,8 +1,9 @@
 program trans_pv_sv
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
@@ -16,28 +17,30 @@ program trans_pv_sv
 !
 !----------------------------------------------------------------------
 
-! let CVS fill strings ... DO NOT EDIT ...
-character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-
-use model_mod, only : model_type, init_model_instance, read_cam_init, &
-   prog_var_to_vector
+use       types_mod, only : r8
+use   utilities_mod, only : get_unit
+use       model_mod, only : model_type, init_model_instance, read_cam_init, &
+                             prog_var_to_vector
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
    binary_restart_files
-use utilities_mod, only : get_unit
+
+implicit none
+
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ic'
 character (len = 16)  :: file_form
 
 ! Temporary allocatable storage to read in a native format for cam state
 type(assim_model_type) :: x
-type(model_type) :: var
-real, allocatable :: x_state(:)
-integer :: file_unit, x_size
-
+type(model_type)       :: var
+real(r8), allocatable  :: x_state(:)
+integer                :: file_unit, x_size
 
 ! Static init assim model calls static_init_model
 PRINT*,'static_init_assim_model in trans_pv_sv'

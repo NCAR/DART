@@ -1,8 +1,9 @@
 program trans_date_to_dart
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: generate a Gregorian/DART date & time from standard date and time
@@ -15,21 +16,18 @@ program trans_date_to_dart
 !
 !----------------------------------------------------------------------
 
-
+use utilities_mod,    only : get_unit
 use time_manager_mod, only : time_type, write_time, &
                              get_time, set_time, get_date, set_date, &
                              set_calendar_type, GREGORIAN, get_calendar_type
-                         
-                         
-use utilities_mod, only : get_unit
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer               :: calendar_type = GREGORIAN
 integer               :: file_unit, seconds, days, &

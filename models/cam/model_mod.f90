@@ -1,17 +1,19 @@
+
+module model_mod
+!
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+!
+
 ! changes for reading hybrid coefficients from initial file are marked with 'coef'
 ! changes for calculating pressures on cam vertical levels are marked with  'plevs'
 ! 
 ! netCDF filename; where will this come from in DART?
 !                  it's created by CAM, and written out to a file somewhere; read it in?
-
+!
 ! Do we need other functionality form bgrid model_mod?
-
-!#######################################################################
-module model_mod
-
-!  $Source$
-!  $Revision$
-!  $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
@@ -33,14 +35,13 @@ module model_mod
 !----------------------------------------------------------------------
 
 use netcdf
-use types_mod
-use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
-! kdr orig; use time_manager_mod, only : time_type, set_time
+use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, print_time
-use location_mod         , only: location_type, get_location, set_location, &
-                                 get_dist, vert_is_level, &
-                                 LocationDims, LocationName, LocationLName
-
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                             error_handler, E_ERR
+use     location_mod, only : location_type, get_location, set_location, &
+                             get_dist, vert_is_level, query_location, &
+                             LocationDims, LocationName, LocationLName
 
 implicit none
 private
@@ -51,18 +52,16 @@ public model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
    init_conditions, init_time, adv_1step, end_model, &
    model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_TRACER
+   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_TRACER, pert_model_state
 
 !-----------------------------------------------------------------------
-! let CVS fill strings ... DO NOT EDIT ...
- 
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: version = "$Id$"
 character(len=128) :: tag = "$Name$"
- 
 character(len=128) :: &
-   source = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
@@ -76,7 +75,7 @@ type model_type
 !   private
    real(r8), pointer :: vars_2d(:, :, :)
    real(r8), pointer :: vars_3d(:, :, :, :)
-   real(r8), pointer ::  tracers(:, :, :, :)
+   real(r8), pointer :: tracers(:, :, :, :)
 end type model_type
 
 !-----------------------------------------------------------------------                       
@@ -84,10 +83,9 @@ end type model_type
 ! output_state_vector = .true.     results in a "state-vector" netCDF file
 ! output_state_vector = .false.    results in a "prognostic-var" netCDF file
                                                                                                
-logical :: output_state_vector = .false.  ! output state-vector 
+logical :: output_state_vector = .false.
                                                                                                
 namelist /model_nml/ output_state_vector
-
 
 !----------------------------------------------------------------------
 ! File where basic info about model configuration can be found; should be namelist
@@ -143,14 +141,18 @@ data nlevs/ n3tflds*0, n2dflds*1/
 !---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
 
+!#######################################################################
+
 contains
-
-
 
 !#######################################################################
 
-subroutine read_cam_init_size(file_name, num_lons, num_lats, num_levs)
 
+
+  subroutine read_cam_init_size(file_name, num_lons, num_lats, num_levs)
+!=======================================================================
+! subroutine read_cam_init_size(file_name, num_lons, num_lats, num_levs)
+!
 ! Gets the number of lons, lats and levels from a CAM init netcdf file
 ! in file_name
 
@@ -162,7 +164,7 @@ integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
 
 write(*, *) 'file_name in read_cam_init is ', trim(file_name)
 
-!----------------------------------------------------------------------
+!------------------------------------
 ! read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
@@ -176,17 +178,29 @@ call check(nf90_inquire_dimension(ncfileid, londimid, clon , num_lons ))
 call check(nf90_inquire_dimension(ncfileid, latdimid, clat , num_lats ))
 call check(nf90_inquire_dimension(ncfileid, levdimid, clev , num_levs ))
 
+contains 
+
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus) 
+   integer, intent ( in) :: istatus 
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_init_size', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
 end subroutine read_cam_init_size
 
-!#######################################################################
-subroutine read_cam_init(file_name, var)
 
-implicit none
+
+
+  subroutine read_cam_init(file_name, var)
+!=======================================================================
+! subroutine read_cam_init(file_name, var)
+!
 
 character(len = *), intent(in) :: file_name
 type(model_type), intent(out) :: var
 
-!----------------------------------------------------------------------
 ! Local workspace
 integer :: i,j,ifld  ! grid and constituent indices
 integer :: plon, plat, plev
@@ -244,16 +258,27 @@ do ifld=2, 5
 ! AS KEVIN"S CODE SUGGESTED. IF SO NEED TO FIX
 end do
 
+contains 
+
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus) 
+   integer, intent ( in) :: istatus 
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_init', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
 end subroutine read_cam_init
 
-!#######################################################################
-subroutine read_cam_coord(var, dim, cfield)
 
+
+  subroutine read_cam_coord(var, dim, cfield)
+!=======================================================================
+! subroutine read_cam_coord(var, dim, cfield)
+!
 ! should be called with cfield = one of :
 !          (/'lat     ','lon     ','gw      ','P0      '
 !           ,'hyai    ','hybi    ','hyam    ','hybm    '/)
-
-implicit none
 
 !----------------------------------------------------------------------
 ! Local workspace
@@ -274,21 +299,30 @@ call check(nf90_get_var(ncfileid, ncfldid, var ,start=(/1/) ,count=(/dim/) ))
 PRINT*,'reading ',cfield,' using id ',ncfldid
 WRITE(*,*) (var(i),i=1,dim)
 
+contains 
+
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus) 
+   integer, intent ( in) :: istatus 
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_coord', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
 end subroutine read_cam_coord
 
 
 
-subroutine read_cam_scalar (var, cfield)
+  subroutine read_cam_scalar (var, cfield)
+!=======================================================================
+! subroutine read_cam_scalar (var, cfield)
 !
 ! should be called with cfield = one of :
 !          (/'P0      '/)
 
-implicit none
-
 real(r8), intent(out) :: var
 character (len=8), intent(in)  :: cfield 
 
-!----------------------------------------------------------------------
 ! Local workspace
 integer :: ncfileid, ncfldid
 
@@ -302,19 +336,22 @@ call check(nf90_get_var(ncfileid, ncfldid, var  ))
 PRINT*,'reading ',cfield,' using id ',ncfldid
 WRITE(*,*) var
 
+contains 
+
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus) 
+   integer, intent ( in) :: istatus 
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_scalar', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
 end subroutine read_cam_scalar
 
 
 
-!#######################################################################
-! #include <misc.h>
-! #include <params.h>
-
 subroutine plevs_cam (ncol    , ncold   ,ps      ,pmid    )
-
-! ,nver    , & pint    ,pdel)
-
-!-----------------------------------------------------------------------
+!=======================================================================
 !
 ! Purpose:
 ! Define the pressures of the interfaces and midpoints from the
@@ -336,8 +373,6 @@ subroutine plevs_cam (ncol    , ncold   ,ps      ,pmid    )
 ! coef; commented these out
 !  use shr_kind_mod, only: r8 => shr_kind_r8
 !  use pmgrid
-
-implicit none
 
 ! coef; commented these out
 ! #include <comhyb.h>
@@ -383,10 +418,14 @@ end do
 
 return
 end subroutine plevs_cam
-!#######################################################################
-subroutine prog_var_to_vector(var, x)
 
-implicit none
+
+
+
+  subroutine prog_var_to_vector(var, x)
+!=======================================================================
+! subroutine prog_var_to_vector(var, x)
+!
 
 type(model_type), intent(in) :: var
 real(r8), intent(out) :: x(:)
@@ -421,18 +460,20 @@ end do
 
 ! Temporary check
 if(index /= model_size) then
-   write(*, *) 'prog_var_to_vector bad index sum '
    write(*, *) 'index, model_size ', index, model_size
-   stop
+   call error_handler(E_ERR, 'prog_var_to_vector', &
+               'bad index sum', source, revision, revdate)
 endif
 
 end subroutine prog_var_to_vector
 
-!#######################################################################
 
-subroutine vector_to_prog_var(x, var) 
 
-implicit none
+
+  subroutine vector_to_prog_var(x, var) 
+!=======================================================================
+! subroutine vector_to_prog_var(x, var) 
+!
 
 real(r8), intent(in) :: x(:)
 type(model_type), intent(out) :: var
@@ -464,17 +505,20 @@ end do
 
 ! Temporary check
 if(index /= model_size) then
-   write(*, *) 'prog_var_to_vector bad index sum '
-   write(*, *) 'index, model_size ', index,  model_size
-   stop
+   write(*, *) 'index, model_size ', index, model_size
+   call error_handler(E_ERR, 'vector_to_prog_var', &
+               'bad index sum', source, revision, revdate)
 endif
 
 end subroutine vector_to_prog_var
 
-!#######################################################################
-subroutine write_cam_init(file_name, var)
 
-implicit none
+
+
+  subroutine write_cam_init(file_name, var)
+!=======================================================================
+! subroutine write_cam_init(file_name, var)
+
 
 character (len = *), intent(in) :: file_name
 type(model_type), intent(in) :: var
@@ -504,26 +548,27 @@ end do
 
 call check(nf90_close(ncfileid))
 
+contains 
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+
+   integer, intent ( in) :: istatus
+
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'write_cam_init', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+
+   end subroutine check
+
 end subroutine write_cam_init
 
-!#######################################################################
-subroutine check(status)
 
-integer, intent ( in) :: status
 
-if (status /= nf90_noerr) then
-   print *, trim(nf90_strerror(status))
-   stop
-end if
 
-return
-end subroutine check
-
-!#######################################################################
-
-function get_model_size()
-
-implicit none
+  function get_model_size()
+!=======================================================================
+! function get_model_size()
+!
 
 integer :: get_model_size
 
@@ -531,16 +576,17 @@ get_model_size = model_size
 
 end function get_model_size
 
-!#######################################################################
 
-subroutine static_init_model()
 
+  subroutine static_init_model()
+!=======================================================================
+! subroutine static_init_model()
+!
 ! Initializes class data for CAM model (all the stuff that needs to
 ! be done once. For now, does this by reading info from a fixed
 ! name netcdf file. Need to make this file a namelist parameter
 ! at some point.
 
-implicit none
 
 integer :: i, j, unit, ierr, io
 
@@ -604,13 +650,13 @@ write(*, *) 'CAM size initialized as ', model_size
 
 end subroutine static_init_model
 
-!#######################################################################
 
-subroutine init_model_instance(var)
 
+  subroutine init_model_instance(var)
+!=======================================================================
+! subroutine init_model_instance(var)
+!
 ! Initializes an instance of a cam model state variable
-
-implicit none
 
 type(model_type), intent(out) :: var
 
@@ -622,13 +668,14 @@ allocate(var%vars_2d(num_lons, num_lats, n2dflds), &
 
 end subroutine init_model_instance
 
-!#######################################################################
 
-subroutine end_model_instance(var)
 
+  subroutine end_model_instance(var)
+!=======================================================================
+! subroutine end_model_instance(var)
+!
 ! Ends an instance of a cam model state variable
 
-implicit none
 
 type(model_type), intent(inout) :: var
 
@@ -636,17 +683,18 @@ deallocate(var%vars_2d, var%vars_3d, var%tracers)
 
 end subroutine end_model_instance
 
-!#######################################################################
 
-subroutine adv_1step(x, Time)
 
+  subroutine adv_1step(x, Time)
+!=======================================================================
+! subroutine adv_1step(x, Time)
+!
 ! Does single time-step advance for B-grid model with vector state as
 ! input and output. This is a modified version of subroutine atmosphere
 ! in original bgrid_solo_atmosphere driver.
 
-implicit none
+real(r8), intent(inout) :: x(:)
 
-real, intent(inout) :: x(:)
 ! Time is needed for more general models like this; need to add in to
 ! low-order models
 type(time_type), intent(in) :: Time
@@ -656,32 +704,25 @@ type(time_type), intent(in) :: Time
 
 end subroutine adv_1step
 
-!#######################################################################
 
 
-subroutine get_state_meta_data(index_in, location, var_type)
-!---------------------------------------------------------------------
+  subroutine get_state_meta_data(index_in, location, var_type)
+!=======================================================================
+! subroutine get_state_meta_data(index_in, location, var_type)
 !
 ! Given an integer index into the state vector structure, returns the
 ! associated location. This is not a function because the more general
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
-!  SHOULD THIS ALSO RETURN THE TYPE OF THIS VARIABLE???
-! YES NEED TO RETURN VARIABLE TYPE HERE
 ! Types for this CAM model are, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
 
-implicit none
-
-integer, intent(in) :: index_in
-! Temporary kluge of location type
-!integer, intent(in) :: location
+integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, intent(out), optional :: var_type
+integer, optional,   intent(out) :: var_type
 
-integer :: index, num_per_col, col_num, col_elem, lon_index, lat_index
+integer  :: index, num_per_col, col_num, col_elem, lon_index, lat_index
 real(r8) :: lon, lat, lev
-integer :: local_var_type, var_type_temp
-
+integer  :: local_var_type, var_type_temp
 
 ! Easier to compute with a 0 to size - 1 index
 index = index_in - 1
@@ -690,7 +731,7 @@ index = index_in - 1
 num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! What column is this index in
-col_num = index / num_per_col 
+col_num  = index / num_per_col 
 col_elem = index - col_num * num_per_col
 
 ! What lon and lat index for this column
@@ -720,9 +761,14 @@ else
    endif
 endif
 
-!write(*, 11) lon, lat, lev, local_var_type
-11 format(1x, 3(f6.2, 1x), i3)
-location = set_location(lon, lat, lev)
+!write(*, '(1x,3(f6.2,1x),i3)') lon, lat, lev, local_var_type
+
+! Since CAM has pure pressure at the top, pure sigma at the
+! bottom and hybrid in-between, we are just referring to
+! the LEVEL index for the vertical. The coefficients to reconstruct
+! pressure, height, etc. are available in the netCDF files.
+
+location = set_location(lon, lat, lev, 1)  ! 1 == level (indexical)
 
 ! If the type is wanted, return it
 if(present(var_type)) var_type = local_var_type
@@ -730,11 +776,10 @@ if(present(var_type)) var_type = local_var_type
 
 end subroutine get_state_meta_data
 
-!#######################################################################
+
 
 !function model_interpolate(x, location, type)
-!
-!implicit none
+!=======================================================================
 !
 !real :: model_interpolate
 !real, intent(in) :: x(:)
@@ -819,21 +864,23 @@ end subroutine get_state_meta_data
 !model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 !
 !end function model_interpolate
+
+
+
+  RECURSIVE function model_interpolate(x, location, type)
+!=======================================================================
+! RECURSIVE function model_interpolate(x, location, type)
 !
-!#######################################################################
-RECURSIVE function model_interpolate(x, location, type)
 
-implicit none
-
-real :: model_interpolate
-real, intent(in) :: x(:)
+real(r8) :: model_interpolate
+real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: type
 
 integer :: lon_below, lon_above, lat_below, lat_above, i
-real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
-real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
-real :: lon, lat, level, lon_lat_lev(3), pressure
+real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
+real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
+real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
 ! As opposed to the stripped state vector. YES. This would give time interp.
@@ -939,26 +986,27 @@ endif
 
 end function model_interpolate
 
-!#######################################################################
-!
-function get_val_pressure(x, lon_index, lat_index, pressure, type)
 
+
+  function get_val_pressure(x, lon_index, lat_index, pressure, type)
+!=======================================================================
+! function get_val_pressure(x, lon_index, lat_index, pressure, type)
+!
 ! Gets the vertically interpolated value on pressure for variable type
 ! at lon_index, lat_index horizontal grid point
-
+!
 ! This version excludes observations below lowest level pressure and above
 ! highest level pressure.
 
-implicit none
 
-real :: get_val_pressure
-real, intent(in) :: x(:), pressure
+real(r8) :: get_val_pressure
+real(r8), intent(in) :: x(:), pressure
 integer, intent(in) :: lon_index, lat_index, type 
 
-real :: ps(1), pfull(1, num_levs), fraction
+real(r8) :: ps(1), pfull(1, num_levs), fraction
 type(location_type) :: ps_location
 integer :: top_lev, bot_lev, i, k
-real :: bot_val, top_val, ps_lon
+real(r8) :: bot_val, top_val, ps_lon
 
 ! Need to get the surface pressure at this point. Easy for A-grid.
 ps = get_val(x, lon_index, lat_index, -1, 3)
@@ -996,14 +1044,15 @@ end if
 
 end function get_val_pressure
 
-!#######################################################################
-!
-!function get_val_pressure(x, lon_index, lat_index, pressure, type, pflag)
+
+
+! function get_val_pressure(x, lon_index, lat_index, pressure, type, pflag)
+!=======================================================================
+! function get_val_pressure(x, lon_index, lat_index, pressure, type, pflag)
 !
 !! This version does extrapolations in log pressure below surface and above
 !!  top model layer.
 !
-!implicit none
 !
 !real :: get_val_pressure
 !real, intent(in) :: x(:), pressure
@@ -1113,15 +1162,17 @@ end function get_val_pressure
 !!write(53, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
 !
 !end function get_val_pressure
+
+
+
+
+  function get_val(x, lon_index, lat_index, level, type)
+!=======================================================================
+! function get_val(x, lon_index, lat_index, level, type)
 !
-!#######################################################################
 
-function get_val(x, lon_index, lat_index, level, type)
-
-implicit none
-
-real :: get_val
-real, intent(in) :: x(:)
+real(r8) :: get_val
+real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, type
 
 integer :: per_col, index
@@ -1158,10 +1209,12 @@ get_val = x(index)
 
 end function get_val
 
-!#######################################################################
 
-function get_model_time_step()
 
+  function get_model_time_step()
+!=======================================================================
+! function get_model_time_step()
+!
 ! Returns the the time step of the model. In the long run should be repalced
 ! by a more general routine that returns details of a general time-stepping
 ! capability.
@@ -1173,62 +1226,61 @@ get_model_time_step =  Time_step_atmos
 
 end function get_model_time_step
 
-!#######################################################################
 
-subroutine end_model()
 
-implicit none
-
+  subroutine end_model()
+!=======================================================================
+! subroutine end_model()
+!
 ! At some point, this stub should coordinate with atmosphere_end but
 ! that requires an instance variable.
 
 end subroutine end_model
 
-!#######################################################################
 
-subroutine init_time(i_time)
 
-implicit none
-
+  subroutine init_time(i_time)
+!=======================================================================
+! subroutine init_time(i_time)
+!
 ! For now returns value of Time_init which is set in initialization routines.
 
 type(time_type), intent(out) :: i_time
 
-!Where should initial time come from here?
+! Where should initial time come from here?
 ! WARNING: CURRENTLY SET TO 0
 i_time = set_time(0, 0)
 
 end subroutine init_time
 
-!#######################################################################
 
-subroutine init_conditions(x)
 
-implicit none
+  subroutine init_conditions(x)
+!=======================================================================
+! subroutine init_conditions(x)
+!
+! Reads in restart initial conditions  -- noop for CAM
 
-! Reads in restart initial conditions from B-grid and converts to vector
-
-! Following changed to intent(inout) for ifc compiler;should be like this
-real, intent(inout) :: x(:)
-
-! Can this be a noop for CAM???
+real(r8), intent(inout) :: x(:)
 
 end subroutine init_conditions
-!#######################################################################
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
 
-implicit none
 
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
-real(r8), intent(out) :: dist(:)
+  subroutine model_get_close_states(o_loc, radius, nfound, indices, dist)
+!=======================================================================
+! subroutine model_get_close_states(o_loc, radius, nfound, indices, dist)
+!
+
+type(location_type), intent(in)  :: o_loc
+real(r8),            intent(in)  :: radius
+integer,             intent(out) :: nfound, indices(:)
+real(r8),            intent(out) :: dist(:)
 
 real(r8) :: loc_array(3), o_lon, o_lat
-integer :: num, max_size, i, j, num1
-integer :: hsize, num_per_col, col_base_index
-integer, allocatable :: lon_ind(:), lat_ind(:)
+integer  :: num, max_size, i, j, num1
+integer  :: hsize, num_per_col, col_base_index
+integer,  allocatable :: lon_ind(:), lat_ind(:)
 real(r8), allocatable :: close_dist(:)
 
 write(*, *) 'in model_get_close_states', radius
@@ -1236,7 +1288,7 @@ loc_array = get_location(o_loc)
 write(*, *) 'oloc is ', loc_array(:)
 
 ! Number found starts at 0
-number = 0
+nfound = 0
 
 ! Assume that grid size is known from static initialized storage
 
@@ -1261,39 +1313,42 @@ write(*, *) 'available space is size(indices) ', size(indices)
 do i = 1, num
    col_base_index = ((lon_ind(i) - 1) * num_lats + lat_ind(i) - 1) * num_per_col
    do j = 1, num_per_col
-      number = number + 1
-      if(number <= size(indices)) indices(number) = col_base_index + j
-      if(number <= size(dist)) dist(number) = close_dist(i)
+      nfound = nfound + 1
+      if(nfound <= size(indices)) indices(nfound) = col_base_index + j
+      if(nfound <= size(dist)) dist(nfound) = close_dist(i)
    end do
 end do
-write(*, *) 'number at end is ', number
+write(*, *) 'number at end is ', nfound
 
 deallocate(lon_ind, lat_ind, close_dist)
 
 end subroutine model_get_close_states
 
-!#######################################################################
 
 
-subroutine grid_close_states2(o_loc, lons, lats, nlon, nlat, radius, &
-   num, close_lon_ind, close_lat_ind, close_dist)
 
+  subroutine grid_close_states2(o_loc, lons, lats, nlon, nlat, radius, &
+                   num, close_lon_ind, close_lat_ind, close_dist)
+!=======================================================================
+! subroutine grid_close_states2(o_loc, lons, lats, nlon, nlat, radius, &
+!                  num, close_lon_ind, close_lat_ind, close_dist)
+!
+!
 ! Finds close state points from a particular grid;
 
-implicit none
 
-type(location_type), intent(in) :: o_loc
-integer, intent(in) :: nlon, nlat
-real(r8), intent(in) :: lons(nlon), lats(nlat), radius
-integer, intent(inout) :: num
-integer, intent(inout) :: close_lon_ind(:), close_lat_ind(:)
-real(r8), intent(out) :: close_dist(:)
+type(location_type), intent(in)    :: o_loc
+integer,             intent(in)    :: nlon, nlat
+real(r8),            intent(in)    :: lons(nlon), lats(nlat), radius
+integer,             intent(inout) :: num
+integer,             intent(inout) :: close_lon_ind(:), close_lat_ind(:)
+real(r8),            intent(out)   :: close_dist(:)
 
 real(r8) :: glat, glon, loc_array(3), o_lon, o_lat, o_lev
 real(r8) :: gdist, diff, row_dist(nlon)
-integer :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
-integer :: row_lon_ind(nlon), row_num
-real(r8), parameter :: glev = 1.0
+integer  :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
+integer  :: row_lon_ind(nlon), row_num
+real(r8), parameter :: glev = 1.0_r8
 type(location_type) :: loc
 
 ! Get the lat and lon from the loc
@@ -1310,16 +1365,18 @@ blon_ind = get_closest_lon_index(o_lon, lons, nlon)
 ! Begin a search along the latitude axis in the positive direction
 do lat_ind = blat_ind, nlat
    glat = lats(lat_ind)
-! Take care of storage round-off
-   if(glat < -90.0) glat = 0.0
-   if(glat > 90.0) glat = 90.0
+   ! Take care of storage round-off
+   if(glat < -90.0_r8) glat =  0.0_r8
+   if(glat >  90.0_r8) glat = 90.0_r8
 
-! Search all the contiguous close longitudes around the base longitude
+   ! Search all the contiguous close longitudes around the base longitude
    call lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
       row_lon_ind, row_dist, row_num)
-! If none are found, it's time to search in the negative latitude direction
+
+   ! If none are found, it's time to search in the negative latitude direction
    if(row_num == 0) goto 11
-! Copy the points found in the row into summary storage
+
+   ! Copy the points found in the row into summary storage
    close_lon_ind(num+1 : num+row_num) = row_lon_ind(1:row_num)
    close_lat_ind(num+1 : num+row_num) = lat_ind
    close_dist(num+1 : num+row_num) = row_dist(1:row_num)
@@ -1330,16 +1387,18 @@ end do
 11 continue
 do lat_ind = blat_ind - 1, 1, -1
    glat = lats(lat_ind)
-! Take care of storage round-off
-   if(glat < -90.0) glat = 0.0
-   if(glat > 90.0) glat = 90.0
+   ! Take care of storage round-off
+   if(glat < -90.0_r8) glat =  0.0_r8
+   if(glat >  90.0_r8) glat = 90.0_r8
 
-! Search all the contiguous close longitudes around the base longitude
+   ! Search all the contiguous close longitudes around the base longitude
    call lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
       row_lon_ind, row_dist, row_num)
-! If none are found, it's time to give up
+
+   ! If none are found, it's time to give up
    if(row_num == 0) return
-! Copy the points found in the row into summary storage
+
+   ! Copy the points found in the row into summary storage
    close_lon_ind(num+1 : num+row_num) = row_lon_ind(1:row_num)
    close_lat_ind(num+1 : num+row_num) = lat_ind
    close_dist(num+1 : num+row_num) = row_dist(1:row_num)
@@ -1348,24 +1407,27 @@ end do
 
 end subroutine grid_close_states2
 
-!------------------------------------------------------------------------
 
-subroutine lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
-   close_lon_ind, close_dist, num)
 
+  subroutine lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
+                      close_lon_ind, close_dist, num)
+!=======================================================================
+!  subroutine lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
+!                     close_lon_ind, close_dist, num)
+!
 ! Given an observation location and radius and a latitude row from a grid,
 ! searches to find all longitude points in this row that are within radius
 ! of the observation location and returns their latitude index, longitude
 ! index, and the distance between them and the observation.
 
-real(r8), intent(in) :: glat, glev, radius, lons(:)
-integer, intent(in) :: blon_ind
-type(location_type), intent(in) :: o_loc
-integer, intent(out) :: close_lon_ind(:), num
-real(r8), intent(out) :: close_dist(:)
+real(r8),            intent(in)  :: glat, glev, radius, lons(:)
+integer,             intent(in)  :: blon_ind
+type(location_type), intent(in)  :: o_loc
+integer,             intent(out) :: close_lon_ind(:), num
+real(r8),            intent(out) :: close_dist(:)
 
-integer :: nlon, j, max_pos, lon_ind
 type(location_type) :: loc
+integer  :: nlon, j, max_pos, lon_ind, which_vert
 real(r8) :: glon, gdist
 
 ! Total number found is 0 at start
@@ -1378,20 +1440,26 @@ do j = 0, nlon - 1
    lon_ind = blon_ind + j
    if(lon_ind > nlon) lon_ind = lon_ind - nlon
    glon = lons(lon_ind)
-! Correct for longitude storage round-off
-   if(glon > 360.0) glon = 360.0
-   if(glon < 0.0) glon = 0.0
-   loc = set_location(glon, glat, glev)
-   gdist = get_dist(loc, o_loc)
+
+   ! Correct for longitude storage round-off
+   if(glon > 360.0_r8) glon = 360.0_r8
+   if(glon <   0.0_r8) glon =   0.0_r8
+
+   ! Use same vertical "philosophy" as the existing location object.
+   ! As of April, 2004 -- the vertical is (still) ignored in get_dist.
+   which_vert = nint(query_location(o_loc))
+   loc        = set_location(glon, glat, glev, which_vert)
+   gdist      = get_dist(loc, o_loc)
    if(gdist <= radius) then
       num = num + 1
       close_lon_ind(num) = lon_ind
       close_dist(num) = gdist
-! If radius is too far for closest longitude, no need to search further or to search other side
+      ! If radius is too far for closest longitude, 
+      ! no need to search further or to search other side
    else if (j == 0) then
       return
    else
-! Look in negative longitude offset direction next
+      ! Look in negative longitude offset direction next
       goto 21
    endif
 end do
@@ -1401,35 +1469,44 @@ return
 ! Search around the other way
 21 continue
 do j = 1, nlon - 1 - max_pos
+
    lon_ind = blon_ind - j
    if(lon_ind < 1) lon_ind = nlon + lon_ind
    glon = lons(lon_ind)
-! Correct for longitude storage round-off
-   if(glon > 360.0) glon = 360.0
-   if(glon < 0.0) glon = 0.0
-   loc = set_location(glon, glat, glev)
-   gdist = get_dist(loc, o_loc)
+
+   ! Correct for longitude storage round-off
+   if(glon > 360.0_r8) glon = 360.0_r8
+   if(glon <   0.0_r8) glon =   0.0_r8
+
+   ! Use same vertical "philosophy" as the existing location object.
+   ! As of April, 2004 -- the vertical is (still) ignored in get_dist.
+   which_vert = nint(query_location(o_loc))
+   loc        = set_location(glon, glat, glev, which_vert)
+   gdist      = get_dist(loc, o_loc)
+
    if(gdist <= radius) then
       num = num + 1
       close_lon_ind(num) = lon_ind
       close_dist(num) = gdist
    else
-! No more longitudes in negative direction
+      ! No more longitudes in negative direction
       return
    endif
 end do
 
 end subroutine lon_search
                                               
-!#######################################################################
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+
+  function nc_write_model_atts( ncFileID ) result (ierr)
+!=======================================================================
+! function nc_write_model_atts( ncFileID ) result (ierr)
+!
 ! Writes the model-specific attributes to a netCDF file.
 ! TJH Fri Aug 29 MDT 2003
 !
 use typeSizes
 use netcdf
-implicit none
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -1484,8 +1561,6 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
 
 ! how about namelist input? might be nice to save ...
-
-
 
 !-------------------------------------------------------------------------------
 ! Define the new dimensions IDs
@@ -1675,25 +1750,22 @@ call check(nf90_sync(ncFileID))
 write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...' 
 
 contains
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_atts'
-      print *, trim(nf90_strerror(istatus))
-      ierr = istatus
-      stop
-    end if
-  end subroutine check
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+   integer, intent ( in) :: istatus
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
 
 end function nc_write_model_atts
 
 
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-!-----------------------------------------------------------------------------------------
+  function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
+!=======================================================================
+! function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
+!
 ! Writes the model-specific variables to a netCDF file
 ! TJH 25 June 2003
 !
@@ -1714,7 +1786,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 
 use typeSizes
 use netcdf
-implicit none
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
@@ -1792,29 +1863,25 @@ write (*,*)'netCDF file is synched ...'
 call end_model_instance(Var)   ! should avoid any memory leaking
 
 contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_vars'
-      print *, trim(nf90_strerror(istatus))
-      ierr = istatus
-      stop
-    end if
-  end subroutine check
+   ! Internal subroutine - checks error status after each netcdf, prints 
+   !                       text message each time an error code is returned. 
+   subroutine check(istatus)
+   integer, intent ( in) :: istatus
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_vars', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
 
 end function nc_write_model_vars
 
 
 
-!#######################################################################
 
-function get_closest_lat_index(o_lat, lats, nlat)
 
-implicit none
+  function get_closest_lat_index(o_lat, lats, nlat)
+!=======================================================================
+! function get_closest_lat_index(o_lat, lats, nlat)
+!
+
 integer, intent(in) :: nlat
 real(r8), intent(in) :: o_lat, lats(nlat)
 integer :: get_closest_lat_index
@@ -1842,11 +1909,12 @@ endif
 
 end function get_closest_lat_index
 
-!#######################################################################
 
-function get_closest_lon_index(o_lon, lons, nlon)
 
-implicit none
+  function get_closest_lon_index(o_lon, lons, nlon)
+!=======================================================================
+! function get_closest_lon_index(o_lon, lons, nlon)
+
 integer, intent(in) :: nlon
 real(r8), intent(in) :: o_lon, lons(nlon)
 integer :: get_closest_lon_index
@@ -1884,8 +1952,28 @@ end if
 
 end function get_closest_lon_index
 
+
+
+
+  subroutine pert_model_state(state, pert_state, interf_provided)
+!=======================================================================
+! subroutine pert_model_state(state, pert_state, interf_provided)
+!
+! Perturbs a model state for generating initial ensembles
+! Returning interf_provided means go ahead and do this with uniform
+! small independent perturbations.
+
+real(r8),  intent(in) :: state(:)
+real(r8), intent(out) :: pert_state(:)
+logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_state
+
+
+!#######################################################################
+! end of cam model_mod
 !#######################################################################
 
 end module model_mod
-
-

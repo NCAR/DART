@@ -6,42 +6,41 @@ program filter
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
-
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
    get_obs_values, obs_sequence_def_copy, inc_num_obs_copies, &
    set_single_obs_value, get_num_close_states, get_close_states, &
    get_obs_location1, get_obs_kind1
-
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
-use utilities_mod,    only :  get_unit, open_file, close_file, &
-   check_nml_error, file_exist
-use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
+use    utilities_mod, only :  get_unit, open_file, close_file, &
+   check_nml_error, file_exist, error_handler, E_ERR
+use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, finalize_diag_output, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data, &
    binary_restart_files, aoutput_diagnostics, aread_state_restart, &
    aget_closest_state_time_to, awrite_state_restart, Aadvance_state
-use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use  assim_tools_mod, only : obs_increment, update_from_obs_inc, &
    look_for_bias, obs_increment17, obs_increment18
-use cov_cutoff_mod,   only : comp_cov_factor
-use location_mod, only : location_type, get_location
-use reg_factor_mod, only : comp_reg_factor
-use sort_mod, only : sort
+use   cov_cutoff_mod, only : comp_cov_factor
+use     location_mod, only : location_type, get_location
+use   reg_factor_mod, only : comp_reg_factor
+use         sort_mod, only : sort
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Define a type for doing direct access to ensemble state vectors
 type model_state_ptr_type
@@ -53,12 +52,12 @@ type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
 
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji, meta_data_size
-integer ::  output_ens_mean_index, output_ens_spread_index
-integer            :: model_size, num_obs_sets
+integer :: output_ens_mean_index, output_ens_spread_index
+integer :: model_size, num_obs_sets
 integer :: grp_size, grp_bot, grp_top, group, num_greater_1
 real(r8) :: reg_factor, median
 real(r8), allocatable :: sum_reg_factor(:, :), reg_factor_series(:, :, :)
@@ -111,18 +110,19 @@ integer :: rejected_obs
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer :: ens_size = 20
-real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
-logical :: async = .false., start_from_restart = .false., output_restart = .false.
+integer  :: ens_size    = 20
+real(r8) :: cutoff      = 200.0_r8
+real(r8) :: cov_inflate = 1.0_r8
+logical  :: async = .false., start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer :: init_time_days = -1, init_time_seconds = -1
+integer  :: init_time_days = -1, init_time_seconds = -1
 ! Control diagnostic output for state variables
-logical :: output_state_ens_mean = .true., output_state_ens_spread = .true.
-integer :: num_output_ens_members = 0
-integer :: output_interval = 1
-integer :: num_groups = 1
-real(r8) :: confidence_slope = 0.0
+logical  :: output_state_ens_mean = .true., output_state_ens_spread = .true.
+integer  :: num_output_ens_members = 0
+integer  :: output_interval        = 1
+integer  :: num_groups             = 1
+real(r8) :: confidence_slope       = 0.0_r8
 
 character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
@@ -140,14 +140,14 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = filter_nml, iostat = io, end = 11)
+      read(iunit, nml = filter_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'filter_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 write(*,*)'start_from_restart = ',start_from_restart
@@ -163,10 +163,10 @@ allocate( obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_siz
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
 ! Input the obs_sequence
-unit = get_unit()
-open(unit = unit, file = obs_sequence_file_name)
-seq = read_obs_sequence(unit)
-close(unit)
+iunit = get_unit()
+open(unit = iunit, file = obs_sequence_file_name)
+seq = read_obs_sequence(iunit)
+close(iunit)
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_obs_sets(seq)
 
@@ -191,8 +191,9 @@ do i = 1, ens_size
       write(ens_copy_meta_data(i), 51) 'ensemble member', i
       write(obs_meta_data(i), 51) 'ensemble member', i
    else
-      write(*, *) 'output metadata in filter needs ensemble size < 10000'
-      stop
+      call error_handler(E_ERR,'filter main program unit', &
+          'Output metadata in filter needs ensemble size < 10000', &
+          source, revision, revdate)
    endif
  21   format(a15, i1)
  31   format(a15, i2)
@@ -251,25 +252,25 @@ endif
 ! of restart file we expect.
 
 if(start_from_restart) then
-   unit = get_unit()
+   iunit = get_unit()
    if (binary_restart_files ) then
-      open(unit = unit, file = restart_in_file_name, form = "unformatted")
+      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
    else
-      open(unit = unit, file = restart_in_file_name)
+      open(unit = iunit, file = restart_in_file_name)
    endif
 
    do i = 1, ens_size
       write(*, *) 'trying to read restart ', i
       if (binary_restart_files ) then
-         call aread_state_restart(ens_time(i), ens(i, :), unit, form = "unformatted")
+         call aread_state_restart(ens_time(i), ens(i, :), iunit, form = "unformatted")
       else
-         call aread_state_restart(ens_time(i), ens(i, :), unit)
+         call aread_state_restart(ens_time(i), ens(i, :), iunit)
       endif
 
 ! If init_time_days and init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) ens_time(i) = time1
    end do
-   close(unit)
+   close(iunit)
 !-----------------  Restart read in --------------------------------
 
 else
@@ -280,20 +281,20 @@ else
 ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
 ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
    allocate(x(model_size))
-   unit = get_unit()
+   iunit = get_unit()
    if (binary_restart_files ) then
-      open(unit = unit, file = restart_in_file_name, form = "unformatted")
+      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
    else
-      open(unit = unit, file = restart_in_file_name)
+      open(unit = iunit, file = restart_in_file_name)
    endif
 
 ! Get the initial condition
    if (binary_restart_files ) then
-      call aread_state_restart(x_time, x, unit, form = "unformatted")
+      call aread_state_restart(x_time, x, iunit, form = "unformatted")
    else
-      call aread_state_restart(x_time, x, unit)
+      call aread_state_restart(x_time, x, iunit)
    endif
-   close(unit)
+   close(iunit)
 
 ! Initialize a repeatable random sequence for perturbations
 ! Where should the magnitude of the perturbations come from here???
@@ -379,8 +380,6 @@ write(*,*) 'passed global ensemble mean for diagnostics'
 ! Output state diagnostics as required: NOTE: Prior has been inflated
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
-         ! TJH debugging block.
-!         print *,'Going one time, i,noem= ',j,num_output_ens_members
          call aoutput_diagnostics(     PriorStateUnit, ens_time(j), ens(j, :), j)
       end do
    end if
@@ -676,11 +675,10 @@ write(*,*) 'passed mean and ens members output'
       end do
       call aoutput_diagnostics(PosteriorStateUnit, ens_spread_time, ens_spread, output_ens_spread_index)
    endif
-   ! ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
 
 !   output the ensemble mean of analysis at the observation space \
    if(output_obs_diagnostics) then
-! fix slowness of adding thesein the argument list below
+! fix slowness of adding these in the argument list below
         ens_spread = ens_spread + ens_mean
 !
        WRITE(53,*) 'calling get_expected_obs and set_single_obs_value for obs_diag'
@@ -704,7 +702,6 @@ end do AdvanceTime
 
 close (53)
 
-
 ! properly dispose of the diagnostics files
 
 ierr = finalize_diag_output(PriorStateUnit)
@@ -712,9 +709,8 @@ ierr = finalize_diag_output(PosteriorStateUnit)
 
 ! Initialize the model state space diagnostic output files
 
-! Output the observation space diagnostic files
 
-   if(output_obs_diagnostics) then
+if(output_obs_diagnostics) then ! Output the observation space diagnostic files
 
    prior_obs_unit = get_unit()
    open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
@@ -726,23 +722,22 @@ ierr = finalize_diag_output(PosteriorStateUnit)
    call write_obs_sequence(posterior_obs_unit, posterior_seq)
    close(posterior_obs_unit)
  
-   endif
+endif
 
-! Output a restart file if requested
-if(output_restart) then
-   unit = get_unit()
+if(output_restart) then ! Output a restart file if requested
+   iunit = get_unit()
    if (binary_restart_files ) then
-      open(unit = unit, file = restart_out_file_name, form = "unformatted")
+      open(unit = iunit, file = restart_out_file_name, form = "unformatted")
       do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), unit, form = "unformatted")
+         call awrite_state_restart(ens_time(i), ens(i, :), iunit, form = "unformatted")
       end do
    else
-      open(unit = unit, file = restart_out_file_name)
+      open(unit = iunit, file = restart_out_file_name)
       do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), unit)
+         call awrite_state_restart(ens_time(i), ens(i, :), iunit)
       end do
    endif
-   close(unit)
+   close(iunit)
 endif
 
 ! Output the regression factor means
@@ -787,7 +782,7 @@ contains
 !
 !end function get_ens_mean
 !
-function get_ens_spread(ens, ens_mean, ens_size, index)
+function get_ens_spread(ens, ens_mean, ens_size, indx)
 !----------------------------------------------------------
 !
 ! Computes the ensemble mean of the index element of the
@@ -795,12 +790,12 @@ function get_ens_spread(ens, ens_mean, ens_size, index)
 
 implicit none
 
-integer,                    intent(in) :: ens_size, index
-real(r8),                   intent(in) :: ens_mean
-real(r8),                   intent(in) :: ens(:, :)
-real(r8)                               :: get_ens_spread
+integer,   intent(in) :: ens_size, indx
+real(r8),  intent(in) :: ens_mean
+real(r8),  intent(in) :: ens(:, :)
+real(r8)              :: get_ens_spread
 
-get_ens_spread = sum((ens(:, index) - ens_mean)**2)
+get_ens_spread = sum((ens(:, indx) - ens_mean)**2)
 get_ens_spread = sqrt(get_ens_spread / (ens_size - 1))
 
 end function get_ens_spread

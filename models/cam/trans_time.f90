@@ -1,8 +1,9 @@
 program trans_time
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART time and date
@@ -15,29 +16,23 @@ program trans_time
 !
 !----------------------------------------------------------------------
 
-
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time, operator(-), get_date, &
                              set_calendar_type, GREGORIAN, NOLEAP
-use assim_model_mod, only : static_init_assim_model, binary_restart_files
-
-
-                         
-use utilities_mod, only : get_unit
+use  assim_model_mod, only : static_init_assim_model, binary_restart_files
+use    utilities_mod, only : get_unit
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
-integer               :: ntimes = 2, n, nhtfrq, &
-                         calendar_type = GREGORIAN
-integer               :: file_unit(2), seconds, days, &
-                         year, month, day, hour, minute, second, &
-                         cam_date, cam_tod
+integer :: ntimes = 2, n, nhtfrq, calendar_type = GREGORIAN
+integer :: file_unit(2), seconds, days, year, month, day, hour, minute, second, &
+           cam_date, cam_tod
 type(time_type)       :: dart_time(2), forecast_length
 character (len = 128) :: file_name = 'assim_model_state_ic1', file_out = 'times'
 character (len = 16)  :: file_form
@@ -48,7 +43,7 @@ call set_calendar_type(calendar_type)
 call static_init_assim_model()
 
 ! get form of file output from assim_model_mod
-if (binary_restart_files == .true.) then
+if ( binary_restart_files ) then
    file_form = 'unformatted'
 else
    file_form = 'formatted'
