@@ -31,7 +31,7 @@ public read_restart, write_restart, assim_tools_init, &
    obs_increment, obs_increment2, obs_increment3, obs_increment4, &
    update_from_obs_inc, local_update_from_obs_inc, robust_update_from_obs_inc, &
    obs_inc_index, obs_inc4_index, &
-   linear_obs_increment, linear_update_from_obs_inc
+   linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
 
@@ -917,10 +917,46 @@ endif
 
 ! Test of moving mean the same as the rest of things
 ! Appears to be correct solution
+!!!state_inc = linear_factor * reg_coef * var_inc + linear_factor * reg_coef * mean_inc
+
+! TEST OF TAKING SQUARE OF REGRESSION COEFFICIENT ???
+! WORKS GREAT IN INITIAL TESTS!!!
+!!!reg_coef = reg_coef * sqrt(abs(reg_coef))
+! Try multiplying by correl to reduce impact
+!reg_coef = reg_coef * abs(correl)
+!reg_coef = reg_coef * 0.01
 state_inc = linear_factor * reg_coef * var_inc + linear_factor * reg_coef * mean_inc
 
 
+
 end subroutine linear_update_from_obs_inc
+
+
+
+!-----------------------------------------------------------------------
+
+subroutine look_for_bias(ens, n, obs, obs_var, var_ratio)
+
+implicit none
+
+integer, intent(in) :: n
+real(r8), intent(in) :: ens(n), obs, obs_var
+real(r8), intent(out) :: var_ratio
+
+real(r8) :: sx, s_x2, prior_mean, prior_var, sq_err, tot_var
+
+! Compute variance of the ensemble prior for this obs
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / n
+prior_var = (s_x2 - sx**2 / n) / (n - 1)
+
+! Variance of difference between obs and mean should be sum of variances
+sq_err = (obs - prior_mean)**2
+tot_var = obs_var + prior_var
+var_ratio = sq_err / tot_var
+
+end subroutine look_for_bias
 
 !========================================================================
 

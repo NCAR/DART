@@ -153,10 +153,6 @@ Advance: do i = 1, num_obs_sets
    write(*, *) 'time of obs set ', i
    call print_time(time)
 
-! For now, set model initial time to time of first obs_set, want to add much more
-! namelist control for this eventually
-   if(i == 1) call set_model_time(x(1), time)
-
 ! Figure out time to advance to
    time2 = get_closest_state_time_to(x(1), time)
 ! Advance the state to this time; zero length advance is problem for B-grid so avoid

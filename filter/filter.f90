@@ -40,7 +40,7 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
-   linear_obs_increment, linear_update_from_obs_inc
+   linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 use cov_cutoff_mod,   only : comp_cov_factor
 
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
@@ -83,6 +83,9 @@ character(len = 129), allocatable   :: ens_copy_meta_data(:)
 type(close_state_cache_type) :: cache
 integer,  pointer :: num_close_ptr(:), close_ptr(:, :)
 real(r8), pointer :: dist_ptr(:, :)
+
+! Test storage for variance ratio
+real(r8) :: var_ratio, var_ratio_sum
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -212,15 +215,23 @@ else
 
 !-----  Block to do cold start initialization of ensembles ----------
 ! Initialize the control and ensemble states and set up direct pointers
+
+! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
+! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
+   unit = get_unit()
+   open(unit = unit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
+
    do i = 1, ens_size
       call init_assim_model(ens(i))
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
    end do
 
 ! Get the initial condition
-   call get_initial_condition(x)
+!!!   call get_initial_condition(x)
+   call read_state_restart(x, unit)
+   close(unit)
 
 ! Initialize a repeatable random sequence for perturbations
 ! Where should the magnitude of the perturbations come from here???
@@ -305,6 +316,24 @@ AdvanceTime : do i = 1, num_obs_sets
    ! Try out the cache
    call get_close_cache(cache, seq, i, 2.0*cutoff, num_obs_in_set, &
       num_close_ptr, close_ptr, dist_ptr)
+
+
+! A preliminary search for bias???
+   var_ratio_sum = 0.0
+   do j = 1, num_obs_in_set
+! Get all the prior estimates
+      do k = 1, ens_size
+         call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
+      end do
+! Call a subroutine to evaluate how many S.D.s away the ob value is
+      call look_for_bias(ens_obs, ens_size, obs(j), obs_err_cov(j), var_ratio)
+      var_ratio_sum = var_ratio_sum + var_ratio
+   end do
+   write(*, *) 'mean var_ratio is ', var_ratio_sum / num_obs_in_set
+
+
+
+
 
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
