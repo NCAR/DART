@@ -1,0 +1,31 @@
+#
+#                   - ensemble_1 -- |...!...............|
+#                  /    ...         |...!...............|
+#    ------------- -- ensemble_i -- |...!...............|
+#                  \    ...         |...!...............|
+#                   - ensemble_N -- |...!...............|
+#
+#    |           |  | ensemble      |   !output start ...
+#    spin_up_steps  | spin-up steps | num_steps ........|
+
+
+ens_size          [  20 ]  N in above diagram  
+spin_up_steps     [   0 ]  steps past initial conditions before ANYTHING
+ens_spin_up_steps [   0 ] 
+num_steps         [ 200 ] *model* steps in assimilation experiment
+output_start      [   0 ]
+obs_freq          [   1 ]
+cov_inflate       [ 1.01 ]
+mean_inflate      [ 1.0 ]
+restart           [ .FALSE. ]
+add_on            [ .FALSE. ]
+noise_amp         [ 0.0 ]
+
+"lorenz_96_obs_def"
+
+./seq_obs
+
+new rms of ensemble mean  2.992207
+new ensemble mean of rms  4.0356273
+normalized ratio is  1.0232953
+

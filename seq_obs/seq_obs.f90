@@ -76,8 +76,6 @@ double precision, allocatable :: obs_inc(:), wt(:), ens_inc(:), spread_inc(:)
 double precision, allocatable :: obs(:), obs_variance(:)
 double precision :: sx, s_x2, err_var, mean_inc
 
-double precision, allocatable :: cor1(:, :), cor2(:, :)
-
 ! Storage for getting indices of nearest state variables for obs
 integer, allocatable :: close_state_list(:), obs_index(:)
 integer :: num_close
@@ -90,14 +88,8 @@ double precision :: dif, rate
 ! Storage for ramped covariance tests
 double precision :: cov_factor, dist, cutoff
 
-double precision :: pre_correl(2, 2), post_correl(2, 2), get_correl
-
 !--------------------------------------------------------------------------
 
-! Storage to test observation impacts
-double precision, allocatable :: prior_err(:), after_err(:), delta_err(:)
-
-!--------------------------------------------------------------------------
 
 ! Read namelist for run time control
 if(file_exist('input.nml')) then
@@ -144,11 +136,7 @@ model_size = get_model_size()
 allocate(x(model_size), ens(model_size, ens_size), ens_mean(model_size), &
    close_state_list(model_size), ens_inc(ens_size), &
    ens_obs(ens_size), obs_inc(ens_size), wt(ens_size), obs_index(ens_size), &
-   cor1(model_size, model_size), cor2(model_size, model_size), spread_inc(ens_size), &
-   prior_err(model_size), after_err(model_size), delta_err(model_size))
-
-! Initialize delta_err for accumulation
-delta_err = 0.0
+   spread_inc(ens_size))
 
 ! SNZ: You should read in your conditions here, not by adding extra write.
 call init_conditions(x)
@@ -232,16 +220,6 @@ do i = start_step, end_step
    if(i / obs_freq * obs_freq == i) then
       write(*, *) 'doing new obs i = ', i
 
-
-! Temporary computation of correlation between 1, 2
-call correl(ens(1:21:20, :), 2, ens_size, pre_correl)
-
-call correl(ens, model_size, ens_size, cor1)
-cor2 = cor2 + cor1**2
-
-
-
-
       obs = add_noise(take_obs(x))
 
 ! Compute the ensemble mean of assimilation
@@ -302,13 +280,6 @@ cor2 = cor2 + cor1**2
             end do
 
 
-! Temporary calculation of observation impact
-            if(lji == 1 .and. i >= output_start) then
-               ens_mean = sum(ens, dim=2) / ens_size 
-               prior_err = ens_mean - x
-            end if
-
-
 ! Do an index sort of the obs value for use in local regression
 ! Take out when not needed, this is expensive
 !!!            call index_sort(ens_obs, obs_index, ens_size)
@@ -316,18 +287,19 @@ cor2 = cor2 + cor1**2
 
 
 ! Get the update increments for this observed variable
-!!!            call obs_increment(ens_obs, ens_size, obs(lji), obs_variance(lji), &
-!!!               obs_inc)
-            call corr_obs_increment(ens_obs, ens_size, obs(lji), obs_variance(lji), &
-               mean_inc, spread_inc)
+            call obs_increment(ens_obs, ens_size, obs(lji), obs_variance(lji), &
+               obs_inc)
+!!!            call corr_obs_increment(ens_obs, ens_size, obs(lji), obs_variance(lji), &
+!!!               mean_inc, spread_inc)
 
 ! Section to do adjustment point by point
             do k = 1, num_close
                j = close_state_list(k)
 
 ! ADDITION OF DISTANCE WEIGHTING COVARIANCE
+
                dist = get_dist(state_loc(j), obs_loc(lji))
-               write(*, *) 'state ', j, 'obs ', lji, real(dist)
+!              write(*, *) 'state ', j, 'obs ', lji, real(dist)
                cutoff = 0.20
                cov_factor = comp_cov_factor(dist, cutoff)
 
@@ -353,11 +325,11 @@ cor2 = cor2 + cor1**2
 !!!               if(cov_factor > 0.0) then
 !                  write(*, *) 'ob state ', lji, j
 ! The new update method
-!!!                  call update_from_obs_inc(ens_obs, obs_inc, ens(j, :), &
-!!!                     ens_size, ens_inc, cov_factor)
-
-                  call corr_update_from_obs_inc(ens_obs, mean_inc, spread_inc, ens(j, :), &
+                  call update_from_obs_inc(ens_obs, obs_inc, ens(j, :), &
                      ens_size, ens_inc, cov_factor)
+
+!!!                  call corr_update_from_obs_inc(ens_obs, mean_inc, spread_inc, ens(j, :), &
+!!!                     ens_size, ens_inc, cov_factor)
 !                  do jjj = 1, ens_size
 !                     write(*, *) jjj, ens_inc(jjj)
 !                  end do
@@ -376,14 +348,6 @@ cor2 = cor2 + cor1**2
 
                endif
             end do
-         endif
-
-! Calculation of change in error for impact of first ob
-         if(lji == 1 .and. i >= output_start) then
-             ens_mean = sum(ens, dim=2) / ens_size 
-            after_err = ens_mean - x
-            delta_err = delta_err + dabs(after_err) - dabs(prior_err)
-            write(*, *) 'prior, after, delta ', real(prior_err(1)), real(after_err(1)), real(delta_err(1))
          endif
 
       end do
@@ -406,31 +370,31 @@ cor2 = cor2 + cor1**2
 
       write(*, *) 'scaled distance to truth after is ', real(sqrt(sum((x - ens_mean) * (x - ens_mean))))   
 
-
-
-! Temporary computation of correlation between 1, 2
-call correl(ens(1:21:20, :), 2, ens_size, post_correl)
-write(*, *) 'pre post_correl ', real(pre_correl(1, 2)), real(post_correl(1, 2))
-
-
-
    endif           ! End of computations done at observation times only
 
 ! Compute ensemble mean of current assimilated state; NEED TO MIN ENS_MEAN CALLS
    ens_mean = sum(ens, dim=2) / ens_size
 
-! Output the first 9 variables
+   ! Output the first 9 variables
+
    if(i >= output_start) then
+
       do j = 1, min(model_size, 9)
+
          index = diag_output_index(j)
-! Temporary computation of 'error variance' to compare to Evensen
+
+         ! Temporary computation of 'error variance' to compare to Evensen
+
          sx = sum(ens(index, :))
 	 s_x2 = sum(ens(index, :) * ens(index, :))
 	 err_var = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
 
-write(ind_unit(j), 21) i, x(index), ens_mean(index), err_var, ens(index, 1:min(ens_size,10))
+         write(ind_unit(j), 21) i, x(index), ens_mean(index), err_var, ens(index, 1:min(ens_size,10))
+
       end do
+
    end if
+
  21 format(i8, 1x, 13(e12.6, 1x))
 
 end do
@@ -448,16 +412,6 @@ call output_diagnostics(pre_diag, diag_unit)
 ! Writing a final restart
 write(*, *) 'writing a restart'
 call write_restart(x, ens, end_step)
-
-! Output the observation impact array
-do i = 1, model_size
-   write(*, *) 'delta err ', i, real(delta_err(i))
-end do
-
-! Output the mean correlation absolute values for point 1
-do i = 1, model_size
-   write(*, *) 'cor 1 ', i, real(sqrt(cor2(20, i) / num_steps)),  real(sqrt(cor2(21, i) / num_steps)),  real(sqrt(cor2(22, i) / num_steps))
-end do
 
 end program seq_obs
 
@@ -484,7 +438,8 @@ do i = 1, model_size
       sx2 = sum(x**2)
       sy2 = sum(y**2)
       sxy = sum(x * y)
-      cor(i, j) = (ens_size * sxy - sx * sy) / sqrt((ens_size * sx2 - sx**2) * (ens_size * sy2 - sy**2))
+      cor(i, j) = (ens_size * sxy - sx * sy) / sqrt((ens_size * sx2 - sx**2) * &
+                                                    (ens_size * sy2 - sy**2))
    end do
 end do      
 

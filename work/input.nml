@@ -1,8 +1,8 @@
 &lim_obs_seq_nml
    ens_size = 20, 
    spin_up_steps = 0,
-   num_steps = 1200,
-   output_start = 200,
+   num_steps = 200,
+   output_start = 0,
    ens_spin_up_steps = 0,
    obs_freq = 1,
    cov_inflate = 1.01

@@ -3,22 +3,22 @@
           ROUTINE = seq_obs               VERSION = x11.0   
 ------------------------------------------------------------
  &LIM_OBS_SEQ_NML
- ENS_SIZE =           20,
- SPIN_UP_STEPS =            0,
- NUM_STEPS =         1200,
- OUTPUT_START =          200,
- ENS_SPIN_UP_STEPS =            0,
- OBS_FREQ =            1,
- COV_INFLATE =    1.010000000000000     ,
- MEAN_INFLATE =    1.000000000000000     ,
- RESTART =  F,
- ADD_ON =  F,
- NOISE_AMP =   0.0000000000000000E+000
+ ENS_SIZE = 20
+ SPIN_UP_STEPS = 0
+ NUM_STEPS = 200
+ OUTPUT_START = 0
+ ENS_SPIN_UP_STEPS = 0
+ OBS_FREQ = 1
+ COV_INFLATE = 1.01
+ MEAN_INFLATE = 1.0
+ RESTART = F
+ ADD_ON = F
+ NOISE_AMP = 0.0E+0
  /
 
 ------------------------------------------------------------
           ROUTINE = assim_tools           VERSION = 10/03/20
 ------------------------------------------------------------
  &ASSIM_TOOLS_NML
- COR_CUTOFF =   0.0000000000000000E+000
+ COR_CUTOFF = 0.0E+0
  /
