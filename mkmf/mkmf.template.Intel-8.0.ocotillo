@@ -7,6 +7,6 @@
 #
 FC = ifort
 LD = ifort
-FFLAGS = -i4 -r8 -fpp -O2 -I/ocotillo/users/caya/netcdf/include -DIFC80
+FFLAGS = -i4 -r8 -fpp -O2 -I/ocotillo/users/caya/netcdf/include
 LDFLAGS = $(LIBS)
 LIBS = -L/ocotillo/users/caya/netcdf/lib -lnetcdf -L/ocotillo/users/caya/udunits-1.12.1/lib -ludunits
