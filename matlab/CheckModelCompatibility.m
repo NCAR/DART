@@ -2,6 +2,9 @@ function CheckModelCompatibility(truth_file,diagn_file);
 % CheckModelCompatibility   tries to ensure that two netcdf files can be compared.
 %
 %
+% source
+% revision
+% revdate
 
 if ( exist(truth_file) ~= 2 )
    error(sprintf('(truth_file) %s does not exist.',truth_file))
