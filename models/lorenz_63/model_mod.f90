@@ -10,29 +10,33 @@ module model_mod
 ! Revised assim_model version of Lorenz-63 3-variable model
 
 use types_mod
-use location_mod, only : location_type, get_dist, set_location, get_location
+use location_mod, only : location_type, get_dist, set_location, get_location, &
+                         LocationDims, LocationName, LocationLName
 use time_manager_mod
 
 private
 
+public static_init_model, init_conditions, get_model_size, adv_1step, &
+   init_time,  model_interpolate, get_model_time_step, get_state_meta_data, &
+   init_model, end_model, model_get_close_states, nc_write_model_atts
 
-public static_init_model, init_conditions, get_model_size, adv_1step, state_loc, &
-   init_time,  model_interpolate, get_model_time_step, get_state_meta_data, end_model, &
-   model_get_close_states
+!  define model parameters
 
-integer, parameter :: model_size = 3
+integer,  parameter :: model_size = 3
+real(r8), parameter ::  sigma = 10.0_r8
+real(r8), parameter ::      r = 28.0_r8
+real(r8), parameter ::      b = 8.0_r8 / 3.0_r8
+real(r8), parameter :: deltat = 0.01_r8
 
 ! Define the location of the state variables in module storage
 type(location_type) :: state_loc(model_size)
 type(time_type) :: time_step
 
-
-!  define model parameters
-
-real(r8), parameter ::  sigma = 10.0_r8
-real(r8), parameter ::      r = 28.0_r8
-real(r8), parameter ::      b = 8.0_r8 / 3.0_r8
-real(r8), parameter :: deltat = 0.01_r8
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 contains
 
@@ -43,30 +47,28 @@ contains
 subroutine static_init_model()
 !------------------------------------------------------------------
 ! Initializes class data for L63 model and outputs I.D.
+!
+!
+!
+!
 
 implicit none
-
-character(len=128) :: source,revision,revdate
-integer :: i
 real(r8) :: x_loc
-
-! let CVS fill strings ... DO NOT EDIT ...
-source   = "$Source$"
-revision = "$Revision$"
-revdate  = "$Date$"
+integer :: i
 
 ! Ultimately,  change output to diagnostic output block ...
 
-write(*,*)'assim_model attributes:'
-write(*,*)'   ',source
-write(*,*)'   ',revision
-write(*,*)'   ',revdate
+write(*,*)'model attributes:'
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
 
 ! Define the locations of the model state variables
 do i = 1, model_size
    x_loc = (i - 1.0) / model_size
    state_loc(i) =  set_location(x_loc)
 end do
+
 
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L93
@@ -80,7 +82,7 @@ subroutine comp_dt(x, dt)
 !==================================================================
 ! subroutine comp_dt(x, dt)
 !
-! computes time tendency of the lorenz 1963 3-variable model given 
+! Computes time tendency of the lorenz 1963 3-variable model given 
 ! current state
 
 implicit none
@@ -105,6 +107,9 @@ subroutine advance(x, num, xnew, time)
 !
 ! advances the 3 variable lorenz-63 model by a given number of steps
 ! current state in x, new state in xnew, num time steps advanced
+!
+! TJH -- 06 Feb 2003 -- this routine seems to be deprecated -- 
+! not called, not public ...
 
 implicit none
 
@@ -480,9 +485,181 @@ number = -1
 
 end subroutine model_get_close_states
 
-   
-!=========================================================================
-! end module model_mod
-!=========================================================================
 
+
+function nc_write_model_atts( ncFileID ) result (ierr)
+!-----------------------------------------------------------------------------------------
+! Writes the model-specific attributes to a netCDF file
+! TJH Jan 24 2003
+!
+! For the lorenz_96 model, each state variable is at a separate location.
+! that's all the model-specific attributes I can think of ...
+!
+! assim_model_mod:init_diag_output uses information from the location_mod
+!     to define the location dimension and variable ID. All we need to do
+!     is query, verify, and fill ...
+!
+! Typical sequence for adding new dimensions,variables,attributes:
+! NF90_OPEN             ! open existing netCDF dataset
+!    NF90_redef         ! put into define mode 
+!    NF90_def_dim       ! define additional dimensions (if any)
+!    NF90_def_var       ! define variables: from name, type, and dims
+!    NF90_put_att       ! assign attribute values
+! NF90_ENDDEF           ! end definitions: leave define mode
+!    NF90_put_var       ! provide values for variable
+! NF90_CLOSE            ! close: save updated netCDF dataset
+!
+
+use typeSizes
+use netcdf
+implicit none
+
+integer, intent(in)  :: ncFileID      ! netCDF file identifier
+integer              :: ierr          ! return value of function
+
+!-----------------------------------------------------------------------------------------
+! General netCDF variables
+!-----------------------------------------------------------------------------------------
+
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+
+!-----------------------------------------------------------------------------------------
+! netCDF variables for Location
+!-----------------------------------------------------------------------------------------
+
+integer :: LocationDimID, LocationVarID, LocationXType, LocationNDims
+integer :: LocationNAtts, LocationLen
+integer, dimension(NF90_MAX_VAR_DIMS) :: LocationDimIDs
+character (len=NF90_MAX_NAME) :: LocationVarName
+
+integer :: StateVarDimID, StateVarVarID, StateVarXType, StateVarNDims
+integer :: StateVarNAtts, StateVarLen
+integer, dimension(NF90_MAX_VAR_DIMS) :: StateVarDimIDs
+character (len=NF90_MAX_NAME) :: StateVarVarName
+
+!-----------------------------------------------------------------------------------------
+! local variables
+!-----------------------------------------------------------------------------------------
+
+integer             :: i, Nlocations
+type(location_type) :: loc 
+ierr = 0                      ! assume normal termination
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file 
+!-------------------------------------------------------------------------------
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(nf90_Redef(ncFileID))
+
+!-------------------------------------------------------------------------------
+! Write Global Attributes 
+!-------------------------------------------------------------------------------
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_forcing", forcing ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
+
+!-------------------------------------------------------------------------------
+! Find the StateVariable Variable ID, get current info and perform some sanity checks
+! In the one-d case, the statevariable dimension must match the model_size.
+! Since StateVariable is a coordinate variable, it makes sense to use it.
+!-------------------------------------------------------------------------------
+
+call check(nf90_inq_varid(ncid=ncFileID, name="StateVariable", varid = StateVarVarID)) 
+call check(nf90_inquire_variable(ncid   = ncFileID, &
+                                 varid  = StateVarVarID, &
+                                 name   = StateVarVarName, &
+                                 xtype  = StateVarXType, &
+                                 ndims  = StateVarNDims, &
+                                 dimids = StateVarDimIDs, &
+                                 nAtts  = StateVarNAtts) ) 
+
+if ( StateVarNDims /= LocationDims ) then
+   write(*,*)'Error:nc_write_model_atts: State Variable higher dimension than expected.'
+   ierr = 1;
+endif
+
+! perhaps should check all variables for one with proper attribute ...
+
+call check(NF90_inq_dimid(ncid=ncFileID, name="StateVariable", dimid = StateVarDimID ))
+call check(NF90_inquire_dimension(ncid=ncFileID, dimid=StateVarDimID, len=StateVarLen))
+
+Nlocations = get_model_size()
+
+if ( Nlocations /= StateVarLen ) then
+   write(*,*)'Error:nc_write_model_atts: model size does not match size of State Variable.'
+   write(*,*)'Error:nc_write_model_atts: model size  = ', Nlocations
+   write(*,*)'Error:nc_write_model_atts: StateVarLen = ', StateVarLen
+   ierr = 1;
+endif
+
+!-------------------------------------------------------------------------------
+! Define the Location Variable and add Attributes
+! Some of the atts come from location_mod (via the USE: stmnt)
+! CF standards for Locations:
+! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
+!-------------------------------------------------------------------------------
+
+call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
+              dimids = StateVarDimID, varid=LocationVarID) )
+call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
+call check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ))
+call check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
+call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
+
+!-------------------------------------------------------------------------------
+! Leave define mode so we can actually fill the variables.
+!-------------------------------------------------------------------------------
+
+call check(nf90_enddef(ncfileID))
+
+!-------------------------------------------------------------------------------
+! Fill the variable(s)
+!-------------------------------------------------------------------------------
+! JEFF -- do we want to use get_location, I'm not particularly fond of using
+! get_stat_meta_data() to return a location type with a private attribute -- 
+! is "location" the only metadata ever needed by 1D models ...  would prefer ...
+!
+!  call check(nf90_put_var(ncFileID, LocationVarID, state_loc%x ))
+
+do i = 1,Nlocations
+   call get_state_meta_data(i,loc)
+   call check(nf90_put_var(ncFileID, LocationVarID, get_location(loc), (/ i /) ))
+enddo
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+call check(nf90_sync(ncFileID))
+
+write (*,*)'Model attributes written, netCDF file synched ...'
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+
+    if(istatus /= nf90_noerr) then
+      print *,'model_mod:nc_write_model_atts'
+      print *, trim(nf90_strerror(istatus))
+      ierr = istatus
+      stop
+    end if
+  end subroutine check
+
+end function nc_write_model_atts
+
+
+
+
+!
+!===================================================================
+! End of model_mod
+!===================================================================
+!
 end module model_mod

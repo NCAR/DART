@@ -270,6 +270,10 @@ AdvanceTime : do i = 1, num_obs_sets
    ! Advance all the ensembles (to the time of the first ensemble)
    if(time2 /= get_model_time(ens(1))) call advance_state(ens, ens_size, time2, async)
 
+   ! Tag the ensemble mean and spread with the current time
+   ens_mean%time   = get_model_time(ens(1))
+   ens_spread%time = get_model_time(ens(1))
+
    ! Do a covariance inflation for now? 
    ! Inflate the ensemble state estimates
    do k = 1, model_size

@@ -1,33 +1,95 @@
-&lim_obs_seq_nml
-   ens_size = 20, 
-   spin_up_steps = 0,
-   num_steps = 2000,
-   output_start = 1000,
-   ens_spin_up_steps = 0,
-   obs_freq = 1,
-   cov_inflate = 1.0
-   mean_inflate = 1.0
-   restart = .FALSE.,
-   add_on = .FALSE.,
-   noise_amp = 0.0
-&end
-
 &filter_nml
-   cutoff = 0.3
-   cov_inflate = 1.04,
-   cache_size = 20,
+   async = .false.
+   ens_size = 20,
+   cutoff = 0.3,
+   cov_inflate = 1.00,
+   cache_size = 1,
    start_from_restart = .false.,
    output_restart = .true.
    obs_sequence_file_name = "obs_seq.out",
-   restart_in_file_name = "filter_restart", 
-   restart_out_file_name = "filter_restart" 
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0, 
+   output_state_ens_mean = .true.
+   output_state_ens_spread = .true.
+   num_output_ens_members = 0 
+   output_interval = 1
 &end
 
-&assim_tools_nml
-   cor_cutoff = 0.0
+
+&perfect_model_obs_nml
+   async = .false.
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1
 &end
 
-&obs_nml
-   close_lat_window = 10.0
-   close_lon_window = 10.0
-&end
+
+
+
+
+ &main_nml
+     days   = 10,
+     dt_atmos = 300 /
+#
+# namelists used for cold start of bgrid core (N45L20)
+# running the held-suarez benchmark
+#
+#     nlon = 144, nlat = 90, nlev = 20,
+#     nlon = 60, nlat = 30, nlev = 5,
+
+ &fms_nml
+     domains_stack_size = 90000  /
+
+# only used if initial conditions file not specified in run
+ &bgrid_cold_start_nml
+     nlon = 60, nlat = 30, nlev = 5,
+     equal_vert_spacing = .true. /
+
+#Values set in hs_forcing_nml are from:
+#Held, I. M., and M. J. Suarez, 1994: A proposal for the intercomparison
+#of the dynamical cores of atmospheric general circulation models.
+#Bulletin of the American Meteorological Society, 75(10), 1825-1830.
+
+ &hs_forcing_nml
+     delh      =  60.,
+     t_zero    = 315.,
+     t_strat   = 200.,
+     delv      =  10.,
+     eps       =   0.,
+     ka        = -40.,
+     ks        =  -4.,
+     kf        =  -1.,
+     sigma_b   =  .7,
+     do_conserve_energy = .false. /
+
+ &bgrid_core_driver_nml
+     damp_coeff_wind   = 0.10,
+     damp_coeff_temp   = 0.10,
+     damp_coeff_tracer = 0.10,
+     advec_order_wind   = 4,
+     advec_order_temp   = 2,
+     advec_order_tracer = 2,
+     num_sponge_levels = 1,
+     sponge_coeff_wind   = 1.00,
+     sponge_coeff_temp   = 1.00,
+     sponge_coeff_tracer = 1.00,
+     num_fill_pass = 2,
+     decomp = 0,0,
+     num_adjust_dt = 3,
+     num_advec_dt  = 3,
+     halo = 1,
+     do_conserve_energy = .false. /
+
+ &bgrid_integrals_nml
+     file_name  = 'dynam_integral.out',
+     time_units = 'days',
+     output_interval = 1.00   /
+

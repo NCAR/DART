@@ -46,8 +46,19 @@ else if( `hostname` == "elm" ) then
 
 else
 
-   set DEFAULT_COMPILE = 'ifc -c -C -I/usr/local/include '
+# Intel Compiler switches
+#   -auto   make all local variables AUTOMATIC   (KILLS NAMELIST)
+#   -e90    find non-standard F90 code
+#   -zero   auto initialize memory to zero
+#   -Zp[n]  alignment constraints for structures   -Zp8
+#   -align  analyze and reorder memory layout for variables and arrays
+#   -Kpic   generate position-independent code
+#   -mp     maintains floating point precision (disables some optimizations)
+# Intel Linking switches
+#   -static prevents linking with shared libraries (relocatable)
+#
 #   set DEFAULT_COMPILE = 'ifc -c -C -auto -zero -Zp8 -align -Kpic -I/usr/local/include '
+   set DEFAULT_COMPILE = 'ifc -c -C -e90 -zero -Zp8 -I/usr/local/include '
    set LINK_OPTS     = "-L/usr/local/lib -lnetcdf -lPEPCF90"
    set FFLAGS = "-O -mp"
    set FINAL_COMMAND = 'ifc -o $1 *.o ${LINK_OPTS}'

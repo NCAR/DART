@@ -938,6 +938,11 @@ call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimite
 ! The length of the current unlimited dimension (time) is determined 
 ! from NF90_Inquire_Dimension().
 
+! We need to compare the time of the current assim_model to the current time 
+! of the LAST netcdf time dimension variable. If they are the same, no problem.
+! If it is earlier, we need to find the right index and insert ...
+! If it is the "future", we need to add another one ...
+
 if (copyindex == 1) then
    len = nc_append_time(ncFileID, state%time)
    if ( len < 1 ) write(*,*)'ERROR:output_diagnostics: trouble deep'

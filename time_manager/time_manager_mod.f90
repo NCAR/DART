@@ -2277,11 +2277,12 @@ if ( dimids(1) /= unlimitedDimID ) then
 endif
 
 call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, len ))
-
-write(*,*)'Current length of "',trim(adjustl(varname)),'" (time variable) in ',ncFileID,' is ',len  ! DEBUG
-
-call get_time(time, secs, days)
+call get_time(time, secs, days)    ! get time to append
 r8time = days + secs/86400.0_r8    ! time base is "days since ..."
+
+! DEBUG
+write(*,*)'ncFileID (',ncFileID,') : ',trim(adjustl(varname)),' (time?) has length ',len, &
+          ' appending t= ',r8time
 
 len = len + 1
 call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ len /) ))
