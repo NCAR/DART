@@ -55,16 +55,21 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
-! Namelist parameters with default values
+! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector = .true.       ! output prognostic variables
-integer :: num_moist_vars = 0
+logical :: output_state_vector  = .true.       ! output prognostic variables
+integer :: num_moist_vars       = 0
+integer :: num_domains          = 1
+integer :: calendar_type        = GREGORIAN
+logical :: surf_obs             = .false.
+character(len = 32) :: adv_mod_command = 'wrf.exe'
 
-namelist /model_nml/ output_state_vector, num_moist_vars
+namelist /model_nml/ output_state_vector, num_moist_vars, &
+                     num_domains, calendar_type, surf_obs, &
+                     adv_mod_command
 !-----------------------------------------------------------------------
 
-integer :: calendar_type         = GREGORIAN
 integer :: iunit, io, ierr, var_id, itime
 
 type(wrf_data)     :: wrf, wrf_mean, wrf_tmp
@@ -72,10 +77,11 @@ type(wrf_bdy_data) :: wrf_bdy, wrf_bdy_mean, wrf_bdy_tmp
 
 real(r8)           :: scale       ! each deviation scaled by this amt
 
-character (len=6)  :: imem  
+character (len=6)  :: imem
+character (len=1)  :: idom
 logical            :: debug
 integer            :: Ne,                 & ! Ensemble size
-                      i
+                      i, id
 
 type(time_type)   :: dart_time(2)
 integer           :: year, month, day, hour, minute, second
@@ -84,10 +90,10 @@ integer           :: ndays
 character(len=19) :: timestring
 
 read(5,*) Ne       ! Read ensemble size from stdin.
-read(5,*) scale    ! Read scaling from stdin.
+read(5,*) scale    ! Read scaling       from stdin.
 
+!debug = .false.
 debug = .false.
-!debug = .true.
 
 call initialize_utilities
 call register_module(source, revision, revdate)
@@ -108,6 +114,12 @@ endif
 
 call set_calendar_type(calendar_type)
 
+iunit = get_unit()
+open(unit = iunit, file = 'wrf.info')
+dart_time(1) = read_time(iunit)
+dart_time(2) = read_time(iunit)
+close(iunit)
+
 wrf%n_moist = num_moist_vars
 wrf_mean%n_moist = num_moist_vars
 wrf_tmp%n_moist = num_moist_vars
@@ -115,19 +127,11 @@ wrf_bdy%n_moist = num_moist_vars
 wrf_bdy_mean%n_moist = num_moist_vars
 wrf_bdy_tmp%n_moist = num_moist_vars
 
-!-- Allocate arrays for input and bdy data
-if(debug) write(6,*) ' wrf_open_and_alloc '
-call wrf_open_and_alloc( wrf, 'wrfinput_1', NF90_NOWRITE, debug )
-call check ( nf90_close(wrf%ncid) )
-if(debug) write(6,*) ' returned from wrf_open_and_alloc '
+wrf%surf_obs = surf_obs
+wrf_mean%surf_obs = surf_obs
+wrf_tmp%surf_obs = surf_obs
 
-!-- Read data to be used as ensemble mean (plus open,close netcdf file)
-call wrf_open_and_alloc( wrf_mean, 'wrfinput_mean', NF90_NOWRITE, debug )
-call wrf_io( wrf_mean, "INPUT ", debug )
-call check ( nf90_close(wrf_mean%ncid) )
-
-call wrf_open_and_alloc( wrf_tmp, 'wrfinput_mean', NF90_NOWRITE, debug )
-call check ( nf90_close(wrf_tmp%ncid) )
+!-- First, do BC's.
 
 call wrfbdy_open_and_alloc(wrf_bdy, 'wrfbdy_1', NF90_NOWRITE, debug )
 call check ( nf90_close(wrf_bdy%ncid) )
@@ -138,7 +142,6 @@ call check ( nf90_close(wrf_bdy_mean%ncid) )
 call wrfbdy_open_and_alloc(wrf_bdy_tmp , 'wrfbdy_mean', NF90_NOWRITE, debug )
 call check ( nf90_close(wrf_bdy_tmp%ncid) )
 
-call wrf_add   ( wrf_tmp    , 0.0_r8, wrf_mean    ,  0.0_r8)
 call wrfbdy_add( wrf_bdy_tmp, 0.0_r8, wrf_bdy_mean,  0.0_r8)
 
 !-- Compute mean over Ne input and bdy files
@@ -146,74 +149,52 @@ do i=1,Ne
 
    !- Open appropriate files
    write( imem , '(I6)') i
-   if(debug) write(6,*) ' OPENING  wrfinput_'//adjustl(trim(imem))
-   call check ( nf90_open('wrfinput_'//adjustl(trim(imem)), NF90_NOWRITE, wrf%ncid) )
 
    if(debug) write(6,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))
    call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_NOWRITE, wrf_bdy%ncid) )
 
    !- Read data
-   call wrf_io   ( wrf    , "INPUT ", debug )
    call wrfbdy_io( wrf_bdy, "INPUT ", debug )
 
    !- Close files
-   call check ( nf90_close(wrf%ncid) )
    call check ( nf90_close(wrf_bdy%ncid) )
 
    !- accumulate sum
-   call wrf_add   ( wrf_tmp    , 1.0_r8, wrf    ,  1.0_r8)
    call wrfbdy_add( wrf_bdy_tmp, 1.0_r8, wrf_bdy,  1.0_r8)
 
 enddo
 
-call wrf_add( wrf_tmp    , 1.0_r8/Ne, wrf    ,  0.0_r8)
 call wrfbdy_add( wrf_bdy_tmp, 1.0_r8/Ne, wrf_bdy,  0.0_r8)
 
 if (debug) write(6,*) ' --------------------'
 
-iunit = get_unit()
-open(unit = iunit, file = 'wrf.info')
-dart_time(1) = read_time(iunit)
-dart_time(2) = read_time(iunit)
-close(iunit)
-
 itime = 1
 
-!-- Compute deviation from mean for each input file; overwrite input file
-!   with deviation
+!-- Compute deviation from mean for each input file; overwrite input file with deviation
 do i=1,Ne
 
    !- Open appropriate files
    write( imem , '(I6)') i
-   if(debug) write(6,*) ' OPENING  wrfinput_'//adjustl(trim(imem))
-   call check ( nf90_open('wrfinput_'//adjustl(trim(imem)), NF90_NOWRITE, wrf%ncid) ) 
    if(debug) write(6,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))
-   call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_NOWRITE, wrf_bdy%ncid) ) 
+   call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_NOWRITE, wrf_bdy%ncid) )
 
    !- Read data, again
-   call wrf_io   ( wrf    , "INPUT ", debug )
    call wrfbdy_io( wrf_bdy, "INPUT ", debug )
 
    !- Close files
-   call check ( nf90_close(wrf%ncid) )
    call check ( nf90_close(wrf_bdy%ncid) )
 
    !- deviation from mean over input files
-   call wrf_add( wrf    , 1.0_r8 , wrf_tmp    , -1.0_r8 )
    call wrfbdy_add( wrf_bdy, 1.0_r8 , wrf_bdy_tmp, -1.0_r8 )
 
    !- New IC: scaled deviation + chosen ensemble mean 
-   call wrf_add( wrf    , scale , wrf_mean   , 1.0_r8 )
    call wrfbdy_add( wrf_bdy, scale , wrf_bdy_mean, 1.0_r8 )
 
    !- Open same files for writing
-   if(debug) write(6,*) ' OPENING  wrfinput_'//adjustl(trim(imem))//' for WRITE'
-   call check ( nf90_open('wrfinput_'//adjustl(trim(imem)), NF90_WRITE, wrf%ncid) ) 
    if(debug) write(6,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))//' for WRITE'
-   call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_WRITE, wrf_bdy%ncid) ) 
+   call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_WRITE, wrf_bdy%ncid) )
 
-   !- Write IC and bdy for ith member
-   call wrf_io( wrf    , "OUTPUT", debug )
+   !- Write bdy for ith member
    if(debug) write(6,*) 'Write boundary conditions'
    call wrfbdy_io( wrf_bdy, "OUTPUT", debug )
 
@@ -223,7 +204,7 @@ do i=1,Ne
    call check( nf90_Redef(wrf_bdy%ncid) )
    call check( nf90_put_att(wrf_bdy%ncid, NF90_GLOBAL, "Original_thisbdytime", timestring) )
    call check( nf90_enddef(wrf_bdy%ncid) )
-   call get_date(dart_time(2), year, month, day, hour, minute, second)
+   call get_date(dart_time(1), year, month, day, hour, minute, second)
    call set_wrf_date(timestring, year, month, day, hour, minute, second)
    if(debug) write(6,*) 'New thisbdytime = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
@@ -231,17 +212,12 @@ do i=1,Ne
    if(debug) write(6,*) 'writing Times = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring) )
 
-   call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
-   call check( nf90_put_var(wrf%ncid, var_id, timestring) )
-
    if(debug) write(6,*) 'writing START_DATE = ',timestring
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "START_DATE", timestring) )
 
-   call check( nf90_put_att(wrf%ncid, nf90_global, "START_DATE", timestring) )
-
    !- Julian year, day, and GMT correspond to the end of the next BD time???
 
-   call get_date(dart_time(1), year, month, day, hour, minute, second)
+   call get_date(dart_time(2), year, month, day, hour, minute, second)
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULYR", year) )
    if(debug) write(6,*) 'writing JULYR = ',year
 
@@ -255,23 +231,104 @@ do i=1,Ne
    call check( nf90_Redef(wrf_bdy%ncid) )
    call check( nf90_put_att(wrf_bdy%ncid, NF90_GLOBAL, "Original_nextbdytime", timestring) )
    call check( nf90_enddef(wrf_bdy%ncid) )
-   call get_date(dart_time(1), year, month, day, hour, minute, second)
+   call get_date(dart_time(2), year, month, day, hour, minute, second)
    call set_wrf_date(timestring, year, month, day, hour, minute, second)
    if(debug) write(6,*) 'New nextbdytime = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
 
    !- Close files
-   call check ( nf90_close(wrf%ncid) )
    call check ( nf90_close(wrf_bdy%ncid) )
 
 enddo
 
-call wrf_dealloc(wrf)
-call wrf_dealloc(wrf_mean)
-call wrf_dealloc(wrf_tmp)
 call wrfbdy_dealloc(wrf_bdy)
 call wrfbdy_dealloc(wrf_bdy_mean)
 call wrfbdy_dealloc(wrf_bdy_tmp)
+
+!-- Now do IC's for all domains.
+
+do id=1,num_domains
+
+   write( idom , '(I1)') id
+
+!-- Allocate arrays for input data
+
+   call wrf_open_and_alloc( wrf, 'wrfinput_d0'//idom//'_1', NF90_NOWRITE, debug )
+   call check ( nf90_close(wrf%ncid) )
+
+!-- Read data to be used as ensemble mean (plus open,close netcdf file)
+   call wrf_open_and_alloc( wrf_mean, 'wrfinput_d0'//idom//'_mean', NF90_NOWRITE, debug )
+   call wrf_io( wrf_mean, "INPUT ", debug )
+   call check ( nf90_close(wrf_mean%ncid) )
+
+   call wrf_open_and_alloc( wrf_tmp, 'wrfinput_d0'//idom//'_mean', NF90_NOWRITE, debug )
+   call check ( nf90_close(wrf_tmp%ncid) )
+
+   call wrf_add   ( wrf_tmp    , 0.0_r8, wrf_mean    ,  0.0_r8)
+
+!-- Compute mean over Ne input and bdy files
+   do i=1,Ne
+
+   !- Open appropriate files
+      write( imem , '(I6)') i
+      call check ( nf90_open('wrfinput_d0'//idom//'_'//adjustl(trim(imem)), NF90_NOWRITE, wrf%ncid) )
+
+   !- Read data
+      call wrf_io   ( wrf    , "INPUT ", debug )
+
+   !- Close files
+      call check ( nf90_close(wrf%ncid) )
+
+   !- accumulate sum
+      call wrf_add   ( wrf_tmp    , 1.0_r8, wrf    ,  1.0_r8)
+
+   enddo
+
+   call wrf_add( wrf_tmp    , 1.0_r8/Ne, wrf    ,  0.0_r8)
+
+!-- Compute deviation from mean for each input file; overwrite input file with deviation
+   do i=1,Ne
+
+   !- Open appropriate files
+      write( imem , '(I6)') i
+      call check ( nf90_open('wrfinput_d0'//idom//'_'//adjustl(trim(imem)), NF90_NOWRITE, wrf%ncid) )
+
+   !- Read data, again
+      call wrf_io   ( wrf    , "INPUT ", debug )
+
+   !- Close files
+      call check ( nf90_close(wrf%ncid) )
+
+   !- deviation from mean over input files
+      call wrf_add( wrf    , 1.0_r8 , wrf_tmp    , -1.0_r8 )
+
+   !- New IC: scaled deviation + chosen ensemble mean 
+      call wrf_add( wrf    , scale , wrf_mean   , 1.0_r8 )
+
+   !- Open same files for writing
+      call check ( nf90_open('wrfinput_d0'//idom//'_'//adjustl(trim(imem)), NF90_WRITE, wrf%ncid) )
+
+   !- Write IC for ith member
+      call wrf_io( wrf    , "OUTPUT", debug )
+
+      call get_date(dart_time(1), year, month, day, hour, minute, second)
+      call set_wrf_date(timestring, year, month, day, hour, minute, second)
+
+      call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
+      call check( nf90_put_var(wrf%ncid, var_id, timestring) )
+
+      call check( nf90_put_att(wrf%ncid, nf90_global, "START_DATE", timestring) )
+
+   !- Close files
+      call check ( nf90_close(wrf%ncid) )
+
+   enddo
+
+   call wrf_dealloc(wrf)
+   call wrf_dealloc(wrf_mean)
+   call wrf_dealloc(wrf_tmp)
+
+enddo
 
 write(logfileunit,*)'FINISHED ensemble_init.'
 write(logfileunit,*)
@@ -302,7 +359,7 @@ contains
 
  type(wrf_data), intent(inout) :: wrf_a
  type(wrf_data), intent(in   ) :: wrf_b
- real(r8), intent(in)          :: a,b
+ real(r8),       intent(in)    :: a,b
 
  !-- Add: wrf_a = a*wrf_a + b*wrf_b, for components 
  !       u,v,w,ph,phb,t,qv,qc,qr, qi,qs,qg, mu,mub of a and b
@@ -312,14 +369,26 @@ contains
  wrf_a%ph = a * wrf_a%ph + b * wrf_b%ph
  wrf_a%phb = a * wrf_a%phb + b * wrf_b%phb
  wrf_a%t = a * wrf_a%t + b * wrf_b%t
- wrf_a%qv = a * wrf_a%qv + b * wrf_b%qv
- wrf_a%qc = a * wrf_a%qc + b * wrf_b%qc
- wrf_a%qr = a * wrf_a%qr + b * wrf_b%qr
- wrf_a%qi = a * wrf_a%qi + b * wrf_b%qi
- wrf_a%qs = a * wrf_a%qs + b * wrf_b%qs
- wrf_a%qg = a * wrf_a%qg + b * wrf_b%qg
  wrf_a%mu = a * wrf_a%mu + b * wrf_b%mu
  wrf_a%mub = a * wrf_a%mub + b * wrf_b%mub
+ if(wrf%n_moist > 0) then
+    wrf_a%qv = a * wrf_a%qv + b * wrf_b%qv
+ endif
+ if(wrf%n_moist > 1) then
+    wrf_a%qc = a * wrf_a%qc + b * wrf_b%qc
+ endif
+ if(wrf%n_moist > 2) then
+    wrf_a%qr = a * wrf_a%qr + b * wrf_b%qr
+ endif
+ if(wrf%n_moist > 3) then
+    wrf_a%qi = a * wrf_a%qi + b * wrf_b%qi
+ endif
+ if(wrf%n_moist > 4) then
+    wrf_a%qs = a * wrf_a%qs + b * wrf_b%qs
+ endif
+ if(wrf%n_moist > 5) then
+    wrf_a%qg = a * wrf_a%qg + b * wrf_b%qg
+ endif
  
 end subroutine wrf_add
 !---------------------------------------------------------------
@@ -334,7 +403,7 @@ end subroutine wrf_add
 
  type(wrf_bdy_data), intent(inout) :: wrfbdy_a
  type(wrf_bdy_data), intent(in   ) :: wrfbdy_b
- real(r8), intent(in)              :: a,b
+ real(r8),           intent(in)    :: a,b
 
  !-- Add: wrfbdy_a = a*wrfbdy_a + b*wrfbdy_b, for components 
  !       u,v,w,ph,t,qv on bndries + their tendencies
@@ -384,14 +453,73 @@ end subroutine wrf_add
  wrfbdy_a%mutys = a * wrfbdy_a%mutys + b * wrfbdy_b%mutys
  wrfbdy_a%mutye = a * wrfbdy_a%mutye + b * wrfbdy_b%mutye
 
- wrfbdy_a%qvxs = a * wrfbdy_a%qvxs + b * wrfbdy_b%qvxs
- wrfbdy_a%qvxe = a * wrfbdy_a%qvxe + b * wrfbdy_b%qvxe
- wrfbdy_a%qvys = a * wrfbdy_a%qvys + b * wrfbdy_b%qvys
- wrfbdy_a%qvye = a * wrfbdy_a%qvye + b * wrfbdy_b%qvye
- wrfbdy_a%qvtxs = a * wrfbdy_a%qvtxs + b * wrfbdy_b%qvtxs
- wrfbdy_a%qvtxe = a * wrfbdy_a%qvtxe + b * wrfbdy_b%qvtxe
- wrfbdy_a%qvtys = a * wrfbdy_a%qvtys + b * wrfbdy_b%qvtys
- wrfbdy_a%qvtye = a * wrfbdy_a%qvtye + b * wrfbdy_b%qvtye
+ if(wrfbdy_a%n_moist > 0) then
+    wrfbdy_a%qvxs = a * wrfbdy_a%qvxs + b * wrfbdy_b%qvxs
+    wrfbdy_a%qvxe = a * wrfbdy_a%qvxe + b * wrfbdy_b%qvxe
+    wrfbdy_a%qvys = a * wrfbdy_a%qvys + b * wrfbdy_b%qvys
+    wrfbdy_a%qvye = a * wrfbdy_a%qvye + b * wrfbdy_b%qvye
+    wrfbdy_a%qvtxs = a * wrfbdy_a%qvtxs + b * wrfbdy_b%qvtxs
+    wrfbdy_a%qvtxe = a * wrfbdy_a%qvtxe + b * wrfbdy_b%qvtxe
+    wrfbdy_a%qvtys = a * wrfbdy_a%qvtys + b * wrfbdy_b%qvtys
+    wrfbdy_a%qvtye = a * wrfbdy_a%qvtye + b * wrfbdy_b%qvtye
+ endif
+
+ if(wrfbdy_a%n_moist > 1) then
+    wrfbdy_a%qcxs = a * wrfbdy_a%qcxs + b * wrfbdy_b%qcxs
+    wrfbdy_a%qcxe = a * wrfbdy_a%qcxe + b * wrfbdy_b%qcxe
+    wrfbdy_a%qcys = a * wrfbdy_a%qcys + b * wrfbdy_b%qcys
+    wrfbdy_a%qcye = a * wrfbdy_a%qcye + b * wrfbdy_b%qcye
+    wrfbdy_a%qctxs = a * wrfbdy_a%qctxs + b * wrfbdy_b%qctxs
+    wrfbdy_a%qctxe = a * wrfbdy_a%qctxe + b * wrfbdy_b%qctxe
+    wrfbdy_a%qctys = a * wrfbdy_a%qctys + b * wrfbdy_b%qctys
+    wrfbdy_a%qctye = a * wrfbdy_a%qctye + b * wrfbdy_b%qctye
+ endif
+ if(wrfbdy_a%n_moist > 2) then
+    wrfbdy_a%qrxs = a * wrfbdy_a%qrxs + b * wrfbdy_b%qrxs
+    wrfbdy_a%qrxe = a * wrfbdy_a%qrxe + b * wrfbdy_b%qrxe
+    wrfbdy_a%qrys = a * wrfbdy_a%qrys + b * wrfbdy_b%qrys
+    wrfbdy_a%qrye = a * wrfbdy_a%qrye + b * wrfbdy_b%qrye
+    wrfbdy_a%qrtxs = a * wrfbdy_a%qrtxs + b * wrfbdy_b%qrtxs
+    wrfbdy_a%qrtxe = a * wrfbdy_a%qrtxe + b * wrfbdy_b%qrtxe
+    wrfbdy_a%qrtys = a * wrfbdy_a%qrtys + b * wrfbdy_b%qrtys
+    wrfbdy_a%qrtye = a * wrfbdy_a%qrtye + b * wrfbdy_b%qrtye
+ endif
+ if(wrfbdy_a%n_moist > 3) then
+    wrfbdy_a%qixs = a * wrfbdy_a%qixs + b * wrfbdy_b%qixs
+    wrfbdy_a%qixe = a * wrfbdy_a%qixe + b * wrfbdy_b%qixe
+    wrfbdy_a%qiys = a * wrfbdy_a%qiys + b * wrfbdy_b%qiys
+    wrfbdy_a%qiye = a * wrfbdy_a%qiye + b * wrfbdy_b%qiye
+    wrfbdy_a%qitxs = a * wrfbdy_a%qitxs + b * wrfbdy_b%qitxs
+    wrfbdy_a%qitxe = a * wrfbdy_a%qitxe + b * wrfbdy_b%qitxe
+    wrfbdy_a%qitys = a * wrfbdy_a%qitys + b * wrfbdy_b%qitys
+    wrfbdy_a%qitye = a * wrfbdy_a%qitye + b * wrfbdy_b%qitye
+ endif
+ if(wrfbdy_a%n_moist > 4) then
+    wrfbdy_a%qsxs = a * wrfbdy_a%qsxs + b * wrfbdy_b%qsxs
+    wrfbdy_a%qsxe = a * wrfbdy_a%qsxe + b * wrfbdy_b%qsxe
+    wrfbdy_a%qsys = a * wrfbdy_a%qsys + b * wrfbdy_b%qsys
+    wrfbdy_a%qsye = a * wrfbdy_a%qsye + b * wrfbdy_b%qsye
+    wrfbdy_a%qstxs = a * wrfbdy_a%qstxs + b * wrfbdy_b%qstxs
+    wrfbdy_a%qstxe = a * wrfbdy_a%qstxe + b * wrfbdy_b%qstxe
+    wrfbdy_a%qstys = a * wrfbdy_a%qstys + b * wrfbdy_b%qstys
+    wrfbdy_a%qstye = a * wrfbdy_a%qstye + b * wrfbdy_b%qstye
+ endif
+ if(wrfbdy_a%n_moist > 5) then
+    wrfbdy_a%qgxs = a * wrfbdy_a%qgxs + b * wrfbdy_b%qgxs
+    wrfbdy_a%qgxe = a * wrfbdy_a%qgxe + b * wrfbdy_b%qgxe
+    wrfbdy_a%qgys = a * wrfbdy_a%qgys + b * wrfbdy_b%qgys
+    wrfbdy_a%qgye = a * wrfbdy_a%qgye + b * wrfbdy_b%qgye
+    wrfbdy_a%qgtxs = a * wrfbdy_a%qgtxs + b * wrfbdy_b%qgtxs
+    wrfbdy_a%qgtxe = a * wrfbdy_a%qgtxe + b * wrfbdy_b%qgtxe
+    wrfbdy_a%qgtys = a * wrfbdy_a%qgtys + b * wrfbdy_b%qgtys
+    wrfbdy_a%qgtye = a * wrfbdy_a%qgtye + b * wrfbdy_b%qgtye
+ endif
+if(wrfbdy_a%n_moist > 6) then
+   write(6,*) 'n_moist = ',wrfbdy_a%n_moist
+   call error_handler(E_ERR,'wrfbdy_add', &
+         'n_moist is too large.', source, revision, revdate)
+   stop
+endif
 
 end subroutine wrfbdy_add
 

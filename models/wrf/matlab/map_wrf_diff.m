@@ -6,6 +6,8 @@
 
 field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');
 
+map_proj = {'lambert', 'ups', 'mercator'};
+
 member = input('Input ensemble member: ');
 
 itime = input('Time: ');

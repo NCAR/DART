@@ -17,6 +17,8 @@ use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, c
                              finalize_utilities, register_module, logfileunit
 use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date, &
                              get_wrf_date
+use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_restart, &
+                             awrite_state_restart
 use                          netcdf
 
 implicit none
@@ -27,52 +29,48 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+type wrf_dom
+   type(wrf_data), pointer :: dom(:)
+end type wrf_dom
+
 !-----------------------------------------------------------------------
-! Model namelist parameters with default values
+! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
 logical :: output_state_vector  = .true.  ! output prognostic variables
 integer :: num_moist_vars       = 0
-integer :: wrf_dt = 300, wrf_dx = 100000
+integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
+logical :: surf_obs             = .false.
+character(len = 32) :: adv_mod_command = 'wrf.exe'
 
-namelist /model_nml/ output_state_vector, num_moist_vars, wrf_dt, wrf_dx
+namelist /model_nml/ output_state_vector, num_moist_vars, &
+                     num_domains, calendar_type, surf_obs, &
+                     adv_mod_command
 
-!-------------------------------------------------------------
-! Namelist with default values
-! binary_restart_files  == .true.  -> use unformatted file format. 
-!                                     Full precision, faster, smaller,
-!                                     but not as portable.
-! binary_restart_files  == .false.  -> use ascii file format. 
-!                                     Portable, but loses precision,
-!                                     slower, and larger.
-
-logical  :: binary_restart_files = .false.
-
-namelist /assim_model_nml/ binary_restart_files
 !-------------------------------------------------------------
 
 integer :: iunit, dart_unit
 logical :: dart_to_wrf
 
-type(wrf_data) :: wrf
+type(wrf_dom) :: wrf
 
 real(r8), pointer :: dart(:)
-type(time_type)   :: dart_time(2), interval_time
-integer           :: number_dart_values, days, seconds, &
+type(time_type)   :: dart_time(2)
+integer           :: number_dart_values, &
                      year, month, day, hour, minute, second
 integer           :: ndays
 integer           :: ndims, idims(2), dimids(2)
 integer           :: i, ivtype
 character(len=80) :: varname
-
 character(len=19) :: timestring
+character(len=1)  :: idom
 
 !----
 !  misc stuff
 
-logical, parameter :: debug = .false.
-integer            :: mode, io, ierr, var_id
+logical, parameter :: debug = .true.
+integer            :: mode, io, ierr, var_id, id
 
 call initialize_utilities
 call register_module(source, revision, revdate)
@@ -82,10 +80,6 @@ write(logfileunit,*)'STARTING dart_tf_wrf ...'
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = assim_model_nml, iostat = io )
-   ierr = check_nml_error(io, 'assim_model_nml')
-
-   rewind(iunit)
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
 
@@ -93,8 +87,6 @@ if(file_exist('input.nml')) then
 
    if ( debug ) then
       ! namelist validation
-      write(*, *) 'assim_model_nml read; values are'
-      write(*, *) 'binary_restart_files is ', binary_restart_files
       write(*,'(''num_moist_vars = '',i3)')num_moist_vars
    endif
 endif
@@ -113,25 +105,31 @@ else
        source, revision, revdate)
 endif
 
-wrf%n_moist = num_moist_vars
+allocate(wrf%dom(num_domains))
 
-! open wrf data netcdf netCDF file 'wrfinput'
+wrf%dom(:)%n_moist = num_moist_vars
+wrf%dom(:)%surf_obs = surf_obs
+
+! open wrf data netCDF file 'wrfinput_d0x'
 ! we get sizes of the WRF geometry and resolution
 
 mode = NF90_NOWRITE                   ! read the netcdf file
 if( dart_to_wrf ) mode = NF90_WRITE   ! write to the netcdf file
 
 if(debug) write(6,*) ' wrf_open_and_alloc '
-call wrf_open_and_alloc( wrf, 'wrfinput', mode, debug )
+do id=1,num_domains
+   write( idom , '(I1)') id
+   call wrf_open_and_alloc( wrf%dom(id), 'wrfinput_d0'//idom, mode, debug )
+enddo
 if(debug) write(6,*) ' returned from wrf_open_and_alloc '
 
 !---
 ! allocate space for DART data
 
 if(debug) write(6,*) ' dart_open_and_alloc '
-dart_unit = get_unit()
-call dart_open_and_alloc( wrf, dart, number_dart_values, &
-     dart_unit, dart_to_wrf, binary_restart_files, debug  )
+
+call dart_open_and_alloc( wrf, dart, number_dart_values, dart_unit, dart_to_wrf, &
+     debug  )
 if(debug) write(6,*) ' returned from dart_open_and_alloc '
 
 !----------------------------------------------------------------------
@@ -141,30 +139,24 @@ if(debug) write(6,*) ' state input '
 
 if( dart_to_wrf ) then
 
-   call DART_IO( "INPUT ", dart, dart_unit, dart_time, binary_restart_files, debug )
+   call aread_state_restart(dart_time(2), dart, dart_unit, dart_time(1))
+
    iunit = get_unit()
    open(unit = iunit, file = 'wrf.info')
    call write_time(iunit, dart_time(1))
+   call write_time(iunit, dart_time(2))
    call get_date(dart_time(2), year, month, day, hour, minute, second)
-   write (iunit,*) year, month, day, hour, minute, second
-   call get_date(dart_time(1), year, month, day, hour, minute, second)
-   write (iunit,*) year, month, day, hour, minute, second
+   write (iunit,FMT='(I4,5I3.2)') year, month, day, hour, minute, second
 
-   interval_time = dart_time(1) - dart_time(2)
-   call get_time(interval_time, seconds, days)
-
-   write (iunit,*) (days *24 *3600) + seconds
-
-   write (iunit,*) wrf_dt
-   write (iunit,*) wrf_dx
-   write (iunit,*) wrf%we+1
-   write (iunit,*) wrf%sn+1
-   write (iunit,*) wrf%bt+1
+   write (iunit,*) num_domains
+   write (iunit,*) adv_mod_command
    close(iunit)
 
 else
 
-   call WRF_IO( wrf, "INPUT ", debug )
+   do id=1,num_domains
+      call WRF_IO( wrf%dom(id), "INPUT ", debug )
+   enddo
 
 end if
 if(debug) write(6,*) ' returned from state input '
@@ -184,32 +176,35 @@ if(debug) write(6,*) ' transfer complete '
 
 if(debug) write(6,*) ' state output '
 if( dart_to_wrf ) then
+
    call get_date(dart_time(2), year, month, day, hour, minute, second)
    call set_wrf_date(timestring, year, month, day, hour, minute, second)
-   call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
-   call check( nf90_put_var(wrf%ncid, var_id, timestring) )
-   call check( nf90_put_att(wrf%ncid, nf90_global, "START_DATE", timestring) )
-   call check( nf90_put_att(wrf%ncid, nf90_global, "JULYR", year) )
-
    ndays = julian_day(year, month, day)
 
-   call check( nf90_put_att(wrf%ncid, nf90_global, "JULDAY", ndays) )
-   call WRF_IO( wrf, "OUTPUT", debug )
+   do id=1,num_domains
+      call check( nf90_inq_varid(wrf%dom(id)%ncid, "Times", var_id) )
+      call check( nf90_put_var(wrf%dom(id)%ncid, var_id, timestring) )
+      call check( nf90_put_att(wrf%dom(id)%ncid, nf90_global, "START_DATE", timestring) )
+      call check( nf90_put_att(wrf%dom(id)%ncid, nf90_global, "JULYR", year) )
+      call check( nf90_put_att(wrf%dom(id)%ncid, nf90_global, "JULDAY", ndays) )
+      call WRF_IO( wrf%dom(id), "OUTPUT", debug )
+   enddo
+
 else
    iunit = get_unit()
-   call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
-   call check( nf90_Inquire_Variable(wrf%ncid, var_id, varname, xtype=ivtype, &
+   call check( nf90_inq_varid(wrf%dom(1)%ncid, "Times", var_id) )
+   call check( nf90_Inquire_Variable(wrf%dom(1)%ncid, var_id, varname, xtype=ivtype, &
         ndims=ndims, dimids=dimids) )
    do i=1,ndims
-      call check( nf90_inquire_dimension(wrf%ncid, dimids(i), len=idims(i)) )
+      call check( nf90_inquire_dimension(wrf%dom(1)%ncid, dimids(i), len=idims(i)) )
       if(debug) write(6,*) ' dimension ',i,idims(i)
    enddo
 
-   call check( nf90_get_var(wrf%ncid, var_id, timestring, start = (/ 1, idims(2) /)) )
+   call check( nf90_get_var(wrf%dom(1)%ncid, var_id, timestring, start = (/ 1, idims(2) /)) )
    call get_wrf_date(timestring, year, month, day, hour, minute, second)
    dart_time(1) = set_date(year, month, day, hour, minute, second)
 
-   write(6,*) 'Time from wrfinput'
+   write(6,*) 'Time from wrfinput_d0x'
    call print_time(dart_time(1))
 
    open(unit = iunit, file = 'wrf.info')
@@ -218,14 +213,19 @@ else
    write(6,*) 'Time written to dart vector file:'
    call print_time(dart_time(1))
 
-   call DART_IO( "OUTPUT", dart, dart_unit, dart_time, binary_restart_files, debug )
+   call awrite_state_restart(dart_time(1), dart, dart_unit)
+
 end if
 if(debug) write(6,*) ' returned from state output '
 
-call check ( nf90_sync(wrf%ncid) )
-call check ( nf90_close(wrf%ncid) )
+do id=1,num_domains
+   call check ( nf90_sync(wrf%dom(id)%ncid) )
+   call check ( nf90_close(wrf%dom(id)%ncid) )
+enddo
 
-call wrf_dealloc(wrf)
+do id=1,num_domains
+   call wrf_dealloc(wrf%dom(id))
+enddo
 deallocate(dart)
 
 write(logfileunit,*)'FINISHED dart_tf_wrf.'
@@ -245,57 +245,51 @@ contains
 
 !*****************************************************************************
 
-subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, &
-     dart_to_wrf, binary_restart_files, debug )
+subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, dart_to_wrf, &
+     debug )
 
 implicit none
 
-integer,           intent(in)  :: dart_unit
+integer,          intent(out)  :: dart_unit
 
-logical,           intent(in)  :: dart_to_wrf, binary_restart_files, debug
+logical,          intent(in)  :: dart_to_wrf, debug
 
-type(wrf_data),    intent(in)  :: wrf
-real(r8),          pointer     :: dart(:)
+type(wrf_dom),    intent(in)  :: wrf
+real(r8),         pointer     :: dart(:)
 
-integer,           intent(out) :: n_values 
+integer,          intent(out) :: n_values 
+
+integer :: id
 
 ! compute number of values in 1D vector
 
-! dry dynamics conponents
-
 n_values = 0
 
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we+1)  ! u field
-n_values = n_values + (wrf%bt  )*(wrf%sn+1)*(wrf%we  )  ! v field
-n_values = n_values + (wrf%bt+1)*(wrf%sn  )*(wrf%we  )  ! w field
-n_values = n_values + (wrf%bt+1)*(wrf%sn  )*(wrf%we  )  ! geopotential field
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! t field
-n_values = n_values + (       1)*(wrf%sn  )*(wrf%we  )  ! dry surface pressure field
+do id=1,num_domains
 
-! moist variables
+! dry dynamics conponents
 
-if(wrf%n_moist > 0) then
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qv field
-endif
-if(wrf%n_moist > 1) then
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qc field
-endif
-if(wrf%n_moist > 2) then
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qr field
-endif
-if(wrf%n_moist > 3) then
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qi field
-endif
-if(wrf%n_moist > 4) then
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qs field
-endif
-if(wrf%n_moist > 5) then
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qg field
-endif
-if(wrf%n_moist > 6) then
-   write(6,*) 'n_moist = ',wrf%n_moist,' is too large.'
-   stop
-endif
+   n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we+1)  ! u
+   n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn+1)*(wrf%dom(id)%we  )  ! v
+   n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! w
+   n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! geopotential
+   n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t
+   n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
+
+! moist variables. Order is qv, qc, qr, qi, qs, qg.
+
+   if(wrf%dom(id)%n_moist > 6) then
+      write(6,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
+      stop
+   else
+      n_values = n_values + wrf%dom(id)%n_moist*(wrf%dom(id)%bt)*(wrf%dom(id)%sn)*(wrf%dom(id)%we)
+   endif
+
+   if( wrf%dom(id)%surf_obs ) then
+      n_values = n_values + 4 * wrf%dom(id)%sn * wrf%dom(id)%we
+   endif
+
+enddo
 
 if(debug) write(6,*) ' dart vector length is ',n_values
 
@@ -304,149 +298,120 @@ allocate(dart(n_values))
 !  open DART data file
 
 if(dart_to_wrf)  then  !  DART data file should exist, open it
-   if ( binary_restart_files ) then
-      open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
-           status="old",action="read" )
-   else
-      open( unit=dart_unit,file="dart_wrf_vector",form="formatted",  &
-           status="old",action="read" )
-   endif
+   dart_unit = open_restart_read("dart_wrf_vector")
 else
-   if ( binary_restart_files ) then
-      open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
-           status="new",action="write" )
-   else
-      open( unit=dart_unit,file="dart_wrf_vector",form="formatted",  &
-           status="new",action="write" )
-   endif
+   dart_unit = open_restart_write("dart_wrf_vector")
 end if
 
 end subroutine dart_open_and_alloc
 
 !*****************************************************************************
 
-subroutine dart_io( in_or_out, dart, dart_unit, dart_time, binary_restart_files, debug )
-
-implicit none
-
-character (len=6), intent(in)    :: in_or_out
-real(r8),          pointer       :: dart(:)
-
-integer,           intent(in)    :: dart_unit
-type(time_type),   intent(inout) :: dart_time(2)
-logical,           intent(in)    :: binary_restart_files, debug
-
-if(debug) then
-   write(6,*)' in dart_io '
-   write(6,*)' mode ',in_or_out
-end if
-
-if (in_or_out(1:5) == 'INPUT') then
-   if ( binary_restart_files ) then
-      dart_time(1) = read_time(dart_unit, "unformatted")
-      dart_time(2) = read_time(dart_unit, "unformatted")
-   else
-      dart_time(1) = read_time(dart_unit)
-      dart_time(2) = read_time(dart_unit)
-   endif
-   if(debug) call print_time(dart_time(1), 'Target time:')
-   if(debug) call print_time(dart_time(2), 'Current time:')
-   read(dart_unit) dart
-else
-   rewind(dart_unit)
-   if ( binary_restart_files ) then
-      call write_time(dart_unit, dart_time(1), "unformatted")
-   else
-      call write_time(dart_unit, dart_time(1))
-   endif
-   write(dart_unit) dart
-end if
-
-end subroutine dart_io
-
-!*************************************************************************
-
 subroutine transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in)
 
 implicit none
 
-logical :: dart_to_wrf
+logical,          intent(in) :: dart_to_wrf
 
-type(wrf_data)    :: wrf
-real(r8), pointer :: dart(:)
+type(wrf_dom),    intent(in) :: wrf
+real(r8), pointer            :: dart(:)
 
-integer :: n_values_in
+integer,          intent(in) :: n_values_in
 
 !---
 
-integer           :: in, n_values
+integer           :: in, n_values,id
 character(len=80) :: stringerror
 
 !---
 
-
 n_values = 0
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%u,wrf%we+1,wrf%sn,wrf%bt)
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we+1)  ! u field
 
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%v,wrf%we,wrf%sn+1,wrf%bt)
-n_values = n_values + (wrf%bt  )*(wrf%sn+1)*(wrf%we  )  ! v field
+do id=1,num_domains
 
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%w,wrf%we,wrf%sn,wrf%bt+1)
-n_values = n_values + (wrf%bt+1)*(wrf%sn  )*(wrf%we  )  ! w field
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%u,wrf%dom(id)%we+1,wrf%dom(id)%sn,wrf%dom(id)%bt)
+   n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we+1)  ! u
 
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%ph,wrf%we,wrf%sn,wrf%bt+1)
-n_values = n_values + (wrf%bt+1)*(wrf%sn  )*(wrf%we  )  ! geopotential field
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%v,wrf%dom(id)%we,wrf%dom(id)%sn+1,wrf%dom(id)%bt)
+   n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn+1)*(wrf%dom(id)%we  )  ! v
 
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%t,wrf%we,wrf%sn,wrf%bt)
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! t field
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%w,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt+1)
+   n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! w
 
-in = n_values+1
-call trans_2d( dart_to_wrf, dart(in:),wrf%mu,wrf%we,wrf%sn)
-n_values = n_values + (       1)*(wrf%sn  )*(wrf%we  )  ! dry surface pressure field
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%ph,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt+1)
+   n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! geopotential
+
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%t,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+   n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t
+
+   in = n_values+1
+   call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%mu,wrf%dom(id)%we,wrf%dom(id)%sn)
+   n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
 
 ! moist variables
 
-if(wrf%n_moist > 0) then
-   in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%qv,wrf%we,wrf%sn,wrf%bt)
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qv field
-endif
-if(wrf%n_moist > 1) then
-   in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%qc,wrf%we,wrf%sn,wrf%bt)
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qc field
-endif
-if(wrf%n_moist > 2) then
-   in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%qr,wrf%we,wrf%sn,wrf%bt)
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qr field
-endif
-if(wrf%n_moist > 3) then
-   in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%qi,wrf%we,wrf%sn,wrf%bt)
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qi field
-endif
-if(wrf%n_moist > 4) then
-   in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%qs,wrf%we,wrf%sn,wrf%bt)
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qs field
-endif
-if(wrf%n_moist > 5) then
-   in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%qg,wrf%we,wrf%sn,wrf%bt)
-   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qg field
-endif
-if(wrf%n_moist > 6) then
-   write(stringerror,*) 'n_moist = ',wrf%n_moist,' is too large.'
-   call error_handler(E_ERR, 'transfer_dart_wrf', &
-                             stringerror, source, revision, revdate)
-endif
+   if(wrf%dom(id)%n_moist >= 1) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qv,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qv
+   endif
+   if(wrf%dom(id)%n_moist >= 2) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qc,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qc
+   endif
+   if(wrf%dom(id)%n_moist >= 3) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qr,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qr
+   endif
+   if(wrf%dom(id)%n_moist >= 4) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qi,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qi
+   endif
+   if(wrf%dom(id)%n_moist >= 5) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qs,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qs
+   endif
+   if(wrf%dom(id)%n_moist == 6) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qg,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qg
+   endif
+   if(wrf%dom(id)%n_moist > 6) then
+      write(stringerror,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
+      call error_handler(E_ERR, 'transfer_dart_wrf', &
+           stringerror, source, revision, revdate)
+   endif
+
+   if( wrf%dom(id)%surf_obs ) then
+
+      in = n_values+1
+      call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%u10,wrf%dom(id)%we,wrf%dom(id)%sn)
+      n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! u10
+
+      in = n_values+1
+      call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%v10,wrf%dom(id)%we,wrf%dom(id)%sn)
+      n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! v10
+
+      in = n_values+1
+      call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%t2,wrf%dom(id)%we,wrf%dom(id)%sn)
+      n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t2
+
+      in = n_values+1
+      call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%q2,wrf%dom(id)%we,wrf%dom(id)%sn)
+      n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! q2
+
+   endif
+
+enddo
 
 if(n_values /= n_values_in ) then
    write(stringerror,*)' n_values differ in transfer ',n_values, n_values_in

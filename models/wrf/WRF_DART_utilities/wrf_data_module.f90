@@ -31,11 +31,12 @@ TYPE wrf_data
 
    integer :: ncid                                    ! netcdf id for file
    integer :: bt_id, bt, sn_id, sn, we_id, we
-   integer :: u_id, v_id, w_id, ph_id, phb_id, t_id,   &
-                        mu_id, mub_id,                           &
-                        qv_id, qc_id, qr_id, qi_id, qs_id, qg_id
-   integer :: ptop_id
+   integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, mu_id, mub_id, &
+        qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
+        u10_id, v10_id, t2_id, q2_id
+
    integer :: n_moist
+   logical :: surf_obs
 
 
 !---
@@ -55,6 +56,10 @@ TYPE wrf_data
    real(r8), pointer :: qg(:,:,:)
    real(r8), pointer :: mu(:,:)
    real(r8), pointer :: mub(:,:)
+   real(r8), pointer :: u10(:,:)
+   real(r8), pointer :: v10(:,:)
+   real(r8), pointer :: t2(:,:)
+   real(r8), pointer :: q2(:,:)
 
 end type
 
@@ -136,6 +141,7 @@ logical            :: debug
 character (len=80) :: name
 
 
+if(debug) write(6,*) 'Openning ',file_name
 call check ( nf90_open(file_name, mode, wrf%ncid) )
 if(debug) write(6,*) ' wrf%ncid is ',wrf%ncid
 
@@ -155,12 +161,7 @@ if(debug) write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 !---
 ! get wrf variable ids and allocate space for wrf variables
 
-
-call check ( nf90_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id) )
-if(debug) write(6,*) ' ptop_id = ',wrf%ptop_id
-
 call check ( nf90_inq_varid(wrf%ncid, "U", wrf%u_id))
-
 if(debug) write(6,*) ' u_id = ',wrf%u_id
 allocate(wrf%u(wrf%we+1,wrf%sn,wrf%bt))
 
@@ -229,6 +230,22 @@ if(wrf%n_moist > 6) then
    stop
 endif
 
+if( wrf%surf_obs ) then
+
+   call check ( nf90_inq_varid(wrf%ncid, "U10", wrf%u10_id))
+   allocate(wrf%u10(wrf%we,wrf%sn))
+
+   call check ( nf90_inq_varid(wrf%ncid, "V10", wrf%v10_id))
+   allocate(wrf%v10(wrf%we,wrf%sn))
+
+   call check ( nf90_inq_varid(wrf%ncid, "T2", wrf%t2_id))
+   allocate(wrf%t2(wrf%we,wrf%sn))
+
+   call check ( nf90_inq_varid(wrf%ncid, "Q2", wrf%q2_id))
+   allocate(wrf%q2(wrf%we,wrf%sn))
+
+endif
+
 contains
 
   ! Internal subroutine - checks error status after each netcdf, prints 
@@ -288,6 +305,13 @@ if(wrf%n_moist > 6) then
    stop
 endif
 
+if( wrf%surf_obs ) then
+   deallocate(wrf%u10)
+   deallocate(wrf%v10)
+   deallocate(wrf%t2)
+   deallocate(wrf%q2)
+endif
+
 end subroutine wrf_dealloc
 
 !---------------------------------------------------------------
@@ -326,7 +350,7 @@ call check ( nf90_inquire_dimension(wrfbdy%ncid, wrfbdy%sn_id, name, wrfbdy%sn) 
 call check ( nf90_inq_dimid(wrfbdy%ncid, "west_east", wrfbdy%we_id) )
 call check ( nf90_inquire_dimension(wrfbdy%ncid, wrfbdy%we_id, name, wrfbdy%we) )
 
-write(6,*) ' dimensions bt, sn, we are ',wrfbdy%bt,wrfbdy%sn,wrfbdy%we
+if(debug) write(6,*) ' dimensions bt, sn, we are ',wrfbdy%bt,wrfbdy%sn,wrfbdy%we
 
 !---
 ! get wrfbdy variable ids and allocate space for wrfbdy variables
@@ -955,6 +979,12 @@ if (in_or_out  == "OUTPUT") then
            'n_moist is too large.', source, revision, revdate)
       stop
    endif
+   if( wrf%surf_obs ) then
+      call check( nf90_put_var(wrf%ncid, wrf%u10_id, wrf%u10, start = (/ 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%v10_id, wrf%v10, start = (/ 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%t2_id, wrf%t2, start = (/ 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%q2_id, wrf%q2, start = (/ 1, 1, 1 /)))
+   endif
 else
    call check( nf90_get_var(wrf%ncid, wrf%u_id,   wrf%u,   start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%v_id,   wrf%v,   start = (/ 1, 1, 1, lngth /)))
@@ -987,6 +1017,12 @@ else
       call error_handler(E_ERR,'wrf_io', &
            'n_moist is too large.', source, revision, revdate)
       stop
+   endif
+   if( wrf%surf_obs ) then
+      call check( nf90_get_var(wrf%ncid, wrf%u10_id,  wrf%u10,  start = (/ 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%v10_id,  wrf%v10,  start = (/ 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%t2_id,  wrf%t2,  start = (/ 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%q2_id,  wrf%q2,  start = (/ 1, 1, lngth /)))
    endif
 endif
 
@@ -1406,15 +1442,14 @@ end subroutine set_wrf_date
 !#######################################################
 
 subroutine get_wrf_date (tstring, year, month, day, hour, minute, second)
+
 implicit none
 !--------------------------------------------------------
 ! Returns integers taken from wrf%timestring
-! NOTE: Right now this string needs to be the cold start init!
-! It is assumed that the WRF char array is as YYYY-MM-DD_hh:mm:ss
+! It is assumed that the tstring char array is as YYYY-MM-DD_hh:mm:ss
 
-integer, intent(out) :: year, month, day, hour, minute, second
-
-character(len=19) :: tstring
+integer,           intent(out) :: year, month, day, hour, minute, second
+character(len=19), intent(in)  :: tstring
 
 read(tstring(1:4),'(i4)') year
 read(tstring(6:7),'(i2)') month

@@ -27,9 +27,7 @@ public  get_dims_cdf,        &
         put_var_3d_real_cdf, &
         put_var_2d_real_cdf, &
         get_times_cdf,       &
-        put_time_cdf,        &
-        netcdf_read_write_var, &
-        netcdf_read_write_char
+        put_time_cdf
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -550,108 +548,5 @@ contains
   end subroutine check
 
 end subroutine put_time_cdf
-
-!**********************************************************************
-
-subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
-                                  start, kount, stride, map, in_or_out, debug, ndims )
-
-! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
-! module routine. There used to be TWO routines that did the same thing.
-! 
-! As such 'kount', 'stride','map' all become meaningless because
-! the whole process is slaved to simply replace an existing netcdf
-! variable with a conformable variable -- no possibility for 
-! us to write a subset of the domain.
-
-integer                    :: ncid, var_id, ndims
-real(r8), dimension(ndims) :: var
-character (len=6)          :: in_or_out
-integer, dimension(ndims)  :: start, kount, stride, map
-character (len=*)          :: variable
-logical                    :: debug
-character (len=129)        :: error_string
-
-if(debug) write(6,*) ' var for io is ',variable
-call check( nf90_inq_varid(ncid, variable, var_id) )
-if(debug) write(6,*) variable, ' id = ',var_id
-
-if( in_or_out(1:5) == "INPUT" ) then
-
-   call check( nf90_get_var(ncid, var_id, var, start=start, count=kount, stride=stride) )
-
-else if( in_or_out(1:6) == "OUTPUT" ) then
-
-   call check( nf90_put_var(ncid, var_id, var, start, kount, stride, map) )
-
-else
-
-  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
-  call error_handler(E_ERR,'netcdf_read_write_var', &
-       error_string, source, revision,revdate)
-
-end if
-
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_var', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-  end subroutine check
-
-end subroutine netcdf_read_write_var
-
-!**********************************************************************
-
-subroutine netcdf_read_write_char( variable, ncid, var_id, var,          &
-                                  start, kount, stride, map, in_or_out, debug, ndims )
-
-! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
-! module routine. There used to be TWO routines that did the same thing.
-! 
-! As such 'kount', 'stride','map' all become meaningless because
-! the whole process is slaved to simply replace an existing netcdf
-! variable with a conformable variable -- no possibility for 
-! us to write a subset of the domain.
-
-integer                            :: ncid, var_id, ndims
-character(len=1), dimension(ndims) :: var
-character (len=6)                  :: in_or_out
-integer, dimension(ndims)          :: start, kount, stride, map
-character (len=*)                  :: variable
-logical                            :: debug
-character (len=129) :: error_string
-
-if(debug) write(6,*) ' var for io is ',variable
-call check( nf90_inq_varid(ncid, variable, var_id) )
-if(debug) write(6,*) variable, ' id = ',var_id
-
-if( in_or_out(1:5) == "INPUT" ) then
-
-  call check( nf90_get_var(ncid, var_id, var(1:kount(1)), start=start, count=kount, stride=stride) )
-
-else if( in_or_out(1:6) == "OUTPUT" ) then
-
-  call check( nf90_put_var(ncid, var_id, var(1:kount(1)), start, kount, stride, map) )
-
-else
-
-  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
-  call error_handler(E_ERR,'netcdf_read_write_char', &
-       error_string, source, revision,revdate)
-
-end if
-
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_char', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-  end subroutine check
-end subroutine netcdf_read_write_char
 
 END MODULE module_netcdf_interface

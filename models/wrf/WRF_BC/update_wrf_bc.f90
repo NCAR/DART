@@ -31,16 +31,20 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
-! model namelist parameters
+! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector = .true.  ! output prognostic variables
-integer :: num_moist_vars = 0            ! default value
+logical :: output_state_vector  = .true.  ! output prognostic variables
+integer :: num_moist_vars       = 0
+integer :: num_domains          = 1
+integer :: calendar_type        = GREGORIAN
+logical :: surf_obs             = .false.
+character(len = 32) :: adv_mod_command = 'wrf.exe'
 
-namelist /model_nml/ output_state_vector, num_moist_vars
+namelist /model_nml/ output_state_vector, num_moist_vars, &
+                     num_domains, calendar_type, surf_obs, &
+                     adv_mod_command
 !-----------------------------------------------------------------------
-
-integer :: calendar_type         = GREGORIAN
 
 integer :: iunit, io, ierr
 

@@ -11,13 +11,15 @@
 # for a model run. It assumes that there is ${PBS_O_WORKDIR}/WRF directory
 # where boundary conditions files reside.
 
+set days_in_month = ( 31 28 31 30 31 30 31 31 30 31 30 31 )
+
 set PBS_O_WORKDIR = $1
 set element = $2
 set temp_dir = $3
 
 # Shell script to run the WRF model from DART input.
 
-set verbose
+# set verbose
 
 rm -rf $temp_dir
 mkdir  $temp_dir
@@ -25,194 +27,224 @@ cd     $temp_dir
 
 # Copy the initial condition file to the temp directory
 
-cp ${PBS_O_WORKDIR}/wrfinput .
+cp ${PBS_O_WORKDIR}/wrfinput_d0? .
 mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
 
 ln -s  ${PBS_O_WORKDIR}/RRTM_DATA .
 ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
+ln -s  ${PBS_O_WORKDIR}/VEGPARM.TBL .
+ln -s  ${PBS_O_WORKDIR}/SOILPARM.TBL .
+ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
+
+ln -s  ${PBS_O_WORKDIR}/wrf.exe .
 
 # Convert DART to wrfinput
 
 echo ".true." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
 
 set time = `head -1 wrf.info`
+set targsecs = $time[1]
+set targdays = $time[2]
+set targkey = `expr $targdays \* 86400`
+set targkey = `expr $targkey \+ $targsecs`
 
-set secs = $time[1]
-set days = $time[2]
+set time = `head -2 wrf.info | tail -1`
+set wrfsecs = $time[1]
+set wrfdays = $time[2]
+set wrfkey = `expr $wrfdays \* 86400`
+set wrfkey = `expr $wrfkey \+ $wrfsecs`
 
-# Copy the boundary condition file to the temp directory.
-cp ${PBS_O_WORKDIR}/WRF/wrfbdy_${days}_${secs}_$element wrfbdy_d01
+# Find all BC's file available and sort them with "keys".
 
-set date              = `head -2 wrf.info | tail -1`
+ls ${PBS_O_WORKDIR}/WRF/wrfbdy_*_$element > bdy.list
+
+echo ${PBS_O_WORKDIR}/WRF/wrfbdy_ > str.name
+sed 's/\//\\\//g' < str.name > str.name2
+set STRNAME = `cat str.name2`
+set COMMAND = s/`echo ${STRNAME}`//
+
+sed $COMMAND < bdy.list > bdy.list2
+sed 's/_/ /g' < bdy.list2 > bdy.list
+set num_files = `cat bdy.list | wc -l`
+set items = `cat bdy.list`
+set ifile = 1
+set iday = 1
+set isec = 2
+while ( $ifile <= $num_files )
+   set key = `expr $items[$iday] \* 86400`
+   set key = `expr $key \+ $items[$isec]`
+   echo $key >> keys
+   @ ifile ++
+   set iday = `expr $iday \+ 3`
+   set isec = `expr $isec \+ 3`
+end
+set keys = `sort keys`
+
+set date              = `head -3 wrf.info | tail -1`
 set START_YEAR  = $date[1]
 set START_MONTH = $date[2]
 set START_DAY   = $date[3]
 set START_HOUR  = $date[4]
 set START_MIN   = $date[5]
 set START_SEC   = $date[6]
-set date              = `head -3 wrf.info | tail -1`
+
 set END_YEAR    = $date[1]
 set END_MONTH   = $date[2]
 set END_DAY     = $date[3]
 set END_HOUR    = $date[4]
 set END_MIN     = $date[5]
 set END_SEC     = $date[6]
-set INTERVAL_SS       = `head -4 wrf.info | tail -1`
-set RUN_HOURS         = `expr $INTERVAL_SS \/ 3600`
-set REMAIN            = `expr $INTERVAL_SS \% 3600`
-set RUN_MINUTES       = `expr $REMAIN \/ 60`
-set RUN_SECONDS       = `expr $REMAIN \% 60`
-set HISTORY_INTERVAL  = `expr $INTERVAL_SS \/ 60`
-set WRF_DT            = `head -5 wrf.info | tail -1`
-set GRID_DISTANCE     = `head -6 wrf.info | tail -1`
-set WEST_EAST_GRIDS   = `head -7 wrf.info | tail -1`
-set SOUTH_NORTH_GRIDS = `head -8 wrf.info | tail -1`
-set VERTICAL_GRIDS    = `head -9 wrf.info | tail -1`
+
+set MY_NUM_DOMAINS    = `head -4 wrf.info | tail -1`
+set ADV_MOD_COMMAND   = `head -5 wrf.info | tail -1`
+
+if ( `expr $END_YEAR \% 4` == 0 ) then
+   set days_in_month[2] = 29
+endif
+if ( `expr $END_YEAR \% 100` == 0 ) then
+   if ( `expr $END_YEAR \% 400` == 0 ) then
+      set days_in_month[2] = 29
+   else
+      set days_in_month[2] = 28
+   endif
+endif
+
+set ifile = 1
+# Find the next BC's file available.
+
+while ( $keys[${ifile}] <= $wrfkey )
+   @ ifile ++
+end
+
+#################################################
+# big loop here
+#################################################
+
+while ( $wrfkey < $targkey )
+
+   set iday = `expr $keys[$ifile] \/ 86400`
+   set isec = `expr $keys[$ifile] \% 86400`
+
+# Copy the boundary condition file to the temp directory.
+   cp ${PBS_O_WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+
+   if ( $targkey > $keys[$ifile] ) then
+      set INTERVAL_SS = `expr $keys[$ifile] \- $wrfkey`
+   else
+      set INTERVAL_SS = `expr $targkey \- $wrfkey`
+   endif
+   set RUN_HOURS   = `expr $INTERVAL_SS \/ 3600`
+   set REMAIN      = `expr $INTERVAL_SS \% 3600`
+   set RUN_MINUTES = `expr $REMAIN \/ 60`
+   set RUN_SECONDS = `expr $REMAIN \% 60`
+   set INTERVAL_MIN = `expr $INTERVAL_SS \/ 60`
+
+   @ END_SEC = $END_SEC + $INTERVAL_SS
+   while ( $END_SEC >= 60 )
+      @ END_SEC = $END_SEC - 60
+      @ END_MIN ++
+      if ($END_MIN >= 60 ) then
+         @ END_MIN = $END_MIN - 60
+         @ END_HOUR ++
+      endif
+      if ($END_HOUR >= 24 ) then
+         @ END_HOUR = $END_HOUR - 24
+         @ END_DAY ++
+      endif
+      if ($END_DAY > $days_in_month[$END_MONTH] ) then
+         set END_DAY = 1
+         @ END_MONTH ++
+      endif
+      if ($END_MONTH > 12 ) then
+         set END_MONTH = 1
+         @ END_YEAR ++
+if ( `expr $END_YEAR \% 4` == 0 ) then
+   set days_in_month[2] = 29
+endif
+if ( `expr $END_YEAR \% 100` == 0 ) then
+   if ( `expr $END_YEAR \% 400` == 0 ) then
+      set days_in_month[2] = 29
+   else
+      set days_in_month[2] = 28
+   endif
+endif
+      endif
+   end
+
+   set END_SEC = `expr $END_SEC \+ 100`
+   set END_SEC = `echo $END_SEC | cut -c2-3`
+   set END_MIN = `expr $END_MIN \+ 100`
+   set END_MIN = `echo $END_MIN | cut -c2-3`
+   set END_HOUR = `expr $END_HOUR \+ 100`
+   set END_HOUR = `echo $END_HOUR | cut -c2-3`
+   set END_DAY = `expr $END_DAY \+ 100`
+   set END_DAY = `echo $END_DAY | cut -c2-3`
+   set END_MONTH = `expr $END_MONTH \+ 100`
+   set END_MONTH = `echo $END_MONTH | cut -c2-3`
 
 #-----------------------------------------------------------------------
 # Create WRF namelist.input:
 #-----------------------------------------------------------------------
 
-cat >! namelist.input << EOF
- &time_control
- run_days                            = 0,
- run_hours                           = ${RUN_HOURS},
- run_minutes                         = ${RUN_MINUTES},
- run_seconds                         = ${RUN_SECONDS},
- start_year                          = ${START_YEAR},  ${START_YEAR},  ${START_YEAR},
- start_month                         = ${START_MONTH}, ${START_MONTH}, ${START_MONTH},
- start_day                           = ${START_DAY},   ${START_DAY},   ${START_DAY},
- start_hour                          = ${START_HOUR},  ${START_HOUR},  ${START_HOUR},
- start_minute                        = ${START_MIN},   ${START_MIN},   ${START_MIN},
- start_second                        = ${START_SEC},   ${START_SEC},   ${START_SEC},
- end_year                            = ${END_YEAR},  ${END_YEAR},  ${END_YEAR},
- end_month                           = ${END_MONTH}, ${END_MONTH}, ${END_MONTH},
- end_day                             = ${END_DAY},   ${END_DAY},   ${END_DAY},
- end_hour                            = ${END_HOUR},  ${END_HOUR},  ${END_HOUR},
- end_minute                          = ${END_MIN},   ${END_MIN},   ${END_MIN},
- end_second                          = ${END_SEC},   ${END_SEC},   ${END_SEC},
- interval_seconds                    = ${INTERVAL_SS},
- input_from_file                     = .true.,.false.,.false.,
- history_interval                    = ${HISTORY_INTERVAL},  60,   60,
- frames_per_outfile                  = 1000, 1000, 1000,
- restart                             = .false.,
- restart_interval                    = 5000,
- io_form_history                     = 2
- io_form_restart                     = 2
- io_form_input                       = 2
- io_form_boundary                    = 2
- debug_level                         = 0
- /
-
- &domains
- time_step                           = ${WRF_DT},
- time_step_fract_num                 = 0,
- time_step_fract_den                 = 1,
- max_dom                             = 1,
- s_we                                = 1,     1,     1,
- e_we                                = ${WEST_EAST_GRIDS},    112,   94,
- s_sn                                = 1,     1,     1,
- e_sn                                = ${SOUTH_NORTH_GRIDS},    97,    91,
- s_vert                              = 1,     1,     1,
- e_vert                              = ${VERTICAL_GRIDS},    28,    28,
- dx                                  = ${GRID_DISTANCE}, 10000,  3333,
- dy                                  = ${GRID_DISTANCE}, 10000,  3333,
- grid_id                             = 1,     2,     3,
- level                               = 1,     2,     3,
- parent_id                           = 0,     1,     2,
- i_parent_start                      = 0,     31,    30,
- j_parent_start                      = 0,     17,    30,
- parent_grid_ratio                   = 1,     3,     3,
- parent_time_step_ratio              = 1,     3,     3,
- feedback                            = 1,
- smooth_option                       = 0
- /
-
- &physics
- mp_physics                          = 3,     3,     3,
- ra_lw_physics                       = 1,     1,     1,
- ra_sw_physics                       = 1,     1,     1,
- radt                                = 30,    30,    30,
- sf_sfclay_physics                   = 1,     1,     1,
- sf_surface_physics                  = 1,     1,     1,
- bl_pbl_physics                      = 1,     1,     1,
- bldt                                = 0,     0,     0,
- cu_physics                          = 1,     1,     0,
- cudt                                = 5,     5,     5,
- isfflx                              = 1,
- ifsnow                              = 0,
- icloud                              = 1,
- surface_input_source                = 1,
- num_soil_layers                     = 5,
- maxiens                             = 1,
- maxens                              = 3,
- maxens2                             = 3,
- maxens3                             = 16,
- ensdim                              = 144,
- /
-
- &dynamics
- dyn_opt                             = 2,
- rk_ord                              = 3,
- w_damping                           = 0,
- diff_opt                            = 0,
- km_opt                              = 1,
- damp_opt                            = 0,
- zdamp                               = 5000.,  5000.,  5000.,
- dampcoef                            = 0.2,    0.2,    0.2
- khdif                               = 0,      0,      0,
- kvdif                               = 0,      0,      0,
- smdiv                               = 0.1,    0.1,    0.1,
- emdiv                               = 0.01,   0.01,   0.01,
- epssm                               = 0.1,    0.1,    0.1
- non_hydrostatic                     = .true., .true., .true.,
- time_step_sound                     = 4,      4,      4,
- h_mom_adv_order                     = 5,      5,      5,
- v_mom_adv_order                     = 3,      3,      3,
- h_sca_adv_order                     = 5,      5,      5,
- v_sca_adv_order                     = 3,      3,      3,
- /
-
- &bdy_control
- spec_bdy_width                      = 5,
- spec_zone                           = 1,
- relax_zone                          = 4,
- specified                           = .true., .false.,.false.,
- periodic_x                          = .false.,.false.,.false.,
- symmetric_xs                        = .false.,.false.,.false.,
- symmetric_xe                        = .false.,.false.,.false.,
- open_xs                             = .false.,.false.,.false.,
- open_xe                             = .false.,.false.,.false.,
- periodic_y                          = .false.,.false.,.false.,
- symmetric_ys                        = .false.,.false.,.false.,
- symmetric_ye                        = .false.,.false.,.false.,
- open_ys                             = .false.,.false.,.false.,
- open_ye                             = .false.,.false.,.false.,
- nested                              = .false., .true., .true.,
- /
-
- &namelist_quilt
- nio_tasks_per_group = 0,
- nio_groups = 1,
- /
-
+rm -f script.sed
+cat > script.sed << EOF
+ s/MY_RUN_HOURS/${RUN_HOURS}/
+ s/MY_RUN_MINUTES/${RUN_MINUTES}/
+ s/MY_RUN_SECONDS/${RUN_SECONDS}/
+ s/MY_START_YEAR/${START_YEAR}/g
+ s/MY_START_MONTH/${START_MONTH}/g
+ s/MY_START_DAY/${START_DAY}/g
+ s/MY_START_HOUR/${START_HOUR}/g
+ s/MY_START_MINUTE/${START_MIN}/g
+ s/MY_START_SECOND/${START_SEC}/g
+ s/MY_END_YEAR/${END_YEAR}/g
+ s/MY_END_MONTH/${END_MONTH}/g
+ s/MY_END_DAY/${END_DAY}/g
+ s/MY_END_HOUR/${END_HOUR}/g
+ s/MY_END_MINUTE/${END_MIN}/g
+ s/MY_END_SECOND/${END_SEC}/g
+ s/MY_HISTORY_INTERVAL/${INTERVAL_MIN}/g
 EOF
 
-mv wrfinput wrfinput_d01
+ sed -f script.sed \
+    ${PBS_O_WORKDIR}/namelist.input.template > namelist.input
 
 # Update boundary conditions
 
-${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
+   ${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
-${PBS_O_WORKDIR}/wrf.exe >>& out_wrf_integration
+   rm -f rsl.out.*
 
-set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" out_wrf_integration | cat | wc -l`
-if ($SUCCESS != 1) then
-   echo $element >> $PBS_O_WORKDIR/blown_${days}_${secs}.out
-endif
+   ${ADV_MOD_COMMAND} >>& rsl.out.integration
 
-mv wrfout_d01_* wrfinput
+   sleep 1
+
+   set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
+   if ($SUCCESS == 0) then
+      echo $element >> $PBS_O_WORKDIR/blown_${targdays}_${targsecs}.out
+   endif
+
+   set dn = 1
+   while ( $dn <= $MY_NUM_DOMAINS )
+      mv wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
+      @ dn ++
+   end
+
+   set START_YEAR  = $END_YEAR
+   set START_MONTH = $END_MONTH
+   set START_DAY   = $END_DAY
+   set START_HOUR  = $END_HOUR
+   set START_MIN   = $END_MIN
+   set START_SEC   = $END_SEC
+   set wrfkey = $keys[$ifile]
+   @ ifile ++
+
+end
+
+#################################################
+# end big loop here
+#################################################
 
 mv dart_wrf_vector dart_wrf_vector.input
 

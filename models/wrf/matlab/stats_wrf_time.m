@@ -1,20 +1,42 @@
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
- 
+
 fname = 'Prior_Diag';
-tlon = getnc(fname, 'XLON');
+
+dx = getnc(fname, 'DX');
+
+num_domains = size(dx,1);
+
+disp(['Number of domains: ',int2str(num_domains)])
+
+id = input('Input domain id: ');
+
+tlon = getnc(fname, ['XLON_d0',int2str(id)]);
 we = size(tlon, 2);
-tlat = getnc(fname, 'XLAT');
+tlat = getnc(fname, ['XLAT_d0',int2str(id)]);
 sn = size(tlat, 1);
-level = getnc(fname, 'level');
+level = getnc(fname, ['level_d0',int2str(id)]);
 bt = size(level, 1);
 copy = getnc(fname, 'copy');
 ens_size = size(copy, 1) - 2;
 
 true_times = getnc(fname, 'time');
 num_true_times = size(true_times, 1);
-%num_true_times = 16
+true_times = true_times - true_times(1);
+time_unit = 'days';
+if (true_times(num_true_times) < 1.0)
+     true_times = true_times*24;
+     time_unit = 'hours';
+end
+if (true_times(num_true_times) < 1.0)
+     true_times = true_times*60;
+     time_unit = 'minutes';
+end
+if (true_times(num_true_times) < 1.0)
+     true_times = true_times*60;
+     time_unit = 'seconds';
+end
 
 mean_ind = ens_size + 1;
 std_ind = mean_ind + 1;
@@ -27,54 +49,54 @@ for field_num = [1:9]
 nx = we + 1;
 ny = sn;
 var_units = 'U (m/s)';
-var_name = 'U';
+var_name = ['U_d0',int2str(id)];
 maxlev = bt;
 maxval = 8.0;
 if field_num > 1
 nx = we;
 ny = sn + 1;
 var_units = 'V (m/s)';
-var_name = 'V';
+var_name = ['V_d0',int2str(id)];
 end
 if field_num > 2
 nx = we;
 ny = sn;
 var_units = 'W (m/s)';
-var_name = 'W';
+var_name = ['W_d0',int2str(id)];
 maxlev = bt + 1;
 maxval = 0.03;
 end
 if field_num > 3
 var_units = 'GZ (m^2/s^2)';
-var_name = 'PH';
+var_name = ['PH_d0',int2str(id)];
 maxval = 700.0;
 end
 if field_num > 4
 var_units = 'T (K)';
-var_name = 'T';
+var_name = ['T_d0',int2str(id)];
 maxlev = bt;
 maxval = 4.0;
 end
 if field_num > 5
 var_units = 'MU (Pa)';
-var_name = 'MU';
+var_name = ['MU_d0',int2str(id)];
 maxlev = 1;
 maxval = 700.0;
 end
 if field_num > 6
 var_units = 'QV (kg/kg)';
-var_name = 'QVAPOR';
+var_name = ['QVAPOR_d0',int2str(id)];
 maxlev = bt;
 maxval = 0.001;
 end
 if field_num > 7
 var_units = 'QC (kg/kg)';
-var_name = 'QCLOUD';
-maxval = 0.00003;
+var_name = ['QCLOUD_d0',int2str(id)];
+maxval = 0.00007;
 end
 if field_num > 8
 var_units = 'QR (kg/kg)';
-var_name = 'QRAIN';
+var_name = ['QRAIN_d0',int2str(id)];
 maxval = 0.00007;
 end
 
@@ -123,7 +145,7 @@ spread(2*itime-1) = sqrt((field_vec'*field_vec)/(f_size));
 field_vec = field_vec_prior - field_vec_truth;
 rmse(2*itime-1) = sqrt((field_vec'*field_vec)/(f_size));
 
-x(2*itime-1) = true_times(itime,1)*24; % time in hours
+x(2*itime-1) = true_times(itime);
 
 fname = 'Posterior_Diag';
 field_vec_posterior = reshape(getnc(fname, var_name,corner_m,end_point_m,stride),f_size,1);
@@ -135,7 +157,7 @@ spread(2*itime) = sqrt((field_vec'*field_vec)/(f_size));
 field_vec = field_vec_posterior - field_vec_truth;
 rmse(2*itime) = sqrt((field_vec'*field_vec)/(f_size));
 
-x(2*itime) = true_times(itime,1)*24; % time in hours
+x(2*itime) = true_times(itime);
 
   for imem = 1:ens_size
 
@@ -178,7 +200,7 @@ subplot(3,3,field_num);
 
      title(plot_title)
 
-%     xlabel('hours')
+%     xlabel(time_unit)
 
      room = (x(2*num_true_times)-x(1))/10;
 
@@ -192,7 +214,7 @@ end
 %else
      legend('RMS error','Spread')
 %end
-xlabel('hours')
+xlabel(time_unit)
 
 % Loop for another try
 %map_wrf;
