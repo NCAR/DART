@@ -19,13 +19,15 @@ public comp_reg_factor
 
 !============================================================================
 
-!---- namelist with default values
 logical :: namelist_initialized = .false.
+
+!---- namelist with default values
 
 integer :: select_regression = 1
 ! Value 1 selects default: Compute using sampling theory for any ensemble size
 ! Value 2 selects L96 file format: Works for archived 40 observation L96 files
 ! Value 3 selects bgrid archive default: Reads in file from bgrid experiments
+character(len = 129) :: input_reg_file = "time_mean_reg"
 
 namelist / reg_factor_nml / select_regression
 
@@ -34,12 +36,14 @@ namelist / reg_factor_nml / select_regression
 
 ! Flags for loading startup
 logical :: first_call = .true.
+! Size of regression input files
+integer :: num_obs, model_size
+
 ! Global storage for time mean regression factors from file
-real(r8) :: time_mean_reg(40, 40)
+real(r8), allocatable :: time_mean_reg(:, :)
 
 ! Global storage for bgrid mean regression factor file
 real(r8), allocatable :: obs_state_reg(:)
-
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
@@ -47,10 +51,7 @@ character(len=128) :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-
 CONTAINS
-
-
 
 function comp_reg_factor(num_groups, regress, time_index, &
    obs_index, state_index, obs_state_ind, obs_state_max)
@@ -121,17 +122,20 @@ if(select_regression == 1) then
 else if(select_regression == 2) then
 
 ! Table lookup version for time mean, temporary implementation
-! This only works for a 40 variable model (like Lorenz-96) with 40 fixed
-! time invariant observations at present.
+! This only works for a model with a time invariant observation set
    if(first_call) then
       first_call = .false.
-! WARNING: PLEASE USE OPEN_FILE
-      open(unit = 46, file = "time_mean_reg_file")
-      do j = 1, 40
-         do i = 1, 40
-            read(46, *) jj, ii, time_mean_reg(j, i)
+! Read in the regression statistics file
+      unit = get_unit()
+      open(unit = unit, file = input_reg_file)
+      read(unit, *) num_obs, model_size
+      allocate(time_mean_reg(num_obs, model_size))
+      do j = 1, num_obs
+         do i = 1, model_size
+            read(unit, *) jj, ii, time_mean_reg(j, i)
          end do
       end do
+      close(unit)
    endif
 
    comp_reg_factor = time_mean_reg(obs_index, state_index)
