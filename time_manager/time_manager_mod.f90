@@ -75,7 +75,7 @@ public :: julian_day
 
 ! Subroutines and functions for basic I/O
 public :: time_manager_init, print_time, print_date
-public :: write_time, read_time
+public :: write_time, read_time, interactive_time
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -2383,6 +2383,8 @@ integer             :: julian_day
 integer             :: m
 logical             :: leap
 
+if ( .not. module_initialized ) call time_manager_init
+
 if (calendar_type /= GREGORIAN) then
    call error_handler(E_ERR,'julian_day', &
         'only implemented for GREGORIAN calendar',source,revision,revdate)
@@ -2553,6 +2555,29 @@ SELECT CASE (fileformat)
 END SELECT
 
 end subroutine write_time
+
+
+subroutine interactive_time(time)
+!------------------------------------------------------------------------
+
+implicit none
+
+type(time_type), intent(inout) :: time
+integer                        :: second, minute, hour, day, month, year
+
+if ( .not. module_initialized ) call time_manager_init
+
+if (calendar_type == GREGORIAN) then
+   write(*, *) 'input date year month day hour minute second'
+   read(*, *) year, month, day, hour, minute, second
+   time = set_date(year, month, day, hour, minute, second)
+else
+   write(*, *) 'input time in days and seconds'
+   read(*, *) day, second
+   time = set_time(second, day)
+endif
+
+end subroutine interactive_time
 
 
 end module time_manager_mod
