@@ -34,7 +34,7 @@ private
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
        interactive_kind
 
-public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
+public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
        KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, KIND_TD2
 
 ! CVS Generated file description for error handling, do not edit
@@ -61,6 +61,7 @@ end type obs_kind_type
 ! KIND_W   = Vertical velocity
 ! KIND_QR  = Rainwater mixing ratio
 ! KIND_TD  = Dew point temperature
+! KIND_RHO = Density
 ! KIND_VR  = Doppler radar radial velocity
 ! KIND_REF = Radar reflectivity
 ! KIND_U10 = zonal wind component at 10 m AGL
@@ -71,6 +72,7 @@ end type obs_kind_type
 
 integer, parameter :: KIND_U = 1, KIND_V = 2, KIND_PS = 3, KIND_T = 4,   &
                       KIND_QV = 5, KIND_P = 6, KIND_W = 7, KIND_QR = 8, KIND_TD = 10, &
+                      KIND_RHO = 11, &
                       KIND_VR = 100, KIND_REF = 101, &
                       KIND_U10 = 200, KIND_V10 = 201, KIND_T2 = 202, KIND_Q2 = 203, &
                       KIND_TD2 = 204
@@ -204,8 +206,8 @@ if ( .not. module_initialized ) call initialize_module
 
 write(*, *) 'input obs kind: u = ',KIND_U,' v = ',KIND_V,' ps = ',KIND_PS,      &
                            ' t = ',KIND_T,' qv = ',KIND_QV,' p = ',KIND_P,      &
-                           ' w = ',KIND_W,' qr = ',KIND_QR,                     &
-                          ' Td = ',KIND_TD,' Vr = ',KIND_VR,' Ref = ',KIND_REF, &
+                           ' w = ',KIND_W,' qr = ',KIND_QR,' Td = ',KIND_TD,    &
+                         ' rho = ',KIND_RHO,' Vr = ',KIND_VR,' Ref = ',KIND_REF,&
                           ' U10 = ',KIND_U10,' V10 = ',KIND_V10,                &
                           ' T2 = ',KIND_T2,' Q2 = ',KIND_Q2
                           
