@@ -12,7 +12,7 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use      types_mod, only : r8
+use      types_mod, only : r8, missing_r8
 use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, get_unit, &
                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 use       sort_mod, only : index_sort 
@@ -633,7 +633,7 @@ do i = 1, model_size
       inv_indices(i) = indx
       indx = indx + 1
    endif
-end do 
+end do
 
 ! Need copy of obs to be modified
 ens_obs = ens_obs_in
@@ -657,9 +657,11 @@ Locations: do i = 1, num_obs_in_set
    call get_obs_def(observation, obs_def)
    obs_loc(i) = get_obs_def_location(obs_def)
 
+   ! Get the value of the observation
+   call get_obs_values(observation, obs(i:i), obs_val_index)
    ! Get the qc value set so far; if qc is bad, don't be close to any state
    call get_qc(observation, qc(i:i), 1)
-   if(qc(i) > 4.01_r8) cycle Locations
+   if(qc(i) > 4.01_r8 .or. obs(i) == missing_r8) cycle Locations
 
    ! Determine if this observation is close to any state variables in my domain
    if(num_domains > 1) then
@@ -670,6 +672,7 @@ Locations: do i = 1, num_obs_in_set
          allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
          goto 555
       endif
+
       do j = 1, num_close_ptr(1)
          if(my_state(close_ptr(1, j))) then
             local_close_state(i) = .true.
@@ -708,10 +711,10 @@ Observations : do jjj = 1, num_obs_in_set
    ! Get the observation value and the error variance
    call get_obs_def(observation, obs_def)
    ! Get the value of the observation and the error variance
-   call get_obs_values(observation, obs(j:j), obs_val_index)
+!!$   call get_obs_values(observation, obs(j:j), obs_val_index)
    obs_err_var(j) = get_obs_def_error_variance(obs_def)
    ! Just skip observations that have failed prior qc ( >4 for now)
-   if(qc(j) > 4.01_r8) cycle Observations
+   if(qc(j) > 4.01_r8 .or. obs(j) == missing_r8) cycle Observations
    
    ! Compute the ensemble prior for this ob
    if(compute_obs(j)) then
@@ -904,7 +907,7 @@ call error_handler(E_ERR,'filter_assim', &
          source, revision, revdate)
 
 444 continue
-      
+
 ! Write out the most up-to-date obs_sequence file, too, which includes qc
 if(do_parallel == 2 .or. do_parallel == 3) then
    temp_obs_seq_file = 'filter_assim_obs_seq'
@@ -942,7 +945,7 @@ do j = 1, num_domains
          indices(indx) = i
          indx = indx + 1
       endif
-   end do 
+   end do
 
    ! Get the ensemble (whole thing for now) from storage
    call get_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
@@ -1103,8 +1106,6 @@ logical, allocatable :: my_state(:), compute_obs(:)
 
 type(obs_sequence_type) :: seq2
 integer :: iunit
-type(obs_type) :: obs1, obs2
-real(r8) :: val1(10), val2(10)
 
 ! Read in all the arguments from the file
 iunit = get_unit()
