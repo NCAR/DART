@@ -99,7 +99,7 @@ types_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#initialize_utilities">initialize_utilities</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#finalize_utilities">finalize_utilities</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#dump_unit_attributes">dump_unit_attributes</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_DBG, DEGUG</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_DBG, DEBUG</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_MSG, MESSAGE</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_WARN, WARNING</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_ERR, FATAL</A></TD></TR>
@@ -108,7 +108,8 @@ types_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;utilities_nml</em> 
+Optional namelist interface 
+<A HREF="#Namelist"><em class=code>&#38;utilities_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -341,6 +342,7 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
 <!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
  <P></P><HR><P></P>
+ <pre>
  integer :: <em class=code>E_DBG, DEBUG</em>
  integer :: <em class=code>E_MSG, MESSAGE</em>
  integer :: <em class=code>E_WARN, WARNING</em>
@@ -422,6 +424,7 @@ handler with error level message.
 <!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
  <P></P><HR><P></P>
+ <pre>
  integer :: <em class=code>E_DBG, DEBUG</em>
  integer :: <em class=code>E_MSG, MESSAGE</em>
  integer :: <em class=code>E_WARN, WARNING</em>
@@ -482,7 +485,8 @@ lead to termination (be careful doing this).
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>namelistfile
+<UL>
+    <LI>assim_model_mod.nml in input.nml
     <LI>logfile, name specified in namelist
 </UL>
 
