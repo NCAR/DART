@@ -37,6 +37,7 @@ type assim_model_type
 !   private
    real(r8), pointer :: state_vector(:)
    type(time_type) :: time
+   integer :: model_size
 end type assim_model_type
 
 ! Permanent class storage for model_size
@@ -66,6 +67,7 @@ type(assim_model_type), intent(inout) :: state
 model_size = get_model_size()
 
 allocate(state%state_vector(model_size))
+state%model_size = model_size
 
 end subroutine init_assim_model
 
@@ -136,6 +138,7 @@ integer :: StateVarDimID, StateVarVarID     ! for each model parameter/State Var
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID     ! duh ...
 integer :: MetadataDimID, MetadataVarID
+integer ::                   StateVarID     ! for ENTIRE Model State
 
 if(.not. byteSizesOK()) then
    print *, "Compiler does not appear to support required kinds of variables."
@@ -160,7 +163,6 @@ call check(nf90_def_dim(ncid=ncFileID, name="time",           &
 call check(nf90_def_dim(ncid=ncFileID, name="metadatalength", &
                                        len = metadata_length,        dimid = metadataDimID))
 
-
 ! Create variables and attributes
 call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
                                      dimids=StateVarDimID, varid=StateVarVarID))
@@ -174,6 +176,7 @@ call check(nf90_def_var(ncid=ncFileID, name="copy", xtype=nf90_int, dimids=Membe
 call check(nf90_put_att(ncFileID, MemberVarID, "long_name", "ensemble member or copy"))
 call check(nf90_put_att(ncFileID, MemberVarID, "units",     "nondimensional") )
 call check(nf90_put_att(ncFileID, MemberVarID, "valid_range", (/ 1, copies_of_field_per_time /)))
+
 
 call check(nf90_def_var(ncid=ncFileID,name="CopyMetaData", xtype=nf90_char,    &
                         dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID))
@@ -198,6 +201,12 @@ call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "gregorian"))
 call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
 call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
 
+
+call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
+                        dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
+call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
+
+
 ! Global attributes
 call check(nf90_put_att(ncFileID, nf90_global, "title", global_meta_data))
 
@@ -210,7 +219,7 @@ call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
 call nc_write_locations(ncFileID,FileName)    ! Each model_mod must write its own locations.
-call check(nf90_close(ncFileID))              ! tidy up
+call check(nf90_sync(ncFileID))               ! sync to disk, but leave open
 
 contains
 
@@ -517,14 +526,15 @@ subroutine copy_assim_model(model_out, model_in)
 implicit none
 
 type(assim_model_type), intent(out) :: model_out
-type(assim_model_type), intent(in) :: model_in
+type(assim_model_type), intent(in)  :: model_in
 
 integer :: i
 
 ! Need to make sure to copy the actual storage and not just the pointer (verify)
-model_out%time = model_in%time
+model_out%time       = model_in%time
+model_out%model_size = model_in%model_size
 
-do i = 1, get_model_size()
+do i = 1, model_in%model_size
    model_out%state_vector(i) = model_in%state_vector(i)
 end do
 
@@ -696,7 +706,7 @@ end subroutine read_state_restart
 
 
 
-subroutine output_diagnostics(file_id, state, copy_index)
+subroutine output_diagnosticsORG(file_id, state, copy_index)
 !-------------------------------------------------------------------
 !
 ! Outputs a copy of the state vector to the file (currently just an
@@ -720,6 +730,91 @@ write(file_id, *) copy_index
 
 ! Write the data, unformatted for now
 write(file_id, *) state%state_vector
+
+end subroutine output_diagnosticsORG
+
+
+subroutine output_diagnostics(ncFileID, state, copy_index)
+!-------------------------------------------------------------------
+!
+! Outputs a copy of the state vector to the file (currently just an
+! integer unit number), the time, and an optional index saying which
+! copy of the metadata this state is associated with.
+! Need to make a much better coordinated facility for doing this,
+! providing buffering, insuring that ordering is appropriate for
+! time (and copy), etc. For now, this just writes what it receives
+! with a header stating time and copy_index.
+!
+! 'Appending' is dependent on being able to know _when_ to append.
+! Only append when the copy_index is unity ... if we don't have
+! one, we just keep over-writing.
+!
+! TJH Wed Aug 28 15:40:25 MDT 2002
+
+
+use typeSizes
+use netcdf
+implicit none
+
+integer,                intent(in) :: ncFileID
+type(assim_model_type), intent(in) :: state
+integer, optional,      intent(in) :: copy_index
+
+character(len=NF90_MAX_NAME)          :: VarName
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
+integer :: paramDimID, LocationVarID, Nlocations
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: xtype, ndims, nAtts, StateVarID, TimeVarID
+integer :: i,ierr, len, copyindex
+
+if (.not. present(copy_index) ) then     ! we are dependent on the fact
+   copyindex = 1                         ! there is a copyindex == 1
+else                                     ! if the optional argument is
+   copyindex = copy_index                ! not specified, we'd better
+endif                                    ! have a backup plan
+
+call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+
+! If the copyindex is 1, we need to increment the unlimited dimension.
+! The length of the current unlimited dimension (time) is determined 
+! from NF90_Inquire_Dimension().
+
+if (copyindex == 1) then
+   len = nc_append_time(ncFileID, state%time)
+   if ( len < 1 ) write(*,*)'ERROR:output_diagnostics: trouble deep'
+endif
+
+call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(NF90_Inq_Varid(ncFileID, "time", TimeVarID))
+call check(NF90_Inquire_Variable(ncFileID, TimeVarID, VarName, xtype, ndims, dimids, nAtts))
+call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, VarName, len ))
+
+if ( ndims /= 1 ) then
+   write(*,*)'Warning:output_diagnostics: "time" expected to be rank-1'
+endif
+
+if ( dimids(1) /= unlimitedDimID ) then
+   write(*,*)'Warning:output_diagnostics: no idea what you are trying to pull here ...'
+endif
+
+call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable ID
+call check(NF90_put_var(ncFileID, StateVarID, state%state_vector, start=(/ 1, copyindex, len /)))
+
+! DEBUG BLOCK ... just to make sure we're getting what we expect.
+! call output_diagnosticsORG(ncFileID+30, state, copyindex)
+! END OF DEBUG BLOCK ... just to make sure we're getting what we expect.
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(status)
+    integer, intent ( in) :: status
+    
+    if(status /= nf90_noerr) then 
+      print *, trim(nf90_strerror(status))
+    end if
+  end subroutine check  
 
 end subroutine output_diagnostics
 
