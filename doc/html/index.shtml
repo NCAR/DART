@@ -186,6 +186,26 @@ staus quo "build" procedure.
     <LI>state_loc ... array of meta_data
 </OL>
 
+<A NAME="acronyms">
+
+<PRE>
+CVS-Concurrent Versions System
+DA-Data Assimilation
+DAI-Data Assimilation Initiative
+DART-Data Assimilation Research Testbed
+EAKF-Ensemble Adjustment Kalman Filter
+EnKF-Ensemble Kalman Filter
+ESMF-Earth System Modeling Framework
+L96-the Lorenz 96 model
+NetCDF-Network Common Data Format
+OSSE-Observing System Simulation Experiment
+PE-Primitive Equations
+RMS-Root Mean Square (Error)
+RMSE-Root Mean Square Error
+TLM-Tangent Linear Model
+WRF-Weather Research and Forecasting Model
+</PRE>
+
 <P>
 <HR>
 <P>
