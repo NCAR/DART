@@ -11,6 +11,8 @@
 # Find the project and build it, if need be.
 #======================================================================
 
+set echo
+
 set Model = bgrid_solo
 
 if ( ${?DART_HOME} ) then
@@ -85,26 +87,22 @@ end
 #======================================================================
 
 echo '&assim_model_nml'                            > assim_mod.nml
-echo '   binary_restart_files = .false.'          >> assim_mod.nml
-echo '&end'                                       >> assim_mod.nml
+echo '   binary_restart_files = .false. /'        >> assim_mod.nml
 
 cat << ENDofTask01 > model.nml
-&main_nml
+&model_nml
    days                =   10,
    dt_atmos            = 3600,
-   output_state_vector = .false.
-&end
+   output_state_vector = .false. /
 
 &fms_nml
-   domains_stack_size = 90000
-&end
+   domains_stack_size = 90000 /
 
 &bgrid_cold_start_nml
    nlon = 60, 
    nlat = 30, 
    nlev =  5,
-   equal_vert_spacing = .true.
-&end
+   equal_vert_spacing = .true. /
 
 &hs_forcing_nml
    delh      =  60.,
@@ -116,8 +114,7 @@ cat << ENDofTask01 > model.nml
    ks        =  -4.,
    kf        =  -1.,
    sigma_b   =  .7,
-   do_conserve_energy = .false.
-&end
+   do_conserve_energy = .false. /
 
 &bgrid_core_driver_nml
    damp_coeff_wind     = 0.10,
@@ -135,14 +132,12 @@ cat << ENDofTask01 > model.nml
    num_adjust_dt       = 3,
    num_advec_dt        = 3,
    halo                = 1,
-   do_conserve_energy  = .false.
-&end
+   do_conserve_energy  = .false. /
 
 &bgrid_integrals_nml
    file_name       = 'dynam_integral.out',
    time_units      = 'days',
-   output_interval = 1.00
-&end
+   output_interval = 1.00 /
 ENDofTask01
 
 #======================================================================
@@ -151,9 +146,10 @@ ENDofTask01
 # run either ps_rand_local _OR_ column_rand -- do not run both
 #======================================================================
 
-exit
+set bgrid_case = 0
 
-if ( 1 == 0 ) then
+switch ( $bgrid_case ) 
+case 1:
 
    echo " "
    echo "Running create_obs_set_def ... ps_rand_local case"
@@ -168,8 +164,7 @@ if ( 1 == 0 ) then
 
    echo '&utilities_nml'                                      > utilities.nml
    echo '   logfilename = "create_obs_set_def_ps_rand.out",' >> utilities.nml
-   echo '   TERMLEVEL = 1'                                   >> utilities.nml
-   echo '&end'                                               >> utilities.nml
+   echo '   TERMLEVEL = 1 /'                                 >> utilities.nml
    
    cat utilities.nml assim_mod.nml model.nml > input.nml
    
@@ -181,7 +176,8 @@ if ( 1 == 0 ) then
       exit
    endif
 
-else
+breaksw
+case 2:
 
    echo " "
    echo "Running create_obs_set_def ... column_rand case"
@@ -195,8 +191,7 @@ else
 
    echo '&utilities_nml'                                          > utilities.nml
    echo '   logfilename = "create_obs_set_def_column_rand.out",' >> utilities.nml
-   echo '   TERMLEVEL = 1'                                       >> utilities.nml
-   echo '&end'                                                   >> utilities.nml
+   echo '   TERMLEVEL = 1 /'                                     >> utilities.nml
 
    cat utilities.nml assim_mod.nml model.nml > input.nml
 
@@ -208,7 +203,41 @@ else
       exit
    endif
 
-endif
+breaksw
+default:
+
+   echo " "
+   echo "Running create_obs_set_def ... just a few locations case"
+   echo "observation locations and error variances are entirely random."
+   echo " "
+
+   echo "set_def.out"                > create_obs_set_def.in  ;# output filename
+   echo "1"                         >> create_obs_set_def.in  ;# number of obs SETS
+   echo "4"                         >> create_obs_set_def.in  ;# num obs in first set
+   echo "1.0"                       >> create_obs_set_def.in  ;# error variance for first obs
+   echo "10"                        >> create_obs_set_def.in  ;# observing state var #10
+   echo "23.0"                      >> create_obs_set_def.in  ;# error variance for next obs
+   echo "123"                       >> create_obs_set_def.in  ;# observing state var #123
+   echo "2.0"                       >> create_obs_set_def.in  ;# error variance for next obs
+   echo "975"                       >> create_obs_set_def.in  ;# observing state var #975
+   echo "1.0"                       >> create_obs_set_def.in  ;# error variance for next obs
+   echo "1000"                      >> create_obs_set_def.in  ;# observing state var #975
+
+   echo '&utilities_nml'                              > utilities.nml
+   echo '   logfilename = "create_obs_set_def.out",' >> utilities.nml
+   echo '   TERMLEVEL = 1 /'                         >> utilities.nml
+
+   cat utilities.nml assim_mod.nml model.nml > input.nml
+
+   ./create_obs_set_def < create_obs_set_def.in
+
+   if ( $status > 0 ) then
+      echo "ERROR: running create_obs_set_def bombed ..."
+      exit
+   endif
+
+breaksw
+endsw
 
 #======================================================================
 # Simulate a particular observing system:
@@ -240,8 +269,7 @@ echo "obs_seq.in"            >> create_obs_sequence.in
 
 echo '&utilities_nml'                               > utilities.nml
 echo '   logfilename = "create_obs_sequence.out",' >> utilities.nml
-echo '   TERMLEVEL = 1'                            >> utilities.nml
-echo '&end'                                        >> utilities.nml
+echo '   TERMLEVEL = 1 /'                          >> utilities.nml
 
 cat utilities.nml assim_mod.nml model.nml > input.nml
 
@@ -269,14 +297,12 @@ cat << ENDofTask03 > perfect.nml
    restart_out_file_name = "perfect_restart",
    init_time_days        = 0,
    init_time_seconds     = 0,
-   output_interval       = 1
-&end
+   output_interval       = 1 /
 ENDofTask03
 
 echo '&utilities_nml'                             > utilities.nml
 echo '   logfilename = "perfect_model_obs.out",' >> utilities.nml
-echo '   TERMLEVEL = 1'                          >> utilities.nml
-echo '&end'                                      >> utilities.nml
+echo '   TERMLEVEL = 1 /'                        >> utilities.nml
 
 cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
 
@@ -344,14 +370,12 @@ echo "   init_time_seconds = $init_time_seconds ,"             >> filter.nml
 echo "   output_state_ens_mean = $output_state_ens_mean ,"     >> filter.nml
 echo "   output_state_ens_spread = $output_state_ens_spread ," >> filter.nml
 echo "   num_output_ens_members = $num_output_ens_members ,"   >> filter.nml
-echo "   output_interval = $output_interval "                  >> filter.nml
-echo "&end"                                                    >> filter.nml
+echo "   output_interval = $output_interval /"                 >> filter.nml
 echo " "                                                       >> filter.nml
 
 echo '&utilities_nml'                  > utilities.nml
 echo '   logfilename = "filter.out",' >> utilities.nml
-echo '   TERMLEVEL = 1'               >> utilities.nml
-echo '&end'                           >> utilities.nml
+echo '   TERMLEVEL = 1 /'             >> utilities.nml
 
 cat utilities.nml assim_mod.nml perfect.nml filter.nml model.nml > input.nml
 

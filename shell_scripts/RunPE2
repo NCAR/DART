@@ -6,10 +6,57 @@
 #
 # $Id$
 #
-# script to run an experiment with existing intial conditions
+# This script will do one of two things -- based on an envir
+
+set SNAME = $0
+
+switch ($#argv) 
+   case 0:
+      #===================================================================
+      # With no arguments -- running with the default observation sequence  
+      # supplied by Jeff Whitaker -- 151 days with 362 obs per day.
+      # The initial conditions files are ASCII ...
+      #===================================================================
+      set pe2lyr_case = 1
+   breaksw
+
+   case 1:
+      #===================================================================
+      # If the solo argument is 
+      # 1       -- running with the default observation sequence  (case 0)
+      # <other> -- running from a prescribed set of BINARY initial 
+      #            conditions as created in the script MakeICs and with a
+      #            short observation sequence and just a few ensemble mems.
+      #===================================================================
+      set pe2lyr_case = $1
+   breaksw
+
+   default:
+      echo " "
+      echo "usage: $SNAME:t [scenarionumber]"
+      echo " "
+      echo "This script exercises the PE2LYR model."
+      echo "If 'scenarionumber' is absent -- the default behavior is to"
+      echo "run with the default observation sequence supplied by Jeff Whitaker "
+      echo "151 days with 362 obs per day."
+      echo " "
+      echo "If scenarionumber is '1' -- the default case is run."
+      echo " "
+      echo "If scenarionumber is anything else -- a prescribed set of BINARY initial conditions"
+      echo "is used as well as a short observation sequence with just a few ensemble"
+      echo "members used as well as a short observation sequence."
+      echo " "
+
+      @ MYSTATUS = 1
+      exit
+   breaksw
+endsw
+
 #======================================================================
 # Find the project and build it, if need be.
 #======================================================================
+
+set Model = pe2lyr
 
 if ( ${?DART_HOME} ) then
    if ( -d $DART_HOME ) then
@@ -28,9 +75,8 @@ else
    exit
 endif
 echo "DART project directory is $DARTHOME"
+echo "       working with model $Model"
 sleep 2
-
-set Model = pe2lyr
 
 cd ${DARTHOME}/models/${Model}/work
 
@@ -69,22 +115,12 @@ foreach NAMELIST ( *.nml )
 end
 
 #======================================================================
-# Create common namelists -- lots of ways to do it.
-#======================================================================
-
-cat << ENDofTask01 > assim_mod.nml
-&assim_model_nml
-   binary_restart_files = .false.
-&end
-ENDofTask01
-
-#======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
 #======================================================================
 
-echo "Using a default obs_seq.in file with ascii restart files."
-echo "Skipping create_obs_set_def and create_obs_sequence."
+switch ( $pe2lyr_case ) 
+case 1:
 
 cat << ENDofMessage > JeffWhitakerREADME
 
@@ -110,7 +146,104 @@ snipit starts here :
 
 ENDofMessage
 
-cat JeffWhitakerREADME
+   cat JeffWhitakerREADME
+
+   set obs_sequence_in_name = '"obs_seq.in_151"'
+   set obs_sequence_file_name = '"obs_seq.out_151"'
+   set ens_size = 50
+   set num_output_ens_members = 20
+
+   echo '&assim_model_nml'                     > assim_mod.nml
+   echo '   binary_restart_files = .false. /' >> assim_mod.nml
+
+breaksw
+default:
+
+   set ens_size = 3
+   set num_output_ens_members = 3
+
+   echo " "
+   echo "Running create_obs_set_def ... just a few locations case"
+   echo "observation locations and error variances are entirely random."
+   echo " "
+
+   echo "set_def.out"    > create_obs_set_def.in  ;# output filename
+   echo "1"             >> create_obs_set_def.in  ;# number of obs SETS
+   echo "2"             >> create_obs_set_def.in  ;# num obs in first set
+   echo "1.0"           >> create_obs_set_def.in  ;# error variance for first obs
+   echo "-1"            >> create_obs_set_def.in  ;# not a state variable
+   echo "-1"            >> create_obs_set_def.in  ;# surface observation
+   echo "23.0"          >> create_obs_set_def.in  ;# longitude [0,360]
+   echo "40.0"          >> create_obs_set_def.in  ;# latitude [-90,90]
+   echo "3"             >> create_obs_set_def.in  ;# obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5
+   echo "1.0"           >> create_obs_set_def.in  ;# error variance for second obs
+   echo "-1"            >> create_obs_set_def.in  ;# not a state variable
+   echo "-1"            >> create_obs_set_def.in  ;# surface observation
+   echo "123.0"         >> create_obs_set_def.in  ;# longitude [0,360]
+   echo "-40.0"         >> create_obs_set_def.in  ;# latitude [-90,90]
+   echo "3"             >> create_obs_set_def.in  ;# obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5
+
+   echo '&utilities_nml'                              > utilities.nml
+   echo '   logfilename = "create_obs_set_def.out",' >> utilities.nml
+   echo '   TERMLEVEL = 1 /'                         >> utilities.nml
+
+   echo '&assim_model_nml'                            > assim_mod.nml
+   echo '   binary_restart_files = .true. /'         >> assim_mod.nml
+
+   cat utilities.nml assim_mod.nml > input.nml
+
+   ./create_obs_set_def < create_obs_set_def.in
+
+   if ( $status > 0 ) then
+      echo "ERROR: running create_obs_set_def bombed ..."
+      exit
+   endif
+
+   echo "set_def.out"           > create_obs_sequence.in
+   echo "1"                    >> create_obs_sequence.in
+   echo "3"                    >> create_obs_sequence.in
+   echo "1 0"                  >> create_obs_sequence.in
+   echo "1 0"                  >> create_obs_sequence.in
+   echo "obs_seq.in"           >> create_obs_sequence.in
+
+   set obs_sequence_in_name = '"obs_seq.in"'
+   set obs_sequence_file_name = '"obs_seq.out"'
+
+   echo '&utilities_nml'                               > utilities.nml
+   echo '   logfilename = "create_obs_sequence.out",' >> utilities.nml
+   echo '   TERMLEVEL = 1 /'                          >> utilities.nml
+
+   cat utilities.nml assim_mod.nml > input.nml
+
+   ./create_obs_sequence < create_obs_sequence.in
+
+   if ( $status > 0 ) then
+      echo "ERROR: running create_obs_sequence bombed ..."
+      exit
+   endif
+
+breaksw
+endsw
+
+#======================================================================
+# Create common namelists -- lots of ways to do it.
+#======================================================================
+
+set async = 0
+set cutoff = 0.25
+set cov_inflate = 1.01
+set start_from_restart = .true.
+set output_restart = .true.
+set perfect_restart_in_file_name = '"perfect_ics"'
+set perfect_restart_out_file_name = '"perfect_restart"'
+set filter_restart_in_file_name = '"filter_ics"'
+set filter_restart_out_file_name = '"filter_restart"'
+set init_time_days = 0
+set init_time_seconds = 0
+set output_state_ens_mean = .true.
+set output_state_ens_spread = .true.
+set output_interval = 1
+
 
 #======================================================================
 # Simulate a particular observing system
@@ -122,31 +255,28 @@ echo " "
 echo "Running perfect_model_obs ..."
 echo " "
 
-cat << ENDofTask03 > perfect.nml
-
-&perfect_model_obs_nml
-   async = 0,
-   obs_seq_in_file_name = "obs_seq.in_151",
-   obs_seq_out_file_name = "obs_seq.out_151",
-   start_from_restart = .true.,
-   output_restart = .true.,
-   restart_in_file_name = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_interval = 1
-&end
-ENDofTask03
+echo "&perfect_model_obs_nml"                                       > perfect.nml
+echo "   async = $async ,"                                         >> perfect.nml
+echo "   obs_seq_in_file_name = $obs_sequence_in_name ,"           >> perfect.nml
+echo "   obs_seq_out_file_name = $obs_sequence_file_name ,"        >> perfect.nml
+echo "   start_from_restart = $start_from_restart ,"               >> perfect.nml
+echo "   output_restart = $output_restart ,"                       >> perfect.nml
+echo "   restart_in_file_name = $perfect_restart_in_file_name ,"   >> perfect.nml
+echo "   restart_out_file_name = $perfect_restart_out_file_name ," >> perfect.nml
+echo "   init_time_days = $init_time_days ,"                       >> perfect.nml
+echo "   init_time_seconds = $init_time_seconds ,"                 >> perfect.nml
+echo "   output_interval = $output_interval /"                     >> perfect.nml
 
 echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
-echo '   TERMLEVEL = 1'                           >> utilities.nml
-echo '&end'                                       >> utilities.nml
+echo '   TERMLEVEL = 1 /'                         >> utilities.nml
 
 cat utilities.nml assim_mod.nml perfect.nml > input.nml
 
-./perfect_model_obs
- 
+cat input.nml
+
+#./perfect_model_obs
+
 if ( $status > 0 ) then
    echo "ERROR: perfect_model_obs (synthetic) bombed ..."
    exit
@@ -168,21 +298,14 @@ echo " "
 echo "Running filter ..."
 echo " "
 
-set async = 0
-set ens_size = 50
-set cutoff = 0.25
-set cov_inflate = 1.01
-set start_from_restart = .true.
-set output_restart = .true.
-set obs_sequence_file_name = '"obs_seq.out_151"'
-set restart_in_file_name = '"filter_ics"'
-set restart_out_file_name = '"filter_restart"'
-set init_time_days = 0
-set init_time_seconds = 0
-set output_state_ens_mean = .true.
-set output_state_ens_spread = .true.
-set num_output_ens_members = 20
-set output_interval = 1
+#======================================================================
+# check environment variables 'NumEns' 'CovInflate' and 'Cutoff'  
+# if they are not defined, use default values.
+# There is no checking for sensible values ... caveat emptor ...
+
+echo "Ensemble size is $ens_size ..."
+echo "Num output ensemble members is $num_output_ens_members ..."
+sleep 2
 
 if ( ${?NumEns} ) then
    set ens_size = $NumEns
@@ -197,32 +320,32 @@ endif
 
 echo '&utilities_nml'                            > utilities.nml
 echo '   logfilename = "filter.out"'            >> utilities.nml
-echo '   TERMLEVEL = 1'                         >> utilities.nml
-echo '&end'                                     >> utilities.nml
+echo '   TERMLEVEL = 1 /'                       >> utilities.nml
 
-echo " "                                                        > filter.nml
-echo "&filter_nml"                                             >> filter.nml
-echo "   async = $async ,"                                     >> filter.nml
-echo "   ens_size = $ens_size ,"                               >> filter.nml
-echo "   cutoff = $cutoff ,"                                   >> filter.nml
-echo "   cov_inflate = $cov_inflate ,"                         >> filter.nml
-echo "   start_from_restart = $start_from_restart ,"           >> filter.nml
-echo "   output_restart = $output_restart ,"                   >> filter.nml
-echo "   obs_sequence_file_name = $obs_sequence_file_name ,"   >> filter.nml
-echo "   restart_in_file_name = $restart_in_file_name ,"       >> filter.nml
-echo "   restart_out_file_name = $restart_out_file_name ,"     >> filter.nml
-echo "   init_time_days = $init_time_days ,"                   >> filter.nml
-echo "   init_time_seconds = $init_time_seconds ,"             >> filter.nml
-echo "   output_state_ens_mean = $output_state_ens_mean ,"     >> filter.nml
-echo "   output_state_ens_spread = $output_state_ens_spread ," >> filter.nml
-echo "   num_output_ens_members = $num_output_ens_members ,"   >> filter.nml
-echo "   output_interval = $output_interval "                  >> filter.nml
-echo "&end"                                                    >> filter.nml
-echo " "                                                       >> filter.nml
+echo " "                                                            > filter.nml
+echo "&filter_nml"                                                 >> filter.nml
+echo "   async = $async ,"                                         >> filter.nml
+echo "   ens_size = $ens_size ,"                                   >> filter.nml
+echo "   cutoff = $cutoff ,"                                       >> filter.nml
+echo "   cov_inflate = $cov_inflate ,"                             >> filter.nml
+echo "   start_from_restart = $start_from_restart ,"               >> filter.nml
+echo "   output_restart = $output_restart ,"                       >> filter.nml
+echo "   obs_sequence_file_name = $obs_sequence_file_name ,"       >> filter.nml
+echo "   restart_in_file_name = $filter_restart_in_file_name ,"    >> filter.nml
+echo "   restart_out_file_name = $filter_restart_out_file_name ,"  >> filter.nml
+echo "   init_time_days = $init_time_days ,"                       >> filter.nml
+echo "   init_time_seconds = $init_time_seconds ,"                 >> filter.nml
+echo "   output_state_ens_mean = $output_state_ens_mean ,"         >> filter.nml
+echo "   output_state_ens_spread = $output_state_ens_spread ,"     >> filter.nml
+echo "   num_output_ens_members = $num_output_ens_members ,"       >> filter.nml
+echo "   output_interval = $output_interval /"                     >> filter.nml
+echo " "                                                           >> filter.nml
 
 cat utilities.nml assim_mod.nml filter.nml > input.nml
 
-./filter
+cat input.nml
+
+# ./filter
 
 if ( $status > 0 ) then
    echo "ERROR: filter bombed ..."
@@ -242,5 +365,7 @@ foreach NAMELIST ( ${SAVEME}/*.nml )
    mv ${NAMELIST} .
 end
 \rmdir ${SAVEME}
+
+\rm -f JeffWhitakerREADME
 
 exit

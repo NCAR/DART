@@ -139,15 +139,6 @@ if !( -e filter ) then
 endif
 \rm -f *.o *.mod Makefile
 
-#======================================================================
-# Create common namelists ...
-#======================================================================
-
-cat << ENDofTask01 > assim_mod.nml
-&assim_model_nml
-   binary_restart_files = .false.
-&end
-ENDofTask01
 
 #======================================================================
 # Define input files based on model
@@ -159,6 +150,8 @@ set COS = create_obs_sequence.in
 switch ( ${Model} )
 
    case 9var:
+
+      set BINARY_RESTART_FILES = .false.
 
       echo "set_def.out"   > $COSD ;# output file name
       echo "1"            >> $COSD ;# # of unique observation SETS to define
@@ -173,16 +166,17 @@ switch ( ${Model} )
       echo "1 0"          >> $COS  ;# observation interval (days, seconds)
       echo "obs_seq.in"   >> $COS  ;# output file name -- destined for perfect_model_obs 
 
-      echo "&model_nml"                      > model.nml
-      echo "   g = 8.0,"                    >> model.nml
-      echo "   deltat = 0.0833333333333333" >> model.nml
-      echo "&end"                           >> model.nml
+      echo "&model_nml"                         > model.nml
+      echo "   g = 8.0,"                       >> model.nml
+      echo "   deltat = 0.0833333333333333  /" >> model.nml
 
       set num_ens_members = 1000
 
    breaksw
 
    case lorenz_96:
+
+      set BINARY_RESTART_FILES = .false.
 
       echo "set_def.out"   > $COSD ;# output file name
       echo "1"            >> $COSD ;# # of unique observation SETS to define
@@ -197,11 +191,10 @@ switch ( ${Model} )
       echo "1 0"          >> $COS  ;# observation interval (days, seconds)
       echo "obs_seq.in"   >> $COS  ;# output file name -- destined for perfect_model_obs
 
-      echo "&model_nml"           > model.nml
-      echo "   model_size = 40," >> model.nml
-      echo "   forcing = 8.00,"  >> model.nml
-      echo "   deltat = 0.005"   >> model.nml
-      echo "&end"                >> model.nml
+      echo "&model_nml"              > model.nml
+      echo "   model_size = 40,"    >> model.nml
+      echo "   forcing = 8.00,"     >> model.nml
+      echo "   deltat = 0.005  /"   >> model.nml
 
       set num_ens_members = 200
 
@@ -209,15 +202,18 @@ switch ( ${Model} )
 
    case pe2lyr:
 
+      set BINARY_RESTART_FILES = .true.
+
       echo "set_def.out"   > $COSD 
       echo "1"            >> $COSD ;# # of unique observation SETS to define
       echo "1"            >> $COSD ;# # of observations in set 1
       echo "1000000.0"    >> $COSD ;# error variance for set 1, observation 1
-      echo "-1"           >> $COSD ;# not a state variable
-      echo "-1"           >> $COSD ;# surface observation
-      echo "30"           >> $COSD ;# longitude [0,360]
-      echo "40"           >> $COSD ;# latitude [-90,90]
-      echo "3"            >> $COSD ;# obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5
+      echo "1"            >> $COSD ;# observe state variable #1
+#     echo "-1"           >> $COSD ;# not a state variable
+#     echo "-1"           >> $COSD ;# surface observation
+#     echo "30"           >> $COSD ;# longitude [0,360]
+#     echo "40"           >> $COSD ;# latitude [-90,90]
+#     echo "3"            >> $COSD ;# obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5
 
       echo "set_def.out"   > $COS
       echo "1"            >> $COS  ;# make a "regular" sequence
@@ -232,6 +228,8 @@ switch ( ${Model} )
 
    default:     # lorenz_63, lorenz_84
 
+      set BINARY_RESTART_FILES = .false.
+
       echo "set_def.out"                                             > $COSD 
       echo "1           ;# # of unique observation SETS to define"  >> $COSD
       echo "1           ;# # of observations in set 1"              >> $COSD
@@ -245,9 +243,8 @@ switch ( ${Model} )
       echo "1 0"         >> $COS
       echo "obs_seq.in"  >> $COS
 
-      echo "&model_nml"        > model.nml
-      echo "   deltat = 0.01" >> model.nml
-      echo "&end"             >> model.nml
+      echo "&model_nml"          > model.nml
+      echo "   deltat = 0.01 /" >> model.nml
 
       set num_ens_members = 1000
 
@@ -255,14 +252,20 @@ switch ( ${Model} )
 
 endsw
 
+#======================================================================
+# Create namelists and run ...
+#======================================================================
+
+echo "&assim_model_nml"                                   > assim_mod.nml
+echo "   binary_restart_files = $BINARY_RESTART_FILES /" >> assim_mod.nml
+
 echo "#----------------------------------------------------------------------"
 echo "Step 1: Create SETS of observation definitions"
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                               > utilities.nml
-echo '   logfilename = "create_obs_set_def.out",'  >> utilities.nml
-echo '   TERMLEVEL = 1'                            >> utilities.nml
-echo '&end'                                        >> utilities.nml
+echo '&utilities_nml'                                 > utilities.nml
+echo '   logfilename = "create_obs_set_def.out",'    >> utilities.nml
+echo '   TERMLEVEL = 1 /'                            >> utilities.nml
 
 cat utilities.nml assim_mod.nml > input.nml
 
@@ -281,10 +284,9 @@ echo "#----------------------------------------------------------------------"
 echo "# Step 2: Create SEQUENCES of observation SETS (with nothing in them)"
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                                > utilities.nml
-echo '   logfilename = "create_obs_sequence.out",'  >> utilities.nml
-echo '   TERMLEVEL = 1'                             >> utilities.nml
-echo '&end'                                         >> utilities.nml
+echo '&utilities_nml'                                  > utilities.nml
+echo '   logfilename = "create_obs_sequence.out",'    >> utilities.nml
+echo '   TERMLEVEL = 1 /'                             >> utilities.nml
 
 cat utilities.nml assim_mod.nml > input.nml
 
