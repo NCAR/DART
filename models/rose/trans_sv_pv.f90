@@ -46,7 +46,6 @@ type(time_type)        :: adv_to_time
 real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
 character (len = 128)  :: file_name = 'rose_restart.dat', file_in = 'temp_ic'
-character (len = 16)   :: file_form
 
 ! Static init assim model calls static_init_model
 PRINT*,'static_init_assim_model in trans_sv_pv'

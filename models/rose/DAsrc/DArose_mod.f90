@@ -61,7 +61,7 @@ subroutine msetvar
          ierr = 1
          do while(ierr /= 0)
             read(iunit, nml = rose_nml, iostat = io)
-            ierr = check_nml_error(io, 'gswm_nml')
+            ierr = check_nml_error(io, 'rose_nml')
          end do  
          call close_file(iunit)
       endif
