@@ -1,19 +1,24 @@
 module assim_tools_mod
 
+use types_mod
+
 ! A variety of operations required by assimilation.
 
 use obs_mod, only : num_obs, obs_var, take_obs
 
 use utilities_mod, only : file_exist, open_file, check_nml_error, &
-   print_version_number, close_file
+                          print_version_number, close_file
 
 use sort_mod, only : index_sort
 
 ! Added 22 January, 2001 to duplicate observations no matter what else is
 ! done with random number generator. Allows clear enkf_2d comparisons.
-use random_seq_mod, only : random_gaussian, random_seq_type, init_random_seq, &
-   random_uniform
+
+use random_seq_mod, only : random_gaussian, random_seq_type, &
+                           init_random_seq, random_uniform
+
 logical :: first_ran_call = .true., first_inc_ran_call = .true.
+
 type (random_seq_type) :: ran_seq, inc_ran_seq
 
 private
@@ -27,7 +32,7 @@ public add_noise, read_restart, write_restart, assim_tools_init, &
 
 !---- namelist with default values
 
-double precision :: cor_cutoff = 0.0
+real(r8) :: cor_cutoff = 0.0_r8
 
 namelist / assim_tools_nml/ cor_cutoff
 
@@ -39,27 +44,44 @@ character(len = 12), parameter :: vers_num = '10/03/2000'
 
 contains
 
-!============================================================================
+
 
 subroutine assim_tools_init()
+!============================================================================
+! subroutine assim_tools_init()
+!
 
 implicit none
 
 integer :: unit, ierr, io
 
 ! Read namelist for run time control
+
 if(file_exist('input.nml')) then
    unit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
-   do while(ierr /= 0)
-      read(unit, nml = assim_tools_nml, iostat = io, end = 11)
+
+! TJH Coding Standard does not allow use of the "end=" construct.
+!
+!  do while(ierr /= 0)
+!     read(unit, nml = assim_tools_nml, iostat = io, end = 11)
+!     ierr = check_nml_error(io, 'assim_tools_nml')
+!  enddo
+!11 continue
+
+   READBLOCK: do while(ierr /= 0)
+      read(unit, nml = assim_tools_nml, iostat = io)
+      if ( io < 0 ) exit READBLOCK          ! end-of-file
       ierr = check_nml_error(io, 'assim_tools_nml')
-   enddo
- 11 continue
+   enddo READBLOCK
+ 
    call close_file(unit)
 endif
 
+! TJH 14.03.2002 What do we do if the namelist does not exist?
+
 ! Write the namelist to a log file
+
 unit = open_file(file = 'logfile.out', action = 'append')
 call print_version_number(unit, module_name, vers_num)
 write(unit, nml = assim_tools_nml)
@@ -69,11 +91,12 @@ write(*, *) 'Correlation cutoff in fast_seq_non_identity_prod is ', cor_cutoff
 
 end subroutine assim_tools_init
 
-!============================================================================
+
 
 function add_noise(obs)
-
-!---------------------------------------------------------------------------
+!============================================================================
+! function add_noise(obs)
+!
 ! Given the perfect set of observations of the system, adds in observational
 ! error using the observational error covariance matrix. Current 
 ! implementation assumes that the covariance matrix is diagonal and makes
@@ -85,36 +108,39 @@ function add_noise(obs)
 
 implicit none
 
-double precision, intent(in) :: obs(num_obs)
-double precision :: add_noise(num_obs)
+real(r8), intent(in) ::       obs(num_obs)
+real(r8)             :: add_noise(num_obs)
 
-!double precision :: c(size(obs, 1), size(obs, 1))
-double precision :: var(size(obs, 1))
-!double precision :: r(((size(obs, 1) + 1) * (size(obs, 1) + 2)) / 2)
+!real(r8) :: c(size(obs, 1), size(obs, 1))
+ real(r8) :: var(size(obs, 1))
+!real(r8) :: r(((size(obs, 1) + 1) * (size(obs, 1) + 2)) / 2)
+
 integer :: d, nr, ifail
 integer :: i
 
 ! Do we need to initialize the repeatable random gen (added 22 Jan 2001)
+
 if(first_ran_call) then
    first_ran_call = .false.
    call init_random_seq(ran_seq)
 end if
 
-! Observational dimension
-d = size(obs, 1)
+d = size(obs, 1)       ! Observational dimension
 
 ! CURRENT IMPLEMENTATION ASSUMES NO COVARIANCE
 ! Generate random numbers using observational error variance matrix
+
 var = obs_var()
 
 do i = 1, d
-! MODIFIED 22 JAN 2001 to ALLOW REPRODUCING OBS SEQUENCES; Modified 14 Feb.
-! to allow negative variance to mean don't use this ob.
+   ! MODIFIED 22 JAN 2001 to ALLOW REPRODUCING OBS SEQUENCES; Modified 14 Feb.
+   ! to allow negative variance to mean don't use this ob.
+
    if(var(i) < 0.0) then
       add_noise(i) = obs(i)
    else
       add_noise(i) = obs(i) + &
-         sqrt(var(i)) * random_gaussian(ran_seq, dble(0.0), dble(1.0))
+         sqrt(var(i)) * random_gaussian(ran_seq, 0.0_r8, 1.0_r8)
    endif
 end do
 
@@ -140,14 +166,18 @@ if(1 == 1) return
 
 end function add_noise
 
-!============================================================================
+
 
 subroutine read_restart(x, ens, last_step)
+!============================================================================
+! subroutine read_restart(x, ens, last_step)
+!
 
 implicit none
 
-double precision, intent(inout) :: x(:), ens(:, :)
-integer, intent(inout) :: last_step
+real(r8), intent(inout) :: x(:), ens(:, :)
+integer,  intent(inout) :: last_step
+
 integer :: chan
 
 chan = open_file(file = 'restart.in', action = 'read')
@@ -159,14 +189,18 @@ call close_file(chan)
 
 end subroutine read_restart
 
-!========================================================================
+
 
 subroutine write_restart(x, ens, last_step)
+!========================================================================
+! subroutine write_restart(x, ens, last_step)
+!
 
 implicit none
 
-double precision, intent(in) :: x(:), ens(:, :)
-integer, intent(in) :: last_step
+real(r8), intent(in) :: x(:), ens(:, :)
+integer,  intent(in) :: last_step
+
 integer :: chan
 
 chan = open_file(file = 'restart.out', action = 'write')
@@ -177,21 +211,23 @@ call close_file(chan)
 
 end subroutine write_restart
 
-!========================================================================
+
 
 subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
-
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
 ! EAKF version of obs increment
 
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var
-double precision, intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 
-double precision :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-double precision :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
-double precision:: prior_cov, sx, s_x2
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
 
 integer :: i
 
@@ -218,9 +254,12 @@ obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment
 
-!========================================================================
+
 
 subroutine obs_inc_index(ens, ens_size, obs, obs_var, obs_inc, index)
+!========================================================================
+! subroutine obs_inc_index(ens, ens_size, obs, obs_var, obs_inc, index)
+!
 
 ! EAKF version of obs increment with closest obs neighbor indexing
 ! See notes from 14 November, 2001
@@ -228,14 +267,14 @@ subroutine obs_inc_index(ens, ens_size, obs, obs_var, obs_inc, index)
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var
-double precision, intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 integer, intent(out) :: index(ens_size)
 
-double precision :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-double precision :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
-double precision :: prior_cov, sx, s_x2
-double precision :: new_obs(ens_size), min_dist
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8) :: prior_cov, sx, s_x2
+real(r8) :: new_obs(ens_size), min_dist
 
 integer :: i, j
 
@@ -275,22 +314,25 @@ end do
 
 end subroutine obs_inc_index
 
-!========================================================================
+
 
 subroutine obs_increment4(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment4(ens, ens_size, obs, obs_var, obs_inc)
+!
 
 ! ENKF version of obs increment
 
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var
-double precision, intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 
-double precision :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-double precision :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
-double precision :: sx, s_x2, prior_cov
-double precision :: temp_mean, temp_obs(ens_size)
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
+real(r8) :: sx, s_x2, prior_cov
+real(r8) :: temp_mean, temp_obs(ens_size)
 integer :: ens_index(ens_size), new_index(ens_size)
 
 integer :: i
@@ -336,9 +378,12 @@ end do
 !end do
 
 end subroutine obs_increment4
-!========================================================================
+
+
 
 subroutine obs_inc4_index(ens, ens_size, obs, obs_var, obs_inc, index)
+!========================================================================
+! subroutine obs_inc4_index(ens, ens_size, obs, obs_var, obs_inc, index)
 
 ! ENKF version of obs increment
 ! This is the version that uses local linear updates by finding nearest
@@ -347,14 +392,14 @@ subroutine obs_inc4_index(ens, ens_size, obs, obs_var, obs_inc, index)
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var
-double precision, intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 integer, intent(out) :: index(ens_size)
 
-double precision :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-double precision :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
-double precision :: sx, s_x2, prior_cov
-double precision :: temp_mean, temp_obs(ens_size), min_dist
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
+real(r8) :: sx, s_x2, prior_cov
+real(r8) :: temp_mean, temp_obs(ens_size), min_dist
 integer :: ens_index(ens_size), new_index(ens_size)
 
 integer :: i, j
@@ -408,24 +453,27 @@ end do
 
 end subroutine obs_inc4_index
 
-!========================================================================
+
 
 subroutine obs_increment3(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment3(ens, ens_size, obs, obs_var, obs_inc)
+!
 
 ! Kernel version of obs increment
 
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var
-double precision, intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 
-double precision :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-double precision :: mean(1), prior_mean, prior_cov_inv, new_cov, prior_cov
-double precision :: sx, s_x2
-double precision :: weight(ens_size), new_mean(ens_size)
-double precision :: cum_weight, total_weight, cum_frac(ens_size)
-double precision :: unif, norm, new_member(ens_size)
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, prior_cov
+real(r8) :: sx, s_x2
+real(r8) :: weight(ens_size), new_mean(ens_size)
+real(r8) :: cum_weight, total_weight, cum_frac(ens_size)
+real(r8) :: unif, norm, new_member(ens_size)
 
 integer :: i, j, kernel, ens_index(ens_size), new_index(ens_size)
 
@@ -496,9 +544,12 @@ end do
 
 end subroutine obs_increment3
 
-!========================================================================
+
 
 subroutine obs_increment2(ens, ens_size, obs, obs_var_in, obs_inc)
+!========================================================================
+! subroutine obs_increment2(ens, ens_size, obs, obs_var_in, obs_inc)
+!
 
 ! This is a research version of obs increment using generalized 
 ! distributions. Should not be used in present from.
@@ -506,23 +557,23 @@ subroutine obs_increment2(ens, ens_size, obs, obs_var_in, obs_inc)
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var_in
-double precision, intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: ens(ens_size), obs, obs_var_in
+real(r8), intent(out) :: obs_inc(ens_size)
 
-double precision :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-double precision :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
-double precision :: prior_cov, sx, s_x2
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8) :: prior_cov, sx, s_x2
 
 integer, parameter :: num = 10000
 integer :: i, index, cur_index, j , ind_sort(ens_size)
-double precision :: tot_dense, loc(ens_size), target
-double precision :: obs_dense(num), state_dense(num), dense(num)
-double precision :: cum_dense(0:num) 
-double precision :: kernel_var, max, min, range, x(num)
-double precision :: min_ens, min_obs, max_ens, max_obs
+real(r8) :: tot_dense, loc(ens_size), target
+real(r8) :: obs_dense(num), state_dense(num), dense(num)
+real(r8) :: cum_dense(0:num) 
+real(r8) :: kernel_var, max, min, range, x(num)
+real(r8) :: min_ens, min_obs, max_ens, max_obs
 
 
-double precision :: obs_var
+real(r8) :: obs_var
 
 
 !!! TEST, GET RID OF THIS
@@ -646,11 +697,14 @@ if(1 == 1) stop
 
 end subroutine obs_increment2
 
+
+
+subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
+               state_inc, cov_factor)
 !========================================================================
-
-
-subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, state_inc, &
-   cov_factor)
+! subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
+!                state_inc, cov_factor)
+!
 
 ! Does linear regression of a state variable onto an observation and
 ! computes state variable increments from observation increments
@@ -658,15 +712,16 @@ subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, state_inc, &
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: obs(ens_size), obs_inc(ens_size)
-double precision, intent(in) :: state(ens_size), cov_factor
-double precision, intent(out) :: state_inc(ens_size)
+real(r8), intent(in) :: obs(ens_size), obs_inc(ens_size)
+real(r8), intent(in) :: state(ens_size), cov_factor
+real(r8), intent(out) :: state_inc(ens_size)
 
-double precision :: sum_x, sum_y, sum_xy, sum_x2, reg_coef
+real(r8) :: sum_x, sum_y, sum_xy, sum_x2, reg_coef
 
 ! For efficiency, just compute regression coefficient here
-sum_x = sum(obs)
-sum_y = sum(state)
+
+sum_x  = sum(obs)
+sum_y  = sum(state)
 sum_xy = sum(obs * state)
 sum_x2 = sum(obs * obs)
 
@@ -676,10 +731,14 @@ state_inc = cov_factor * reg_coef * obs_inc
 
 end subroutine update_from_obs_inc
 
-!========================================================================
+
 
 subroutine robust_update_from_obs_inc(obs, obs_inc, state, ens_size, &
-   state_inc, cov_factor, index_in)
+                                      state_inc, cov_factor, index_in)
+!========================================================================
+! subroutine robust_update_from_obs_inc(obs, obs_inc, state, ens_size, &
+!                                       state_inc, cov_factor, index_in)
+!
 
 ! Does a robust linear regression of a state variable onto an observation
 ! variable. Not rigorously tested at this point.
@@ -688,12 +747,12 @@ implicit none
 
 integer, intent(in) :: ens_size
 integer, intent(in), optional :: index_in(ens_size)
-double precision, intent(in) :: obs(ens_size), obs_inc(ens_size)
-double precision, intent(in) :: state(ens_size), cov_factor
-double precision, intent(out) :: state_inc(ens_size)
+real(r8), intent(in) :: obs(ens_size), obs_inc(ens_size)
+real(r8), intent(in) :: state(ens_size), cov_factor
+real(r8), intent(out) :: state_inc(ens_size)
 
-double precision :: ens(2, ens_size), cov(2, 2), reg
-double precision :: y_lo, y_hi, x_lo, x_hi
+real(r8) :: ens(2, ens_size), cov(2, 2), reg
+real(r8) :: y_lo, y_hi, x_lo, x_hi
 integer :: index(ens_size), i
 integer :: lo_start, lo_end, hi_start, hi_end, lo_size, hi_size
 
@@ -743,10 +802,14 @@ state_inc = cov_factor * reg * obs_inc
 
 end subroutine robust_update_from_obs_inc
 
-!========================================================================
 
-subroutine local_update_from_obs_inc(obs, obs_inc, state, ens_size, state_inc, &
-   cov_factor, half_num_neighbors, index_in)
+
+subroutine local_update_from_obs_inc(obs, obs_inc, state, ens_size, &
+                     state_inc, cov_factor, half_num_neighbors, index_in)
+!========================================================================
+! subroutine local_update_from_obs_inc(obs, obs_inc, state, ens_size, &
+!                      state_inc, cov_factor, half_num_neighbors, index_in)
+!
 
 ! First stab at doing local linear regression on a set of num_neighbors
 ! points around a particular obs.
@@ -755,12 +818,12 @@ implicit none
 
 integer, intent(in) :: ens_size, half_num_neighbors
 integer, intent(in), optional :: index_in(ens_size)
-double precision, intent(in) :: obs(ens_size), obs_inc(ens_size)
-double precision, intent(in) :: state(ens_size), cov_factor
-double precision, intent(out) :: state_inc(ens_size)
+real(r8), intent(in) :: obs(ens_size), obs_inc(ens_size)
+real(r8), intent(in) :: state(ens_size), cov_factor
+real(r8), intent(out) :: state_inc(ens_size)
 
-double precision :: ens(2, ens_size), cov(2, 2), y2(ens_size), xy(ens_size)
-double precision :: sx, sy, s_y2, sxy, reg
+real(r8) :: ens(2, ens_size), cov(2, 2), y2(ens_size), xy(ens_size)
+real(r8) :: sx, sy, s_y2, sxy, reg
 integer :: index(ens_size), i, lower, upper, num_neighbors
 
 ! Make sure num_neighbors isn't too big to make sense
@@ -821,6 +884,8 @@ end do
 
 end subroutine local_update_from_obs_inc
 
+!========================================================================
+! end module assim_tools_mod
 !========================================================================
 
 end module assim_tools_mod
