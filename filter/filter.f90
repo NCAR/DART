@@ -35,8 +35,7 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart, &
-   init_diag_outputORG, output_diagnosticsORG, get_state_meta_data
+   write_state_restart, read_state_restart, get_state_meta_data
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
@@ -189,12 +188,15 @@ endif
 ! Initialize a cache for close state information
 call cache_init(cache, cache_size)
 
-! Set up diagnostic output for model state
+! Set up diagnostic output for model state, if output is desired
 
-PriorStateUnit     = init_diag_output('Prior_Diag', &
-                        'prior ensemble state', meta_data_size, ens_copy_meta_data)
-PosteriorStateUnit = init_diag_output('Posterior_Diag', &
-                        'posterior ensemble state', meta_data_size, ens_copy_meta_data)
+if(  output_state_ens_spread .or. output_state_ens_mean .or. &
+    ( num_output_ens_members > 0 ) ) then
+   PriorStateUnit     = init_diag_output('Prior_Diag', &
+                           'prior ensemble state', meta_data_size, ens_copy_meta_data)
+   PosteriorStateUnit = init_diag_output('Posterior_Diag', &
+                           'posterior ensemble state', meta_data_size, ens_copy_meta_data)
+endif
 
 ! Set a time type for initial time if namelist inputs are not negative
 if(init_time_days >= 0) then
@@ -302,9 +304,11 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    end do
 
-! Output state diagnsotics as required: NOTE: Prior has been inflated
+! Output state diagnostics as required: NOTE: Prior has been inflated
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
+         ! TJH debugging block.
+         print *,'Going one time, i,noem= ',j,num_output_ens_members
          call output_diagnostics(     PriorStateUnit, ens(j), j)
       end do
    end if
@@ -319,7 +323,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       call output_diagnostics(PriorStateUnit, ens_spread, output_ens_spread_index)
    endif
-   ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
+   ! ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
 
 
    ! How many observations in this set
@@ -425,7 +429,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       call output_diagnostics(PosteriorStateUnit, ens_spread, output_ens_spread_index)
    endif
-   ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
+   ! ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
 
    ! Deallocate the ens_obs storage for this obs set
    deallocate(obs_err_cov, obs)
