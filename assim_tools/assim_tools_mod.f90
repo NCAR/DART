@@ -18,7 +18,7 @@ use sort_mod,       only : index_sort
 ! Added 22 January, 2001 to duplicate observations no matter what else is
 ! done with random number generator. Allows clear enkf_2d comparisons.
 
-use random_seq_mod, only : random_gaussian, random_seq_type, &
+use random_seq_mod, only : random_seq_type, random_gaussian, &
                            init_random_seq, random_uniform
 
 logical :: first_ran_call = .true., first_inc_ran_call = .true.

@@ -14,7 +14,7 @@ use types_mod
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
 
-use obs_sequence_mod, only : init_obs_sequence, obs_sequence_type, &
+use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, read_obs_sequence, associate_def_list, &
    get_num_obs_sets, get_obs_set, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
@@ -27,7 +27,7 @@ use obs_kind_mod, only : set_obs_kind
 ! TJH not used as far as I can tell ....  use location_mod, only : set_location
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
    add_to_list, write_set_def_list
-use obs_set_mod, only : init_obs_set, obs_set_type, set_obs_set_time, write_obs_set, &
+use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time, write_obs_set, &
    get_obs_set_time, get_num_obs
 use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &

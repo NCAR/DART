@@ -31,23 +31,46 @@ use location_mod         , only: location_type, get_location, set_location, get_
 implicit none
 private
 
-public prog_var_to_vector, vector_to_prog_var, read_cam_init, &
-   read_cam_init_size, &
+public model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
+   read_cam_init_size, init_model_instance, &
    write_cam_init, get_model_size, static_init_model, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
    init_conditions, init_time, adv_1step, end_model, &
    model_get_close_states, nc_write_model_atts, &
-   vars, x, &
    TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_TRACER
 
+!-----------------------------------------------------------------------
+! let CVS fill strings ... DO NOT EDIT ...
+ 
+character(len=128) :: version = "$Id$"
+character(len=128) :: tag = "$Name$"
+ 
+character(len=128) :: &
+   source = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+!-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
 ! Public definition of variable types
 integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 4, TYPE_TRACER = 5
 
+!----------------------------------------------------------------------
+! A type for cam model, very simple for now for conversion only
+type model_type
+!   private
+   real(r8), pointer :: vars_2d(:, :, :)
+   real(r8), pointer :: vars_3d(:, :, :, :)
+   real(r8), pointer ::  tracers(:, :, :, :)
+end type model_type
 
 !----------------------------------------------------------------------
+! File where basic info about model configuration can be found; should be namelist
 
+character(len = 128) :: model_config_file = 'T5H0-12icl.cam2.i.0001-09-01-43200.nc'
+!----------------------------------------------------------------------
+
+!
 ! Global storage for describing cam model class
 integer :: model_size, num_lons, num_lats, num_levs
 type(time_type) :: Time_step_atmos
@@ -56,6 +79,7 @@ integer, parameter :: n3dflds=4     ! # of 3d fields to read from file
 !                                   including Q, but not tracers
 integer, parameter :: pcnst  =0     ! advected tracers (don't include Q in this)
 integer, parameter :: pnats  =0     ! nonadvected tracers
+integer, parameter :: num_tracers = pcnst + pnats
 integer, parameter :: n2dflds=1     ! # of 2d fields to read from file
 ! derived parameters
 integer, parameter :: n3tflds  = n3dflds+pcnst+pnats   ! # fields to read
@@ -63,9 +87,6 @@ integer, parameter :: nflds  = n3tflds+n2dflds         ! # fields to read
 
 ! Arrays to store lat and lon indices
 real(r8), allocatable :: lons(:), lats(:)
-
-! This should be local inside the conversion routines???
-real(r8), allocatable :: vars(:,:,:,:)                 !3d and 2D variables read from CAM
 
 ! list variables according to the category to which they belong, 
 ! in the order the categories appear above (n3dflds,pcnst,pnats,n2dflds).
@@ -78,38 +99,13 @@ real(r8), allocatable :: vars(:,:,:,:)                 !3d and 2D variables read
 !   TS, TSICE, TS1, TS2, TS3, TS4
 !   SNOWHICE, LANDFRAC, CWAT
 character (len=8),dimension(nflds) :: cflds = &
-          (/'U       ','V       ','T       ','Q       ','PS      ' /)
+          (/'PS      ','T       ','U       ','V       ','Q       ' /)
+!          (/'U       ','V       ','T       ','Q       ','PS      ' /)
+
+!  ??? Need to understand what Kevin was doing with nlevs; I may be missing something essential
 integer, dimension(nflds) :: nlevs 
 data nlevs/ n3tflds*0, n2dflds*1/
 
-! netCDF filename; where will this come from in DART?
-!                  it's created by CAM, and written out to a file somewhere; read it in?
-character (len=128) :: filename = '/home/raeder/DAI/test.nc'
-
-!----------------------------------------------------------------------
-! dimension DART arrays
-
-real(r8), allocatable :: x(:)          ! state vector to pass to DART, size (siz)
-
-!----------------------------------------------------------------------
-! netCDF parameters and variables
-integer londimid, levdimid, latdimid ! Dimension ID's
-integer ncfileid                     ! netCDF file ID 
-integer ncfldid                      ! netCDF field ID 
-
-! kdr; uncomment for installation into DART
-!-----------------------------------------------------------------------
-! let CVS fill strings ... DO NOT EDIT ...
-! 
-! character(len=128) :: version = "$Id$"
-! character(len=128) :: tag = "$Name$"
-! 
-! character(len=128) :: &
-!    source = "$Source$", &
-!    revision = "$Revision$", &
-!    revdate  = "$Date$"
-! 
-!-----------------------------------------------------------------------
 !---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
 
@@ -128,6 +124,7 @@ character(len = *), intent(in) :: file_name
 integer, intent(out) :: num_lons, num_lats, num_levs
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
+integer :: londimid, levdimid, latdimid, ncfileid
 
 write(*, *) 'file_name in read_cam_init is ', trim(file_name)
 
@@ -148,122 +145,122 @@ call check(nf90_inquire_dimension(ncfileid, levdimid, clev , num_levs ))
 end subroutine read_cam_init_size
 
 !#######################################################################
-subroutine read_cam_init
+subroutine read_cam_init(file_name, var)
+
+implicit none
+
+character(len = *), intent(in) :: file_name
+type(model_type), intent(out) :: var
 
 !----------------------------------------------------------------------
 ! Local workspace
 integer :: i,j,ifld  ! grid and constituent indices
-integer :: siz, plon, plat, plev
+integer :: plon, plat, plev
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
+integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
 
 !----------------------------------------------------------------------
 ! read CAM 'initial' file domain info
-call check(nf90_open(path = trim(filename), mode = nf90_write, ncid = ncfileid))
+call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
-! get dimension 'id's
-call check(nf90_inq_dimid(ncfileid, 'lon', londimid))
-call check(nf90_inq_dimid(ncfileid, 'lat', latdimid))
-call check(nf90_inq_dimid(ncfileid, 'lev', levdimid))
+! Could do this for storage size error check later
+!call check(nf90_inq_dimid(ncfileid, 'lon', londimid))
+!call check(nf90_inq_dimid(ncfileid, 'lat', latdimid))
+!call check(nf90_inq_dimid(ncfileid, 'lev', levdimid))
 
 ! get dimension sizes
-call check(nf90_inquire_dimension(ncfileid, londimid, clon , plon ))
-call check(nf90_inquire_dimension(ncfileid, latdimid, clat , plat ))
-call check(nf90_inquire_dimension(ncfileid, levdimid, clev , plev ))
+!call check(nf90_inquire_dimension(ncfileid, londimid, clon , plon ))
+!call check(nf90_inquire_dimension(ncfileid, latdimid, clat , plat ))
+!call check(nf90_inquire_dimension(ncfileid, levdimid, clev , plev ))
 
-! allocate space for arrays based on domain size
-allocate ( vars(plon,plev,plat,nflds) )
-siz = (plon*plat) * ((n3dflds+pcnst+pnats)*plev + n2dflds)
-allocate ( x(siz))
-PRINT*,'in read_cam_init siz = ',siz
-
+!!! ??? I'm not sure what this next part is really doing, verify
 ! specify # vertical levels for 3D fields (2d have already been filled)
-i=1
-do while (nlevs(i)==0 .and. i<=nflds)
-   nlevs(i) = plev
-   i=i+1
-end do
-WRITE(*,*) 'nlevs = ',(nlevs(j),j=1,nflds)
+!i=1
+!do while (nlevs(i)==0 .and. i<=nflds)
+!   nlevs(i) = plev
+!   i=i+1
+!end do
+!WRITE(*,*) 'nlevs = ',(nlevs(j),j=1,nflds)
 
 ! read CAM 'initial' file fields desired
-! 3d fields
-do ifld=1,n3tflds
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
-!  fields on file are 4D; lon, lev, lat, TIME(=1) 
-   call check(nf90_get_var(ncfileid, ncfldid, vars(:,:,:,ifld) &
-             ,start=(/1,1,1,1/) ,count=(/plon,nlevs(ifld),plat,1/) ))
-end do
 
-!2d fields
-do ifld=n3tflds+1,n3tflds+n2dflds
+!2d fields; hard coded for only 1 2d field here (generalize???)
+do ifld= 1, 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 3D; lon, lat, TIME(=1)
-   call check(nf90_get_var(ncfileid, ncfldid, vars(:,1,:,ifld) &
-             ,start=(/1,1,1/) ,count=(/plon,plat,1/) ))
+   call check(nf90_get_var(ncfileid, ncfldid, var%vars_2d(:, :, 1) &
+             ,start=(/1,1,1/) ,count=(/num_lons, num_lats, 1/) ))
 end do
 
-return
+! 3d fields; hard coded for only 4 here now (generalize???)
+do ifld=2, 5
+   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+!  fields on file are 4D; lon, lev, lat, TIME(=1) 
+   call check(nf90_get_var(ncfileid, ncfldid, var%vars_3d(:, :, :, ifld - 1) &
+             ,start=(/1,1,1,1/) ,count=(/num_lons, num_levs, num_lats,1/) ))
+
+!!! ?? WARNING: DOES THE NUMBER OF VERTICAL LEVELS PER 3D FIELD VARY
+! AS KEVIN"S CODE SUGGESTED. IF SO NEED TO FIX
+end do
+
 end subroutine read_cam_init
 
 !#######################################################################
-subroutine prog_var_to_vector(vars, x, siz)
+subroutine prog_var_to_vector(var, x)
 
 implicit none
 
-integer, intent(in) :: siz
+type(model_type), intent(in) :: var
+real(r8), intent(out) :: x(:)
 
-real(r8), intent(in), dimension(num_lons, num_levs, num_lats, nflds) :: vars
-real(r8), intent(out),dimension(siz) :: x
+integer :: i, j, k, nf, nt, index
 
-integer :: i, j, k, nf, nt, n0, index
+! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
 
 ! Start copying fields to straight vector
 index = 0
 do i = 1, num_lons
    do j = 1, num_lats
+!  Surface pressure and other 2d flds are first
+      do nf = 1, n2dflds
+         index = index + 1
+         x(index) = var%vars_2d(i, j, nf)
+      end do
 !     u,v,t,q, and tracers at successively lower levels
-      n0 = n3dflds
       do k = 1, num_levs
-         do nf=1,n3dflds
+         do nf= 1, n3dflds
             index = index + 1
-            x(index) = vars(i, k, j, nf)
+            x(index) = var%vars_3d(i, k, j, nf)
          end do
-         do nt = n0+1, n0+pcnst+pnats
+         do nt = 1, num_tracers
             IF (i==1 .and. j==1) PRINT*,'filling tracers'
             index = index + 1
-            x(index) = vars(i, k, j, nt)
+            x(index) = var%tracers(i, k, j, nt)
          end do
-      end do
-!     Surface pressure and other 2d flds are last
-      n0 = n3dflds+pcnst+pnats
-      do nf=n0+1,n0+n2dflds
-         index = index + 1
-         x(index) = vars(i, 1, j, nf)
       end do
    end do
 end do
 
 ! Temporary check
-if(index /= siz) then
+if(index /= model_size) then
    write(*, *) 'prog_var_to_vector bad index sum '
-   write(*, *) 'index, siz ', index, siz
+   write(*, *) 'index, model_size ', index, model_size
    stop
 endif
 
-return
 end subroutine prog_var_to_vector
 
 !#######################################################################
 
-subroutine vector_to_prog_var(x, siz, vars) 
+subroutine vector_to_prog_var(x, var) 
 
 implicit none
 
- integer, intent(in) :: siz
- real(r8), intent(in),dimension(siz) :: x
- real(r8), dimension(num_lons, num_levs, num_lats,nflds), intent(out) :: vars
+real(r8), intent(in) :: x(:)
+type(model_type), intent(out) :: var
 
 integer :: i, j, k, nf, nt, n0, index
 
@@ -271,59 +268,67 @@ integer :: i, j, k, nf, nt, n0, index
 index = 0
 do i = 1, num_lons
    do j = 1, num_lats
-!     u,v,t,q  and tracers at successive levels
-      n0 = n3dflds
-      do k = 1, num_levs
-         do nf = 1,n3dflds
-            index = index + 1
-            vars(i, k, j, nf) = x(index)
-         end do 
-         do nt = n0+1, n0+pcnst+pnats
-            index = index + 1
-            vars(i, k, j, nt) = x(index)
-         end do
-      end do
-! Surface pressure and other 2d fields are last
-      n0 = n3dflds+pcnst+pnats
-      do nf=n0+1,n0+n2dflds
+! Surface pressure and other 2d fields are first
+      do nf = 1, n2dflds
          index = index + 1
-         vars(i, 1, j, nf) = x(index)
+         var%vars_2d(i, j, nf) = x(index)
+      end do
+!     u,v,t,q  and tracers at successive levels
+      do k = 1, num_levs
+         do nf = 1, n3dflds
+            index = index + 1
+            var%vars_3d(i, k, j, nf) = x(index)
+         end do 
+         do nt = 1, num_tracers
+            index = index + 1
+            var%tracers(i, k, j, nt) = x(index)
+         end do
       end do
    end do
 end do
 
 ! Temporary check
-if(index /= siz) then
+if(index /= model_size) then
    write(*, *) 'prog_var_to_vector bad index sum '
-   write(*, *) 'index, siz ', index, siz
+   write(*, *) 'index, model_size ', index,  model_size
    stop
 endif
 
-return
 end subroutine vector_to_prog_var
 
 !#######################################################################
-subroutine write_cam_init
+subroutine write_cam_init(file_name, var)
 
 implicit none
 
-integer ifld
+character (len = *), intent(in) :: file_name
+type(model_type), intent(in) :: var
+
+integer ifld, ncfileid, ncfldid
+
+! Read CAM 'initial' file domain info
+call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
+
+! Try doing this in revised order
+! 2d fields are first
+do ifld = 1, 1
+   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(:, :, ifld), &
+      start=(/1, 1, 1/), count = (/num_lons, num_lats, 1/)))
+end do 
 
 ! write CAM 'initial' file fields that have been updated
-do ifld=1,n3tflds
+! ????? WARNING: PROBLEMS WITH TRACERS HERE
+! ??? THIS WHOLE MODULE NEEDS FURTHER REVISION WITH KEVIN"S HELP
+! Now do 3d fields, ignoring tracers for now
+do ifld= 2, 5
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, vars(:,:,:,ifld) &
-             ,start=(/1,1,1,1/) ,count=(/num_lons,nlevs(ifld),num_lats,1/) ))
-end do
-do ifld=n3tflds+1 ,n3tflds+n2dflds
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, vars(:,nlevs(ifld),:,ifld) &
-             ,start=(/1,1,1/) ,count=(/num_lons,num_lats,1/) ))
+   call check(nf90_put_var(ncfileid, ncfldid, var%vars_3d(:,:,:,ifld - 1) &
+             ,start=(/1,1,1,1/) ,count=(/num_lons, num_levs, num_lats,1/) ))
 end do
 
 call check(nf90_close(ncfileid))
 
-return
 end subroutine write_cam_init
 
 !#######################################################################
@@ -354,29 +359,62 @@ end function get_model_size
 
 subroutine static_init_model()
 
-! INitializes class data for CAM model (all the stuff that needs to
+! Initializes class data for CAM model (all the stuff that needs to
 ! be done once. For now, does this by reading info from a fixed
 ! name netcdf file. Need to make this file a namelist parameter
 ! at some point.
 
 implicit none
 
+integer :: i, j
+
 ! Get num lons, lats and levs from netcdf and put in global storage
-call read_cam_init_size('H12-24icl.nc', num_lons, num_lats, num_levs)
+call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)
 
 ! Compute the model size (Need to be sure where all these come from
 ! and if they themselves need to be initialized here)
 
 ! Need to set Time_step_atmos here to 1 hour for now 
-Time_step_atmos = set_time(3600, 0)
+Time_step_atmos = set_time(43200, 0)
 
 ! Compute overall model size and put in global storage
 model_size = num_lons * num_lats * (n2dflds + num_levs * &
    (n3dflds + pcnst + pnats))
 
+! Allocate space for longitude and latitude global arrays
+allocate(lons(num_lons), lats(num_lats))
+
+! Need values for lons and lats, too; should come from netcdf file in read_cam_init_size
+do i = 1, num_lons
+   lons(i) = 360.0 * (i - 1.0) / num_lons
+end do
+
+do i = 1, num_lats
+   lats(i) = -90.0 + 180.0 * (i - 0.5) / num_lats
+end do
+
 write(*, *) 'CAM size initialized as ', model_size
 
 end subroutine static_init_model
+
+!#######################################################################
+
+subroutine init_model_instance(var)
+
+! Initializes an instance of a cam model state variable
+
+implicit none
+
+type(model_type), intent(out) :: var
+
+! Initialize the storage space and return
+allocate(var%vars_2d(num_lons, num_lats, n2dflds), &
+   var%vars_3d(num_lons, num_levs, num_lats, n3dflds), &
+   var%tracers(num_lons, num_levs, num_lats, num_tracers))
+
+end subroutine init_model_instance
+
+!----------------------------------------------------------------------
 
 !#######################################################################
 
@@ -394,6 +432,7 @@ real, intent(inout) :: x(:)
 type(time_type), intent(in) :: Time
 
 ! This is a no-op for CAM; only asynch integration
+! Can be used to test the assim capabilities with a null advance
 
 end subroutine adv_1step
 
@@ -431,7 +470,7 @@ index = index_in - 1
 num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! What column is this index in
-col_num = index_in / num_per_col 
+col_num = index / num_per_col 
 col_elem = index - col_num * num_per_col
 
 ! What lon and lat index for this column
@@ -443,28 +482,26 @@ lon = lons(lon_index + 1)
 lat = lats(lat_index + 1)
 
 ! Now figure out which beast in column this is
-! Surface pressure is the last element
-lev = col_elem / (n3dflds + pcnst + pnats) + 1
-! If we're out of the levels
-if(lev > num_levs) then
+! Surface pressure is the first element
+lev = (col_elem - 1) / (n3dflds + pcnst + pnats) + 1
+if(col_elem == 0) then
    local_var_type = TYPE_PS
    lev = -1
 else
    var_type_temp = mod(col_elem - 1, n3dflds + pcnst + pnats)
    if(var_type_temp == 0) then
-      local_var_type = TYPE_U
-   else if(var_type_temp == 1) then
-      local_var_type = TYPE_V
-   else if(var_type_temp == 2) then
       local_var_type = TYPE_T
+   else if(var_type_temp == 1) then
+      local_var_type = TYPE_U
+   else if(var_type_temp == 2) then
+      local_var_type = TYPE_V
    else
       local_var_type = TYPE_Q
    endif
 endif
 
-
-
-!write(*, *) 'lon, lat, and lev ', lon, lat, lev
+!write(*, 11) lon, lat, lev, local_var_type
+11 format(1x, 3(f6.2, 1x), i3)
 location = set_location(lon, lat, lev)
 
 ! If the type is wanted, return it
@@ -569,12 +606,14 @@ integer, intent(out) :: number, indices(:)
 real(r8), intent(out) :: dist(:)
 
 real(r8) :: loc_array(3), o_lon, o_lat
-integer :: nlon, nlat, num, max_size, i, j, num1, nlev
-integer :: hsize, num_per_col, grid_size, col_base_index
+integer :: num, max_size, i, j, num1
+integer :: hsize, num_per_col, col_base_index
 integer, allocatable :: lon_ind(:), lat_ind(:)
 real(r8), allocatable :: close_dist(:)
 
-
+write(*, *) 'in model_get_close_states', radius
+loc_array = get_location(o_loc)
+write(*, *) 'oloc is ', loc_array(:)
 
 ! Number found starts at 0
 number = 0
@@ -585,28 +624,29 @@ number = 0
 num = 0
 ! For now, just allocate enough space for all grid points, may want
 ! to make this smaller at some point for big models.
-max_size = nlon * nlat
+max_size = num_lons * num_lats
 allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 
 ! Look for close grid points on the 
-call grid_close_states(o_loc, lons, lats, nlon, nlat, radius, &
+call grid_close_states(o_loc, lons, lats, num_lons, num_lats, radius, &
    num, lon_ind, lat_ind, close_dist)
 write(*, *) 'back from grid_close_states num = ', num
 
 ! Compute size of grid storage for full levels
-hsize = nlon * nlat
-num_per_col = nlev * (n3dflds + pcnst + pnats) + n2dflds
-grid_size = num_per_col * hsize
+hsize = num_lons * num_lats
+num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! Add all variables in this column to the close list with this distance
+write(*, *) 'available space is size(indices) ', size(indices)
 do i = 1, num
-   col_base_index = ((lon_ind(i) - 1) * nlat + lat_ind(i) - 1) * num_per_col
+   col_base_index = ((lon_ind(i) - 1) * num_lats + lat_ind(i) - 1) * num_per_col
    do j = 1, num_per_col
       number = number + 1
       if(number <= size(indices)) indices(number) = col_base_index + j
       if(number <= size(dist)) dist(number) = close_dist(i)
    end do
 end do
+write(*, *) 'number at end is ', number
 
 deallocate(lon_ind, lat_ind, close_dist)
 
@@ -800,9 +840,166 @@ implicit none
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
 
-! Normal null return is 0
-ierr = 0
+!-----------------------------------------------------------------------------------------
 
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: IDimID, JDimID, levDimID, tracerDimID
+integer :: IVarID, JVarID, levVarID, tracerVarID, StateVarID
+integer :: i
+
+
+integer :: LocationDimID, LocationVarID, LocationXType, LocationNDims
+integer :: LocationNAtts, LocationLen
+integer, dimension(NF90_MAX_VAR_DIMS) :: LocationDimIDs
+character (len=NF90_MAX_NAME) :: LocationVarName
+
+integer :: StateVarDimID, StateVarVarID, StateVarXType, StateVarNDims
+integer :: StateVarNAtts, StateVarLen
+integer, dimension(NF90_MAX_VAR_DIMS) :: StateVarDimIDs
+character (len=NF90_MAX_NAME) :: StateVarVarName
+
+
+
+ierr = 0     ! assume normal termination
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file,
+! and then put into define mode.
+!-------------------------------------------------------------------------------
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(nf90_Redef(ncFileID))
+
+!-------------------------------------------------------------------------------
+! Write Global Attributes
+!-------------------------------------------------------------------------------
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
+
+! how about namelist input? might be nice to save ...
+
+!-------------------------------------------------------------------------------
+! Find the StateVariable info and [NOT YET perform some sanity checks]
+!-------------------------------------------------------------------------------
+call check(NF90_inq_dimid(ncid=ncFileID, name="StateVariable", dimid = StateVarDimID ))
+call check(NF90_inquire_dimension(ncid=ncFileID, dimid=StateVarDimID, len=StateVarLen))
+
+call check(nf90_inq_varid(ncid=ncFileID, name="StateVariable", varid = StateVarVarID))
+call check(nf90_inquire_variable(ncid   = ncFileID, &
+                                 varid  = StateVarVarID, &
+                                 name   = StateVarVarName, &
+                                 xtype  = StateVarXType, &
+                                 ndims  = StateVarNDims, &
+                                 dimids = StateVarDimIDs, &
+                                 nAtts  = StateVarNAtts) )
+! sanity checks go here
+
+!-------------------------------------------------------------------------------
+! Define the dimensions IDs
+!-------------------------------------------------------------------------------
+
+call check(nf90_def_dim(ncid=ncFileID, name="I",   len = num_lons,   dimid =   IDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="J",   len = num_lats,   dimid =   JDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lev",    len = num_levs,    dimid =    levDimID))
+! call check(nf90_def_dim(ncid=ncFileID, name="tracer", len = num_tracers, dimid = tracerDimID))
+! write (*,*)'tracerDimID determined', tracerDimID
+
+! should implement "trajectory-like" coordinate defn ... a'la section 5.4, 5.5 of CF standard
+! call check(nf90_def_dim(ncid=ncFileID, name="locationrank", &
+!   len = LocationDims, dimid = LocationDimID))
+
+!-------------------------------------------------------------------------------
+! Create the (empty) Variables and the Attributes
+!-------------------------------------------------------------------------------
+
+! (array) StateVariable Locations ... before being parsed back into prognostic vars
+!call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
+!            dimids=(/ StateVarDimID, LocationDimID /), varid=LocationVarID) )
+
+! Temperature Grid Longitudes
+call check(nf90_def_var(ncFileID, name="I", xtype=nf90_double, &
+                                               dimids=IDimID, varid=IVarID) )
+call check(nf90_put_att(ncFileID, IVarID, "long_name", "longitude"))
+call check(nf90_put_att(ncFileID, IVarID, "units", "degrees_east"))
+call check(nf90_put_att(ncFileID, IVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
+
+write (*,*)'IVarID determined'
+
+! Temperature Grid Latitudes
+call check(nf90_def_var(ncFileID, name="J", xtype=nf90_double, &
+                                               dimids=JDimID, varid=JVarID) )
+call check(nf90_put_att(ncFileID, JVarID, "long_name", "latitude"))
+call check(nf90_put_att(ncFileID, JVarID, "units", "degrees_north"))
+call check(nf90_put_att(ncFileID, JVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
+
+write (*,*)'JVarID determined'
+
+! (Common) grid levels
+call check(nf90_def_var(ncFileID, name="level", xtype=nf90_int, &
+                                                dimids=levDimID, varid=levVarID) )
+call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"))
+
+write (*,*)'levVarID determined'
+
+! Number of Tracers
+! call check(nf90_def_var(ncFileID, name="tracer", xtype=nf90_int, &
+!                                                  dimids=tracerDimID, varid=tracerVarID) )
+! call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"))
+! write (*,*)'tracerVarID determined'
+
+! append the attribute information needed for to recover
+! the prognostic variables from the state vector ... vector_to_prog_var
+
+call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable ID
+call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","FMS-Bgrid"))
+call check(nf90_put_att(ncFileID, StateVarId, "temperature_units","degrees Kelvin"))
+call check(nf90_put_att(ncFileID, StateVarId, "pressure_units","Pa"))
+call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"))
+call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"))
+call check(nf90_put_att(ncFileID, StateVarId, "Q_units", "g/kg"))
+
+!-------------------------------------------------------------------------------
+! Leave define mode so we can actually fill the variables.
+!-------------------------------------------------------------------------------
+
+call check(nf90_enddef(ncfileID))
+
+write (*,*)'leaving define mode ...'
+
+!-------------------------------------------------------------------------------
+! Fill the variables
+!-------------------------------------------------------------------------------
+
+call check(nf90_put_var(ncFileID, IVarID, lons ))
+call check(nf90_put_var(ncFileID, JVarID, lats ))
+
+call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   num_levs) /) ))
+! call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ))
+
+write (*,*)'Finished filling variables ...'
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+call check(nf90_sync(ncFileID))
+
+write (*,*)'netCDF file is synched ...'
+
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+
+    if(istatus /= nf90_noerr) then
+      print *,'model_mod:nc_write_model_atts'
+      print *, trim(nf90_strerror(istatus))
+      ierr = istatus
+      stop
+    end if
+  end subroutine check
 
 end function nc_write_model_atts
 

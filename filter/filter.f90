@@ -36,7 +36,7 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, &
-   init_diag_outputORG, output_diagnosticsORG
+   init_diag_outputORG, output_diagnosticsORG, get_state_meta_data
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
@@ -45,6 +45,10 @@ use cov_cutoff_mod,   only : comp_cov_factor
 
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
    get_close_cache
+
+
+use location_mod, only : location_type
+
 
 use typeSizes
 use netcdf
@@ -86,6 +90,10 @@ real(r8), pointer :: dist_ptr(:, :)
 
 ! Test storage for variance ratio
 real(r8) :: var_ratio, var_ratio_sum
+
+! Temporary storage to allow decent CAM initial ensemble perturbations
+integer :: var_type
+type(location_type) :: location
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -239,7 +247,14 @@ else
 ! Perturb for ensembles; 
    do i = 1, ens_size
       do j = 1, model_size
-         ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 1.0_r8)
+! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
+         call get_state_meta_data(j, location, var_type)
+         if(var_type < 4) then 
+            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 1.0_r8) 
+         else
+            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 0.000001_r8) 
+         endif
+         
       end do
 ! Set time to 0, 0 if none specified, otherwise to specified
       call set_model_time(ens(i), time)
@@ -319,8 +334,10 @@ AdvanceTime : do i = 1, num_obs_sets
    call get_obs_values(seq, i, obs, 1)
 
    ! Try out the cache
+   write(*, *) 'calling get_close_cache;'
    call get_close_cache(cache, seq, i, 2.0*cutoff, num_obs_in_set, &
       num_close_ptr, close_ptr, dist_ptr)
+   write(*, *) 'back form get_close_cache'
 
 
 ! A preliminary search for bias???

@@ -12,23 +12,49 @@ program trans_pv_sv
 !
 !----------------------------------------------------------------------
 
-use model_mod, only : read_cam_init_size
+use model_mod, only : model_type, init_model_instance, read_cam_init, &
+   prog_var_to_vector
+use assim_model_mod, only : assim_model_type, static_init_assim_model, &
+   init_assim_model, get_model_size , set_model_state_vector, write_state_restart
+use utilities_mod, only : get_unit
 
-integer :: num_lons, num_lats, num_levs
-character (len = 128) :: file_name = 'H12-24icl.nc'
+character (len = 128) :: file_name = 'CAM_FILE.nc', file_out = 'temp_ic'
 
-! read in field values from CAM in initial file
-call read_cam_init_size(file_name, num_lons, num_lats, num_levs)
+! Temporary allocatable storage to read in a native format for cam state
+type(assim_model_type) :: x
+type(model_type) :: var
+real, allocatable :: x_state(:)
+integer :: file_unit, x_size
 
-write(*, *) 'lons, lats, levs', num_lons, num_lats, num_levs
+
+! Static init assim model calls static_init_model
+call static_init_assim_model()
+
+! Initialize the assim_model instance
+call init_assim_model(x)
+
+! Allocate the local state vector
+x_size = get_model_size()
+allocate(x_state(x_size))
+
+! Allocate the instance of the cam model type for storage
+call init_model_instance(var)
+
+! Read the file cam state fragments into var
+call read_cam_init(file_name, var)
 
 ! transform fields into state vector for DART
-!call prog_var_to_vector(vars,x,siz)
-!deallocate (vars)
+call prog_var_to_vector(var, x_state)
 
+! Put this in the structure
+call set_model_state_vector(x, x_state)
+! What about setting the time???; currently zero from init_assim_model???
+
+! Get channel for output 
+file_unit = get_unit()
+open(unit = file_unit, file = file_out)
 ! write out state vector in "proprietary" format
-!call write_dart_vector
-!deallocate (x)
+call write_state_restart(x, file_unit)
+close(file_unit)
 
 end program trans_pv_sv
-
