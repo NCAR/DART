@@ -34,7 +34,8 @@ use  assim_tools_mod, only : assim_tools_init, filter_assim, assim_tools_end
 use    obs_model_mod, only : get_expected_obs, move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
-   ensemble_type
+   ensemble_type, ens_direct=> ens, ens_mean_direct=>ens_mean, ens_spread_direct=>ens_spread, &
+   is_ens_in_core, get_ensemble_time
    
 !-----------------------------------------------------------------------------------------
 
@@ -83,7 +84,6 @@ logical, allocatable :: compute_obs(:)
 ! Namelist input with default values
 !
 integer  :: async = 0, ens_size = 20
-real(r8) :: cutoff      = 0.2_r8
 real(r8) :: cov_inflate = 1.0_r8
 logical  :: start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -97,7 +97,6 @@ integer  :: num_output_state_members = 0
 integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
-real(r8) :: confidence_slope = 0.0_r8
 real(r8) :: outlier_threshold = -1.0_r8
 logical  :: save_reg_series = .false.
 
@@ -115,13 +114,13 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! advance_ens.csh is currently written to handle both batch submissions (qsub) and
 !                 non-batch executions.
 
-namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
+namelist /filter_nml/async, adv_ens_command, ens_size, cov_inflate, &
    start_from_restart, output_restart, &
    obs_sequence_in_name, obs_sequence_out_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_state_members, num_output_obs_members, output_interval, &
-   num_groups, confidence_slope, outlier_threshold, save_reg_series
+   num_groups, outlier_threshold, save_reg_series
 
 !----------------------------------------------------------------
 ! Start of the routine
@@ -217,20 +216,20 @@ write(*, *) 'starting advance time loop;'
    call filter_get_obs_info()
    
    ! Do prior observation space diagnostics and associated quality control
-   call obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
+   call obs_space_diagnostics(ens_obs, ens_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .true., 0, &
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
    
    call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
-         num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
+         num_groups, seq, keys, save_reg_series, reg_series_unit, &
          obs_sequence_in_name)
    ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
 
 ! Do posterior observation space diagnostics
-   call obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
+   call obs_space_diagnostics(ens_obs, ens_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .false., 2, &
       num_output_obs_members, in_obs_copy + 2, output_obs_ens_mean, &
       posterior_obs_mean_index, output_obs_ens_spread, posterior_obs_spread_index)
@@ -285,31 +284,43 @@ subroutine filter_generate_copy_meta_data()
 
 character(len=129) :: prior_meta_data, posterior_meta_data, msgstring
 character(len=129) :: state_meta(num_output_state_members + 2)
-integer :: i
+integer :: i, ensemble_offset
 
-! Set up the metadata for the output state diagnostic files
-do i = 1, num_output_state_members
-   if(i < 10000) then
-      write(state_meta(i), '(a15, 1x, i6)') 'ensemble member', i
-   else
-      write(msgstring, *)'output metadata in filter needs state ensemble size < 10000, not ', &
-                         num_output_state_members
-      call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
-   endif
-end do
-
+! Ensemble mean goes first 
 num_state_copies = num_output_state_members
 if(output_state_ens_mean) then
    num_state_copies = num_state_copies + 1
-   state_meta(num_state_copies) = 'ensemble mean'
-   output_state_mean_index = num_state_copies
-endif
-if(output_state_ens_spread) then
-   num_state_copies = num_state_copies + 1
-   state_meta(num_state_copies) = 'ensemble spread'
-   output_state_spread_index = num_state_copies
+   output_state_mean_index = 1
+   state_meta(output_state_mean_index) = 'ensemble mean'
 endif
 
+! Ensemble spread goes second
+if(output_state_ens_spread) then
+   num_state_copies = num_state_copies + 1
+   if(output_state_ens_mean) then
+      output_state_spread_index = 2
+   else
+      output_state_spread_index = 1
+   endif
+   state_meta(output_state_spread_index) = 'ensemble spread'
+endif
+
+! Check for too many output ensemble members
+if(num_output_state_members > 10000) then
+   write(msgstring, *)'output metadata in filter needs state ensemble size < 10000, not ', &
+                      num_output_state_members
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
+endif
+
+! Compute starting point for ensemble member output
+ensemble_offset = 0
+if(output_state_ens_mean) ensemble_offset = ensemble_offset + 1
+if(output_state_ens_spread) ensemble_offset = ensemble_offset + 1
+
+! Set up the metadata for the output state diagnostic files
+do i = 1, num_output_state_members
+   write(state_meta(i + ensemble_offset), '(a15, 1x, i6)') 'ensemble member', i
+end do
 
 ! Set up diagnostic output for model state, if output is desired
 if(  output_state_ens_spread .or. output_state_ens_mean .or. &
@@ -322,20 +333,8 @@ endif
 
 
 ! Set up the metadata for the output ensemble observations space file
-do i = 1, num_output_obs_members
-   if(i < 10000) then
-      write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
-      write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
-   else
-      write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
-                         num_output_obs_members
-      call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
-   endif
-   call set_copy_meta_data(seq, in_obs_copy + 2*i - 1, prior_meta_data)
-   call set_copy_meta_data(seq, in_obs_copy + 2*i, posterior_meta_data)
-end do
-
-num_obs_copies = in_obs_copy + 2 * num_output_obs_members
+! Set up ensemble mean if requested
+num_obs_copies = in_obs_copy
 if(output_obs_ens_mean) then
    num_obs_copies = num_obs_copies + 1
    prior_meta_data = 'prior ensemble mean'
@@ -347,6 +346,7 @@ if(output_obs_ens_mean) then
    posterior_obs_mean_index = num_obs_copies 
 endif
 
+! Set up ensemble spread if requested
 if(output_obs_ens_spread) then
    num_obs_copies = num_obs_copies + 1
    prior_meta_data = 'prior ensemble spread'
@@ -357,6 +357,24 @@ if(output_obs_ens_spread) then
    call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
    posterior_obs_spread_index = num_obs_copies
 endif
+
+! Make sure there are not too many copies requested
+if(num_output_obs_members > 10000) then
+   write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
+                      num_output_obs_members
+   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
+endif
+
+! Set up ensemble members as requested
+do i = 1, num_output_obs_members
+   write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
+   write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
+   num_obs_copies = num_obs_copies + 1
+   call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+   num_obs_copies = num_obs_copies + 1
+   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+end do
+
 
 end subroutine filter_generate_copy_meta_data
 
@@ -540,14 +558,22 @@ do group = 1, num_groups
    grp_top = grp_bot + grp_size - 1
    ens_mean = 0.0
    do j = grp_bot, grp_top
+   if(is_ens_in_core()) then
+      ens_mean = ens_mean + ens_direct(j, :)
+   else
       call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
       ens_mean = ens_mean + temp_ens
+   endif
    end do
    ens_mean = ens_mean / grp_size
    do j = grp_bot, grp_top
+   if(is_ens_in_core()) then
+      ens_direct(j, :) = ens_mean + sqrt(cov_inflate) * (ens_direct(j, :) - ens_mean)
+   else
       call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
       temp_ens = ens_mean + sqrt(cov_inflate) * (temp_ens - ens_mean)
       call put_ensemble_member(ens_handle, j, temp_ens, temp_time)
+   endif
    end do
 end do
 
@@ -560,27 +586,48 @@ subroutine filter_state_space_diagnostics(out_unit)
 implicit none
 
 type(netcdf_file_type), intent(inout) :: out_unit
+integer :: ens_offset
 
 ! Compute ensemble mean and spread if needed for output
 if(output_state_ens_mean .or. output_state_ens_spread) call update_ens_mean_spread(ens_handle)
 
-! Output state diagnostics as required: NOTE: Prior has been inflated
-do j = 1, num_output_state_members
-   call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
-   call aoutput_diagnostics( out_unit, temp_time, temp_ens, j)
-end do
-
 ! Output ensemble mean if requested
 if(output_state_ens_mean) then
-   call get_ensemble_member(ens_handle, 0, temp_ens, temp_time)
-   call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_mean_index)
+   if(is_ens_in_core()) then
+      call get_ensemble_time(ens_handle, 0, temp_time)
+      call aoutput_diagnostics(out_unit, temp_time, ens_mean_direct, output_state_mean_index)
+   else
+      call get_ensemble_member(ens_handle, 0, temp_ens, temp_time)
+      call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_mean_index)
+   endif
 endif
 
 ! Output ensemble spread if requested
 if(output_state_ens_spread) then
-   call get_ensemble_member(ens_handle, -1, temp_ens, temp_time)
-   call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_spread_index)
+   if(is_ens_in_core()) then
+      call get_ensemble_time(ens_handle, -1, temp_time)
+      call aoutput_diagnostics(out_unit, temp_time, ens_spread_direct, output_state_spread_index)
+   else
+      call get_ensemble_member(ens_handle, -1, temp_ens, temp_time)
+      call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_spread_index)
+   endif
 endif
+
+! Compute the offset for copies of the ensemble
+ens_offset = 0
+if(output_state_ens_mean) ens_offset = ens_offset + 1
+if(output_state_ens_spread) ens_offset = ens_offset + 1
+
+! Output state diagnostics as required: NOTE: Prior has been inflated
+do j = 1, num_output_state_members
+   if(is_ens_in_core()) then
+      call get_ensemble_time(ens_handle, j, temp_time)
+      call aoutput_diagnostics( out_unit, temp_time, ens_direct(j, :), ens_offset + j)
+   else
+      call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
+      call aoutput_diagnostics( out_unit, temp_time, temp_ens, ens_offset + j)
+   endif
+end do
 
 end subroutine filter_state_space_diagnostics
 
@@ -617,7 +664,7 @@ end subroutine filter_get_obs_info
 
 !-------------------------------------------------------------------------
 
-subroutine obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
+subroutine obs_space_diagnostics(ens_obs, ens_size, seq, keys, &
    num_obs_in_set, obs, obs_err_var, outlier_threshold, do_qc, prior_post, &
    num_output_members, members_index, &
    output_ens_mean, ens_mean_index, output_ens_spread, ens_spread_index)
@@ -626,7 +673,7 @@ subroutine obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
 
 implicit none
 
-integer,  intent(in) :: ens_size, model_size
+integer,  intent(in) :: ens_size
 integer,  intent(in) :: num_obs_in_set, keys(num_obs_in_set), prior_post
 real(r8), intent(inout) :: ens_obs(ens_size, num_obs_in_set)
 integer,  intent(in) :: num_output_members, members_index, ens_mean_index, ens_spread_index
@@ -636,7 +683,7 @@ type(obs_sequence_type), intent(inout) :: seq
 logical, intent(in) :: do_qc
 logical, intent(in) :: output_ens_mean, output_ens_spread
 
-integer :: j, k, istatus
+integer :: j, k, istatus, ens_offset
 real(r8) :: qc(num_obs_in_set)
 real(r8) :: obs_mean(1), obs_spread(1)
 real(r8) :: error, diff_sd, ratio
@@ -648,15 +695,21 @@ call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 ens_obs = 0.0
 
 do k = 1, ens_size
-   call get_ensemble_member(ens_handle, k, temp_ens, temp_time)
+   if(.not. is_ens_in_core()) then
+      call get_ensemble_member(ens_handle, k, temp_ens, temp_time)
+   endif
    do j = 1, num_obs_in_set
       call get_obs_from_key(seq, keys(j), observation)
       ! Get the qc value set so far
       if(k == 1) call get_qc(observation, qc(j:j), 1)
-      call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k, j:j), istatus)
+      if(is_ens_in_core()) then
+         call get_expected_obs(seq, keys(j:j), ens_direct(k, :), ens_obs(k, j:j), istatus)
+      else
+         call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k, j:j), istatus)
+      endif
       if(istatus > 0) then 
          qc(j) = qc(j) + 2**prior_post * 1000
-! TEST LINE for doing quality control pass through
+         ! TEST LINE for doing quality control pass through
          call set_qc(observation, qc(j:j), 1)         
          !!! exit
       endif
@@ -678,17 +731,21 @@ do j = 1, num_obs_in_set
       ratio = abs(error / diff_sd)
       if(ratio > outlier_threshold) qc(j) = qc(j) + 2**prior_post * 10000
    endif
-
-   ! Output all of these ensemble priors that are required to sequence file
-   do k = 1, num_output_members
-      call set_obs_values(observation, ens_obs(k:k, j), members_index + 2 * (k - 1))
-   end do
-
+   
    ! If requested output the ensemble mean
    if(output_ens_mean) call set_obs_values(observation, obs_mean, ens_mean_index)
    ! If requested output the ensemble spread
    if(output_ens_spread) call set_obs_values(observation, obs_spread, ens_spread_index)
-   
+
+   ! Compute base location for output of ensemble members
+   ens_offset = members_index
+   if(output_ens_mean) ens_offset = ens_offset + 2
+   if(output_ens_spread) ens_offset = ens_offset + 2
+   ! Output all of these ensemble priors that are required to sequence file
+   do k = 1, num_output_members
+      call set_obs_values(observation, ens_obs(k:k, j), ens_offset + 2 * (k - 1))
+   end do
+
    ! Set the qc value, too
    call set_qc(observation, qc(j:j), 1)
 
