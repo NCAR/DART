@@ -372,6 +372,9 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Jan 24 2003
 !
+! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
+! return code is always '0 == normal', since the fatal errors stop execution.
+!
 ! For the lorenz_96 model, each state variable is at a separate location.
 ! that's all the model-specific attributes I can think of ...
 !
@@ -523,7 +526,6 @@ contains
     if(istatus /= nf90_noerr) then
       print *,'model_mod:nc_write_model_atts'
       print *, trim(nf90_strerror(istatus))
-      ierr = istatus
       stop
     end if
   end subroutine check
@@ -536,6 +538,9 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 !-----------------------------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH 23 May 2003
+!
+! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
+! return code is always '0 == normal', since the fatal errors stop execution.
 !
 ! For the lorenz_96 model, each state variable is at a separate location.
 ! that's all the model-specific attributes I can think of ...
@@ -604,7 +609,6 @@ contains
     if(istatus /= nf90_noerr) then
       print *,'model_mod:nc_write_model_vars'
       print *, trim(nf90_strerror(istatus))
-      ierr = istatus
       stop
     end if
   end subroutine check
