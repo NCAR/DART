@@ -39,6 +39,9 @@ type assim_model_type
    real(r8), pointer :: state_vector(:)
    type(time_type) :: time
    integer :: model_size       ! TJH request
+   integer :: copyID           ! TJH request
+! would like to include character string to indicate which netCDF variable --
+! replace "state" in output_diagnostics ...
 end type assim_model_type
 
 ! Permanent class storage for model_size
@@ -247,16 +250,17 @@ call check(nf90_put_var(ncFileID, MemberVarID,   (/ (i,i=1,copies_of_field_per_t
 call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
-!-------------------------------------------------------------------------------
-call check(nf90_sync(ncFileID))               ! sync to disk, but leave open
-!-------------------------------------------------------------------------------
-
 i =  nc_write_model_atts(ncFileID)
 if ( i < 0 ) then
    print *,'assim_model_mod:nc_write_model_atts  bombed ', i
 else if ( i > 0 ) then
    print *,'assim_model_mod:nc_write_model_atts  bombed ', i
 endif
+
+!-------------------------------------------------------------------------------
+call check(nf90_sync(ncFileID))               ! sync to disk, but leave open
+!-------------------------------------------------------------------------------
+
 contains
 
   ! Internal subroutine - checks error status after each netcdf, prints 
@@ -895,21 +899,19 @@ end subroutine output_diagnosticsORG
 
 subroutine output_diagnostics(ncFileID, state, copy_index)
 !-------------------------------------------------------------------
+! Outputs the "state" to the supplied netCDF file. 
 !
-! Outputs a copy of the state vector to the file (currently just an
-! integer unit number), the time, and an optional index saying which
+! the time, and an optional index saying which
 ! copy of the metadata this state is associated with.
-! Need to make a much better coordinated facility for doing this,
-! providing buffering, insuring that ordering is appropriate for
-! time (and copy), etc. For now, this just writes what it receives
-! with a header stating time and copy_index.
 !
-! 'Appending' is dependent on being able to know _when_ to append.
-! Only append when the copy_index is unity ... if we don't have
-! one, we just keep over-writing.
+! ncFileID       the netCDF file identifier
+! state          the copy of the state vector
+! copy_index     which copy of the state vector (ensemble member ID)
 !
-! TJH Wed Aug 28 15:40:25 MDT 2002
-
+! TJH 28 Aug 2002 original netCDF implementation 
+! TJH  7 Feb 2003 [created time_manager_mod:nc_get_tindex] 
+!     substantially modified to handle time in a much better manner
+!      
 
 use typeSizes
 use netcdf
@@ -919,12 +921,8 @@ integer,                intent(in) :: ncFileID
 type(assim_model_type), intent(in) :: state
 integer, optional,      intent(in) :: copy_index
 
-character(len=NF90_MAX_NAME)          :: VarName
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
-integer :: paramDimID, LocationVarID, Nlocations
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: xtype, ndims, nAtts, StateVarID, TimeVarID
-integer :: i,ierr, len, copyindex
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, StateVarID
+integer :: i,ierr, timeindex, copyindex
 
 if (.not. present(copy_index) ) then     ! we are dependent on the fact
    copyindex = 1                         ! there is a copyindex == 1
@@ -932,43 +930,21 @@ else                                     ! if the optional argument is
    copyindex = copy_index                ! not specified, we'd better
 endif                                    ! have a backup plan
 
-call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-
-! If the copyindex is 1, we need to increment the unlimited dimension.
-! The length of the current unlimited dimension (time) is determined 
-! from NF90_Inquire_Dimension().
-
-! We need to compare the time of the current assim_model to the current time 
-! of the LAST netcdf time dimension variable. If they are the same, no problem.
-! If it is earlier, we need to find the right index and insert ...
-! If it is the "future", we need to add another one ...
-
-if (copyindex == 1) then
-   len = nc_append_time(ncFileID, state%time)
-   if ( len < 1 ) write(*,*)'ERROR:output_diagnostics: trouble deep'
+timeindex = nc_get_tindex(ncFileID, state%time)
+if ( timeindex < 0 ) then
+   write(*,*)'ERROR: ',trim(adjustl(source))
+   write(*,*)'ERROR: output_diagnostics: model%time not in netcdf file'
+   write(*,*)'ERROR: model%time : '
+   call write_time(6,state%time) ! hardwired unit will change with error handler
+   write(*,*)'ERROR: netcdf file ID ',ncFileID
+   stop
 endif
 
 call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(NF90_Inq_Varid(ncFileID, "time", TimeVarID))
-call check(NF90_Inquire_Variable(ncFileID, TimeVarID, VarName, xtype, ndims, dimids, nAtts))
-call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, VarName, len ))
-
-if ( ndims /= 1 ) then
-   write(*,*)'Warning:output_diagnostics: "time" expected to be rank-1'
-endif
-
-if ( dimids(1) /= unlimitedDimID ) then
-   write(*,*)'Warning:output_diagnostics: no idea what you are trying to pull here ...'
-endif
-
 call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable ID
-call check(NF90_put_var(ncFileID, StateVarID, state%state_vector, start=(/ 1, copyindex, len /)))
+call check(NF90_put_var(ncFileID, StateVarID, state%state_vector, start=(/ 1, copyindex, timeindex /)))
 
-! DEBUG BLOCK ... just to make sure we're getting what we expect.
-!
-! call output_diagnosticsORG(ncFileID+30, state, copyindex)
-!
-! END OF DEBUG BLOCK ... just to make sure we're getting what we expect.
+call check(NF90_sync(ncFileID))
 
 contains
 

@@ -550,6 +550,7 @@ ierr = 0                      ! assume normal termination
 !-------------------------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
 call check(nf90_Redef(ncFileID))
 
 !-------------------------------------------------------------------------------
@@ -559,8 +560,10 @@ call check(nf90_Redef(ncFileID))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_forcing", forcing ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_sigma", sigma ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_r", r ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_b", b ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_deltat", deltat ))
 
 !-------------------------------------------------------------------------------
 ! Find the StateVariable Variable ID, get current info and perform some sanity checks

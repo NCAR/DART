@@ -22,6 +22,13 @@ use assim_model_mod, only : static_init_assim_model, get_model_size
 
 implicit none
 
+! Everybody needs to know these ... TJH Feb 10, 2003
+
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 type(obs_def_type) :: obs_def
 type(set_def_list_type) :: set_def_list
 type(obs_set_def_type) :: obs_set_def
@@ -29,6 +36,13 @@ type(obs_set_def_type) :: obs_set_def
 integer :: max_sets, num_obs
 integer :: i, j, obs_set_def_index, unit
 character(len = 129) :: file_name
+
+! Write program control information
+write(*,*)'create_obs_set_def attributes:'
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
+write(*,*)'   '
 
 ! Get output filename
 write(*, *) 'Input the filename for output of observation set_def_list? [set_def.out]'
@@ -78,5 +92,8 @@ close(unit)
 !unit = open_file(file_name)
 !call write_set_def_list(unit, set_def_list)
 !close(unit)
+
+write(*, *)trim(adjustl(file_name)),' successfully created.'
+write(*, *)'Terminating normally.'
 
 end program create_obs_set_def

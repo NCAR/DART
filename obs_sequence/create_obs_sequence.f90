@@ -19,7 +19,6 @@ program create_obs_sequence
 !    fashion. At some point we need to sort these sets.
 
 
-
 use obs_sequence_mod, only : init_obs_sequence, obs_sequence_type, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
@@ -28,6 +27,13 @@ use time_manager_mod, only : time_type, set_time, operator(*), operator(+)
 use utilities_mod, only : open_file
 
 implicit none
+
+! Everybody needs to know these ... TJH Feb 10, 2003
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 
 type(obs_sequence_type) :: seq
 type(set_def_list_type) :: set_def_list
@@ -42,6 +48,13 @@ integer :: in_unit, out_unit, in_unit2, out_unit2
 integer :: i, j, obs_set_def_index, index = 0, days, seconds, option
 integer :: num_obs_set_defs, num_obs
 character(len = 129) :: file_name
+
+! Change output to diagnostic output block ...
+write(*,*)'create_obs_sequence attributes:'
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
+write(*,*)'   '
 
 ! Get file name for input set_def_list
 write(*, *) 'What is name of set_def_list? [set_def.out]'

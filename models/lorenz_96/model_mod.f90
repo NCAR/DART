@@ -387,6 +387,7 @@ ierr = 0                      ! assume normal termination
 !-------------------------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
 call check(nf90_Redef(ncFileID))
 
 !-------------------------------------------------------------------------------

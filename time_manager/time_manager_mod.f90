@@ -39,7 +39,7 @@ public operator(+),  operator(-),   operator(*),   operator(/),  &
 
 ! Subroutines and functions operating on time_type
 public set_time, increment_time, decrement_time, get_time, interval_alarm
-public repeat_alarm, write_time, read_time, nc_append_time
+public repeat_alarm, write_time, read_time, nc_append_time, nc_get_tindex
 
 ! List of available calendar types
 !!! NO_LEAP changed to NOLEAP for some weird FMS Havana compliance
@@ -2300,6 +2300,178 @@ contains
   end subroutine check
 
 end function nc_append_time
+
+
+
+function nc_get_tindex(ncFileID, statetime) result(timeindex)
+!------------------------------------------------------------------------
+! 
+! We need to compare the time of the current assim_model to the current time
+! of the LAST netcdf time dimension variable.
+! If they are the same, no problem ...
+! If it is earlier, we need to find the right index and insert ...
+! If it is the "future", we need to add another one ...
+! If it is in the past but does not match any we have, we're in trouble.
+! The new length of the "time" variable is returned.
+! 
+! This REQUIRES that "time" is a coordinate variable AND it is the
+! unlimited dimension. If not ... bad things happen.
+!
+! TJH  7 Feb 2003
+
+use typeSizes
+use netcdf
+
+implicit none
+
+integer,         intent(in) :: ncFileID
+type(time_type), intent(in) :: statetime
+integer                     :: timeindex
+
+integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeVarID
+integer  :: xtype, ndims, nAtts, len
+character(len=NF90_MAX_NAME)          :: varname
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
+
+integer         :: i, ierr
+type(time_type) :: nctime
+integer         :: secs, days
+real(r8)        :: r8time
+real(r8), allocatable, dimension(:) :: times
+
+timeindex = 0 ! assume bad things are going to happen
+
+call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(NF90_Inq_Varid(ncFileID, "time", TimeVarID))
+call check(NF90_Inquire_Variable(ncFileID, TimeVarID, varname, xtype, ndims, dimids, nAtts))
+
+! TJH DEBUG
+! write(*,*)'nc_get_tindex: unlimitedDimID is ',unlimitedDimID
+! write(*,*)'nc_get_tindex:      dimids(1) is ',dimids(1)
+! write(*,*)'nc_get_tindex:      TimeVarID is ',TimeVarID
+
+if ( ndims /= 1 ) then
+   write(*,*)'ERROR:nc_get_tindex: "time" expected to be rank-1' 
+   timeindex = -1
+endif
+if ( dimids(1) /= unlimitedDimID ) then
+   write(*,*)'ERROR:nc_get_tindex: "time" must be the unlimited dimension'
+   timeindex = -1
+endif
+if ( timeindex < 0 ) then
+   write(*,*)'ERROR:nc_get_tindex: trouble deep ... can go no farther.'
+endif
+
+! get time of "state", convert to time base of "days since ..."
+call get_time(statetime, secs, days)
+r8time = days + secs/(60*60*24.0_r8)
+
+! Make sure we're looking at the most current version of the netCDF file.
+! Get the length of the (unlimited) Time Dimension 
+! If there is no length -- simply append a time to the dimension and return ...
+! Else   get the existing times ["days since ..."] and convert to time_type 
+!        if the statetime < earliest netcdf time ... we're in trouble
+!        if the statetime does not match any netcdf time ... we're in trouble
+!        if the statetime > last netcdf time ... append a time ... 
+
+call check(NF90_Sync(ncFileID))    
+call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, len))
+
+if (len < 1) then   ! First attempt at writing a state ...
+
+   timeindex = 1
+   call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
+   ! DEBUG
+   write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
+      ncFileID,trim(adjustl(varname)),len,r8time
+
+else
+   ! must try to find the time index ...
+
+   allocate( times(len) )
+   call check(NF90_Get_Var(ncFileID, TimeVarID, times))   ! get current netCDF times
+   call ConvertTime(times(1),secs,days)   ! converts from "days since" to seconds, days
+   nctime = set_time(secs, days)           ! and finally to time_type
+
+   if (statetime < nctime) then
+      write(*,*)'ERROR:time_manager_mod:nc_get_index: dagnabbit ...' 
+      write(*,*)'ERROR: model time preceeds earliest netCDF time.'
+      write(*,*)'ERROR: earliest netCDF time (days, seconds) ',days,secs
+      call get_time(statetime,secs,days)
+      write(*,*)'ERROR:           model time (days, seconds) ',days,secs
+      timeindex = -1                       ! set error flag
+      stop
+   endif
+   
+   TimeLoop : do i = 1,len
+
+      call ConvertTime(times(i),secs,days)
+      nctime = set_time(secs, days)
+   
+      if ( statetime == nctime ) then     ! we have a match for a time
+         timeindex = i
+         exit TimeLoop
+      elseif ( statetime < nctime ) then  ! we have overshot without a match ... Bad
+         write(*,*)'ERROR:time_manager_mod:nc_get_index: dagnabbit ...' 
+         write(*,*)'ERROR: model time does not match any netCDF time.'
+   
+         call ConvertTime(times(max(1,i-1)),secs,days)
+         write(*,*)'ERROR: preceeding netCDF time (days, seconds) ',days,secs
+         call get_time(statetime,secs,days)
+         write(*,*)'ERROR:             model time (days, seconds) ',days,secs
+         call get_time(nctime,secs,days)
+         write(*,*)'ERROR: following  netCDF time (days, seconds) ',days,secs
+         timeindex = -1
+      endif
+
+   enddo TimeLoop
+
+   ! If we haven't found a match or an error by now, just append ... 
+   if (statetime > nctime) then
+      timeindex = len + 1
+
+      ! DEBUG block
+      ! I need to be able to test the error checking ... so I will manually
+      ! change the t(3) in the netCDF file to be something improper.
+      ! if (timeindex == 3) r8time = r8time + 10.01
+
+      call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
+      call check(NF90_Sync(ncFileID))    
+      ! DEBUG
+      write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
+         ncFileID,trim(adjustl(varname)),len,r8time
+   endif
+   
+   deallocate( times )
+
+endif
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(status)
+    integer, intent ( in) :: status
+
+    if(status /= nf90_noerr) then
+      print *, trim(nf90_strerror(status))
+    end if
+  end subroutine check
+
+  ! Internal routine -- converts netcdf "days since"  to seconds and days 
+  subroutine ConvertTime(ttype,s,d)
+    ! Intel compiler: the intrinsic function "fraction" did not return
+    ! the desired quantity ... .00000 was returned 0.625 ... type?
+    real(r8), intent( in) :: ttype
+    integer,  intent(out) :: s,d
+
+    d = int(ttype)
+    s = nint( (ttype - d) * 60*60*24.0_r8 )
+    ! write(*,*)'days_since ',ttype,' = days ',d,' seconds ',s
+
+  end subroutine ConvertTime
+
+end function nc_get_tindex
 
 
 

@@ -41,6 +41,12 @@ use netcdf, only : NF90_close
 
 implicit none
 
+! Everybody needs to know these ... TJH Feb 10, 2003
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 type(obs_sequence_type) :: seq
 type(obs_def_type)      :: obs_def
 type(set_def_list_type) :: set_def_list
@@ -78,6 +84,14 @@ namelist /perfect_model_obs_nml/ async, obs_seq_in_file_name, &
    output_interval
 
 !------------------------------------------------------------------------------
+
+! Change output to diagnostic output block ...
+write(*,*)'perfect_model_obs attributes:'
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
+write(*,*)'   '
+write(*,*)'    Reading input from input.nml namelist=perfect_model_obs_nml ...'
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -150,6 +164,7 @@ call inc_num_obs_copies(seq, 2, copy_meta_data)
 ! available observations (need to think hard about these model time interfaces).
 Advance: do i = 1, num_obs_sets
    call get_obs_sequence_time(seq, i, time)
+   write(*, *) ' '
    write(*, *) 'time of obs set ', i
    call print_time(time)
 

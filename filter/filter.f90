@@ -258,6 +258,7 @@ call print_time(get_model_time(ens(1)))
 AdvanceTime : do i = 1, num_obs_sets
 
    call get_obs_sequence_time(seq, i, time)
+   write(*, *) ' '
    write(*, *) 'time of obs set ', i
    call print_time(time)
 
