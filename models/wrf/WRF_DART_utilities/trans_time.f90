@@ -43,7 +43,7 @@ call set_calendar_type(calendar_type)
 call static_init_assim_model()
 
 ! get form of file output from assim_model_mod
-if (binary_restart_files == .true.) then
+if ( binary_restart_files ) then
    file_form = 'unformatted'
 else
    file_form = 'formatted'
