@@ -1,5 +1,11 @@
 module forecast_eval_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Used to do forecast evaluation at leads less frequent than the assimilation
 ! frequency for the PE 9var paper. This should NOT be used in any applications
 ! where it is not a perfect model because it advances the truth directly.

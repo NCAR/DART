@@ -1,5 +1,11 @@
 module forecast_eval_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Computes ensemble forecasts and statistics for evaluating their quality
 
 use assim_diag_mod, only : diag_type, output_diagnostics, save_diagnostics, assim_diag_init
