@@ -1,12 +1,13 @@
 # Makefile template for PGI f90
 
 FC = pgf90
-CPPFLAGS =
-FFLAGS = -r8 -Ktrap=fp -pc 64 -v -I/usr/local/netcdf/include
 LD = pgf90
-LDFLAGS = $(LIBS)
-LIBS = -L/usr/local/netcdf/lib -lnetcdf -L/usr/local/udunits-1.11.7/lib -ludunits
+CPPFLAGS =
 LIST = -Mlist
+NETCDF = /usr/local/netcdf
+FFLAGS = -r8 -Ktrap=fp -pc 64 -v -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf -L/usr/local/udunits-1.11.7/lib -ludunits
+LDFLAGS = $(LIBS)
 
 # you should never need to change any lines below.
 
