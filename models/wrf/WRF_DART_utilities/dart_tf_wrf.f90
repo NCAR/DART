@@ -153,7 +153,7 @@ if( dart_to_wrf ) then
    interval_time = dart_time(2) - dart_time(1)
    call get_time(interval_time, seconds, days)
 
-   write (iunit,*) (days *24) + (seconds)/3600
+   write (iunit,*) (days *24 *3600) + seconds
 
    write (iunit,*) wrf_dt
    write (iunit,*) wrf_dx

@@ -58,8 +58,11 @@ set END_DAY     = $date[3]
 set END_HOUR    = $date[4]
 set END_MIN     = $date[5]
 set END_SEC     = $date[6]
-set FCST_RANGE        = `head -4 wrf.info | tail -1`
-set INTERVAL_SS       = `expr $FCST_RANGE \* 3600`
+set INTERVAL_SS       = `head -4 wrf.info | tail -1`
+set RUN_HOURS         = `expr $INTERVAL_SS \/ 3600`
+set REMAIN            = `expr $INTERVAL_SS \% 3600`
+set RUN_MINUTES       = `expr $REMAIN \/ 60`
+set RUN_SECONDS       = `expr $REMAIN \% 60`
 set WRF_DT            = `head -5 wrf.info | tail -1`
 set GRID_DISTANCE     = `head -6 wrf.info | tail -1`
 set WEST_EAST_GRIDS   = `head -7 wrf.info | tail -1`
@@ -73,9 +76,9 @@ set VERTICAL_GRIDS    = `head -9 wrf.info | tail -1`
 cat >! namelist.input << EOF
  &time_control
  run_days                            = 0,
- run_hours                           = ${FCST_RANGE},
- run_minutes                         = 0,
- run_seconds                         = 0,
+ run_hours                           = ${RUN_HOURS},
+ run_minutes                         = ${RUN_MINUTES},
+ run_seconds                         = ${RUN_SECONDS},
  start_year                          = ${START_YEAR},  ${START_YEAR},  ${START_YEAR},
  start_month                         = ${START_MONTH}, ${START_MONTH}, ${START_MONTH},
  start_day                           = ${START_DAY},   ${START_DAY},   ${START_DAY},
