@@ -443,6 +443,7 @@ call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Lorenz_96"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_forcing", forcing ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
 

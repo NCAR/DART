@@ -1,24 +1,8 @@
-&filter_nml
-   async = .false.
-   ens_size = 20,
-   cutoff = 22222222.0
-   cov_inflate = 1.0,
-   start_from_restart = .true.,
-   output_restart = .true.
-   obs_sequence_file_name = "obs_seq.out",
-   restart_in_file_name = "filter_ics",
-   restart_out_file_name = "filter_restart",
-   init_time_days = 0,
-   init_time_seconds = 0, 
-   output_state_ens_mean = .true.
-   output_state_ens_spread = .true.
-   num_output_ens_members = 0 
-   output_interval = 1
+&model_nml
+   deltat = 0.01
 &end
-
-
 &perfect_model_obs_nml
-   async = .false.
+   async = .false.,
    obs_seq_in_file_name = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
    start_from_restart = .true.,
@@ -29,7 +13,20 @@
    init_time_seconds = 0,
    output_interval = 1
 &end
-
-&model_nml
-   deltat = 0.01
+&filter_nml
+   async = .false.,
+   ens_size = 20,
+   cutoff = 22222222.3,
+   cov_inflate = 1.00,
+   start_from_restart = .true.,
+   output_restart = .true.,
+   obs_sequence_file_name = "obs_seq.out",
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0, 
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   num_output_ens_members = 10,
+   output_interval = 1
 &end

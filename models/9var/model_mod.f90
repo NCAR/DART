@@ -678,10 +678,16 @@ call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-! ADDITIONAL MODEL DEFINITION PARAMETERS SHOULD BE ADDED (a, b, f, h)
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "9var" ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_g", g ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_b", b ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_deltat", deltat ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_a", a ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_b", b ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_f", f ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_h", h ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_nu", nu ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_kappa", kappa ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_c", c ))
 
 !-------------------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...

@@ -998,6 +998,7 @@ call check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
 
 ! how about namelist input? might be nice to save ...
 
