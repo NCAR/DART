@@ -23,12 +23,6 @@ else
    setenv PBS_O_WORKDIR `pwd`
 endif
 
-# Get rid of any pre-existing go_advance or go_filter files
-# Need to guarantee this gets done before filter gets to advance
-rm -f go_advance_model
-rm -f go_end_filter
-rm -f go_assim_regions
-
 ### Output to confirm job characteristics
 if ($?PBS_JOBNAME) then
    echo Running $PBS_JOBNAME on host `hostname`
