@@ -69,7 +69,7 @@ character(len=1)  :: idom
 !----
 !  misc stuff
 
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 integer            :: mode, io, ierr, var_id, id
 
 call initialize_utilities
