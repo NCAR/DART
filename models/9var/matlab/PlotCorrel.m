@@ -47,13 +47,15 @@ contour(correl);
 s1 = sprintf('%s Correlation of state variable %d, T = %d', ...
          model, base_var_index, base_time);
 s2 = sprintf('against all variables, all times, all %d ensemble members', ...
-         num_copies); 
+         num_copies-2); 
 title({s1,s2})
 xlabel('time (timestep #)')
-h = ylabel('state variable (index)')
+ylabel('state variable (index)')
 colorbar
 
+% highlight the reference state variable and time
 
-% highlight the reference state variable 
+hold on;
+plot(base_time,base,'kh','MarkerSize',12,'MarkerFaceColor','k')
 
 % Y = { '\tt 1', '\tt 2', '\bf 3', '\tt 4', '\tt 5', '\tt 6', '\tt 7', '\tt 8', '\tt 9'}; set(gca,'YTickLabel',Y);

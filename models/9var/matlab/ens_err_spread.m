@@ -85,7 +85,8 @@ for time_ind = 1 : num_times
    % Compute statistics of the entire error field
    max_err = max(ens_err);
    min_err = min(ens_err);
-   rms_err = mean(abs(ens_err));
+ % rms_err = mean(abs(ens_err));
+   rms_err = sqrt(mean(ens_err.^2));
    sd_mean = mean(ens_sd);
         rms(time_ind) = rms_err;
    sd_final(time_ind) = sd_mean;
