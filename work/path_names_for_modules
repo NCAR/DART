@@ -46,7 +46,8 @@ else if( `hostname` == "elm" ) then
 
 else
 
-   set DEFAULT_COMPILE = 'ifc -c -I/usr/local/include '
+   set DEFAULT_COMPILE = 'ifc -c -C -I/usr/local/include '
+#   set DEFAULT_COMPILE = 'ifc -c -C -auto -zero -Zp8 -align -Kpic -I/usr/local/include '
    set LINK_OPTS     = "-L/usr/local/lib -lnetcdf -lPEPCF90"
    set FFLAGS = "-O -mp"
    set FINAL_COMMAND = 'ifc -o $1 *.o ${LINK_OPTS}'

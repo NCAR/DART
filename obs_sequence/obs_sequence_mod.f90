@@ -575,10 +575,13 @@ type(obs_set_type),      intent(in)    :: obs_set
 type(time_type) :: time
 
 ! Make sure the times are ascending
-time = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
-if(get_obs_set_time(obs_set) <= time .and. sequence%num_obs_sets > 0) then
-   write(*, *) 'Error: obs_set being added to sequence is not in time order: add_obs_set'
-   stop
+! If there are no other obs in sequence, nothing to check
+if(sequence%num_obs_sets /= 0) then
+   time = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
+   if(get_obs_set_time(obs_set) <= time .and. sequence%num_obs_sets > 0) then
+      write(*, *) 'Error: obs_set being added to sequence is not in time order: add_obs_set'
+      stop
+   endif
 endif
 
 ! Make sure there's room in the fixed storage implementation
@@ -628,6 +631,7 @@ integer,                 intent(in) :: file_id
 type(obs_sequence_type), intent(in) :: sequence
 
 integer :: i
+
 
 ! Write number of copies of data 
 write(file_id, *) sequence%num_copies

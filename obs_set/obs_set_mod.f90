@@ -9,7 +9,8 @@ module obs_set_mod
 
 use types_mod
 use set_def_list_mod, only : set_def_list_type, get_total_num_obs
-use time_manager_mod, only : time_type, read_time, write_time
+use time_manager_mod, only : time_type, read_time, write_time, &
+   get_time, set_time
 
 private
 
@@ -100,14 +101,22 @@ implicit none
 type(obs_set_type), intent(inout) :: set_out
 type(obs_set_type), intent(in) :: set_in
 
+integer :: days, seconds
+
 ! Set the sizes
 set_out%num_copies = set_in%num_copies
 set_out%num_obs = set_in%num_obs
-set_out%time = set_in%time
+
+! The intel compiler doesn't do what I believe is default type copy!!!
+! NEED TO CHECK FOR THIS THROUGHOUT, YUCK   11 Nov., 2002
+call get_time(set_in%time, seconds, days)
+set_out%time = set_time(seconds, days)
+
 set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
-if(associated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
+! INTEL compiler with full obs checking dies on this for uninitialized
+!!!if(associated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
 allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
    set_out%missing(set_in%num_obs, set_in%num_copies))
 
