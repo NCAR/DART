@@ -1,5 +1,9 @@
 program trans_time
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART time and date
 !
@@ -22,6 +26,12 @@ use assim_model_mod, only : static_init_assim_model, binary_restart_files
 use utilities_mod, only : get_unit
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer               :: ntimes = 2, n, nhtfrq, &
                          calendar_type = GREGORIAN
