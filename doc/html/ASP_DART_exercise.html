@@ -155,6 +155,16 @@ so please email me (Tim Hoar) at
 <A mailto:"thoar@ucar.edu">thoar@ucar.edu</A>
 </P>
 
+<P>After the installation, you might want to peruse the following.
+<UL><LI><A HREF="#Running">Running the Lorenz_63 Model</A>.</LI>
+    <LI><A HREF="#matlab">Using the Matlab diagnostic scripts</A>.</LI>
+    <LI>A short discussion on 
+    <A HREF="#discussion">bias, filter divergence and covariance inflation.</A></LI>
+    <LI>And another one on 
+     <A HREF="#syntheticobservations">synthetic observations</A>.</LI>
+</UL>
+</P>
+
 <!--==================================================================-->
 
 <A NAME="compilers"></A>
@@ -1058,8 +1068,38 @@ as analysis values).
 Now try applying all of the matlab diagnostic functions described in 
 <A HREF="MatlabDiagnostics.html">the Matlab Diagnostics documentation</A>.
 
+<!--==================================================================-->
+<A NAME="matlab"></A>
+<!--==================================================================-->
+<HR>
+<H2>Synthetic Observations</H2>
+<P>Synthetic observations are generated from a `perfect' model integration, 
+which is often referred to as the `truth' or a `nature run'. 
+A model is integrated forward from some set of initial conditions and 
+observations are generated as <em class=equation>y = H(x) + e</em>
+where <em class=equation>H</em> is an operator on the model state 
+vector, <em class=equation>x</em>, that gives the expected value of a 
+set of observations, <em class=equation>y</em>, 
+and <em class=equation>e</em> is a random variable with a distribution 
+describing the error characteristics of the observing instrument(s) 
+being simulated. 
+Using synthetic observations in this way allows students to learn about 
+assimilation algorithms while being isolated from the 
+additional (extreme) complexity associated with model error and unknown 
+observational error characteristics. 
+In other words, for the real-world assimilation problem, the model has 
+(often substantial) differences from what happens in the real system 
+and the observational error distribution may be very complicated and 
+is certainly not well known. 
+Be careful to keep these issues in mind while exploring 
+the capabilities of the ensemble filters with synthetic observations.
+</P>
+
+
+
 <HR>
 
+<A NAME="discussion"></A>
 <H3>Bias, filter divergence and covariance inflation (with theL63 model)</H3>
 
 One of the common problems with ensemble filters is filter divergence, 
