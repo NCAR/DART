@@ -1,4 +1,4 @@
-models/bgrid_solo/column_rand.f90
+models/bgrid_new/column_rand.f90
 random_seq/random_seq_mod.f90
 random_nr/random_nr_mod.f90
 common/types_mod.f90
