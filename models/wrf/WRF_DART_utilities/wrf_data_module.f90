@@ -8,18 +8,20 @@ MODULE wrf_data_module
 ! $Source$
 ! $Revision$
 ! $Date$
-
+! $Author$ 
 
 implicit none
 private
 
-TYPE wrf_data
+public wrf_data
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
+
+TYPE wrf_data
 
    integer :: ncid  ! netcdf id for file
    integer :: bt_id, bt, sn_id, sn, we_id, we
@@ -50,4 +52,3 @@ revdate  = "$Date$"
 
 end type
 END MODULE wrf_data_module
-

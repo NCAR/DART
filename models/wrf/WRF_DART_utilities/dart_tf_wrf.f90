@@ -9,6 +9,11 @@ PROGRAM dart_tf_wrf
 ! $Revision$
 ! $Date$
 
+use        types_mod, only : r8
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                             error_handler, E_ERR
+use        model_mod, only : netcdf_read_write_var
+use  assim_model_mod, only : binary_restart_files
 use wrf_data_module
 
 implicit none
@@ -18,6 +23,15 @@ character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
+
+!-----------------------------------------------------------------------
+! model namelist parameters
+!-----------------------------------------------------------------------
+
+logical :: output_state_vector = .true.  ! output prognostic variables
+integer :: num_moist_vars = 0            ! default value
+
+namelist /model_nml/ output_state_vector, num_moist_vars
 
 integer :: status, unit
 logical :: dart_to_wrf
@@ -35,69 +49,32 @@ integer       :: seconds, days
 
 include 'netcdf.inc'
 logical, parameter :: debug = .true.
-integer :: mode
-
-INTERFACE
-subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, &
-                                dart_to_wrf, debug )
-
-use wrf_data_module
-implicit none
-
-logical :: dart_to_wrf
-integer :: dart_unit
-logical :: debug
-type(wrf_data) :: wrf
-real(r8), pointer :: dart(:)
-integer :: n_values 
-end subroutine dart_open_and_alloc
-
-subroutine dart_io( in_or_out, dart, dart_unit, n_values, &
-                    seconds, days, wrf, debug )
-
-use wrf_data_module
-implicit none
-
-logical :: dart_to_wrf
-integer :: dart_unit, seconds, days
-character (len=6) :: in_or_out
-logical :: debug
-type(wrf_data) :: wrf
-real(r8), pointer :: dart(:)
-integer :: n_values
-
-end subroutine dart_io
-
-subroutine transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in, debug )
-
-use wrf_data_module
-implicit none
-
-logical :: dart_to_wrf
-logical :: debug
-type(wrf_data) :: wrf
-real(r8), pointer :: dart(:)
-integer :: n_values_in 
-
-end subroutine transfer_dart_wrf
-
-END INTERFACE
-
+integer :: mode, io, ierr
 
 !---
 !  begin
 
-!dart_to_wrf = .false.  ! this should be an input
-!seconds = 60           ! this should be an input
-!days = 365             ! this should be an input
+! Begin by reading the namelist input                                           
+if(file_exist('input.nml')) then
+
+   unit = open_file(file = 'input.nml', action = 'read')
+   read(unit, nml = model_nml, iostat = io )
+   ierr = check_nml_error(io, 'model_nml')
+   call close_file(unit)                                                        
+
+   if ( debug ) then
+      write(*,'(''num_moist_vars = '',i3)')num_moist_vars
+   endif
+endif
+
 read(5,*) dart_to_wrf
 write(6,*) ' dart_to_wrf is : ',dart_to_wrf
-!read(5,*) seconds
-!write(6,*) ' input seconds  : ',seconds
-!read(5,*) days
-!write(6,*) ' input days     : ',days
 
-wrf%ice_micro = .false.
+if( (num_moist_vars >= 4).and.(num_moist_vars <= 6) ) then
+   wrf%ice_micro = .true.
+else
+   wrf%ice_micro = .false.
+endif
 
 !  open wrf data file
 
@@ -164,12 +141,12 @@ status = nf_close(wrf%ncid)
 if (status /= nf_noerr) call error_handler(E_ERR,'main', &
         trim(nf_strerror(status)), source, revision, revdate)
 
-END 
+contains
 
 !******************************************************************************
 
 subroutine wrf_io( wrf, in_or_out, debug )
-use wrf_data_module
+
 implicit none
 type(wrf_data) wrf
 character (len=6) :: in_or_out
@@ -187,15 +164,15 @@ count(3) = wrf%sn
 count(4) = wrf%we+1
 if(debug) write(6,*) ' calling netcdf read for u ', &
            count(1), count(2), count(3), count(4)
-call netcdf_read_write_var( wrf%ncid, wrf%u_id, wrf%u,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "U", wrf%ncid, wrf%u_id, wrf%u,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
 
 if(debug) write(6,*) ' returned from netcdf read for u '
 count(3) = wrf%sn+1
 count(4) = wrf%we
 if(debug) write(6,*) ' calling netcdf read for v '
-call netcdf_read_write_var( wrf%ncid, wrf%v_id, wrf%v,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "V", wrf%ncid, wrf%v_id, wrf%v,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
 if(debug) write(6,*) ' returned from netcdf read for v '
 
 
@@ -203,50 +180,50 @@ count(2) = wrf%bt+1
 count(3) = wrf%sn
 count(4) = wrf%we
 if(debug) write(6,*) ' calling netcdf read for w '
-call netcdf_read_write_var( wrf%ncid, wrf%w_id, wrf%w,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "W", wrf%ncid, wrf%w_id, wrf%w,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
 if(debug) write(6,*) ' returned from netcdf read for w '
-call netcdf_read_write_var( wrf%ncid, wrf%ph_id, wrf%ph,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "PH", wrf%ncid, wrf%ph_id, wrf%ph,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
 if( in_or_out == "INPUT ")   &  ! get base state goepot. for full state computation
-call netcdf_read_write_var( wrf%ncid, wrf%phb_id, wrf%phb,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "PHB", wrf%ncid, wrf%phb_id, wrf%phb,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
 
 count(2) = wrf%bt
 count(3) = wrf%sn
 count(4) = wrf%we
-call netcdf_read_write_var( wrf%ncid, wrf%t_id, wrf%t,    &
-                            start, count, stride, map, in_or_out )
-call netcdf_read_write_var( wrf%ncid, wrf%qv_id, wrf%qv,    &
-                            start, count, stride, map, in_or_out )
-call netcdf_read_write_var( wrf%ncid, wrf%qc_id, wrf%qc,    &
-                            start, count, stride, map, in_or_out )
-call netcdf_read_write_var( wrf%ncid, wrf%qr_id, wrf%qr,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "T", wrf%ncid, wrf%t_id, wrf%t,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
+call netcdf_read_write_var( "QVAPOR", wrf%ncid, wrf%qv_id, wrf%qv,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
+call netcdf_read_write_var( "QCLOUD", wrf%ncid, wrf%qc_id, wrf%qc,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
+call netcdf_read_write_var( "QRAIN", wrf%ncid, wrf%qr_id, wrf%qr,    &
+                            start, count, stride, map, in_or_out, debug, 4 )
 
 
 
 if(wrf%ice_micro) then
-  call netcdf_read_write_var( wrf%ncid, wrf%qi_id, wrf%qi,    &
-                              start, count, stride, map, in_or_out )
-  call netcdf_read_write_var( wrf%ncid, wrf%qs_id, wrf%qs,    &
-                              start, count, stride, map, in_or_out )
-  call netcdf_read_write_var( wrf%ncid, wrf%qg_id, wrf%qg,    &
-                              start, count, stride, map, in_or_out )
+  call netcdf_read_write_var( "QICE", wrf%ncid, wrf%qi_id, wrf%qi,    &
+                              start, count, stride, map, in_or_out, debug, 4 )
+  call netcdf_read_write_var( "QSNOW", wrf%ncid, wrf%qs_id, wrf%qs,    &
+                              start, count, stride, map, in_or_out, debug, 4 )
+  call netcdf_read_write_var( "QGRAP", wrf%ncid, wrf%qg_id, wrf%qg,    &
+                              start, count, stride, map, in_or_out, debug, 4 )
 end if
 
 count(2) = wrf%sn
 count(3) = wrf%we
 count(4) = 1
-call netcdf_read_write_var( wrf%ncid, wrf%mu_id, wrf%mu,    &
-                            start, count, stride, map, in_or_out )
+call netcdf_read_write_var( "MU", wrf%ncid, wrf%mu_id, wrf%mu,    &
+                            start, count, stride, map, in_or_out, debug, 3 )
 
 if(debug) write(6,*) ' in_or_out is ',in_or_out
 if( in_or_out(1:5) == "INPUT")   then  ! get base state mu. for full state computation
 
   if(debug) write(6,*) ' reading mub '
-  call netcdf_read_write_var( wrf%ncid, wrf%mub_id, wrf%mub,    &
-                              start, count, stride, map, in_or_out )
+  call netcdf_read_write_var( "MUB", wrf%ncid, wrf%mub_id, wrf%mub,    &
+                              start, count, stride, map, in_or_out, debug, 3 )
   if(debug) write(6,*) ' returned from mub read '
 end if
 
@@ -277,63 +254,10 @@ end if
 
 end subroutine wrf_io
 
-!*************************************************************************
-
-subroutine netcdf_read_write_var( ncid, var_id, var,                    &
-                                  start, count, stride, map, in_or_out )
-implicit none
-include 'netcdf.inc'
-integer :: ncid, var_id
-real, dimension(*) :: var
-character (len=6) :: in_or_out
-integer, dimension(5) :: start, count, stride, map
-integer :: status
-character(len=80) :: stringerror
-
-
-if( in_or_out(1:5) == "INPUT" ) then
-! write(6,*) ' call netcdf read ', ncid, var_id
-  call check (nf_get_var_real(ncid, var_id, var, start, count, stride, map))
-! write(6,*) ' returned netcdf read '
-else if( in_or_out(1:6) == "OUTPUT" ) then
-  call check (nf_put_var_real(ncid, var_id, var, start, count, stride, map))
-else
-  write(stringerror,*)' unknown IO function for var_id ',var_id, in_or_out
-  call error_handler(E_ERR,'netcdf_read_write_var',&
-             stringerror, source, revision, revdate )
-end if
-
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus 
-    if(istatus /= nf_noerr) call error_handler(E_ERR,'netcdf_read_write_var', &
-          trim(nf_strerror(istatus)), source, revision, revdate) 
-  end subroutine check
-
-end subroutine netcdf_read_write_var
-
-!**********************************************************************
-
-subroutine handle_err(ifn,status)
-implicit none
-integer :: ifn, status
-character (len=80) :: nf_strerror
-
-write(6,*) ' error for netcdf function ',ifn
-write(6,*) ' status code = ',status
-write(6,'(a80)') nf_strerror(status)
-
-stop
-
-end subroutine handle_err
-
 !**********************************************************************
 
 subroutine wrf_open_and_alloc( wrf, mode, debug )
 
-use wrf_data_module
 implicit none
 
 include 'netcdf.inc'
@@ -432,24 +356,25 @@ if (wrf%ice_micro) then
 
 end if
 
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus 
-    if(istatus /= nf_noerr) call error_handler(E_ERR,'wrf_open_and_alloc', &
-          trim(nf_strerror(istatus)), source, revision, revdate) 
-  end subroutine check
-
-
 end subroutine wrf_open_and_alloc
+
+
+!*****************************************************************************
+
+! Internal subroutine - checks error status after each netcdf, prints 
+!                       text message each time an error code is returned. 
+subroutine check(istatus)
+  integer, intent ( in) :: istatus 
+  if(istatus /= nf_noerr) call error_handler(E_ERR,'wrf_open_and_alloc', &
+       trim(nf_strerror(istatus)), source, revision, revdate) 
+end subroutine check
+
 
 !*****************************************************************************
 
 subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, &
                                 dart_to_wrf, debug )
 
-use wrf_data_module
 implicit none
 
 character (len = 80)      :: path
@@ -497,11 +422,21 @@ allocate(dart(n_values))
 !  open DART data file
 
 if(dart_to_wrf)  then  !  DART data file should exist, open it
-  open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
-        status="old",action="read" )
+   if (binary_restart_files ) then
+      open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
+           status="old",action="read" )
+   else
+      open( unit=dart_unit,file="dart_wrf_vector",form="formatted",  &
+           status="old",action="read" )
+   endif
 else
-  open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
-        status="new",action="write" )
+   if (binary_restart_files ) then
+      open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
+           status="new",action="write" )
+   else
+      open( unit=dart_unit,file="dart_wrf_vector",form="formatted",  &
+           status="new",action="write" )
+   endif
 end if
 
 end subroutine dart_open_and_alloc
@@ -511,7 +446,6 @@ end subroutine dart_open_and_alloc
 subroutine dart_io( in_or_out, dart, dart_unit, n_values, &
                      seconds, days, wrf, debug )
 
-use wrf_data_module
 implicit none
 
 character (len = 80)      :: path
@@ -558,7 +492,6 @@ end subroutine dart_io
 
 subroutine transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in, debug )
 
-use wrf_data_module
 implicit none
 
 logical :: dart_to_wrf
@@ -577,30 +510,6 @@ integer :: in, n_values
 character(len=80) :: stringerror
 
 !---
-
-INTERFACE
-
-subroutine trans_2d( one_to_two, a1d,a2d, nx, ny )
-
-implicit none
-integer :: nx,ny
-real(r8) :: a1d(:)
-real :: a2d(nx,ny)
-logical ::  one_to_two
-
-end subroutine trans_2d
-
-subroutine trans_3d( one_to_three, a1d,a3d, nx, ny,nz )
-
-implicit none
-integer :: nx,ny,nz
-real(r8) :: a1d(:)
-real :: a3d(nx,ny,nz)
-logical ::  one_to_three
-
-end subroutine trans_3d
-
-END INTERFACE
 
 
 n_values = 0
@@ -672,9 +581,10 @@ end subroutine transfer_dart_wrf
 subroutine trans_2d( one_to_two, a1d, a2d, nx, ny )
 
 implicit none
+
 integer :: nx,ny
 real(r8) :: a1d(:)
-real :: a2d(nx,ny)
+real(r8) :: a2d(nx,ny)
 logical ::  one_to_two
 
 !---
@@ -683,19 +593,19 @@ integer i,j
 
 if (one_to_two) then
 
-  do j=1,ny
-  do i=1,nx
-    a2d(i,j) = a1d(i + nx*(j-1))
-  enddo
-  enddo
+   do j=1,ny
+      do i=1,nx
+         a2d(i,j) = a1d(i + nx*(j-1))
+      enddo
+   enddo
 
 else
 
-  do j=1,ny
-  do i=1,nx
-    a1d(i + nx*(j-1)) = a2d(i,j)
-  enddo
-  enddo
+   do j=1,ny
+      do i=1,nx
+         a1d(i + nx*(j-1)) = a2d(i,j)
+      enddo
+   enddo
 
 end if
 
@@ -708,7 +618,7 @@ subroutine trans_3d( one_to_three, a1d, a3d, nx, ny, nz )
 implicit none
 integer :: nx,ny,nz
 real(r8) :: a1d(:)
-real :: a3d(nx,ny,nz)
+real(r8) :: a3d(nx,ny,nz)
 logical ::  one_to_three
 
 !---
@@ -717,25 +627,26 @@ integer i,j,k
 
 if (one_to_three) then
 
-  do k=1,nz
-  do j=1,ny
-  do i=1,nx
-    a3d(i,j,k) = a1d(i + nx*(j-1) + nx*ny*(k-1) )
-  enddo
-  enddo
-  enddo
+   do k=1,nz
+      do j=1,ny
+         do i=1,nx
+            a3d(i,j,k) = a1d(i + nx*(j-1) + nx*ny*(k-1) )
+         enddo
+      enddo
+   enddo
 
 else
 
-  do k=1,nz
-  do j=1,ny
-  do i=1,nx
-    a1d(i + nx*(j-1) + nx*ny*(k-1) ) = a3d(i,j,k)
-  enddo
-  enddo
-  enddo
+   do k=1,nz
+      do j=1,ny
+         do i=1,nx
+            a1d(i + nx*(j-1) + nx*ny*(k-1) ) = a3d(i,j,k)
+         enddo
+      enddo
+   enddo
 
 end if
 
 end subroutine trans_3d
 
+END PROGRAM dart_tf_wrf
