@@ -797,7 +797,7 @@ type(obs_def_type) :: obs_def
 real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
 real(r8) :: qc(num_obs_in_set), obs_inc(ens_size), obs_dist
 real(r8) :: ens_inc(ens_size), ens_obs(ens_size, num_obs_in_set)
-integer, parameter :: first_num_close = 100000
+integer :: first_num_close
 integer :: order(num_obs_in_set)
 integer, allocatable :: close_ptr(:, :)
 real(r8), allocatable :: dist_ptr(:, :)
@@ -808,6 +808,8 @@ logical :: close_to_any, local_close_state(num_obs_in_set)
 integer :: inv_indices(model_size)
 integer, allocatable :: indices(:)
 
+! Specify initial storage size for number of close states
+first_num_close = min(model_size, 200000)
 
 ! Generate an array with the indices of my state variables
 allocate(indices(domain_size))
