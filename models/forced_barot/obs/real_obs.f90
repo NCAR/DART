@@ -1,5 +1,11 @@
 module obs_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! This version of the spectral barotropic obs model reads in standard
 ! psi field data from some gdas files. Just reads in one field each time
 ! it's called.

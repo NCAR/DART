@@ -1,5 +1,11 @@
 module obs_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Currently uses NAG for random numbers.
 
 use model_mod, only : lat_max, num_lon, lon, lat, get_model_size
