@@ -2315,8 +2315,8 @@ end function nc_append_time
 function nc_get_tindex(ncFileID, statetime) result(timeindex)
 !------------------------------------------------------------------------
 ! 
-! We need to compare the time of the current assim_model to the current time
-! of the LAST netcdf time dimension variable.
+! We need to compare the time of the current assim_model to the 
+! netcdf time coordinate variable (the unlimited dimension).
 ! If they are the same, no problem ...
 ! If it is earlier, we need to find the right index and insert ...
 ! If it is the "future", we need to add another one ...
@@ -2327,6 +2327,18 @@ function nc_get_tindex(ncFileID, statetime) result(timeindex)
 ! unlimited dimension. If not ... bad things happen.
 !
 ! TJH  7 Feb 2003
+!
+! Revision by TJH 24 Nov 2003:
+! A new array "times" has been added to mirror the times that are stored
+! in the netcdf time coordinate variable. While somewhat unpleasant, it
+! is SUBSTANTIALLY faster than reading the netcdf time variable at every
+! turn -- which caused a geometric or exponential increase in overall 
+! netcdf I/O. (i.e. this was really bad)
+!
+! The time mirror is maintained as a time_type, so the comparison with
+! the state time uses the operators for the time_type. The netCDF file,
+! however, has time units of a different convention. The times are
+! converted only when appending to the time coordinate variable.    
 
 use typeSizes
 use netcdf
@@ -2338,44 +2350,27 @@ type(time_type), intent(in) :: statetime
 integer                     :: timeindex
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeVarID
-integer  :: xtype, ndims, nAtts, length
+integer  :: xtype, ndims, nAtts, nTlen
 character(len=NF90_MAX_NAME)          :: varname
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
 
-integer         :: i, ierr
-type(time_type) :: nctime
+integer         :: i
 integer         :: secs, days
-real(r8)        :: r8time
-real(r8), allocatable, dimension(:) :: times
+real(r8)        :: r8time          ! same as "statetime", different base
+
+integer,         SAVE :: ntimes    ! current working length of the times array
+type(time_type), SAVE, allocatable, dimension(:) :: times
+type(time_type),       allocatable, dimension(:) :: temp
 
 timeindex = 0 ! assume bad things are going to happen
 
-call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(NF90_Inq_Varid(ncFileID, "time", TimeVarID))
-call check(NF90_Inquire_Variable(ncFileID, TimeVarID, varname, xtype, ndims, dimids, nAtts))
+! If "times" is not allocated, we must initialize it.
+! We worry if it is long enough ... later.
 
-! TJH DEBUG
-! write(*,*)'nc_get_tindex: unlimitedDimID is ',unlimitedDimID
-! write(*,*)'nc_get_tindex:      dimids(1) is ',dimids(1)
-! write(*,*)'nc_get_tindex:      TimeVarID is ',TimeVarID
-
-if ( ndims /= 1 ) then
-   write(*,*)'ERROR:nc_get_tindex: "time" expected to be rank-1' 
-   timeindex = -1
+if ( .NOT. allocated(times) ) then
+   allocate( times(1000) )
+   ntimes = 0
 endif
-if ( dimids(1) /= unlimitedDimID ) then
-   write(*,*)'ERROR:nc_get_tindex: "time" must be the unlimited dimension'
-   timeindex = -1
-endif
-if ( timeindex < 0 ) then
-   write(*,*)'ERROR:nc_get_tindex: trouble deep ... can go no farther.'
-   write(*,*)'ERROR:nc_get_tindex: stopping.'
-   stop
-endif
-
-! get time of "state", convert to time base of "days since ..."
-call get_time(statetime, secs, days)
-r8time = days + secs/(60*60*24.0_r8)
 
 ! Make sure we're looking at the most current version of the netCDF file.
 ! Get the length of the (unlimited) Time Dimension 
@@ -2386,75 +2381,121 @@ r8time = days + secs/(60*60*24.0_r8)
 !        if the statetime > last netcdf time ... append a time ... 
 
 call check(NF90_Sync(ncFileID))    
-call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, length))
+call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(NF90_Inq_Varid(ncFileID, "time", TimeVarID))
+call check(NF90_Inquire_Variable(ncFileID, TimeVarID, varname, xtype, ndims, dimids, nAtts))
+call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, nTlen))
 
-if (length < 1) then   ! First attempt at writing a state ...
+! Sanity check all cases first.
 
-   timeindex = 1
+if ( ndims /= 1 ) then
+   write(*,*)'ERROR:nc_get_tindex: "time" expected to be rank-1' 
+   timeindex = timeindex -   1
+endif
+if ( dimids(1) /= unlimitedDimID ) then
+   write(*,*)'ERROR:nc_get_tindex: "time" must be the unlimited dimension'
+   timeindex = timeindex -  10
+endif
+if ( timeindex < 0 ) then
+   write(*,*)'ERROR:nc_get_tindex: trouble deep ... can go no farther.'
+   write(*,*)'ERROR:nc_get_tindex: stopping.'
+   stop
+endif
+
+! convert statetime to time base of "days since ..."
+call get_time(statetime, secs, days)
+r8time = days + secs/(60*60*24.0_r8)   ! netCDF timebase ... what about calendar?!
+! does get_time handle that?
+
+if (nTlen < 1) then              ! First attempt at writing a state ...
+
+   write(*,*)'nc_get_tindex : first time through ',nTlen,ntimes
+
+   ntimes           = 1
+   timeindex        = ntimes
+   times(timeindex) = statetime     ! put time_type value in time mirror
+
    call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
-   ! DEBUG
-!   write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
-!      ncFileID,trim(adjustl(varname)),length,r8time
 
-else
-   ! must try to find the time index ...
+! else if (nTlen /= ntimes) then   ! only if nTlen >= 1
+! 
+!    write(*,*)'ERROR:nc_get_tindex:time mirroring not working'
+!    write(*,*)'ERROR               netcdf time dimension has length ',nTlen
+!    write(*,*)'ERROR               time mirror           has length ',ntimes
+!    timeindex = timeindex - 100
+!    stop
 
-   allocate( times(length) )
-   call check(NF90_Get_Var(ncFileID, TimeVarID, times))   ! get current netCDF times
-   call ConvertTime(times(1),secs,days)   ! converts from "days since" to seconds, days
-   nctime = set_time(secs, days)           ! and finally to time_type
+else ! must try to find the time index ...
 
-   if (statetime < nctime) then
+   if (statetime < times(1) ) then
       write(*,*)'ERROR:time_manager_mod:nc_get_index: dagnabbit ...' 
       write(*,*)'ERROR: model time preceeds earliest netCDF time.'
-      write(*,*)'ERROR: earliest netCDF time (days, seconds) ',days,secs
-      call get_time(statetime,secs,days)
       write(*,*)'ERROR:           model time (days, seconds) ',days,secs
+      call get_time(times(1),secs,days)
+      write(*,*)'ERROR: earliest netCDF time (days, seconds) ',days,secs
       timeindex = -1                       ! set error flag
       stop
    endif
-   
-   TimeLoop : do i = 1,length
 
-      call ConvertTime(times(i),secs,days)
-      nctime = set_time(secs, days)
-   
-      if ( statetime == nctime ) then     ! we have a match for a time
+   ! If we can assume time is monotonic then we need not check every possible
+   ! time index for a match. We can just check the last one and use it if it
+   ! matches. If it does not match and the state time is greater than the 
+   ! latest netcdf time, we append a new time.
+
+   TimeLoop : do i = ntimes,ntimes        ! assume we are in "monotonic" mode
+
+      if ( statetime == times(i) ) then     ! we have a match for a time
+
          timeindex = i
          exit TimeLoop
-      elseif ( statetime < nctime ) then  ! we have overshot without a match ... Bad
+
+      elseif ( statetime < times(i) ) then  ! we have overshot without a match ... Bad
+
          write(*,*)'ERROR:time_manager_mod:nc_get_index: dagnabbit ...' 
-         write(*,*)'ERROR: model time does not match any netCDF time.'
-   
-         call ConvertTime(times(max(1,i-1)),secs,days)
+         write(*,*)'ERROR:  model time does not match any netCDF time.'
+         call get_time(times(max(1,i-1)),secs,days)
          write(*,*)'ERROR: preceeding netCDF time (days, seconds) ',days,secs
          call get_time(statetime,secs,days)
          write(*,*)'ERROR:             model time (days, seconds) ',days,secs
-         call get_time(nctime,secs,days)
+         call get_time(times(i),secs,days)
          write(*,*)'ERROR: following  netCDF time (days, seconds) ',days,secs
          timeindex = -1
+         exit TimeLoop
+
       endif
 
    enddo TimeLoop
 
    ! If we haven't found a match or an error by now, just append ... 
-   if (statetime > nctime) then
-      timeindex = length + 1
+   if (timeindex == 0 ) then
 
-      ! DEBUG block
-      ! I need to be able to test the error checking ... so I will manually
-      ! change the t(3) in the netCDF file to be something improper.
-      ! if (timeindex == 3) r8time = r8time + 10.01
+      ! If times needs to be lengthened: query the
+      ! length, allocate a temp array, copy the data, deallocate
+      ! times, reallocate at double the length, copy the data back,
+      ! and deallocate the temp array.
+
+      if ( ntimes == size(times) ) then    ! no room left, must lengthen
+
+         ! write(*,*)'Reallocating time mirror from ',ntimes,' to ',2*ntimes
+
+         allocate(temp(size(times)))
+         temp = times                      ! saving values to temp array
+         deallocate(times)
+         allocate(times(2*ntimes))         ! lengthen
+         times(1:ntimes) = temp            ! restore values
+         deallocate(temp)                  ! clean up
+
+      endif
+
+      ntimes           = ntimes + 1
+      timeindex        = ntimes
+      times(timeindex) = statetime   ! put time in local time mirror
 
       call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
       call check(NF90_Sync(ncFileID))    
-      ! DEBUG
-!      write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
-!         ncFileID,trim(adjustl(varname)),length,r8time
+
    endif
    
-   deallocate( times )
-
 endif
 
 contains
@@ -2468,19 +2509,6 @@ contains
       print *, trim(nf90_strerror(status))
     end if
   end subroutine check
-
-  ! Internal routine -- converts netcdf "days since"  to seconds and days 
-  subroutine ConvertTime(ttype,s,d)
-    ! Intel compiler: the intrinsic function "fraction" did not return
-    ! the desired quantity ... .00000 was returned 0.625 ... type?
-    real(r8), intent( in) :: ttype
-    integer,  intent(out) :: s,d
-
-    d = int(ttype)
-    s = nint( (ttype - d) * 60*60*24.0_r8 )
-    ! write(*,*)'days_since ',ttype,' = days ',d,' seconds ',s
-
-  end subroutine ConvertTime
 
 end function nc_get_tindex
 
