@@ -21,9 +21,12 @@ rm -rf $temp_dir
 mkdir  $temp_dir
 cd     $temp_dir
 
+pwd >> ~/DART4/DART/models/lorenz_96/work/my_temp_file
+
 # Copy the initial condition file to the temp directory
 
 cp ${PBS_O_WORKDIR}/assim_model_state_ic$element temp_ic
+ls -al temp_ic >> ~/DART4/DART/models/lorenz_96/work/my_temp_file
 cp ${PBS_O_WORKDIR}/input.nml .
 cp ${PBS_O_WORKDIR}/integrate_model .
 
