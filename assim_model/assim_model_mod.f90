@@ -29,7 +29,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
    get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files, &
-   finalize_diag_ouput, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
+   finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
    awrite_state_restart, Aadvance_state
 
 
