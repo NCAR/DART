@@ -99,10 +99,10 @@ filter: creates four files. These are to be replaced by netCDF files.
 ./obs_sequence/filter.f90:open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
 
 
+changed the location of the netcdf work.pc file ...
 OK -- now verify the netcdf dump of the state vector worked ...
 
 ncdump prior_state.nc ... read into Matlab?   the state vector ...
-
 
 
 
