@@ -12,7 +12,7 @@ module obs_def_mod
 
 use        types_mod, only : r8
 use   utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_kind
+use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_kind, get_obs_kind
 use     location_mod, only : location_type, read_location, write_location, interactive_location
 use time_manager_mod, only : time_type, read_time, write_time, set_time
 
@@ -330,11 +330,16 @@ integer :: seconds, days
 
 if ( .not. module_initialized ) call initialize_module
 
-! Get the location
-call interactive_location(obs_def%location)
-
 ! Get the obsrvation kind
 call interactive_kind(obs_def%kind)
+
+! If the kind is an identity observation, don't need to call location
+! Just set location to default
+if(get_obs_kind(obs_def%kind) < 0) then
+   call interactive_location(obs_def%location, .true.)  
+else! Get the location
+   call interactive_location(obs_def%location)
+endif
 
 ! Get the time
 !!!call interactive_time(obs_def%time)
