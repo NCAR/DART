@@ -19,10 +19,6 @@ set temp_dir = $3
 
 set verbose
 
-set time = `cat ${PBS_O_WORKDIR}/async_may_go`
-set secs = $time[1]
-set days = $time[2]
-
 rm -rf $temp_dir
 mkdir  $temp_dir
 cd     $temp_dir
@@ -32,6 +28,22 @@ cd     $temp_dir
 cp ${PBS_O_WORKDIR}/wrfinput .
 mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
+
+#set time = `cat ${PBS_O_WORKDIR}/async_may_go`
+#set filetype = `file dart_wrf_vector`
+#if ($filetype[2] == ASCII) then
+#   set time = `head -1 dart_wrf_vector`
+#else if ($filetype[2] == data) then
+#   set time = `dd if=dart_wrf_vector bs=4 count=4`
+#else
+#   echo filetype of initial dart_wrf_vector not recognized
+#   stop
+#endif
+
+set time = `tail -1 ${PBS_O_WORKDIR}/filter_control`
+
+set secs = $time[1]
+set days = $time[2]
 
 # Copy the boundary condition file to the temp directory.
 cp ${PBS_O_WORKDIR}/WRF/wrfbdy_${days}_${secs}_$element wrfbdy_d01
@@ -44,6 +56,8 @@ ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 # Convert DART to wrfinput
 
 echo ".true." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
+
+#${PBS_O_WORKDIR}/trans_time >& out.trans_time
 
 mv wrfinput wrfinput_d01
 
