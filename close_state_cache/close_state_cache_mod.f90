@@ -104,7 +104,6 @@ if(ind > cache%size) then
    stop
 endif  
 
-
 ! Can I combine the allocations to avoid multiple memory stabs
 allocate(cache%elt(ind)%num_close(num_obs_in_set))
 call get_num_close_states(seq, index, radius, cache%elt(ind)%num_close)

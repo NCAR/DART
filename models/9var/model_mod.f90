@@ -18,7 +18,8 @@ private
 
 public init_model, get_model_size, init_conditions, adv_1step, advance, &
    model_output, balance_init , static_init_model, init_time, &
-   get_state_meta_data, get_model_time_step, end_model, model_interpolate
+   get_state_meta_data, get_model_time_step, end_model, model_interpolate, &
+   model_get_close_states 
 
 integer, parameter :: model_size = 9
 
@@ -548,6 +549,27 @@ subroutine end_model()
 end subroutine end_model
 
 
+
+
+
+
+subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+!--------------------------------------------------------------------
+! 
+! Stub for computation of get close states
+
+implicit none
+
+type(location_type), intent(in) :: o_loc
+real(r8), intent(in) :: radius
+integer, intent(out) :: number, indices(:)
+real(r8), intent(out) :: dist(:)
+
+! Because of F90 limits this stub must be here telling assim_model
+! to do exhaustive search (number = -1 return)
+number = -1
+
+end subroutine model_get_close_states
 
 
 

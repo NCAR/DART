@@ -109,7 +109,9 @@ public  atmosphere,      &
         static_init_model,  &
         init_model_instance, &
         init_time, &
-        init_conditions
+        init_conditions, &
+        TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER, &
+        model_get_close_states
 
 !-----------------------------------------------------------------------
 
@@ -150,6 +152,10 @@ character(len=128) :: tag = '$Name$'
 
    integer :: date_init(6)
 
+
+!-----------------------------------------------------------------------
+! Public definition of variable types
+integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_TRACER = 4
 
 
 !-----------------------------------------------------------------------
@@ -975,7 +981,7 @@ end function get_model_time_step
 
 !#######################################################################
 
-subroutine get_state_meta_data(index_in, location)
+subroutine get_state_meta_data(index_in, location, var_type)
 !---------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
@@ -983,6 +989,8 @@ subroutine get_state_meta_data(index_in, location)
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 !  SHOULD THIS ALSO RETURN THE TYPE OF THIS VARIABLE???
+! YES NEED TO RETURN VARIABLE TYPE HERE
+! Types for this bgrid model are, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER
 
 implicit none
 
@@ -990,8 +998,9 @@ integer, intent(in) :: index_in
 ! Temporary kluge of location type
 !integer, intent(in) :: location
 type(location_type), intent(out) :: location
+integer, intent(out), optional :: var_type
 
-integer :: i, j, k, nt, index
+integer :: i, j, k, nt, index, local_var_type, var_type_temp
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 integer :: t_size, v_size, t_grid_size, v_grid_size, t_per_col, v_per_col
 integer :: num_t_lons, num_t_lats, num_v_lons, num_v_lats
@@ -1032,10 +1041,20 @@ if(index < t_grid_size) then
 ! Note, array runs from 1, index runs from 0
    lon = t_lons(lon_index + 1)
    lat = t_lats(lat_index + 1)
+! First variable on mass grid is PS
    if(col_elem == 0) then
       lev = -1
+      local_var_type = TYPE_PS 
+! Rest of variables are temperature and tracers
    else
-      lev = int((col_elem  + 1)/ 2)
+      lev = int((col_elem  + 1)/ (1 + ntracers))
+      var_type_temp = mod(col_elem - 1, 1 + ntracers)
+! First element on each level is T, remainder are tracers from 1 to ntracers
+      if(var_type_temp == 0) then
+         local_var_type = TYPE_T
+      else
+         local_var_type = TYPE_TRACER + var_type_temp - 1
+      endif
    endif
 
 else
@@ -1053,10 +1072,19 @@ else
    if(abs(lon - 360.0) < 0.00001) lon = 360.0
    lat = v_lats(lat_index + 1)
    lev = int((col_elem + 2) / 2)
+! Compute u or v, u is even, v is odd
+   if(col_elem / 2 * 2 == col_elem) then
+      local_var_type = TYPE_U
+   else
+      local_var_type = TYPE_V
+   endif
 endif
 
 !write(*, *) 'lon, lat, and lev ', lon, lat, lev
 location = set_location(lon, lat, lev)
+
+! If the type is wanted, return it
+if(present(var_type)) var_type = local_var_type
 
 
 end subroutine get_state_meta_data
@@ -1269,6 +1297,352 @@ type(time_type), intent(out) :: i_time
 i_time = Time
 
 end subroutine init_time
+
+
+
+!--------------------------------------------------------------------
+
+subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+
+implicit none
+
+type(location_type), intent(in) :: o_loc
+real(r8), intent(in) :: radius
+integer, intent(out) :: number, indices(:)
+real(r8), intent(out) :: dist(:)
+
+real(r8) :: loc_array(3), o_lon, o_lat
+integer :: tnlon, tnlat, vnlon, vnlat, num, max_size, i, j, num1
+integer :: t_size, v_size, t_per_col, t_grid_size, v_per_col, col_base_index
+integer, allocatable :: lon_ind(:), lat_ind(:)
+real(r8), allocatable :: close_dist(:)
+
+! Number found starts at 0
+number = 0
+
+! Fixed to use only global grid for now (need to modify for mpp)
+call get_horiz_grid_size (Dynam % Hgrid, TGRID, tnlon, tnlat, .true.)
+call get_horiz_grid_size (Dynam % Hgrid, VGRID, vnlon, vnlat, .true.)
+
+! Do the t_grid and then the v_grid
+open(unit = 51, file = 'temp_point')
+
+! Num of close horizontal grid points starts at 0, too
+num = 0
+! For now, just allocate enough space for all grid points, may want
+! to make this smaller at some point for big models.
+max_size = tnlon*tnlat + vnlon*vnlat
+allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
+
+
+! Look for close grid points on the t grid
+call grid_close_states(o_loc, t_lons, t_lats, tnlon, tnlat, radius, &
+   num, lon_ind, lat_ind, close_dist)
+write(*, *) 'back from first grid_close_states num = ', num
+do i = 1, num
+   write(51, 91) t_lons(lon_ind(i)), t_lats(lat_ind(i)), close_dist(i)
+end do
+
+
+! Compute size of grid storage for full levels
+t_size = tnlon * tnlat
+v_size = vnlon * vnlat
+t_per_col = 1 + (1 + ntracers) * num_levels
+t_grid_size = t_per_col * t_size
+v_per_col = 2 * num_levels
+
+! Add all t-grid variables in this column to the close list with this distance
+do i = 1, num
+   col_base_index = ((lon_ind(i) - 1) * tnlat + lat_ind(i) - 1) * t_per_col
+   do j = 1, t_per_col
+      number = number + 1
+      if(number <= size(indices)) indices(number) = col_base_index + j
+      if(number <= size(dist)) dist(number) = close_dist(i)
+   end do
+end do
+   
+num1 = num + 1
+
+call grid_close_states(o_loc, v_lons, v_lats, vnlon, vnlat, radius, &
+   num, lon_ind, lat_ind, close_dist)
+write(*, *) 'back from second grid_close_states num = ', num
+
+! Add all v-grid variables in this column to close list with this distance
+do i = num1, num
+   col_base_index = t_grid_size + ((lon_ind(i) - 1) * vnlat + lat_ind(i) - 1) * v_per_col
+   do j = 1, v_per_col
+      number = number + 1
+      if(number <= size(indices)) indices(number) = col_base_index + j
+      if(number <= size(dist)) dist(number) = close_dist(i)
+   end do
+end do
+
+do i = num1, num
+   write(51, 91) v_lons(lon_ind(i)), v_lats(lat_ind(i)), close_dist(i)
+end do
+
+91       format(1x, 3(f8.4, 3x))
+
+deallocate(lon_ind, lat_ind, close_dist)
+
+close(unit = 51)
+
+end subroutine model_get_close_states
+
+
+!-----------------------------------------------------------------
+
+subroutine grid_close_states(o_loc, lons, lats, nlon, nlat, radius, &
+   num, close_lon_ind, close_lat_ind, close_dist)
+
+! WARNING: THIS ROUTINE DOES NOT FUNCTION PROPERLY FOR LARGE RADII. It
+! SACRIFICES GETTING ALL THE POINTS AT THE MOST DISTANT NEGATIVE 
+! LATITUDE OFFSETS TO AVOID GETTING REDUNDANT POINT (WHICH WOULD BE
+! VERY BAD POTENTIALLY). AT SOME POINT SOME TALENTED PROGRAMMER
+! SHOULD CLEAN THIS UP. THERE IS ALSO A DANGER OF GETTING 
+! REDUNDANT POINTS NEAR THE POLES IF THE LONGITUDE DISTRIBUTION 
+! HAS AN ODD NUMBER OF POINTS SO THAT THE REV_BLON IS NOT 180
+! DEGREES DIFFERENT. A CHECK IS IN FOR THIS.
+
+! Finds close state points from a particular grid; 
+
+implicit none
+
+type(location_type), intent(in) :: o_loc
+integer, intent(in) :: nlon, nlat
+real(r8), intent(in) :: lons(nlon), lats(nlat), radius
+integer, intent(inout) :: num
+integer, intent(inout) :: close_lon_ind(:), close_lat_ind(:)
+real(r8), intent(out) :: close_dist(:)
+
+real(r8) :: rev_lon, glat, glon, loc_array(3), o_lon, o_lat, o_lev
+real(r8) :: gdist, diff
+integer :: blat_ind, blon_ind, i, j, rev_blon_ind, lat_ind, lon_ind
+integer :: final_blon_ind
+real(r8), parameter :: glev = 1.0
+type(location_type) :: loc
+
+
+! Get the lat and lon from the loc
+loc_array = get_location(o_loc)
+o_lon = loc_array(1)
+o_lat = loc_array(2)
+
+! Get index to closest lat and lon for this observation
+blat_ind = get_closest_lat_index(o_lat, lats, nlat)
+write(*, *) 'closest latitude in grid is ', blat_ind, lats(blat_ind)
+
+blon_ind = get_closest_lon_index(o_lon, lons, nlon)
+write(*, *) 'closest longitude in grid is ', blon_ind, lons(blon_ind)   
+
+! Also may need to work with the longitude on opposite side for pole wrap
+rev_blon_ind = blon_ind + nlon / 2
+if(rev_blon_ind > nlon) rev_blon_ind = rev_blon_ind - nlon
+
+! If the rev_blon and blon are not 180 degrees apart this algorithm
+! could produce redundant close points, don't want that to happen.
+diff = dabs(lons(rev_blon_ind) - lons(blon_ind))
+if(dabs(diff - 180.0) > 0.000001) then
+! Actually, it can fail anyway because of the wraparound longitude search
+   write(*, *) 'ERROR in subroutine grid_close_states in bgrid model_mod'
+   write(*, *) 'Algorithm can fail if grids do not have even number of '
+   write(*, *) 'longitudes'
+   stop
+endif
+write(*, *) 'closest rev long in grid is ', rev_blon_ind, lons(rev_blon_ind)
+
+! Begin a search along the latitude axis in the positive direction
+final_blon_ind = blon_ind
+do i = 0, nlat / 2
+   lat_ind = blat_ind + i
+   if(lat_ind > nlat) then
+      lat_ind = nlat - (lat_ind - nlat - 1)
+! This will change once and for ever after wrapping over pole
+      final_blon_ind = rev_blon_ind      
+   endif
+   glat = lats(lat_ind)
+! Take care of storage round-off
+   if(glat < -90.0) glat = 0.0
+   if(glat > 90.0) glat = 90.0
+! Search in positive longitude offset
+   do j = 0, nlon / 2
+      lon_ind = final_blon_ind + j
+      if(lon_ind > nlon) lon_ind = lon_ind - nlon
+      glon = lons(lon_ind)
+      if(glon > 360.0) glon = glon - 360.0
+      if(glon < 0.0) glon = glon + 360.0
+      loc = set_location(glon, glat, glev)
+      gdist = get_dist(loc, o_loc)
+      if(gdist <= radius) then
+         num = num + 1
+         close_lon_ind(num) = lon_ind
+         close_lat_ind(num) = lat_ind
+         close_dist(num) = gdist
+! If radius is too far for closest longitude, no need to search further in lat
+      else if (j == 0) then
+         goto 11
+      else 
+! Look in negative longitude offset direction next
+         goto 21
+      endif
+   end do
+! Search in negative longitude offset
+21 do j = 1, (nlon + 1) / 2 - 1
+      lon_ind = final_blon_ind - j
+      if(lon_ind < 1) lon_ind = nlon + lon_ind
+      glon = lons(lon_ind)
+      if(glon > 360.0) glon = glon - 360.0
+      if(glon < 0.0) glon = glon + 360.0
+      loc = set_location(glon, glat, glev)
+      gdist = get_dist(loc, o_loc)
+      if(gdist <= radius) then
+         num = num + 1
+         close_lon_ind(num) = lon_ind
+         close_lat_ind(num) = lat_ind
+         close_dist(num) = gdist
+      else
+         goto 31
+      endif
+   end do
+31 continue
+end do
+11 continue
+
+
+! Search in the negative lat direction, be sure not to be redundant
+final_blon_ind = blon_ind
+do i = 1, (nlat + 1) / 2 - 1
+   lat_ind = blat_ind - i
+   if(lat_ind < 1) then
+      lat_ind = -1 * lat_ind + 1
+      final_blon_ind = rev_blon_ind
+   endif
+   glat = lats(lat_ind)
+! Take care of storage round-off
+   if(glat < -90.0) glat = 0.0
+   if(glat > 90.0) glat = 90.0
+! Search in positive longitude offset
+   do j = 0, nlon / 2
+      lon_ind = final_blon_ind + j
+      if(lon_ind > nlon) lon_ind = lon_ind - nlon
+      glon = lons(lon_ind)
+      if(glon > 360.0) glon = glon - 360.0
+      if(glon < 0.0) glon = glon + 360.0
+      loc = set_location(glon, glat, glev)
+      gdist = get_dist(loc, o_loc)
+      if(gdist <= radius) then
+         num = num + 1
+         close_lon_ind(num) = lon_ind
+         close_lat_ind(num) = lat_ind
+         close_dist(num) = gdist
+! If radius is too far for closest longitude, no need to search further in lat
+      else if (j == 0) then
+         goto 111
+      else 
+! Look in negative longitude offset direction next
+         goto 121
+      endif
+   end do
+! Search in negative longitude offset
+121 do j = 1, (nlon + 1) / 2 - 1
+      lon_ind = final_blon_ind - j
+      if(lon_ind < 1) lon_ind = nlon + lon_ind
+      glon = lons(lon_ind)
+      if(glon > 360.0) glon = glon - 360.0
+      if(glon < 0.0) glon = glon + 360.0
+      loc = set_location(glon, glat, glev)
+      gdist = get_dist(loc, o_loc)
+      if(gdist <= radius) then
+         num = num + 1
+         close_lon_ind(num) = lon_ind
+         close_lat_ind(num) = lat_ind
+         close_dist(num) = gdist
+      else
+         goto 131
+      endif
+   end do
+131 continue
+end do
+111 continue
+
+
+
+end subroutine grid_close_states
+
+!--------------------------------------------------------------
+
+function get_closest_lat_index(o_lat, lats, nlat)
+
+implicit none
+integer, intent(in) :: nlat
+real(r8), intent(in) :: o_lat, lats(nlat)
+integer :: get_closest_lat_index
+
+real(r8) :: lat_bot, lat_top, lat_int, diff
+integer :: lower_ind
+
+! Find closest lat
+lat_bot = lats(1)
+lat_top = lats(nlat)
+lat_int = lats(2) - lats(1)
+if(o_lat <= lat_bot) then
+   get_closest_lat_index = 1
+else if(o_lat >= lat_top) then
+   get_closest_lat_index = nlat
+else
+   diff = (o_lat - lat_bot) / lat_int
+   lower_ind = int(diff) + 1
+   if(diff - int(diff) < 0.5) then
+      get_closest_lat_index = lower_ind
+   else
+      get_closest_lat_index = lower_ind + 1
+   endif
+endif
+
+end function get_closest_lat_index
+
+
+!--------------------------------------------------------------
+
+function get_closest_lon_index(o_lon, lons, nlon)
+
+implicit none
+integer, intent(in) :: nlon
+real(r8), intent(in) :: o_lon, lons(nlon)
+integer :: get_closest_lon_index
+
+real(r8) :: diff, lon_bot, lon_top, lon_int
+integer :: lower_ind, blon_ind 
+
+! Find closest longitude on grid to given longitude
+lon_bot = lons(1)
+lon_top = lons(nlon)
+lon_int = lons(2) - lons(1)
+if(o_lon <= lon_bot) then
+   diff = (lon_bot - o_lon) / lon_int
+   if(diff > 0.5) then
+      get_closest_lon_index = nlon
+   else
+      get_closest_lon_index = 1
+   end if
+else if(o_lon >= lon_top) then
+   diff = (o_lon - lon_top) / lon_int
+   if(diff > 0.5) then
+      get_closest_lon_index = 1
+   else
+      get_closest_lon_index = nlon
+   end if
+else
+   diff = (o_lon - lon_bot) / lon_int
+   lower_ind = int(diff) + 1
+   if(diff - int(diff) < 0.5) then
+      get_closest_lon_index = lower_ind
+   else
+      get_closest_lon_index = lower_ind + 1
+   end if
+end if
+
+end function get_closest_lon_index
 
 
 

@@ -16,7 +16,7 @@ private
 
 public static_init_model, init_conditions, get_model_size, adv_1step,  &
    init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model, &
-   init_model
+   init_model, model_get_close_states
 
 
  integer,  parameter :: model_size =   40
@@ -380,6 +380,28 @@ contains
   end subroutine check
 
 end subroutine nc_write_locations
+
+
+
+
+
+subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+!--------------------------------------------------------------------
+! 
+! Stub for computation of get close states
+
+implicit none
+
+type(location_type), intent(in) :: o_loc
+real(r8), intent(in) :: radius
+integer, intent(out) :: number, indices(:)
+real(r8), intent(out) :: dist(:)
+
+! Because of F90 limits this stub must be here telling assim_model
+! to do exhaustive search (number = -1 return)
+number = -1
+
+end subroutine model_get_close_states
 
 
 !

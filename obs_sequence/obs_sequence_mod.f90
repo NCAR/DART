@@ -359,7 +359,26 @@ end function get_copy_meta_data
 
 
 
-function get_obs_set(sequence, index)
+
+subroutine get_obs_set(obs_set, sequence, index)
+!----------------------------------------------------------------------------------
+!
+! Returns the index obs_set in this sequence. Many additonal embelishments to this
+! interface will be needed for other assimilation applications.
+
+implicit none
+
+type(obs_set_type), intent(out)     :: obs_set
+type(obs_sequence_type), intent(in) :: sequence
+integer,                 intent(in) :: index
+
+call obs_set_copy(obs_set, sequence%obs_sets(index))
+
+end subroutine get_obs_set
+
+
+
+function old_get_obs_set(sequence, index)
 !----------------------------------------------------------------------------------
 !
 ! Returns the index obs_set in this sequence. Many additonal embelishments to this 
@@ -367,14 +386,18 @@ function get_obs_set(sequence, index)
 
 implicit none
 
-type(obs_set_type)                  :: get_obs_set
+type(obs_set_type)                  :: old_get_obs_set
 type(obs_sequence_type), intent(in) :: sequence
 integer,                 intent(in) :: index
 
-call obs_set_copy(get_obs_set, sequence%obs_sets(index))
+call obs_set_copy(old_get_obs_set, sequence%obs_sets(index))
+
+
+
+! Next line has been permanently repaclace pre_Sept 2002
 !!!get_obs_set = sequence%obs_sets(index)
 
-end function get_obs_set
+end function old_get_obs_set
 
 
 
@@ -394,7 +417,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-obs_set = get_obs_set(seq, index)
+call get_obs_set(obs_set, seq, index)
+!!!obs_set = get_obs_set(seq, index)
 def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_diag_obs_err_cov(seq%def_list, def_index, cov)
@@ -421,7 +445,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-obs_set = get_obs_set(seq, index)
+call get_obs_set(obs_set, seq, index)
+!!!obs_set = get_obs_set(seq, index)
 def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_num_close_states(seq%def_list, def_index, radius, num)
@@ -449,7 +474,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-obs_set = get_obs_set(seq, index)
+call get_obs_set(obs_set, seq, index)
+!!!obs_set = get_obs_set(seq, index)
 def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_close_states(seq%def_list, def_index, radius, num, &
@@ -480,7 +506,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-obs_set = get_obs_set(sequence, index)
+call get_obs_set(obs_set, sequence, index)
+!!!obs_set = get_obs_set(sequence, index)
 def_index = os_get_obs_def_index(obs_set)
 
 if(present(num)) then
@@ -506,7 +533,8 @@ integer,                 intent(in) :: index
 
 type(obs_set_type) :: obs_set
 
-obs_set = get_obs_set(sequence, index)
+call get_obs_set(obs_set, sequence, index)
+!!!obs_set = get_obs_set(sequence, index)
 get_obs_sequence_time = get_obs_set_time(obs_set)
 
 end function get_obs_sequence_time
@@ -526,7 +554,8 @@ integer,                 intent(in) :: index
 
 type(obs_set_type) :: obs_set
 
-obs_set = get_obs_set(sequence, index)
+call get_obs_set(obs_set, sequence, index)
+!!!obs_set = get_obs_set(sequence, index)
 get_num_obs_in_set = get_num_obs(obs_set)
 
 end function get_num_obs_in_set

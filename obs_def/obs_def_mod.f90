@@ -7,11 +7,12 @@ module obs_def_mod
 ! $Author$
 
 use types_mod
-use obs_kind_mod, only : obs_kind_type, read_kind, write_kind
+use obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
+   IDENTITY_OBSERVATION
 use location_mod, only : location_type, read_location, write_location
 use obs_model_mod, only : take_obs, interactive_def
 use assim_model_mod, only : am_get_close_states=>get_close_states, &
-   am_get_num_close_states=>get_num_close_states
+   am_get_num_close_states=>get_num_close_states, get_state_meta_data
 
 private
 
@@ -20,33 +21,68 @@ public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get
    set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type, &
    interactive_obs_def
 
+! Need overloaded interface for init_obs_def
+interface init_obs_def
+   module procedure init_obs_def1
+   module procedure init_obs_def2
+end interface
+
 type obs_def_type
    private
    type(location_type) :: location
    type(obs_kind_type) :: kind
    real(r8) :: error_variance
+! Next field indexes into model state for identity observations
+   integer :: model_state_index
 end type obs_def_type
 
 contains
 
 !----------------------------------------------------------------------------
 
-function init_obs_def(location, kind, error_variance)
+function init_obs_def1(location, kind, error_variance)
 
-! Constructor for an obs_def.
+! Constructor for an obs_def that is not identity observation.
 
 implicit none
 
-type(obs_def_type) :: init_obs_def
+type(obs_def_type) :: init_obs_def1
 type(location_type), intent(in) :: location
 type(obs_kind_type), intent(in) :: kind
-real(r8) :: error_variance
+real(r8), intent(in) :: error_variance
 
-init_obs_def%location = location
-init_obs_def%kind = kind
-init_obs_def%error_variance = error_variance
+init_obs_def1%location = location
+init_obs_def1%kind = kind
+init_obs_def1%error_variance = error_variance
+! This is not an identity observation
+init_obs_def1%model_state_index = -1
 
-end function init_obs_def
+end function init_obs_def1
+
+
+!----------------------------------------------------------------------------
+
+function init_obs_def2(index, error_variance)
+
+! Constructor for an obs_def that is an identity observation.
+
+implicit none
+
+type(obs_def_type) :: init_obs_def2
+integer, intent(in) :: index
+real(r8), intent(in) :: error_variance
+
+! Having a non-zero index indicates this is an identity observation
+init_obs_def2%model_state_index = index
+init_obs_def2%error_variance = error_variance
+
+! Location comes from model
+call get_state_meta_data(index, init_obs_def2%location)
+
+! Define kind as identity
+init_obs_def2%kind = set_obs_kind(IDENTITY_OBSERVATION)
+
+end function init_obs_def2
 
 !----------------------------------------------------------------------------
 
@@ -61,8 +97,14 @@ real(r8) :: get_expected_obs
 type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: state_vector(:)
 
+! If this is identity obs, can just return from state vector now
+if(obs_def%model_state_index > 0) then
+   get_expected_obs = state_vector(obs_def%model_state_index)
+else
+
 ! Need to figure out exactly how to expand this
-get_expected_obs = take_obs(state_vector, obs_def%location, obs_def%kind)
+   get_expected_obs = take_obs(state_vector, obs_def%location, obs_def%kind)
+endif
 
 end function get_expected_obs
 
@@ -232,7 +274,7 @@ integer, intent(in) :: file
 
 character*5 :: header
 
-! Begin by reading five character ascii header, then location, kind, error variance
+! Begin by reading five character ascii header, then location, kind, error variance, index
 
 ! Need to add additional error checks on read
 read(file, 11) header
@@ -246,6 +288,7 @@ endif
 read_obs_def%location = read_location(file)
 read_obs_def%kind = read_kind(file)
 read(file, *) read_obs_def%error_variance
+read(file, *) read_obs_def%model_state_index
 
 end function read_obs_def
 
@@ -268,6 +311,7 @@ write(file, 11)
 call write_location(file, obs_def%location)
 call write_kind(file, obs_def%kind)
 write(file, *) obs_def%error_variance
+write(file, *) obs_def%model_state_index
 
 end subroutine write_obs_def
 
@@ -282,11 +326,24 @@ implicit none
 
 type(obs_def_type) :: interactive_obs_def
 
+integer :: index
+real(r8) :: error_variance
+
 write(*, *) 'Input error variance for this observation definition '
-read(*, *) interactive_obs_def%error_variance
+read(*, *) error_variance
+
+write(*, *) 'Input an integer index if this is identity observation, else -1'
+read(*, *) index
+
+if(index > 0) then
+   interactive_obs_def = init_obs_def2(index, error_variance)
+
+else
 
 ! Call obs_model interfaces to set up kind and location
-call interactive_def(interactive_obs_def%location, interactive_obs_def%kind)
+   call interactive_def(interactive_obs_def%location, interactive_obs_def%kind)
+   interactive_obs_def%error_variance = error_variance
+endif
 
 end function interactive_obs_def
 

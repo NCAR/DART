@@ -13,12 +13,14 @@ use types_mod
 private
 
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
-   interactive_kind
+   interactive_kind, IDENTITY_OBSERVATION
 
 type obs_kind_type
    private
    integer :: index
 end type obs_kind_type
+
+integer, parameter :: IDENTITY_OBSERVATION = -1
 
 contains
 

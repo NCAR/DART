@@ -95,7 +95,9 @@ subroutine obs_set_copy(set_out, set_in)
 
 implicit none
 
-type(obs_set_type), intent(out) :: set_out
+! Copies with intent(out) for set_out lead to memory leak; 7 Oct. 2002
+!!!type(obs_set_type), intent(out) :: set_out
+type(obs_set_type), intent(inout) :: set_out
 type(obs_set_type), intent(in) :: set_in
 
 ! Set the sizes
@@ -105,6 +107,7 @@ set_out%time = set_in%time
 set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
+if(allocated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
 allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
    set_out%missing(set_in%num_obs, set_in%num_copies))
 

@@ -21,6 +21,7 @@ public model_size, init_conditions, adv_1step, advance, output
 public barot_to_dp, dp_to_barot
 public delta_t, adv_true_state
 public location_type, model_state_location, loc_dist, diag_output_index
+public model_get_close_state
 
 integer, parameter :: reps = 1
 integer, parameter :: points_per_rep = 20
@@ -293,6 +294,27 @@ real(r8)            :: barot_to_dp(1)
 barot_to_dp = 0.0_r8
 
 end function barot_to_dp
+
+
+
+subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+!--------------------------------------------------------------------
+! 
+! Stub for computation of get close states
+
+implicit none
+
+type(location_type), intent(in) :: o_loc
+real(r8), intent(in) :: radius
+integer, intent(out) :: number, indices(:)
+real(r8), intent(out) :: dist(:)
+
+! Because of F90 limits this stub must be here telling assim_model
+! to do exhaustive search (number = -1 return)
+number = -1
+
+end subroutine model_get_close_states
+
 
 !-------------------------------------------------------------------------
 ! End of model_mod.f90

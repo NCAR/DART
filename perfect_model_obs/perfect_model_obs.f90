@@ -32,7 +32,8 @@ use obs_set_mod, only : init_obs_set, obs_set_type, set_obs_set_time, write_obs_
 use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
-   get_model_time, init_diag_output, output_diagnostics, init_assim_model
+   get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
+   init_diag_outputORG, output_diagnosticsORG
 use random_seq_mod, only : random_seq_type, init_random_seq, &
    random_gaussian
 
@@ -73,7 +74,8 @@ call init_assim_model(x)
 call get_initial_condition(x)
 
 ! Set up output of truth for state
-state_unit = init_diag_output('true_state', 'true state from control', 1, (/'true state'/))
+!state_unit = init_diag_output('true_state', 'true state from control', 1, (/'true state'/))
+state_unit = init_diag_outputORG('true_state', 'true state from control', 1, (/'true state'/))
 
 ! Advance for a long time (5 days) to get things started?
 !time = set_time(0, 5)
@@ -108,7 +110,8 @@ do i = 1, num_obs_sets
    if(time2 /= get_model_time(x)) call advance_state(x, time2)
 
 ! Output the true state
-   call output_diagnostics(state_unit, x, 1)
+!   call output_diagnostics(state_unit, x, 1)
+   call output_diagnosticsORG(state_unit, x, 1)
 
 ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)

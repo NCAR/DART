@@ -13,8 +13,8 @@
 &end
 
 &filter_nml
-   cutoff = 200.0
-   cov_inflate = 1.0,
+   cutoff = 0.3
+   cov_inflate = 1.04,
    cache_size = 20,
    start_from_restart = .false.,
    output_restart = .true.

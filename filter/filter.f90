@@ -34,7 +34,8 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart
+   write_state_restart, read_state_restart, &
+   init_diag_outputORG, output_diagnosticsORG
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc
@@ -83,12 +84,12 @@ real(r8), pointer :: dist_ptr(:, :)
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-real(r8) :: cutoff = 1.0, cov_inflate = 1.0_r8
+real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
 integer :: cache_size = 10
 logical :: start_from_restart = .false., output_restart = .false.
 ! ens_size needs to be added as parameter at some point, but requires 
 ! massive changes to allocate storage
-!integer :: ens_size = 20
+!integer :: ens_size = 40
 
 character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
@@ -141,9 +142,11 @@ call cache_init(cache, cache_size)
 
 ! Set up diagnostic output for model state
 
-prior_state_unit = init_diag_output('prior_diag', &
+!prior_state_unit = init_diag_output('prior_diag', &
+prior_state_unit = init_diag_outputORG('prior_diag', &
    'prior ensemble state', ens_size, ens_copy_meta_data)
-posterior_state_unit = init_diag_output('posterior_diag', &
+!posterior_state_unit = init_diag_output('posterior_diag', &
+posterior_state_unit = init_diag_outputORG('posterior_diag', &
    'posterior ensemble state', ens_size, ens_copy_meta_data)
 
 !------------------- Read restart if requested ----------------------
@@ -217,7 +220,7 @@ AdvanceTime : do i = 1, num_obs_sets
       write(*, *) 'advancing ensemble member ', j
 ! Advancing to same time causes problem with B-grid diag calls
       if(time2 /= get_model_time(ens(j))) call advance_state(ens(j), time2)
-      call output_diagnostics(prior_state_unit, ens(j), j)
+      call output_diagnosticsORG(prior_state_unit, ens(j), j)
    end do
    ierr = NF90_sync(prior_state_unit)   ! just for good measure -- TJH 
 
@@ -233,9 +236,9 @@ AdvanceTime : do i = 1, num_obs_sets
 
    ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
-      write(*, *) 'num_obs_in_set is ', num_obs_in_set
 
    ! Allocate storage for the ensemble priors for this number of observations
+! Temporary assumption of fixed obs set
    allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set))
 
    ! Get the observational error covariance (diagonal at present)
@@ -244,17 +247,12 @@ AdvanceTime : do i = 1, num_obs_sets
    ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
 
-
-
    ! Try out the cache
    call get_close_cache(cache, seq, i, 2.0*cutoff, num_obs_in_set, &
       num_close_ptr, close_ptr, dist_ptr)
 
-
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
-      write(*, *) 'processing obs ', j
-
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
@@ -269,10 +267,8 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
 
       ! Now loop through each close state variable for this observation
-      write(*, *) 'Num close is ', num_close_ptr(j)
       do k = 1, num_close_ptr(j)
          ind = close_ptr(j, k)
-
          ! Compute distance dependent envelope
          cov_factor = comp_cov_factor(dist_ptr(j, k), cutoff)
 
@@ -288,7 +284,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
    ! Put the ensemble storage back into the ens
    do j = 1, ens_size
-        call output_diagnostics(posterior_state_unit, ens(j), j)
+        call output_diagnosticsORG(posterior_state_unit, ens(j), j)
    end do
    ierr = NF90_sync(posterior_state_unit)   ! just for good measure -- TJH 
 

@@ -19,7 +19,7 @@ use utilities_mod, only : get_unit
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model
+   end_model, model_get_close_states
 
 private
 
@@ -28,7 +28,8 @@ public static_init_assim_model, init_diag_output, get_model_size, get_closest_st
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr
+   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, &
+   init_diag_outputORG, output_diagnosticsORG
 
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
@@ -474,23 +475,29 @@ type(location_type) :: state_loc
 integer :: index, i
 real(r8) :: this_dist
 
-! For large models this will have to be VERY efficient; here can just search
-index = 0
-model_size = get_model_size()
-do i = 1, model_size
-   call get_state_meta_data(i, state_loc)
-   this_dist = get_dist(location, state_loc)
-   if(this_dist < radius) then
-      index = index + 1
-      if(index <= size(indices)) indices(index) = i
-      if(index <= size(dist)) dist(index) = this_dist
-   end if
-end do
+! If model provides a working get_close_states, use it; otherwise search
+! Direct use of model dependent stuff, needs to be automated (F90 can't do this
+call model_get_close_states(location, radius, number, indices, dist)
 
-if(index > size(indices)) then
-   number = -1 * index
-else
+! If number returns as -1, not implemented
+if(number == -1) then
+   index = 0
+   model_size = get_model_size()
+   do i = 1, model_size
+      call get_state_meta_data(i, state_loc)
+      this_dist = get_dist(location, state_loc)
+      if(this_dist < radius) then
+         index = index + 1
+         if(index <= size(indices)) indices(index) = i
+         if(index <= size(dist)) dist(index) = this_dist
+      end if
+   end do
    number = index
+endif
+
+! If size has overflowed, indicate this with negative size return
+if(number > size(indices) .or. number > size(dist)) then
+   number = -1 * number
 end if
 
 end subroutine get_close_states
@@ -510,17 +517,27 @@ type(location_type), intent(in) :: location
 real(r8), intent(in) :: radius
 
 type(location_type) :: state_loc
-integer :: i
+integer :: i, indices(1)
+real(r8) :: dist(1)
 
-! For large models this will have to be VERY efficient; here can just search
-get_num_close_states = 0
-do i = 1, model_size
-   call get_state_meta_data(i, state_loc)
+
+! call direct model get close with storage that is too 
+! small and get size from this
+! model_get_close_states returns -1 if it is not implemented
+call model_get_close_states(location, radius, get_num_close_states, indices, dist)
+
+if(get_num_close_states == -1) then
+! Do exhaustive search
+   get_num_close_states = 0
+   do i = 1, model_size
+      call get_state_meta_data(i, state_loc)
 ! INTERESTING NOTE: Because of floating point round-off in comps
 ! this can give a 'variable' number of num close for certain obs, should fix
-   if(get_dist(location, state_loc) < radius) get_num_close_states= get_num_close_states + 1
-end do
+      if(get_dist(location, state_loc) < radius) get_num_close_states= get_num_close_states + 1
+   end do
 
+endif
+   
 end function get_num_close_states
 
 
@@ -625,12 +642,10 @@ endif
 ! into the model itself and out of assim_model
 time_step = get_model_time_step()
 call get_time(time_step,seconds,days)
-write(*, *) 'in advance state, time step (days,seconds) ', days, seconds
 do while(model_time < target_time)
    call adv_1step(assim_model%state_vector, model_time)
    model_time = model_time + time_step
    call get_time(model_time,seconds,days)
-   write(*, *) 'model time in advance_state (days,seconds) ', days, seconds
 end do
 
 ! Set the time to updated value

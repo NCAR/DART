@@ -21,7 +21,7 @@ public init_model, get_model_size, lat_max, num_lon, init_conditions, &
    output, barot_to_dp, dp_to_barot, delta_t, adv_true_state, &
    dp_to_grid, lon, lat, model_state_location, diag_output_index, &
    num_fourier, num_spherical, model_output, trans_spherical_to_grid, &
-   get_close_pts, grid_to_dp, state_loc
+   get_close_pts, grid_to_dp, state_loc, model_get_close_states
 
 ! Flag for using real data or perfect model
 logical, parameter :: use_real_data = .false.
@@ -878,6 +878,30 @@ end subroutine filter
 !end do
 
 !end subroutine get_close_pts
+
+
+
+
+
+subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+!--------------------------------------------------------------------
+! 
+! Stub for computation of get close states
+
+implicit none
+
+type(location_type), intent(in) :: o_loc
+real(r8), intent(in) :: radius
+integer, intent(out) :: number, indices(:)
+real(r8), intent(out) :: dist(:)
+
+! Because of F90 limits this stub must be here telling assim_model
+! to do exhaustive search (number = -1 return)
+number = -1
+
+end subroutine model_get_close_states
+
+
 
 !-------------------------------------------------------------------------
 ! End of model_mod.f90
