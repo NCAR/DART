@@ -30,8 +30,9 @@
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
+<!--kdr PUBLIC COMPONENTS, PRIVATE COMPONENTS have no destinations -->
+
 <DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
@@ -70,6 +71,13 @@
    sequence file and the model time-stepping capabilities in a manner
    analogous to that used by the filter program.
 </P>
+
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&#38;assim_model_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
 
 <!--==================================================================-->
 
@@ -117,13 +125,14 @@ ensemble_manager_mod
     <!--  type  --><TD valign=top>integer <em class="unit"></em></TD>
     <!--descript--><TD>Controls whether models are advanced via a subroutine call or
                        by writing initial condition files for ensemble members to 
-                       disk and having shellscripts advance the model. Option: 0 = advance 
-                       by subroutine; 1 = shell advance using shell script piped to
-                       filter; 2 = advance by F90 calls to shell to advance model, command to 
-                       be executed is found in adv_ens_command; 
+                       disk and having shellscripts advance the model. <BR>
+                       0 = advance by subroutine.  Default. <BR>
+                       1 = shell advance using shell script piped to filter <BR>
+                       2 = advance by F90 calls to shell to advance model, command to 
+                       be executed is found in adv_ens_command <BR>
                        3 = advance by using an already running server process from
                        filter_server.csh.
-                       Default value is 0. </TD></TR>
+                       </TD></TR>
 <TR><!--contents--><TD valign=top>adv_ens_command              </TD>
     <!--  type  --><TD valign=top>character(len=129)           </TD>
     <!--descript--><TD>Character string containing command to be executed in order to
@@ -138,19 +147,22 @@ ensemble_manager_mod
                        file. Default is 'obs_seq.out'.         </TD></TR>
 <TR><!--contents--><TD valign=top>start_from_restart           </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Should initial ensemble states come from a restart file. 
+    <!--descript--><TD>Should initial ensemble states come from (a) restart file(s). 
                        Default is .false.                      </TD></TR>
 <TR><!--contents--><TD valign=top>output_restart               </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Should a restart file be written out for all ensemble 
+    <!--descript--><TD>Should (a) restart file(s) be written out for all ensemble 
                        members? Default is .false.             </TD></TR>
 <TR><!--contents--><TD valign=top>restart_in_file_name         </TD>
     <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name for a file containing restart state for all 
-                       ensemble members. Default is 'filter_ics'.      </TD></TR>
+    <!--descript--><TD>File name (root) for a file(s) containing restart state for all 
+                       ensemble members.  Multiple files have extensions ".####", 
+                       where #### is a 4 digit number representing the ensemble member. 
+                       Default is 'filter_ics'.                </TD></TR>
 <TR><!--contents--><TD valign=top>restart_out_file_name        </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name for output restart file. 
+    <!--  type  --><TD valign=top>character(len = 129)         </TD>
+    <!--descript--><TD>File name (root) for output restart file(s). 
+                       See restart_in_file_name for multiple file information.
                        Default is 'filter_restart'.            </TD></TR>
 <TR><!--contents--><TD valign=top>init_time_days               </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
@@ -179,6 +191,7 @@ ensemble_manager_mod
    <LI>observation sequence output file; name comes from obs_seq_out_file_name
    <LI>input state vector file; name comes from restart_in_file_name
    <LI>output state vector file; name comes from restart_out_file_name
+   <LI>perfect_model_mod.nml in input.nml
 </UL>
 
 <!--==================================================================-->
