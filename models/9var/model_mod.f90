@@ -660,6 +660,12 @@ integer :: StateVarID, MemberDimID, TimeDimID
 ! local variables
 !--------------------------------------------------------------------
 
+character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=NF90_MAX_NAME) :: str1,str2
+
 integer             :: i
 type(location_type) :: lctn
 ierr = 0                      ! assume normal termination
@@ -685,6 +691,11 @@ call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
 ! Write Global Attributes
 !--------------------------------------------------------------------
 
+call DATE_AND_TIME(crdate,crtime,crzone,values)
+write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+                  values(1), values(2), values(3), values(5), values(6), values(7)
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
