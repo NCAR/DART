@@ -29,7 +29,7 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_kin
 !WRF use      obs_def_mod, only : get_obs_def_platform
 !WRF use     platform_mod, only : platform_type, get_platform_orientation
 use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
-                             operator(-), operator(/), operator(+), print_time
+                             operator(-), operator(/), operator(+), print_time, operator(<)
 
 use ensemble_manager_mod, only : get_ensemble_time, Aadvance_state, ensemble_type
 
@@ -363,13 +363,19 @@ else
 endif
 end_time = time2 + delta_time / 2
 
-! Get all the obsevations at exactly this time
-call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
-   out_of_range, observation)
-
 call print_time(start_time,str=' start time of obs range')
 call print_time(end_time,  str='   end time of obs range')
 !write(*, *)'----------------------------------------------------------------------'
+
+! If the next observation is not in the window, then have an error
+if(next_time < start_time .or. next_time > end_time) then
+   call error_handler(E_ERR, 'move_ahead', 'next obs time not in model time window', &
+      source, revision, revdate)
+endif
+
+! Get all the obsevations at exactly this time
+call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
+   out_of_range, observation)
 
 ! Advance all ensembles (to the time of the first ensemble)
 if(time2 /= ens_time) call Aadvance_state(ens_handle, time2, async, adv_ens_command)
