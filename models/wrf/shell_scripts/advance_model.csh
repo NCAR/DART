@@ -28,7 +28,7 @@ cd     $temp_dir
 # Copy or link the required files to the temp directory
 
 mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
-cp ${PBS_O_WORKDIR}/wrfinput_d0? . 
+cp ${PBS_O_WORKDIR}/wrfinput_d0? .
                    # Provides auxilliary info not avail. from DART state vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
 
@@ -37,7 +37,7 @@ ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 ln -s  ${PBS_O_WORKDIR}/VEGPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/SOILPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
-ln -s  ${PBS_O_WORKDIR}/wrf.exe . 
+ln -s  ${PBS_O_WORKDIR}/wrf.exe .
 
 hostname > nfile
 hostname >> nfile
@@ -244,7 +244,9 @@ EOF
 
    ${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
-   rm -f rsl.out.*
+   if ( -e rsl.out.integration ) then
+      rm -f rsl.*
+   endif
 
    ${ADV_MOD_COMMAND} >>& rsl.out.integration
 
