@@ -599,10 +599,21 @@ if(asynch /= 0) then
             exit
          endif
       end do
+   
+   elseif(asynch == 3) then
+   ! Script is running all the time, waiting for clearance to proceed
+      call system ('echo a > go_advance_model')
+      do
+         if(file_exist('go_advance_model')) then
+            call system('sleep 1')
+         else
+            exit
+         endif
+      end do
 
    else
-
-      write(errstring,*)'input.nml - async is ',asynch,' must be 0, 1, or 2' 
+   ! Unsupported option for async error
+      write(errstring,*)'input.nml - async is ',asynch,' must be 0, 1, 2, or 3' 
       call error_handler(E_ERR,'Aadvance_state', errstring, source, revision, revdate)
 
    endif
