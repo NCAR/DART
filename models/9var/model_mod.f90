@@ -11,13 +11,17 @@ module model_mod
 ! $Author$ 
 !
 
+
 use        types_mod, only : r8
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
-use   random_seq_mod, only : random_seq_type, random_gaussian, &
-                             init_random_seq, several_random_gaussians
+! All random_seq_mod calls were suppressed because a) they are not being used,
+! and b) they make the pg5.02 compiler complain about a gap in the common block.
+! TJH 29 April 2004
+! TJH use   random_seq_mod, only : random_seq_type, random_gaussian, &
+! TJH                             init_random_seq, several_random_gaussians
 use time_manager_mod, only : time_type, set_time
 
 implicit none
@@ -77,7 +81,7 @@ type(time_type)     :: time_step
 ! can be cleanly compared
 
 logical :: first_ran_call = .true.
-type(random_seq_type) :: ran_seq
+! TJH type(random_seq_type) :: ran_seq
 
 
 
