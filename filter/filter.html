@@ -31,7 +31,6 @@
 <BODY>
 
 <DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
@@ -70,6 +69,12 @@
    H-release of DART.
 </P>
 
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&#38;filter_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
 <!--==================================================================-->
 
 <A NAME="OTHER MODULES USED"></A>
@@ -84,8 +89,6 @@ utilities_mod
 assim_model_mod
 random_seq_mod
 assim_tools_mod
-cov_cutoff_mod
-reg_factor_mod
 obs_model_mod
 ensemble_manager
 </PRE>
@@ -100,12 +103,16 @@ ensemble_manager
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
-<em class=call>namelist / filter_nml / </em> &#38;
-      async, adv_ens_command, ens_size, cutoff, cov_inflate, start_from_restart, &#38;
-      output_restart, obs_sequence_in_name, obs_sequence_out_name, &#38;
-      restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &#38;
-      output_state_ens_mean, output_state_ens_spread, num_output_ens_members, &#38;
-      output_interval,  num_groups, confidence_slope, outlier_threshold, &#38;
+<em class=call>namelist / filter_nml / </em> &
+      async, adv_ens_command, ens_size, cutoff, cov_inflate, 
+      start_from_restart, output_restart, 
+      obs_sequence_in_name, obs_sequence_out_name, 
+      restart_in_file_name, restart_out_file_name, 
+      init_time_days, init_time_seconds, 
+      output_state_ens_mean, output_state_ens_spread, 
+      output_obs_ens_mean,   output_obs_ens_spread, 
+      num_output_state_members, num_output_obs_members, 
+      output_interval,  num_groups, confidence_slope, outlier_threshold, 
       save_reg_series
 </pre></div>
 
@@ -122,12 +129,15 @@ ensemble_manager
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Controls whether models are advanced via a subroutine call or
                        by writing initial condition files for ensemble members to 
-                       disk and having shellscript advance the model. Option: 0 = advance 
-                       by subroutine; 1 = shell advance using shell script piped to
-                       filter; 2 = advance by F90 calls to shell to advance model. Default
-                       value is 0. </TD></TR>
-<TR><!--contents--><TD valign=top> ens_size                    </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
+                       disk and having shellscript advance the model. <BR>
+                       0 = advance by subroutine.  Default <BR>
+                       1 = shell advance using shell script piped to filter. <BR>
+                       2 = advance by F90 calls to shell to advance model. <BR>
+                       3 = model advanced when signalled by a signal file, which is
+                       is written out by filter (used for running filter on a compute node 
+                       separate from the model advances). </TD></TR>
+<TR><!--contents--><TD valign=top> ens_size       </TD>
+    <!--  type  --><TD valign=top>integer                         </TD>
     <!--descript--><TD>Number of ensemble members to be integrated. 
                        Default is 20.</TD></TR>  
 <TR><!--contents--><TD valign=top>cutoff                       </TD>
@@ -142,24 +152,27 @@ ensemble_manager
                        assimilation step. Default is 1.0 (no inflation).</TD></TR> 
 <TR><!--contents--><TD valign=top>start_from_restart           </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Should initial ensemble states come from a restart file. 
+    <!--descript--><TD>Should initial ensemble states come from (a) restart file(s). 
                        Default is .false.</TD></TR>
 <TR><!--contents--><TD valign=top>output_restart               </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Should a restart file be written out for all ensemble 
+    <!--descript--><TD>Should (a) restart file(s) be written out for all ensemble 
                        members? Default is .false.             </TD></TR>
 <TR><!--contents--><TD valign=top>obs_sequence_file_name       </TD>
     <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name that contains and observation sequence file.
+    <!--descript--><TD>File name that contains an observation sequence file.
                        Default is 'obs_seq.in'.</TD></TR>
 <TR><!--contents--><TD valign=top>restart_in_file_name         </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name for a file containing restart state for all 
-                       ensemble members. Default is 'filter_ics'. </TD></TR>
-<TR><!--contents--><TD valign=top>restart_out_file_name        </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name for output restart file. 
-                       Default is 'filter_restart'.</TD></TR>
+    <!--  type  --><TD valign=top>character(len=129)               </TD>
+    <!--descript--><TD>File name (root) for a file(s) containing restart state for all 
+                       ensemble members.  Multiple files have extensions ".####", 
+                       where #### is a 4 digit number representing the ensemble member. 
+                       Default is 'filter_ics'.  </TD></TR>
+<TR><!--contents--><TD valign=top>restart_out_file_name              </TD>
+    <!--  type  --><TD valign=top>character(len = 129)                 </TD>
+    <!--descript--><TD>File name (root) for output restart file(s). 
+                       See restart_in_file_name for multiple file information.
+                       Default is 'filter_restart'.             </TD></TR>
 <TR><!--contents--><TD valign=top>init_time_days               </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Initial time of model (time is in days and seconds; see
@@ -178,8 +191,8 @@ ensemble_manager
 <TR><!--contents--><TD valign=top>output_obs_ens_mean          </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Output ensemble mean in observation output file. </TD></TR>
-<TR><!--contents--><TD valign=top>output_state_ens_spread      </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
+<TR><!--contents--><TD valign=top>output_obs_ens_spread
+    <!--  type  --><TD valign=top>logical                         </TD>
     <!--descript--><TD>Output ensemble spread in observation output file. </TD></TR>
 <TR><!--contents--><TD valign=top>num_output_state_members     </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
@@ -196,7 +209,7 @@ ensemble_manager
 <TR><!--contents--><TD valign=top>output_interval              </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>The frequency with which output state diagnostics are 
-                       in assimilation times written.
+                       written.  Units are in assimilation times.
                        Default value is 1 meaning output is written at
                        every observation time. </TD></TR>
 <TR><!--contents--><TD valign=top>num_groups                   </TD>
@@ -236,7 +249,8 @@ ensemble_manager
     <LI>state restart output file; from restart_out_file_name
     <LI>output state space prior diagnostics file; Prior_Diag.nc
     <LI>output state space posterior diagnostics file; Posterior_Diag.nc
-    <LI>ouptut observation space diagnostic file; from obs_sequence_out_name
+    <LI>output observation space diagnostic file; from obs_sequence_out_name
+    <LI>filter.nml in input.nml
 </UL>
 
 <!--==================================================================-->
@@ -262,6 +276,10 @@ ensemble_manager
 <TR><!-- routine --><TD VALIGN=top>filter_generate_copy_meta_data</TD>
     <!-- message --><TD VALIGN=top>output metadata in filter needs ensemble size < 10000</TD>
     <!-- comment --><TD VALIGN=top>Ensemble sizes greater than require modifications to output ensemble code. </TD>
+<TR><!-- routine --><TD VALIGN=top>filter_get_obs_info</TD>
+    <!-- message --><TD VALIGN=top>Did not find observation copy with metadata "observations"</TD>
+    <!-- comment --><TD VALIGN=top>None of the copies of data in the obs_seq file is an "observation"</TD>
+</TR>
 </TR>
 
 </TABLE>
