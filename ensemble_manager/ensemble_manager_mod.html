@@ -51,7 +51,7 @@
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-   <TR><TD>Change history:</TD><TD> see CVS log (cop-out, I know)</TD></TR>
+   <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -100,6 +100,10 @@ time_manager_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">put_ensemble_region</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">get_ensemble_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">Aadvance_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_region_by_number">get_region_by_number</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#put_region_by_number">put_region_by_number</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#transpose_ens_to_regions">transpose_ens_to_regions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#transpose_regions_to_ens">transpose_regions_to_ens</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -445,6 +449,147 @@ advance_ens.csh and filter_server.csh scripts.
  </TABLE>
  <P>
  <!--================================================================-->
+  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_region_by_number"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_region_by_number(ens_handle,rnum,rsize,region,region_id) </em>
+ <pre>
+ type(ensemble_type), intent(in)                   :: <em class=code>ens_handle</em>
+ integer, intent(in)                               :: <em class=code>rnum</em>
+ integer, intent(in)                               :: <em class=code>rsize</em>
+ real(r8), dimension(ens_size, rsize), intent(out) :: <em class=code>region</em>
+ integer, dimension(rsize), intent(in)             :: <em class=code>region_id</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns all ensemble members of a particular subset of the state variables.
+If the ensemble is being stored in core, the integer array region_id
+contains the state vector index of all state variables to be returned. If
+the ensemble is not being stored in core, it is assumed that the ensemble
+has been transposed to files that contain all ensemble members for each
+region (a call to transpose_ens_to_regions has been made). In this case, 
+all ensemble members of the region indexed by rnum are returned.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
+     <TD>Identifies an ensemble, not in use.</TD></TR>
+ <TR><TD valign=top><em class=code>rnum&nbsp; &nbsp; </em></TD>
+     <TD>Number of the region to be retrieved.</TD></TR>
+ <TR><TD valign=top><em class=code>rsize&nbsp; &nbsp; </em></TD>
+     <TD>Size of the region to be retrieved.</TD></TR>
+ <TR><TD valign=top><em class=code>region&nbsp; &nbsp; </em></TD>
+     <TD>Returns the values of all ensemble members of state variables in a regi
+ on.</TD></TR>
+ <TR><TD valign=top><em class=code>region_id&nbsp; &nbsp; </em></TD>
+     <TD>Integer indices of state variables in region, only used if ensemble is 
+ in core.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="put_region_by_number"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call put_region_by_number(ens_handle,rnum,rsize,region,region_id) </em>
+ <pre>
+ type(ensemble_type), intent(in)                   :: <em class=code>ens_handle</em>
+ integer, intent(in)                               :: <em class=code>rnum</em>
+ integer, intent(in)                               :: <em class=code>rsize</em>
+ real(r8), dimension(ens_size, rsize), intent(in)  :: <em class=code>region</em>
+ integer, dimension(rsize), intent(in)             :: <em class=code>region_id</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Stores all ensemble members of a particular subset of the state variables.
+If the ensemble is being stored in core, the integer array region_id
+contains the state vector index of all state variables in the region. If
+the ensemble is not being stored in core, it is assumed that the ensemble
+has been transposed to files that contain all ensemble members for each
+region (a call to transpose_ens_to_regions has been made). In this case, 
+all ensemble members of the region indexed by rnum are stored.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
+     <TD>Identifies an ensemble, not in use.</TD></TR>
+ <TR><TD valign=top><em class=code>rnum&nbsp; &nbsp; </em></TD>
+     <TD>Number of the region to be stored.</TD></TR>
+ <TR><TD valign=top><em class=code>rsize&nbsp; &nbsp; </em></TD>
+     <TD>Size of the region to be stored.</TD></TR>
+ <TR><TD valign=top><em class=code>region&nbsp; &nbsp; </em></TD>
+     <TD>Stores all ensemble members of state variables in a region.</TD></TR>
+ <TR><TD valign=top><em class=code>region_id&nbsp; &nbsp; </em></TD>
+     <TD>Integer indices of state variables in region, only used if ensemble is 
+ in core.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="transpose_ens_to_regions"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call transpose_ens_to_regions(ens_handle,num_regions,region_id,
+ region_size) </em>
+ <pre>
+ type(ensemble_type), intent(in)            :: <em class=code>ens_handle</em>
+ integer, intent(in)                        :: <em class=code>num_regions</em>
+ integer, dimension(model_size), intent(in) :: <em class=code>region_id</em>
+ integer, dimension(model_size), intent(in) :: <em class=code>region_size</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Transposes ensembles that are not stored in core from a format in which
+each ensemble member is in one file to a format in which all ensemble
+members for each of a specified set of regions is in one file. The
+region in which each state variable is located is determined by the values
+in the array region_id.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
+     <TD>Identifies an ensemble, not in use.</TD></TR>
+ <TR><TD valign=top><em class=code>num_regions&nbsp; &nbsp; </em></TD>
+     <TD>Number of regions.</TD></TR>
+ <TR><TD valign=top><em class=code>region_id&nbsp; &nbsp; </em></TD>
+     <TD>Identifies which region each state variable is in.</TD></TR>
+ <TR><TD valign=top><em class=code>region_size&nbsp; &nbsp; </em></TD>
+     <TD>Size of each region.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="transpose_regions_to_ens"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call transpose_regions_to_ens(ens_handle,num_regions,region_id,
+ region_size) </em>
+ <pre>
+ type(ensemble_type), intent(in)            :: <em class=code>ens_handle</em>
+ integer, intent(in)                        :: <em class=code>num_regions</em>
+ integer, dimension(model_size), intent(in) :: <em class=code>region_id</em>
+ integer, dimension(model_size), intent(in) :: <em class=code>region_size</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Transposes ensembles that are not stored in core from a format in which
+all ensemble members for each of a specified set of regions are in one
+file to a format in which each ensemble member is in its own file.
+The region in which each state variable is located is determined by the values
+in the array region_id.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
+     <TD>Identifies an ensemble, not in use.</TD></TR>
+ <TR><TD valign=top><em class=code>num_regions&nbsp; &nbsp; </em></TD>
+     <TD>Number of regions.</TD></TR>
+ <TR><TD valign=top><em class=code>region_id&nbsp; &nbsp; </em></TD>
+     <TD>Identifies which region each state variable is in.</TD></TR>
+ <TR><TD valign=top><em class=code>region_size&nbsp; &nbsp; </em></TD>
+     <TD>Size of each region.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ 
 
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
@@ -494,7 +639,10 @@ files or whether a single file should contain all ensemble members.
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>ens_manager_temp_file.####   Temporary files used to store ensembles on disk.
+    <LI>ens_manager_reg_file.####    Temporary files used to store regions.
     <LI>input.nml
+    <LI>State initial condition files, specified in filter.nml are read in .
+    <LI>State restart files, specified in filter.nml are read in .
 </UL>
 
 <!--==================================================================-->
