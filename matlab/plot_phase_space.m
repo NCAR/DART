@@ -22,9 +22,9 @@
 
 if (exist('fname') ~=1)
    disp('Input name of netCDF file;')
-   fname = input('<cr> for ./True_State.nc\n','s');
+   fname = input('<cr> for True_State.nc\n','s');
    if isempty(fname)
-      fname = './True_State.nc';
+      fname = 'True_State.nc';
    end                                                                          
 end 
 

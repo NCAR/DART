@@ -4,9 +4,9 @@
 
 if (exist('diagn_file') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
-   diagn_file = input('<cr> for ../work/Prior_Diag.nc\n','s');
+   diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
-      diagn_file = '../work/Prior_Diag.nc';
+      diagn_file = 'Prior_Diag.nc';
    end                                                                          
 end 
 

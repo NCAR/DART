@@ -62,20 +62,26 @@ z = get_var_series(fname, ens_mem_id, var3);
 % As long as you have three variables, this works for all models.
 
 h = plot3(x,y,z,ltype);
-title(sprintf('model %s ensemble member %d',model,ens_mem_id),'interpreter','none')
-xlabel(sprintf('state variable # %d',var1))
-ylabel(sprintf('state variable # %d',var2))
-zlabel(sprintf('state variable # %d',var3))
 
-% grab existing legend and add to it
+% If there is no legend, we are assuming this is the first plot on this
+% axis. We need to add a title, legend, axes labels, etc.
 [legh, objh, outh, outm] = legend;
 if (isempty(legh))
-   disp('there is no legend')
+
+   % title(sprintf('%s ensemble member %d of %s',model,ens_mem_id,fname), ...
+   %    'interpreter','none','fontweight','bold')
+   title('The Attractor','fontweight','bold')
+   xlabel(sprintf('state variable # %d',var1))
+   ylabel(sprintf('state variable # %d',var2))
+   zlabel(sprintf('state variable # %d',var3))
+
    s = sprintf('%d %d %d %s %s %d',var1,var2,var3,model,fname,ens_mem_id);
    h = legend(s,0);
    [legh, objh, outh, outm] = legend;
    set(objh(1),'interpreter','none')
+
 else
+   % Must add salient information to the legend.
    % legh     handle to the legend axes
    % objh     handle for the text, lines, and patches in the legend
    % outh     handle for the lines and patches in the plot
@@ -87,3 +93,4 @@ else
 
    set(objh(1),'interpreter','none')
 end
+legend boxoff

@@ -27,7 +27,19 @@ close(fd);
 
 % rudimentary bulletproofing
 if (strcmp(t.model,d.model) ~= 1)
+   disp(sprintf('%s has model %s ',truth_file,t.model))
+   disp(sprintf('%s has model %s ',diagn_file,d.model))
    error('no No NO ... models must be the same')
+end
+if (t.num_vars ~= d.num_vars)
+   disp(sprintf('%s has %d state variables',truth_file,t.num_vars))
+   disp(sprintf('%s has %d state variables',diagn_file,d.num_vars))
+   error('no No NO ... both files must have same number of state variables.')
+end
+if (t.num_times ~= d.num_times)
+   disp(sprintf('%s has %d timesteps',truth_file,t.num_times))
+   disp(sprintf('%s has %d timesteps',diagn_file,d.num_times))
+   error('ugh ... both files must have same number of timesteps.')
 end
 
 % Get the indices for the true state, ensemble mean and spread
@@ -50,9 +62,9 @@ switch lower(t.model)
    case '9var'
 
       % Use three different figures with three subplots each
-      for i = 1:3
+      for i = 1:3,
          figure(i); clf
-         for j = 1:3
+         for j = 1:3,
             ivar = (i - 1)*3 + j;
             disp(sprintf('plotting model %s Variable %d ...',t.model,ivar))
             % Get the truth for this variable
@@ -60,23 +72,50 @@ switch lower(t.model)
             ens_mean = get_var_series(diagn_file, ens_mean_index, ivar);
             subplot(3, 1, j);
             plot(times,truth, 'b',times,ens_mean,'r')
-            title(sprintf('model %s Variable %d',t.model,ivar))
+            title(sprintf('%s Variable %d of %s',t.model,ivar,diagn_file), ...
+                  'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',t.num_times))
             s = 'Ensemble Mean';
             legend('True State',s,0)
+            legend boxoff
          end
       end
 
-
    case 'lorenz_63'
 
-      disp('lorenz_63 not implemented yet.')
+      % Use one figure with three subplots
+      clf
+      for j = 1:t.num_vars,
+            disp(sprintf('plotting model %s Variable %d ...',t.model,j))
+            % Get the truth for this variable
+            truth    = get_var_series(truth_file, truth_index, j);
+            ens_mean = get_var_series(diagn_file, ens_mean_index, j);
+            subplot(t.num_vars, 1, j);
+            plot(times,truth, 'b',times,ens_mean,'r')
+            title(sprintf('%s Variable %d of %s',t.model,j,diagn_file), ...
+                  'interpreter','none','fontweight','bold')
+            xlabel(sprintf('model time (%d timesteps)',t.num_times))
+            s = 'Ensemble Mean';
+            legend('True State',s,0)
+            legend boxoff
+      end
+      % as a bonus, plot the mean attractors.
+      figure(2); clf
+      ts   = get_state_copy(diagn_file,truth_index);
+      ens  = get_state_copy(diagn_file,ens_mean_index);
+      plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
+             ens(:,1), ens(:,2), ens(:,3), 'r')
+      title(sprintf('%s Attractors for %s and %s', ...
+                 t.model, truth_file, diagn_file), ...
+                 'interpreter','none','fontweight','bold')
+      legend('True State','Ensemble Mean',0)
+      legend boxoff
+      xlabel('state variable 1')
+      ylabel('state variable 2')
+      zlabel('state variable 3')
 
    case 'lorenz_96'
       disp('lorenz_96 not implemented yet.')
 
    otherwise
 end
-
-
-

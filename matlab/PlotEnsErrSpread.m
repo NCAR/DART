@@ -27,7 +27,19 @@ close(fd);
 
 % rudimentary bulletproofing
 if (strcmp(t.model,d.model) ~= 1)
+   disp(sprintf('%s has model %s ',truth_file,t.model))
+   disp(sprintf('%s has model %s ',diagn_file,d.model))
    error('no No NO ... models must be the same')
+end
+if (t.num_vars ~= d.num_vars)
+   disp(sprintf('%s has %d state variables',truth_file,t.num_vars))
+   disp(sprintf('%s has %d state variables',diagn_file,d.num_vars))
+   error('no No NO ... both files must have same number of state variables.')
+end
+if (t.num_times ~= d.num_times)
+   disp(sprintf('%s has %d timesteps',truth_file,t.num_times))
+   disp(sprintf('%s has %d timesteps',diagn_file,d.num_times))
+   error('ugh ... both files must have same number of timesteps.')
 end
 
 % Get the indices for the true state, ensemble mean and spread
@@ -55,24 +67,51 @@ switch lower(t.model)
 
             ivar = (i - 1)*3 + j;
 
-            err = total_err(ens_mean(:,ivar) , truth(:,ivar));  
+            err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
+            errTotal    = sum(err);
+            spreadTotal = sum(ens_spread(:,ivar));
+            string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
+            string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
 
-            disp(sprintf('model %s Variable %d',t.model,ivar))
+            disp(sprintf('%s model Variable %d',t.model,ivar))
 
             subplot(3, 1, j);
                plot(times,err, 'b', ...
                     times,ens_spread(:, ivar), 'r');
-               title(sprintf('model %s Variable %d',t.model,ivar))
-               legend('Ensemble Total Error','Ensemble Spread',0)
+               s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...
+                            t.model,ivar,diagn_file);
+               title(s1,'interpreter','none','fontweight','bold')
+               legend(string1,string2,0)
+               legend boxoff
                xlabel(sprintf('model time (%d timesteps)',t.num_times))
          end
       end
 
    case 'lorenz_63'
 
-      disp('lorenz_63 not implemented yet.')
-      
+      % disp('lorenz_63 not implemented yet.')
+      % Use one figure with three subplots
+      clf
+      for j = 1:t.num_vars
 
+            err         = total_err(ens_mean(:,j) , truth(:,j));  
+            errTotal    = sum(err);
+            spreadTotal = sum(ens_spread(:,j));
+            string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
+            string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
+
+            disp(sprintf('model %s Variable %d',t.model,j))
+
+            subplot(t.num_vars, 1, j);
+               plot(times,err, 'b', ...
+                    times,ens_spread(:, j), 'r');
+               s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...
+                            t.model,j,diagn_file);
+               title(s1,'interpreter','none','fontweight','bold')
+               legend(string1,string2,0)
+               legend boxoff
+               xlabel(sprintf('model time (%d timesteps)',t.num_times))
+      end
 
    case 'lorenz_96'
       disp('lorenz_96 not implemented yet.')

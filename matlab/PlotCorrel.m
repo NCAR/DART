@@ -12,10 +12,10 @@ num_times  = ncsize(f{'time'}); % determine # of output times
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
 close(f)
 
-disp(sprintf('PlotCorrel: fname is %s',fname))
-disp(sprintf('PlotCorrel: base_var_index is %d',base_var_index))
-disp(sprintf('PlotCorrel: base_time      is %d',base_time))
-disp(sprintf('PlotCorrel: num_vars is %d',num_vars))
+% disp(sprintf('PlotCorrel: fname is %s',fname))
+% disp(sprintf('PlotCorrel: base_var_index is %d',base_var_index))
+% disp(sprintf('PlotCorrel: base_time      is %d',base_time))
+% disp(sprintf('PlotCorrel: num_vars is %d',num_vars))
 
 % The Base Variable Index must be a valid state variable
 
@@ -49,11 +49,11 @@ end
 clf;
 
 contour(correl,[-1:0.2:1]);
-s1 = sprintf('%s Correlation of state variable %d, T = %d', ...
-         model, base_var_index, base_time);
+s1 = sprintf('%s Correlation of state variable %d, T = %d of %s', ...
+         model, base_var_index, base_time,fname);
 s2 = sprintf('against all variables, all times, all %d ensemble members', ...
          num_copies-2); 
-title({s1,s2},'interpreter','none')
+title({s1,s2},'interpreter','none','fontweight','bold')
 xlabel('time (timestep #)')
 ylabel('state variable (index)')
 set(gca,'YTick',statevariables)

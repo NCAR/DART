@@ -3,8 +3,8 @@ function PlotBins(truth_file,diagn_file)
 % Plots ensemble rank histograms for several low-order models
 %
 % Example 1
-% truth_file = '../work/True_State.nc';
-% diagn_file = '../work/Prior_Diag.nc';
+% truth_file = 'True_State.nc';
+% diagn_file = 'Prior_Diag.nc';
 % PlotBins(truth_file,diagn_file);
 
 if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
@@ -30,7 +30,9 @@ switch lower(true_model)
             bins  = rank_hist(ens, truth);
             subplot(3, 1, j);
             bar(bins);
-            title(sprintf('model %s Variable %d',true_model,ivar))
+            title(sprintf('%s Variable %d for %s', ...
+                  true_model,ivar,diagn_file), ...
+                  'interpreter','none','fontweight','bold')
          end
       end
 
@@ -43,8 +45,9 @@ switch lower(true_model)
          bins  = rank_hist(ens, truth);
          subplot(3, 1, ivar);
          bar(bins);
-         title(sprintf('model %s Variable %d',true_model,ivar), ...
-               'interpreter','none')
+         title(sprintf('%s Variable %d for %s', ...
+               true_model,ivar,diagn_file), ...
+               'interpreter','none','fontweight','bold')
       end
 
    case 'lorenz_96'

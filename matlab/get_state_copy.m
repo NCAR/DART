@@ -1,5 +1,5 @@
-function state_vec = get_state_copy(fname, index)
-%GET_STATE_COPY  Gets a particular copy of state from netcdf file
+function state_vec = get_state_copy(fname, copyindex)
+%GET_STATE_COPY  Gets a particular copy (one ensemble member) of state from netcdf file
 
 % Retrieves a particular copy of a state vector from a file whose
 % full or relative path is specified in the file argument.
@@ -19,4 +19,4 @@ close(f);
 % Get only the appropriate copy of the state and return
 % Should have an error check for bad indices
 
-state_vec = getnc(fname, 'state', [-1, index, -1], [-1, index, -1]);
+state_vec = getnc(fname, 'state', [-1, copyindex, -1], [-1, copyindex, -1]);

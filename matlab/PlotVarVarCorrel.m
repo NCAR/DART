@@ -50,8 +50,8 @@ clf; plot(correl);
 
 s1 = sprintf('%s Correlation of state variable %d, T = %d, with variable %d', ...
          model, base_var_index, base_time, state_var_index);
-s2 = sprintf('%d ensemble members', num_copies-2); 
-title({s1,s2},'interpreter','none')
+s2 = sprintf('%d ensemble members -- %s', num_copies-2,fname); 
+title({s1,s2},'interpreter','none','fontweight','bold')
 xlabel('time (timestep #)')
 ylabel('correlation')
 

@@ -27,7 +27,19 @@ close(fd);
 
 % rudimentary bulletproofing
 if (strcmp(t.model,d.model) ~= 1)
+   disp(sprintf('%s has model %s ',truth_file,t.model))
+   disp(sprintf('%s has model %s ',diagn_file,d.model))
    error('no No NO ... models must be the same')
+end
+if (t.num_vars ~= d.num_vars)
+   disp(sprintf('%s has %d state variables',truth_file,t.num_vars))
+   disp(sprintf('%s has %d state variables',diagn_file,d.num_vars))
+   error('no No NO ... both files must have same number of state variables.')
+end
+if (t.num_times ~= d.num_times)
+   disp(sprintf('%s has %d timesteps',truth_file,t.num_times))
+   disp(sprintf('%s has %d timesteps',diagn_file,d.num_times))
+   error('ugh ... both files must have same number of timesteps.')
 end
 
 % Get the netcdf variable indices for desired "copies"
@@ -49,16 +61,22 @@ switch lower(t.model)
       ens    = get_state_copy(diagn_file,  ens_mean_index);
       spread = get_state_copy(diagn_file,ens_spread_index);
 
-      % Also need to compute the spread; zero truth for this and compute
-      % distance from 0 (verify algorithm)
+      % Also need to compute the spread; zero truth for this and 
+      % compute distance from 0
       err        = total_err(truth, ens);
       err_spread = total_err(zeros(size(spread)), spread);
+      errTotal   = sum(err);
+      spreadTotal= sum(err_spread);
+      string1 = ['Ensemble Mean Total Error \Sigma = ' num2str(errTotal)];
+      string2 = ['Ensemble Spread Total Error \Sigma = ' num2str(spreadTotal)];
 
       clf;
       plot(times,err, 'b', times,err_spread, 'r');
-      legend('Ensemble Mean Total Error','Ensemble Spread',0)
-      title(sprintf('model %s Total Error over all %d variables',...
-                     t.model, d.num_vars),'interpreter','none')
+      legend(string1,string2,0)
+      legend boxoff
+      title(sprintf('%s Total Error over all %d variables for %s',...
+                    t.model, d.num_vars, diagn_file), ...
+            'interpreter','none','fontweight','bold')
       xlabel(sprintf('model time (%d timesteps)',t.num_times))
       ylabel('Error')
 
@@ -69,16 +87,22 @@ switch lower(t.model)
       ens    = get_state_copy(diagn_file,  ens_mean_index);
       spread = get_state_copy(diagn_file,ens_spread_index);
 
-      % Also need to compute the spread; zero truth for this and compute
-      % distance from 0 (verify algorithm)
+      % Also need to compute the spread; zero truth for this and
+      % compute distance from 0
       err        = total_err(truth, ens);
       err_spread = total_err(zeros(size(spread)), spread);
+      errTotal   = sum(err);
+      spreadTotal= sum(err_spread);
+      string1 = ['Ensemble Mean Total Error \Sigma = ' num2str(errTotal)];
+      string2 = ['Ensemble Spread Total Error \Sigma = ' num2str(spreadTotal)];
 
       clf;
       plot(times,err, 'b', times,err_spread, 'r');
-      legend('Ensemble Mean Total Error','Ensemble Spread',0)
-      title(sprintf('model %s Total Error over all %d variables',...
-                     t.model, d.num_vars),'interpreter','none')
+      legend(string1,string2,0)
+      legend boxoff
+      title(sprintf('%s Total Error over all %d variables for %s',...
+                    t.model, d.num_vars, diagn_file), ...
+            'interpreter','none','fontweight','bold')
       xlabel(sprintf('model time (%d timesteps)',t.num_times))
       ylabel('Total Error')
 
