@@ -10,15 +10,24 @@ module model_mod
 ! Revised assim_model version of Lorenz-63 3-variable model
 
 use types_mod
+use time_manager_mod
 use location_mod, only : location_type, get_dist, set_location, get_location, &
                          LocationDims, LocationName, LocationLName
-use time_manager_mod
 
+implicit none
 private
 
-public static_init_model, init_conditions, get_model_size, adv_1step, &
-   init_time,  model_interpolate, get_model_time_step, get_state_meta_data, &
-   init_model, end_model, model_get_close_states, nc_write_model_atts
+public   get_model_size, &
+         adv_1step, &
+         get_state_meta_data, &
+         model_interpolate, &
+         get_model_time_step, &
+         end_model, &
+         static_init_model, &
+         init_time,  &
+         init_conditions, &
+         model_get_close_states, &
+         nc_write_model_atts
 
 !  define model parameters
 
@@ -68,7 +77,6 @@ do i = 1, model_size
    x_loc = (i - 1.0) / model_size
    state_loc(i) =  set_location(x_loc)
 end do
-
 
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L93
@@ -312,7 +320,7 @@ end function get_model_time_step
 
 
 
-subroutine get_state_meta_data(index, location)
+subroutine get_state_meta_data(index_in, location, var_type)
 !---------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
@@ -322,10 +330,12 @@ subroutine get_state_meta_data(index, location)
 
 implicit none
 
-integer, intent(in) :: index
+integer, intent(in) :: index_in
 type(location_type), intent(out) :: location
+integer, intent(out), optional :: var_type                                      
 
-location = state_loc(index)
+location = state_loc(index_in)
+if (present(var_type)) var_type = 1    ! default variable type
 
 end subroutine get_state_meta_data
 
@@ -492,7 +502,7 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Jan 24 2003
 !
-! For the lorenz_96 model, each state variable is at a separate location.
+! For the lorenz_63 model, each state variable is at a separate location.
 ! that's all the model-specific attributes I can think of ...
 !
 ! assim_model_mod:init_diag_output uses information from the location_mod

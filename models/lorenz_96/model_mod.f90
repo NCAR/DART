@@ -8,18 +8,26 @@ module model_mod
 !
 
 use types_mod
+use time_manager_mod
 use location_mod, only : location_type, get_dist, set_location, get_location, &
                          LocationDims, LocationName, LocationLName
 
-
-use time_manager_mod
-
+implicit none
 private
 
-public static_init_model, init_conditions, get_model_size, adv_1step,  &
-   init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model, &
-   init_model, model_get_close_states, nc_write_model_atts
+public   get_model_size, &
+         adv_1step,  &
+         get_state_meta_data, &
+         model_interpolate, &
+         get_model_time_step, &
+         end_model, &
+         static_init_model, &
+         init_time, &
+         init_conditions, &
+         model_get_close_states, &
+         nc_write_model_atts 
 
+!  define model parameters                                                      
 
  integer,  parameter :: model_size =   40
  real(r8), parameter ::    forcing = 8.00_r8
@@ -275,7 +283,7 @@ end function get_model_time_step
 
 
 
-subroutine get_state_meta_data(index, location)
+subroutine get_state_meta_data(index_in, location, var_type)
 !---------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
@@ -285,10 +293,12 @@ subroutine get_state_meta_data(index, location)
 
 implicit none
 
-integer, intent(in) :: index
+integer, intent(in) :: index_in
 type(location_type), intent(out) :: location
+integer, intent(out), optional :: var_type                                      
 
-location = state_loc(index)
+location = state_loc(index_in)
+if (present(var_type)) var_type = 1    ! use default variable type
 
 end subroutine get_state_meta_data
 
