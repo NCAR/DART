@@ -21,7 +21,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 ! Gives ability to generate unique repeatable sequences of random numbers
-! using numerical recipes package. Needed to allow different assim algorithms 
+! using random congruential package. Needed to allow different assim algorithms 
 ! that ! require random numbers to see identical observational sequences.
 
 ! Used to give different sequences a different but repeatable start
