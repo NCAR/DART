@@ -1,4 +1,4 @@
-% plot_ens_mean_time_series    Plots time series of ensemble mean and truth
+% DART : Plots time series of ensemble mean and truth
 %                                                                               
 % plot_ens_mean_time_series    interactively queries for the needed information.
 %              Since different models potentially need different pieces of 

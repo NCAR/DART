@@ -1,5 +1,4 @@
-% plot_phase_space.m
-% Plots a 3D trajectory of (3 state variables of) a single ensemble member.
+% DART : Plots a 3D trajectory of (3 state variables of) a single ensemble member.
 %
 % Because it IS possible to overlay plots, the onus is on YOU to make
 % sure the current figure is "cleared" before you plot the first
@@ -36,7 +35,7 @@ if (exist('fname') ~=1)
       fname = 'True_State.nc';
    end                                                                          
 else
-   s1 = input(sprintf('Input name of netCDF file. <cr> for  %s',fname),'s');
+   s1 = input(sprintf('Input name of netCDF file. <cr> for  %s ',fname),'s');
    if ~isempty(s1), fname = str2num(deblank(s1)); end
 end 
 

@@ -1,6 +1,6 @@
-% plot_var_var_correl.m
-% Plots time series of correlation between a given variable at a given
-% time and another variable at all times in an ensemble time sequence.
+% DART : Plots time series of correlation between 
+% a given variable at a given time and another variable at all times 
+% in an ensemble time sequence.
 
 if (exist('fname') ~=1)
    disp('Input name of file;')

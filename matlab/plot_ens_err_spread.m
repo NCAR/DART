@@ -1,4 +1,4 @@
-% plot_ens_err_spread    Plots summary plots of the ensemble error and ensemble spread.
+% DART : Plots summary plots of the ensemble error and ensemble spread.
 %                        Interactively queries for the needed information.
 %                        Since different models potentially need different 
 %                        pieces of information ... the model types are 
