@@ -26,6 +26,7 @@ public static_init_assim_model, init_diag_output, get_model_size, get_closest_st
 
 integer,  parameter :: model_size =   40
 real(r8), parameter ::    forcing = 8.00_r8
+! Original time difference follows
 real(r8), parameter ::    delta_t = 0.05_r8
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which

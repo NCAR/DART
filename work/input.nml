@@ -5,7 +5,7 @@
    output_start = 1000,
    ens_spin_up_steps = 0,
    obs_freq = 1,
-   cov_inflate = 1.05
+   cov_inflate = 1.02
    mean_inflate = 1.0
    restart = .FALSE.,
    add_on = .FALSE.,

@@ -21,7 +21,11 @@ public init_model, get_model_size, init_conditions, adv_1step, advance, &
 
 integer,  parameter :: model_size =   40
 real(r8), parameter ::    forcing = 8.00_r8
+! Original time step follows
 real(r8), parameter ::    delta_t = 0.05_r8
+
+! Modified timestep for assimilation experiments
+!real(r8), parameter ::    delta_t = 0.005_r8
 
 logical :: output_init = .FALSE.
 

@@ -52,8 +52,8 @@ type(obs_sequence_type) :: seq, prior_seq, posterior_seq
 type(time_type) :: time, time2
 type(random_seq_type) :: random_seq
 
-real(r8), parameter :: cutoff = 0.2, radius = 2.0 * cutoff
-real(r8), parameter :: cov_inflate = 1.05_r8
+real(r8), parameter :: cutoff = 1.0, radius = 2.0 * cutoff
+real(r8), parameter :: cov_inflate = 1.0_r8
 integer, parameter :: cache_size = 10
 character(len = 129) file_name
 

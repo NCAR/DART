@@ -29,6 +29,8 @@ real(r8), allocatable :: prior(:, :), posterior(:, :), truth(:)
 type(assim_model_type) :: truth_state, prior_state, posterior_state
 real(r8), allocatable :: prior_ens_mean(:), posterior_ens_mean(:)
 real(r8) :: prior_rms_err, posterior_rms_err, sum_prior_rms = 0, sum_posterior_rms = 0
+real(r8) :: sum_prior_mean_rms, sum_posterior_mean_rms, prior_mean_rms, posterior_mean_rms
+real(r8) :: desired
 
 
 ! OBVIOUSLY, a mature facility would have more error checks and make more
@@ -88,14 +90,28 @@ do i = 1, num_samples
    sum_posterior_rms = sum_posterior_rms + posterior_rms_err
    write(*, *) i, prior_rms_err, posterior_rms_err
 
+   prior_mean_rms = 0.0
+   posterior_mean_rms = 0.0
+   do j = 1, ens_size
+      prior_mean_rms = prior_mean_rms + sqrt(sum((prior(:, j) - truth) * (prior(:, j) - truth)))
+      posterior_mean_rms = posterior_mean_rms +  sqrt(sum((posterior(:, j) - truth) * &
+         (posterior(:, j) - truth)))
+   end do
+   sum_prior_mean_rms = sum_prior_mean_rms + prior_mean_rms / ens_size
+   sum_posterior_mean_rms = sum_posterior_mean_rms + posterior_mean_rms / ens_size
 end do
 
+! Verify the ratio 
+desired = sqrt((ens_size + 1) / (2. * ens_size))
+
 write(*, *) 'mean prior rms is     ', sum_prior_rms / num_samples
+write(*, *) 'prior mean rms is     ', sum_prior_mean_rms / num_samples
+write(*, *) 'normalize ratio is ', (sum_prior_rms / sum_prior_mean_rms) / desired
+
+write(*, *) '-----------------'
+
 write(*, *) 'mean posterior rms is ', sum_posterior_rms / num_samples
+write(*, *) 'posterior mean rms is ', sum_posterior_mean_rms / num_samples
+write(*, *) 'normalized ratio is ', (sum_posterior_rms / sum_posterior_mean_rms) / desired
 
 end program rms_diag
-
-
-
-
-
