@@ -61,8 +61,6 @@ else
    end
 endif
 cat "$PBS_NODEFILE"
-@ iproc --
-echo This_job_has_allocated $iproc nodes
 
 # figure # batches of runs to do, from # ensemble members and # processors
 @ nbatch = $nensmbl / $NPROCS
