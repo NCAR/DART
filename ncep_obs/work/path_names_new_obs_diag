@@ -1,6 +1,6 @@
 ncep_obs/new_obs_diag.f90
 ncep_obs/real_obs_mod.f90
-gps/gps_loc_mod.f90
+ensemble_manager/ensemble_manager_mod.f90
 obs_sequence/obs_sequence_mod.f90
 sort/sort_mod.f90
 obs_kind/obs_kind_mod.f90
