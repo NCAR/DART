@@ -1,7 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
 
-   ! Open the direct access file for on disk ensemble
-   
 ! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
@@ -39,13 +37,17 @@ public init_ensemble_manager, get_ensemble_member, put_ensemble_member, &
 type ensemble_type
    logical :: null_variable
 end type ensemble_type
+
+! Flags for allocating mean and spread storage
+logical :: mean_allocated = .false., spread_allocated = .false.
    
 ! Global in core storage for the ensemble
-real(r8), allocatable :: ens(:, :)
+real(r8), allocatable :: ens(:, :), ens_mean(:), ens_spread(:)
 type(time_type), allocatable :: ens_time(:)
 integer :: ens_size, model_size, req_rec_length
 
 integer :: direct_unit
+character(len = 129) :: errstring
 
 !-----------------------------------------------------------------
 !
@@ -67,15 +69,16 @@ contains
 subroutine init_ensemble_manager(ens_handle, ens_size_in, &
    model_size_in, file_name, init_time)
 
-type(ensemble_type), intent(out) :: ens_handle
-integer, intent(in) :: ens_size_in, model_size_in
+type(ensemble_type), intent(out)            :: ens_handle
+integer, intent(in)                         :: ens_size_in, model_size_in
 character(len = 129), intent(out), optional :: file_name
-type(time_type), intent(in), optional :: init_time
+type(time_type), intent(in), optional       :: init_time
 
 real(r8) :: x
 integer :: iunit, i, j, ilength, rlength, rnum, ierr, io
 character(len = 129) :: msgstring
 
+! Initialize the module with utilities 
 call register_module(source, revision, revdate)
 
 ! Set the global storage bounds
@@ -104,20 +107,15 @@ if(.not. in_core) then
    direct_unit = get_unit()
    open(unit = direct_unit, file = "temp_ens_file", access = 'direct', &
       status = 'replace', form = 'unformatted', recl = req_rec_length)
-   
-   ! Write out the first two 0 filled ensemble members for ensemble spread and mean
-   do i = 1, 2
-      do j = 1, model_size
-         rnum = (i - 1) * model_size + j
-         write(direct_unit, rec = rnum) -99.99_r8
-      end do
-   end do
 endif
 
 ! Initialize the storage and read in from restart file if needed
 if(in_core) then 
-   allocate(ens(-1:ens_size, model_size), ens_time(-1:ens_size))
+   ! Don't allocate space for mean and spread until needed to conserve space
+   allocate(ens(ens_size, model_size), ens_time(-1:ens_size))
 else
+   ! For out of core will only have storage for one ensemble member
+   ! Could make it so this was only used in this routine if really desparate for space
    allocate(ens(1, model_size), ens_time(-1:ens_size))
 endif
 
@@ -133,8 +131,8 @@ if(present(file_name)) then
          call aread_state_restart(ens_time(i), ens(1, :), iunit)
          ! Write out the ensemble to direct access file
          do j = 1, model_size
-            rnum = (i + 1) * model_size + j
-            write(direct_unit, rec = rnum) ens(j, 1) 
+            rnum = (i - 1) * model_size + j
+            write(direct_unit, rec = rnum) ens(1, j) 
          end do
       endif
 
@@ -143,7 +141,6 @@ if(present(file_name)) then
    end do
    call close_restart(iunit)
 endif
-
 
 end subroutine init_ensemble_manager
 
@@ -158,16 +155,30 @@ type(time_type), intent(out) :: mtime
 
 integer :: i, rnum
 
+! Index 0 gets ensemble mean, index -1 gets ensemble spread
+
 if(index < -1 .or. index > ens_size) then
-   write(*, *) 'index out of range in get_ensemble_member'
-   stop
+   write(errstring, *) 'index out of range'
+   call error_handler(E_ERR,'get_ensemble_member', errstring, source, revision, revdate)
 endif
 
 if(in_core) then
-   member = ens(index, :)
+   if(index > 0) then
+      member = ens(index, :)
+   else if(index == 0) then
+      member = ens_mean
+   else 
+      member = ens_spread
+   endif
 else
    do i = 1, model_size
-      rnum = (index + 1) * model_size + i
+      if(index > 0) then
+         rnum = (index - 1) * model_size + i
+      else if(index == 0) then
+         rnum = (ens_size) * model_size + i
+      else if(index == -1) then
+         rnum = (ens_size + 1) * model_size + i
+      endif
       read(direct_unit, rec = rnum) member(i)
    end do
 endif
@@ -188,16 +199,27 @@ type(time_type), intent(in) :: mtime
 integer :: i, rnum
 
 if(index < -1 .or. index > ens_size) then
-   write(*, *) 'index out of range in put_ensemble_member'
-   write(*, *) 'index is ', index
-   stop
+   write(errstring, *) 'index out of range ', index
+   call error_handler(E_ERR,'put_ensemble_member', errstring, source, revision, revdate)
 endif
 
 if(in_core) then
-   ens(index, :) = member
+   if(index > 0) then
+      ens(index, :) = member
+   else if(index == 0) then
+      ens_mean = member
+   else
+      ens_spread = member
+   endif
 else
    do i = 1, model_size
-      rnum = (index + 1) * model_size + i
+      if(index > 0) then
+         rnum = (index - 1) * model_size + i
+      else if(index == 0) then
+         rnum = ens_size * model_size + i
+      else if(index == -1) then
+         rnum = (ens_size + 1) * model_size + i
+      endif
       write(direct_unit, rec = rnum) member(i)
    end do
 end if
@@ -215,8 +237,8 @@ integer, intent(in) :: index
 type(time_type), intent(out) :: mtime
 
 if(index < -1 .or. index > ens_size) then
-   write(*, *) 'index out of range in get_ensemble_member'
-   stop
+   write(errstring, *) 'index out of range ', index
+   call error_handler(E_ERR,'get_ensemble_time', errstring, source, revision, revdate)
 endif
 
 mtime = ens_time(index)
@@ -233,14 +255,19 @@ real(r8) :: val
 
 ! Update the ensemble mean (copy 0) from ensemble members
 if(in_core) then
-    do i = 1, model_size
-      ens(0, i) = sum(ens(1:ens_size, i)) / ens_size
+   ! Make sure that space has been allocated
+   if(.not. mean_allocated) then
+      allocate(ens_mean(model_size))  
+      mean_allocated = .true.
+   endif
+   do i = 1, model_size
+      ens_mean(i) = sum(ens(1:ens_size, i)) / ens_size
    end do
 else
    ens = 0.0
    do j = 1, ens_size
       do i = 1, model_size
-         rnum = (j + 1) * model_size + i
+         rnum = (j - 1) * model_size + i
          read(direct_unit, rec = rnum) val
          ens(1, i) = ens(1, i) + val
       end do
@@ -248,7 +275,7 @@ else
    ens = ens / ens_size
    ! Put the ensemble mean into the file
    do i = 1, model_size
-      rnum = model_size + i
+      rnum = ens_size * model_size + i
       write(direct_unit, rec = rnum) ens(1, i)
    end do
 endif
@@ -264,28 +291,34 @@ subroutine update_ens_mean_spread(ens_handle)
 
 type(ensemble_type), intent(in) :: ens_handle
 integer :: i, rnum, j
-real(r8) :: temp, ens_spread, ens_mean, ens_element
+real(r8) :: temp, temp_spread, temp_mean, ens_element
 
 ! Update both the mean and spread (copy -1) from ensemble members
 call update_ens_mean(ens_handle)
 
 if(in_core) then
+   ! Make sure storage has been allocated
+   if(.not. spread_allocated) then
+      allocate(ens_spread(model_size))
+      spread_allocated = .true.
+   endif
    do i = 1, model_size
-      ens(-1, i) = sqrt(sum((ens(1:, i) - ens(0, i))**2) / (ens_size - 1))
+      ens_spread(i) = sqrt(sum((ens(1:, i) - ens_mean(i))**2) / (ens_size - 1))
    end do
 else
    ! Loop through and add squared difference from mean
    ! This is going to wreak havoc on disks potentially
    do i = 1, model_size
-      ens_spread = 0.0
-      rnum = model_size + i
-      read(direct_unit, rec = rnum) ens_mean
+      temp_spread = 0.0
+      rnum = ens_size * model_size + i
+      read(direct_unit, rec = rnum) temp_mean
       do j = 1, ens_size
-         rnum = (j + 1) * model_size + i
+         rnum = (j - 1) * model_size + i
          read(direct_unit, rec = rnum) ens_element
-         ens_spread = ens_spread + (ens_element - ens_mean)**2
+         temp_spread = temp_spread + (ens_element - temp_mean)**2
       end do
-      write(direct_unit, rec = i) sqrt(ens_spread / (ens_size - 1))
+      rnum = (ens_size + 1) * model_size + i
+      write(direct_unit, rec = rnum) sqrt(temp_spread / (ens_size - 1))
    end do
 endif
 
@@ -336,9 +369,21 @@ do i = 1, num_ens_members
    rtime(i) = ens_time(ens_members(i))
    do j = 1, num_state_vars
       if(in_core) then
-         region(i, j) = ens(ens_members(i), state_vars(j))
+         if(ens_members(i) == 0) then
+            region(i, j) = ens_mean(state_vars(j))
+         else if(ens_members(i) == -1) then
+            region(i, j) = ens_spread(state_vars(j))
+         else
+            region(i, j) = ens(ens_members(i), state_vars(j))
+         endif
       else
-         rnum = (ens_members(i) + 1) * model_size + state_vars(j)
+         if(ens_members(i) == 0) then
+            rnum = ens_size * model_size + state_vars(j)
+         else if(ens_members(i) == -1) then
+            rnum = (ens_size + 1) * model_size + state_vars(j)
+         else
+            rnum = (ens_members(i) - 1) * model_size + state_vars(j)
+         endif
          read(direct_unit, rec = rnum) region(i, j)
       endif
    end do
@@ -384,9 +429,21 @@ endif
 do i = 1, num_ens_members
    do j = 1, num_state_vars
       if(in_core) then 
-         ens(ens_members(i), state_vars(j)) = region(i, j)
+         if(ens_members(i) == 0) then
+            ens_mean(state_vars(j)) = region(i, j)
+         else if(ens_members(i) == -1) then
+            ens_spread(state_vars(j)) = region(i, j)
+         else
+            ens(ens_members(i), state_vars(j)) = region(i, j)
+         endif
       else
-         rnum = (ens_members(i) + 1) * model_size + state_vars(j)
+         if(ens_members(i) == 0) then
+            rnum = ens_size * model_size + state_vars(j)
+         else if(ens_members(i) == -1) then
+            rnum = (ens_size + 1) * model_size + state_vars(j)
+         else
+            rnum = (ens_members(i) - 1) * model_size + state_vars(j)
+         endif
          write(direct_unit, rec = rnum) region(i, j)
       endif
       ens_time(ens_members(i)) = rtime(i)
@@ -422,6 +479,8 @@ close(direct_unit)
 
 ! Free up the allocated storage
 deallocate(ens, ens_time)
+if(mean_allocated) deallocate(ens_mean)
+if(spread_allocated) deallocate(ens_spread)
 
 end subroutine end_ensemble_manager
 
@@ -452,7 +511,6 @@ integer :: seconds, days, i, control_unit, ic_file_unit, ud_file_unit
 
 character(len = 26), dimension(ens_size) :: ic_file_name, ud_file_name 
 character(len = 128) :: input_string
-character(len = 129) :: errstring
 integer :: is1,is2,id1,id2
 type(time_type) :: smodel_time
 real(r8) :: smodel_state(model_size)
