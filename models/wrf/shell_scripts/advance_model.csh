@@ -39,6 +39,10 @@ ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
 
 ln -s  ${PBS_O_WORKDIR}/wrf.exe .
 
+echo $HOSTNAME > nfile
+echo $HOSTNAME >> nfile
+###ln -s  ${PBS_O_WORKDIR}/nfile$element nfile
+
 # Convert DART to wrfinput
 
 echo ".true." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
@@ -57,7 +61,13 @@ set wrfkey = `expr $wrfkey \+ $wrfsecs`
 
 # Find all BC's file available and sort them with "keys".
 
-ls ${PBS_O_WORKDIR}/WRF/wrfbdy_*_$element > bdy.list
+set SPEC_BC = `grep specified ${PBS_O_WORKDIR}/namelist.input | grep true | cat | wc -l`
+
+if ($SPEC_BC > 0) then
+   ls ${PBS_O_WORKDIR}/WRF/wrfbdy_*_$element > bdy.list
+else
+   echo ${PBS_O_WORKDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element > bdy.list
+endif
 
 echo ${PBS_O_WORKDIR}/WRF/wrfbdy_ > str.name
 sed 's/\//\\\//g' < str.name > str.name2
@@ -189,26 +199,42 @@ endif
 
 rm -f script.sed
 cat > script.sed << EOF
- s/MY_RUN_HOURS/${RUN_HOURS}/
- s/MY_RUN_MINUTES/${RUN_MINUTES}/
- s/MY_RUN_SECONDS/${RUN_SECONDS}/
- s/MY_START_YEAR/${START_YEAR}/g
- s/MY_START_MONTH/${START_MONTH}/g
- s/MY_START_DAY/${START_DAY}/g
- s/MY_START_HOUR/${START_HOUR}/g
- s/MY_START_MINUTE/${START_MIN}/g
- s/MY_START_SECOND/${START_SEC}/g
- s/MY_END_YEAR/${END_YEAR}/g
- s/MY_END_MONTH/${END_MONTH}/g
- s/MY_END_DAY/${END_DAY}/g
- s/MY_END_HOUR/${END_HOUR}/g
- s/MY_END_MINUTE/${END_MIN}/g
- s/MY_END_SECOND/${END_SEC}/g
- s/MY_HISTORY_INTERVAL/${INTERVAL_MIN}/g
+ /run_hours/c\
+ run_hours                  = ${RUN_HOURS}
+ /run_minutes/c\
+ run_minutes                = ${RUN_MINUTES}
+ /run_seconds/c\
+ run_seconds                = ${RUN_SECONDS}
+ /start_year/c\
+ start_year                 = ${START_YEAR}, ${START_YEAR}, ${START_YEAR}
+ /start_month/c\
+ start_month                = ${START_MONTH}, ${START_MONTH}, ${START_MONTH}
+ /start_day/c\
+ start_day                  = ${START_DAY}, ${START_DAY}, ${START_DAY}
+ /start_hour/c\
+ start_hour                 = ${START_HOUR}, ${START_HOUR}, ${START_HOUR}
+ /start_minute/c\
+ start_minute               = ${START_MIN}, ${START_MIN}, ${START_MIN}
+ /start_second/c\
+ start_second               = ${START_SEC}, ${START_SEC}, ${START_SEC}
+ /end_year/c\
+ end_year                   = ${END_YEAR}, ${END_YEAR}, ${END_YEAR}
+ /end_month/c\
+ end_month                  = ${END_MONTH}, ${END_MONTH}, ${END_MONTH}
+ /end_day/c\
+ end_day                    = ${END_DAY}, ${END_DAY}, ${END_DAY}
+ /end_hour/c\
+ end_hour                   = ${END_HOUR}, ${END_HOUR}, ${END_HOUR}
+ /end_minute/c\
+ end_minute                 = ${END_MIN}, ${END_MIN}, ${END_MIN}
+ /end_second/c\
+ end_second                 = ${END_SEC}, ${END_SEC}, ${END_SEC}
+ /history_interval/c\
+ history_interval           = ${INTERVAL_MIN}, ${INTERVAL_MIN}, ${INTERVAL_MIN}
 EOF
 
  sed -f script.sed \
-    ${PBS_O_WORKDIR}/namelist.input.template > namelist.input
+    ${PBS_O_WORKDIR}/namelist.input > namelist.input
 
 # Update boundary conditions
 
@@ -227,7 +253,7 @@ EOF
 
    set dn = 1
    while ( $dn <= $MY_NUM_DOMAINS )
-      mv wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
+      mv -f wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
       @ dn ++
    end
 
@@ -251,7 +277,7 @@ mv dart_wrf_vector dart_wrf_vector.input
 # create new input to DART (taken from "wrfinput")
 echo ".false." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
 
-mv dart_wrf_vector $PBS_O_WORKDIR/assim_model_state_ud$element
+mv -f dart_wrf_vector $PBS_O_WORKDIR/assim_model_state_ud$element
 
 cd $PBS_O_WORKDIR
 #rm -rf $temp_dir
