@@ -55,10 +55,11 @@ endif
 # 3) Interactive jobs default to 1 (one).
 #
 # list of hosts/machines is in $PROCNAMES
+# the quoting is VERY IMPORTANT for PROCNAMES
 
 if ($?LSB_HOSTS) then
    set NPROCS = `echo $LSB_HOSTS | wc -w`
-   set PROCNAMES = "${LSB_HOSTS}"
+   set PROCNAMES = "$LSB_HOSTS"
 else if ($?NPROCS) then
    set PROCNAMES = $host
    set iproc = 2
@@ -74,7 +75,7 @@ endif
 # The working directory is set one of two ways,
 # 1) Batch jobs set $LS_SUBCWD that is the directory FROM WHICH 
 #    you submitted the batch job.
-# 2) the current working directory
+# 2) interactive execution uses the current directory
 
 if ( $?LS_SUBCWD ) then
    set DARTWORKDIR = $LS_SUBCWD
@@ -87,13 +88,12 @@ endif
 rm -f filter_server.log
 
 ### Output to confirm job characteristics
-echo "filter_server Running on host "`hostname`   > filter_server.log
-echo "Initialized at "`date`                     >> filter_server.log
-echo "DARTWORKDIR is $DARTWORKDIR"               >> filter_server.log
-echo "This job has allocated $NPROCS tasks."     >> filter_server.log
-echo "They will run on the following nodes: "    >> filter_server.log
-echo $PROCNAMES                                  >> filter_server.log
-
+echo "filter_server.csh Running on host "`hostname`   > filter_server.log
+echo "Initialized at "`date`                         >> filter_server.log
+echo "DARTWORKDIR is $DARTWORKDIR"                   >> filter_server.log
+echo "This job has allocated $NPROCS tasks."         >> filter_server.log
+echo "They will run on the following nodes:"         >> filter_server.log
+echo $PROCNAMES                                      >> filter_server.log
 
 # Hang around forever for now and wait for go_advance file to appear
 # The program 'filter' creates the file 'go_advance_file'.
@@ -103,7 +103,7 @@ while(1 == 1)
    # If go_end_filter exists then stop this process
    #------------------------------------------------------------------------------------ 
    if( -e go_end_filter ) then
-      echo "terminating normally at " `date` >> filter_server.log
+      echo "filter_server.csh terminating normally at " `date` >> filter_server.log
       rm -f go_end_filter
       exit
    endif
