@@ -267,8 +267,8 @@ AdvanceTime : do i = 1, num_obs_sets
    time2 = get_closest_state_time_to(ens(1), time)
    write(*, *) 'advancing to time2 '
    call  print_time(time2)
-   ! Advance the ensembles to this time
-   if(time2 /= get_model_time(ens(j))) call advance_state(ens, ens_size, time2, async)
+   ! Advance all the ensembles (to the time of the first ensemble)
+   if(time2 /= get_model_time(ens(1))) call advance_state(ens, ens_size, time2, async)
 
    ! Do a covariance inflation for now? 
    ! Inflate the ensemble state estimates
