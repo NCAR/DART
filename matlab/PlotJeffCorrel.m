@@ -7,18 +7,20 @@ function PlotJeffCorrel( pinfo )
 %
 % PlotVarVarCorrel is intended to be called by 'plot_var_var_correl'
 %
-% USAGE: PlotVarVarCorrel(fname, base_var_index, base_tme, state_var_index)
+% USAGE: PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
 %
 % fname
 % base_var_index    index of one of the state variables to correlate  
-% base_tme         index of the time of interest (timestep)
+% base_time         index of the time of interest (timestep)
 % state_var_index   index of the other state variable of interest.
 %
 % Example  (lorenz 63 model with 1000 timesteps)
 %%--------------------------------------------------------
 % pinfo.fname = 'Posterior_Diag.nc';
+% pinfo.base_var          = 'state';
 % pinfo.base_var_index    = 2;
-% pinfo.base_tme         = 500;
+% pinfo.base_time         = 500;
+% pinfo.state_var         = 'state';
 % pinfo.state_var_index   = 1;
 % PlotVarVarCorrel( pinfo )
 
@@ -33,17 +35,14 @@ function PlotJeffCorrel( pinfo )
 
 if (exist(pinfo.fname) ~= 2), error(sprintf('%s does not exist.',pinfo.fname)), end
 
-% disp(sprintf('PlotVarVarCorrel: fname is %s',pinfo.fname))
-% disp(sprintf('PlotVarVarCorrel: base_var_index is %d',pinfo.base_var_index))
-% disp(sprintf('PlotVarVarCorrel: base_tme      is %d',pinfo.base_tme))
-
 % Get some file-specific information.
 f = netcdf(pinfo.fname,'nowrite');
 model      = f.model(:);
 timeunits  = f{'time'}.units(:);
-num_vars   = ncsize(f('StateVariable')); % determine # of state variables
-num_times  = ncsize(f('time')); % determine # of output times
-num_copies = ncsize(f('copy')); % determine # of ensemble members
+var_atts   = dim(f{pinfo.base_var}); % cell array of dimensions for the var
+num_times  = length(var_atts{1});    % determine # of output times
+num_copies = length(var_atts{2});    % determine # of ensemble members
+num_vars   = length(var_atts{3});    % determine # of state variables (of this type)
 close(f);
 
 switch lower(model)
@@ -67,7 +66,7 @@ switch lower(model)
          plot(times,correl);
 
       s1 = sprintf('%s Correlation of ''%s'', T = %d, lvl = %d, lat = %.2f, lon=%.2f', ...
-          model, pinfo.base_var, pinfo.base_tme, pinfo.base_lvl, ...
+          model, pinfo.base_var, pinfo.base_time, pinfo.base_lvl, ...
           pinfo.base_lat, pinfo.base_lon);
 
       s2 = sprintf('with ''%s'', lvl = %d, lat = %.2f, lon= %.2f, %d ensemble members -- %s', ...
@@ -81,7 +80,7 @@ switch lower(model)
       % call out the time index in question, and put a corr==0 reference line.
       ax = axis;
       hold on;
-      plot([pinfo.base_tme pinfo.base_tme],[ -1 1 ],'k:', ...
+      plot([pinfo.base_time pinfo.base_time],[ -1 1 ],'k:', ...
            [ax(1)         ax(2)],[  0 0 ],'k:')
 
 
@@ -98,9 +97,9 @@ switch lower(model)
       
       % The Time must be within range also.
       
-      if ( pinfo.base_tme > num_times )
+      if ( pinfo.base_time > num_times )
          disp( sprintf('%s only has %d output times', pinfo.fname, num_times))
-         error(sprintf('you wanted time # %d ', pinfo.base_tme))
+         error(sprintf('you wanted time # %d ', pinfo.base_time))
       end
       
       % The State Variable Index must also be a valid state variable
@@ -111,16 +110,17 @@ switch lower(model)
       end
       
       % Get 'standard' ensemble series 
-       base_var = get_ens_series(pinfo.fname,  pinfo.base_var_index);
-      state_var = get_ens_series(pinfo.fname, pinfo.state_var_index);
+       base_var = get_ens_series(pinfo.fname, pinfo.base_var,  pinfo.base_var_index);
+      state_var = get_ens_series(pinfo.fname, pinfo.state_var, pinfo.state_var_index);
       
       % perform a single correlation
-      correl = jeff_correl(base_var, pinfo.base_tme, state_var);
+      correl = jeff_correl(base_var, pinfo.base_time, state_var);
       
       clf; plot(correl);
       
-      s1 = sprintf('%s Correlation of state variable %d, T = %d, with variable %d', ...
-               model, pinfo.base_var_index, pinfo.base_tme, pinfo.state_var_index);
+      s1 = sprintf('%s Correlation of %s %d, T = %d, with %s %d', ...
+               model, pinfo.base_var,  pinfo.base_var_index, pinfo.base_time, ...
+                      pinfo.state_var, pinfo.state_var_index);
       s2 = sprintf('%d ensemble members -- %s', num_copies-2,pinfo.fname); 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel('time (timestep #)')
@@ -129,12 +129,10 @@ switch lower(model)
       % call out the time index in question, and put a corr==0 reference line.
       ax = axis;
       hold on;
-      plot([pinfo.base_tme pinfo.base_tme],[ -1 1 ],'k:', ...
+      plot([pinfo.base_time pinfo.base_time],[ -1 1 ],'k:', ...
            [ax(1)         ax(2)],[  0 0 ],'k:')
       
       %axis(ax)
-
-
 end
 
 

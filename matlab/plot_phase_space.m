@@ -79,16 +79,58 @@ switch lower(vars.model)
          if isempty(s1), ltype = 'k-'; else ltype = s1; end
       end 
 
-      pinfo = struct('fname'  , fname   , ...
-                     'var1'   , var1    , ...
-                     'var2'   , var2    , ...
-                     'var3'   , var3    , ...
-                     'ens_mem', ens_mem , ...
-                     'ltype'  , ltype   );
+      pinfo = struct('fname'   , fname       , ...
+                     'var1name', vars.def_var, 'var1ind', var1, ...
+                     'var2name', vars.def_var, 'var2ind', var2, ...
+                     'var3name', vars.def_var, 'var3ind', var3, ...
+                     'ens_mem' , ens_mem     , ...
+                     'ltype'   , ltype   );
 
-      disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
-      disp(sprintf('Plotting state variables %d %d %d with line type %s.', ...
-                    pinfo.var1, pinfo.var2, pinfo.var3, pinfo.ltype))
+  %   disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
+  %   disp(sprintf('Plotting %s variables %d %d %d with line type %s.', ...
+  %                 vars.def_var, pinfo.var1ind, pinfo.var2ind, pinfo.var3ind, pinfo.ltype))
+
+   case {'lorenz_96_2scale'}
+
+      disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
+      disp(sprintf('''X'' can range from %d to %d', vars.min_X_var, vars.max_X_var))
+      disp(sprintf('''Y'' can range from %d to %d', vars.min_Y_var, vars.max_Y_var))
+
+      % really should utilize the defaults ... but its getting late.
+      inputstring = input('Input variable and index for axis 1 i.e.  X 5\n','s');
+      [var1name, var1] = ParseAlphaNumeric(inputstring);
+
+      inputstring = input('Input variable and index for axis 2 i.e.  X 18\n','s');
+      [var2name, var2] = ParseAlphaNumeric(inputstring);
+
+      inputstring = input('Input variable and index for axis 3 i.e.  X 24\n','s');
+      [var3name, var3] = ParseAlphaNumeric(inputstring);
+
+      if (exist('ens_mem') ~=1)
+         disp('It is necessary to pick an ensemble member to plot.')
+         disp('Since we pick it based on the metadata string, it could be:')
+         disp('''true_state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
+         if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
+      end 
+
+      if (exist('ltype') ~=1)
+         s1 = input('Input line type string. <cr> for ''k-''  ','s');
+         if isempty(s1), ltype = 'k-'; else ltype = s1; end
+      end 
+
+      pinfo = struct('fname'   , fname    , ...
+                     'var1name', var1name , 'var1ind', var1, ...
+                     'var2name', var2name , 'var2ind', var2, ...
+                     'var3name', var3name , 'var3ind', var3, ...
+                     'ens_mem' , ens_mem  , ...
+                     'ltype'   , ltype   );
+
+  %   disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
+  %   disp(sprintf('Plotting variables %s %d %s %d %s %d with line type %s.', ...
+  %                 pinfo.var1name, pinfo.var1ind, ...
+  %                 pinfo.var2name, pinfo.var2ind, ...
+  %                 pinfo.var3name, pinfo.var3ind, pinfo.ltype))
 
    case 'fms_bgrid'
 
@@ -101,6 +143,8 @@ switch lower(vars.model)
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
+
+pinfo
 
 PlotPhaseSpace( pinfo );
 clear s1

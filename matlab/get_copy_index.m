@@ -34,7 +34,7 @@ for i = 1:num_copies,
    nowhitemd = dewhite(copy_meta_data(i,:));
 
    if strcmp(nowhitemd , nowhitecs) == 1
-      fprintf('copy %3i selected \n', i);
+      fprintf('copy %3i selected for %s\n', i,copystring);
       copy_index = i;
    end
 end

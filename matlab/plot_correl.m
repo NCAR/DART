@@ -25,11 +25,12 @@ if (exist('diagn_file') ~=1)
 end 
 
 vars = CheckModel(diagn_file);   % also gets default values for this file.
+pinfo.fname = diagn_file;
 
 switch lower(vars.model)
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
 
-      pinfo.fname = diagn_file;
+      pinfo.base_var = vars.def_var;
 
       inputstring = input( ...
            sprintf('Input index for base variable (between %d and %d)  ', ...
@@ -42,13 +43,31 @@ switch lower(vars.model)
       pinfo.base_time = str2num(deblank(inputstring));
 
       disp(sprintf('Using diagnostic file %s',diagn_file))
-      disp(sprintf('Correlating state variable %d at time %d.', ...
-           pinfo.base_var_index, pinfo.base_time))
+      disp(sprintf('Correlating variable %s index %d at time %d.', ...
+           pinfo.base_var, pinfo.base_var_index, pinfo.base_time))
+
+   case {'lorenz_96_2scale'}
+
+      disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
+      disp(sprintf('''X'' can range from %d to %d', vars.min_X_var, vars.max_X_var))
+      disp(sprintf('''Y'' can range from %d to %d', vars.min_Y_var, vars.max_Y_var))
+
+      % parsing the result of this one is a bit tricky.
+      inputstring = input('Input base variable and index i.e.  X 5\n','s');
+      [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumeric(inputstring);
+
+      inputstring = input( ...
+           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           vars.time_series_length),'s');
+      pinfo.base_time = str2num(deblank(inputstring));
+
+      disp(sprintf('Using diagnostic file %s',diagn_file))
+      disp(sprintf('Correlating variable %s index %d at time %d.', ...
+           pinfo.base_var,pinfo.base_var_index, pinfo.base_time))
 
    case 'fms_bgrid'
 
       pinfo = GetBgridInfo(diagn_file, 'PlotCorrel');
-      pinfo.fname = diagn_file;
 
    otherwise
 
@@ -56,5 +75,7 @@ switch lower(vars.model)
 
 end
 
+pinfo
+
 PlotCorrel( pinfo );
-clear vars inputstring
+clear vars inputstring inds str1 vrbl vrbl_inds

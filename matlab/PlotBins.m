@@ -52,8 +52,8 @@ switch lower(true_model)
          figure(i); clf
          for j = 1:3
             ivar = (i - 1)*3 + j;
-            ens   = get_ens_series(pinfo.diagn_file, ivar );
-            truth = get_var_series(pinfo.truth_file, truth_index, ivar);
+            truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar );
             bins  = rank_hist(ens, truth);
             subplot(3, 1, j);
             bar(bins);
@@ -68,13 +68,29 @@ switch lower(true_model)
       clf; iplot = 0;
       for ivar = pinfo.state_var_inds,
          iplot = iplot + 1;
-         truth = get_var_series(pinfo.truth_file, truth_index, ivar);
-         ens   = get_ens_series(pinfo.diagn_file, ivar );
+         truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+         ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar );
          bins  = rank_hist(ens, truth);
          subplot(length(pinfo.state_var_inds), 1, iplot);
          bar(bins);
          title(sprintf('%s Variable %d for %s', ...
                true_model,ivar,pinfo.diagn_file), ...
+               'interpreter','none','fontweight','bold')
+      end
+
+   case {'lorenz_96_2scale'}
+
+      clf; iplot = 0;
+      for ivar = pinfo.state_var_inds,
+         iplot = iplot + 1;
+
+         truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+         ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar );
+         bins  = rank_hist(ens, truth);
+         subplot(length(pinfo.state_var_inds), 1, iplot);
+         bar(bins);
+         title(sprintf('%s Variable %s %d for %s', ...
+               true_model,pinfo.var, ivar,pinfo.diagn_file), ...
                'interpreter','none','fontweight','bold')
       end
 
@@ -124,14 +140,26 @@ end
 function var = GetCopy(fname, copyindex, pinfo)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
-if strcmp(pinfo.var,'ps')
-   corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
-else
-   corner = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+
+switch(lower(pinfo.var))
+   case {'ps'}
+      corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+      endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+   otherwise
+      corner = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+      endpnt = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
 end
 var = getnc(fname, pinfo.var, corner, endpnt);
+
+
+function var = get_1Dvar_type_series(fname, copyindex, vrbl, vrbl_ind)
+% Gets a time series of a single specified copy of a prognostic variable 
+% The (spatially-) 1D vars are   (time,copy,location) 
+
+corner = [-1 copyindex vrbl_ind ];
+endpnt = [-1 copyindex vrbl_ind ];
+var = getnc(fname, pinfo.var, corner, endpnt);
+
 
 
 

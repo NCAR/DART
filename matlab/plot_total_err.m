@@ -34,5 +34,7 @@ CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
 disp(sprintf('Comparing %s and \n          %s',pinfo.truth_file, pinfo.diagn_file))
 
+pinfo
+
 PlotTotalErr( pinfo )
 clear pinfo

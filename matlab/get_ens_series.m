@@ -1,12 +1,13 @@
-function ens = get_ens_series(fname, state_var_index)
+function ens = get_ens_series(fname, varname, state_var_index)
 %GET_ENS_SERIES: Returns matrix of time series for all members of ensemble for a variable
 %
 % the rows of the matrix correspond to time,
 % the columns of the matrix correspond to ensemble members
 %
 % fname = 'Prior_Diag.nc';
+% varname = 'state';
 % state_var_index = 3;
-% ens = get_ens_series(fname,state_var_index);
+% ens = get_ens_series(fname,varname,state_var_index);
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -18,16 +19,21 @@ function ens = get_ens_series(fname, state_var_index)
 
 f = netcdf(fname);
 model      = f.model(:);
-num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
-num_copies = ncsize(f{'copy'}); % determine # of ensemble members
-num_times  = ncsize(f{'time'}); % determine # of output times
-close(f);
+var_atts   = dim(f{varname});       % cell array of dimensions for the var
+num_copies = length(var_atts{2});
+num_vars   = length(var_atts{3});
 
-% disp(sprintf('get_ens_series: fname is %s',fname))
-% disp(sprintf('get_ens_series: state_var_index is %d',state_var_index))
-% disp(sprintf('get_ens_series: num_times   is %d',num_times))
-% disp(sprintf('get_ens_series: num_copies  is %d',num_copies))
-% disp(sprintf('get_ens_series: num_vars    is %d',num_vars))
+if ( ~ strcmp( name(var_atts{1}), 'time') )
+    disp( sprintf('%s first dimension ( %s ) is not ''time''',fname,name(var_atts{1})))
+end
+if ( ~ strcmp( name(var_atts{2}), 'copy') )
+    disp( sprintf('%s second dimension ( %s ) is not ''copy''',fname,name(var_atts{2})))
+end
+if (state_var_index > num_vars)
+   disp( sprintf('%s only has %d %s variables',fname,num_vars,varname))
+   error(sprintf('you wanted variable %d ', state_var_index))
+end
+close(f);
 
 metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
@@ -46,26 +52,10 @@ ens_num     = length(copyindices);
 % ensemble members than "mean" and "spread" (the two members
 % we are NOT interested in for this function).
 
-state_vec = getnc(fname,'state', [-1, -1, state_var_index], ...
+state_vec = getnc(fname,varname, [-1, -1, state_var_index], ...
                                  [-1, -1, state_var_index]);
 % getnc always squeezes out the singleton last dimension.
 ens       = state_vec(:,copyindices);
-
-%----------------------------------------------------------------------
-% This was way too slow.
-%----------------------------------------------------------------------
-% Try to loop through each possible ensemble member.
-% As long as we keep generating valid copy_indexes, we keep going.
-%
-%ens_num = 1;
-%copy_index = get_copy_index(fname, 'ensemble member1');
-%while copy_index > 0,
-%   ens(:, ens_num) = get_var_series(fname, copy_index, state_var_index);
-%   ens_num = ens_num + 1;    % advance to next potential member
-%   copy_string = ['ensemble member', num2str(ens_num)];
-%   copy_index = get_copy_index(fname, copy_string);
-%end
-%ens_num = ens_num - 1;
 
 disp(sprintf('Read %d ensemble members for variable %d in %s', ...
              ens_num, state_var_index,fname));

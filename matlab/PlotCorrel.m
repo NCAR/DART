@@ -10,12 +10,14 @@ function PlotCorrel( pinfo )
 %            For the low-order models, the structure MUST contain:
 %
 % fname             name of netCDF file containing a DART ensemble
+% base_var          name of netCDF variable
 % base_var_index    index of state variable used as standard in correlation
 % base_time         index of time series to use as the standard for correlation
 %
 % Example 1   (9var model with 1000 time steps)
 %%------------------------------------------------------------------
 % pinfo.fname          = 'Prior_Diag.nc';
+% pinfo.base_var       = 'state';
 % pinfo.base_var_index = 5;          % picked arbitrarily
 % pinfo.base_time      = 238;        % ditto
 % PlotCorrel(pinfo)                  % generates a plot
@@ -34,16 +36,23 @@ if (exist(pinfo.fname) ~= 2), error(sprintf('%s does not exist.',pinfo.fname)), 
 % Get some file-specific information.
 f = netcdf(pinfo.fname,'nowrite');
 model      = f.model(:);
+var_atts   = dim(f{pinfo.base_var});      % cell array of dimensions for the var
+num_times  = length(var_atts{1});
+num_copies = length(var_atts{2});
+num_vars   = length(var_atts{3});
 timeunits  = f{'time'}.units(:);
-num_vars   = ncsize(f('StateVariable')); % determine # of state variables
-num_times  = ncsize(f('time')); % determine # of output times
-num_copies = ncsize(f('copy')); % determine # of ensemble members
 close(f)
 
+if ( ~ strcmp( name(var_atts{1}), 'time') )
+    disp( sprintf('%s first dimension ( %s ) is not ''time''',fname,name(var_atts{1})))
+end
+if ( ~ strcmp( name(var_atts{2}), 'copy') )
+    disp( sprintf('%s second dimension ( %s ) is not ''copy''',fname,name(var_atts{2})))
+end
 
 switch(lower(model))
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_04'}
 
       base_var_index = pinfo.base_var_index;
       base_time      = pinfo.base_time;
@@ -60,17 +69,15 @@ switch(lower(model))
          error(sprintf('you wanted time # %d ', base_time))
       end
       
-      statevariables = getnc(pinfo.fname,'StateVariable');
-      
       % Get 'standard' ensemble series 
-      base = get_ens_series(pinfo.fname, base_var_index);
+      base = get_ens_series(pinfo.fname, pinfo.base_var, base_var_index);
       
       % It is efficient to preallocate correl storage ... 
       correl = zeros(num_vars,num_times);
       
       % Need to loop through all variables in the ensemble
       for i = 1:num_vars,
-         state_var = get_ens_series(pinfo.fname, i);
+         state_var = get_ens_series(pinfo.fname, pinfo.base_var, i);
          correl(i, :) = ens_correl(base, base_time, state_var);
       end
       
@@ -78,14 +85,14 @@ switch(lower(model))
       clf;
       
       contour(correl,[-1:0.2:1]);
-      s1 = sprintf('%s Correlation of state variable %d, T = %d of %s', ...
-               model, base_var_index, base_time,pinfo.fname);
+      s1 = sprintf('%s Correlation of variable %s index %d, T = %d of %s', ...
+               model, pinfo.base_var, base_var_index, base_time, pinfo.fname);
       s2 = sprintf('against all variables, all times, all %d ensemble members', ...
                num_copies-2); 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel('time (timestep #)')
       ylabel('state variable (index)')
-      set(gca,'YTick',statevariables)
+      set(gca,'YTick',[1:num_vars])
       colorbar
       
       % highlight the reference state variable and time
@@ -140,7 +147,7 @@ switch(lower(model))
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
            model, pinfo.base_var, pinfo.base_lvl, ...
-             pinfo.base_lat, pinfo.base_lon, pinfo.base_tme, pinfo.fname);
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
                pinfo.comp_var, pinfo.comp_lvl, num_copies-2); 
       title({s1,s2},'interpreter','none','fontweight','bold')

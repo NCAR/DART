@@ -12,15 +12,16 @@ function PlotEnsTimeSeries( pinfo )
 % truth_file      name of netCDF DART file with copy tagged 'true state'
 % diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
 %                 and 'ensemble spread'
-% state_var_inds  indices of state variables of interest
+% var             name of netCDF variable of interest
+% var_inds        indices of variables of interest
 %
 % Example 1 ( 9var model )
 %%--------------------------------------------------------
-% pinfo.truth_file     = 'True_State.nc';
-% pinfo.diagn_file     = 'Posterior_Diag.nc';
-% pinfo.state_var_inds = [ 4 5 6 ];
+% pinfo.truth_file  = 'True_State.nc';
+% pinfo.diagn_file  = 'Posterior_Diag.nc';
+% pinfo.var         = 'state';
+% pinfo.var_inds    = [ 4 5 6 ]; 
 % PlotEnsTimeSeries( pinfo );
-%
 %
 %%--------------------------------------------------------
 % pinfo.truth_file = 'True_State.nc';
@@ -76,9 +77,9 @@ switch lower(t.model)
          for j = 1:3
 
             ivar = (i - 1)*3 + j;
-            truth       = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, ivar);  % all members
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
 
             subplot(3, 1, j);
                % This is a bit wasteful, but we plot everything once to define
@@ -102,14 +103,14 @@ switch lower(t.model)
 
       % Use one figure with three subplots 
       figure(1); clf; iplot = 0;
-      for ivar = pinfo.state_var_inds,
+      for ivar = pinfo.var_inds,
 
-            truth       = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, ivar);  % all members
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
 
             iplot = iplot + 1;
-            subplot(length(pinfo.state_var_inds), 1, iplot);
+            subplot(length(pinfo.var_inds), 1, iplot);
                % This is a bit wasteful, but we plot everything once to define
                % the color order for the legend and then again for visibility
                plot(times,      truth,'b','LineWidth',1.0); hold on;
@@ -127,8 +128,8 @@ switch lower(t.model)
       end
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ts   = get_state_copy(pinfo.diagn_file,truth_index);
-      ens  = get_state_copy(pinfo.diagn_file,ens_mean_index);
+      ts   = get_state_copy(pinfo.diagn_file,pinfo.var, truth_index);
+      ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index);
       plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
              ens(:,1), ens(:,2), ens(:,3), 'r')
       title(sprintf('%s Attractors for %s and %s', ...
@@ -144,14 +145,42 @@ switch lower(t.model)
 
       % Use one figure with subplots 
       figure(1); clf; iplot = 0;
-      for ivar = pinfo.state_var_inds,
+      for ivar = pinfo.var_inds,
 
-            truth       = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, ivar);  % all members
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
 
             iplot = iplot + 1;
-            subplot(length(pinfo.state_var_inds), 1, iplot);
+            subplot(length(pinfo.var_inds), 1, iplot);
+               % This is a bit wasteful, but we plot everything once to define
+               % the color order for the legend and then again for visibility
+               plot(times,      truth,'b','LineWidth',2); hold on;
+               plot(times,   ens_mean,'r','LineWidth',2);
+               plot(times,ens_members,'g');
+               legend('True State','Ensemble Mean', ...
+                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
+               legend boxoff
+               plot(times,   truth,'b','LineWidth',2); % plot again - on top
+               plot(times,ens_mean,'r','LineWidth',2); %      again - on top
+               title(sprintf('%s Variable %d Ensemble Members of %s',...
+                     t.model, ivar, pinfo.diagn_file), ...
+                     'interpreter','none','fontweight','bold')
+               xlabel(sprintf('model time (%d timesteps)',t.num_times))
+      end
+
+   case 'lorenz_96_2scale'
+
+      % Use one figure with subplots 
+      figure(1); clf; iplot = 0;
+      for ivar = pinfo.var_inds,
+
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+
+            iplot = iplot + 1;
+            subplot(length(pinfo.var_inds), 1, iplot);
                % This is a bit wasteful, but we plot everything once to define
                % the color order for the legend and then again for visibility
                plot(times,      truth,'b','LineWidth',2); hold on;

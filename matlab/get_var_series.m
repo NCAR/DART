@@ -1,4 +1,4 @@
-function var_vec = get_var_series(fname, copynum, state_var)
+function var_vec = get_var_series(fname, varname, copynum, state_var)
 %GET_VAR_SERIES Gets a particular copy of a state variable from netcdf file
 %
 % Retrieves a particular copy of a state variable from a file whose
@@ -19,30 +19,28 @@ function var_vec = get_var_series(fname, copynum, state_var)
 % $Revision$
 % $Date$
  
-f = netcdf(fname);
-model      = f.model(:);
-num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
-num_copies = ncsize(f{'copy'}); % determine # of ensemble members
-close(f);
+f = netcdf(fname,'nowrite');
+var_atts   = dim(f{varname});       % cell array of dimensions for the var
+num_copies = length(var_atts{2});
+num_vars   = length(var_atts{3});
 
-% disp(sprintf('get_var_series fname is %s',fname))
-% disp(sprintf('get_var_series copynum is %d',copynum))
-% disp(sprintf('get_var_series state_var is %d',state_var))
-% disp(sprintf('get_var_series model is %s',model))
-% disp(sprintf('get_var_series num_vars is %d',num_vars))
-% disp(sprintf('get_var_series num_copies is %d',num_copies))
-
-if (copynum > num_copies) 
-   disp( sprintf('%s only has %d ''copies/Ensemble members''',fname,num_copies))
-   error(sprintf('you wanted copy %d ', copynum))
+if ( ~ strcmp( name(var_atts{1}), 'time') )
+    disp( sprintf('%s first dimension ( %s ) is not ''time''',fname,name(var_atts{1})))
 end
-
+if ( ~ strcmp( name(var_atts{2}), 'copy') )
+    disp( sprintf('%s second dimension ( %s ) is not ''copy''',fname,name(var_atts{2})))
+end
+if (copynum > num_copies ) 
+    disp( sprintf('%s only has %d ''copies/Ensemble members of %s''',fname,num_copies,varname))
+    error(sprintf('you wanted copy %d ', copynum))
+end
 if (state_var > num_vars) 
-   disp( sprintf('%s only has %d state variables',fname,num_vars))
+   disp( sprintf('%s only has %d %s variables',fname,num_vars,varname))
    error(sprintf('you wanted variable %d ', state_var))
 end
+close(f);
 
 % Get only the appropriate copy of the state and return
-var_vec = getnc(fname, 'state', [-1, copynum, state_var], ...
+var_vec = getnc(fname, varname, [-1, copynum, state_var], ...
                                 [-1, copynum, state_var]);
 

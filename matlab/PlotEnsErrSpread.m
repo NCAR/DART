@@ -11,16 +11,34 @@ function PlotEnsErrSpread( pinfo )
 % truth_file      name of netCDF DART file with copy tagged 'true state'
 % diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
 %                 and 'ensemble spread'
-% state_var_inds  indices of state variables of interest 
+% var             name of netCDF variable of interest
+% var_inds        indices of variables of interest 
+%
+% Example 0   (9var  model)
+%%--------------------------------------------------------
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.var        = 'state';
+% pinfo.var_inds   = [ 1 2 3 4 5 6 7 8 9 ];
+% PlotEnsErrSpread(pinfo)
 %
 % Example 1   (Lorenz_96  model)
 %%--------------------------------------------------------
-% pinfo.truth_file     = 'True_State.nc';
-% pinfo.diagn_file     = 'Prior_Diag.nc';
-% pinfo.state_var_inds = [ 3 4 36 39 22 ];
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.var        = 'state';
+% pinfo.var_inds   = [ 3 4 36 39 22 ];
 % PlotEnsErrSpread(pinfo)
 %
-% Example 2 (FMS BGrid model)
+% Example 2   (Lorenz_96_2scale  model)
+%%--------------------------------------------------------
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.var        = 'X';
+% pinfo.var_inds   = [ 3 18 27 ];
+% PlotEnsErrSpread(pinfo)
+%
+% Example 3 (FMS BGrid model)
 %%--------------------------------------------------------
 % pinfo.truth_file = 'True_State.nc';
 % pinfo.diagn_file = 'Prior_Diag.nc';
@@ -38,23 +56,24 @@ function PlotEnsErrSpread( pinfo )
 % $Revision$
 % $Date$
 
-
 CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
 % Get some information from the truth_file 
 ft = netcdf(pinfo.truth_file);
 tmodel      = ft.model(:);
-tnum_vars   = ncsize(ft('StateVariable')); % determine # of state variables
-tnum_copies = ncsize(ft('copy')); % determine # of ensemble members
-tnum_times  = ncsize(ft('time')); % determine # of output times
+tvar_atts   = dim(ft{pinfo.var});      % cell array of dimensions for the var
+tnum_times  = length(tvar_atts{1});    % determine # of output times
+tnum_copies = length(tvar_atts{2});    % # of ensemble members
+tnum_vars   = length(tvar_atts{3});    % dimension of desired variable
 close(ft);
 
 % Get some information from the diagn_file 
 fd = netcdf(pinfo.diagn_file);
 dmodel      = fd.model(:);
-dnum_vars   = ncsize(fd('StateVariable')); % determine # of state variables
-dnum_copies = ncsize(fd('copy')); % determine # of ensemble members
-dnum_times  = ncsize(fd('time')); % determine # of output times
+dvar_atts   = dim(fd{pinfo.var});      % cell array of dimensions for the var
+dnum_times  = length(dvar_atts{1});    % determine # of output times
+dnum_copies = length(dvar_atts{2});    % # of ensemble members
+dnum_vars   = length(dvar_atts{3});    % dimension of desired variable
 close(fd);
 
 % Get the indices for the true state, ensemble mean and spread
@@ -71,9 +90,9 @@ switch lower(tmodel)
    case '9var'
 
       % Get the appropriate copies
-      truth      = get_state_copy(pinfo.truth_file, truth_index);
-      ens_mean   = get_state_copy(pinfo.diagn_file, ens_mean_index );
-      ens_spread = get_state_copy(pinfo.diagn_file, ens_spread_index );
+      truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index);
+      ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index );
+      ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index );
 
       % Use three different figures with three subplots each
       for i = 1:3
@@ -103,15 +122,15 @@ switch lower(tmodel)
          end
       end
 
-   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_04'}
 
       % Get the appropriate copies
-      truth      = get_state_copy(pinfo.truth_file, truth_index);
-      ens_mean   = get_state_copy(pinfo.diagn_file, ens_mean_index );
-      ens_spread = get_state_copy(pinfo.diagn_file, ens_spread_index );
+      truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index);
+      ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index );
+      ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index );
 
       clf; iplot = 0;
-      for ivar = pinfo.state_var_inds,
+      for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
             errTotal    = sum(err)/dnum_times;
@@ -119,7 +138,7 @@ switch lower(tmodel)
             string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
             string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
 
-            subplot(length(pinfo.state_var_inds), 1, iplot);
+            subplot(length(pinfo.var_inds), 1, iplot);
                plot(times,err, 'b', ...
                     times,ens_spread(:, ivar), 'r');
                s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...

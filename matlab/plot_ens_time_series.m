@@ -34,28 +34,30 @@ varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
 switch lower(vars.model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_04'}
 
-      pinfo = struct('truth_file'    , truth_file, ...
-                     'diagn_file'    , diagn_file, ...
-                     'state_var_inds', varid);
+      pinfo = struct('truth_file', truth_file, ...
+                     'diagn_file', diagn_file, ...
+                     'var'       , varid.var, ...
+                     'var_inds'  , varid.var_inds);
 
-      disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
-      disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)])
+    % disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
+    % disp(sprintf('Using Variable %s IDs %s', pinfo.var,num2str(pinfo.var_inds)))
 
    case 'fms_bgrid'
 
       pinfo = GetBgridInfo(diagn_file, 'PlotEnsTimeSeries');
-      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
-      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
-
-      pinfo                            % just echo stuff for posterity.
+      pinfo.truth_file = truth_file;   % known to be compatible.
+      pinfo.diagn_file = diagn_file;   % known to be compatible.
+      pinfo                            % echo for posterity.
 
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
+
+pinfo
 
 PlotEnsTimeSeries( pinfo )
 clear vars varid

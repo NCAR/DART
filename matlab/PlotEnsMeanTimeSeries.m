@@ -11,15 +11,17 @@ function PlotEnsMeanTimeSeries( pinfo )
 % truth_file      name of netCDF DART file with copy tagged 'true state'
 % diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
 %                 and 'ensemble spread'
-% state_var_inds  indices of state variables of interest. Each variable gets
+% var             name of netCDF variable of interest
+% var_inds        indices of state variables of interest. Each variable gets
 %                 plotted on its own axis.
 %
 %
 % Example 1  (9variable model)
 %%-------------------------------------------------------------
-% pinfo.truth_file     = 'True_State.nc';
-% pinfo.diagn_file     = 'Prior_Diag.nc';
-% pinfo.state_var_inds = [ 4 5 6 ];
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.var        = 'state';
+% pinfo.var_inds   = [ 4 5 6 ];
 % PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 2 (FMS BGrid model)
@@ -45,17 +47,19 @@ CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 % Get some information from the truth_file 
 ft = netcdf(pinfo.truth_file);
 t.model      = ft.model(:);
-t.num_vars   = ncsize(ft('StateVariable')); % determine # of state variables
-t.num_copies = ncsize(ft('copy')); % determine # of ensemble members
-t.num_times  = ncsize(ft('time')); % determine # of output times
+tvar_atts    = dim(ft{pinfo.var});      % cell array of dimensions for the var
+t.num_times  = length(tvar_atts{1});    % determine # of output times
+t.num_copies = length(tvar_atts{2});    % # of ensemble members
+t.num_vars   = length(tvar_atts{3});    % dimension of desired variable
 close(ft);
 
 % Get some information from the diagn_file 
 fd = netcdf(pinfo.diagn_file);
 d.model      = fd.model(:);
-d.num_vars   = ncsize(fd('StateVariable')); % determine # of state variables
-d.num_copies = ncsize(fd('copy')); % determine # of ensemble members
-d.num_times  = ncsize(fd('time')); % determine # of output times
+dvar_atts    = dim(fd{pinfo.var});      % cell array of dimensions for the var
+d.num_times  = length(dvar_atts{1});    % determine # of output times
+d.num_copies = length(dvar_atts{2});    % # of ensemble members
+d.num_vars   = length(dvar_atts{3});    % dimension of desired variable
 close(fd);
 
 % Get the indices for the true state, ensemble mean and spread
@@ -66,9 +70,9 @@ ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % Get the appropriate copies
 % (TJH) This function gets them "on the fly" in the plotting.
-%truth      = get_state_copy(pinfo.truth_file, truth_index);
-%ens_mean   = get_state_copy(pinfo.diagn_file, ens_mean_index );
-%ens_spread = get_state_copy(pinfo.diagn_file, ens_spread_index );
+%truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index);
+%ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index );
+%ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index );
 
 % Get some useful plotting arrays
 times = getnc(pinfo.truth_file,'time');
@@ -84,8 +88,8 @@ switch lower(t.model)
             ivar = (i - 1)*3 + j;
             disp(sprintf('plotting model %s Variable %d ...',t.model,ivar))
             % Get the truth for this variable
-            truth    = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
+            truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
             subplot(3, 1, j);
             plot(times,truth, 'b',times,ens_mean,'r')
             title(sprintf('%s Variable %d of %s',t.model,ivar,pinfo.diagn_file), ...
@@ -100,12 +104,12 @@ switch lower(t.model)
 
       % Use one figure with three(usually) subplots
       figure(1); clf; iplot = 0;
-      for ivar = pinfo.state_var_inds,
+      for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             % Get the truth for this variable
-            truth    = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
-            subplot(length(pinfo.state_var_inds), 1, iplot);
+            truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            subplot(length(pinfo.var_inds), 1, iplot);
             plot(times,truth, 'b',times,ens_mean,'r')
             title(sprintf('%s Variable %d of %s',t.model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')
@@ -115,8 +119,8 @@ switch lower(t.model)
       end
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ts   = get_state_copy(pinfo.diagn_file,truth_index);
-      ens  = get_state_copy(pinfo.diagn_file,ens_mean_index);
+      ts   = get_state_copy(pinfo.diagn_file, pinfo.var, truth_index);
+      ens  = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index);
       plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
              ens(:,1), ens(:,2), ens(:,3), 'r')
       title(sprintf('%s Attractors for %s and %s', ...
@@ -128,16 +132,16 @@ switch lower(t.model)
       ylabel('state variable 2')
       zlabel('state variable 3')
 
-   case {'lorenz_96', 'lorenz_04'}
+   case {'lorenz_96', 'lorenz_96_2scale', 'lorenz_04'}
       
       % Plot all variables in own subplot ... might get cluttered.
       figure(1); clf; iplot = 0;
-      for ivar = pinfo.state_var_inds,
+      for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             % Get the truth for this variable
-            truth    = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
-            subplot(length(pinfo.state_var_inds), 1, iplot);
+            truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            subplot(length(pinfo.var_inds), 1, iplot);
             plot(times,truth, 'b',times,ens_mean,'r')
             title(sprintf('%s Variable %d of %s',t.model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')

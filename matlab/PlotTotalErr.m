@@ -32,22 +32,10 @@ function PlotTotalErr( pinfo )
 
 CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
-% Get some information from the truth_file 
-ft = netcdf(pinfo.truth_file);
-t.model      = ft.model(:);
-timeunits    = ft{'time'}.units(:);
-t.num_vars   = ncsize(ft('StateVariable')); % determine # of state variables
-t.num_copies = ncsize(ft('copy')); % determine # of ensemble members
-t.num_times  = ncsize(ft('time')); % determine # of output times
-close(ft);
+f = netcdf(pinfo.truth_file,'nowrite');
+model = f.model(:); 
+close(f)
 
-% Get some information from the diagn_file 
-fd = netcdf(pinfo.diagn_file);
-d.model      = fd.model(:);
-d.num_vars   = ncsize(fd('StateVariable')); % determine # of state variables
-d.num_copies = ncsize(fd('copy')); % determine # of ensemble members
-d.num_times  = ncsize(fd('time')); % determine # of output times
-close(fd);
 
 % Get the netcdf variable indices for desired "copies"
 % Get the indices for the true state, ensemble mean and spread
@@ -56,32 +44,26 @@ truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
-% Get some useful plotting arrays
+% Get a useful plotting arrays
 times = getnc(pinfo.truth_file,'time');
+num_times = length(times);
 
-switch lower(t.model)
+switch lower(model)
 
-   case 'MysteryModel'
-
-      disp(sprintf('unknown model %s -- doing nothing',t.model))
-
-   case 'fms_bgrid'
-
-      BgridTotalError( pinfo )
-
-   otherwise
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
 
       % Get the appropriate netcdf variables
-      truth  = get_state_copy(pinfo.truth_file,     truth_index);
-      ens    = get_state_copy(pinfo.diagn_file,  ens_mean_index);
-      spread = get_state_copy(pinfo.diagn_file,ens_spread_index);
+      truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index);
+      ens    = get_state_copy(pinfo.diagn_file, 'state',  ens_mean_index);
+      spread = get_state_copy(pinfo.diagn_file, 'state',ens_spread_index);
+      num_vars = size(spread,2);
 
       % Also need to compute the spread; zero truth for this and
       % compute distance from 0
       err        = total_err(truth, ens);
       err_spread = total_err(zeros(size(spread)), spread);
-      errTotal   = sum(err)/d.num_times;
-      spreadTotal= sum(err_spread)/d.num_times;
+      errTotal   = sum(err)/num_times;
+      spreadTotal= sum(err_spread)/num_times;
       string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
       string2 = ['time-mean Ensemble Spread Total Error = ' num2str(spreadTotal)];
 
@@ -90,10 +72,53 @@ switch lower(t.model)
       legend(string1,string2,0)
       legend boxoff
       title(sprintf('%s Total Error over all %d variables for %s',...
-                    t.model, d.num_vars, pinfo.diagn_file), ...
+                    model, num_vars, pinfo.diagn_file), ...
             'interpreter','none','fontweight','bold')
-      xlabel(sprintf('model time (%d timesteps)',t.num_times))
+      xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
+
+   case 'lorenz_96_2scale'
+
+      % Simply going to append X,Y together and treat as above.
+
+      % Get the appropriate netcdf variables
+      tim    = get_state_copy(pinfo.truth_file, 'X',     truth_index);
+      tom    = get_state_copy(pinfo.truth_file, 'Y',     truth_index);
+      truth  = [tim tom];
+      tim    = get_state_copy(pinfo.diagn_file, 'X',  ens_mean_index);
+      tom    = get_state_copy(pinfo.diagn_file, 'Y',  ens_mean_index);
+      ens    = [tim tom]; 
+      tim    = get_state_copy(pinfo.diagn_file, 'X',ens_spread_index);
+      tom    = get_state_copy(pinfo.diagn_file, 'Y',ens_spread_index);
+      spread = [tim tom]; clear tim tom
+      num_vars = size(spread,2);
+
+      % Also need to compute the spread; zero truth for this and
+      % compute distance from 0
+      err        = total_err(truth, ens);
+      err_spread = total_err(zeros(size(spread)), spread);
+      errTotal   = sum(err)/num_times;
+      spreadTotal= sum(err_spread)/num_times;
+      string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+      string2 = ['time-mean Ensemble Spread Total Error = ' num2str(spreadTotal)];
+
+      clf;
+      plot(times,err, 'b', times,err_spread, 'r');
+      legend(string1,string2,0)
+      legend boxoff
+      title(sprintf('%s Total Error over all %d variables for %s',...
+                    model, num_vars, pinfo.diagn_file), ...
+            'interpreter','none','fontweight','bold')
+      xlabel(sprintf('model time (%d timesteps)',num_times))
+      ylabel('Total Error')
+
+   case 'fms_bgrid'
+
+      BgridTotalError( pinfo )
+
+   otherwise
+
+      disp(sprintf('unknown model %s -- doing nothing',t.model))
 
 end
 

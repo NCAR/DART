@@ -14,10 +14,11 @@ if ( exist(fname) ~= 2 )
 end
 
 % Get some information from the file
-ft         = netcdf(fname);
-model      = ft.model(:);
-num_copies = ncsize(ft('copy')); % determine # of ensemble members
-num_times  = ncsize(ft('time')); % determine # of output times
+f         = netcdf(fname);
+model     = f.model(:);
+
+atts = dim(f{'copy'}); num_copies = length(atts{1}); % determine # of ensemble members
+atts = dim(f{'time'}); num_times  = length(atts{1}); % determine # of output times
 
 if (isempty(model)) 
    error(sprintf('%s has no ''model'' global attribute.',fname))
@@ -35,7 +36,7 @@ switch lower(model)
 
    case {'9var','lorenz_63','lorenz_84'}
 
-      num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
+      atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
       if (prod(size(num_vars)) > 1 ) 
          error(sprintf('%s has no ''StateVariable'' dimension.',fname))
       end
@@ -45,6 +46,7 @@ switch lower(model)
       def_state_vars(:) = StateVariable(:);  % def_state_vars must be a row vector.
 
       vars = struct('model',model, ...
+              'def_var','state', ...
               'num_state_vars',num_vars, ...
               'num_ens_members',num_copies, ...
               'time_series_length',num_times, ...
@@ -56,7 +58,7 @@ switch lower(model)
 
    case {'lorenz_96', 'lorenz_04'}
 
-      num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
+      atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
       if (prod(size(num_vars)) > 1 ) 
          error(sprintf('%s has no ''StateVariable'' dimension.',fname))
       end
@@ -68,6 +70,7 @@ switch lower(model)
       def_state_vars = round([1 , num_vars/3 , 2*num_vars/3]);
 
       vars = struct('model',model, ...
+              'def_var','state', ...
               'num_state_vars',num_vars, ...
               'num_ens_members',num_copies, ...
               'time_series_length',num_times, ...
@@ -77,15 +80,46 @@ switch lower(model)
               'max_ens_mem',max(copy), ...
               'def_state_vars',def_state_vars);
 
+   case 'lorenz_96_2scale'
+
+      atts = dim(f{'Xdim'}); num_X  = length(atts{1}); % # of X variables
+      if (prod(size(num_X)) > 1 ) 
+         error(sprintf('%s has no ''Xdim'' dimension.',fname))
+      end
+      Xdim = getnc(fname,'Xdim');
+
+      atts = dim(f{'Ydim'}); num_Y  = length(atts{1}); % # of Y variables
+      if (prod(size(num_Y)) > 1 ) 
+         error(sprintf('%s has no ''Ydim'' dimension.',fname))
+      end
+      Ydim = getnc(fname,'Ydim');
+
+      % The only trick is to pick an equally-spaced subset of state 
+      % variables for the default.
+
+      def_X_inds = round([1 , num_X/3 , 2*num_X/3]);
+      def_Y_inds = round([1 , num_Y/3 , 2*num_Y/3]);
+
+      vars = struct('model',model, ...
+              'def_var','X', ...
+              'num_state_vars',num_X, ...
+              'num_ens_members',num_copies, ...
+              'time_series_length',num_times, ...
+              'min_state_var',min(Xdim), 'max_state_var',max(Xdim), ...
+              'min_X_var',    min(Xdim), 'max_X_var',    max(Xdim), ...
+              'min_Y_var',    min(Ydim), 'max_Y_var',    max(Ydim), ...
+              'min_ens_mem',  min(copy), 'max_ens_mem',  max(copy), ...
+              'def_state_vars',def_X_inds);
+
    case 'fms_bgrid'
 
       % A more robust way would be to use the netcdf low-level ops:
-      % bob = var(ft);     % bob is a cell array of ncvars
+      % bob = var(f);     % bob is a cell array of ncvars
       % name(bob{1})       % is the variable name string
       % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
 
       num_vars  = 4; % ps, t, u, v
-      nlevels   = ncsize(ft('lev')); % determine # of state variables
+      nlevels   = ncsize(f('lev')); % determine # of state variables
       if (prod(size(nlevels)) > 1 ) 
          error(sprintf('%s has no ''lev'' dimension.',fname))
       end
@@ -103,10 +137,12 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy));
 
+   case 'pe2lyr'
+
    otherwise
 
       error(sprintf('model %s unknown',model))
 
 end
-close(ft); 
+close(f); 
 
