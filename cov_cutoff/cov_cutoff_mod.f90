@@ -32,8 +32,20 @@ real(r8)             :: comp_cov_factor
 
 real(r8) :: z, r
 
-! TEMPORARY TEST FOR HIERARCHICAL FILTERS
-!if(z_in < 2 * c) then
+z = abs(z_in)
+
+! TEMPORARY TEST FOR HIERARCHICAL FILTERS; Ramping with long distance
+!if(z >= 2.0 * c) then
+!   comp_cov_factor = 0.0
+!else if(z >= c .and. z_in < 2.0 * c) then
+!   comp_cov_factor = (2.0 * c - z) / c
+!else
+!   comp_cov_factor = 1.0
+!endif
+!if(1 == 1) return
+
+! TEMPORARY TEST FOR HIERARCHICAL FILTERS; BOXCAR
+!if(z < 2 * c) then
 !   comp_cov_factor = 1.0
 !else
 !   comp_cov_factor = 0.0
@@ -41,7 +53,6 @@ real(r8) :: z, r
 !if(1 == 1) return
 
 
-z = abs(z_in)
 r = z / c
 
 if( z >= c*2.0_r8 ) then
