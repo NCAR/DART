@@ -365,7 +365,7 @@ ncFileID%fname     = "notinuse"
 ncFileID%ncid      = -1
 ncFileID%Ntimes    = -1
 ncFileID%NtimesMax = -1
-deallocate(ncFileID%rtimes, ncFileID%times )
+if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
 
 end function finalize_diag_output
 
@@ -812,12 +812,10 @@ SELECT CASE (write_format)
       if(present(target_time)) call write_time(funit, target_time, "unformatted")
       call write_time(funit, model_time, "unformatted")
       write(funit) model_state
-      call error_handler(E_DBG,"awrite_state_restart","unformatted",source,revision,revdate)
    CASE DEFAULT
       if(present(target_time)) call write_time(funit, target_time)
       call write_time(funit, model_time)
       write(funit, *) model_state
-      call error_handler(E_DBG,"awrite_state_restart","formatted",source,revision,revdate)
 END SELECT  
 
 end subroutine awrite_state_restart
