@@ -8,6 +8,5 @@
 FC = ifort
 LD = ifort
 FFLAGS = -i4 -r8 -fpp -O2 -I/ocotillo/users/caya/netcdf/include -DIFC80
-# LIBS = -L/ocotillo/users/caya/netcdf/lib -lnetcdf -ludunits -lPEPCF90 -L/usr/local/mpich-1.2.1..7b.sav/lib -lmpich
+LDFLAGS = $(LIBS)
 LIBS = -L/ocotillo/users/caya/netcdf/lib -lnetcdf -L/ocotillo/users/caya/udunits-1.12.1/lib -ludunits
-LDFLAGS = $(LIBS) -Bstatic
