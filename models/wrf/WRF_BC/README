@@ -1,0 +1,41 @@
+update_wrf_bc:
+
+File list:
+
+Makefile
+module_couple_uv.f90
+module_netcdf_interface.f90
+update_wrf_bc.f90
+
+
+Note: You need manually change the compiler options
+      and library/include paths in the Makefile.
+
+Files needed:
+
+wrfinput_d01        	Updated WRF IC (3DVAR analysis)
+wrfbdy_d01              Original WRF BC
+
+------------------------------------------------------------------
+NOTE:
+
+wrfinput_d01     will be READ only.
+wrfbdy_d01       will be OVERWRITTEN.
+
+------------------------------------------------------------------
+
+Compile:
+
+	make
+
+	(make clean to remove objs and execs)
+
+	(Before compile, make sure you have proper paths to NETCDF.)
+
+Run:
+
+	update_wrf_bc
+
+	(make sure you have all three files mentioned above)
+
+------------------------------------------------------------------
