@@ -7,35 +7,23 @@ module model_mod
 ! $Author$ 
 !
 
-!use ncd_file_mod, only : init_ncd_file, def_axis, def_time_axis, &
-!   init_diag_field, output_diag, sum_diag
-
 use types_mod
-use loc_and_dist_mod, only : loc_type, get_dist, set_loc
+use location_mod, only : location_type, get_dist, set_location, get_location
+use time_manager_mod
 
 private
 
-public init_model, get_model_size, init_conditions, adv_1step, advance, &
-   adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
-   model_output
+public static_init_model, init_conditions, get_model_size, adv_1step,  &
+   init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model
 
-integer,  parameter :: model_size =   40
-real(r8), parameter ::    forcing = 8.00_r8
-! Original time step follows
-real(r8), parameter ::    delta_t = 0.05_r8
-
-! Modified timestep for assimilation experiments
-!real(r8), parameter ::    delta_t = 0.005_r8
-
-logical :: output_init = .FALSE.
-
-! Define output indices for diagnostics
-
-integer :: diag_output_index(9)
+ integer,  parameter :: model_size =   40
+ real(r8), parameter ::    forcing = 8.00_r8
+ real(r8), parameter ::    delta_t = 0.05_r8   ! Original timestep 
+!real(r8), parameter ::    delta_t = 0.005_r8  ! timestep for assim experiments
 
 ! Define the location of the state variables in module storage
-
-type(loc_type) :: state_loc(model_size)
+type(location_type) :: state_loc(model_size)
+type(time_type)     :: time_step
 
 contains
 
@@ -43,13 +31,17 @@ contains
 
 
 
-subroutine init_model()
+subroutine static_init_model()
 !----------------------------------------------------------------------
-! subroutine init_model()
+! subroutine static_init_model()
 !
-! Stub for model initialization, not needed for L96
+! Initializes class data for this model. For now, simply outputs the
+! identity info, sets the location of the state variables, and initializes
+! the time type for the time stepping (is this general enough for time???)
 
-
+implicit none
+real(r8) :: x_loc
+integer :: i
 character(len=128) :: source,revision,revdate
 
 ! let CVS fill strings ... DO NOT EDIT ...
@@ -65,8 +57,20 @@ write(*,*)'   ',source
 write(*,*)'   ',revision
 write(*,*)'   ',revdate
 
+! Define the locations of the model state variables
+do i = 1, model_size
+   x_loc = (i - 1.0) / model_size
+   state_loc(i) =  set_location(x_loc)
+end do
 
-end subroutine init_model
+
+! The time_step in terms of a time type must also be initialized. Need
+! to determine appropriate non-dimensionalization conversion for L96 from
+! Shree Khare.
+time_step = set_time(3600, 0)
+
+
+end subroutine static_init_model
 
 
 
@@ -142,20 +146,6 @@ end subroutine adv_1step
 
 
 
-subroutine adv_true_state(x)
-!----------------------------------------------------------------------
-! subroutine adv_true_state(x)
-!
-
-implicit none
-
-real(r8), intent(inout) :: x(:)
-
-call adv_1step(x)
-
-end subroutine adv_true_state
-
-
 
 subroutine init_conditions(x)
 !----------------------------------------------------------------------
@@ -170,28 +160,6 @@ implicit none
 
 real(r8), intent(out) :: x(:)
 
-integer  :: i
-real(r8) :: x_loc
-
-! Define the interesting indexes for variables to do diag output; span lats
-
-do i = 1, size(diag_output_index)
-   diag_output_index(i) = i
-end do
-
-!do i = 1, 9
-!   diag_output_index(i) = model_size * (i - 1) / 9.0 + 1.0
-!   write(*, *) 'output index ', i, diag_output_index(i)
-!   diag_output_index(i) = 4*i
-!end do
-
-! Define the locations of the state variables;
-do i = 1, model_size
-   x_loc = (i - 1.0) / model_size
-!   write(*, *) 'setting location ', i, x_loc
-   call set_loc(state_loc(i), x_loc)
-end do
-
 x    = forcing
 x(1) = 1.001_r8 * forcing
 
@@ -199,109 +167,56 @@ end subroutine init_conditions
 
 
 
-subroutine advance(x, num, xnew)
+subroutine init_time(time)
 !----------------------------------------------------------------------
-! subroutine advance(x, num, xnew)
 !
-! Advances the lorenz-96 model by a given number of steps
-! Current state in x, new state in xnew, num time steps advanced
+! Gets the initial time for a state from the model. Where should this info
+! come from in the most general case?
 
 implicit none
 
-real(r8), intent( in) :: x(:)
-real(r8), intent(out) :: xnew(:)
-integer,  intent( in) :: num
+type(time_type), intent(out) :: time
 
-integer :: i
+! For now, just set to 0
+time = set_time(0, 0)
 
-xnew = x      ! Copy initial conditions to avoid overwrite
-
-!  Advance the appropriate number of steps
-do i = 1, num
-   call adv_1step(xnew)
-end do
-
-end subroutine advance
+end subroutine init_time
 
 
 
-!subroutine model_output(x, time)
+function model_interpolate(x, location)
 !---------------------------------------------------------------------
-! subroutine model_output(x, time)
 !
-
-!implicit none
-
-!real, intent(in) :: x(model_size)
-!real, intent(in) :: time
-!real :: points(model_size)
-!integer :: i
-
-!if(.NOT. output_init) then
-!   output_init = .TRUE.
-!! do netcdf setup for this field
-!   call def_time_axis('time', 'seconds')
-!   call init_ncd_file('one_d.nc', 'time', 'NetCDF file for l96 model')
-!!  Need to get points on axis
-!   do i = 1,  model_size
-!      points(i) = (i - 1.0) / (1.0 * model_size)
-!   end do
-!   call def_axis('x', points, 'meters', 'x')
-!   call init_diag_field('f', 'one_d.nc', (/'x'/), 'meters')
-!endif
-
-!! do netcdf output for this field
-!call sum_diag('f', 'one_d.nc', x)
-!call output_diag('one_d.nc', time)
-
-!end subroutine model_output
-
-
-
-subroutine get_close_pts(list, num)
-!---------------------------------------------------------------------
-! subroutine get_close_pts(list, num)
-!
+! Interpolates from state vector x to the location. It's not particularly
+! happy dumping all of this straight into the model. Eventually some
+! concept of a grid underlying models but above locations is going to
+! be more general. May want to wait on external infrastructure projects
+! for this?
 
 implicit none
 
-integer, intent(   in) :: num
-integer, intent(inout) :: list(model_size, num)
+real(r8) :: model_interpolate
+real(r8), intent(in) :: x(:)
+type(location_type), intent(in) :: location
 
-integer :: i, j, offset, index, temp
+integer :: lower_index, upper_index
+real(r8) :: loc, fraction
 
-!do i = 1, model_size
-!   do offset = -num/2, -num/2 + num - 1
-!      index = i + offset
-!      if(index > model_size) index = index - model_size
-!      if(index < 1) index = model_size + index
-!      list(i, offset + num/2 + 1) = index
-!   end do
-! Always need the actual point first in list
-!   temp = list(i, 1)
-!   list(i, 1) =  list(i, num / 2 + 1)
-!   list(i, num / 2 + 1) = temp
-!end do
+! Convert location to real
+loc = get_location(location)
+! Multiply by model size assuming domain is [0, 1] cyclic
+loc = model_size * loc
 
-! Change in ordering of close points needed for debug in new basis_prod
-! Change made 27 March, '00
+lower_index = int(loc)
+upper_index = lower_index + 1
+if(upper_index > model_size) upper_index = 1
+if(lower_index == 0) lower_index = model_size
 
-do i = 1, model_size
-   list(i, 1) = i
-   do j = 2, num
-      if(j / 2 * 2 == j) then
-         index = i - j / 2
-         if(index < 1) index = model_size + index
-         list(i, j) = index
-      else
-         index = i + j / 2
-         if(index > model_size) index = index - model_size
-         list(i, j) = index
-      end if
-   end do
-end do
+fraction = loc - int(loc)
+model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
 
-end subroutine get_close_pts
+end function model_interpolate
+
 
 
 
@@ -316,6 +231,52 @@ integer :: get_model_size
 get_model_size = model_size
 
 end function get_model_size
+
+
+
+function get_model_time_step()
+!------------------------------------------------------------------------
+! function get_model_time_step()
+!
+! Returns the the time step of the model. In the long run should be repalced
+! by a more general routine that returns details of a general time-stepping
+! capability.
+
+type(time_type) :: get_model_time_step
+
+get_model_time_step = time_step
+
+end function get_model_time_step
+
+
+
+subroutine get_state_meta_data(index, location)
+!---------------------------------------------------------------------
+!
+! Given an integer index into the state vector structure, returns the
+! associated location. This is not a function because the more general
+! form of the call has a second intent(out) optional argument kind.
+! Maybe a functional form should be added?
+
+implicit none
+
+integer, intent(in) :: index
+type(location_type), intent(out) :: location
+
+location = state_loc(index)
+
+end subroutine get_state_meta_data
+
+
+subroutine end_model()
+!------------------------------------------------------------------------
+!
+! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
+
+
+end subroutine end_model
+
+
 
 !
 !===================================================================
