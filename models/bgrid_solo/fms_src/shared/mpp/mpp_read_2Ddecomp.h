@@ -50,7 +50,7 @@
       integer, intent(in), optional :: tindex
       MPP_TYPE_, allocatable :: cdata(:,:,:)
       MPP_TYPE_, allocatable :: gdata(:)
-      integer :: len, lenx,leny,lenz,i,j,k,n
+      integer :: lngth, lenx,leny,lenz,i,j,k,n
 !NEW: data may be on compute OR data domain
       logical :: data_has_halos, halos_are_global, x_is_global, y_is_global
       integer :: is, ie, js, je, isd, ied, jsd, jed, isg, ieg, jsg, jeg, ioff, joff
@@ -77,12 +77,12 @@
               if( pe.EQ.0 )call read_record( unit, field, size(data), data, tindex )
           else
               lenz=size(data,3)
-              len=lenx*leny*lenz
-              allocate(gdata(len))          
+              lngth=lenx*leny*lenz
+              allocate(gdata(lngth))          
 ! read field on pe 0 and pass to all pes
-              if( pe.EQ.0 ) call read_record( unit, field, len, gdata, tindex )
+              if( pe.EQ.0 ) call read_record( unit, field, lngth, gdata, tindex )
 ! broadcasting global array, this can be expensive!          
-              call mpp_transmit( gdata, len, ALL_PES, gdata, len, 0 )
+              call mpp_transmit( gdata, lngth, ALL_PES, gdata, lngth, 0 )
               ioff = is; joff = js
               if( data_has_halos )then
                   ioff = isd; joff = jsd

@@ -62,10 +62,14 @@ revdate  = "$Date$"
 
 type obs_sequence_type
    private
-   integer :: num_copies, num_qc, num_obs, max_num_obs
+   integer :: num_copies
+   integer :: num_qc
+   integer :: num_obs
+   integer :: max_num_obs
    character(len = 129), pointer :: copy_meta_data(:)
    character(len = 129), pointer :: qc_meta_data(:)
-   integer :: first_time, last_time
+   integer :: first_time
+   integer :: last_time
 !   integer :: first_avail_time, last_avail_time
    type(obs_type), pointer :: obs(:)
 ! What to do about groups
@@ -1465,7 +1469,7 @@ integer :: get_num_times
 
 integer :: next
 type(obs_def_type) :: obs_def
-type(time_type) :: time, prev_time
+type(time_type) :: this_time, prev_time
 
 ! Just loop through the time sorted sequence and look for different times
 get_num_times = 0
@@ -1473,13 +1477,13 @@ next = seq%first_time
 
 do while (next /= -1)
    call get_obs_def(seq%obs(next), obs_def)
-   time = get_obs_def_time(obs_def)
+   this_time = get_obs_def_time(obs_def)
    if(get_num_times == 0) then
       get_num_times = 1
-   else if(time /= prev_time) then
+   else if(this_time /= prev_time) then
       get_num_times = get_num_times + 1
    endif
-   prev_time = time
+   prev_time = this_time
    next = seq%obs(next)%next_time
 end do
 

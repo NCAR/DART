@@ -3281,12 +3281,12 @@ module mpp_io_mod
      return
    end subroutine mpp_get_field_atts
 
-   subroutine mpp_get_axis_atts( axis, name, units, longname, cartesian, sense, len, natts, atts )
+   subroutine mpp_get_axis_atts( axis, name, units, longname, cartesian, sense, lngth, natts, atts )
 
      type(axistype), intent(in) :: axis
      character(len=*), intent(out) , optional :: name, units
      character(len=*), intent(out), optional :: longname, cartesian
-     integer,intent(out), optional :: sense, len , natts
+     integer,intent(out), optional :: sense, lngth , natts
      type(atttype), intent(out), optional, dimension(:) :: atts
 
      integer :: n,m 
@@ -3296,7 +3296,7 @@ module mpp_io_mod
      if (PRESENT(longname)) longname = axis%longname
      if (PRESENT(cartesian)) cartesian = axis%cartesian
      if (PRESENT(sense)) sense = axis%sense
-     if (PRESENT(len)) len = axis%len
+     if (PRESENT(lngth)) lngth = axis%len
      if (PRESENT(atts)) then
         atts = default_att
         n = size(atts);m=size(axis%Att)
