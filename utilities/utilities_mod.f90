@@ -139,11 +139,11 @@ contains
                            position='append', iostat = io )
          if ( io /= 0 ) then
             write(*,*)'FATAL ERROR in initialize_utilities'
-            write(*,*)'  ',trim(adjustl(source))
-            write(*,*)'  ',trim(adjustl(revision))
-            write(*,*)'  ',trim(adjustl(revdate))
+            write(*,*)'  ',trim(source)
+            write(*,*)'  ',trim(revision)
+            write(*,*)'  ',trim(revdate)
             write(*,*)'   unable to open the logfile.'
-            write(*,*)'   the intended file name was <',trim(adjustl(logfilename)),'>'
+            write(*,*)'   the intended file name was <',trim(logfilename),'>'
             write(*,*)'   stopping.'
          endif
 
@@ -179,9 +179,9 @@ contains
          enddo UnitLoop
          if ( iunit < 0 ) then 
             write(*,*)'FATAL ERROR in initialize_utilities'
-            write(*,*)'  ',trim(adjustl(source))
-            write(*,*)'  ',trim(adjustl(revision))
-            write(*,*)'  ',trim(adjustl(revdate))
+            write(*,*)'  ',trim(source)
+            write(*,*)'  ',trim(revision)
+            write(*,*)'  ',trim(revdate)
          endif
       end function nextunit
 
@@ -332,8 +332,8 @@ if ( .not. module_initialized ) call initialize_utilities
 select case(level)
    case (E_MSG)
 
-      write(     *     , *) trim(adjustl(routine)),' ', trim(text)
-      write(logfileunit, *) trim(adjustl(routine)),' ', trim(text)
+      write(     *     , *) trim(routine),' ', trim(text)
+      write(logfileunit, *) trim(routine),' ', trim(text)
 
    case (E_WARN)
 
