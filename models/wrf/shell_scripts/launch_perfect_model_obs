@@ -127,4 +127,4 @@ echo 'obs_seq.in' >> create_obs_sequence.in
 
 create_obs_sequence < create_obs_sequence.in
 
-async_perfect_obs.csh | perfect_model_obs
+async_filter.csh | perfect_model_obs
