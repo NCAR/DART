@@ -52,7 +52,7 @@ type(time_type)         :: time1, ens_time(1)
 type(random_seq_type)   :: random_seq
 
 integer                 :: i, j, iunit
-integer                 :: days, secs    ! for printing purposes only
+
 type(netcdf_file_type)  :: StateUnit
 integer                 :: ierr, io, istatus, num_obs_in_set
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
