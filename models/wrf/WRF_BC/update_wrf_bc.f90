@@ -1,6 +1,5 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+!  program to update BC file from 3dvar output.
+!  current version reads only wrf-netcdf file format
 
 program update_wrf_bc
 
@@ -18,11 +17,13 @@ program update_wrf_bc
   use        types_mod, only : r8
   USE module_netcdf_interface
   USE module_couple_uv
+  USE module_timediff
 
   implicit none
 
   integer, parameter :: max_3d_variables = 20, &
-                        max_2d_variables = 20
+                        max_2d_variables = 20, &
+                        max_times        = 100
  
   character(len=80) :: wrf_3dvar_output_file, &
                        wrf_bdy_file
@@ -34,9 +35,12 @@ program update_wrf_bc
 
   character(len=10), dimension(4) :: bdyname, tenname
 
+  character(len=80), dimension(max_times) :: udtime, bdytime
+
   integer           :: ids, ide, jds, jde, kds, kde
   integer           :: num3d, num2d, ndims
   integer           :: i,j,k,l,m,n
+  integer           :: ntimes_bdy, ntimes_ud, itime
 
   integer, dimension(4) :: dims
  
@@ -52,7 +56,7 @@ program update_wrf_bc
 
   logical, parameter :: debug = .false.
 
-  real(r8) :: bdyfrq
+  real(r8) :: bdyfrq, diff_secs
 
 !---------------------------------------------------------------------
   wrf_3dvar_output_file='wrfinput_d01'
@@ -113,8 +117,30 @@ program update_wrf_bc
   if(debug) then
      write(unit=*, fmt='(a, f12.2)') &
           'BDYFRQ=', bdyfrq
-   endif
+  endif
 !---------------------------------------------------------------------
+
+!-- Current time in file
+   call get_times_cdf( wrf_3dvar_output_file, udtime, ntimes_ud, max_times, debug )
+
+!-- list of boundary times
+   call get_times_cdf( wrf_bdy_file, bdytime, ntimes_bdy, max_times, debug )
+
+!-- Time index of current tendency - to grab from wrfbdy
+   call find_time_index(bdytime, udtime(1), ntimes_bdy, itime)
+
+!-- time diff between this time and most recent (to shorten bdyfrq)
+   call time_diff( bdytime(itime), udtime(1), diff_secs ) 
+
+print*, bdytime
+print*, udtime(1)
+print*, diff_secs
+
+!-- interval to use for computing new tendencies.
+   bdyfrq = bdyfrq-diff_secs
+
+!-- put in the new BDYFRQ
+   call put_gl_att_real_cdf( wrf_bdy_file, 'BDYFRQ', bdyfrq, debug )
 
 !--For 2D variables
 !--Get mu, mub, msfu, and msfv
@@ -194,12 +220,12 @@ program update_wrf_bc
 !--------Get variable tendancy at first time level
       var_name='MU' // trim(tenname(m))
       call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
-                                  dims(1), dims(2), dims(3), 1, debug )
+                                  dims(1), dims(2), dims(3), itime, debug )
 
 !--------Get variable at first time level
       var_name='MU' // trim(bdyname(m))
       call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
-                               dims(1), dims(2), dims(3), 1, debug )
+                               dims(1), dims(2), dims(3), itime, debug )
 
       scnd3d = tend3d*bdyfrq + frst3d
 
@@ -254,11 +280,11 @@ program update_wrf_bc
 !-----output new variable at first time level
       var_name='MU' // trim(bdyname(m))
       call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
-                                dims(1), dims(2), dims(3), 1, debug )
-!-----output new tendancy
+                                dims(1), dims(2), dims(3), itime, debug )
+!-----output new tendancy 
       var_name='MU' // trim(tenname(m))
       call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
-                                dims(1), dims(2), dims(3), 1, debug )
+                                dims(1), dims(2), dims(3), itime, debug )
 
       deallocate(frst3d)
       deallocate(scnd3d)
@@ -405,12 +431,12 @@ program update_wrf_bc
 !--------Get variable tendancy at first time level
         var_name=trim(var_pref) // trim(tenname(m))
         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
-                                  dims(1), dims(2), dims(3), 1, debug )
+                                  dims(1), dims(2), dims(3), itime, debug )
 
 !--------Get variable at first time level
         var_name=trim(var_pref) // trim(bdyname(m))
         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
-                               dims(1), dims(2), dims(3), 1, debug )
+                               dims(1), dims(2), dims(3), itime, debug )
 
        scnd3d = tend3d*bdyfrq + frst3d
 
@@ -472,7 +498,7 @@ program update_wrf_bc
 
          var_name=trim(var_pref) // trim(tenname(m))
          call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
-                                   dims(1), dims(2), dims(3), 1, debug )
+                                   dims(1), dims(2), dims(3), itime, debug )
 
          deallocate(frst3d)
          deallocate(scnd3d)
