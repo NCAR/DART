@@ -48,6 +48,7 @@ type location_type
    real(r8) :: lon, lat, vloc
    integer  :: which_vert
    ! which_vert determines if the location is by level or by height/pressure
+   !-2 ===> obs/state vector component has no vertical location
    !-1 ===> obs is surface value
    ! 1 ===> obs is by level
    ! 2 ===> obs is by pressure
@@ -143,9 +144,10 @@ function get_dist(loc1, loc2)
 
 implicit none
 
-! For now, distance depends only on horizontal distance. May want to allow
-! return of some joint distance in the long run? Or just a distance that
-! is a function of all 3 things.
+! Distance depends on only horizontal distance or both horizontal and vertical distance. 
+! The choice is determined by horiz_dist_only and the which_vert of loc1.
+! May want to allow return of some joint distance in the long run? 
+! Or just a distance that is a function of all 3 things.
 
 type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
@@ -169,7 +171,8 @@ else
 endif
 
 ! Now compute a vertical distance if requested, 
-if(horiz_dist_only) then
+! NOVERT; add ' .or. which_vert = -2 ' for no vert location variables
+if(horiz_dist_only .or. loc1%which_vert == -2 ) then
    get_dist = horiz_dist
 else
    ! Vert distance can only be done for like vertical locations types
@@ -332,8 +335,9 @@ endif
 set_location%lon = lon * DEG2RAD
 set_location%lat = lat * DEG2RAD
 
-if(which_vert < -1 .or. which_vert > 3 .or. which_vert == 0) then
-   write(errstring,*)'which_vert (',which_vert,') must be one of -1, 1, 2, or 3'
+! NOVERT   Jeff said use -2 for 'no vertical location' variables
+if(which_vert < -2 .or. which_vert == 0 .or. which_vert > 3) then
+   write(errstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, or 3'
    call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
 endif
 
