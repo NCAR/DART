@@ -80,7 +80,8 @@ init_obs_set%num_obs = num_obs
 
 ! Allocate storage for obs; need to verify that the 0 size allocation
 ! is legal F90
-allocate(init_obs_set%obs(num_obs, num_copies), init_obs_set%missing(num_obs, num_copies))
+allocate(init_obs_set%obs(num_obs, num_copies), &
+     init_obs_set%missing(num_obs, num_copies))
 
 ! Initialize all obs to present
 init_obs_set%missing = .FALSE.
@@ -93,6 +94,7 @@ subroutine obs_set_copy(set_out, set_in)
 !-----------------------------------------------------------
 !
 ! Comprehensive copy for obs_set
+! TJH Jan 25, 2003 -- if we can reuse the same storage, we should
 
 implicit none
 
@@ -117,12 +119,22 @@ set_out%def_index = set_in%def_index
 ! Allocate storage for obs and missing
 ! INTEL compiler with full obs checking dies on this for uninitialized
 ! HOWEVER, memory leaks here without this. Try leaving for now.
-if(associated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
+! TJH Jan 25, 2003 ... tried to fix it, have not checked.
+if( associated(set_out%obs) ) then
+   if (size(set_out%obs) > 0 ) deallocate(set_out%obs)
+else
+   nullify(set_out%obs)
+endif
+if(associated(set_out%missing)) then
+   if (size(set_out%missing) > 0) deallocate(set_out%missing)
+else
+   nullify(set_out%missing)
+endif
 allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
-   set_out%missing(set_in%num_obs, set_in%num_copies))
+     set_out%missing(set_in%num_obs, set_in%num_copies))
 
 ! Copy the values in obs and missing
-set_out%obs = set_in%obs
+set_out%obs     = set_in%obs
 set_out%missing = set_in%missing
 
 end subroutine obs_set_copy
@@ -150,7 +162,7 @@ set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
 allocate(set_out%obs(set_in%num_obs, 0), &
-   set_out%missing(set_in%num_obs, 0))
+     set_out%missing(set_in%num_obs, 0))
 
 end subroutine obs_set_time_copy
 
@@ -179,11 +191,11 @@ set%num_copies = new_num
 
 ! Copy to temporary storage for obs and missing
 temp_missing = set%missing
-temp_obs = set%obs
+temp_obs     = set%obs
 
 ! Deallocate and reallocate
 allocate(set%obs(set%num_obs, new_num), &
-   set%missing(set%num_obs, new_num))
+     set%missing(set%num_obs, new_num))
 
 ! Copy in the existing data
 set%missing(:, 1:old_num) = temp_missing
@@ -490,7 +502,8 @@ read_obs_set%num_obs = num_obs
 read_obs_set%num_copies = num_copies
 
 ! Allocate space
-allocate(read_obs_set%obs(num_obs, num_copies), read_obs_set%missing(num_obs, num_copies))
+allocate(read_obs_set%obs(num_obs, num_copies), &
+     read_obs_set%missing(num_obs, num_copies))
 
 ! Read the data for each copy in turn
 do i = 1, num_copies
@@ -543,7 +556,7 @@ read_obs_set_time%num_copies = 0
 
 ! Allocate space with 0 for num_copies
 allocate(read_obs_set_time%obs(num_obs, 0), &
-   read_obs_set_time%missing(num_obs, 0))
+         read_obs_set_time%missing(num_obs, 0))
 
 ! Allocate some storage to read stuff that is discarded
 allocate(obs(num_obs), missing(num_obs))
