@@ -39,8 +39,8 @@ use   cov_cutoff_mod, only : comp_cov_factor
 use   reg_factor_mod, only : comp_reg_factor
 use    obs_model_mod, only : get_close_states, get_expected_obs, move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
-   put_ensemble_member, update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
-   get_ensemble_region, put_ensemble_region
+   put_ensemble_member, update_ens_mean, update_ens_mean_spread, end_ensemble_manager
+   
 !-----------------------------------------------------------------------------------------
 
 implicit none
