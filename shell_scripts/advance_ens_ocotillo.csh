@@ -40,25 +40,23 @@ if ($?PBS_NODEFILE) then
 else
    setenv PBS_NODEFILE nodefile
    rm -f $PBS_NODEFILE
-   set NPROCS = 10
-   set inode = 1
-   while($inode <= $NPROCS)
+   set startnode = 1
+   set endnode = 10
+   set inode = $startnode
+   set NPROCS = 20
+   set iproc = 1
+   while($iproc <= $NPROCS)
       echo node$inode >> $PBS_NODEFILE
-      @ inode ++
+      if ($inode == $endnode) then
+         set inode = $startnode
+      else
+         @ inode ++
+      endif
+      @ iproc ++
    end
 endif
 cat "$PBS_NODEFILE"
 echo This_job_has_allocated $NPROCS nodes
-
-#td
-# create 'times' file from DART dates in assim_model_state_ic1
-if (-e $PBS_O_WORKDIR/trans_time) then
-   if (-e assim_model_state_ic1) then
-      $PBS_O_WORKDIR/trans_time
-   else
-      stop 'no ic file available for trans_time'
-   endif
-endif
 
 # First line of filter_control should have number of model states to be 
 # integrated
