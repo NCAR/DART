@@ -47,10 +47,10 @@ integer :: iunit, io, ierr
 integer, parameter :: max_3d_variables = 20, &
                       max_2d_variables = 20, &
                       max_times        = 100
- 
+
 character(len=80) :: wrf_3dvar_output_file, &
                      wrf_bdy_file
- 
+
 character(len=20) :: var_pref, var_name
 
 character(len=20) :: var3d(max_3d_variables), &
@@ -66,9 +66,9 @@ integer           :: i,j,k,l,m,n
 integer           :: ntimes_bdy, ntimes_ud, itime
 
 integer, dimension(4) :: dims
- 
+
 integer, external :: iargc
- 
+
 real(r8), allocatable, dimension(:,:) :: tend2d, scnd2d, frst2d
 
 real(r8), allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d
@@ -76,10 +76,10 @@ real(r8), allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d
 real(r8), allocatable, dimension(:,:,:) :: u, v, w
 
 real(r8), allocatable, dimension(:,  :) :: mu, mub, msfu, msfv, msfm
- 
+
 integer :: east_end, north_end
 
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 real(r8) :: bdyfrq_old, bdyfrq
 
@@ -87,13 +87,13 @@ call initialize_utilities
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING update_wrf_bc ...'
 
-! Begin by reading the namelist input                                           
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
-   call close_file(iunit)                                                        
+   call close_file(iunit)
 
    if ( debug ) then
       write(*,'(''num_moist_vars = '',i3)')num_moist_vars
@@ -441,7 +441,7 @@ endif
             full3d(:,:,:)=w(:,:,:)
          case ('T', 'PH') ;
             var_pref=trim(var3d(n))
- 
+
             call get_var_3d_real_cdf( wrf_3dvar_output_file, trim(var3d(n)), full3d, &
                                       dims(1), dims(2), dims(3), 1, debug )
 
@@ -466,7 +466,7 @@ endif
             endif
          case ('QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUPEL') ;
             var_pref='R' // var3d(n)(1:2)
- 
+
             call get_var_3d_real_cdf( wrf_3dvar_output_file, trim(var3d(n)), full3d, &
                                       dims(1), dims(2), dims(3), 1, debug )
 
@@ -517,7 +517,7 @@ endif
 !--------Get variable at second time level
 !         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), scnd3d, &
 !                                   dims(1), dims(2), dims(3), 2, debug )
-   
+
          select case(trim(bdyname(m)))
             case ('_BXS') ;		! West boundary
                do l=1,dims(3)
@@ -560,7 +560,7 @@ endif
 !--------calculate new tendancy
 
          tend3d = (scnd3d - frst3d)/bdyfrq
-   
+
          if(debug) then
             write(unit=*, fmt='(a,i2,2x,2a/3(a,e20.12,4x)/a,i2,2x,a,4i6)') &
                  'No.', n, 'Variable: ', trim(var_name), &
