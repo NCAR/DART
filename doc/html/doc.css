@@ -54,6 +54,13 @@ table.indent1 {
     margin-left: 4%;
     width: 96%;}
 
+table.indent2 {
+    border: 0;
+    border-width: thin;
+    cellpadding: 1;
+    margin-left: 8%;
+    width: 92%;}
+
 div.type {
     background-color: rgb(225,225,225);
     padding: 0.5em;
@@ -75,7 +82,7 @@ div.color {
 
 div.unix {
     background-color: rgb(204,204,204);
-    font-style: typewriter,
+    font-style: typewriter;
     padding: 1.0em;
     border: none;
     margin-left: 4%;
