@@ -30,8 +30,8 @@ module DArose_mod
 
    logical :: old_restart = .true.
    logical :: output_prog_diag = .false.
-   character (len=30) :: input_dir = '../DAinput/'
-   character (len=30) :: out_dir   = '../DAoutput/'
+   character (len=50) :: input_dir = '../DAinput/'
+   character (len=50) :: out_dir   = '../DAoutput/'
    character (len=30) :: ncep_file = 'nmc_lbc.02.nc'
    character (len=30) :: restart_file = 'NMC_SOC.day151_2002.dat'  
    real(kind=r8) :: h_tune = pi
@@ -182,15 +182,16 @@ subroutine msetvar
 
 !   unit 17 - startup fields
 
-      if (nstart.eq.0) then
-         ! start from initial conditions
-         ! namf17 = rose_data//'NMC_SOC.day001_2002.dat'
-         ! namf17 = rose_data//'NMC_SOC.day151_2002.dat'
-         write(namf17,'(a,a)') trim(input_dir),trim(restart_file)
-      else
-         ! restart fields from previous run
-         write(namf17,'(a,"rose_restart.dat")') trim(input_dir) 
-      end if
+!      if (nstart.eq.0) then
+!         ! start from initial conditions
+!         ! namf17 = rose_data//'NMC_SOC.day001_2002.dat'
+!         ! namf17 = rose_data//'NMC_SOC.day151_2002.dat'
+!         write(namf17,'(a,a)') trim(input_dir),trim(restart_file)
+!      else
+!         ! restart fields from previous run
+!         write(namf17,'(a,"rose_restart.dat")') trim(input_dir) 
+!      end if
+       write(namf17,'("rose_restart.dat")')
 
 !-------------------------------------------------------------------
 !... output
@@ -198,22 +199,23 @@ subroutine msetvar
 
     if (output_prog_diag) then
 !   unit 10 output for plotting, diagnostics, etc. - STANDARD 
-      write(namf10,120) out_dir, nseg
+      write(namf10,120) trim(out_dir), nseg
  120  format(a, 'day151.nc', i1)
       print *, namf10
 
 !   unit 41 output for plotting - ADDITIONAL DIAGNOSTICS
-      write(namf41,125) out_dir, nseg
+      write(namf41,125) trim(out_dir), nseg
  125  format(a, 'day151.diag.nc',i1)
       print *, namf41
 
 !   unit 13 - 32 times per day output for tidal analysis
-      write(namf13,140) out_dir, nseg
+      write(namf13,140) trim(out_dir), nseg
  140  format(a, 'day151.tides.nc',i1)
     endif
 
 !   unit 14 data for restarting integration
-      write(namf14,'(a,"rose_restart.dat")') trim(out_dir)
+!     write(namf14,'(a,"rose_restart.dat")') trim(out_dir)
+      write(namf14,'("rose_restart.dat")') 
 
 end subroutine msetvar
 

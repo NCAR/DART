@@ -17,7 +17,7 @@ module model_mod
 !-----------------------------------------------------------------------
 
 ! DART Modules 
-use        types_mod, only : r8
+use        types_mod, only : r8, pi
 use time_manager_mod, only : time_type,set_time,print_time
 use     location_mod, only : location_type, set_location, get_location,&
                              query_location, get_dist  
@@ -69,9 +69,26 @@ real(r8) :: lons(nx), lats(ny), levs(nz)
 ! Nameslist variables with default values follow
 ! Namelist variables for defining state vector, and default values
 integer :: state_num_3d = 9             ! # of 3d fields to read from file
-integer :: ntime = 8                    ! # of steps per hour (ROSE time step)
+namelist /model_nml/ state_num_3d
 
-namelist /model_nml/ state_num_3d, ntime
+integer :: ntime = 8       
+logical :: old_restart = .true.
+integer :: nstart = 0                                          !NOT USED
+logical :: output_prog_diag = .false.                          !NOT USED
+character (len=50) :: input_dir = '../DAinput/'                !NOT USED
+character (len=50) :: out_dir   = '../DAoutput/'               !NOT USED
+character (len=30) :: ncep_file = 'nmc_lbc.02.nc'              !NOT USED
+character (len=30) :: restart_file = 'NMC_SOC.day151_2002.dat' !NOT USED
+real(kind=r8) :: h_tune = pi                                   !NOT USED  
+real(kind=r8) :: z_tune = 1.0                                  !NOT USED
+real(kind=r8) :: target_time = 168.0 ! 7 days * 24 [hr]        !NOT USED
+
+namelist /rose_nml/ old_restart, nstart, target_time, &
+                    input_dir, out_dir, ncep_file, restart_file,&
+                    output_prog_diag, &
+                    h_tune, z_tune, &
+                    ntime
+
 
 integer, parameter :: TYPE_U0 = 0, TYPE_V0 = 1, TYPE_T0 = 2, & 
                       TYPE_U = 3, TYPE_V = 4, TYPE_T = 5, & 
@@ -109,6 +126,16 @@ real(r8) :: dz = 2500._r8, zbot = 17500._r8
 !call msetvar()
 
 ! Reading the namelist input
+if(file_exist('rose.nml')) then
+   iunit = open_file('rose.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(iunit, nml = rose_nml, iostat = io)
+      ierr = check_nml_error(io, 'rose_nml')
+   end do
+   call close_file(iunit)
+endif
+
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
@@ -961,7 +988,6 @@ subroutine read_ROSE_restart(file_name, var, model_time)
   real, dimension (nz,nx,ny,nbcon) :: qn1
   real, dimension (nz,ny)          :: q_o2, q_n2
 !
-  logical :: old_restart = .true.
   integer :: dummy_rose(3)
   integer :: daynum
   real    :: gmt_frac        ! fraction of day since 0Z

@@ -53,7 +53,7 @@ file_unit = get_unit()
 open(unit = file_unit, file = file_out)
 forecast_length = dart_time(1) - dart_time(2)
 call get_time(forecast_length, second, day)
-target_hours = day*24._r8 + real(second)/3600._r8     
+target_hours = real(day)*24._r8 + real(second)/3600._r8     
 PRINT*,'trans_time: forecast length = ', day, second, &
        'trans_time: hours =', target_hours
 write (file_unit,'(f20.15)') target_hours
