@@ -189,6 +189,7 @@ endif
 ! Start out with no previously used observations
 last_key_used = -99
 
+! Time step number is used to do periodic diagnostic output
 time_step_number = 0
 
 AdvanceTime : do
@@ -199,7 +200,6 @@ write(*, *) 'starting advance time loop;'
    call move_ahead(ens_handle, ens_size, model_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
    if(key_bounds(1) < 0) exit AdvanceTime
-write(*, *) 'done with move ahead'
    ! Write the divider for the regression series if requested
    if(save_reg_series) write(reg_series_unit, *) -99, -99, -99.0
 
@@ -209,73 +209,41 @@ write(*, *) 'done with move ahead'
    ! For starters allow all obs to be computed as before
 !!!   compute_obs = .false.
    compute_obs = .true.
+! Debugging test with some obs that can't be recomputed
 !   do j = 1, num_obs_in_set
 !      if(j / 2 * 2 == j) compute_obs(j) = .false.
 !   end do
 
    ! Get all the keys associated with this set of observations
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-write(*, *) 'done with get_time_range_keys'
    ! Inflate each of the groups
    call filter_ensemble_inflate()
-write(*, *) 'done with filter_ensemble_inflate'
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number)then 
       call filter_state_space_diagnostics(PriorStateUnit)
    endif
-write(*, *) 'done with filter_state_space_diagnostics'
    ! Get the observational values, error covariance, and input qc value
    call filter_get_obs_info()
-write(*, *) 'done with filter get_obs_info'
-   ! Load up the initial observation space prior estimates (redundant to obs_space)
-   do k = 1, ens_size
-      call get_ensemble_member(ens_handle, k, temp_ens, temp_time)
-      do j = 1, num_obs_in_set
-         call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k:k, j), istatus)
-         ! Inability to compute forward operator implies skip this observation
-         !!!if (istatus > 0) then
-         !!!   qc(1) = qc(1) + 4000.0_r8
-         !!!  goto 333
-         !!! endif
-      end do
-   end do
-write(*, *) 'done with get_expected obs loop'
    
    ! Do prior state space diagnostics and associated quality control
-!! WARNING, MAKE SURE QC IS UPDATED AND PASSED INTO FILTER_ASSIM
-   call obs_space_diagnostics(ens_size, model_size, seq, keys, &
+   call obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .true., 0, &
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
    
-   ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL 
-   ! SEQUENTIAL ANSWER
-!   num_domains = 1
-!   do j = 1, num_domains
-!      my_state = .false.
-!      my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
-      ! Watch out for hard-coded obs_val_index : 1
-!      call filter_assim_region(ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
-!         num_groups, seq, keys, 1, confidence_slope, cutoff, save_reg_series, &
-!         reg_series_unit, my_state)
-!   end do
-write(*, *) 'calling filter_assim'
-      call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
+   call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
          num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
          obs_sequence_in_name)
-write(*, *) 'back from filter_assim'
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
-write(*, *) 'done with filter state space diag'
 
 ! Do posterior observation space diagnostics
-   call obs_space_diagnostics(ens_size, model_size, seq, keys, &
+   call obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .false., 2, &
       num_output_obs_members, in_obs_copy + 2, output_obs_ens_mean, &
       posterior_obs_mean_index, output_obs_ens_spread, posterior_obs_spread_index)
-write(*, *) 'done with obs space diag'
 
 ! Deallocate storage used for each set
    deallocate(keys, obs_err_var, obs, ens_obs, compute_obs)
@@ -286,6 +254,7 @@ write(*, *) 'done with obs space diag'
 end do AdvanceTime
 
 ! Send a message to the asynchronous version 3 that all is done
+! Must be done always because this also terminates option 3 for assim_tools!
 call system('echo a > go_end_filter')
 
 ! properly dispose of the diagnostics files
@@ -659,7 +628,7 @@ end subroutine filter_get_obs_info
 
 !-------------------------------------------------------------------------
 
-subroutine obs_space_diagnostics(ens_size, model_size, seq, keys, &
+subroutine obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
    num_obs_in_set, obs, obs_err_var, outlier_threshold, do_qc, prior_post, &
    num_output_members, members_index, &
    output_ens_mean, ens_mean_index, output_ens_spread, ens_spread_index)
@@ -670,6 +639,7 @@ implicit none
 
 integer,  intent(in) :: ens_size, model_size
 integer,  intent(in) :: num_obs_in_set, keys(num_obs_in_set), prior_post
+real(r8), intent(inout) :: ens_obs(ens_size, num_obs_in_set)
 integer,  intent(in) :: num_output_members, members_index, ens_mean_index, ens_spread_index
 real(r8), intent(in) :: outlier_threshold
 real(r8), intent(in) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set)
@@ -678,15 +648,15 @@ logical, intent(in) :: do_qc
 logical, intent(in) :: output_ens_mean, output_ens_spread
 
 integer :: j, k, istatus
-real(r8) :: obs_vals(num_obs_in_set, ens_size), qc(num_obs_in_set)
-real(r8) ::  obs_mean(1), obs_spread(1)
+real(r8) :: qc(num_obs_in_set)
+real(r8) :: obs_mean(1), obs_spread(1)
 real(r8) :: error, diff_sd, ratio
 type(obs_type) :: observation
 
 ! Construnct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
-obs_vals = 0.0
+ens_obs = 0.0
 
 do k = 1, ens_size
    call get_ensemble_member(ens_handle, k, temp_ens, temp_time)
@@ -694,7 +664,7 @@ do k = 1, ens_size
       call get_obs_from_key(seq, keys(j), observation)
       ! Get the qc value set so far
       if(k == 1) call get_qc(observation, qc(j:j), 1)
-      call get_expected_obs(seq, keys(j:j), temp_ens, obs_vals(j, k:k), istatus)
+      call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k:k, j), istatus)
       if(istatus > 0) then 
          qc(j) = qc(j) + 2**prior_post * 1000
 ! TEST LINE for doing quality control pass through
@@ -707,8 +677,8 @@ end do
 do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation)
    ! Compute ensemble mean and spread, zero if qc problem occurred
-   obs_mean(1) = sum(obs_vals(j, :)) / ens_size
-   obs_spread(1) = sqrt(sum((obs_vals(j, :) - obs_mean(1))**2) / (ens_size - 1))
+   obs_mean(1) = sum(ens_obs(:, j)) / ens_size
+   obs_spread(1) = sqrt(sum((ens_obs(:, j) - obs_mean(1))**2) / (ens_size - 1))
 
    ! This is efficient place to do observation space quality control
    ! For now just looking for outliers from prior
@@ -722,7 +692,7 @@ do j = 1, num_obs_in_set
 
    ! Output all of these ensemble priors that are required to sequence file
    do k = 1, num_output_members
-      call set_obs_values(observation, obs_vals(j, k:k), members_index + 2 * (k - 1))
+      call set_obs_values(observation, ens_obs(k:k, j), members_index + 2 * (k - 1))
    end do
 
    ! If requested output the ensemble mean
