@@ -164,7 +164,7 @@ end subroutine write_restart
 
 
 
-subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc, a)
 !========================================================================
 ! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
 !
@@ -175,8 +175,9 @@ implicit none
 integer, intent(in) :: ens_size
 real(r8), intent(in) :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
+real(r8), intent(out) :: a
 
-real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
 
 ! Compute prior variance and mean from sample
 sum_x = sum(ens)
@@ -981,7 +982,7 @@ end subroutine obs_increment16
 
 
 
-subroutine obs_increment17(ens, ens_size, obs, obs_var, obs_inc, slope)
+subroutine obs_increment17(ens, ens_size, obs, obs_var, obs_inc, slope, a)
 ! in its present form.
 !========================================================================
 ! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
@@ -1015,8 +1016,9 @@ integer, intent(in) :: ens_size
 real(r8), intent(in) :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 real(r8), intent(in) :: slope
+real(r8), intent(out) :: a
 
-real(r8) :: a, obs_var_inv
+real(r8) :: obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean
 real(r8):: prior_cov, sx, s_x2
 real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
@@ -1024,6 +1026,7 @@ real(r8) :: factor, b, c
 real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
 
 real(r8), parameter :: threshold = 1.0
+integer :: i
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0 / obs_var
@@ -1043,6 +1046,14 @@ new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
 error = prior_mean - obs
 diff_sd = sqrt(obs_var + prior_cov)
 ratio = abs(error / diff_sd)
+
+! FIRST PASS GROSS OBS ERROR CHECK;SIMPLEST POSSIBLE
+if(ratio > 2.5) then
+   write(*, *) 'DISCARDING OBS ____________________________'
+   obs_inc = 0.0 
+   a = 0.0
+   return
+endif
 
 ! Only modify if the ratio exceeds the threshold value
 if(ratio > threshold .and. slope > 0.0) then
@@ -1071,7 +1082,7 @@ inf_prior_cov_inv = 1.0 / inf_prior_cov
 new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
 
 a = sqrt(new_cov * inf_prior_cov_inv)
-!!!write(*, *) 'a in 17 is ', a
+!write(*, *) 'a in 17 is ', a
 
 obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
 
@@ -2145,7 +2156,7 @@ end subroutine obs_increment2
 
 
 subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
-               state_inc, cov_factor)
+               a, state_inc, cov_factor)
 !========================================================================
 ! subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
 !                state_inc, cov_factor)
@@ -2159,13 +2170,14 @@ implicit none
 integer, intent(in) :: ens_size
 real(r8), intent(in) :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in) :: state(ens_size), cov_factor
+real(r8), intent(inout) :: a
 real(r8), intent(out) :: state_inc(ens_size)
 
 real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty, reg_coef
 real(r8) :: mean_inc, inf_state(ens_size)
 
 real(r8) :: sum_y, sum_y2, sum_x2, correl
-real(r8) :: a, factor, state_var_norm
+real(r8) :: factor, state_var_norm
 
 
 ! For efficiency, just compute regression coefficient here
@@ -2189,24 +2201,34 @@ correl = reg_coef * sqrt(sum_t2 / state_var_norm)
 ! The original form follows
 state_inc = cov_factor * reg_coef * obs_inc
 
-!if(1 == 1) return
+if(1 == 1) return
 
 ! What was the 'a'; reduction in standard deviation for the ob
 ! Remove mean obs_inc first?
 ! WARNING: WOULD BE MORE ROBUST TO PASS A IN
-a = 1.0 - abs((obs_inc(1) - sum(obs_inc) / ens_size) / (obs(1) - sum_x / ens_size))
+!a = 1.0 - abs((obs_inc(1) - sum(obs_inc) / ens_size) / (obs(1) - sum_x / ens_size))
+
+!write(*, *) 'a in update_from is ', a
 
 ! Add in a slope factor for continuity
 ! Following flat triad works fairly well for base L96 cases
+! FOLLOWING VALUES WORK FOR 20 and 40 ENSEMBLE MEMBERS BUT NOT FOR 10
 if(abs(correl) < 0.3) then
-!!!   factor = 1.0 / (1.0 - 1.00 * (1.0 - a) / 20.0) 
    factor = 1.0 / (1.0 - 1.00 * (1.0 - a) / 30.0) 
 else if(abs(correl) < 0.6) then
-!!!   factor = 1.0 / (1.0 - 1.00 * (1.0 - a) / 35.0) 
    factor = 1.0 / (1.0 - 1.00 * (1.0 - a) / 35.0) 
 else
    factor = 1.0
 endif
+
+!FOLLOWING ONE WORKS PRETTY WELL FOR 10 MEMBER ENSEMBLES IN L96!
+!if(abs(correl) < 0.40) then
+!   factor = 1.0 / (1.0 - 1.00 * (1.0 - a) / 9.0) 
+!else if(abs(correl) < 0.7) then
+!   factor = 1.0 / (1.0 - 1.00 * (1.0 - a) / 35.0) 
+!else
+!   factor = 1.0 
+!endif
 
 if(abs(correl) < 1.00) then
    inf_state = factor * (state - sum_y / ens_size) + (sum_y / ens_size)
