@@ -89,24 +89,14 @@ use types_mod
 implicit none
 private
 
-public  atmosphere,      &
-        atmosphere_init, &
-        atmosphere_end,  &
-        atmosphere_resolution,  &
-        atmosphere_boundary,    &
-        get_atmosphere_axes, &
-        prog_var_type, &
-        get_model_size, &
-        prog_var_to_vector, &
-        vector_to_prog_var, &
+public        get_model_size, &
         adv_1step, &
         get_state_meta_data, &
         model_interpolate, &
-        get_val, &              ! THIS SHOULD ONLY BE FOR TEMP TEST
         get_model_time_step, &
         end_model, &
         static_init_model,  &
-        init_model_instance, &
+!        init_model_instance, &
         init_time, &
         init_conditions, &
         TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER, &

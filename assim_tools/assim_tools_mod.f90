@@ -860,9 +860,6 @@ end subroutine linear_obs_increment
 
 !========================================================================
 
-
-!========================================================================
-
 subroutine linear_update_from_obs_inc(obs, var_inc, mean_inc, state, &
    ens_size, state_inc, cov_factor, sd_ratio)
 
@@ -915,7 +912,11 @@ endif
 !!!write(*, *) 'cov_factor, linear_factor ', cov_factor, linear_factor
 !!!write(*, *) 'ratio ', cov_factor / linear_factor
 
+! Following line moves mean more (may not be right)
 state_inc = linear_factor * reg_coef * var_inc + cov_factor * reg_coef * mean_inc
+
+! Test of moving mean the same as the rest of things
+!!!state_inc = linear_factor * reg_coef * var_inc + linear_factor * reg_coef * mean_inc
 
 
 end subroutine linear_update_from_obs_inc
