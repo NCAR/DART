@@ -1,0 +1,72 @@
+&filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 20, 
+   cutoff = 0.2,
+   cov_inflate = 1.0,
+   start_from_restart = .true.,
+   output_restart = .true.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart", 
+   init_time_days = -1,
+   init_time_seconds = -1,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true., 
+   num_output_state_members = 20,
+   num_output_obs_members = 20,
+   output_interval = 1,
+   num_groups = 1,
+   confidence_slope = 0.0,
+   outlier_threshold = -1.0,
+   save_reg_series = .false.  /
+
+&assim_tools_nml
+   prior_spread_correction = .false.,
+   filter_kind = 1,
+   slope_threshold = 1.0  /
+
+&cov_cutoff_nml
+   select_localization = 1  /
+
+&reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"  /
+
+&obs_sequence_nml
+   read_binary_obs_sequence = .true.,
+   write_binary_obs_sequence = .true.  /
+
+&assim_model_nml
+   read_binary_restart_files = .true.,
+   write_binary_restart_files = .true. /
+
+&location_nml
+   horiz_dist_only = .true.,
+   vert_normalization_pressure = 100000.0, 
+   vert_normalization_height = 10000.0,
+   vert_normalization_level = 20.0 /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   logfilename = 'dart_log.out'  /
+
+&model_nml
+   ntime = 8,
+   state_num_3d = 9 /
+
+&perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = -1,
+   init_time_seconds = -1,
+   output_interval = 1  /

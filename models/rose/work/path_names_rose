@@ -9,7 +9,7 @@
 ../DAsrc/trop.mod.f
 ../DAsrc/output.mod.f
 ../DAsrc/diagnostic.mod.f
-../DArose.f
+../DAsrc/DArose.f
 ../DAsrc/chemheat.f
 ../DAsrc/chembc_intrp.f
 ../DAsrc/chem_gs.f
@@ -28,7 +28,7 @@
 ../DAsrc/hydrost.f
 ../DAsrc/moldiff.f
 ../DAsrc/msetfix.f
-../DArose_mod.f90
+../DAsrc/DArose_mod.f90
 ../DAsrc/msis90.f
 ../DAsrc/nmc_trop.f
 ../DAsrc/nr_solve.f

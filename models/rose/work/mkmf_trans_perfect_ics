@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p trans_perfect_ics -t ../../../mkmf/mkmf.template \
+-c "-Duse_netCDF" -a "../../.." path_names_trans_perfect_ics
