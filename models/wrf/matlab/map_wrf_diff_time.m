@@ -1,10 +1,8 @@
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
- 
-% Select field to plot (U, V, W, GZ, T, MU, QV, QC, QR)
 
-field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR, 10=XLAND: ');
+field_name = input('Input field type (U, V, W, PH, T, MU, QV, QC, QR, XLAND, VECT, HDIV): ');
 
 map_proj = {'lambert', 'ups', 'mercator'};
 state_name = {'True_State' 'Prior_Diag' 'Posterior_Diag'};
@@ -23,11 +21,23 @@ else
    error('Nothing to plot.')
 end
 
-xlon = getnc(fname, 'XLON');
+dx = getnc(fname, 'DX');
+stdlat1 = getnc(fname, 'TRUELAT1');
+stdlat2 = getnc(fname, 'TRUELAT2');
+cen_lon = getnc(fname, 'CEN_LON');
+mp = getnc(fname, 'MAP_PROJ');
+
+num_domains = size(dx,1);
+
+disp(['Number of domains: ',int2str(num_domains)])
+
+id = input('Input domain id: ');
+
+xlon = getnc(fname, ['XLON_d0',int2str(id)]);
 we = size(xlon, 2);
-xlat = getnc(fname, 'XLAT');
+xlat = getnc(fname, ['XLAT_d0',int2str(id)]);
 sn = size(xlat, 1);
-level = getnc(fname, 'level');
+level = getnc(fname, ['level_d0',int2str(id)]);
 bt = size(level, 1);
 
 cop = zeros(1,3);
@@ -47,16 +57,6 @@ if (fact(2) ~= 0.0) | (fact(3) ~= 0.0)
    cop(2:3) = input('Input copy for Prior and/or Posterior: ');
 end
 
-%--Read data
-nc = netcdf( [fname, '.nc'] , 'read' ) ;
-stdlat1 = nc.TRUELAT1(:);
-stdlat2 = nc.TRUELAT2(:);
-cen_lat = nc.CEN_LAT(:);
-cen_lon = nc.CEN_LON(:);
-mp = nc.MAP_PROJ(:);
-
-close(nc)
-
 minlat = min(xlat(:)); maxlat = max(xlat(:));
 minlon = min(xlon(:)); maxlon = max(xlon(:));
 
@@ -67,63 +67,67 @@ stime = input('Initial time : ');
 ftime = input('End time : ');
 
 % Get level for free atmosphere fields
-if (field_num == 6) | (field_num == 10)
+if strcmp(field_name,'MU') | strcmp(field_name,'XLAND')
    field_level = 1;
+   vert_coord = 1;
+   lev_units = ' ';
 else
-   field_level = input('Input level: ');
+   vert_coord = 0;
+   while vert_coord ~= 1 & vert_coord ~= 2
+      vert_coord = input('Input 1 for model or 2 for pressure level:');
+      if vert_coord == 1
+         field_level = input('Input model level: ');
+         lev_units = ' model level';
+      elseif vert_coord == 2
+         field_level = input('Input pressure level (hPa): ');
+         lev_units = ' (hPa)';
+      else
+         disp('Invalid choice. Please try again')
+      end
+   end
 end
 
-nx = we + 1;
-ny = sn;
-var_units = 'U (m/s)';
-var_name = 'U';
-iso = [0.5:1:5];
-if field_num > 1
-   nx = we;
-   ny = sn + 1;
-   var_units = 'V (m/s)';
-   var_name = 'V';
+var_name = [field_name,'_d0',int2str(id)];
+uname = ['U_d0',int2str(id)];
+vname = ['V_d0',int2str(id)];
+
+if strcmp(field_name,'U') | strcmp(field_name,'V') | strcmp(field_name,'VECT')
+   var_units = ' (m/s)';
+   iso = [0.5:1:5];
 end
-if field_num > 2
-   nx = we;
-   ny = sn;
-   var_units = 'W (m/s)';
-   var_name = 'W';
+if strcmp(field_name,'W')
+   var_units = ' (m/s)';
    iso = [0.01:0.01:0.1];
 end
-if field_num > 3
-   var_units = 'GZ (m^2/s^2)';
-   var_name = 'PH';
+if strcmp(field_name,'PH')
+   var_units = ' (m^2/s^2)';
    iso = [50:50:300];
 end
-if field_num > 4
-   var_units = 'T (K)';
-   var_name = 'T';
+if strcmp(field_name,'T')
+   var_units = ' (K)';
    iso = [0.5:0.5:5];
 end
-if field_num > 5
-   var_units = 'MU (Pa)';
-   var_name = 'MU';
+if strcmp(field_name,'MU')
+   var_units = ' (Pa)';
    iso = [100:100:600];
 end
-if field_num > 6
-   var_units = 'QV (kg/kg)';
-   var_name = 'QVAPOR';
+if strcmp(field_name,'QV')
+   var_units = ' (kg/kg)';
    iso = [0.0001:0.0001:0.001];
 end
-if field_num > 7
-   var_units = 'QC (kg/kg)';
-   var_name = 'QCLOUD';
+if strcmp(field_name,'QC')
+   var_units = ' (kg/kg)';
    iso = [0.00001:0.00001:0.0001];
 end
-if field_num > 8
-   var_units = 'QR (kg/kg)';
-   var_name = 'QRAIN';
+if strcmp(field_name,'QR')
+   var_units = ' (kg/kg)';
    iso = [0.00001:0.00001:0.0001];
 end
-if field_num > 9
-   var_units = 'XLAND (-)';
-   var_name = 'XLAND';
+if strcmp(field_name,'XLAND')
+   var_units = ' (-)';
+end
+if strcmp(field_name,'HDIV')
+   var_units = ' ((m/s)/km)';
 end
 
 scrsz = get(0,'ScreenSize');
@@ -135,73 +139,238 @@ pane = 1;
 
 for itime = stime:ftime
 
-plot_title = [var_units '   Level: ' num2str(field_level) '   Time: ' num2str(itime)];
+   plot_title = [field_name var_units '   ' num2str(field_level) lev_units ...
+			    '   ' num2str(fix(true_times(itime))) ' days   ' ...
+   num2str((true_times(itime)-fix(true_times(itime)))*86400) ' sec'];
 
 % Extract field
 
-field = zeros(sn,we);
+   field = zeros(sn,we);
+   fieldu = zeros(sn,we);
+   fieldv = zeros(sn,we);
 
-for istate = 1:3
+   for istate = 1:3
 
-if fact(istate) ~= 0.0
+      if fact(istate) ~= 0.0
 
-if (field_num ~= 6) & (field_num < 10)
-   corner = [itime cop(istate) field_level -1 -1];
-   end_point = [itime cop(istate) field_level -1 -1];
-   stride = [1 1 1 1 1];
-end
-if field_num == 6
-   corner = [itime cop(istate) -1 -1];
-   end_point = [itime cop(istate) -1 -1];
-   stride = [1 1 1 1];
-end
-if field_num == 10
-   corner = [-1 -1];
-   end_point = [-1 -1];
-   stride = [1 1];
-end
+         if vert_coord == 1
 
-   fname = char(state_name(istate));
-   stag_field = getnc(fname, var_name,corner,end_point,stride);
-   if field_num == 1
-      for iy = 1:sn
-      for ix = 1:we
-         field(iy,ix) = field(iy,ix) + fact(istate)*(stag_field(iy,ix) + stag_field(iy,ix+1))/2.0;
+	    if strcmp(field_name,'MU')
+	       corner = [itime cop(istate) -1 -1];
+               end_point = [itime cop(istate) -1 -1];
+               stride = [1 1 1 1];
+            elseif strcmp(field_name,'XLAND')
+               corner = [-1 -1];
+               end_point = [-1 -1];
+               stride = [1 1];
+            else
+               corner = [itime cop(istate) field_level -1 -1];
+               end_point = [itime cop(istate) field_level -1 -1];
+               stride = [1 1 1 1 1];
+            end
+
+	    fname = char(state_name(istate));
+	    if strcmp(field_name,'VECT')
+               stag_field = getnc(fname,uname,corner,end_point,stride);
+               for iy = 1:sn
+                  for ix = 1:we
+	             fieldu(iy,ix) = fieldu(iy,ix) + ...
+	       fact(istate)*(stag_field(iy,ix) + stag_field(iy,ix+1))/2.0;
+                  end
+               end
+               stag_field = getnc(fname,vname,corner,end_point,stride);
+               for iy = 1:sn
+                  for ix = 1:we
+                     fieldv(iy,ix) = fieldv(iy,ix) + ...
+	       fact(istate)*(stag_field(iy,ix) + stag_field(iy+1,ix))/2.0;
+                  end
+               end
+	    elseif strcmp(field_name,'HDIV')
+               stag_field = getnc(fname,uname,corner,end_point,stride);
+               for iy = 1:sn
+                  for ix = 1:we
+                     field(iy,ix) = field(iy,ix) - ...
+	       fact(istate)*(stag_field(iy,ix+1) - stag_field(iy,ix))/dx(id);
+                  end
+               end
+               stag_field = getnc(fname,vname,corner,end_point,stride);
+               for iy = 1:sn
+                  for ix = 1:we
+                     field(iy,ix) = field(iy,ix) - ...
+	       fact(istate)*(stag_field(iy+1,ix) - stag_field(iy,ix))/dx(id);
+                  end
+               end
+	       field = field*1000.0;
+            else
+
+               stag_field = getnc(fname, var_name,corner,end_point,stride);
+	       if strcmp(field_name,'U')
+                  for iy = 1:sn
+                     for ix = 1:we
+                        field(iy,ix) = field(iy,ix) + ...
+		  fact(istate)*(stag_field(iy,ix) + stag_field(iy,ix+1))/2.0;
+                     end
+                  end
+	       elseif strcmp(field_name,'V')
+                  for iy = 1:sn
+                     for ix = 1:we
+                        field(iy,ix) = field(iy,ix) + ...
+		  fact(istate)*(stag_field(iy,ix) + stag_field(iy+1,ix))/2.0;
+                     end
+                  end
+               else
+                  field = field + fact(istate)*stag_field;
+               end
+
+            end
+
+         else
+
+ %--Set up, compute pressure 
+            [ Cp, Rd, gamma, Rv, L_c, g, T0, p0] = get_constants ;
+
+            [ mu, dnw, phi, theta, qv ] =  ...
+   get_aux_fields_for_p( fname, T0, itime, cop(istate), id ) ;
+
+            pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 ) ;
+
+ %--Retrieve specified variable from netcdf file
+
+            var_in = zeros(bt,sn,we);
+
+	    if strcmp(field_name,'VECT')
+               var_inu = zeros(bt,sn,we);
+               var_inv = zeros(bt,sn,we);
+               stag_field = getnc(fname,uname,[itime cop(istate) -1 -1 -1], ...
+				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+               for iz = 1:bt
+	          for iy = 1:sn
+	             for ix = 1:we
+                        var_inu(iz,iy,ix) = (stag_field(iz,iy,ix) + stag_field(iz,iy,ix+1))/2.0;
+                     end
+                  end
+               end
+	       stag_field = getnc(fname,vname,[itime cop(istate) -1 -1 -1], ...
+				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+               for iz = 1:bt
+		  for iy = 1:sn
+                     for ix = 1:we
+                        var_inv(iz,iy,ix) = (stag_field(iz,iy,ix) + stag_field(iz,iy+1,ix))/2.0;
+                     end
+                  end
+	       end
+	    elseif strcmp(field_name,'HDIV')
+	       stag_field = getnc(fname,uname,[itime cop(istate) -1 -1 -1], ...
+				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+               for iz = 1:bt
+		  for iy = 1:sn
+	             for ix = 1:we
+                        var_in(iz,iy,ix) = var_in(iz,iy,ix) - ...
+		  (stag_field(iz,iy,ix+1) - stag_field(iz,iy,ix))/dx(id);
+                     end
+                  end
+               end
+	       stag_field = getnc(fname,vname,[itime cop(istate) -1 -1 -1], ...
+				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+               for iz = 1:bt
+		  for iy = 1:sn
+                     for ix = 1:we
+		        var_in(iz,iy,ix) = var_in(iz,iy,ix) - ...
+		  (stag_field(iz,iy+1,ix) - stag_field(iz,iy,ix))/dx(id);
+                     end
+	          end
+               end
+
+	       var_in = var_in*1000.0;
+            else
+
+	       if strcmp(field_name,'PH')         % Use what get_aux_fields_for_p produced
+                  stag_field = phi ;
+               elseif strcmp(field_name,'T')     % Same here
+                  stag_field = theta ;
+               else
+                  stag_field = getnc(fname,var_name,[itime cop(istate) -1 -1 -1], ...
+				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+               end
+
+	       if strcmp(field_name,'U')
+	          for iz = 1:bt
+		     for iy = 1:sn
+	                for ix = 1:we
+		           var_in(iz,iy,ix) = (stag_field(iz,iy,ix) + stag_field(iz,iy,ix+1))/2.0;
+                        end
+                     end
+                  end
+               elseif strcmp(field_name,'V')
+	          for iz = 1:bt
+	             for iy = 1:sn
+	                for ix = 1:we
+		           var_in(iz,iy,ix) = (stag_field(iz,iy,ix) + stag_field(iz,iy+1,ix))/2.0;
+                        end
+                     end
+                  end
+	       elseif strcmp(field_name,'W') | strcmp(field_name,'PH')
+	          for iz = 1:bt
+	             for iy = 1:sn
+	                for ix = 1:we
+		           var_in(iz,iy,ix) = (stag_field(iz,iy,ix) + stag_field(iz+1,iy,ix))/2.0;
+                        end
+                     end
+                  end
+               else
+                  var_in = stag_field;
+               end
+
+            end
+
+	    if strcmp(field_name,'VECT')
+
+	       var_p = interp_to_pressure( var_inu, pres, field_level*100.0) ;
+               fieldu = fieldu + fact(istate)*var_p;
+               var_p = interp_to_pressure( var_inv, pres, field_level*100.0) ;
+               fieldv = fieldv + fact(istate)*var_p;
+
+            else
+
+               var_p = interp_to_pressure( var_in, pres, field_level*100.0) ;
+               field = field + fact(istate)*var_p;
+
+            end
+
+         end
+
       end
-      end
-   elseif field_num == 2
-      for iy = 1:sn
-      for ix = 1:we
-         field(iy,ix) = field(iy,ix) + fact(istate)*(stag_field(iy,ix) + stag_field(iy+1,ix))/2.0;
-      end
-      end
-   else
-      field = field + fact(istate)*stag_field;
+
    end
-
-end
-
-end
 
 % Plot field
 
-subplot(m,m,pane);
+   subplot(m,m,pane);
 
-axesm(map_proj{mp},'Origin',[0 cen_lon 0],'MapParallels',[stdlat1 stdlat2],...
-      'MapLatLimit',[minlat maxlat],'MapLonLimit',[minlon maxlon]); framem;
+   axesm(map_proj{mp(id)},'Origin',[0 cen_lon(id) 0],'MapParallels', ...
+	 [stdlat1(id) stdlat2(id)],...
+	 'MapLatLimit',[minlat maxlat],'MapLonLimit',[minlon maxlon]);
+   framem;
 
-plotm(coast,'color',[0 0 0]);
-plotm(usalo('statebvec'),'color',[0 0 0]);
-plotm(usalo('conusvec'),'color',[0 0 0]);
+   plotm(coast,'color',[0 0 0]);
+   plotm(usalo('statebvec'),'color',[0 0 0]);
+   plotm(usalo('conusvec'),'color',[0 0 0]);
 
 % axis( [-0.6 0.6 .2 1.2 ]) % This works pretty well for present CONUS domain
 
-if min(min(field)) ~= max(max(field))
+   if strcmp(field_name,'VECT')
 
-[C h] = contourm(xlat,xlon,field);
-h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
+      scale = ceil(we/10);
 
-title(plot_title)
+      quiverm(xlat([1:scale:sn],[1:scale:we]),xlon([1:scale:sn],[1:scale:we]), ...
+	      fieldv([1:scale:sn],[1:scale:we]),fieldu([1:scale:sn],[1:scale:we]),'k')
+
+   else
+
+      if min(min(field)) ~= max(max(field))
+
+         [C h] = contourm(xlat,xlon,field);
+         h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
 
 %[C,h] = contour (field, iso);
 %hold on
@@ -210,9 +379,13 @@ title(plot_title)
 %clabel(C, h);
 %clabel(Cm, hm);
 
-end
+      end
 
-pane = pane + 1;
+   end
+
+   title(plot_title)
+
+   pane = pane + 1;
 
 end
 
