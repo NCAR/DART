@@ -17,13 +17,14 @@ module obs_sequence_mod
 ! and also define one in obs_sequence, I get an error if I try to make it public
 ! to a module that uses obs_sequence but not obs_def with the intel compiler. No
 ! obvious workaround exists. For now, make modules at higher levels use explicit
-! copy subruoutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
+! copy subroutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use        types_mod, only : r8
+use        types_mod, only : r8, DEG2RAD, earth_radius
+use     location_mod, only : location_type, interactive_location
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
-                             write_obs_def, destroy_obs_def, interactive_obs_def, &
-                             copy_obs_def
+                             write_obs_def, set_radar_obs_def, destroy_obs_def, &
+                             interactive_obs_def, copy_obs_def
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
@@ -41,14 +42,14 @@ public obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_num_copies, get_num_qc, get_num_obs, get_max_num_obs, get_copy_meta_data, &
    get_qc_meta_data, get_next_obs, get_prev_obs, insert_obs_in_seq, &
    delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
-   get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq,  &
+   get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, &
    append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
    get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header
 
 ! Public interfaces for obs
 public obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, get_qc, set_qc, write_obs, read_obs, &
-   interactive_obs, copy_obs, assignment(=)
+   interactive_obs, simul_radar, copy_obs, assignment(=)
 
 ! Public interfaces for obs covariance modeling
 public obs_cov_type
@@ -84,7 +85,7 @@ type obs_type
 end type obs_type
 
 type obs_cov_type
-   private    
+   private
    integer :: num_cov_groups
 ! ??????
 end type obs_cov_type
@@ -103,7 +104,7 @@ logical  :: write_binary_obs_sequence = .false.
 
 namelist /obs_sequence_nml/ read_binary_obs_sequence, write_binary_obs_sequence
 
-!-------------------------------------------------------------      
+!--------------------------------------------------------------
 
 
 contains
@@ -128,7 +129,7 @@ if(file_exist('input.nml')) then
    enddo
  11 continue
    call close_file(iunit)
-endif             
+endif
 
 write(logfileunit,nml=obs_sequence_nml)
 
@@ -218,7 +219,7 @@ function interactive_obs_sequence()
 type(obs_sequence_type) :: interactive_obs_sequence
 
 type(obs_type) :: obs
-integer :: max_num_obs, num_copies, num_qc, i, end_it_all
+integer :: max_num_obs, obs_num, num_copies, num_qc, num_radar, i, end_it_all
 
 
 write(*, *) 'Input upper bound on number of observations in sequence'
@@ -246,8 +247,17 @@ end do
 ! Initialize the obs variable
 call init_obs(obs, num_copies, num_qc)
 
+obs_num = 1
+
+!WRF write(*, *) 'How many radars do you want to simulate?'
+!WRF read(*, *) num_radar
+
+!WRF do i = 1, num_radar
+!WRF   call simul_radar(max_num_obs, obs_num, num_copies, num_qc, interactive_obs_sequence, obs)
+!WRF end do
+
 ! Loop to initialize each observation in turn; terminate by ???
-do i = 1, max_num_obs
+do i = obs_num, max_num_obs
    write(*, *) 'input a -1 if there are no more obs'
    read(*, *) end_it_all
    if(end_it_all == -1) exit
@@ -420,7 +430,7 @@ endif
 
 seq%obs(key) = obs
 
-! Make sure the key in sequence is set propoerly
+! Make sure the key in sequence is set properly
 seq%obs(key)%key = key
 
 end subroutine set_obs
@@ -429,7 +439,7 @@ end subroutine set_obs
 
 subroutine get_obs_time_range(seq, time1, time2, key_bounds, num_keys, out_of_range, obs)
 
-! Add other options for getting the first time to minimize searh
+! Add other options for getting the first time to minimize search
 type(obs_sequence_type),  intent(in) :: seq
 type(time_type),          intent(in) :: time1, time2
 integer,                 intent(out) :: key_bounds(2)
@@ -518,8 +528,8 @@ end subroutine get_time_range_keys
 subroutine insert_obs_in_seq(seq, obs, prev_obs)
 
 type(obs_sequence_type), intent(inout) :: seq
-type(obs_type), intent(inout) :: obs
-type(obs_type), intent(in), optional :: prev_obs
+type(obs_type),          intent(inout) :: obs
+type(obs_type),   intent(in), optional :: prev_obs
 
 type(time_type) :: obs_time, current_time
 integer :: prev, next, current
@@ -587,7 +597,7 @@ else
    obs%prev_time = prev
    obs%next_time = next
    seq%obs(prev)%next_time = obs%key
-endif   
+endif
 
 ! Link into the backward moving pointer chain
 if(next == -1) then
@@ -809,7 +819,7 @@ do i = 1, seq%max_num_obs
    deallocate(seq%obs(i)%values)
    allocate(seq%obs(i)%values(old_num + num_to_add))
    seq%obs(i)%values(1:old_num) = values_temp
-   
+
 end do
 
 end subroutine add_copies
@@ -858,7 +868,7 @@ do i = 1, seq%max_num_obs
    deallocate(seq%obs(i)%qc)
    allocate(seq%obs(i)%qc(old_num + num_to_add))
    seq%obs(i)%qc(1:old_num) = values_temp
-   
+
 end do
 
 end subroutine add_qc
@@ -868,7 +878,7 @@ end subroutine add_qc
 subroutine write_obs_seq(seq, file_name)
 
 type(obs_sequence_type), intent(in) :: seq
-character(len = 129), intent(in) :: file_name
+character(len = 129),    intent(in) :: file_name
 
 integer :: i, file_id
 character(len=129) :: msgstring,myfilename
@@ -935,8 +945,8 @@ subroutine read_obs_seq(file_name, add_copies, add_qc, add_obs, seq)
 
 ! Be able to increase size at read in time for efficiency
 
-character(len = 129), intent(in) :: file_name
-integer, intent(in) :: add_copies, add_qc, add_obs
+character(len = 129),    intent(in)  :: file_name
+integer,                 intent(in)  :: add_copies, add_qc, add_obs
 type(obs_sequence_type), intent(out) :: seq
 
 integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id
@@ -1123,9 +1133,9 @@ end subroutine set_obs_def
 subroutine get_obs_values(obs, values, copy_indx)
 
 
-type(obs_type), intent(in) :: obs
-real(r8), intent(out) :: values(:)
-integer, optional, intent(in) :: copy_indx
+type(obs_type),    intent(in)  :: obs
+real(r8),          intent(out) :: values(:)
+integer, optional, intent(in)  :: copy_indx
 
 if(present(copy_indx)) then
    values(1) = obs%values(copy_indx)
@@ -1190,7 +1200,7 @@ subroutine write_obs(obs, file_id, num_copies, num_qc)
 ! Write out an observation to file, inefficient
 
 type(obs_type), intent(in) :: obs
-integer, intent(in) :: file_id, num_copies, num_qc
+integer,        intent(in) :: file_id, num_copies, num_qc
 
 integer :: i
 
@@ -1290,6 +1300,138 @@ end do
 end subroutine interactive_obs
 
 
+!------------------------------------------------------------------------------
+
+subroutine simul_radar(max_num_obs, obs_num, num_copies, num_qc, &
+     obs_sequence, obs)
+
+integer,                 intent(in)    :: max_num_obs, num_copies, num_qc
+integer,                 intent(inout) :: obs_num
+type(obs_type),          intent(inout) :: obs
+type(obs_sequence_type), intent(inout) :: obs_sequence
+
+type(location_type)    :: rad_loc
+integer                :: n_elev
+real(r8)               :: elev_clear(9)  = (/0.5_r8, 1.5_r8, 2.4_r8, 3.4_r8, &
+                                             4.3_r8, 6.0_r8, 9.9_r8, 14.6_r8, 19.5_r8/)
+real(r8)               :: elev_storm(14) = (/0.5_r8, 1.5_r8, 2.4_r8, 3.4_r8, &
+                                             4.3_r8, 5.3_r8, 6.2_r8, 7.5_r8, 8.7_r8, &
+                                             10.0_r8, 12.0_r8, 14.0_r8, 16.7_r8, 19.5_r8/)
+real(r8)               :: elev(14)
+real(r8)               :: faz, laz, daz, raz, fgate, lgate, dgate, rgate, ae, var, elev_rad
+real(r8)               :: dir(3)
+
+integer :: i, ilev
+
+character(len=129) :: msgstring
+
+! Does interactive initialization of radar observations
+
+write(*, *)'Input radar location'
+call interactive_location(rad_loc)
+
+n_elev = 0
+
+do while(n_elev /= 9 .and. n_elev /= 14 .and. n_elev /= -1)
+   write(*, *)'Input 9 for 9 pre-defined elevations (clear mode)'
+   write(*, *)'Input 14 for 14 pre-defined elevations (storm mode)'
+   write(*, *)'Input -1 to choose number and elevation angles'
+   read(*, *) n_elev
+end do
+
+if(n_elev == -1) then
+   do while(n_elev < 1 .or. n_elev > 14)
+      write(*, *)'Input number of elevations (1 - 14)'
+      read(*, *) n_elev
+   end do
+   do i = 1, n_elev
+      write(*, FMT='(a,i2)') 'Input elevation angle # ',i
+      read(*, *) elev(i)
+   end do
+elseif(n_elev == 9) then
+   elev(1:9) = elev_clear(:)
+elseif(n_elev == 14) then
+   elev(1:14) = elev_storm(:)
+endif
+
+write(*, *)'Input first azimuth angle (degree)'
+read(*, *) faz
+faz = DEG2RAD*faz
+
+write(*, *)'Input last azimuth angle (degree)'
+read(*, *) laz
+laz = DEG2RAD*laz
+
+write(*, *)'Input azimuth angle increment (degree)'
+read(*, *) daz
+daz = DEG2RAD*daz
+
+write(*, *)'Input closest gate (m)'
+read(*, *) fgate
+
+write(*, *)'Input farthest gate (m)'
+read(*, *) lgate
+
+write(*, *)'Input gate length (m)'
+read(*, *) dgate
+
+write(*, *)'Input error variance for Doppler velocity'
+read(*, *) var
+
+ae = 4000.0_r8 * earth_radius / 3.0_r8
+
+do ilev = 1, n_elev
+
+   elev_rad = DEG2RAD*elev(ilev)
+
+   do raz = faz,laz,daz
+
+      dir(1) = sin(raz)*cos(elev_rad)
+      dir(2) = cos(raz)*cos(elev_rad)
+      dir(3) = sin(elev_rad)
+
+      do rgate = fgate,lgate,dgate
+
+         if (obs_num <= max_num_obs) then
+
+            call set_radar_obs_def(rad_loc,rgate,raz,elev_rad,ae,dir,var,obs%def)
+
+            do i = 1, num_copies
+               write(*, *) 'Enter value ', i, 'for this observation'
+               read(*, *) obs%values(i)
+            end do
+
+            do i = 1, num_qc
+               write(*, *) 'Enter quality control value ', i, 'for this observation'
+               read(*, *) obs%qc(i)
+            end do
+
+            if(obs_num == 1) then
+               write(*, *) 'calling insert obs in sequence'
+               call insert_obs_in_seq(obs_sequence, obs)
+               write(*, *) 'back from insert obs in sequence'
+            else
+               call insert_obs_in_seq(obs_sequence, obs, &
+                    obs_sequence%obs(obs_num - 1))
+            endif
+
+            obs_num = obs_num + 1
+
+         else
+
+            write(msgstring,*) 'ran out of room, obs_num (',obs_num, &
+                 ') > max_num_obs (',max_num_obs,')'
+            call error_handler(E_ERR,'simul_radar',msgstring,source,revision,revdate)
+
+         endif
+
+      end do
+   end do
+end do
+
+end subroutine simul_radar
+
+
 !---------------------------------------------------------
 
 function get_num_times(seq)
@@ -1319,7 +1461,7 @@ do while (next /= -1)
    prev_time = time
    next = seq%obs(next)%next_time
 end do
-   
+
 end function get_num_times
 
 
