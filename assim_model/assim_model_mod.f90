@@ -161,7 +161,8 @@ end if
 metadata_length = LEN(meta_data_per_copy(1))
 
 ! Create the file
-call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid = ncFileID))
+!!!call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid = ncFileID))
+call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_share, ncid = ncFileID))
 
 ! Define the dimensions
 call check(nf90_def_dim(ncid=ncFileID, &
