@@ -29,7 +29,7 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_kin
 !WRF use      obs_def_mod, only : get_obs_def_platform
 !WRF use     platform_mod, only : platform_type, get_platform_orientation
 use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
-                             operator(-), operator(/), operator(+)
+                             operator(-), operator(/), operator(+), print_time
 
 implicit none
 private
@@ -342,13 +342,26 @@ endif
 call get_obs_def(observation, obs_def)
 next_time = get_obs_def_time(obs_def)
 
+!write(*, *) 'obs_model model time '
+!call print_time(ens_time(1))
+!write(*, *) 'obs_model next obs time '
+!call print_time(next_time)
+
 ! Figure out time to which to advance model 
 time2 = aget_closest_state_time_to(ens_time(1), next_time)
+
+!write(*, *) '------ADVANCE TO THE FOLLOWING TIME---------------------------------'
+!call print_time(time2)
 
 ! Compute the model time step and center a window around the closest time
 delta_time = get_model_time_step()
 ! WATCH OUT FOR USING BOUNDARY TIME OBS TWICE; add one second to bottom time
-start_time = time2 - delta_time / 2 + set_time(1, 0)
+! ALSO, avoid having a negative time for the start for low-order models
+if(delta_time / 2 > time2) then
+   start_time = set_time(0, 0)
+else
+   start_time = time2 - delta_time / 2 + set_time(1, 0)
+endif
 end_time = time2 + delta_time / 2
 
 ! Get all the obsevations at exactly this time
@@ -356,9 +369,11 @@ call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
 call get_time(start_time, secs, days)
-write(*, *) 'start time of obs range is (d, s) = ', days, secs
-call get_time(end_time, secs, days)
-write(*, *) 'end time of obs range   is (d, s) = ', days, secs
+write(*, *) 'start time of obs range is '
+call print_time(start_time)
+write(*, *) 'end time of obs range is '
+call print_time(end_time)
+!write(*, *)'----------------------------------------------------------------------'
 
 ! Advance all ensembles (to the time of the first ensemble)
 if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async, adv_ens_command)
