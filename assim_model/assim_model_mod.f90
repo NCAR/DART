@@ -473,7 +473,7 @@ implicit none
 type(time_type), intent(in) :: model_time, time
 type(time_type) :: aget_closest_state_time_to
 
-type(time_type) :: delta_time, time_step
+type(time_type) :: time_step
 
 character(len=129) :: errstring
 integer :: is1,is2,id1,id2
@@ -488,15 +488,11 @@ if(model_time > time) then
    call error_handler(E_ERR,'aget_closest_state_time_to', errstring, source, revision, revdate)
 endif
 
-delta_time = time - model_time
+aget_closest_state_time_to = model_time
 
-!!! WARNING ON ODD SECOND TIMESTEPS; THE LOGIC BELOW MAY NOT WORK
-if(time_step / 2 * 2 /= time_step) then
-    call error_handler(E_ERR,'aget_closest_state_time_to', &
-   'Computation of model time wont support time steps with odd number of seconds.',source,revision,revdate) 
-endif
-
-aget_closest_state_time_to = ((delta_time + time_step / 2) / time_step) * time_step + model_time
+do while((time_step + 2*aget_closest_state_time_to) < 2*time)
+   aget_closest_state_time_to = aget_closest_state_time_to + time_step
+enddo
 
 end function aget_closest_state_time_to
 
@@ -506,10 +502,10 @@ subroutine get_initial_condition(x)
 !----------------------------------------------------------------------
 ! function get_initial_condition()
 !
-! Initial conditions . This returns an initial assim_model_type
+! Initial conditions. This returns an initial assim_model_type
 ! which includes both a state vector and a time. Design of exactly where this 
 ! stuff should come from is still evolving (12 July, 2002) but for now can 
-! start at time offset 0 with the initial state .
+! start at time offset 0 with the initial state.
 ! Need to carefully coordinate this with the times for observations.
 
 implicit none
@@ -526,10 +522,10 @@ subroutine aget_initial_condition(time, x)
 !----------------------------------------------------------------------
 ! function get_initial_condition()
 !
-! Initial conditions . This returns an initial assim_model_type
+! Initial conditions. This returns an initial assim_model_type
 ! which includes both a state vector and a time. Design of exactly where this 
 ! stuff should come from is still evolving (12 July, 2002) but for now can 
-! start at time offset 0 with the initial state .
+! start at time offset 0 with the initial state.
 ! Need to carefully coordinate this with the times for observations.
 
 implicit none
@@ -1009,10 +1005,10 @@ if ( timeindex < 0 ) then
    call error_handler(E_ERR,'aoutput_diagnostics', errstring, source, revision, revdate)
 endif
 
-   call get_time(model_time,is1,id1)
-   write(errstring,'(''model time (d,s) ('',i5,i5,'') is index '',i6, '' in ncFileID '',i3)') &
-          id1,is1,timeindex,ncFileID%ncid
-   call error_handler(E_DBG,'aoutput_diagnostics', errstring, source, revision, revdate)
+call get_time(model_time,is1,id1)
+write(errstring,'(''model time (d,s) ('',i5,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+     id1,is1,timeindex,ncFileID%ncid
+call error_handler(E_DBG,'aoutput_diagnostics', errstring, source, revision, revdate)
 
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
 ! so we must pass the components.
