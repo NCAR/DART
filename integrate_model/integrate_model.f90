@@ -37,6 +37,7 @@ type(time_type)         :: time, target_time
 type(assim_model_type) :: x(1)
 integer :: iunit, ierr, io, model_size
 
+character (len=129)    :: adv_ens_command = ''
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
@@ -80,7 +81,7 @@ close(iunit)
 call print_time(target_time, 'target time is')
 call print_time(get_model_time(x(1)), 'model time is')
 if(get_model_time(x(1)) < target_time) then
-   call advance_state(x, 1, target_time, 0)
+   call advance_state(x, 1, target_time, 0, adv_ens_command)
 endif
 
 ! Output the restart file if requested
