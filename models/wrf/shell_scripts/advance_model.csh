@@ -9,7 +9,7 @@
 
 # This script copies the necessary files into the temporary directory
 # for a model run. It assumes that there is ${PBS_O_WORKDIR}/WRF directory
-# where boundary conditions and namelist files reside.
+# where boundary conditions files reside.
 
 set PBS_O_WORKDIR = $1
 set element = $2
@@ -198,10 +198,6 @@ cat >! namelist.input << EOF
 
 EOF
 
-# Copy WRF input namelist to the temp directory.
-#ln -s  ${PBS_O_WORKDIR}/WRF/namelist.input_${days}_${secs}_$element namelist.input
-#${PBS_O_WORKDIR}/trans_time >& out.trans_time
-
 mv wrfinput wrfinput_d01
 
 # Update boundary conditions
@@ -209,6 +205,12 @@ mv wrfinput wrfinput_d01
 ${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
 ${PBS_O_WORKDIR}/wrf.exe >>& out_wrf_integration
+
+set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" out_wrf_integration | cat | wc -l`
+if ($SUCCESS != 1) then
+   echo $element >> $PBS_O_WORKDIR/blown_${days}_${secs}.out
+endif
+
 mv wrfout_d01_* wrfinput
 
 mv dart_wrf_vector dart_wrf_vector.input

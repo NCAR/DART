@@ -21,7 +21,7 @@ module model_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 !-----------------------------------------------------------------------
 
-use               types_mod, only : r8, deg2rad, rad2deg, missing_r8
+use               types_mod, only : r8, deg2rad, rad2deg, missing_r8, ps0
 use        time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use            location_mod, only : location_type, get_location, set_location, &
                                     get_dist, &
@@ -33,7 +33,7 @@ use           utilities_mod, only : file_exist, open_file, check_nml_error, &
                                     E_MSG, logfileunit
 use module_netcdf_interface, only : netcdf_read_write_var
 use            obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                                    KIND_P, KIND_TD, KIND_VR, &
+                                    KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, &
                                     KIND_REF
 
 use netcdf
@@ -106,7 +106,6 @@ real (kind=r8), PARAMETER    :: gravity = 9.81_r8
 real (kind=r8), PARAMETER    :: earth_radius = 6378.15_r8
 INTEGER, PARAMETER           :: v_interp_p = 1, v_interp_h = 2
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8
-real (kind=r8), PARAMETER    :: ps0 = 100000.0_r8
 !
 
 !---- private data ----
@@ -288,7 +287,7 @@ else
    wrf%cone_factor = sign(1.0,truelat1)*sin(truelat1 * deg2rad)
 end if
 
-write(unit=*, fmt='(2(a, e16.6))')'cone_factor  =', wrf%cone_factor  
+if(debug) write(unit=*, fmt='(a, f16.13)')'cone factor = ', wrf%cone_factor  
 
 IF (wrf%map_proj.EQ.1 .OR. wrf%map_proj.EQ.2) THEN
    IF(wrf%cen_lat.LT.0)THEN 
@@ -323,9 +322,7 @@ ENDIF
 !  get 1D (z) static data defining grid levels
 
 kount(1)  = wrf%date_len
-print*,wrf%date_len
 allocate(wrf%timestring(1:wrf%date_len))
-wrf%timestring = "0"
 call netcdf_read_write_char( "Times",ncid, var_id, wrf%timestring,        &
                             start, kount, stride, map, 'INPUT ', debug, 2  )
 
@@ -518,7 +515,7 @@ call check( nf90_close(ncid) )
   enddo
 
   wrf%model_size = wrf%var_index(2,wrf%number_of_wrf_variables)
-  write(6,*) ' wrf model size is ',wrf%model_size
+  if(debug) write(6,*) ' wrf model size is ',wrf%model_size
 
 contains
 
@@ -754,24 +751,23 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-subroutine model_interpolate(x, location, obs_kind, obs_val, istatus, rstatus)
+subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 
 logical, parameter              :: debug = .false.  
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
 real(r8),           intent(out) :: obs_val
-integer,  optional, intent(out) :: istatus
-real(r8), optional, intent(out) :: rstatus
+integer,            intent(out) :: istatus
 real(r8)                        :: xloc, yloc, zloc, xyz_loc(3)
 integer                         :: i, j, k, i1,i2,i3
 real(r8)                        :: dx,dy,dxm,dym
 real(r8), dimension (wrf%bt)    :: v_h, v_p
 real(r8), dimension (wrf%bt)    :: fld
+real(r8), dimension (wrf%bt+1)  :: fll
 real(r8)                        :: p1,p2,p3,p4,a1
 
-if(present(rstatus)) rstatus = 0.0_r8
-if(present(istatus)) istatus = 0
+istatus = 0
 
 xyz_loc(:) = get_location(location)
 call llxy(xyz_loc(1),xyz_loc(2),xloc,yloc)
@@ -868,7 +864,29 @@ else if( obs_kind == KIND_T ) then                ! T
 
    endif
 
-else if( obs_kind == KIND_QV) then                ! Q
+else if( obs_kind == KIND_W ) then                ! W
+
+   if(i >= 1 .and. i < wrf%var_size(1,TYPE_W) .and. &
+      j >= 1 .and. j < wrf%var_size(2,TYPE_W)) then
+
+      do k=1,wrf%var_size(3,TYPE_W)
+         i1 = get_wrf_index(i,j,k,TYPE_W)
+         i2 = get_wrf_index(i,j+1,k,TYPE_W)
+         fll(k) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      end do
+
+      do k=1,wrf%bt
+         fld(k) = 0.5*(fll(k) + fll(k+1) )
+         if(debug) print*,k,' model w profile ',fld(k)
+      end do
+
+   else
+
+      fld(:) =  missing_r8
+
+   endif
+
+else if( obs_kind == KIND_QV) then                ! QV
 
    if(i >= 1 .and. i < wrf%var_size(1,TYPE_QV) .and. &
       j >= 1 .and. j < wrf%var_size(2,TYPE_QV)) then
@@ -879,7 +897,26 @@ else if( obs_kind == KIND_QV) then                ! Q
          i2 = get_wrf_index(i,j+1,k,TYPE_QV)
          a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
          fld(k) = a1 /(1.0 + a1)
-         if(debug) print*,k,' model q profile ',fld(k),i1,i2,x(i1),x(i1+1),x(i2),x(i2+1)
+         if(debug) print*,k,' model qv profile ',fld(k),i1,i2,x(i1),x(i1+1),x(i2),x(i2+1)
+      end do
+
+   else
+
+      fld(:) =  missing_r8
+
+   endif
+
+else if( obs_kind == KIND_QR) then                ! QR
+
+   if(i >= 1 .and. i < wrf%var_size(1,TYPE_QR) .and. &
+      j >= 1 .and. j < wrf%var_size(2,TYPE_QR)) then
+
+      do k=1,wrf%bt
+
+         i1 = get_wrf_index(i,j,k,TYPE_QR)
+         i2 = get_wrf_index(i,j+1,k,TYPE_QR)
+         fld(k) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         if(debug) print*,k,' model qr profile ',fld(k),i1,i2,x(i1),x(i1+1),x(i2),x(i2+1)
       end do
 
    else
@@ -919,10 +956,7 @@ end if
 
 if(obs_kind /= KIND_PS) call Interp_lin_1D(fld, wrf%bt, zloc, obs_val)
 
-if(obs_val == missing_r8) then
-   if(present(rstatus)) rstatus = 1.0_r8
-   if(present(istatus)) istatus = 1
-endif
+if(obs_val == missing_r8) istatus = 1
 
 if(debug) print*,' interpolated value= ',obs_val
 
@@ -930,12 +964,13 @@ end subroutine model_interpolate
 
 !#######################################################################
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, number, indices, dist, x)
 
 type(location_type), intent(in) :: o_loc
 real(r8),            intent(in) :: radius
 integer,            intent(out) :: number, indices(:)
 real(r8),           intent(out) :: dist(:)
+real(r8),            intent(in) :: x(:)
 
 integer                         :: u_pts, v_pts, p_pts
 integer                         :: i,k,indmax, num_total, ii, jj
@@ -2201,11 +2236,11 @@ subroutine llxy (xloni,xlatj,x,y)
       dxlon = xlon - wrf%cen_lon
       if (dxlon >  180) dxlon = dxlon - 360.
       if (dxlon < -180) dxlon = dxlon + 360.
-   
+
       flp = wrf%cone_factor*dxlon*deg2rad
-   
+
       psx = ( 90.0 - xlat )*deg2rad
-   
+
       if (wrf%map_proj == 2) then
 ! ...... Polar stereographics:
          bb = 2.0*(cos(wrf%psi1/2.0)**2)

@@ -71,7 +71,7 @@ type(wrf_data)     :: wrf, wrf_mean, wrf_tmp
 type(wrf_bdy_data) :: wrf_bdy, wrf_bdy_mean, wrf_bdy_tmp
 
 real(r8)           :: scale       ! each deviation scaled by this amt
-real(r8)           :: gmt
+
 character (len=6)  :: imem  
 logical            :: debug, leap
 integer            :: Ne,                 & ! Ensemble size
@@ -83,9 +83,9 @@ integer           :: ndays, m
 
 character(len=19) :: timestring
 
-read(5,*) Ne  ! Read ensemble size from stdin.
+read(5,*) Ne       ! Read ensemble size from stdin.
+read(5,*) scale    ! Read scaling from stdin.
 
-scale = 0.2
 debug = .false.
 !debug = .true.
 
@@ -93,13 +93,13 @@ call initialize_utilities
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING ensemble_init ...'
 
-! Begin by reading the namelist input                                           
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
-   call close_file(iunit)                                                        
+   call close_file(iunit)
 
    if ( debug ) then
       write(*,'(''num_moist_vars = '',i3)')num_moist_vars
@@ -138,8 +138,8 @@ call check ( nf90_close(wrf_bdy_mean%ncid) )
 call wrfbdy_open_and_alloc(wrf_bdy_tmp , 'wrfbdy_mean', NF90_NOWRITE, debug )
 call check ( nf90_close(wrf_bdy_tmp%ncid) )
 
-call wrf_add   ( wrf_tmp    , 0., wrf_mean    ,  0.)
-call wrfbdy_add( wrf_bdy_tmp, 0., wrf_bdy_mean,  0.)
+call wrf_add   ( wrf_tmp    , 0.0_r8, wrf_mean    ,  0.0_r8)
+call wrfbdy_add( wrf_bdy_tmp, 0.0_r8, wrf_bdy_mean,  0.0_r8)
 
 !-- Compute mean over Ne input and bdy files
 do i=1,Ne
@@ -161,13 +161,13 @@ do i=1,Ne
    call check ( nf90_close(wrf_bdy%ncid) )
 
    !- accumulate sum
-   call wrf_add   ( wrf_tmp    , 1., wrf    ,  1.)
-   call wrfbdy_add( wrf_bdy_tmp, 1., wrf_bdy,  1.)
+   call wrf_add   ( wrf_tmp    , 1.0_r8, wrf    ,  1.0_r8)
+   call wrfbdy_add( wrf_bdy_tmp, 1.0_r8, wrf_bdy,  1.0_r8)
 
 enddo
 
-call wrf_add( wrf_tmp    , 1./Ne, wrf    ,  0.)
-call wrfbdy_add( wrf_bdy_tmp, 1./Ne, wrf_bdy,  0.)
+call wrf_add( wrf_tmp    , 1.0_r8/Ne, wrf    ,  0.0_r8)
+call wrfbdy_add( wrf_bdy_tmp, 1.0_r8/Ne, wrf_bdy,  0.0_r8)
 
 if (debug) write(6,*) ' --------------------'
 
@@ -199,12 +199,12 @@ do i=1,Ne
    call check ( nf90_close(wrf_bdy%ncid) )
 
    !- deviation from mean over input files
-   call wrf_add( wrf    , 1. , wrf_tmp    , -1. )
-   call wrfbdy_add( wrf_bdy, 1. , wrf_bdy_tmp, -1. )
+   call wrf_add( wrf    , 1.0_r8 , wrf_tmp    , -1.0_r8 )
+   call wrfbdy_add( wrf_bdy, 1.0_r8 , wrf_bdy_tmp, -1.0_r8 )
 
    !- New IC: scaled deviation + chosen ensemble mean 
-   call wrf_add( wrf    , scale , wrf_mean   , 1. )
-   call wrfbdy_add( wrf_bdy, scale , wrf_bdy_mean, 1. )
+   call wrf_add( wrf    , scale , wrf_mean   , 1.0_r8 )
+   call wrfbdy_add( wrf_bdy, scale , wrf_bdy_mean, 1.0_r8 )
 
    !- Open same files for writing
    if(debug) write(6,*) ' OPENING  wrfinput_'//adjustl(trim(imem))//' for WRITE'
@@ -228,13 +228,22 @@ do i=1,Ne
    if(debug) write(6,*) 'New thisbdytime = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
    call check( nf90_inq_varid(wrf_bdy%ncid, "Times", var_id) )
+   if(debug) write(6,*) 'writing Times = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring) )
+
+   call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
+   call check( nf90_put_var(wrf%ncid, var_id, timestring) )
+
+   if(debug) write(6,*) 'writing START_DATE = ',timestring
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "START_DATE", timestring) )
+
+   call check( nf90_put_att(wrf%ncid, nf90_global, "START_DATE", timestring) )
 
    !- Julian year, day, and GMT correspond to the end of the next BD time???
 
    call get_date(dart_time(1), year, month, day, hour, minute, second)
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULYR", year) )
+   if(debug) write(6,*) 'writing JULYR = ',year
    ndays = 0
    leap = (modulo(year,4) == 0)
    if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
@@ -246,9 +255,7 @@ do i=1,Ne
    enddo
    ndays = ndays + day
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULDAY", ndays) )
-   gmt = real(hour) + real(minute)/60.0 + real(second)/3600.0
-   call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "GMT", gmt) )
-
+   if(debug) write(6,*) 'writing JULDAY = ',ndays
    call check( nf90_inq_varid(wrf_bdy%ncid, 'md___nextbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', var_id) )
    call check( nf90_get_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
    if(debug) write(6,*) 'Original_nextbdytime = ',timestring

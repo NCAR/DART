@@ -136,14 +136,14 @@ subplot(m,m,pane);
 %nc=5
 
 %colormap = (prism(nc))
-[C, h] = contourf(field);
+[C, h] = contour (field);
 %[C,h] = contour (field, iso);
 hold on
 %[Cm,hm] = contour (field, -iso, '--');
 
 title(plot_title)
 %colorbar('vert')
-%clabel(C, h);
+clabel(C, h);
 %clabel(Cm, hm);
 
 pane = pane + 1;

@@ -71,7 +71,7 @@ character(len=19) :: timestring
 !----
 !  misc stuff
 
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 integer            :: mode, io, ierr, var_id
 
 call initialize_utilities
@@ -215,8 +215,11 @@ else
    call get_wrf_date(timestring, year, month, day, hour, minute, second)
    dart_time(1) = set_date(year, month, day, hour, minute, second)
 
-   if(debug) write(6,*) 'Correct?'
-   if(debug) call print_time(dart_time(1))
+   write(6,*) 'Date from wrfinput'
+   write(6,*) year, month, day, hour, minute, second
+
+   write(6,*) 'Time written to dart vector file:'
+   call print_time(dart_time(1))
 
    call DART_IO( "OUTPUT", dart, dart_unit, dart_time, binary_restart_files, debug )
 end if
