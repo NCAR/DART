@@ -7,74 +7,49 @@ module model_mod
 ! $Author$ 
 !
 
-! questions for JLA 
-! 1) where is output, model_output, why ... output_init ????
-! 2) should init_conditions get called by init_model ..., if not, by whom? 
-! 3) put public first, then private, in order of "public" statement? likely 
-!    calling order, documentation order ???
-! 4) should get_close_pts??? be renamed   get_close_states?
-!    as far as I can tell, even for lor96, NO "call get_close_pts" anywhere 
-! 5) I did not include a get_close_pts ....
+! Revised assim_model version of Lorenz-63 3-variable model
 
 use types_mod
-use loc_and_dist_mod, only : loc_type, get_dist, set_loc
+use location_mod, only : location_type, get_dist, set_location, get_location
+use time_manager_mod
 
 private
 
-public get_model_size, init_model, init_conditions, adv_1step, adv_true_state, &
-       advance, output, diag_output_index, state_loc 
+
+public static_init_model, init_conditions, get_model_size, adv_1step, state_loc, &
+   init_time,  model_interpolate, get_model_time_step, get_state_meta_data, end_model
+
+integer, parameter :: model_size = 3
+
+! Define the location of the state variables in module storage
+type(location_type) :: state_loc(model_size)
+type(time_type) :: time_step
+
 
 !  define model parameters
 
-integer,  parameter :: model_size = 3
-real(r8), parameter ::      sigma = 10.0_r8
-real(r8), parameter ::          r = 28.0_r8
-real(r8), parameter ::          b = 8.0_r8 / 3.0_r8
-real(r8), parameter ::     deltat = 0.01_r8
-
-! Define output indices for diagnostics
-! For the Lorenz 63 model, they are ALL used for diagnostics.
-
-integer :: diag_output_index(model_size)
-
-logical :: output_init = .FALSE.      ! set initial state of output flag
-
-! Define the location of the state variables in module storage
-
-type(loc_type) :: state_loc(model_size)
+real(r8), parameter ::  sigma = 10.0_r8
+real(r8), parameter ::      r = 28.0_r8
+real(r8), parameter ::      b = 8.0_r8 / 3.0_r8
+real(r8), parameter :: deltat = 0.01_r8
 
 contains
 
-!======================================================================
-! Public components first
-!======================================================================
+!==================================================================
 
 
 
-function get_model_size()
-!----------------------------------------------------------------------
-! function get_model_size()
-!
-! Returns size of model
+subroutine static_init_model()
+!------------------------------------------------------------------
+! Initializes class data for L63 model and outputs I.D.
 
-integer :: get_model_size
-
-get_model_size = model_size
-
-end function get_model_size
-
-
-
-subroutine init_model()
-!----------------------------------------------------------------------
-! subroutine init_model()
-!
-! Stub for model initialization, which is not needed for L63
+implicit none
 
 character(len=128) :: source,revision,revdate
+integer :: i
+real(r8) :: x_loc
 
 ! let CVS fill strings ... DO NOT EDIT ...
-
 source   = "$Source$"
 revision = "$Revision$"
 revdate  = "$Date$"
@@ -86,97 +61,45 @@ write(*,*)'   ',source
 write(*,*)'   ',revision
 write(*,*)'   ',revdate
 
-end subroutine init_model
-
-
-
-subroutine init_conditions(x)
-!----------------------------------------------------------------------
-! subroutine init_conditions(x)
-!
-!  off-attractor initial conditions for lorenz 63
-!
-! It is assumed that this is called before any other routines in this
-! module. Should probably make that more formal and perhaps enforce for
-! more comprehensive models.
-
-implicit none
-
-real(r8), intent(out) :: x(:)
-
-integer  :: i
-real(r8) :: x_loc
-
-! Define the interesting indexes for variables to do diag output
-
-do i = 1, size(diag_output_index)
-   diag_output_index(i) = i
-end do
-
-! Define the locations of the state variables; all co-located for L63
-
+! Define the locations of the model state variables
 do i = 1, model_size
-   x_loc = 1.0_r8
-   call set_loc(state_loc(i), x_loc)
+   x_loc = (i - 1.0) / model_size
+   state_loc(i) =  set_location(x_loc)
 end do
 
-! Initial conditions that move nicely onto attractor
+! The time_step in terms of a time type must also be initialized. Need
+! to determine appropriate non-dimensionalization conversion for L93
+time_step = set_time(3600, 0)
 
-x = 0.10_r8
-
-return
-end subroutine init_conditions
-
+end subroutine static_init_model
 
 
-subroutine adv_1step(x)
-!----------------------------------------------------------------------
-! subroutine adv_1step(x)
+
+subroutine comp_dt(x, dt)
+!==================================================================
+! subroutine comp_dt(x, dt)
 !
-! does single time step advance for lorenz convective 3 variable model
-! using two step rk time step
+! computes time tendency of the lorenz 1963 3-variable model given 
+! current state
 
 implicit none
 
-real(r8), intent(inout) :: x(:)
+real(r8), intent(in) :: x(:)
+real(r8), intent(out) :: dt(:)
 
-real(r8) :: fract, x1(3), x2(3), dx(3)
-integer  :: i
+! compute the lorenz model dt from standard equations
 
-fract = 1.0_r8
-
-call comp_dt(x, dx)            !  compute the first intermediate step
-x1 = x + fract * deltat * dx
-
-call comp_dt(x1, dx)           !  compute the second intermediate step
-x2 = x1 + fract * deltat * dx
-
-!  new value for x is average of original value and second intermediate
-
-x = (x + x2) / 2.0_r8
+dt(1) = sigma * (x(2) - x(1))
+dt(2) = -1.0_r8*x(1)*x(3) + r*x(1) - x(2)
+dt(3) = x(1)*x(2) - b*x(3)
 
 return
-end subroutine adv_1step
-
-
-
-subroutine adv_true_state(x)
-!----------------------------------------------------------------------
-! subroutine adv_true_state(x)
-!
-
-implicit none
-
-real(r8), intent(inout) :: x(:)
-
-call adv_1step(x)
-
-end subroutine adv_true_state
+end subroutine comp_dt
 
 
 
 subroutine advance(x, num, xnew)
-!----------------------------------------------------------------------
+!===================================================================
 ! subroutine advance(x, num, xnew)
 !
 ! advances the 3 variable lorenz-63 model by a given number of steps
@@ -201,31 +124,21 @@ end subroutine advance
 
 
 
-subroutine comp_dt(x, dt)
-!----------------------------------------------------------------------
-! subroutine comp_dt(x, dt)
+subroutine init_conditions(x)
+!===================================================================
+! subroutine init_conditions(x)
 !
-! computes time tendency of the lorenz 1963 3-variable model given 
-! current state
+!  off-attractor initial conditions for lorenz 63
 
 implicit none
 
-real(r8), intent(in)  :: x(:)
-real(r8), intent(out) :: dt(:)
+real(r8), intent(out) :: x(:)
 
-! compute the lorenz model dt from standard equations
+! Initial conditions that move nicely onto attractor
+x = 0.10_r8
 
-dt(1) = sigma * (x(2) - x(1))
-dt(2) = -1.0_r8*x(1)*x(3) + r*x(1) - x(2)
-dt(3) = x(1)*x(2) - b*x(3)
+end subroutine init_conditions
 
-return
-end subroutine comp_dt
-
-
-!======================================================================
-! Private components next
-!======================================================================
 
 
 subroutine linear_dt(x, dx, dt)
@@ -245,9 +158,174 @@ dt(1) = -1.0_r8 * sigma * dx(1) + sigma*dx(2)
 dt(2) = (r - x(3))*dx(1) - dx(2) - x(1)*dx(3)
 dt(3) = x(2)*dx(1) + x(1)*dx(2) - b*dx(3)
 
-return
 end subroutine linear_dt
 
+
+
+
+subroutine adv_1step(x)
+!====================================================================
+! subroutine adv_1step(x)
+!
+! does single time step advance for lorenz convective 3 variable model
+! using two step rk time step
+
+implicit none
+
+real(r8), intent(inout) :: x(:)
+real(r8) :: fract
+
+fract = 1.0_r8
+call adv_single(x, fract)
+
+return
+end  subroutine adv_1step
+
+
+
+subroutine adv_single(x, fract)
+!====================================================================
+! subroutine adv_single(x, fract)
+!
+! does single time step advance for lorenz convective 3 variable model
+! using two step rk time step
+
+implicit none
+
+real(r8), intent(inout) :: x(:)
+real(r8), intent(in)    :: fract
+
+real(r8) :: x1(3), x2(3), dx(3)
+
+integer i
+
+call comp_dt(x, dx)            !  compute the first intermediate step
+x1 = x + fract * deltat * dx
+
+call comp_dt(x1, dx)           !  compute the second intermediate step
+x2 = x1 + fract * deltat * dx
+
+!  new value for x is average of original value and second intermediate
+
+x = (x + x2) / 2.0_r8
+
+return
+end subroutine adv_single
+
+
+
+function get_model_size()
+!=====================================================================
+! function get_model_size()
+!
+! Returns size of model
+
+integer :: get_model_size
+
+get_model_size = model_size
+
+end function get_model_size
+
+
+
+
+subroutine init_time(time)
+!----------------------------------------------------------------------
+!
+! Gets the initial time for a state from the model. Where should this info
+! come from in the most general case?
+
+implicit none
+
+type(time_type), intent(out) :: time
+
+! For now, just set to 0
+time = set_time(0, 0)
+
+end subroutine init_time
+
+
+
+
+function model_interpolate(x, location)
+!---------------------------------------------------------------------
+!
+! Interpolates from state vector x to the location. It's not particularly
+! happy dumping all of this straight into the model. Eventually some
+! concept of a grid underlying models but above locations is going to
+! be more general. May want to wait on external infrastructure projects
+! for this?
+
+implicit none
+
+real(r8) :: model_interpolate
+real(r8), intent(in) :: x(:)
+type(location_type), intent(in) :: location
+
+integer :: lower_index, upper_index
+real(r8) :: loc, fraction
+
+! Convert location to real
+loc = get_location(location)
+! Multiply by model size assuming domain is [0, 1] cyclic
+loc = model_size * loc
+
+lower_index = int(loc)
+upper_index = lower_index + 1
+if(upper_index > model_size) upper_index = 1
+if(lower_index == 0) lower_index = model_size
+
+fraction = loc - int(loc)
+model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
+
+end function model_interpolate
+
+
+
+function get_model_time_step()
+!------------------------------------------------------------------------
+! function get_model_time_step()
+!
+! Returns the the time step of the model. In the long run should be repalced
+! by a more general routine that returns details of a general time-stepping
+! capability.
+
+type(time_type) :: get_model_time_step
+
+get_model_time_step = time_step
+
+end function get_model_time_step
+
+
+
+
+subroutine get_state_meta_data(index, location)
+!---------------------------------------------------------------------
+!
+! Given an integer index into the state vector structure, returns the
+! associated location. This is not a function because the more general
+! form of the call has a second intent(out) optional argument kind.
+! Maybe a functional form should be added?
+
+implicit none
+
+integer, intent(in) :: index
+type(location_type), intent(out) :: location
+
+location = state_loc(index)
+
+end subroutine get_state_meta_data
+
+
+
+
+subroutine end_model()
+!------------------------------------------------------------------------
+!
+! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
+
+
+end subroutine end_model
 
 
 
