@@ -429,11 +429,7 @@ obs_lon = x/(ae*cos(rad_lat + y/(2.0_r8*ae))) + rad_lon
 
 !WRF vloc = query_location(rad_loc, 'vloc')
 
-print*,h,spath,x,y,ae,vloc
-
 vloc = vloc + h
-
-print*,rgate,raz,elev_rad,dir,obs_lon, obs_lat, vloc
 
 obs_lon = obs_lon*RAD2DEG
 obs_lat = obs_lat*RAD2DEG
