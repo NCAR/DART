@@ -16,7 +16,9 @@ character(len=128) :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-private :: source, revision, revdate
+private 
+
+public :: r8, pi, deg2rad, rad2deg
 
 SAVE
 
