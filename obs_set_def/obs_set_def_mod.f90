@@ -211,7 +211,7 @@ end subroutine get_obs_locations
 
 
 
-subroutine get_close_states(set, radius, number, indices, dist)
+subroutine get_close_states(set, radius, number, indices, dist, obs_num)
 !--------------------------------------------------------
 !
 ! Returns the number of close states for each observation in
@@ -223,20 +223,33 @@ real(r8), intent(in) :: radius
 integer, intent(out) :: number(:)
 integer, intent(out) :: indices(:, :)
 real(r8), intent(out) :: dist(:, :)
+integer, optional, intent(in) :: obs_num
 
 integer :: i
 
 ! Make sure that number array is big enough to hold all obs in set
-if(size(number) < set%num_obs_defs) then
-   write(*, *) 'Error: number array too small in get_close_states'
-   stop
+if(present(obs_num)) then
+   if(size(number) < 1) then
+      write(*, *) 'Error: number array too small in get_close_states'
+      stop
+   endif
+else
+   if(size(number) < set%num_obs_defs) then
+      write(*, *) 'Error: number array too small in get_close_states'
+      stop
+   endif
 endif
 
 ! Loop through the observations and get their close states
-do i = 1, set%num_obs_defs
-   call od_get_close_states(set%obs_defs(i), radius, number(i), &
-      indices(i, :), dist(i, :))
-end do
+if(present(obs_num)) then
+   call  od_get_close_states(set%obs_defs(obs_num), radius, number(1), &
+         indices(1, :), dist(1, :))
+else
+   do i = 1, set%num_obs_defs
+      call od_get_close_states(set%obs_defs(i), radius, number(i), &
+         indices(i, :), dist(i, :))
+   end do
+endif
 
 end subroutine get_close_states
 

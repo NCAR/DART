@@ -456,7 +456,7 @@ end subroutine get_num_close_states
 
 
 
-subroutine get_close_states(seq, index, radius, num, indices, dist)
+subroutine get_close_states(seq, index, radius, num, indices, dist, obs_num)
 !------------------------------------------------------
 !
 ! Gets the number and index of state variables within distance radius
@@ -469,6 +469,7 @@ integer,                 intent(in)  :: index
 real(r8),                intent(in)  :: radius
 integer,                 intent(out) :: num(:), indices(:, :)
 real(r8),                intent(out) :: dist(:, :)
+integer, optional,       intent(in)  :: obs_num
 
 type(obs_set_type) :: obs_set
 integer :: def_index
@@ -478,8 +479,13 @@ call get_obs_set(obs_set, seq, index)
 !!!obs_set = get_obs_set(seq, index)
 def_index = os_get_obs_def_index(obs_set)
 
-call sd_get_close_states(seq%def_list, def_index, radius, num, &
+if(present(obs_num)) then
+   call sd_get_close_states(seq%def_list, def_index, radius, num, &
+   indices, dist, obs_num)
+else
+   call sd_get_close_states(seq%def_list, def_index, radius, num, &
    indices, dist)
+endif
 
 end subroutine get_close_states
 

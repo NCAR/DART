@@ -61,8 +61,11 @@ real(r8), allocatable  :: obs_err_cov(:), obs(:)
 real(r8)               :: cov_factor, mean_inc, sd_ratio
 character(len = 129), allocatable   :: ens_copy_meta_data(:)
 
-integer,  allocatable :: num_close_ptr(:), close_ptr(:, :), num_close(:)
-real(r8), allocatable :: dist_ptr(:, :)
+! Set a reasonable upper bound on number of close states, will be increased if needed
+integer, parameter :: first_num_close = 100000
+integer :: num_close_ptr(1) 
+integer, allocatable :: close_ptr(:, :)         ! First element size should be 1
+real(r8), allocatable :: dist_ptr(:, :)         ! First element size should be 1
 
 ! Test storage for variance ratio
 real(r8) :: var_ratio_sum, var_ratio
@@ -118,6 +121,9 @@ write(*, *) 'the ensemble size is ', ens_size
 allocate(ens_ptr(ens_size), ens(ens_size), obs_inc(ens_size), &
    ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), &
    ens_copy_meta_data(ens_size + 2))
+
+! Set an initial size for the close state pointers
+allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
 ! Input the obs_sequence
 unit = get_unit()
@@ -302,26 +308,13 @@ AdvanceTime : do i = 1, num_obs_sets
    num_obs_in_set = get_num_obs_in_set(seq, i)
 
    ! Allocate storage for the ensemble priors for this number of observations
-   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set), &
-      num_close(num_obs_in_set), num_close_ptr(num_obs_in_set))
+   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set)) 
 
    ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
 
    ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
-
-
-! Following block replaces cache block -----------------------------
-   write(*, *) 'calling get_close_states'
-   call get_num_close_states(seq, i, 2.0*cutoff, num_close)
-! Allocate storage for num_close, close, and distance
-   allocate(close_ptr(num_obs_in_set, maxval(num_close)), &
-      dist_ptr(num_obs_in_set, maxval(num_close)))
-! Now get the values
-   call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr)
-   write(*, *) 'back form get_close_states'
-!--------------------------------------------------------------------
 
 
 ! A preliminary search for bias???
@@ -362,13 +355,6 @@ AdvanceTime : do i = 1, num_obs_sets
 
 
 
-
-
-
-
-
-
-
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
       ! Compute the ensemble prior for this ob
@@ -385,12 +371,19 @@ AdvanceTime : do i = 1, num_obs_sets
 !!!         call set_single_obs_value(posterior_seq, i, j, ens_obs(k) + obs_inc(k), k)
       end do
 
+! Getting close states for each scalar observation for now
+222   call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr, j)
+      if(num_close_ptr(1) < 0) then
+         deallocate(close_ptr, dist_ptr)
+         allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
+         goto 222
+      endif
+      
       ! Now loop through each close state variable for this observation
-      do k = 1, num_close_ptr(j)
-         ind = close_ptr(j, k)
+      do k = 1, num_close_ptr(1)
+         ind = close_ptr(1, k)
          ! Compute distance dependent envelope
-         cov_factor = comp_cov_factor(dist_ptr(j, k), cutoff)
-
+         cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
          ! Get the ensemble elements for this state variable and do regression
          swath = get_ens_swath(ens_ptr, ens_size, ind)
 
@@ -402,9 +395,8 @@ AdvanceTime : do i = 1, num_obs_sets
 
    end do Observations
 
-! Free up the storage for close
-   deallocate(close_ptr, dist_ptr)
-   deallocate(obs_err_cov, obs, num_close, num_close_ptr)
+! Free up the storage for this obs set
+   deallocate(obs_err_cov, obs)
 
 ! Output posterior diagnostics
 ! Output state diagnostics as requested

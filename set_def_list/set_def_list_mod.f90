@@ -306,7 +306,7 @@ end subroutine get_num_close_states
 
 
 
-subroutine get_close_states(list, index, radius, num, indices, dist)
+subroutine get_close_states(list, index, radius, num, indices, dist, obs_num)
 !-------------------------------------------------------
 !
 ! Returns the list of indices of the close states for this
@@ -319,9 +319,15 @@ integer, intent(in) :: index
 real(r8), intent(in) :: radius
 integer, intent(out) :: num(:), indices(:, :)
 real(r8), intent(out) :: dist(:, :)
+integer, optional, intent(in) :: obs_num
 
-call os_get_close_states(list%sets(index)%obs_set, radius, num, &
+if(present(obs_num)) then
+   call os_get_close_states(list%sets(index)%obs_set, radius, num, &
+   indices, dist, obs_num)
+else
+   call os_get_close_states(list%sets(index)%obs_set, radius, num, &
    indices, dist)
+endif
 
 end subroutine get_close_states
 

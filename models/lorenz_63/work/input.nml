@@ -1,13 +1,13 @@
 &filter_nml
    async = .false.
    ens_size = 20,
-   cutoff = 0.20
+   cutoff = 22222222.0
    cov_inflate = 1.0,
    cache_size = 10,
-   start_from_restart = .false.,
+   start_from_restart = .true.,
    output_restart = .true.
    obs_sequence_file_name = "obs_seq.out",
-   restart_in_file_name = "perfect_ics",
+   restart_in_file_name = "filter_ics",
    restart_out_file_name = "filter_restart",
    init_time_days = 0,
    init_time_seconds = 0, 
