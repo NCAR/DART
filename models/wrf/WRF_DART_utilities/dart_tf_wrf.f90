@@ -11,7 +11,7 @@ PROGRAM dart_tf_wrf
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date, set_date, operator(-), &
-                             get_time, print_time, set_calendar_type, GREGORIAN, days_per_month
+                             get_time, print_time, set_calendar_type, GREGORIAN, julian_day
 use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
                              finalize_utilities, register_module, logfileunit
@@ -53,7 +53,7 @@ namelist /assim_model_nml/ binary_restart_files
 !-------------------------------------------------------------
 
 integer :: iunit, dart_unit
-logical :: dart_to_wrf, leap
+logical :: dart_to_wrf
 
 type(wrf_data) :: wrf
 
@@ -61,7 +61,7 @@ real(r8), pointer :: dart(:)
 type(time_type)   :: dart_time(2), interval_time
 integer           :: number_dart_values, days, seconds, &
                      year, month, day, hour, minute, second
-integer           :: ndays, m
+integer           :: ndays
 integer           :: ndims, idims(2), dimids(2)
 integer           :: i, ivtype
 character(len=80) :: varname
@@ -150,7 +150,7 @@ if( dart_to_wrf ) then
    call get_date(dart_time(1), year, month, day, hour, minute, second)
    write (iunit,*) year, month, day, hour, minute, second
 
-   interval_time = dart_time(2) - dart_time(1)
+   interval_time = dart_time(1) - dart_time(2)
    call get_time(interval_time, seconds, days)
 
    write (iunit,*) (days *24 *3600) + seconds
@@ -190,22 +190,16 @@ if( dart_to_wrf ) then
    call check( nf90_put_var(wrf%ncid, var_id, timestring) )
    call check( nf90_put_att(wrf%ncid, nf90_global, "START_DATE", timestring) )
    call check( nf90_put_att(wrf%ncid, nf90_global, "JULYR", year) )
-   ndays = 0
-   leap = (modulo(year,4) == 0)
-   if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
-      leap=.false.
-   endif
-   do m = 1, month - 1
-      ndays = ndays + days_per_month(m)
-      if(leap .and. m == 2) ndays = ndays + 1
-   enddo
-   ndays = ndays + day
+
+   ndays = julian_day(year, month, day)
+
    call check( nf90_put_att(wrf%ncid, nf90_global, "JULDAY", ndays) )
    call WRF_IO( wrf, "OUTPUT", debug )
 else
    iunit = get_unit()
    call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
-   call check( nf90_Inquire_Variable(wrf%ncid, var_id, varname, xtype=ivtype, ndims=ndims, dimids=dimids) )
+   call check( nf90_Inquire_Variable(wrf%ncid, var_id, varname, xtype=ivtype, &
+        ndims=ndims, dimids=dimids) )
    do i=1,ndims
       call check( nf90_inquire_dimension(wrf%ncid, dimids(i), len=idims(i)) )
       if(debug) write(6,*) ' dimension ',i,idims(i)
@@ -215,9 +209,12 @@ else
    call get_wrf_date(timestring, year, month, day, hour, minute, second)
    dart_time(1) = set_date(year, month, day, hour, minute, second)
 
-   write(6,*) 'Date from wrfinput'
-   write(6,*) year, month, day, hour, minute, second
+   write(6,*) 'Time from wrfinput'
+   call print_time(dart_time(1))
 
+   open(unit = iunit, file = 'wrf.info')
+   call write_time(iunit, dart_time(1))
+   close(iunit)
    write(6,*) 'Time written to dart vector file:'
    call print_time(dart_time(1))
 
