@@ -9,7 +9,7 @@ module obs_sequence_mod
 
 use types_mod
 use utilities_mod,    only : open_file
-use time_manager_mod, only : time_type, set_time, operator(<=)
+use time_manager_mod, only : time_type, set_time, operator(<=), operator(<)
 
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
    obs_set_copy, get_num_obs, read_obs_set_time, obs_set_time_copy, &
@@ -578,7 +578,7 @@ type(time_type) :: time
 ! If there are no other obs in sequence, nothing to check
 if(sequence%num_obs_sets /= 0) then
    time = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
-   if(get_obs_set_time(obs_set) <= time .and. sequence%num_obs_sets > 0) then
+   if(get_obs_set_time(obs_set) < time .and. sequence%num_obs_sets > 0) then
       write(*, *) 'Error: obs_set being added to sequence is not in time order: add_obs_set'
       stop
    endif

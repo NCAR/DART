@@ -32,7 +32,8 @@ public read_restart, write_restart, assim_tools_init, &
    update_from_obs_inc, local_update_from_obs_inc, robust_update_from_obs_inc, &
    obs_inc_index, obs_inc4_index, obs_increment5, obs_increment6, &
    obs_increment7, obs_increment8, obs_increment9, obs_increment10, &
-   obs_increment11, obs_increment12, &
+   obs_increment11, obs_increment12, obs_increment13, obs_increment14, &
+   obs_increment15, obs_increment16, obs_increment17, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
@@ -297,6 +298,456 @@ end subroutine obs_increment11
 
 
 
+subroutine obs_increment14(ens, ens_size, obs, obs_var, obs_inc)
+! in its present form.
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! ent14 explores changing the shape of the relation between the ratio
+! of the error and the expected error_sd and the factor used to increase
+! the spread of the prior and obs variance.
+! 
+! Extending initial success with obs_increment7. In this case, begin 
+! by doing the standard update for the mean for the observation. Then
+! go back and evaluate the ratio of the prior difference between the
+! ensemble mean and the obs and the expected value given the prior
+! sample variance and the specified obs variance. If the ratio
+! exceeds a threshold, then adjust the prior variance and obs variance
+! by the same factor to reduce the ratio to the threshold (could also
+! consider damping it toward the threshold by some factor to make
+! the shocks less?). Then, recompute the updated variance using this
+! and adjust the ensemble spread only. This means that a bad observation
+! will increase the spread some but will not immediately pull the mean
+! off toward the bad observation any further.
+
+! ORIGINALLY identical to obs_increment7. Looking at changing inflate
+! ratio for state versus obs.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+real(r8) :: factor
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
+real(r8), parameter :: ratio_threshold = 2.0
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Compute the updated mean and covariance in the standard fashion
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! AT THIS POINT CAN EVALUATE INCONSISTENCY
+! CHECK ALL THIS
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / diff_sd)
+
+! Only modify if the ratio exceeds the threshold value
+!!!if(ratio < 1.0) factor = 1.0
+!!!if(ratio > 1.0) factor = 1.0 + (ratio - 1.0) / 2
+factor = 1.0 + (ratio - 1.0) / 4.0
+
+! Can now inflate by this ratio and then do adjustment
+inf_obs_var = factor**2 * obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + factor * (ens - prior_mean)
+inf_prior_cov = factor**2 * prior_cov
+
+
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
+
+a = sqrt(new_cov * inf_prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment14
+
+
+
+
+
+subroutine obs_increment15(ens, ens_size, obs, obs_var, obs_inc)
+! in its present form.
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! ent15 explores changing the shape of the relation between the ratio
+! of the error and the expected error_sd and the factor used to increase
+! the spread of the prior and obs variance. As per exp14, it uses
+! an inflation factor of 1.0 + 0.5 * (ratio - 1) BUT, it only applies
+! this if the ratio is > 1. Otherwise, factor is left at 1.0.
+! 
+! Extending initial success with obs_increment7. In this case, begin 
+! by doing the standard update for the mean for the observation. Then
+! go back and evaluate the ratio of the prior difference between the
+! ensemble mean and the obs and the expected value given the prior
+! sample variance and the specified obs variance. If the ratio
+! exceeds a threshold, then adjust the prior variance and obs variance
+! by the same factor to reduce the ratio to the threshold (could also
+! consider damping it toward the threshold by some factor to make
+! the shocks less?). Then, recompute the updated variance using this
+! and adjust the ensemble spread only. This means that a bad observation
+! will increase the spread some but will not immediately pull the mean
+! off toward the bad observation any further.
+
+! ORIGINALLY identical to obs_increment7. Looking at changing inflate
+! ratio for state versus obs.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+real(r8) :: factor
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
+real(r8), parameter :: ratio_threshold = 2.0
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Compute the updated mean and covariance in the standard fashion
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! AT THIS POINT CAN EVALUATE INCONSISTENCY
+! CHECK ALL THIS
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / diff_sd)
+
+! Only modify if the ratio exceeds the threshold value
+if(ratio > 1.0) then
+   factor = 1.0 + (ratio - 1.0) / 2
+else
+   factor = 1.0
+endif
+
+! Can now inflate by this ratio and then do adjustment
+inf_obs_var = factor**2 * obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + factor * (ens - prior_mean)
+inf_prior_cov = factor**2 * prior_cov
+
+
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
+
+a = sqrt(new_cov * inf_prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment15
+
+
+
+
+
+subroutine obs_increment16(ens, ens_size, obs, obs_var, obs_inc)
+! in its present form.
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! ent15 explores changing the shape of the relation between the ratio
+! of the error and the expected error_sd and the factor used to increase
+! the spread of the prior and obs variance. As per exp14, it uses
+! an inflation factor of 1.0 + 0.5 * (ratio - 1) BUT, it only applies
+! this if the ratio is > 1. Otherwise, factor is left at 1.0.
+! 
+! Extending initial success with obs_increment7. In this case, begin 
+! by doing the standard update for the mean for the observation. Then
+! go back and evaluate the ratio of the prior difference between the
+! ensemble mean and the obs and the expected value given the prior
+! sample variance and the specified obs variance. If the ratio
+! exceeds a threshold, then adjust the prior variance and obs variance
+! by the same factor to reduce the ratio to the threshold (could also
+! consider damping it toward the threshold by some factor to make
+! the shocks less?). Then, recompute the updated variance using this
+! and adjust the ensemble spread only. This means that a bad observation
+! will increase the spread some but will not immediately pull the mean
+! off toward the bad observation any further.
+
+! ORIGINALLY identical to obs_increment7. Looking at changing inflate
+! ratio for state versus obs.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+real(r8) :: factor
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
+real(r8), parameter :: ratio_threshold = 2.0
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Compute the updated mean and covariance in the standard fashion
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! AT THIS POINT CAN EVALUATE INCONSISTENCY
+! CHECK ALL THIS
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / diff_sd)
+
+! Only modify if the ratio exceeds the threshold value
+if(ratio > 1.0) then
+   factor = 1.0 + (ratio - 1.0) / 2.0 
+else if (ratio < 1.0) then
+   factor = 1.0 + (ratio - 1.0) / 6
+endif
+
+! Can now inflate by this ratio and then do adjustment
+inf_obs_var = factor**2 * obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + factor * (ens - prior_mean)
+inf_prior_cov = factor**2 * prior_cov
+
+
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
+
+a = sqrt(new_cov * inf_prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment16
+
+
+
+
+
+
+subroutine obs_increment17(ens, ens_size, obs, obs_var, obs_inc, slope)
+! in its present form.
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! ent15 explores changing the shape of the relation between the ratio
+! of the error and the expected error_sd and the factor used to increase
+! the spread of the prior and obs variance. As per exp14, it uses
+! an inflation factor of 1.0 + 0.5 * (ratio - 1) BUT, it only applies
+! this if the ratio is > 1. Otherwise, factor is left at 1.0.
+! 
+! Extending initial success with obs_increment7. In this case, begin 
+! by doing the standard update for the mean for the observation. Then
+! go back and evaluate the ratio of the prior difference between the
+! ensemble mean and the obs and the expected value given the prior
+! sample variance and the specified obs variance. If the ratio
+! exceeds a threshold, then adjust the prior variance and obs variance
+! by the same factor to reduce the ratio to the threshold (could also
+! consider damping it toward the threshold by some factor to make
+! the shocks less?). Then, recompute the updated variance using this
+! and adjust the ensemble spread only. This means that a bad observation
+! will increase the spread some but will not immediately pull the mean
+! off toward the bad observation any further.
+
+! ORIGINALLY identical to obs_increment7. Looking at changing inflate
+! ratio for state versus obs.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+real(r8), intent(in) :: slope
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+real(r8) :: factor
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
+real(r8), parameter :: ratio_threshold = 2.0
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Compute the updated mean and covariance in the standard fashion
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! AT THIS POINT CAN EVALUATE INCONSISTENCY
+! CHECK ALL THIS
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / diff_sd)
+
+! Only modify if the ratio exceeds the threshold value
+if(ratio > 1.0 .and. slope > 0.0) then
+   factor = 1.0 + (ratio - 1.0) * slope
+else 
+   factor = 1.0
+endif
+
+
+!!!write(*, *) 'slope and factor ', slope, factor
+
+! Can now inflate by this ratio and then do adjustment
+inf_obs_var = factor**2 * obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + factor * (ens - prior_mean)
+inf_prior_cov = factor**2 * prior_cov
+
+
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
+
+a = sqrt(new_cov * inf_prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment17
+
+
+
+
+subroutine obs_increment13(ens, ens_size, obs, obs_var, obs_inc)
+! in its present form.
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! 
+! Extending initial success with obs_increment7. In this case, begin 
+! by doing the standard update for the mean for the observation. Then
+! go back and evaluate the ratio of the prior difference between the
+! ensemble mean and the obs and the expected value given the prior
+! sample variance and the specified obs variance. If the ratio
+! exceeds a threshold, then adjust the prior variance and obs variance
+! by the same factor to reduce the ratio to the threshold (could also
+! consider damping it toward the threshold by some factor to make
+! the shocks less?). Then, recompute the updated variance using this
+! and adjust the ensemble spread only. This means that a bad observation
+! will increase the spread some but will not immediately pull the mean
+! off toward the bad observation any further.
+
+! ORIGINALLY identical to obs_increment7. Looking at changing inflate
+! ratio for state versus obs.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
+real(r8), parameter :: ratio_threshold = 2.0
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Compute the updated mean and covariance in the standard fashion
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! AT THIS POINT CAN EVALUATE INCONSISTENCY
+! CHECK ALL THIS
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / (ratio_threshold * diff_sd))
+
+! Only modify if the ratio exceeds the threshold value
+if(ratio < 1.0) ratio = 1.0
+
+! Can now inflate by this ratio and then do adjustment
+inf_obs_var = ratio**2 * obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + 1.2 * ratio * (ens - prior_mean)
+inf_prior_cov = 1.2**2 * ratio**2 * prior_cov
+
+
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
+
+a = sqrt(new_cov * inf_prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment13
+
+
+
+
+
 subroutine obs_increment7(ens, ens_size, obs, obs_var, obs_inc)
 !========================================================================
 ! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
@@ -321,6 +772,7 @@ real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
 real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
 real(r8):: prior_cov, sx, s_x2
 real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
 
 integer :: i
 
@@ -337,27 +789,25 @@ prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
 ! AT THIS POINT CAN EVALUATE INCONSISTENCY
 error = prior_mean - obs
 diff_sd = sqrt(obs_var + prior_cov)
-ratio = abs(error / (3.0 * diff_sd))
+ratio = abs(error / (2.0 * diff_sd))
 
 ! Only work with ratio's larger than 1?
 if(ratio < 1.0) ratio = 1.0
 
 ! Can now inflate by this ratio and then do adjustment
 inf_obs_var = ratio**2 * obs_var
-obs_var_inv = 1.0 / inf_obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
 ! Form inflated ensemble
 inf_ens = prior_mean + ratio * (ens - prior_mean)
-prior_cov = ratio**2 * prior_cov
-
+inf_prior_cov = ratio**2 * prior_cov
 
 ! CHECK ALL THIS
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
 
-prior_cov_inv = 1.0 / prior_cov
-new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (inf_prior_cov_inv * prior_mean + obs / inf_obs_var)
 
-new_mean = new_cov * (prior_cov_inv * prior_mean + obs / inf_obs_var)
-
-a = sqrt(new_cov * prior_cov_inv)
+a = sqrt(new_cov * inf_prior_cov_inv)
 
 obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
 

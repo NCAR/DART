@@ -67,7 +67,7 @@ end type model_type
 !----------------------------------------------------------------------
 ! File where basic info about model configuration can be found; should be namelist
 
-character(len = 128) :: model_config_file = 'CAM_FILE.nc'
+character(len = 128) :: model_config_file = 'caminput.nc'
 !character(len = 128) :: model_config_file = 'T5H0-12icl.cam2.i.0001-09-01-43200.nc'
 !----------------------------------------------------------------------
 

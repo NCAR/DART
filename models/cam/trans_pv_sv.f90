@@ -18,7 +18,7 @@ use assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size , set_model_state_vector, write_state_restart
 use utilities_mod, only : get_unit
 
-character (len = 128) :: file_name = 'CAM_FILE.nc', file_out = 'temp_ic'
+character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ic'
 
 ! Temporary allocatable storage to read in a native format for cam state
 type(assim_model_type) :: x

@@ -101,7 +101,7 @@ public        get_model_size, &
         init_time, &
         init_conditions, &
         TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER, &
-        model_get_close_states, &
+        model_get_close_states, & 
         nc_write_model_atts
 
 !-----------------------------------------------------------------------
@@ -136,9 +136,11 @@ character(len=128) :: &
       integer :: days=0, hours=0, minutes=0, seconds=0
       integer :: dt_atmos = 0
       real :: noise_sd = 0.0
+      integer :: dt_bias = -1
 
       namelist /main_nml/ current_time, override, dt_atmos, &
-                          days, hours, minutes, seconds, noise_sd
+                          days, hours, minutes, seconds, noise_sd, &
+                          dt_bias 
 
 !-----------------------------------------------------------------------
 ! More stuff from atmos_solo driver
@@ -202,7 +204,7 @@ implicit none
 !-----------------------------------------------------------------------
 
    Time_prev = Time                       ! two time-level scheme
-   Time_next = Time + get_model_time_step()
+   Time_next = Time + Time_step_atmos
 
 !---- dynamics -----
 
@@ -248,7 +250,7 @@ real(r8) :: temp_t
 call vector_to_prog_var(x, get_model_size(), Var)
 
 ! Compute the end of the time interval
-Time_next = Time + get_model_time_step()
+Time_next = Time + Time_step_atmos
 
 ! Do dynamics
 ! Dynam, Var_dt and omega currently in static storage, is that where they should stay?
@@ -259,8 +261,8 @@ call bgrid_core_driver(Time_next, Var, Var_dt, Dynam, omega)
 call bgrid_physics(physics_window, real(dt_atmos), Time_next, &
    Dynam%Hgrid, Dynam%Vgrid, Dynam, Var, Var_dt)
 
-write(*, *) 'max tendency ', maxval(abs(Var_dt%t))
-write(*, *) 'mean tendency ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
+!!!write(*, *) 'max tendency ', maxval(abs(Var_dt%t))
+!!!write(*, *) 'mean tendency ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
 
 ! First pass at creating some random 'sub-grid' noise 
 ! Need to initialize random sequence on first call
@@ -281,8 +283,8 @@ do i = 1, size(Var_dt%t, 1)
    end do
 end do
 
-write(*, *) 'max tendency with noise ', maxval(abs(Var_dt%t))
-write(*, *) 'mean tendency with noise ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
+!!!write(*, *) 'max tendency with noise ', maxval(abs(Var_dt%t))
+!!!write(*, *) 'mean tendency with noise ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
 
 ! Time differencing and diagnostics
 call bgrid_core_time_diff(omega, Time_next, Dynam, Var, Var_dt)
@@ -1024,6 +1026,14 @@ type(time_type) :: get_model_time_step
 
 ! Time_step_atmos is global static storage
 get_model_time_step =  Time_step_atmos
+
+
+! CODE ADDED TO SIMULATE MODEL ERROR BY MAKING MODEL THINK IT IS
+! ADVANCING AT A DIFFERENT RATE THAN IT IS
+! THIS auxiliary timestep is only used if namelist parameter
+! dt_bias is set to a non-zero value 
+
+if(dt_bias > 0) get_model_time_step = set_time(dt_bias, 0)
 
 end function get_model_time_step
 

@@ -590,7 +590,7 @@ return
 
 ! Loop through each model state and advance
 10 do i = 1, num
-   write(*, *) 'advancing model state ', i
+!!!   write(*, *) 'advancing model state ', i
    model_time = get_model_time(assim_model(i))
 
 ! Check for time error; use error handler when available

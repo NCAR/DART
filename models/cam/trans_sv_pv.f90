@@ -24,7 +24,7 @@ type(assim_model_type) :: x
 type(model_type) :: var
 real(r8), allocatable :: x_state(:)
 integer :: file_unit, x_size
-character (len = 128) :: file_name = 'CAM_FILE.nc', file_in = 'temp_ic'
+character (len = 128) :: file_name = 'caminput.nc', file_in = 'temp_ic'
 
 ! Static init assim model calls static_init_model
 call static_init_assim_model()

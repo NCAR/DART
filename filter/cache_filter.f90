@@ -26,8 +26,7 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
    get_obs_values, &
    obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, &
-   set_single_obs_value, get_obs_def_index, get_num_close_states, &
-   get_close_states
+   set_single_obs_value, get_obs_def_index
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
 use utilities_mod,    only :  get_unit, open_file, close_file, check_nml_error, &
@@ -46,6 +45,9 @@ use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
    obs_increment13, obs_increment14, obs_increment15, obs_increment16, &
    obs_increment17
 use cov_cutoff_mod,   only : comp_cov_factor
+
+use close_state_cache_mod, only : close_state_cache_type, cache_init, &
+   get_close_cache
 
 use location_mod, only : location_type
 
@@ -82,8 +84,10 @@ real(r8), allocatable  :: obs_err_cov(:), obs(:)
 real(r8)               :: cov_factor, mean_inc, sd_ratio
 character(len = 129), allocatable   :: ens_copy_meta_data(:)
 
-integer,  allocatable :: num_close_ptr(:), close_ptr(:, :), num_close(:)
-real(r8), allocatable :: dist_ptr(:, :)
+! Storage for caching close states
+type(close_state_cache_type) :: cache
+integer,  pointer :: num_close_ptr(:), close_ptr(:, :)
+real(r8), pointer :: dist_ptr(:, :)
 
 ! Test storage for variance ratio
 real(r8) :: var_ratio_sum, var_ratio
@@ -184,6 +188,9 @@ if(output_state_ens_spread) then
    call init_assim_model(ens_spread)
    ens_spread_ptr%state => get_state_vector_ptr(ens_spread)
 endif
+
+! Initialize a cache for close state information
+call cache_init(cache, cache_size)
 
 ! Set up diagnostic output for model state, if output is desired
 
@@ -336,19 +343,11 @@ AdvanceTime : do i = 1, num_obs_sets
    ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
 
-
-! Following block replaces cache block -----------------------------
-   write(*, *) 'calling get_close_states'
-   allocate(num_close(num_obs_in_set))
-   call get_num_close_states(seq, i, 2.0*cutoff, num_close)
-! Allocate storage for num_close, close, and distance
-   allocate(num_close_ptr(num_obs_in_set), &
-      close_ptr(num_obs_in_set, maxval(num_close)), &
-      dist_ptr(num_obs_in_set, maxval(num_close)))
-! Now get the values
-   call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr)
-   write(*, *) 'back form get_close_states'
-!--------------------------------------------------------------------
+   ! Try out the cache
+   write(*, *) 'calling get_close_cache;'
+   call get_close_cache(cache, seq, i, 2.0*cutoff, num_obs_in_set, &
+      num_close_ptr, close_ptr, dist_ptr)
+   write(*, *) 'back form get_close_cache'
 
 
 ! A preliminary search for bias???
@@ -436,10 +435,6 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
 
    end do Observations
-
-! Free up the storage for close
-   deallocate(num_close_ptr, close_ptr, dist_ptr)
-   deallocate(num_close)
 
 ! Output posterior diagnostics
 ! Output state diagnostics as requested

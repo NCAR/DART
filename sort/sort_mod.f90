@@ -7,6 +7,8 @@ module sort_mod
 ! $Author$ 
 !
 
+use types_mod
+
 private
 public sort, index_sort
 
@@ -14,15 +16,15 @@ contains
 
 !=======================================================================
 
-! a silly, inefficient sort for double precision array data
+! a silly, inefficient sort for real(r8) array data
 
 function sort(x)
 
 implicit none
 
-double precision, intent(in) :: x(:)
-double precision :: sort(size(x))
-double precision :: tmp
+real(r8), intent(in) :: x(:)
+real(r8) :: sort(size(x))
+real(r8) :: tmp
 integer j, k
 
 ! Copy to sort
@@ -45,12 +47,12 @@ end function sort
 
    subroutine index_sort(dist, index, num)
 
-!  double precision indexed sort
+!  real(r8) indexed sort
 
    implicit none
 
    integer num, index(num)
-   double precision dist(num)
+   real(r8) dist(num)
    integer i, j, k, itmp
 
 !  INITIALIZE THE INDEX ARRAY TO INPUT ORDER

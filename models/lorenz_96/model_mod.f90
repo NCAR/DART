@@ -31,7 +31,10 @@ public   get_model_size, &
 
  integer,  parameter :: model_size =   40
  real(r8), parameter ::    forcing = 8.00_r8
- real(r8), parameter ::    delta_t = 0.05_r8   ! Original timestep 
+!!! real(r8), parameter ::    delta_t = 0.05_r8   ! Original timestep 
+! Erroroneous timestep for bias simulation
+ real(r8), parameter ::    delta_t = 0.04_r8   
+
 !real(r8), parameter ::    delta_t = 0.005_r8  ! timestep for assim experiments
 
 ! Define the location of the state variables in module storage

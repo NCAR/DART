@@ -18,13 +18,14 @@ program create_obs_sequence
 ! TJH Sun Jun 30 15:20:04 MDT 2002: the sets must be input in a monotonic ascending
 !    fashion. At some point we need to sort these sets.
 
-
+use types_mod
 use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
 use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
-use time_manager_mod, only : time_type, set_time, operator(*), operator(+)
+use time_manager_mod, only : time_type, set_time, get_time, operator(*), operator(+)
 use utilities_mod, only : open_file
+use sort_mod, only : index_sort
 
 implicit none
 
@@ -41,8 +42,11 @@ type(obs_set_type)      :: obs_set
 
 ! Fixed storage leads to use of parameter for array, fix this
 integer, parameter :: max_obs = 10000
-integer            :: set_index(max_obs)
+integer            :: set_index(max_obs), sort_ind(max_obs)
 type(time_type)    :: time(max_obs), init_time, period, this_time
+
+! Kluge for sorting time types
+real(r8) :: time_secs(max_obs)
 
 integer :: in_unit, out_unit, in_unit2, out_unit2
 integer :: i, j, obs_set_def_index, index = 0, days, seconds, option
@@ -146,13 +150,22 @@ do i = 1, num_obs_set_defs
    endif
 enddo
 
-! Next would have to sort the list; do this in a moment
+! Next would have to sort the list;  This is a quick fix ; should have
+! time sorting routines
+! May be that this is okay with most floating point precisions???
+do i = 1, index
+   call get_time(time(i), seconds, days)
+   time_secs(i) = days * 86400 + seconds
+end do
+call index_sort(time_secs, sort_ind, index) 
 
 ! Now generate a long obs_sequence with regular occurences of the obs_set_def
 
 do i = 1, index
-   obs_set = init_obs_set(set_def_list, set_index(i), 0)
-   call set_obs_set_time(obs_set, time(i))
+   obs_set = init_obs_set(set_def_list, set_index(sort_ind(i)), 0)
+   call get_time(time(sort_ind(i)), seconds, days)
+   write(*, *) 'time ', i, ' is ', seconds, days
+   call set_obs_set_time(obs_set, time(sort_ind(i)))
    call add_obs_set(seq, obs_set)       ! Put this obs_set into the sequence
 enddo
 
