@@ -1,0 +1,7 @@
+FC = f90
+LD = f90
+LIBS = -xlic_lib=sunperf
+CPPFLAGS = -macro_expand
+FFLAGS = -O3 -dalign -xlibmil
+LDFLAGS = $(LIBS)
+LIST = -Xlist

@@ -1,0 +1,6 @@
+FC = f90
+LD = f90
+CPPFLAGS = -macro_expand
+FFLAGS = -d8 -64 -i4 -r8 -mips4 -O3
+LDFLAGS = -64 -mips4 $(LIBS)
+LIST = -listing
