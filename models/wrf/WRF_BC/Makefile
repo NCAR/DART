@@ -1,5 +1,14 @@
-# compaq flags
+#
+# <next four lines automatically updated by CVS, do not edit>
+# $Source$
+# $Revision$
+# $Date$
+# $Author$
+# $Id$
+#
 
+# These commented-out scenarios are not guaranteed in any way ...
+#
 #LIBS		= -L/usr/local/lib32/r4i4 -lnetcdf -lm
 #INCL		= -I/usr/local/include -I./
 #FC		= xlf

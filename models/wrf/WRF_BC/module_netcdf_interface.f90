@@ -4,11 +4,12 @@
 
 MODULE module_netcdf_interface
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
-! $Author: cay
+! $Author$
+! $Id$
 
 CONTAINS
 

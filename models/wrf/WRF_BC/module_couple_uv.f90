@@ -4,11 +4,12 @@
  
 MODULE module_couple_uv
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
+! $Id$
 
 CONTAINS
 

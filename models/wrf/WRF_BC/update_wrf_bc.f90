@@ -9,6 +9,7 @@ program update_wrf_bc
 ! $Revision$
 ! $Date$
 ! $Author$
+! $Id$
 !
 ! program to update BC file from 3dvar or filter output.
 ! current version reads only wrf-netcdf file format.
