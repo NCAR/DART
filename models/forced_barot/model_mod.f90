@@ -3,6 +3,7 @@ module model_mod
 ! This is a non-divergent barotropic model on the sphere. Currently makes
 ! use of NAG based transforms which are not available on NCAR systems.
 
+use types_mod
 use transforms_mod
 use ncd_file_mod
 use nag_wrap_mod, only : g05ddf_wrap

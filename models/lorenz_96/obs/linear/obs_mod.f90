@@ -20,7 +20,7 @@ public num_obs, obs_var, take_obs, ens_ics, init_obs, take_single_obs, &
 
 public obs_loc
 
-integer(i4) :: num_obs = 0
+integer :: num_obs = 0
 
 ! Following is to allow initialization of obs_def_type
 
@@ -67,8 +67,8 @@ subroutine init_obs
  
 implicit none
 
-integer(i4) :: i, state_index(2), unit_num, model_size
-real(r8)    :: coef(2), x, loc, pos
+integer  :: i, state_index(2), unit_num, model_size
+real(r8) :: coef(2), x, loc, pos
 
 obs_init = .true.        ! Initialization for identity observations
 
@@ -159,9 +159,9 @@ function take_single_obs(x, index)
 
 implicit none
 
-real(r8),    intent(in) :: x(:)
-integer(i4), intent(in) :: index
-real(r8)                :: take_single_obs
+real(r8), intent(in) :: x(:)
+integer,  intent(in) :: index
+real(r8)             :: take_single_obs
 
 real(r8) :: take(1)
 
@@ -213,7 +213,7 @@ implicit none
 real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: as(:, :)
 
-integer(i4) :: i, j
+integer :: i, j
 
 if(first_ens_seq) then
    call init_random_seq(ens_seq)
@@ -243,12 +243,12 @@ subroutine get_close_state(obs_num, list, max_list, num)
 
 implicit none
 
-integer(i4), intent( in) :: obs_num, max_list
-integer(i4), intent(out) :: list(max_list), num
+integer, intent( in) :: obs_num, max_list
+integer, intent(out) :: list(max_list), num
 
-real(r8)    :: x, x_min, x_max, dist(max_list)
-integer(i4) :: ind_min, ind_max, i, model_size
-integer(i4) :: index(max_list), list_temp(max_list)
+real(r8) :: x, x_min, x_max, dist(max_list)
+integer  :: ind_min, ind_max, i, model_size
+integer  :: index(max_list), list_temp(max_list)
 
 ! Important to initialize obs structure before taking obs
 

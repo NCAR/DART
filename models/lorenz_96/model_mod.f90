@@ -12,15 +12,15 @@ public init_model, get_model_size, init_conditions, adv_1step, advance, &
    adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
    model_output
 
-integer(i4), parameter :: model_size =   40_i4
-real(r8),    parameter ::    forcing = 8.00_r8
-real(r8),    parameter ::    delta_t = 0.05_r8
+integer,  parameter :: model_size =   40
+real(r8), parameter ::    forcing = 8.00_r8
+real(r8), parameter ::    delta_t = 0.05_r8
 
 logical :: output_init = .FALSE.
 
 ! Define output indices for diagnostics
 
-integer(i4) :: diag_output_index(9)
+integer :: diag_output_index(9)
 
 ! Define the location of the state variables in module storage
 
@@ -53,7 +53,7 @@ implicit none
 real(r8), intent( in) :: x(:)
 real(r8), intent(out) :: dt(:)
 
-integer(i4) :: j, jp1, jm1, jm2
+integer :: j, jp1, jm1, jm2
 
 do j = 1, model_size
    jp1 = j + 1
@@ -81,7 +81,7 @@ implicit none
 
 real(r8), intent(inout) :: x(:)
 real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
-integer(i4) :: i
+integer :: i
 
 !  Compute the first intermediate step
 
@@ -142,8 +142,8 @@ implicit none
 
 real(r8), intent(out) :: x(:)
 
-integer(i4) :: i
-real(r8)    :: x_loc
+integer  :: i
+real(r8) :: x_loc
 
 ! Define the interesting indexes for variables to do diag output; span lats
 
@@ -180,11 +180,11 @@ subroutine advance(x, num, xnew)
 
 implicit none
 
-real(r8),  intent( in) :: x(:)
-real(r8),  intent(out) :: xnew(:)
-integer(i4),intent( in) :: num
+real(r8), intent( in) :: x(:)
+real(r8), intent(out) :: xnew(:)
+integer,  intent( in) :: num
 
-integer(i4) :: i
+integer :: i
 
 xnew = x      ! Copy initial conditions to avoid overwrite
 
@@ -207,7 +207,7 @@ end subroutine advance
 !real, intent(in) :: x(model_size)
 !real, intent(in) :: time
 !real :: points(model_size)
-!integer(i4) :: i
+!integer :: i
 
 !if(.NOT. output_init) then
 !   output_init = .TRUE.
@@ -237,10 +237,10 @@ subroutine get_close_pts(list, num)
 
 implicit none
 
-integer(i4), intent(   in) :: num
-integer(i4), intent(inout) :: list(model_size, num)
+integer, intent(   in) :: num
+integer, intent(inout) :: list(model_size, num)
 
-integer(i4) :: i, j, offset, index, temp
+integer :: i, j, offset, index, temp
 
 !do i = 1, model_size
 !   do offset = -num/2, -num/2 + num - 1
@@ -283,7 +283,7 @@ function get_model_size()
 !
 ! Returns size of model
 
-integer(i4) :: get_model_size
+integer :: get_model_size
 
 get_model_size = model_size
 
