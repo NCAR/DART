@@ -8,6 +8,8 @@ module model_mod
 ! $Source$
 ! $Revision$
 ! $Date$
+! $Author$
+! $Id$
 
 ! Assimilation interface for WRF model
 
@@ -126,9 +128,6 @@ end type
 
 type(wrf_static_data_for_dart) :: wrf
 
-! ***** define other auxillary model data here as needed
-
-!------------------------------------------------------------
 
 contains
 
@@ -138,22 +137,21 @@ subroutine static_init_model()
 
 ! INitializes class data for WRF???
 
-integer :: mode
 integer :: ncid, bt_id, we_id, sn_id
 integer :: io, ierr, iunit
 
-character (len=80) :: name
-logical, parameter :: debug = .true.  
-integer :: var_id, ind, i, map_proj 
+character (len=80)    :: name
+logical, parameter    :: debug = .false.
+integer               :: var_id, ind, i, map_proj
 integer, dimension(5) :: kount, start, stride, map
-real(r8)    :: zero_d(1)
+real(r8)              :: zero_d(1)
 
 real(r8) :: dx, dy, dt
 
-real(r8) :: cen_lat, cen_lon, truelat1, truelat2
+real(r8)                              :: cen_lat, cen_lon, truelat1, truelat2
 real(r8), allocatable, dimension(:,:) :: temp
 
-real(r8)    :: theta1,theta2,cell,cell2,psx
+real(r8) :: theta1,theta2,cell,cell2,psx
 
 !----------------------------------------------------------------------
 
@@ -185,8 +183,7 @@ endif
 call error_handler(E_MSG,'static_init_model','namelist model_nml values are:',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 
-mode = 0
-call check( nf90_open('wrfinput', mode, ncid) )
+call check( nf90_open('wrfinput', NF90_NOWRITE, ncid) )
 if(debug) write(6,*) ' ncid is ',ncid
 
 ! get wrf grid dimensions
@@ -494,7 +491,7 @@ contains
   ! Internal subroutine - checks error status after each netcdf, prints 
   !                       text message each time an error code is returned. 
   subroutine check(istatus)
-    integer, intent ( in) :: istatus
+    integer, intent (in) :: istatus
 
     if(istatus /= nf90_noerr) call error_handler(E_ERR, 'static_init_model', &
        trim(nf90_strerror(istatus)), source, revision, revdate)
@@ -607,7 +604,7 @@ logical  :: var_found
 real(r8) :: lon, lat, lev
 
 integer :: i
-logical, parameter :: debug = .true.  
+logical, parameter :: debug = .false.  
 character(len=129) :: errstring
 
 if(debug) then
@@ -726,7 +723,7 @@ end subroutine get_state_meta_data
 function model_interpolate(x, location, obs_kind)
 !!!function model_interpolate(x, lon, lat, level, type)
 
-logical, parameter :: debug = .true.  
+logical, parameter :: debug = .false.  
 real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
@@ -1046,7 +1043,7 @@ integer              :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 
 integer             :: i, j, n, m
 real(r8), parameter :: r_earth = 6.37e+06 ! earth radius in meters
-logical,  parameter :: debug= .true.  
+logical,  parameter :: debug = .false.  
 
 if(debug) write(6,*) ' in grid_close_states '
 
@@ -1773,7 +1770,7 @@ integer                            :: ierr          ! return value of function
 
 !-----------------------------------------------------------------
 
-logical, parameter :: debug = .true.  
+logical, parameter :: debug = .false.  
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, VarID
 integer :: i,j
