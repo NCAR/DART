@@ -27,7 +27,7 @@ use obs_set_mod, only : init_obs_set, obs_set_type, set_obs_set_time, write_obs_
    get_obs_set_time, get_num_obs
 use time_manager_mod, only : time_type, set_time, print_time
 use utilities_mod, only : open_file
-use assim_model_mod, only : assim_model_type, initialize_assim_model, get_model_size, &
+use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
    get_model_time, init_diag_output, output_diagnostics
@@ -63,18 +63,18 @@ open(file = file_name, unit = 10)
 seq = read_obs_sequence_def(unit)
 
 ! Initialize the model now that obs_sequence is all set up
-call initialize_assim_model()
+call static_init_assim_model()
 model_size = get_model_size()
 
 ! Get the initial condition
-x = get_initial_condition()
+call get_initial_condition(x)
 
 ! Set up output of truth for state
 state_unit = init_diag_output('true_state', 'true state from control', 1, (/'true state'/))
 
 ! Advance for a long time (5 days) to get things started?
 time = set_time(0, 5)
-x = advance_state(x, time)
+call advance_state(x, time)
 
 ! Reset the control model time to 0
 time = set_time(0, 0)
@@ -100,7 +100,7 @@ do i = 1, num_obs_sets
    call print_time(time)
    time2 = get_closest_state_time_to(x, time)
 ! Advance the state to this time
-   x = advance_state(x, time2)
+   call advance_state(x, time2)
 
 ! Output the true state
    call output_diagnostics(state_unit, x, 1)

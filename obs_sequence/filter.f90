@@ -19,10 +19,11 @@ use obs_sequence_mod, only : obs_sequence_type, &
    obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, set_single_obs_value
 use time_manager_mod, only : time_type, set_time, print_time
 use utilities_mod, only :  get_unit
-use assim_model_mod, only : assim_model_type, initialize_assim_model, get_model_size, &
+use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
-   get_model_time, init_diag_output, output_diagnostics
+   get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
+   copy_assim_model
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod, only : obs_increment, update_from_obs_inc
 use cov_cutoff_mod, only : comp_cov_factor
@@ -75,11 +76,18 @@ call inc_num_obs_copies(prior_seq, ens_size, ens_copy_meta_data)
 call inc_num_obs_copies(posterior_seq, ens_size, ens_copy_meta_data)
 
 ! Initialize the model now that obs_sequence is all set up
-call initialize_assim_model()
+call static_init_assim_model()
 model_size = get_model_size()
 
+! Initialize the control and ensemble states
+call init_assim_model(x)
+do i = 1, ens_size
+   call init_assim_model(ens(i))
+end do
+
 ! Get the initial condition
-x = get_initial_condition()
+call init_assim_model(x)
+call get_initial_condition(x)
 
 ! Set up diagnostic output for model state
 prior_state_unit = init_diag_output('prior_state_diagnostics', &
@@ -90,7 +98,9 @@ posterior_state_unit = init_diag_output('posterior_state_diagnostics', &
 ! Advance for a long time (5 days) to get things started?
 ! This should all be parameterized and controlled
 time = set_time(0, 5)
-x = advance_state(x, time)
+write(*, *) 'calling advance state for x 5 days'
+call advance_state(x, time)
+write(*, *) 'back from advance state for x 5 days'
 
 ! Reset the control model time to 0
 time = set_time(0, 0)
@@ -102,7 +112,7 @@ call init_random_seq(random_seq)
 allocate(ens_temp(model_size), ens_mean(model_size), &
    ens_state(model_size, ens_size))
 do i = 1, ens_size
-   ens(i) = x
+   call copy_assim_model(ens(i), x)
    ens_temp = get_model_state_vector(ens(i))
    do j = 1, model_size
       ens_temp(j) = random_gaussian(random_seq, ens_temp(j), 1.0_r8)
@@ -122,7 +132,7 @@ do i = 1, num_obs_sets
    time2 = get_closest_state_time_to(ens(1), time)
 ! Advance the ensembles to this time
    do j = 1, ens_size
-      ens(j) =  advance_state(ens(j), time2)
+      call advance_state(ens(j), time2)
 ! Output the prior ensemble state
       call output_diagnostics(prior_state_unit, ens(j), j)
    end do

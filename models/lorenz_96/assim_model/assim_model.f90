@@ -17,12 +17,12 @@ use types_mod
 
 private
 
-public initialize_assim_model, init_diag_output, get_model_size, get_closest_state_time_to, &
+public static_init_assim_model, init_diag_output, get_model_size, get_closest_state_time_to, &
    get_initial_condition, get_state_meta_data, get_close_states, get_num_close_states, &
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data
+   get_diag_input_copy_meta_data, init_assim_model
 
 integer,  parameter :: model_size =   40
 real(r8), parameter ::    forcing = 8.00_r8
@@ -32,9 +32,9 @@ real(r8), parameter ::    delta_t = 0.05_r8
 ! will be excruciatingly costly (storage at least) in big models.
 type assim_model_type
    private
-   real(r8) :: state_vector(model_size)
+!!!   real(r8) :: state_vector(model_size)
 ! Need to change to pointer to do more efficient pointer work in assim
-!!!   real(r8), pointer :: state_vector(:)
+   real(r8), pointer :: state_vector(:)
    type(time_type) :: time
 end type assim_model_type
 
@@ -49,9 +49,9 @@ contains
 
 
 
-subroutine initialize_assim_model()
+subroutine static_init_assim_model()
 !----------------------------------------------------------------------
-! subroutine initialize_assim_model()
+! subroutine static_init_assim_model()
 !
 ! Initializes class data for the Lorenz-96 model. So far, this simply 
 ! is initializing the position of the state variables as location types.
@@ -90,7 +90,25 @@ end do
 
 time_step = set_time(3600, 0)
 
-end subroutine initialize_assim_model
+end subroutine static_init_assim_model
+
+
+
+subroutine init_assim_model(state)
+!----------------------------------------------------------------------
+!
+! Allocates storage for an instance of an assim_model_type. With this
+! implementation, need to be VERY careful about assigment and maintaining
+! permanent storage locations. Need to revisit the best way to do 
+! assim_model_copy below.
+
+implicit none
+
+type(assim_model_type), intent(inout) :: state
+
+allocate(state%state_vector(model_size))
+
+end subroutine init_assim_model
 
 
 
@@ -257,7 +275,7 @@ end function get_closest_state_time_to
 
 
 
-function get_initial_condition()
+subroutine get_initial_condition(x)
 !----------------------------------------------------------------------
 ! function get_initial_condition()
 !
@@ -269,22 +287,21 @@ function get_initial_condition()
 
 implicit none
 
-type(assim_model_type) :: get_initial_condition
+type(assim_model_type), intent(inout) :: x
 
 integer  :: i
 real(r8) :: x_loc
 
 ! Set the state vector
 do i = 1, model_size
-   get_initial_condition%state_vector = forcing
+   x%state_vector(i) = forcing
 end do
-get_initial_condition%state_vector(1) = 1.001_r8 * forcing
+x%state_vector(1) = 1.001_r8 * forcing
 
 ! Set the time
-! POTENTIAL PROBLEM: TIME MANAGER DOES NOT USE THE R8 FORMALISM: HOW TO HANDLE THIS?
-get_initial_condition%time = set_time(0, 0)
+x%time = set_time(0, 0)
 
-end function get_initial_condition
+end subroutine get_initial_condition
 
 
 
@@ -402,28 +419,34 @@ end function get_model_state_vector
 
 
 
-function copy_assim_model(assim_model)
+subroutine copy_assim_model(model_out, model_in)
 !-------------------------------------------------------------------------
 !
-! Does a copy of assim_model, should be overloaded to =. Still need to be
+! Does a copy of assim_model, should be overloaded to =? Still need to be
 ! very careful about trying to limit copies of the potentially huge state
-! vectors for big models. 
+! vectors for big models.  Interaction with pointer storage?
 
 implicit none
 
-type(assim_model_type) :: copy_assim_model
-type(assim_model_type), intent(in) :: assim_model
+type(assim_model_type), intent(out) :: model_out
+type(assim_model_type), intent(in) :: model_in
 
-! Null stub for now
-copy_assim_model = assim_model
+integer :: i
 
-end function copy_assim_model
+! Need to make sure to copy the actual storage and not just the pointer (verify)
+model_out%time = model_in%time
+
+do i = 1, model_size
+   model_out%state_vector(i) = model_in%state_vector(i)
+end do
+
+end subroutine copy_assim_model
 
 
 
 
 
-function advance_state(assim_model, target_time)
+subroutine advance_state(assim_model, target_time)
 !-----------------------------------------------------------------------
 !
 ! Advances the model extended state until time is equal (within roundoff?)
@@ -432,8 +455,7 @@ function advance_state(assim_model, target_time)
 
 implicit none
 
-type(assim_model_type) :: advance_state
-type(assim_model_type), intent(in) :: assim_model
+type(assim_model_type), intent(inout) :: assim_model
 type(time_type), intent(in) :: target_time
 
 type(time_type) :: model_time
@@ -447,14 +469,12 @@ if(model_time > target_time) then
    stop
 endif
 
-advance_state = assim_model
-
 do while(model_time < target_time)
-   advance_state = adv_1step(advance_state)
-   model_time = get_model_time(advance_state)
+   call adv_1step(assim_model)
+   model_time = get_model_time(assim_model)
 end do
 
-end function advance_state
+end subroutine advance_state
 
 
 
@@ -678,17 +698,16 @@ end subroutine comp_dt
 
 
 
-function adv_1step(state)
+subroutine adv_1step(state)
 !----------------------------------------------------------------------
-! function adv_1step(state)
+! subroutine adv_1step(state)
 !
 ! Does single time step advance for lorenz 96 model
 ! using four-step rk time step
 
 implicit none
 
-type(assim_model_type) :: adv_1step
-type(assim_model_type), intent(in) :: state
+type(assim_model_type), intent(inout) :: state
 
 real(r8), dimension(model_size) :: x, x1, x2, x3, x4, dx, inter
 type(time_type) :: time
@@ -729,10 +748,10 @@ time = get_model_time(state)
 time = time + time_step
 
 ! Load x and the updated time back into output
-call set_model_time(adv_1step, time)
-call set_model_state_vector(adv_1step, x)
+call set_model_time(state, time)
+call set_model_state_vector(state, x)
 
-end function adv_1step
+end subroutine adv_1step
 
 
 

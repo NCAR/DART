@@ -44,6 +44,25 @@ if(get_dist > 0.5_r8) get_dist = 1.0_r8 - get_dist
 end function get_dist
 
 
+
+function get_location(loc)
+!---------------------------------------------------------------------------
+!
+! Given a location type, return the x coordinate
+
+implicit none
+
+type(location_type), intent(in) :: loc
+real(r8) :: get_location
+
+get_location = loc%x
+
+end function get_location
+
+!----------------------------------------------------------------------------
+
+
+
 function set_location(x)
 !----------------------------------------------------------------------------
 !
@@ -64,25 +83,12 @@ set_location%x = x
 
 end function set_location
 
-!---------------------------------------------------------------------------
 
-function get_location(loc)
 
-! Given a location type, return the x coordinate
-
-implicit none
-
-type(location_type), intent(in) :: loc
-real(r8) :: get_location
-
-get_location = loc%x
-
-end function get_location
-
-!----------------------------------------------------------------------------
 
 subroutine write_location(file, loc)
-
+!---------------------------------------------------------------------------------
+!
 ! Writes a oned location to the file. Implemented as a subroutine but  could
 ! rewrite as a function with error control info returned. For initial implementation,
 ! file is just an integer file unit number. Probably want to replace this with file
@@ -108,10 +114,11 @@ write(file, *) loc%x
 
 end subroutine write_location
 
-!----------------------------------------------------------------------------
+
 
 function read_location(file)
-
+!----------------------------------------------------------------------------
+!
 ! Reads a oned location from file that was written by write_location. See write_location
 ! for additional discussion.
 

@@ -167,6 +167,7 @@ set FILTER = ../obs_sequence/filter.f90
 set PERFECT_MODEL_OBS = ../obs_sequence/perfect_model_obs.f90
 set RMS_DIAG = ../obs_sequence/rms_diag.f90
 set POINTER_TEST = ../obs_sequence/pointer_test.f90
+set MODEL_ENSEMBLE = ../model_ensemble/model_ensemble.f90
 
 #======================================================================
 # END of      path_names_for_modules
