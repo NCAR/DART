@@ -13,31 +13,27 @@ program filter
 
 !-----------------------------------------------------------------------------------------
 use        types_mod, only : r8
-use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
-   get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
+use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, &
+   get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
-   get_next_obs, get_num_times, get_obs_values, init_obs, assignment(=), &
+   get_obs_values, init_obs, assignment(=), &
    get_num_copies, get_qc, get_num_qc, set_qc, static_init_obs_sequence, destroy_obs, &
    read_obs_seq_header, set_qc_meta_data
-use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
-use time_manager_mod, only : time_type, get_time, set_time, print_time, &
-                             operator(/=), operator(>)
+use obs_def_mod, only : obs_def_type, get_obs_def_error_variance
+use time_manager_mod, only : time_type, get_time, set_time, operator(/=), operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
                               check_nml_error, file_exist, error_handler, &
-                              E_ERR, E_WARN, E_MSG, E_DBG, initialize_utilities, &
-                              logfileunit, finalize_utilities, &
-                              timestamp
+                              E_ERR, E_MSG, E_DBG, initialize_utilities, &
+                              logfileunit, timestamp
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
-   netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, & 
+   netcdf_file_type, init_diag_output, finalize_diag_output, & 
    aoutput_diagnostics, aread_state_restart, &
-   awrite_state_restart, pert_model_state, open_restart_read, open_restart_write, &
-   close_restart
+   pert_model_state, open_restart_read, close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, &
-   filter_assim
-use    obs_model_mod, only : get_close_states, get_expected_obs, move_ahead
+use  assim_tools_mod, only : assim_tools_init, filter_assim, assim_tools_end
+use    obs_model_mod, only : get_expected_obs, move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
-   put_ensemble_member, update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
+   put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
    ensemble_type
    
 !-----------------------------------------------------------------------------------------
@@ -63,7 +59,6 @@ integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: grp_size, grp_bot, grp_top, group
-real(r8), allocatable :: regress(:), a_returned(:)
 
 integer, allocatable :: keys(:)
 integer :: key_bounds(2)
@@ -83,8 +78,6 @@ character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_m
 
 logical :: interf_provided
 logical, allocatable :: compute_obs(:)
-
-logical, allocatable :: my_state(:)
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -167,7 +160,7 @@ call filter_setup_obs_sequence()
 
 ! Allocate model size storage
 model_size = get_model_size()
-allocate(ens_mean(model_size), my_state(model_size), temp_ens(model_size))
+allocate(ens_mean(model_size), temp_ens(model_size))
 
 ! Initialize the output sequences and state files and set their meta data
 call filter_generate_copy_meta_data()
@@ -213,8 +206,8 @@ write(*, *) 'starting advance time loop;'
 
    ! Get all the keys associated with this set of observations
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-   ! Inflate each of the groups
-   call filter_ensemble_inflate()
+   ! Inflate each of the groups if required
+   if(cov_inflate > 1.0_r8) call filter_ensemble_inflate()
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number)then 
@@ -259,6 +252,9 @@ call write_obs_seq(seq, obs_sequence_out_name)
 
 ! Output a restart file if requested
 call filter_output_restart()
+
+! Output the restart for the assim_tools inflation parameters
+call assim_tools_end()
 
 ! Close regression time series file if needed
 if(save_reg_series) close(reg_series_unit)
@@ -413,8 +409,7 @@ subroutine filter_alloc_ens_size_storage()
 ! Now know the ensemble size; allocate all the storage
 write(msgstring, *) 'the ensemble size is ', ens_size
 call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
-allocate( prior_copy_meta_data(ens_size + 2), posterior_copy_meta_data(ens_size + 1), &
-   regress(num_groups), a_returned(num_groups))
+allocate( prior_copy_meta_data(ens_size + 2), posterior_copy_meta_data(ens_size + 1))
 
 end subroutine filter_alloc_ens_size_storage
 
