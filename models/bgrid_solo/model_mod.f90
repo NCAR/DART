@@ -1,5 +1,6 @@
 module model_mod
 
+! <next three lines automatically updated by CVS, do not edit>
 !  $Source$
 !  $Revision$
 !  $Date$
@@ -76,51 +77,40 @@ use       mpp_io_mod, only: mpp_open, mpp_close, MPP_ASCII, MPP_OVERWR, &
 
 ! routines used by subroutine bgrid_physics
 use bgrid_change_grid_mod, only: vel_to_mass, mass_to_vel
-use bgrid_horiz_mod      , only: horiz_grid_type
-use bgrid_vert_mod       , only: vert_grid_type, &
+use       bgrid_horiz_mod, only: horiz_grid_type
+use        bgrid_vert_mod, only: vert_grid_type, &
                                  compute_pres_full, compute_pres_half
-use bgrid_halo_mod       , only: update_halo, UWND, VWND, TEMP, &
+use        bgrid_halo_mod, only: update_halo, UWND, VWND, TEMP, &
                                  NORTH, EAST, WEST, SOUTH
-use hs_forcing_mod       , only: hs_forcing_init, hs_forcing
+use        hs_forcing_mod, only: hs_forcing_init, hs_forcing
 
-use location_mod         , only: location_type, get_location, set_location, &
-                                 get_dist, vert_is_level, &
+! DART routines 
+use          location_mod, only: location_type, get_location, set_location, &
+                                 get_dist, vert_is_level, query_location, &
                                  LocationDims, LocationName, LocationLName
 
-use random_seq_mod       , only: random_seq_type, init_random_seq, random_gaussian
-use types_mod
+use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+use             types_mod, only: r8, pi
 
 !-----------------------------------------------------------------------
 
 implicit none
 private
 
-public        get_model_size, &
-        adv_1step, &
-        get_state_meta_data, &
-        model_interpolate, &
-        get_model_time_step, &
-        end_model, &
-        static_init_model,  &
-!        init_model_instance, &
-        init_time, &
-        init_conditions, &
-        TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER, &
-        model_get_close_states, &
-        nc_write_model_atts, &
-        nc_write_model_vars
+public  get_model_size, adv_1step, get_state_meta_data, model_interpolate, &
+        get_model_time_step, end_model, static_init_model, init_time, &
+        init_conditions, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER, &
+        model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
+        pert_model_state
 
 !-----------------------------------------------------------------------
-! let CVS fill strings ... DO NOT EDIT ...
-
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: version = "$Id$"
 character(len=128) :: tag = "$Name$"
-
 character(len=128) :: &
-   source = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! bgrid_prog_var_mod:prog_var_type
@@ -155,17 +145,17 @@ character(len=128) :: &
 ! Additional stuff currently in main_nml moved down from atmos_solo_driver
 ! This time stuff may not really belong here???
 
-      integer, dimension(4) :: current_time = (/ 0, 0, 0, 0 /)
-      logical :: override = .false.  ! override restart values for date
-      integer :: days=0, hours=0, minutes=0, seconds=0
-      integer :: dt_atmos = 0
-      real :: noise_sd = 0.0
-      integer :: dt_bias = -1
-      logical :: output_state_vector = .false.  ! output prognostic variables
+   integer, dimension(4) :: current_time = (/ 0, 0, 0, 0 /)
+   logical  :: override = .false.  ! override restart values for date
+   integer  :: days=0, hours=0, minutes=0, seconds=0
+   integer  :: dt_atmos = 0
+   real(r8) :: noise_sd = 0.0_r8
+   integer  :: dt_bias  = -1
+   logical  :: output_state_vector = .false.  ! output prognostic variables
 
-      namelist /main_nml/ current_time, override, dt_atmos, &
-                          days, hours, minutes, seconds, noise_sd, &
-                          dt_bias, output_state_vector 
+   namelist /main_nml/ current_time, override, dt_atmos, &
+                       days, hours, minutes, seconds, noise_sd, &
+                       dt_bias, output_state_vector 
 
 !-----------------------------------------------------------------------
 ! More stuff from atmos_solo driver
@@ -177,11 +167,9 @@ character(len=128) :: &
 
    integer :: date_init(6)
 
-
 !-----------------------------------------------------------------------
 ! Public definition of variable types
 integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_TRACER = 4
-
 
 !-----------------------------------------------------------------------
 !---- private data ----
@@ -191,21 +179,20 @@ type    (prog_var_type) :: Var_dt
 
 integer                            :: model_size
 !real                               :: dt_atmos
-real,    dimension(:,:,:), pointer :: omega
+real(r8),    dimension(:,:,:), pointer :: omega
 integer, dimension(4)              :: atmos_axes
 integer                            :: num_levels
 integer                            :: ntracers 
 ! Havana no longer distinguishes dynamic tracers
 !!!integer                            :: nprognostic
 
-real, dimension(:), pointer        :: v_lons, v_lats, t_lons, t_lats
+real(r8), dimension(:), pointer        :: v_lons, v_lats, t_lons, t_lats
 
 !------------------------------------------------------------
 ! ----- timing flags -----
 
-   integer :: id_init, id_loop, id_end
-   integer, parameter :: timing_level = 1
-
+integer :: id_init, id_loop, id_end
+integer, parameter :: timing_level = 1
 
 
 !-----------------------------------------------------------------------
@@ -214,13 +201,14 @@ real, dimension(:), pointer        :: v_lons, v_lats, t_lons, t_lats
 type(random_seq_type) :: random_seed
 logical :: first_call = .true.
 
+
 contains
+
 
 !#######################################################################
 
  subroutine atmosphere (Var, Time)
 
-implicit none
 
  type (time_type), intent(in) :: Time
  type (prog_var_type), intent(inout) :: Var
@@ -257,9 +245,8 @@ subroutine adv_1step(x, Time)
 ! input and output. This is a modified version of subroutine atmosphere
 ! in original bgrid_solo_atmosphere driver.
 
-implicit none
 
-real, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 ! Time is needed for more general models like this; need to add in to 
 ! low-order models
 type(time_type), intent(in) :: Time
@@ -303,7 +290,7 @@ do i = 1, size(Var_dt%t, 1)
       do k = 1, size(Var_dt%t, 3)
          temp_t = Var_dt%t(i, j, k)
          Var_dt%t(i, j, k) = &
-            (1.0 + random_gaussian(random_seed, dble(0.0), dble(noise_sd))) * Var_dt%t(i, j, k)
+            (1.0_r8 + random_gaussian(random_seed, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
       end do
    end do
 end do
@@ -326,7 +313,6 @@ subroutine static_init_model()
 ! INitializes class data for a B-grid model (all the stuff that needs to
 ! be done once.
 
-implicit none
 
 call fms_init()
 call atmos_model_init()
@@ -339,7 +325,6 @@ subroutine init_model_instance(Var)
 
 ! Initializes an instance (Var) of a B-grid model state variable
 
-implicit none
 
 type(prog_var_type), intent(out) :: Var
 
@@ -353,16 +338,15 @@ end subroutine init_model_instance
 
 subroutine init_conditions(x)
 
-implicit none
 
 ! Reads in restart initial conditions from B-grid and converts to vector
 
 ! Following changed to intent(inout) for ifc compiler;should be like this
-real, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 
 type(prog_var_type) :: Var
-real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: fis, res
-real, allocatable, dimension(:) :: eta, peta
+real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: fis, res
+real(r8), allocatable, dimension(:) :: eta, peta
 integer :: ix, jx, kx, nt
 ! Havana no longer distinguishes prognostic tracers
 !!!integer :: ix, jx, kx, nt, ntp
@@ -397,7 +381,7 @@ end subroutine init_conditions
    subroutine atmos_model_init()
 
 !-----------------------------------------------------------------------
-    integer :: total_days, total_seconds, unit, ierr, io, id, jd, kd
+    integer :: total_days, total_seconds, iunit, ierr, io, id, jd, kd
     integer :: date(6)
     type (time_type) :: Run_length
     logical :: use_namelist
@@ -414,12 +398,12 @@ end subroutine init_conditions
 
 !----- read namelist -------
 
-   unit = open_namelist_file ( )
+   iunit = open_namelist_file ( )
    ierr=1; do while (ierr /= 0)
-          read  (unit, nml=main_nml, iostat=io, end=10)
+          read  (iunit, nml=main_nml, iostat=io, end=10)
           ierr = check_nml_error (io, 'main_nml')
    enddo
-10 call mpp_close (unit)
+10 call mpp_close (iunit)
 
 !----- write namelist to logfile -----
 
@@ -433,9 +417,9 @@ end subroutine init_conditions
 !----- read restart file -----
 
    if (file_exist('INPUT/atmos_model.res')) then
-       unit = open_restart_file ('INPUT/atmos_model.res', 'read')
-       read  (unit) date
-       call mpp_close (unit)
+       iunit = open_restart_file ('INPUT/atmos_model.res', 'read')
+       read  (iunit) date
+       call mpp_close (iunit)
        use_namelist = .false.
    else
        use_namelist = .true.
@@ -483,17 +467,17 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !----- write time stamps (for start time and end time) ------
 
-      call mpp_open (unit, 'time_stamp.out', form=MPP_ASCII, action=MPP_OVERWR, &
+      call mpp_open (iunit, 'time_stamp.out', form=MPP_ASCII, action=MPP_OVERWR, &
                      access=MPP_SEQUENTIAL, threading=MPP_SINGLE, nohdrs=.true. )
 
-      if ( mpp_pe() == mpp_root_pe() ) write (unit,20) date
+      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) date
 
 !     compute ending time in days,hours,minutes,seconds
       call get_time_increment (Time_end, date(3), date(4), date(5), date(6))
 
-      if ( mpp_pe() == mpp_root_pe() ) write (unit,20) date
+      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) date
 
-      call mpp_close (unit)
+      call mpp_close (iunit)
 
   20  format (6i7,2x,'day')   ! can handle day <= 999999
 
@@ -517,8 +501,8 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !---- open and close output restart to make sure directory is there ----
 
-      unit = open_restart_file ('RESTART/atmos_model.res', 'write')
-      call mpp_close (unit, action=MPP_DELETE)
+      iunit = open_restart_file ('RESTART/atmos_model.res', 'write')
+      call mpp_close (iunit, action=MPP_DELETE)
 
 
 !  ---- terminate timing ----
@@ -540,11 +524,11 @@ end subroutine init_conditions
 !!! WARNING: This PROG_VAR_TYPE MAY HOG STORAGE FOREVER, NEED TO DEALLOCATE
 type(prog_var_type) :: Var
 
-  integer :: unit, sec, ierr, io
+  integer :: iunit, sec, ierr, io
   integer :: tnlon, tnlat, vnlon, vnlat
   integer :: t_horiz_size, v_horiz_size
 
-real, allocatable :: t_lat_bnds(:), t_lon_bnds(:), v_lat_bnds(:), v_lon_bnds(:)
+real(r8), allocatable :: t_lat_bnds(:), t_lon_bnds(:), v_lat_bnds(:), v_lon_bnds(:)
 
 integer :: i
 
@@ -553,12 +537,12 @@ integer :: i
 !----- read namelist -----
 
     if (file_exist('input.nml')) then
-        unit = open_namelist_file ( )
+        iunit = open_namelist_file ( )
         ierr=1; do while (ierr /= 0)
-           read (unit, nml=atmosphere_nml, iostat=io, end=10)
+           read (iunit, nml=atmosphere_nml, iostat=io, end=10)
            ierr = check_nml_error (io, 'atmosphere_nml')
         enddo
- 10     call close_file (unit)
+ 10     call close_file (iunit)
     endif
 
 !----- write version and namelist to log file -----
@@ -646,7 +630,7 @@ deallocate(t_lon_bnds, t_lat_bnds, v_lon_bnds, v_lat_bnds)
 
  type(prog_var_type), intent(in) :: Var
 
- integer :: unit
+ integer :: iunit
 
     call bgrid_core_driver_end ( Var, Dynam )
 
@@ -673,7 +657,7 @@ deallocate(t_lon_bnds, t_lat_bnds, v_lon_bnds, v_lat_bnds)
 
  subroutine atmosphere_boundary (blon, blat, global)
 
-    real,    intent(out)          :: blon(:), blat(:)
+    real(r8),    intent(out)          :: blon(:), blat(:)
     logical, intent(in), optional :: global
 
 !----- return the longitudinal and latitudinal grid box edges ----------
@@ -710,7 +694,7 @@ subroutine bgrid_physics ( window, dt_phys, Time, Hgrid, Vgrid, &
 !
 !-----------------------------------------------------------------------
   integer, intent(in)                :: window(2)
-  real,    intent(in)                :: dt_phys
+  real(r8),    intent(in)                :: dt_phys
        type(time_type),intent(in)    :: Time
 type (horiz_grid_type),intent(inout) :: Hgrid
 type  (vert_grid_type),intent(in)    :: Vgrid
@@ -723,15 +707,15 @@ type   (prog_var_type),intent(inout) :: Var_dt
   integer :: ix, jx, idim, jdim
 !-----------------------------------------------------------------------
 
-   real, dimension(window(1),window(2),Vgrid%nlev) :: p_full, u_dt, v_dt
+   real(r8), dimension(window(1),window(2),Vgrid%nlev) :: p_full, u_dt, v_dt
 
-   real, dimension(window(1),window(2),Vgrid%nlev+1) :: p_half
+   real(r8), dimension(window(1),window(2),Vgrid%nlev+1) :: p_half
 
-   real, dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub, &
                    Hgrid%jlb:Hgrid%jub, &
                    Vgrid%nlev) :: uh, vh, uh_dt, vh_dt
 
-   real, dimension(window(1),window(2)) :: pssl_new
+   real(r8), dimension(window(1),window(2)) :: pssl_new
 !-----------------------------------------------------------------------
 !---------------------------- do physics -------------------------------
 
@@ -853,8 +837,8 @@ type   (prog_var_type),intent(inout) :: Var_dt
      call mass_to_vel (Hgrid, uh, uh)
      call mass_to_vel (Hgrid, vh, vh)
 
-     uh(:,Hgrid%jub,:) = 0.0
-     vh(:,Hgrid%jub,:) = 0.0
+     uh(:,Hgrid%jub,:) = 0.0_r8
+     vh(:,Hgrid%jub,:) = 0.0_r8
 
 !---- update momentum tendencies ----
 
@@ -876,7 +860,6 @@ end subroutine bgrid_physics
 
 function get_model_size()
 
-implicit none
 
 integer :: get_model_size
 
@@ -886,15 +869,14 @@ end function get_model_size
 
 !#######################################################################
 
-subroutine prog_var_to_vector(vars, x, size)
+subroutine prog_var_to_vector(vars, x, isize)
 
-implicit none
 
-integer, intent(in) :: size
+integer, intent(in) :: isize
 type(prog_var_type), intent(in) :: vars
-real, intent(out) :: x(size)
+real(r8), intent(out) :: x(isize)
 
-integer :: i, j, k, nt, index
+integer :: i, j, k, nt, indx
 integer :: num_levs
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 
@@ -907,19 +889,19 @@ num_levs = vars%kub - vars%klb + 1
 
 ! Start copying fields to straight vector
 ! Do everything on the T grid first
-index = 0
+indx = 0
 do i = tis, tie
    do j = tjs, tje
 ! Surface pressure is first
-      index = index + 1
-      x(index) = vars%ps(i, j)
+      indx = indx + 1
+      x(indx) = vars%ps(i, j)
 ! Now do t and tracers at successive levels
       do k = vars%klb, vars%kub
-         index = index + 1
-         x(index) = vars%t(i, j, k)
+         indx = indx + 1
+         x(indx) = vars%t(i, j, k)
          do nt = 1, vars%ntrace
-            index = index + 1
-            x(index) = vars%r(i, j, k, nt)
+            indx = indx + 1
+            x(indx) = vars%r(i, j, k, nt)
          end do
       end do
    end do
@@ -929,10 +911,10 @@ end do
 do i = vis, vie
    do j = vjs, vje
       do k = vars%klb, vars%kub
-         index = index + 1
-         x(index) = vars%u(i, j, k)
-         index = index + 1
-         x(index) = vars%v(i, j, k)
+         indx = indx + 1
+         x(indx) = vars%u(i, j, k)
+         indx = indx + 1
+         x(indx) = vars%v(i, j, k)
       end do
    end do
 end do
@@ -941,9 +923,9 @@ end do
 
 
 ! Temporary check
-if(index /= size) then
+if(indx /= isize) then
    write(*, *) 'prog_var_to_vector bad index sum '
-   write(*, *) 'index, size ', index, size
+   write(*, *) 'indx, isize ', indx, isize
    stop
 endif
 
@@ -951,15 +933,14 @@ end subroutine prog_var_to_vector
 
 !#######################################################################
 
-subroutine vector_to_prog_var(x, size, vars)
+subroutine vector_to_prog_var(x, isize, vars)
 
-implicit none
 
-integer, intent(in) :: size
-real, intent(in) :: x(size)
+integer, intent(in) :: isize
+real(r8), intent(in) :: x(isize)
 type(prog_var_type), intent(inout) :: vars
 
-integer :: i, j, k, nt, index
+integer :: i, j, k, nt, indx
 integer :: num_levs
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 
@@ -983,21 +964,21 @@ num_levs = vars%kub - vars%klb + 1
 
 ! Start copying fields from straight vector
 ! Everything on T grid first
-index = 0
+indx = 0
 do i = tis, tie
    do j = tjs, tje
 ! Surface pressure is first
-      index = index + 1
-      vars%ps(i, j) = x(index)
+      indx = indx + 1
+      vars%ps(i, j) = x(indx)
 ! For non-eta models, pssl is same as ps??? Need to change?
       vars%pssl(i, j) = vars%ps(i, j)
 ! Now do t and tracers at successive levels
       do k = vars%klb, vars%kub
-         index = index + 1
-         vars%t(i, j, k) = x(index)
+         indx = indx + 1
+         vars%t(i, j, k) = x(indx)
          do nt = 1, vars%ntrace
-            index = index + 1
-            vars%r(i, j, k, nt) = x(index)
+            indx = indx + 1
+            vars%r(i, j, k, nt) = x(indx)
          end do
       end do
    end do
@@ -1007,10 +988,10 @@ end do
 do i = vis, vie
    do j = vjs, vje
       do k = vars%klb, vars%kub
-         index = index + 1
-         vars%u(i, j, k) = x(index)
-         index = index + 1
-         vars%v(i, j, k) = x(index)
+         indx = indx + 1
+         vars%u(i, j, k) = x(indx)
+         indx = indx + 1
+         vars%v(i, j, k) = x(indx)
       end do
    end do
 end do
@@ -1027,9 +1008,9 @@ call update_halo (Dynam%Hgrid, TEMP, vars%pssl)
 
 
 ! Temporary check
-if(index /= size) then
+if(indx /= isize) then
    write(*, *) 'vector_to_prog_var bad index sum '
-   write(*, *) 'index, size ', index, size
+   write(*, *) 'indx, isize ', indx, isize
    stop
 endif
 
@@ -1062,34 +1043,29 @@ if(dt_bias > 0) get_model_time_step = set_time(dt_bias, 0)
 
 end function get_model_time_step
 
-!#######################################################################
 
-subroutine get_state_meta_data(index_in, location, var_type)
+
+  subroutine get_state_meta_data(index_in, location, var_type)
 !---------------------------------------------------------------------
+! subroutine get_state_meta_data(index_in, location, var_type)
 !
 ! Given an integer index into the state vector structure, returns the
 ! associated location. This is not a function because the more general
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
-!  SHOULD THIS ALSO RETURN THE TYPE OF THIS VARIABLE???
-! YES NEED TO RETURN VARIABLE TYPE HERE
 ! Types for this bgrid model are, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER
 
-implicit none
-
-integer, intent(in) :: index_in
-! Temporary kluge of location type
-!integer, intent(in) :: location
+integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, intent(out), optional :: var_type
+integer, optional,   intent(out) :: var_type
 
-integer :: i, j, k, nt, index, local_var_type, var_type_temp
+integer :: i, j, k, nt, indx, local_var_type, var_type_temp
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 integer :: t_size, v_size, t_grid_size, v_grid_size, t_per_col, v_per_col
 integer :: num_t_lons, num_t_lats, num_v_lons, num_v_lats
 integer :: col_num, col_elem, v_index
 integer :: lat_index, lon_index
-real :: lon, lat, lev
+real(r8) :: lon, lat, lev
 
 ! Get the bounds for storage on Temp and Velocity grids
 tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
@@ -1111,28 +1087,31 @@ v_per_col = 2 * num_levels
 v_grid_size = v_per_col * v_size
 
 ! Easier to compute with a 0 to size - 1 index
-index = index_in - 1
+indx = index_in - 1
 
 ! Is this point in the t_grid
-if(index < t_grid_size) then
-   col_num = index / t_per_col
-   col_elem = index - col_num * t_per_col
-!   write(*, *) 't_grid col and element ', col_num, col_elem
+if(indx < t_grid_size) then
+   col_num = indx / t_per_col
+   col_elem = indx - col_num * t_per_col
+   !   write(*, *) 't_grid col and element ', col_num, col_elem
    lon_index = col_num / num_t_lats
    lat_index = col_num - lon_index * num_t_lats
-!   write(*, *) 'lon and lat index ', lon_index, lat_index
-! Note, array runs from 1, index runs from 0
+   !   write(*, *) 'lon and lat index ', lon_index, lat_index
+
+   ! Note, array runs from 1, index runs from 0
    lon = t_lons(lon_index + 1)
    lat = t_lats(lat_index + 1)
-! First variable on mass grid is PS
-   if(col_elem == 0) then
+
+   if(col_elem == 0) then ! First variable on mass grid is PS
       lev = -1
       local_var_type = TYPE_PS 
-! Rest of variables are temperature and tracers
-   else
+   else ! Rest of variables are temperature and tracers
+
       lev = int((col_elem  + 1)/ (1 + ntracers))
       var_type_temp = mod(col_elem - 1, 1 + ntracers)
-! First element on each level is T, remainder are tracers from 1 to ntracers
+
+      ! First element on each level is T, 
+      ! remainder are tracers from 1 to ntracers
       if(var_type_temp == 0) then
          local_var_type = TYPE_T
       else
@@ -1141,21 +1120,28 @@ if(index < t_grid_size) then
    endif
 
 else
-! It's in the v_grid
-   v_index = index - t_grid_size
+
+   ! It's in the v_grid
+   v_index = indx - t_grid_size
    col_num = v_index / v_per_col
    col_elem = v_index - col_num * v_per_col
-!   write(*, *) 'v_grid col and element ', col_num, col_elem
+
+   !   write(*, *) 'v_grid col and element ', col_num, col_elem
    lon_index = col_num / num_v_lats
    lat_index = col_num - lon_index * num_v_lats
-!   write(*, *) 'lon and lat index ', lon_index, lat_index
-! Note, array runs from 1, index runs from 0
+
+   !   write(*, *) 'lon and lat index ', lon_index, lat_index
+
+   ! Note, array runs from 1, index runs from 0
    lon = v_lons(lon_index + 1)
-! Problems with round-off over 360.0
-   if(abs(lon - 360.0) < 0.00001) lon = 360.0
+
+   ! Problems with round-off over 360.0
+   if(abs(lon - 360.0_r8) < 0.00001_r8) lon = 360.0_r8
+
    lat = v_lats(lat_index + 1)
    lev = int((col_elem + 2) / 2)
-! Compute u or v, u is even, v is odd
+
+   ! Compute u or v, u is even, v is odd
    if(col_elem / 2 * 2 == col_elem) then
       local_var_type = TYPE_U
    else
@@ -1164,7 +1150,8 @@ else
 endif
 
 !write(*, *) 'lon, lat, and lev ', lon, lat, lev
-location = set_location(lon, lat, lev)
+
+location = set_location(lon, lat, lev, 1) ! 1 == level (indexical)
 
 ! If the type is wanted, return it
 if(present(var_type)) var_type = local_var_type
@@ -1172,21 +1159,19 @@ if(present(var_type)) var_type = local_var_type
 
 end subroutine get_state_meta_data
 
-!#######################################################################
 
-RECURSIVE function model_interpolate(x, location, type)
 
-implicit none
+RECURSIVE function model_interpolate(x, location, itype)
 
-real :: model_interpolate
-real, intent(in) :: x(:)
+real(r8) :: model_interpolate
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer,             intent(in) :: itype
 
 integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
-real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
-real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
-real :: lon, lat, level, lon_lat_lev(3), pressure
+real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
+real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
+real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
 ! As opposed to the stripped state vector. YES. This would give time interp.
@@ -1201,9 +1186,9 @@ else
    pressure = lon_lat_lev(3)
 endif
 
-! Depending on type, get appropriate lon and lat grid specs
+! Depending on itype, get appropriate lon and lat grid specs
 ! Types temporarily defined as 1=u, 2=v, 3=ps, 4=t, n=tracer number n-4
-if(type == 1 .or. type == 2) then
+if(itype == 1 .or. itype == 2) then
    num_lons = size(v_lons)
    num_lats = size(v_lats)
    bot_lon = v_lons(1)
@@ -1235,7 +1220,7 @@ else
    lon_below = num_lons
    lon_above = 1
    if(lon < bot_lon) then 
-      temp_lon = lon + 360.0
+      temp_lon = lon + 360.0_r8
    else
       temp_lon = lon
    endif
@@ -1253,28 +1238,28 @@ else if(lat <= bot_lat) then
 ! South of bottom lat NEED TO DO BETTER: NOT REALLY REGULAR
    lat_below = 1
    lat_above = 2
-   lat_fract = 0.0
+   lat_fract = 0.0_r8
 else
 ! North of top lat NEED TO DO BETTER: NOT REALLY REGULAR
    lat_below = num_lats - 1
    lat_above = num_lats
-   lat_fract = 1.0
+   lat_fract = 1.0_r8
 endif
 
 ! Case 1: model level specified in vertical
 if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
-   val(1, 1) =  get_val(x, lon_below, lat_below, nint(level), type)
-   val(1, 2) =  get_val(x, lon_below, lat_above, nint(level), type)
-   val(2, 1) =  get_val(x, lon_above, lat_below, nint(level), type)
-   val(2, 2) =  get_val(x, lon_above, lat_above, nint(level), type)
+   val(1, 1) =  get_val(x, lon_below, lat_below, nint(level), itype)
+   val(1, 2) =  get_val(x, lon_below, lat_above, nint(level), itype)
+   val(2, 1) =  get_val(x, lon_above, lat_below, nint(level), itype)
+   val(2, 2) =  get_val(x, lon_above, lat_above, nint(level), itype)
 
 else
 ! Case of pressure specified in vertical
-   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, type)
-   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, type)
-   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, type)
-   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, type)
+   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, itype)
+   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, itype)
+   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, itype)
+   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, itype)
 endif
 
 ! Do the weighted average for interpolation
@@ -1290,51 +1275,56 @@ end function model_interpolate
 
 !#######################################################################
 
-function get_val(x, lon_index, lat_index, level, type)
+function get_val(x, lon_index, lat_index, level, itype)
 
-implicit none
 
-real :: get_val
-real, intent(in) :: x(:)
-integer, intent(in) :: lon_index, lat_index, level, type
+real(r8) :: get_val
+real(r8), intent(in) :: x(:)
+integer, intent(in) :: lon_index, lat_index, level, itype
 
 ! Find the index into state array and return this value
-get_val = x(get_state_index(lon_index, lat_index, level, type))
+get_val = x(get_state_index(lon_index, lat_index, level, itype))
 
 end function get_val
 
-!#######################################################################
 
-function get_val_pressure(x, lon_index, lat_index, pressure, type)
 
-implicit none
-
-real :: get_val_pressure
-real, intent(in) :: x(:), pressure
-integer, intent(in) :: lon_index, lat_index, type
-
-real :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), fraction
-type(location_type) :: ps_location
-integer :: top_lev, bot_lev, i
-real :: bot_val, top_val, ps_lon
-
+  function get_val_pressure(x, lon_index, lat_index, pressure, itype)
+!================================================================================
+! function get_val_pressure(x, lon_index, lat_index, pressure, itype)
+!
 ! Gets the vertically interpolated value on pressure for variable type
 ! at lon_index, lat_index horizontal grid point
+
+real(r8) :: get_val_pressure
+real(r8), intent(in) :: x(:), pressure
+integer,  intent(in) :: lon_index, lat_index, itype
+
+type(location_type) :: ps_location
+real(r8) :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), fraction
+integer  :: top_lev, bot_lev, i
+real(r8) :: bot_val, top_val, ps_lon
 
 ! Need to get the surface pressure at this point.
 ! For t or tracers (on mass grid with ps) this is trivial
 ! For u or v (on velocity grid)
 
-if(type >= 3) then
+if(itype >= 3) then
+
    ps = get_val(x, lon_index, lat_index, -1, 3)
+
 else
-! Bgrid model has nasty habit of having longitudes truncated to > 360.0
-! Need to fix this here to avoid death in location module
+
+   ! Bgrid model has nasty habit of having longitudes truncated to > 360.0
+   ! Need to fix this here to avoid death in location module
    ps_lon = v_lons(lon_index)
-   if(ps_lon > 360.00 .and. ps_lon < 360.00001) ps_lon = 360.0
-   ps_location = set_location(ps_lon, &
-      v_lats(lat_index), lev = -1.0)
-   ps = model_interpolate(x, ps_location, 3)
+   if(ps_lon > 360.00_r8 .and. ps_lon < 360.00001_r8) ps_lon = 360.0_r8
+
+   ! The vertical is not important for this interpolation -- still --
+   ! mark it as missing (-1.0) but give it some type information (2==pressure)
+   ps_location = set_location(ps_lon, v_lats(lat_index), -1.0, 2 )
+   ps          = model_interpolate(x, ps_location, 3)
+
 endif
 
 ! Next, get the values on the levels for this ps
@@ -1342,7 +1332,7 @@ call compute_pres_full(Dynam%Vgrid, ps, pfull)
 
 ! Interpolate in vertical to get two bounding levels
 
-!write(*, *) 'type is ', type
+!write(*, *) 'itype is ', itype
 !write(*, *) 'pfull values for ps = ', ps(1, 1)
 !write(*, *) pfull(1, 1, :)
 
@@ -1353,12 +1343,12 @@ call compute_pres_full(Dynam%Vgrid, ps, pfull)
 if(pressure < pfull(1, 1, 1)) then
    top_lev = 1
    bot_lev = 2
-   fraction = 1.0
+   fraction = 1.0_r8
 else if(pressure > pfull(1, 1, Dynam%Vgrid%nlev)) then
 ! Same for bottom
    bot_lev = Dynam%Vgrid%nlev
    top_lev = bot_lev - 1
-   fraction = 0.0
+   fraction = 0.0_r8
 
 else
 
@@ -1375,25 +1365,24 @@ else
 end if
 
 ! Get the value at these two points
-21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
-top_val = get_val(x, lon_index, lat_index, top_lev, type)
+21 bot_val = get_val(x, lon_index, lat_index, bot_lev, itype)
+top_val = get_val(x, lon_index, lat_index, top_lev, itype)
 !write(*, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
    
-get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+get_val_pressure = (1.0_r8 - fraction) * bot_val + fraction * top_val
 !write(*, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
 
 end function get_val_pressure
 
 !#######################################################################
 
-function get_state_index(lon_index, lat_index, level, type)
+function get_state_index(lon_index, lat_index, level, itype)
 
-implicit none
 
 integer :: get_state_index
-integer, intent(in) :: lon_index, lat_index, level, type
+integer, intent(in) :: lon_index, lat_index, level, itype
 
-! Returns the index in the state vector for variable of type at
+! Returns the index in the state vector for variable of itype at
 ! the lon_index, lat_index, level position on the grid
 ! Types are currently hard-coded as u=1, v=2, ps=3, t=4, tracers = n-4
 integer :: tis, tie, num_t_lons, tjs, tje, num_t_lats, t_size
@@ -1420,13 +1409,13 @@ v_per_col = 2 * num_levels
 v_grid_size = v_per_col * v_size
 
 ! Is this point in the t_grid; ps, t or tracer
-if(type > 2) then
+if(itype > 2) then
    get_state_index = t_per_col * (lat_index - 1 + (lon_index - 1) * num_t_lats)
-   if(type == 3) then
+   if(itype == 3) then
       get_state_index = get_state_index + 1
    else 
       get_state_index = get_state_index + &
-         1 + (level - 1) * (1 + ntracers) + (type - 3)
+         1 + (level - 1) * (1 + ntracers) + (itype - 3)
    endif
 
 ! Type 1 or 2 is u or v
@@ -1434,7 +1423,7 @@ else
 ! It's in the v_grid
    get_state_index = t_grid_size + &
       v_per_col * (lat_index - 1 + (lon_index - 1) * num_v_lats)
-   get_state_index = get_state_index + (level - 1) * 2 + type
+   get_state_index = get_state_index + (level - 1) * 2 + itype
 endif
 
 end function get_state_index
@@ -1443,7 +1432,6 @@ end function get_state_index
 
 subroutine end_model()
 
-implicit none
 
 ! At some point, this stub should coordinate with atmosphere_end but
 ! that requires an instance variable.
@@ -1483,7 +1471,6 @@ end subroutine end_model
 
 subroutine init_time(i_time)
 
-implicit none
 
 ! For now returns value of Time_init which is set in initialization routines.
 
@@ -1497,13 +1484,12 @@ end subroutine init_time
 
 !--------------------------------------------------------------------
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, nfound, indices, dist)
 
-implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
+integer, intent(out) :: nfound, indices(:)
 real(r8), intent(out) :: dist(:)
 
 real(r8) :: loc_array(3), o_lon, o_lat
@@ -1515,7 +1501,7 @@ real(r8), allocatable :: close_dist(:)
 integer :: lji
 
 ! Number found starts at 0
-number = 0
+nfound = 0
 
 ! Fixed to use only global grid for now (need to modify for mpp)
 call get_horiz_grid_size (Dynam % Hgrid, TGRID, tnlon, tnlat, .true.)
@@ -1545,9 +1531,9 @@ v_per_col = 2 * num_levels
 do i = 1, num
    col_base_index = ((lon_ind(i) - 1) * tnlat + lat_ind(i) - 1) * t_per_col
    do j = 1, t_per_col
-      number = number + 1
-      if(number <= size(indices)) indices(number) = col_base_index + j
-      if(number <= size(dist)) dist(number) = close_dist(i)
+      nfound = nfound + 1
+      if(nfound <= size(indices)) indices(nfound) = col_base_index + j
+      if(nfound <= size(dist)) dist(nfound) = close_dist(i)
    end do
 end do
    
@@ -1560,9 +1546,9 @@ call grid_close_states2(o_loc, v_lons, v_lats, vnlon, vnlat, radius, &
 do i = num1, num
    col_base_index = t_grid_size + ((lon_ind(i) - 1) * vnlat + lat_ind(i) - 1) * v_per_col
    do j = 1, v_per_col
-      number = number + 1
-      if(number <= size(indices)) indices(number) = col_base_index + j
-      if(number <= size(dist)) dist(number) = close_dist(i)
+      nfound = nfound + 1
+      if(nfound <= size(indices)) indices(nfound) = col_base_index + j
+      if(nfound <= size(dist)) dist(nfound) = close_dist(i)
    end do
 end do
 
@@ -1578,7 +1564,6 @@ subroutine grid_close_states2(o_loc, lons, lats, nlon, nlat, radius, &
 
 ! Finds close state points from a particular grid;
 
-implicit none
 
 type(location_type), intent(in) :: o_loc
 integer, intent(in) :: nlon, nlat
@@ -1591,7 +1576,7 @@ real(r8) :: glat, glon, loc_array(3), o_lon, o_lat, o_lev
 real(r8) :: gdist, diff, row_dist(nlon)
 integer :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
 integer :: row_lon_ind(nlon), row_num
-real(r8), parameter :: glev = 1.0
+real(r8), parameter :: glev = 1.0_r8
 type(location_type) :: loc
 
 ! Get the lat and lon from the loc
@@ -1609,8 +1594,8 @@ blon_ind = get_closest_lon_index(o_lon, lons, nlon)
 do lat_ind = blat_ind, nlat
    glat = lats(lat_ind)
 ! Take care of storage round-off
-   if(glat < -90.0) glat = 0.0
-   if(glat > 90.0) glat = 90.0
+   if(glat < -90.0_r8) glat =  0.0_r8
+   if(glat >  90.0_r8) glat = 90.0_r8
 
 ! Search all the contiguous close longitudes around the base longitude
    call lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
@@ -1629,8 +1614,8 @@ end do
 do lat_ind = blat_ind - 1, 1, -1
    glat = lats(lat_ind)
 ! Take care of storage round-off
-   if(glat < -90.0) glat = 0.0
-   if(glat > 90.0) glat = 90.0
+   if(glat < -90.0_r8) glat =  0.0_r8
+   if(glat >  90.0_r8) glat = 90.0_r8
 
 ! Search all the contiguous close longitudes around the base longitude
    call lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
@@ -1646,24 +1631,25 @@ end do
 
 end subroutine grid_close_states2
 
-!------------------------------------------------------------------------
+
 
 subroutine lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
-   close_lon_ind, close_dist, num)
-
+                      close_lon_ind, close_dist, num)
+!------------------------------------------------------------------------
+!
 ! Given an observation location and radius and a latitude row from a grid,
 ! searches to find all longitude points in this row that are within radius
 ! of the observation location and returns their latitude index, longitude
 ! index, and the distance between them and the observation.
 
-real(r8), intent(in) :: glat, glev, radius, lons(:)
-integer, intent(in) :: blon_ind
-type(location_type), intent(in) :: o_loc
-integer, intent(out) :: close_lon_ind(:), num
-real(r8), intent(out) :: close_dist(:)
+real(r8),            intent(in)  :: glat, glev, radius, lons(:)
+integer,             intent(in)  :: blon_ind
+type(location_type), intent(in)  :: o_loc
+integer,             intent(out) :: close_lon_ind(:), num
+real(r8),            intent(out) :: close_dist(:)
 
-integer :: nlon, j, max_pos, lon_ind
 type(location_type) :: loc
+integer  :: nlon, j, max_pos, lon_ind, which_vert
 real(r8) :: glon, gdist
 
 ! Total number found is 0 at start
@@ -1676,20 +1662,26 @@ do j = 0, nlon - 1
    lon_ind = blon_ind + j
    if(lon_ind > nlon) lon_ind = lon_ind - nlon
    glon = lons(lon_ind)
-! Correct for longitude storage round-off
-   if(glon > 360.0) glon = 360.0 
-   if(glon < 0.0) glon = 0.0
-   loc = set_location(glon, glat, glev)
-   gdist = get_dist(loc, o_loc)
+
+   ! Correct for longitude storage round-off
+   if(glon > 360.0_r8) glon = 360.0_r8 
+   if(glon <   0.0_r8) glon =   0.0_r8
+
+   ! set vertical type to same as input 
+   which_vert = nint(query_location(o_loc))
+   loc        = set_location(glon, glat, glev, which_vert)
+   gdist      = get_dist(loc, o_loc)
+
    if(gdist <= radius) then
       num = num + 1
       close_lon_ind(num) = lon_ind
       close_dist(num) = gdist
-! If radius is too far for closest longitude, no need to search further or to search other side
+      ! If radius is too far for closest longitude, 
+      ! no need to search further or to search other side
    else if (j == 0) then
       return
    else
-! Look in negative longitude offset direction next
+      ! Look in negative longitude offset direction next
       goto 21
    endif
 end do
@@ -1702,17 +1694,22 @@ do j = 1, nlon - 1 - max_pos
    lon_ind = blon_ind - j
    if(lon_ind < 1) lon_ind = nlon + lon_ind
    glon = lons(lon_ind)
-! Correct for longitude storage round-off
-   if(glon > 360.0) glon = 360.0 
-   if(glon < 0.0) glon = 0.0
-   loc = set_location(glon, glat, glev)
-   gdist = get_dist(loc, o_loc)
+
+   ! Correct for longitude storage round-off
+   if(glon > 360.0_r8) glon = 360.0_r8
+   if(glon <   0.0_r8) glon =   0.0_r8
+
+   ! set vertical type to same as input 
+   which_vert = nint(query_location(o_loc))
+   loc        = set_location(glon, glat, glev, which_vert)
+   gdist      = get_dist(loc, o_loc)
+
    if(gdist <= radius) then
       num = num + 1
       close_lon_ind(num) = lon_ind
       close_dist(num) = gdist
    else
-! No more longitudes in negative direction
+      ! No more longitudes in negative direction
       return
    endif
 end do
@@ -1723,7 +1720,6 @@ end subroutine lon_search
 
 function get_closest_lat_index(o_lat, lats, nlat)
 
-implicit none
 integer, intent(in) :: nlat
 real(r8), intent(in) :: o_lat, lats(nlat)
 integer :: get_closest_lat_index
@@ -1742,7 +1738,7 @@ else if(o_lat >= lat_top) then
 else
    diff = (o_lat - lat_bot) / lat_int
    lower_ind = int(diff) + 1
-   if(diff - int(diff) < 0.5) then
+   if(diff - int(diff) < 0.5_r8) then
       get_closest_lat_index = lower_ind
    else
       get_closest_lat_index = lower_ind + 1
@@ -1756,7 +1752,6 @@ end function get_closest_lat_index
 
 function get_closest_lon_index(o_lon, lons, nlon)
 
-implicit none
 integer, intent(in) :: nlon
 real(r8), intent(in) :: o_lon, lons(nlon)
 integer :: get_closest_lon_index
@@ -1770,14 +1765,14 @@ lon_top = lons(nlon)
 lon_int = lons(2) - lons(1)
 if(o_lon <= lon_bot) then
    diff = (lon_bot - o_lon) / lon_int
-   if(diff > 0.5) then
+   if(diff > 0.5_r8) then
       get_closest_lon_index = nlon
    else
       get_closest_lon_index = 1
    end if
 else if(o_lon >= lon_top) then
    diff = (o_lon - lon_top) / lon_int
-   if(diff > 0.5) then
+   if(diff > 0.5_r8) then
       get_closest_lon_index = 1
    else
       get_closest_lon_index = nlon
@@ -1785,7 +1780,7 @@ else if(o_lon >= lon_top) then
 else
    diff = (o_lon - lon_bot) / lon_int
    lower_ind = int(diff) + 1
-   if(diff - int(diff) < 0.5) then
+   if(diff - int(diff) < 0.5_r8) then
       get_closest_lon_index = lower_ind
    else
       get_closest_lon_index = lower_ind + 1
@@ -1824,7 +1819,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 
 use typeSizes
 use netcdf
-implicit none
 
 integer, intent(in)  :: ncFileID        ! netCDF file identifier
 integer              :: ierr            ! return value of function
@@ -2080,11 +2074,9 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_atts'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_mesg ('nc_write_model_atts', &
+            trim(nf90_strerror(istatus)), FATAL)
+
   end subroutine check
 
 end function nc_write_model_atts
@@ -2116,7 +2108,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 
 use typeSizes
 use netcdf
-implicit none
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
@@ -2125,7 +2116,7 @@ integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
 !-----------------------------------------------------------------------------------------
-real, dimension(SIZE(statevec)) :: x
+real(r8), dimension(SIZE(statevec)) :: x
 type(prog_var_type) :: Var
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
@@ -2227,14 +2218,31 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_vars'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_mesg ('nc_write_model_vars', &
+            trim(nf90_strerror(istatus)), FATAL)
+
   end subroutine check
 
 end function nc_write_model_vars
+
+
+
+
+subroutine pert_model_state(state, pert_state, interf_provided)
+
+
+! Perturbs a model state for generating initial ensembles
+! Returning interf_provided means go ahead and do this with uniform
+! small independent perturbations.
+
+real(r8), intent(in)  :: state(:)
+real(r8), intent(out) :: pert_state(:)
+logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_state
+
 
 
 !#######################################################################

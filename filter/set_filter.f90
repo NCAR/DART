@@ -6,38 +6,39 @@ program filter
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
-
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
-   read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
-   get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
-   get_obs_values, obs_sequence_def_copy, inc_num_obs_copies, &
-   set_single_obs_value, get_num_close_states, get_close_states
+       read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
+       get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
+       get_obs_values, obs_sequence_def_copy, inc_num_obs_copies, &
+       set_single_obs_value, get_num_close_states, get_close_states
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
-   operator(>)
-use utilities_mod,    only :  get_unit, open_file, close_file, &
-   check_nml_error, file_exist
-use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
-   get_model_size, get_closest_state_time_to, &
-   advance_state, set_model_time, get_model_time, init_diag_output, &
-   output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart, get_state_meta_data
-use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
-   look_for_bias, obs_increment17
-use cov_cutoff_mod,   only : comp_cov_factor
-use location_mod, only : location_type
-use typeSizes
-use netcdf
+                             operator(>)
+use    utilities_mod, only : get_unit, open_file, close_file, &
+                             check_nml_error, file_exist
+use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
+       get_model_size, get_closest_state_time_to, &
+       advance_state, set_model_time, get_model_time, init_diag_output, &
+       output_diagnostics, init_assim_model, get_state_vector_ptr, &
+       write_state_restart, read_state_restart, get_state_meta_data
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use  assim_tools_mod, only : obs_increment, update_from_obs_inc, &
+       look_for_bias, obs_increment17
+use   cov_cutoff_mod, only : comp_cov_factor
+use     location_mod, only : location_type
+
+use typesizes         ! From the F90 netCDF interface
+use netcdf            ! From the F90 netCDF interface
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Define a type for doing direct access to ensemble state vectors
 type model_state_ptr_type
@@ -49,12 +50,12 @@ type(time_type)         :: time, time2
 type(random_seq_type)   :: random_seq
 
 
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji, meta_data_size
-integer ::  output_ens_mean_index, output_ens_spread_index
-integer            :: model_size, num_obs_sets
+integer :: output_ens_mean_index, output_ens_spread_index
+integer :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
 type(model_state_ptr_type), allocatable :: ens_ptr(:)
@@ -78,23 +79,25 @@ integer :: var_type
 type(location_type) :: location
 
 ! Temporary storage to test adaptive error capability; should be moved to assim_tools
-integer :: slope_index = 0
-real(r8) :: slope = 0.0
+integer  :: slope_index = 0
+real(r8) :: slope       = 0.0_r8
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer :: ens_size = 20
-real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
-integer :: cache_size = 10
-logical :: async = .false., start_from_restart = .false., output_restart = .false.
+integer  :: ens_size    = 20
+real(r8) :: cutoff      = 200.0_r8
+real(r8) :: cov_inflate = 1.0_r8
+integer  :: cache_size  = 10
+logical  :: async = .false., start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer :: init_time_days = -1, init_time_seconds = -1
+integer  :: init_time_days    = -1
+integer  :: init_time_seconds = -1
 ! Control diagnostic output for state variables
-logical :: output_state_ens_mean = .true., output_state_ens_spread = .true.
-integer :: num_output_ens_members = 0
-integer :: output_interval = 1
+logical  :: output_state_ens_mean = .true., output_state_ens_spread = .true.
+integer  :: num_output_ens_members = 0
+integer  :: output_interval = 1
 
 character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
@@ -109,14 +112,14 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, cache_size, &
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = filter_nml, iostat = io, end = 11)
+      read(iunit, nml = filter_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'filter_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! Now know the ensemble size; allocate all the storage
@@ -126,10 +129,10 @@ allocate(ens_ptr(ens_size), ens(ens_size), obs_inc(ens_size), &
    ens_copy_meta_data(ens_size + 2))
 
 ! Input the obs_sequence
-unit = get_unit()
-open(unit = unit, file = obs_sequence_file_name)
-seq = read_obs_sequence(unit)
-close(unit)
+iunit = get_unit()
+open(unit = iunit, file = obs_sequence_file_name)
+seq = read_obs_sequence(iunit)
+close(iunit)
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_obs_sets(seq)
 
@@ -188,8 +191,8 @@ endif
 
 !------------------- Read restart if requested ----------------------
 if(start_from_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
    do i = 1, ens_size
@@ -197,22 +200,20 @@ if(start_from_restart) then
       call init_assim_model(ens(i))
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
 
-      call read_state_restart(ens(i), unit)
-! If init_time_days an init_time_seconds are not < 0, set time to them
+      call read_state_restart(ens(i), iunit)
+      ! If init_time_days an init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) call set_model_time(ens(i) , time)
    end do
-   close(unit)
-!-----------------  Restart read in --------------------------------
-
+   close(iunit)
+   !-----------------  Restart read in --------------------------------
 else
+   !-----  Block to do cold start initialization of ensembles ----------
+   ! Initialize the control and ensemble states and set up direct pointers
 
-!-----  Block to do cold start initialization of ensembles ----------
-! Initialize the control and ensemble states and set up direct pointers
-
-! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
-! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
+   ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
+   ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
+   iunit = get_unit()
+   open(unit = iunit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
 
@@ -221,17 +222,17 @@ else
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
    end do
 
-! Get the initial condition
-   call read_state_restart(x, unit)
-   close(unit)
+   ! Get the initial condition
+   call read_state_restart(x, iunit)
+   close(iunit)
 
-! Initialize a repeatable random sequence for perturbations
-! Where should the magnitude of the perturbations come from here???
+   ! Initialize a repeatable random sequence for perturbations
+   ! Where should the magnitude of the perturbations come from here???
    call init_random_seq(random_seq)
-! Perturb for ensembles; 
+   ! Perturb for ensembles; 
    do i = 1, ens_size
       do j = 1, model_size
-! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
+         ! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
          call get_state_meta_data(j, location, var_type)
          if(var_type < 4) then 
             ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 2.0_r8) 
@@ -240,10 +241,10 @@ else
          endif
          
       end do
-! Set time to 0, 0 if none specified, otherwise to specified
+      ! Set time to 0, 0 if none specified, otherwise to specified
       call set_model_time(ens(i), time)
    end do
-!-------------------- End of cold start ensemble initialization block ------
+   !-------------------- End of cold start ensemble initialization block ------
 endif
 
 ! Temporary print of initial model time
@@ -261,13 +262,14 @@ AdvanceTime : do i = 1, num_obs_sets
    write(*, *) 'time of obs set ', i
    call print_time(time)
 
-! If the model time is past the obs set time, just need to skip???
+   ! If the model time is past the obs set time, just need to skip???
    if(get_model_time(ens(1)) > time) cycle AdvanceTime
 
    time2 = get_closest_state_time_to(ens(1), time)
-!   write(*, *) 'advancing to time2 '
+   !   write(*, *) 'advancing to time2 '
    call  print_time(time2)
-! Advance all the ensembles (to the time of the first ensemble)
+
+   ! Advance all the ensembles (to the time of the first ensemble)
    if(time2 /= get_model_time(ens(1))) call advance_state(ens, ens_size, time2, async)
 
    ! Tag the ensemble mean and spread with the current time
@@ -284,7 +286,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    end do
 
-! Output state diagnostics as required: NOTE: Prior has been inflated
+   ! Output state diagnostics as required: NOTE: Prior has been inflated
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
          ! TJH debugging block.
@@ -292,10 +294,12 @@ AdvanceTime : do i = 1, num_obs_sets
          call output_diagnostics(     PriorStateUnit, ens(j), j)
       end do
    end if
-! Output ensemble mean if requested
+
+   ! Output ensemble mean if requested
    if(output_state_ens_mean .and. i / output_interval * output_interval == i) &
       call output_diagnostics(PriorStateUnit, ens_mean, output_ens_mean_index)
-! Compute and output ensemble spread if requested
+
+   ! Compute and output ensemble spread if requested
    if(output_state_ens_spread  .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_spread_ptr%state(k) = get_ens_spread(ens_ptr, &
@@ -318,17 +322,19 @@ AdvanceTime : do i = 1, num_obs_sets
    call get_obs_values(seq, i, obs, 1)
 
 
-! Following block replaces cache block -----------------------------
+   ! Following block replaces cache block -----------------------------
    write(*, *) 'calling get_close_states'
    call get_num_close_states(seq, i, 2.0*cutoff, num_close)
-! Allocate storage for num_close, close, and distance
+
+   ! Allocate storage for num_close, close, and distance
    allocate(close_ptr(num_obs_in_set, maxval(num_close)), &
       dist_ptr(num_obs_in_set, maxval(num_close)))
-! Now get the values
+
+   ! Now get the values
    call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr)
    write(*, *) 'back form get_close_states'
-!--------------------------------------------------------------------
 
+!--------------------------------------------------------------------
 
 ! A preliminary search for bias???
    var_ratio_sum = 0.0
@@ -367,14 +373,6 @@ AdvanceTime : do i = 1, num_obs_sets
 !!!   write(*, *) 'UPDATED SLOPE IS ', slope
 
 
-
-
-
-
-
-
-
-
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
       ! Compute the ensemble prior for this ob
@@ -408,18 +406,19 @@ AdvanceTime : do i = 1, num_obs_sets
 
    end do Observations
 
-! Free up the storage for close
+   ! Free up the storage for close
    deallocate(close_ptr, dist_ptr)
    deallocate(obs_err_cov, obs, num_close, num_close_ptr)
 
-! Output posterior diagnostics
-! Output state diagnostics as requested
+   ! Output posterior diagnostics
+   ! Output state diagnostics as requested
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
           call output_diagnostics(     PosteriorStateUnit, ens(j), j)
       end do
    end if
-! Compute ensemble mean if either mean or spread to be output
+
+   ! Compute ensemble mean if either mean or spread to be output
    if(output_state_ens_mean .or. output_state_ens_spread  &
       .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
@@ -427,10 +426,11 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    endif
 
-! Output an ensemble mean if requested
+   ! Output an ensemble mean if requested
    if(output_state_ens_mean  .and. i / output_interval * output_interval == i) &
       call output_diagnostics(PosteriorStateUnit, ens_mean, output_ens_mean_index)
-! Compute and output state_ens_spread if requested
+
+   ! Compute and output state_ens_spread if requested
    if(output_state_ens_spread  .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_spread_ptr%state(k) = get_ens_spread(ens_ptr, &
@@ -438,6 +438,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       call output_diagnostics(PosteriorStateUnit, ens_spread, output_ens_spread_index)
    endif
+
    ! ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
 
 end do AdvanceTime
@@ -463,12 +464,12 @@ ierr = NF90_close(PosteriorStateUnit)
 
 ! Output a restart file if requested
 if(output_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_out_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_out_file_name)
    do i = 1, ens_size
-      call write_state_restart(ens(i), unit)
+      call write_state_restart(ens(i), iunit)
    end do
-   close(unit)
+   close(iunit)
 endif
 
 
@@ -478,28 +479,28 @@ endif
 contains
 
 
-function get_ens_swath(ens_ptr, ens_size, index)
+function get_ens_swath(ens_ptr, ens_size, stateindex)
 !----------------------------------------------------------
 !
 ! Returns the ensemble for state variable index
 
 implicit none
 
-integer,                    intent(in) :: ens_size, index
+integer,                    intent(in) :: ens_size, stateindex
 type(model_state_ptr_type), intent(in) :: ens_ptr(ens_size)
 real(r8)                               :: get_ens_swath(ens_size)
 
 integer :: i
 
 do i = 1, ens_size
-   get_ens_swath(i) = ens_ptr(i)%state(index)
+   get_ens_swath(i) = ens_ptr(i)%state(stateindex)
 end do
 
 end function get_ens_swath
 
          
 
-subroutine inc_ens_swath(ens_ptr, ens_size, index, ens_inc)
+subroutine inc_ens_swath(ens_ptr, ens_size, stateindex, ens_inc)
 !-----------------------------------------------------------
 !
 ! Increments all ensemble members for a given state variable
@@ -507,14 +508,14 @@ subroutine inc_ens_swath(ens_ptr, ens_size, index, ens_inc)
 
 implicit none
 
-integer,                    intent(in)    :: ens_size, index
+integer,                    intent(in)    :: ens_size, stateindex
 type(model_state_ptr_type), intent(inout) :: ens_ptr(ens_size)
 real(r8),                   intent(in)    :: ens_inc(ens_size)
 
 integer :: i
 
 do i = 1, ens_size
-   ens_ptr(i)%state(index) = ens_ptr(i)%state(index) + ens_inc(i)
+   ens_ptr(i)%state(stateindex) = ens_ptr(i)%state(stateindex) + ens_inc(i)
 end do
 
 end subroutine inc_ens_swath
@@ -522,7 +523,7 @@ end subroutine inc_ens_swath
 
 
 
-function get_ens_mean(ens_ptr, ens_size, index)
+function get_ens_mean(ens_ptr, ens_size, stateindex)
 !----------------------------------------------------------
 !
 ! Computes the ensemble mean of the index element of the
@@ -530,15 +531,15 @@ function get_ens_mean(ens_ptr, ens_size, index)
 
 implicit none
 
-integer,                    intent(in) :: ens_size, index
+integer,                    intent(in) :: ens_size, stateindex
 type(model_state_ptr_type), intent(in) :: ens_ptr(ens_size)
 real(r8)                               :: get_ens_mean
 
 integer :: i
 
-get_ens_mean = ens_ptr(1)%state(index)
+get_ens_mean = ens_ptr(1)%state(stateindex)
 do i = 2, ens_size
-   get_ens_mean = get_ens_mean + ens_ptr(i)%state(index)
+   get_ens_mean = get_ens_mean + ens_ptr(i)%state(stateindex)
 end do
 
 get_ens_mean = get_ens_mean / ens_size
@@ -548,7 +549,7 @@ end function get_ens_mean
 
 
 
-function get_ens_spread(ens_ptr, ens_mean, ens_size, index)
+function get_ens_spread(ens_ptr, ens_mean, ens_size, stateindex)
 !----------------------------------------------------------
 !
 ! Computes the ensemble mean of the index element of the
@@ -556,16 +557,16 @@ function get_ens_spread(ens_ptr, ens_mean, ens_size, index)
 
 implicit none
 
-integer,                    intent(in) :: ens_size, index
+integer,                    intent(in) :: ens_size, stateindex
 real(r8),                   intent(in) :: ens_mean
 type(model_state_ptr_type), intent(in) :: ens_ptr(ens_size)
 real(r8)                               :: get_ens_spread
 
 integer :: i
 
-get_ens_spread = (ens_ptr(1)%state(index) - ens_mean)**2
+get_ens_spread = (ens_ptr(1)%state(stateindex) - ens_mean)**2
 do i = 2, ens_size
-   get_ens_spread = get_ens_spread + (ens_ptr(i)%state(index) - ens_mean)**2
+   get_ens_spread = get_ens_spread + (ens_ptr(i)%state(stateindex) - ens_mean)**2
 end do
 
 get_ens_spread = sqrt(get_ens_spread / (ens_size - 1))

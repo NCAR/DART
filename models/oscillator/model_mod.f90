@@ -8,23 +8,25 @@ module model_mod
 !
 ! One dimensional oscillator model (model size is 2)
 
-use loc_and_dist_mod, only : loc_type, get_dist, set_loc
+use    types_mod, only : r8
+use location_mod, only : loc_type, get_dist, set_loc
 
+implicit none
 private
 
-public init_model, get_model_size, init_conditions, adv_1step, advance, &
+public :: init_model, get_model_size, init_conditions, adv_1step, advance, &
    adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
    model_output, model_get_close_states
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
-integer, parameter :: model_size = 2
-double precision, parameter :: delta_t = 0.01
-double precision, parameter :: alpha = 0.1
+integer,  parameter :: model_size = 2
+real(r8), parameter ::    delta_t = 0.01_r8
+real(r8), parameter ::      alpha = 0.1_r8
 
 logical :: output_init = .FALSE.
 
@@ -52,8 +54,8 @@ implicit none
 
 ! Computes the time tendency of a 1D oscillator
 
-double precision, intent(in) :: x(:)
-double precision, intent(out) :: dt(:)
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: dt(:)
 
 dt(1) = x(2)
 dt(2) = - x(1) + alpha * x(2)
@@ -71,9 +73,9 @@ subroutine adv_1step(x)
 
 implicit none
 
-double precision, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 
-double precision :: dx(size(x))
+real(r8) :: dx(size(x))
 
 !  Compute the first intermediate step
 call comp_dt(x, dx)
@@ -90,7 +92,7 @@ subroutine adv_true_state(x)
 
 implicit none
 
-double precision, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 
 !write(*, *) 'amp = ', sqrt(x(1)**2 + x(2)**2), ' phase = ', atan2(x(1), x(2))
 
@@ -111,10 +113,10 @@ subroutine init_conditions(x)
 
 implicit none
 
-double precision, intent(out) :: x(:)
+real(r8), intent(out) :: x(:)
 
-integer :: i
-double precision :: x_loc
+integer  :: i
+real(r8) :: x_loc
 
 ! Define the interesting indexes for variables to do diag output; span lats
 do i = 1, 2
@@ -126,7 +128,7 @@ x = 0.0
 
 ! Define the locations of the state variables;
 do i = 1, model_size
-   x_loc = 0.0
+   x_loc = 0.0_r8
    call set_loc(state_loc(i), x_loc)
 end do
 
@@ -143,9 +145,9 @@ subroutine advance(x, num, xnew)
 
 implicit none
 
-double precision, intent(in) :: x(:)
-double precision, intent(out) :: xnew(:)
-integer, intent(in) :: num
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: xnew(:)
+integer,  intent(in)  :: num
 
 integer :: i
 
@@ -189,7 +191,7 @@ end function get_model_size
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, numb, indices, dist)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -198,12 +200,12 @@ implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
+integer, intent(out) :: numb, indices(:)
 real(r8), intent(out) :: dist(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-number = -1
+! to do exhaustive search (numb = -1 return)
+numb = -1
 
 end subroutine model_get_close_states
 

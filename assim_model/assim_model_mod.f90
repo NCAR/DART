@@ -16,11 +16,13 @@ use location_mod, only : location_type, get_dist, write_location, read_location,
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file
-use types_mod
+use types_mod, only : r8
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, pert_model_state
+   end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
+   pert_model_state
 
+implicit none
 private
 
 public :: static_init_assim_model, init_diag_output, get_model_size, get_closest_state_time_to, &
@@ -32,6 +34,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
    awrite_state_restart, Aadvance_state, pert_model_state
 
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
@@ -324,9 +327,9 @@ function init_diag_input(file_name, global_meta_data, model_size, copies_of_fiel
 implicit none
 
 integer :: init_diag_input
-character(len = *), intent(in) :: file_name
-character(len = *), intent(out) ::  global_meta_data
-integer, intent(out) :: model_size, copies_of_field_per_time
+character(len = *), intent(in)  :: file_name
+character(len = *), intent(out) :: global_meta_data
+integer,            intent(out) :: model_size, copies_of_field_per_time
 
 integer :: i
 
@@ -384,7 +387,7 @@ end subroutine get_diag_input_copy_meta_data
 
 
 
-  function get_closest_state_time_to(assim_model, time)
+function get_closest_state_time_to(assim_model, time)
 !----------------------------------------------------------------------
 !
 ! Returns the time closest to the given time that the model can reach
@@ -408,7 +411,7 @@ end function get_closest_state_time_to
 
 
 
-  function aget_closest_state_time_to(model_time, time)
+function aget_closest_state_time_to(model_time, time)
 !----------------------------------------------------------------------
 !
 ! Returns the time closest to the given time that the model can reach
@@ -485,9 +488,9 @@ end subroutine aget_initial_condition
 
 
 
-subroutine get_close_states(location, radius, number, indices, dist)
+subroutine get_close_states(location, radius, numinds, indices, dist)
 !---------------------------------------------------------------------
-! subroutine get_close_states(location, radius, number, indices)
+! subroutine get_close_states(location, radius, numinds, indices)
 !
 ! Returns a list of indices for model state vector points that are
 ! within distance radius of the location. Might want to add an option
@@ -501,9 +504,9 @@ subroutine get_close_states(location, radius, number, indices, dist)
 implicit none
 
 type(location_type), intent(in) :: location
-real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
-real(r8), intent(out) :: dist(:)
+real(r8),            intent(in) :: radius
+integer,             intent(out) :: numinds, indices(:)
+real(r8),            intent(out) :: dist(:)
 
 type(location_type) :: state_loc
 integer :: indx, i
@@ -511,10 +514,10 @@ real(r8) :: this_dist
 
 ! If model provides a working get_close_states, use it; otherwise search
 ! Direct use of model dependent stuff, needs to be automated (F90 can't do this
-call model_get_close_states(location, radius, number, indices, dist)
+call model_get_close_states(location, radius, numinds, indices, dist)
 
-! If number returns as -1, not implemented
-if(number == -1) then
+! If numinds returns as -1, not implemented
+if(numinds == -1) then
    indx = 0
    model_size = get_model_size()
    do i = 1, model_size
@@ -526,12 +529,12 @@ if(number == -1) then
          if(indx <= size(dist)) dist(indx) = this_dist
       end if
    end do
-   number = indx
+   numinds = indx
 endif
 
 ! If size has overflowed, indicate this with negative size return
-if(number > size(indices) .or. number > size(dist)) then
-   number = -1 * number
+if(numinds > size(indices) .or. numinds > size(dist)) then
+   numinds = -1 * numinds
 end if
 
 end subroutine get_close_states
@@ -548,11 +551,11 @@ implicit none
 
 integer :: get_num_close_states
 type(location_type), intent(in) :: location
-real(r8), intent(in) :: radius
+real(r8),            intent(in) :: radius
 
 type(location_type) :: state_loc
-integer :: i, indices(1)
-real(r8) :: dist(1)
+integer             :: i, indices(1)
+real(r8)            :: dist(1)
 
 
 ! call direct model get close with storage that is too 
@@ -561,12 +564,12 @@ real(r8) :: dist(1)
 call model_get_close_states(location, radius, get_num_close_states, indices, dist)
 
 if(get_num_close_states == -1) then
-! Do exhaustive search
+   ! Do exhaustive search
    get_num_close_states = 0
    do i = 1, model_size
       call get_state_meta_data(i, state_loc)
-! INTERESTING NOTE: Because of floating point round-off in comps
-! this can give a 'variable' number of num close for certain obs, should fix
+      ! INTERESTING NOTE: Because of floating point round-off in comps
+      ! this can give a 'variable' number of num close for certain obs, should fix
       if(get_dist(location, state_loc) < radius) get_num_close_states= get_num_close_states + 1
    end do
 
@@ -651,18 +654,18 @@ subroutine advance_state(assim_model, num, target_time, asynch)
 
 implicit none
 
-integer, intent(in) :: num
+integer,                intent(in)    :: num
 type(assim_model_type), intent(inout) :: assim_model(num)
-type(time_type), intent(in) :: target_time
-logical, intent(in) :: asynch
+type(time_type),        intent(in)    :: target_time
+logical,                intent(in)    :: asynch
 
 type(time_type) :: model_time(num)
 real(r8) :: model_state(num, size(assim_model(1)%state_vector))
-integer :: i
+integer  :: i
 
 ! Copy the times and the states to array storage
 do i = 1, num
-   model_time(i) = assim_model(i)%time
+   model_time(i)     = assim_model(i)%time
    model_state(i, :) = assim_model(i)%state_vector
 end do
 
@@ -670,7 +673,7 @@ call Aadvance_state(model_time, model_state, num, target_time, asynch)
 
 ! Now put the times and states that are updated back into their storage
 do i = 1, num
-   assim_model(i)%time = model_time(i)
+   assim_model(i)%time         = model_time(i)
    assim_model(i)%state_vector = model_state(i, :)
 end do
 
@@ -688,11 +691,11 @@ subroutine Aadvance_state(model_time, model_state, num, target_time, asynch)
 
 implicit none
 
-integer, intent(in) :: num
+integer,         intent(in)    :: num
 type(time_type), intent(inout) :: model_time(num)
-real(r8), intent(inout) :: model_state(:, :)
-type(time_type), intent(in) :: target_time
-logical, intent(in) :: asynch
+real(r8),        intent(inout) :: model_state(:, :)
+type(time_type), intent(in)    :: target_time
+logical,         intent(in) :: asynch
 
 type(time_type) :: time_step
 
@@ -720,7 +723,6 @@ return
 !        provides a routine to return the seconds and days
 !        from a time type. 
 
-
    if(model_time(i) > target_time) then
       write(*, *) 'Error in Aadvance_state, target_time before model_time'
       call get_time(model_time(i),seconds,days)
@@ -735,22 +737,25 @@ return
 !------------- Block for single executable ----------------------------
 ! At some point probably need to push the determination of the time back
 ! into the model itself and out of assim_model
+
    if(.not. asynch) then
+
       time_step = get_model_time_step()
       call get_time(time_step, seconds, days)
+
       do while(model_time(i) < target_time)
+
          call adv_1step(model_state(i, :), model_time(i))
          model_time(i) = model_time(i) + time_step
          call get_time(model_time(i), seconds, days)
+
       end do
 
-   else
-!-------------- End single executable block ---------------------------
+   !-------------- End single executable block ------------------------
+   else 
+   !-------------- Block for multiple asynch executables --------------
 
-
-!-------------- Block for multiple asynch executables -----------------
-
-! Loop to write out state for each member to separate file, preface with target time
+   ! Loop to write out state for each member to separate file, preface with target time
       if(i < 10) then
          write(ic_file_name(i), 11) 'assim_model_state_ic', i
          write(ud_file_name(i), 11) 'assim_model_state_ud', i
@@ -782,7 +787,7 @@ return
       if ( binary_restart_files ) then
             open(unit = ic_file_unit, file = ic_file_name(i),      form = 'unformatted')
             call write_time(ic_file_unit, target_time,             form = 'unformatted')
-            call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit, form = 'unformatted')
+            call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit, 'unformatted')
       else
             open(unit = ic_file_unit, file = ic_file_name(i))
             call write_time(ic_file_unit, target_time)
@@ -792,38 +797,37 @@ return
 
    endif
 
-!-------------- End of multiple async executables block ---------------
+   !-------------- End of multiple async executables block ------------
 
 end do
 
 
 ! Also need synchronization block at the end for the asynch
 if(asynch) then
-! Write out the file names to a control file
+
+   ! Write out the file names to a control file
    control_unit = get_unit()
    open(unit = control_unit, file = 'filter_control')
    write(control_unit, *) num
    do i = 1, num
-      write(control_unit, 51) ic_file_name(i)
-      write(control_unit, 51) ud_file_name(i)
- 51   format(a26)
+      write(control_unit, '(a26)' ) ic_file_name(i)
+      write(control_unit, '(a26)' ) ud_file_name(i)
    end do
    close(control_unit)
 
-! Create the file async_may_go to allow the async model integrations
+   ! Create the file async_may_go to allow the async model integrations
    control_unit = get_unit()
    open(unit = control_unit, file = 'async_may_go')
    call write_time(control_unit, target_time)
    close(control_unit)
 
-! Suspend on a read from standard in for integer value
+   ! Suspend on a read from standard in for integer value
    do 
       read(*, *) input_string
       if(trim(input_string) == 'All_done:Please_proceed') exit
-! Following line can allow diagnostic pass through of output
+      ! Following line can allow diagnostic pass through of output
       write(*, *) 'ECHO:', input_string
    end do
-
 
    write(*, *) 'got clearance to proceed in Aadvance_state'
 
@@ -832,7 +836,7 @@ if(asynch) then
       ud_file_unit = get_unit()
       if ( binary_restart_files ) then
          open(unit = ud_file_unit, file = ud_file_name(i),     form = 'unformatted')
-         call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit, form = 'unformatted')
+         call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit, 'unformatted')
       else
          open(unit = ud_file_unit, file = ud_file_name(i))
          call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit)
@@ -846,7 +850,7 @@ end subroutine Aadvance_state
 
 
 
-function interpolate(x, location, type)
+function interpolate(x, location, loctype)
 !---------------------------------------------------------------------
 !
 ! Interpolates from the state vector in an assim_model_type to the
@@ -854,17 +858,17 @@ function interpolate(x, location, type)
 ! types. It might be better to be passing an assim_model_type with
 ! the associated time through here, but that requires changing the
 ! entire observation side of the class tree. Reconsider this at a 
-! later date (JLA, 15 July, 2002). Type for now is an integer that
+! later date (JLA, 15 July, 2002). loctype for now is an integer that
 ! specifies what sort of variable from the model should be interpolated.
 
 implicit none
 
 real(r8) :: interpolate
-real(r8), intent(in) :: x(:)
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer,             intent(in) :: loctype
 
-interpolate = model_interpolate(x, location, type)
+interpolate = model_interpolate(x, location, loctype)
 
 end function interpolate
 
@@ -878,7 +882,7 @@ subroutine set_model_time(assim_model, time)
 implicit none
 
 type(assim_model_type), intent(inout) :: assim_model
-type(time_type), intent(in) :: time
+type(time_type),        intent(in)    :: time
 
 assim_model%time = time
 
@@ -894,7 +898,7 @@ subroutine set_model_state_vector(assim_model, state)
 implicit none
 
 type(assim_model_type), intent(inout) :: assim_model
-real(r8), intent(in) :: state(:)
+real(r8),               intent(in)    :: state(:)
 
 ! Check the size for now
 if(size(state) /= get_model_size()) then
@@ -908,7 +912,7 @@ end subroutine set_model_state_vector
 
 
 
-subroutine write_state_restart(assim_model, file, form)
+subroutine write_state_restart(assim_model, funit, fform)
 !----------------------------------------------------------------------
 !
 ! Write a restart file given a model extended state and a unit number 
@@ -918,13 +922,13 @@ subroutine write_state_restart(assim_model, file, form)
 implicit none
 
 type (assim_model_type), intent(in)           :: assim_model
-integer,                 intent(in)           :: file
-character(len=*),        intent(in), optional :: form
+integer,                 intent(in)           :: funit
+character(len=*),        intent(in), optional :: fform
 
-if(present(form)) then
-   call awrite_state_restart(assim_model%time, assim_model%state_vector, file, form)
+if(present(fform)) then
+   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit, fform)
 else
-   call awrite_state_restart(assim_model%time, assim_model%state_vector, file)
+   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit)
 endif
 
 end subroutine write_state_restart
@@ -932,7 +936,7 @@ end subroutine write_state_restart
 
 
 
-subroutine awrite_state_restart(model_time, model_state, file, form)
+subroutine awrite_state_restart(model_time, model_state, funit, fform)
 !----------------------------------------------------------------------
 !
 ! Write a restart file given a model extended state and a unit number 
@@ -943,13 +947,13 @@ implicit none
 
 type(time_type), intent(in)                   :: model_time
 real(r8), intent(in)                          :: model_state(:)
-integer,                 intent(in)           :: file
-character(len=*),        intent(in), optional :: form
+integer,                 intent(in)           :: funit
+character(len=*),        intent(in), optional :: fform
 integer           :: days, seconds
 character(len=32) :: fileformat
 
 fileformat = "ascii"
-if (present(form)) fileformat = trim(adjustl(form))
+if (present(fform)) fileformat = trim(adjustl(fform))
 
 
 ! This needs to be done more carefully, consider this an extended stub
@@ -959,18 +963,18 @@ if (present(form)) fileformat = trim(adjustl(form))
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      call write_time(file, model_time, form="unformatted")
-      write(file) model_state
+      call write_time(funit, model_time, form="unformatted")
+      write(funit) model_state
    CASE DEFAULT
-      call write_time(file, model_time)
-      write(file, *) model_state
+      call write_time(funit, model_time)
+      write(funit, *) model_state
 END SELECT  
 
 end subroutine awrite_state_restart
 
 
 
-subroutine read_state_restart(assim_model, file, form)
+subroutine read_state_restart(assim_model, funit, fform)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
@@ -978,13 +982,13 @@ subroutine read_state_restart(assim_model, file, form)
 implicit none
 
 type(assim_model_type), intent(out)          :: assim_model
-integer,                intent(in)           :: file
-character(len=*),       intent(in), optional :: form
+integer,                intent(in)           :: funit
+character(len=*),       intent(in), optional :: fform
 
-if(present(form)) then
-   call aread_state_restart(assim_model%time, assim_model%state_vector, file, form)
+if(present(fform)) then
+   call aread_state_restart(assim_model%time, assim_model%state_vector, funit, fform)
 else
-   call aread_state_restart(assim_model%time, assim_model%state_vector, file)
+   call aread_state_restart(assim_model%time, assim_model%state_vector, funit)
 endif
 
 end subroutine read_state_restart
@@ -992,7 +996,7 @@ end subroutine read_state_restart
 
 
 
-subroutine aread_state_restart(model_time, model_state, file, form)
+subroutine aread_state_restart(model_time, model_state, funit, fform)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
@@ -1001,29 +1005,29 @@ implicit none
 
 type(time_type), intent(out)                 :: model_time
 real(r8), intent(out)                        :: model_state(:)
-integer,                intent(in)           :: file
-character(len=*),       intent(in), optional :: form
+integer,                intent(in)           :: funit
+character(len=*),       intent(in), optional :: fform
 
 integer           :: seconds, days
 character(len=32) :: fileformat
 
 
-print *,'assim_model_mod:aread_state_restart ... reading from unit',file
+print *,'assim_model_mod:aread_state_restart ... reading from unit',funit
 
 
 fileformat = "ascii"
-if (present(form)) fileformat = trim(adjustl(form))
+if (present(fform)) fileformat = trim(adjustl(fform))
 
 ! Read the time
 ! Read the state vector
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      model_time = read_time(file, form = "unformatted")
-      read(file) model_state
+      model_time = read_time(funit, form = "unformatted")
+      read(funit) model_state
    CASE DEFAULT
-      model_time = read_time(file)
-      read(file, *) model_state
+      model_time = read_time(funit)
+      read(funit, *) model_state
 END SELECT  
 
 end subroutine aread_state_restart
@@ -1088,10 +1092,10 @@ use typeSizes
 use netcdf
 implicit none
 
-integer,                intent(in) :: ncFileID
-type(time_type),        intent(in) :: model_time
-real(r8),               intent(in) :: model_state(:)
-integer, optional,      intent(in) :: copy_index
+integer,           intent(in) :: ncFileID
+type(time_type),   intent(in) :: model_time
+real(r8),          intent(in) :: model_state(:)
+integer, optional, intent(in) :: copy_index
 
 integer :: i,ierr, timeindex, copyindex
 
@@ -1129,10 +1133,10 @@ subroutine input_diagnostics(file_id, state, copy_index)
 
 implicit none
 
-integer, intent(in) :: file_id
+integer,                intent(in)    :: file_id
 ! MAYBE SHOULDN'T use assim model type here, but just state and time ?
 type(assim_model_type), intent(inout) :: state
-integer, intent(out) :: copy_index
+integer,                intent(out)   :: copy_index
 
 call ainput_diagnostics(file_id, state%time, state%state_vector, copy_index)
 
@@ -1148,10 +1152,10 @@ subroutine ainput_diagnostics(file_id, model_time, model_state, copy_index)
 
 implicit none
 
-integer, intent(in) :: file_id
+integer,         intent(in)    :: file_id
 type(time_type), intent(inout) :: model_time
-real(r8), intent(inout) :: model_state(:)
-integer, intent(out) :: copy_index
+real(r8),        intent(inout) :: model_state(:)
+integer,         intent(out)   :: copy_index
 
 character(len=5) :: header
 

@@ -3,10 +3,24 @@
 
 program update_wrf_bc
 
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+!
+
    USE module_netcdf_interface
    USE module_couple_uv
 
    implicit none
+
+   ! CVS Generated file description for error handling, do not edit
+   character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
    integer, parameter :: max_3d_variables = 20, &
                          max_2d_variables = 20
@@ -195,25 +209,25 @@ program update_wrf_bc
 
 !-----calculate variable at first time level
       select case(m)
-         case (1) ;		! West boundary
+         case (1) ;             ! West boundary
             do l=1,dims(3)
             do j=1,dims(1)
                frst3d(j,1,l)=mu(l,j)
             enddo
             enddo
-         case (2) ;		! East boundary
+         case (2) ;             ! East boundary
             do l=1,dims(3)
             do j=1,dims(1)
                frst3d(j,1,l)=mu(east_end-l,j)
             enddo
             enddo
-         case (3) ;		! South boundary
+         case (3) ;             ! South boundary
             do l=1,dims(3)
             do i=1,dims(1)
                frst3d(i,1,l)=mu(i,l)
             enddo
             enddo
-         case (4) ;		! North boundary
+         case (4) ;             ! North boundary
             do l=1,dims(3)
             do i=1,dims(1)
                frst3d(i,1,l)=mu(i,north_end-l)
@@ -321,10 +335,10 @@ program update_wrf_bc
       north_end=dims(2)+1
 
       select case(trim(var3d(n)))
-         case ('U') ;		! U
+         case ('U') ;           ! U
             var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=u(:,:,:)
-         case ('V') ;		! V
+         case ('V') ;           ! V
             var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=v(:,:,:)
          case ('T', 'PH') ;
@@ -407,7 +421,7 @@ program update_wrf_bc
 !                                   dims(1), dims(2), dims(3), 2, debug )
    
          select case(trim(bdyname(m)))
-            case ('_BXS') ;		! West boundary
+            case ('_BXS') ;     ! West boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do j=1,dims(1)
@@ -415,7 +429,7 @@ program update_wrf_bc
                enddo
                enddo
                enddo
-            case ('_BXE') ;		! East boundary
+            case ('_BXE') ;     ! East boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do j=1,dims(1)
@@ -423,7 +437,7 @@ program update_wrf_bc
                enddo
                enddo
                enddo
-            case ('_BYS') ;		! South boundary
+            case ('_BYS') ;     ! South boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do i=1,dims(1)
@@ -431,7 +445,7 @@ program update_wrf_bc
                enddo
                enddo
                enddo
-            case ('_BYE') ;		! North boundary
+            case ('_BYE') ;     ! North boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do i=1,dims(1)

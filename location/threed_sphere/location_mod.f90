@@ -1,10 +1,12 @@
 module location_mod
 !
+! <next four lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
 !
+
 ! Implements location interfaces for a three dimensional spherical shell 
 ! with a pressure vertical coordinate plus
 ! a vertical coordinate based on the models native set of
@@ -18,56 +20,37 @@ module location_mod
 ! Note that for now, lev = -1 represents a surface quantity independent
 ! of vertical discretization as required for Bgrid surface pressure.
 
-use      types_mod
-!use  utilities_mod, only : output_err, E_ERR
+use      types_mod, only : r8, PI, rad2deg, deg2rad
+use  utilities_mod, only : error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
+implicit none
 private
 
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
-       vert_is_pressure, vert_is_level, &
+       vert_is_pressure, vert_is_level, query_location, &
        LocationDims, LocationName, LocationLName, &
        read_ncep_obs_location
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type location_type
    private
-   real(r8) :: lon, lat, lev, pressure
-   integer :: which_vert
-! which vert determines if location has a pressure or level location in vertical
-! 1 implies levels for now, 2 implies pressure, could add other options
+   real(r8) :: lon, lat, vloc             
+   integer  :: which_vert
+   ! which_vert determines if the location is by level or by height/pressure     
+   ! 1 ===> obs is by level 
+   ! 2 ===> obs is by pressure 
+   ! 3 ===> obs is by height 
 end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
-
-! CVS Generated file description for error handling, do not edit
-character(len = 129), parameter :: &
-   e_src = "$Source$", &
-   e_rev = "$Revision$", &
-   e_dat = "$Date$", &
-   e_aut = "$Author$"
-
-! There needs to be some sort of public metadata for the location module.
-! The number of dimensions, the name of each dimension, that sort of thing.
-! TJH Sept. 16, 2002
-!
-!type location_meta
-!   integer             :: ndims = 3
-!   character (len=129) :: name = "loc3Dsphere"
-!   character (len=129) :: longname = "threed sphere locations: lon, lat, lev"
-!   character (len=129) :: rev = "$Revision$"
-!   character (len=129) :: dat = "$Date$"
-!   character (len=129) :: aut = "$Author$"
-!   character (len=129) :: src = &
-!   "$Source$"
-!end type location_meta
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dsphere"
@@ -96,7 +79,7 @@ real(r8) :: lon_dif
 
 ! Compute great circle path shortest route between two points
 lon_dif = abs(loc1%lon - loc2%lon)
-if(lon_dif > pi) lon_dif = 2.0_r8 * pi - lon_dif
+if(lon_dif > PI) lon_dif = 2.0_r8 * PI - lon_dif
 
 if(cos(loc1%lat) == 0) then
    get_dist = abs(loc2%lat - loc1%lat)
@@ -121,15 +104,9 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
-get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * pi)
-get_location(2) = loc%lat * 180.0_r8 / pi
-! Return level or pressure as indicated
-if(loc%which_vert == 1) then
-   get_location(3) = loc%lev
-else
-   get_location(3) = loc%pressure
-end if
-
+  get_location(1) = loc%lon * rad2deg                 
+  get_location(2) = loc%lat * rad2deg                 
+  get_location(3) = loc%vloc     
 end function get_location
 
 
@@ -150,7 +127,21 @@ endif
 
 end function vert_is_pressure
 
+function vert_is_height(loc)
+!---------------------------------------------------------------------------
+!
+! Given a location, return true if vertical coordinate is pressure, else false
 
+logical :: vert_is_height      
+type(location_type), intent(in) :: loc
+
+if(loc%which_vert == 3 ) then
+   vert_is_height = .true.
+else
+   vert_is_height = .false.
+endif
+
+end function vert_is_height
 
 function vert_is_level(loc)
 !---------------------------------------------------------------------------
@@ -180,7 +171,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
-get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * pi)
+get_location_lon = loc%lon * rad2deg    
 
 end function get_location_lon
 
@@ -196,64 +187,75 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
 
-get_location_lat = loc%lat * 180.0_r8 / pi
+get_location_lat = loc%lat * rad2deg      
 
 end function get_location_lat
 
 
 
-function set_location(lon, lat, lev, pressure)
+function set_location(lon, lat, vert_loc,  which_vert)
 !----------------------------------------------------------------------------
 !
-! Given a longitude and latitude
-! puts this value into the location.
+! Puts the given longitude, latitude, and vertical location
+! into a location datatype.
+!
 
 implicit none
 
 type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat
-real(r8), intent(in), optional :: lev, pressure
+real(r8), intent(in) :: vert_loc
+integer,  intent(in) :: which_vert
 
-!if(lon < 0.0_r8 .or. lon > 360.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-!   'set_location', 'Longitude is out of 0->360 range')
-if(lon < 0.0_r8 .or. lon > 360.0_r8) then
-   write(*, *) 'set location: Longitude is out of 0->360 range'
-   stop
-endif
+if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
+     'Longitude is out of [0,360] range', source, revision, revdate)
 
-!if(lat < -90.0_r8 .or. lat > 90.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-!   'set_location', 'Latitude is out of -90->90 range')
-if(lat < -90.0_r8 .or. lat > 90.0_r8) then
-   write(*, *) 'set_location  Latitude is out of -90->90 range'
-   stop
-endif
+if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
+     'Latitude is out of -90->90 range', source, revision, revdate)
 
+set_location%lon = lon * deg2rad                    
+set_location%lat = lat * deg2rad       
 
-set_location%lon = lon * 2.0_r8 * pi / 360.0_r8
-set_location%lat = lat * pi / 180.0_r8
-
-! Set the vertical coordinate to pressure or level as required; watch for out of range
-if(present(lev)) then
-   if(lev < -1) then
-      write(*, *) 'set_location: Level is less than -1'
+  if(which_vert < 1 .or. which_vert > 3  ) then
+      write(*, *) 'set which_vert is again'             
       stop
    endif
-   set_location%lev = lev
-   set_location%which_vert = 1
-else if(present(pressure)) then
-   if(pressure < 0.0) then
-      write(*, *) 'set_location: Pressure is less than 0'
-      stop
-   endif
-   set_location%pressure = pressure
-   set_location%which_vert = 2
-endif
+  set_location%which_vert = which_vert 
+  set_location%vloc = vert_loc
 
 end function set_location
 
+function query_location(loc,attr) result(fval)
+!---------------------------------------------------------------------------
+!
+! Returns the value of the attribute 
+! 
 
+implicit none
 
-subroutine write_location(file, loc)
+type(location_type),        intent(in) :: loc 
+character(len=*), optional, intent(in) :: attr
+real(r8)                               :: fval
+
+character(len=16) :: attribute
+attribute = 'which_vert'
+
+if (present(attr)) attribute = attr
+selectcase(adjustl(attribute))
+ case ('which_vert','WHICH_VERT')
+   fval = loc%which_vert
+ case ('lat','LAT')
+   fval = loc%lat
+ case ('lon','LON')
+   fval = loc%lon
+ case ('vloc','VLOC')           
+   fval = loc%vloc       
+ case default
+   fval = loc%which_vert
+end select
+end function query_location
+
+subroutine write_location(ifile, loc)
 !----------------------------------------------------------------------------
 !
 ! Writes a oned location to the file. Implemented as a subroutine but  could
@@ -266,60 +268,40 @@ subroutine write_location(file, loc)
 
 implicit none
 
-integer, intent(in) :: file
+integer,             intent(in) :: ifile
 type(location_type), intent(in) :: loc
 
-! For now, output a character tag followed by the r8 value. Is this written at 
-! machine precision ???
-
-write(file, 11) 
-11 format('loc3d')       ! TJH request
+write(ifile, '(''loc3d'')' ) 
 
 ! Write out pressure or level along with integer tag
-if(loc%which_vert == 1) then
-   write(file, *) loc%lon, loc%lat, loc%lev, loc%which_vert
-else
-   write(file, *) loc%lon, loc%lat, loc%pressure, loc%which_vert
-endif
-
-! I need to learn how to do formatted IO with the types package
-!21 format(r8)
+write(ifile, *)loc%lon, loc%lat, loc%vloc, loc%which_vert
 
 end subroutine write_location
 
 
 
-function read_location(file)
+function read_location(ifile)
 !----------------------------------------------------------------------------
 !
-! Reads a oned location from file that was written by write_location. See write_location
-! for additional discussion.
+! Reads a oned location from file that was written by write_location.
+! See write_location for additional discussion.
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: ifile
 type(location_type) :: read_location
-real(r8) :: lev_or_press
 
 character(len=5) :: header
 
 ! Will want to add additional error checks on the read
-read(file, 11) header
-11 format(a5)
-!if(header /= 'loc2s') call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-!   'read_location', 'Expected location header "loc1d" in input file')
-if(header /= 'loc3d') then
-   write(*, *) 'read_location Expected location header "loc3d" in input file'
-   stop
-endif
+read(ifile, '(a5)' ) header
+
+if(header /= 'loc3d') call error_handler(E_ERR, 'read_location', &
+   'Expected location header "loc3d" in input file', source, revision, revdate)
 
 ! Now read the location data value
-read(file, *) read_location%lon, read_location%lat, lev_or_press, read_location%which_vert
-if(read_location%which_vert == 1) then
-   read_location%lev = lev_or_press
-else
-   read_location%pressure = lev_or_press
-endif
+read(ifile, *)read_location%lon, read_location%lat, &
+             read_location%vloc, read_location%which_vert
 
 end function read_location
 
@@ -341,13 +323,13 @@ write(*, *) 'Input model level with -1 for surface or a -99 to input pressure'
 
 read(*, *) lev
 
-if(lev < -98.0) then
+if(lev < -98.0_r8) then
 ! Convert from Millibars to Pascals as required for model internals
    write(*, *) 'Input pressure for this observation in PASCALS'
-   read(*, *) location%pressure
+!  read(*, *) location%pressure
    location%which_vert = 2
 else
-   location%lev = lev
+   location%vloc = lev
    location%which_vert = 1
 endif
 
@@ -379,16 +361,19 @@ if(lon < 0.0_r8) then
                                       location%lat * 180.0 / PI
 
 else
+
    write(*, *) 'Input latitude for this obs: value -90.0 to 90.0'
    read(*, *) lat
+
    do while(lat < -90.0_r8 .or. lat > 90.0_r8)
       write(*, *) 'Input value < -90.0 or > 90.0 is illegal, please try again'
       read(*, *) lat
    end do
+
    location%lon = lon
    location%lat = lat
-end if
 
+end if
 
 end subroutine interactive_location
 
@@ -409,10 +394,9 @@ integer, intent(in)             :: ncFileID, LocationVarID
 type(location_type), intent(in) :: loc
 integer, intent(in)             :: start
 
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lon, (/ start, 1 /) ))
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lat, (/ start, 2 /) ))
-! ??? Need output for pressure locations, too ???
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lev, (/ start, 3 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%lon,  (/ start, 1 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%lat,  (/ start, 2 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%vloc, (/ start, 3 /) ))
 
 contains
   
@@ -421,35 +405,33 @@ contains
   subroutine check(status)
     integer, intent ( in) :: status
 
-    if(status /= nf90_noerr) then
-      print *, trim(nf90_strerror(status))
-      print *,'location_mod:nc_write_location'
-      stop
-    end if
+    if(status /= nf90_noerr) call error_handler(E_ERR,'nc_write_location', &
+         trim(nf90_strerror(status)), source, revision, revdate )
+
   end subroutine check
 
 end subroutine nc_write_location
 
 
-!=============================================================
-  subroutine read_ncep_obs_location(location, obsunit, obsindex, var)                            
-!=============================================================
-! read location (lon,lat,pressure) from NCEP observation files                              
-!  Input units are: radians and hPa.                                                        
-                                                                                            
-implicit none                                                                               
-                                                                                            
-type(location_type) :: location                                                             
-                                                                                            
-integer :: obs_prof
-integer, intent(in) :: obsunit                                                              
-integer, intent(out) :: obsindex                   
-real (r8), intent(out) :: var                                                               
-real (r8) :: lon,lat,lev,zob, dummy,count,time,type                                         
-                                                                                            
-! Read location, kind and error variance of NCEP data 
 
-    read(obsunit, 880) var, lon, lat, lev, zob, dummy,count,time,type               
+subroutine read_ncep_obs_location(location, obsunit, obsindex, var)                            
+!----------------------------------------------------------------------------
+!
+! Read location (lon,lat,pressure) from NCEP observation files
+! Input units are: radians and hPa.
+
+implicit none
+
+type(location_type)   :: location
+integer,  intent(in)  :: obsunit
+integer,  intent(out) :: obsindex
+real(r8), intent(out) :: var
+
+real(r8) :: lon, lat, lev, zob, dummy, count, time, type
+integer  :: obs_prof
+
+! Read location, kind and error variance of NCEP data 
+    read(obsunit, 880) var, lon, lat, lev, zob, dummy, count, time, type               
   880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
 
     location%lon = lon     ! in radian
@@ -463,19 +445,19 @@ real (r8) :: lon,lat,lev,zob, dummy,count,time,type
     if(obs_prof == 3) obsindex = 3
     if(obs_prof == 1) obsindex = 4
 
-    if (obsindex .ne. 3) then      ! for u,v,t
-    location%pressure = lev*100.0   ! (transfer from mb to Pascal)                          
-    location%which_vert = 2                                                                 
+    if (obsindex .ne. 3) then              ! for u,v,t
+       location%vloc       = lev*100.0_r8  ! (transfer from mb to Pascal)                          
+       location%which_vert = 2                                                                 
     else                                                                                    
-    location%lev = -1      ! for Ps
-    location%which_vert = 1                                                                 
-    var = var*100.0     ! convert to Pascal
+       location%vloc       = -1            ! for Ps
+       location%which_vert = 1                                                                 
+       var                 = var*100.0_r8  ! convert to Pascal
     endif                                                                                   
                                                                                             
 end subroutine read_ncep_obs_location
-!
+
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90
 !----------------------------------------------------------------------------
-!
+
 end module location_mod

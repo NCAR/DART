@@ -243,7 +243,7 @@ else
    \rm -f create_obs_set_def.in create_obs_sequence.in input.nml perfect.nml filter.nml assim_model.nml model.nml
 endif
 
-if ( ${?SAVEME} ) then
+if ( -e ${SAVEME} ) then
    mv $SAVEME input.nml
 endif
 

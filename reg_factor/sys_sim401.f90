@@ -1,16 +1,18 @@
 program sys_sim401
-
-!  $Source$
-!  $Revision$
-!  $Date$
+!
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+!
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer n, n_samples, i, j
 double precision :: sd_ratio, alpha
@@ -95,8 +97,8 @@ do i = 1, n_samples
 
 ! Now, draw a single value from this distribution
 ! This is the revised clean version from 9 Nov., 2003
-   sample1(i) = random_gaussian(r, dble(1.0), sd_ratio)
-   sample2(i) = random_gaussian(r, dble(1.0), sd_ratio)
+   sample1(i) = random_gaussian(r, 1.0_r8, sd_ratio)
+   sample2(i) = random_gaussian(r, 1.0_r8, sd_ratio)
 end do
 
 ! For now, don't know how to really compute this derivative for minimization

@@ -268,7 +268,7 @@ character(len=128), intent(in), optional :: table_name
 character(len=128) :: tbl_name
 character(len=32) :: model_name
 character(len=1024) :: record
-integer :: n, iunit, nfields, num_methods, m, model, icount, l
+integer :: n, iunit, num_methods, m, model, icount, l
 logical :: flag_method
 
 type(field_names_type) :: text_names

@@ -1,16 +1,18 @@
 program sys_sim402
-
-!  $Source$
-!  $Revision$
-!  $Date$
+!
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+!
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer n, n_samples, i, j
 double precision :: sd_ratio, alpha
@@ -22,7 +24,7 @@ read(*, *) n_samples
 
 ! Loop through a range of values for alpha until alpha is 0.0
 do i = 0, 300
-   sd_ratio = (i - 1.) / 100.0
+   sd_ratio = (i - 1.) / 100.0_r8
    call sub_sim402(sd_ratio, n, n_samples, alpha)
    write(*, *) 'sd_ratio, alpha ', sd_ratio, alpha
 !!!   if(alpha <= 0.0) stop

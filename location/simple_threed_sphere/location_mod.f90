@@ -1,10 +1,12 @@
 module location_mod
 !
+! <next four lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
 !
+
 ! Implements location interfaces for a two dimensional spherical shell 
 ! plus a naive vertical coordinate based on the models native set of
 ! discrete levels. In the long run, it would be nice to separate the 
@@ -17,21 +19,22 @@ module location_mod
 ! Note that for now, lev = -1 represents a surface quantity independent
 ! of vertical discretization as required for Bgrid surface pressure.
 
-use      types_mod
-!use  utilities_mod, only : output_err, E_ERR
+use      types_mod, only : r8, PI
+use  utilities_mod, only : error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
+implicit none
 private
 
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
        LocationDims, LocationName, LocationLName
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type location_type
    private
@@ -40,28 +43,6 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
-
-! CVS Generated file description for error handling, do not edit
-character(len = 129), parameter :: &
-   e_src = "$Source$", &
-   e_rev = "$Revision$", &
-   e_dat = "$Date$", &
-   e_aut = "$Author$"
-
-! There needs to be some sort of public metadata for the location module.
-! The number of dimensions, the name of each dimension, that sort of thing.
-! TJH Sept. 16, 2002
-!
-!type location_meta
-!   integer             :: ndims = 3
-!   character (len=129) :: name = "loc3Dsphere"
-!   character (len=129) :: longname = "simple threed sphere locations: lon, lat, lev"
-!   character (len=129) :: rev = "$Revision$"
-!   character (len=129) :: dat = "$Date$"
-!   character (len=129) :: aut = "$Author$"
-!   character (len=129) :: src = &
-!   "$Source$"
-!end type location_meta
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dsphere"
@@ -89,13 +70,13 @@ real(r8) :: lon_dif
 
 ! Compute great circle path shortest route between two points
 lon_dif = abs(loc1%lon - loc2%lon)
-if(lon_dif > pi) lon_dif = 2.0_r8 * pi - lon_dif
+if(lon_dif > PI) lon_dif = 2.0_r8 * PI - lon_dif
 
 if(cos(loc1%lat) == 0) then
    get_dist = abs(loc2%lat - loc1%lat)
 else
    get_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
-      cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif))
+                   cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif))
 endif
 
 end function get_dist
@@ -114,8 +95,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
-get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * pi)
-get_location(2) = loc%lat * 180.0_r8 / pi
+get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * PI)
+get_location(2) = loc%lat * 180.0_r8 / PI
 get_location(3) = loc%lev
 
 end function get_location
@@ -132,7 +113,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
-get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * pi)
+get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * PI)
 
 end function get_location_lon
 
@@ -148,7 +129,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
 
-get_location_lat = loc%lat * 180.0_r8 / pi
+get_location_lat = loc%lat * 180.0_r8 / PI
 
 end function get_location_lat
 
@@ -181,29 +162,21 @@ implicit none
 type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat, lev
 
-!if(lon < 0.0_r8 .or. lon > 360.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-!   'set_location', 'Longitude is out of 0->360 range')
-if(lon < 0.0_r8 .or. lon > 360.0_r8) then
-   write(*, *) 'set location: Longitude is out of 0->360 range'
-   stop
-endif
+if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
+        'Longitude is out of [0,360] range', source, revision, revdate)
 
-!if(lat < -90.0_r8 .or. lat > 90.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-!   'set_location', 'Latitude is out of -90->90 range')
-if(lat < -90.0_r8 .or. lat > 90.0_r8) then
-   write(*, *) 'set_location  Latitude is out of -90->90 range'
-   stop
-endif
+if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
+        'Latitude is out of [-90,90] range', source, revision, revdate)
 
-set_location%lon = lon * 2.0_r8 * pi / 360.0_r8
-set_location%lat = lat * pi / 180.0_r8
+set_location%lon = lon * 2.0_r8 * PI / 360.0_r8
+set_location%lat = lat * PI / 180.0_r8
 set_location%lev = lev
 
 end function set_location
 
 
 
-subroutine write_location(file, loc)
+subroutine write_location(ifile, loc)
 !----------------------------------------------------------------------------
 !
 ! Writes a oned location to the file. Implemented as a subroutine but  could
@@ -216,48 +189,39 @@ subroutine write_location(file, loc)
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: ifile
 type(location_type), intent(in) :: loc
 
-! For now, output a character tag followed by the r8 value. Is this written at 
-! machine precision ???
+! For now, output a character tag followed by the r8 value. 
 
-write(file, 11) 
-11 format('loc2s')       ! TJH request
-write(file, *) loc%lon, loc%lat, loc%lev
-
-! I need to learn how to do formatted IO with the types package
-!21 format(r8)
+write(ifile, '(''loc2s'')' ) 
+write(ifile, *) loc%lon, loc%lat, loc%lev
 
 end subroutine write_location
 
 
 
-function read_location(file)
+function read_location(ifile)
 !----------------------------------------------------------------------------
 !
-! Reads a oned location from file that was written by write_location. See write_location
-! for additional discussion.
+! Reads a oned location from ifile that was written by write_location. 
+! See write_location for additional discussion.
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: ifile
 type(location_type) :: read_location
 
 character(len=5) :: header
 
 ! Will want to add additional error checks on the read
-read(file, 11) header
-11 format(a5)
-!if(header /= 'loc2s') call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-!   'read_location', 'Expected location header "loc1d" in input file')
-if(header /= 'loc2s') then
-   write(*, *) 'read_location Expected location header "loc1d" in input file'
-   stop
-endif
+read(ifile, '(a5)' ) header
+
+if(header /= 'loc2s') call error_handler(E_ERR, 'read_location', &
+    'Expected location header "loc2s" in input file', source, revision, revdate)
 
 ! Now read the location data value
-read(file, *) read_location%lon, read_location%lat, read_location%lev
+read(ifile, *) read_location%lon, read_location%lat, read_location%lev
 
 end function read_location
 
@@ -307,6 +271,7 @@ if(lon < 0.0_r8) then
                                       location%lat * 180.0 / PI
 
 else
+
    write(*, *) 'Input latitude for this obs: value -90.0 to 90.0'
    read(*, *) lat
    do while(lat < -90.0_r8 .or. lat > 90.0_r8)
@@ -347,20 +312,18 @@ contains
   subroutine check(status)
     integer, intent ( in) :: status
 
-    if(status /= nf90_noerr) then
-      print *, trim(nf90_strerror(status))
-      print *,'location_mod:nc_write_location'
-      stop
-    end if
+    if(status /= nf90_noerr) call error_handler(E_ERR, 'nc_write_locations', &
+         trim(nf90_strerror(status)),source, revision, revdate)
+    
   end subroutine check
 
 end subroutine nc_write_location
 
 
 
-!
+
 !----------------------------------------------------------------------------
 ! end of location/simple_threed_sphere/location_mod.f90
 !----------------------------------------------------------------------------
-!
+
 end module location_mod

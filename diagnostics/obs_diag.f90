@@ -1,5 +1,4 @@
 program obs_diag
-
 !
 ! <next four lines automatically updated by CVS, do not edit>
 ! $Source$
@@ -7,53 +6,53 @@ program obs_diag
 ! $Date$
 ! $Author$
 
-
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_obs_values, &
    get_obs_location1, get_obs_kind1, get_single_obs_value
 use time_manager_mod, only : time_type, set_time, print_time
-use utilities_mod,    only :  get_unit, open_file, close_file, &
-   check_nml_error, file_exist
-use assim_model_mod,  only : assim_model_type
-use typeSizes
+use    utilities_mod, only :  get_unit, open_file, close_file, &
+   check_nml_error, file_exist, error_handler, FATAL
+use  assim_model_mod, only : assim_model_type
+use typesizes            ! from netCDF F90 interface
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Define a type for doing direct access to ensemble state vectors
 
 type(obs_sequence_type) :: seq, prior_seq, posterior_seq
 type(time_type)         :: time, time2
 
-
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, prior_obs_unit, posterior_obs_unit, io
 integer :: ierr
 integer :: num_obs_sets, obs_type
 
 ! Storage for direct access to ensemble state vectors
 
-real(r8), allocatable  :: obs(:)
-integer :: ifirst = 1
+real(r8), allocatable :: obs(:)
+integer               :: ifirst = 1
 integer, allocatable  :: num_obs_in_set(:)
-real(r8), allocatable  :: ges(:, :), anl(:, :)
+real(r8), allocatable :: ges(:, :), anl(:, :)
 real(r8), allocatable :: obsloc(:, :), obskind(:)
-real(r8):: pressure
-integer:: lon, lat
+real(r8)              :: pressure
+integer               :: lon, lat
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer :: ens_size = 20
-real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
-logical :: async = .false., start_from_restart = .false., output_restart = .false.
-integer :: init_time_days = -1, init_time_seconds = -1
+integer  :: ens_size    = 20
+real(r8) :: cutoff      = 200.0_r8
+real(r8) :: cov_inflate = 1.0_r8
+logical  :: async = .false., start_from_restart = .false., output_restart = .false.
+integer  :: init_time_days    = -1
+integer  :: init_time_seconds = -1
 ! Control diagnostic output for state variables
 logical :: output_state_ens_mean = .true., output_state_ens_spread = .true.
 integer :: num_output_ens_members = 0
@@ -66,10 +65,10 @@ real(r8), allocatable :: rms_ges_mean(:), rms_anl_mean(:)
 real(r8), allocatable :: rms_ges_spread(:), rms_anl_spread(:)
 real(r8), allocatable :: rms_ges(:,:), rms_anl(:,:)
 
-real(r8) plev(nlev), level_value(4)
-real(r8) rms_ges_ver(nlev), rms_anl_ver(nlev)                                    
-real(r8) rms_ges_hori(nlon, nlat), rms_anl_hori(nlon, nlat)                
-real(r8) alon(nlon), alat(nlat)
+real(r8) :: plev(nlev), level_value(4)
+real(r8) :: rms_ges_ver(nlev), rms_anl_ver(nlev)                                    
+real(r8) :: rms_ges_hori(nlon, nlat), rms_anl_hori(nlon, nlat)                
+real(r8) :: alon(nlon), alat(nlat)
 
 integer, allocatable :: num_in_level(:)
 integer :: k0, kkk,  num_ver(nlev) , num_hori(nlon, nlat), iy,im,id,ih, ista
@@ -90,30 +89,29 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
 
    ens_size_plus = ens_size + 1
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(unit, nml = filter_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'filter_nml')
-   enddo
+   ! Begin by reading the namelist input
+   if(file_exist('input.nml')) then
+      iunit = open_file(file = 'input.nml', action = 'read')
+      ierr = 1
+      do while(ierr /= 0)
+         read(iunit, nml = filter_nml, iostat = io, end = 11)
+         ierr = check_nml_error(io, 'filter_nml')
+      enddo
  11 continue
-   call close_file(unit)
-endif
+      call close_file(iunit)
+   endif
 
    write(*, *) 'the ensemble size is ', ens_size
-    write(*,*) 'input observation type for verification, 1=u,2=v,3=ps,4=t'
-    read(*,*) obs_type
+   write(*,*) 'input observation type for verification, 1=u,2=v,3=ps,4=t'
+   read(*,*) obs_type
 
+   ! Input the obs_sequence
+   iunit = get_unit()
+   open(unit = iunit, file = obs_sequence_file_name)
+   seq = read_obs_sequence(iunit)
+   close(iunit)
 
-! Input the obs_sequence
-unit = get_unit()
-open(unit = unit, file = obs_sequence_file_name)
-seq = read_obs_sequence(unit)
-close(unit)
-
-! Count of number of sets in the sequence
+   ! Count of number of sets in the sequence
    num_obs_sets = get_num_obs_sets(seq)
 
 !---------------------------------------------------------------
@@ -138,48 +136,48 @@ close(unit)
    allocate(rms_ges_spread(num_obs_sets), rms_anl_spread(num_obs_sets) ) 
    allocate(rms_ges(num_obs_sets, ens_size_plus), rms_anl(num_obs_sets, ens_size_plus)) 
 
-!   start the rms errors statistics.
-     do k=1, nlev
-     rms_ges_ver(k) = 0.0
-     rms_anl_ver(k) = 0.0
-     num_ver(k) = 0
-     enddo
+!  start the rms errors statistics.
+   do k=1, nlev
+      rms_ges_ver(k) = 0.0_r8
+      rms_anl_ver(k) = 0.0_r8
+      num_ver(k) = 0
+   enddo
 
-     do i=1, nlon
-     do j=1, nlat
-     rms_ges_hori(i,j) = 0.0
-     rms_anl_hori(i,j) = 0.0
-     num_hori(i,j) = 0
-     enddo
-     enddo
+   do i=1, nlon
+   do j=1, nlat
+      rms_ges_hori(i,j) = 0.0_r8
+      rms_anl_hori(i,j) = 0.0_r8
+      num_hori(i,j) = 0
+   enddo
+   enddo
 
-     do i = 1, num_obs_sets
-     rms_ges_mean(i)   = 0.0
-     rms_ges_spread(i) = 0.0
+   do i = 1, num_obs_sets
+      rms_ges_mean(i)   = 0.0_r8
+      rms_ges_spread(i) = 0.0_r8
 
-     rms_anl_mean(i)   = 0.0
-     rms_anl_spread(i) = 0.0
+      rms_anl_mean(i)   = 0.0_r8
+      rms_anl_spread(i) = 0.0_r8
 
-     num_in_level(i) = 0
+      num_in_level(i) = 0
 
-     do k=1, ens_size
-     rms_ges(i,k) = 0.0
-     rms_anl(i,k) = 0.0
-     enddo
-     enddo
+      do k=1, ens_size
+         rms_ges(i,k) = 0.0_r8
+         rms_anl(i,k) = 0.0_r8
+      enddo
+   enddo
 
-      do k=1, nlev                                                                          
-      plev(k) = 20.0*(k-1)                                                                  
-      enddo          
+   do k=1, nlev                                                                          
+      plev(k) = 20.0_r8*(k-1)                                                                  
+   enddo          
 
-     do i=1, nlon
-     alon(i) = i-1
-     enddo
-     do j=1, nlat
-     alat(j) = j-1
-     enddo
+   do i=1, nlon
+      alon(i) = i-1
+   enddo
+   do j=1, nlat
+      alat(j) = j-1
+   enddo
 
-!   Loop through the time intervals
+!  Loop through the time intervals
 !-----------------------------------
 AdvanceTime : do i = 1, num_obs_sets  
 !-----------------------------------
@@ -190,7 +188,7 @@ AdvanceTime : do i = 1, num_obs_sets
 !  get the number of the observations in this set
    num_obs_in_set(i) = get_num_obs_in_set(seq, i)
 
-! Allocate storage for the ensemble priors for this number of observations
+!  Allocate storage for the ensemble priors for this number of observations
    allocate(obs(num_obs_in_set(i)), obsloc(num_obs_in_set(i), 3)) 
    allocate( obskind(num_obs_in_set(i)) ) 
 
@@ -204,106 +202,102 @@ AdvanceTime : do i = 1, num_obs_sets
    call get_obs_kind1(seq, i, obskind)
 
 !  Read in the ensemble guess and analyses prior and posterior from diagnostic files
-    do j = 1, num_obs_in_set(i)
+   do j = 1, num_obs_in_set(i)
 
       do k = 1, ens_size_plus
        call get_single_obs_value(prior_seq, i, j, ges(j,k), k)
        call get_single_obs_value(posterior_seq, i, j, anl(j,k), k)
       end do
 
-!  Write(*,*) i,obs(j),ges(j,1),anl(j,1),obsloc(j,1),obsloc(j,2),obsloc(j,3),obskind(j)
+!     Write(*,*) i,obs(j),ges(j,1),anl(j,1),obsloc(j,1),obsloc(j,2),obsloc(j,3),obskind(j)
 
-     lon = obsloc(j,1) * 180.0/pi + 0.5    !! in degree
-     lat = obsloc(j,2) * 180.0/pi + 0.5 + 90.0   !! in degree from 0 - 180
-     pressure = obsloc(j,3) * 0.01    !! in mb
-!  print*, 'lon= ', lon, obsloc(j,1) * 180.0/pi, lat, obsloc(j,2) * 180.0/pi+90.0
+      lon = obsloc(j,1) * 180.0_r8/pi + 0.5_r8             !! in degree
+      lat = obsloc(j,2) * 180.0_r8/pi + 0.5_r8 + 90.0_r8   !! in degree from 0 - 180
+      pressure = obsloc(j,3) * 0.01_r8                     !! in mb
+!     print*, 'lon= ', lon, obsloc(j,1) * 180.0/pi, lat, obsloc(j,2) * 180.0/pi+90.0
 
-    if (obskind(j) .ne. obs_type ) go to 4440
+      if (obskind(j) .ne. obs_type ) go to 4440
 
-variable: if(obskind(j) == 3 ) then    !! for Ps
+variable: if(obskind(j) == 3 ) then     !! for Ps
 
-     obs(j) = obs(j) * 0.01       !!  convert to mb
-     do k = 1, ens_size_plus
-     ges(j,k) = ges(j,k) * 0.01   !!  convert to mb
-     anl(j,k) = anl(j,k) * 0.01   !!  convert to mb
-     enddo
-
-     rms_ges_mean(i) = rms_ges_mean(i) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_mean(i) = rms_anl_mean(i) + (anl(j, ens_size_plus)- obs(j))**2
-     num_in_level(i) = num_in_level(i) + 1
-
-      do k = 1, ens_size
-       rms_ges(i,k) = rms_ges(i,k) + (ges(j, k)- obs(j))**2
-       rms_anl(i,k) = rms_anl(i,k) + (anl(j, k)- obs(j))**2
+      obs(j) = obs(j) * 0.01_r8          !!  convert to mb
+      do k = 1, ens_size_plus
+         ges(j,k) = ges(j,k) * 0.01_r8   !!  convert to mb
+         anl(j,k) = anl(j,k) * 0.01_r8   !!  convert to mb
       enddo
 
-!    horizontal distribution of the error for ensemble mean
-     num_hori(lon,lat) = num_hori(lon,lat) + 1                                                          
-     rms_ges_hori(lon,lat) = rms_ges_hori(lon,lat) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_hori(lon,lat) = rms_anl_hori(lon,lat) + (anl(j, ens_size_plus)- obs(j))**2
+      rms_ges_mean(i) = rms_ges_mean(i) + (ges(j, ens_size_plus)- obs(j))**2
+      rms_anl_mean(i) = rms_anl_mean(i) + (anl(j, ens_size_plus)- obs(j))**2
+      num_in_level(i) = num_in_level(i) + 1
 
+      do k = 1, ens_size
+         rms_ges(i,k) = rms_ges(i,k) + (ges(j, k)- obs(j))**2
+         rms_anl(i,k) = rms_anl(i,k) + (anl(j, k)- obs(j))**2
+      enddo
+
+!     horizontal distribution of the error for ensemble mean
+      num_hori(lon,lat)     = num_hori(lon,lat) + 1                                                          
+      rms_ges_hori(lon,lat) = rms_ges_hori(lon,lat) + (ges(j, ens_size_plus)- obs(j))**2
+      rms_anl_hori(lon,lat) = rms_anl_hori(lon,lat) + (anl(j, ens_size_plus)- obs(j))**2
 
 else   ! for T & wind components
 
-   if(ifirst == 1) then
-    Write(*,*) 'input vertical level for time series; 1=850,2=700,3=500,4=200, 5=all levels'
-    read(*,*) level
-    ifirst = 0
-   endif
+      if(ifirst == 1) then
+         Write(*,*) 'input vertical level for time series; 1=850,2=700,3=500,4=200, 5=all levels'
+         read(*,*) level
+         ifirst = 0
+      endif
     
 !  for ensemble mean and every ensemble member
 
- if(level .lt. 5) then
-   if( abs( level_value(level) - pressure) .lt. 25.0 ) then
+      if( level .lt. 5 ) then
+         if( abs( level_value(level) - pressure) .lt. 25.0_r8 ) then
 
-     rms_ges_mean(i) = rms_ges_mean(i) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_mean(i) = rms_anl_mean(i) + (anl(j, ens_size_plus)- obs(j))**2
-     num_in_level(i) = num_in_level(i) + 1
+            rms_ges_mean(i) = rms_ges_mean(i) + (ges(j, ens_size_plus)- obs(j))**2
+            rms_anl_mean(i) = rms_anl_mean(i) + (anl(j, ens_size_plus)- obs(j))**2
+            num_in_level(i) = num_in_level(i) + 1
 
-      do k = 1, ens_size
-       rms_ges(i,k) = rms_ges(i,k) + (ges(j, k)- obs(j))**2
-       rms_anl(i,k) = rms_anl(i,k) + (anl(j, k)- obs(j))**2
-      enddo
+            do k = 1, ens_size
+               rms_ges(i,k) = rms_ges(i,k) + (ges(j, k)- obs(j))**2
+               rms_anl(i,k) = rms_anl(i,k) + (anl(j, k)- obs(j))**2
+            enddo
 
-!    horizontal distribution of the error for ensemble mean
-     num_hori(lon,lat) = num_hori(lon,lat) + 1                                                          
-     rms_ges_hori(lon,lat) = rms_ges_hori(lon,lat) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_hori(lon,lat) = rms_anl_hori(lon,lat) + (anl(j, ens_size_plus)- obs(j))**2
+!           horizontal distribution of the error for ensemble mean
+            num_hori(lon,lat)     = num_hori(lon,lat) + 1                                                          
+            rms_ges_hori(lon,lat) = rms_ges_hori(lon,lat) + (ges(j, ens_size_plus)- obs(j))**2
+            rms_anl_hori(lon,lat) = rms_anl_hori(lon,lat) + (anl(j, ens_size_plus)- obs(j))**2
 
+         endif
+      else
+         rms_ges_mean(i) = rms_ges_mean(i) + (ges(j, ens_size_plus)- obs(j))**2
+         rms_anl_mean(i) = rms_anl_mean(i) + (anl(j, ens_size_plus)- obs(j))**2
+         num_in_level(i) = num_in_level(i) + 1
 
-   endif
+         do k = 1, ens_size
+            rms_ges(i,k) = rms_ges(i,k) + (ges(j, k)- obs(j))**2
+            rms_anl(i,k) = rms_anl(i,k) + (anl(j, k)- obs(j))**2
+         enddo
 
- else
-     rms_ges_mean(i) = rms_ges_mean(i) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_mean(i) = rms_anl_mean(i) + (anl(j, ens_size_plus)- obs(j))**2
-     num_in_level(i) = num_in_level(i) + 1
+!        horizontal distribution of the error for ensemble mean
+         num_hori(lon,lat) = num_hori(lon,lat) + 1                                                          
+         rms_ges_hori(lon,lat) = rms_ges_hori(lon,lat) + (ges(j, ens_size_plus)- obs(j))**2
+         rms_anl_hori(lon,lat) = rms_anl_hori(lon,lat) + (anl(j, ens_size_plus)- obs(j))**2
 
-      do k = 1, ens_size
-       rms_ges(i,k) = rms_ges(i,k) + (ges(j, k)- obs(j))**2
-       rms_anl(i,k) = rms_anl(i,k) + (anl(j, k)- obs(j))**2
-      enddo
+      endif
 
-!    horizontal distribution of the error for ensemble mean
-     num_hori(lon,lat) = num_hori(lon,lat) + 1                                                          
-     rms_ges_hori(lon,lat) = rms_ges_hori(lon,lat) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_hori(lon,lat) = rms_anl_hori(lon,lat) + (anl(j, ens_size_plus)- obs(j))**2
+!     averaged vertical profile of the error for ensemble mean
+      k0 = ifix((pressure+10.0_r8)/20 ) + 1            
 
-
- endif
-
-!    averaged vertical profile of the error for ensemble mean
-      k0 = ifix((pressure+10.0)/20 ) + 1            
-
-     num_ver(k0) = num_ver(k0) + 1                                                          
-     rms_ges_ver(k0) = rms_ges_ver(k0) + (ges(j, ens_size_plus)- obs(j))**2
-     rms_anl_ver(k0) = rms_anl_ver(k0) + (anl(j, ens_size_plus)- obs(j))**2
+      num_ver(k0)     = num_ver(k0) + 1                                                          
+      rms_ges_ver(k0) = rms_ges_ver(k0) + (ges(j, ens_size_plus)- obs(j))**2
+      rms_anl_ver(k0) = rms_anl_ver(k0) + (anl(j, ens_size_plus)- obs(j))**2
 
 endif variable
  4440 continue
 
     end do
 
-   deallocate( obs, obsloc, obskind, ges, anl)
+    deallocate( obs, obsloc, obskind, ges, anl)
 !------------------------------------------------------------------------
 
 end do AdvanceTime

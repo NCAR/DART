@@ -8,20 +8,21 @@ module obs_mod
 !
 
 !use nag_wrap_mod, only : g05ddf_wrap
-use random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
-use model_mod, only : get_model_size
+use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use      model_mod, only : get_model_size 
+use   location_mod, only : loc_type, get_dist, set_loc
 
-use loc_and_dist_mod, only : loc_type, get_dist, set_loc
-
+implicit none
 private
+
 public num_obs, obs_var, take_obs, ens_ics, get_close_state, &
    max_num_pos_obs, init_obs, take_single_obs, obs_loc
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer, parameter :: num_obs = 2
 !!!integer, parameter :: num_obs = 1

@@ -9,10 +9,11 @@ module location_mod
 ! implementation has domain 'longitude' running from 0 to 1. May want to investigate
 ! allowing an arbitrary real domain size at some point.
 
-use      types_mod
-use  utilities_mod, only : output_err, E_ERR
+use      types_mod, only : r8
+use  utilities_mod, only : error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
+implicit none
 private
 
 public location_type, get_dist, get_location, set_location, &
@@ -21,11 +22,11 @@ public location_type, get_dist, get_location, set_location, &
 ! FOLLOWING INTERFACES ARE TEMPORARY LINK PATHCES, SHOULD BE REMOVED
       vert_is_level, read_ncep_obs_location
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type location_type
    private
@@ -35,32 +36,10 @@ end type location_type
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 
-! CVS Generated file description for error handling, do not edit
-character(len = 129), parameter :: &
-   e_src = "$Source$", &
-   e_rev = "$Revision$", &
-   e_dat = "$Date$", &
-   e_aut = "$Author$"
-
-! There needs to be some sort of public metadata for the location module.
-! The number of dimensions, the name of each dimension, that sort of thing.
-! TJH Sept. 16, 2002
-!
-!type location_meta
-!   integer,             parameter :: ndims = 1
-!   character (len=129), parameter :: name = "loc1d"
-!   character (len=129), parameter :: longname = "one-dimensional location"
-!   character (len=129), parameter :: &
-!   src = "$Source$", &
-!   rev = "$Revision$", &
-!   dat = "$Date$", &
-!   aut = "$Author$"
-!end type location_meta
-!type(location_meta) :: location_metadata
-
 integer,              parameter :: LocationDims = 1
 character(len = 129), parameter :: LocationName = "loc1d"
 character(len = 129), parameter :: LocationLName = "one-dimensional location"
+
 
 contains
 
@@ -108,8 +87,8 @@ implicit none
 type (location_type) :: set_location
 real(r8), intent(in) :: x
 
-if(x < 0.0_r8 .or. x > 1.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-   'set_location', 'Value of x is out of 0->1 range')
+if(x < 0.0_r8 .or. x > 1.0_r8) call error_handler(E_ERR, 'set_location', &
+         'Value of x is out of 0->1 range', source, revision, revdate)
 
 set_location%x = x
 
@@ -117,7 +96,7 @@ end function set_location
 
 
 
-subroutine write_location(file, loc)
+subroutine write_location(locfile, loc)
 !----------------------------------------------------------------------------
 !
 ! Writes a oned location to the file. Implemented as a subroutine but  could
@@ -130,44 +109,38 @@ subroutine write_location(file, loc)
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: locfile
 type(location_type), intent(in) :: loc
 
-! For now, output a character tag followed by the r8 value. Is this written at 
-! machine precision ???
+! For now, output a character tag followed by the r8 value. 
 
-write(file, 11) 
-11 format('loc1d')
-write(file, *) loc%x
-
-! I need to learn how to do formatted IO with the types package
-!21 format(r8)
+write(locfile, '(''loc1d'')' ) 
+write(locfile, *) loc%x
 
 end subroutine write_location
 
 
 
-function read_location(file)
+function read_location(locfile)
 !----------------------------------------------------------------------------
 !
-! Reads a oned location from file that was written by write_location. See write_location
-! for additional discussion.
+! Reads a oned location from file that was written by write_location. 
+! See write_location for additional discussion.
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: locfile
 type(location_type) :: read_location
 
 character(len=5) :: header
 
 ! Will want to add additional error checks on the read
-read(file, 11) header
-11 format(a5)
-if(header /= 'loc1d') call output_err(E_ERR, e_src, e_rev, e_dat, e_aut , &
-   'read_location', 'Expected location header "loc1d" in input file')
+read(locfile, '(a5)' ) header
+if(header /= 'loc1d') call error_handler(E_ERR, 'read_location', &
+    'Expected location header "loc1d" in input file', source, revision, revdate)
 
 ! Now read the location data value
-read(file, *) read_location%x
+read(locfile, *) read_location%x
 
 end function read_location
 
@@ -225,37 +198,37 @@ logical :: vert_is_level
 type(location_type), intent(in) :: loc
 
 vert_is_level = .false.
-write(*, *) 'vert_is_level is not supported for 1D location module'
-stop
+
+call error_handler(E_ERR, 'vert_is_level', &
+           '"vert_is_level" is not supported for 1D location module', &
+            source, revision, revdate)
 
 end function vert_is_level
 
 
 
-!=============================================================
-  subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
-!=============================================================
-
+subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
+!---------------------------------------------------------------------------
+!
 ! Stub needed for temporary linking
 
 implicit none
 
-type(location_type) :: location
-
-integer :: obs_prof
-integer, intent(in) :: obsunit
-integer, intent(out) :: obsindex
+type(location_type)    :: location 
+integer                :: obs_prof
+integer,   intent(in)  :: obsunit
+integer,   intent(out) :: obsindex
 real (r8), intent(out) :: var
 
-write(*, *) 'read_ncep_obs_location is not supported for 1D location module'
-stop
-
+call error_handler(E_ERR, 'read_ncep_obs_location', &
+           '"read_ncep_obs_location" is not supported for 1D location module', &
+            source, revision, revdate)
 
 end subroutine read_ncep_obs_location
 
-!
+
 !----------------------------------------------------------------------------
 ! end of location/oned/location_mod.f90
 !----------------------------------------------------------------------------
-!
+
 end module location_mod

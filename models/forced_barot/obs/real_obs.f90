@@ -20,7 +20,7 @@ public num_obs, obs_var, take_obs, ens_ics, obs_location, state_to_obs
 ! Added to cheat on close_obs for spectral models; 12/1/99
 public num_x_obs, num_y_obs, ob2_lon, ob2_lat
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &

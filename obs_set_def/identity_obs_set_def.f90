@@ -6,6 +6,7 @@ program identity_obs_set_def
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 ! Main program to interactively create a set_def_list description file for a 
 ! particular spatial domain and obs_kind set. This is a prototype for more
@@ -14,24 +15,23 @@ program identity_obs_set_def
 ! needed in the long run. This version is used to create sets with many identity
 ! observations in them.
 
-use types_mod
-use obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def
-use obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
+use        types_mod, only : r8
+use      obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def
+use  obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
-   add_to_list, write_set_def_list, read_set_def_list
-use utilities_mod, only : open_file
-use assim_model_mod, only : static_init_assim_model, get_model_size, get_state_meta_data
-use location_mod, only : location_type, get_location, set_location
-
-use model_mod, only : get_close_states_devel, get_state_meta_data
+                             add_to_list, write_set_def_list, read_set_def_list
+use    utilities_mod, only : open_file
+use  assim_model_mod, only : static_init_assim_model, get_model_size, get_state_meta_data
+use     location_mod, only : location_type, get_location, set_location
+use        model_mod, only : get_close_states_devel, get_state_meta_data
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type(obs_def_type) :: obs_def
 type(set_def_list_type) :: set_def_list
@@ -39,14 +39,14 @@ type(obs_set_def_type) :: obs_set_def
 type(location_type) :: loc
 
 integer :: max_sets, num_obs, model_size
-integer :: i, j, obs_set_def_index, unit, var_type, input_type
+integer :: i, j, obs_set_def_index, iunit, var_type, input_type
 character(len = 129) :: file_name
 real(r8) :: location(3), err_var
 
 ! For test of get_close_state_devel
 real(r8) :: o_lon, o_lat, o_lev, radius, lon_lat_lev(3)
 type(location_type) :: o_loc
-integer :: number, var_type
+integer :: var_type
 integer, allocatable :: indices(:)
 real(r8), allocatable :: dist(:)
 
@@ -80,7 +80,7 @@ do i = 1, 1000
    do j = 1, model_size
       call get_state_meta_data(j, loc, var_type)
       if(var_type == input_type) then
-! Add this obs_def to the set
+         ! Add this obs_def to the set
          write(*, *) 'adding var index ', j
          obs_def = init_obs_def(j, err_var)
          call add_obs(obs_set_def, obs_def)
@@ -95,17 +95,17 @@ end do
 
 
 ! Output the set_def_list
-unit = open_file(file_name, action = 'write')
-call write_set_def_list(unit, set_def_list)
-close(unit)
+iunit = open_file(file_name, action = 'write')
+call write_set_def_list(iunit, set_def_list)
+close(iunit)
 
 ! Read and rewrite as test
-!unit = open_file(file_name)
-!set_def_list = read_set_def_list(unit)
-!close(unit)
+!iunit = open_file(file_name)
+!set_def_list = read_set_def_list(iunit)
+!close(iunit)
 
-!unit = open_file(file_name)
-!call write_set_def_list(unit, set_def_list)
-!close(unit)
+!iunit = open_file(file_name)
+!call write_set_def_list(iunit, set_def_list)
+!close(iunit)
 
 end program identity_obs_set_def

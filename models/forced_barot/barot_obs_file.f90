@@ -9,7 +9,7 @@ program barot_obs_file
 ! Generates a regular set, currently hardcoded to 40 by 30,
 ! of observation file locations for the forced barot model.
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &

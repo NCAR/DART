@@ -7,18 +7,16 @@ MODULE types_mod
 ! $Author$ 
 !
 
-
-IMPLICIT NONE
-
-! let CVS fill strings ... DO NOT EDIT ...
-character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-
+implicit none
 private 
 
-public :: r8, pi, deg2rad, rad2deg
+public :: r8, pi, deg2rad, rad2deg, missing_r
+
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 SAVE
 
@@ -47,12 +45,11 @@ SAVE
 ! Constants ... 
 !----------------------------------------------------------------------------
 
-!real(kind=r8), parameter :: pi = 3.141592654_r8
 real(kind=r8), parameter :: pi = 3.1415926535897932346_r8
 real(kind=r8), parameter :: deg2rad = pi / 180.0_r8
 real(kind=r8), parameter :: rad2deg = 180.0_r8 / pi
 
-INTEGER, PARAMETER ::  missing       = -888888
-REAL   , PARAMETER ::  missing_r     = -888888.
+integer,       PARAMETER ::  missing   = -888888
+real(kind=r8), PARAMETER ::  missing_r = -888888.0_r8
 
 END MODULE types_mod

@@ -7,6 +7,7 @@ program barot_obs_random
 ! $Author$ 
 !
 
+use    types_mod, only : r8
 use nag_wrap_mod, only : g05ddf_wrap
 
 ! Currently uses NAG, must be modified to use available random sequence
@@ -18,15 +19,15 @@ use nag_wrap_mod, only : g05ddf_wrap
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
 integer :: num_obs
-real, parameter :: variance = (1e6)**2
-real :: x, y, z, lon, length, lat
+real(r8), parameter :: variance = (1e6)**2_r8
+real(r8) :: x, y, z, lon, length, lat
 integer :: i
 
 write(*, *) 'input the number of observations'
@@ -35,9 +36,9 @@ read(*, *) num_obs
 write(*, *) num_obs
 do i = 1, num_obs
 ! Compute a random point in a volume and then compute direction to surface
- 11   x = real(g05ddf_wrap(dble(0.0), dble(1.0)))
-   y = real(g05ddf_wrap(dble(0.0), dble(1.0)))
-   z = real(g05ddf_wrap(dble(0.0), dble(1.0)))
+ 11   x = g05ddf_wrap(0.0_r8, 1.0_r8)
+   y = g05ddf_wrap(0.0_r8, 1.0_r8)
+   z = g05ddf_wrap(0.0_r8, 1.0_r8)
 ! Begin by computing longitude in degrees
    lon = atan2(y, x) * 360.0 / (2.0 * 3.14159) + 180.0
    if(lon < 0.0 .or. lon > 360.0) then

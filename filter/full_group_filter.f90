@@ -6,9 +6,9 @@ program filter
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
-
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
@@ -16,22 +16,23 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    set_single_obs_value, get_num_close_states, get_close_states
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
-use utilities_mod,    only :  get_unit, open_file, close_file, &
+use    utilities_mod, only :  get_unit, open_file, close_file, &
    check_nml_error, file_exist
-use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
+use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data
-use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use  assim_tools_mod, only : obs_increment, update_from_obs_inc, &
    look_for_bias, obs_increment17, obs_increment_group
-use cov_cutoff_mod,   only : comp_cov_factor
-use location_mod, only : location_type
-use reg_factor_mod, only : comp_reg_factor
-use sort_mod, only : sort
-use typeSizes
-use netcdf
+use   cov_cutoff_mod, only : comp_cov_factor
+use     location_mod, only : location_type
+use   reg_factor_mod, only : comp_reg_factor
+use         sort_mod, only : sort
+
+use typesizes         ! From the F90 netCDF interface
+use netcdf            ! From the F90 netCDF interface
 
 implicit none
 
@@ -51,12 +52,12 @@ type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
 
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji, meta_data_size
 integer ::  output_ens_mean_index, output_ens_spread_index
-integer            :: model_size, num_obs_sets
+integer :: model_size, num_obs_sets
 integer, parameter :: num_groups = 4
 integer :: grp_size, grp_bot, grp_top, group
 real(r8) :: regress(num_groups), reg_factor, median
@@ -88,13 +89,13 @@ type(location_type) :: location
 
 ! Temporary storage to test adaptive error capability; should be moved to assim_tools
 integer :: slope_index = 0
-real(r8) :: confidence_slope = 0.0
+real(r8) :: confidence_slope = 0.0_r8
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
 integer :: ens_size = 20
-real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
+real(r8) :: cutoff = 200.0_r8, cov_inflate = 1.0_r8
 logical :: async = .false., start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -117,14 +118,14 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = filter_nml, iostat = io, end = 11)
+      read(iunit, nml = filter_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'filter_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 write(*,*)'start_from_restart = ',start_from_restart
@@ -139,10 +140,11 @@ allocate(ens_ptr(ens_size), ens(ens_size), obs_inc(ens_size), &
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
 ! Input the obs_sequence
-unit = get_unit()
-open(unit = unit, file = obs_sequence_file_name)
-seq = read_obs_sequence(unit)
-close(unit)
+iunit = get_unit()
+open(unit = iunit, file = obs_sequence_file_name)
+seq = read_obs_sequence(iunit)
+close(iunit)
+
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_obs_sets(seq)
 
@@ -218,8 +220,8 @@ endif
 
 !------------------- Read restart if requested ----------------------
 if(start_from_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
    do i = 1, ens_size
@@ -227,11 +229,11 @@ if(start_from_restart) then
       call init_assim_model(ens(i))
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
 
-      call read_state_restart(ens(i), unit)
+      call read_state_restart(ens(i), iunit)
 ! If init_time_days an init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) call set_model_time(ens(i) , time1)
    end do
-   close(unit)
+   close(iunit)
 !-----------------  Restart read in --------------------------------
 
 else
@@ -241,8 +243,8 @@ else
 
 ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
 ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
 
@@ -252,8 +254,8 @@ else
    end do
 
 ! Get the initial condition
-   call read_state_restart(x, unit)
-   close(unit)
+   call read_state_restart(x, iunit)
+   close(iunit)
 
 ! Initialize a repeatable random sequence for perturbations
 ! Where should the magnitude of the perturbations come from here???
@@ -506,12 +508,12 @@ ierr = NF90_close(PosteriorStateUnit)
 
 ! Output a restart file if requested
 if(output_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_out_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_out_file_name)
    do i = 1, ens_size
-      call write_state_restart(ens(i), unit)
+      call write_state_restart(ens(i), iunit)
    end do
-   close(unit)
+   close(iunit)
 endif
 
 ! Output the regression factor means

@@ -1,18 +1,19 @@
 PROGRAM dart_tf_wrf
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
 
 use wrf_data_module
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer :: status, unit
 logical :: dart_to_wrf
@@ -21,7 +22,7 @@ integer, parameter :: dart_unit = 10
 
 type(wrf_data) :: wrf
 
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 integer       :: number_dart_values
 integer       :: seconds, days
 
@@ -43,7 +44,7 @@ logical :: dart_to_wrf
 integer :: dart_unit
 logical :: debug
 type(wrf_data) :: wrf
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 integer :: n_values 
 end subroutine dart_open_and_alloc
 
@@ -58,7 +59,7 @@ integer :: dart_unit, seconds, days
 character (len=6) :: in_or_out
 logical :: debug
 type(wrf_data) :: wrf
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 integer :: n_values
 
 end subroutine dart_io
@@ -71,7 +72,7 @@ implicit none
 logical :: dart_to_wrf
 logical :: debug
 type(wrf_data) :: wrf
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 integer :: n_values_in 
 
 end subroutine transfer_dart_wrf
@@ -156,7 +157,8 @@ end if
 if(debug) write(6,*) ' returned from state output '
 
 status = nf_close(wrf%ncid)
-if (status /= nf_noerr) call handle_err(4,status)
+if (status /= nf_noerr) call error_handler(E_ERR,'main', &
+        trim(nf_strerror(status)), source, revision, revdate)
 
 END 
 
@@ -282,19 +284,29 @@ real, dimension(*) :: var
 character (len=6) :: in_or_out
 integer, dimension(5) :: start, count, stride, map
 integer :: status
+character(len=80) :: stringerror
 
 
 if( in_or_out(1:5) == "INPUT" ) then
-  write(6,*) ' call netcdf read ', ncid, var_id
-  status = nf_get_var_real(ncid, var_id, var, start, count, stride, map)
-  write(6,*) ' returned netcdf read '
+! write(6,*) ' call netcdf read ', ncid, var_id
+  call check (nf_get_var_real(ncid, var_id, var, start, count, stride, map))
+! write(6,*) ' returned netcdf read '
 else if( in_or_out(1:6) == "OUTPUT" ) then
-  status = nf_put_var_real(ncid, var_id, var, start, count, stride, map)
+  call check (nf_put_var_real(ncid, var_id, var, start, count, stride, map))
 else
-  write(6,*) ' unknown IO function for var_id ',var_id, in_or_out
-  stop
+  write(stringerror,*)' unknown IO function for var_id ',var_id, in_or_out
+  call error_handler(E_ERR,'netcdf_read_write_var',&
+             stringerror, source, revision, revdate )
 end if
-if (status /= nf_noerr) call handle_err(100,status)
+
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus 
+    if(istatus /= nf_noerr) call error_handler(E_ERR,'netcdf_read_write_var', &
+          trim(nf_strerror(istatus)), source, revision, revdate) 
+  end subroutine check
 
 end subroutine netcdf_read_write_var
 
@@ -333,26 +345,19 @@ logical :: debug
 type(wrf_data) :: wrf
 
 
-status = nf_open('wrfinput', mode, wrf%ncid) 
-if (status /= nf_noerr) call handle_err(1,status)
+call check ( nf_open('wrfinput', mode, wrf%ncid) )
 if(debug) write(6,*) ' wrf%ncid is ',wrf%ncid
 
 ! get wrf grid dimensions
 
-status = nf_inq_dimid(wrf%ncid, "bottom_top", wrf%bt_id)
-if (status /= nf_noerr) call handle_err(2,status)
-status = nf_inq_dim(wrf%ncid, wrf%bt_id, name, wrf%bt)
-if (status /= nf_noerr) call handle_err(3,status)
+call check ( nf_inq_dimid(wrf%ncid, "bottom_top", wrf%bt_id))
+call check ( nf_inq_dim(wrf%ncid, wrf%bt_id, name, wrf%bt))
 
-status = nf_inq_dimid(wrf%ncid, "south_north", wrf%sn_id)
-if (status /= nf_noerr) call handle_err(2,status)
-status = nf_inq_dim(wrf%ncid, wrf%sn_id, name, wrf%sn)
-if (status /= nf_noerr) call handle_err(3,status)
+call check ( nf_inq_dimid(wrf%ncid, "south_north", wrf%sn_id))
+call check ( nf_inq_dim(wrf%ncid, wrf%sn_id, name, wrf%sn))
 
-status = nf_inq_dimid(wrf%ncid, "west_east", wrf%we_id)
-if (status /= nf_noerr) call handle_err(2,status)
-status = nf_inq_dim(wrf%ncid, wrf%we_id, name, wrf%we)
-if (status /= nf_noerr) call handle_err(3,status)
+call check ( nf_inq_dimid(wrf%ncid, "west_east", wrf%we_id))
+call check ( nf_inq_dim(wrf%ncid, wrf%we_id, name, wrf%we))
 
 write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 
@@ -360,82 +365,78 @@ write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 ! get wrf variable ids and allocate space for wrf variables
 
 
-status = nf_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id)
+call check ( nf_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id))
 if(debug) write(6,*) ' ptop_id = ',wrf%ptop_id
-if (status /= nf_noerr) call handle_err(4,status)
 
-status = nf_inq_varid(wrf%ncid, "U", wrf%u_id)
+call check ( nf_inq_varid(wrf%ncid, "U", wrf%u_id))
 if(debug) write(6,*) ' u_id = ',wrf%u_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%u(wrf%we+1,wrf%sn,wrf%bt))
 
-status = nf_inq_varid(wrf%ncid, "V", wrf%v_id)
+call check ( nf_inq_varid(wrf%ncid, "V", wrf%v_id))
 if(debug) write(6,*) ' v_id = ',wrf%v_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%v(wrf%we,wrf%sn+1,wrf%bt))
 
-status = nf_inq_varid(wrf%ncid, "W", wrf%w_id)
+call check ( nf_inq_varid(wrf%ncid, "W", wrf%w_id))
 if(debug) write(6,*) ' w_id = ',wrf%w_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%w(wrf%we,wrf%sn,wrf%bt+1))
 
-status = nf_inq_varid(wrf%ncid, "PH", wrf%ph_id)
+call check ( nf_inq_varid(wrf%ncid, "PH", wrf%ph_id))
 if(debug) write(6,*) ' ph_id = ',wrf%ph_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%ph(wrf%we,wrf%sn,wrf%bt+1))
 
-status = nf_inq_varid(wrf%ncid, "PHB", wrf%phb_id)
+call check ( nf_inq_varid(wrf%ncid, "PHB", wrf%phb_id))
 if(debug) write(6,*) ' phb_id = ',wrf%phb_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%phb(wrf%we,wrf%sn,wrf%bt+1))
 
-status = nf_inq_varid(wrf%ncid, "T", wrf%t_id)
+call check ( nf_inq_varid(wrf%ncid, "T", wrf%t_id))
 if(debug) write(6,*) ' t_id = ',wrf%t_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%t(wrf%we,wrf%sn,wrf%bt))
 
-status = nf_inq_varid(wrf%ncid, "MU", wrf%mu_id)
+call check ( nf_inq_varid(wrf%ncid, "MU", wrf%mu_id))
 if(debug) write(6,*) ' mu_id = ',wrf%mu_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%mu(wrf%we,wrf%sn))
 
-status = nf_inq_varid(wrf%ncid, "MUB", wrf%mub_id)
+call check ( nf_inq_varid(wrf%ncid, "MUB", wrf%mub_id))
 if(debug) write(6,*) ' mub_id = ',wrf%mub_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%mub(wrf%we,wrf%sn))
 
-status = nf_inq_varid(wrf%ncid, "QVAPOR", wrf%qv_id)
+call check ( nf_inq_varid(wrf%ncid, "QVAPOR", wrf%qv_id))
 if(debug) write(6,*) ' qv_id = ',wrf%qv_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%qv(wrf%we,wrf%sn,wrf%bt))
 
-status = nf_inq_varid(wrf%ncid, "QCLOUD", wrf%qc_id)
+call check ( nf_inq_varid(wrf%ncid, "QCLOUD", wrf%qc_id))
 if(debug) write(6,*) ' qc_id = ',wrf%qc_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%qc(wrf%we,wrf%sn,wrf%bt))
 
-status = nf_inq_varid(wrf%ncid, "QRAIN", wrf%qr_id)
+call check ( nf_inq_varid(wrf%ncid, "QRAIN", wrf%qr_id))
 if(debug) write(6,*) ' qr_id = ',wrf%qr_id
-if (status /= nf_noerr) call handle_err(4,status)
 allocate(wrf%qr(wrf%we,wrf%sn,wrf%bt))
 
 if (wrf%ice_micro) then
-  if (status /= nf_noerr) call handle_err(4,status)
-  status = nf_inq_varid(wrf%ncid, "QICE", wrf%qi_id)
+
+  call check ( nf_inq_varid(wrf%ncid, "QICE", wrf%qi_id))
   if(debug) write(6,*) ' qi_id = ',wrf%qi_id
   allocate(wrf%qi(wrf%we,wrf%sn,wrf%bt))
 
-  if (status /= nf_noerr) call handle_err(4,status)
-  status = nf_inq_varid(wrf%ncid, "QSNOW", wrf%qs_id)
+  call check ( nf_inq_varid(wrf%ncid, "QSNOW", wrf%qs_id))
   if(debug) write(6,*) ' qs_id = ',wrf%qs_id
   allocate(wrf%qs(wrf%we,wrf%sn,wrf%bt))
 
-  if (status /= nf_noerr) call handle_err(4,status)
-  status = nf_inq_varid(wrf%ncid, "QGRAUPEL", wrf%qg_id)
+  call check ( nf_inq_varid(wrf%ncid, "QGRAUPEL", wrf%qg_id))
   if(debug) write(6,*) ' qg_id = ',wrf%qg_id
   allocate(wrf%qg(wrf%we,wrf%sn,wrf%bt))
 
 end if
+
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus 
+    if(istatus /= nf_noerr) call error_handler(E_ERR,'wrf_open_and_alloc', &
+          trim(nf_strerror(istatus)), source, revision, revdate) 
+  end subroutine check
+
 
 end subroutine wrf_open_and_alloc
 
@@ -456,7 +457,7 @@ character (len=80) :: name
 logical :: debug
 
 type(wrf_data) :: wrf
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 
 integer :: n_values 
 
@@ -521,7 +522,7 @@ logical :: debug
 logical, parameter :: test_input = .false.
 
 type(wrf_data) :: wrf
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 
 integer :: n_values 
 
@@ -562,13 +563,14 @@ integer :: status
 logical :: debug
 
 type(wrf_data) :: wrf
-real*8, pointer :: dart(:)
+real(r8), pointer :: dart(:)
 
 integer :: n_values_in 
 
 !---
 
 integer :: in, n_values
+character(len=80) :: stringerror
 
 !---
 
@@ -578,7 +580,7 @@ subroutine trans_2d( one_to_two, a1d,a2d, nx, ny )
 
 implicit none
 integer :: nx,ny
-real*8 :: a1d(:)
+real(r8) :: a1d(:)
 real :: a2d(nx,ny)
 logical ::  one_to_two
 
@@ -588,7 +590,7 @@ subroutine trans_3d( one_to_three, a1d,a3d, nx, ny,nz )
 
 implicit none
 integer :: nx,ny,nz
-real*8 :: a1d(:)
+real(r8) :: a1d(:)
 real :: a3d(nx,ny,nz)
 logical ::  one_to_three
 
@@ -655,11 +657,9 @@ if(wrf%ice_micro) then
 
 end if
 
-if(n_values /= n_values_in ) then
-  write(6,*) ' n_values differ in transfer ',n_values, n_values_in
-  write(6,*) ' error exit '
-  stop
-end if
+write(stringerror,*)' n_values differ in transfer ',n_values, n_values_in
+if(n_values /= n_values_in ) call error_handler(E_ERR, 'transfer_dart_wrf', &
+                             stringerror, source, revision, revdate)
 
 end subroutine transfer_dart_wrf
 
@@ -669,7 +669,7 @@ subroutine trans_2d( one_to_two, a1d, a2d, nx, ny )
 
 implicit none
 integer :: nx,ny
-real*8 :: a1d(:)
+real(r8) :: a1d(:)
 real :: a2d(nx,ny)
 logical ::  one_to_two
 
@@ -703,7 +703,7 @@ subroutine trans_3d( one_to_three, a1d, a3d, nx, ny, nz )
 
 implicit none
 integer :: nx,ny,nz
-real*8 :: a1d(:)
+real(r8) :: a1d(:)
 real :: a3d(nx,ny,nz)
 logical ::  one_to_three
 

@@ -18,23 +18,22 @@ program create_obs_sequence
 ! TJH Sun Jun 30 15:20:04 MDT 2002: the sets must be input in a monotonic ascending
 !    fashion. At some point we need to sort these sets.
 
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
-use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
+use      obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
 use time_manager_mod, only : time_type, set_time, get_time, operator(*), operator(+)
-use utilities_mod, only : open_file
-use sort_mod, only : index_sort
+use    utilities_mod, only : open_file
+use         sort_mod, only : index_sort
 
 implicit none
 
-! Everybody needs to know these ... TJH Feb 10, 2003
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
-
 
 type(obs_sequence_type) :: seq
 type(set_def_list_type) :: set_def_list

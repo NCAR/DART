@@ -16,7 +16,7 @@ module utilities_mod
 !      get_unit         Function that returns an available 
 !                       Fortran unit number
 !
-!      error_mesg       Print warning and error messages, 
+!      error_handler    Print warning and error messages, 
 !                       terminates program for error messages.
 !
 !      check_nml_error  Checks the iostat returned when reading
@@ -35,28 +35,29 @@ module utilities_mod
 !
 !-----------------------------------------------------------------------
 
-implicit none
+use types_mod, only : r8
 
+implicit none
 private
 
 !   ---- private data for check_nml_error ----
 
-   integer, private :: num_nml_error_codes, nml_error_codes(5)
-   logical, private :: do_nml_error_init = .true.
-   private  nml_error_init
+integer, private :: num_nml_error_codes, nml_error_codes(5)
+logical, private :: do_nml_error_init = .true.
+private  nml_error_init
 
 integer, parameter :: E_MSG = 0, E_WARN = 1, E_ERR = 2
 integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
 
 public file_exist, get_unit, error_mesg, check_nml_error, open_file, &
-       close_file, print_version_number, output_err, &
+       close_file, print_version_number, error_handler, &
        E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL 
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 contains
 
@@ -89,9 +90,8 @@ contains
          endif
       enddo
 
-      if (unit == -1) Then
-         call error_mesg ('get_unit', 'no available units.', 1)
-      endif
+      if (unit == -1) call error_handler(E_ERR,'get_unit', &
+             'no available units.',source, revision, revdate)
 
    end function get_unit
 
@@ -133,12 +133,13 @@ contains
 
 !#######################################################################
 
-subroutine output_err(level, src, rev, date, aut, routine, text)
+subroutine error_handler(level, routine, text, src, rev, rdate, aut )
 
 implicit none
 
 integer, intent(in) :: level
-character(len = *), intent(in) :: src, rev, date, aut, routine, text
+character(len = *), intent(in) :: routine, text, src, rev, rdate
+character(len = *), intent(in), OPTIONAL :: aut
 
 select case(level)
    case (E_MSG)
@@ -149,17 +150,18 @@ select case(level)
       write(*, *) 'ERROR FROM:'
 end select
 
-write(*, *) trim(src)
-write(*, *) trim(rev)
-write(*, *) trim(date)
-write(*, *) trim(aut)
-write(*, *) 'In routine ', trim(routine)
-write(*, *) trim(text)
+write(*, *) '   routine       : ', trim(routine)
+write(*, *) '   source file   : ', trim(src)
+write(*, *) '   file revision : ', trim(rev)
+write(*, *) '   revision date : ', trim(rdate)
+if(present(aut)) &
+write(*, *) '   last editor   : ', trim(aut)
+write(*, *) '   message       : ', trim(text)
 
 ! Stop for all but message; 
 if(level /= E_MSG) stop
 
-end subroutine output_err
+end subroutine error_handler
 
 !#######################################################################
 
@@ -183,7 +185,8 @@ function check_nml_error (iostat, nml_name) result (error_code)
                      nml_name(1:len_trim(nml_name)),  &
                      ', iostat = ',error_code
 
-   call error_mesg ('check_nml_error', err_str, 3)
+   call error_handler(E_ERR, 'check_nml_error', &
+            err_str, source, revision, revdate)
 
 end function check_nml_error
 
@@ -194,7 +197,7 @@ subroutine nml_error_init
 !   private routine for initializing allowable error codes
 
    integer  unit, io, ir
-   real ::  b=1.
+   real(r8) ::  b=1.0_r8
    namelist /b_nml/  b
 
       nml_error_codes(1) = 0

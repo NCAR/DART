@@ -7,12 +7,20 @@ module obs_mod
 ! $Author$ 
 !
 
-use types_mod
+use types_mod, only : r8
 use new_random_mod, only: gasdev, ran1
 use sort_mod
 
-integer, parameter :: num_obs = 3
+implicit none
+private
 
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
+integer, parameter :: num_obs = 3
 
 contains
 

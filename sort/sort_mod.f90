@@ -7,16 +7,18 @@ module sort_mod
 ! $Author$ 
 !
 
-use types_mod
+use types_mod, only : r8
 
+implicit none
 private
-public sort, index_sort
+
+public :: sort, index_sort
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 contains
 

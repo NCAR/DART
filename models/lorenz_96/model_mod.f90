@@ -7,52 +7,52 @@ module model_mod
 ! $Author$ 
 !
 
-use types_mod
+use        types_mod, only : r8
 use time_manager_mod
-use location_mod, only : location_type, get_dist, set_location, get_location, &
-                         LocationDims, LocationName, LocationLName
-use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
+use     location_mod, only : location_type, get_dist, set_location, get_location, &
+                             LocationDims, LocationName, LocationLName
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                             error_handler, E_ERR
 
 implicit none
 private
 
-public   get_model_size, &
-         adv_1step,  &
-         get_state_meta_data, &
-         model_interpolate, &
-         get_model_time_step, &
-         end_model, &
-         static_init_model, &
-         init_time, &
-         init_conditions, &
-         model_get_close_states, &
-         nc_write_model_atts, & 
-         nc_write_model_vars, &
-         pert_model_state
+public :: get_model_size, &
+          adv_1step,  &
+          get_state_meta_data, &
+          model_interpolate, &
+          get_model_time_step, &
+          end_model, &
+          static_init_model, &
+          init_time, &
+          init_conditions, &
+          model_get_close_states, &
+          nc_write_model_atts, & 
+          nc_write_model_vars, &
+          pert_model_state
 
-
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Basic model parameters controlled by nameslist; have defaults
 
 !---------------------------------------------------------------
 ! Namelist with default values
 !
-integer :: model_size = 40
-real(r8) :: forcing = 8.00_r8, delta_t = 0.05_r8
-logical :: output_state_vector = .true.  ! output state vector                  
-
+integer  :: model_size = 40
+real(r8) :: forcing    = 8.00_r8
+real(r8) :: delta_t    = 0.05_r8
+logical  :: output_state_vector = .true.  ! output state vector                  
 
 namelist /model_nml/ model_size, forcing, delta_t, output_state_vector
 !----------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
-type(time_type)     :: time_step
+type(time_type) :: time_step
 
 
 contains
@@ -69,20 +69,19 @@ subroutine static_init_model()
 ! identity info, sets the location of the state variables, and initializes
 ! the time type for the time stepping (is this general enough for time???)
 
-implicit none
 real(r8) :: x_loc
-integer :: i, unit, ierr, io
+integer :: i, iunit, ierr, io
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = model_nml, iostat = io, end = 11)
+      read(iunit, nml = model_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'model_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! Temporary namelist validation
@@ -137,7 +136,6 @@ subroutine comp_dt(x, dt)
 ! 
 ! Computes the time tendency of the lorenz 1996 model given current state
 
-implicit none
 
 real(r8), intent( in) :: x(:)
 real(r8), intent(out) :: dt(:)
@@ -170,7 +168,6 @@ subroutine adv_1step(x, time)
 ! used in L96. Is there a better way to do this in F90 than to just hang
 ! this argument out everywhere?
 
-implicit none
 
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
@@ -219,7 +216,6 @@ subroutine init_conditions(x)
 ! module. Should probably make that more formal and perhaps enforce for
 ! more comprehensive models.
 
-implicit none
 
 real(r8), intent(out) :: x(:)
 
@@ -236,7 +232,6 @@ subroutine init_time(time)
 ! Gets the initial time for a state from the model. Where should this info
 ! come from in the most general case?
 
-implicit none
 
 type(time_type), intent(out) :: time
 
@@ -259,7 +254,6 @@ function model_interpolate(x, location, type)
 ! Argument type is not used here because there is only one type of variable.
 ! Type is needed to allow swap consistency with more complex models.
 
-implicit none
 
 real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
@@ -356,7 +350,6 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 
-implicit none
 
 integer, intent(in) :: index_in
 type(location_type), intent(out) :: location
@@ -384,7 +377,6 @@ subroutine model_get_close_states(o_loc, radius, number, indices, dist)
 ! 
 ! Stub for computation of get close states
 
-implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
@@ -427,7 +419,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 
 use typeSizes
 use netcdf
-implicit none
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -555,11 +546,9 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_atts'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+
   end subroutine check
 
 end function nc_write_model_atts
@@ -594,7 +583,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 
 use typeSizes
 use netcdf
-implicit none
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
@@ -637,11 +625,9 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_vars'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+
   end subroutine check
 
 end function nc_write_model_vars
@@ -650,15 +636,14 @@ end function nc_write_model_vars
 
 subroutine pert_model_state(state, pert_state, interf_provided)
 
-implicit none
 
 ! Perturbs a model state for generating initial ensembles
 ! Returning interf_provided means go ahead and do this with uniform
 ! small independent perturbations.
 
-real(r8), intent(in) :: state(:)
+real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
-logical, intent(out) :: interf_provided
+logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
 
@@ -667,5 +652,4 @@ end subroutine pert_model_state
 !===================================================================
 ! End of model_mod
 !===================================================================
-!
 end module model_mod

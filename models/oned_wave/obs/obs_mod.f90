@@ -7,21 +7,23 @@ module obs_mod
 ! $Author$ 
 !
 
-use types_mod
+use    types_mod, only : r8
 use nag_wrap_mod, only : g05ddf_wrap
-use model_mod,    only : model_size, location_type, model_state_location
+use    model_mod, only : model_size, location_type, model_state_location
 
+implicit none
 private
-public num_obs, obs_var, take_obs, ens_ics
-public num_obs_int, obs_var_int, take_obs_int, obs_location
 
-! let CVS fill strings ... DO NOT EDIT ...
+public :: num_obs, obs_var, take_obs, ens_ics &
+          num_obs_int, obs_var_int, take_obs_int, obs_location
+
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
-integer, parameter :: num_obs = model_size
+integer, parameter :: num_obs     = model_size
 integer, parameter :: num_obs_int = model_size
 
 logical, parameter :: init_obs_locations = .true.

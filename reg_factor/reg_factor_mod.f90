@@ -8,10 +8,11 @@ module reg_factor_mod
 ! $Author$
 !
 
-use types_mod
+use     types_mod, only : r8
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
                            close_file
 
+implicit none
 private
 
 public comp_reg_factor
@@ -45,11 +46,11 @@ real(r8), allocatable :: time_mean_reg(:, :)
 ! Global storage for bgrid mean regression factor file
 real(r8), allocatable :: obs_state_reg(:)
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 CONTAINS
 
@@ -61,8 +62,6 @@ function comp_reg_factor(num_groups, regress, time_index, &
 ! factor for a single sample of a regression using some other
 ! methodology (for instance time mean from previous runs). Could
 ! also implement the standard distance dependence method, too.
-
-implicit none
 
 integer, intent(in) :: num_groups, time_index, obs_index, state_index
 integer, intent(in), optional :: obs_state_ind, obs_state_max

@@ -6,6 +6,7 @@ program create_ncep_obs_set_def
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 ! Main program to create a set_def_list description file for a 
 ! paticular obs_kind set. This is a prototype for more
@@ -13,17 +14,17 @@ program create_ncep_obs_set_def
 ! is no support for nested observation definition subsets, but that will be
 ! needed in the long run.
 
-use obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def, &
-    read_ncep_obs_def
-use obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
+use        types_mod, only : r8
+use    utilities_mod, only : open_file
+use      obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def, &
+                             read_ncep_obs_def
+use  obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
-   add_to_list, write_set_def_list, read_set_def_list
-use utilities_mod, only : open_file
+                             add_to_list, write_set_def_list, read_set_def_list
 
 implicit none
 
-! Everybody needs to know these ... TJH Feb 10, 2003
-
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
@@ -43,22 +44,24 @@ character(len = 2) :: obstime
 character(len = 8) :: obsdate
 character(len = 80) :: obsfile, obsfile2
 
-    file_name = 'set_def.out'
-    write(*, *) 'filename for output of observation = ', file_name
 
-    open(800, file='/home/hliu/DART/ncep_obs/ncepobs.input', form='formatted')  
-    read(800, *) obs_year, obs_month, obs_day                                 
-    read(800, *) max_sets                                                  
-    close(800)                                                   
+
+file_name = 'set_def.out'
+write(*, *) 'filename for output of observation = ', file_name
+
+open(800, file='/home/hliu/DART/ncep_obs/ncepobs.input', form='formatted')  
+read(800, *) obs_year, obs_month, obs_day                                 
+read(800, *) max_sets                                                  
+close(800)                                                   
                                                                
-    write(*, *) 'number of unique observation sets is set to', max_sets 
+write(*, *) 'number of unique observation sets is set to', max_sets 
                                                               
-     if(obs_month .lt. 10) then                                   
-     write(obsdate, '(i4,A1,i1,i2)') obs_year, '0',obs_month, obs_day   
-     else                                                             
-     write(obsdate, '(i4,i2,i2)') obs_year, obs_month, obs_day           
-     endif                                                  
-     print*, 'ncep obsdate = ', obsdate                         
+if(obs_month .lt. 10) then                                   
+   write(obsdate, '(i4,A1,i1,i2)') obs_year, '0',obs_month, obs_day   
+else                                                             
+   write(obsdate, '(i4,i2,i2)') obs_year, obs_month, obs_day           
+endif                                                  
+print*, 'ncep obsdate = ', obsdate                         
 
  set_def_list = init_set_def_list(max_sets)
 
@@ -111,8 +114,6 @@ character(len = 80) :: obsfile, obsfile2
 contains
 
  subroutine num_ncep_obs(obsunit, num_obs)
- use types_mod
- implicit none
 
  integer, intent(in) :: obsunit
  integer, intent(out) :: num_obs

@@ -50,7 +50,14 @@ if !( -e filter ) then
 endif
 \rm -f *.o *.d *.mod Makefile
 
+#======================================================================
+# Save any existing namelist ...
+#======================================================================
+
 set SAVEME = input.nml.$$
+if ( -e input.nml ) then
+   mv input.nml $SAVEME
+endif
 
 #======================================================================
 # Simulate a particular observing system:
@@ -200,8 +207,15 @@ else
    echo " "
    echo "filter teminated normally"
    echo " "
-#   \rm -f create_obs_set_def.in create_obs_sequence.in input.nml filter.nml
-#   mv $SAVEME input.nml
+   \rm -f create_obs_set_def.in create_obs_sequence.in input.nml filter.nml
+endif
+
+#======================================================================
+# Restore the existing namelist ...
+#======================================================================
+
+if ( -e ${SAVEME} ) then
+   mv $SAVEME input.nml
 endif
 
 exit

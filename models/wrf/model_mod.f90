@@ -579,20 +579,16 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! associated location. This is not a function because the more general
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
-!  SHOULD THIS ALSO RETURN THE TYPE OF THIS VARIABLE???
-! YES NEED TO RETURN VARIABLE TYPE HERE
 
-integer, intent(in) :: index_in
-! Temporary kluge of location type
-!integer, intent(in) :: location
+integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, intent(out), optional :: var_type
+integer, optional,   intent(out) :: var_type
 integer :: var_type_out
 
-integer :: index, ip, jp, kp
-integer :: nz, ny, nx
-logical :: var_found
-real(r8)    :: lon, lat, lev
+integer  :: index, ip, jp, kp
+integer  :: nz, ny, nx
+logical  :: var_found
+real(r8) :: lon, lat, lev
 
 integer :: i, number_of_wrf_variables
 logical, parameter :: debug = .false.  
@@ -653,19 +649,19 @@ var_found = .false.
      if(ip == 1) then
 
         lon = wrf%longitude(1,jp) - 0.5*(wrf%longitude(2,jp)-wrf%longitude(1,jp))
-        if (wrf%longitude(2,jp) < wrf%longitude(1,jp)) lon = lon - 180.0
+        if (wrf%longitude(2,jp) < wrf%longitude(1,jp)) lon = lon - 180.0_r8
         lat = wrf%latitude(1,jp)  - 0.5*(wrf%latitude(2,jp)-wrf%latitude(1,jp))
 
      else if(ip == nx) then
 
         lon = wrf%longitude(nx-1,jp) + 0.5*(wrf%longitude(nx-1,jp)-wrf%longitude(nx-2,jp))
-        if (wrf%longitude(nx-1,jp) < wrf%longitude(nx-2,jp)) lon = lon + 540.0
+        if (wrf%longitude(nx-1,jp) < wrf%longitude(nx-2,jp)) lon = lon + 540.0_r8
         lat = wrf%latitude(nx-1,jp)  + 0.5*(wrf%latitude(nx-1,jp)-wrf%latitude(nx-2,jp))
 
      else
 
         lon = 0.5*(wrf%longitude(ip,jp)+wrf%longitude(ip-1,jp))
-        if (wrf%longitude(ip,jp) < wrf%longitude(ip-1,jp)) lon = lon + 180.0
+        if (wrf%longitude(ip,jp) < wrf%longitude(ip-1,jp)) lon = lon + 180.0_r8
         lat = 0.5*(wrf%latitude(ip,jp) +wrf%latitude(ip-1,jp))
 
      end if
@@ -674,15 +670,15 @@ var_found = .false.
 
      if(jp == 1)  then
        lon = wrf%longitude(ip,1) - 0.5*(wrf%longitude(ip,2)-wrf%longitude(ip,1))
-       if (wrf%longitude(ip,2) < wrf%longitude(ip,1)) lon = lon - 180.0
+       if (wrf%longitude(ip,2) < wrf%longitude(ip,1)) lon = lon - 180.0_r8
        lat = wrf%latitude(ip,1)  - 0.5*(wrf%latitude(ip,2)-wrf%latitude(ip,1))
      else if(jp == ny) then
        lon = wrf%longitude(ip,ny-1) + 0.5*(wrf%longitude(ip,ny-1)-wrf%longitude(ip,ny-2))
-       if (wrf%longitude(ip,ny-1) < wrf%longitude(ip,ny-2)) lon = lon + 540.0
+       if (wrf%longitude(ip,ny-1) < wrf%longitude(ip,ny-2)) lon = lon + 540.0_r8
        lat = wrf%latitude(ip,ny-1)  + 0.5*(wrf%latitude(ip,ny-1)-wrf%latitude(ip,ny-2))
      else 
        lon = 0.5*(wrf%longitude(ip,jp)+wrf%longitude(ip,jp-1))
-       if (wrf%longitude(ip,jp) < wrf%longitude(ip,jp-1)) lon = lon + 180.0
+       if (wrf%longitude(ip,jp) < wrf%longitude(ip,jp-1)) lon = lon + 180.0_r8
        lat = 0.5*(wrf%latitude(ip,jp) +wrf%latitude(ip,jp-1))
      end if
 
@@ -693,15 +689,15 @@ var_found = .false.
 
    end if
 
-   if (lon < 0.0_r8) lon = lon + 360.0
+   if (lon <   0.0_r8) lon = lon + 360.0_r8
+   if (lon > 360.0_r8) lon = lon - 360.0_r8
 
-   if (lon > 360.0_r8) lon = lon - 360.0
-
-   lev = float(kp)
+   lev = float(kp) ! This is the index of the vertical  
 
    if(debug) write(6,*) 'lon, lat, lev: ',lon, lat, lev
           
-   location = set_location(lon, lat, lev, 1)
+   ! lev is an index here, so which_vert is OK to be hardwired to a 1
+   location = set_location(lon, lat, lev, 1) 
 
    if(present(var_type)) var_type = var_type_out
 
@@ -1220,17 +1216,15 @@ end subroutine grid_close_states
 
 !***********************************************************************
 
-function get_dist_wrf( i,j,k,var_type,o_loc )
+function get_dist_wrf( i, j, k, var_type, o_loc )
 
+real(r8)                        :: get_dist_wrf 
 type(location_type), intent(in) :: o_loc
-integer, intent(in) :: i,j,k,var_type
+integer,             intent(in) :: i,j,k,var_type
 
-type(location_type) :: loc
-
-real(r8) :: get_dist_wrf
-
-real(r8) :: long, lat, lev
-
+type(location_type) :: loc 
+real(r8)            :: long, lat, lev
+integer             :: which_vert
 
 
 !  get distance for input var_type
@@ -1238,15 +1232,15 @@ real(r8) :: long, lat, lev
 
      if (i == 1) then
        long = wrf%longitude(1,j) - 0.5*(wrf%longitude(2,j)-wrf%longitude(1,j))
-       if (wrf%longitude(2,j) < wrf%longitude(1,j)) long = long - 180.0
+       if (wrf%longitude(2,j) < wrf%longitude(1,j)) long = long - 180.0_r8
        lat  = wrf%latitude(1,j)  - 0.5*(wrf%latitude(2,j)-wrf%latitude(1,j))
      else if (i == wrf%wes) then
        long = wrf%longitude(i-1,j) + 0.5*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
-       if (wrf%longitude(i-1,j) < wrf%longitude(i-2,j)) long = long + 540.0
+       if (wrf%longitude(i-1,j) < wrf%longitude(i-2,j)) long = long + 540.0_r8
        lat  = wrf%latitude(i-1,j)  + 0.5*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
      else
        long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i-1,j))
-       if (wrf%longitude(i,j) < wrf%longitude(i-1,j)) long = long + 180.0
+       if (wrf%longitude(i,j) < wrf%longitude(i-1,j)) long = long + 180.0_r8
        lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i-1,j))
      end if
 
@@ -1254,45 +1248,50 @@ real(r8) :: long, lat, lev
 
      if (j == 1) then
        long = wrf%longitude(i,1) - 0.5*(wrf%longitude(i,2)-wrf%longitude(i,1))
-       if (wrf%longitude(i,2) < wrf%longitude(i,1)) long = long - 180.0
+       if (wrf%longitude(i,2) < wrf%longitude(i,1)) long = long - 180.0_r8
        lat  = wrf%latitude(i,1)  - 0.5*(wrf%latitude(i,2)-wrf%latitude(i,1))
      else if (j == wrf%sns) then
        long = wrf%longitude(i,j-1) + 0.5*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
-       if (wrf%longitude(i,j-1) < wrf%longitude(i,j-2)) long = long + 540.0
+       if (wrf%longitude(i,j-1) < wrf%longitude(i,j-2)) long = long + 540.0_r8
        lat  = wrf%latitude(i,j-1)  + 0.5*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
      else
        long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i,j-1))
-       if (wrf%longitude(i,j) < wrf%longitude(i,j-1)) long = long + 180.0
+       if (wrf%longitude(i,j) < wrf%longitude(i,j-1)) long = long + 180.0_r8
        lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i,j-1))
      end if
 
    else
 
       long = wrf%longitude(i,j)
-      lat = wrf%latitude(i,j)
+      lat  = wrf%latitude(i,j)
+
    end if
    if( (var_type == type_w ) .or. &
-        (var_type == type_gz) .or. &
-        (var_type == type_mu)     ) then
+       (var_type == type_gz) .or. &
+       (var_type == type_mu)     ) then
 
-      lev = float(k)-1.0
+      lev = float(k)-1.0_r8
 
    else
 
-      lev = float(k)-0.5
+      lev = float(k)-0.5_r8
 
    endif
 
-   if (long < 0.0_r8) long = long + 360.0
+   if (long <   0.0_r8) long = long + 360.0_r8
+   if (long > 360.0_r8) long = long - 360.0_r8
 
-   if (long > 360.0_r8) long = long - 360.0
+   ! We will set which_vert based on the incoming location type
+   ! This will ensure compatibility for measuring 'horizontal' 
+   ! and cannot think of anything better for vertical.
 
-   loc = set_location(long,lat,lev, 1)
+   which_vert   = nint(query_location(o_loc,'which_vert'))
+   loc          = set_location(long, lat, lev, which_vert)
    get_dist_wrf = get_dist(loc,o_loc)
 
-   end function get_dist_wrf
+end function get_dist_wrf
 
-!---------------------------------
+
 
 function nc_write_model_atts( ncFileID ) result (ierr)
 !-----------------------------------------------------------------

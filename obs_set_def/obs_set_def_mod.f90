@@ -7,31 +7,31 @@ module obs_set_def_mod
 ! $Author$
 !
 
-use types_mod
+use   types_mod, only : r8
 use obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
-   write_obs_def, get_error_variance, &
-   od_get_expected_obs => get_expected_obs, &
-   od_get_close_states=>get_close_states, &
-   od_get_num_close_states=>get_num_close_states, &
-   od_get_seq_loc => get_seq_loc, &
-   od_get_obs_location4 => get_obs_location4, &
-   od_get_obs_kind4 => get_obs_kind4
+                        write_obs_def, get_error_variance, &
+                        od_get_expected_obs => get_expected_obs, &
+                        od_get_close_states=>get_close_states, &
+                        od_get_num_close_states=>get_num_close_states, &
+                        od_get_seq_loc => get_seq_loc, &
+                        od_get_obs_location4 => get_obs_location4, &
+                        od_get_obs_kind4 => get_obs_kind4
 use location_mod, only: location_type, vert_is_level
 
+implicit none
 private
 
 public obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
-   get_expected_obs, get_obs_def, &
-   get_num_obs, get_number_obs_subsets, &
-   get_obs_locations, get_close_states, get_num_close_states, add_obs, &
-   diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
-   get_seq_loc, get_obs_location3, get_obs_kind3
+       get_expected_obs, get_obs_def, get_num_obs, get_obs_locations, &
+       get_close_states, get_num_close_states, add_obs, &
+       diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
+       get_seq_loc, get_obs_location3, get_obs_kind3
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type obs_set_def_type
    private

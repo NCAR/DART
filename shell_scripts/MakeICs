@@ -11,12 +11,12 @@ if ( ${?DART_HOME} ) then
    else
       echo "$DART_HOME does not exist on this platform"
    endif
-else if ( -d /export/data/gsp/thoar/DART ) then
-   setenv DARTHOME /export/data/gsp/thoar/DART
-else if ( -d /data/gsp/thoar/DART ) then
-   setenv DARTHOME /data/gsp/thoar/DART
-else if ( -d /home/thoar/DART ) then
-   setenv DARTHOME /home/thoar/DART
+else if ( -d /export/data/gsp/${USER}/DART ) then
+   setenv DARTHOME /export/data/gsp/${USER}/DART
+else if ( -d /data/gsp/${USER}/DART ) then
+   setenv DARTHOME /data/gsp/${USER}/DART
+else if ( -d /home/${USER}/DART ) then
+   setenv DARTHOME /home/${USER}/DART
 else 
    echo "no DART project"
    exit

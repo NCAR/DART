@@ -9,15 +9,15 @@ module random_nr_mod
 !
 
 implicit none
-
 private
+
 public random_seq_type, init_ran1, ran1, gasdev
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer, parameter :: m1 = 259200, ia1 = 7141, ic1 = 54773
 integer, parameter :: m2 = 134456, ia2 = 8121, ic2 = 28411

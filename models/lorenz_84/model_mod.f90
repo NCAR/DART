@@ -10,7 +10,16 @@ module model_mod
 ! attractor.
 
 
-use types_mod
+use types_mod, only : r8
+
+implicit none
+private
+
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer :: model_size = 3
 

@@ -9,8 +9,7 @@ module time_manager_mod
 !!!use fms_mod, only: error_mesg, FATAL, write_version_number, stdout
 
 
-use types_mod
-
+use types_mod, only : r8
 
 implicit none
 private
@@ -76,9 +75,9 @@ public :: nc_append_time, nc_get_tindex, nc_write_calendar_atts
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+   source   = '$Source$', &
+   revision = '$Revision$', &
+   revdate  = '$Date$'
 
 !====================================================================
 

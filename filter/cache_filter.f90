@@ -6,7 +6,7 @@ program filter
 ! $Revision$
 ! $Date$
 ! $Author$
-
+!
 
 ! WARNING: The question of where to put in covariance inflation is
 ! still central. The old seq_obs program inflates the whole ensemble
@@ -20,7 +20,7 @@ program filter
 ! Program to build a simple obs_sequence file for use in testing filters
 ! for spatial domains with one periodic dimension.
 
-use types_mod
+use        types_mod, only: r8
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
@@ -28,9 +28,9 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, &
    set_single_obs_value, get_obs_def_index
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
-   operator(>)
-use utilities_mod,    only :  get_unit, open_file, close_file, check_nml_error, &
-   file_exist
+                             operator(>)
+use    utilities_mod, only : get_unit, open_file, close_file, check_nml_error, &
+                             file_exist, error_handler, FATAL
 use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
@@ -49,18 +49,18 @@ use cov_cutoff_mod,   only : comp_cov_factor
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
    get_close_cache
 
-use location_mod, only : location_type
+use location_mod,     only : location_type
 
-use typeSizes
-use netcdf
+use typesizes        ! From the F90 netCDF interface
+use netcdf           ! From the F90 netCDF interface
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Define a type for doing direct access to ensemble state vectors
 type model_state_ptr_type
@@ -72,12 +72,12 @@ type(time_type)         :: time, time2
 type(random_seq_type)   :: random_seq
 
 
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji, meta_data_size
 integer ::  output_ens_mean_index, output_ens_spread_index
-integer            :: model_size, num_obs_sets
+integer :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
 type(model_state_ptr_type), allocatable :: ens_ptr(:)
@@ -103,16 +103,16 @@ integer :: var_type
 type(location_type) :: location
 
 ! Temporary storage to test adaptive error capability; should be moved to assim_tools
-integer :: slope_index = 0
-real(r8) :: slope = 0.0
+integer  :: slope_index = 0
+real(r8) :: slope       = 0.0_r8
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer :: ens_size = 20
+integer  :: ens_size = 20
 real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
-integer :: cache_size = 10
-logical :: async = .false., start_from_restart = .false., output_restart = .false.
+integer  :: cache_size = 10
+logical  :: async = .false., start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer :: init_time_days = -1, init_time_seconds = -1
@@ -134,14 +134,14 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, cache_size, &
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = filter_nml, iostat = io, end = 11)
+      read(iunit, nml = filter_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'filter_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! Now know the ensemble size; allocate all the storage
@@ -151,10 +151,11 @@ allocate(ens_ptr(ens_size), ens(ens_size), obs_inc(ens_size), &
    ens_copy_meta_data(ens_size + 2))
 
 ! Input the obs_sequence
-unit = get_unit()
-open(unit = unit, file = obs_sequence_file_name)
-seq = read_obs_sequence(unit)
-close(unit)
+iunit = get_unit()
+open(unit = iunit, file = obs_sequence_file_name)
+seq = read_obs_sequence(iunit)
+close(iunit)
+
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_obs_sets(seq)
 
@@ -217,8 +218,9 @@ endif
 
 !------------------- Read restart if requested ----------------------
 if(start_from_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
+
+   iunit = get_unit()
+   open(unit = iunit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
    do i = 1, ens_size
@@ -226,22 +228,22 @@ if(start_from_restart) then
       call init_assim_model(ens(i))
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
 
-      call read_state_restart(ens(i), unit)
-! If init_time_days an init_time_seconds are not < 0, set time to them
+      call read_state_restart(ens(i), iunit)
+      ! If init_time_days an init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) call set_model_time(ens(i) , time)
    end do
-   close(unit)
-!-----------------  Restart read in --------------------------------
 
+   close(iunit)
+   !-----------------  Restart read in --------------------------------
 else
+   !-----  Block to do cold start initialization of ensembles ----------
+   ! Initialize the control and ensemble states and set up direct pointers
 
-!-----  Block to do cold start initialization of ensembles ----------
-! Initialize the control and ensemble states and set up direct pointers
+   ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
+   ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
 
-! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
-! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_in_file_name)
    call init_assim_model(x)
    x_ptr%state => get_state_vector_ptr(x)
 
@@ -250,18 +252,18 @@ else
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
    end do
 
-! Get the initial condition
-!!!   call get_initial_condition(x)
-   call read_state_restart(x, unit)
-   close(unit)
+   ! Get the initial condition
+   !!!   call get_initial_condition(x)
+   call read_state_restart(x, iunit)
+   close(iunit)
 
-! Initialize a repeatable random sequence for perturbations
-! Where should the magnitude of the perturbations come from here???
+   ! Initialize a repeatable random sequence for perturbations
+   ! Where should the magnitude of the perturbations come from here???
    call init_random_seq(random_seq)
-! Perturb for ensembles; 
+   ! Perturb for ensembles; 
    do i = 1, ens_size
       do j = 1, model_size
-! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
+         ! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
          call get_state_meta_data(j, location, var_type)
          if(var_type < 4) then 
             ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 2.0_r8) 
@@ -270,10 +272,10 @@ else
          endif
          
       end do
-! Set time to 0, 0 if none specified, otherwise to specified
+      ! Set time to 0, 0 if none specified, otherwise to specified
       call set_model_time(ens(i), time)
    end do
-!-------------------- End of cold start ensemble initialization block ------
+   !-------------------- End of cold start ensemble initialization block ------
 endif
 
 ! Temporary print of initial model time
@@ -291,13 +293,13 @@ AdvanceTime : do i = 1, num_obs_sets
    write(*, *) 'time of obs set ', i
    call print_time(time)
 
-! If the model time is past the obs set time, just need to skip???
+   ! If the model time is past the obs set time, just need to skip???
    if(get_model_time(ens(1)) > time) cycle AdvanceTime
 
    time2 = get_closest_state_time_to(ens(1), time)
-!   write(*, *) 'advancing to time2 '
+   !   write(*, *) 'advancing to time2 '
    call  print_time(time2)
-! Advance all the ensembles (to the time of the first ensemble)
+   ! Advance all the ensembles (to the time of the first ensemble)
    if(time2 /= get_model_time(ens(1))) call advance_state(ens, ens_size, time2, async)
 
    ! Tag the ensemble mean and spread with the current time
@@ -314,7 +316,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    end do
 
-! Output state diagnostics as required: NOTE: Prior has been inflated
+   ! Output state diagnostics as required: NOTE: Prior has been inflated
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
          ! TJH debugging block.
@@ -322,10 +324,12 @@ AdvanceTime : do i = 1, num_obs_sets
          call output_diagnostics(     PriorStateUnit, ens(j), j)
       end do
    end if
-! Output ensemble mean if requested
+
+   ! Output ensemble mean if requested
    if(output_state_ens_mean .and. i / output_interval * output_interval == i) &
       call output_diagnostics(PriorStateUnit, ens_mean, output_ens_mean_index)
-! Compute and output ensemble spread if requested
+
+   ! Compute and output ensemble spread if requested
    if(output_state_ens_spread  .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_spread_ptr%state(k) = get_ens_spread(ens_ptr, &
@@ -333,14 +337,12 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       call output_diagnostics(PriorStateUnit, ens_spread, output_ens_spread_index)
    endif
-   ! ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
-
 
    ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
 
    ! Allocate storage for the ensemble priors for this number of observations
-! Temporary assumption of fixed obs set
+   ! Temporary assumption of fixed obs set
    allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set))
 
    ! Get the observational error covariance (diagonal at present)
@@ -357,7 +359,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 
 ! A preliminary search for bias???
-   var_ratio_sum = 0.0
+   var_ratio_sum = 0.0_r8
 !!!   do j = 1, num_obs_in_set
 ! Get all the prior estimates
 !!!      do k = 1, ens_size
@@ -393,26 +395,15 @@ AdvanceTime : do i = 1, num_obs_sets
 !!!   write(*, *) 'UPDATED SLOPE IS ', slope
 
 
-
-
-
-
-
-
-
-
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
+
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
       end do
 
       call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
-!!!      call obs_increment17(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc, slope)
-! Test of modified linear variance delta update for localization, 13 Dec. 2002
-!!!         call linear_obs_increment(ens_obs, ens_size, obs(j), &
-!!!            obs_err_cov(j), obs_inc, mean_inc, sd_ratio)
 
       ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
@@ -442,14 +433,16 @@ AdvanceTime : do i = 1, num_obs_sets
 
    end do Observations
 
-! Output posterior diagnostics
-! Output state diagnostics as requested
+   ! Output posterior diagnostics
+
+   ! Output state diagnostics as requested
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
           call output_diagnostics(     PosteriorStateUnit, ens(j), j)
       end do
    end if
-! Compute ensemble mean if either mean or spread to be output
+
+   ! Compute ensemble mean if either mean or spread to be output
    if(output_state_ens_mean .or. output_state_ens_spread  &
       .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
@@ -457,10 +450,11 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    endif
 
-! Output an ensemble mean if requested
+   ! Output an ensemble mean if requested
    if(output_state_ens_mean  .and. i / output_interval * output_interval == i) &
       call output_diagnostics(PosteriorStateUnit, ens_mean, output_ens_mean_index)
-! Compute and output state_ens_spread if requested
+
+   ! Compute and output state_ens_spread if requested
    if(output_state_ens_spread  .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_spread_ptr%state(k) = get_ens_spread(ens_ptr, &
@@ -468,7 +462,6 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       call output_diagnostics(PosteriorStateUnit, ens_spread, output_ens_spread_index)
    endif
-   ! ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
 
    ! Deallocate the ens_obs storage for this obs set
    deallocate(obs_err_cov, obs)
@@ -480,28 +473,14 @@ end do AdvanceTime
 ierr = NF90_close(PriorStateUnit)
 ierr = NF90_close(PosteriorStateUnit)
 
-! Initialize the model state space diagnostic output files
-
-! Output the observation space diagnostic files
-
-!!!prior_obs_unit = get_unit()
-!!!open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
-!!!call write_obs_sequence(prior_obs_unit, prior_seq)
-!!!close(prior_obs_unit)
-
-!!!posterior_obs_unit = get_unit()
-!!!open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
-!!!call write_obs_sequence(posterior_obs_unit, posterior_seq)
-!!!close(posterior_obs_unit)
-
 ! Output a restart file if requested
 if(output_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_out_file_name)
+   iunit = get_unit()
+   open(unit = iunit, file = restart_out_file_name)
    do i = 1, ens_size
-      call write_state_restart(ens(i), unit)
+      call write_state_restart(ens(i), iunit)
    end do
-   close(unit)
+   close(iunit)
 endif
 
 

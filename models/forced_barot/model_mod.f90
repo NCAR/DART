@@ -9,13 +9,15 @@ module model_mod
 ! This is a non-divergent barotropic model on the sphere. Currently makes
 ! use of NAG based transforms which are not available on NCAR systems.
 
-use types_mod
+use types_mod, only : r8
 use transforms_mod
 use ncd_file_mod
 use nag_wrap_mod,     only : g05ddf_wrap
 use loc_and_dist_mod, only : loc_type, get_dist, set_loc
 
+implicit none
 private
+
 public init_model, get_model_size, lat_max, num_lon, init_conditions, & 
    adv_1step, advance, &
    output, barot_to_dp, dp_to_barot, delta_t, adv_true_state, &
@@ -23,7 +25,7 @@ public init_model, get_model_size, lat_max, num_lon, init_conditions, &
    num_fourier, num_spherical, model_output, trans_spherical_to_grid, &
    get_close_pts, grid_to_dp, state_loc, model_get_close_states
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &

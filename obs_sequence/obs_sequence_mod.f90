@@ -7,7 +7,7 @@ module obs_sequence_mod
 ! $Author$
 !
 
-use types_mod
+use types_mod, only : r8
 use utilities_mod,    only : open_file
 use time_manager_mod, only : time_type, set_time, operator(<=), operator(<)
 
@@ -23,15 +23,16 @@ use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_t
 use set_def_list_mod, only : set_def_list_type, &
    read_set_def_list, write_set_def_list, set_def_list_copy, &
    sd_get_expected_obs     => get_expected_obs, &
-   sd_get_seq_loc     => get_seq_loc, &
-   sd_get_obs_location2     => get_obs_location2, &
-   sd_get_obs_kind2     => get_obs_kind2, &
+   sd_get_seq_loc          => get_seq_loc, &
+   sd_get_obs_location2    => get_obs_location2, &
+   sd_get_obs_kind2        => get_obs_kind2, &
    sd_get_diag_obs_err_cov => get_diag_obs_err_cov, &
    sd_get_num_close_states => get_num_close_states, &
    sd_get_close_states     => get_close_states
 
 use location_mod, only: location_type
 
+implicit none
 private
 
 public obs_sequence_type, init_obs_sequence, &
@@ -46,11 +47,11 @@ public obs_sequence_type, init_obs_sequence, &
    get_close_states, read_obs_sequence_def, obs_sequence_def_copy, &
    set_single_obs_value, get_obs_def_index
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type obs_sequence_type 
    private

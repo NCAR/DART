@@ -9,11 +9,12 @@ module model_mod
 
 ! Revised assim_model version of Lorenz-63 3-variable model
 
-use types_mod
+use        types_mod, only: r8
 use time_manager_mod
-use location_mod, only : location_type, get_dist, set_location, get_location, &
-                         LocationDims, LocationName, LocationLName
-use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
+use     location_mod, only : location_type, get_dist, set_location, get_location, &
+                             LocationDims, LocationName, LocationLName
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                             error_handler, E_ERR
 
 implicit none
 private
@@ -29,13 +30,14 @@ public   get_model_size, &
          init_conditions, &
          model_get_close_states, &
          nc_write_model_atts, &
-         nc_write_model_vars
+         nc_write_model_vars, &
+         pert_model_state
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 !  define model parameters
 
@@ -56,7 +58,7 @@ namelist /model_nml/ sigma, r, b, deltat, output_state_vector
 
 ! Define the location of the state variables in module storage
 type(location_type) :: state_loc(model_size)
-type(time_type) :: time_step
+type(time_type)     :: time_step
 
 
 contains
@@ -70,23 +72,20 @@ subroutine static_init_model()
 ! Initializes class data for L63 model and outputs I.D.
 !
 !
-!
-!
 
-implicit none
 real(r8) :: x_loc
-integer :: i, unit, ierr, io
+integer  :: i, iunit, ierr, io
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = model_nml, iostat = io, end = 11)
+      read(iunit, nml = model_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'model_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! Temporary namelist validation
@@ -126,7 +125,6 @@ subroutine comp_dt(x, dt)
 ! Computes time tendency of the lorenz 1963 3-variable model given 
 ! current state
 
-implicit none
 
 real(r8), intent(in) :: x(:)
 real(r8), intent(out) :: dt(:)
@@ -152,7 +150,6 @@ subroutine advance(x, num, xnew, time)
 ! TJH -- 06 Feb 2003 -- this routine seems to be deprecated -- 
 ! not called, not public ...
 
-implicit none
 
 real(r8), intent(in)  :: x(:)
 integer,  intent(in)  :: num
@@ -178,7 +175,6 @@ subroutine init_conditions(x)
 !
 !  off-attractor initial conditions for lorenz 63
 
-implicit none
 
 real(r8), intent(out) :: x(:)
 
@@ -195,7 +191,6 @@ subroutine linear_dt(x, dx, dt)
 !
 ! old version of linearized lorenz 63 model time tendency computation
    
-implicit none
    
 real(r8), intent(in)  :: x(:), dx(:)
 real(r8), intent(out) :: dt(:)
@@ -218,7 +213,6 @@ subroutine adv_1step(x, time)
 ! does single time step advance for lorenz convective 3 variable model
 ! using two step rk time step
 
-implicit none
 
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
@@ -240,7 +234,6 @@ subroutine adv_single(x, fract)
 ! does single time step advance for lorenz convective 3 variable model
 ! using two step rk time step
 
-implicit none
 
 real(r8), intent(inout) :: x(:)
 real(r8), intent(in)    :: fract
@@ -285,7 +278,6 @@ subroutine init_time(time)
 ! Gets the initial time for a state from the model. Where should this info
 ! come from in the most general case?
 
-implicit none
 
 type(time_type), intent(out) :: time
 
@@ -297,7 +289,7 @@ end subroutine init_time
 
 
 
-function model_interpolate(x, location, type)
+function model_interpolate(x, location, itype)
 !---------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -306,17 +298,16 @@ function model_interpolate(x, location, type)
 ! be more general. May want to wait on external infrastructure projects
 ! for this?
 
-! Argument type is not used here because there is only one type of variable.
+! Argument itype is not used here because there is only one type of variable.
 ! Type is needed to allow swap consistency with more complex models.
 
-implicit none
 
-real(r8) :: model_interpolate
-real(r8), intent(in) :: x(:)
+real(r8)                        :: model_interpolate
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer,             intent(in) :: itype
 
-integer :: lower_index, upper_index
+integer  :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
 
 ! Convert location to real
@@ -361,11 +352,10 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 
-implicit none
 
-integer, intent(in) :: index_in
+integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, intent(out), optional :: var_type                                      
+integer,             intent(out), optional :: var_type                                      
 
 location = state_loc(index_in)
 if (present(var_type)) var_type = 1    ! default variable type
@@ -378,7 +368,7 @@ end subroutine get_state_meta_data
 subroutine end_model()
 !------------------------------------------------------------------------
 !
-! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
+! Does any shutdown and clean-up needed for model. Nothing for L63 for now.
 
 
 end subroutine end_model
@@ -392,7 +382,6 @@ subroutine adv_single_rk4(x, fract)
 ! does single time step advance for lorenz convective 3 variable model
 ! using four step rk time step
 
-implicit none
 
 real(r8), intent(inout) :: x(:)
 real(r8), intent(in)    :: fract
@@ -403,11 +392,11 @@ integer i
 
 call comp_dt(x, dx)         !  compute the first intermediate step
 x1    = fract * deltat * dx
-inter = x + x1 / 2.0
+inter = x + x1 / 2.0_r8
 
 call comp_dt(inter, dx)     !  compute the second intermediate step
 x2    = fract * deltat * dx
-inter = x + x2 / 2.0
+inter = x + x2 / 2.0_r8
 
 call comp_dt(inter, dx)     !  compute the third intermediate step
 x3    = fract * deltat * dx
@@ -431,7 +420,6 @@ subroutine inv_linear_dt(x, dx, px)
 !  compute inv linear model lorenz time tendency (see notes 13mar94)
 !  for now assumes stupid leap frog, will this be sufficient?
 
-implicit none
 
 real(r8), intent(in)  :: x(:), dx(:)
 real(r8), intent(out) :: px(3)
@@ -487,7 +475,6 @@ subroutine linearize(nl, l)
 !
 ! compute linear operator around state nl
 
-implicit none
 
 real(r8), intent(in)  :: nl(3)
 real(r8), intent(out) :: l(3, 3)
@@ -510,21 +497,20 @@ end subroutine linearize
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, inum, indices, dist)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
 
-implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
+integer, intent(out) :: inum, indices(:)
 real(r8), intent(out) :: dist(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-number = -1
+! to do exhaustive search (inum = -1 return)
+inum = -1
 
 end subroutine model_get_close_states
 
@@ -558,7 +544,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 
 use typeSizes
 use netcdf
-implicit none
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -683,19 +668,15 @@ call check(nf90_sync(ncFileID))
 write (*,*)'Model attributes written, netCDF file synched ...'
 
 contains
+   ! Internal subroutine - checks error status after each netcdf, prints 
+   !                       text message each time an error code is returned. 
+   subroutine check(istatus)
+      integer, intent ( in) :: istatus
 
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
+      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts',&
+         trim(nf90_strerror(istatus)), source, revision, revdate)
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_atts'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
-  end subroutine check
-
+   end subroutine check
 end function nc_write_model_atts
 
 
@@ -727,7 +708,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 
 use typeSizes                                                                                  
 use netcdf                                                                                     
-implicit none                                                                                  
                                                                                                
 integer,                intent(in) :: ncFileID      ! netCDF file identifier                   
 real(r8), dimension(:), intent(in) :: statevec                                                 
@@ -765,20 +745,36 @@ call check(nf90_sync(ncFileID))
 ! write (*,*)'netCDF file is synched ...'
 
 contains
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+   integer, intent ( in) :: istatus
 
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
+      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars',&
+         trim(nf90_strerror(istatus)), source, revision, revdate)
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_vars'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
-  end subroutine check
-
+   end subroutine check
 end function nc_write_model_vars
+
+
+
+subroutine pert_model_state(state, pert_state, interf_provided)
+!-------------------------------------------------------------------------------
+! subroutine pert_model_state(state, pert_state, interf_provided)
+!
+! Perturbs a model state for generating initial ensembles
+! Returning interf_provided means go ahead and do this with uniform
+! small independent perturbations.
+!
+
+real(r8), intent(in)  :: state(:)
+real(r8), intent(out) :: pert_state(:)
+logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_state
+
 
 !
 !===================================================================

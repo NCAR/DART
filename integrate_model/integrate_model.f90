@@ -6,16 +6,17 @@ program integrate_model
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 ! Program to integrate assimilation model forward for asynchronous filter
 ! execution.
 
-use types_mod
+use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
-   operator(>), operator(<), read_time
-use utilities_mod,    only :  get_unit, open_file, close_file, check_nml_error, &
-   file_exist
-use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
+                             operator(>), operator(<), read_time
+use    utilities_mod, only : get_unit, open_file, close_file, check_nml_error, &
+                             file_exist
+use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
@@ -23,11 +24,11 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type(time_type)         :: time, target_time
 type(assim_model_type) :: x(1)

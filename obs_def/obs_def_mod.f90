@@ -6,28 +6,30 @@ module obs_def_mod
 ! $Date$
 ! $Author$
 
-use types_mod
-use obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
-   IDENTITY_OBSERVATION, set_ncep_obs_kind, get_obs_kind
-use location_mod, only : location_type, read_location, write_location, &
-      get_location, vert_is_level , read_ncep_obs_location
-use obs_model_mod, only : take_obs, interactive_def
+use    types_mod,    only : r8, pi
+use    obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
+                            IDENTITY_OBSERVATION, set_ncep_obs_kind, get_obs_kind
+use    location_mod, only : location_type, read_location, write_location, &
+                            get_location, vert_is_level, read_ncep_obs_location
+use   obs_model_mod, only : take_obs, interactive_def
 use assim_model_mod, only : am_get_close_states=>get_close_states, &
-   am_get_num_close_states=>get_num_close_states, get_state_meta_data
+                            am_get_num_close_states=>get_num_close_states, &
+                            get_state_meta_data
 
+implicit none
 private
 
-public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get_obs_def_kind, &
-   get_num_close_states, get_close_states, set_obs_def_location, &
-   set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type, &
+public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, &
+   get_obs_def_kind, get_num_close_states, get_close_states, &
+   set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type, &
    interactive_obs_def, &
    read_ncep_obs_def, get_seq_loc, get_obs_location4, get_obs_kind4
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Need overloaded interface for init_obs_def
 interface init_obs_def
@@ -39,16 +41,15 @@ type obs_def_type
    private
    type(location_type) :: location
    type(obs_kind_type) :: kind
-   real(r8) :: error_variance
-! Next field indexes into model state for identity observations
-   integer :: model_state_index
+   real(r8)            :: error_variance
+   integer :: model_state_index ! indexes into model state for identity obs
 end type obs_def_type
 
 contains
 
 !----------------------------------------------------------------------------
 
-function init_obs_def1(location, kind, error_variance)
+function init_obs_def1(location, knd, error_variance)
 
 ! Constructor for an obs_def that is not identity observation.
 
@@ -56,11 +57,11 @@ implicit none
 
 type(obs_def_type) :: init_obs_def1
 type(location_type), intent(in) :: location
-type(obs_kind_type), intent(in) :: kind
+type(obs_kind_type), intent(in) :: knd
 real(r8), intent(in) :: error_variance
 
-init_obs_def1%location = location
-init_obs_def1%kind = kind
+init_obs_def1%location       = location
+init_obs_def1%kind           = knd
 init_obs_def1%error_variance = error_variance
 ! This is not an identity observation
 init_obs_def1%model_state_index = -1
@@ -109,8 +110,7 @@ real(r8), intent(in) :: state_vector(:)
 if(obs_def%model_state_index > 0) then
    get_expected_obs = state_vector(obs_def%model_state_index)
 else
-
-! Need to figure out exactly how to expand this
+   ! Need to figure out exactly how to expand this
    get_expected_obs = take_obs(state_vector, obs_def%location, obs_def%kind)
 endif
 
@@ -385,20 +385,20 @@ real(r8), intent(out) :: obsloc0(3)
 type(obs_def_type), intent(in) :: obs_def
 
 type(location_type) :: location                           
-real :: lon, lat, level, lon_lat_lev(3), pressure                     
+real(r8) :: lon, lat, level, lon_lat_lev(3), pressure                     
 
     lon_lat_lev = get_location(obs_def%location)                                       
     lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
                                                     
-     if(vert_is_level(obs_def%location)) then                                           
-        level = lon_lat_lev(3)                    
-     else                      
-        pressure = lon_lat_lev(3)       
-     endif                                                                                        
+    if(vert_is_level(obs_def%location)) then                                           
+       level = lon_lat_lev(3)                    
+    else                      
+      pressure = lon_lat_lev(3)       
+    endif                                                                                        
     obsloc0(1) = lon    ! degree
     obsloc0(2) = lat    ! degree
     obsloc0(3) = pressure  ! Pascal
-!                                                                                                    
+
 end subroutine get_seq_loc
 
 !======================================
@@ -409,7 +409,7 @@ real(r8), intent(out) :: obsloc0(3)
 type(obs_def_type), intent(in) :: obs_def
 
 type(location_type) :: location                           
-real :: lon, lat, level, lon_lat_lev(3), pressure       
+real(r8) :: lon, lat, level, lon_lat_lev(3), pressure       
 
      lon_lat_lev = get_location(obs_def%location)                                       
      lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
@@ -419,9 +419,9 @@ real :: lon, lat, level, lon_lat_lev(3), pressure
      else                      
         pressure = lon_lat_lev(3)       
      endif                                                                                        
-    obsloc0(1) = lon*pi/180.0    ! degree
-    obsloc0(2) = lat*pi/180.0    ! degree
-    obsloc0(3) = pressure        ! Pascal
+    obsloc0(1) = lon*pi/180.0_r8    ! degree
+    obsloc0(2) = lat*pi/180.0_r8    ! degree
+    obsloc0(3) = pressure           ! Pascal
                                        
 end subroutine get_obs_location4
 

@@ -6,11 +6,12 @@ program perfect_model_obs
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 ! Program to build a simple obs_sequence file for use in testing filters
 ! for spatial domains with one periodic dimension.
 
-use types_mod
+use types_mod, only : r8
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
 
@@ -24,7 +25,6 @@ use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
 use obs_def_mod, only : obs_def_type, init_obs_def
 use obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
 use obs_kind_mod, only : set_obs_kind
-! TJH not used as far as I can tell ....  use location_mod, only : set_location
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
    add_to_list, write_set_def_list
 use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time, write_obs_set, &
@@ -41,7 +41,7 @@ use netcdf, only : NF90_close
 
 implicit none
 
-! Everybody needs to know these ... TJH Feb 10, 2003
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
@@ -55,7 +55,7 @@ type(obs_set_type)      :: obs_set
 type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
-integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set
+integer :: i, j, obs_set_def_index, iunit, unit_out, num_obs_in_set
 integer :: ierr, state_unit, StateUnit, io
 
 ! Need to set up namelists for controlling all of this mess, too!
@@ -95,21 +95,21 @@ write(*,*)'    Reading input from input.nml namelist=perfect_model_obs_nml ...'
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = perfect_model_obs_nml, iostat = io, end = 11)
+      read(iunit, nml = perfect_model_obs_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'perfect_model_obs_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! Read in an observation sequence, only definitions part will be used (no data used)
-unit = 10
-open(file = obs_seq_in_file_name, unit = 10)
+iunit = get_unit()
+open(file = obs_seq_in_file_name, unit = iunit)
 ! Just read in the definition part of the obs sequence
-seq = read_obs_sequence_def(unit)
+seq = read_obs_sequence_def(iunit)
 
 ! Set a time type for initial time if namelist inputs are not negative
 if(init_time_days >= 0) then
@@ -126,19 +126,19 @@ model_size = get_model_size()
 
 if(start_from_restart) then
    call init_assim_model(x(1))
-   unit = get_unit()
+   iunit = get_unit()
 
    if ( binary_restart_files ) then
-      open(unit = unit, file = restart_in_file_name, form = "unformatted")
-      call read_state_restart(x(1), unit,            form = "unformatted")
+      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
+      call read_state_restart(x(1), iunit, "unformatted")
    else
-      open(unit = unit, file = restart_in_file_name)
-      call read_state_restart(x(1), unit)
+      open(unit = iunit, file = restart_in_file_name)
+      call read_state_restart(x(1), iunit)
    endif
 
 ! If init_time_days an init_time_seconds are not < 0, set time to them
    if(init_time_days >= 0) call set_model_time(x(1) , time1)
-   close(unit)
+   close(iunit)
 !-----------------  Restart read in --------------------------------
 
 else
@@ -220,21 +220,21 @@ end do Advance
 ierr = NF90_close(StateUnit)
 
 ! Write out the sequence
-unit_out = 11
-open(file = obs_seq_out_file_name, unit = 11, status = 'replace')
+unit_out = get_unit()
+open(file = obs_seq_out_file_name, unit = unit_out, status = 'replace')
 call write_obs_sequence(unit_out, seq)
 
 ! Output a restart file if requested
 if(output_restart) then
-   unit = get_unit()
+   iunit = get_unit()
    if ( binary_restart_files ) then
-      open(unit = unit, file = restart_out_file_name, form = "unformatted", status = 'replace')
-      call write_state_restart(x(1), unit,            form = "unformatted")
+      open(unit = iunit, file = restart_out_file_name, form = "unformatted", status = 'replace')
+      call write_state_restart(x(1), iunit, "unformatted")
    else
-      open(unit = unit, file = restart_out_file_name, status = 'replace')
-      call write_state_restart(x(1), unit)
+      open(unit = iunit, file = restart_out_file_name, status = 'replace')
+      call write_state_restart(x(1), iunit)
    endif
-   close(unit)
+   close(iunit)
 endif
 
 end program perfect_model_obs

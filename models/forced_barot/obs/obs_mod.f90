@@ -8,24 +8,26 @@ module obs_mod
 !
 ! Currently uses NAG for random numbers.
 
-use types_mod
-use model_mod,        only : lat_max, num_lon, lon, lat, get_model_size
-use nag_wrap_mod,     only : g05ddf_wrap
-use obs_tools_mod,    only : conv_state_to_obs, obs_def_type, def_single_obs
+use        types_mod, only : r8
+use        model_mod, only : lat_max, num_lon, lon, lat, get_model_size
+use     nag_wrap_mod, only : g05ddf_wrap
+use    obs_tools_mod, only : conv_state_to_obs, obs_def_type, def_single_obs
 !!!use transforms_mod
 use loc_and_dist_mod, only : loc_type, set_loc, get_loc
-use utilities_mod,    only : file_exist, open_file, check_nml_error, &
+use    utilities_mod, only : file_exist, open_file, check_nml_error, &
                              print_version_number, close_file
 
+implicit none
 private
+
 public num_obs, obs_var, take_obs, ens_ics, state_to_obs, &
        init_obs, take_single_obs, get_close_state, obs_loc
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer :: num_obs = 0
 

@@ -11,7 +11,7 @@ use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &

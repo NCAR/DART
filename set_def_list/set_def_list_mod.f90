@@ -10,34 +10,35 @@ module set_def_list_mod
 ! Provides a facility to keep permanent storage for a set of 
 ! obs_set_defs and allows construction of nested subsets if desired.
 
-use types_mod
+use       types_mod, only :  r8
+use    location_mod, only : location_type
+use   utilities_mod, only : error_handler, E_ERR
 use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
-   read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
-   os_get_expected_obs => get_expected_obs, &
-   os_get_seq_loc => get_seq_loc, &
-   os_get_obs_location3 => get_obs_location3, &
-   os_get_obs_kind3 => get_obs_kind3, &
-   os_get_diag_obs_err_cov => get_diag_obs_err_cov, &
-   os_get_num_close_states => get_num_close_states, &
-   os_get_close_states => get_close_states
-use location_mod, only: location_type
+                            read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
+                            os_get_expected_obs => get_expected_obs, &
+                            os_get_seq_loc => get_seq_loc, &
+                            os_get_obs_location3 => get_obs_location3, &
+                            os_get_obs_kind3 => get_obs_kind3, &
+                            os_get_diag_obs_err_cov => get_diag_obs_err_cov, &
+                            os_get_num_close_states => get_num_close_states, &
+                            os_get_close_states => get_close_states
 
-
+implicit none
 private
 
 public set_def_list_type, list_element_type, get_number_obs_subsets, &
-   init_set_def_list, add_to_list, get_from_list, get_total_num_obs, &
+   init_set_def_list, add_to_list, get_total_num_obs, &
    write_set_def_list, read_set_def_list, write_list_element, &
    read_list_element, list_element_copy, set_def_list_copy, &
    get_expected_obs, get_diag_obs_err_cov, get_num_close_states, &
    get_seq_loc, get_obs_location2, get_obs_kind2, &
    get_close_states, get_num_sets_in_list
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
@@ -186,14 +187,12 @@ integer :: max_subsets, indx
 max_subsets = 0
 if(present(max_subsets_in)) max_subsets = max_subsets_in
 
-if(list%num_sets == list%max_sets) then
-   write(*, *) 'Error: too many sets in list in add_to_list'
-   stop
-endif
+if(list%num_sets == list%max_sets) call error_handler(E_ERR, 'add_to_list', &
+      'Too many sets in list in add_to_list', source, revision, revdate)
 
 ! Increment the number of sets in the list
 list%num_sets = list%num_sets + 1
-indx = list%num_sets
+indx          = list%num_sets
 
 ! Create the list_element
 list%sets(indx)%index = indx
@@ -226,13 +225,10 @@ type(obs_set_def_type) :: get_def_from_list
 type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
 
-if(indx > list%num_sets .or. indx < 1) then
-   write(*, *) 'Error: bad index in get_def_from_list'
-   stop
-endif
+if(indx > list%num_sets .or. indx < 1) call error_handler(E_ERR, 'get_def_from_list',&
+    'bad index in get_def_from_list',source, revision, revdate)
 
 call obs_set_def_copy(get_def_from_list, list%sets(indx)%obs_set)
-!!!get_def_from_list = list%sets(index)%obs_set
 
 end function get_def_from_list
 
@@ -267,10 +263,8 @@ integer :: get_total_num_obs
 type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
 
-if(indx > list%num_sets .or. indx < 1) then
-   write(*, *) 'Error: bad index in get_def_from_list'
-   stop
-endif
+if(indx > list%num_sets .or. indx < 1) call error_handler(E_ERR,'get_total_num_obs',&
+   'bad index in get_total_num_obs', source, revision, revdate)
 
 get_total_num_obs = list%sets(indx)%total_num_obs
 
@@ -410,13 +404,13 @@ integer, intent(in) :: file_id
 character(len=5) :: header
 integer :: i, num_sets
 type(list_element_type) :: list_element
+character(len=129) :: stringerror
 
 ! Read header
 read(file_id, *) header
-if(header /= 'defls') then
-   write(*, *) 'Error: expected "defls" in read_set_def_list'
-   stop
-endif
+write(stringerror,*)'expected "defls" in read_set_def_list, got ',header
+if(header /= 'defls') call error_handler(E_ERR,'read_set_def_list',&
+     stringerror, source, revision, revdate)
 
 ! Read the number of sets
 read(file_id, *) num_sets

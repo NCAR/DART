@@ -3,31 +3,34 @@
 
 program smoother
 
+! <next three lines automatically updated by CVS, do not edit>
 !  $Source$
 !  $Revision$
 !  $Date$
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
-integer :: i, j , n, width
-double precision, allocatable :: x(:), y(:), garb(:)
+integer :: i, j , n, width, inunit, outunit
+real(r8), allocatable :: x(:), y(:), garb(:)
 character (len = 30) :: in_file, out_file
 
 write(*, *) 'input file name '
 read(*, *) in_file
 
-open(unit = 47, file = in_file)
+inunit = get_unit()
+open(unit = inunit, file = in_file)
 
 write(*, *) 'output file name'
 read(*, *) out_file
 
-open(unit = 48, file = out_file)
+outunit = get_unit()
+open(unit = outunit, file = out_file)
 
 write(*, *) 'input number of elements'
 read(*, *) n
@@ -37,23 +40,24 @@ read(*, *) width
 
 allocate(x(n), y(n), garb(n))
 do i = 1, n
-   read(47, *) garb(i), x(i)
+   read(inunit, *) garb(i), x(i)
 end do
-
+close(inunit)
 
 ! Do the smoothing
 y = x
 do i = 1 + width, n - width
-   y(i) = 0.0
+   y(i) = 0.0_r8
    do j = i - width, i + width
       y(i) = y(i) + x(j)
    end do 
-   y(i) = y(i) / (2.0 * width + 1.0)
+   y(i) = y(i) / (2.0_r8 * width + 1.0_r8)
 end do
 
 do i = 1, n
-   write(48, *) garb(i), y(i)
+   write(outunit, *) garb(i), y(i)
 end do
+close(outunit)
 
 end program smoother
 

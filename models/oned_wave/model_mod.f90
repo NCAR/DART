@@ -8,26 +8,28 @@ module model_mod
 !
 ! Does dF/dt = -cDF/dx with forward in time, centered in space
 
-use types_mod
+use    types_mod, only : r8
 use ncd_file_mod, only : init_ncd_file, def_axis, def_time_axis, &
                          init_diag_field, output_diag, sum_diag
+
+implicit none
+private
 
 type location_type
    real(r8) :: x
 end type location_type
 
-private
 public model_size, init_conditions, adv_1step, advance, output
 public barot_to_dp, dp_to_barot
 public delta_t, adv_true_state
 public location_type, model_state_location, loc_dist, diag_output_index
 public model_get_close_state
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer, parameter :: reps = 1
 integer, parameter :: points_per_rep = 20
@@ -303,7 +305,7 @@ end function barot_to_dp
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, numb, indices, dist)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -312,12 +314,12 @@ implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
+integer, intent(out) :: numb, indices(:)
 real(r8), intent(out) :: dist(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-number = -1
+! to do exhaustive search (numb = -1 return)
+numb = -1
 
 end subroutine model_get_close_states
 

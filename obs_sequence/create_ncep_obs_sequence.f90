@@ -11,19 +11,19 @@ program create_ncep_obs_sequence
 ! in a previously created set_def_list that has spatial information about 
 ! available obs_set_defs. This then creates a time-ordered set of observations.
 !
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
-use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
+use      obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
 use time_manager_mod, only : time_type, set_time, get_time, operator(*), operator(+)
-use utilities_mod, only : open_file
-use sort_mod, only : index_sort
+use    utilities_mod, only : open_file
+use         sort_mod, only : index_sort
 use time_manager_mod, only : set_date, set_calendar_type
 
 implicit none
 
-! Everybody needs to know these ... TJH Feb 10, 2003
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &

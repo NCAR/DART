@@ -8,7 +8,7 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use types_mod
+use types_mod, only :: r8
 !!!use obs_mod,        only : num_obs, obs_var
 use utilities_mod,  only : file_exist, open_file, check_nml_error, &
                            close_file
@@ -26,6 +26,7 @@ logical :: first_obs18_call = .true.
 
 type (random_seq_type) :: ran_seq, inc_ran_seq
 
+implicit none
 private
 
 public read_restart, write_restart, assim_tools_init, &
@@ -2377,10 +2378,10 @@ subroutine linear_obs_increment(ens, ens_size, obs, obs_var, var_inc, mean_inc, 
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: ens(ens_size), obs, obs_var
-double precision, intent(out) :: var_inc(ens_size), mean_inc, sd_ratio
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: var_inc(ens_size), mean_inc, sd_ratio
 
-double precision :: a, prior_mean, prior_var, new_mean, new_var, sx, s_x2
+real(r8) :: a, prior_mean, prior_var, new_mean, new_var, sx, s_x2
 
 ! Compute prior variance and mean from sample
 sx = sum(ens)
@@ -2418,14 +2419,14 @@ subroutine linear_update_from_obs_inc(obs, var_inc, mean_inc, state, &
 implicit none
 
 integer, intent(in) :: ens_size
-double precision, intent(in) :: obs(ens_size), var_inc(ens_size), mean_inc
-double precision, intent(in) :: state(ens_size), cov_factor, sd_ratio
-double precision, intent(out) :: state_inc(ens_size)
+real(r8), intent(in) :: obs(ens_size), var_inc(ens_size), mean_inc
+real(r8), intent(in) :: state(ens_size), cov_factor, sd_ratio
+real(r8), intent(out) :: state_inc(ens_size)
 
-double precision :: sum_x, sum_y, sum_xy, sum_x2, reg_coef
-double precision :: sum_y2, correl, linear_factor
+real(r8) :: sum_x, sum_y, sum_xy, sum_x2, reg_coef
+real(r8) :: sum_y2, correl, linear_factor
 
-double precision :: new_reg, ybar, yvar, xbar, xyvar
+real(r8) :: new_reg, ybar, yvar, xbar, xyvar
 
 
 

@@ -1,5 +1,22 @@
 MODULE module_netcdf_interface
 
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+!
+
+implicit none
+private
+
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 CONTAINS
 
 !--------------------------------------------------------------------

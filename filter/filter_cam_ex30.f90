@@ -6,9 +6,9 @@ program filter
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
-
-use types_mod
+use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
@@ -17,31 +17,31 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    get_obs_location1, get_obs_kind1
 
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
-   operator(>)
-use utilities_mod,    only :  get_unit, open_file, close_file, &
+                             operator(>)
+use    utilities_mod, only :  get_unit, open_file, close_file, &
    check_nml_error, file_exist
-use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
+use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, finalize_diag_output, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data, &
    binary_restart_files, aoutput_diagnostics, aread_state_restart, &
    aget_closest_state_time_to, awrite_state_restart, Aadvance_state
-use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
+use  random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use assim_tools_mod, only : obs_increment, update_from_obs_inc, &
    look_for_bias, obs_increment17, obs_increment18
-use cov_cutoff_mod,   only : comp_cov_factor
-use location_mod, only : location_type, get_location
-use reg_factor_mod, only : comp_reg_factor
-use sort_mod, only : sort
+use  cov_cutoff_mod, only : comp_cov_factor
+use    location_mod, only : location_type, get_location
+use  reg_factor_mod, only : comp_reg_factor
+use        sort_mod, only : sort
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Define a type for doing direct access to ensemble state vectors
 type model_state_ptr_type
@@ -53,12 +53,12 @@ type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
 
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji, meta_data_size
 integer ::  output_ens_mean_index, output_ens_spread_index
-integer            :: model_size, num_obs_sets
+integer :: model_size, num_obs_sets
 integer :: grp_size, grp_bot, grp_top, group, num_greater_1
 real(r8) :: reg_factor, median
 real(r8), allocatable :: sum_reg_factor(:, :), reg_factor_series(:, :, :)
@@ -73,13 +73,11 @@ real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:)
 real(r8), allocatable  :: obs_err_cov(:), obs(:)
 real(r8)               :: cov_factor, mean_inc, sd_ratio         &
                          ,sum_ens_inc ,sum_swath 
-! kdr sumxxx for diagnostic ouput
-!kdr obs diagnostics
-integer  :: m, nprint
-integer, allocatable :: print_mem(:) 
+
+integer,  allocatable :: print_mem(:) 
 real(r8), allocatable :: obsloc(:,:), obskind(:)
 real(r8) :: lon_lat_lev(3), obs_err, obs_err_max
-!end kdr
+integer  :: m, nprint
 
 character(len = 129), allocatable   :: ens_copy_meta_data(:)
 character(len = 129), allocatable   :: obs_meta_data(:)
@@ -140,14 +138,14 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = filter_nml, iostat = io, end = 11)
+      read(iunit, nml = filter_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'filter_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 write(*,*)'start_from_restart = ',start_from_restart
@@ -163,10 +161,10 @@ allocate( obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_siz
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
 ! Input the obs_sequence
-unit = get_unit()
-open(unit = unit, file = obs_sequence_file_name)
-seq = read_obs_sequence(unit)
-close(unit)
+iunit = get_unit()
+open(unit = iunit, file = obs_sequence_file_name)
+seq = read_obs_sequence(iunit)
+close(iunit)
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_obs_sets(seq)
 
@@ -251,25 +249,25 @@ endif
 ! of restart file we expect.
 
 if(start_from_restart) then
-   unit = get_unit()
+   iunit = get_unit()
    if (binary_restart_files ) then
-      open(unit = unit, file = restart_in_file_name, form = "unformatted")
+      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
    else
-      open(unit = unit, file = restart_in_file_name)
+      open(unit = iunit, file = restart_in_file_name)
    endif
 
    do i = 1, ens_size
       write(*, *) 'trying to read restart ', i
       if (binary_restart_files ) then
-         call aread_state_restart(ens_time(i), ens(i, :), unit, form = "unformatted")
+         call aread_state_restart(ens_time(i), ens(i, :), iunit, form = "unformatted")
       else
-         call aread_state_restart(ens_time(i), ens(i, :), unit)
+         call aread_state_restart(ens_time(i), ens(i, :), iunit)
       endif
 
 ! If init_time_days and init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) ens_time(i) = time1
    end do
-   close(unit)
+   close(iunit)
 !-----------------  Restart read in --------------------------------
 
 else
@@ -280,20 +278,20 @@ else
 ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
 ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
    allocate(x(model_size))
-   unit = get_unit()
+   iunit = get_unit()
    if (binary_restart_files ) then
-      open(unit = unit, file = restart_in_file_name, form = "unformatted")
+      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
    else
-      open(unit = unit, file = restart_in_file_name)
+      open(unit = iunit, file = restart_in_file_name)
    endif
 
 ! Get the initial condition
    if (binary_restart_files ) then
-      call aread_state_restart(x_time, x, unit, form = "unformatted")
+      call aread_state_restart(x_time, x, iunit, form = "unformatted")
    else
-      call aread_state_restart(x_time, x, unit)
+      call aread_state_restart(x_time, x, iunit)
    endif
-   close(unit)
+   close(iunit)
 
 ! Initialize a repeatable random sequence for perturbations
 ! Where should the magnitude of the perturbations come from here???
@@ -738,19 +736,19 @@ ierr = finalize_diag_output(PosteriorStateUnit)
 
 ! Output a restart file if requested
 if(output_restart) then
-   unit = get_unit()
+   iunit = get_unit()
    if (binary_restart_files ) then
-      open(unit = unit, file = restart_out_file_name, form = "unformatted")
+      open(unit = iunit, file = restart_out_file_name, form = "unformatted")
       do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), unit, form = "unformatted")
+         call awrite_state_restart(ens_time(i), ens(i, :), iunit, form = "unformatted")
       end do
    else
-      open(unit = unit, file = restart_out_file_name)
+      open(unit = iunit, file = restart_out_file_name)
       do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), unit)
+         call awrite_state_restart(ens_time(i), ens(i, :), iunit)
       end do
    endif
-   close(unit)
+   close(iunit)
 endif
 
 ! Output the regression factor means

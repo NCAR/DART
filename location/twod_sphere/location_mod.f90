@@ -1,5 +1,6 @@
 module location_mod
 !
+! <next four lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
@@ -12,21 +13,21 @@ module location_mod
 ! representation is longitude in degrees from 0 to 360 and latitude 
 ! from -90 to 90 for consistency with most applications in the field.
 
-use      types_mod
-use  utilities_mod, only : output_err, E_ERR
+use      types_mod, only : r8, PI
+use  utilities_mod, only : error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
-
+implicit none
 private
 
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$", &
 
 type location_type
    private
@@ -35,14 +36,6 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
-
-
-! CVS Generated file description for error handling, do not edit
-character(len = 129), parameter :: &
-   e_src = "$Source$", &
-   e_rev = "$Revision$", &
-   e_dat = "$Date$", &
-   e_aut = "$Author$"
 
 
 contains
@@ -62,7 +55,7 @@ real(r8) :: lon_dif
 
 ! Compute great circle path shortest route between two points
 lon_dif = abs(loc1%lon - loc2%lon)
-if(lon_dif > pi) lon_dif = 2.0_r8 * pi - lon_dif
+if(lon_dif > PI) lon_dif = 2.0_r8 * PI - lon_dif
 
 if(cos(loc1%lat) == 0) then
    get_dist = abs(loc2%lat - loc1%lat)
@@ -86,8 +79,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(2) :: get_location
 
-get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * pi)
-get_location(2) = loc%lat * 180.0_r8 / pi
+get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * PI)
+get_location(2) = loc%lat * 180.0_r8 / PI
 
 end function get_location
 
@@ -103,7 +96,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
-get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * pi)
+get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * PI)
 
 end function get_location_lon
 
@@ -119,7 +112,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
 
-get_location_lat = loc%lat * 180.0_r8 / pi
+get_location_lat = loc%lat * 180.0_r8 / PI
 
 end function get_location_lat
 
@@ -136,25 +129,25 @@ implicit none
 type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat
 
-if(lon < 0.0_r8 .or. lon > 360.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-   'set_location', 'Longitude is out of 0->360 range')
+if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
+       'Longitude is out of [0,360] range', source, revision, revdate) 
 
-if(lat < -90.0_r8 .or. lat > 90.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-   'set_location', 'Latitude is out of -90->90 range')
+if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
+       'Latitude is out of [-90,90] range', source, revision, revdate)
 
-set_location%lon = lon * 2.0_r8 * pi / 360.0_r8
-set_location%lat = lat * pi / 180.0_r8
+set_location%lon = lon * 2.0_r8 * PI / 360.0_r8
+set_location%lat = lat * PI / 180.0_r8
 
 end function set_location
 
 
 
-subroutine write_location(file, loc)
+subroutine write_location(ifile, loc)
 !----------------------------------------------------------------------------
 !
-! Writes a oned location to the file. Implemented as a subroutine but  could
+! Writes a 2D location to the file. Implemented as a subroutine but  could
 ! rewrite as a function with error control info returned. For initial implementation,
-! file is just an integer file unit number. Probably want to replace this with file
+! ifile is just an integer file unit number. Probably want to replace this with ifile
 ! as a file_type allowing more flexibility for IO at later point. file_type and 
 ! associated operations would have to be supported. The mpp_io intefaces are a good
 ! place to head with this, perhaps, when we need to extend to supporting parallel
@@ -162,44 +155,38 @@ subroutine write_location(file, loc)
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: ifile
 type(location_type), intent(in) :: loc
 
-! For now, output a character tag followed by the r8 value. Is this written at 
-! machine precision ???
+! For now, output a character tag followed by the r8 value.
 
-write(file, 11) 
-11 format('loc2s')
-write(file, *) loc%lon, loc%lat
-
-! I need to learn how to do formatted IO with the types package
-!21 format(r8)
+write(ifile, '(''loc2s'')' ) 
+write(ifile, *) loc%lon, loc%lat
 
 end subroutine write_location
 
 
 
-function read_location(file)
+function read_location(ifile)
 !----------------------------------------------------------------------------
 !
-! Reads a oned location from file that was written by write_location. See write_location
-! for additional discussion.
+! Reads a 2D location from ifile that was written by write_location. 
+! See write_location for additional discussion.
 
 implicit none
 
-integer, intent(in) :: file
+integer, intent(in) :: ifile
 type(location_type) :: read_location
 
 character*5 :: header
 
 ! Will want to add additional error checks on the read
-read(file, 11) header
-11 format(a5)
-if(header /= 'loc2s') call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
-   'read_location', 'Expected location header "loc1d" in input file')
+read(ifile, '(a5)' ) header
+if(header /= 'loc2s') call error_handler(E_ERR, 'read_location', &
+    'Expected location header "loc1d" in input file', source, revision, revdate)
 
 ! Now read the location data value
-read(file, *) read_location%lon, read_location%lat
+read(ifile, *) read_location%lon, read_location%lat
 
 end function read_location
 
@@ -255,9 +242,9 @@ end if
 
 end subroutine interactive_location
 
-!
+
 !----------------------------------------------------------------------------
 ! end of location/twod_sphere/location_mod.f90
 !----------------------------------------------------------------------------
-!
+
 end module location_mod

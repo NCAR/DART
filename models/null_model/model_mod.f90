@@ -12,7 +12,7 @@ module model_mod
 ! simple dynamics. The attractor has the value of 0.0 at all points at
 ! all times. Anything off the attractor grows exponentially.
 
-use types_mod
+use types_mod, only : r8
 
 !use ncd_file_mod, only : init_ncd_file, def_axis, def_time_axis, &
 !   init_diag_field, output_diag, sum_diag
@@ -23,24 +23,23 @@ use loc_and_dist_mod, only : loc_type, get_dist, set_loc
 
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
+implicit none
+private
+
 ! Following is for repeatable random numbers
 
 logical :: first_ens_seq = .true.
 type (random_seq_type) :: ens_seq
 
-
-
-private
-
 public init_model, get_model_size, init_conditions, adv_1step, advance, &
    adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
    model_output
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer,  parameter :: model_size = 40
 real(r8), parameter ::    forcing = 8.00
@@ -79,7 +78,7 @@ subroutine comp_dt(x, dt)
 implicit none
 
 
-real(r8), intent(in) :: x(:)
+real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: dt(:)
 
 integer :: j
@@ -176,7 +175,7 @@ real(r8) :: x_loc
 !end do
 do i = 1, size(diag_output_index)
    diag_output_index(i) = model_size * &
-                           (i - 1) / dble(size(diag_output_index)) + 1.0
+                           (i - 1) / dble(size(diag_output_index)) + 1.0_r8
    write(*, *) 'output index ', i, diag_output_index(i)
 !   diag_output_index(i) = 4*i
 end do
@@ -267,14 +266,14 @@ implicit none
 integer, intent(in)    :: num
 integer, intent(inout) :: list(model_size, num)
 
-integer :: i, j, offset, index, temp
+integer :: i, j, offset, indx, temp
 
 !do i = 1, model_size
 !   do offset = -num/2, -num/2 + num - 1
-!      index = i + offset
-!      if(index > model_size) index = index - model_size
-!      if(index < 1) index = model_size + index
-!      list(i, offset + num/2 + 1) = index
+!      indx = i + offset
+!      if(indx > model_size) indx = indx - model_size
+!      if(indx < 1) indx = model_size + indx
+!      list(i, offset + num/2 + 1) = indx
 !   end do
 ! Always need the actual point first in list
 !   temp = list(i, 1)
@@ -289,13 +288,13 @@ do i = 1, model_size
    list(i, 1) = i
    do j = 2, num
       if(j / 2 * 2 == j) then
-         index = i - j / 2
-         if(index < 1) index = model_size + index
-         list(i, j) = index
+         indx = i - j / 2
+         if(indx < 1) indx = model_size + indx
+         list(i, j) = indx
       else
-         index = i + j / 2
-         if(index > model_size) index = index - model_size
-         list(i, j) = index
+         indx = i + j / 2
+         if(indx > model_size) indx = indx - model_size
+         list(i, j) = indx
       end if
    end do
 end do
@@ -320,21 +319,21 @@ end function get_model_size
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, numb, indices, dist)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
 
 implicit none
 
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
-real(r8), intent(out) :: dist(:)
+type(location_type), intent(in)  :: o_loc
+real(r8),            intent(in)  :: radius
+integer,             intent(out) :: numb, indices(:)
+real(r8),            intent(out) :: dist(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-number = -1
+! to do exhaustive search (numb = -1 return)
+numb = -1
 
 end subroutine model_get_close_states
 

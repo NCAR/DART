@@ -15,18 +15,19 @@ module obs_kind_mod
 ! a good place to store other parameters associated with more complicated
 ! observation types.
 
-use types_mod
+use types_mod, only : r8
 
+implicit none
 private
 
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
    interactive_kind, IDENTITY_OBSERVATION, set_ncep_obs_kind
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type obs_kind_type
    private
@@ -79,8 +80,7 @@ integer, intent(in) :: file
 type(obs_kind_type), intent(in) :: kind
 
 ! For now output a character tag followed by the integer index.
-write(file, 11)
-11 format('kind ')
+write(file, '(''kind'')' )
 write(file, *) kind%index
 
 end subroutine write_kind
@@ -97,8 +97,7 @@ integer, intent(in) :: file
 character(len=5) :: header
 
 ! Need additional error checks
-read(file, 11) header
-11 format(a5)
+read(file, '(a5)' ) header
 if(header /= 'kind ') then
    write(*, *) 'Error: Expected kind header "kind " in input file'
    stop

@@ -12,19 +12,19 @@ program rms_diag
 ! $Author$
 
 
-use types_mod
+use       types_mod, only : r8
+use    location_mod, only : location_type
 use assim_model_mod, only : init_diag_input, get_diag_input_copy_meta_data, &
    get_model_state_vector, input_diagnostics, assim_model_type, &
    static_init_assim_model, init_assim_model
-use location_mod, only : location_type
 
 implicit none
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer :: prior_unit, posterior_unit, truth_unit, ens_size, model_size, copies
 type(location_type), allocatable :: location(:)
@@ -86,7 +86,7 @@ do i = 1, num_samples
    call input_diagnostics(truth_unit, truth_state, copies)
    truth = get_model_state_vector(truth_state)
 
-! Do some very basic diagnotics 
+   ! Do some very basic diagnotics 
    prior_ens_mean = sum(prior, dim=2) / ens_size
    posterior_ens_mean = sum(posterior, dim=2) / ens_size
    prior_rms_err = sqrt(sum((prior_ens_mean - truth) * (prior_ens_mean - truth)))

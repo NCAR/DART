@@ -7,18 +7,18 @@ module random_seq_mod
 ! $Author$ 
 !
 
-! use random_numerical_recipes_mod, only : random_seq_type, init_ran1, ran1, gasdev
 use random_nr_mod, only : random_seq_type, init_ran1, ran1, gasdev
 
+implicit none
 private
 public random_seq_type, init_random_seq, random_gaussian, &
    several_random_gaussians, random_uniform, twod_gaussians
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Gives ability to generate unique repeatable sequences of random numbers
 ! using numerical recipes package. Needed to allow different assim algorithms 

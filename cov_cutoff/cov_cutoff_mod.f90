@@ -7,16 +7,20 @@ module cov_cutoff_mod
 ! $Author$ 
 !
 
-use types_mod
-use utilities_mod,  only : file_exist, open_file, check_nml_error, &
-                           close_file
+use     types_mod, only : r8
+use utilities_mod, only : file_exist, open_file, check_nml_error, &
+                          close_file, error_handler, FATAL
 
+implicit none
+private
 
-! let CVS fill strings ... DO NOT EDIT ...
+public :: comp_cov_factor
+
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 
 !============================================================================
@@ -61,14 +65,16 @@ real(r8), intent(in) :: z_in, c
 real(r8)             :: comp_cov_factor
 
 real(r8) :: z, r
-integer :: unit, ierr, io
+integer  :: unit, ierr, io
 
 z = abs(z_in)
 
 !--------------------------------------------------------
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
+
    namelist_initialized = .true.
+
    if(file_exist('input.nml')) then
       unit = open_file(file = 'input.nml', action = 'read')
       ierr = 1
@@ -84,26 +90,25 @@ if(.not. namelist_initialized) then
 endif
 !---------------------------------------------------------
 
-if(select_localization == 3) then
-! Ramped localization
-   if(z >= 2.0 * c) then
-      comp_cov_factor = 0.0
-   else if(z >= c .and. z < 2.0 * c) then
-      comp_cov_factor = (2.0 * c - z) / c
+if(select_localization == 3) then ! Ramped localization
+
+   if(z >= 2.0_r8 * c) then
+      comp_cov_factor = 0.0_r8
+   else if(z >= c .and. z < 2.0_r8 * c) then
+      comp_cov_factor = (2.0_r8 * c - z) / c
    else
-      comp_cov_factor = 1.0
+      comp_cov_factor = 1.0_r8
    endif
 
-else if(select_localization == 2) then
-! BOXCAR localization
+else if(select_localization == 2) then ! BOXCAR localization
+
    if(z < 2 * c) then
-      comp_cov_factor = 1.0
+      comp_cov_factor = 1.0_r8
    else
-      comp_cov_factor = 0.0
+      comp_cov_factor = 0.0_r8
    endif
 
-! Standard Gaspari Cohn localization
-else if(select_localization == 1) then
+else if(select_localization == 1) then ! Standard Gaspari Cohn localization
 
    if( z >= c*2.0_r8 ) then
 
@@ -125,10 +130,11 @@ else if(select_localization == 1) then
                         r**2 * 5.0_r8/3.0_r8 + 1.0_r8
    endif
 
-! Otherwise namelist parameter is illegal; this is an error
-else
-   write(*, *) 'Error in cov_cutoff mod: Illegal value for namelist param select_localization'
-   stop
+else ! Otherwise namelist parameter is illegal; this is an error
+
+     call error_handler(FATAL,'comp_cov_factor', &
+              'Illegal value of "select_localization" in cov_cutoff_mod namelist', &
+               source, revision, revdate )
 
 endif
 

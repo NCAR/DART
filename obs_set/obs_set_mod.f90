@@ -7,28 +7,27 @@ module obs_set_mod
 ! $Author$
 !
 
-use types_mod
+use        types_mod, only : r8
 use set_def_list_mod, only : set_def_list_type, get_total_num_obs
 use time_manager_mod, only : time_type, read_time, write_time, &
-   get_time, set_time
+                             get_time, set_time
 
+implicit none
 private
 
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
-   set_obs_values, set_single_obs_value, set_obs_missing, set_obs_set_time, &
-!liu
+   set_obs_values, set_single_obs_value, set_obs_set_time, &
    get_single_obs_value, &
-!liu
    contains_data, obs_value_missing, &
    read_obs_set, write_obs_set, obs_set_copy, get_num_obs, &
    get_obs_def_index, inc_num_obs_copies, read_obs_set_time, &
    obs_set_time_copy
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type obs_set_type
    private
@@ -629,7 +628,6 @@ call write_time(file_id, set%time)
 end subroutine write_obs_set
 
 
-!liu
 subroutine get_single_obs_value(set, num_obs, obs, copy_in)
 !--------------------------------------------------------------------
 !
@@ -662,7 +660,6 @@ endif
    obs=set%obs(num_obs, copy)
 
 end subroutine get_single_obs_value
-!liu
 
 
 end module obs_set_mod

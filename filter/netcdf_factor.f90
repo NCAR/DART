@@ -6,26 +6,29 @@ program netcdf_factor
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 ! Creates a netcdf file with the factors for all state variables and
 ! a given observation for the bgrid model. Can then plot with standard
 ! based matlab routines (plot_bgrid_factor.m).
 
-use types_mod
-use assim_model_mod, only : assim_model_type, static_init_assim_model, &
+use        types_mod, only : r8
+use time_manager_mod, only : time_type, set_time
+use    utilities_mod, only : get_unit, error_handler, FATAL
+use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_diag_output, get_model_size, output_diagnostics, &
    init_assim_model, get_state_vector_ptr, set_model_time
-use time_manager_mod, only : time_type, set_time
+
 use netcdf
 
 implicit none
 ! Define a type for doing direct access to ensemble state vectors
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type model_state_ptr_type
    real(r8), pointer :: state(:)
@@ -35,7 +38,7 @@ type(time_type) :: time
 
 integer :: prior_state_unit, meta_data_size, model_size, ierr
 integer :: PriorStateUnit, i, time_index, obs_index, state_index
-integer :: j, num_times, curr_time, ioerr
+integer :: j, num_times, curr_time, ioerr, iunit
 real(r8) :: factor_in
 character(len = 129) :: copy_meta_data(1)
 type(assim_model_type) :: factor
@@ -61,12 +64,13 @@ PriorStateUnit = init_diag_output('Factor', &
 ! Read in the first time of the factor file
 factor_ptr%state(:) = 0.0
 ! Read in the first entry
-read(44, *) time_index, obs_index, state_index, factor_in
+iunit = get_unit()
+read(iunit, *) time_index, obs_index, state_index, factor_in
 curr_time = time_index
 
 do    
       factor_ptr%state(state_index) = factor_in
-      read(44, *, IOSTAT = ioerr) time_index, obs_index, state_index, factor_in 
+      read(iunit, *, IOSTAT = ioerr) time_index, obs_index, state_index, factor_in 
       if(time_index > curr_time .or. ioerr /= 0) then
          time = set_time(curr_time, 0)
          call set_model_time(factor, time)

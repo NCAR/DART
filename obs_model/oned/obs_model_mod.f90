@@ -6,20 +6,21 @@ module obs_model_mod
 ! $Date$
 ! $Author$
 
-use types_mod
-use location_mod, only : location_type, interactive_location
+use       types_mod, only : r8
+use    location_mod, only : location_type, interactive_location
 use assim_model_mod, only : interpolate
-use obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
+use    obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
 
+implicit none
 private
 
 public take_obs, interactive_def
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 contains
 

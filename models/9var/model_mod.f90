@@ -7,27 +7,37 @@ module model_mod
 ! $Author$ 
 !
 
-use types_mod
-use location_mod, only : location_type, get_dist, set_location, get_location, &
-                         LocationDims, LocationName, LocationLName
-use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
+use        types_mod, only : r8
+use     location_mod, only : location_type, get_dist, set_location, get_location, &
+                             LocationDims, LocationName, LocationLName
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                             error_handler, E_ERR
+use   random_seq_mod, only : random_seq_type, random_gaussian, &
+                             init_random_seq, several_random_gaussians
 use time_manager_mod
 
-use random_seq_mod,   only : random_seq_type, random_gaussian, &
-                            init_random_seq, several_random_gaussians
-
+implicit none
 private
 
-public init_model, get_model_size, init_conditions, adv_1step, advance, &
-   model_output, balance_init , static_init_model, init_time, &
-   get_state_meta_data, get_model_time_step, end_model, model_interpolate, &
-   model_get_close_states, nc_write_model_atts, nc_write_model_vars
+public :: get_model_size, &
+          adv_1step, &
+          get_state_meta_data, &
+          model_interpolate, &
+          get_model_time_step, &
+          end_model, &
+          static_init_model, &
+          init_time, &
+          init_conditions, &
+          model_get_close_states, &
+          nc_write_model_atts, &
+          nc_write_model_vars, &
+          pert_model_state
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer, parameter :: model_size = 9
 
@@ -83,20 +93,20 @@ subroutine static_init_model()
 
 implicit none
 real(r8) :: x_loc
-integer :: i, unit, ierr, io
+integer :: i, iunit, ierr, io
 
 ! Ultimately,  change output to diagnostic output block ...
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = model_nml, iostat = io, end = 11)
+      read(iunit, nml = model_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'model_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 write(*,*)'model_mod attributes:'
@@ -127,7 +137,7 @@ end subroutine static_init_model
 
 
 
-  subroutine comp_dt(xxx, dxxx)
+subroutine comp_dt(xxx, dxxx)
 !----------------------------------------------------------------------
 ! subroutine comp_dt(xxx, dxxx)
 !
@@ -145,7 +155,7 @@ integer  :: i, j, k
 
 !  unpack the 9-vectors into the x, y and z 3-vectors
 
-call unpack(xxx, x, y, z)
+call unpack9var(xxx, x, y, z)
 
 !  equations 33-35 from lorenz, 1980, jas, p.1688
 !  equations are defined with cyclic indices
@@ -172,7 +182,7 @@ do i = 1, 3
            c*(z(j) - h(j))*y(k) + g*a(i)*x(i) - kappa*a(i)*z(i) + f(i)
 end do   
 
-call pack(dx, dy, dz, dxxx)     !  pack the results into 9 vector
+call pack9var(dx, dy, dz, dxxx)     !  pack the results into 9 vector
 
 ! OPTIONAL ADDItion OF NOISE
 ! ADDITION OF SOME NOISE AT 1/10 the amplitude of DT
@@ -192,16 +202,16 @@ end subroutine comp_dt
 
 
 
-  subroutine pack(x, y, z, pert)
+subroutine pack9var(x, y, z, pert)
 !---------------------------------------------------------------------------
-! subroutine pack(x, y, z, pert)
+! subroutine pack9var(x, y, z, pert)
 !
 ! set of routines used to switch between 3 3-variable sets and 9-variable
 ! set for lorenz 9 variable pe model
 
 implicit none
 
-!  pack and unpack convert from x, y, z to full 9 vector format
+!  pack9var and unpack9var convert from x, y, z to full 9 vector format
 
 real(r8), intent(in)  :: x(3), y(3), z(3)
 real(r8), intent(out) :: pert(9)
@@ -210,15 +220,15 @@ pert(1:3) = x
 pert(4:6) = y
 pert(7:9) = z
 
-end subroutine pack
+end subroutine pack9var
 
 
 
-  subroutine unpack(pert, x, y, z)
+subroutine unpack9var(pert, x, y, z)
 !---------------------------------------------------------------------------
-! subroutine unpack(pert, x, y, z)
+! subroutine unpack9var(pert, x, y, z)
 !
-! inverse of pack above
+! inverse of pack9var above
 
 implicit none
 
@@ -229,11 +239,11 @@ x = pert(1:3)
 y = pert(4:6)
 z = pert(7:9)
 
-end subroutine unpack
+end subroutine unpack9var
 
 
 
-  subroutine advance(x, num, xnew, time)
+subroutine advance(x, num, xnew, time)
 !-----------------------------------------------------------------------
 ! subroutine advance(x, num, xnew, time)
 !
@@ -241,10 +251,10 @@ end subroutine unpack
 
 implicit none
 
-real(r8), intent(in)  :: x(9)
-integer,  intent(in)  :: num
-real(r8), intent(out) :: xnew(9)
-type(time_type), intent(in) :: time
+real(r8),        intent(in)  :: x(9)
+integer,         intent(in)  :: num
+real(r8),        intent(out) :: xnew(9)
+type(time_type), intent(in)  :: time
 
 integer :: i
 
@@ -260,7 +270,7 @@ end subroutine advance
 
 
 
-  subroutine adv_1step(x, time)
+subroutine adv_1step(x, time)
 !-------------------------------------------------------------------------
 ! subroutine adv_1step(x, time)
 !
@@ -272,8 +282,8 @@ end subroutine advance
 
 implicit none
 
-real(r8), intent(inout) :: x(:)
-type(time_type), intent(in) :: time
+real(r8),        intent(inout) :: x(:)
+type(time_type), intent(in)    :: time
 
 real(r8) :: fract = 1.0_r8
 
@@ -284,7 +294,7 @@ end subroutine adv_1step
 
 
 
-  subroutine adv_single(x, fract)
+subroutine adv_single(x, fract)
 !-------------------------------------------------------------------------
 ! subroutine adv_single(x, fract)
 !
@@ -316,7 +326,7 @@ end subroutine adv_single
 
 
 
-  subroutine init_conditions(x)
+subroutine init_conditions(x)
 !----------------------------------------------------------------------
 ! subroutine init_conditions(x)
 !
@@ -324,7 +334,7 @@ end subroutine adv_single
 
 implicit none
 
-real(r8), intent(out) ::  x(:)     ! TJH ... guessed at intent ...
+real(r8), intent(out) ::  x(:)
 
 integer  :: i
 real(r8) :: x_loc
@@ -335,14 +345,14 @@ end subroutine init_conditions
 
 
 
-  subroutine linearize(nl, l)
+subroutine linearize(nl, l)
 !----------------------------------------------------------------------
 ! subroutine linearize(nl, l)
 !
 
 implicit none
 
-real(r8) :: nl(:), l(:, :)  ! TJH ... no intent ?
+real(r8) :: nl(:), l(:, :)
 
 !  no-op subroutine header for linking in standard packages
 
@@ -350,7 +360,7 @@ end subroutine linearize
 
 
 
-  subroutine balance_init(xxx, init_xxx)
+subroutine balance_init(xxx, init_xxx)
 !---------------------------------------------------------------------------
 ! subroutine balance_init(xxx, init_xxx)
 !
@@ -370,7 +380,7 @@ integer  :: i, j, k, ifail
 
 !  unpack the 9-vectors into the x, y and z 3-vectors
 
-call unpack(xxx, x, y, z)
+call unpack9var(xxx, x, y, z)
 
 ! application of balance eqtn as initialization method, curry ET.AL, tellus,
 !    1995, p. 153-154, section 3.3
@@ -407,13 +417,13 @@ ifail=0
 
 !  pack the results into 9 vector
 
-call pack(x, y, z, init_xxx)
+call pack9var(x, y, z, init_xxx)
 
 end subroutine balance_init
 
 
 
-  subroutine get_close_pts(list, num)
+subroutine get_close_pts(list, num)
 !-------------------------------------------------------------------------
 ! subroutine get_close_pts(list, num)
 !
@@ -446,7 +456,7 @@ end subroutine get_close_pts
 
 
 
-  function get_model_size()
+function get_model_size()
 !-------------------------------------------------------------------------
 ! function get_model_size()
 !
@@ -477,7 +487,7 @@ end function get_model_time_step
 
 
 
-function model_interpolate(x, location, type)
+function model_interpolate(x, location, itype)
 !---------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -486,17 +496,17 @@ function model_interpolate(x, location, type)
 ! be more general. May want to wait on external infrastructure projects
 ! for this?
 
-! Argument type is not used here because there is only one type of variable.
-! Type is needed to allow swap consistency with more complex models.
+! Argument itype is not used here because there is only one type of variable.
+! itype is needed to allow swap consistency with more complex models.
 
 implicit none
 
-real(r8) :: model_interpolate
-real(r8), intent(in) :: x(:)
+real(r8)                        :: model_interpolate
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer,             intent(in) :: itype
 
-integer :: lower_index, upper_index
+integer  :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
 
 ! Convert location to real
@@ -578,7 +588,7 @@ end subroutine end_model
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, numinds, indices, dist)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -587,12 +597,12 @@ implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
+integer, intent(out) :: numinds, indices(:)
 real(r8), intent(out) :: dist(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-number = -1
+! to do exhaustive search (numinds = -1 return)
+numinds = -1
 
 end subroutine model_get_close_states
 
@@ -626,8 +636,8 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 !
 
-use typeSizes
-use netcdf
+use typesizes           ! comes from F90 netCDF interface
+use netcdf              ! comes from F90 netCDF interface
 implicit none
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
@@ -763,11 +773,9 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_atts'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
+      trim(nf90_strerror(istatus)), source, revision, revdate)
+
   end subroutine check
 
 end function nc_write_model_atts
@@ -801,8 +809,8 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 !
 
-use typeSizes
-use netcdf
+use typeSizes      ! comes from F90 netCDF interface
+use netcdf         ! comes from F90 netCDF interface
 implicit none
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
@@ -847,17 +855,32 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_vars'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars', &
+      trim(nf90_strerror(istatus)), source, revision, revdate)
+
   end subroutine check
 
 end function nc_write_model_vars
 
+
+  subroutine pert_model_state(state, pert_state, interf_provided)
+!-------------------------------------------------------------------------------
+! subroutine pert_model_state(state, pert_state, interf_provided)
+!
+! Perturbs a model state for generating initial ensembles
+! Returning interf_provided means go ahead and do this with uniform
+! small independent perturbations.
+          
+real(r8), intent(in)  :: state(:)
+real(r8), intent(out) :: pert_state(:)
+logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_state
+
+
 !===================================================================
 ! End of 9var model_mod 
 !===================================================================
-
 end module model_mod

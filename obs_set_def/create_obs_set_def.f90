@@ -6,6 +6,7 @@ program create_obs_set_def
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 ! Main program to interactively create a set_def_list description file for a 
 ! particular spatial domain and obs_kind set. This is a prototype for more
@@ -13,17 +14,16 @@ program create_obs_set_def
 ! is no support for nested observation definition subsets, but that will be
 ! needed in the long run.
 
-use obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def
-use obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
+use      obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def
+use  obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
    add_to_list, write_set_def_list, read_set_def_list
-use utilities_mod, only : open_file
-use assim_model_mod, only : static_init_assim_model, get_model_size
+use    utilities_mod, only : open_file
+use  assim_model_mod, only : static_init_assim_model, get_model_size
 
 implicit none
 
-! Everybody needs to know these ... TJH Feb 10, 2003
-
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
