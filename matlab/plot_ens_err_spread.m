@@ -19,8 +19,25 @@ CheckModelCompatibility(truth_file, diagn_file)
 vars  = CheckModel(truth_file);   % also gets default values for this model.
 varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
-disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
-disp(['Using State Variable IDs ',num2str(varid)]) 
 
-PlotEnsErrSpread(truth_file,diagn_file, varid)
+switch lower(vars.model)
+
+   case {'9var','lorenz_63','lorenz_96'}
+
+      disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
+      disp(['Using State Variable IDs ', num2str(varid)]) 
+      PlotEnsErrSpread(truth_file, diagn_file, varid)
+
+   case 'fms_bgrid'
+
+
+      PlotCEnsErrSpread(truth_file, diagn_file)
+
+
+   otherwise
+
+      error(sprintf('model %s not implemented yet', vars.model))
+
+end
+
 clear vars varid

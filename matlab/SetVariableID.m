@@ -5,6 +5,10 @@ function varid = SetVariableID(vars);
 
 switch lower(vars.model)
 
+   case 'fms_bgrid'
+
+      varid = [1 2 3 4];
+
    case 'lorenz_96'
 
       % query to see if these are OK, if not ...

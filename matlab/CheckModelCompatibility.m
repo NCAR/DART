@@ -11,11 +11,12 @@ if ( exist(diagn_file) ~= 2 )
 end
 
 % Get some information from the truth_file
+% dimensions are ft(xxxx), variables are ft{xxxx}
 ft = netcdf(truth_file);
 tmodel      = ft.model(:);
-tnum_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
-tnum_copies = ncsize(ft{'copy'}); % determine # of ensemble members
-tnum_times  = ncsize(ft{'time'}); % determine # of output times
+tnum_vars   = ncsize(ft('StateVariable')); % determine # of state variables
+tnum_copies = ncsize(ft('copy')); % determine # of ensemble members
+tnum_times  = ncsize(ft('time')); % determine # of output times
 close(ft); 
 
 if (isempty(tmodel)) 
@@ -34,9 +35,9 @@ end
 % Get some information from the diagn_file
 fd = netcdf(diagn_file);
 dmodel      = fd.model(:);
-dnum_vars   = ncsize(fd{'StateVariable'}); % determine # of state variables
-dnum_copies = ncsize(fd{'copy'}); % determine # of ensemble members
-dnum_times  = ncsize(fd{'time'}); % determine # of output times
+dnum_vars   = ncsize(fd('StateVariable')); % determine # of state variables
+dnum_copies = ncsize(fd('copy')); % determine # of ensemble members
+dnum_times  = ncsize(fd('time')); % determine # of output times
 close(fd); 
 
 if (isempty(dmodel)) 
