@@ -1,4 +1,3 @@
 &model_nml
    output_state_vector      = .false.,
-   highest_obs_pressure_mb  = 30.0,
-   vertical_localization_mb = 1000.0 /
+   highest_obs_pressure_mb  = 30.0 /

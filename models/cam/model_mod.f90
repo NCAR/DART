@@ -88,9 +88,8 @@ end type model_type
                                                                                                
 logical :: output_state_vector = .false.
 real(r8) :: highest_obs_pressure_mb = 30.0
-real(r8) :: vertical_localization_mb = 1000.00
                                                                                                
-namelist /model_nml/ output_state_vector, highest_obs_pressure_mb, vertical_localization_mb
+namelist /model_nml/ output_state_vector, highest_obs_pressure_mb
 
 !----------------------------------------------------------------------
 ! File where basic info about model configuration can be found; should be namelist
@@ -928,7 +927,7 @@ end subroutine get_val_pressure
 ! function get_val(x, lon_index, lat_index, level, type)
 !
 
-real(r8) :: val
+real(r8), intent(out) :: val
 real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, type
 integer, intent(out) :: istatus
@@ -1063,7 +1062,7 @@ num = 0
 max_size = num_lons * num_lats
 allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 
-! Look for close grid points on the 
+! Look for close grid points in horizontal only
 call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
    num, lon_ind, lat_ind, close_dist)
 ! kdr write(*, *) 'back from grid_close_states num = ', num
@@ -1073,13 +1072,6 @@ hsize = num_lons * num_lats
 num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! For vertical localization need the vertical pressure structure for this column
-! SHOULD GET PS FROM STATE, BUT THIS IS NOT AVAILABLE HERE
-!!!   ps = get_val(x, lon_ind(i), lat_ind(i), -1, 3)
-!!!   ps = 97000.0
-!!!   call plevs_cam(1, 1, ps, pfull)
-
-! Add all variables in this column to the close list with this distance
-! kdr write(*, *) 'available space is size(indices) ', size(indices)
 do i = 1, num
    col_base_index = ((lon_ind(i) - 1) * num_lats + lat_ind(i) - 1) * num_per_col
 
@@ -1101,33 +1093,16 @@ do i = 1, num
          m_press = pfull(1, int(sloc_array(3)))
       endif
 
-!!! USED in EX44 and EX45 and EX61
-!!!      p_dist = abs(loc_array(3) - m_press) / (200000)
-!!! USED in EX46 and Ex47 and Ex48
-!!!      p_dist = abs(loc_array(3) - m_press) / (50000)
 ! Used in Ex52 through Ex60
 !!!      p_dist = abs(loc_array(3) - m_press) / (100000)
-!!!      write(*, *) 'state vertical location in get_close is ', sloc_array(3), int(sloc_array(3))
-!!!      write(*, *) 'state pressure is ', m_press
-!!!      write(*, *) 'high obs vertical location in get_close is ', loc_array(3)
-      p_dist = abs(loc_array(3) - m_press) / (vertical_localization_mb * 100.0)
 
-! Compute total distance as p_dist + horizontal distance
-      t_dist = sqrt(close_dist(i)**2 + p_dist**2)
-
-!!!write(*, *) 'h, p, t', close_dist(i), p_dist, t_dist
-!!!write(*, *) 'radius is ',  radius
-!!!write(*, *) '--------------'
-         
-!!!         if( (col_base_index + j) == 670142) then
-!!!            write(73, *) 'CLOSE 670142 t_dist ', t_dist
-!!!         endif
-
+      ! Put the appropriate pressure into a location type for computing distance
+      s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
+      t_dist = get_dist(s_loc, o_loc)
 
       if(t_dist < radius) then
          nfound = nfound + 1
          if(nfound <= size(indices)) indices(nfound) = col_base_index + j
-!!!         if(nfound <= size(dist)) dist(nfound) = close_dist(i)
          if(nfound <= size(dist)) dist(nfound) = t_dist
       endif
    end do
@@ -1148,7 +1123,8 @@ end subroutine model_get_close_states
 !                  num, close_lon_ind, close_lat_ind, close_dist)
 !
 !
-! Finds close state points from a particular grid;
+! Finds close state points from a particular grid; Just uses horizontal
+! distance by setting pressure of state location to same as observation.
 
 
 type(location_type), intent(in)    :: o_loc
@@ -1242,7 +1218,7 @@ real(r8),            intent(out) :: close_dist(:)
 
 type(location_type) :: loc
 integer  :: nlon, j, max_pos, lon_ind, which_vert
-real(r8) :: glon, gdist
+real(r8) :: glon, gdist, olev
 
 ! Total number found is 0 at start
 num = 0
@@ -1262,7 +1238,9 @@ do j = 0, nlon - 1
    ! Use same vertical "philosophy" as the existing location object.
    ! As of April, 2004 -- the vertical is (still) ignored in get_dist.
    which_vert = nint(query_location(o_loc))
-   loc        = set_location(glon, glat, glev, which_vert)
+   ! Only looking for horizontal distance here, use same level as obs.
+   olev = query_location(o_loc, 'VLOC')  
+   loc        = set_location(glon, glat, olev, which_vert)
    gdist      = get_dist(loc, o_loc)
    if(gdist <= radius) then
       num = num + 1
@@ -1295,7 +1273,9 @@ do j = 1, nlon - 1 - max_pos
    ! Use same vertical "philosophy" as the existing location object.
    ! As of April, 2004 -- the vertical is (still) ignored in get_dist.
    which_vert = nint(query_location(o_loc))
-   loc        = set_location(glon, glat, glev, which_vert)
+   ! Only looking for horizontal distance here, use same level as obs.
+   olev = query_location(o_loc, 'VLOC')  
+   loc        = set_location(glon, glat, olev, which_vert)
    gdist      = get_dist(loc, o_loc)
 
    if(gdist <= radius) then
