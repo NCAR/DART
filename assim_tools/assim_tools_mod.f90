@@ -30,13 +30,13 @@ use obs_model_mod, only    : get_expected_obs, get_close_states
 use reg_factor_mod, only   : comp_reg_factor
 use location_mod, only     : location_type, get_dist
 use time_manager_mod, only : time_type
-!!!use ensemble_manager_mod, only : get_ensemble_region, put_ensemble_region
+use ensemble_manager_mod, only : get_ensemble_region, put_ensemble_region, ensemble_type
 
 implicit none
 private
 
 public :: assim_tools_init, obs_increment, update_from_obs_inc, look_for_bias, &
-   filter_assim
+   filter_assim, async_assim_region
 
 type (random_seq_type) :: inc_ran_seq
 logical :: first_inc_ran_call = .true.
@@ -59,8 +59,12 @@ logical :: prior_spread_correction = .false.
 !      4 = particle filter
 integer  :: filter_kind     = 1
 real(r8) :: slope_threshold = 1.0_r8
+logical :: do_parallel = .false.
+integer :: num_domains = 1
+character(len=129) :: parallel_command = './assim_filter.csh'
 
-namelist / assim_tools_nml / prior_spread_correction, filter_kind, slope_threshold
+namelist / assim_tools_nml / prior_spread_correction, filter_kind, slope_threshold, &
+   do_parallel, num_domains, parallel_command
 
 !============================================================================
 
@@ -790,11 +794,11 @@ end subroutine seq_filter_assim
 
 !===========================================================================
 
-subroutine filter_assim_region(num_domains, my_domain, domain_size, ens_size, model_size, &
+subroutine filter_assim_region(my_domain, domain_size, ens_size, model_size, &
    num_groups, num_obs_in_set, obs_val_index, confidence_slope, cutoff, &
    save_reg_series, reg_series_unit, ens, ens_obs_in, compute_obs, seq, keys, my_state)
 
-integer, intent(in) :: num_domains, my_domain, domain_size
+integer, intent(in) :: my_domain, domain_size
 integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
 real(r8), intent(inout) :: ens(ens_size, domain_size)
 real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
@@ -951,7 +955,7 @@ Observations : do jjj = 1, num_obs_in_set
       ! Compute distance dependent envelope
       cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
       ! WARNING: TEST FOR REPRODUCING with next line
-      if(cov_factor == 0) cycle CLOSE_STATE
+      if(cov_factor <= 0) cycle CLOSE_STATE
 
       ! Get the ensemble elements for this state variable and do regression
        swath = ens(:, inv_indices(ind))
@@ -999,7 +1003,7 @@ Observations : do jjj = 1, num_obs_in_set
       obs_dist = get_dist(obs_loc(k), obs_loc(j))
       ! Compute distance dependent envelope
       cov_factor = comp_cov_factor(obs_dist, cutoff)
-      if(cov_factor == 0.0) cycle
+      if(cov_factor <= 0.0) cycle
       ! Get the ensemble elements for this state variable and do regression
        swath = ens_obs(:, k)
 
@@ -1045,11 +1049,12 @@ end subroutine filter_assim_region
 
 !---------------------------------------------------------------------------
 
-subroutine filter_assim(ens_obs, compute_obs_in, ens_size, model_size, num_obs_in_set, &
+subroutine filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size, model_size, num_obs_in_set, &
    num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
    obs_sequence_in_name)
 
 integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
+type(ensemble_type), intent(in) :: ens_handle
 real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs_in(num_obs_in_set)
 integer, intent(in) :: reg_series_unit
@@ -1058,12 +1063,14 @@ real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series
 character(len=*), intent(in) :: obs_sequence_in_name
 
-integer :: i, j, num_domains, domain_size, indx, obs_val_index, iunit
+integer :: i, j, domain_size, indx, obs_val_index, iunit, control_unit
+integer :: base_size, remainder, domain_top, domain_bottom
 logical :: compute_obs(num_obs_in_set), my_state(model_size)
 real(r8), allocatable :: ens(:, :)
 integer, allocatable :: indices(:)
 type(time_type) :: ens_time(ens_size)
-character(len=129) :: temp_obs_seq_file
+character(len=28) :: in_file_name(num_domains), out_file_name(num_domains)
+character(len=129) :: temp_obs_seq_file, errstring
 
 compute_obs = compute_obs_in
 
@@ -1086,16 +1093,34 @@ call error_handler(E_ERR,'filter_assim', &
 ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL
 ! SEQUENTIAL ANSWER
 444 continue
-num_domains = 1
+      
+! Write out the most up-to-date obs_sequence file, too, which includes qc
+if(do_parallel) then
+   temp_obs_seq_file = 'filter_assim_obs_seq'
+   call write_obs_seq(seq, temp_obs_seq_file)
+endif
 
+! Having more domains than state variables is silly
+if(num_domains > model_size) then
+call error_handler(E_ERR,'filter_assim', &
+        'Having more domains than state variables does not make sense', &
+         source, revision, revdate)
+endif
+
+base_size = model_size / num_domains
+remainder = model_size - base_size * num_domains
+domain_top = 0
 do j = 1, num_domains
+   domain_bottom = domain_top + 1
 
    ! Find out which state variables are in my domain
    !call whats_in_my_domain(num_domains, j, my_state, domain_size)
    ! Temporarily just do the domain stuff here
-   domain_size = model_size / num_domains
+   domain_size = base_size
+   if(j <= remainder) domain_size = domain_size + 1
+   domain_top = domain_bottom + domain_size - 1
    my_state = .false.
-   my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
+   my_state(domain_bottom : domain_top) = .true.
 
    ! Generate an array with the indices of my state variables
    allocate(ens(ens_size, domain_size), indices(domain_size))
@@ -1109,53 +1134,141 @@ do j = 1, num_domains
    end do 
 
    ! Get the ensemble (whole thing for now) from storage
-!!!   call get_ensemble_region(ens, ens_time, state_vars_in = indices)
+   call get_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
 
 ! Do ensemble filter update for this region
-!   call filter_assim_region(num_domains, j, domain_size, ens_size, model_size, num_groups, &
-!      num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
-!      reg_series_unit, ens, ens_obs, compute_obs, seq, keys, my_state)
+   if(.not. do_parallel) then
+      call filter_assim_region(j, domain_size, ens_size, model_size, num_groups, &
+         num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+         reg_series_unit, ens, ens_obs, compute_obs, seq, keys, my_state)
+   else
+   ! Loop to write out arguments for each region
+      if(j < 10) then
+         write(in_file_name(j), 11) 'filter_assim_region__in', j
+         write(out_file_name(j), 11) 'filter_assim_region_out', j
+      else if(j < 100) then
+         write(in_file_name(j), 21) 'filter_assim_region__in', j
+         write(out_file_name(j), 21) 'filter_assim_region_out', j
+      else if(j < 1000) then
+         write(in_file_name(j), 31) 'filter_assim_region__in', j
+         write(out_file_name(j), 31) 'filter_assim_region_out', j
+      else if(j < 10000) then
+         write(in_file_name(j), 41) 'filter_assim_region__in', j
+         write(out_file_name(j), 41) 'filter_assim_region_out', j
+      else
+         write(errstring,*)'Trying to use ',ens_size,' model states -- too many.'
+         call error_handler(E_MSG,'filter_assim',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'filter_assim','Use less than 10000 model states.',source,revision,revdate)
+      endif
+
+ 11   format(a23, i1)
+ 21   format(a23, i2)
+ 31   format(a23, i3)
+ 41   format(a23, i4)
 
 ! Development test of passing this interface by file in preparation for separate executables
-   iunit = get_unit()
-   open(unit = iunit, file = 'filter_assim_region_in', action = 'write', form = 'formatted', &
-      status = 'replace')
-   write(iunit, *) num_domains, j, domain_size, ens_size, model_size, num_groups, &
-      num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
-      reg_series_unit, obs_sequence_in_name
-   write(iunit, *) ens, ens_obs, compute_obs, keys, my_state
-   close(iunit)
+      iunit = get_unit()
+      open(unit = iunit, file = in_file_name(j), action = 'write', form = 'unformatted', &
+         status = 'replace')
+     ! write(iunit, *) num_domains, j, domain_size, ens_size, model_size, num_groups, &
+      write(iunit) num_domains, j, domain_size, ens_size, model_size, num_groups, &
+         num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+         reg_series_unit, obs_sequence_in_name
+      !write(iunit, *) ens, ens_obs, compute_obs, keys, my_state
+      write(iunit) ens, ens_obs, compute_obs, keys, my_state
+      close(iunit)
 
-   ! Write out the most up-to-date obs_sequence file, too, which includes qc
-   temp_obs_seq_file = 'filter_assim_obs_seq'
-   call write_obs_seq(seq, temp_obs_seq_file)
+! Following line allows single processor test of communications
+!!!!      call async_assim_region(in_file_name(j), out_file_name(j))
 
-   call async_assim_region()
+   endif
 
-! Read in the update ensemble region (also need the qc eventually)
-   iunit = get_unit()
-   open(unit = iunit, file = 'filter_assim_region_out', action = 'read', form = 'formatted')
-   read(iunit, *) ens
-   close(iunit)
-
-   ! Put this region into storage
-!!!   call put_ensemble_region(ens, ens_time, state_vars_in = indices)
+   ! Put this region into storage for single executable which is now finished
+   if(.not. do_parallel) call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
 
    deallocate(ens, indices)
 
 end do
+
+! All the files are out there, now need to spawn off jobs if parallel
+if(do_parallel) then
+
+   ! Write out the file names to a control file
+   control_unit = get_unit()
+   open(unit = control_unit, file = 'assim_region_control')
+   write(control_unit, *) num_domains
+   do i = 1, num_domains
+      write(control_unit, '(a28)' ) in_file_name(i)
+      write(control_unit, '(a28)' ) out_file_name(i)
+   end do
+   close(control_unit)
+
+! Spawn the job to do parallel assims
+!   call system('echo go > batchflag; ./assim_filter.csh; sleep 1')
+   call system('echo go > batchflag; '//parallel_command//' ; sleep 1')
+
+   do
+      if(file_exist('batchflag')) then
+         call system('sleep 10')
+      else
+         exit
+      endif
+   end do
+
+   base_size = model_size / num_domains
+   remainder = model_size - base_size * num_domains
+   domain_top = 0
+   do j = 1, num_domains
+   ! Find out which state variables are in my domain
+   !call whats_in_my_domain(num_domains, j, my_state, domain_size)
+   ! Temporarily just do the domain stuff here
+      domain_bottom = domain_top + 1
+
+      domain_size = base_size
+      if(j <= remainder) domain_size = domain_size + 1
+      domain_top = domain_bottom + domain_size - 1
+      my_state = .false.
+      my_state(domain_bottom : domain_top) = .true.
+
+      ! Generate an array with the indices of my state variables
+      allocate(ens(ens_size, domain_size), indices(domain_size))
+
+      indx = 1
+      do i = 1, model_size
+         if(my_state(i)) then
+            indices(indx) = i
+            indx = indx + 1
+         endif
+      end do
+
+      ! Read in the update ensemble region (also need the qc eventually)
+      iunit = get_unit()
+      open(unit = iunit, file = out_file_name(j), action = 'read', form = 'unformatted')
+      !read(iunit, *) ens
+      read(iunit) ens
+      close(iunit)
+      call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
+write(*, *) 'preparing to deallocate ens and indices', j
+      deallocate(ens, indices)
+write(*, *) 'finished with deallocate ens and indices', j
+   end do
+
+endif
+write(*, *) 'done with subroutine filter_assim'
 
 end subroutine filter_assim
 
 
 !-----------------------------------------------------------------------
 
-subroutine async_assim_region()
+subroutine async_assim_region(in_file_name, out_file_name)
+
+character(len = *), intent(in) :: in_file_name, out_file_name
 
 ! DONT FORGET THE QC!!!
 ! AND IN GENERAL NEED TO WORK ON REGSERIES STUFF!!!
 
-integer :: num_domains, my_domain, domain_size, ens_size, model_size, num_groups
+integer :: n_domains, my_domain, domain_size, ens_size, model_size, num_groups
 integer :: num_obs_in_set, obs_val_index, reg_series_unit
 real(r8) :: confidence_slope, cutoff
 character(len = 129) :: obs_sequence_in_name
@@ -1171,15 +1284,19 @@ real(r8) :: val1(10), val2(10)
 
 ! Read in all the arguments from the file
 iunit = get_unit()
-open(unit = iunit, file = 'filter_assim_region_in', action = 'read', form = 'formatted')
-read(iunit, *) num_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
+open(unit = iunit, file = in_file_name, action = 'read', form = 'unformatted')
+!read(iunit, *) n_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
+read(iunit) n_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
    num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
    reg_series_unit, obs_sequence_in_name
+
+write(*, *) 'first try, n_domains '
 
 ! Allocate storage
 allocate(ens(ens_size, domain_size), ens_obs(ens_size, num_obs_in_set), &
    compute_obs(num_obs_in_set), keys(num_obs_in_set), my_state(model_size))
-read(iunit, *) ens, ens_obs, compute_obs, keys, my_state
+!read(iunit, *) ens, ens_obs, compute_obs, keys, my_state
+read(iunit) ens, ens_obs, compute_obs, keys, my_state
 
 close(iunit)
 
@@ -1187,31 +1304,27 @@ close(iunit)
 !val1 = 0.0; val2 = 0.0
 obs_sequence_in_name = 'filter_assim_obs_seq'
 call read_obs_seq(obs_sequence_in_name, 0, 0, 0, seq2)
-!write(*, *) 'seq 1 num_obs ', get_num_copies(seq)
-!write(*, *) 'seq 1 num_obs ', get_num_copies(seq2) 
-!call init_obs(obs1, 10, 10)
-!call get_obs_from_key(seq, keys(11), obs1)
-!call get_obs_values(obs1, val1)
-!write(*, *) 'seq 1 vals ', val1
-!call init_obs(obs2, 10, 10)
-!call get_obs_from_key(seq, keys(11), obs2)
-!call get_obs_values(obs2, val2)
-!write(*, *) 'seq 2 vals ', val2
-
 
 ! Do ensemble filter update for this region
-call filter_assim_region(num_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
+write(*, *) 'calling filter_assim_region in async_filter_assim, REALLY'
+write(*, *) 'n_domains is ', n_domains
+write(*, *) n_domains, my_domain, domain_size, ens_size, model_size, num_groups, num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, reg_series_unit
+call filter_assim_region(my_domain, domain_size, ens_size, model_size, num_groups, &
    num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
    reg_series_unit, ens, ens_obs, compute_obs, seq2, keys, my_state)
+write(*, *) 'back from filter_assim_region in async_filter_assim'
 
 ! Write out the updated ensemble region, need to do QC also
 iunit = get_unit()
-open(unit = iunit, file = 'filter_assim_region_out', action = 'write', form = 'formatted', &
+open(unit = iunit, file = out_file_name, action = 'write', form = 'unformatted', &
    status = 'replace')
-write(iunit, *) ens
+!write(iunit, *) ens
+write(iunit) ens
 close(iunit)
 
 call destroy_obs_sequence(seq2)
+
+write(*, *) 'done with destroy_obs_seq and async_assim_region'
 
 end subroutine async_assim_region
 
