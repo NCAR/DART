@@ -69,7 +69,7 @@ integer, save :: logfileunit = -1
 !----------------------------------------------------------------
 ! Namelist input with default values
 integer  :: TERMLEVEL = E_ERR     ! E_ERR All warnings/errors are assumed fatal.
-character(len=129) :: logfilename = 'logfile.out'
+character(len=129) :: logfilename = 'dart_log.out'
 
 namelist /utilities_nml/TERMLEVEL, logfilename
 
