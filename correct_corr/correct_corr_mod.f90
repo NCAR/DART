@@ -16,15 +16,16 @@ implicit none
 
 private
 
-logical :: first_call = .true.
+logical               :: first_call = .true.
 !!!integer, parameter :: table_size = 5
-integer, parameter :: table_size = 100
-real(r8) :: table(0:table_size), inverse_table(0:table_size)
-real(r8) :: var_table(0:table_size), inverse_var_table(0:table_size)
+integer, parameter    :: table_size = 100
+real(r8)              :: table(0:table_size), inverse_table(0:table_size)
+real(r8)              :: var_table(0:table_size), inverse_var_table(0:table_size)
 type (random_seq_type) :: r
-integer, parameter :: n_mc = 10000
+integer, parameter     :: n_mc = 10000
 
-public init_table, corr_update_from_obs_inc, corr_obs_increment, get_correct_correlation
+public init_table, corr_update_from_obs_inc, corr_obs_increment, &
+       get_correct_correlation
 
 contains
 
