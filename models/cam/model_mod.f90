@@ -45,14 +45,13 @@ public prog_var_to_vector, vector_to_prog_var, read_cam_init, &
 ! Public definition of variable types
 integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 4, TYPE_TRACER = 5
 
-!-----------------------------------------------------------------------
-
-! ? what should be made public from this module?
-! don't forget; actual model_mod has more subroutines in it.
-! public        get_model_size, &
 
 !----------------------------------------------------------------------
-! dimension CAM arrays
+
+! Global storage for describing cam model class
+integer :: model_size, num_lons, num_lats, num_levs
+type(time_type) :: Time_step_atmos
+
 integer, parameter :: n3dflds=4     ! # of 3d fields to read from file
 !                                   including Q, but not tracers
 integer, parameter :: pcnst  =0     ! advected tracers (don't include Q in this)
@@ -89,14 +88,11 @@ character (len=128) :: filename = '/home/raeder/DAI/test.nc'
 
 !----------------------------------------------------------------------
 ! dimension DART arrays
-integer :: model_size         ! size of state vector; set in static_init_model
-type(time_type) :: Time_step_atmos
 
 real(r8), allocatable :: x(:)          ! state vector to pass to DART, size (siz)
 
 !----------------------------------------------------------------------
 ! netCDF parameters and variables
-integer plon, plat, plev            ! Dimension sizes
 integer londimid, levdimid, latdimid ! Dimension ID's
 integer ncfileid                     ! netCDF file ID 
 integer ncfldid                      ! netCDF field ID 
@@ -157,7 +153,7 @@ subroutine read_cam_init
 !----------------------------------------------------------------------
 ! Local workspace
 integer :: i,j,ifld  ! grid and constituent indices
-integer :: siz
+integer :: siz, plon, plat, plev
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
 
@@ -218,18 +214,18 @@ implicit none
 
 integer, intent(in) :: siz
 
-real(r8), intent(in), dimension(plon,plev,plat,nflds) :: vars
+real(r8), intent(in), dimension(num_lons, num_levs, num_lats, nflds) :: vars
 real(r8), intent(out),dimension(siz) :: x
 
 integer :: i, j, k, nf, nt, n0, index
 
 ! Start copying fields to straight vector
 index = 0
-do i = 1, plon
-   do j = 1, plat
+do i = 1, num_lons
+   do j = 1, num_lats
 !     u,v,t,q, and tracers at successively lower levels
       n0 = n3dflds
-      do k = 1,plev
+      do k = 1, num_levs
          do nf=1,n3dflds
             index = index + 1
             x(index) = vars(i, k, j, nf)
@@ -267,17 +263,17 @@ implicit none
 
  integer, intent(in) :: siz
  real(r8), intent(in),dimension(siz) :: x
- real(r8), dimension(plon,plev,plat,nflds), intent(out) :: vars
+ real(r8), dimension(num_lons, num_levs, num_lats,nflds), intent(out) :: vars
 
 integer :: i, j, k, nf, nt, n0, index
 
 ! Start copying fields from straight vector
 index = 0
-do i = 1, plon
-   do j = 1, plat
+do i = 1, num_lons
+   do j = 1, num_lats
 !     u,v,t,q  and tracers at successive levels
       n0 = n3dflds
-      do k = 1, plev
+      do k = 1, num_levs
          do nf = 1,n3dflds
             index = index + 1
             vars(i, k, j, nf) = x(index)
@@ -317,12 +313,12 @@ integer ifld
 do ifld=1,n3tflds
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    call check(nf90_put_var(ncfileid, ncfldid, vars(:,:,:,ifld) &
-             ,start=(/1,1,1,1/) ,count=(/plon,nlevs(ifld),plat,1/) ))
+             ,start=(/1,1,1,1/) ,count=(/num_lons,nlevs(ifld),num_lats,1/) ))
 end do
 do ifld=n3tflds+1 ,n3tflds+n2dflds
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    call check(nf90_put_var(ncfileid, ncfldid, vars(:,nlevs(ifld),:,ifld) &
-             ,start=(/1,1,1/) ,count=(/plon,plat,1/) ))
+             ,start=(/1,1,1/) ,count=(/num_lons,num_lats,1/) ))
 end do
 
 call check(nf90_close(ncfileid))
@@ -359,9 +355,14 @@ end function get_model_size
 subroutine static_init_model()
 
 ! INitializes class data for CAM model (all the stuff that needs to
-! be done once.
+! be done once. For now, does this by reading info from a fixed
+! name netcdf file. Need to make this file a namelist parameter
+! at some point.
 
 implicit none
+
+! Get num lons, lats and levs from netcdf and put in global storage
+call read_cam_init_size('H12-24icl.nc', num_lons, num_lats, num_levs)
 
 ! Compute the model size (Need to be sure where all these come from
 ! and if they themselves need to be initialized here)
@@ -369,7 +370,11 @@ implicit none
 ! Need to set Time_step_atmos here to 1 hour for now 
 Time_step_atmos = set_time(3600, 0)
 
-model_size = plon * plat * (n2dflds + plev * (n3dflds + pcnst + pnats))
+! Compute overall model size and put in global storage
+model_size = num_lons * num_lats * (n2dflds + num_levs * &
+   (n3dflds + pcnst + pnats))
+
+write(*, *) 'CAM size initialized as ', model_size
 
 end subroutine static_init_model
 
@@ -423,15 +428,15 @@ integer :: local_var_type, var_type_temp
 index = index_in - 1
 
 ! Compute number of items per column
-num_per_col = plev * (n3dflds + pcnst + pnats) + n2dflds
+num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! What column is this index in
 col_num = index_in / num_per_col 
 col_elem = index - col_num * num_per_col
 
 ! What lon and lat index for this column
-lon_index = col_num / plat
-lat_index = col_num - lon_index * plat
+lon_index = col_num / num_lats
+lat_index = col_num - lon_index * num_lats
 
 ! Get actual lon lat values from static_init arrays ???
 lon = lons(lon_index + 1)
@@ -441,7 +446,7 @@ lat = lats(lat_index + 1)
 ! Surface pressure is the last element
 lev = col_elem / (n3dflds + pcnst + pnats) + 1
 ! If we're out of the levels
-if(lev > plev) then
+if(lev > num_levs) then
    local_var_type = TYPE_PS
    lev = -1
 else
