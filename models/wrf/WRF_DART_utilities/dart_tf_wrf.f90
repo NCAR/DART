@@ -35,7 +35,6 @@ namelist /model_nml/ output_state_vector, num_moist_vars
 
 integer :: status, iunit, dart_unit
 logical :: dart_to_wrf
-character (len=80) :: name
 
 type(wrf_data) :: wrf
 
@@ -56,7 +55,7 @@ integer :: mode, io, ierr
 ! Begin by reading the namelist input                                           
 if(file_exist('input.nml')) then
 
-   iunit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
    call close_file(iunit)                                                        
@@ -99,7 +98,7 @@ if(debug) write(6,*) ' returned from dart_open_and_alloc '
 if(debug) write(6,*) ' state input '
 if( dart_to_wrf ) then
    call DART_IO( "INPUT ", dart, dart_unit, number_dart_values, &
-        seconds, days, wrf, debug )
+        seconds, days, debug )
    iunit = get_unit()
    open(unit = iunit, file = 'time.dat')
    write (iunit,*) seconds
@@ -116,7 +115,7 @@ if(debug) write(6,*) ' returned from state input '
 if(debug) write(6,*) ' transfer data to_from dart-wrf '
 
 call transfer_dart_wrf ( dart_to_wrf, dart, wrf,    &
-     number_dart_values, debug )
+     number_dart_values )
 
 if(debug) write(6,*) ' transfer complete '
 
@@ -133,7 +132,7 @@ else
    read(iunit,*) days
    close(iunit)
    call DART_IO( "OUTPUT", dart, dart_unit, number_dart_values, &
-        seconds, days, wrf, debug )
+        seconds, days, debug )
 end if
 if(debug) write(6,*) ' returned from state output '
 
@@ -154,7 +153,6 @@ character (len=6) :: in_or_out
 integer, dimension(5) :: map, count, start, stride
 integer :: k
 logical :: debug
-character (len=129) :: error_string
 
 map = 1
 start = 1
@@ -264,15 +262,12 @@ implicit none
 
 include 'netcdf.inc'
 
-character (len = 80) :: path
-integer              :: mode
-integer              :: ncid
+integer            :: mode
 
-integer :: status
 character (len=80) :: name
-logical :: debug
+logical            :: debug
 
-type(wrf_data) :: wrf
+type(wrf_data)     :: wrf
 
 
 call check ( nf_open('wrfinput', mode, wrf%ncid) )
@@ -379,12 +374,9 @@ subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, &
 
 implicit none
 
-character (len = 80)  :: path
 logical               :: dart_to_wrf
 integer               :: dart_unit
 
-integer               :: status
-character (len=80)    :: name
 logical               :: debug
 
 type(wrf_data)        :: wrf
@@ -476,22 +468,18 @@ end subroutine dart_open_and_alloc
 !*****************************************************************************
 
 subroutine dart_io( in_or_out, dart, dart_unit, n_values, &
-     seconds, days, wrf, debug )
+     seconds, days, debug )
 
 implicit none
 
-character (len = 80)  :: path
-logical               :: dart_to_wrf
 integer               :: dart_unit, seconds, days
 integer               :: seconds_end, days_end
 
-integer               :: status
 character (len=6)     :: in_or_out
 logical               :: debug
 
 logical, parameter    :: test_input = .false.
 
-type(wrf_data)        :: wrf
 real(r8), pointer     :: dart(:)
 
 integer               :: n_values 
@@ -522,14 +510,11 @@ end subroutine dart_io
 
 !*************************************************************************
 
-subroutine transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in, debug )
+subroutine transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in)
 
 implicit none
 
 logical :: dart_to_wrf
-
-integer :: status
-logical :: debug
 
 type(wrf_data)    :: wrf
 real(r8), pointer :: dart(:)

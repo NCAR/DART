@@ -138,12 +138,10 @@ subroutine static_init_model()
 
 ! INitializes class data for WRF???
 
-character (len = 80)      :: path
-     integer              :: mode
-     integer              :: ncid, bt_id, we_id, sn_id
-     integer              :: io, ierr, iunit
+integer :: mode
+integer :: ncid, bt_id, we_id, sn_id
+integer :: io, ierr, iunit
 
-integer :: status
 character (len=80) :: name
 logical, parameter :: debug = .true.  
 integer :: var_id, ind, i, map_proj 
@@ -153,13 +151,9 @@ real(r8)    :: zero_d(1)
 real(r8) :: dx, dy, dt
 
 real(r8) :: cen_lat, cen_lon, truelat1, truelat2
-real(r8), dimension(:,:,:), pointer :: mub_test
 real(r8), allocatable, dimension(:,:) :: temp
 
-integer :: n_values
-
 real(r8)    :: theta1,theta2,cell,cell2,psx
-character(len=129) :: errstring
 
 !----------------------------------------------------------------------
 
@@ -189,7 +183,7 @@ endif
 
 ! Record the namelist values in the logfile
 call error_handler(E_MSG,'static_init_model','namelist model_nml values are:',' ',' ',' ')
-write(logfileunit, nml=model_nml)'output_state_vector = ',output_state_vector
+write(logfileunit, nml=model_nml)
 
 mode = 0
 call check( nf90_open('wrfinput', mode, ncid) )
@@ -521,7 +515,6 @@ integer :: ncid, var_id, ndims
 real(r8), dimension(ndims) :: var
 character (len=6) :: in_or_out
 integer, dimension(ndims) :: start, count, stride, map
-integer :: status
 character (len=*) :: variable
 logical :: debug
 character (len=129) :: error_string
@@ -604,7 +597,7 @@ integer  :: nz, ny, nx
 logical  :: var_found
 real(r8) :: lon, lat, lev
 
-integer :: i, number_of_wrf_variables
+integer :: i
 logical, parameter :: debug = .false.  
 character(len=129) :: errstring
 
@@ -838,17 +831,16 @@ end function get_val
 subroutine model_get_close_states(o_loc, radius, number, indices, dist)
 
 type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
-real(r8), intent(out) :: dist(:)
+real(r8), intent(in)            :: radius
+integer, intent(out)            :: number, indices(:)
+real(r8), intent(out)           :: dist(:)
 
-real(r8) :: loc_array(3), o_lon, o_lat
-integer :: num, max_size
-integer, allocatable :: lon_ind(:), lat_ind(:)
-real(r8), allocatable :: close_dist(:)
+integer                         :: num, max_size
+integer, allocatable            :: lon_ind(:), lat_ind(:)
+real(r8), allocatable           :: close_dist(:)
 
-integer :: u_pts, v_pts, p_pts
-integer :: i,j,k,indmax, num_total, ii, jj
+integer                         :: u_pts, v_pts, p_pts
+integer                         :: i,k,indmax, num_total, ii, jj
 
 ! Number found starts at 0
 number = 0
@@ -1078,8 +1070,6 @@ integer :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 integer :: i, j, n, m
 real(r8), parameter :: r_earth = 6.37e+06 ! earth radius in meters
 logical, parameter :: debug= .false.  
-
-type(location_type) :: loc
 
 if(debug) write(6,*) ' in grid_close_states '
 
@@ -2265,7 +2255,7 @@ subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
   real(r8), intent(in)  :: x, y, z
   real(r8), intent(out) :: fo3d
 
-  integer   :: i, j, k, kk
+  integer   :: i, j, k
   real(r8)  :: dx, dxm, dy, dym, dz, dzm
   real(r8)  :: fiz (n3)
 

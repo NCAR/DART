@@ -10,34 +10,60 @@
 # This script copies the necessary files into the temporary directory
 # for a model run.
 
+set PBS_O_WORKDIR = $1
+set element = $2
+set temp_dir = $3
+
 # Shell script to run the WRF model from DART input.
+
 set verbose
+
+set time = `cat ${PBS_O_WORKDIR}/async_may_go`
+set secs = $time[1]
+set days = $time[2]
+
+rm -rf $temp_dir
+mkdir  $temp_dir
+cd     $temp_dir
+
+# Copy the initial condition file to the temp directory
+
+cp ${PBS_O_WORKDIR}/wrfinput .
+cp ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
+ln -s ${PBS_O_WORKDIR}/input.nml .
+
+# Copy the boundary condition file to the temp directory.
+cp /ocotillo1/caya/GEN_TRUTH/wrfbdy_${days}_${secs}_81 wrfbdy_d01
+
+# Copy WRF input namelist to the temp directory.
+ln -s /ocotillo1/caya/GEN_TRUTH/namelist.input_${days}_${secs}_81 namelist.input
+ln -s  ${PBS_O_WORKDIR}/RRTM_DATA .
+ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 
 echo ".true." >  input_dart_to_wrf
 echo ".false." >  input_wrf_to_dart
 
 # Convert DART to wrfinput
 
-dart_tf_wrf < input_dart_to_wrf >& out.dart_to_wrf
+${PBS_O_WORKDIR}/dart_tf_wrf < input_dart_to_wrf >& out.dart_to_wrf
 
 mv wrfinput wrfinput_d01
 
 # Update boundary conditions
 
-update_wrf_bc >& out.update_wrf_bc
+${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
-wrf.exe >>& out_wrf_integration
-mv wrf_filter* wrfinput
+${PBS_O_WORKDIR}/wrf.exe >>& out_wrf_integration
+mv wrfout_d01_000000 wrfinput
 
-# we've just integrated wrf, but we're still using
-# the original input data here
-
-# save off input data 
-mv dart_wrf_vector dart_wrf_vector.input
+rm dart_wrf_vector
 
 # create new input to DART (taken from "wrfinput")
-dart_tf_wrf < input_wrf_to_dart >& out.wrf_to_dart
+${PBS_O_WORKDIR}/dart_tf_wrf < input_wrf_to_dart >& out.wrf_to_dart
 
-mv dart_wrf_vector temp_ud
+mv dart_wrf_vector $PBS_O_WORKDIR/assim_model_state_ud$element
+
+cd $PBS_O_WORKDIR
+#rm -rf $temp_dir
 
 exit
