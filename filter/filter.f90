@@ -68,6 +68,9 @@ real(r8), allocatable  :: obs_err_cov(:), obs(:)
 real(r8)               :: cov_factor, mean_inc, sd_ratio
 character(len = 129), allocatable   :: ens_copy_meta_data(:)
 
+! Storage with fixed size for observation space diagnostics
+real(r8) :: ges(900000), anl(900000)
+
 ! Set a reasonable upper bound on number of close states, will be increased if needed
 integer, parameter :: first_num_close = 100000
 integer :: num_close_ptr(1) 
@@ -104,12 +107,14 @@ character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
                         restart_out_file_name = 'filter_restart_out'
 
+logical :: output_obs_diagnostics = .true.
+
 namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
    start_from_restart, output_restart, &
    obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, num_output_ens_members, output_interval, &
-   num_groups, confidence_slope
+   num_groups, confidence_slope, output_obs_diagnostics
 !----------------------------------------------------------------
 
 ! Begin by reading the namelist input
@@ -144,8 +149,10 @@ close(unit)
 num_obs_sets = get_num_obs_sets(seq)
 
 ! Copy just the definitions part of the sequence to the two output obs sequences
-!!!call obs_sequence_def_copy(prior_seq, seq)
-!!!call obs_sequence_def_copy(posterior_seq, seq)
+   if(output_obs_diagnostics) then
+      call obs_sequence_def_copy(prior_seq, seq)
+      call obs_sequence_def_copy(posterior_seq, seq)
+   endif
 
 ! Set up the metadata for the output ensemble observations
 do i = 1, num_output_ens_members
@@ -179,10 +186,11 @@ if(output_state_ens_spread) then
    output_ens_spread_index = meta_data_size
 endif
 
-
-! For now output all ensemble members for prior and posterior; add space
-!!!call inc_num_obs_copies(prior_seq, ens_size, ens_copy_meta_data)
-!!!call inc_num_obs_copies(posterior_seq, ens_size, ens_copy_meta_data)
+!  to add the ens_mean to the output in addition to the ensemble members
+   if(output_obs_diagnostics) then
+      call inc_num_obs_copies(prior_seq, ens_size + 1, ens_copy_meta_data)
+      call inc_num_obs_copies(posterior_seq, ens_size + 1, ens_copy_meta_data)
+   endif
 
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
@@ -378,6 +386,26 @@ AdvanceTime : do i = 1, num_obs_sets
    call get_obs_values(seq, i, obs, 1)
 
 
+
+!   output the ensemble mean and all ensemble members at observation space 
+     if(output_obs_diagnostics) then
+        do j = 1, num_obs_in_set
+
+!   then output each ensemble member
+           do k = 1, ens_size
+              call get_expected_obs(seq, i, ens_ptr(k)%state, ges(k:k), j)
+              call set_single_obs_value(prior_seq, i, j, ges(k), k)
+           enddo
+
+!   output ensemble mean last
+           k = ens_size + 1
+           call get_expected_obs(seq, i, ens_mean_ptr%state, ges(k:k), j)
+           call set_single_obs_value(prior_seq, i, j, ges(k), k)
+
+         end do
+      endif
+
+
 ! A preliminary search for bias???
    var_ratio_sum = 0.0
 !!!   do j = 1, num_obs_in_set
@@ -501,6 +529,26 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    endif
 
+!   output the ensemble mean of analysis at the observation space \
+   if(output_obs_diagnostics) then
+       do j = 1, num_obs_in_set
+
+!   write out the obs, guess, and analysis at OBS space
+!   then output each ensemble member
+          do k = 1, ens_size
+             call get_expected_obs(seq, i, ens_ptr(k)%state, anl(k:k), j)
+             call set_single_obs_value(posterior_seq, i, j, anl(k), k)
+          enddo
+
+!     output ensemble mean last
+          k = ens_size + 1
+          call get_expected_obs(seq, i, ens_mean_ptr%state, anl(k:k), j)
+          call set_single_obs_value(posterior_seq, i, j, anl(k), k)
+
+       end do 
+   endif
+!   
+
 ! Output an ensemble mean if requested
    if(output_state_ens_mean  .and. i / output_interval * output_interval == i) &
       call output_diagnostics(PosteriorStateUnit, ens_mean, output_ens_mean_index)
@@ -525,15 +573,19 @@ ierr = NF90_close(PosteriorStateUnit)
 
 ! Output the observation space diagnostic files
 
-!!!prior_obs_unit = get_unit()
-!!!open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
-!!!call write_obs_sequence(prior_obs_unit, prior_seq)
-!!!close(prior_obs_unit)
+   if(output_obs_diagnostics) then
 
-!!!posterior_obs_unit = get_unit()
-!!!open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
-!!!call write_obs_sequence(posterior_obs_unit, posterior_seq)
-!!!close(posterior_obs_unit)
+   prior_obs_unit = get_unit()
+   open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
+   call write_obs_sequence(prior_obs_unit, prior_seq)
+   close(prior_obs_unit)
+
+   posterior_obs_unit = get_unit()
+   open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
+   call write_obs_sequence(posterior_obs_unit, posterior_seq)
+   close(posterior_obs_unit)
+ 
+   endif
 
 ! Output a restart file if requested
 if(output_restart) then
