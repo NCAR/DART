@@ -2306,14 +2306,15 @@ endif
 !-----------------------------------------------------------------
 call check(nf90_enddef(ncfileID))
 
+call check(nf90_put_var(ncFileID,       DXVarID, wrf%dom(1:num_domains)%dx        ))
+call check(nf90_put_var(ncFileID,       DYVarID, wrf%dom(1:num_domains)%dy        ))
+call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(1:num_domains)%truelat1  ))
+call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(1:num_domains)%truelat2  ))
+call check(nf90_put_var(ncFileID,  CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat   ))
+call check(nf90_put_var(ncFileID,  CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon   ))
+call check(nf90_put_var(ncFileID, MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj  ))
+
 do id=1,num_domains
-   call check(nf90_put_var(ncFileID,       DXVarID, wrf%dom(id)%dx        ))
-   call check(nf90_put_var(ncFileID,       DYVarID, wrf%dom(id)%dy        ))
-   call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(id)%truelat1  ))
-   call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(id)%truelat2  ))
-   call check(nf90_put_var(ncFileID,  CEN_LATVarID, wrf%dom(id)%cen_lat   ))
-   call check(nf90_put_var(ncFileID,  CEN_LONVarID, wrf%dom(id)%cen_lon   ))
-   call check(nf90_put_var(ncFileID, MAP_PROJVarID, wrf%dom(id)%map_proj  ))
 
 ! defining grid levels
    call check(nf90_put_var(ncFileID,       DNVarID(id), wrf%dom(id)%dn        ))
@@ -3184,10 +3185,12 @@ real(r8)             :: map_to_sphere
 real(r8) :: cen_long, diff
 
 if(wrf%dom(id)%map_proj .eq. 0) then  ! no projection
-   map_to_sphere = 0.0_r8
-end if
 
-cen_long = wrf%dom(id)%stand_lon      ! Default
+   map_to_sphere = 0.0_r8
+
+else
+
+   cen_long = wrf%dom(id)%stand_lon      ! Default
 !!$cen_long = wrf%dom(id)%cen_lon     ! if stand_lon doesn't exist.
 
 !!$cone = 1.0_r8
@@ -3209,29 +3212,31 @@ cen_long = wrf%dom(id)%stand_lon      ! Default
 !!$   cone = 0.0_r8
 !!$end if
 
-diff = longitude - cen_long
+   diff = longitude - cen_long
 
-if(diff .gt. 180.0_r8) then
-   diff = diff - 360.0_r8
-end if
-if(diff .lt. -180.0_r8) then
-   diff = diff + 360.0_r8
-end if
+   if(diff .gt. 180.0_r8) then
+      diff = diff - 360.0_r8
+   end if
+   if(diff .lt. -180.0_r8) then
+      diff = diff + 360.0_r8
+   end if
 
 !      map_to_sphere = diff * cone * deg2rad *sign(1.0_r8,latitude)
 !!$map_to_sphere = diff
 
-if(latitude .lt. 0.0_r8) then
-   map_to_sphere = - diff * wrf%dom(id)%cone_factor * deg2rad
-else
-   map_to_sphere = diff * wrf%dom(id)%cone_factor * deg2rad
-end if
+   if(latitude .lt. 0.0_r8) then
+      map_to_sphere = - diff * wrf%dom(id)%cone_factor * deg2rad
+   else
+      map_to_sphere = diff * wrf%dom(id)%cone_factor * deg2rad
+   end if
 
 !!$if(variable .eq. "umet") then
 !!$   var = v*sin(map_to_sphere) + u*cos(map_to_sphere)
 !!$else  ; must want vmet
 !!$   var = v*cos(map_to_sphere) - u*sin(map_to_sphere)
 !!$end if
+
+end if
 
 end function map_to_sphere
 
