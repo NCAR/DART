@@ -503,8 +503,8 @@ subroutine get_close_states(location, radius, numinds, indices, dist)
 
 implicit none
 
-type(location_type), intent(in) :: location
-real(r8),            intent(in) :: radius
+type(location_type), intent(in)  :: location
+real(r8),            intent(in)  :: radius
 integer,             intent(out) :: numinds, indices(:)
 real(r8),            intent(out) :: dist(:)
 
