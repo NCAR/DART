@@ -1,11 +1,11 @@
 &lim_obs_seq_nml
    ens_size = 20, 
    spin_up_steps = 0,
-   num_steps = 200,
-   output_start = 0,
+   num_steps = 2000,
+   output_start = 1000,
    ens_spin_up_steps = 0,
    obs_freq = 1,
-   cov_inflate = 1.01
+   cov_inflate = 1.05
    mean_inflate = 1.0
    restart = .FALSE.,
    add_on = .FALSE.,

@@ -9,7 +9,7 @@ module obs_sequence_mod
 
 use types_mod
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
-   obs_set_copy, get_num_obs, get_obs_def_index, &
+   obs_set_copy, get_num_obs, get_obs_def_index, read_obs_set_time, &
    os_get_obs_values => get_obs_values, &
    os_set_obs_values => set_obs_values, &
    os_inc_num_obs_copies => inc_num_obs_copies
@@ -31,7 +31,7 @@ public obs_sequence_type, init_obs_sequence, &
    get_obs_sequence_time, get_num_obs_in_set, &
    get_expected_obs, get_diag_obs_err_cov, get_obs_values, &
    inc_num_obs_copies, set_obs_values, get_num_close_states, &
-   get_close_states
+   get_close_states, read_obs_sequence_def
 	
 
 type obs_sequence_type 
@@ -203,7 +203,7 @@ end function get_num_obs_sets
 
 
 
-subroutine get_obs_values(seq, index, obs)
+subroutine get_obs_values(seq, index, obs, copy_in)
 !---------------------------------------------------
 !
 ! Returns the observed values associated with the index set
@@ -214,14 +214,21 @@ implicit none
 type(obs_sequence_type), intent(in) :: seq
 integer, intent(in) :: index
 real(r8), intent(out) :: obs(:)
+integer, optional, intent(in) :: copy_in
 
-call os_get_obs_values(seq%obs_sets(index), obs)
+integer :: copy
+
+copy = 1
+if(present(copy_in)) copy = copy_in
+
+call os_get_obs_values(seq%obs_sets(index), obs, copy)
 
 end subroutine get_obs_values
 
 
 
-subroutine set_obs_values(seq, index, obs)
+
+subroutine set_obs_values(seq, index, obs, copy_in)
 !----------------------------------------------------
 !
 ! Sets the index obs_set in the sequence to the obs input.
@@ -231,8 +238,15 @@ implicit none
 type(obs_sequence_type), intent(inout) :: seq
 integer, intent(in) :: index
 real(r8), intent(in) :: obs(:)
+integer, intent(in), optional :: copy_in
 
-call os_set_obs_values(seq%obs_sets(index), obs)
+integer :: copy
+
+! Default value for copy is 1
+copy = 1
+if(present(copy_in)) copy = copy_in
+
+call os_set_obs_values(seq%obs_sets(index), obs, copy)
 
 end subroutine set_obs_values
 
@@ -334,7 +348,7 @@ end subroutine get_num_close_states
 
 
 
-subroutine get_close_states(seq, index, radius, num, indices)
+subroutine get_close_states(seq, index, radius, num, indices, dist)
 !------------------------------------------------------
 !
 ! Gets the number and index of state variables within distance radius
@@ -346,6 +360,7 @@ type(obs_sequence_type), intent(in) :: seq
 integer, intent(in) :: index
 real(r8), intent(in) :: radius
 integer, intent(out) :: num(:), indices(:, :)
+real(r8), intent(out) :: dist(:, :)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
@@ -354,7 +369,8 @@ integer :: def_index
 obs_set = get_obs_set(seq, index)
 def_index = get_obs_def_index(obs_set)
 
-call sd_get_close_states(seq%def_list, def_index, radius, num, indices)
+call sd_get_close_states(seq%def_list, def_index, radius, num, &
+   indices, dist)
 
 end subroutine get_close_states
 
@@ -560,6 +576,49 @@ do i = 1, read_obs_sequence%num_obs_sets
 end do
 
 end function read_obs_sequence
+
+
+
+function read_obs_sequence_def(file_id)
+!----------------------------------------------------------
+!
+
+implicit none
+
+type(obs_sequence_type) :: read_obs_sequence_def 
+integer, intent(in) :: file_id
+
+integer :: i, num_copies, num_obs_sets
+
+! Read number of copies of data 
+read(file_id, *) num_copies
+
+! Read the number of observations in set
+read(file_id, *) num_obs_sets
+
+! Initialize the sequence
+read_obs_sequence_def = init_obs_sequence(num_obs_sets, num_copies)
+read_obs_sequence_def%num_obs_sets = num_obs_sets
+
+! Read the per copy metadata
+do i = 1, num_copies
+   read(file_id, *) read_obs_sequence_def%copy_meta_data(i)
+end do
+
+! Read the observation definition list
+call set_def_list_copy(read_obs_sequence_def%def_list, &
+   read_set_def_list(file_id))
+
+! Read the obs sets definition portion but not the values
+do i = 1, read_obs_sequence_def%num_obs_sets
+   call obs_set_copy(read_obs_sequence_def%obs_sets(i), &
+      read_obs_set_time(file_id))
+end do
+
+end function read_obs_sequence_def
+
+
+
 
 
 

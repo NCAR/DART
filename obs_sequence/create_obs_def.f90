@@ -25,7 +25,7 @@ type(obs_def_type) :: obs_def
 type(set_def_list_type) :: set_def_list
 type(obs_set_def_type) :: obs_set_def
 
-integer, max_sets, num_obs
+integer :: max_sets, num_obs
 integer :: i, j, obs_set_def_index, unit
 character(len = 129) :: file_name
 

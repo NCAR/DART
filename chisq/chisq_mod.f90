@@ -8,9 +8,10 @@ module chisq_mod
 !
 ! Computes chi square statistics and significance, from numerical recipes
 
-implicit none
 
 use types_mod
+
+implicit none
 
 private
 public chsone

@@ -224,7 +224,7 @@ end subroutine get_state_meta_data
 
 
 
-subroutine get_close_states(location, radius, number, indices)
+subroutine get_close_states(location, radius, number, indices, dist)
 !---------------------------------------------------------------------
 ! subroutine get_close_states(location, radius, number, indices)
 !
@@ -237,15 +237,19 @@ implicit none
 type(location_type), intent(in) :: location
 real(r8), intent(in) :: radius
 integer, intent(out) :: number, indices(:)
+real(r8), intent(out) :: dist(:)
 
 integer :: index, i
+real(r8) :: this_dist
 
 ! For large models this will have to be VERY efficient; here can just search
 index = 0
 do i = 1, model_size
-   if(get_dist(location, state_loc(i)) < radius) then
+   this_dist = get_dist(location, state_loc(i))
+   if(this_dist < radius) then
       index = index + 1 
       if(index <= size(indices)) indices(index) = i
+      if(index <= size(dist)) dist(index) = this_dist
    end if
 end do
 

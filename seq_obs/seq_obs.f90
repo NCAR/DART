@@ -316,7 +316,7 @@ do i = start_step, end_step
 !              if(cov_factor > 0.0) cov_factor = 1.0
 !            if(dist < 0.025) then
 
-               cov_factor = 1.0
+!!!               cov_factor = 1.0
 
 !            else if(dist > 0.1) then 
 !               cov_factor = 0.0

@@ -211,7 +211,7 @@ end subroutine get_obs_locations
 
 
 
-subroutine get_close_states(set, radius, number, indices)
+subroutine get_close_states(set, radius, number, indices, dist)
 !--------------------------------------------------------
 !
 ! Returns the number of close states for each observation in
@@ -222,6 +222,7 @@ type(obs_set_def_type), intent(in) :: set
 real(r8), intent(in) :: radius
 integer, intent(out) :: number(:)
 integer, intent(out) :: indices(:, :)
+real(r8), intent(out) :: dist(:, :)
 
 integer :: i
 
@@ -233,7 +234,8 @@ endif
 
 ! Loop through the observations and get their close states
 do i = 1, set%num_obs_defs
-   call od_get_close_states(set%obs_defs(i), radius, number(i), indices(i, :))
+   call od_get_close_states(set%obs_defs(i), radius, number(i), &
+      indices(i, :), dist(i, :))
 end do
 
 end subroutine get_close_states

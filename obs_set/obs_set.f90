@@ -17,7 +17,7 @@ public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    set_obs_values, set_obs_missing, set_obs_set_time, &
    contains_data, obs_value_missing, &
    read_obs_set, write_obs_set, obs_set_copy, get_num_obs, &
-   get_obs_def_index, inc_num_obs_copies
+   get_obs_def_index, inc_num_obs_copies, read_obs_set_time
 
 type obs_set_type
    private
@@ -141,7 +141,6 @@ temp_missing = set%missing
 temp_obs = set%obs
 
 ! Deallocate and reallocate
-deallocate(set%obs, set%missing)
 allocate(set%obs(set%num_obs, new_num), &
    set%missing(set%num_obs, new_num))
 
@@ -383,6 +382,8 @@ missing = set%missing(:, index)
 end subroutine obs_value_missing
 
 
+
+
 function read_obs_set(file_id)
 !------------------------------------------------------------------------
 !
@@ -428,6 +429,64 @@ end do
 read_obs_set%time = read_time(file_id)
 
 end function read_obs_set
+
+
+
+function read_obs_set_time(file_id)
+!------------------------------------------------------------------------
+!
+! Reads an obs_set from a file but keep only the time info, acting as
+! if 0 copies of the data were available.
+
+implicit none
+
+type(obs_set_type) :: read_obs_set_time
+integer, intent(in) :: file_id
+
+character*5 :: header
+integer :: num_obs, num_copies, i
+real(r8), allocatable :: obs(:)
+logical, allocatable :: missing(:)
+
+! Read the header and verify 
+read(file_id, *) header
+if(header /= 'obset') then
+   write(*, *) 'Error: Expected "obset" in header in read_obs_set_time' 
+   stop
+end if
+
+! Read the obs_set def index
+read(file_id, *) read_obs_set_time%def_index
+
+! Read the number of obs and the number of copies
+read(file_id, *) num_obs, num_copies
+read_obs_set_time%num_obs = num_obs
+! Set the num_copies to 0
+read_obs_set_time%num_copies = 0
+
+! Allocate space with 0 for num_copies
+allocate(read_obs_set_time%obs(num_obs, 0), &
+   read_obs_set_time%missing(num_obs, 0))
+
+! Allocate some storage to read stuff that is discarded
+allocate(obs(num_obs), missing(num_obs))
+
+! Read the data for each copy in turn
+do i = 1, num_copies
+   read(file_id, *) obs
+end do
+
+! Read the missing fields for each copy in turn
+do i = 1, num_copies
+   read(file_id, *) missing
+end do
+
+! Read the time 
+read_obs_set_time%time = read_time(file_id)
+
+deallocate(obs, missing)
+
+end function read_obs_set_time
 
 
 

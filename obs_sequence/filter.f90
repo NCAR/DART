@@ -25,6 +25,7 @@ use assim_model_mod, only : assim_model_type, initialize_assim_model, get_model_
 use random_seq_mod, only : random_seq_type, init_random_seq, &
    random_gaussian
 use assim_tools_mod, only : obs_increment, update_from_obs_inc
+use cov_cutoff_mod, only : comp_cov_factor
 
 
 implicit none
@@ -33,7 +34,7 @@ type(obs_sequence_type) :: seq
 type(time_type) :: time, time2
 type(random_seq_type) :: random_seq
 
-real(r8), parameter :: cutoff_radius = 0.2
+real(r8), parameter :: cutoff = 0.2, radius = 2.0 * cutoff
 character(len = 129) file_name
 
 integer :: i, j, k, ind, unit, num_obs_in_set
@@ -47,9 +48,9 @@ real(r8) :: obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size)
 real(r8), allocatable :: ens_temp(:), obs_err_cov(:)
 real(r8), allocatable :: obs(:), ens_mean(:)
 ! Real concern about reduncant storage needs for ensemble, must fix
-real(r8), allocatable :: ens_state(:, :)
+real(r8), allocatable :: ens_state(:, :), dist(:, :)
 integer, allocatable :: num_close_states(:), close(:, :)
-real(r8) :: rms, sum_rms = 0.0_r8
+real(r8) :: rms, sum_rms = 0.0_r8, cov_factor
 
 ! Input the obs_sequence
 write(*, *) 'input name of obs sequence file'
@@ -83,7 +84,7 @@ do i = 1, ens_size
    ens(i) = x
    ens_temp = get_model_state_vector(ens(i))
    do j = 1, model_size
-      ens_temp(j) = ens_temp(j) + random_gaussian(random_seq, 0.0_r8, 1.0_r8)
+      ens_temp(j) = random_gaussian(random_seq, ens_temp(j), 1.0_r8)
    end do
    call set_model_state_vector(ens(i), ens_temp)
 end do
@@ -109,17 +110,10 @@ do i = 1, num_obs_sets
       ens_state(:, j) = get_model_state_vector(ens(j))
    end do
 
-! Compute a cheating RMS for now; WARNING: Control x is not
-! neccesarily truth!!!
-   ens_mean = sum(ens_state, dim=2) / ens_size
-   rms = real(sqrt(sum((get_model_state_vector(x) - ens_mean) &
-      * (get_model_state_vector(x) - ens_mean))))
-   sum_rms = sum_rms + rms
-   write(*, *) 'scaled distance to truth is ', rms
-
 ! Do a covariance inflation for now?
+   ens_mean = sum(ens_state, dim=2) / ens_size
    do j = 1, ens_size
-      ens_state(:, j) = ens_mean + (ens_state(:, j) - ens_mean) * 1.06
+      ens_state(:, j) = ens_mean + (ens_state(:, j) - ens_mean) * sqrt(1.05)
    end do
 
 ! How many observations in this set
@@ -133,15 +127,18 @@ do i = 1, num_obs_sets
 ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
 
-! Get the observations
-   call get_obs_values(seq, i, obs)
+! Get the observations; from copy 1 for now
+   call get_obs_values(seq, i, obs, 1)
 
+! THIS IS HORRENDOUSLY SLOW, NEED TO CACHE AT SOME LEVEL
 ! Get the number of close states for each of these obs
-   call get_num_close_states(seq, i, cutoff_radius, num_close_states)
+   call get_num_close_states(seq, i, radius, num_close_states)
 
 ! Get the list of close states for this set (look at storage issues)
-   allocate(close(num_obs_in_set, maxval(num_close_states)))
-   call get_close_states(seq, i, cutoff_radius, num_close_states, close)
+   allocate(close(num_obs_in_set, maxval(num_close_states)), &
+      dist(num_obs_in_set, maxval(num_close_states)))
+   call get_close_states(seq, i, radius, num_close_states, &
+      close, dist)
 
 ! Loop through each observation in the set
    do j = 1, num_obs_in_set
@@ -152,16 +149,18 @@ do i = 1, num_obs_sets
             ens_obs(k:k), j)
       end do
 
-
-
       call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), &
          obs_inc)
 
 ! Now loop through each close state variable for this observation
       do k = 1, num_close_states(j)
          ind = close(j, k)
+
+! Compute distance dependent envelope
+         cov_factor = comp_cov_factor(dist(j, k), cutoff)
+
          call update_from_obs_inc(ens_obs, obs_inc, &
-            ens_state(ind, :), ens_size, ens_inc, 1.0_r8)
+            ens_state(ind, :), ens_size, ens_inc, cov_factor)
          ens_state(ind, :) = ens_state(ind, :) + ens_inc
       end do
 
@@ -172,9 +171,16 @@ do i = 1, num_obs_sets
       call set_model_state_vector(ens(j), ens_state(:, j))
    end do
 
+! Compute a cheating RMS for now; WARNING: Control x is not
+! neccesarily truth!!!
+   ens_mean = sum(ens_state, dim=2) / ens_size
+   rms = real(sqrt(sum((get_model_state_vector(x) - ens_mean) &
+      * (get_model_state_vector(x) - ens_mean))))
+   sum_rms = sum_rms + rms
+   write(*, *) 'scaled distance to truth is ', rms
 
 ! Deallocate the ens_obs storage
-   deallocate(close)
+   deallocate(close, dist)
    deallocate(obs_err_cov, obs, num_close_states)
 
 end do

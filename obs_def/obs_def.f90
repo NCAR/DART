@@ -132,7 +132,7 @@ end function get_num_close_states
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_states(obs_def, radius, number, close_state_list)
+subroutine get_close_states(obs_def, radius, number, close_state_list, dist)
 
 ! Returns the indices of those state variables that are within distance radius
 ! of the location of the obs_def along with the number of these states. In the 
@@ -146,7 +146,8 @@ implicit none
 type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: radius
 integer, intent(out) :: number
-integer, intent(inout) :: close_state_list(:)
+integer, intent(out) :: close_state_list(:)
+real(r8), intent(out) :: dist(:)
 
 ! For now, do this in inefficient redundant way; need to make more efficient soon
 ! NOTE: Could do the error checking on storage in assim_model if desired, probably
@@ -159,7 +160,8 @@ if(number > size(close_state_list)) then
    number = -1 * number
    close_state_list = -1
 else
-   call am_get_close_states(obs_def%location, radius, number, close_state_list)
+   call am_get_close_states(obs_def%location, radius, number, &
+      close_state_list, dist)
 endif
 
 end subroutine get_close_states
