@@ -237,15 +237,15 @@ call check(nf90_def_var(ncid=ncFileID,name="CopyMetaData", xtype=nf90_char,    &
 call check(nf90_put_att(ncFileID, metadataVarID, "long_name",       &
                         "Metadata for each copy/member"))
 
-
 !    Time -- the unlimited dimension
 call check(nf90_def_var(ncFileID, name="time", xtype=nf90_double, dimids=TimeDimID, &
                                                                   varid =TimeVarID) )
-call check(nf90_put_att(ncFileID, TimeVarID, "long_name", "time"))
-call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "gregorian"))
-call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
-call check(nf90_put_att(ncFileID, TimeVarID, "axis", "T"))
-call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
+i = nc_write_calendar_atts(ncFileID, TimeVarID)     ! comes from time_manager_mod
+if ( i < 0 ) then
+   print *,'assim_model_mod:nc_write_calendar_atts  bombed ', i
+else if ( i > 0 ) then
+   print *,'assim_model_mod:nc_write_calendar_atts  bombed ', i
+endif
 
 !-------------------------------------------------------------------------------
 ! Leave define mode so we can fill
@@ -390,6 +390,15 @@ type(time_type) :: model_time, delta_time, time_step
 time_step = get_model_time_step()
 
 model_time = assim_model%time
+
+! kdr bug
+PRINT*,'In assim_model_mod/get_closest_state_time_to time_step = '
+call write_time (6,time_step)
+PRINT*,'In assim_model_mod/get_closest_state_time_to model_time = '
+call write_time (6,model_time)
+PRINT*,'In assim_model_mod/get_closest_state_time_to time = '
+call write_time (6,time)
+
 if(model_time > time) then
    write(*, *) 'Error in get_closest_state_to_time: model time > time'
    stop
@@ -727,6 +736,7 @@ if(asynch) then
       write(*, *) 'ECHO:', input_string
    end do
 
+
    write(*, *) 'got clearance to proceed in advance_state'
 
    ! All should be done, read in the states and proceed
@@ -823,10 +833,8 @@ implicit none
 type (assim_model_type), intent(in)           :: assim_model
 integer,                 intent(in)           :: file
 character(len=*),        intent(in), optional :: form
-
 integer           :: days, seconds
 character(len=32) :: fileformat
-
 
 fileformat = "ascii"
 if (present(form)) fileformat = trim(adjustl(form))
