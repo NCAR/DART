@@ -1,2 +1,2 @@
-../../../mkmf/mkmf -p model_mod -t ../../../mkmf/mkmf.template.ifc \
+../../../mkmf/mkmf -p model_mod -t ../../../mkmf/mkmf.template \
 -c "-Duse_netCDF" -a "../../.." path_names_model_mod

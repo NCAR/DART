@@ -1,2 +1,2 @@
-../../../mkmf/mkmf -p trans_date_to_dart -t ../../../mkmf/mkmf.template.anchorage\
+../../../mkmf/mkmf -p trans_date_to_dart -t ../../../mkmf/mkmf.template \
 -c "-Duse_netCDF" -a "../../.." path_names_trans_date_to_dart

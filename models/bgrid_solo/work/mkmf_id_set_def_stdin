@@ -1,2 +1,2 @@
-../../../mkmf/mkmf -p id_set_def_stdin -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \
+../../../mkmf/mkmf -p id_set_def_stdin -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_id_set_def_stdin
