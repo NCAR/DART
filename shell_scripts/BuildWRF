@@ -6,7 +6,7 @@
 #
 # $Id$
 #
-# script to run an experiment with existing intial conditions
+# script to run an experiment with existing initial conditions
 #======================================================================
 # Find the project and build it, if need be.
 #======================================================================
@@ -16,6 +16,7 @@ if ( ${?DART_HOME} ) then
       setenv DARTHOME $DART_HOME
    else
       echo "$DART_HOME does not exist on this platform"
+      exit
    endif
 else
    echo "no DART project"
@@ -53,10 +54,7 @@ if !( -e filter ) then
    csh mkmf_filter
    make || exit 8
 endif
-if !( -e trans_time ) then
-   csh mkmf_trans_time
-   make || exit 9
-endif
+
 \rm -f *.o *.d *.mod Makefile
 
 exit
