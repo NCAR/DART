@@ -12,7 +12,7 @@
    which_vert_1d            =     20*0,
    which_vert_2d            = -1 ,19*0,
    which_vert_3d            = 6*1,14*0,
-   state_names_pert         = 20*'        '
+   state_names_pert         = 20*'        ',
    Time_step_seconds = 21600,
-   Time_step_days = 0
-/
+   Time_step_days = 0    /
+
