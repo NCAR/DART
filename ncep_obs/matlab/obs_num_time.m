@@ -60,6 +60,7 @@ function Myplot(file1,top,region)
 p=load(file1);
 xp=p(:,1);
 count=4+(region-1)*3;
+%count
 yp_num=p(:,count);
 %
 subplot(2,2,region)

@@ -1,16 +1,18 @@
-2,0             ! total days, iskip of the first a few days
+2003,1,1        ! obs start date(year,month,day)
+1,0             ! total days, & iskip (of the first a few days)
 4               ! level(1=1000,2=850,3=700,4=500,5=200mb)
-2               ! obs type selection: 1=all, 2 =RAonly, 3=noRA
+1               ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 5.0             ! QC ratio
- 01_1/    
- 01_2/    
- 01_3/    
- 01_4/    
- 01_5/    
- 01_6/    
- 01_7/    
- 01_8/    
- 01_9/    
+6               ! wideth of the bin (hour)
+01_01/    
+01_02/    
+01_03/    
+01_04/    
+01_05/    
+01_06/    
+01_07/    
+01_08/    
+01_09/    
 01_10/    
 01_11/    
 01_12/    

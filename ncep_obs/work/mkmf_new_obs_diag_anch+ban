@@ -1,0 +1,8 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+../../mkmf/mkmf -p new_obs_diag -t ../../mkmf/mkmf.template.anchorage -c"-Duse_netCDF" \
+ -a "../.." path_names_new_obs_diag

@@ -69,7 +69,7 @@ end subroutine initialize_module
   type(time_type) :: obs_time
 
   integer :: obs_unit, obs_prof, obs_kind, model_type, which_vert, iqc
-  real (r8) :: var, lon, lat, lev, zob, time, type, count, zob2
+  real (r8) :: obs_err, lon, lat, lev, zob, time, type, count, zob2
   real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
 
   character(len = 8 ) :: obsdate
@@ -79,7 +79,7 @@ end subroutine initialize_module
 !-------------------------------------------------------------
 
 !*****************************************************************************
-   max_num_obs = 500000    !! for current NCEP daily RA+ACARS+SATWND data only
+   max_num_obs = 800000    !! for current NCEP daily RA+ACARS+SATWND data only
 !*****************************************************************************
 
    num_copies  = 1
@@ -135,7 +135,7 @@ end subroutine initialize_module
 
 !  open unit for NCEP observation file
     obs_unit = get_unit()
-    obsfile  = '/home/hliu/ncepobs/new/temp_obs.'//obsdate
+    obsfile  = '/home/hliu/ncepobs/test/temp_obs.'//obsdate
     open(unit = obs_unit, file = obsfile, form='formatted', status='old')
 
      print*, 'file opened= ', obsfile
@@ -147,9 +147,10 @@ end subroutine initialize_module
 !
 obsloop:  do i = 1, max_num_obs
    
+     if(mod(i, 1000) ==0) print*, 'doing obs = ', i
 ! read in each obs from the daily observation file (include 06, 12, 18, 24Z)
 
-     read(obs_unit, 880, end=200) var, lon, lat, lev, zob, zob2, count,time,type, iqc
+     read(obs_unit, 880, end=200) obs_err, lon, lat, lev, zob, zob2, count,time,type, iqc
      obs_num = obs_num + 1
 
  880 format(f4.2, 2f7.3, e12.5, f7.2, f7.2, f9.0, f7.3, f5.0, i3)
@@ -168,47 +169,54 @@ obsloop:  do i = 1, max_num_obs
 !   obs_kind = obs_prof*10000 + type 
 !   call obs_model_type(obs_kind, model_type)
                                                                                        
-    if(obs_prof == 2) obs_kind = 1
-    if(obs_prof == 9) obs_kind = 2
-    if(obs_prof == 3) obs_kind = 3
-    if(obs_prof == 1) obs_kind = 4
+    if(obs_prof == 2) obs_kind = 1           ! U
+    if(obs_prof == 9) obs_kind = 2           ! V
+    if(obs_prof == 3) obs_kind = 3           ! Ps
+    if(obs_prof == 1) obs_kind = 4           ! T
+    if(obs_prof == 5) obs_kind = 5           ! q
+
     model_type = obs_kind
 
-
-    if (model_type == 1 .or. model_type ==2 .or. model_type ==4 ) then      ! for u,v,t
+    if (model_type == 1 .or. model_type ==2 .or. model_type ==4 .or. model_type==5) then
      vloc = lev*100.0            ! (transfer Pressure coordinate from mb to Pascal) 
      which_vert = 2
     endif
 
     if (model_type == 3) then    ! for Ps
-     vloc = 0.0                  ! not used for Ps obs
+     vloc = lev            ! station height, not used now for Ps obs
      which_vert = -1
-     var = var*100.0             ! convert sqrt(error covariance) to Pascal
+     obs_err = obs_err*100.0     ! convert obs_err to Pa
     endif
 
+    if (model_type == 5) then    ! for Q
+     obs_err = obs_err*1.0e-3     ! convert obs_err to kg/kg
+    endif
 
 !   set obs value and error covariance
 
-     if(model_type .eq. 3) then
-      obs_value = lev*100.0      !  for Ps variable only in Pascal
+     if(model_type == 3) then
+      obs_value = zob*100.0      !  for Ps variable only in Pascal
+     else if(model_type == 5) then
+      obs_value = zob*1.0e-3     !  for Q variable to kg/kg
      else
       obs_value = zob            !  for T, U, V
      endif
 
     aqc = iqc
-    var2 = var**2                ! error_covariance
+    var2 = obs_err**2                ! error_covariance
 
 
 !   set obs time
 
-      if(time == 24) then
-       obs_hour = 0
+      obs_min  = 60*( time - ifix(time) )
+      if(time >= 24) then
+       obs_hour   = time -24
        obs_day01  = obs_day + 1
       else
-       obs_hour = time
+       obs_hour   = time
        obs_day01  = obs_day 
       endif
-      obs_min  = 0
+
       obs_sec  = 0
 
       obs_time = set_date(obs_year, obs_month, obs_day01, obs_hour, obs_min, obs_sec)
@@ -225,16 +233,21 @@ obsloop:  do i = 1, max_num_obs
      call insert_obs_in_seq(real_obs_sequence, obs)
      call copy_obs(prev_obs, obs)
    else
-     call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-     call copy_obs(prev_obs, obs)
+!    for time ordered observation only.
+!    call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
+!    call copy_obs(prev_obs, obs)
+!
+!    for random time order observation, have to do time sort, CPU costly.
+     call insert_obs_in_seq(real_obs_sequence, obs)
    endif
+
 
 end do obsloop
 
  200 continue
    close(obs_unit)
 
-   print*, 'total obs num= ', obs_num
+   print*, 'total obs num= ', obs_num, obsdate
 
 end function real_obs_sequence
 
@@ -317,6 +330,7 @@ subroutine obs_model_type(kind, model_type, ncep_type)
     if(obs_prof == 9) model_type = 2
     if(obs_prof == 3) model_type = 3
     if(obs_prof == 1) model_type = 4
+    if(obs_prof == 5) model_type = 5
 
     ncep_type = kind - obs_prof * 10000
 
