@@ -11,12 +11,12 @@ if ( ${?DART_HOME} ) then
    else
       echo "$DART_HOME does not exist on this platform"
    endif
-else if ( -d /export/data/gsp/thoar/DART ) then
-   setenv DARTHOME /export/data/gsp/thoar/DART
-else if ( -d /data/gsp/thoar/DART ) then
-   setenv DARTHOME /data/gsp/thoar/DART
-else if ( -d /home/thoar/DART ) then
-   setenv DARTHOME /home/thoar/DART
+else if ( -d /export/data/gsp/${USER}/DART ) then
+   setenv DARTHOME /export/data/gsp/${USER}/DART
+else if ( -d /data/gsp/${USER}/DART ) then
+   setenv DARTHOME /data/gsp/${USER}/DART
+else if ( -d /home/${USER}/DART ) then
+   setenv DARTHOME /home/${USER}/DART
 else
    echo "no DART project"
    exit
@@ -34,23 +34,23 @@ if !( -e column_rand ) then    ;# interactively builds a set of randomly-
 endif                          ;# create_obs_set_def < column_rand.out
 if !( -e ps_rand_local ) then  ;# randomly-located surface pressure obs
    csh mkmf_ps_rand_local      ;# can be confined to a lat/lon rectangle
-   make || exit 1              ;# create_obs_set_def < ps_rand.out
+   make || exit 2              ;# create_obs_set_def < ps_rand.out
 endif
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
-   make || exit 1
+   make || exit 3
 endif
 if !( -e create_obs_sequence ) then
    csh mkmf_create_obs_sequence
-   make || exit 1
+   make || exit 4
 endif
 if !( -e perfect_model_obs ) then
    csh mkmf_perfect_model_obs
-   make || exit 1
+   make || exit 5
 endif
 if !( -e filter ) then
    csh mkmf_filter
-   make || exit 1
+   make || exit 6
 endif
 \rm -f *.o *.d *.mod Makefile
 
@@ -63,16 +63,21 @@ endif
 
 cat << ENDofTask01 > input.nml
 &main_nml
-   days   = 10,
-   dt_atmos = 3600,
-   output_state_vector = .false. /
+   days                =   10,
+   dt_atmos            = 3600,
+   output_state_vector = .false.
+&end
 
 &fms_nml
-   domains_stack_size = 90000  /
+   domains_stack_size = 90000
+&end
 
 &bgrid_cold_start_nml
-   nlon = 60, nlat = 30, nlev = 5,
-   equal_vert_spacing = .true. /
+   nlon = 60, 
+   nlat = 30, 
+   nlev =  5,
+   equal_vert_spacing = .true.
+&end
 
 &hs_forcing_nml
    delh      =  60.,
@@ -84,30 +89,33 @@ cat << ENDofTask01 > input.nml
    ks        =  -4.,
    kf        =  -1.,
    sigma_b   =  .7,
-   do_conserve_energy = .false. /
+   do_conserve_energy = .false.
+&end
 
 &bgrid_core_driver_nml
-   damp_coeff_wind   = 0.10,
-   damp_coeff_temp   = 0.10,
-   damp_coeff_tracer = 0.10,
-   advec_order_wind   = 4,
-   advec_order_temp   = 2,
-   advec_order_tracer = 2,
-   num_sponge_levels = 1,
+   damp_coeff_wind     = 0.10,
+   damp_coeff_temp     = 0.10,
+   damp_coeff_tracer   = 0.10,
+   advec_order_wind    = 4,
+   advec_order_temp    = 2,
+   advec_order_tracer  = 2,
+   num_sponge_levels   = 1,
    sponge_coeff_wind   = 1.00,
    sponge_coeff_temp   = 1.00,
    sponge_coeff_tracer = 1.00,
-   num_fill_pass = 2,
-   decomp = 0,0,
-   num_adjust_dt = 3,
-   num_advec_dt  = 3,
-   halo = 1,
-   do_conserve_energy = .false. /
+   num_fill_pass       = 2,
+   decomp              = 0,0,
+   num_adjust_dt       = 3,
+   num_advec_dt        = 3,
+   halo                = 1,
+   do_conserve_energy  = .false.
+&end
 
 &bgrid_integrals_nml
-   file_name  = 'dynam_integral.out',
-   time_units = 'days',
-   output_interval = 1.00   /
+   file_name       = 'dynam_integral.out',
+   time_units      = 'days',
+   output_interval = 1.00
+&end
 ENDofTask01
 
 #======================================================================
@@ -132,23 +140,45 @@ if ( $status > 0 ) then
 endif
 
 #======================================================================
+# "Suggested first 
+# 1) declare an observation set definition
+#======================================================================
+echo "Running column rand case ..."
+
+echo "400           # of observations"                > column_rand.in
+echo "5             model levels "                   >> column_rand.in
+echo "10000  Pa     obs error variance (10,000=1mb)" >> column_rand.in
+echo "1.0           T obs error variance"            >> column_rand.in
+echo "1.0           U,V obs error variance"          >> column_rand.in
+
+./column_rand < column_rand.in
+./create_obs_set_def < column_rand.out
+
+if ( $status > 0 ) then
+   echo "ERROR: running create_obs_set_def bombed ..."
+   exit
+endif
+
+#======================================================================
 # Simulate a particular observing system:
 # 2) declare sequences of observation sets
 # 21600 -> every  6 hours
 # 43200 -> every 12 hours
 #======================================================================
-set num_obs = 20
-set ob_day_1 = 0
-set ob_seconds_1 = 21600
-#if ( ${?NumObs} ) then
-#   set num_obs = $NumObs
-#endif
-#if ( ${?ObDay1} ) then
-#   set ob_day_1 = $ObDay1
-#endif
-#if ( ${?ObSec1} ) then
-#   set ob_seconds_1 = $ObSec1
-#endif
+
+set      num_obs = 10
+set     ob_day_1 = 0
+set ob_seconds_1 = 43200
+
+if ( ${?NumObs} ) then
+   set num_obs = $NumObs
+endif
+if ( ${?ObDay1} ) then
+   set ob_day_1 = $ObDay1
+endif
+if ( ${?ObSec1} ) then
+   set ob_seconds_1 = $ObSec1
+endif
 
 echo "set_def.out"            > create_obs_sequence.in
 echo "1"                     >> create_obs_sequence.in
@@ -172,16 +202,16 @@ endif
 
 cat << ENDofTask03 > perfect.nml
 &perfect_model_obs_nml
-   async = .false.,
-   obs_seq_in_file_name = "obs_seq.in",
+   async                 = .false.,
+   obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   start_from_restart = .true.,
-   output_restart = .true.,
-   restart_in_file_name = "perfect_ics",
+   start_from_restart    = .true.,
+   output_restart        = .true.,
+   restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_interval = 1
+   init_time_days        = 0,
+   init_time_seconds     = 0,
+   output_interval       = 1
 &end
 ENDofTask03
 
@@ -222,16 +252,18 @@ set output_state_ens_spread = .true.
 set num_output_ens_members = 10
 set output_interval = 1
 
-#if ( ${?NumEns} ) then
-#   set ens_size = $NumEns
-#   set num_output_ens_members = $NumEns
-#endif
-#if ( ${?CovInflate} ) then
-#   set cov_inflate = $CovInflate
-#endif
-#if ( ${?Cutoff} ) then
-#   set cutoff = $Cutoff
-#endif
+if ( ${?EnsSize} ) then
+   set ens_size = $EnsSize
+endif
+if ( ${?NumOutputEnsMembers} ) then
+   set num_output_ens_members = $NumOutputEnsMembers
+endif
+if ( ${?CovInflate} ) then
+   set cov_inflate = $CovInflate
+endif
+if ( ${?Cutoff} ) then
+   set cutoff = $Cutoff
+endif
 
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
