@@ -2281,8 +2281,8 @@ call get_time(time, secs, days)    ! get time to append
 r8time = days + secs/86400.0_r8    ! time base is "days since ..."
 
 ! DEBUG
-write(*,*)'ncFileID (',ncFileID,') : ',trim(adjustl(varname)),' (time?) has length ',len, &
-          ' appending t= ',r8time
+!write(*,*)'ncFileID (',ncFileID,') : ',trim(adjustl(varname)),' (time?) has length ',len, &
+!          ' appending t= ',r8time
 
 len = len + 1
 call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ len /) ))
@@ -2384,8 +2384,8 @@ if (len < 1) then   ! First attempt at writing a state ...
    timeindex = 1
    call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
    ! DEBUG
-   write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
-      ncFileID,trim(adjustl(varname)),len,r8time
+!   write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
+!      ncFileID,trim(adjustl(varname)),len,r8time
 
 else
    ! must try to find the time index ...
@@ -2440,8 +2440,8 @@ else
       call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
       call check(NF90_Sync(ncFileID))    
       ! DEBUG
-      write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
-         ncFileID,trim(adjustl(varname)),len,r8time
+!      write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
+!         ncFileID,trim(adjustl(varname)),len,r8time
    endif
    
    deallocate( times )
