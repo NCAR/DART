@@ -11,13 +11,14 @@ use types_mod
 use obs_kind_mod
 use location_mod
 use obs_model_mod
-use assim_model_mod, only: get_close_states, get_num_close_states
+use assim_model_mod, am_get_close_states=>get_close_states, &
+   am_get_num_close_states=>get_num_close_states
 
 private
 
-public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get_obs_kind, &
+public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get_obs_def_kind, &
    get_obs_def_key, get_num_close_states, get_close_states, set_obs_def_location, &
-   set_err_var, set_obs_kind, read_obs_def, write_obs_def
+   set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type
 
 type obs_def_type
    type(location_type) :: location
@@ -40,7 +41,7 @@ function init_obs_def(location, kind, error_variance)
 
 implicit none
 
-type(obs_def_type), intent(in) :: init_obs_def
+type(obs_def_type) :: init_obs_def
 type(location_type), intent(in) :: location
 type(obs_kind_type), intent(in) :: kind
 real(r8) :: error_variance
@@ -77,12 +78,12 @@ function get_error_variance(obs_def)
 
 implicit none
 
-real(r8) :: get_err_var
+real(r8) :: get_error_variance
 type(obs_def_type), intent(in) :: obs_def
 
-get_err_var = obs_def%error_variance
+get_error_variance = obs_def%error_variance
 
-end function get_err_var
+end function get_error_variance
 
 !----------------------------------------------------------------------------
 
@@ -101,18 +102,18 @@ end function get_obs_location
 
 !----------------------------------------------------------------------------
 
-function get_obs_kind(obs_def)
+function get_obs_def_kind(obs_def)
 
 ! Returns observation kind
 
 implicit none
 
-type(obs_kind_type) :: get_obs_kind
+type(obs_kind_type) :: get_obs_def_kind
 type(obs_def_type), intent(in) :: obs_def
 
-get_obs_kind = obs_def%kind
+get_obs_def_kind = obs_def%kind
 
-end function get_obs_kind
+end function get_obs_def_kind
 
 !----------------------------------------------------------------------------
 
@@ -146,17 +147,17 @@ type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: radius
 
 ! Call to assim_model level which knows how to work with locations
-get_num_close_states = get_num_close_states(obs_def%location, radius)
+get_num_close_states = am_get_num_close_states(obs_def%location, radius)
 
 end function get_num_close_states
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_states(obs_def, radius, number, get_close_state_list)
+subroutine get_close_states(obs_def, radius, number, close_state_list)
 
 ! Returns the indices of those state variables that are within distance radius
 ! of the location of the obs_def along with the number of these states. In the 
-! initial quick implementation, get_close_state_list is a fixed size real array
+! initial quick implementation, close_state_list is a fixed size real array
 ! and an error is returned by setting number to -number if the number of close states
 ! is larger than the array. Eventually may want to clean this up and make it 
 ! more efficient by allowing a dynamic storage allocation return.
@@ -166,7 +167,7 @@ implicit none
 type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: radius
 integer, intent(out) :: number
-real(r8), intent(inout) :: get_close_state_list(:)
+integer, intent(inout) :: close_state_list(:)
 
 ! For now, do this in inefficient redundant way; need to make more efficient soon
 ! NOTE: Could do the error checking on storage in assim_model if desired, probably
@@ -175,11 +176,11 @@ real(r8), intent(inout) :: get_close_state_list(:)
 number = get_num_close_states(obs_def, radius)
 
 ! Check for insufficient storage
-if(number > size(get_close_state_list)) then
+if(number > size(close_state_list)) then
    number = -1 * number
-   get_close_state_list = -1
+   close_state_list = -1
 else
-   call get_close_states(obs_def%location, radius, number, get_close_state_list)
+   call am_get_close_states(obs_def%location, radius, number, close_state_list)
 endif
 
 end subroutine get_close_states
@@ -227,23 +228,23 @@ end function set_error_variance
 !----------------------------------------------------------------------------
 
 
-function set_obs_kind(obs_def, kind)
+function set_obs_def_kind(obs_def, kind)
 
 ! Sets the kind of an obs_def, puts in a new key? Maybe this whole key thing
 ! should be dropped?
 
 implicit none
 
-type(obs_def_type) :: set_obs_kind
+type(obs_def_type) :: set_obs_def_kind
 type(obs_def_type), intent(in) :: obs_def
 type(obs_kind_type), intent(in) :: kind
 
-set_obs_kind = obs_def
-set_obs_kind%kind = kind
-set_obs_kind%key = next_key + 1
+set_obs_def_kind = obs_def
+set_obs_def_kind%kind = kind
+set_obs_def_kind%key = next_key + 1
 next_key = next_key + 1
 
-end function set_obs_kind
+end function set_obs_def_kind
 
 !----------------------------------------------------------------------------
 

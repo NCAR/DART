@@ -1,3 +1,4 @@
+
 types+
 location+ types
 time_manager+
@@ -5,3 +6,6 @@ utilities+
 assim_model+ location time_manager types utilities
 obs_kind+ types
 obs_model+ assim_model location obs_kind types
+obs_def+ assim_model location obs_kind obs_model types
+obs_set_def+ location obs_def types
+obs_set+ obs_set_def time_manager types

@@ -11,6 +11,10 @@ use location_mod
 use assim_model_mod
 use obs_kind_mod
 
+private
+
+public take_obs
+
 contains
 
 !======================================================================

@@ -107,7 +107,7 @@ function init_diag_output(file_name, global_meta_data, &
 implicit none
 
 integer :: init_diag_output
-character, intent(in) :: file_name(:)
+character(len=*), intent(in) :: file_name
 character, intent(in) :: global_meta_data(:)
 integer, intent(in) :: copies_of_field_per_time
 character, intent(in) :: meta_data_per_copy(:, :)
@@ -272,9 +272,9 @@ real(r8), intent(in) :: radius
 integer :: i
 
 ! For large models this will have to be VERY efficient; here can just search
-number = 0
+get_num_close_states = 0
 do i = 1, model_size
-   if(get_dist(location, state_loc(i)) < radius) number = number + 1
+   if(get_dist(location, state_loc(i)) < radius) get_num_close_states= get_num_close_states + 1
 end do
 
 end function get_num_close_states
@@ -323,6 +323,7 @@ type(assim_model_type) :: copy_assim_model
 type(assim_model_type), intent(in) :: assim_model
 
 ! Null stub for now
+copy_assim_model = assim_model
 
 end function copy_assim_model
 
@@ -555,14 +556,15 @@ implicit none
 type(assim_model_type) :: adv_1step
 type(assim_model_type), intent(in) :: state
 
-real(r8) :: x(:)
-real(r8), dimension(model_size) :: x1, x2, x3, x4, dx, inter
+real(r8), dimension(model_size) :: x, x1, x2, x3, x4, dx, inter
 type(time_type) :: time
 integer :: i
 
-! Update the time: WARNING: THERE'S SOME NATURAL TIME INTERVAL FOR L96: NEED 
-! TO FIND IT (CHECK WITH SHREE KHARE). For now do 1 hour (3600 secs).
-time = time + set_time(3600, 0)
+! Get the state vector from the state; More copying?
+x = get_model_state_vector(state)
+
+! Update the time
+time = time + time_steP
 
 !  Compute the first intermediate step
 
