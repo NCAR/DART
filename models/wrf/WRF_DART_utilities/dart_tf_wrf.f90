@@ -213,7 +213,7 @@ else
    call print_time(dart_time(1))
 
    open(unit = iunit, file = 'wrf.info')
-   call write_time(iunit, dart_time(1))
+   dart_time(1) = read_time(iunit)
    close(iunit)
    write(6,*) 'Time written to dart vector file:'
    call print_time(dart_time(1))
