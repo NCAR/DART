@@ -1,4 +1,4 @@
-# template for the Intel fortran compiler
+# template for the Intel 7.1 Fortran Compiler
 # typical use with mkmf
 # mkmf -t template.ifc -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
 #
@@ -6,9 +6,10 @@
 # MPICH libraries are only needed for Bgrid model and only when you turn on
 #       the -Duse_libMPI preprocessor flag.
 #
+# FFLAGS = -i4 -r8 -fpp -g #debugging
+#
 FC = ifc
 LD = ifc
 FFLAGS = -i4 -r8 -fpp -O2 -I/opt/Intel/include
-# FFLAGS = -i4 -r8 -fpp -g #debugging
-LDFLAGS = -static -KPIC $(LIBS) 
 LIBS = -L/usr/local/lib -lPEPCF90 -L/opt/Intel/lib -ludunits -lnetcdf -L/usr/mpi/lib
+LDFLAGS = -static -KPIC $(LIBS) 
