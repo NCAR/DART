@@ -1,7 +1,6 @@
       subroutine h_diff(z,xlat,hdiff)
        real hdiff
 
-      COMMON/SMOOTH/IHDIFF
       COMMON /MODEi/NZONAL,MOIS,NSS
       COMMON /MODEr/PERIOD,FREQ,FLUX
 
@@ -9,9 +8,6 @@ c  First, the basic hdiff distribution which gives no effect
 c  on the s=1 component.  It has relatively small values at
 c  low latitudes below 120 km.
 
-      if(ihdiff.eq.0) then
-        hdiff=0.0
-      else
 	base=1.0e+05 + 9.0e+05*sin(abs(xlat))
 
 	delta=0.0
@@ -30,8 +26,6 @@ C					M. Hagan & J. Forbes (1/4/00)
       if(nzonal.lt.0.or.nzonal.gt.1) then
       hdiff = hdiff + abs(float(nzonal))*1.0e+06
 C     hdiff = 5.0e+06
-      end if
-
       end if
 
       return 

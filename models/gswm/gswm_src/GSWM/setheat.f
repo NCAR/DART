@@ -23,9 +23,6 @@ C_________________________________________________________________________
       character*10 ochoice1(12),ochoice2(12),ochoice3(12),ochoice4(12)
       character*10 ofile
 
-      integer heatmodel, dblhme11, diurno3, peako3, skipo3, skipir
-      integer call_late, o3conc
-
       integer x1O3(17),d1O3(37,27),z1O3(17,27),lO3(37)
 
       real xO3(17),zO3(17,27),dO3(17,27),z2(27),d2O3(27),d3O3(17)
@@ -33,12 +30,6 @@ C_________________________________________________________________________
 
       real pl(27),s1(4),s2(4) 
       real mzph(17,26),mzr(17,26),m1ph(26),m1r(26)      
-
-c  The following integer common block contains flags for the heat forcing
-c       models
-
-      common /heatforce/heatmodel,dblhme11,diurno3,peako3,skipo3,
-     +       skipir,call_late,o3conc,heatnm
 
       common/interp1/zpt(37,101,3),zpu(37,101,3),zpr(37,101,3),
      +zpxh(37,101,3),dO2(37,101,3)
@@ -60,35 +51,9 @@ C defined in SR  SETATMOS on the latitude grid x and altitude grid y
      +             'ciraO3_jul','ciraO3_aug','ciraO3_sep',
      +             'ciraO3_oct','ciraO3_nov','ciraO3_dec'/
 
-       data ochoice4/'halmls_jan','halmls_feb','halmls_mar',
-     +             'halmls_apr','halmls_may','halmls_jun',
-     +             'halmls_jul','halmls_aug','halmls_sep',
-     +             'halmls_oct','halmls_nov','halmls_dec'/
+c  hard-wired to use CIRA O3
 
-	data ochoice2/'CLAESe_jan','CLAESe_jan','CLAESe_mar',
-     +             'CLAESe_apr','CLAES3_may','CLAESe_jun',
-     +             'CLAESe_jul','CLAESe_aug','CLAESe_sep',
-     +             'CLAESe_oct','CLAESe_nov','CLAESe_dec'/
-
-       data ochoice3/'MLSo3o_jan','MLSo3o_jan','MLSo3o_mar',
-     +             'MLSo3o_apr','MLSo3o_may','MLSo3o_jun',
-     +             'MLSo3o_jul','MLSo3o_aug','MLSo3o_sep',
-     +             'MLSo3o_oct','MLSo3o_nov','MLSo3o_dec'/
-
-c  Pick the correct background ozone file according to user's configuration
-
-      if(o3conc.eq.1)then     !CIRA
         ofile=ochoice1(mois)
-      elseif(o3conc.eq.2)then !CLAES
-         ofile=ochoice2(mois)
-      elseif(o3conc.eq.3)then !MLS
-         ofile=ochoice3(mois)
-      elseif(o3conc.eq.4)then
-         ofile=ochoice4(mois)
-      else
-	 print*,'SETHEAT: Invalid choice of O3 concentration file.'
-	 stop
-      endif
 cc
 C TEST PRINT 11/02
       print*,'SETHEAT: ofile= ',ofile
@@ -126,8 +91,8 @@ cc202	format(1x,f6.3,2x,17(1x,f4.2,1x))
 	read(23,203)
 	read(23,201) (x1O3(i),i=1,17)
 C TEST PRINT 11/02
-        print*,'Ozone Density Input:'
-	print '(8x,17(3x,i3),/)', (x1O3(i),i=1,17)
+c       print*,'Ozone Density Input:'
+c	print '(8x,17(3x,i3),/)', (x1O3(i),i=1,17)
 
 
 C  Reverse the order of  the array (+80 - -80 - consistent setatmos)
@@ -150,7 +115,7 @@ C  Reverse the order of  the array (ground up - consistent setatmos)
         j=j-1  
 	read(23,202) pl(j),(diO3(i,j),i=1,17)
 C TEST PRINT 11/02
-	print '(1x,f6.3,1x,17(1x,f5.2))', pl(j),(diO3(i,j),i=1,17)
+c	print '(1x,f6.3,1x,17(1x,f5.2))', pl(j),(diO3(i,j),i=1,17)
     3  continue
 
 C  Reverse the order of  the array (+80 - -80 - consistent setatmos)
@@ -373,11 +338,7 @@ C       after Bjarnson et al., JGR, 1987.
 	do 55 i=1,37
 	   do 55 j=22,26
 	      z=float(j-1)*4.
-	      if(peako3.eq.1)then
 		 second=.8+exp(-((z-88.)/5.)**2.)
-	      elseif(peako3.eq.0)then
-		 second=0.
-	      endif
 	      fact=2.079e+19*exp(zr(i,j))
 	      O3(i,j)=(fact*second)+10.**(O3(i,j))
 	      O3(i,j)=alog10(O3(i,j))

@@ -14,6 +14,9 @@ c
 c Added idca switch and Redefined mig switch. Modified logic to 
 c allow W1 diurnal and W2 semi 7yr monthly DCA forcing  (M. Hagan 7/27/99)
 c
+C
+C Stripped for standard inputs and migrating calculations only (M. Hagan 3/04)
+C
 	character*8 fname
 	character*13 testname
 	character*13 backname
@@ -23,28 +26,17 @@ c
 	character*3 onoff(3)
 	character*11 wavtype(3)
 	character*9 months(12)
-	character*17 heat_f(7)
-	character*20 heat_nmf(3)
-	character*8 eddy_m(3)
-	character*5 o3file(5)
-	character*3 latentin(2)
-	character*3 scycle(3)
 	character*7 windbc(2)
 c       
 	integer i,j,error,wback
 c       
-	integer mx,ny,iz,f107
+	integer mx,ny,iz
 	integer nss,isize
-	integer igm, ihd, iyp, ibr, nowind, ihm, latgrad, polebc
-	integer heatmodel, dblhme11, diurno3, peako3, skipo3, skipir
-	integer heatnm,backf(12),mig,mois,nzonal
-	integer call_late, o3conc, iboris, eddymodel,kzzinvar, dissinvar
-	integer iondrag, vialdiss, gwstress, idecomp, idenpress
+	integer latgrad, polebc
+	integer backf(12),mois,nzonal
 c       
 	real period,flux
-	real euvlat(36),reuv(36,36),ieuv(36,36),euvalt(36)
 	real sigma
-	real deuv(36,36,3)
 c
 c Integer common of flag that tells whether to write to background file
 
@@ -57,30 +49,8 @@ c Integer common of flags for wave characteristics
 c
 c Integer common of flags for background atmosphere
 
-	common /backatm/igm,ihd,iyp,ibr,nowind,ihm,latgrad,polebc
-c
-c Integer common of flags for heat forcing
+	common /backatm/latgrad,polebc
 
-	common /heatforce/heatmodel,dblhme11,diurno3,peako3,skipo3,
-     +     skipir,call_late,o3conc,heatnm
-c
-c Integer common of flags for dissipation
-
-	common /boris/iboris,eddymodel,kzzinvar,dissinvar,iondrag,
-     +  vialdiss,gwstress
-c
-c Integer common of flags for horizontal diffusion
-      common/smooth/ihdiff
-c
-c Integer common of flags for postprocessing
-
-	common /postproc/idecomp,idenpress,mig
-c
-c Common block of integers, arrays, floats, for EUV thermosphere heating
-
-      common/euvi/mx,ny,iz,f107
-      common/euvr/euvlat,euvalt,reuv,ieuv,deuv,sigmat
-c
 	data backf/0,0,0,0,0,0,0,0,0,0,0,0/
 	data onoff/"OFF","ON ","ON "/
 	data wavtype/'diurnal    ','semidiurnal','terdiurnal '/
@@ -90,16 +60,7 @@ c
      +  'October  ','November ','December '/
 	data windbc/"Lateral","Taylor "/
 
-	data heat_f/'Hough11Simple   ',
-     +  'Heat92           ','Latent_heat_tides','Honglate         ',
-     +	'Heat92+Late      ','Heat92+Hong      ','ThermosphereEUV  '/
-	data heat_nmf/'Latent Heat         ',
-     +  'Infrared            ','Combined IR + Latent'/
-	data eddy_m/"Weak    ","Eddy_gs ","Eddy    "/
- 	data o3file/"None ","CIRA ","CLAES","MLS  ","HALOE"/
-	data latentin/"MON", "ANN"/
-	data scycle /"MIN","MED","MAX"/
-c
+	flux=120
 	nss=3
 	j=1
 	error=0
@@ -130,7 +91,7 @@ c Read in wave
 c
 c Error checking
 
-	   if(nzonal.lt.-6.or.nzonal.gt.6) error=1
+	   if(nzonal.lt.1.or.nzonal.gt.2) error=1
 	   if(period.lt.0..or.period.gt.1.) error=1
 	   if(mois.lt.0.or.mois.gt.12)error=1
 c
@@ -148,7 +109,6 @@ c Open the control file and check for errors
 
 	   open(unit=14, file="GSWM.inp",status="old")
 c
-c
 c Skip the comments at the top of the input file:  marked with '&'
 
 	   string(1:1)='&'
@@ -163,71 +123,15 @@ c	   read(14,*)		!---------------
 	   print*,comment
 c
 	   read(14,*)		!---------------
-	   read(14,10,err=100)nowind
-	   read(14,10,err=100)igm
-	   read(14,10,err=100)ihd
-	   read(14,10,err=100)iyp
-	   read(14,10,err=100)ibr
-	   read(14,10,err=100)ihm
 	   read(14,10,err=100)latgrad
 	   read(14,10,err=100)polebc
-	   read(14,10,err=100)o3conc
-	   read(14,10,err=100)idca
-c Check if migrating or nonmigrating; overrule if new DCA files are to be used
 
+c Check if migrating 
 	   if(nzonal*period.eq.1.)then
-	      mig=1
 	      print*,i," Migrating Tide Calculation: ",testname
-	   endif
-	   if(nzonal*period.eq.1..and.idca.eq.0)then
-	      mig=0
-	      print*,i,' Migrating/DCA Forcing Calculation: ',testname
 	   endif
 
 c------------------------------
-c       
-	   read(14,*)		!---------------
-c
-	   if(mig.eq.1)then
-	      read(14,10,err=100)heatmodel
-	      read(14,10,err=100)dblhme11
-	      read(14,10,err=100)diurno3
-	      read(14,10,err=100)peako3
-	      read(14,10,err=100)skipo3
-	      read(14,10,err=100)skipir
-	      read(14,10,err=100)call_late
-	      read(14,10,err=100)f107
-	      read(14,*)
-	      read(14,*)
-	      heatnm=-999
-
-	   elseif(mig.eq.0)then
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,*)
-	      read(14,10,err=100)heatnm
-	      heatmodel=-999
-
-	   endif
-c       
-	   read(14,*)		!---------------
-	   read(14,10,err=100)iboris
-	   read(14,10,err=100)eddymodel
-           read(14,10,err=100)ihdiff
-	   read(14,10,err=100)dissinvar
-	   read(14,10,err=100)iondrag
-	   read(14,10,err=100)vialdiss
-	   read(14,10,err=100)gwstress
-	   read(14,*)		!---------------
-	   read(14,10,err=100)idecomp
-	   read(14,10,err=100)idenpress
-c
  10	   format(32x,i1)
  20	   format(32x,f3.1)
  30	   format(32x,i2)
@@ -243,165 +147,10 @@ c Error checking
 c First, the proper range of values
 
 c       
-	   if(nowind.lt.0.or.nowind.gt.1)error=1
-	   if(igm.lt.0.or.igm.gt.2) error=1
-	   if(ihd.lt.0.or.ihd.gt.2) error=1
-	   if(iyp.lt.0.or.iyp.gt.1) error=1
-	   if(ibr.lt.0.or.ibr.gt.2) error=1
-	   if(ihm.lt.0.or.ihm.gt.2) error=1
 	   if(latgrad.lt.0.or.latgrad.gt.1)error=1
-c OLDCODE
-c GSWM98 no horz diffusion: Taylor or Lateral BC only
-c   	   if(polebc.lt.0.or.polebc.gt.1) error=1
-c OLDCODE
-c GSWM00 horz diffusion: Taylor or Lateral BC only
 	   if(polebc.lt.1.or.polebc.gt.2) error=1
-	   if(o3conc.lt.0.or.o3conc.gt.4) error=1
 c       
-	   if(heatmodel.lt.0.or.heatmodel.gt.6)then
-	      if(heatnm.eq.-999)error=1
-	   endif
-	   if(heatnm.lt.0.or.heatnm.gt.2) then
-	      if(heatmodel.eq.-999)error=1
-	   endif
-	   if(dblhme11.lt.0.or.dblhme11.gt.1) error=1
-	   if(diurno3.lt.0.or.diurno3.gt.2) error=1
-	   if(peako3.lt.0.or.peako3.gt.1) error=1
-	   if(skipo3.lt.0.or.skipo3.gt.1) error=1
-	   if(skipir.lt.0.or.skipir.gt.1) error=1
-	   if(call_late.lt.0.or.call_late.gt.1)error=1
-c       
-	   if(iboris.lt.0.or.iboris.gt.1) error=1
-	   if(eddymodel.lt.0.or.eddymodel.gt.2) error=1
-	   if(dissinvar.lt.0.or.dissinvar.gt.1) error=1
-	   if(iondrag.lt.0.or.iondrag.gt.1) error=1
-	   if(vialdiss.lt.0.or.vialdiss.gt.1) error=1
-	   if(gwstress.lt.0.or.gwstress.gt.1) error=1
-c       
-	   if(idecomp.lt.0.or.idecomp.gt.1) error=1
-	   if(idenpress.lt.0.or.idenpress.gt.1)error=1
-c
-c Now specifically incompatible errors between flags------------------c
-c
-      if(heatmodel.ne.0.and.dblhme11.eq.1)then
-         print*,'Warning:  Hough forcing cannot be doubled:  Hough'
-         print*,'forcing not specified (HEATING).'
-      endif
-c
-      if(iboris.eq.1)then
-         if((iondrag+gwstress).gt.0)then
-          print*,'Error:  Disable ionosphere or gravity wave drag'
-          print*,'if using Khatattov!  Set to 0.'
-          error=1
-         elseif(dissinvar.eq.1)then
-          print*,'Error:  Disable constant MU0, K0 dissipation if'
-          print*,'using Khatattov! Set invariant dissipation to 0.'
-          error=1
-         elseif(eddymodel.ne.1)then
-          print*,'Error: Disable viscous eddy dissipation if using'
-          print*,'Khattatov!  Set eddymodel to 1.'
-          error=1
-         endif
-      endif
-c
-      if(nowind.eq.1.and.igm+ihd+iyp+ibr.gt.0)then
-         print*,'Warning: NOWIND =1 and you have requested background'
-         print*,'winds.  All background winds will be 0!'
-      endif
-c
-      if(igm.ne.0.and.ihd.eq.2)then
-         print*,'Warning: HRDI winds will be used for entire background'
-      endif
-c
-      if(igm.eq.1.and.ihd+iyp+ibr.gt.0)then
-         print*,'Warning: Groves winds chosen for background. Will be'
-         print*,'overwritten by other winds.'
-      endif
-c
-      if(ihd.eq.2.and.igm+iyp+ibr.gt.0)then
-         print*,'Warning: HRDI winds chosen for background. Will be'
-         print*,'overwritten by other winds.'
-      endif
-c
-      if(ihm.eq.1.and.igm+ihd+iyp+ibr.gt.0)then
-         print*,'Warning: Incompatible wind background. You have'
-         print*,'requested HWM93.  All other switches should be 0!'
-      endif
-c
-      if(ihm.eq.2.and.ihd.ne.2)then
-         print*,'Warning: Incompatible wind background. You have'
-         print*,'requested HWM93+HRDI/Groves.  BOTH switches=2!'
-      endif
-c
-      if(o3conc.gt.4.or.o3conc.lt.0)then
-         print*,'Error.  o3conc out of range'
-         error=1
-      endif
-c
-      if(o3conc.ne.0.and.heatmodel.eq.3) then
-       print*,'Warning:choice of heating model does not use [O3] file!'
-      endif
-c
-      if(o3conc.ne.0.and.heatmodel.eq.2.or.heatmodel.eq.0) then
-       print*,'Warning:choice of heating model does not use [O3] file!'
-      endif
-c
-      if(o3conc.eq.0.)then
-         if(heatmodel.eq.1)then
-           print*,'Warning:HEATING model requires an [O3] background'
-           print*,'Default CIRA used.'
-           o3conc=1
-         endif
-         if(heatmodel.eq.4)then
-           print*,'Warning:HEATING model requires an [O3] background'
-           print*,'Default CIRA used.'
-           o3conc=1
-         endif
-         if(heatmodel.eq.5)then
-           print*,'Warning:HEATING model requires an [O3] background'
-           print*,'Default CIRA used.'
-           o3conc=1
-         endif
-      endif
-C Suppress this error flag to allow new migrating tidal calculations
-C	using tropospheric heating rates interpolated from Groves 
-C	seasonal averages				M. Hagan (6/24/99)
-c
-c	if(heatmodel.eq.1.or.heatmodel.eq.4.or.heatmodel.eq.5)then
-c 	  if(mod((mois+3),3).ne.1)error=1
-c	endif
-c
-      if((skipo3+skipir).gt.0)then
-         if(heatmodel.ne.1)then
-            print*,'Warning: Ozone or water vapor-forced heating'
-            print*,'cannot be suppressed in this heat model!'
-         endif
-      endif
-c
-c set the flux
-
-	if(heatmodel.eq.6)then
-	   if(f107.eq.1)then
-	      flux=70.
-	   elseif(f107.eq.2)then
-	      flux=130.
-	   elseif(f107.eq.3)then
-	      flux=200.
-	   endif
-	else
-	   flux=120.
-	endif
-c
-c      if(gwstress.eq.1.and.period.ne.1.)then
-c         print*,'Error: Apply GW Stress only for diurnal waves.'
-c         error=1
-c      endif
-c
-c      if(vialdiss.eq.1.and.eddymodel.ne.2)then
-c         print*,'Warning: Vial eddy dissipation not available.'
-c      endif  
 c---------------------------------------------------------------------c
-c      
 c Diagnostic output for debugging
 
       print*,'============================='
@@ -410,40 +159,8 @@ c Diagnostic output for debugging
       print*,'Wavenumber......................',nzonal
       print*,'Month...........................',months(mois)
       print*,'-------------------------------------'
-      print*,'Migrating Tide Run..............',onoff(2-idca)
-      print*,'Background Winds................',onoff(nowind+1)
-      print*,'Groves Winds....................',onoff(igm+1)
-      print*,'HRDI Winds......................',onoff(ihd+1)
-      print*,'Portnyagin Winds................',onoff(iyp+1)
-      print*,'Randel Winds....................',onoff(ibr+1)
-      print*,'HWM93 Winds.....................',onoff(ihm+1)
       print*,'Latitude Gradients..............',onoff(latgrad+1)
-      print*,'Background Ozone Concentration..',o3file(o3conc+1)
       print*,'Wind BC at Poles................',windbc(polebc)
-      print*,'-------------------------------------'
-	if(mig.eq.1)then
-      print*,'Heat Model.......................',heat_f(heatmodel+1)
-      print*,'Double Hough Heating.............',onoff(dblhme11+1)
-      print*,'Diurnal O3 Variation.............',onoff(diurno3+1)
-      print*,'Second O3 Peak at 92km...........',onoff(peako3+1)
-      print*,'Skip O3 Heat Forcing.............',onoff(skipo3+1)
-      print*,'Skip H2O Heat Forcing (IR).......',onoff(skipir+1)
-      print*,'Call_late........................',latentin(call_late+1)
-      print*,'Solar Cycle......................',scycle(f107)
-	elseif(mig.eq.0)then
-      print*,'Non-Migrating Heat model         ',heat_nmf(heatnm+1)
-	endif
-      print*,'-------------------------------------'
-      print*,'Khattatov Dissipation            ',onoff(iboris+1)
-      print*,'Eddy model.......................',eddy_m(eddymodel+1)
-c      print*,'Kzz invar ',onoff(kzzinvar+1)
-      print*,'Latitude-constant Dissipation    ',onoff(dissinvar+1)
-      print*,'Ion Drag.........................',onoff(iondrag+1)
-      print*,'Vial Dissipation (Eddy only)     ',onoff(vialdiss+1)
-      print*,'Gravity Wave Stress (24hr only)..',onoff(gwstress+1)
-      print*,'-------------------------------------'
-      print*,'Hough decomposition              ',onoff(idecomp+1)
-      print*,'Den, Press perturbation..........',onoff(idenpress+1)
       print*,'-------------------------------------'
 c
 c------------------------------

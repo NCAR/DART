@@ -15,6 +15,8 @@ C
 C Relaced call to set up forcing for old latent heating (SR getlate) with
 C   call for monthly averaged rates (SR setgci) for migrating calculations
 C                                                        --M. Hagan (3/22/02)
+C Stripped most options out for Tomoko Matsuo's simple migrating runs
+C                                                        --M. Hagan (3/17/04)
 c*************************************************************************
 
       PARAMETER( IR=236, IC=236 )
@@ -37,38 +39,18 @@ c     recl=136896
       COMPLEX A(IR,IC),B(IR,IC),C(IR,IC),R(IR),FNC(IR),FNC1(IR)
 
       INTEGER IPVT(IC)
-      integer igm, ihd, iyp, ibr, nowind, ihm, latgrad, polebc
+      integer latgrad, polebc
 
-      integer heatmodel, dblhme11, diurno3, peako3, skipo3, skipir
-      integer call_late,o3conc,iboris, eddymodel,kzzinvar, dissinvar
-      integer iondrag, vialdiss, gwstress, idecomp, idenpress
-      integer f107,mx,ny,iz
+      integer idecomp, idenpress
+      integer mx,ny,iz
 
-      real hjrm(91),hjim(91)
       real prntmax
-      complex gciforce(91)
 c
-        real euvlat(36),reuv(36,36),ieuv(36,36),euvalt(36)
         real sigmat
-        real deuv(36,36,3)
-
-c  The following integer common block contains flags for the dissipation
-c  models
-
-      common /boris/iboris,eddymodel,kzzinvar,dissinvar,iondrag,
-     +     vialdiss,gwstress
-
-c  The following integer common block contains flags for the heat forcing
-c       models
-
-      common /heatforce/heatmodel,dblhme11,diurno3,peako3,skipo3,
-     +       skipir,call_late,o3conc,heatnm
-
-      common/lateforce/HJRm,HJIm
 
       COMMON /MODEi/NZONAL,MOIS,NSS
       COMMON /MODEr/PERIOD,FREQ,FLUX
-	common/postproc/idecomp,idenpress,mig
+	common/postproc/idecomp,idenpress
       
 C interp1 and interp2 arrays are defined fron the north to the south poles:
       common/interp1/zpt(37,101,3),zpu(37,101,3),zpr(37,101,3),
@@ -76,28 +58,18 @@ C interp1 and interp2 arrays are defined fron the north to the south poles:
       common/interp2/xx(37),y(101),zt(37,101),zu(37,101),zr(37,101),
      +  zxh(37,101),zph(37,101),o2(37,101),sigma
 
-      COMMON/HOFFS/H11(91),H12(91),H13(91),H1M2(91),H1M1(91)
-     1,H1M4(91),H22(91),H23(91),H24(91),H25(91),H26(91)
-     + ,H33(91),H34(91),H35(91),H36(91)
-
 c  The following common block will contain control flags for the
 c  background windfields.  Put it in the relevant subroutines
 
-	common /backatm/igm,ihd,iyp,ibr,nowind,ihm,latgrad,polebc
+	common /backatm/latgrad,polebc
 
-      COMMON/gci/gciforce
- 
 c Common block of integers, arrays, floats, for EUV thermosphere heating
 
-      common/euvi/mx,ny,iz,f107
-      common/euvr/euvlat,euvalt,reuv,ieuv,deuv,sigmat
-c
       COMMON/HMODE/I11,I12,I13,I1M2,I1M1,I1M4,I22,I23,I24,I25,I26
      +,I33,I34,I35,I36
 
       COMMON/SEZUN/SWE(3),NSWE
 
-      EXTERNAL HOUGHM
       data ias,inp,iztop,iqbo,ici,icount/1,1,0,0,0,1/
 
 C*********************************************************************
@@ -120,17 +92,10 @@ c     DATA PRNTDZ/1.0/
 CForbes
 c Set height limits depending on model inputs
 
-      if(heatmodel.eq.6)then    !thermosphere 20.-31.4/-.1 rec.
-         xbot=20.0
-         xtop=31.0
-         dx=-0.1
-         prntmax=600.
-      else                      !tropos-strato-mlt
          xbot=0.0
          xtop=27.0
          dx=-0.05
          prntmax=150.
-      endif
 c
       pi=acos(-1.)
       tpi=2.*pi
@@ -174,7 +139,6 @@ C  SET UP VARIOUS LATITUDE ARRAYS WHICH ARE RE-USED AT EACH HEIGHT
       CALL LATVECS(IJ)
 
 C  SET UP BACKGROUND ATMOSPHERE TABLES FOR LATER INTERPOLATION
-cc      print*,'nowind in main_2 before setatmos= ',nowind
       CALL SETATMOS
 CTEST stop here to write out background only
 c      CLOSE(UNIT=4)
@@ -182,64 +146,16 @@ c      return
 CTEST background end
 C  set up Garcia/Solomon eddy diffusion tables for later interpolation
 
-      if(eddymodel.eq.1)then
          call seteddy_gs(mois)
-      endif
 
 C  Now calling setheat to add new forcing.  June 26, 1994 (Julie)
 C ....and seth2o (M. Hagan 6/29/94)
 
 C  Migrating Forcing
 
-       if(heatmodel.eq.1.or.heatmodel.eq.4.or.heatmodel.eq.5)then
-          if(skipo3.eq.0)then   !run UV forcing
              CALL SETHEAT(MOIS)
-          endif
 
-          if(skipir.eq.0)then   !run IR forcing
              CALL SETH2O(MOIS,NZONAL)
-          endif
-       endif
-c
-c Thermosphere "EUV" forcing
-
-       if(heatmodel.eq.6)then
-          print*,'Setting up EUV forcing'
-          call set_euv
-       endif
-
-c
-c Non-migrating heat forcing: infrared
-
-       if(heatnm.eq.1.or.heatnm.eq.2)then      !run IR forcing
-          call seth2onm(mois,nzonal)
-       endif
-
-C Include latent heat migrating forcing...
-C Get 7-year monthy mean latent heat latitude expansion functions:
-C	 for use in SR Latent_heat_tides (latent.f) (M. Hagan 5/96)
-c        call_latent flag = 1
-
-      if(heatmodel.eq.2.or.heatmodel.eq.4)then
-         if(call_late.eq.0)then  !standard latent heat case: monthly mean
-         call setgci(nzonal,period,mois,ij)
-c           call getlate(nzonal,period,mois,ij)
-         endif
-      endif
-
-C Need Hough function (2,2) for Hong and Wang latent heat
-C Need Hough function (1,1) for force test
-c may also use this call for geo.f? hme11?
-
-      if(heatmodel.eq.3.or.heatmodel.eq.5)then
-	call hoff(IJ)
-      endif
-c
-c Non-migrating heat forcing: latent
-
-      if(heatnm.eq.0.or.heatnm.eq.2)then !call latent heating model
-         call setgci(nzonal,period,mois,ij)
-      endif
 
 c  INTEGRATE FROM XTOP TO XBOT IN STEPS OF DX
 c  NUMBER OF STEPS WILL BE
@@ -324,42 +240,9 @@ c Enter the maximum altitude for printing results at the top of this program
     6 DO 5 J=1,IR
     5 FNC1(J)=FNC(J)
 c
-c Geopotential height or hough decomposition printout
-
-      if(idenpress.eq.1.or.idecomp.eq.1) then
-         idtemp=2*nhts+ij
-c        print *,"In call to Post-Processor nhts=",nhts
-         call geo(ir,ij,prntdz,nhts,idtemp)
-         CLOSE(UNIT=44)
-      endif
-
       CLOSE(UNIT=4)
 
       return                    !added 9/11/98 jhackney
       END
 
 C________________________________________________________________
-      
-      BLOCK DATA HOUGHM
-      implicit none
-C data statements moved from main_2.f  (M. Hagan 11/08/02)
-
-      integer :: I11,I12,I13,I1M2,I1M1,I1M4,I22,I23,I24,I25,I26
-      integer :: I33,I34,I35,I36
-
-      COMMON/HMODE/I11,I12,I13,I1M2,I1M1,I1M4,I22,I23,I24,I25,I26
-     +,I33,I34,I35,I36
-
-      integer :: i, NSWE
-      real SWE
-
-      COMMON/SEZUN/SWE(3),NSWE
-
-      data I11,I12,I13,I1M2,I1M1,I1M4 /0,0,0,0,0,0/
-      data I22,I23,I24,I25,I26 /0,0,0,0,0/
-      data I33,I34,I35,I36 /0,0,0,0/
-
-      data NSWE /3/
-      DATA (SWE(I),I=1,3)/-0.39,0.39,0.0/
-c
-      END

@@ -7,8 +7,7 @@ C  Experiment to overwrite values with Khattatov's Kzz. NOTE: If
 C	iboris=1 that other dissipative calls should be commented.
 C					M. Hagan (3/96)
 
-	integer call_late, o3conc, iboris, eddymodel,kzzinvar, dissinvar
-	integer iondrag, vialdiss, gwstress, idecomp, idenpress
+	integer idecomp, idenpress
 	integer wback
 
 	dimension zx1(13),zxm(13),zy1(30),zyn(30),temp(73)
@@ -17,11 +16,6 @@ C					M. Hagan (3/96)
 	common /ritecom/wback
 
 	common /interpe/zped(13,30,3),xe(13),ye(30),zedd(13,30),sigmae
-
-c  The following common block contains flags for the dissipation models
-c
-        common /boris/iboris,eddymodel,kzzinvar,dissinvar,iondrag,
-     +  vialdiss,gwstress
 
 C________________________________________________________________________________
 C  Define horizontal x-array (colatitude, radians) corresponding to
@@ -102,45 +96,6 @@ C Inversion of arrays for Jan==>Jun:
         end do
 
 	end do
-
-C  Option to overwrite with Khattatov et al. results:
-
-	if(iboris.eq.1)then
-	   OPEN(unit=24,file='khattatov.kzz',form='formatted',
-     +         status='old')
-
-	   mi=mois
-
-	   do m=1,mi
-
-C Khattatov results between 68 and 120 km (increments of 4 km):
-	      do j=1,14
-		 read(24,100) ixpo,(rki(i,j),i=1,13)
-
-		 do i=1,13
-C Note: Tables include dummy values poleward of -/+ 40 deg
-C        increments of 15-deg from SOUTH to NORTH
-		    rki(i,j)=rki(i,j)*10.**ixpo
-		 end do
-
-	      end do
-	   end do
-
-	   CLOSE(24)
-
-C  Overwrite zedd matrix between -/+ 40 and 68-120 km:
-
-	   do i=5,9
-C Inversion of array NORTH to SOUTH
-	      L=14-i
-
-	      do j=1,13
-		 zedd(i,j+17)=rki(L,j)
-	      end do
-
-	   end do
-
-	endif   !iboris=1
 
 C  Extrapolate to ground
 

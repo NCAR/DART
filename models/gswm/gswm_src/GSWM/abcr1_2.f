@@ -22,13 +22,12 @@ C                                                        --M. Hagan (3/22/02)
 C Adjust latent heating to account for stratiform precipitation 
 C   (25% reduction)                                      --M. Hagan (3/26/02)
 C
+C Stripped down heating and background options for standard migrating
+C    calculations for Tomoko Matsuo                      --M. Hagan (3/17/04)
 
-      integer igm,ihd,iyp,ibr,nowind,ihm,latgrad,polebc
-      integer heatmodel, dblhme11, diurno3, peako3, skipo3, skipir
-      integer heatnm
-      integer call_late, o3conc,iboris, eddymodel,kzzinvar, dissinvar
-      integer iondrag, vialdiss, gwstress, idecomp, idenpress
-      integer f107,mx,ny,iz
+      integer latgrad,polebc
+      integer idecomp, idenpress
+      integer mx,ny,iz
       COMPLEX A(IR,IC),B(IR,IC),C(IR,IC),D(IR)
       complex XX(4,4),XXX(4),XI
       COMPLEX XMOM(91),YMOM(91)
@@ -39,24 +38,9 @@ c     COMPLEX BCA1,BCAIJ,BCB1(4,4),BCBIJ(4,4)
 
       REAL MU0,K0,MW,H,hdiff
 
-      real euvlat(36),reuv(36,36),ieuv(36,36),euvalt(36)
       real sigmat
-      real deuv(36,36,3)
 
-      real HJ(91),HmJ(91),HLJ(91),heuv(91)
-      COMPLEX HCJ(91),HHJ(91)
-
-c  The following integer common block contains flags for the heat forcing
-c       models
-
-      common /heatforce/heatmodel,dblhme11,diurno3,peako3,skipo3,
-     +       skipir,call_late,o3conc,heatnm
-
-c  The following integer common block contains flags for the dissipation
-c     models
-
-      common /boris/eddymodel,kzzinvar,dissinvar,iondrag,
-     +vialdiss,gwstress
+      real HJ(91)
 
       COMMON/ATM1/P1(91),P2(91),P3(91),P4(91),P5(91),P6(91),
      +P7(91),P8(91),P9(91),P10(91),P11(91),P12(91),P13(91),P14(91)
@@ -72,19 +56,13 @@ c     models
       COMMON /MODEi/NZONAL,MOIS,NSS
       COMMON /MODEr/PERIOD,FREQ,FLUX
 
-	common /backatm/igm,ihd,iyp,ibr,nowind,ihm,latgrad,polebc
+	common /backatm/latgrad,polebc
 
-      common/postproc/idecomp,idenpress,mig
-
-c Common block of integers, arrays, floats, for EUV thermosphere heating
-
-      common/euvi/mx,ny,iz,f107
-      common/euvr/euvlat,euvalt,reuv,ieuv,deuv,sigmat
+      common/postproc/idecomp,idenpress
 
       DATA OMEGA,W,XI/.72722E-04,6378165.,(0.0,1.0)/
 
       FN=FLOAT(NZONAL)
-C      if (nzonal.eq.0) fn=1.0e-8
 
 C ****** DEFINES BACKGROUND ATMOSPHERE PARAMETERS AT CURRENT X VALUE *****
 
@@ -99,63 +77,14 @@ c Make a latitude index that represents the equator
 C  Initialize "forcing" matrices
        DO 11 I=1,IJ
        HJ(I)=0.0
-       HmJ(I)=0.0
-       HLJ(I)=0.0
-       heuv(i)=0.0
-       HCJ(I)=(0.0,0.0)
-       HHJ(I)=(0.0,0.0)
  11    CONTINUE
 
-C Play with the forcing:
-C index at the equator used for scale height dependence at all latitudes:
+c Specify migrating tidal forcing 
 
-       if(heatmodel.eq.0)then
-          xhh=p6(ieq)
-          if(nzonal.eq.1) CALL hme11(xhh,mois,z,HmJ,ij)
-
-C Double the forcing of the Hough (1,1) troposphere driver:
-          if(dblhme11.eq.1)then
-             do i=1,ij
-                HmJ(i)=HmJ(i)*2.
-             enddo
-c             if(z.lt.20.) write(10,*) xhh,z,HmJ(ieq),p8(ieq)
-          endif
-       endif
-
-c Call heat forcing models
-
-       if(heatmodel.eq.1.or.heatmodel.eq.4.or.heatmodel.eq.5)then
-           print *,'Calling SR heat92 from SR abcr1_2 at Z=',z
+c          print *,'Calling SR heat92 from SR abcr1_2 at Z=',z
           CALL heat92(nzonal,mois,z,HJ,ij)
-       endif
-       if(heatmodel.eq.3.or.heatmodel.eq.5)then
-          call honglate(Z,HLJ,IJ)
-       endif
-       if(heatmodel.eq.2.or.heatmodel.eq.4)then
-       print*,'Calling non-mig late heat drvr from SR abcr1_2 at Z=',z
-          call latent_heat_km(z,hcj,ij)
-c          call LATENT_HEAT_TIDES(Z,HCJ,IJ)
-       endif
-       if(heatmodel.eq.6)then
-CTEST1d no call euvheat
-          call euvheat(z,heuv,ij)
-CTEST1dend
-       endif
-
-c
-c Non-migrating heat forcing models
-
-       if(heatnm.eq.0.or.heatnm.eq.2)then
-           print*,'Calling non-migrating latent heat driver'
-          call latent_heat_km(z,hcj,ij)
-       endif
-
-       if(heatnm.eq.1.or.heatnm.eq.2)then
-          call h2onm(nzonal,mois,z,hhj,ij)
-       endif
 
 C  Define eddy viscosity
-
 C  Initialize values at all altitudes JKH 8/18/98
 
        eddyv=10.0
@@ -163,26 +92,13 @@ C  Initialize values at all altitudes JKH 8/18/98
        deddyv=0.0
        deddyk=0.0
 
-C
-       if(eddymodel.eq.2)then  !kzz invariant, iboris=0
-
-            CALL EDDY(Z,EDDYV,EDDYK,DEDDYV,DEDDYK)
-
-       elseif(eddymodel.eq.0)then !weak dissipation, kzz invariant
-            EDDYV=10.
-            EDDYK=13.6
-            DEDDYV=0.0
-            DEDDYK=0.0
-       endif
-
 C  Define Newtonian Cooling
       AZ=0.0
 
       CALL COOL(Z,AZ)
 C
 C Set minimum threshold for AZ of 1e-14 (value at 110km) jkh 8/10/98
-C     because its exponent can otherwise become large...cause errs?
-C     (apparently not, after this test showed no change in result)
+C     because its exponent can otherwise become large...
 
       if(az.lt.1e-14) az=0.0
 
@@ -222,16 +138,11 @@ C     BOUNDARY CONDITION FOR XBOT = 0.0 (SURFACE)
        
        DO 96 I=1,IJ
 
-C ************Latitude Invariant Kzz***********
 C  Define eddy viscosity
-cc iboris must = 0 to comment this/turn off fric/turn off seteddy_gs?/
-cc turn off eddy_gs/do not open 24.  OK call eddy_gs regardless of iboris
 
        colat=clatt(i)
 
-       if(eddymodel.eq.1)then  !kzz variable
           call eddy_gs(0.0,colat,eddyv,eddyk,deddyv,deddyk)
-       endif
 
        cs=.0085/(f1*eddyk)-.5
        csp=.00425/(f1*eddyv)-.5
@@ -275,11 +186,6 @@ C     COMPUTE COEFFICIENTS OF DIFFERENTIAL EQUATIONS
       COLAT=CLATT(I)
       VLAT=XLAT(I)
       XH=P6(I)
-CTEST1a call heat.f and print out
-C      if(heatmodel.eq.6)then
-C      CALL HEAT(XH,Z,VLAT,Q)
-C      endif
-CTEST1a end
       T=P3(I)
       H=P5(I)
       U=P1(I)
@@ -323,14 +229,9 @@ C  Get horizontal diffusion coefficient
 
       CALL H_DIFF(Z,VLAT,HDIFF)
 
-C ************Latitude Invariant Kzz***********
 C  Define eddy viscosity
-cc iboris must = 0 to comment this/turn off fric/turn off seteddy_gs/
-cc turn off eddy_gs/do not open 24.  OK call eddy_gs regardless of iboris
 
-      if(eddymodel.eq.1)then  !kzz variable
          call eddy_gs(z,colat,eddyv,eddyk,deddyv,deddyk)
-      endif
 
 c     pi=acos(-1.)
 c     ilt=vlat*180./pi
@@ -349,11 +250,7 @@ C  Get ion drag parameters
       E2P=0.0
       E2M=0.0
 
-C ************NO ION DRAG***********
-      if(iondrag.eq.1)then
-         if (iboris.eq.0) CALL IONOS3(Z,VLAT,COLAT,GMLT,
-     +   		XDIP,MW,RHO,E0,E1P,E1M,E2P,E2M)
-      endif
+         CALL IONOS3(Z,VLAT,COLAT,GMLT,XDIP,MW,RHO,E0,E1P,E1M,E2P,E2M)
 
 C  Set effective Rayleigh friction to zero,
 C		unless calculating diurnal tide:
@@ -363,10 +260,9 @@ C		unless calculating diurnal tide:
       rfv=0.0
 C  Get additional Newtonian Cooling/Rayleigh Friction
 C				damping terms for diurnal:
-cc
-      if(gwstress.eq.1)then
-      if (period.eq.1..and.iboris.eq.0) CALL FRIC(Z,VLAT,TNC,RF,RFU,RFV) 
-      endif
+c Hard-wired GW stress for diurnal migrating tide:
+
+      if (period.eq.1.) CALL FRIC(Z,VLAT,TNC,RF,RFU,RFV) 
 
 C  Define various auxiliary coefficients 
       RT=G*H
@@ -650,8 +546,6 @@ C  The following statements implement a Taylor series expansion near the
 C  polar boundaries.
 
 CForbes
-c     IF(POLEBC.EQ.1) GO TO 1010
-c     IF(POLEBC.EQ.3) GO TO 1010
 c
        if(polebc.eq.1)then
  
@@ -731,77 +625,10 @@ CForbes
 C__________________________________________________________________________
 
 C  The following implements the lateral boundary condition that the theta-
-C  derivatives of u and v = zero at the poles.
-
-C OLD CODE
-c     if(polebc.eq.1)then
-
-c       if(i.ge.ij)then
-c         IRR1=(IJ-1)*4+2
-c         IRR2=IRR1+1
-c         ICO1=(IJ-2)*4+3
-c         ICO2=ICO1-1
-c         A(IRR1,ICO1)=2.*A(IRR1,ICO1)
-c         A(IRR2,ICO2)=2.*A(IRR2,ICO2)
-c         ICA1=ICO1+4
-c         ICA2=ICO2+4
-c         A(IRR1,ICA1)=A(IRR1,ICA1)-A(IRR1,ICO1)
-c         A(IRR2,ICA2)=A(IRR2,ICA2)-A(IRR2,ICO2)
-
-c         DO 92 I4=1,4
-c           DO J4=1,4
-c             IRO=(I-1)*4+J4
-c             ICO1=(I-2)*4+I4
-c             ICO2=(I-1)*4+I4
-c             B(IRO,ICO1)=2.*B(IRO,ICO1)
-c             B(IRO,ICO2)=B(IRO,ICO2)-B(IRO,ICO1)
-c           END DO
-c92       CONTINUE
-
-c         IRO=(I-1)*4+2
-c         ICO1=(I-2)*4+2
-c         ICO2=(I-1)*4+2
-c         B(IRO,ICO1)=B(IRO,ICO1)-XXX
-c         B(IRO,ICO2)=B(IRO,ICO2)+XXX*2.
-c       endif
-
-c       if(i.le.1)then
-c          IRR1=2
-c          IRR2=3
-c          ICO1=7
-c          ICO2=6
-c          A(IRR1,ICO1)=2.*A(IRR1,ICO1)
-c          A(IRR2,ICO2)=2.*A(IRR2,ICO2)
-c          ICA1=3
-c          ICA2=2
-c          A(IRR1,ICA1)=A(IRR1,ICA1)-A(IRR1,ICO1)
-c          A(IRR2,ICA2)=A(IRR2,ICA2)-A(IRR2,ICO2)
-c          
-c          DO 192 I4=1,4
-c             DO J4=1,4
-c                IRO=J4
-c                ICO1=4+I4
-c                ICO2=I4
-c                B(IRO,ICO1)=2.*B(IRO,ICO1)
-c                B(IRO,ICO2)=B(IRO,ICO2)-B(IRO,ICO1)
-c             END DO
-c192       continue
-c          IRO=2
-c          ICO1=6
-c          ICO2=2
-c          B(IRO,ICO1)=B(IRO,ICO1)-XXX
-c          B(IRO,ICO2)=B(IRO,ICO2)+XXX*2.
-c       endif  !i-1 le 0
-C OLD CODE
-
-C__________________________________________________________________________
-
-C  The following implements the lateral boundary condition that the theta-
 C  derivatives of u and v = zero at the poles.  Without doing anything, the
 C  boundary condition that w=T= zero at the poles is implicitly included(?).
 C  If you want to skip this BC implementation, and use a Taylor expansion
 C  instead, set polebc flag to 1 instead of 0
-
 CForbes
            endif                !polebc=1
 cHack  elseif(polebc.eq.0)then
@@ -813,26 +640,12 @@ c for polebc=1:
            B2=0.0
            BIJM1=0.0
            BIJ=0.0
-cHack      if(polebc.eq.4)then     !w,T=0;parab fit u,v;u,v horiz der=0
-cHack         NT=2
-cHack         B1=4./3.
-cHack         B2=-1./3.
-cHack         BIJM1=-1./3.
-cHack         BIJ=4./3.
-cHack      elseif(polebc.eq.2)then !Taylor expansion
            if(polebc.eq.2)then !Taylor expansion
               NT=4
               B1=2.0
               B2=-1.0
               BIJM1=-1.0
               BIJ=2.0
-cHack      ELSEif(polebc.eq.3)then !w,T=0;u,v horiz deriv=0
-cHack         NT=2
-cHack         B1=1.0
-cHack         B2=0.0
-cHack         BIJM1=0.0
-cHack         BIJ=1.0
-cHack      endif                !polebc=2,3,4
            endif                !polebc=2
         endif                   !i=1 or i=ij
 c
@@ -914,16 +727,6 @@ C  Define zonal and meridional momentum source terms
 
 600   Continue
       
-
-C Convert units of Latent heat forcing from J/kg/s to W/m3 (consistent HEAT92):
-
-       HLJ(I)=HLJ(I)*RHO
-C Reduce HCJ by 25% to account for stratiform precipitation (M. Hagan 3/26/02)
-       HCJ(I)=.75*HCJ(I)*RHO
-       HmJ(I)=HmJ(I)*RHO
-       heuv(I)=heuv(I)*RHO
-c
-       HHJ(I)=HJ(I)+HCJ(I)+HLJ(I)+HmJ(I)+hhj(i)+heuv(i)
 CTEST print out hhj every 18 deg lat and every alt
 c      if(mod(i,6).eq.1)then
 C         print*,'hhj abcr',z,clatt(i)*57.3,hhj(i),hhj(i)-heuv(i)
@@ -936,13 +739,14 @@ C	when units are J/m3/s (N.B. J/s=W):
 C
 CTEST1b heat.f forcing
 C      D(IRO4)=-Q(NZONAL,2)*GAM1*EXR/(R*RHO)
-       D(IRO4)=-GAM1*EXR*HHJ(I)/(R*RHO)
+c      D(IRO4)=-GAM1*EXR*HHJ(I)/(R*RHO)
+       D(IRO4)=-GAM1*EXR*HJ(I)/(R*RHO)
 CTEST1b end
 
 C
 C For old HEAT3 Forcing due to Insolation Absorption of O3 and H2O:
 C
-C     D(IRO4)=-1.4*FREQ*EXP(-X/2.)*HJ(I)
+c      D(IRO4)=-1.4*FREQ*EXP(-X/2.)*HJ(I)
 CTEST print out a lot of physical parameters at 30,90 colatitude JKH8/27/98
 c       if(i.eq.ieq.or.i.eq.10)then
 C          dum=sqrt(e0*e0)
@@ -1007,8 +811,8 @@ c     WRITE(10,1122) (XLAT(I),I=1,IJ)
      +  /,4X,7E10.3,/,4X,7E10.3)
 c     PRINT 1102,(QQ(I),I=1,IJ)
 c     WRITE(10,1102) (QQ(I),I=1,IJ)
- 1114 FORMAT(1X,3HHJ=,7E10.3,/,4X,7E10.3,/,4X,7E10.3,/,4X,7E10.3,
-     +  /,4X,7E10.3,/,4X,7E10.3)
+C1114 FORMAT(1X,3HHJ=,7E10.3,/,4X,7E10.3,/,4X,7E10.3,/,4X,7E10.3,
+C    +  /,4X,7E10.3,/,4X,7E10.3)
 C     PRINT 1114,(HJ(I),I=1,IJ)
 c     WRITE(10,1114) (HJ(I),I=1,IJ)
  1103 FORMAT(1X,3HE0=,5(F10.2,1H/,F4.1),/,4X,5(F10.2,1H/,F4.1),

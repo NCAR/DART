@@ -57,11 +57,8 @@ C____________________________ gravity waves ______________________________
 
 C       in units of /day:
 
-c For migrating tide:
+c For migrating diurnal tide:
  	if (nzonal.eq.1) add = 1.5*exp(-((z-90.)/10.)**2.)*sin(2.*vlat)**2.
- 	if (nzonal.ne.1) then
-	add = 1.5*exp(-((z-90.)/10.)**2.)*cos(1.3*vlat)**2.
-	end if
 
 C       convert units:
 

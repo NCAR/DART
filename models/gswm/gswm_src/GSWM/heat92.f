@@ -2,10 +2,6 @@
 c  This subroutine calculates Ozone+O2 Heating using Strobel Parameterization
 C	and obtains H2O Heating from tables read in SR seth2o
 
-
-	integer call_late, o3conc
-	integer heatmodel, dblhme11, diurno3, peako3, skipo3, skipir
-
       	real hj(91),totja(91,24),xja(91,24),pO3(91),ptO3(91)
       	real pO2(91),ptO2(91)
       	real cja(91,24),totc(91,24),haja(91,24),totha(91,24)
@@ -13,12 +9,6 @@ C	and obtains H2O Heating from tables read in SR seth2o
       	real srcja(91,24),totsrc(91,24),srbja(91,24),totsrb(91,24)
 	real H,Hv,dum(25),AA(3),BB(3)
 	
-c  The following integer common block contains flags for the heat forcing
-c       models
-
-      common /heatforce/heatmodel,dblhme11,diurno3,peako3,skipo3,
-     +       skipir,call_late,o3conc,heatnm
-
 	common/interp1/zpt(37,101,3),zpu(37,101,3),zpr(37,101,3),
      +	zpxh(37,101,3),dO2(37,101,3)
 
@@ -91,9 +81,7 @@ C  These values are for the NET heating (Strobel, 1978)
     	totja(i,ii)=0.0
     9   continue
 
-C If skipo3=1 then Skip Ozone Forcing.  If skipo3=0 calculate o3 heat forcing:
-
-	if(skipo3.eq.0)then
+C calculate o3 heat forcing:
 
 	   if(z.ge.20..and.z.le.126.)then
 
@@ -324,11 +312,9 @@ c   	totsrb(i)=fact*totsrb(i)
  1		    continue	! do i=1,ij loop
 
 	   endif		!if z between 20 and 126
-	endif   !if skipo3 equal to 0
 
-C Skip H2O IR Forcing if skipir=1.  IR forced waves if skipir=0.
+C H2O IR Forcing 
 
-	if(skipir.eq.0)then
 	   if(z.le.20)then
 
 C*******************************************************************
@@ -348,12 +334,11 @@ C*******************************************************************
  21	      continue
 
 	   endif   !if ze le 20 troposphere heating
-	endif      !if skipir = 0
 
 C TEST PRINT 11/02
- 	write(10,500)
- 	write(10,501) z,(hj(i),i=1,ij)
- 	write(10,503) z,(hj(i),i=1,ij)
+c	write(10,500)
+c	write(10,501) z,(hj(i),i=1,ij)
+c	write(10,503) z,(hj(i),i=1,ij)
 
 	return
 	end
