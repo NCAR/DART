@@ -5,6 +5,7 @@ C  AND STORES ON UNIT 4
 
 C  Version 2.0 created by J. Forbes 2/3/91
 C  Modified on 3/14/91 to include NCAR/LINPACK routines
+C  Modified on 3/30/04 to use either LINPACK or LAPACK routines (TJH)
 
         INTEGER IPVT(IC)
         COMPLEX Z(IC)
