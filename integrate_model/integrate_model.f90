@@ -50,7 +50,7 @@ namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
 
 ! Begin by reading the namelist input
 if(file_exist('integrate_model.nml')) then
-   iunit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
       read(iunit, nml = integrate_model_nml, iostat = io, end = 11)
