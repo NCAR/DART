@@ -32,7 +32,10 @@ implicit none
 private
 
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
-   interactive_kind
+       interactive_kind
+
+public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_TD, KIND_VR, &
+       KIND_REF
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -46,6 +49,11 @@ type obs_kind_type
 end type obs_kind_type
 
 ! ADD A LONG TABLE OF DEFINED BUFR INDICES, ETC.
+
+integer, parameter :: KIND_U = 1, KIND_V = 2, KIND_PS = 3, KIND_T = 4, &
+                      KIND_QV = 5, KIND_P = 6, KIND_TD = 10,           &
+                      KIND_VR = 100, KIND_REF = 101
+
 logical, save :: module_initialized = .false.
 
 contains
@@ -173,17 +181,12 @@ type(obs_kind_type), intent(out) :: kind
 
 if ( .not. module_initialized ) call initialize_module
 
-! For bgrid, enter kind of observation
-! Kinds need to be defined consistent with BUFR, too
-! ADD IN THESE BUFR KINDS ???
-! Also allow the generic u, v, ps, t, kinds below, but rewrite them to be
-! consistent with model types???
-write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4, qv = 5, p = 6'
-write(*, *) 'Td = 10, Vr = 100, Ref = 101'
+write(*, *) 'input obs kind: u = ',KIND_U,' v = ',KIND_V,' ps = ',KIND_PS, &
+                           ' t = ',KIND_T,' qv = ',KIND_QV,' p = ',KIND_P,  &
+                          ' Td = ',KIND_TD,' Vr = ',KIND_VR,' Ref = ',KIND_REF
 write(*, *) 'input -1 times the state variable index for an identity observation'
 read(*, *) kind%index
 
 end subroutine interactive_kind
-
 
 end module obs_kind_mod
