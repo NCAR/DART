@@ -15,49 +15,48 @@ program update_wrf_bc
 ! current version reads only wrf-netcdf file format.
 !
 
+  use        types_mod, only : r8
   USE module_netcdf_interface
   USE module_couple_uv
 
-   implicit none
+  implicit none
 
-   integer, parameter :: max_3d_variables = 20, &
-                         max_2d_variables = 20
+  integer, parameter :: max_3d_variables = 20, &
+                        max_2d_variables = 20
  
-   character(len=80) :: wrf_3dvar_output_file, &
-                        wrf_bdy_file
+  character(len=80) :: wrf_3dvar_output_file, &
+                       wrf_bdy_file
  
-   character(len=20) :: var_pref, var_name
+  character(len=20) :: var_pref, var_name
 
-   character(len=20) :: var3d(max_3d_variables), &
-                        var2d(max_2d_variables)
+  character(len=20) :: var3d(max_3d_variables), &
+                       var2d(max_2d_variables)
 
-   character(len=10), dimension(4) :: bdyname, tenname
+  character(len=10), dimension(4) :: bdyname, tenname
 
-   integer           :: ids, ide, jds, jde, kds, kde
-   integer           :: num3d, num2d, ndims
-   integer           :: i,j,k,l,m,n
+  integer           :: ids, ide, jds, jde, kds, kde
+  integer           :: num3d, num2d, ndims
+  integer           :: i,j,k,l,m,n
 
-   integer, dimension(4) :: dims
+  integer, dimension(4) :: dims
  
-   integer, external :: iargc
+  integer, external :: iargc
  
-   real, allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d
+  real(r8), allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d
 
-   real, allocatable, dimension(:,:,:) :: u, v
+  real(r8), allocatable, dimension(:,:,:) :: u, v
 
-   real, allocatable, dimension(:,  :) :: mu, mub, msfu, msfv
+  real(r8), allocatable, dimension(:,  :) :: mu, mub, msfu, msfv
  
-   integer :: east_end, north_end
+  integer :: east_end, north_end
 
-   logical :: debug
+  logical, parameter :: debug = .false.
 
-   real :: bdyfrq
-
-   debug = .false. 
+  real(r8) :: bdyfrq
 
 !---------------------------------------------------------------------
-   wrf_3dvar_output_file='wrfinput_d01'
-   wrf_bdy_file  ='wrfbdy_d01'
+  wrf_3dvar_output_file='wrfinput_d01'
+  wrf_bdy_file  ='wrfbdy_d01'
 !---------------------------------------------------------------------
 !  if (iargc() /= 2) then
 !     write(6,*) ' usage: update_wrf_bc wrf_3dvar_output_file wrf_bdy_file '
@@ -75,45 +74,45 @@ program update_wrf_bc
 !---------------------------------------------------------------------
 
 !--boundary variables
-   bdyname(1)='_BXS'
-   bdyname(2)='_BXE'
-   bdyname(3)='_BYS'
-   bdyname(4)='_BYE'
+  bdyname(1)='_BXS'
+  bdyname(2)='_BXE'
+  bdyname(3)='_BYS'
+  bdyname(4)='_BYE'
 
 !--boundary tendancy variables
-   tenname(1)='_BTXS'
-   tenname(2)='_BTXE'
-   tenname(3)='_BTYS'
-   tenname(4)='_BTYE'
+  tenname(1)='_BTXS'
+  tenname(2)='_BTXE'
+  tenname(3)='_BTYS'
+  tenname(4)='_BTYE'
 !---------------------------------------------------------------------
 
 !--3D need update
-   num3d=5
-   var3d(1)='U'
-   var3d(2)='V'
-   var3d(3)='T'
-   var3d(4)='PH'
-   var3d(5)='QVAPOR'
+  num3d=5
+  var3d(1)='U'
+  var3d(2)='V'
+  var3d(3)='T'
+  var3d(4)='PH'
+  var3d(5)='QVAPOR'
 
 !--2D need update
-   num2d=4
-   var2d(1)='MUB'
-   var2d(2)='MU'
-   var2d(3)='MAPFAC_U'
-   var2d(4)='MAPFAC_V'
+  num2d=4
+  var2d(1)='MUB'
+  var2d(2)='MU'
+  var2d(3)='MAPFAC_U'
+  var2d(4)='MAPFAC_V'
 
 !---------------------------------------------------------------------
-   east_end=0
-   north_end=0
+  east_end=0
+  north_end=0
 !---------------------------------------------------------------------
   
 !---------------------------------------------------------------------
 !--First, the boundary frequency.
-   call get_gl_att_real_cdf( wrf_bdy_file, 'BDYFRQ', bdyfrq, debug )
+  call get_gl_att_real_cdf( wrf_bdy_file, 'BDYFRQ', bdyfrq, debug )
 
-   if(debug) then
-      write(unit=*, fmt='(a, f12.2)') &
-             'BDYFRQ=', bdyfrq
+  if(debug) then
+     write(unit=*, fmt='(a, f12.2)') &
+          'BDYFRQ=', bdyfrq
    endif
 !---------------------------------------------------------------------
 
@@ -143,10 +142,12 @@ program update_wrf_bc
             call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), msfu, &
                                       dims(1), dims(2), 1, debug )
 
-            do j=1,dims(2)
-               write(unit=*, fmt='(2(a,i5), a, f12.8)') &
-                    'msfu(', dims(1), ',', j, ')=', msfu(dims(1),j)
-            enddo
+            if(debug) then
+               do j=1,dims(2)
+                  write(unit=*, fmt='(2(a,i5), a, f12.8)') &
+                       'msfu(', dims(1), ',', j, ')=', msfu(dims(1),j)
+               enddo
+            endif
 
          case ('MAPFAC_V') ;
             allocate(msfv(dims(1), dims(2)))
@@ -154,10 +155,12 @@ program update_wrf_bc
             call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), msfv, &
                                       dims(1), dims(2), 1, debug )
 
-            do i=1,dims(1)
-               write(unit=*, fmt='(2(a,i5), a, f12.8)') &
-                    'msfv(', i, ',', dims(2), ')=', msfv(i,dims(2))
-            enddo
+            if(debug) then
+               do i=1,dims(1)
+                  write(unit=*, fmt='(2(a,i5), a, f12.8)') &
+                       'msfv(', i, ',', dims(2), ')=', msfv(i,dims(2))
+               enddo
+            endif
 
          case default ;
             print *, 'It is impossible here. var2d(n)=', trim(var2d(n))
@@ -189,16 +192,16 @@ program update_wrf_bc
 
 !-----Calculate variable at second time level
 !--------Get variable tendancy at first time level
-        var_name='MU' // trim(tenname(m))
-        call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
+      var_name='MU' // trim(tenname(m))
+      call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                   dims(1), dims(2), dims(3), 1, debug )
 
 !--------Get variable at first time level
-        var_name='MU' // trim(bdyname(m))
-        call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
+      var_name='MU' // trim(bdyname(m))
+      call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
                                dims(1), dims(2), dims(3), 1, debug )
 
-       scnd3d = tend3d*bdyfrq + frst3d
+      scnd3d = tend3d*bdyfrq + frst3d
 
 !      call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), scnd3d, &
 !                                dims(1), dims(2), dims(3), 2, debug )
@@ -210,25 +213,25 @@ program update_wrf_bc
          case (1) ;		! West boundary
             do l=1,dims(3)
             do j=1,dims(1)
-               frst3d(j,1,l)=mu(l,j)
+               frst3d(j,:,l)=mu(l,j)
             enddo
             enddo
          case (2) ;		! East boundary
             do l=1,dims(3)
             do j=1,dims(1)
-               frst3d(j,1,l)=mu(east_end-l,j)
+               frst3d(j,:,l)=mu(east_end-l,j)
             enddo
             enddo
          case (3) ;		! South boundary
             do l=1,dims(3)
             do i=1,dims(1)
-               frst3d(i,1,l)=mu(i,l)
+               frst3d(i,:,l)=mu(i,l)
             enddo
             enddo
          case (4) ;		! North boundary
             do l=1,dims(3)
             do i=1,dims(1)
-               frst3d(i,1,l)=mu(i,north_end-l)
+               frst3d(i,:,l)=mu(i,north_end-l)
             enddo
             enddo
          case default ;
@@ -236,11 +239,8 @@ program update_wrf_bc
       end select
 
 !-----calculate new tendancy 
-      do l=1,dims(3)
-      do i=1,dims(1)
-         tend3d(i,1,l)=(scnd3d(i,1,l)-frst3d(i,1,l))/bdyfrq
-      enddo
-      enddo
+
+      tend3d = (scnd3d - frst3d)/bdyfrq
 
       if(debug) then
          write(unit=*, fmt='(a,i2,2x,2a/3(a,e20.12,4x)/a,i2,2x,a,4i6)') &
@@ -255,7 +255,7 @@ program update_wrf_bc
       var_name='MU' // trim(bdyname(m))
       call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
                                 dims(1), dims(2), dims(3), 1, debug )
-!-----output new tendancy 
+!-----output new tendancy
       var_name='MU' // trim(tenname(m))
       call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                 dims(1), dims(2), dims(3), 1, debug )
@@ -271,8 +271,6 @@ program update_wrf_bc
 !--Get U
    call get_dims_cdf( wrf_3dvar_output_file, 'U', dims, ndims, debug )
 
-!  call get_att_cdf( wrf_3dvar_output_file, 'U', debug )
-
    allocate(u(dims(1), dims(2), dims(3)))
 
    ids=1
@@ -285,25 +283,27 @@ program update_wrf_bc
    call get_var_3d_real_cdf( wrf_3dvar_output_file, 'U', u, &
                              dims(1), dims(2), dims(3), 1, debug )
 
-   do j=1,dims(2)
-      write(unit=*, fmt='(2(a,i5), a, f12.8)') &
-           'u(', dims(1), ',', j, ',1)=', u(dims(1),j,1)
-   enddo
+   if(debug) then
+      do j=1,dims(2)
+         write(unit=*, fmt='(2(a,i5), a, f12.8)') &
+              'u(', dims(1), ',', j, ',1)=', u(dims(1),j,1)
+      enddo
+   endif
 
 !--Get V
    call get_dims_cdf( wrf_3dvar_output_file, 'V', dims, ndims, debug )
-
-!  call get_att_cdf( wrf_3dvar_output_file, 'V', debug )
 
    allocate(v(dims(1), dims(2), dims(3)))
 
    call get_var_3d_real_cdf( wrf_3dvar_output_file, 'V', v, &
                              dims(1), dims(2), dims(3), 1, debug )
 
-   do i=1,dims(1)
-      write(unit=*, fmt='(2(a,i5), a, f12.8)') &
-           'v(', i, ',', dims(2), ',1)=', v(i,dims(2),1)
-   enddo
+   if(debug) then
+      do i=1,dims(1)
+         write(unit=*, fmt='(2(a,i5), a, f12.8)') &
+              'v(', i, ',', dims(2), ',1)=', v(i,dims(2),1)
+      enddo
+   endif
 
    if(debug) then
       write(unit=*, fmt='(a,e20.12,4x)') &
@@ -457,14 +457,9 @@ program update_wrf_bc
                stop
          end select
 
-!--------calculate new tendancy 
-         do l=1,dims(3)
-         do k=1,dims(2)
-         do i=1,dims(1)
-            tend3d(i,k,l)=(scnd3d(i,k,l)-frst3d(i,k,l))/bdyfrq
-         enddo
-         enddo
-         enddo
+!--------calculate new tendancy
+
+         tend3d = (scnd3d - frst3d)/bdyfrq
    
          if(debug) then
             write(unit=*, fmt='(a,i2,2x,2a/3(a,e20.12,4x)/a,i2,2x,a,4i6)') &
@@ -483,7 +478,7 @@ program update_wrf_bc
          deallocate(scnd3d)
          deallocate(tend3d)
       enddo
-      
+
       deallocate(full3d)
    enddo
 
@@ -493,6 +488,8 @@ program update_wrf_bc
    deallocate(msfv)
    deallocate(u)
    deallocate(v)
+
+   write(*,*) 'update_wrf_bc terminated normally.'
 
 end program update_wrf_bc
 
