@@ -1,0 +1,73 @@
+# Makefile template for PGI f90
+
+FC = pgf90
+CPPFLAGS =
+FFLAGS = -r8 -Ktrap=fp -pc 64 -silent
+LD = pgf90
+LDFLAGS = $(LIBS)
+LIBS = -L/usr/local/lib -lnetcdf_pgi
+LIST = -Mlist
+
+# you should never need to change any lines below.
+
+# this makefile template recognizes fortran sourcefiles with extensions
+# .f, .f90, .F, .F90. Given a sourcefile <file>.<ext>, where <ext> is one of
+# the above, this provides a number of default actions:
+
+# make <file>.lst	create a compiler listing
+# make <file>.o		create an object file
+# make <file>.s		create an assembly listing
+# make <file>.x		create an executable file, assuming standalone
+#			source
+
+# make <file>.i		create a preprocessed file (only for .F and .F90
+#			extensions)
+
+# The macro TMPFILES is provided to slate files like the above for removal.
+
+RM = rm -f
+SHELL = /bin/csh
+TMPFILES = *.i *.lst *.mod *.s
+
+.SUFFIXES: .F .F90 .H .f .f90 .h .i .lst .o .s .x
+
+.f.lst:
+	$(FC) $(FFLAGS) -c $(LIST) $*.f
+.f.o:
+	$(FC) $(FFLAGS) -c $*.f
+.f.s:
+	$(FC) $(FFLAGS) -S $*.f
+.f.x:
+	$(FC) $(FFLAGS) -o $*.x $*.f *.o $(LDFLAGS)
+.f90.lst:
+	$(FC) $(FFLAGS) -c $(LIST) $*.f90
+.f90.o:
+	$(FC) $(FFLAGS) -c $*.f90
+.f90.s:
+	$(FC) $(FFLAGS) -c -S $*.f90
+.f90.x:
+	$(FC) $(FFLAGS) -o $*.x $*.f90 *.o $(LDFLAGS)
+.F.lst:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $(LIST) $*.F
+.F.f:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) -F $*.F > $*.f
+.F.i:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) -E $*.F > $*.i
+.F.o:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $*.F
+.F.s:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c -S $*.F
+.F.x:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -o $*.x $*.F *.o $(LDFLAGS)
+.F90.lst:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $(LIST) $*.F90
+.F90.f90:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) -F $*.F90 > $*.f90
+.F90.i:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) -E $*.F90 > $*.i
+.F90.o:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $*.F90
+.F90.s:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c -S $*.F90
+.F90.x:
+	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -o $*.x $*.F90 *.o $(LDFLAGS)

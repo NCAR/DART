@@ -1,0 +1,9 @@
+# Template for IBM xlf and xlc compilers
+#typical use with netCDF:
+# mkmf -t template.ibm -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
+FC = xlf90
+LD = xlf90
+FFLAGS = -qsuffix=f=f90:cpp=F90 -qarch=auto -qmaxmem=-1 -qdpc -qrealsize=8 -qintsize=4 -qstrict -O3
+LDFLAGS = -bmaxdata:2000000000 -bmaxstack:2000000000 $(LIBS)
+# LIBS will need site-specific customization
+LIBS = -L/usr/local/lib -lnetcdf -ludunits
