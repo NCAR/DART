@@ -26,7 +26,7 @@
 -->
 
 <HTML>
-<TITLE>module cov_cutoff</TITLE>
+<TITLE>module cov_cutoff_mod</TITLE>
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
@@ -89,6 +89,11 @@ utilities_mod
     <TD><A HREF="#yyyroutine1">comp_cov_factor</A> </TD></TR>
 </TABLE>
 
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&#38;cov_cutoff_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -107,9 +112,9 @@ utilities_mod
 <div class=routine>
 <em class=call> var = comp_cov_factor(z_in, c) </em>
 <pre>
+real(r8)                              :: <em class=code> comp_cov_factor </em>
 real(r8), intent(in)                  :: <em class=code> z_in </em>
 real(r8), intent(in)                  :: <em class=code> c </em>
-real(r8)                              :: <em class=code> var </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -128,6 +133,9 @@ real(r8)                              :: <em class=code> var </em>
 <TR><TD valign=top><em class=code>c</em></TD>
     <TD>Factor that describes the localization function. Describes the
         half-width of the functions used here. </TD></TR>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Covariance value returned. </TD></TR>
+
 </TABLE>
 
 <!--==================================================================-->
@@ -149,16 +157,24 @@ real(r8)                              :: <em class=code> var </em>
     <TH align=left>Description </TH></TR>
 <TR><!--contents--><TD valign=top>select_localization             </TD>
     <!--  type  --><TD valign=top>integer <em class="unit"></em></TD>
-    <!--descript--><TD>Selects the localization function. 1 = Gaspari-Cohn
-                       5th order polynomial with halfwidth c. 2 = Boxcar
-                       with halfwidth c (goes to 0 for z_in > 2c). 
-                       3 = ramped boxcar. Has value 1 for z_in < c and then 
-                       reduces linearly to 0 at z_in = 2c.  </TD></TR>
+    <!--descript--><TD>Selects the localization function. <BR>
+                   1 = Gaspari-Cohn 5th order polynomial with halfwidth c. <BR>
+                   2 = Boxcar with halfwidth c (goes to 0 for z_in > 2c). <BR>
+                   3 = ramped boxcar. Has value 1 for z_in < c and then 
+                   reduces linearly to 0 at z_in = 2c.  </TD></TR>
 </TABLE>
+<!--kdr list these in a column using LI?  indenting a problem?
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<BR><HR><BR>
+<H2>FILES</H2>
+<UL>
+ <LI>cov_cutoff_mod.nml in input.nml
+</UL>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -167,6 +183,8 @@ real(r8)                              :: <em class=code> var </em>
 <A NAME="References"></A>
 <BR><HR><BR>
 <H2>REFERENCES</H2>
+Gaspari and Cohn QJRMS, 125, 723-757.  (eqn. 4.10)
+
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -211,6 +229,21 @@ real(r8)                              :: <em class=code> var </em>
 <!-- Have not fleshed out this part yet ... ha ha ha                  -->
 <!--==================================================================-->
 
+<A NAME="PrivateComponents"></A>
+<BR><HR><BR>
+<H2>PRIVATE COMPONENTS</H2>
+
+<!--<div class=routine> -->
+<!--<pre> -->
+<!--type location_type -->
+<!--   private -->
+<!--   real(r8) :: x -->
+<!--end type location_type</pre> -->
+<!--</div> -->
+
+<H3 class=indent1>Discussion</H3>
+
+<!--==================================================================-->
 
 <HR>
 </BODY>

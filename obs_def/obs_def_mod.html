@@ -30,6 +30,8 @@
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
+<!--kdr no destination for PRIVATE COMPONENTS links -->
+
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -61,7 +63,7 @@
 <HR>
 <H2>OVERVIEW</H2>
 Provides an abstraction of the definition of an observation. An observation
-sequence at a higher level is componsed of observation defintions associated
+sequence at a higher level is composed of observation definitions associated
 with observed values. An observation definition can become quite complicated 
 by using a variety of lower order modules that define metadata associated with
 an observation.
@@ -77,7 +79,7 @@ an observation.
 types_mod
 utilities_mod
 obs_kind_mod
-location_mod
+location_mod (depends on model choice)
 time_manager_mod
 assim_model_mod
 </PRE>
@@ -383,7 +385,8 @@ Creates an obs_def via input from standard in.
 <A NAME="yyyroutine11"></A>
  <P></P><HR><P></P>
  <div class=routine>
-	 <em class=call> call write_obs_def(ifile, obs_def <em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> call write_obs_def(ifile,obs_def
+     <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>ifile</em>
  type(obs_def_type), intent(in)         :: <em class=code>obs_def</em>
@@ -409,7 +412,8 @@ in fform or FORMATTED if fform is not present.
 <A NAME="yyyroutine12"></A>
  <P></P><HR><P></P>
  <div class=routine>
-	 <em class=call> call read_obs_def(ifile, obs_def <em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> call read_obs_def(ifile,obs_def
+     <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>ifile</em>
  type(obs_def_type), intent(inout)      :: <em class=code>obs_def</em>
@@ -435,7 +439,7 @@ in fform or FORMATTED if fform is not present.
 <A NAME="yyyroutine13"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_radar_obs_def(rad_loc, rgate, raz, elev_rad, ae, dir, var, obs_def) </em>
+ <em class=call> call set_radar_obs_def(rad_loc,rgate,raz,elev_rad,ae,dir,var,obs_def) </em>
  <pre>
  type(location_type), intent(in)    :: <em class=code>rad_loc</em>
  real(r8), intent(in)               :: <em class=code>rgate</em>
@@ -450,6 +454,7 @@ in fform or FORMATTED if fform is not present.
  <P>
 Creates a radar observation obs_def: currently not fully supported.
  </P>
+<!--kdr radar definitions should be checked/filled in by someone else -->
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>rad_loc&nbsp; &nbsp; </em></TD>
      <TD>Location of radar</TD></TR>
@@ -508,6 +513,38 @@ Copies obs_def2 to obs_def1, overloaded with assignment (=).
      <TD>obs_def to be copied from</TD></TR>
  </TABLE>
  <BR>
+
+<!--==================================================================-   ->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-   ->
+
+NOTE that 'end comment' strings have spaces inserted
+
+<A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand 
+'&#38;' and terminating with a slash '/'.
+<div class=namelist><pre>
+<em class=call>namelist / filter_nml / </em> &
+      async, adv_ens_command, ens_size, cutoff, cov_inflate, 
+</pre></div>
+
+<H3 class=indent1>Discussion</H3>
+
+<P>This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents-   -><TD valign=top>async                        </TD>
+    <!--  type  -   -><TD valign=top>integer                      </TD>
+    <!--descript-   -><TD>Controls whether models are advanced via a subroutine call or
+                       separate from the model advances). </TD></TR>
+</TABLE>
+-->
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

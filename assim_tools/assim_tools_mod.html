@@ -30,6 +30,7 @@
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
+<!--kdr INTERFACE has no destination -->
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -84,7 +85,7 @@ obs_def_mod
 cov_cutoff_mod
 obs_model_mod
 reg_factor_mod
-location_mod
+location_mod (model dependent choice)
 time_manager_mod
 ensemble_manager_mod
 </PRE>
@@ -108,6 +109,12 @@ ensemble_manager_mod
 </TABLE>
 
 <BR>
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&#38;assim_tools_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -166,7 +173,7 @@ real(r8), intent(out), dimension(ens_size) :: <em class=code>obs_inc </em>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ens &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>ens_in &nbsp; &nbsp; </em></TD>
     <TD>The prior ensemble expected values for this observation.</TD></TR>
 
 <TR><TD valign=top><em class=code>ens_size</em></TD>
@@ -198,8 +205,8 @@ real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs_inc </em>
 real(r8), intent(in), dimension(ens_size)  :: <em class=code>state </em>
 integer, intent(in)                        :: <em class=code>ens_size </em>
 real(r8), intent(out), dimension(ens_size) :: <em class=code>state_inc </em>
-real(r8), intent(out)                      :: <em class=code> reg_coef </em>
-real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode> correl_out </em>
+real(r8), intent(out)                      :: <em class=code>reg_coef </em>
+real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode>correl_out </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -249,11 +256,11 @@ real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode> correl_out
 <em class=call> call look_for_bias(ens, n, obs, obs_var, var_ratio) </em>
 
 <pre>
-real(r8), intent(in), dimension(n)         :: <em class=code>ens </em>
-integer,  intent(in)                       :: <em class=code>n </em>
-real(r8), intent(in),                      :: <em class=code>obs </em>
-real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs_var </em>
-real(r8), intent(out)                      :: <em class=code> var_ratio </em>
+real(r8), intent(in), dimension(n)   :: <em class=code>ens </em>
+integer,  intent(in)                 :: <em class=code>n </em>
+real(r8), intent(in),                :: <em class=code>obs </em>
+real(r8), intent(in)                 :: <em class=code>obs_var </em>
+real(r8), intent(out)                :: <em class=code>var_ratio </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -314,7 +321,7 @@ Entry subroutine to do an assimilation for a given observation set.
 Calls are made to internal subroutine 
 filter_assim_region to do actual assimilation for each domain
 as requested by the num_domains namelist parameter. This public
-subroutine can either call filer_assim_region directly or create appropriate
+subroutine can either call filter_assim_region directly or create appropriate
 files for each domain and use the shell to execute programs to do the regions
 (controlled by do_parallel option in namelist). The current parallel assimilation
 algorithm does not recompute any observations but simply updates the prior
@@ -427,14 +434,14 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 <TR><!--contents--><TD valign=top>filter_kind  </TD>
     <!--  type  --><TD valign=top>integer      </TD>
     <!--descript--><TD>Selects the variant of filter to be used. 1=EAKF, 2=ENKF, 3=Kernel filter, 
-                       4=particle filter.</TD></TR>
+                       4=particle filter.  Default: 1.</TD></TR>
 <TR><!--contents--><TD valign=top>sort_obs_inc </TD>
     <!--  type  --><TD valign=top>logical      </TD>
     <!--descript--><TD> If true, the final increments from obs_increment are
                         sorted so that the mean increment value is as small
                         as possible. This minimizes regression errors when
                         non-deterministic filter or error correction algorithms
-                        are applied. Default is false.</TD></TR>
+                        are applied. Default: false.</TD></TR>
 <TR><!--contents--><TD valign=top>cov_inflate </TD>
     <!--  type  --><TD valign=top>real(r8)    </TD>
     <!--descript--><TD>Initial mean value of the observation space covariance 
@@ -472,17 +479,17 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 <TR><!--contents--><TD valign=top>start_from_assim_restart </TD>
     <!--  type  --><TD valign=top>logical                  </TD>
     <!--descript--><TD>If true, values of cov_inflate and cov_inflate_sd are
-                       read from a file. Default is false.</TD></TR>
+                       read from a file. Default: false.</TD></TR>
 <TR><!--contents--><TD valign=top>assim_restart_in_file_name </TD>
     <!--  type  --><TD valign=top>character(len=129)         </TD>
     <!--descript--><TD>Name of file from which to read in cov_inflate and 
-                       cov_inflate_sd override values. Default is
-                       assim_tools_ics.</TD></TR>
+                       cov_inflate_sd override values. Default:
+                       "assim_tools_ics".</TD></TR>
 <TR><!--contents--><TD valign=top>assim_restart_out_file_name</TD>
     <!--  type  --><TD valign=top>character(len=129)         </TD>
     <!--descript--><TD>Name of file to which to write cov_inflate and 
                        cov_inflate_sd final values for possible restart.
-                       Default is assim_tols_restart.</TD></TR>
+                       Default: "assim_tools_restart".</TD></TR>
  <TR><!--contents--><TD valign=top>do_parallel</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_command; 
@@ -492,7 +499,7 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
  <!--descript--><TD>Use this many subdomains; assimilate each independently Default: 1</TD></TR>
  <TR><!--contents--><TD valign=top>parallel_command</TD>
      <!--  type  --><TD valign=top>character(len=129)</TD>
- <!--descript--><TD>Command to be executed for option 2 Default: ./assim_filter.csh</TD></TR>
+ <!--descript--><TD>Command to be executed for option 2.  Default: ./assim_filter.csh</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -512,6 +519,7 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 <LI>assim_region_control:  Used to provide number of regions to shell execution.
 <LI>in_file_name, out_file_name: arguments to async_assim_region.
 <LI>filter_assim_obs_seq: Stores obs sequence on disk for async assimilation.
+<LI>assim_tools_mod.nml in input.nml
 </UL>
 
 <!--==================================================================-->
@@ -521,6 +529,8 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 <A NAME="References"></A>
 <BR><HR><BR>
 <H2>REFERENCES</H2>
+Anderson, Jeffrey L. "A Local Least Squares Framework for Ensemble Filtering"
+April 2003, MWR 131, pp 634-642
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -536,13 +546,18 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 
 <TR><!-- routine --><TD VALIGN=top>assim_tools_init</TD>
     <!-- message --><TD VALIGN=top>do parallel option # not supported</TD>
-    <!-- comment --><TD VALIGN=top>Only 0, 2, 3 currently supported.</TD>
+    <!-- comment --><TD VALIGN=top>Only the following are currently supported: <BR>
+                    0; assimilation not parallel <BR>
+                    2; assimilation parallel, use parallel_command from namelist <BR>
+                    3; assimilation parallel, separate script runs assimilation </TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>obs_increment</TD>
     <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-4 OK]</TD>
     <!-- comment --><TD VALIGN=top>Only 1-4 currently supported.</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>obs_increment_eakf</TD>
+<TR><!-- routine --><TD VALIGN=top>obs_increment_eakf <BR>
+                                   obs_increment_ran_kf <BR>
+                                   obs_increment_det_kf </TD> 
     <!-- message --><TD VALIGN=top>Both obs_var and prior_var are zero. This is inconsistent</TD>
     <!-- comment --><TD VALIGN=top>Product of two delta functions doesn't work.</TD>
 </TR>
@@ -590,6 +605,17 @@ feature.
 <!-- Have not fleshed out this part yet ... ha ha ha                  -->
 <!--==================================================================-->
 
+<A NAME="PrivateComponents"></A>
+<BR><HR><BR>
+<H2>PRIVATE COMPONENTS</H2>
+
+<div class=routine>
+<pre>
+type location_type
+   private
+   real(r8) :: x
+end type location_type</pre>
+</div>
 
 <H3 class=indent1>Discussion</H3>
 

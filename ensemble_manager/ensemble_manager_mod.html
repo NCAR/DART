@@ -129,6 +129,7 @@ may be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
+<!--kdr no private in code -->
 <A NAME="yyypubtype1"></A>
 <BR><HR><BR>
 <div class=type><pre>
@@ -162,7 +163,8 @@ argument to the ensemble manager calls.
 <A NAME="yyyroutine1"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call init_ensemble_manager(ens_handle, ens_size_in, model_size_in, file_name, init_time) </em>
+ <em class=call> call init_ensemble_manager(ens_handle, ens_size_in, model_size_in
+     <em class=optionalcode>[, file_name, init_time]</em>) </em>
  <pre>
  type(ensemble_type), intent(out)         :: <em class=code>ens_handle</em>
  integer, intent(in)                      :: <em class=code>ens_size_in</em>
@@ -181,8 +183,8 @@ file is replaced with this time.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Identifies ensemble: provides future capability to manager multiple ens
- embles</TD></TR>
+     <TD>Identifies ensemble: provides future capability to manager multiple 
+     ensembles</TD></TR>
  <TR><TD valign=top><em class=code>ens_size_in&nbsp; &nbsp; </em></TD>
      <TD>Number of ensemble members</TD></TR>
  <TR><TD valign=top><em class=code>model_size_in&nbsp; &nbsp; </em></TD>
@@ -299,7 +301,8 @@ Updates the ensemble mean and spread using the current values of the members.
 <A NAME="yyyroutine6"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call end_ensemble_manager(ens_handle, file_name)</em>
+ <em class=call> call end_ensemble_manager(ens_handle
+     <em class=optionalcode>[, file_name]</em>) </em>
  <pre>
  type(ensemble_type), intent(in)          :: <em class=code>ens_handle</em>
  character(len=129), optional, intent(in) :: <em class=code>file_name</em>
@@ -322,8 +325,8 @@ if requested by the presence of a file name.
 <A NAME="yyyroutine7"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_ensemble_region(ens_handle, region, rtime, 
-		 state_vars_in, ens_members_in)</em>
+ <em class=call> call get_ensemble_region(ens_handle,region,rtime,
+     <em class=optionalcode>[, state_vars_in, ens_members_in]</em>) </em>
  <pre>
  type(ensemble_type), intent(in)             :: <em class=code>ens_handle</em>
  real(r8), dimension(:, :), intent(out)      :: <em class=code>region</em>
@@ -362,8 +365,8 @@ region is sufficiently large.
 <A NAME="yyyroutine8"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call put_ensemble_region(ens_handle, region, rtime, 
-		 state_vars_in, ens_members_in) </em>
+ <em class=call> call put_ensemble_region(ens_handle,region,rtime
+     <em class=optionalcode>[, state_vars_in, ens_members_in]</em>) </em>
  <pre>
  type(ensemble_type), intent(in)             :: <em class=code>ens_handle</em>
  real(r8), dimension(:, :), intent(in)       :: <em class=code>region</em>
@@ -543,7 +546,7 @@ all ensemble members of the region indexed by rnum are stored.
  type(ensemble_type), intent(in)            :: <em class=code>ens_handle</em>
  integer, intent(in)                        :: <em class=code>num_regions</em>
  integer, dimension(model_size), intent(in) :: <em class=code>region_id</em>
- integer, dimension(model_size), intent(in) :: <em class=code>region_size</em>
+ integer, dimension(num_regions), intent(in) :: <em class=code>region_size</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -561,7 +564,7 @@ in the array region_id.
  <TR><TD valign=top><em class=code>region_id&nbsp; &nbsp; </em></TD>
      <TD>Identifies which region each state variable is in.</TD></TR>
  <TR><TD valign=top><em class=code>region_size&nbsp; &nbsp; </em></TD>
-     <TD>Size of each region.</TD></TR>
+     <TD>Sizes of the regions.</TD></TR>
  </TABLE>
  <BR>
 
@@ -576,7 +579,7 @@ in the array region_id.
  type(ensemble_type), intent(in)            :: <em class=code>ens_handle</em>
  integer, intent(in)                        :: <em class=code>num_regions</em>
  integer, dimension(model_size), intent(in) :: <em class=code>region_id</em>
- integer, dimension(model_size), intent(in) :: <em class=code>region_size</em>
+ integer, dimension(num_regions), intent(in) :: <em class=code>region_size</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -594,7 +597,7 @@ in the array region_id.
  <TR><TD valign=top><em class=code>region_id&nbsp; &nbsp; </em></TD>
      <TD>Identifies which region each state variable is in.</TD></TR>
  <TR><TD valign=top><em class=code>region_size&nbsp; &nbsp; </em></TD>
-     <TD>Size of each region.</TD></TR>
+     <TD>Sizes of the regions.</TD></TR>
  </TABLE>
  <BR>
 
@@ -602,6 +605,7 @@ in the array region_id.
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
+ <H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
@@ -629,7 +633,7 @@ files or whether a single file should contain all ensemble members.
      <!--descript--><TD>Keep whole ensemble in memory? Default: true</TD></TR>
  <TR><!--contents--><TD valign=top>single_restart_file_in</TD>
      <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>Read all members from single file? Default: ture</TD></TR>
+     <!--descript--><TD>Read all members from single file? Default: true</TD></TR>
  <TR><!--contents--><TD valign=top>single_restart_file_out</TD>
      <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>Write all members to single file? Default: true</TD></TR>
@@ -683,7 +687,7 @@ files or whether a single file should contain all ensemble members.
     <!-- comment --><TD VALIGN=top>Code must be modified to do ensembles larger than 10000</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>Aadvance_state</TD>
-    <!-- message --><TD VALIGN=top>input.nml - async is _ must be 0, 1, 2, or 3</TD>
+    <!-- message --><TD VALIGN=top>input.nml - async is #, must be 0, 1, 2, or 3</TD>
     <!-- comment --><TD VALIGN=top>Other values of asynch not implemented</TD>
 </TR>
 </TABLE>
@@ -712,6 +716,20 @@ files or whether a single file should contain all ensemble members.
 <!--==================================================================-->
 <!-- Have not fleshed out this part yet ... ha ha ha                  -->
 <!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<BR><HR><BR>
+<H2>PRIVATE COMPONENTS</H2>
+
+<!-- <div class=routine> -->
+<!-- <pre> -->
+<!-- type location_type -->
+<!--    private -->
+<!--    real(r8) :: x -->
+<!-- end type location_type</pre> -->
+<!-- </div> -->
+
+<H3 class=indent1>Discussion</H3>
 
 <!--==================================================================-->
 

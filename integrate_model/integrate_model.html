@@ -92,7 +92,8 @@ ensemble_manager_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;integrate_model_nml</em> 
+Optional namelist interface 
+<A HREF="#Namelist"><em class=code>&#38;integrate_model_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -101,20 +102,19 @@ may be read from file <em class=file>input.nml</em>.
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
+
+<H2>NAMELIST</H2>
+
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / integrate_model_nml / </em> &#38;
  target_time_days,target_time_seconds,ic_file_name,ud_file_name                 
-                                                                                
-                                                                                
-                                                               
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
  Integrate model reads from a file and writes to a file; names are set here. 
 An ability to over-ride the target times set in the input file is also available.
- </em>
  </P>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
  </P>
@@ -124,7 +124,7 @@ An ability to over-ride the target times set in the input file is also available
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>target_time_days</TD>
      <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD>-1 If non-negative, over-ride the target time in the ic file. 
+     <!--descript--><TD>If non-negative, override the target time in the ic file. 
 	                Default: -1</TD></TR>
  <TR><!--contents--><TD valign=top>target_time_seconds</TD>
      <!--  type  --><TD valign=top>integer</TD>
@@ -149,7 +149,7 @@ An ability to over-ride the target times set in the input file is also available
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>inputfile (temp_ic)
-    <LI>namelistfile
+    <LI>integrate_model.nml 
     <LI>outputfile (temp_ud)
 </UL>
 
@@ -167,24 +167,28 @@ An ability to over-ride the target times set in the input file is also available
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<BR><HR><BR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>size of [argument] is incorrect</TD>
-    <!-- comment --><TD VALIGN=top>The size of [argument] must be 1 and 4</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>yyyyy</TD>
-    <!-- comment --><TD VALIGN=top>bad judgement<BR>
-                        What were you thinking?</TD>
-</TR>
-</TABLE>
-</div>
+<!--kdr I couldn't get rid of this table; the contents kept showing up! 
+        The browser was reading the - - > within the table as the "end comment" signal.
+        I inserted spaces to leave examples, but prevent display.
+ <div class="errors"> 
+ <TABLE border=1 cellspacing=1 cellpadding=10 width=100%> 
+ <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR> 
+  
+ <TR><!-- routine -   -><TD VALIGN=top>xxxx</TD> 
+     <!-- message -   -><TD VALIGN=top>size of [argument] is incorrect</TD> 
+     <!-- comment -   -><TD VALIGN=top>The size of [argument] must be 1 and 4</TD> 
+ </TR> 
+  
+ <TR><!-- routine -   -><TD VALIGN=top>xxxx</TD> 
+     <!-- message -   -><TD VALIGN=top>yyyyy</TD> 
+     <!-- comment -   -><TD VALIGN=top>bad judgement<BR> 
+                         What were you thinking?</TD> 
+ </TR> 
+ </TABLE> 
+ </div> -->
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
@@ -214,13 +218,13 @@ An ability to over-ride the target times set in the input file is also available
 <BR><HR><BR>
 <H2>PRIVATE COMPONENTS</H2>
 
-<div class=routine>
-<pre>
-type location_type
-   private
-   real(r8) :: x
-end type location_type</pre>
-</div>
+<!-- <div class=routine> -->
+<!-- <pre> -->
+<!-- type location_type -->
+<!--    private -->
+<!--    real(r8) :: x -->
+<!-- end type location_type</pre> -->
+<!-- </div> -->
 
 <H3 class=indent1>Discussion</H3>
 
