@@ -1,5 +1,0 @@
-
-      FUNCTION PSI(XI,ETA,DEC)
-      PSI=XI+DEC*COS(ETA)
-      RETURN
-      END
