@@ -104,6 +104,7 @@ ensemble_manager_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">look_for_bias</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">filter_assim</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">async_assim_region</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">assim_tools_end</A></TD></TR>
 </TABLE>
 
 </P>
@@ -143,17 +144,13 @@ ensemble_manager_mod
 <A NAME="yyyroutine2"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call obs_increment( ens, ens_size, obs, obs_var, obs_inc, slope, a, 
-               <em class=optionalcode>[,bias_ratio_out]</em> )</em>
+<em class=call> call obs_increment( ens_in, ens_size, obs, obs_var, obs_inc)</em>
 <pre>
-real(r8), intent(in), dimension(ens_size) :: <em class=code>ens </em>
-integer, intent(in)                       :: <em class=code>ens_size </em>
-real(r8), intent(in)                      :: <em class=code> obs </em>
-real(r8), intent(in)                      :: <em class=code> obs_var </em>
-real(r8), intent(out), dimension(ens_size) :: <em class=code> obs_inc </em>
-real(r8), intent(in)                      :: <em class=code> slope </em>
-real(r8), intent(out)                      :: <em class=code> a </em>
-real(r8), OPTIONAL, intent(out)           :: <em class=optionalcode> bias_ratio_out </em>
+real(r8), intent(in), dimension(ens_size)  :: <em class=code>ens_in </em>
+integer, intent(in)                        :: <em class=code>ens_size </em>
+real(r8), intent(in)                       :: <em class=code>obs </em>
+real(r8), intent(in)                       :: <em class=code>obs_var </em>
+real(r8), intent(out), dimension(ens_size) :: <em class=code>obs_inc </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -163,6 +160,9 @@ real(r8), OPTIONAL, intent(out)           :: <em class=optionalcode> bias_ratio_
    the increments for each prior ensemble member. Four different ensemble filter
    algorithms are selectable through a namelist arguement. The EAKF variant also
    includes a capability to do an empirical systematic error correction. 
+   Obs_increment also implements the adaptive systematic error correction
+   algorithm using observation space covariance inflation. A number of 
+   options for this algorithm are selected through namelist parameters.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -182,20 +182,6 @@ real(r8), OPTIONAL, intent(out)           :: <em class=optionalcode> bias_ratio_
 <TR><TD valign=top><em class=code>obs_inc</em></TD>
     <TD>The increments computed for the prior ensemble.</TD></TR>
 
-<TR><TD valign=top><em class=code>slope</em></TD>
-    <TD> Parameter that controls the strength of the systematic error correction.
-         Values range from small positive (strong corrections) to 1.0 (weak
-         corrections). A value of 0 indicates that no correction is to be done.</TD></TR>
-
-<TR><TD valign=top><em class=code>a</em></TD>
-    <TD>Ratio of updated ensemble standard deviation to prior standard deviation from EAKF.
-        This is used in the heuristic prior variance reduction correction in 
-        update_from_obs_inc.</TD></TR>
-
-<TR><TD valign=top><em class=optionalcode>bias_ratio_out</em></TD>
-    <TD>Optional ratio of difference between ensemble mean and observation
-        and expected value. Can be used to assess systematic error.</TD></TR>
-
 </TABLE>
 
 </P>
@@ -206,7 +192,7 @@ real(r8), OPTIONAL, intent(out)           :: <em class=optionalcode> bias_ratio_
 <A NAME="yyyroutine3"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call update_from_obs_inc(obs, obs_inc, state, ens_size, a,
+<em class=call> call update_from_obs_inc(obs, obs_inc, state, ens_size,
    state_inc, reg_coef,
                <em class=optionalcode>[,correl_out]</em> )</em>
 <pre>
@@ -214,7 +200,6 @@ real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs </em>
 real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs_inc </em>
 real(r8), intent(in), dimension(ens_size)  :: <em class=code>state </em>
 integer, intent(in)                        :: <em class=code>ens_size </em>
-real(r8), intent(in)                       :: <em class=code> a </em>
 real(r8), intent(out), dimension(ens_size) :: <em class=code>state_inc </em>
 real(r8), intent(out)                      :: <em class=code> reg_coef </em>
 real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode> correl_out </em>
@@ -246,11 +231,6 @@ real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode> correl_out
 
 <TR><TD valign=top><em class=code>ens_size</em></TD>
     <TD>Size of the ensemble.</TD></TR>
-
-<TR><TD valign=top><em class=code>a</em></TD>
-    <TD>Ratio of updated ensemble standard deviation to prior standard deviation from EAKF.
-        This is used in the heuristic prior variance reduction correction in 
-        update_from_obs_inc.</TD></TR>
 
 <TR><TD valign=top><em class=code>state_inc</em></TD>
     <TD>The increments computed for the state variable ensemble.</TD></TR>
@@ -412,6 +392,21 @@ to out_file_name.
      <TD>File where output from filter_assim_region is to be put</TD></TR>
  </TABLE>
  <P>
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine7"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call assim_tools_end() </em>
+ <pre>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Called to terminate use of assim_tools_mod. Writes out the assim_tools
+restart file. This file contains the observation space covariance
+inflation parameter and the standard deviation of the covariance
+inflation.
+ </P>
+ <P>
  <!--================================================================-->
 
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -423,8 +418,9 @@ to out_file_name.
 '&' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / assim_tools_nml / </em> &
-    prior_spread_correction, filter_kind, slope_threshold, do_parallel, 
-num_domains, parallel_command
+filter_kind, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &
+deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &
+assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -436,18 +432,65 @@ num_domains, parallel_command
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>prior_spread_correction             </TD>
-    <!--  type  --><TD valign=top>logical <em class="unit">
-    <!--descript--><TD>True if prior spread reduction correction algorithm
-                      is to be used. Default is false.</TD></TR>
 <TR><!--contents--><TD valign=top>filter_kind        </TD>
     <!--  type  --><TD>integer                         </TD>
     <!--descript--><TD>Selects the variant of filter to be used. 1=EAKF, 2=ENKF, 3=Kernel filter, 
                        4 = particle filter.                       </TD></TR>
-<TR><!--contents--><TD valign=top>slope_threshold            </TD>
+<TR><!--contents--><TD valign=top>sort_obs_inc </TD>
+    <!--  type  --><TD>logical                        </TD>
+    <!--descript--><TD> If true, the final increments from obs_increment are
+                        sorted so that the mean increment value is as small
+                        as possible. This minimizes regression errors when
+                        non-deterministic filter or error correction algorithms
+                        are applied. Default is false.                </TD></TR>
+<TR><!--contents--><TD valign=top>cov_inflate </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Threshold value of variance ratio at which systematic error correction begins
-                       to be applied if slope is not 0.                </TD></TR>
+    <!--descript--><TD>Initial mean value of the observation space covariance 
+                       inflation factor. If start_from_assim_restart is true, this is 
+                       overwritten by the value in the file. If the value is 
+                       less than 0, no observation space
+                       covariance inflation is applied. Defalut value is -1
+                       (no inflation).                </TD></TR>
+<TR><!--contents--><TD valign=top>cov_inflate_sd </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD> Initial value of the standard deviation of the 
+                        observation space covariance inflation factor. If
+                        start_from_assim_restart is true, this is overwritten
+                        by the second value in the restart file. If this value
+                        is less than 0.0, the mean value stays constant in 
+                        time. If the value is greater than the sd_lower_bound (see
+                        below), an adjustment of this value takes place at
+                        each assimilation step. Default value is 0.05.  </TD></TR>
+<TR><!--contents--><TD valign=top>sd_lower_bound </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD> Smallest value allowed for cov_inflate_sd during a run (it
+                        can be set to values smaller than cov_inflate_sd initially).
+                        Once cov_inflate_sd is reduced to this value, the 
+                        systematic error correction algorithm will keep the
+                        cov_inflate_sd fixed at this value. Default value is 0.05.        </TD></TR>
+<TR><!--contents--><TD valign=top>deterministic_cov_inflate </TD>
+    <!--  type  --><TD>logical                         </TD>
+    <!--descript--><TD> Selects manner in which uncertainty is added to prior
+                        obs space distribution for obs space covariance inflation.
+                        If this is true, ensemble members are just moved out
+                        by increasing the distance between each ensemble member
+                        and the mean by this factor. If false, a random draw 
+                        from a gaussian is added to each ensemble member. Default
+                        is true.                </TD></TR>
+<TR><!--contents--><TD valign=top>start_from_assim_restart </TD>
+    <!--  type  --><TD>logical                         </TD>
+    <!--descript--><TD>If true, values of cov_inflate and cov_inflate_sd are
+                       read from a file. Default is false.         </TD></TR>
+<TR><!--contents--><TD valign=top>assim_restart_in_file_name </TD>
+    <!--  type  --><TD>character(len=129)                        </TD>
+    <!--descript--><TD>Name of file from which to read in cov_inflate and 
+                       cov_inflate_sd override values. Default is
+                       assim_tools_ics.               </TD></TR>
+<TR><!--contents--><TD valign=top>assim_restart_out_file_name</TD>
+    <!--  type  --><TD>character(len=129)              </TD>
+    <!--descript--><TD>Name of file to which to write cov_inflate and 
+                       cov_inflate_sd final values for possible restart.
+                       Default is assim_tols_restart.                </TD></TR>
  <TR><!--contents--><TD valign=top>do_parallel</TD>
      <!--  type  --><TD>integer</TD>
  <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_comma
@@ -469,6 +512,10 @@ num_domains, parallel_command
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>input.nml
+<LI>assim_tools_ics:  Default name for file containing initial values of 
+                      cov_inflate and cov_inflate_sd.
+<LI>assim_tools_restart:  Default name for file containing restart values of 
+                      cov_inflate and cov_inflate_sd.
 <LI>filter_assim_region__in####:  Contains ensemble state for region.
 <LI>filter_assim_region_out####:  Contains updated state for region.
 <LI>assim_region_control:  Used to provide number of regions to shell execution.
@@ -521,25 +568,6 @@ num_domains, parallel_command
     <!-- message --><TD VALIGN=top>Having more domains than state variables does not make sense</TD>
     <!-- comment --><TD VALIGN=top> It doesn't.</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>obs_increment_particle</TD>
-    <!-- message --><TD VALIGN=top>Confidence slope bias correction is not implemented</TD>
-    <!-- comment --><TD VALIGN=top> Can't use bias correction with particle filter at present.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>obs_increment_enkf</TD>
-    <!-- message --><TD VALIGN=top>Confidence slope bias correction is not implemented</TD>
-    <!-- comment --><TD VALIGN=top> Can't use bias correction with ENKF at present.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>obs_increment_kernel</TD>
-    <!-- message --><TD VALIGN=top>Confidence slope bias correction is not implemented</TD>
-    <!-- comment --><TD VALIGN=top> Can't use bias correction with kernel filter at present.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>update_from_obs_inc</TD>
-    <!-- message --><TD VALIGN=top>The prior_spread_correction algorithm only works with EAKF filters. Do not
-                                   select prior_spread_correction = .true. with other filters.</TD>
-    <!-- comment --><TD VALIGN=top> Prior spread correction only works with EAKF.</TD>
 </TR>
 </TABLE>
 </div>
@@ -552,6 +580,9 @@ num_domains, parallel_command
 <BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+The current version of the systematic error correction algorithm does
+not work in a logical fashion with the parallel region assimilation 
+feature. 
 </P>
 
 <!--==================================================================-->
