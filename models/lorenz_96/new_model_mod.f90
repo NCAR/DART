@@ -13,8 +13,8 @@ use time_manager_mod
 
 private
 
-public static_init_model, init_conditions, get_model_size, adv_1step, state_loc, &
-   init_time, model_interpolate, get_model_time_step, get_state_meta_data
+public static_init_model, init_conditions, get_model_size, adv_1step,  &
+   init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model
 
 integer,  parameter :: model_size =   40
 real(r8), parameter ::    forcing = 8.00_r8
@@ -163,8 +163,6 @@ implicit none
 
 real(r8), intent(out) :: x(:)
 
-real(r8) :: x_loc
-
 x    = forcing
 x(1) = 1.001_r8 * forcing
 
@@ -271,6 +269,15 @@ type(location_type), intent(out) :: location
 location = state_loc(index)
 
 end subroutine get_state_meta_data
+
+
+subroutine end_model()
+!------------------------------------------------------------------------
+!
+! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
+
+
+end subroutine end_model
 
 
 

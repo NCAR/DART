@@ -5,4 +5,5 @@ utilities+
 location+ random_seq types utilities
 time_manager+ types
 model+ location time_manager types
-assim_model_tools+ location model time_manager types utilities
+assim_model+ location model time_manager types utilities
+rms_diag+ assim_model location types

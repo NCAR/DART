@@ -54,6 +54,7 @@ set TYPES = ../common/types_mod.f90
 #set MODEL = ../models/null_model/model_mod.f90
 #set MODEL = ../models/lorenz_63/model_mod.f90
  set MODEL = ../models/lorenz_96/new_model_mod.f90
+ set MODEL = ../models/lorenz_63/new_model_mod.f90
 #set MODEL = ../models/9var/model_mod.f90
 
 #set MODEL = ../models/9var/noisy_9var.f90        existence?
@@ -157,7 +158,12 @@ set            LOCATION = ../location/oned/location_mod.f90
 #set            LOCATION = ../location/twod_sphere/location_mod.f90
 set       LOCATION_TEST = ../location/oned/location_test.f90
 #set       LOCATION_TEST = ../location/twod_sphere/location_test.f90
-set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model.f90
+
+#--------------------------------------------------------------------------
+#  Change to generic assim_model approach; testing 15 July, 2002
+#----------------------------------------------------------------------
+#set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model.f90
+set         ASSIM_MODEL = ../assim_model_tools/assim_model.f90
 
 set            OBS_KIND = ../obs_kind/obs_kind.f90
 set           OBS_MODEL = ../obs_model/obs_model_mod.f90
@@ -166,7 +172,7 @@ set         OBS_SET_DEF = ../obs_set_def/obs_set_def.f90
 set        SET_DEF_LIST = ../set_def_list/set_def_list.f90
 set             OBS_SET = ../obs_set/obs_set.f90
 
-set        OBS_SEQUENCE = ../obs_sequence/obs_sequence.f90
+set        OBS_SEQUENCE = ../obs_sequence/obs_sequence_mod.f90
 set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
 set CREATE_OBS_DEF      = ../obs_sequence/create_obs_def.f90
 set              FILTER = ../obs_sequence/filter.f90
@@ -177,7 +183,7 @@ set        POINTER_TEST = ../obs_sequence/pointer_test.f90
 set      MODEL_ENSEMBLE = ../model_ensemble/model_ensemble.f90
 set   CLOSE_STATE_CACHE = ../close_state_cache/close_state_cache.f90
 
-set ASSIM_MODEL_TOOLS = ../assim_model_tools/assim_model_tools.f90
+#set ASSIM_MODEL_TOOLS = ../assim_model_tools/assim_model_tools.f90
 
 #======================================================================
 # END of      path_names_for_modules
