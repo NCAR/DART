@@ -15,7 +15,21 @@ h2.indent1{font-size:1.50em; margin-left:0%}
 h3.indent1{font-size:1.25em; margin-left:0%}
 h4.indent1{font-size:1.00em; margin-left:0%}
 
-div.box { border: solid; border-width: thin; width: 100% }
+div.box   { border: solid; border-width: thin; width: 100% }
+div.color {
+    background-color: rgb(204,204,255);
+    padding: 0.5em;
+    border: none;
+    width: 100%;}
+
+p.changed {
+    padding-left: 0.2em;
+    border-left: solid;
+    border-top: none;
+    border-bottom: none;
+    border-right: none;
+    border-left-width: thin;
+    border-color: red; }
 
 p.indent1{
 margin-left: 4%;
