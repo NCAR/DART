@@ -21,7 +21,7 @@
    output_interval = 1,
    num_groups = 1,
    confidence_slope = 0.0,
-   outlier_threshold = 5.0,
+   outlier_threshold = -1.0,
    get_mean_reg = .false.,
    get_median_reg = .false.  /
 

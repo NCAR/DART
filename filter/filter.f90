@@ -108,7 +108,7 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: confidence_slope = 0.0_r8
-real(r8) :: outlier_threshold = 5.0_r8
+real(r8) :: outlier_threshold = -1.0_r8
 logical  :: get_mean_reg = .false., get_median_reg = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
@@ -301,7 +301,11 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! WANT TO GIVE IT A HINT WHERE TO START WITH OPTIONAL ARGUMENTS FOR BIG OBS SEQUENCES
    call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs_in_set, out_of_range, observation)
-   allocate(keys(num_obs_in_set))
+
+   ! Allocate storage for the ensemble priors for this number of observations
+   allocate(keys(num_obs_in_set), obs_err_cov(num_obs_in_set), &
+            obs(num_obs_in_set),  qc(num_obs_in_set)) 
+
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
    call get_time(next_time,secs,days)
@@ -370,10 +374,6 @@ AdvanceTime : do i = 1, num_obs_sets
          reg_factor_series = 0.0_r8
       endif
    endif
-
-
-   ! Allocate storage for the ensemble priors for this number of observations
-   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set), qc(num_obs_in_set)) 
 
    ! Get the observational error covariance (diagonal at present) and the obs values
    do j = 1, num_obs_in_set
@@ -449,8 +449,8 @@ AdvanceTime : do i = 1, num_obs_sets
          call obs_increment(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
             obs_err_cov(j), obs_inc(grp_bot:grp_top), confidence_slope, &
             a_returned(group), bias_ratio)
-         ! qc; reject outliers
-         if (bias_ratio > outlier_threshold) then
+         ! qc; reject outliers; negative value means don't apply this
+         if (outlier_threshold > 0.0 .and. bias_ratio > outlier_threshold) then
             obs_inc = 0.0
             a_returned(group) = 1.0
             qc(j) = qc(j) + 10.
@@ -518,9 +518,6 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
 
    end do Observations
-
-   ! Free up the storage for this obs set
-   deallocate(obs_err_cov, obs)
 
    ! Output posterior diagnostics
 
@@ -609,7 +606,7 @@ AdvanceTime : do i = 1, num_obs_sets
    next_time = get_obs_def_time(obs_def)
 
 ! Deallocate storage used for each set
-   deallocate(keys,qc)
+   deallocate(keys, obs_err_cov, obs, qc)
 
 end do AdvanceTime
 
