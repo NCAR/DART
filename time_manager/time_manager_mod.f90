@@ -2142,7 +2142,9 @@ character(len=13) :: fmt
 ! prints the time to standard output (or optional unit) as days and seconds
 ! NOTE: there is no check for PE number
 
+! NEED TO GET DEFAULT FOR STANDARD OUT< HARD CODED FOR NOW
 !!!  unit_in = stdout()
+  unit_in = 6
 
   if (present(unit)) unit_in = unit
 
