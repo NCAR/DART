@@ -15,7 +15,6 @@ program nmlbld_rose
    use utilities_mod, only: open_file, close_file, &
                             check_nml_error, file_exist
    implicit none
-   logical            :: old_restart = .true.
    logical            :: output_prog_diag = .false.
    character (len=50) :: input_dir = '../DAinput/'
    character (len=50) :: out_dir   = '../DAoutput/'
@@ -24,10 +23,9 @@ program nmlbld_rose
    real(kind=r8)      :: h_tune = pi
    real(kind=r8)      :: z_tune = 1.0
    real(kind=r8)      :: target_time =  0.125 ! e.g, 168 = 7 days * 24 [hr]  
-   integer            :: nstart = 0
    integer            :: ntime = 8
 
-   namelist /rose_nml/ old_restart, nstart, target_time, &
+   namelist /rose_nml/ target_time, &
                        input_dir, out_dir, ncep_file, restart_file,&
                        output_prog_diag, &
                        h_tune, z_tune, &
@@ -45,7 +43,7 @@ program nmlbld_rose
          call close_file(iunit)
    endif
 
-      read(*,*)  old_restart, nstart, target_time
+      read(*,*)  nstart, target_time
 
       iunit = open_file('rose.nml',action = 'write')
 
@@ -58,8 +56,6 @@ program nmlbld_rose
       write(iunit, '("restart_file = ", 3a)')      "'",trim(restart_file),"'"
       write(iunit, '("h_tune = ", f15.10)')        h_tune
       write(iunit, '("z_tune = ", f15.10)')        z_tune
-      write(iunit, '("old_restart = ", l)')        old_restart
-      write(iunit, '("nstart = ", i2)')            nstart
       write(iunit, '("target_time = ", f15.10,"/")')   target_time
 
 end program nmlbld_rose

@@ -51,7 +51,7 @@ public :: get_model_size, &
           prog_var_to_vector, &
           vector_to_prog_var, &
           read_ROSE_restart, &
-          write_ROSE_restart, &
+          update_ROSE_restart, &
           init_model_instance, &
           end_model_instance
 
@@ -81,8 +81,6 @@ integer :: state_num_3d = 9             ! # of 3d fields to read from file
 namelist /model_nml/ state_num_3d
 
 integer :: ntime = 8       
-logical :: old_restart = .true.
-integer :: nstart = 0                                          !NOT USED
 logical :: output_prog_diag = .false.                          !NOT USED
 character (len=50) :: input_dir = '../DAinput/'                !NOT USED
 character (len=50) :: out_dir   = '../DAoutput/'               !NOT USED
@@ -92,7 +90,7 @@ real(kind=r8) :: h_tune = pi                                   !NOT USED
 real(kind=r8) :: z_tune = 1.0                                  !NOT USED
 real(kind=r8) :: target_time = 0.125 ! e.g., 168.0 = 7 days * 24 [hr]        !NOT USED
 
-namelist /rose_nml/ old_restart, nstart, target_time, &
+namelist /rose_nml/ target_time, &
                     input_dir, out_dir, ncep_file, restart_file,&
                     output_prog_diag, &
                     h_tune, z_tune, &
@@ -1189,13 +1187,13 @@ deallocate(var%vars_3d)
                                                                                                          
 end subroutine end_model_instance
 
-subroutine write_ROSE_restart(file_name, var)
+subroutine update_ROSE_restart(file_name, var)
 !=======================================================================
-! write ROSE restart file fields that have been updated
+! update ROSE restart file fields
 !
   character (len = *), intent(in) :: file_name
   type(model_type), intent(in) :: var
-  integer :: iunit 
+  integer :: iunit, ierr, iftype
 
 ! ROSE restart file prognostic variables
 ! from a3d.chem.f
@@ -1213,17 +1211,60 @@ subroutine write_ROSE_restart(file_name, var)
 ! from chem.mod.f ... constituent mixing ratios
   real, dimension (nz,nx,ny,nbcon) :: qn1
   real, dimension (nz,ny) :: q_o2, q_n2
+
+  character(len=129) :: errstring
 !
+  integer :: dummy_rose(3)
+  integer :: daynum
+  real    :: gmt_frac        ! fraction of day since 0Z
 !====================================================================
 
 if(file_exist(file_name)) then
+
+   ! Determine if we have a style 1 (old school) or not restart file.
    iunit = open_file(file_name, form = 'unformatted', action = 'read')
-   read(iunit) iyear, doy, utsec, year0, day0, ut0, tref,& 
-               treflb, trefub, un1, vn1, tn1, un0, vn0, tn0,&
-               qn1, q_o2, q_n2
+   read(iunit, iostat=ierr) iftype
+   if ( ierr /= 0 ) then
+      write(errstring,*)'restart file is ',trim(adjustl(file_name))
+      call error_handler(E_MSG,'update_ROSE_restart',errstring,source,revision,revdate)
+      call error_handler(E_ERR,'update_ROSE_restart','unknown restart file type',&
+           source,revision,revdate)
+   endif
+
+   if (iftype == 1) then ! style 1 (old school) restart file.
+
+      read(iunit, iostat=ierr) dummy_rose, gmt_frac, daynum, tref, treflb, &
+                  trefub, un1, vn1, tn1, un0, vn0, tn0, &
+                  qn1(:,:,:,1:nbcon-1), q_o2, q_n2
+
+      if ( ierr /= 0 ) then
+         write(errstring,*)'type 1 restart file is ',trim(adjustl(file_name))
+         call error_handler(E_MSG,'update_ROSE_restart',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'update_ROSE_restart','read error',&
+              source,revision,revdate)
+      endif
+
+      doy   = mod(dummy_rose(3), 365) 
+      utsec = int(gmt_frac * 24.0 * 3600.0)
+
+   else ! anything else is 'newish' 
+
+      read(iunit, iostat=ierr) iyear, doy, utsec, year0, day0, ut0, tref, & 
+                  treflb, trefub, un1, vn1, tn1, un0, vn0, tn0, &
+                  qn1, q_o2, q_n2
+      if ( ierr /= 0 ) then
+         write(errstring,*)'type ',iunit,' restart file is ',trim(adjustl(file_name))
+         call error_handler(E_MSG,'update_ROSE_restart',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'update_ROSE_restart','read error',&
+              source,revision,revdate)
+      endif
+
+   endif
+
    call close_file(iunit)
 else
-   call error_handler(E_ERR,'write_ROSE_restart','rose_restart.dat not available',source,revision,revdate)
+   write(errstring,*) trim(adjustl(file_name)),' not available.'
+   call error_handler(E_ERR,'update_ROSE_restart',errstring,source,revision,revdate)
 endif
 
 un1 = var%vars_3d(:,:,:,1)
@@ -1236,18 +1277,16 @@ qn1(:,:,:,7)  = var%vars_3d(:,:,:,7) ! H
 qn1(:,:,:,8)  = var%vars_3d(:,:,:,8) ! OH
 qn1(:,:,:,18) = var%vars_3d(:,:,:,9) ! O
 
+iftype = 2 ! ALWAYS want to write the 'new-style' restart file.
 
-if(file_exist(file_name)) then
-   iunit = open_file(file_name, form = 'unformatted', action = 'write')
-   write(iunit) iyear, doy, utsec, year0, day0, ut0, tref,& 
-                treflb, trefub, un1, vn1, tn1, un0, vn0, tn0,&
-                qn1, q_o2, q_n2
-   call close_file(iunit)
-else
-   call error_handler(E_ERR,'write_ROSE_restart','rose_restart.dat not available',source,revision,revdate)
-endif
+iunit = open_file(file_name, form = 'unformatted', action = 'write')
+write(iunit) iftype
+write(iunit) iyear, doy, utsec, year0, day0, ut0, &
+             tref, treflb, trefub, un1, vn1, tn1, &
+             un0, vn0, tn0, qn1, q_o2, q_n2
+call close_file(iunit)
 
-end subroutine write_ROSE_restart
+end subroutine update_ROSE_restart
 
 
 subroutine read_ROSE_restart(file_name, var, model_time)
@@ -1257,7 +1296,7 @@ subroutine read_ROSE_restart(file_name, var, model_time)
   character (len = *), intent(in) :: file_name
   type(model_type),   intent(out) :: var
   type(time_type),   intent(out)  :: model_time
-  integer :: iunit 
+  integer :: iunit, ierr, iftype
   integer :: model_seconds, model_days
 
 ! ROSE restart file prognostic variables
@@ -1280,6 +1319,8 @@ subroutine read_ROSE_restart(file_name, var, model_time)
   integer :: dummy_rose(3)
   integer :: daynum
   real    :: gmt_frac        ! fraction of day since 0Z
+
+  character(len=129) :: errstring
 !
 !====================================================================
 
@@ -1287,20 +1328,42 @@ if(file_exist(file_name)) then
 
    iunit = open_file(file_name, form = 'unformatted', action = 'read')
 
-   if (old_restart) then
+   ! Determine if we have a style 1 (old school) or not restart file.
+   read(iunit, iostat=ierr) iftype
+   if ( ierr /= 0 ) then
+      write(errstring,*)'restart file is ',trim(adjustl(file_name))
+      call error_handler(E_MSG,'read_ROSE_restart',errstring,source,revision,revdate)
+      call error_handler(E_ERR,'read_ROSE_restart','unknown restart file type',&
+           source,revision,revdate)
+   endif
 
-      read(iunit) dummy_rose, gmt_frac, daynum, tref, treflb, &
+   if (iftype == 1) then ! style 1 (old school) restart file.
+
+      read(iunit, iostat=ierr) dummy_rose, gmt_frac, daynum, tref, treflb, &
                   trefub, un1, vn1, tn1, un0, vn0, tn0, &
                   qn1(:,:,:,1:nbcon-1), q_o2, q_n2
+
+      if ( ierr /= 0 ) then
+         write(errstring,*)'type 1 restart file is ',trim(adjustl(file_name))
+         call error_handler(E_MSG,'read_ROSE_restart',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'read_ROSE_restart','read error',&
+              source,revision,revdate)
+      endif
       
       doy   = mod(dummy_rose(3), 365) 
       utsec = int(gmt_frac * 24.0 * 3600.)
                                                                                                               
-   else
+   else ! anything else is 'newish' 
 
-      read(iunit) iyear, doy, utsec, year0, day0, ut0, tref, & 
+      read(iunit, iostat=ierr) iyear, doy, utsec, year0, day0, ut0, tref, & 
                   treflb, trefub, un1, vn1, tn1, un0, vn0, tn0, &
                   qn1, q_o2, q_n2
+      if ( ierr /= 0 ) then
+         write(errstring,*)'type ',iunit,' restart file is ',trim(adjustl(file_name))
+         call error_handler(E_MSG,'read_ROSE_restart',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'read_ROSE_restart','read error',&
+              source,revision,revdate)
+      endif
 
    endif
 
