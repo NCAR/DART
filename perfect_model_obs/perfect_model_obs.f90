@@ -16,9 +16,9 @@ program perfect_model_obs
 
 use types_mod,        only : r8
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
-                             initialize_utilities, register_module, error_handler, E_MSG, &
-                             logfileunit, timestamp
-use time_manager_mod, only : time_type, set_time, print_time, operator(/=), operator(*), operator(+)
+                             initialize_utilities, register_module, error_handler, &
+                             E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, timestamp
+use time_manager_mod, only : time_type, set_time, get_time, operator(/=), operator(*), operator(+)
 
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
@@ -29,15 +29,12 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_v
 
 use obs_model_mod,    only : get_expected_obs
 
-
 use assim_model_mod, only  : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
-   get_closest_state_time_to, advance_state, set_model_time, &
-   get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
-   read_state_restart, write_state_restart, binary_restart_files
+   get_closest_state_time_to, advance_state, set_model_time, get_model_time, &
+   netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, &
+   init_assim_model, read_state_restart, write_state_restart, binary_restart_files
 use random_seq_mod,  only  : random_seq_type, init_random_seq, random_gaussian
-
-use netcdf, only : NF90_close
 
 implicit none
 
@@ -54,7 +51,9 @@ type(time_type)         :: time1, time2, next_time
 type(random_seq_type)   :: random_seq
 
 integer                 :: i, j, iunit
-integer                 :: ierr, StateUnit, io, istatus
+integer                 :: days, secs    ! for printing purposes only
+type(netcdf_file_type)  :: StateUnit
+integer                 :: ierr, io, istatus
 integer                 :: model_size, key_bounds(2), num_obs, num_qc
 integer, allocatable    :: keys(:)
 logical                 :: is_there_one, out_of_range, is_this_last
@@ -164,7 +163,7 @@ else
 endif
 
 ! Set up output of truth for state
-StateUnit  = init_diag_output(   'True_State', 'true state from control', 1, (/'true state'/))
+StateUnit = init_diag_output('True_State', 'true state from control', 1, (/'true state'/))
 
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)
@@ -195,9 +194,10 @@ Advance: do i = 1, get_num_times(seq)
    call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs, out_of_range, obs)
    allocate(keys(num_obs))
    call get_time_range_keys(seq, key_bounds, num_obs, keys)
-   write(msgstring, *) 'time of obs set ', i
+
+   call get_time(next_time,secs,days)
+   write(msgstring, *) 'time of obs set ', i,' is (d,s) =',days,secs
    call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
-   call print_time(next_time)
 
 ! Figure out time to advance to
    time2 = get_closest_state_time_to(x(1), next_time)
@@ -206,11 +206,11 @@ Advance: do i = 1, get_num_times(seq)
 
 ! Output the true state
    if(i / output_interval * output_interval == i) &
-      call output_diagnostics(    StateUnit, x(1), 1)
+      call output_diagnostics( StateUnit, x(1), 1)
 
 ! How many observations in this set
    write(msgstring, *) 'num_obs_in_set is ', num_obs
-   call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'perfect_model_obs',msgstring,source,revision,revdate)
 
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs
@@ -252,7 +252,7 @@ end do Advance
 
 ! properly dispose of the diagnostics files
 
-ierr = NF90_close(StateUnit)
+ierr = finalize_diag_output(StateUnit)
 
 ! Write out the sequence
 call write_obs_seq(seq, obs_seq_out_file_name)

@@ -16,18 +16,19 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, get_obs_values, init_obs, assignment(=), &
-   get_num_copies, static_init_obs_sequence, get_qc, get_num_qc
+   get_num_copies, static_init_obs_sequence, get_qc, set_qc, get_num_qc
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
-use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
-   operator(>)
+use time_manager_mod, only : time_type, get_time, set_time, print_time, &
+                             operator(/=), operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
-                              check_nml_error, file_exist, error_handler, E_ERR, E_MSG, &
+                              check_nml_error, file_exist, error_handler, &
+                              E_ERR, E_WARN, E_MSG, E_DBG, &
                               logfileunit, initialize_utilities, finalize_utilities, &
                               timestamp
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
-   get_model_size, get_closest_state_time_to, &
-   advance_state, set_model_time, get_model_time, init_diag_output, &
-   output_diagnostics, finalize_diag_output, init_assim_model, get_state_vector_ptr, &
+   get_model_size, get_closest_state_time_to, advance_state, set_model_time, get_model_time, &
+   netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, & 
+   init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data, &
    binary_restart_files, aoutput_diagnostics, aread_state_restart, &
    aget_closest_state_time_to, awrite_state_restart, Aadvance_state, pert_model_state
@@ -53,9 +54,9 @@ type(time_type)         :: time1, time2, next_time
 type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
-integer :: i, j, k, ind, iunit, io, istatus
+integer :: i, j, k, ind, iunit, io, istatus, days, secs
 integer :: num_obs_in_set, ierr, num_qc
-integer :: PriorStateUnit, PosteriorStateUnit
+type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: model_size, num_obs_sets
 integer :: grp_size, grp_bot, grp_top, group
 real(r8) :: reg_factor
@@ -218,7 +219,7 @@ if(start_from_restart) then
 
    do i = 1, ens_size
       write(msgstring, *) 'trying to read restart ', i
-      call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+      call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
       if (binary_restart_files ) then
          call aread_state_restart(ens_time(i), ens(i, :), iunit, "unformatted")
       else
@@ -273,9 +274,13 @@ else
 endif
 
 ! Temporary print of initial model time
-write(msgstring, *) 'initial model time is '
-call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
-call print_time(ens_time(1))
+call get_time(ens_time(1),secs,days)
+write(msgstring, *) 'initial model time of first ensemble member (days,seconds) ',days,secs
+call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
+
+call get_time(ens_time(ens_size),secs,days)
+write(msgstring, *) 'initial model time of last ensemble member (days, seconds) ',days,secs
+call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
 
 ! Get the time of the first observation in the sequence
 is_there_one = get_first_obs(seq, observation)
@@ -295,9 +300,10 @@ AdvanceTime : do i = 1, num_obs_sets
    call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs_in_set, out_of_range, observation)
    allocate(keys(num_obs_in_set))
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-   write(msgstring, *) 'time of obs set ', i
+
+   call get_time(next_time,secs,days)
+   write(msgstring, *) 'time of obs set ', i, ' is (d,s) = ',days,secs
    call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
-   call print_time(next_time)
 
    ! If the model time is past the obs set time, just need to skip???
    if(ens_time(1) > next_time) cycle AdvanceTime
@@ -382,7 +388,7 @@ AdvanceTime : do i = 1, num_obs_sets
 ! Each ensemble member
       do k = 1, ens_size
          call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
-         if(istatus == 1 ) qc(j) = 99.0
+         if(istatus == 1 ) qc(j) = 99.0_r8
       enddo
 
 ! Compute observation prior ensemble mean
@@ -401,7 +407,7 @@ AdvanceTime : do i = 1, num_obs_sets
       if(output_obs_ens_spread) &
          call set_obs_values(observation, obs_spread, prior_obs_spread_index)
 
-         if(qc(j) == 99.0 ) call set_qc(observation, qc(j:j), 1)
+         if(qc(j) == 99.0_r8 ) call set_qc(observation, qc(j:j), 1)
 
 ! Finally store the prior observation space stuff for this observation into sequence
       call set_obs(seq, observation, keys(j))
@@ -660,7 +666,7 @@ integer, intent(out) :: output_state_mean_index, output_state_spread_index
 integer, intent(out) :: prior_obs_mean_index, posterior_obs_mean_index
 integer, intent(out) :: prior_obs_spread_index, posterior_obs_spread_index
 integer, intent(out) :: num_state_copies, num_obs_copies
-integer, intent(out) :: PriorStateUnit, PosteriorStateUnit
+type(netcdf_file_type), intent(out) :: PriorStateUnit, PosteriorStateUnit
 type(obs_sequence_type), intent(inout) :: seq
 
 
