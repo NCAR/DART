@@ -55,7 +55,7 @@ push @targets, @ARGV;		# then add remaining arguments on command line
 ensureTrailingSlash($opt_a) if $opt_a;
 
 # the name of the output namelist file
-my $nmlfile = "input.nml.mkmf";
+my $nmlfile = "input.nml.${opt_p}_default";
 
 #some generic declarations
 my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word, $nml );
