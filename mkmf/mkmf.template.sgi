@@ -3,10 +3,11 @@
 # mkmf -t template.sgi -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
 
 FC = f90
+LD = f90
 CPPFLAGS = -macro_expand
+LIST = -listing
 FFLAGS = -d8 -64 -i4 -r8 -mips4 -O2 -OPT:Olimit=0 -woff1670 #optimized
 # FFLAGS = -64 -i4 -r8 -mips4 -woff1670 -DEBUG:conform_check=YES:subscript_check=ON:trap_uninitialized=ON:verbose_runtime=ON -g #for debugging
-LIST = -listing
 
 #to debug shmem codes, you need the dbfork library
 #TOTALVIEW = -L/opt/totalview/4.1.0-3/irix6-mips/lib -ldbfork_n64
@@ -14,9 +15,8 @@ LIST = -listing
 #TOTALVIEW = -L/sw/mel/totalview/lib -ldbfork_n64
 
 #LIBS must be customized for your site
-LD = f90
-LDFLAGS = -64 -mips4 -dont_warn_unused $(LIBS)
 LIBS = $(TOTALVIEW) -L/usr/local/lib -lnetcdf -ludunits -lmpi -lsma -lexc -lscs
+LDFLAGS = -64 -mips4 -dont_warn_unused $(LIBS)
 
 #---------------------------------------------------------------------------
 # you should never need to change any lines below.
