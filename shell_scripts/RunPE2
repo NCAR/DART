@@ -198,8 +198,9 @@ ENDofMessage
    set obs_sequence_out_name = obs_seq.out_151
    set obs_sequence_final_name = obs_seq.final_151
 
-   echo '&assim_model_nml'                     > assim_mod.nml
-   echo '   binary_restart_files = .false. /' >> assim_mod.nml
+   echo '&assim_model_nml'                           > assim_mod.nml
+   echo '    read_binary_restart_files = .false. ,' >> assim_mod.nml
+   echo '   write_binary_restart_files = .false. /' >> assim_mod.nml
 
 breaksw
 default:

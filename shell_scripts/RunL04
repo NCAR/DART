@@ -158,7 +158,8 @@ endif
 
 cat << ENDofTask01 > assim_mod.nml
 &assim_model_nml
-   binary_restart_files = .false. /
+    read_binary_restart_files = .false. ,
+   write_binary_restart_files = .false. /
 ENDofTask01
 
 echo "&model_nml"                            > model.nml

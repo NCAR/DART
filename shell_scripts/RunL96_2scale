@@ -151,8 +151,9 @@ endif
 # Create common namelists -- lots of ways to do it.
 #======================================================================
 
-echo '&assim_model_nml'                     > assim_mod.nml
-echo '   binary_restart_files = .false. /' >> assim_mod.nml
+echo '&assim_model_nml'                           > assim_mod.nml
+echo '    read_binary_restart_files = .false. ,' >> assim_mod.nml
+echo '   write_binary_restart_files = .false. /' >> assim_mod.nml
 
 echo '&model_nml'                           > model.nml
 echo '   model_size_x = 36,'               >> model.nml

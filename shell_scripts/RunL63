@@ -154,7 +154,8 @@ endif
 
 cat << ENDofTask01 > assim_mod.nml
 &assim_model_nml
-   binary_restart_files = .false. /
+    read_binary_restart_files = .false. ,
+   write_binary_restart_files = .false. /
 ENDofTask01
 
 cat << ENDofTask02 > model.nml
@@ -201,7 +202,12 @@ echo '&utilities_nml'                                  > utilities.nml
 echo '   logfilename = "create_obs_sequence.out"'     >> utilities.nml
 echo '   TERMLEVEL = 1   /'                           >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml > input.nml
+echo '&obs_sequence_nml'                               > obs_sequence.nml
+echo '   read_binary_obs_sequence = .true.'           >> obs_sequence.nml
+echo '   write_binary_obs_sequence = .true.   /'      >> obs_sequence.nml
+
+
+cat utilities.nml obs_sequence.nml assim_mod.nml model.nml > input.nml
 
 ./create_obs_sequence < $COS
 
@@ -232,7 +238,7 @@ echo '&utilities_nml'                                   > utilities.nml
 echo '   logfilename = "create_fixed_network_seq.out"' >> utilities.nml
 echo '   TERMLEVEL = 1   /'                            >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml > input.nml
+cat utilities.nml obs_sequence.nml assim_mod.nml model.nml > input.nml
 
 ./create_fixed_network_seq < $CFN
 
@@ -270,7 +276,7 @@ echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
 echo '   TERMLEVEL = 1  /'                        >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
+cat utilities.nml obs_sequence.nml assim_mod.nml model.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -341,9 +347,9 @@ echo "   num_output_obs_members = $num_output_obs_members ,"     >> filter.nml
 echo "   output_interval = $output_interval    /"                >> filter.nml
 echo " "                                                         >> filter.nml
 
-cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
+cat utilities.nml obs_sequence.nml assim_mod.nml model.nml filter.nml > input.nml
 
-./filter
+time ./filter
 
 if ( $status > 0 ) then
    echo "ERROR: filter bombed ..."
@@ -351,7 +357,7 @@ else
    echo " "
    echo "filter terminated normally"
    echo " "
-   \rm -f $COS $CFN set_def.out
+   \rm -f $COS $CFN set_def.out obs_sequence.nml
    \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
 endif
 

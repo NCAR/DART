@@ -158,7 +158,8 @@ endif
 #======================================================================
 
 echo '&assim_model_nml'                           > assim_mod.nml
-echo '   binary_restart_files = .false. /'       >> assim_mod.nml
+echo '    read_binary_restart_files = .false. ,' >> assim_mod.nml
+echo '   write_binary_restart_files = .false. /' >> assim_mod.nml
 
 echo '&obs_sequence_nml'                          > obs_sequence.nml
 echo '   read_binary_obs_sequence = .false. ,'   >> obs_sequence.nml
