@@ -1,5 +1,10 @@
 &assim_tools_nml
    filter_kind = 1,
-   do_parallel = 0, 
+   sort_obs_inc = .true.,
+   cov_inflate = 1.05
+   cov_inflate_sd = 0.02,
+   sd_lower_bound = 0.02, 
+   deterministic_cov_inflate = .false.
+   do_parallel = 0,
    num_domains = 1,
    parallel_command = "./assim_filter.csh" /
