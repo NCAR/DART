@@ -44,7 +44,7 @@ integer           :: seconds, days
 !----
 !  misc stuff
 
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 integer :: mode, io, ierr,i,j,k
 
 !---
@@ -136,16 +136,6 @@ if(debug) write(6,*) ' transfer complete '
 !---
 !  output 
 
-do k=1,wrf%bt
-   do j=1,wrf%sn
-      do i=1,wrf%we+1
-         if (wrf%u(i,j,k) < -90.0_r8) write(6,*) i,j,k,wrf%u(i,j,k)
-      enddo
-   enddo
-enddo
-write(6,*) 'wrf%u(1:20,1,1) = ',wrf%u(1:20,1,1)
-write(6,*) 'wrf%u(1:20,2,1) = ',wrf%u(1:20,2,1)
-
 if(debug) write(6,*) ' state output '
 if( dart_to_wrf ) then
    call WRF_IO( wrf, "OUTPUT", debug )
@@ -178,14 +168,9 @@ implicit none
 
 type(wrf_data) wrf
 character (len=6) :: in_or_out
-integer, dimension(5) :: map, kount, start, stride
-integer :: k
-logical :: debug
 
-map = 1
-start = 1
-stride = 1
-kount = 1
+integer :: k, ndims, lngth, dimids(5)
+logical :: debug
 
 !----------------------------------------------------------------------
 
@@ -199,17 +184,15 @@ endif
 ! Reading or Writing the U variable. ignoring count, stride, map ...
 !----------------------------------------------------------------------
 
-kount(4) = 1
-kount(3) = wrf%bt
-kount(2) = wrf%sn
-kount(1) = wrf%we+1
-if(debug) write(6,*) ' calling netcdf read for u ', &
-     kount(1), kount(2), kount(3), kount(4)
+call check( nf90_inquire_variable(wrf%ncid, wrf%u_id, ndims=ndims, dimids=dimids) )
+call check( nf90_inquire_dimension(wrf%ncid, dimids(ndims), len=lngth) )
+
+if(debug) write(6,*) ' calling netcdf read for u '
 
 if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, 1 /)))
 else
-   call check( nf90_get_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, lngth /)))
 endif
 
 if(debug) write(6,*) ' returned from netcdf read for u '
@@ -218,13 +201,10 @@ if(debug) write(6,*) ' returned from netcdf read for u '
 ! Reading or Writing the V variable. ignoring count, stride, map ...
 !----------------------------------------------------------------------
 
-kount(2) = wrf%sn+1
-kount(1) = wrf%we
-
 if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, 1 /)))
 else
-   call check( nf90_get_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, lngth /)))
 endif
 
 if(debug) write(6,*) ' returned from netcdf read for v '
@@ -233,27 +213,19 @@ if(debug) write(6,*) ' returned from netcdf read for v '
 ! Reading or Writing the W,PH,PHB variables. ignoring count, stride, map ...
 !----------------------------------------------------------------------
 
-kount(3) = wrf%bt+1
-kount(2) = wrf%sn
-kount(1) = wrf%we
-
 if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, 1 /)))
 !!$   call check( nf90_put_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
 else
-   call check( nf90_get_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_get_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_get_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, lngth /)))
 endif
 
 !----------------------------------------------------------------------
 ! Reading or Writing the .... variables. ignoring count, stride, map ...
 !----------------------------------------------------------------------
-
-kount(3) = wrf%bt
-kount(2) = wrf%sn
-kount(1) = wrf%we
 
 if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
@@ -261,10 +233,10 @@ if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, 1 /)))
 else
-   call check( nf90_get_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_get_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_get_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, lngth /)))
 endif
 
 !----------------------------------------------------------------------
@@ -277,9 +249,9 @@ if(wrf%ice_micro) then
       call check( nf90_put_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, 1 /)))
       call check( nf90_put_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, 1 /)))
    else
-      call check( nf90_get_var(wrf%ncid, wrf%qi_id, wrf%qi, start = (/ 1, 1, 1, 1 /)))
-      call check( nf90_get_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, 1 /)))
-      call check( nf90_get_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_get_var(wrf%ncid, wrf%qi_id, wrf%qi, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, lngth /)))
    endif
 end if
 
@@ -287,14 +259,10 @@ end if
 ! Reading or Writing the .... variables. ignoring count, stride, map ...
 !----------------------------------------------------------------------
 
-kount(3) = 1
-kount(2) = wrf%sn
-kount(1) = wrf%we
-
 if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
 else
-   call check( nf90_get_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, lngth /)))
 endif
 
 !----------------------------------------------------------------------
@@ -303,7 +271,7 @@ endif
 
 if( in_or_out(1:5) == "INPUT")   then  
 
-   call check( nf90_get_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, lngth /)))
 
    if(debug) then
       write(6,*) ' returned from mub read '
@@ -353,8 +321,6 @@ logical            :: debug
 
 type(wrf_data)     :: wrf
 
-integer :: i,bob,ndims, lngth, dimids(5)
-
 call check ( nf90_open('wrfinput', mode, wrf%ncid) )
 if(debug) write(6,*) ' wrf%ncid is ',wrf%ncid
 
@@ -369,7 +335,7 @@ call check ( nf90_inquire_dimension(wrf%ncid, wrf%sn_id, name, wrf%sn))
 call check ( nf90_inq_dimid(wrf%ncid, "west_east", wrf%we_id))
 call check ( nf90_inquire_dimension(wrf%ncid, wrf%we_id, name, wrf%we))
 
-write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
+if(debug) write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 
 !---
 ! get wrf variable ids and allocate space for wrf variables
@@ -379,12 +345,6 @@ call check ( nf90_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id))
 if(debug) write(6,*) ' ptop_id = ',wrf%ptop_id
 
 call check ( nf90_inq_varid(wrf%ncid, "U", wrf%u_id))
-
-!bob = nf90_inquire_variable(wrf%ncid, wrf%u_id, ndims=ndims, dimids=dimids)
-!do i = 1,ndims
-!   bob = nf90_inquire_dimension(WRF%ncid, dimids(i), len=lngth) 
-!   write(*,*)'dimension ',i,'is dimid ',dimids(i),' and has length ', lngth
-!enddo
 
 if(debug) write(6,*) ' u_id = ',wrf%u_id
 allocate(wrf%u(wrf%we+1,wrf%sn,wrf%bt))
@@ -622,18 +582,13 @@ in = n_values+1
 call trans_3d( dart_to_wrf, dart(in:),wrf%u,wrf%we+1,wrf%sn,wrf%bt)
 n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we+1)  ! u field
 
-write(6,*) 'transfer_dart_wrf',wrf%u(1:20,1,1)
-write(6,*) 'transfer_dart_wrf',wrf%u(1:20,2,1)
-
 in = n_values+1
 call trans_3d( dart_to_wrf, dart(in:),wrf%v,wrf%we,wrf%sn+1,wrf%bt)
 n_values = n_values + (wrf%bt  )*(wrf%sn+1)*(wrf%we  )  ! v field
 
-
 in = n_values+1
 call trans_3d( dart_to_wrf, dart(in:),wrf%w,wrf%we,wrf%sn,wrf%bt+1)
 n_values = n_values + (wrf%bt+1)*(wrf%sn  )*(wrf%we  )  ! w field
-
 
 in = n_values+1
 call trans_3d( dart_to_wrf, dart(in:),wrf%ph,wrf%we,wrf%sn,wrf%bt+1)
