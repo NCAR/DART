@@ -813,6 +813,7 @@ if(asynch /= 0) then
       write(control_unit, '(a26)' ) ic_file_name(i)
       write(control_unit, '(a26)' ) ud_file_name(i)
    end do
+   call write_time(control_unit, target_time)
    close(control_unit)
 
    if(asynch == 1) then
@@ -847,7 +848,7 @@ if(asynch /= 0) then
 
    elseif(asynch == 2) then
 
-      call system('./advance_ens.csh ; sleep 1')
+      call system('./sync_filter.csh ; sleep 1')
 
    else
 
