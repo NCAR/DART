@@ -1,5 +1,11 @@
 program qc_test
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Think of dividing area around distribution into 9 boxes defined by
 ! the two observations. When the observations have the same sign, boxes
 ! in lower left and upper right summed (2* either one since they are

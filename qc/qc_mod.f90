@@ -1,4 +1,11 @@
 module qc_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use nag_wrap_mod, only : g01haf_wrap, g01eaf_wrap, g01ecf_wrap
 use assim_tools_mod, only : sample_cov
