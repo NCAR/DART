@@ -96,7 +96,7 @@ call inc_num_obs_copies(seq, 2, copy_meta_data)
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
 do i = 1, num_obs_sets
-   time = get_obs_sequence_time(seq, i)
+   call get_obs_sequence_time(seq, i, time)
    write(*, *) 'time of obs set ', i
    call print_time(time)
 
