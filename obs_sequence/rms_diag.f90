@@ -14,7 +14,8 @@ program rms_diag
 
 use types_mod
 use assim_model_mod, only : init_diag_input, get_diag_input_copy_meta_data, &
-   get_model_state_vector, input_diagnostics, assim_model_type
+   get_model_state_vector, input_diagnostics, assim_model_type, &
+   static_init_assim_model, init_assim_model
 use location_mod, only : location_type
 
 implicit none
@@ -32,6 +33,12 @@ real(r8) :: prior_rms_err, posterior_rms_err, sum_prior_rms = 0, sum_posterior_r
 
 ! OBVIOUSLY, a mature facility would have more error checks and make more
 ! direct use of available meta data. This is just a demo.
+
+! Initialize the assim_model
+call static_init_assim_model()
+call init_assim_model(truth_state)
+call init_assim_model(prior_state)
+call init_assim_model(posterior_state)
 
 write(*, *) 'input file name for prior state ensembles'
 read(*, *) prior_file

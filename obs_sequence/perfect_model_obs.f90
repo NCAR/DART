@@ -30,7 +30,7 @@ use utilities_mod, only : open_file
 use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
-   get_model_time, init_diag_output, output_diagnostics
+   get_model_time, init_diag_output, output_diagnostics, init_assim_model
 use random_seq_mod, only : random_seq_type, init_random_seq, &
    random_gaussian
 
@@ -67,6 +67,7 @@ call static_init_assim_model()
 model_size = get_model_size()
 
 ! Get the initial condition
+call init_assim_model(x)
 call get_initial_condition(x)
 
 ! Set up output of truth for state
