@@ -3,8 +3,8 @@
 # mkmf -t template.ifc -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
 FC = ifc
 LD = ifc
-FFLAGS = -i4 -r8 -fpp -O2 -I/ocotillo/users/jla/netcdf/include 
-LDFLAGS = $(LIBS)
+FFLAGS = -i4 -r8 -fpp -O2 -I/opt/Intel/include
+LDFLAGS = -static -KPIC $(LIBS) 
 # LIBS needs to be customized for your site
 # machine called DART .... LIBS = -L/usr/local/lib -lnetcdf -L/opt/intel/lib -ludunits -lPEPCF90 -L/usr/mpi/lib -lmpich
 # machine called ocotillo .... 
