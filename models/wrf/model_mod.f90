@@ -513,26 +513,38 @@ var_found = .false.
    if (var_type_out == TYPE_U) then
 
      if(ip == 1) then
+
         lon = wrf%longitude(1,jp) - 0.5*(wrf%longitude(2,jp)-wrf%longitude(1,jp))
-        lat = wrf%latitude(i,jp)  - 0.5*(wrf%latitude(2,jp)-wrf%latitude(1,jp))
+        if (wrf%longitude(2,jp) < wrf%longitude(1,jp)) lon = lon - 180.0
+        lat = wrf%latitude(1,jp)  - 0.5*(wrf%latitude(2,jp)-wrf%latitude(1,jp))
+
      else if(ip == nx) then
+
         lon = wrf%longitude(nx-1,jp) + 0.5*(wrf%longitude(nx-1,jp)-wrf%longitude(nx-2,jp))
+        if (wrf%longitude(nx-1,jp) < wrf%longitude(nx-2,jp)) lon = lon + 540.0
         lat = wrf%latitude(nx-1,jp)  + 0.5*(wrf%latitude(nx-1,jp)-wrf%latitude(nx-2,jp))
+
      else
+
         lon = 0.5*(wrf%longitude(ip,jp)+wrf%longitude(ip-1,jp))
-        lat = 0.5*(wrf%latitude(ip,jp)+wrf%latitude(ip-1,jp))
+        if (wrf%longitude(ip,jp) < wrf%longitude(ip-1,jp)) lon = lon + 180.0
+        lat = 0.5*(wrf%latitude(ip,jp) +wrf%latitude(ip-1,jp))
+
      end if
 
    else if (var_type_out == TYPE_V) then
 
      if(jp == 1)  then
        lon = wrf%longitude(ip,1) - 0.5*(wrf%longitude(ip,2)-wrf%longitude(ip,1))
+       if (wrf%longitude(ip,2) < wrf%longitude(ip,1)) lon = lon - 180.0
        lat = wrf%latitude(ip,1)  - 0.5*(wrf%latitude(ip,2)-wrf%latitude(ip,1))
      else if(jp == ny) then
        lon = wrf%longitude(ip,ny-1) + 0.5*(wrf%longitude(ip,ny-1)-wrf%longitude(ip,ny-2))
+       if (wrf%longitude(ip,ny-1) < wrf%longitude(ip,ny-2)) lon = lon + 540.0
        lat = wrf%latitude(ip,ny-1)  + 0.5*(wrf%latitude(ip,ny-1)-wrf%latitude(ip,ny-2))
      else 
        lon = 0.5*(wrf%longitude(ip,jp)+wrf%longitude(ip,jp-1))
+       if (wrf%longitude(ip,jp) < wrf%longitude(ip,jp-1)) lon = lon + 180.0
        lat = 0.5*(wrf%latitude(ip,jp) +wrf%latitude(ip,jp-1))
      end if
 
@@ -544,6 +556,8 @@ var_found = .false.
    end if
 
    if (lon < 0.0_r8) lon = lon + 360.0
+
+   if (lon > 360.0_r8) lon = lon - 360.0
 
    lev = float(kp)
 
@@ -637,26 +651,6 @@ allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 
 call grid_close_states( o_loc, wrf%latitude, wrf%longitude, radius,  &
                         num, lon_ind, lat_ind, close_dist, u_pts, v_pts, p_pts )
-!!$write(*,*) ' back from first grid_close_states num = ', num
-!!$write(*,*) ' p_pts, u_pts, v_pts ', p_pts, u_pts, v_pts
-!!$
-!!$write(*,*) ' '
-!!$write(*,*) ' p_pt, i, j, dist '
-!!$do i = 1, p_pts
-!!$  write(*,*) i, lon_ind(i), lat_ind(i), close_dist(i)
-!!$enddo
-!!$
-!!$write(*,*) ' '
-!!$write(*,*) ' u_pt, i, j, dist '
-!!$do i = p_pts+1, p_pts+u_pts
-!!$  write(*,*) i, lon_ind(i), lat_ind(i), close_dist(i)
-!!$enddo
-!!$
-!!$write(*,*) ' '
-!!$write(*,*) ' v_pt, i, j, dist '
-!!$do i = p_pts+u_pts+1, p_pts+u_pts+v_pts
-!!$  write(*,*) i, lon_ind(i), lat_ind(i), close_dist(i)
-!!$enddo
 
 ! next check vertical spacing, find out how many points
 ! we have in 3D
@@ -794,9 +788,6 @@ do k = 1, wrf%bt
          dist(num_total) = close_dist(i)
       end if
 
-!      write(6,*) ' ind, u, i,j,k,index ',num_total,ii,jj,k,indices(num_total)
-!      write(6,*) ' dist, radius ',close_dist(i),radius
-
    enddo
 enddo
 
@@ -873,7 +864,6 @@ real(r8), parameter :: r_earth = 6.37e+06 ! earth radius in meters
 logical, parameter :: debug=.false.
 
 type(location_type) :: loc
-
 
 if(debug) write(6,*) ' in grid_close_states '
 
@@ -1036,7 +1026,8 @@ type(location_type) :: loc
 
 real :: get_dist_wrf
 
-real :: long, lat
+real :: long, lat, lev
+
 
 
 !  get distance for input var_type
@@ -1044,84 +1035,60 @@ real :: long, lat
    if(var_type == type_u) then
 
      if (i == 1) then
-       long = wrf%longitude(i,j)   &
-                - 0.5*(wrf%longitude(i+1,j)-wrf%longitude(i,j))
-       lat  = wrf%latitude(i,j)   &
-                - 0.5*(wrf%latitude(i+1,j)-wrf%latitude(i,j))
+       long = wrf%longitude(1,j) - 0.5*(wrf%longitude(2,j)-wrf%longitude(1,j))
+       if (wrf%longitude(2,j) < wrf%longitude(1,j)) long = long - 180.0
+       lat  = wrf%latitude(1,j)  - 0.5*(wrf%latitude(2,j)-wrf%latitude(1,j))
      else if (i == wrf%we + 1) then
-       long = wrf%longitude(i-1,j) &
-                + 0.5*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
-       lat  = wrf%latitude(i-1,j) &
-                + 0.5*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
+       long = wrf%longitude(i-1,j) + 0.5*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
+       if (wrf%longitude(i-1,j) < wrf%longitude(i-2,j)) long = long + 540.0
+       lat  = wrf%latitude(i-1,j)  + 0.5*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
      else
        long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i-1,j))
-       lat  = 0.5*(wrf%latitude(i,j)+wrf%latitude(i-1,j))
+       if (wrf%longitude(i,j) < wrf%longitude(i-1,j)) long = long + 180.0
+       lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i-1,j))
      end if
-
-!     write(6,*) ' calling set location, u point,i,j ',i,j
-!     write(6,*) ' lon, lat, lev ',long,lat,float(k)-0.5
-
-     if (long < 0.0_r8) long = long + 360.0
-
-     loc = set_location(long,lat,float(k)-0.5)
-     get_dist_wrf = get_dist(loc,o_loc)
 
    else if( var_type == type_v) then
 
      if (j == 1) then
-       long = wrf%longitude(i,j)   &
-                - 0.5*(wrf%longitude(i,j+1)-wrf%longitude(i,j))
-       lat  = wrf%latitude(i,j)   &
-                - 0.5*(wrf%latitude(i,j+1)-wrf%latitude(i,j))
+       long = wrf%longitude(i,1) - 0.5*(wrf%longitude(i,2)-wrf%longitude(i,1))
+       if (wrf%longitude(i,2) < wrf%longitude(i,1)) long = long - 180.0
+       lat  = wrf%latitude(i,1)  - 0.5*(wrf%latitude(i,2)-wrf%latitude(i,1))
      else if (j == wrf%sn + 1) then
-       long = wrf%longitude(i,j-1) &
-                + 0.5*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
-       lat  = wrf%latitude(i,j-1) &
-                + 0.5*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
+       long = wrf%longitude(i,j-1) + 0.5*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
+       if (wrf%longitude(i,j-1) < wrf%longitude(i,j-2)) long = long + 540.0
+       lat  = wrf%latitude(i,j-1)  + 0.5*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
      else
        long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i,j-1))
-       lat  = 0.5*(wrf%latitude(i,j)+wrf%latitude(i,j-1))
+       if (wrf%longitude(i,j) < wrf%longitude(i,j-1)) long = long + 180.0
+       lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i,j-1))
      end if
-
-!     write(6,*) ' calling set location, point 3,i,j ',i,j
-!     write(6,*) ' lon, lat, lev ',long,lat,float(k)-0.5
-
-     if (long < 0.0_r8) long = long + 360.0
-
-     loc = set_location(long,lat,float(k)-0.5)
-
-     get_dist_wrf = get_dist(loc,o_loc)
-
-   else if( (var_type == type_w ) .or. &
-            (var_type == type_gz) .or. &
-            (var_type == type_mu)     ) then
-
-!     write(6,*) ' lon, lat, lev ',wrf%longitude(i,j),wrf%latitude(i,j),float(k)-1.0
-
-      long = wrf%longitude(i,j)
-      lat = wrf%latitude(i,j)
-
-     if (long < 0.0_r8) long = long + 360.0
-
-     loc = set_location(long,lat,float(k)-1.0)
-     get_dist_wrf = get_dist(loc,o_loc)
 
    else
 
-!     write(6,*) ' calling set location, p point, i, j ',i,j
-!     write(6,*) ' lon, lat, lev ',wrf%longitude(i,j),wrf%latitude(i,j),float(k)-0.5
-
       long = wrf%longitude(i,j)
       lat = wrf%latitude(i,j)
 
-     if (long < 0.0_r8) long = long + 360.0
-
-     loc = set_location(long,lat,float(k)-0.5)
-     get_dist_wrf = get_dist(loc,o_loc)
-
    end if
 
-!   get_dist_wrf = get_dist_wrf*180./3.1415928
+   if( (var_type == type_w ) .or. &
+        (var_type == type_gz) .or. &
+        (var_type == type_mu)     ) then
+
+      lev = float(k)-1.0
+
+   else
+
+      lev = float(k)-0.5
+
+   endif
+
+   if (long < 0.0_r8) long = long + 360.0
+
+   if (long > 360.0_r8) long = long - 360.0
+
+   loc = set_location(long,lat,lev)
+   get_dist_wrf = get_dist(loc,o_loc)
 
    end function get_dist_wrf
 
