@@ -60,7 +60,7 @@ For the
 <A HREF="http://www.asp.ucar.edu/colloquium/2003/">ASP colloquium 
 on Data Assimilation</A>, a subset of the complete DART facility was 
 used to examine ensemble filter assimilation algorithms using 
-<A HREF="#synteticobservations">synthetic observations</A>.  
+<A HREF="#syntheticobservations">synthetic observations</A>.  
 The DART programs were compiled with the Intel 7.1 Fortran compiler 
 and run on a linux compute-server while analysis was performed with 
 Matlab on a DEC workstation. If your system is different, you will 
@@ -1008,6 +1008,8 @@ values (unchanged from step 2):
 <div class=routineIndent1>
 &perfect_model_obs_nml <BR>
 &nbsp;&nbsp;&nbsp;async = .false., <BR>
+&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in", <BR>
+&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out", <BR>
 &nbsp;&nbsp;&nbsp;start_from_restart = .true., <BR>
 &nbsp;&nbsp;&nbsp;output_restart = .true., <BR>
 &nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
@@ -1066,41 +1068,132 @@ as analysis values).
 </P>
 
 Now try applying all of the matlab diagnostic functions described in 
-<A HREF="MatlabDiagnostics.html">the Matlab Diagnostics documentation</A>.
+<A HREF="#matlab">the Matlab Diagnostics section</A>.
 
 <!--==================================================================-->
 <A NAME="matlab"></A>
 <!--==================================================================-->
 <HR>
-<H2>Synthetic Observations</H2>
-<P>Synthetic observations are generated from a `perfect' model integration, 
-which is often referred to as the `truth' or a `nature run'. 
-A model is integrated forward from some set of initial conditions and 
-observations are generated as <em class=equation>y = H(x) + e</em>
-where <em class=equation>H</em> is an operator on the model state 
-vector, <em class=equation>x</em>, that gives the expected value of a 
-set of observations, <em class=equation>y</em>, 
-and <em class=equation>e</em> is a random variable with a distribution 
-describing the error characteristics of the observing instrument(s) 
-being simulated. 
-Using synthetic observations in this way allows students to learn about 
-assimilation algorithms while being isolated from the 
-additional (extreme) complexity associated with model error and unknown 
-observational error characteristics. 
-In other words, for the real-world assimilation problem, the model has 
-(often substantial) differences from what happens in the real system 
-and the observational error distribution may be very complicated and 
-is certainly not well known. 
-Be careful to keep these issues in mind while exploring 
-the capabilities of the ensemble filters with synthetic observations.
+<H2>Matlab Diagnostics</H2>
+<P>The output files are netCDF files, and may be examined with many
+different software packages. We happen to use Matlab, and provide our
+diagnostic scripts in the hopes that they are useful.
+</P>
+<P>The Matlab diagnostic scripts and underlying functions reside in the 
+<em class=file>DART/matlab </em> directory. They are reliant on the public-domain 
+<A HREF="http://woodshole.er.usgs.gov/staffpages/cdenham/public_html/MexCDF/nc4ml5.html" >
+netcdf toolbox</A> from 
+<em class=file>http://woodshole.er.usgs.gov/staffpages/cdenham/public_html/MexCDF/nc4ml5.html</em>
+as well as the public-domain 
+<A HREF="http://www.marine.csiro.au/sw/matlab-netcdf.html">CSIRO matlab/netCDF interface</A>
+from <em class=file>http://www.marine.csiro.au/sw/matlab-netcdf.html</em>.
+If you do not have them installed on your system and want to use Matlab to peruse netCDF,
+you must follow their installation instructions.
 </P>
 
+<P>Once you can access the <em class=program>getnc</em> function from within Matlab,
+   you can use our diagnostic scripts. It is necessary to prepend the location of
+   the DART/matlab scripts to the matlabpath. Keep in mind the location of the netcdf
+   operators on your system WILL be different from ours ... and that's OK.
+
+<PRE>
+<div class=unix>
+0[269]0 ghotiol:/<5>models/lorenz_63/work]$ matlab -nojvm
+
+                                             < M A T L A B >
+                                 Copyright 1984-2002 The MathWorks, Inc.
+                                     Version 6.5.0.180913a Release 13
+                                               Jun 18 2002
+
+  Using Toolbox Path Cache.  Type "help toolbox_path_cache" for more info.
+ 
+  To get started, type one of these: helpwin, helpdesk, or demo.
+  For product information, visit www.mathworks.com.
+
+>><em class=input> which getnc</em>
+/contrib/matlab/matlab_netcdf_5_0/getnc.m
+>><em class=input>ls *.nc</em>
+
+ans =
+
+Posterior_Diag.nc  Prior_Diag.nc  True_State.nc
 
 
-<HR>
+>><em class=input>path('../../../matlab',path)</em>
+>><em class=input>which plot_ens_err_spread</em>
+../../../matlab/plot_ens_err_spread.m
+>><em class=input>help plot_ens_err_spread</em>
 
+  DART : Plots summary plots of the ensemble error and ensemble spread.
+                         Interactively queries for the needed information.
+                         Since different models potentially need different 
+                         pieces of information ... the model types are 
+                         determined and additional user input may be queried.
+ 
+  Ultimately, plot_ens_err_spread will be replaced by a GUI.
+  All the heavy lifting is done by PlotEnsErrSpread.
+ 
+  Example 1 (for low-order models)
+ 
+  truth_file = 'True_State.nc';
+  diagn_file = 'Prior_Diag.nc';
+  plot_ens_err_spread
+
+>><em class=input>plot_ens_err_spread</em>
+</div>
+</PRE>
+
+And the matlab graphics window will display the spread of the ensemble error for
+each state variable. The scripts are designed to do the "obvious" thing for the
+low-order models and will prompt for additional information if needed. 
+The philosophy of these is that anything that starts with a lower-case 
+<em class=file>plot_<em class=italic>some_specific_task</em></em> is intended to 
+be user-callable and should handle any of the models. All the other routines in
+<em class=file>DART/matlab</em> are called BY the high-level routines.
+</P>
+
+<TABLE border=1; class=indent1>
+<TR><TH>Matlab script</TH><TH>description</TH></TR>
+<TR><TD><em class=code>plot_bins</em></TD>
+    <TD>plots ensemble rank histograms</TD></TR>
+
+<TR><TD><em class=code>plot_correl</em></TD>
+    <TD>Plots space-time series of correlation between a given variable
+        at a given time and other variables at all times in a n
+        ensemble time sequence.</TD></TR>
+
+<TR><TD><em class=code>plot_ens_err_spread</em></TD>
+    <TD>Plots summary plots of the ensemble error and ensemble spread.
+        Interactively queries for the needed information.
+        Since different models potentially need different 
+        pieces of information ... the model types are 
+        determined and additional user input may be queried.
+        </TD></TR>
+
+<TR><TD><em class=code>plot_ens_mean_time_series</em></TD>
+    <TD>Queries for the state variables to plot.</TD></TR>
+
+<TR><TD><em class=code>plot_ens_time_series</em></TD>
+    <TD>Queries for the state variables to plot.</TD></TR>
+
+<TR><TD><em class=code>plot_phase_space</em></TD>
+    <TD>Plots a 3D trajectory of (3 state variables of) a single ensemble member.
+        Additional trajectories may be superimposed.</TD></TR>
+
+<TR><TD><em class=code>plot_total_err</em></TD>
+    <TD>Summary plots of global error and spread.</TD></TR>
+
+<TR><TD><em class=code>plot_var_var_correl</em></TD>
+    <TD>Plots time series of correlation between a given variable 
+        at a given time and another variable at all times in an 
+        ensemble time sequence.</TD></TR>
+</TABLE>
+
+<!--==================================================================-->
 <A NAME="discussion"></A>
-<H3>Bias, filter divergence and covariance inflation (with theL63 model)</H3>
+<!--==================================================================-->
+<HR>
+<H2>Bias, filter divergence and covariance inflation (with the L63 model)</H2>
 
 One of the common problems with ensemble filters is filter divergence, 
 which can also be an issue with a variety of other flavors of filters 
