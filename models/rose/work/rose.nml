@@ -9,4 +9,4 @@ h_tune =    3.1415926540
 z_tune =    1.0000000000
 old_restart =  F
 nstart =  1
-target_time = 3624.0000000000/
+target_time =    0.1250000000/
