@@ -11,8 +11,7 @@ program perfect_model_obs
 ! $Author$
 !
 
-! Program to build a simple obs_sequence file for use in testing filters
-! for spatial domains with one periodic dimension.
+! Program to build an obs_sequence file from simulated observations.
 
 use types_mod,        only : r8
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
@@ -143,12 +142,6 @@ call read_obs_seq(obs_seq_in_file_name, additional_copies, additional_qc, 0, seq
 ! Initialize an obs type variable
 call init_obs(obs, cnum_copies + additional_copies, cnum_qc + additional_qc)
 
-! Want to have error exit if input file has any obs values in it
-!if(get_num_copies(seq) /= 2) then
-!   write(msgstring, *) 'Input obs_sequence file should not have any copies of data associated with it'
-!   call error_handler(E_ERR, 'perfect_model_obs', msgstring, source, revision, revdate)
-!endif
-
 ! Need metadata for added qc field
 if(additional_qc == 1) then
    qc_meta_data = 'Quality Control'
@@ -231,12 +224,12 @@ AdvanceTime: do
          obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
          ! Set qc to 0 if none existed before
          if(cnum_qc == 0) then
-            qc(1) = 0.
+            qc(1) = 0.0_r8
             call set_qc(obs, qc, 1)
          endif
       else
          obs_value(1) = true_obs(1)
-         qc(1) = 1000.
+         qc(1) = 1000.0_r8
          call set_qc(obs, qc, 1)
       endif
 
