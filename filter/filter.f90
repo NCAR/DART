@@ -16,7 +16,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, get_obs_values, init_obs, assignment(=), &
-   get_num_copies, static_init_obs_sequence, get_qc
+   get_num_copies, static_init_obs_sequence, get_qc, get_num_qc
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
@@ -53,7 +53,7 @@ type(random_seq_type)   :: random_seq
 
 
 integer :: i, j, k, ind, iunit, io, istatus
-integer :: num_obs_in_set, ierr
+integer :: num_obs_in_set, ierr, num_qc
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: model_size, num_obs_sets
 integer :: grp_size, grp_bot, grp_top, group
@@ -272,6 +272,9 @@ call print_time(ens_time(1))
 
 ! Get the time of the first observation in the sequence
 is_there_one = get_first_obs(seq, observation)
+
+num_qc = get_num_qc(seq)
+
 ! Test for no data at all here?
 call get_obs_def(observation, obs_def)
 next_time = get_obs_def_time(obs_def)
@@ -361,7 +364,11 @@ AdvanceTime : do i = 1, num_obs_sets
       call get_obs_def(observation, obs_def)
 ! ???? Here's where the copy should not be hard coded to 1
       call get_obs_values(observation, obs(j:j), 1)
-      call get_qc(observation, qc(j:j), 1)
+      if (num_qc > 0) then
+         call get_qc(observation, qc(j:j), 1)
+      else
+         qc(j) = 0.0_r8
+      endif
       obs_err_cov(j) = get_obs_def_error_variance(obs_def)
 
 ! Each ensemble member
