@@ -221,9 +221,9 @@ switch lower(locstr)
 	 %lon        = values(1);
 	 %lat        = values(2);
 	 %lev        = values(3);
-	 %which_vert = values(4);  % which kind of vertical coord system being used.
-         aline      = cvrtline(fgetl(fid));
-         which_vert = sscanf(aline,'%d');
+	 which_vert = values(4);  % which kind of vertical coord system being used.
+         %aline      = cvrtline(fgetl(fid));
+         %which_vert = sscanf(aline,'%d');
 
       otherwise
          error(sprintf('unrecognized location type ... read %s',locstr))
