@@ -297,7 +297,7 @@ real(r8), intent(out)                :: <em class=code>var_ratio </em>
  <P></P><HR><P></P>
  <div class=routine>
  <em class=call> call filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size,
-	 model_size, num_obs_in_set, num_groups, seq, keys, confidence_slope, cutoff, 
+	 model_size, num_obs_in_set, num_groups, seq, keys, cutoff, 
 	 save_reg_series, reg_series_unit, obs_seq_in_name) </em>
  <pre>
  type(ensemble_type), intent(in)                           :: <em class=code>ens_handle</em>
@@ -309,7 +309,6 @@ real(r8), intent(out)                :: <em class=code>var_ratio </em>
  integer, intent(in)                                       :: <em class=code>num_groups</em>
  type(obs_sequence_type), intent(inout)                    :: <em class=code>seq </em>
  integer, dimension(num_obs_in_set), intent(in)            :: <em class=code>keys</em>
- real(r8), intent(in)                                      :: <em class=code>confidence_slope</em>
  real(r8), intent(in)                                      :: <em class=code>cutoff</em>
  logical, intent(in)                                       :: <em class=code>save_reg_series</em>
  integer, intent(in)                                       :: <em class=code>reg_series_unit</em>
@@ -350,8 +349,6 @@ and is confined to low-order models.
      <TD>Observation sequence                                        </TD></TR>
  <TR><TD valign=top><em class=code>keys&nbsp; &nbsp;            </em></TD>
      <TD>Indices of the current observations in seq                  </TD></TR>
- <TR><TD valign=top><em class=code>confidence_slope&nbsp; &nbsp;</em></TD>
-     <TD>Adaptive bias correction (see obs_increment)                 </TD></TR>
  <TR><TD valign=top><em class=code>cutoff&nbsp; &nbsp;           </em></TD>
      <TD>Localization factor (see update_from_obs_inc)                </TD></TR>
  <TR><TD valign=top><em class=code>save_reg_series&nbsp; &nbsp;  </em></TD>
@@ -417,7 +414,7 @@ inflation.
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / assim_tools_nml / </em> &#38;
-filter_kind, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &#38;
+filter_kind, cutoff, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &#38;
 deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &#38;
 assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 </pre></div>
@@ -435,6 +432,12 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
     <!--  type  --><TD valign=top>integer      </TD>
     <!--descript--><TD>Selects the variant of filter to be used. 1=EAKF, 2=ENKF, 3=Kernel filter, 
                        4=particle filter.  Default: 1.</TD></TR>
+<TR><!--contents--><TD valign=top>cutoff                       </TD>
+    <!--  type  --><TD valign=top>real(r8)                     </TD>
+    <!--descript--><TD>Cutoff controls a distance dependent weight that modulates
+                       the impact of an observation on a state variable. The units depend
+                       both on the location module being used and on the covariance cutoff
+                       module options selected. Default is 0.2.</TD></TR>
 <TR><!--contents--><TD valign=top>sort_obs_inc </TD>
     <!--  type  --><TD valign=top>logical      </TD>
     <!--descript--><TD> If true, the final increments from obs_increment are
