@@ -125,11 +125,9 @@ state_vec_prior = getnc(fname, var_name,corner_m,end_point_m,stride);
 fname = 'Posterior_Diag';
 state_vec_posterior = getnc(fname, var_name,corner_m,end_point_m,stride);
 
-%field_vec = state_vec_prior - state_vec_truth;
+%field = state_vec_prior - state_vec_truth;
 field = state_vec_posterior - state_vec_prior;
-%field_vec = state_vec_posterior;
-
-%field = reshape(field_vec, [nx, ny]);
+%field = state_vec_posterior;
 
 % Plot field
 
@@ -138,20 +136,14 @@ subplot(m,m,pane);
 %nc=5
 
 %colormap = (prism(nc))
-if field_num > 2
-  [C,h] = contourf(tlon,tlat, field');
-  %[C,h] = contour(tlon,tlat, field', iso );
-  hold on
-  [Cm,hm] = contour (tlon,tlat, field', -iso, ':');
-else
-  [C, h] = contourf(field');
-  %[C,h] = contour (field', iso);
-  hold on
-  [Cm,hm] = contour (field', -iso, '--');
-end
+[C, h] = contourf(field);
+%[C,h] = contour (field, iso);
+hold on
+%[Cm,hm] = contour (field, -iso, '--');
+
 title(plot_title)
 %colorbar('vert')
-clabel(C, h);
+%clabel(C, h);
 %clabel(Cm, hm);
 
 pane = pane + 1;
