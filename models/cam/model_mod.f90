@@ -1,5 +1,11 @@
-! FIX (see more below); 1D component of state vector dimension; handle f(lat,lon, or height)
+! NOVERT marks modifications for fields with no vertical location,
+! i.e. GWD parameters.
 
+!!!!!!!!!!!!!!!!!!!!!!
+! WARNING; dimension of 1d state component is set to the largest likely value; num_lons.
+!          This may cause problems if the component is size num_lats or num_levs
+! FIX  or HOOK (see more below)
+!!!!!!!!!!!!!!!!!!!!!!
 
 
 ! Data Assimilation Research Testbed -- DART
@@ -23,6 +29,11 @@ module model_mod
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
+!              translate to/from state_vector and caminput.nc,
+!              initialize model,
+!              write out CAM fields to Prior and Posterior_Diag.nc,
+!              generate expected obs from model state
+
 !
 ! method: Read CAM 'initial' file (netCDF format).
 !         Reform fields into a state vector.
@@ -56,6 +67,10 @@ use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file,
 use     location_mod, only : location_type, get_location, set_location, &
                              get_dist, vert_is_level, query_location, &
                              LocationDims, LocationName, LocationLName
+use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P
+!    and maybe KIND_W, KIND_QR, KIND_TD, KIND_VR, KIND_REF, KIND_U10, KIND_V10, 
+!              KIND_T2, KIND_Q2, KIND_TD2
+
 
 implicit none
 private
@@ -66,7 +81,7 @@ public model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
    init_conditions, init_time, adv_1step, end_model, &
    model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_TRACER, pert_model_state
+   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, pert_model_state
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -80,7 +95,11 @@ revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! Public definition of variable types
-integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 4, TYPE_TRACER = 5
+! Values will be defined in order_state_fields
+! All fields will have entries in the TYPE_xD corresponding to their orders
+!   in state_names_Xd.  The explicitly named TYPE_s are for convenience
+integer :: TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
+integer, allocatable :: TYPE_1D(:), TYPE_2D(:), TYPE_3D(:)
 
 ! CAM3; additional types, or can TRACER handle the new ones?
 
@@ -102,22 +121,27 @@ integer :: model_size, num_lons, num_lats, num_levs
 type(time_type) :: Time_step_atmos
 
 !----------------------------------------------------------------------
-! Nameslist variables with default values follow
+! Namelist variables with default values follow
 
 ! output_state_vector = .true.     results in a "state-vector" netCDF file
 ! output_state_vector = .false.    results in a "prognostic-var" netCDF file
 logical :: output_state_vector = .false.
 
 ! File where basic info about model configuration can be found
-character(len = 128) :: model_config_file = 'caminput.nc'
+character(len = 128) :: model_config_file = 'caminput.nc', &
+                        model_version = '3.0'
 
 ! Define highest pressure for which obserations are used in mb
 real(r8) :: highest_obs_pressure_mb = 30.0
 
 ! Namelist variables for defining state vector, and default values
+! read in sizes from first namelist, allocate, set default values, then get values from
+! second namelist.  
+! Or, allocate with defaults values, read in namelist, deallocate and reallocate.
+
 ! Better names than CAM code
-integer :: state_num_0d = 0              ! # of 2d fields to read from file
-integer :: state_num_1d = 0              ! # of 3d fields to read from file
+integer :: state_num_0d = 0              ! # of scalars fields to read from file
+integer :: state_num_1d = 0              ! # of 1d fields to read from file
 integer :: state_num_2d = 1              ! # of 2d fields to read from file
 integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
@@ -129,6 +153,18 @@ character (len=8),dimension(20) :: state_names_2d = (/'PS      ',('        ',i=1
 character (len=8),dimension(20) :: state_names_3d =  &
           (/'T       ','U       ','V       ','Q       ',('        ',i=1,16)/)
 
+! NOVERT  need (a) namelist parameter(s) to define which_vert for each 2D (xD?) field
+!         There's a danger of having a mismatch with the state_names_Xd; should this
+!         definition be part of state_names_Xd, which is parsed into a name and which_vert
+!         after being read?  Not for now.
+
+! Are these defaults good? or should they all be 0?
+
+integer , dimension(20) :: which_vert_1d = (/(-2,i=1,20)/)
+integer , dimension(20) :: which_vert_2d = (/(-1,i=1,20)/)
+integer , dimension(20) :: which_vert_3d = (/( 1,i=1,20)/)
+
+
 ! Is there a way to exclude stat_nums from namelist and have those filled in 
 ! the  subroutine which sorts state_names?
 ! Yes, use two namelists model_nml_1 and model_nml_2 at future date
@@ -138,10 +174,11 @@ character (len=8),dimension(20) :: state_names_3d =  &
 ! by numerical stability concerns for repeated restarting in leapfrog.
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
-namelist /model_nml/ output_state_vector, model_config_file, highest_obs_pressure_mb, &
-   state_num_0d, state_num_1d, state_num_2d, state_num_3d, &
+namelist /model_nml/ output_state_vector, model_version, model_config_file, &
+   state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d, &
    state_names_0d, state_names_1d, state_names_2d, state_names_3d, &
-   Time_step_seconds, Time_step_days
+                   which_vert_1d,  which_vert_2d,  which_vert_3d, &
+   highest_obs_pressure_mb, Time_step_seconds, Time_step_days
 
 !----------------------------------------------------------------------
 ! derived parameters
@@ -170,6 +207,9 @@ real(r8):: P0               ! reference pressure
 ! list of variables to be included in the state vector,
 ! according to the category to which they belong, 
 ! in the order of 
+! FIX;
+! WARNING; Is this the right order if we include 1d and/or 0d fields in state vector?
+! SEE prog_var_to_vec ...
 !   (state_num_0d, state_num_1d, state_num_2d, state_num_3d, 
 !    state_num_adv_tracers, state_num_notadv_tracers).
 
@@ -188,6 +228,11 @@ character (len=128), allocatable :: state_long_names(:)
 character (len=128), allocatable :: state_units(:)
 ! character (len=128), allocatable :: state_units_long_names(:)
 
+! array for the linking of obs_kinds (KIND_) to model field TYPE_s
+! It's filled in obs_field_location
+! The max size of KIND_ should come from obs_kind_mod
+integer, dimension(1000) :: obs_loc_in_sv = (/(0,i=1,1000)/)
+!
 !---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
 
@@ -212,7 +257,7 @@ integer, intent(out) :: num_lons, num_lats, num_levs
 character (len=NF90_MAX_NAME) :: clon,clat,clev
 integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
 
-write(*, *) 'file_name in read_cam_init is ', trim(file_name)
+write(*, *) 'file_name in read_cam_init_size is ', trim(file_name)
 
 !------------------------------------
 ! read CAM 'initial' file domain info
@@ -241,8 +286,6 @@ contains
 end subroutine read_cam_init_size
 
 
-
-
   subroutine read_cam_init(file_name, var)
 !=======================================================================
 ! subroutine read_cam_init(file_name, var)
@@ -257,17 +300,23 @@ integer :: plon, plat, plev, num_coord
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
 integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
+integer :: coord_3d(3), coord_2d(2)
 
 !----------------------------------------------------------------------
 ! read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
-! read CAM 'initial' file fields desired
+call size_coord(coord_3d,coord_2d)
 
+! read CAM 'initial' file fields desired
 
 ifld = 0
 !0d fields; scalars are recognized and handled differently than vectors
 !           by NetCDF
+! kdr; Tim says that nf90_put_var was probably bombing because
+!      netcdf recognized that it was writing a scalar, called an f77
+!      scalar put_var, and then choked when it saw the count = ...
+!      So, this padding is probably not necessary.
 do i= 1, state_num_0d
    ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
@@ -284,7 +333,7 @@ do i= 1, state_num_1d
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 2D; (height, lat, or lon!?) TIME(=1)
 !  assume longest for now; lon
-   num_coord = num_lons
+   num_coord = coord_3d(1)
    call check(nf90_get_var(ncfileid, ncfldid, var%vars_1d(:, i) &
              ,start=(/1,1/) ,count=(/num_coord, 1/) ))
 end do
@@ -296,7 +345,7 @@ do i= 1, state_num_2d
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 3D; lon, lat, TIME(=1)
    call check(nf90_get_var(ncfileid, ncfldid, var%vars_2d(:, :, i) &
-             ,start=(/1,1,1/) ,count=(/num_lons, num_lats, 1/) ))
+             ,start=(/1,1,1/) ,count=(/coord_2d(1), coord_2d(2), 1/) ))
 end do
 
 ! 3d fields
@@ -306,7 +355,7 @@ do i=1, state_num_3d
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 4D; lon, lev, lat, TIME(=1) 
    call check(nf90_get_var(ncfileid, ncfldid, var%vars_3d(:, :, :, i) &
-             ,start=(/1,1,1,1/) ,count=(/num_lons, num_levs, num_lats,1/) ))
+             ,start=(/1,1,1,1/) ,count=(/coord_3d(1), coord_3d(2), coord_3d(3),1/) ))
 end do
 
 
@@ -321,6 +370,70 @@ contains
    end subroutine check
 
 end subroutine read_cam_init
+
+
+  subroutine size_coord(coord_3d, coord_2d)
+!=======================================================================
+! subroutine size_coord(coord_3d, coord_2d)
+!
+
+! Figure out which coordinates are lon, lat, lev, based on CAM version
+! from the namelist, and has form #.#[.#[.#]]
+integer, intent(out) :: coord_3d(3), coord_2d(2)
+
+! local workspace
+character (len=4)      :: form_version = '(I0)'
+character (len=4)      :: char_version
+integer, dimension(4)  :: int_version = (/(0,i=1,4)/)
+integer                :: part, nchars, tot_chars, i, coord_order
+
+
+! Choose order of coordinates based on CAM version
+part = 1
+nchars=0
+char_version = '    '
+tot_chars = len_trim(model_version)
+do i=1,tot_chars+1
+   if ( i == tot_chars+1 .or.  model_version(i:i) == '.' ) then
+      write(form_version(3:3),'(I1)') nchars
+      read(char_version,form_version) int_version(part)
+      part = part + 1
+      nchars = 0
+      char_version = '    '
+   else
+      nchars = nchars + 1
+      char_version(nchars:nchars) = model_version(i:i)
+   endif
+enddo
+WRITE(*,'(A,A10,4(I3,2X))') 'model_version, version(1:4) = ' &
+                            ,model_version,(int_version(i),i=1,4)
+   
+! assume cam3.0.7 format to start
+! test on version cam3.0.3
+coord_order = 2
+if (int_version(1) < 3) then
+   coord_order = 1
+else if (int_version(1) == 3 .and. int_version(2) == 0 .and. int_version(3) < 3) then
+   coord_order = 1
+endif
+
+! pick the order
+if (coord_order == 1) then
+   coord_3d(1) = num_lons
+   coord_3d(2) = num_levs
+   coord_3d(3) = num_lats
+else if (coord_order == 2) then
+   coord_3d(1) = num_lons
+   coord_3d(2) = num_lats
+   coord_3d(3) = num_levs
+endif
+
+coord_2d(1) = num_lons
+coord_2d(2) = num_lats
+
+return
+
+end subroutine size_coord
 
 
   subroutine nc_read_model_atts(att, att_vals, nflds)
@@ -523,6 +636,14 @@ character(len=129) :: errstring
 
 ! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
 
+! HOOK FOR FUTURE 0d and 1d components of state vector
+if (state_num_0d .ne. 0 .or. state_num_1d .ne. 0) then
+   write(errstring, *) 'scalar and vector components of state vector are not coded ',&
+                       'into prog_var_to_vector '
+   call error_handler(E_ERR, 'prog_var_to_vector', errstring, source, revision, revdate)
+endif
+
+
 ! Start copying fields to straight vector
 indx = 0
 
@@ -580,6 +701,14 @@ character(len=129) :: errstring
 ! Start copying fields from straight vector
 indx = 0
 
+! HOOK FOR FUTURE 0d and 1d components of state vector
+if (state_num_0d .ne. 0 .or. state_num_1d .ne. 0) then
+   write(errstring, *) 'scalar and vector components of state vector are not coded ',&
+                       'into vector _to_prog_var'
+   call error_handler(E_ERR, 'vector_to_prog_var', errstring, source, revision, revdate)
+endif
+
+
 ! 0d arrays
 do nf = 1, state_num_0d
    indx = indx + 1
@@ -630,12 +759,20 @@ character (len = *), intent(in) :: file_name
 type(model_type), intent(in) :: var
 
 integer ifld, ncfileid, ncfldid
+integer :: coord_3d(3), coord_2d(2)
 
 ! Read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
+ 
+! Figure out coordinate sizes based on CAM version
+call size_coord(coord_3d,coord_2d)
 
 ifld = 0
 ! 0d fields are first
+! kdr; Tim says that nf90_put_var was probably bombing because
+!      netcdf recognized that it was writing a scalar, called an f77
+!      scalar put_var, and then choked when it saw the count = ...
+!      So, this padding is probably not necessary.
 do i = 1, state_num_0d
    ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
@@ -648,7 +785,7 @@ do i = 1, state_num_1d
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
 ! FIX; for flexible dimension
    call check(nf90_put_var(ncfileid, ncfldid, var%vars_1d(:, i), &
-      start=(/1, 1/), count = (/num_lons, 1/)))
+      start=(/1, 1/), count = (/coord_3d(1), 1/)))
 end do 
 
 ! 2d fields 
@@ -656,7 +793,7 @@ do i = 1, state_num_2d
    ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    call check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(:, :, i), &
-      start=(/1, 1, 1/), count = (/num_lons, num_lats, 1/)))
+      start=(/1, 1, 1/), count = (/coord_2d(1), coord_2d(2), 1/)))
 end do 
 
 ! 3d fields
@@ -664,7 +801,7 @@ do i = 1, state_num_3d
    ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    call check(nf90_put_var(ncfileid, ncfldid, var%vars_3d(:,:,:,i) &
-             ,start=(/1,1,1,1/) ,count=(/num_lons, num_levs, num_lats,1/) ))
+             ,start=(/1,1,1,1/) ,count=(/coord_3d(1), coord_3d(2), coord_3d(3), 1/) ))
 end do
 
 call check(nf90_close(ncfileid))
@@ -746,7 +883,7 @@ Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
 call print_time(Time_step_atmos)
 
 ! Compute overall model size and put in global storage
-! FIX for flexible 1D size
+! FIX for flexible 1D size; switch num_lons and num_lats depending on case
 model_size = state_num_0d + num_lons * (state_num_1d + num_lats *  &
             (state_num_2d + num_levs * state_num_3d) )
 
@@ -774,6 +911,9 @@ nflds   = state_num_0d + state_num_1d + state_num_2d + state_num_3d
 ! # fields to read
 allocate (cflds(nflds))
 call order_state_fields (cflds, nflds)
+
+! GWD; array for the linking of obs_kinds (KIND_) to model field TYPE_s
+call obs_field_location(obs_loc_in_sv)
 
 ! CAM3 get field attributes needed by nc_write_model_atts from caminput.nc
 allocate (state_long_names(nflds), state_units(nflds))    ! , state_units_long_names(nflds))
@@ -851,27 +991,38 @@ end subroutine adv_1step
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 ! Types for this CAM model are, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
-! TYPE_TRACER
+! see order_state_fields
 
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
-integer  :: indx, num_per_col, col_num, col_elem, lon_index, lat_index
+integer  :: indx, num_per_col, col_num, col_elem, col_elem_3dm1, lon_index, lat_index
 real(r8) :: lon, lat, lev
-integer  :: local_var_type, var_type_temp
+integer  :: var_type_temp, which_vert
+character(len=129) :: errstring
+
+! HOOK FOR FUTURE 0d and 1d components of state vector
+if (state_num_0d .ne. 0 .or. state_num_1d .ne. 0) then
+   write(errstring, *) 'scalar and vector components of state vector are not coded ',&
+                       'into get_state_meta_data '
+   call error_handler(E_ERR, 'get_state_meta_data', errstring, source, revision, revdate)
+endif
 
 ! Easier to compute with a 0 to size - 1 index
-indx = index_in - 1
+! No it's not (harumph).  Change def of col_num to compensate.
+! indx = index_in - 1
+indx = index_in
 
 ! FIX; where would 1d and 0d variables fit in here?
 
 ! Compute number of items per column
 num_per_col = num_levs * state_num_3d + state_num_2d
 
-! What column is this index in
-col_num  = indx / num_per_col 
+! How many complete columns are before this one
+col_num  = (indx - 1) / num_per_col 
 col_elem = indx - col_num * num_per_col
+col_elem_3dm1 = col_elem - state_num_2d - 1
 
 ! What lon and lat index for this column
 lon_index = col_num / num_lats
@@ -881,42 +1032,37 @@ lat_index = col_num - lon_index * num_lats
 lon = lons(lon_index + 1)
 lat = lats(lat_index + 1)
 
-! CAM3 
-
-! Now figure out which beast in column this is
-! Surface pressure is the first element
-lev = (col_elem - 1) / state_num_3d  + 1
-if(col_elem == 0) then
-   local_var_type = TYPE_PS
-   lev = -1
-else
-   var_type_temp = mod(col_elem - 1, state_num_3d )
-   if(var_type_temp == 0) then
-      local_var_type = TYPE_T
-   else if(var_type_temp == 1) then
-      local_var_type = TYPE_U
-   else if(var_type_temp == 2) then
-      local_var_type = TYPE_V
-! CAM3
-   else if(var_type_temp == 3) then
-      local_var_type = TYPE_Q
-   else
-      local_var_type = TYPE_TRACER
-   endif
-! end CAM3
-endif
-
-!write(*, '(1x,3(f6.2,1x),i3)') lon, lat, lev, local_var_type
-
 ! Since CAM has pure pressure at the top, pure sigma at the
 ! bottom and hybrid in-between, we are just referring to
 ! the LEVEL index for the vertical. The coefficients to reconstruct
 ! pressure, height, etc. are available in the netCDF files.
 
-location = set_location(lon, lat, lev, 1)  ! 1 == level (indexical)
+! same test as 'if (col_elem <= state_num_2d) then', but more efficient
+! NOVERT
+if (col_elem_3dm1 < 0) then
+   lev = -1
+   which_vert = which_vert_2d(TYPE_2D(col_elem))
+else
+   lev = col_elem_3dm1 / state_num_3d  + 1
+   var_type_temp = mod(col_elem_3dm1, state_num_3d ) + 1
+   which_vert = which_vert_3d(TYPE_3D(var_type_temp))
+endif
 
+location = set_location(lon, lat, lev, which_vert)  
+
+! Now figure out which beast in column this is
 ! If the type is wanted, return it
-if(present(var_type)) var_type = local_var_type
+if(present(var_type)) then
+   if (col_elem_3dm1 < 0) then
+      ! 2D fields Surface pressure is the first element, 
+      var_type = TYPE_2D(col_elem)
+      var_type_temp = -99
+   else
+      ! 3D variables
+      var_type_temp = mod(col_elem_3dm1, state_num_3d ) + 1
+      var_type = TYPE_3D(var_type_temp)
+   endif
+end if
 
 end subroutine get_state_meta_data
 
@@ -1049,10 +1195,10 @@ end subroutine model_interpolate
 
 
 
-subroutine get_val_pressure(val, x, lon_index, lat_index, pressure, type, istatus)
+subroutine get_val_pressure(val, x, lon_index, lat_index, pressure, obs_kind, istatus)
 !=======================================================================
 !
-! Gets the vertically interpolated value on pressure for variable type
+! Gets the vertically interpolated value on pressure for variable obs_kind
 ! at lon_index, lat_index horizontal grid point
 !
 ! This version excludes observations below lowest level pressure and above
@@ -1061,7 +1207,7 @@ subroutine get_val_pressure(val, x, lon_index, lat_index, pressure, type, istatu
 
 real(r8), intent(out) :: val
 real(r8), intent(in) :: x(:), pressure
-integer, intent(in) :: lon_index, lat_index, type 
+integer, intent(in) :: lon_index, lat_index, obs_kind 
 integer, intent(out) :: istatus
 
 real(r8) :: ps(1), pfull(1, num_levs), fraction
@@ -1074,11 +1220,16 @@ istatus = 0
 vstatus = 0
 
 ! Need to get the surface pressure at this point. Easy for A-grid.
-call get_val(ps(1), x, lon_index, lat_index, -1, 3, vstatus)
-
-
-! TEST vstatus and return if non-0 ?
-
+! kdr debug
+!if (lat_index == 6 .and. lon_index == 12 ) &
+!   write(*,*) 'get_val_press; calling get_val for surf press'
+call get_val(ps(1), x, lon_index, lat_index, -1, KIND_PS, vstatus)
+! call get_val(ps(1), x, lon_index, lat_index, -1, 3, vstatus)
+if (vstatus > 0) then
+   val = 0.
+   istatus = 1
+   return
+endif
 
 ! Next, get the values on the levels for this ps
 call plevs_cam (1, 1, ps, pfull)
@@ -1086,13 +1237,26 @@ call plevs_cam (1, 1, ps, pfull)
 !write(*, *) 'pressure levs in model are ', pfull
 
 ! Interpolate in vertical to get two bounding levels
-!write(*, *)' pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
+!if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 .and. pressure > 90000.) &
+!   write(*, *)'    pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
+
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
    istatus = 1
    val = 0.
-elseif (type == 3 .or. type == 5) then
+
+! Exclude obs if obs_kind is found in list from namelist
+! (obs_kinds found in obs_kind/obs_kind_mod.f90; KIND_x)
+! This should be done in obs_???, but not for now.
+! do i=1,exclude_obs_kinds_num
+!    if (include .and. obs_kind == exclude_obs_kinds(i)) include = .false.
+! enddo
+elseif (obs_kind == 3 .or. obs_kind == 5) then
    istatus = 1
    val = 0.
+! else if (.not.include) then
+!   istatus = 1
+!   val = 0.
+
 else 
 !   if(pressure < 20000.) then
    if(pressure < highest_obs_pressure_mb * 100.0) then
@@ -1112,13 +1276,17 @@ else
    end do
 
 21 continue
-   !get_val does not return a value of istatus yet.  Should it? then test here.
-   call get_val(bot_val, x, lon_index, lat_index, bot_lev, type, vstatus)
-   if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, type, vstatus)
+
+!if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 ) &
+!   write(*,*) '              calling get_val for bot val'
+   call get_val(bot_val, x, lon_index, lat_index, bot_lev, obs_kind, vstatus)
+!if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 ) &
+!   write(*,*) '              bot_val,vstatus =',bot_val,vstatus
+   if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, obs_kind, vstatus)
    if (vstatus == 0) then
       val = (1.0 - fraction) * bot_val + fraction * top_val
    else
-      istatus = 0
+     istatus = 1
       val = 0.
    endif
 end if
@@ -1128,17 +1296,18 @@ end subroutine get_val_pressure
 
 
 
-  subroutine get_val(val, x, lon_index, lat_index, level, type, istatus)
+  subroutine get_val(val, x, lon_index, lat_index, level, obs_kind, istatus)
 !=======================================================================
-! function get_val(x, lon_index, lat_index, level, type)
+! function get_val(x, lon_index, lat_index, level, obs_kind, istatus)
 !
 
 real(r8), intent(out) :: val
 real(r8), intent(in) :: x(:)
-integer, intent(in) :: lon_index, lat_index, level, type
+integer, intent(in) :: lon_index, lat_index, level, obs_kind
 integer, intent(out) :: istatus
 
-integer :: per_col, indx
+integer :: per_col, indx, field_type
+character(len=129) :: errstring
 
 ! No errors to start with
 istatus = 0
@@ -1146,34 +1315,41 @@ istatus = 0
 ! Compute size of grid storage in a column; includes tracers
 ! Single 2D state vector is pressure
 
-! FIX; would 1d and 0d variables be needed here?
+! HOOK FOR FUTURE 0d and 1d components of state vector
+if (state_num_0d .ne. 0 .or. state_num_1d .ne. 0) then
+   write(errstring, *) 'scalar and vector components of state vector are not coded ',&
+                       'into get_val ' 
+   istatus = 1 
+   call error_handler(E_ERR, 'get_val', errstring, source, revision, revdate)
+endif
 
-per_col = 1 + num_levs * state_num_3d
+
+per_col = state_num_2d + num_levs * state_num_3d
 
 ! Find the starting index for this column
+! FIX add in 1d and 0d fields here
 indx = per_col * (lat_index - 1 + (lon_index - 1) * num_lats)
 
-! Pressure is first 
-if(type == 3) then
-   indx = indx + 1
+! Increment index to variable's position within the column
+
+field_type = obs_loc_in_sv(obs_kind)
+
+if (field_type <= 0) then
+   istatus = 1
+   val = 0.
+   return
+else if (field_type <= state_num_2d) then
+   indx = indx + field_type
+else if (field_type <= state_num_2d + state_num_3d) then
+   indx = indx + state_num_2d &
+               + (level - 1) * state_num_3d &
+               + (field_type - state_num_2d)
 else
-! For interior fields compute the base for their level and add offset
-   indx = indx + 1 + (level - 1) * state_num_3d
-! Temperature
-   if(type == 4) then
-      indx = indx + 1
-! U wind component
-   else if(type == 1) then
-      indx = indx + 2
-! V wind component
-   else if(type == 2) then
-      indx = indx + 3
-! Tracers
-   else if(type > 4) then
-      indx = indx + type - 1
-   end if
-endif
-   
+   istatus = 1
+   val = 0.
+   return
+end if
+
 val = x(indx)
 
 
@@ -1249,11 +1425,19 @@ real(r8),            intent(in)  :: x(:)
 
 type(location_type) :: s_loc
 real(r8) :: loc_array(3), o_lon, o_lat, sloc_array(3), ps(1)
-real(r8) :: pfull(1, num_levs), m_press, t_dist, p_dist
-integer  :: num, max_size, i, j, num1, m_type
-integer  :: hsize, num_per_col, col_base_index, istatus
+real(r8) :: pfull(1, num_levs), m_press, t_dist
+integer  :: num, max_size, i, j, num1
+integer  :: hsize, num_per_col, col_base_index, istatus, which_vert
 integer,  allocatable :: lon_ind(:), lat_ind(:)
 real(r8), allocatable :: close_dist(:)
+character(len=129)    :: errstring
+
+! HOOK FOR FUTURE 0d and 1d components of state vector
+if (state_num_0d .ne. 0 .or. state_num_1d .ne. 0) then
+   write(errstring, *) 'scalar and vector components of state vector are not coded ',&
+                       'into model_get_close_states '
+   call error_handler(E_ERR, 'model_get_close_states', errstring, source, revision, revdate)
+endif
 
 !write(*, *) 'in model_get_close_states', radius
 loc_array = get_location(o_loc)
@@ -1297,20 +1481,25 @@ do i = 1, num
    do j = 1, num_per_col
 
 ! Added for vertical localization, 17 May, 2004
-      call get_state_meta_data(col_base_index + j, s_loc, m_type) 
+      call get_state_meta_data(col_base_index + j, s_loc) 
       sloc_array = get_location(s_loc)
+      which_vert = nint(query_location(s_loc))
 ! Surface pressure has ps as vertical, others have their level's pressure
-      if(m_type == 0) then
-         m_press = ps(1)
-      else
+! Put the appropriate pressure into a location type for computing distance
+      if (which_vert == -2) then
+         ! NOVERT; field with no vertical location; get_dist will calculate 
+         ! horiz dist only based on which_vert of s_loc
+      else if(which_vert == -1 ) then       
+         ! surface field; change which_vert for the distance calculation
+         s_loc = set_location(sloc_array(1), sloc_array(2), ps(1), 2)
+      else if(which_vert == 1 ) then
          m_press = pfull(1, int(sloc_array(3)))
+         s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
+      else
+         write(errstring, *) 'which_vert = ',which_vert,' not handled in model_get_close_states '
+         call error_handler(E_ERR, 'model_get_close_states', errstring, source, revision, revdate)
       endif
 
-! Used in Ex52 through Ex60
-!!!      p_dist = abs(loc_array(3) - m_press) / (100000)
-
-      ! Put the appropriate pressure into a location type for computing distance
-      s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
       t_dist = get_dist(s_loc, o_loc)
 
       if(t_dist < radius) then
@@ -1320,7 +1509,6 @@ do i = 1, num
       endif
    end do
 end do
-! kdr write(*, *) 'number at end is ', nfound
 
 deallocate(lon_ind, lat_ind, close_dist)
 
@@ -1705,6 +1893,9 @@ else
 
    ! 1-d fields
 ! FIX; handle flexible 1d variables
+! kdr; how to handle 1D dimension?
+!                 dimids = (/ lonDimID, MemberDimID, unlimitedDimID /), &
+!                             ^^^
    do i = 1,state_num_1d
       ifld = ifld + 1
       call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
@@ -2008,11 +2199,16 @@ end subroutine pert_model_state
 ! Could eventually tally the number of each kind of field; 2D,3D
 ! and compare each entry against a master list.
 ! Sort by class of variable too? So user could provide one unordered list?
+! Also assigns TYPE_s for use by get_state_meta_data, and other routines
 
 integer :: i, nfld
 integer, intent(in) :: nflds
 character (len = *), dimension(nflds), intent(out) :: cflds 
 character (len = 129) :: errstring
+
+allocate (TYPE_1D(state_num_1d),TYPE_2D(state_num_2d),TYPE_3D(state_num_3d))
+! kdr where should these be deallocated?
+
 
 nfld = 0
 
@@ -2026,32 +2222,97 @@ end do
 do i=1,state_num_1d
    nfld = nfld + 1
    cflds(nfld)(:) = state_names_1d(i)
+   TYPE_1D(i) = nfld
 end do
 
 ! 2D fields
 do i=1,state_num_2d
    nfld = nfld + 1
    cflds(nfld)(:) = state_names_2d(i)
+   TYPE_2D(i) = nfld
+   if (state_names_2d(i) == 'PS      ') TYPE_PS = nfld
 end do
 
 ! 3D fields (including q)
 do i=1,state_num_3d
    nfld = nfld + 1
    cflds(nfld)(:) = state_names_3d(i)
+   TYPE_3D(i) = nfld
+   if (state_names_3d(i) == 'T       ') TYPE_T = nfld
+   if (state_names_3d(i) == 'U       ') TYPE_U = nfld
+   if (state_names_3d(i) == 'V       ') TYPE_V = nfld
+   if (state_names_3d(i) == 'Q       ') TYPE_Q = nfld
 end do
 
 if (nfld .ne. nflds) then
    write(errstring, *) 'nfld = ',nfld,', nflds = ',nflds,' must be equal '
    call error_handler(E_ERR, 'order_state_fields', errstring, source, revision, revdate)
 else
-!   write(logfileunit,'(/A/(10(A8,1X)))') 'State vector is composed of ',(cflds(i),i=1,nflds)
    write(logfileunit,'(/A/)') 'State vector is composed of '
-   write(logfileunit,'((8(A8,1X)))') (cflds(i),i=1,nflds)
+!   write(logfileunit,'((8(A8,1X)))') (cflds(i),i=1,nflds)
+   do i=1,state_num_2d
+      write(logfileunit,'(/A,I4)') cflds(i), TYPE_2D(i)
+   enddo
+   do i=1,state_num_3d
+      write(logfileunit,'(/A,I4)') cflds(state_num_2d+i), TYPE_3D(i)
+   enddo
+   write(logfileunit,'(/A)') 'TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q = ' 
+   write(logfileunit,'((8(I8,1X)))') TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
 endif
 
 return
 
 end subroutine order_state_fields
+
+
+  subroutine obs_field_location(obs_loc_in_sv)
+!=======================================================================
+! subroutine obs_field_location(obs_loc_in_sv)
+
+! ? Should this be a function instead; removes need to dimension obs_loc_in arbitrarily
+!   and wastefully.  But then it's called millions of times, instead of accessing an
+!   array that's defined once.
+
+! Makes an array of 'locations w/i the state vector'
+! of  all the available obs kinds that come from obs_kind_mod. 
+! The obs kind that's passed in will be the index into this array,
+! the corresponding value will be the position of that field (not variable) 
+! within the state vector according to state_name_Xd.  
+! There will be lots of empty array elements, since KIND_x has a lot of "missing" values.
+! This subroutine will be called from static_init_model, so it will not have to be 
+! recomputed for every obs.
+
+! use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P
+
+integer :: i, nfld
+integer, intent(out) :: obs_loc_in_sv(:)
+character (len = 129) :: errstring
+
+! 2D fields
+obs_loc_in_sv(KIND_PS) = TYPE_PS
+
+! 3D fields
+obs_loc_in_sv(KIND_T) = TYPE_T
+obs_loc_in_sv(KIND_U) = TYPE_U
+obs_loc_in_sv(KIND_V) = TYPE_V
+obs_loc_in_sv(KIND_QV) = TYPE_Q
+
+write(*,*) 'OBS_KIND   FIELD_TYPE'
+do i=1,1000
+   if (obs_loc_in_sv(i) /= 0) write(*,'(2I8)') i, obs_loc_in_sv(i)
+enddo
+
+! In the future, if fields are not ordered nicely, or if users are specifying
+! correspondence of obs fields with state fields, I may want code like:
+! The max size of KIND_ should come from obs_kind_mod
+! do i=1,state_num_3d
+!    if (state_name_3d(i)(1:1) == 'T' .and. &
+!        KIND_T <= 1000) ) obs_loc_in_sv(KIND_T) = TYPE_3D(i)
+! enddo 
+
+return
+
+end subroutine obs_field_location
 
 !#######################################################################
 ! end of cam model_mod
