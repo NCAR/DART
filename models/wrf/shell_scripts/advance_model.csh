@@ -8,7 +8,8 @@
 # where the model advance is executed as a separate process.
 
 # This script copies the necessary files into the temporary directory
-# for a model run.
+# for a model run. It assumes that there is ${PBS_O_WORKDIR}/WRF directory
+# where boundary conditions and namelist files reside.
 
 set PBS_O_WORKDIR = $1
 set element = $2
@@ -33,10 +34,10 @@ cp ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
 
 # Copy the boundary condition file to the temp directory.
-cp ${PBS_O_WORKDIR}/GEN_TRUTH/wrfbdy_${days}_${secs}_81 wrfbdy_d01
+cp ${PBS_O_WORKDIR}/WRF/wrfbdy_${days}_${secs}_$element wrfbdy_d01
 
 # Copy WRF input namelist to the temp directory.
-ln -s  ${PBS_O_WORKDIR}/GEN_TRUTH/namelist.input_${days}_${secs}_81 namelist.input
+ln -s  ${PBS_O_WORKDIR}/WRF/namelist.input_${days}_${secs}_$element namelist.input
 ln -s  ${PBS_O_WORKDIR}/RRTM_DATA .
 ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 
