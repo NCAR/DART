@@ -1,7 +1,3 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
 MODULE module_netcdf_interface
 
 ! <next five lines automatically updated by CVS, do not edit>
@@ -21,9 +17,11 @@ MODULE module_netcdf_interface
 
 public  get_dims_cdf,        &
         get_gl_att_real_cdf, &
+        put_gl_att_real_cdf, &
         get_var_3d_real_cdf, &
         get_var_2d_real_cdf, &
-        put_var_3d_real_cdf
+        put_var_3d_real_cdf, &
+        get_times_cdf
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -117,6 +115,48 @@ contains
   end subroutine check
 
 end subroutine get_gl_att_real_cdf
+
+!-------------------------------------------------------------------------------
+
+subroutine put_gl_att_real_cdf( file, att_name, value, debug )
+
+  implicit none
+
+  include 'netcdf.inc'
+
+  character (len=80), intent(in) :: file
+  character (len=*), intent(in) :: att_name
+  logical, intent(in ) :: debug
+  real(r8),    intent(in) :: value
+
+  integer :: cdfid
+
+  if(debug) write(6,*) ' open netcdf file ', trim(file)
+
+  call check( nf90_open(file, NF90_WRITE, cdfid) )
+
+  call check( nf90_redef(cdfid) )
+  call check( nf90_put_att(cdfid, nf90_global, att_name, value) )
+
+  if(debug) write(6,*) ' global attribute ',att_name,' is ',value
+
+  call check( nf90_close(cdfid) )
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent (in) :: istatus
+
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'get_gl_att_real_cdf', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
+  end subroutine check
+
+
+end subroutine put_gl_att_real_cdf
+
 
 !--------------------------------------------------------------------
 
@@ -338,5 +378,70 @@ contains
   end subroutine check
 
 end subroutine put_var_3d_real_cdf
+
+!--------------------------------------------------------------------
+
+subroutine get_times_cdf( file, times, n_times, max_times, debug )
+
+  implicit none
+
+  integer, intent(in)  ::  max_times
+  integer, intent(out) ::  n_times
+  character (len=80), intent(in) :: file
+  character (len=80), intent(out) :: times(max_times)
+  logical, intent(in ) :: debug
+
+  integer cdfid, id_time
+  character (len=80) :: varnam, time1
+  integer            :: ndims, natts, idims(max_times)
+  integer            :: istart(max_times),iend(max_times), dimids(max_times)
+  integer            :: i, ivtype
+
+  if(debug) write(6,*) ' open netcdf file ', trim(file)
+
+  call check( nf90_open(file, NF90_NOWRITE, cdfid) )
+
+  call check( nf90_inq_varid(cdfid, 'Times', id_time) )
+
+  call check( nf90_Inquire_Variable(cdfid, id_time, name=varnam, xtype=ivtype, ndims=ndims, dimids=dimids) )
+
+  do i=1,ndims
+     call check( nf90_inquire_dimension(cdfid, dimids(i), len=idims(i)) )
+     if(debug) write(6,*) ' dimension ',i,idims(i)
+  enddo
+
+!  get the times
+
+  n_times = idims(2)
+  do i=1,idims(2)
+    istart(1) = 1
+    iend(1) = idims(1)
+    istart(2) = i
+    iend(2) = 1
+
+    call check( nf90_get_var(cdfid, id_time, times(i), start = (/ 1, i /), &
+                             count = (/idims(1), 1/) ) )
+!    rcode = NF_GET_VARA_TEXT  ( cdfid, id_time,  &
+!                                istart, iend,    &
+!                                times(i)          )
+    time1 = times(i)
+
+    if(debug) write(6,*) trim(file), time1(1:19)
+  enddo
+
+  call check( nf90_close(cdfid) )
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent (in) :: istatus
+
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'get_times_cdf', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
+  end subroutine check
+
+end subroutine get_times_cdf
 
 END MODULE module_netcdf_interface
