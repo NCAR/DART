@@ -103,17 +103,17 @@ TYPE wrf_static_data_for_dart
 
    integer :: bt, bts, sn, sns, we, wes
 
-   real :: p_top, dx, dy, dt
+   real(r8) :: p_top, dx, dy, dt
 
    integer :: map_proj
 
-   real    :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1
+   real(r8)    :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1
 
-   real, dimension(:), pointer :: znu, dn, dnw
+   real(r8), dimension(:), pointer :: znu, dn, dnw
    integer :: n_moist
-   real, dimension(:,:), pointer :: mub, latitude, longitude
-   real, dimension(:,:), pointer :: mapfac_m, mapfac_u, mapfac_v
-   real, dimension(:,:,:), pointer :: phb
+   real(r8), dimension(:,:), pointer :: mub, latitude, longitude
+   real(r8), dimension(:,:), pointer :: mapfac_m, mapfac_u, mapfac_v
+   real(r8), dimension(:,:,:), pointer :: phb
 
    integer :: model_size, number_of_wrf_variables
    integer, dimension(:,:), pointer :: var_index
@@ -152,17 +152,17 @@ character (len=80) :: name
 logical, parameter :: debug = .true.  
 integer :: var_id, ind, i, map_proj 
 integer, dimension(5) :: count, start, stride, map
-real    :: zero_d(1)
+real(r8)    :: zero_d(1)
 
-real :: dx, dy, dt
+real(r8) :: dx, dy, dt
 
-real :: cen_lat, cen_lon, truelat1, truelat2
-real, dimension(:,:,:), pointer :: mub_test
-real, allocatable, dimension(:,:) :: temp
+real(r8) :: cen_lat, cen_lon, truelat1, truelat2
+real(r8), dimension(:,:,:), pointer :: mub_test
+real(r8), allocatable, dimension(:,:) :: temp
 
 integer :: n_values
 
-real    :: theta1,theta2,cell,cell2,psx
+real(r8)    :: theta1,theta2,cell,cell2,psx
 !----------
 
 ! Begin by reading the namelist input                                           
@@ -536,7 +536,7 @@ subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
 use netcdf
 implicit none
 integer :: ncid, var_id, ndims
-real, dimension(ndims) :: var
+real(r8), dimension(ndims) :: var
 character (len=6) :: in_or_out
 integer, dimension(ndims) :: start, count, stride, map
 integer :: status
@@ -620,7 +620,7 @@ integer :: var_type_out
 integer :: index, ip, jp, kp
 integer :: nz, ny, nx
 logical :: var_found
-real    :: lon, lat, lev
+real(r8)    :: lon, lat, lev
 
 integer :: i, number_of_wrf_variables
 logical, parameter :: debug = .false.  
@@ -743,8 +743,8 @@ function model_interpolate(x, location, obs_kind)
 implicit none
 
 logical, parameter :: debug = .false.  
-real :: model_interpolate
-real, intent(in) :: x(:)
+real(r8) :: model_interpolate
+real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: obs_kind
 real (r8)           :: xloc, yloc, zloc, xyz_loc(3)
@@ -846,8 +846,8 @@ function get_val(x, lon_index, lat_index, level, obs_kind)
 
 implicit none
 
-real :: get_val
-real, intent(in) :: x(:)
+real(r8) :: get_val
+real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, obs_kind
 
 get_val = x(get_wrf_index(lon_index,lat_index,level,obs_kind))
@@ -1097,8 +1097,8 @@ real(r8), dimension(3) :: loc_array
 real(r8) :: o_lon, o_lat
 
 real(r8) :: radius
-real, intent(in) :: lat(:,:), lon(:,:)
-real :: rad, radn, dxr, dyr, sdx, sdy, gdist
+real(r8), intent(in) :: lat(:,:), lon(:,:)
+real(r8) :: rad, radn, dxr, dyr, sdx, sdy, gdist
 integer :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 
 integer :: i, j, n, m
@@ -1265,9 +1265,9 @@ integer, intent(in) :: i,j,k,var_type
 
 type(location_type) :: loc
 
-real :: get_dist_wrf
+real(r8) :: get_dist_wrf
 
-real :: long, lat, lev
+real(r8) :: long, lat, lev
 
 
 
@@ -1848,8 +1848,8 @@ logical, parameter :: debug = .true.
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, VarID
 integer :: i,j
-real, allocatable, dimension(:,:)   :: temp2d
-real, allocatable, dimension(:,:,:) :: temp3d
+real(r8), allocatable, dimension(:,:)   :: temp2d
+real(r8), allocatable, dimension(:,:,:) :: temp3d
 character(len=8) :: varname
 
 ierr = 0     ! assume normal termination
@@ -2051,7 +2051,7 @@ subroutine adv_1step(x, Time)
 
 implicit none
 
-real, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 ! Time is needed for more general models like this; need to add in to 
 ! low-order models
 type(time_type), intent(in) :: Time
@@ -2086,7 +2086,7 @@ subroutine init_conditions(x)
 implicit none
 
 ! Following changed to intent(inout) for ifc compiler;should be like this
-real, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 
 end subroutine init_conditions
 
@@ -2117,16 +2117,16 @@ subroutine llxy (xloni,xlatj,x,y)
    
    implicit none
    
-   real, intent(in)  :: xloni, xlatj
-   real, intent(out) :: x, y
+   real(r8), intent(in)  :: xloni, xlatj
+   real(r8), intent(out) :: x, y
 
-   real              :: dxlon
-   real              :: xlat, xlon
-   real              :: xx, yy, xc, yc
-   real              :: cell, psi0, psx, r, flp
-   real              :: centri, centrj
-   real              :: ds       
-   real              :: bb,c2
+   real(r8)              :: dxlon
+   real(r8)              :: xlat, xlon
+   real(r8)              :: xx, yy, xc, yc
+   real(r8)              :: cell, psi0, psx, r, flp
+   real(r8)              :: centri, centrj
+   real(r8)              :: ds       
+   real(r8)              :: bb,c2
    
 !-----------------------------------------------------------------
    ds = 0.001 *wrf%dx
@@ -2143,7 +2143,7 @@ subroutine llxy (xloni,xlatj,x,y)
       yc = wrf%ycntr 
 
       cell = cos(xlat*deg2rad)/(1.0+sin(xlat*deg2rad))
-      yy = -c2*alog(cell)
+      yy = -c2*log(cell)
       xx = c2*(xlon-wrf%cen_lon)*deg2rad
 
    else
@@ -2216,12 +2216,12 @@ SUBROUTINE XYLL(XX,YY,XLAT,XLON)
 
    IMPLICIT NONE
 
-   REAL, INTENT(IN)  :: XX, YY
-   REAL, INTENT(OUT) :: XLAT,XLON
+   REAL(R8), INTENT(IN)  :: XX, YY
+   REAL(R8), INTENT(OUT) :: XLAT,XLON
         
-   REAL              :: flp, flpp, r, cell, cel1, cel2, c2
-   REAL              :: psx,Rcone_factor
-   REAL              :: centri, centrj, x, y, xcntr
+   REAL(R8)              :: flp, flpp, r, cell, cel1, cel2, c2
+   REAL(R8)              :: psx,Rcone_factor
+   REAL(R8)              :: centri, centrj, x, y, xcntr
 
    c2 = earth_radius * COS(wrf%psi1)
    centri = real (wrf%we)/2.0  
@@ -2280,12 +2280,12 @@ end subroutine xyll
 !**********************************************
  subroutine Interp_lin_1D(fi1d, n1, z, fo1d)                        
   integer,     intent(in)  :: n1          
-  real   ,     intent(in)  :: fi1d(n1)       ! Input variable
-  real   ,     intent(in)  :: z        
-  real   ,     intent(out) :: fo1d              ! Output variable 
+  real(r8)   ,     intent(in)  :: fi1d(n1)       ! Input variable
+  real(r8)   ,     intent(in)  :: z        
+  real(r8)   ,     intent(out) :: fo1d              ! Output variable 
 !
   integer                  :: k
-  real                     :: dz, dzm
+  real(r8)                     :: dz, dzm
 
   fo1d = missing_r
 
@@ -2301,12 +2301,12 @@ subroutine Interp_lin_2D(fi2d,n1,n2, x,y, fo2d)
   implicit none
 
   integer,     intent(in)  :: n1, n2          
-  real   ,     intent(in)  :: fi2d(n1,n2)       ! Input variable
-  real   ,     intent(in)  :: x, y
-  real   ,     intent(out) :: fo2d              ! Output variable 
+  real(r8)   ,     intent(in)  :: fi2d(n1,n2)       ! Input variable
+  real(r8)   ,     intent(in)  :: x, y
+  real(r8)   ,     intent(out) :: fo2d              ! Output variable 
 !
   integer                  :: i, j
-  real                     :: dx, dxm, dy, dym
+  real(r8)                     :: dx, dxm, dy, dym
 
   call toGrid (x,n1,i,dx,dxm)
   call toGrid (y,n2,j,dy,dym)
@@ -2322,13 +2322,13 @@ subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
   implicit none
 
   integer,                  intent(in)  :: n1,n2,n3                        
-  real,dimension(n1,n2,n3), intent(in)  :: fi3d      ! Input variable
-  real,                     intent(in)  :: x, y, z 
-  real,                     intent(out) :: fo3d      ! Output variable 
+  real(r8),dimension(n1,n2,n3), intent(in)  :: fi3d      ! Input variable
+  real(r8),                     intent(in)  :: x, y, z 
+  real(r8),                     intent(out) :: fo3d      ! Output variable 
 !
   integer                  :: i, j, k, kk
-  real                     :: dx, dxm, dy, dym, dz, dzm
-  real                     :: fiz (n3)
+  real(r8)                     :: dx, dxm, dy, dym, dz, dzm
+  real(r8)                     :: fiz (n3)
 
   call toGrid (x,n1,i,dx,dxm)
   call toGrid (y,n2,j,dy,dym)
@@ -2353,9 +2353,9 @@ subroutine toGrid (x, jx, j, dx, dxm)
 
    implicit none
 
-   real,                     intent(in)  :: x
+   real(r8),                     intent(in)  :: x
    integer,                  intent(in)  :: jx
-   real,                     intent(out) :: dx, dxm
+   real(r8),                     intent(out) :: dx, dxm
    integer,                  intent(out) :: j
    
    j = int (x)
@@ -2374,10 +2374,10 @@ subroutine to_zk(obs_v, mdl_v, n3, v_interp_optn, zk)
 
    implicit none
 
-   real,      intent(in)  :: obs_v
+   real(r8),      intent(in)  :: obs_v
    integer,   intent(in)  :: n3, v_interp_optn
-   real,      intent(in)  :: mdl_v(n3)
-   real,      intent(out) :: zk
+   real(r8),      intent(in)  :: mdl_v(n3)
+   real(r8),      intent(out) :: zk
 
    integer                :: k
 
@@ -2412,9 +2412,9 @@ subroutine get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,fld,&
    implicit none
 
 integer,           intent(in)  :: i,j,n
-real,              intent(in)  :: dx,dy,dxm,dym
-real, intent(in)               :: x(:)
-real,dimension(n), intent(out) :: fld      
+real(r8),              intent(in)  :: dx,dy,dxm,dym
+real(r8), intent(in)               :: x(:)
+real(r8),dimension(n), intent(out) :: fld      
 real(r8),          intent(out) :: pp11,pp21,pp31,pp41
  
 integer                        :: i1,i2,k,q1,q2,q3,q4
@@ -2474,10 +2474,10 @@ subroutine get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,fld)
    implicit none
 
 integer,           intent(in)  :: i,j,n
-real,              intent(in)  :: dx,dy,dxm,dym
-real, intent(in)               :: x(:)
-real,dimension(n), intent(out) :: fld      
-real                           :: fll(n+1)
+real(r8),              intent(in)  :: dx,dy,dxm,dym
+real(r8), intent(in)               :: x(:)
+real(r8),dimension(n), intent(out) :: fld      
+real(r8)                           :: fll(n+1)
  
 integer                        :: i1,i2,k     
             
