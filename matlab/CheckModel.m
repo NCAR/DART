@@ -33,28 +33,7 @@ copy          = getnc(fname,'copy');
 
 switch lower(model)
 
-   case '9var'
-
-      num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
-      if (prod(size(num_vars)) > 1 ) 
-         error(sprintf('%s has no ''StateVariable'' dimension.',fname))
-      end
-      StateVariable = getnc(fname,'StateVariable');
-
-      def_state_vars = zeros(1,num_vars);    % for use as a subscript array, 
-      def_state_vars(:) = StateVariable(:);  % def_state_vars must be a row vector.
-
-      vars = struct('model',model, ...
-              'num_state_vars',num_vars, ...
-              'num_ens_members',num_copies, ...
-              'time_series_length',num_times, ...
-              'min_state_var',min(StateVariable), ...
-              'max_state_var',max(StateVariable), ...
-              'min_ens_mem',min(copy), ...
-              'max_ens_mem',max(copy), ...
-              'def_state_vars',def_state_vars);
-
-   case 'lorenz_63'
+   case {'9var','lorenz_63','lorenz_84'}
 
       num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
       if (prod(size(num_vars)) > 1 ) 

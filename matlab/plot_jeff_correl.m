@@ -33,7 +33,7 @@ pinfo.fname = fname;
 
 switch lower(vars.model)
 
-   case {'9var','lorenz_63','lorenz_96'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96'}
 
       inputstring = input(sprintf('Input index for base variable (between %d and %d)  ', ...
                                vars.min_state_var, vars.max_state_var), 's');

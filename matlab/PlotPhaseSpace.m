@@ -57,7 +57,7 @@ close(f);
 
 switch lower(model)
 
-   case {'9var','lorenz_63','lorenz_96'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96'}
 
       % rudimentary bulletproofing
       if ( (pinfo.var1 > num_vars) | (pinfo.var1 < 1) ) 

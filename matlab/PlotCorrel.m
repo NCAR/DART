@@ -43,7 +43,7 @@ close(f)
 
 switch(lower(model))
 
-   case {'9var','lorenz_63','lorenz_96'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96'}
 
       base_var_index = pinfo.base_var_index;
       base_time      = pinfo.base_time;

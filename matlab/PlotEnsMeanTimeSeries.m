@@ -96,7 +96,7 @@ switch lower(t.model)
          end
       end
 
-   case 'lorenz_63'
+   case {'lorenz_63','lorenz_84'}
 
       % Use one figure with three(usually) subplots
       figure(1); clf; iplot = 0;
