@@ -2,7 +2,6 @@
    async = 0,
    adv_ens_command = "./advance_ens.csh",
    ens_size = 20, 
-   cutoff = 0.2,
    cov_inflate = 1.0,
    start_from_restart = .false.,
    output_restart = .false.,
@@ -20,7 +19,6 @@
    num_output_obs_members = 0,
    output_interval = 1,
    num_groups = 1,
-   confidence_slope = 0.0,
    outlier_threshold = -1.0,
    save_reg_series = .false.  /
 
