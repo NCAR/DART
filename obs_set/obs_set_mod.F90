@@ -38,11 +38,11 @@ type obs_set_type
    private
 ! The two arrays will be allocated as (num_obs, num_copies)
    real(r8), pointer :: obs(:, :)
-   logical, pointer :: missing(:, :)
-   integer :: num_copies
-   integer :: num_obs
-   type(time_type) :: time
-   integer :: def_index
+   logical,  pointer :: missing(:, :)
+   integer           :: num_copies
+   integer           :: num_obs
+   type(time_type)   :: time
+   integer           :: def_index
 end type obs_set_type
 
 logical, save :: module_initialized = .false.
@@ -142,23 +142,14 @@ set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
 
-#ifdef IFC80
-
-   ! This works "as expected" for the Intel 8.0 compiler.
-   ! If other compilers work "as they should" we should
-   ! probably make this the default option.
-
-   nullify(set_out%obs)
-   nullify(set_out%missing)
-
-#else
+#ifdef IFC71
 
    ! INTEL 7.1 compiler with full obs checking dies on this for uninitialized
    ! HOWEVER, memory leaks here without this. Try leaving for now.
    ! TJH Jan 25, 2003 ... tried to fix it, have not checked.
 
    ! This is needed for the Intel 7.1 compiler.
-   ! I am not sure if it hurts with the PG compiler.
+   ! It hurts with the PG compiler on fisher (Alain Caya, Fri Apr 30 13:28:33 MDT 2004).
    ! It does break with the Intel 8.0 compiler.
 
    if( associated(set_out%obs) ) then
@@ -171,6 +162,15 @@ set_out%def_index = set_in%def_index
    else
       nullify(set_out%missing)
    endif
+
+#else
+
+   ! This works "as expected" for the Intel 8.0 compiler.
+   ! If other compilers work "as they should" we should
+   ! probably make this the default option.
+
+   nullify(set_out%obs)
+   nullify(set_out%missing)
 
 #endif
 
