@@ -115,7 +115,7 @@ subroutine static_init_assim_model()
 
 implicit none
 
-integer :: i, unit, ierr, io
+integer :: i, iunit, ierr, io
 
 ! Change output to diagnostic output block ... 
 
@@ -126,14 +126,14 @@ write(*,*)'   ',trim(adjustl(revdate))
 
 ! Read the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file('input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = assim_nml, iostat = io, end = 11)
+      read(iunit, nml = assim_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'assim_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! namelist validation
