@@ -11,6 +11,8 @@
 # Find the project and build it, if need be.
 #======================================================================
 
+set Model = bgrid_solo
+
 if ( ${?DART_HOME} ) then
    if ( -d $DART_HOME ) then
       setenv DARTHOME $DART_HOME
@@ -28,46 +30,65 @@ else
    exit
 endif
 echo "DART project directory is $DARTHOME"
+echo "       working with model $Model"
 sleep 2
-
-set Model = bgrid_solo
 
 cd ${DARTHOME}/models/${Model}/work
 
 if !( -e column_rand ) then    ;# interactively builds a set of randomly-
    csh mkmf_column_rand        ;# located column observations
+   mv input.nml.mkmf default_column_rand.nml
    make || exit 1              ;# specify 5 vertical levels
 endif                          ;# create_obs_set_def < column_rand.out
 if !( -e ps_rand_local ) then  ;# randomly-located surface pressure obs
    csh mkmf_ps_rand_local      ;# can be confined to a lat/lon rectangle
+   mv input.nml.mkmf default_ps_rand_local.nml
    make || exit 2              ;# create_obs_set_def < ps_rand.out
 endif
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
+   mv input.nml.mkmf default_create_obs_set_def.nml
    make || exit 3
 endif
 if !( -e create_obs_sequence ) then
    csh mkmf_create_obs_sequence
+   mv input.nml.mkmf default_create_obs_sequence.nml
    make || exit 4
 endif
 if !( -e perfect_model_obs ) then
    csh mkmf_perfect_model_obs
+   mv input.nml.mkmf default_perfect_model_obs.nml
    make || exit 5
 endif
 if !( -e filter ) then
    csh mkmf_filter
+   mv input.nml.mkmf default_filter.nml
    make || exit 6
 endif
 \rm -f *.o *.d *.mod Makefile
 
-set SAVEME = input.nml.$$
-set NICELEVEL = +3
+#======================================================================
+# Save any existing namelist ...
+#======================================================================
 
-if ( -f input.nml ) then
-   mv input.nml $SAVEME
+set SAVEME = .NamelistStorage.$$
+if ( ! -d $SAVEME ) then
+   mkdir ${SAVEME}
 endif
+foreach NAMELIST ( *.nml )
+   mv ${NAMELIST} ${SAVEME}
+end
 
-cat << ENDofTask01 > input.nml
+#======================================================================
+# Create common namelists -- lots of ways to do it.
+# The default initial conditions (i.e. restart files) are in ascii.
+#======================================================================
+
+echo '&assim_model_nml'                            > assim_mod.nml
+echo '   binary_restart_files = .false.'          >> assim_mod.nml
+echo '&end'                                       >> assim_mod.nml
+
+cat << ENDofTask01 > model.nml
 &main_nml
    days                =   10,
    dt_atmos            = 3600,
@@ -127,42 +148,66 @@ ENDofTask01
 #======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
+# run either ps_rand_local _OR_ column_rand -- do not run both
 #======================================================================
 
-echo "1800          of observations"                  > ps_rand_local.in
-echo "10000  Pa     obs error variance (10,000=1mb)" >> ps_rand_local.in
-echo "-90           lower latitude [-90,xxx]"        >> ps_rand_local.in
-echo " 90           upper latitude [xxx, 90]"        >> ps_rand_local.in
-echo "  0           west longitude [0,360]"          >> ps_rand_local.in
-echo "360           east longitude [0,360]"          >> ps_rand_local.in
+exit
 
-./ps_rand_local < ps_rand_local.in
+if ( 1 == 0 ) then
 
-./create_obs_set_def < ps_rand.out
+   echo " "
+   echo "Running create_obs_set_def ... ps_rand_local case"
+   echo " "
 
-if ( $status > 0 ) then
-   echo "ERROR: running create_obs_set_def bombed ..."
-   exit
-endif
+   echo "1800          of observations"                  > ps_rand_local.in
+   echo "10000  Pa     obs error variance (10,000=1mb)" >> ps_rand_local.in
+   echo "-90           lower latitude [-90,xxx]"        >> ps_rand_local.in
+   echo " 90           upper latitude [xxx, 90]"        >> ps_rand_local.in
+   echo "  0           west longitude [0,360]"          >> ps_rand_local.in
+   echo "360           east longitude [0,360]"          >> ps_rand_local.in
 
-#======================================================================
-# "Suggested first 
-# 1) declare an observation set definition
-#======================================================================
-echo "Running column rand case ..."
+   echo '&utilities_nml'                                      > utilities.nml
+   echo '   logfilename = "create_obs_set_def_ps_rand.out",' >> utilities.nml
+   echo '   TERMLEVEL = 1'                                   >> utilities.nml
+   echo '&end'                                               >> utilities.nml
+   
+   cat utilities.nml assim_mod.nml model.nml > input.nml
+   
+   ./ps_rand_local < ps_rand_local.in
+   ./create_obs_set_def < ps_rand.out
+   
+   if ( $status > 0 ) then
+      echo "ERROR: running create_obs_set_def bombed ..."
+      exit
+   endif
 
-echo "400           # of observations"                > column_rand.in
-echo "5             model levels "                   >> column_rand.in
-echo "10000  Pa     obs error variance (10,000=1mb)" >> column_rand.in
-echo "1.0           T obs error variance"            >> column_rand.in
-echo "1.0           U,V obs error variance"          >> column_rand.in
+else
 
-./column_rand < column_rand.in
-./create_obs_set_def < column_rand.out
+   echo " "
+   echo "Running create_obs_set_def ... column_rand case"
+   echo " "
 
-if ( $status > 0 ) then
-   echo "ERROR: running create_obs_set_def bombed ..."
-   exit
+   echo "400           # of observations"                > column_rand.in
+   echo "5             model levels "                   >> column_rand.in
+   echo "10000  Pa     obs error variance (10,000=1mb)" >> column_rand.in
+   echo "1.0           T obs error variance"            >> column_rand.in
+   echo "1.0           U,V obs error variance"          >> column_rand.in
+
+   echo '&utilities_nml'                                          > utilities.nml
+   echo '   logfilename = "create_obs_set_def_column_rand.out",' >> utilities.nml
+   echo '   TERMLEVEL = 1'                                       >> utilities.nml
+   echo '&end'                                                   >> utilities.nml
+
+   cat utilities.nml assim_mod.nml model.nml > input.nml
+
+   ./column_rand < column_rand.in
+   ./create_obs_set_def < column_rand.out
+
+   if ( $status > 0 ) then
+      echo "ERROR: running create_obs_set_def bombed ..."
+      exit
+   endif
+
 endif
 
 #======================================================================
@@ -193,6 +238,13 @@ echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo "obs_seq.in"            >> create_obs_sequence.in
 
+echo '&utilities_nml'                               > utilities.nml
+echo '   logfilename = "create_obs_sequence.out",' >> utilities.nml
+echo '   TERMLEVEL = 1'                            >> utilities.nml
+echo '&end'                                        >> utilities.nml
+
+cat utilities.nml assim_mod.nml model.nml > input.nml
+
 ./create_obs_sequence < create_obs_sequence.in
 
 if ( $status > 0 ) then
@@ -221,9 +273,14 @@ cat << ENDofTask03 > perfect.nml
 &end
 ENDofTask03
 
-cat perfect.nml >> input.nml
+echo '&utilities_nml'                             > utilities.nml
+echo '   logfilename = "perfect_model_obs.out",' >> utilities.nml
+echo '   TERMLEVEL = 1'                          >> utilities.nml
+echo '&end'                                      >> utilities.nml
 
-nice $NICELEVEL ./perfect_model_obs
+cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
+
+./perfect_model_obs
  
 if ( $status > 0 ) then
    echo "ERROR: perfect_model_obs (synthetic) bombed ..."
@@ -291,23 +348,33 @@ echo "   output_interval = $output_interval "                  >> filter.nml
 echo "&end"                                                    >> filter.nml
 echo " "                                                       >> filter.nml
 
-cat filter.nml >> input.nml
+echo '&utilities_nml'                  > utilities.nml
+echo '   logfilename = "filter.out",' >> utilities.nml
+echo '   TERMLEVEL = 1'               >> utilities.nml
+echo '&end'                           >> utilities.nml
 
-nice $NICELEVEL ./filter
+cat utilities.nml assim_mod.nml perfect.nml filter.nml model.nml > input.nml
+
+./filter
 
 if ( $status > 0 ) then
-   mv $SAVEME input.nml
    echo "ERROR: filter bombed ..."
    exit
 else
    echo " "
    echo "filter teminated normally"
    echo " "
-#   \rm -f create_obs_set_def.in create_obs_sequence.in input.nml filter.nml
+   \rm -f create_obs_set_def.in create_obs_sequence.in
+   \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
 endif
 
-if ( -f $SAVEME ) then
-   mv $SAVEME input.nml
-endif
+#======================================================================
+# Restore the existing namelists ...
+#======================================================================
+
+foreach NAMELIST ( ${SAVEME}/*.nml )
+   mv ${NAMELIST} .
+end
+\rmdir ${SAVEME}
 
 exit

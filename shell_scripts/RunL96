@@ -40,32 +40,35 @@ cd ${DARTHOME}/models/${Model}/work
 
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
+   mv input.nml.mkmf default_create_obs_set_def.nml
    make || exit 1
 endif
 if !( -e create_obs_sequence ) then
    csh mkmf_create_obs_sequence
+   mv input.nml.mkmf default_create_obs_sequence.nml
    make || exit 1
 endif
 if !( -e perfect_model_obs ) then
    csh mkmf_perfect_model_obs
+   mv input.nml.mkmf default_perfect_model_obs.nml
    make || exit 1
 endif
 if !( -e filter ) then
    csh mkmf_filter
+   mv input.nml.mkmf default_filter.nml
    make || exit 1
 endif
 \rm -f *.o *.d *.mod Makefile
 
 #======================================================================
 # Save any existing namelist ...
-# The foreach loop guards against nothing to move. 
 #======================================================================
 
 set SAVEME = .NamelistStorage.$$
 if ( ! -d $SAVEME ) then
    mkdir ${SAVEME}
 endif
-foreach NAMELIST ( *.nml ) 
+foreach NAMELIST ( *.nml )
    mv ${NAMELIST} ${SAVEME}
 end
 
@@ -139,11 +142,11 @@ echo $num_obs                >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo "obs_seq.in"            >> create_obs_sequence.in
-
-echo '&utilities_nml'                               > utilities.nml
-echo '   logfilename = "create_obs_sequence.out"'  >> utilities.nml
-echo '   TERMLEVEL = 1'                            >> utilities.nml
-echo '&end'                                        >> utilities.nml
+ 
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "create_obs_sequence.out"' >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
 
 cat utilities.nml assim_mod.nml model.nml > input.nml
 
@@ -180,12 +183,12 @@ cat << ENDofTask03 > perfect.nml
 &end
 ENDofTask03
 
-echo '&utilities_nml'                            > utilities.nml
+echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
-echo '   TERMLEVEL = 1'                         >> utilities.nml
-echo '&end'                                     >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml 
+cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -280,7 +283,7 @@ endif
 # Restore the existing namelists ...
 #======================================================================
 
-foreach NAMELIST ( ${SAVEME}/*.nml ) 
+foreach NAMELIST ( ${SAVEME}/*.nml )
    mv ${NAMELIST} .
 end
 \rmdir ${SAVEME}

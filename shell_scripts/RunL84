@@ -36,25 +36,28 @@ cd ${DARTHOME}/models/${Model}/work
 
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
+   mv input.nml.mkmf default_create_obs_set_def.nml
    make || exit 1
 endif
 if !( -e create_obs_sequence ) then
    csh mkmf_create_obs_sequence
+   mv input.nml.mkmf default_create_obs_sequence.nml
    make || exit 1
 endif
 if !( -e perfect_model_obs ) then
    csh mkmf_perfect_model_obs
+   mv input.nml.mkmf default_perfect_model_obs.nml
    make || exit 1
 endif
 if !( -e filter ) then
    csh mkmf_filter
+   mv input.nml.mkmf default_filter.nml
    make || exit 1
 endif
 \rm -f *.o *.d *.mod Makefile
 
 #======================================================================
 # Save any existing namelist ...
-# The foreach loop guards against nothing to move. 
 #======================================================================
 
 set SAVEME = .NamelistStorage.$$
