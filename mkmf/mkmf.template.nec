@@ -1,6 +1,20 @@
-# Makefile template for SX cross compiler
-#typical use with netCDF:
-# mkmf -t template.nec -c"-Duse_libMPI -Duse_netCDF" path_names /opt/sx/netcdf/include
+# template for SX cross compiler
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next two lines are maintained by CVS, please do not edit>
+# $Id$
+# $Name$
+#
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# NETCDF and LIBS needs to be customized for your site
+#
+# WARNING -- this is untested with the DART software (no access to a platform)
+#
 FC = sxmpif90
 LD = sxmpif90
 CC = sxmpic++
