@@ -28,8 +28,7 @@ public static_init_assim_model, init_diag_output, get_model_size, get_closest_st
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, &
-   init_diag_outputORG, output_diagnosticsORG
+   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr
 
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
@@ -276,49 +275,6 @@ contains
   end subroutine check  
 
 end function init_diag_output
-
-
-function init_diag_outputORG(file_name, global_meta_data, &
-   copies_of_field_per_time, meta_data_per_copy) result(init_diag_output)
-!---------------------------------------------------------------------
-!
-! Initializes a diagnostic output file. Should be NetCDF shortly but
-! for now just opens file and dumps stuff. A file_id is returned which
-! is simply implemented as an integer unit number for now. 
-
-implicit none
-
-integer :: init_diag_output
-character(len = *), intent(in) :: file_name, global_meta_data
-integer, intent(in) :: copies_of_field_per_time
-character(len = *), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
-
-integer :: i, model_size
-type(location_type) :: state_loc
-
-init_diag_output = get_unit()
-open(unit = init_diag_output, file = file_name)
-!!!init_diag_output = open_file(file_name)
-write(init_diag_output, *) global_meta_data
-
-! Write the model size
-model_size = get_model_size()
-write(init_diag_output, *) model_size
-
-! Write number of copies of field per time plus the meta data per copy
-write(init_diag_output, *) copies_of_field_per_time
-do i = 1, copies_of_field_per_time
-   write(init_diag_output, *) i, meta_data_per_copy(i)
-end do
-
-! Will need other metadata, too; Could be as simple as writing locations
-write(init_diag_output, *) 'locat'
-do i = 1, model_size
-   call get_state_meta_data(i, state_loc)
-   call write_location(init_diag_output, state_loc)
-end do
-
-end function init_diag_outputORG
 
 
 
@@ -867,34 +823,6 @@ read(file, *) assim_model%state_vector
 
 end subroutine read_state_restart
 
-
-
-subroutine output_diagnosticsORG(file_id, state, copy_index)
-!-------------------------------------------------------------------
-!
-! Outputs a copy of the state vector to the file (currently just an
-! integer unit number), the time, and an optional index saying which
-! copy of the metadata this state is associated with.
-! Need to make a much better coordinated facility for doing this,
-! providing buffering, insuring that ordering is appropriate for
-! time (and copy), etc. For now, this just writes what it receives
-! with a header stating time and copy_index.
-
-implicit none
-
-integer, intent(in) :: file_id
-type(assim_model_type), intent(in) :: state
-integer, optional, intent(in) :: copy_index
-
-! Write the time and copy_index
-call write_time(file_id, state%time)
-write(file_id, *) 'fcopy '
-write(file_id, *) copy_index
-
-! Write the data, unformatted for now
-write(file_id, *) state%state_vector
-
-end subroutine output_diagnosticsORG
 
 
 subroutine output_diagnostics(ncFileID, state, copy_index)
