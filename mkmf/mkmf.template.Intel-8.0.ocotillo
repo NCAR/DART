@@ -1,0 +1,15 @@
+# template for the Intel fortran compiler; Version 8.0 for Ocotillo update
+# typical use with mkmf
+# mkmf -t template.ifort -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
+FC = ifort
+LD = ifort
+FFLAGS = -i4 -r8 -fpp -O2 -I/ocotillo/users/caya/netcdf/include
+#FFLAGS = -i4 -r8 -fpp -g -I/ocotillo/users/caya/netcdf/include #debugging
+LDFLAGS = $(LIBS) -Bstatic
+# LIBS needs to be customized for your site
+# machine called DART .... LIBS = -L/usr/local/lib -lnetcdf -L/opt/intel-7.1/lib -ludunits -lPEPCF90 -L/usr/mpi/lib -lmpich
+# machine called ocotillo .... 
+# LIBS = -L/ocotillo/users/caya/netcdf/lib -lnetcdf -ludunits -lPEPCF90 -L/usr/local/mpich-1.2.1..7b.sav/lib -lmpich
+# MPICH libraries are not needed for non-Bgrid models
+#LIBS = -L/ocotillo/users/caya/netcdf/lib -lnetcdf -L/ocotillo/users/caya/udunits-1.12.1/lib -ludunits -lPEPCF90
+LIBS = -L/ocotillo/users/caya/netcdf/lib -lnetcdf -L/ocotillo/users/caya/udunits-1.12.1/lib -ludunits
