@@ -29,7 +29,8 @@ revdate  = "$Date$"
 public init_ensemble_manager, get_ensemble_member, put_ensemble_member, &
    update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
    get_ensemble_region, put_ensemble_region, get_ensemble_time, Aadvance_state, &
-   ensemble_type
+   ensemble_type, get_region_by_number, put_region_by_number, &
+   transpose_ens_to_regions, transpose_regions_to_ens
 
 ! This type gives a handle to an ensemble, not currently playing a role but
 ! allows later implementations to possibly support multiple ensembles open at once
@@ -45,10 +46,10 @@ real(r8), allocatable :: ens(:, :), ens_mean(:), ens_spread(:)
 type(time_type), allocatable :: ens_time(:)
 integer :: ens_size, model_size
 
-integer :: seq_unit
 character(len = 129) :: errstring
 ! File name for the temporary files; has extensions added
-character(len = 21) :: seq_file_name = 'ens_manager_temp_file'
+character(len = 21) :: ens_file_name = 'ens_manager_ens_file'
+character(len = 20) :: reg_file_name = 'ens_manager_reg_file'
 
 !-----------------------------------------------------------------
 !
@@ -76,10 +77,10 @@ subroutine init_ensemble_manager(ens_handle, ens_size_in, &
 
 type(ensemble_type), intent(out)            :: ens_handle
 integer, intent(in)                         :: ens_size_in, model_size_in
-character(len = 129), intent(out), optional :: file_name
+character(len = 129), intent(in), optional :: file_name
 type(time_type), intent(in), optional       :: init_time
 
-integer :: iunit, i, ierr, io
+integer :: iunit, i, ierr, io, seq_unit
 character(len = 129) :: msgstring, this_file_name
 character(len = 4) :: extension
 
@@ -139,10 +140,14 @@ if(present(file_name)) then
          ! If out of core, read in from restart file and write out to temp file
          call aread_state_restart(ens_time(i), ens(1, :), iunit)
          ! Open the file for this ensemble member
-         call get_seq_file_name(this_file_name, i)
+         this_file_name = get_disk_file_name(ens_file_name, i)
          seq_unit = get_unit()
          open(unit = seq_unit, file = this_file_name, access = 'sequential', &
             status = 'replace', form = 'unformatted')
+
+         !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+         !   form = 'unformatted', status = 'replace', recl = req_rec_length)
+
          write(seq_unit) ens(1, :)
          close(seq_unit)
       endif
@@ -170,6 +175,7 @@ type(time_type), intent(out) :: mtime
 ! Return one member of an ensemble by index
 ! Index 0 gets ensemble mean, index -1 gets ensemble spread
 
+integer :: seq_unit
 character(len = 129) :: this_file_name
 
 if(index < -1 .or. index > ens_size) then
@@ -188,10 +194,14 @@ if(in_core) then
    endif
 else
    ! Out of core, need to read in from file
-   call get_seq_file_name(this_file_name, index)
+   this_file_name = get_disk_file_name(ens_file_name, index)
    ! Open the file and read in the field      
    seq_unit = get_unit()
    open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+   
+    !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+    !        form = 'unformatted', recl = req_rec_length)
+
    read(seq_unit) member
    close(unit = seq_unit)
 endif
@@ -212,6 +222,7 @@ integer, intent(in) :: index
 real(r8), intent(in) :: member(:)
 type(time_type), intent(in) :: mtime
 
+integer :: seq_unit
 character(len = 129) :: this_file_name
 
 if(index < -1 .or. index > ens_size) then
@@ -230,10 +241,14 @@ if(in_core) then
    endif
 else
    ! For out of core, open file and write out new values
-   call get_seq_file_name(this_file_name, index)
+   this_file_name = get_disk_file_name(ens_file_name, index)
    ! Open the file and write the field
    seq_unit = get_unit()
    open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+  
+   !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+   !         form = 'unformatted', recl = req_rec_length)
+
    write(seq_unit) member
    close(unit = seq_unit)
 end if
@@ -269,7 +284,7 @@ subroutine update_ens_mean(ens_handle)
 
 type(ensemble_type), intent(in) :: ens_handle
 
-integer :: i, j
+integer :: i, j, seq_unit
 character(len = 129) :: this_file_name
 ! Sequential version read efficiency requires having second model_size storage
 real(r8) :: ens_member(model_size)
@@ -288,10 +303,13 @@ else
    ! Stored on disk, read in each member and sum
    ens = 0.0
    do j = 1, ens_size
-      call get_seq_file_name(this_file_name, j)
+      this_file_name = get_disk_file_name(ens_file_name, j)
       ! Open the file and read in the field      
       seq_unit = get_unit()
       open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+      !      form = 'unformatted', recl = req_rec_length)
+
       read(seq_unit) ens_member
       close(unit = seq_unit)
       ! Add this member to sum
@@ -299,9 +317,13 @@ else
    end do
    ens = ens / ens_size
    ! Put the ensemble mean into the file; ensemble mean is 0 member
-   call get_seq_file_name(this_file_name, 0)
+   this_file_name = get_disk_file_name(ens_file_name, 0)
    seq_unit = get_unit()
    open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+   !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+   !         form = 'unformatted', recl = req_rec_length)
+
    write(seq_unit) ens
    close(unit = seq_unit)
 endif
@@ -319,7 +341,7 @@ subroutine update_ens_mean_spread(ens_handle)
 ! Also does an update of the ensemble mean
 type(ensemble_type), intent(in) :: ens_handle
 
-integer :: i, j
+integer :: i, j, seq_unit
 character(len = 129) this_file_name
 ! For efficient disk use now need three copies, if this is too much can alter
 real(r8) :: tens_mean(model_size), tens_spread(model_size)
@@ -338,18 +360,26 @@ if(in_core) then
    end do
 else
    ! Get the ensemble mean from disk file; mean is copy 0
-   call get_seq_file_name(this_file_name, 0)
+   this_file_name = get_disk_file_name(ens_file_name, 0)
    seq_unit = get_unit()
    open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+   !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+   !         form = 'unformatted', recl = req_rec_length)
+
    read(seq_unit) tens_mean
    close(unit = seq_unit)
 
    tens_spread = 0.0
    ! Loop through and add squared difference from mean
-      do j = 1, ens_size
-      call get_seq_file_name(this_file_name, j)
+   do j = 1, ens_size
+      this_file_name = get_disk_file_name(ens_file_name, j)
       seq_unit = get_unit()
       open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+      !      form = 'unformatted', recl = req_rec_length)
+
       read(seq_unit) ens
       close(unit = seq_unit)
       tens_spread = tens_spread + (ens(1, :) - tens_mean)**2
@@ -357,9 +387,13 @@ else
    
    tens_spread = sqrt(tens_spread / (ens_size - 1))
    ! Write to the ensemble_spread file, index is -1
-   call get_seq_file_name(this_file_name, -1)
+   this_file_name = get_disk_file_name(ens_file_name, -1)
    seq_unit = get_unit()
    open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+   !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+   !         form = 'unformatted', recl = req_rec_length)
+
    write(seq_unit) tens_spread
    close(unit = seq_unit)
 endif
@@ -379,7 +413,7 @@ type(time_type), intent(out) :: rtime(:)
 integer, intent(in), optional :: state_vars_in(:), ens_members_in(:)
 
 integer :: state_vars(model_size), ens_members(ens_size + 2), i, j
-integer :: num_state_vars, num_ens_members
+integer :: num_state_vars, num_ens_members, seq_unit
 character(len = 129) :: this_file_name
 ! Returns a subset of the state variables and ensemble members
 ! The ensemble members to be returned are specified by number in ens_members_in
@@ -416,9 +450,13 @@ do i = 1, num_ens_members
 
    ! If not in core, open the file for this ensemble member
    if(.not. in_core) then
-      call get_seq_file_name(this_file_name, ens_members(i))
+      this_file_name = get_disk_file_name(ens_file_name, ens_members(i))
       seq_unit = get_unit()
       open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+      !      form = 'unformatted', recl = req_rec_length)
+
       read(seq_unit) ens
       close(seq_unit)
    endif
@@ -451,7 +489,7 @@ type(time_type), intent(in) :: rtime(:)
 integer, intent(in), optional :: state_vars_in(:), ens_members_in(:)
 
 integer :: state_vars(model_size), ens_members(ens_size + 2), i, j
-integer :: num_state_vars, num_ens_members
+integer :: num_state_vars, num_ens_members, seq_unit
 character(len = 129) :: this_file_name
 ! Puts a subset of state variables and ensemble members
 
@@ -482,9 +520,13 @@ do i = 1, num_ens_members
 
    ! If not in core, open the file for this ensemble member
    if(.not. in_core) then
-      call get_seq_file_name(this_file_name, ens_members(i))
+      this_file_name = get_disk_file_name(ens_file_name, ens_members(i))
       seq_unit = get_unit()
       open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+      !      form = 'unformatted', recl = req_rec_length)
+
       read(seq_unit) ens
       close(seq_unit)
    endif
@@ -500,14 +542,18 @@ do i = 1, num_ens_members
          endif
       else
          ens(1, state_vars(j)) = region(i, j)
-         endif
+      endif
    end do
 
    ! If not in core, open the file for this ensemble member
    if(.not. in_core) then
-      call get_seq_file_name(this_file_name, ens_members(i))
+      this_file_name = get_disk_file_name(ens_file_name, ens_members(i))
       seq_unit = get_unit()
       open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+      !      form = 'unformatted', recl = req_rec_length)
+
       write(seq_unit) ens
       close(seq_unit)
    endif
@@ -540,9 +586,13 @@ do i = 1, ens_size
    if(in_core) then
       call awrite_state_restart(ens_time(i), ens(i, :), iunit)
    else
-      call get_seq_file_name(this_file_name, i)
+      this_file_name = get_disk_file_name(ens_file_name, i)
       seq_unit = get_unit()
       open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+
+      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
+      !      form = 'unformatted', recl = req_rec_length)
+
       read(seq_unit) ens
       close(seq_unit)
       call awrite_state_restart(ens_time(i), ens(1, :), iunit)
@@ -560,7 +610,9 @@ if(mean_allocated) deallocate(ens_mean)
 if(spread_allocated) deallocate(ens_spread)
 
 ! LETS GET RID OF ALL THE TEMP FILES, TOO!
-command_string = 'rm -f ' // trim(seq_file_name) // '.*'
+command_string = 'rm -f ' // trim(ens_file_name) // '.*'
+call system(command_string)
+command_string = 'rm -f ' // trim(reg_file_name) // '.*'
 !write(*, *) 'command string is ', command_string
 call system(command_string)
 
@@ -773,12 +825,224 @@ end if
 
 end subroutine Aadvance_state
 
+!-----------------------------------------------------------------
+
+subroutine transpose_ens_to_regions(ens_handle, num_regions, region_id, region_size)
+
+type(ensemble_type), intent(in) :: ens_handle
+integer, intent(in) :: num_regions
+integer, intent(in) :: region_id(model_size), region_size(num_regions)
+
+! Temporary storage to reorder into regions
+real(r8) :: reorder(model_size)
+integer :: start(num_regions), indx(num_regions), i, j, this_region
+integer :: reg_unit, seq_unit, req_rec_length
+character(len = 129) :: this_file_name
+
+
+! Don't do anything if things are in core
+if(in_core) return
+
+! Compute where in reordered storage each region should start
+start(1) = 1
+do i = 2, num_regions
+   start(i) = start(i - 1) + region_size(i - 1)
+end do
+
+! Loop through each of the ensembles and extract the regions
+! Then write the regions to region files
+do i = 1, ens_size
+
+   ! Initialize where each region should write
+   indx = start
+
+   ! Open the ensemble file
+   this_file_name = get_disk_file_name(ens_file_name, i)
+   seq_unit = get_unit()
+   open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+   ! Read in this ensemble member
+   read(seq_unit) ens 
+   close(seq_unit)
+
+   ! Can now delete the ensemble file for storage efficiency
+   ! SYSTEM CALLS ARE VERY EXPENSIVE!!!
+   !!!call system('rm -f ' // trim(this_file_name))
+
+   ! Now loop through and extract the regions
+   do j = 1, model_size
+      this_region = region_id(j)
+      reorder(indx(this_region)) = ens(1, j)
+      indx(this_region) = indx(this_region) + 1
+   end do
+
+   ! Now the whole beasts are there, write them to the region files
+   reg_unit = get_unit()
+   do j = 1, num_regions
+
+      ! The regions file must be random access for reverse transpose
+      ! Open a file to this regions file
+      this_file_name = get_disk_file_name(reg_file_name, j)
+      ! Get the length of the record (one ensemble worth)
+      inquire(iolength = req_rec_length) reorder(start(j):start(j) + region_size(j) - 1)
+      open(unit = reg_unit, file = this_file_name, access = 'direct', &
+         form = 'unformatted', recl = req_rec_length)
+      ! Write state for this region, this ensemble member
+      write(reg_unit, rec = i) reorder(start(j):start(j) + region_size(j) - 1)
+      close(reg_unit)
+   end do
+end do
+
+end subroutine transpose_ens_to_regions
+
 
 !-----------------------------------------------------------------
 
-subroutine get_seq_file_name(file_name, index)
+subroutine transpose_regions_to_ens(ens_handle, num_regions, region_id, region_size)
 
-character(len = *), intent(out) :: file_name
+type(ensemble_type), intent(in) :: ens_handle
+integer, intent(in) :: num_regions
+integer, intent(in) :: region_id(model_size), region_size(num_regions)
+
+! Temporary storage to reorder into regions
+real(r8) :: reorder(model_size)
+integer :: start(num_regions), indx(num_regions), i, j, this_region
+integer :: reg_unit, seq_unit, req_rec_length
+character(len = 129) :: this_file_name
+
+! Don't do anything if things are in core
+if(in_core) return
+
+! Compute where in reordered storage each region should start
+start(1) = 1
+do i = 2, num_regions
+   start(i) = start(i - 1) + region_size(i - 1)
+end do
+
+! Loop through to read the ensembles from each region in turn
+do i = 1, ens_size
+   ! Loop through each regions file
+   do j = 1, num_regions
+      this_file_name = get_disk_file_name(reg_file_name, j)
+      reg_unit = get_unit()
+      ! Get the record length for this region (one ensemble member)
+      inquire(iolength = req_rec_length) reorder(start(j):start(j) + region_size(j) -1)
+      open(unit = reg_unit, file = this_file_name, access = 'direct', &
+         form = 'unformatted', recl = req_rec_length)
+      ! Read the region into temporary storage
+      read(reg_unit, rec = i) reorder(start(j):start(j) + region_size(j) - 1)
+      close(reg_unit)
+      ! Can now delete the region file if this is last ensemble
+      ! SYSTEM CALLS ARE VERY EXPENSIVE!!!
+      !!!if(i == ens_size) call system('rm -f ' // this_file_name)
+   end do
+
+   ! All regions are in, move them to ensemble order
+   ! Initialize where each region should write
+   indx = start
+   do j = 1, model_size
+      this_region = region_id(j)
+      ens(1, j) = reorder(indx(this_region))
+      indx(this_region) = indx(this_region) + 1
+   end do
+
+   ! Now write this ensemble member to disk
+   this_file_name = get_disk_file_name(ens_file_name, i)
+   seq_unit = get_unit()
+   open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+   write(seq_unit) ens
+   close(seq_unit)
+end do
+
+end subroutine transpose_regions_to_ens
+
+!-----------------------------------------------------------------
+
+subroutine get_region_by_number(ens_handle, rnum, rsize, region, region_id)
+
+! Returns all ensemble members for region number rnum. When the ensemble is
+! being stored in-core, the region_id is used to find all the state variables
+! in this region and they are copied into region. When the ensemble is NOT
+! being stored in core, it is ASSUMED that the ensemble has been transposed to
+! regional files and that the size and ids of the regions for the transpose
+! are consistent with the region size and region_id in this call. This could
+! all be made safer, but with some overhead.
+
+type(ensemble_type), intent(in) :: ens_handle
+integer, intent(in) :: rnum, rsize
+real(r8), intent(out) :: region(ens_size, rsize)
+integer, intent(in) :: region_id(rsize)
+
+integer :: i, j, indx, reg_unit, req_rec_length
+character(len = 129) :: this_file_name
+
+! For in-core, just do copying
+if(in_core) then
+   do i = 1, rsize
+      indx = region_id(i)
+      do j = 1, ens_size
+         region(j, i) = ens(j, indx)
+      end do
+   end do
+
+else
+   !For out of core, need to open and read the appropriate file
+   this_file_name = get_disk_file_name(reg_file_name, rnum)
+   reg_unit = get_unit()
+   inquire(iolength = req_rec_length) region(1, :)
+   open(unit = reg_unit, file = this_file_name, access = 'direct', &
+      form = 'unformatted', recl = req_rec_length)
+   do j = 1, ens_size
+      read(reg_unit, rec = j) region(j, :)
+   end do
+   close(reg_unit)
+   
+endif
+
+end subroutine get_region_by_number
+
+!-----------------------------------------------------------------
+
+subroutine put_region_by_number(ens_handle, rnum, rsize, region, region_id)
+
+type(ensemble_type), intent(in) :: ens_handle
+integer, intent(in) :: rnum, rsize
+real(r8), intent(in) :: region(ens_size, rsize)
+integer, intent(in) :: region_id(rsize)
+
+integer :: i, j, indx, reg_unit, req_rec_length
+character(len = 129) :: this_file_name
+
+! For in-core, just do copying
+if(in_core) then
+   do i = 1, rsize
+      indx = region_id(i)
+      do j = 1, ens_size
+         ens(j, indx) = region(j, i)
+      end do
+   end do
+
+else
+   !For out of core, need to open and read the appropriate file
+   this_file_name = get_disk_file_name(reg_file_name, rnum)
+   reg_unit = get_unit()
+   inquire(iolength = req_rec_length) region(1, :)
+   open(unit = reg_unit, file = this_file_name, access = 'direct', &
+      form = 'unformatted', recl = req_rec_length)
+   do j = 1, ens_size
+      write(reg_unit, rec = j) region(j, :)
+   end do
+   close(reg_unit)
+   
+endif
+
+end subroutine put_region_by_number
+
+!-----------------------------------------------------------------
+
+function get_disk_file_name(base_file, index)
+
+character(len = 129)  :: get_disk_file_name
+character(len = *), intent(in) :: base_file
 integer, intent(in) :: index
 
 character(len = 4) extension
@@ -787,14 +1051,14 @@ if(index > 0) then
    ! Open the direct access file for this ensemble member
    write(extension, 99) index
    99 format(i4.4)
-   file_name = trim(seq_file_name) // '.' // extension
+   get_disk_file_name = trim(base_file) // '.' // extension
 else if(index == 0) then
-   file_name = trim(seq_file_name) // '.mean'
+   get_disk_file_name = trim(base_file) // '.mean'
 else if(index == -1) then
-   file_name = trim(seq_file_name) // '.spread'
+   get_disk_file_name = trim(base_file) // '.spread'
 endif
 
-end subroutine get_seq_file_name
+end function get_disk_file_name
 
 
 end module ensemble_manager_mod
