@@ -30,19 +30,22 @@ use obs_model_mod, only    : get_expected_obs, get_close_states
 use reg_factor_mod, only   : comp_reg_factor
 use location_mod, only     : location_type, get_dist
 use time_manager_mod, only : time_type
-use ensemble_manager_mod, only : get_ensemble_region, put_ensemble_region, ensemble_type, &
+use ensemble_manager_mod, only : put_ensemble_region, ensemble_type, &
                                  transpose_ens_to_regions, transpose_regions_to_ens, &
-                                 get_ensemble_member, put_region_by_number, get_region_by_number
+                                 put_region_by_number, get_region_by_number, is_ens_in_core, &
+                                 ens_direct => ens
 
 implicit none
 private
 
-public :: assim_tools_init, obs_increment, update_from_obs_inc, look_for_bias, &
-   filter_assim, async_assim_region, assim_tools_end
+public :: assim_tools_init, filter_assim, async_assim_region, assim_tools_end
 
 type (random_seq_type) :: inc_ran_seq
 logical :: first_inc_ran_call = .true.
 character(len = 129) :: errstring
+
+! Storage for cov_inflate and cov_inflate_sd for each region
+real(r8), allocatable :: reg_cov_inflate(:), reg_cov_inflate_sd(:)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -60,6 +63,7 @@ revdate  = "$Date$"
 !      3 = Kernel filter
 !      4 = particle filter
 integer  :: filter_kind     = 1
+real(r8) :: cutoff = 0.2_r8
 logical  :: sort_obs_inc = .false.
 real(r8) :: cov_inflate = -1.0
 real(r8) :: cov_inflate_sd = 0.05
@@ -72,7 +76,7 @@ integer :: do_parallel = 0
 integer :: num_domains = 1
 character(len=129) :: parallel_command = './assim_filter.csh'
 
-namelist / assim_tools_nml / filter_kind, sort_obs_inc, cov_inflate, &
+namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, cov_inflate, &
    cov_inflate_sd, sd_lower_bound, deterministic_cov_inflate, &
    start_from_assim_restart, assim_restart_in_file_name, &
    assim_restart_out_file_name, do_parallel, num_domains, parallel_command
@@ -81,12 +85,14 @@ namelist / assim_tools_nml / filter_kind, sort_obs_inc, cov_inflate, &
 
 contains
 
-subroutine assim_tools_init()
+subroutine assim_tools_init(dont_read_restart)
 !============================================================================
 ! subroutine assim_tools_init()
 !
 
-integer :: iunit, ierr, io, restart_unit
+logical, intent(in), optional :: dont_read_restart
+
+integer :: iunit, ierr, io, restart_unit, i, res_num_domains
 
 call register_module(source, revision, revdate)
 
@@ -111,16 +117,47 @@ call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' 
 write(logfileunit, nml=assim_tools_nml)
 write(     *     , nml=assim_tools_nml)
 
+! Check for illegal combination of parallel with single region (doesn't make sense)
+if(do_parallel /= 0 .and. num_domains == 1) then
+   write(errstring, *) 'do_parallel not 0 and num_domains 1 is not supported'
+   call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
+endif
+
+! Allocate space for cov_inflate and cov_inflate_sd for each region
+allocate(reg_cov_inflate(num_domains), reg_cov_inflate_sd(num_domains))
+
+! If not using restart, propagate the covariance info from namelist to each region
+if(.not. start_from_assim_restart) then
+   do i = 1, num_domains
+      reg_cov_inflate(i) = cov_inflate
+      reg_cov_inflate_sd(i) = cov_inflate_sd
+   end do
+endif
+
 ! If requested, read cov_inflate and cov_inflate_sd from a restart file
 ! Otherwise use namelist values
+if(present(dont_read_restart)) then
+   if(dont_read_restart) goto 22
+endif
+
 if(start_from_assim_restart) then
    restart_unit = get_unit()
    open(unit = restart_unit, file = assim_restart_in_file_name)
-   read(restart_unit, *) cov_inflate, cov_inflate_sd
+   ! Read in the number of regions for which covariance info is available
+   read(restart_unit, *) res_num_domains
+   ! If the file doesn't have same number of domains as requested domains, die
+   if(res_num_domains /= num_domains) then
+      write(errstring, *) 'num_domains in restart not same as in namelist ' 
+      call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
+   endif
+   ! Read in the covariance values for each domain
+   do i = 1, num_domains
+      read(restart_unit, *) reg_cov_inflate(i), reg_cov_inflate_sd(i)
+   end do
    close(restart_unit)
 endif
 
-write(logfileunit, *) 'sd controls are ', cov_inflate, cov_inflate_sd, sd_lower_bound
+22 write(logfileunit, *) 'sd controls are ', cov_inflate, cov_inflate_sd, sd_lower_bound
 write(*, *) 'sd controls are ', cov_inflate, cov_inflate_sd, sd_lower_bound
 
 !!! PROBLEMS WITH REGIONS AND STATE!!!
@@ -135,49 +172,51 @@ end subroutine assim_tools_init
 
 !-------------------------------------------------------------
 
-subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc)
+subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
+   my_cov_inflate, my_cov_inflate_sd)
                          
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens_in(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
+real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 
 real(r8) :: ens(ens_size), inflate_inc(ens_size)
 real(r8) :: sum_x, prior_mean, prior_var, new_cov_inflate, new_cov_inflate_sd
-real(r8) :: rand_sd, new_val(ens_size), enhanced_inflate
+real(r8) :: rand_sd, new_val(ens_size)
 integer :: i, ens_index(ens_size), new_index(ens_size)
 
 ! If observation space inflation is being done, compute the initial 
 ! increments and update the inflation factor and its standard deviation
-! as needed. cov_inflate < 0 means don't do any of this.
-if(cov_inflate > 0.0) then
+! as needed. my_cov_inflate < 0 means don't do any of this.
+if(my_cov_inflate > 0.0) then
    ! Compute prior variance and mean from sample
    sum_x      = sum(ens_in)
    prior_mean = sum_x / ens_size
-   prior_var  = (sum(ens_in * ens_in) - sum_x**2 / ens_size) / (ens_size - 1)
+   prior_var = sum((ens_in - prior_mean)**2) / (ens_size - 1)
 
-   ! If cov_inflate_sd is <= 0, just retain current cov_inflate setting
-   if(cov_inflate_sd > 0.0) then
+   ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
+   if(my_cov_inflate_sd > 0.0) then
       call bayes_cov_inflate(prior_mean, sqrt(prior_var), obs, sqrt(obs_var), &
-         cov_inflate, cov_inflate_sd, new_cov_inflate, new_cov_inflate_sd)
+         my_cov_inflate, my_cov_inflate_sd, new_cov_inflate, new_cov_inflate_sd)
 
       ! Keep the covariance inflation > 1.0 for most model situations
       if(new_cov_inflate < 1.0) new_cov_inflate = 1.0
-      !write(*, *) 'old, new cov_inflate', cov_inflate, new_cov_inflate
+      !write(*, *) 'old, new my_cov_inflate', my_cov_inflate, new_cov_inflate
 
-      cov_inflate = new_cov_inflate
+      my_cov_inflate = new_cov_inflate
 
-      !!!if(new_cov_inflate_sd < cov_inflate_sd) cov_inflate_sd = new_cov_inflate_sd
-      cov_inflate_sd = new_cov_inflate_sd
-      if(cov_inflate_sd < sd_lower_bound) cov_inflate_sd = sd_lower_bound
+      !!!if(new_cov_inflate_sd < my_cov_inflate_sd) my_cov_inflate_sd = new_cov_inflate_sd
+      my_cov_inflate_sd = new_cov_inflate_sd
+      if(my_cov_inflate_sd < sd_lower_bound) my_cov_inflate_sd = sd_lower_bound
 
       ! Ad hoc mechanism for reducing cov_inflate_sd
-      !!!cov_inflate_sd = cov_inflate_sd - (cov_inflate_sd - sd_lower_bound) / 10000.0
+      !!!my_cov_inflate_sd = my_cov_inflate_sd - (my_cov_inflate_sd - sd_lower_bound) / 10000.0
    endif
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
    if(deterministic_cov_inflate) then
-      ens = (ens_in - prior_mean) * sqrt(cov_inflate) + prior_mean
+      ens = (ens_in - prior_mean) * sqrt(my_cov_inflate) + prior_mean
       inflate_inc = ens - ens_in
 
    else
@@ -194,9 +233,9 @@ if(cov_inflate > 0.0) then
       endif
 
       ! Figure out required sd for random noise being added
-      if(cov_inflate > 1.0) then
+      if(my_cov_inflate > 1.0) then
          ! Don't allow covariance deflation in this version
-         rand_sd = sqrt(cov_inflate*prior_var - prior_var)
+         rand_sd = sqrt(my_cov_inflate*prior_var - prior_var)
          !write(*, *) 'rand_sd increment needed is ', sqrt(prior_var), rand_sd
          ! Add random sample from this noise into the ensemble
          do i = 1, ens_size
@@ -236,7 +275,7 @@ else
 endif
 
 ! Add in the extra increments if doing observation space covariance inflation
-if(cov_inflate > 0.0) then
+if(my_cov_inflate > 0.0) then
    obs_inc = obs_inc + inflate_inc
 endif
 
@@ -336,7 +375,7 @@ else
       new_var = var_ratio * prior_var
       new_mean  = obs
    else
-      call error_handler(E_ERR,'obs_increment_eakf', &
+      call error_handler(E_ERR,'obs_increment_ran_kf', &
            'Both obs_var and prior_var are zero. This is inconsistent', &
            source, revision, revdate)
    endif
@@ -400,7 +439,7 @@ else
       new_var = var_ratio * prior_var
       new_mean  = obs
    else
-      call error_handler(E_ERR,'obs_increment_eakf', &
+      call error_handler(E_ERR,'obs_increment_det_kf', &
            'Both obs_var and prior_var are zero. This is inconsistent', &
            source, revision, revdate)
    endif
@@ -492,7 +531,7 @@ real(r8), intent(out)           :: obs_inc(ens_size)
 
 real(r8) :: a, weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
 real(r8) :: base, frac, new_val(ens_size), weight_sum
-integer  :: i, j, indx(ens_size), ens_index(ens_size), new_index(ens_size)
+integer  :: i, j, indx(ens_size)
 
 ! The factor a is not defined for particle filters
 a = -1.0_r8
@@ -567,7 +606,6 @@ real(r8) :: a, obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
 real(r8) :: sx, s_x2, prior_cov
 real(r8) :: temp_mean, temp_obs(ens_size), updated_mean, var_ratio, temp_cov
-integer  :: ens_index(ens_size), new_index(ens_size)
 
 integer  :: i
 
@@ -581,14 +619,14 @@ obs_var_inv = 1.0_r8 / obs_var
 sx         = sum(ens)
 s_x2       = sum(ens * ens)
 prior_mean = sx / ens_size
-prior_cov  = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+prior_cov  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
 prior_cov_inv = 1.0_r8 / prior_cov
 new_cov       = 1.0_r8 / (prior_cov_inv + obs_var_inv)
 
 ! Temporary for adjustment test
-   var_ratio = obs_var / (prior_cov + obs_var)
-   updated_mean  = var_ratio * (prior_mean  + prior_cov*obs / obs_var)
+!   var_ratio = obs_var / (prior_cov + obs_var)
+!   updated_mean  = var_ratio * (prior_mean  + prior_cov*obs / obs_var)
 
 ! If this is first time through, need to initialize the random sequence
 if(first_inc_ran_call) then
@@ -642,7 +680,7 @@ real(r8) :: weight(ens_size), new_mean(ens_size)
 real(r8) :: cum_weight, total_weight, cum_frac(ens_size)
 real(r8) :: unif, norm, new_member(ens_size)
 
-integer :: i, j, kernel, ens_index(ens_size), new_index(ens_size)
+integer :: i, j, kernel
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0_r8 / obs_var
@@ -651,7 +689,7 @@ obs_var_inv = 1.0_r8 / obs_var
 sx         = sum(ens)
 s_x2       = sum(ens * ens)
 prior_mean = sx / ens_size
-prior_cov  = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+prior_cov  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
 prior_cov     = prior_cov / 10.0_r8     ! For kernels, scale the prior covariance
 prior_cov_inv = 1.0_r8 / prior_cov
@@ -706,7 +744,7 @@ end subroutine obs_increment_kernel
 
 
 subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
-               state_inc, reg_coef, correl_out)
+               state_inc, reg_coef)
 !========================================================================
 
 ! Does linear regression of a state variable onto an observation and
@@ -716,7 +754,6 @@ integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in)            :: state(ens_size)
 real(r8), intent(out)           :: state_inc(ens_size), reg_coef
-real(r8), intent(out), optional :: correl_out
 
 real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty, correl
 real(r8) :: sum_y, sum_y2, state_var_norm
@@ -733,15 +770,6 @@ else
    reg_coef = 0.0_r8
 endif
 
-! Compute the sample correlation
-if(present(correl_out)) then
-   sum_y          = sum(state)
-   sum_y2         = sum(state*state)
-   state_var_norm = sum_y2 - sum_y**2 / ens_size
-   correl         = reg_coef * sqrt(sum_t2 / state_var_norm)
-endif
-if(present(correl_out)) correl_out = correl
-
 ! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
 
@@ -749,51 +777,27 @@ end subroutine update_from_obs_inc
 
 !========================================================================
 
+subroutine filter_assim_region(domain_size, ens_size, model_size, &
+   num_groups, num_obs_in_set, obs_val_index, &
+   save_reg_series, reg_series_unit, ens, ens_obs_in, compute_obs, seq, keys, my_state, &
+   my_cov_inflate, my_cov_inflate_sd)
 
-subroutine look_for_bias(ens, n, obs, obs_var, var_ratio)
-
-integer, intent(in)   :: n
-real(r8), intent(in)  :: ens(n), obs, obs_var
-real(r8), intent(out) :: var_ratio
-
-real(r8) :: sx, s_x2, prior_mean, prior_var, sq_err, tot_var
-
-! Compute variance of the ensemble prior for this obs
-sx         = sum(ens)
-s_x2       = sum(ens * ens)
-prior_mean = sx / n
-prior_var  = (s_x2 - sx**2 / n) / (n - 1)
-
-! Variance of difference between obs and mean should be sum of variances
-sq_err    = (obs - prior_mean)**2
-!!!sq_err = sum((obs - ens)**2) / n
-tot_var   = obs_var + prior_var
-var_ratio = sq_err / tot_var
-
-end subroutine look_for_bias
-
-!========================================================================
-
-subroutine filter_assim_region(my_domain, domain_size, ens_size, model_size, &
-   num_groups, num_obs_in_set, obs_val_index, confidence_slope, cutoff, &
-   save_reg_series, reg_series_unit, ens, ens_obs_in, compute_obs, seq, keys, my_state)
-
-integer, intent(in) :: my_domain, domain_size
+integer, intent(in) :: domain_size
 integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
 real(r8), intent(inout) :: ens(ens_size, domain_size)
 real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs(num_obs_in_set)
 integer, intent(in) :: obs_val_index, reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
-real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series, my_state(model_size)
+real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
 integer :: num_close_ptr(1), indx
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
 real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
-real(r8) :: qc(num_obs_in_set), obs_inc(ens_size), a_returned(num_groups), obs_dist
+real(r8) :: qc(num_obs_in_set), obs_inc(ens_size), obs_dist
 real(r8) :: ens_inc(ens_size), ens_obs(ens_size, num_obs_in_set)
 integer, parameter :: first_num_close = 100000
 integer :: order(num_obs_in_set)
@@ -805,6 +809,7 @@ logical :: close_to_any, local_close_state(num_obs_in_set)
 
 integer :: inv_indices(model_size)
 integer, allocatable :: indices(:)
+
 
 ! Generate an array with the indices of my state variables
 allocate(indices(domain_size))
@@ -890,10 +895,8 @@ Observations : do jjj = 1, num_obs_in_set
    ! Get this observation in a temporary and get its qc value for possible update
    call get_obs_from_key(seq, keys(j), observation)
 
-   ! Get the observation value and the error variance
+   ! Get the observation error variance
    call get_obs_def(observation, obs_def)
-   ! Get the value of the observation and the error variance
-!!$   call get_obs_values(observation, obs(j:j), obs_val_index)
    obs_err_var(j) = get_obs_def_error_variance(obs_def)
    ! Just skip observations that have failed prior qc ( >4 for now)
    if(qc(j) > 4.01_r8 .or. obs(j) == missing_r8) cycle Observations
@@ -918,7 +921,7 @@ Observations : do jjj = 1, num_obs_in_set
 
       ! Call obs_increment to do observation space
       call obs_increment(ens_obs(grp_bot:grp_top, j), ens_size/num_groups, obs(j), &
-         obs_err_var(j), obs_inc(grp_bot:grp_top))
+         obs_err_var(j), obs_inc(grp_bot:grp_top), my_cov_inflate, my_cov_inflate_sd)
    end do Group1
 
    ! Getting close states for each scalar observation for now
@@ -949,7 +952,7 @@ Observations : do jjj = 1, num_obs_in_set
       if(cov_factor <= 0) cycle CLOSE_STATE
 
       ! Get the ensemble elements for this state variable and do regression
-       swath = ens(:, inv_indices(ind))
+      swath = ens(:, inv_indices(ind))
 
       ! Loop through the groups
       Group2: do group = 1, num_groups
@@ -1049,7 +1052,7 @@ end subroutine filter_assim_region
 !---------------------------------------------------------------------------
 
 subroutine filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size, model_size, num_obs_in_set, &
-   num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
+   num_groups, seq, keys, save_reg_series, reg_series_unit, &
    obs_sequence_in_name)
 
 integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
@@ -1058,7 +1061,6 @@ real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs_in(num_obs_in_set)
 integer, intent(in) :: reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
-real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series
 character(len=*), intent(in) :: obs_sequence_in_name
 
@@ -1072,10 +1074,7 @@ character(len=28) :: in_file_name(num_domains), out_file_name(num_domains)
 character(len=129) :: temp_obs_seq_file, errstring
 
 integer :: which_domain(model_size), region_size(num_domains)
-real(r8) :: new_ens_member(ens_size, model_size), old_ens_member(ens_size, model_size)
-type(time_type) :: temp_time
 
-write(*, *) 'STARTING filter_assim'
 compute_obs = compute_obs_in
 
 ! Set compute obs to false for more than one region (can be modified later)
@@ -1141,26 +1140,35 @@ do j = 1, num_domains
    my_state = .false.
    my_state(domain_bottom : domain_top) = .true.
 
-   ! Generate an array with the indices of my state variables
-   allocate(ens(ens_size, domain_size), indices(domain_size))
+   if(num_domains > 1 .or. .not. is_ens_in_core()) then
+      ! Generate an array with the indices of my state variables
+      allocate(ens(ens_size, domain_size), indices(domain_size))
 
-   indx = 1
-   do i = 1, model_size
-      if(my_state(i)) then
-         indices(indx) = i
-         indx = indx + 1
-      endif
-   end do
+      indx = 1
+      do i = 1, model_size
+         if(my_state(i)) then
+            indices(indx) = i
+            indx = indx + 1
+         endif
+      end do
 
-   ! Get the ensemble (whole thing for now) from storage
-   !!!call get_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
-   call get_region_by_number(ens_handle, j, domain_size, ens, indices)
+      ! Get the ensemble (whole thing for now) from storage
+      call get_region_by_number(ens_handle, j, domain_size, ens, indices)
+   endif
 
 ! Do ensemble filter update for this region
    if(do_parallel == 0) then
-      call filter_assim_region(j, domain_size, ens_size, model_size, num_groups, &
-         num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
-         reg_series_unit, ens, ens_obs, compute_obs, seq, keys, my_state)
+      if(num_domains > 1 .or. .not. is_ens_in_core()) then
+         call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
+            num_obs_in_set, obs_val_index, save_reg_series, &
+            reg_series_unit, ens, ens_obs, compute_obs, seq, keys, my_state, &
+            reg_cov_inflate(j), reg_cov_inflate_sd(j))
+      else
+         call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
+            num_obs_in_set, obs_val_index, save_reg_series, &
+            reg_series_unit, ens_direct, ens_obs, compute_obs, seq, keys, my_state, &
+            reg_cov_inflate(j), reg_cov_inflate_sd(j))
+      endif
    else
    ! Loop to write out arguments for each region
       if(j < 10) then
@@ -1189,21 +1197,21 @@ do j = 1, num_domains
 ! Development test of passing this interface by file in preparation for separate executables
       iunit = get_unit()
       open(unit = iunit, file = in_file_name(j), action = 'write', form = 'unformatted', &
+      !!!open(unit = iunit, file = in_file_name(j), action = 'write', form = 'formatted', &
          status = 'replace')
-     ! write(iunit, *) num_domains, j, domain_size, ens_size, model_size, num_groups, &
-      write(iunit) num_domains, j, domain_size, ens_size, model_size, num_groups, &
-         num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+      write(iunit) num_domains, domain_size, ens_size, model_size, num_groups, &
+         num_obs_in_set, obs_val_index, save_reg_series, &
          reg_series_unit, obs_sequence_in_name
-      !write(iunit, *) ens, ens_obs, compute_obs, keys, my_state
       write(iunit) ens, ens_obs, compute_obs, keys, my_state
+      write(iunit) reg_cov_inflate(j), reg_cov_inflate_sd(j)
       close(iunit)
    endif
 
    ! Put this region into storage for single executable which is now finished
-   !!!if(do_parallel == 0) call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
-   if(do_parallel == 0) call put_region_by_number(ens_handle, j, domain_size, ens, indices)
-
-   deallocate(ens, indices)
+   if(do_parallel == 0 .and. (num_domains > 1 .or. .not. is_ens_in_core())) & 
+      call put_region_by_number(ens_handle, j, domain_size, ens, indices)
+   ! Free up the storage allocated for the region
+   if(num_domains > 1 .or. .not. is_ens_in_core()) deallocate(ens, indices)
 
 end do
 
@@ -1223,15 +1231,15 @@ if(do_parallel == 2 .or. do_parallel == 3) then
 
 ! Spawn the job to do parallel assims for do_parallel 2
    if(do_parallel == 2) then
-   call system('echo go > batchflag; '//parallel_command//' ; sleep 1')
+      call system('echo go > batchflag; '//parallel_command//' ; sleep 1')
 
-   do
-      if(file_exist('batchflag')) then
-         call system('sleep 10')
-      else
-         exit
-      endif
-   end do
+      do
+         if(file_exist('batchflag')) then
+            call system('sleep 10')
+         else
+            exit
+         endif
+      end do
 ! Do the continuously running script case
    else if(do_parallel == 3) then
       call system('echo a > go_assim_regions')
@@ -1274,8 +1282,10 @@ if(do_parallel == 2 .or. do_parallel == 3) then
       ! Read in the update ensemble region (also need the qc eventually)
       iunit = get_unit()
       open(unit = iunit, file = out_file_name(j), action = 'read', form = 'unformatted')
-      !read(iunit, *) ens
+      !!!open(unit = iunit, file = out_file_name(j), action = 'read', form = 'formatted')
       read(iunit) ens
+      ! Also read in the cov_inflation parameters
+      read(iunit) reg_cov_inflate(j), reg_cov_inflate_sd(j)
       close(iunit)
       !!!call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
       call put_region_by_number(ens_handle, j, domain_size, ens, indices)
@@ -1289,8 +1299,8 @@ endif
 call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
 
 
-write(*, *) 'done with subroutine filter_assim cov_inflate is ', cov_inflate
-write(logfileunit, *) 'done with subroutine filter_assim cov_inflate is ', cov_inflate
+write(*, *) 'done with subroutine filter_assim reg_cov_inflate is ', reg_cov_inflate
+write(logfileunit, *) 'done with subroutine filter_assim reg_cov_inflate is ', reg_cov_inflate
 
 end subroutine filter_assim
 
@@ -1305,14 +1315,14 @@ character(len = *), intent(in) :: in_file_name, out_file_name
 ! DONT FORGET THE QC!!!
 ! AND IN GENERAL NEED TO WORK ON REGSERIES STUFF!!!
 
-integer :: n_domains, my_domain, domain_size, ens_size, model_size, num_groups
+integer :: n_domains, domain_size, ens_size, model_size, num_groups
 integer :: num_obs_in_set, obs_val_index, reg_series_unit
-real(r8) :: confidence_slope, cutoff
 character(len = 129) :: obs_sequence_in_name
 logical :: save_reg_series
 real(r8), allocatable :: ens(:, :), ens_obs(:, :)
 integer, allocatable :: keys(:)
 logical, allocatable :: my_state(:), compute_obs(:)
+real(r8) :: my_cov_inflate, my_cov_inflate_sd
 
 type(obs_sequence_type) :: seq2
 integer :: iunit
@@ -1320,14 +1330,16 @@ integer :: iunit
 ! Read in all the arguments from the file
 iunit = get_unit()
 open(unit = iunit, file = in_file_name, action = 'read', form = 'unformatted')
-read(iunit) n_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
-   num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+!!!open(unit = iunit, file = in_file_name, action = 'read', form = 'formatted')
+read(iunit) n_domains, domain_size, ens_size, model_size, num_groups, &
+   num_obs_in_set, obs_val_index, save_reg_series, &
    reg_series_unit, obs_sequence_in_name
 
 ! Allocate storage
 allocate(ens(ens_size, domain_size), ens_obs(ens_size, num_obs_in_set), &
    compute_obs(num_obs_in_set), keys(num_obs_in_set), my_state(model_size))
 read(iunit) ens, ens_obs, compute_obs, keys, my_state
+read(iunit) my_cov_inflate, my_cov_inflate_sd
 
 close(iunit)
 
@@ -1336,15 +1348,18 @@ obs_sequence_in_name = 'filter_assim_obs_seq'
 call read_obs_seq(obs_sequence_in_name, 0, 0, 0, seq2)
 
 ! Do ensemble filter update for this region
-call filter_assim_region(my_domain, domain_size, ens_size, model_size, num_groups, &
-   num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
-   reg_series_unit, ens, ens_obs, compute_obs, seq2, keys, my_state)
+call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
+   num_obs_in_set, obs_val_index, save_reg_series, &
+   reg_series_unit, ens, ens_obs, compute_obs, seq2, keys, my_state, &
+   my_cov_inflate, my_cov_inflate_sd)
 
 ! Write out the updated ensemble region, need to do QC also
 iunit = get_unit()
 open(unit = iunit, file = out_file_name, action = 'write', form = 'unformatted', &
+!!!open(unit = iunit, file = out_file_name, action = 'write', form = 'formatted', &
    status = 'replace')
 write(iunit) ens
+write(iunit) my_cov_inflate, my_cov_inflate_sd
 close(iunit)
 
 call destroy_obs_sequence(seq2)
@@ -1366,9 +1381,9 @@ integer, parameter :: max_num_iters = 100
 integer, parameter :: sd_range = 4
 integer, parameter :: sd_intervals = 4
 real(r8), parameter :: tol = 0.00000001
-integer :: i, j
+integer :: i
 
-real(r8) :: d(3), lam(3), d_new, lam_new, new_max, e_minus_half, ratio, x_dist
+real(r8) :: d(3), lam(3), d_new, lam_new, new_max, ratio, x_dist
 real(r8) :: cov_sd_sum, cov_sd_sample(-sd_intervals:sd_intervals)
 
 ! Compute the maximum value of the updated probability
@@ -1496,12 +1511,15 @@ end function compute_new_density
 
 subroutine assim_tools_end()
 
-integer :: restart_unit
+integer :: restart_unit, i
 
-! Write out cov_inflate and cov_inflate_sd to restart file
+! Write out cov_inflate and cov_inflate_sd for each domain to restart file
 restart_unit = get_unit()
 open(unit = restart_unit, file = assim_restart_out_file_name)
-write(restart_unit, *) cov_inflate, cov_inflate_sd
+write(restart_unit, *) num_domains
+do i = 1, num_domains
+   write(restart_unit, *) reg_cov_inflate(i), reg_cov_inflate_sd(i)
+end do
 close(restart_unit)
 
 end subroutine assim_tools_end
