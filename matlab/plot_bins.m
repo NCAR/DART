@@ -28,8 +28,25 @@ CheckModelCompatibility(truth_file,diagn_file)
 vars  = CheckModel(truth_file);   % also gets default values for this model.
 varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
-disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
-disp(['Using State Variable IDs ',num2str(varid)])
+switch lower(vars.model)
 
-PlotBins(truth_file, diagn_file, varid);
+   case {'9var','lorenz_63','lorenz_96'}
+
+      pinfo = struct('state_var_inds',varid);
+
+      disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
+      disp(['Using State Variable IDs ', num2str(varid)])
+      PlotBins(truth_file, diagn_file, pinfo);
+
+   case 'fms_bgrid'
+
+      pinfo = GetBgridInfo(diagn_file, 'PlotBins');
+      PlotBins(truth_file, diagn_file, pinfo);
+
+   otherwise
+
+      error(sprintf('model %s not implemented yet', vars.model))
+
+end
+
 clear vars varid
