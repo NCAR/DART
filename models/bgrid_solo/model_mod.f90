@@ -79,7 +79,8 @@ use bgrid_halo_mod       , only: update_halo, UWND, VWND, TEMP, &
                                  NORTH, EAST, WEST, SOUTH
 use hs_forcing_mod       , only: hs_forcing_init, hs_forcing
 
-use location_mod         , only: location_type, get_location, set_location, get_dist, &
+use location_mod         , only: location_type, get_location, set_location, &
+                                 get_dist, vert_is_level, &
                                  LocationDims, LocationName, LocationLName
 
 use random_seq_mod       , only: random_seq_type, init_random_seq, random_gaussian
@@ -1169,14 +1170,9 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-function model_interpolate(x, location, type)
-!!!function model_interpolate(x, lon, lat, level, type)
+RECURSIVE function model_interpolate(x, location, type)
 
 implicit none
-
-!!! EVENTUALLY NEED TO DO SOMETHING WITH TYPE; BUT FOR NOW THIS JUST FINDS
-!!! THE HORIZONTAL PART OF THE INTPERPOLATION??? SHOULD ARGUMENT BE A HYBRID
-!!! LOCATION TYPE VARIABLE HERE???
 
 real :: model_interpolate
 real, intent(in) :: x(:)
@@ -1186,13 +1182,20 @@ integer, intent(in) :: type
 integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
 real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
-real :: lon, lat, level, lon_lat_lev(3)
+real :: lon, lat, level, lon_lat_lev(3), pressure
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
+! As opposed to the stripped state vector. YES. This would give time interp.
+! capability here; do we really want this or should it be pushed up?
 
-! First version only allows identity obs (level specifies verical???)
+! Get the position, determine if it is model level or pressure in vertical
 lon_lat_lev = get_location(location)
-lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
+lon = lon_lat_lev(1); lat = lon_lat_lev(2); 
+if(vert_is_level(location)) then 
+   level = lon_lat_lev(3)
+else
+   pressure = lon_lat_lev(3)
+endif
 
 ! Depending on type, get appropriate lon and lat grid specs
 ! Types temporarily defined as 1=u, 2=v, 3=ps, 4=t, n=tracer number n-4
@@ -1254,13 +1257,21 @@ else
    lat_fract = 1.0
 endif
 
-! Level is obvious for now
-
+! Case 1: model level specified in vertical
+if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
-val(1, 1) =  get_val(x, lon_below, lat_below, int(level), type)
-val(1, 2) =  get_val(x, lon_below, lat_above, int(level), type)
-val(2, 1) =  get_val(x, lon_above, lat_below, int(level), type)
-val(2, 2) =  get_val(x, lon_above, lat_above, int(level), type)
+   val(1, 1) =  get_val(x, lon_below, lat_below, nint(level), type)
+   val(1, 2) =  get_val(x, lon_below, lat_above, nint(level), type)
+   val(2, 1) =  get_val(x, lon_above, lat_below, nint(level), type)
+   val(2, 2) =  get_val(x, lon_above, lat_above, nint(level), type)
+
+else
+! Case of pressure specified in vertical
+   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, type)
+   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, type)
+   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, type)
+   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, type)
+endif
 
 ! Do the weighted average for interpolation
 !write(*, *) 'fracts ', lon_fract, lat_fract
@@ -1283,9 +1294,107 @@ real :: get_val
 real, intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, type
 
+! Find the index into state array and return this value
+get_val = x(get_state_index(lon_index, lat_index, level, type))
+
+end function get_val
+
+!#######################################################################
+
+function get_val_pressure(x, lon_index, lat_index, pressure, type)
+
+implicit none
+
+real :: get_val_pressure
+real, intent(in) :: x(:), pressure
+integer, intent(in) :: lon_index, lat_index, type
+
+real :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), fraction
+type(location_type) :: ps_location
+integer :: top_lev, bot_lev, i
+real :: bot_val, top_val, ps_lon
+
+! Gets the vertically interpolated value on pressure for variable type
+! at lon_index, lat_index horizontal grid point
+
+! Need to get the surface pressure at this point.
+! For t or tracers (on mass grid with ps) this is trivial
+! For u or v (on velocity grid)
+
+if(type >= 3) then
+   ps = get_val(x, lon_index, lat_index, -1, 3)
+else
+! Bgrid model has nasty habit of having longitudes truncated to > 360.0
+! Need to fix this here to avoid death in location module
+   ps_lon = v_lons(lon_index)
+   if(ps_lon > 360.00 .and. ps_lon < 360.00001) ps_lon = 360.0
+   ps_location = set_location(ps_lon, &
+      v_lats(lat_index), lev = -1.0)
+   ps = model_interpolate(x, ps_location, 3)
+endif
+
+! Next, get the values on the levels for this ps
+call compute_pres_full(Dynam%Vgrid, ps, pfull)
+
+! Interpolate in vertical to get two bounding levels
+
+!write(*, *) 'type is ', type
+!write(*, *) 'pfull values for ps = ', ps(1, 1)
+!write(*, *) pfull(1, 1, :)
+
+! What to do about pressures above top??? Just use the top for now.
+! Could extrapolate, but that would be very tricky. Might need to
+! reject somehow.
+!write(*, *) 'pressure , ps ', pressure, ps(1, 1)
+if(pressure < pfull(1, 1, 1)) then
+   top_lev = 1
+   bot_lev = 2
+   fraction = 1.0
+else if(pressure > pfull(1, 1, Dynam%Vgrid%nlev)) then
+! Same for bottom
+   bot_lev = Dynam%Vgrid%nlev
+   top_lev = bot_lev - 1
+   fraction = 0.0
+
+else
+
+! Search down through pressures
+   do i = 2, Dynam%Vgrid%nlev
+      if(pressure < pfull(1, 1, i)) then
+         top_lev = i -1
+         bot_lev = i
+         fraction = (pfull(1, 1, i) - pressure) / &
+            (pfull(1, 1, i) - pfull(1, 1, i - 1))
+         goto 21
+      endif
+   end do
+end if
+
+! Get the value at these two points
+21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
+top_val = get_val(x, lon_index, lat_index, top_lev, type)
+!write(*, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
+   
+get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+!write(*, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
+
+end function get_val_pressure
+
+!#######################################################################
+
+function get_state_index(lon_index, lat_index, level, type)
+
+implicit none
+
+integer :: get_state_index
+integer, intent(in) :: lon_index, lat_index, level, type
+
+! Returns the index in the state vector for variable of type at
+! the lon_index, lat_index, level position on the grid
+! Types are currently hard-coded as u=1, v=2, ps=3, t=4, tracers = n-4
 integer :: tis, tie, num_t_lons, tjs, tje, num_t_lats, t_size
 integer :: vis, vie, num_v_lons, vjs, vje, num_v_lats, v_size
-integer :: t_per_col, t_grid_size, v_per_col, v_grid_size, index
+integer :: t_per_col, t_grid_size, v_per_col, v_grid_size
 
 ! Get the bounds for storage on Temp and Velocity grids
 tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
@@ -1308,23 +1417,23 @@ v_grid_size = v_per_col * v_size
 
 ! Is this point in the t_grid; ps, t or tracer
 if(type > 2) then
-   index = t_per_col * (lat_index - 1 + (lon_index - 1) * num_t_lats)
+   get_state_index = t_per_col * (lat_index - 1 + (lon_index - 1) * num_t_lats)
    if(type == 3) then
-      index = index + 1
+      get_state_index = get_state_index + 1
    else 
-      index = index + 1 + (level - 1) * (1 + ntracers) + (type - 3)
+      get_state_index = get_state_index + &
+         1 + (level - 1) * (1 + ntracers) + (type - 3)
    endif
 
 ! Type 1 or 2 is u or v
 else
 ! It's in the v_grid
-   index = t_grid_size + v_per_col * (lat_index - 1 + (lon_index - 1) * num_v_lats)
-   index = index + (level - 1) * 2 + type
+   get_state_index = t_grid_size + &
+      v_per_col * (lat_index - 1 + (lon_index - 1) * num_v_lats)
+   get_state_index = get_state_index + (level - 1) * 2 + type
 endif
 
-get_val = x(index)
-
-end function get_val
+end function get_state_index
 
 !#######################################################################
 
