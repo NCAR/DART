@@ -35,7 +35,7 @@ revdate  = "$Date$"
 
 type(time_type)         :: time, target_time
 type(assim_model_type) :: x(1)
-integer :: unit, ierr, io, model_size
+integer :: iunit, ierr, io, model_size
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -50,14 +50,14 @@ namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
 
 ! Begin by reading the namelist input
 if(file_exist('integrate_model.nml')) then
-   unit = open_file('input.nml', action = 'read')
+   iunit = open_file(file = 'input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = integrate_model_nml, iostat = io, end = 11)
+      read(iunit, nml = integrate_model_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'integrate_model_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
 ! Initialize the model class data now that obs_sequence is all set up
@@ -65,14 +65,14 @@ call static_init_assim_model()
 model_size = get_model_size()
 
 !------------------- Read restart from file ----------------------
-unit = get_unit()
-!!!open(unit = unit, file = restart_in_file_name)
-open(unit = unit, file = 'temp_ic')
+iunit = get_unit()
+!!!open(unit = iunit, file = restart_in_file_name)
+open(unit = iunit, file = 'temp_ic')
 ! Read in the target time
-target_time = read_time(unit)
+target_time = read_time(iunit)
 call init_assim_model(x(1))
-call read_state_restart(x(1), unit)
-close(unit)
+call read_state_restart(x(1), iunit)
+close(iunit)
 !-----------------  Restart read in --------------------------------
 
 ! Advance this state to the target time (which comes from namelist)
@@ -84,10 +84,10 @@ if(get_model_time(x(1)) < target_time) then
 endif
 
 ! Output the restart file if requested
-unit = get_unit()
-!!!open(unit = unit, file = ud_file_name)
-open(unit = unit, file = 'temp_ud')
-call write_state_restart(x(1), unit)
-close(unit)
+iunit = get_unit()
+!!!open(unit = iunit, file = ud_file_name)
+open(unit = iunit, file = 'temp_ud')
+call write_state_restart(x(1), iunit)
+close(iunit)
 
 end program integrate_model
