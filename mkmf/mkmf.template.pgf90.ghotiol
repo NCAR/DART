@@ -1,0 +1,18 @@
+# Makefile template for PGI f90 on fisher
+#
+# This is for PG 5.0.2a
+# FC = /usr/local/pgi-hpf-cc-5.0-2a/linux86/5.0/bin/pgf90
+# LIBS = -L/usr/local/netcdf-pgi-hpf-cc/lib -lnetcdf -L/usr/local/udunits-1.11.7/lib -ludunits 
+# FFLAGS = -r8 -O0 -Ktrap=fp -pc 64 -v -I/usr/local/netcdf-pgi-hpf-cc/include
+#
+# The following line is for 5.1-3 with optimizations suggested by the GTP folks.
+# FFLAGS = -r8 -fastsse -Minline -Knoieee -Minfo=loop,inline -I$(NETCDF)/include
+#
+FC = pgf90
+LD = pgf90
+CPPFLAGS =
+LIST = -Mlist
+NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.1-3
+FFLAGS = -r8 -O0 -Ktrap=fp -pc 64 -v -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf -L/usr/local/udunits-1.11.7/lib -ludunits
+LDFLAGS = $(LIBS)
