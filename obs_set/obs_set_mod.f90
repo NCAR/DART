@@ -107,7 +107,7 @@ set_out%time = set_in%time
 set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
-if(allocated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
+if(associated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
 allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
    set_out%missing(set_in%num_obs, set_in%num_copies))
 
