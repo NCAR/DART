@@ -190,7 +190,7 @@ write(*, *) 'starting advance time loop;'
       key_bounds, num_obs_in_set, async, adv_ens_command)
    if(key_bounds(1) < 0) exit AdvanceTime
    ! Write the divider for the regression series if requested
-   if(save_reg_series) write(reg_series_unit, *) -99, -99, -99.0
+   if(save_reg_series) write(reg_series_unit, *) -99, -99, -99.0_r8
 
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), obs(num_obs_in_set), &
@@ -556,7 +556,7 @@ grp_size = ens_size / num_groups
 do group = 1, num_groups
    grp_bot = (group - 1) * grp_size + 1
    grp_top = grp_bot + grp_size - 1
-   ens_mean = 0.0
+   ens_mean = 0.0_r8
    do j = grp_bot, grp_top
    if(is_ens_in_core()) then
       ens_mean = ens_mean + ens_direct(j, :)
@@ -692,7 +692,7 @@ type(obs_type) :: observation
 ! Construct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
-ens_obs = 0.0
+ens_obs = 0.0_r8
 
 do k = 1, ens_size
    if(.not. is_ens_in_core()) then
@@ -725,7 +725,7 @@ do j = 1, num_obs_in_set
    ! This is efficient place to do observation space quality control
    ! For now just looking for outliers from prior
    ! Need to get the observation value for this
-   if(outlier_threshold > 0.0 .and. do_qc) then
+   if(outlier_threshold > 0.0_r8 .and. do_qc) then
       error = obs_mean(1) - obs(j)
       diff_sd = sqrt(obs_spread(1)**2 + obs_err_var(j))
       ratio = abs(error / diff_sd)
