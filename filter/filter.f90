@@ -100,8 +100,8 @@ real(r8) :: cov_inflate = 1.0_r8
 logical  :: start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer  :: init_time_days    = -1
-integer  :: init_time_seconds = -1
+integer  :: init_time_days    = 0
+integer  :: init_time_seconds = 0
 ! Control diagnostic output for state variables
 logical  :: output_state_ens_mean = .true., output_state_ens_spread = .true.
 integer  :: num_output_ens_members = 0
