@@ -22,7 +22,7 @@ private
 
 public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
-       LocationDims, LocationName, LocationLName
+       LocationDims, LocationName, LocationLName, query_location
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -129,6 +129,36 @@ if ( .not. module_initialized ) call initialize_location
 set_location_missing%x = MISSING_R8
 
 end function set_location_missing
+
+
+
+function query_location(loc,attr) result(fval)
+!---------------------------------------------------------------------------
+!
+! Returns the value of the attribute
+!
+
+implicit none
+
+type(location_type),        intent(in) :: loc
+character(len=*), optional, intent(in) :: attr
+real(r8)                               :: fval
+
+character(len=16) :: attribute
+
+if ( .not. module_initialized ) call initialize_location
+
+attribute = 'x'
+if (present(attr)) attribute = attr
+selectcase(adjustl(attribute))
+ case ('x','X')
+   fval = loc%x
+ case default
+   call error_handler(E_ERR, 'query_location; oned', &
+         'Only x is legal attribute to request from location', source, revision, revdate)
+end select
+
+end function query_location
 
 
 
