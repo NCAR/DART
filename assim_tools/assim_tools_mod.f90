@@ -225,9 +225,13 @@ else if(filter_kind == 3) then
    call   obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
 else if(filter_kind == 4) then
    call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
+else if(filter_kind == 5) then
+   call obs_increment_ran_kf(ens, ens_size, obs, obs_var, obs_inc)
+else if(filter_kind == 6) then
+   call obs_increment_det_kf(ens, ens_size, obs, obs_var, obs_inc)
 else 
    call error_handler(E_ERR,'obs_increment', &
-              'Illegal value of filter_kind in assim_tools namelist [1-4 OK]', &
+              'Illegal value of filter_kind in assim_tools namelist [1-6 OK]', &
               source, revision, revdate)
 endif
 
@@ -300,6 +304,179 @@ a = sqrt(var_ratio)
    obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment_eakf
+
+
+subroutine obs_increment_ran_kf(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+!
+! Forms a random sample of the Gaussian from the update equations.
+! This is very close to what a true 'ENSEMBLE' Kalman Filter would 
+! look like. Note that outliers, multimodality, etc., get tossed.
+
+integer, intent(in)   :: ens_size
+real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
+integer :: i
+
+! Compute prior variance and mean from sample
+sum_x      = sum(ens)
+prior_mean = sum_x / ens_size
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+
+if (obs_var /= 0.0_r8) then
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_var = var_ratio * prior_var
+   new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+else
+   if (prior_var /= 0.0_r8) then
+      var_ratio = 0.0_r8
+      new_var = var_ratio * prior_var
+      new_mean  = obs
+   else
+      call error_handler(E_ERR,'obs_increment_eakf', &
+           'Both obs_var and prior_var are zero. This is inconsistent', &
+           source, revision, revdate)
+   endif
+endif
+
+! Now, just from a random sample from the updated distribution
+! Then adjust the mean (what about adjusting the variance?)!
+! Definitely need to sort with this; sort is done in main obs_increment
+if(first_inc_ran_call) then
+   call init_random_seq(inc_ran_seq)
+   first_inc_ran_call = .false.
+endif
+
+do i = 1, ens_size
+   new_ens(i) = random_gaussian(inc_ran_seq, new_mean, sqrt(prior_var*var_ratio))
+end do
+
+! Adjust the mean of the new ensemble
+temp_mean = sum(new_ens) / ens_size
+new_ens(:) = new_ens(:) - temp_mean + new_mean
+
+! Compute prior variance and mean from sample
+temp_var  = sum((new_ens - new_mean)**2) / (ens_size - 1)
+! Adjust the variance, also
+new_ens = (new_ens - new_mean) * sqrt(new_var / temp_var) + new_mean
+
+! Get the increments
+obs_inc = new_ens - ens
+
+end subroutine obs_increment_ran_kf
+
+
+
+subroutine obs_increment_det_kf(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+!
+! Does a deterministic ensemble layout for the updated Gaussian.
+! Note that all outliers, multimodal behavior, etc. get tossed.
+
+integer, intent(in)   :: ens_size
+real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
+real(r8) :: cdf, t, num, denom
+integer :: i
+
+! Compute prior variance and mean from sample
+sum_x      = sum(ens)
+prior_mean = sum_x / ens_size
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+
+if (obs_var /= 0.0_r8) then
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_var = var_ratio * prior_var
+   new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+else
+   if (prior_var /= 0.0_r8) then
+      var_ratio = 0.0_r8
+      new_var = var_ratio * prior_var
+      new_mean  = obs
+   else
+      call error_handler(E_ERR,'obs_increment_eakf', &
+           'Both obs_var and prior_var are zero. This is inconsistent', &
+           source, revision, revdate)
+   endif
+endif
+
+! Want a symmetric distribution with kurtosis 3 and variance new_var and mean new_mean
+if(ens_size /= 20) then
+   write(*, *) 'EXPERIMENTAL version obs_increment_det_kf only works for ens_size 20 now'
+   stop
+endif
+
+! This is believed to have kurtosis of 3.0, verify again from initial uniform
+!new_ens(1) = -2.146750
+!new_ens(2) = -1.601447
+!new_ens(3) = -1.151582
+!new_ens(4) = -0.7898650
+!new_ens(5) = -0.5086292
+!new_ens(6) = -0.2997678
+!new_ens(7) = -0.1546035
+!new_ens(8) = -6.371084E-02
+!new_ens(9) = -1.658448E-02
+!new_ens(10) = -9.175255E-04
+
+! This is believed to have kurtosis of 3.0, verify again from initial inverse gaussian
+!new_ens(1) = -2.188401
+!new_ens(2) = -1.502174
+!new_ens(3) = -1.094422
+!new_ens(4) = -0.8052422
+!new_ens(5) = -0.5840152
+!new_ens(6) = -0.4084518
+!new_ens(7) = -0.2672727
+!new_ens(8) = -0.1547534
+!new_ens(9) = -6.894587E-02
+!new_ens(10) = -1.243549E-02
+
+! This is believed to have kurtosis of 2.0, verify again 
+new_ens(1) = -1.789296
+new_ens(2) = -1.523611
+new_ens(3) = -1.271505
+new_ens(4) = -1.033960
+new_ens(5) = -0.8121864
+new_ens(6) = -0.6077276
+new_ens(7) = -0.4226459
+new_ens(8) = -0.2598947
+new_ens(9) = -0.1242189
+new_ens(10) = -2.539018E-02
+
+! This is believed to have kurtosis of 1.7, verify again 
+!new_ens(1) = -1.648638
+!new_ens(2) = -1.459415
+!new_ens(3) = -1.272322
+!new_ens(4) = -1.087619
+!new_ens(5) = -0.9056374
+!new_ens(6) = -0.7268229
+!new_ens(7) = -0.5518176
+!new_ens(8) = -0.3816142
+!new_ens(9) = -0.2179997
+!new_ens(10) = -6.538583E-02
+do i = 11, 20
+   new_ens(i) = -1.0 * new_ens(20 + 1 - i)
+end do
+
+! Right now, this ensemble has mean 0 and some variance
+! Compute prior variance and mean from sample
+temp_var  = sum((new_ens)**2) / (ens_size - 1)
+
+! Adjust the variance of this ensemble to match requirements and add in the mean
+new_ens = new_ens * sqrt(new_var / temp_var) + new_mean
+
+! Get the increments
+obs_inc = new_ens - ens
+
+end subroutine obs_increment_det_kf
+
+
+
 
 
 
@@ -389,7 +566,7 @@ real(r8), intent(out)           :: obs_inc(ens_size)
 real(r8) :: a, obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
 real(r8) :: sx, s_x2, prior_cov
-real(r8) :: temp_mean, temp_obs(ens_size)
+real(r8) :: temp_mean, temp_obs(ens_size), updated_mean, var_ratio, temp_cov
 integer  :: ens_index(ens_size), new_index(ens_size)
 
 integer  :: i
@@ -408,6 +585,10 @@ prior_cov  = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
 
 prior_cov_inv = 1.0_r8 / prior_cov
 new_cov       = 1.0_r8 / (prior_cov_inv + obs_var_inv)
+
+! Temporary for adjustment test
+   var_ratio = obs_var / (prior_cov + obs_var)
+   updated_mean  = var_ratio * (prior_mean  + prior_cov*obs / obs_var)
 
 ! If this is first time through, need to initialize the random sequence
 if(first_inc_ran_call) then
@@ -429,6 +610,15 @@ do i = 1, ens_size
    new_mean(i) = new_cov * (prior_cov_inv * ens(i) + temp_obs(i) / obs_var)
    obs_inc(i)  = new_mean(i) - ens(i)
 end do
+
+! Can also adjust mean (and) variance of final sample; works fine
+!sx         = sum(new_mean)
+!s_x2       = sum(new_mean * new_mean)
+!temp_mean = sx / ens_size
+!temp_cov  = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+!new_mean = (new_mean - temp_mean) * sqrt(new_cov / temp_cov) + updated_mean
+!obs_inc = new_mean - ens
+
 
 end subroutine obs_increment_enkf
 
