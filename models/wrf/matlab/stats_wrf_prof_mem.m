@@ -3,11 +3,11 @@
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 fname = 'Prior_Diag';
-tlon = getnc(fname, 'west_east');
-we = size(tlon, 1);
-tlat = getnc(fname, 'south_north');
+tlon = getnc(fname, 'XLON');
+we = size(tlon, 2);
+tlat = getnc(fname, 'XLAT');
 sn = size(tlat, 1);
-level = getnc(fname, 'bottom_top');
+level = getnc(fname, 'level');
 bt = size(level, 1);
 copy = getnc(fname, 'copy');
 ens_size = size(copy, 1) - 2;

@@ -4,7 +4,7 @@
  
 fname = 'Prior_Diag';
 tlon = getnc(fname, 'west_east');
-we = size(tlon, 1);
+we = size(tlon, 2);
 tlat = getnc(fname, 'south_north');
 sn = size(tlat, 1);
 level = getnc(fname, 'bottom_top');

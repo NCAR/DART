@@ -8,7 +8,7 @@ field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC,
 
 fname = 'Prior_Diag';
 tlon = getnc(fname, 'XLON');
-we = size(tlon, 1);
+we = size(tlon, 2);
 tlat = getnc(fname, 'XLAT');
 sn = size(tlat, 1);
 level = getnc(fname, 'level');
@@ -17,16 +17,16 @@ ncopy = getnc(fname, 'copy');
 ens_size = size(ncopy, 1) - 2;
 
 disp(['The first ' int2str(ens_size) ' copies are ensemble members.'])
-     disp(['The ensemble mean is copy #' int2str(ens_size+1)])
-     disp(['The ensemble spread is copy #',int2str(ens_size+2)])
+disp(['The ensemble mean is copy #' int2str(ens_size+1)])
+disp(['The ensemble spread is copy #',int2str(ens_size+2)])
 
 icopy = input('Input copy to display: ');
 
 true_times = getnc(fname, 'time');
 num_true_times = size(true_times, 1)
 
-     stime = input('Initial time : ');
-     ftime = input('End time : ');
+stime = input('Initial time : ');
+ftime = input('End time : ');
 
 % Get level for free atmosphere fields
 if field_num == 6
@@ -42,76 +42,76 @@ var_name = 'U';
 maxlev = bt;
 iso = [0.5:1:5];
 if field_num > 1
-nx = we;
-ny = sn + 1;
-var_units = 'V (m/s)';
-var_name = 'V';
+   nx = we;
+   ny = sn + 1;
+   var_units = 'V (m/s)';
+   var_name = 'V';
 end
 if field_num > 2
-nx = we;
-ny = sn;
-var_units = 'W (m/s)';
-var_name = 'W';
-maxlev = bt + 1;
-iso = [0.01:0.01:0.1];
+   nx = we;
+   ny = sn;
+   var_units = 'W (m/s)';
+   var_name = 'W';
+   maxlev = bt + 1;
+   iso = [0.01:0.01:0.1];
 end
 if field_num > 3
-var_units = 'GZ (m^2/s^2)';
-var_name = 'PH';
-iso = [50:50:300];
+   var_units = 'GZ (m^2/s^2)';
+   var_name = 'PH';
+   iso = [50:50:300];
 end
 if field_num > 4
-var_units = 'T (K)';
-var_name = 'T';
-maxlev = bt;
-iso = [0.5:0.5:5];
+   var_units = 'T (K)';
+   var_name = 'T';
+   maxlev = bt;
+   iso = [0.5:0.5:5];
 end
 if field_num > 5
-var_units = 'MU (Pa)';
-var_name = 'MU';
-maxlev = 1;
-iso = [100:100:600];
+   var_units = 'MU (Pa)';
+   var_name = 'MU';
+   maxlev = 1;
+   iso = [100:100:600];
 end
 if field_num > 6
-var_units = 'QV (kg/kg)';
-var_name = 'QVAPOR';
-maxlev = bt;
-iso = [0.0001:0.0001:0.001];
+   var_units = 'QV (kg/kg)';
+   var_name = 'QVAPOR';
+   maxlev = bt;
+   iso = [0.0001:0.0001:0.001];
 end
 if field_num > 7
-var_units = 'QC (kg/kg)';
-var_name = 'QCLOUD';
-iso = [0.00001:0.00001:0.0001];
+   var_units = 'QC (kg/kg)';
+   var_name = 'QCLOUD';
+   iso = [0.00001:0.00001:0.0001];
 end
 if field_num > 8
-var_units = 'QR (kg/kg)';
-var_name = 'QRAIN';
-iso = [0.00001:0.00001:0.0001];
+   var_units = 'QR (kg/kg)';
+   var_name = 'QRAIN';
+   iso = [0.00001:0.00001:0.0001];
 end
 
 scrsz = get(0,'ScreenSize');
 figure('Position',[1 scrsz(4)/2 0.9*scrsz(4) 0.9*scrsz(4)])
 
-     m = ceil(sqrt(ftime-stime+1));
+m = ceil(sqrt(ftime-stime+1));
 
-     pane = 1;
+pane = 1;
 
 for itime = stime:ftime
 
 plot_title = [var_units '   Level: ' num2str(field_level) '   Time: ' num2str(itime)];
 
 if maxlev > 1
-corner_m = [itime icopy field_level -1 -1];
-end_point_m = [itime icopy field_level -1 -1];
-stride = [1 1 1 1 1];
-corner_t = [itime -1 field_level -1 -1];
-end_point_t = [itime -1 field_level -1 -1];
+   corner_m = [itime icopy field_level -1 -1];
+   end_point_m = [itime icopy field_level -1 -1];
+   stride = [1 1 1 1 1];
+   corner_t = [itime -1 field_level -1 -1];
+   end_point_t = [itime -1 field_level -1 -1];
 else
-corner_m = [itime icopy -1 -1];
-end_point_m = [itime icopy -1 -1];
-stride = [1 1 1 1];
-corner_t = [itime -1 -1 -1];
-end_point_t = [itime -1 -1 -1];
+   corner_m = [itime icopy -1 -1];
+   end_point_m = [itime icopy -1 -1];
+   stride = [1 1 1 1];
+   corner_t = [itime -1 -1 -1];
+   end_point_t = [itime -1 -1 -1];
 end
 
 % Extract field

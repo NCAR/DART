@@ -8,7 +8,7 @@ field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC,
 
 fname = 'Prior_Diag';
 tlon = getnc(fname, 'XLON');
-we = size(tlon, 1);
+we = size(tlon, 2);
 tlat = getnc(fname, 'XLAT');
 sn = size(tlat, 1);
 level = getnc(fname, 'level');

@@ -9,11 +9,11 @@ field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC,
 member = input('Input ensemble member: ');
 
 fname = 'Prior_Diag';
-tlon = getnc(fname, 'west_east');
-we = size(tlon, 1);
-tlat = getnc(fname, 'south_north');
+tlon = getnc(fname, 'XLON');
+we = size(tlon, 2);
+tlat = getnc(fname, 'XLAT');
 sn = size(tlat, 1);
-level = getnc(fname, 'bottom_top');
+level = getnc(fname, 'level');
 bt = size(level, 1);
 true_times = getnc(fname, 'time');
 num_true_times = size(true_times, 1)

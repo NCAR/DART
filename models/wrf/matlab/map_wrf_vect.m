@@ -8,11 +8,11 @@
 
 % Get file name of true state file
 fname = 'True_State';
-tlon = getnc(fname, 'west_east');
-we = size(tlon, 1);
-tlat = getnc(fname, 'south_north');
+tlon = getnc(fname, 'XLON');
+we = size(tlon, 2);
+tlat = getnc(fname, 'XLAT');
 sn = size(tlat, 1);
-level = getnc(fname, 'bottom_top');
+level = getnc(fname, 'level');
 bt = size(level, 1);
 
 state_vec = getnc(fname, 'state');
