@@ -1,5 +1,11 @@
 module model_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! One dimensional oscillator model (model size is 2)
 
 use loc_and_dist_mod, only : loc_type, get_dist, set_loc
