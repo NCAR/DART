@@ -43,7 +43,7 @@ public obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
    get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq,  &
    append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
-   get_num_times, static_init_obs_sequence
+   get_num_times, static_init_obs_sequence, destroy_obs_sequence
 
 ! Public interfaces for obs
 public obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -150,28 +150,66 @@ integer, intent(in) :: num_copies, num_qc, expected_max_num_obs
 
 integer :: i
 
-seq%num_copies = num_copies
-seq%num_qc = num_qc
-seq%num_obs = 0
+seq%num_copies  = num_copies
+seq%num_qc      = num_qc
+seq%num_obs     = 0
 seq%max_num_obs = expected_max_num_obs
-allocate(seq%copy_meta_data(num_copies), &
-   seq%qc_meta_data(num_qc), seq%obs(expected_max_num_obs))
-do i = 1, num_copies
+
+allocate(seq%copy_meta_data(seq%num_copies), &
+         seq%qc_meta_data(seq%num_qc), &
+         seq%obs(seq%max_num_obs) )
+
+do i = 1, seq%num_copies
    seq%copy_meta_data(i) = 'Copy metadata not initialized'
 end do
-do i = 1, num_qc
+
+do i = 1, seq%num_qc
    seq%qc_meta_data(i) = 'QC metadata not initialized'
 end do
+
 ! Initialize the pointers to allocated but pointing to zero space???
-do i = 1, expected_max_num_obs
+do i = 1, seq%max_num_obs
    allocate(seq%obs(i)%values(num_copies), seq%obs(i)%qc(num_qc))
 end do
 seq%first_time = -1
-seq%last_time = -1
+seq%last_time  = -1
 !seq%first_avail_time = -1
 !seq%last_avail_time = -1
 
 end subroutine init_obs_sequence
+
+
+!--------------------------------------------------------------
+
+
+subroutine destroy_obs_sequence(seq)
+! Destructor for an obs_sequence
+
+type(obs_sequence_type), intent(inout) :: seq
+
+integer :: i
+
+if ( seq%max_num_obs > 0 ) then
+
+   if (associated(seq%copy_meta_data)) deallocate(seq%copy_meta_data)
+   if (associated(seq%qc_meta_data))   deallocate(seq%qc_meta_data)
+          
+   do i = 1, seq%max_num_obs
+ !    if (associated(seq%obs(i))) call destroy_obs( seq%obs(i) )
+                                  call destroy_obs( seq%obs(i) )
+   end do
+
+   seq%first_time  = -1
+   seq%last_time   = -1
+   seq%num_copies  = -1                                                       
+   seq%num_qc      = -1
+   seq%num_obs     = -1
+   seq%max_num_obs = -1                                                       
+
+endif
+
+end subroutine destroy_obs_sequence
+
 
 !--------------------------------------------------------------
 
