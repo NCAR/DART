@@ -3,7 +3,7 @@ assim_tools/assim_tools_mod.f90
 sort/sort_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 obs_sequence/obs_sequence_mod.f90
-obs_set/obs_set_mod.f90
+obs_set/obs_set_mod.F90
 obs_kind/obs_kind_mod.f90
 obs_model/oned/obs_model_mod.f90
 obs_def/obs_def_mod.f90
