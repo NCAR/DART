@@ -39,7 +39,7 @@ public operator(+),  operator(-),   operator(*),   operator(/),  &
 
 ! Subroutines and functions operating on time_type
 public set_time, increment_time, decrement_time, get_time, interval_alarm
-public repeat_alarm, write_time, read_time, nc_append_time, nc_get_tindex
+public repeat_alarm
 
 ! List of available calendar types
 !!! NO_LEAP changed to NOLEAP for some weird FMS Havana compliance
@@ -65,8 +65,10 @@ public days_in_year,   days_in_year_thirty,        days_in_year_julian, &
                        days_in_year_gregorian,     days_in_year_no_leap
 public month_name
 
-! Subroutines for printing version number and time type
+! Subroutines and functions for basic I/O
 public :: time_manager_init, print_time, print_date
+public :: write_time, read_time
+public :: nc_append_time, nc_get_tindex, nc_write_calendar_atts
 
 !====================================================================
 
@@ -74,6 +76,8 @@ public :: time_manager_init, print_time, print_date
 integer, parameter :: THIRTY_DAY_MONTHS = 1,      JULIAN = 2, &
                       GREGORIAN = 3,              NOLEAP = 4, &
                       NO_CALENDAR = 0
+! HAMMERING DEFAULT CALENDAR TYPE --- MUST FIX FOR REAL --- TJH
+! integer, private :: calendar_type = GREGORIAN, max_type = 4
 integer, private :: calendar_type = NO_CALENDAR, max_type = 4
 
 ! Define number of days per month
@@ -2086,7 +2090,7 @@ implicit none
 character (*), intent(in) :: s
 
 ! Stub until module for error_handler available
-write(*, *) 'ERROR: In time_manager.f90: ', s
+write(*, *) 'ERROR: In time_manager_mod.f90: ', s
 stop
 
 !   call error_mesg ('time_manager', s, FATAL)
@@ -2456,6 +2460,71 @@ contains
 
 end function nc_get_tindex
 
+
+
+function nc_write_calendar_atts(ncFileID, TimeVarID) result(ierr)
+!------------------------------------------------------------------------
+!
+! Need this to follow conventions for netCDF output files.
+
+use typeSizes
+use netcdf
+
+implicit none
+
+integer, intent(in) :: ncFileID, TimeVarID
+integer             :: ierr
+
+type(time_type) :: statetime
+
+integer  :: unlimitedDimID
+integer  :: length
+character(len=NF90_MAX_NAME) :: varname
+character(len=80)            :: routine_name
+
+
+ierr = 0
+routine_name = 'nc_write_calendar_atts:'
+
+! call check(NF90_Sync(ncFileID))    
+! call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, length))
+
+! if ( TimeVarID /= unlimitedDimID ) then
+!    call error_handler(routine_name//'unlimited dimension is not time')
+! endif
+
+call check(nf90_put_att(ncFileID, TimeVarID, "long_name", "time"))
+call check(nf90_put_att(ncFileID, TimeVarID, "axis", "T"))
+call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
+
+select case(calendar_type)
+case(THIRTY_DAY_MONTHS)
+!  call get_date_thirty(time, year, month, day, hour, minute, second)
+case(GREGORIAN)
+   call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "gregorian" ))
+   call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 1601-01-01 00:00:00"))
+case(JULIAN)
+   call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "julian" ))
+case(NOLEAP)
+   call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "no_leap" ))
+case default
+   call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "no calendar" ))
+   call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
+end select
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(status)
+    integer, intent ( in) :: status
+
+    if(status /= nf90_noerr) then
+      call error_handler( routine_name//trim(nf90_strerror(status)) )
+    end if
+  end subroutine check
+
+end function nc_write_calendar_atts
 
 
 end module time_manager_mod
