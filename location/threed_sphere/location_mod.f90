@@ -48,6 +48,7 @@ type location_type
    real(r8) :: lon, lat, vloc
    integer  :: which_vert
    ! which_vert determines if the location is by level or by height/pressure
+   !-1 ===> obs is surface value
    ! 1 ===> obs is by level
    ! 2 ===> obs is by pressure
    ! 3 ===> obs is by height
