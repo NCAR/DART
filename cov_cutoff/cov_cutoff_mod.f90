@@ -104,7 +104,6 @@ else if(select_localization == 2) then
 
 ! Standard Gaspari Cohn localization
 else if(select_localization == 1) then
-   r = z / c
 
    if( z >= c*2.0_r8 ) then
 
@@ -112,13 +111,15 @@ else if(select_localization == 1) then
 
    else if( z >= c .and. z < c*2.0_r8 ) then
 
+      r = z / c
       comp_cov_factor = r**5 / 12.0_r8  -  &
                         r**4 / 2.0_r8   +  &
                         r**3 * 5.0_r8 / 8.0_r8 + &
                         r**2 * 5.0_r8 / 3.0_r8 - &
                         5.0_r8*r + 4.0_r8 - (c * 2.0_r8) / (3.0_r8 * z) 
    else
-      comp_cov_factor = r**5 * (-1.0_r8 / 4.0_r8 ) + &
+      r = z / c
+      comp_cov_factor = r**5 * (-0.25_r8 ) + &
                         r**4 / 2.0_r8 +              &
                         r**3 * 5.0_r8/8.0_r8 -       &
                         r**2 * 5.0_r8/3.0_r8 + 1.0_r8
