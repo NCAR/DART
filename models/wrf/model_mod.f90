@@ -143,7 +143,7 @@ integer :: ncid, bt_id, we_id, sn_id
 integer :: io, ierr, iunit
 
 character (len=80) :: name
-logical, parameter :: debug = .true.  
+logical, parameter :: debug = .false.  
 integer :: var_id, ind, i, map_proj 
 integer, dimension(5) :: kount, start, stride, map
 real(r8)    :: zero_d(1)
@@ -1137,15 +1137,15 @@ if(debug) write(6,*) ' dxr, dyr in grid_close_states ',dxr,dyr
   enddo
 
   ixmax = min(wrf%we,i_closest + 1)
-  sdx   = 1./wrf%mapfac_u(i_closest+1, j)
+  sdx   = 1./wrf%mapfac_u(ixmax, j)
   do while( sdx .lt. dxr )
     ixmax = min(wrf%we,ixmax + 1)
     sdx = sdx + 1./wrf%mapfac_u(ixmax, j)
     if(ixmax >= wrf%we) sdx = 1.1*dxr
   enddo
 
-  jymin = max(1,j_closest - 1)
   i = i_closest
+  jymin = max(1,j_closest - 1)
   sdy   = 1./wrf%mapfac_u(i_closest, jymin)
   do while( sdy .lt. dyr )
     jymin = max(1,jymin - 1)
@@ -1154,7 +1154,7 @@ if(debug) write(6,*) ' dxr, dyr in grid_close_states ',dxr,dyr
   enddo
 
   jymax = min(wrf%sn,j_closest + 1)
-  sdy   = 1./wrf%mapfac_u(i, j_closest+1)
+  sdy   = 1./wrf%mapfac_u(i, jymax)
   do while( sdy .lt. dyr )
     jymax = min(wrf%sn,jymax + 1)
     sdy = sdy + 1./wrf%mapfac_u(i, jymax)
@@ -1800,7 +1800,7 @@ integer                            :: ierr          ! return value of function
 
 !-----------------------------------------------------------------
 
-logical, parameter :: debug = .true.  
+logical, parameter :: debug = .false.  
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, VarID
 integer :: i,j
