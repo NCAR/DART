@@ -26,7 +26,7 @@ use bgrid_core_driver_mod, only: bgrid_dynam_type,       &
                                  get_bottom_data,        &
                                  put_bottom_data
 
-use diag_manager_mod, only: diag_manager_init, diag_manager_end, get_base_date
+!use diag_manager_mod, only: diag_manager_init, get_base_date
 
 
 use   bgrid_prog_var_mod, only: prog_var_type, var_init, prog_var_init, &
@@ -41,17 +41,13 @@ use time_manager_mod, only: time_type, set_time, get_time,  &
 
 use              fms_mod, only: file_exist, open_namelist_file, &
                                 error_mesg, FATAL,              &
-                                check_nml_error, stdlog,        &
+                                stdlog,        &
                                 write_version_number,           &
-                                mpp_pe, mpp_root_pe,            &
-                                close_file, set_domain,         &
-                                fms_init, mpp_clock_init,       &
-                                MPP_CLOCK_SYNC,                 &
-                                open_restart_file, mpp_clock_end, &
-                                mpp_clock_begin
+                                close_file,         &
+                                fms_init,        &
+                                open_restart_file
 
-use       mpp_io_mod, only: mpp_open, mpp_close, MPP_ASCII, MPP_OVERWR, &
-                            MPP_SEQUENTIAL, MPP_SINGLE, MPP_DELETE
+use utilities_mod, only : open_file, check_nml_error
 
 
 ! routines used by subroutine bgrid_physics
@@ -179,7 +175,7 @@ integer, parameter :: timing_level = 1
 !-----------------------------------------------------------------------
 
 ! Stuff to allow addition of random 'sub-grid scale' noise
-type(random_seq_type) :: randseed
+!!!!!!type(random_seq_type) :: randseed
 logical :: first_call = .true.
 
 
@@ -206,7 +202,7 @@ contains
 
 !---- call physics -----
 
-   call bgrid_physics ( physics_window, real(dt_atmos), Time_next,  &
+   call bgrid_physics ( physics_window, 1.0_r8 * dt_atmos, Time_next,  &
                         Dynam%Hgrid,   Dynam%Vgrid,    Dynam,             &
                         Var,     Var_dt                       )
 
@@ -251,7 +247,7 @@ call bgrid_core_driver(Time_next, Var, Var_dt, Dynam, omega)
 
 ! Call physics; physics_window is also in global static storage
 ! dt_atmos is seconds for time step from namelist for now
-call bgrid_physics(physics_window, real(dt_atmos), Time_next, &
+call bgrid_physics(physics_window, 1.0_r8 * dt_atmos, Time_next, &
    Dynam%Hgrid, Dynam%Vgrid, Dynam, Var, Var_dt)
 
 !!!write(*, *) 'max tendency ', maxval(abs(Var_dt%t))
@@ -260,21 +256,22 @@ call bgrid_physics(physics_window, real(dt_atmos), Time_next, &
 ! First pass at creating some random 'sub-grid' noise 
 ! Need to initialize random sequence on first call
 if(first_call) then
-   write(*, *) 'NOISE_SD is ', noise_sd
-   call init_random_seq(randseed)
+   !write(*, *) 'NOISE_SD is ', noise_sd
+   !!!!!!call init_random_seq(randseed)
    first_call = .false.
 endif
 
+!write(*, *) 'in model mod temp_t loop ', size(Var_dt%t, 1), size(Var_dt%t, 2),size(Var_dt%t, 3)
 ! Just modify T for now by multiplying by 1 + r(0.0, noise_sd) * dt
-do i = 1, size(Var_dt%t, 1)
-   do j = 1, size(Var_dt%t, 2)
-      do k = 1, size(Var_dt%t, 3)
-         temp_t = Var_dt%t(i, j, k)
-         Var_dt%t(i, j, k) = &
-            (1.0_r8 + random_gaussian(randseed, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
-      end do
-   end do
-end do
+!do i = 1, size(Var_dt%t, 1)
+!   do j = 1, size(Var_dt%t, 2)
+!      do k = 1, size(Var_dt%t, 3)
+!         temp_t = Var_dt%t(i, j, k)
+         !!!!!!Var_dt%t(i, j, k) = &
+            !!!!!!(1.0_r8 + random_gaussian(randseed, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
+!      end do
+!   end do
+!end do
 
 !!!write(*, *) 'max tendency with noise ', maxval(abs(Var_dt%t))
 !!!write(*, *) 'mean tendency with noise ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
@@ -371,13 +368,8 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !----- initialization timing identifiers ----
 
- if ( mpp_pe() == mpp_root_pe() ) call register_module(source,revision,revdate)
+call register_module(source,revision,revdate)
 
- id_init = mpp_clock_init ('MAIN: initialization', timing_level, flags=MPP_CLOCK_SYNC)
- id_loop = mpp_clock_init ('MAIN: time loop'     , timing_level, flags=MPP_CLOCK_SYNC)
- id_end  = mpp_clock_init ('MAIN: termination'   , timing_level, flags=MPP_CLOCK_SYNC)
-
- call mpp_clock_begin (id_init)
 
 !----- read namelist -------
 
@@ -386,24 +378,23 @@ end subroutine init_conditions
           read  (iunit, nml=model_nml, iostat=io, end=10)
           ierr = check_nml_error (io, 'model_nml')
    enddo
-10 call mpp_close (iunit)
+10 close (iunit)
 
 !----- write namelist to logfile -----
 
    call write_version_number (version,tag)
-   if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=model_nml)
-   if ( mpp_pe() == mpp_root_pe() ) write (logfileunit, nml=model_nml)
+    write (stdlog(), nml=model_nml)
+    write (logfileunit, nml=model_nml)
 
    if(dt_atmos == 0) then
      call error_mesg ('program atmos_model', 'dt_atmos has not been specified', FATAL)
    endif
 
 !----- read restart file -----
-
    if (file_exist('INPUT/atmos_model.res')) then
        iunit = open_restart_file ('INPUT/atmos_model.res', 'read')
        read  (iunit) idate
-       call mpp_close (iunit)
+       close (iunit)
        use_namelist = .false.
    else
        use_namelist = .true.
@@ -419,21 +410,19 @@ end subroutine init_conditions
 
 !----- write current/initial date actually used to logfile file -----
 
-    if ( mpp_pe() == mpp_root_pe() ) then
       write (stdlog(),16) idate(3:6)
-    endif
 
  16 format ('  current time used = day',i5,' hour',i3,2(':',i2.2))
 
 !-----------------------------------------------------------------------
 !------ initialize diagnostics manager ------
 
-    call diag_manager_init
+!    call diag_manager_init
 
 !----- always override initial/base date with diag_manager value -----
 
-    call get_base_date ( date_init(1), date_init(2), date_init(3), &
-                         date_init(4), date_init(5), date_init(6)  )
+!    call get_base_date ( date_init(1), date_init(2), date_init(3), &
+!                         date_init(4), date_init(5), date_init(6)  )
 
     if ( date_init(1)+date_init(2) /= 0 ) then
          call error_mesg ('program atmos_model', 'invalid base base - &
@@ -451,17 +440,16 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !----- write time stamps (for start time and end time) ------
 
-      call mpp_open (iunit, 'time_stamp.out', form=MPP_ASCII, action=MPP_OVERWR, &
-                     access=MPP_SEQUENTIAL, threading=MPP_SINGLE, nohdrs=.true. )
+      iunit = open_file ('time_stamp.out', 'FORMATTED')
 
-      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) idate
+       write (iunit,20) idate
 
 !     compute ending time in days,hours,minutes,seconds
       call get_time_increment (Time_end, idate(3), idate(4), idate(5), idate(6))
 
-      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) idate
+       write (iunit,20) idate
 
-      call mpp_close (iunit)
+      close (iunit)
 
   20  format (6i7,2x,'day')   ! can handle day <= 999999
 
@@ -479,18 +467,16 @@ end subroutine init_conditions
 
 !-----------------------------------------------------------------------
 !------ initialize atmospheric model ------
-
       call atmosphere_init (Time_init, mTime, Time_step_atmos)
 
 !-----------------------------------------------------------------------
 !---- open and close output restart to make sure directory is there ----
-
-      !!!iunit = open_restart_file ('RESTART/atmos_model.res', 'write')
-      !!!call mpp_close (iunit, action=MPP_DELETE)
+! Don't want this test in BGRID if possible
+      !iunit = open_restart_file ('RESTART/atmos_model.res', 'write')
+      !call close (iunit)
 
 
 !  ---- terminate timing ----
-   call mpp_clock_end (id_init)
 
 !-----------------------------------------------------------------------
 
@@ -532,8 +518,8 @@ integer :: i
 !----- write version and namelist to log file -----
 
     call write_version_number ( version, tag )
-    if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=atmosphere_nml)
-    if ( mpp_pe() == mpp_root_pe() ) write (logfileunit, nml=atmosphere_nml)
+     write (stdlog(), nml=atmosphere_nml)
+     write (logfileunit, nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 
@@ -542,7 +528,6 @@ integer :: i
 !   dt_atmos = real(sec) LEFT OVER FROM COMBINE OF ATMOS_SOLO DRIVER
 
 !----- initialize dynamical core -----
-
    call bgrid_core_driver_init ( Time_init, mTime, Time_step,    &
                                  Var, Var_dt, Dynam, atmos_axes )
 
@@ -562,7 +547,6 @@ integer :: i
 !-----------------------------------------------------------------------
 
 ! Initialize model_size variables
-
 ! Fixed to use only global grid for now (need to modify for mpp)
 call get_horiz_grid_size (Dynam % Hgrid, TGRID, tnlon, tnlat, .true.)
 call get_horiz_grid_size (Dynam % Hgrid, VGRID, vnlon, vnlat, .true.)
@@ -919,7 +903,10 @@ subroutine vector_to_prog_var(x, isize, vars)
 
 
 integer, intent(in) :: isize
-real(r8), intent(in) :: x(isize)
+! Following line fouls up the ibm/mac compiler; doesn't like to get
+! A fixed size argument from an assumed shape.
+!real(r8), intent(in) :: x(isize)
+real(r8), intent(in) :: x(:)
 type(prog_var_type), intent(inout) :: vars
 
 integer :: i, j, k, nt, indx
@@ -933,8 +920,6 @@ character(len=129) :: errstring
 ! Modified on 11 Dec. 2002 to slow B-grid memory leak
 if(.not. associated(vars%ps)) &
    call prog_var_init(Dynam%Hgrid, num_levels, ntracers, vars)
-
-
 
 ! Havana no longer distinguishes prognostic tracers
 !!!call prog_var_init(Dynam%Hgrid, num_levels, ntracers, nprognostic, vars)
@@ -1315,7 +1300,7 @@ else
 
    ! The vertical is not important for this interpolation -- still --
    ! mark it as missing (-1.0) but give it some type information (2==pressure)
-   ps_location = set_location(ps_lon, v_lats(lat_index), -1.0, 2 )
+   ps_location = set_location(ps_lon, v_lats(lat_index), -1.0_r8, 2 )
    call model_interpolate(x, ps_location, 3, ps(1,1), istatus)
 
 endif
@@ -1455,7 +1440,7 @@ end subroutine end_model
    call get_time ( T, s, d )
 
  ! compute hours and minutes
-   h = h/3600 ;   s = s - h*3600
+   h = s/3600 ;   s = s - h*3600
    m = s/60   ;   s = s - m*60
 
  end subroutine get_time_increment
@@ -1849,7 +1834,7 @@ tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
 vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
 vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
 
-write(*,*)'klb = ',klb,'  kub = ',kub
+!write(*,*)'klb = ',klb,'  kub = ',kub
 
 nTmpI   = tie - tis + 1
 nTmpJ   = tje - tjs + 1
