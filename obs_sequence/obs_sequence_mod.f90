@@ -43,7 +43,7 @@ public obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
    get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq,  &
    append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
-   get_num_times, static_init_obs_sequence, destroy_obs_sequence
+   get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header
 
 ! Public interfaces for obs
 public obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -936,11 +936,11 @@ subroutine read_obs_seq(file_name, add_copies, add_qc, add_obs, seq)
 ! Be able to increase size at read in time for efficiency
 
 character(len = 129), intent(in) :: file_name
-character(len = 16) label(2)
 integer, intent(in) :: add_copies, add_qc, add_obs
 type(obs_sequence_type), intent(out) :: seq
 
 integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id
+character(len = 16) label(2)
 
 ! Open the file
 file_id = get_unit()
@@ -1002,6 +1002,37 @@ call close_file(file_id)
 
 end subroutine read_obs_seq
 
+!------------------------------------------------------------------
+
+subroutine read_obs_seq_header(file_name, num_copies, num_qc, num_obs, max_num_obs)
+
+! Be able to increase size at read in time for efficiency
+
+character(len = 129), intent(in) :: file_name
+integer, intent(out) :: num_copies, num_qc, num_obs, max_num_obs
+
+integer :: file_id
+character(len = 16) label(2)
+
+! Open the file
+file_id = get_unit()
+if(read_binary_obs_sequence) then
+   open(unit = file_id, file = file_name, form = "unformatted")
+else
+   open(unit = file_id, file = file_name)
+endif
+
+! First, determine the size that was written out
+if(read_binary_obs_sequence) then
+   read(file_id) num_copies, num_qc, num_obs, max_num_obs
+else
+   read(file_id, *) label(1), num_copies,label(2), num_qc
+   read(file_id, *) label(1), num_obs,   label(2), max_num_obs
+endif
+
+call close_file(file_id)
+
+end subroutine read_obs_seq_header
 !-------------------------------------------------
 
 !=================================================
