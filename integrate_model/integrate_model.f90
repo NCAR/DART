@@ -77,7 +77,7 @@ close(unit)
 call print_time(target_time, 'target time is')
 call print_time(get_model_time(x(1)), 'model time is')
 if(get_model_time(x(1)) < target_time) then
-   call advance_state(x, 1, target_time, .false.)
+   call advance_state(x, 1, target_time, 0)
 endif
 
 ! Output the restart file if requested
