@@ -4,7 +4,7 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #-----------------------------------------------------------------------
-# Script init_ens_remote4.csh
+# Script init_ens_ocotillo.csh
 #
 # Purpose: Given start date etc, runs whole WRF system from global 
 #          analysis (NCEP AVN/FNL):
@@ -22,41 +22,64 @@ setenv RPC_UNSUPPORTED_NETIFS eth0
 
 setenv DOMAIN CONUS90                         # Domain name.
 setenv RUN_ID TEST                            # Character string.
-setenv START_DATE_ASSIM 2002110200            # Start time of period.
-setenv NCYCLE 40                              # Number of assimilation cycles.
+#setenv START_DATE_ASSIM 2002110200            # Start time of period.
+setenv START_DATE_ASSIM 2003010100            # Start time of period.
+setenv NCYCLE 4                              # Number of assimilation cycles.
 setenv FCST_RANGE 6                           # Forecast range (hours).
 setenv INTERVAL 6                             # Interval between analyses (hours)
 setenv WRF_DT 600                             # Model timestep (seconds)
 
 setenv AVN_DIR     /ocotillo1/wrfdev/AVN      # Global analysis directory
-setenv SRC_DIR     /ocotillo1/${user}         # Location of codes:
-setenv DAT_DIR     ${SRC_DIR}/GEN_INIT_ENS    # Scratch data space.
 
-setenv WRFSI_DIR_SRC   ${SRC_DIR}/wrfsi_20020326  # WRF SI.
+setenv S_AVAIL_DATE 1999122500
+setenv E_AVAIL_DATE 2004060700
+setenv BACK_YEAR       5000000
+
+setenv SRC_DIR     /ocotillo1/${user}         # Location of codes:
+setenv DAT_DIR     ${SRC_DIR}/GEN_ENS         # Scratch data space.
+
+setenv WRFSI_DIR_SRC  ${SRC_DIR}/WRFV2/wrfsi  # WRF SI.
 setenv WRFSI_DIR   ${WRFSI_DIR_SRC}           # WRF SI.
 
 #setenv WRFSI_DIR /usr/local/wrfsi/wrfsi_20020328 # WRFSI.
-setenv WRFSI_DAT_DIR /usr/local/wrfsi/SI_GEOG    # WRFSI input data.
-setenv WRF_DIR     ${SRC_DIR}/WRFV1.3            # WRF
+setenv WRF_DIR     ${SRC_DIR}/WRFV2            # WRF
+
+set startnode = 1
+set endnode = 10
+
+set ES = 80
+
+ setenv WEST_EAST_GRIDS	  45
+ setenv SOUTH_NORTH_GRIDS 45
+ setenv VERTICAL_GRIDS	  28
+ setenv GRID_DISTANCE	  200000
+
+set seconds = 0
+set days = 146827
+
+echo $seconds $days > wrf.info
 
 # End of user modifications.
 
 setenv INSTALLROOT $WRFSI_DIR_SRC
 setenv FCST_RANGE_SEC `expr $FCST_RANGE \* 3600`
-setenv NUM_TIMESTEPS `expr $FCST_RANGE_SEC \/ ${WRF_DT}`
-setenv OUT_FREQ $NUM_TIMESTEPS
+setenv OUT_FREQ `expr $FCST_RANGE_SEC \/ ${WRF_DT}`
 
-set startnode = 2
-set endnode = 10
+set seconds = `expr $seconds \+ $FCST_RANGE_SEC`
+if ( $seconds >= 86400) then
+   set seconds = `expr $seconds \- 86400`
+   set days = `expr $days \+ 1`
+endif
 
-set ES = 81
+# Write the target time at the beginning of wrf.info
+
+echo $seconds $days > temp
+cat wrf.info >> temp
+mv temp wrf.info
 
 echo "${ES}" > ens_size
 
 rm ${WRF_DIR}/test/em_real/run_real_*.out
-
-set seconds = $FCST_RANGE_SEC
-set days = 0
 
 set ICYC = 1
 # Loop over cycles
@@ -96,7 +119,10 @@ while ( $ICYC <= $NCYCLE )
 	    echo "   File $AVN_FILE exists in ${AVN_DIR}/"
 	else 
 	    echo "   Retrieving $AVN_FILE to $AVN_DIR"
-	    msrcp mss:/DSS/DS083.2/data/$AVN_FILE $AVN_DIR/.
+#	    msrcp mss:/DSS/DS083.2/data/$AVN_FILE $AVN_DIR/.
+            rsh -n bay "rm -f /mmmtmp/caya/migs/$AVN_FILE"
+            rsh -n bay "msrcp mss:/DSS/DS083.2/data/$AVN_FILE /mmmtmp/caya/migs/. ; rcp /mmmtmp/caya/migs/$AVN_FILE ocotillo:$AVN_DIR/."
+            rsh -n bay "rm -f /mmmtmp/caya/migs/$AVN_FILE"
 	endif
         rcp ${AVN_DIR}/$AVN_FILE node${inode}:${DAT_DIR_MEM}/AVN/$AVN_FILE
 
@@ -115,15 +141,23 @@ while ( $ICYC <= $NCYCLE )
    rm ${WRFSI_DIR_SRC}/data/siprd/real_input_em* >& /dev/null 
 
    rm -f preprocess_${NC} >& /dev/null
-   set WRFSI_DIR = /var/tmp/wrfsi_20020326_${NC}
+   set WRFSI_DIR = /var/tmp/wrfsi_${NC}
    (rsh -n node$inode "rm -rf ${WRFSI_DIR} >& /dev/null" )
    rcp -r $WRFSI_DIR_SRC node${inode}:${WRFSI_DIR}
    set INSTALLROOT = $WRFSI_DIR
 
    set workdir = `pwd`
-   (rsh -n node$inode "cd $workdir; run_wrfsi_remote.csh $START_DATE $FCST_RANGE $INTERVAL $DAT_DIR_MEM $WRFSI_DAT_DIR $INSTALLROOT $WRFSI_DIR >& preprocess_${NC}" ) &
+   (rsh -n node$inode "cd $workdir; ./run_wrfsi.csh $START_DATE $FCST_RANGE $INTERVAL $DAT_DIR_MEM $INSTALLROOT $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE >& preprocess_${NC}" ) &
 
-    set START_DATE = `advance_cymdh ${START_DATE} 24`   # Go to next member (day)
+    if (`expr ${START_DATE} \+ 1000000` <= $E_AVAIL_DATE) then
+       set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
+    else
+       set START_DATE = `expr ${START_DATE} \- ${BACK_YEAR}`
+       while (${START_DATE} < ${S_AVAIL_DATE})
+          set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
+       end
+       set START_DATE = `advance_cymdh ${START_DATE} 72`     # Go to next member (+3days)
+    endif
 
    @ NC ++
 
@@ -155,25 +189,36 @@ set NC = 1
 # Loop over the ensemble members
 while ( $NC <= $ES )
 
-   (rsh -n node$inode "rm -rf /var/tmp/GEN_INIT_ENS_${NC}" )
-
 #--------------------------------------------------------------------
 # 3) Second stage of preprocessing into WRF format (runs WRF real.exe). 
 #--------------------------------------------------------------------
 
-   rm ${WRF_DIR}/test/em_real/real_input_em*
-   rcp -r node${inode}:/var/tmp/wrfsi_20020326_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
-   mv ${WRF_DIR}/test/em_real/siprd/real_input_em* ${WRF_DIR}/test/em_real/.
+   rm ${WRF_DIR}/test/em_real/wrf_real_input_em*
+   rcp -r node${inode}:/var/tmp/GEN_INIT_ENS_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
+
+########   (rsh -n node$inode "rm -rf /var/tmp/GEN_INIT_ENS_${NC}" )
+
+   mv ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em* ${WRF_DIR}/test/em_real/.
    rm -r ${WRF_DIR}/test/em_real/siprd
 
-   run_wrfreal_remote.csh $NC $START_DATE $FCST_RANGE $INTERVAL $WRF_DT $NUM_TIMESTEPS $OUT_FREQ $WRF_DIR
+   ./run_wrfreal.csh $NC $START_DATE $FCST_RANGE $INTERVAL $WRF_DT $OUT_FREQ $WRF_DIR $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE
 
-   (rsh -n node$inode "rm -rf /var/tmp/wrfsi_20020326_${NC}")
+##############   (rsh -n node$inode "rm -rf /var/tmp/wrfsi_${NC}")
+
    mv ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_${NC}
    mv ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
-   mv ${WRF_DIR}/test/em_real/namelist.input ${DAT_DIR}/namelist.input_${days}_${seconds}_${NC}
+#   mv ${WRF_DIR}/test/em_real/namelist.input ${DAT_DIR}/namelist.input_${days}_${seconds}_${NC}
+   rm ${WRF_DIR}/test/em_real/namelist.input
 
-   set START_DATE = `advance_cymdh ${START_DATE} 24`   # Go to next member (day)
+    if (`expr ${START_DATE} \+ 1000000` <= $E_AVAIL_DATE) then
+       set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
+    else
+       set START_DATE = `expr ${START_DATE} \- ${BACK_YEAR}`
+       while (${START_DATE} < ${S_AVAIL_DATE})
+          set START_DATE = `expr ${START_DATE} \+ 1000000` # Go to next year
+       end
+       set START_DATE = `advance_cymdh ${START_DATE} 72`   # Go to next member (+3days)
+    endif
 
    @ NC ++
 
@@ -185,23 +230,16 @@ while ( $NC <= $ES )
 
 end
 
+# Prepare to do the ensemble initial conditions file.
 if ( $ICYC == 1 ) then
-   cp ${DAT_DIR}/wrfinput_21 ${DAT_DIR}/wrfinput_mean
+   cp ${DAT_DIR}/wrfinput_1 ${DAT_DIR}/wrfinput_mean
+   rm -f filter_ics
 endif
-cp ${DAT_DIR}/wrfbdy_21 ${DAT_DIR}/wrfbdy_mean
+cp ${DAT_DIR}/wrfbdy_1 ${DAT_DIR}/wrfbdy_mean
 
 ensemble_init < ens_size > out.ensemble_init_${days}_${seconds}
 
 mv ${DAT_DIR}/wrfbdy_mean ${DAT_DIR}/wrfbdy_mean_${days}_${seconds}
-
-# Prepare to do the ensemble initial conditions file.
-if ( $ICYC == 1 ) then
-   echo ".false." >  input_wrf_to_dart
-   echo "0" > time.dat
-   echo "0" >> time.dat
-
-   rm -f wrf_ics
-endif
 
 set NC = 1
 # Loop over the ensemble members
@@ -211,11 +249,11 @@ while ( $NC <= $ES )
 # Convert wrfinput (netcdf) files into dart readable
 #---------------------------------------------------
       mv ${DAT_DIR}/wrfinput_${NC} wrfinput
-      
-# create new input to DART (taken from "wrfinput")
-      dart_tf_wrf < input_wrf_to_dart > out.wrf_to_dart
 
-      cat dart_wrf_vector >> wrf_ics
+# create new input to DART (taken from "wrfinput")
+      echo ".false." | dart_tf_wrf >& out.wrf_to_dart
+
+      cat dart_wrf_vector >> filter_ics
 
       rm dart_wrf_vector
    else
@@ -230,11 +268,19 @@ end
 set START_DATE_ASSIM = `advance_cymdh $START_DATE_ASSIM $FCST_RANGE` # Advance to next cycle
 @ ICYC ++
 
+echo $seconds $days > wrf.info
+
 set seconds = `expr $seconds \+ $FCST_RANGE_SEC`
 if ( $seconds >= 86400) then
    set seconds = `expr $seconds \- 86400`
    set days = `expr $days \+ 1`
 endif
+
+# Write the target time at the beginning of wrf.info
+
+echo $seconds $days > temp
+cat wrf.info >> temp
+mv temp wrf.info
 
 end
 
