@@ -65,10 +65,12 @@ real(r8) :: coupling_c = 10.0_r8
 real(r8) :: coupling_h = 1.0_r8
 logical  :: output_state_vector = .false.
 logical  :: local_y = .false.  ! default Lorenz' approach
+integer  :: time_step_days = 0
+integer  :: time_step_seconds = 3600
 
 namelist /model_nml/ model_size_x, y_per_x, forcing, delta_t, &
                      coupling_b, coupling_c, coupling_h, &
-                     output_state_vector, local_y
+                     output_state_vector, local_y, time_step_days, time_step_seconds
 !----------------------------------------------------------------
 
 ! Definition of variable types
@@ -152,7 +154,7 @@ end do
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L96 from
 ! Shree Khare.
-time_step = set_time(3600, 0)
+time_step = set_time(time_step_seconds, time_step_days)
 
 end subroutine static_init_model
 
@@ -348,7 +350,7 @@ end subroutine init_time
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus, rstatus)
+subroutine model_interpolate(x, location, itype, obs_val, istatus)
 !------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -364,12 +366,14 @@ real(r8),            intent(in) :: x(:)
 real(r8)                        :: obs_val
 type(location_type), intent(in) :: location
 integer,             intent(in) :: itype
-integer,  optional, intent(out) :: istatus
-real(r8), optional, intent(out) :: rstatus
+integer,            intent(out) :: istatus
 
 
 integer :: lower_index, upper_index, i, base_index, top_index
 real(r8) :: lctn, lctnfrac
+
+! All interpolations okay for now
+istatus = 0
 
 ! Convert location to real
 lctn = get_location(location)
@@ -447,7 +451,7 @@ end subroutine end_model
 
 
 
-subroutine model_get_close_states(o_loc, radius, inum, indices, dist)
+subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
 !------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -456,6 +460,7 @@ type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
 integer, intent(out) :: inum, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (inum = -1 return)

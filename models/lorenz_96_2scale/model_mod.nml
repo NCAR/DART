@@ -7,5 +7,7 @@
    coupling_c = 10.0,
    coupling_h = 1.0,
    output_state_vector = .false.,
-   local_y = .false.   /
+   local_y = .false.,
+   time_step_days = 0, 
+   time_step_seconds = 3600 /
 
