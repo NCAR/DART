@@ -83,6 +83,9 @@ time_manager_mod
 threed_sphere/location_mod
 utilities_mod
 obs_kind_mod
+map_utils
+netcdf
+typesizes
 </PRE>
 
 <!--==================================================================-->
@@ -275,7 +278,8 @@ type(time_type)                       :: <em class=code> var </em>
 <P>
 Returns the model base time step as a time_type. For the model wrf, it returns
 the time step used for domain 1 (usually the largest time step among all
-domains because domain 1 is the coarser grid). In the long run, 
+domains because domain 1 is the coarser grid). The time step is read from
+namelist.input. In the long run, 
 a more general extended interface may be required that specifies the models 
 range of time stepping possibilities.
 </P>
@@ -792,44 +796,6 @@ the longitude and latitude in degrees.
 
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call llxy (xloni,xlatj,x,y,id)</em>
-<pre>
-integer,                  intent(in)  :: <em class=code> id </em>
-real(r8),                 intent(in)  :: <em class=code> xloni, xlatj </em>
-real(r8),                 intent(out) :: <em class=code> x,y </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Called only once in model_interpolate. Calculates the (x,y) location in the non-staggered
-grid from longitude and latitude.
-</P>
-
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> call Interp_lin_1D(fi1d, n1, z, fo1d)</em>
-<pre>
-integer,                  intent(in)  :: <em class=code> n1 </em>
-real(r8),                 intent(in)  :: <em class=code> z </em>
-real(r8), dimension(n1),  intent(in)  :: <em class=code> fi1d </em>
-real(r8),                 intent(out) :: <em class=code> fo1d </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Linear interpolation at position z.
-</P>
-
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<P></P><HR><P></P>
-<div class=routine>
 <em class=call> call toGrid (x, j, dx, dxm)</em>
 <pre>
 real(r8),                 intent(in)  :: <em class=code> x </em>
@@ -849,19 +815,19 @@ and calculate its distance to grid j and j+1.
 
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call to_zk(obs_v, mdl_v, n3, v_interp_optn, zk)</em>
+<em class=call> call pres_to_zk(pres, mdl_v, n3, zk)</em>
 <pre>
-real(r8),                 intent(in)  :: <em class=code> obs_v </em>
-integer                   intent(in)  :: <em class=code> n3, v_interp_optn </em>
-real(r8), dimension(n3),  intent(in)  :: <em class=code> mdl_v </em>
-real(r8),                 intent(out) :: <em class=code> zk </em>
+real(r8),                  intent(in)  :: <em class=code> pres </em>
+integer                    intent(in)  :: <em class=code> n3 </em>
+real(r8), dimension(0:n3), intent(in)  :: <em class=code> mdl_v </em>
+real(r8),                  intent(out) :: <em class=code> zk </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Calculate the position zk in the profile mdl_v corresponding to the vertical
-location obs_v.
+Calculate the position zk on half (mass) levels in the profile mdl_v
+corresponding to pressure location pres.
 </P>
 
 
@@ -869,41 +835,131 @@ location obs_v.
 
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call get_model_pressure_profile(i_in,j_in,dx,dy,dxm,dym,n,x,id,fld, pp11,pp21,pp31,pp41)</em>
+<em class=call> call height_to_zk(obs_v, mdl_v, n3, zk)</em>
 <pre>
-integer                   intent(in)  :: <em class=code> i_in,j_in,n,id </em>
-real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-real(r8), dimension(n),   intent(out) :: <em class=code> fld </em>
-real(r8),                 intent(out) :: <em class=code> pp11,pp21,pp31,pp41 </em>
+real(r8),                  intent(in)  :: <em class=code> obs_v </em>
+integer                    intent(in)  :: <em class=code> n3 </em>
+real(r8), dimension(0:n3), intent(in)  :: <em class=code> mdl_v </em>
+real(r8),                  intent(out) :: <em class=code> zk </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Extract the pressure profile at position (i_in+dx, j_in+dy), as well as the
-pressure at the 4 neighboring grid points in the horizontal, on the
+Calculate the position zk on half (mass) levels in the profile mdl_v
+corresponding to height location obs_v.
+</P>
+
+
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> call get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,id,v_p)</em>
+<pre>
+integer                   intent(in)  :: <em class=code> i,j,n,id </em>
+real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
+real(r8), dimension(0:n), intent(out) :: <em class=code> v_p </em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Extract the pressure profile at position (i+dx, j+dy) on the
+non-staggered vertical grid (half (mass) levels).
+</P>
+
+
+<!--=================== DESCRIPTION OF FUNCTION ====================-->
+
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> vloc = model_pressure(i,j,k,id,var_type,x)</em>
+<pre>
+integer                   intent(in)  :: <em class=code> i,j,k,id,var_type </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Calculate the pressure at grid point (i,j,k), domain id. The grid is defined
+according to var_type.
+</P>
+
+
+<!--=================== DESCRIPTION OF FUNCTION ====================-->
+
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> pres = model_pressure_t(i,j,k,id,x)</em>
+<pre>
+integer                   intent(in)  :: <em class=code> i,j,k,id </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Calculate the pressure at grid point (i,j,k), domain id, on mass point (half
+(mass) levels, T-point).
+</P>
+
+
+<!--=================== DESCRIPTION OF FUNCTION ====================-->
+
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> rho = model_rho_t(i,j,k,id,x)</em>
+<pre>
+integer                   intent(in)  :: <em class=code> i,j,k,id </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Calculate the total density at grid point (i,j,k), domain id, on mass point (half
+(mass) levels, T-point).
+</P>
+
+
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> call get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,id,fld)</em>
+<pre>
+integer                   intent(in)  :: <em class=code> i,j,n,id </em>
+real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
+real(r8), dimension(n),   intent(out) :: <em class=code> fld </em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Extract the height profile at position (i+dx, j+dy) on the
 non-staggered vertical grid.
 </P>
 
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--=================== DESCRIPTION OF FUNCTION ====================-->
 
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call get_model_height_profile(i_in,j_in,dx,dy,dxm,dym,n,x,id,fld)</em>
+<em class=call> vloc = model_height(i,j,k,id,var_type,x)</em>
 <pre>
-integer                   intent(in)  :: <em class=code> i_in,j_in,n,id </em>
-real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
+integer                   intent(in)  :: <em class=code> i,j,k,id,var_type </em>
 real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-real(r8), dimension(n),   intent(out) :: <em class=code> fld </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Extract the height profile at position (i_in+dx, j_in+dy) on the
-non-staggered vertical grid.
+Calculate the height at grid point (i,j,k), domain id. The grid is defined
+according to var_type.
 </P>
 
 
@@ -911,38 +967,15 @@ non-staggered vertical grid.
 
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call get_model_height_profile_stag(i_in,j_in,dx,dy,dxm,dym,n,x,id,fll)</em>
+<em class=call> call read_dt_from_wrf_nml(dt)</em>
 <pre>
-integer                   intent(in)  :: <em class=code> i_in,j_in,n,id </em>
-real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-real(r8), dimension(n+1), intent(out) :: <em class=code> fll </em>
+real(r8),                 intent(out) :: <em class=code> dt </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Extract the height profile at position (i_in+dx, j_in+dy) on the staggered vertical grid.
-</P>
-
-
-<!--===================== DESCRIPTION OF FUNCTION ====================-->
-
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> alpha = map_to_sphere( longitude, latitude, id )</em>
-<pre>
-real(r8),                 intent(in)  :: <em class=code> longitude, latitude </em>
-integer,                  intent(in)  :: <em class=code> id </em>
-real(r8)                              :: <em class=code> map_to_sphere </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Given the longitude, latitude, and domain identification number, returns the
-angle (in radians) by which to rotate the wrf wind vector to obtain the
-meridional and zonal winds.
+Read the wrf model time step from namelist.input.
 </P>
 
 

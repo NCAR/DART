@@ -36,7 +36,9 @@ use      obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
                               KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
                               KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, &
                               KIND_Q2, KIND_TD2
-
+use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
+                              PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
+                              gridwind_to_truewind
 use netcdf
 use typesizes
 
@@ -91,7 +93,7 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_QV  = 7,   TYPE_QC  = 8,  TYPE_QR = 9,  &
                       TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
                       TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
-                      TYPE_Q2  = 16,  TYPE_PS  = 17
+                      TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18
 
 
 !-----------------------------------------------------------------------
@@ -107,15 +109,15 @@ real (kind=r8), PARAMETER    :: gravity = 9.81_r8
 
 TYPE wrf_static_data_for_dart
 
-   integer  :: bt, bts, sn, sns, we, wes
-   real(r8) :: p_top, dx, dy, dt
+   integer  :: bt, bts, sn, sns, we, wes, sls
+   real(r8) :: dx, dy, dt
    integer  :: map_proj
-   real(r8) :: cen_lat,cen_lon,truelat1,truelat2,stand_lon
-   real(r8) :: cone_factor,ycntr,psi1
+   real(r8) :: cen_lat,cen_lon
+   type(proj_info) :: proj
 
    integer  :: n_moist
    logical  :: surf_obs
-   real(r8), dimension(:),     pointer :: znu, dn, dnw
+   real(r8), dimension(:),     pointer :: znu, dn, dnw, zs
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
    real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
    real(r8), dimension(:,:,:), pointer :: phb
@@ -152,7 +154,8 @@ character (len=1)     :: idom
 logical, parameter    :: debug = .false.
 integer               :: var_id, ind, i, id, dart_index
 
-real(r8) :: theta1,theta2,cell,cell2,psx
+integer  :: proj_code
+real(r8) :: stdlon,truelat1,truelat2
 
 !----------------------------------------------------------------------
 
@@ -223,6 +226,9 @@ do id=1,num_domains
    call check( nf90_inq_dimid(ncid, "west_east_stag", var_id) )  ! reuse var_id, no harm
    call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%wes) )
 
+   call check( nf90_inq_dimid(ncid, "soil_layers_stag", var_id) )  ! reuse var_id, no harm
+   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sls) )
+
    if(debug) then
       write(6,*) ' dimensions bt, sn, we are ',wrf%dom(id)%bt, &
            wrf%dom(id)%sn, wrf%dom(id)%we
@@ -235,12 +241,11 @@ do id=1,num_domains
    call check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dom(id)%dx) )
    call check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dom(id)%dy) )
    call check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt) )
+   print*,'dt from wrfinput is: ',wrf%dom(id)%dt
+   call read_dt_from_wrf_nml(wrf%dom(id)%dt)
+   print*,'Using dt from namelist.input: ',wrf%dom(id)%dt
    if(debug) write(6,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
         wrf%dom(id)%dy, wrf%dom(id)%dt
-
-   call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%p_top) )
-   if(debug) write(6,*) ' p_top is ',wrf%dom(id)%p_top
 
    call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', wrf%dom(id)%map_proj) )
    if(debug) write(6,*) ' map_proj is ',wrf%dom(id)%map_proj
@@ -250,55 +255,13 @@ do id=1,num_domains
 
    call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', wrf%dom(id)%cen_lon) )
 
-   call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', wrf%dom(id)%truelat1) )
-   if(debug) write(6,*) ' truelat1 is ',wrf%dom(id)%truelat1
+   call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1) )
+   if(debug) write(6,*) ' truelat1 is ',truelat1
 
-   call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', wrf%dom(id)%truelat2) )
-   if(debug) write(6,*) ' truelat2 is ',wrf%dom(id)%truelat2
+   call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2) )
+   if(debug) write(6,*) ' truelat2 is ',truelat2
 
-   call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', wrf%dom(id)%stand_lon) )
-
-   if ( abs(wrf%dom(id)%truelat1-wrf%dom(id)%truelat2) .gt. 0.1_r8 ) then
-      theta1 = (90.0_r8 - wrf%dom(id)%truelat1)*deg2rad
-      theta2 = (90.0_r8 - wrf%dom(id)%truelat2)*deg2rad
-      wrf%dom(id)%cone_factor = (log(sin(theta1)) - log(sin(theta2))) &
-           / (log(tan(theta1*0.5_r8)) - log(tan(theta2*0.5_r8)))
-   else
-      wrf%dom(id)%cone_factor = &
-           sign(1.0_r8,wrf%dom(id)%truelat1)*sin(wrf%dom(id)%truelat1 * deg2rad)
-   end if
-
-   if(debug) write(6,*) 'cone factor = ', wrf%dom(id)%cone_factor
-
-   IF (wrf%dom(id)%map_proj.EQ.1 .OR. wrf%dom(id)%map_proj.EQ.2) THEN
-      IF(wrf%dom(id)%cen_lat.LT.0.0_r8)THEN 
-         wrf%dom(id)%psi1 = -(90.0_r8+wrf%dom(id)%truelat1)
-      ELSE
-         wrf%dom(id)%psi1 = 90.0_r8-wrf%dom(id)%truelat1
-      ENDIF
-   ELSE
-      wrf%dom(id)%psi1 = 0.0_r8
-   ENDIF
-
-   wrf%dom(id)%psi1 = deg2rad * wrf%dom(id)%psi1
-
-   IF (wrf%dom(id)%map_proj.NE.3) THEN
-      psx = (90.0_r8 - wrf%dom(id)%cen_lat)*deg2rad
-      IF (wrf%dom(id)%map_proj.EQ.1) THEN
-         cell  = earth_radius*SIN(wrf%dom(id)%psi1)/wrf%dom(id)%cone_factor
-         cell2 = (TAN(psx/2.0_r8))/(TAN(wrf%dom(id)%psi1/2.0_r8))
-      ENDIF
-      IF (wrf%dom(id)%map_proj.EQ.2) THEN
-         cell  = earth_radius*SIN(psx)/wrf%dom(id)%cone_factor
-         cell2 = (1.0_r8 + COS(wrf%dom(id)%psi1))/(1.0_r8 + COS(psx))
-      ENDIF
-      wrf%dom(id)%ycntr = - cell*(cell2)**wrf%dom(id)%cone_factor
-   ENDIF
-   ! -----FOR MERCATOR PROJECTION, THE PROJECTION IS TRUE AT LAT AT PHI1
-   IF (wrf%dom(id)%map_proj.EQ.3) THEN
-      cell = COS(wrf%dom(id)%cen_lat*deg2rad)/(1.0_r8+SIN(wrf%dom(id)%cen_lat*deg2rad))
-      wrf%dom(id)%ycntr = - earth_radius*COS(wrf%dom(id)%psi1)* log(cell)
-   ENDIF
+   call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon) )
 
 !  get 1D (z) static data defining grid levels
 
@@ -316,6 +279,10 @@ do id=1,num_domains
    call check( nf90_inq_varid(ncid, "DNW", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%dnw) )
    if(debug) write(6,*) ' dnw is ',wrf%dom(id)%dnw
+
+   allocate(wrf%dom(id)%zs(1:wrf%dom(id)%sls))
+   call check( nf90_inq_varid(ncid, "ZS", var_id) )
+   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%zs) )
 
 !  get 2D (x,y) base state for mu, latitude, longitude
 
@@ -346,6 +313,18 @@ do id=1,num_domains
            wrf%dom(id)%land(1,wrf%dom(id)%sn),wrf%dom(id)%land(wrf%dom(id)%we, &
            wrf%dom(id)%sn)
    end if
+
+!!$   do j=1,wrf%dom(id)%sn
+!!$      do i=1,wrf%dom(id)%we
+!!$         if(wrf%dom(id)%longitude(i,j) < 0.0_r8) then
+!!$            write(6,*) wrf%dom(id)%longitude(i,j)+360_r8,wrf%dom(id)%latitude(i,j)
+!!$         else
+!!$            write(6,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%latitude(i,j)
+!!$         endif
+!!$      enddo
+!!$   enddo
+!!$
+!!$   stop
 
    if(debug) then
       write(6,*) ' corners of lat '
@@ -394,9 +373,31 @@ do id=1,num_domains
 
    call check( nf90_close(ncid) )
 
+! Initializes the map projection structure to missing values
+
+   call map_init(wrf%dom(id)%proj)
+
+! Populate the map projection structure
+
+   if(wrf%dom(id)%map_proj == 0) then
+      proj_code = PROJ_LATLON
+   elseif(wrf%dom(id)%map_proj == 1) then
+      proj_code = PROJ_LC
+   elseif(wrf%dom(id)%map_proj == 2) then
+      proj_code = PROJ_PS
+   elseif(wrf%dom(id)%map_proj == 3) then
+      proj_code = PROJ_MERC
+   else
+      call error_handler(E_ERR,'static_init_model', &
+        'Map projection no supported.', source, revision, revdate)
+   endif
+
+   call map_set(proj_code,wrf%dom(id)%latitude(1,1),wrf%dom(id)%longitude(1,1), &
+        1.0_r8,1.0_r8,wrf%dom(id)%dx,stdlon,truelat1,truelat2,wrf%dom(id)%proj)
+
 !  build the map into the 1D DART vector for WRF data
 
-   wrf%dom(id)%number_of_wrf_variables = 6 + wrf%dom(id)%n_moist
+   wrf%dom(id)%number_of_wrf_variables = 7 + wrf%dom(id)%n_moist
    if( wrf%dom(id)%surf_obs ) then
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 5
    endif
@@ -407,7 +408,8 @@ do id=1,num_domains
    wrf%dom(id)%var_type(4)  = TYPE_GZ
    wrf%dom(id)%var_type(5)  = TYPE_T
    wrf%dom(id)%var_type(6)  = TYPE_MU
-   ind = 6
+   wrf%dom(id)%var_type(7)  = TYPE_TSLB
+   ind = 7
    if( wrf%dom(id)%n_moist >= 1) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_QV
@@ -499,6 +501,16 @@ do id=1,num_domains
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = 1
+   dart_index = dart_index + 1
+   wrf%dom(id)%var_index(1,ind) = dart_index
+   dart_index = dart_index - 1 +  &
+        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
+   wrf%dom(id)%var_index(2,ind) = dart_index
+
+   ind = ind + 1                   ! *** tslb field ***
+   wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+   wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+   wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
    dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
    dart_index = dart_index - 1 +  &
@@ -693,23 +705,61 @@ integer,            intent(out) :: istatus
 logical, parameter  :: debug = .false.
 real(r8)            :: xloc, yloc, zloc, xloc_u, yloc_v, xyz_loc(3)
 integer             :: which_vert
-integer             :: i, i_u, j, j_v, k, i1,i2
+integer             :: i, i_u, j, j_v, k, k2, i1,i2
 real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
-real(r8)            :: a1,alpha
+real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
 integer             :: in, ii, id
 
-real(r8), dimension(2) :: fld, fldu, fldv
+real(r8), dimension(2) :: fld
 real(r8), allocatable, dimension(:) :: v_h, v_p
 
 ! local vars, used in calculating density, pressure
 real(r8)            :: rho1 , rho2 , rho3, rho4
 real(r8)            :: pres1, pres2, pres3, pres4, pres
 
+logical  :: dom_found
+
+dom_found = .false.
+
 istatus = 0
 
 xyz_loc(:) = get_location(location)
 which_vert = nint(query_location(location,'which_vert'))
-call llxy(xyz_loc(1),xyz_loc(2),xloc,yloc,id)
+
+id = num_domains
+do while (.not. dom_found)
+
+   call latlon_to_ij(wrf%dom(id)%proj, xyz_loc(2), xyz_loc(1), xloc,yloc)
+
+   if ( (xloc >= 1 .and. xloc <= wrf%dom(id)%we .and. &
+        yloc >= 1 .and. yloc <= wrf%dom(id)%sn) .or. id == 1 ) then
+
+      dom_found = .true.
+
+   else
+
+      id = id - 1
+
+   endif
+
+end do
+
+if(debug) then
+
+   i = xloc
+   j = yloc
+
+   print*,xyz_loc(2), xyz_loc(1), xloc,yloc
+   write(6,*) ' corners of lat '
+   write(6,*) wrf%dom(id)%latitude(i,j),wrf%dom(id)%latitude(i+1,j),  &
+        wrf%dom(id)%latitude(i,j+1), &
+        wrf%dom(id)%latitude(i+1,j+1)
+   write(6,*) ' corners of long '
+   write(6,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%longitude(i+1,j),  &
+        wrf%dom(id)%longitude(i,j+1), &
+        wrf%dom(id)%longitude(i+1,j+1)
+
+endif
 
 allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
 
@@ -761,37 +811,32 @@ if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
       i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
       j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
 
-      i1 = get_wrf_index(i_u,j  ,k,TYPE_U,id)
-      i2 = get_wrf_index(i_u,j+1,k,TYPE_U,id)
+      do k2=1,2
 
-      fldu(1) = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
+         i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
+         i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
 
-      i1 = get_wrf_index(i_u,j  ,k+1,TYPE_U,id)
-      i2 = get_wrf_index(i_u,j+1,k+1,TYPE_U,id)
+         ugrid = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
 
-      fldu(2) = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
+         i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
+         i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id) 
 
-      i1 = get_wrf_index(i,j_v  ,k,TYPE_V,id)
-      i2 = get_wrf_index(i,j_v+1,k,TYPE_V,id) 
+         vgrid = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
 
-      fldv(1) = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
+         call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
+              utrue, vtrue)
 
-      i1 = get_wrf_index(i,j_v  ,k+1,TYPE_V,id)
-      i2 = get_wrf_index(i,j_v+1,k+1,TYPE_V,id) 
+         if( obs_kind == KIND_U) then
 
-      fldv(2) = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
+            fld(k2) = utrue
 
-      alpha = map_to_sphere( xyz_loc(1), xyz_loc(2), id )
+         else   ! must want v
 
-      if( obs_kind == KIND_U) then
+            fld(k2) = vtrue
 
-         fld(:) = fldv(:)*sin(alpha) + fldu(:)*cos(alpha)
+         endif
 
-      else   ! must want v
-
-         fld(:) = fldv(:)*cos(alpha) - fldu(:)*sin(alpha)
-
-      endif
+      enddo
 
    else
 
@@ -1355,8 +1400,8 @@ if(debug) write(6,*) ' radius in grid_close_states is ',radius
 
 ! Get index to closest lat and lon for this observation
 
-n = size( wrf%dom(id)%latitude, 1 )
-m = size( wrf%dom(id)%latitude, 2 )
+n = wrf%dom(id)%we
+m = wrf%dom(id)%sn
 
 if(debug) write(6,*) 'obs location: ',get_location(o_loc)
 
@@ -1377,7 +1422,7 @@ do j=1,m
    enddo
 enddo
 
-if(debug) write(6,*) ' closest wrf long and lat is ',i_closest,j_closest
+if(debug) write(6,*) ' closest grid point is ',i_closest,j_closest
 if(debug) write(6,*) ' at distance ',rad
 
 ! define box edges for radius check
@@ -1444,7 +1489,7 @@ do j = jymin, jymax
       gdist = get_dist_wrf(i,j,k, type_u, o_loc, id, x)
       if ( gdist <= radius ) then
          num = num + 1
-         if(debug) write(6,*) ' u pt ',num,i,j,k, id,gdist
+         if(debug) write(6,*) ' u pt ',num,i,j,gdist
          close_lon_ind(num) = i
          close_lat_ind(num) = j
          close_vert_ind(num) = k
@@ -1828,7 +1873,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarDimID, StateVarVarID, StateVarID, TimeDimID
 
 integer, dimension(num_domains) :: weDimID, weStagDimID, snDimID, snStagDimID, &
-     btDimID, btStagDimID
+     btDimID, btStagDimID, slSDimID
 
 integer :: MemberDimID, DomDimID
 integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID
@@ -1917,6 +1962,8 @@ do id=1,num_domains
         len = wrf%dom(id)%bt,  dimid = btDimID(id)))
    call check(nf90_def_dim(ncid=ncFileID, name="bottom_top_stag_d0"//idom,  &
         len = wrf%dom(id)%bts, dimid = btStagDimID(id)))
+   call check(nf90_def_dim(ncid=ncFileID, name="soil_layers_stag_d0"//idom,  &
+        len = wrf%dom(id)%sls, dimid = slSDimID(id)))
 enddo
 
 !-----------------------------------------------------------------
@@ -2141,6 +2188,7 @@ if ( output_state_vector ) then
    call check(nf90_put_att(ncFileID, StateVarId, "GZ_units","m2/s2"))
    call check(nf90_put_att(ncFileID, StateVarId, "T_units","K"))
    call check(nf90_put_att(ncFileID, StateVarId, "MU_units","Pa"))
+   call check(nf90_put_att(ncFileID, StateVarId, "TSLB_units","K"))
    if( wrf%dom(num_domains)%n_moist >= 1) then
       call check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"))
    endif
@@ -2261,6 +2309,21 @@ do id=1,num_domains
         "perturbation dry air mass in column"))
 
 
+   !      float TSLB(Time, soil_layers_stag, south_north, west_east) ;
+   !         TSLB:FieldType = 104 ;
+   !         TSLB:MemoryOrder = "XYZ" ;
+   !         TSLB:description = "SOIL TEMPERATURE" ;
+   !         TSLB:units = "K" ;
+   !         TSLB:stagger = "Z" ;
+   call check(nf90_def_var(ncid=ncFileID, name="TSLB_d0"//idom, xtype=nf90_real, &
+         dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
+         unlimitedDimID /), varid  = var_id))
+   call check(nf90_put_att(ncFileID, var_id, "long_name", "soil temperature"))
+   call check(nf90_put_att(ncFileID, var_id, "units", "K"))
+   call check(nf90_put_att(ncFileId, var_id, "description", &
+        "SOIL TEMPERATURE"))
+
+
    !      float QVAPOR(Time, bottom_top, south_north, west_east) ;
    !         QVAPOR:FieldType = 104 ;
    !         QVAPOR:MemoryOrder = "XYZ" ;
@@ -2374,8 +2437,8 @@ call check(nf90_enddef(ncfileID))
 
 call check(nf90_put_var(ncFileID,       DXVarID, wrf%dom(1:num_domains)%dx        ))
 call check(nf90_put_var(ncFileID,       DYVarID, wrf%dom(1:num_domains)%dy        ))
-call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(1:num_domains)%truelat1  ))
-call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(1:num_domains)%truelat2  ))
+call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1  ))
+call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2  ))
 call check(nf90_put_var(ncFileID,  CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat   ))
 call check(nf90_put_var(ncFileID,  CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon   ))
 call check(nf90_put_var(ncFileID, MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj  ))
@@ -2548,7 +2611,7 @@ do id=1,num_domains
    temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
    call check(nf90_put_var( ncFileID, VarID, temp3d, &
                             start=(/ 1, 1, 1, copyindex, timeindex /) ))
-   ! deallocate(temp3d)  remaining 3D variables same size ...
+   deallocate(temp3d)
 
 
    !----------------------------------------------------------------------------
@@ -2565,6 +2628,21 @@ do id=1,num_domains
                             start=(/ 1, 1, copyindex, timeindex /) ))
 
 
+   !----------------------------------------------------------------------------
+   varname = 'TSLB_d0'//idom
+   !----------------------------------------------------------------------------
+   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   i       = j + 1
+   j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
+   if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+   allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls) )
+   temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
+   call check(nf90_put_var( ncFileID, VarID, temp3d, &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   deallocate(temp3d)
+
+
    if( wrf%dom(id)%n_moist >= 1) then
       !----------------------------------------------------------------------------
       varname = 'QVAPOR_d0'//idom
@@ -2574,6 +2652,7 @@ do id=1,num_domains
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
            trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+      allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt) )
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
       call check(nf90_put_var( ncFileID, VarID, temp3d, &
            start=(/ 1, 1, 1, copyindex, timeindex /) ))
@@ -2799,129 +2878,6 @@ end subroutine init_conditions
 
 
 
-subroutine llxy (xloni,xlatj,x,y,id)
-!-----------------------------------------------------------------
-!
-!                 ROUTINE LLXY
-!                **************
-!
-!
-! PURPOSE:  CALCULATES THE (X,Y) LOCATION (DOT) IN THE MESOSCALE GRIDS
-! -------   FROM LATITUDES AND LONGITUDES
-!
-! THE GRID IS WHERE T IS DEFINED (MASS POINTS, HALF LEVELS).
-!
-!  INPUT:
-!  -----
-!   XLAT:    LATITUDES
-!   XLON:    LONGITUDES
-!
-! OUTPUT:
-! -----
-!   X:        THE COORDINATE IN X (I)-DIRECTION.
-!   Y:        THE COORDINATE IN Y (J)-DIRECTION.
-!
-!-----------------------------------------------------------------
-
-  real(r8), intent(in)  :: xloni, xlatj
-  real(r8), intent(out) :: x, y
-  integer,  intent(out) :: id
-
-  real(r8) :: dxlon
-  real(r8) :: xlat, xlon
-  real(r8) :: xx, yy, xc, yc
-  real(r8) :: cell, psi0, psx, r, flp
-  real(r8) :: centri, centrj
-  real(r8) :: ds
-  real(r8) :: bb,c2
-  logical  :: dom_found
-
-  dom_found = .false.
-
-  xlon = xloni
-  xlat = xlatj
-  xlat = max (xlat, -89.9999_r8)
-  xlat = min (xlat, +89.9999_r8)
-
-  id = num_domains
-  do while (.not. dom_found)
-
-     ds = 0.001_r8 *wrf%dom(id)%dx
-     c2 = earth_radius * COS(wrf%dom(id)%psi1)
-
-     if (wrf%dom(id)%map_proj == 3) then
-        xc = 0.0_r8
-        yc = wrf%dom(id)%ycntr
-
-        cell = cos(xlat*deg2rad)/(1.0_r8+sin(xlat*deg2rad))
-        yy = -c2*log(cell)
-        xx = c2*(xlon-wrf%dom(id)%cen_lon)*deg2rad
-
-     else
-
-        psi0 = ( 90.0_r8 - wrf%dom(id)%cen_lat)*deg2rad
-        xc = 0.0_r8
-
-!-----CALCULATE X,Y COORDS. RELATIVE TO POLE
-
-        dxlon = xlon - wrf%dom(id)%cen_lon
-        if (dxlon >  180.0_r8) dxlon = dxlon - 360.0_r8
-        if (dxlon < -180.0_r8) dxlon = dxlon + 360.0_r8
-
-        flp = wrf%dom(id)%cone_factor*dxlon*deg2rad
-
-        psx = ( 90.0_r8 - xlat )*deg2rad
-
-        if (wrf%dom(id)%map_proj == 2) then
-! ...... Polar stereographics:
-           bb = 2.0_r8*(cos(wrf%dom(id)%psi1/2.0_r8)**2)
-           yc = -earth_radius*bb*tan(psi0/2.0_r8)
-           r = -earth_radius*bb*tan(psx/2.0_r8)
-        else
-! ...... Lambert conformal:
-           bb = -earth_radius/wrf%dom(id)%cone_factor*sin(wrf%dom(id)%psi1)
-           yc = bb*(tan(psi0/2.0_r8)/tan(wrf%dom(id)%psi1/2.0_r8))**wrf%dom(id)%cone_factor
-           r = bb*(tan(psx /2.0_r8)/tan(wrf%dom(id)%psi1/2.0_r8))**wrf%dom(id)%cone_factor
-        endif
-
-        if (wrf%dom(id)%cen_lat < 0.0_r8) then
-           xx = r*sin(flp)
-        else
-           xx = -r*sin(flp)
-        endif
-        yy = r*cos(flp)
-
-     endif
-
-! TRANSFORM (1,1) TO THE ORIGIN
-! the location of the center in the coarse domain
-
-     centri = real (wrf%dom(id)%we)/2.0_r8
-     centrj = real (wrf%dom(id)%sn)/2.0_r8
-! the (X,Y) coordinates in the coarse domain
-     x = ( xx - xc )/ds + centri
-     y = ( yy - yc )/ds + centrj
-
-!--only add 0.5 so that x/y is relative to first cross points (MM5 input):
-
-     x = (x - 1.0_r8) + 0.5_r8
-     y = (y - 1.0_r8) + 0.5_r8
-
-     if ( (x >= 1 .and. x <= wrf%dom(id)%we .and. &
-          y >= 1 .and. y <= wrf%dom(id)%sn) .or. id == 1 ) then
-
-        dom_found = .true.
-
-     else
-
-        id = id - 1
-
-     endif
-
-  end do
-
-end subroutine llxy
-
 !#######################################################################
 
 subroutine toGrid (x, j, dx, dxm)
@@ -3064,6 +3020,9 @@ end subroutine get_model_pressure_profile
 
 function model_pressure(i,j,k,id,var_type,x)
 
+! Calculate the pressure at grid point (i,j,k), domain id.
+! The grid is defined according to var_type.
+
 integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
 real(r8)              :: model_pressure
@@ -3139,16 +3098,21 @@ elseif( var_type == type_v ) then
 
    endif
 
-elseif( var_type == type_mu ) then
-
-   imu = get_wrf_index(i,j,1,TYPE_MU,id)
-   model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
-
-elseif( var_type == type_ps .or. var_type == type_u10 .or. &
+elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
+        var_type == type_ps  .or. var_type == type_u10 .or. &
         var_type == type_v10 .or. var_type == type_t2 .or. var_type == type_q2 ) then
 
-   ips = get_wrf_index(i,j,1,TYPE_PS,id)
-   model_pressure = x(ips)
+   if(wrf%dom(id)%surf_obs ) then
+
+      ips = get_wrf_index(i,j,1,TYPE_PS,id)
+      model_pressure = x(ips)
+
+   else
+
+      imu = get_wrf_index(i,j,1,TYPE_MU,id)
+      model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
+
+   endif
 
 else
 
@@ -3369,6 +3333,10 @@ elseif( var_type == type_mu .or. var_type == type_ps) then
 
    model_height = wrf%dom(id)%hgt(i,j)
 
+elseif( var_type == type_tslb) then
+
+   model_height = wrf%dom(id)%hgt(i,j) - wrf%dom(id)%zs(k)
+
 elseif( var_type == type_u10 .or. var_type == type_v10 ) then
 
    model_height = wrf%dom(id)%hgt(i,j) + 10.0_r8
@@ -3391,7 +3359,7 @@ end function model_height
 
 
 
-  subroutine pert_model_state(state, pert_state, interf_provided)
+subroutine pert_model_state(state, pert_state, interf_provided)
 !----------------------------------------------------------------------
 ! subroutine pert_model_state(state, pert_state, interf_provided)
 !
@@ -3409,72 +3377,22 @@ end subroutine pert_model_state
 
 !#######################################################
 
-function map_to_sphere( longitude, latitude, id )
-!
-!   INPUT      : longitude, latitude (degrees)
-!  OUTPUT      : map_to_sphere (radians), the angle by which to rotate
-!              : the wrf wind vector to obtain the meridional and zonal winds.
+subroutine read_dt_from_wrf_nml(dt)
 
-real(r8), intent(in) :: longitude, latitude
-integer,  intent(in) :: id
-real(r8)             :: map_to_sphere
+real(r8), intent(out) :: dt
 
-real(r8) :: cen_long, diff
+integer :: time_step
+integer :: io, ierr, iunit
 
-if(wrf%dom(id)%map_proj .eq. 0) then  ! no projection
+namelist /domains/ time_step
 
-   map_to_sphere = 0.0_r8
+iunit = open_file('namelist.input', action = 'read')
+read(iunit, nml = domains, iostat = io )
+ierr = check_nml_error(io, 'domains')
+call close_file(iunit)
 
-else
+dt = time_step
 
-   cen_long = wrf%dom(id)%stand_lon      ! Default
-!!$cen_long = wrf%dom(id)%cen_lon     ! if stand_lon doesn't exist.
-
-!!$cone = 1.0_r8
-!!$if( wrf%dom(id)%map_proj .eq. 1) then    ; Lambert Conformal mapping
-!!$   if( (fabs(wrf%dom(id)%truelat1 - wrf%dom(id)%truelat2) .gt. 0.1_r8) .and.  \
-!!$      (fabs(wrf%dom(id)%truelat2 - 90.0_r8 )      .gt. 0.1_r8)       ) then
-!!$      cone = 10^(cos(wrf%dom(id)%truelat1*deg2rad)) \
-!!$      -10^(cos(wrf%dom(id)%truelat2*deg2rad))
-!!$      cone = cone/(10^(tan(45.0_r8 -fabs(wrf%dom(id)%truelat1/2.0_r8)*deg2rad)) - \
-!!$      10^(tan(45.0_r8 -fabs(wrf%dom(id)%truelat2/2.0_r8)*deg2rad))   )
-!!$   else
-!!$      cone = sin(fabs(wrf%dom(id)%truelat1)*deg2rad)
-!!$   end if
-!!$end if
-!!$if(wrf%dom(id)%map_proj .eq. 2) then      ; polar stereographic
-!!$   cone = 1.0_r8
-!!$end if
-!!$if(wrf%dom(id)%map_proj .eq. 3) then      ; Mercator
-!!$   cone = 0.0_r8
-!!$end if
-
-   diff = longitude - cen_long
-
-   if(diff .gt. 180.0_r8) then
-      diff = diff - 360.0_r8
-   end if
-   if(diff .lt. -180.0_r8) then
-      diff = diff + 360.0_r8
-   end if
-
-!      map_to_sphere = diff * cone * deg2rad *sign(1.0_r8,latitude)
-!!$map_to_sphere = diff
-
-   if(latitude .lt. 0.0_r8) then
-      map_to_sphere = - diff * wrf%dom(id)%cone_factor * deg2rad
-   else
-      map_to_sphere = diff * wrf%dom(id)%cone_factor * deg2rad
-   end if
-
-!!$if(variable .eq. "umet") then
-!!$   var = v*sin(map_to_sphere) + u*cos(map_to_sphere)
-!!$else  ; must want vmet
-!!$   var = v*cos(map_to_sphere) - u*sin(map_to_sphere)
-!!$end if
-
-end if
-
-end function map_to_sphere
+end subroutine read_dt_from_wrf_nml
 
 end module model_mod
