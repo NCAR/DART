@@ -6,7 +6,6 @@
 #======================================================================
 
 if ( ${?DART_HOME} ) then
-   echo "dart home is $DART_HOME"
    if ( -d $DART_HOME ) then
       setenv DARTHOME $DART_HOME
    else
@@ -22,6 +21,8 @@ else
    echo "no DART project"
    exit
 endif
+echo "DART project directory is $DARTHOME"
+sleep 2
    
 if ( ${?MODEL} ) then
    set Model = $MODEL
@@ -59,8 +60,22 @@ if ( -e input.nml ) then
 endif
 
 #======================================================================
+# Create common namelists ...
+#======================================================================
+
+cat << ENDofTask01 > assim_model.nml
+
+&assim_nml
+   binary_restart_files = .true.
+&end
+
+ENDofTask01
+
+
+#======================================================================
 # Define input files based on model
 #======================================================================
+
 
 set COSD = create_obs_set_def.in
 set COS = create_obs_sequence.in
@@ -145,6 +160,8 @@ endsw
 # Step 1: Create SETS of observation definitions
 #----------------------------------------------------------------------
 
+cp assim_model.nml input.nml
+
 ./create_obs_set_def < $COSD
 
 if ( $status > 0 ) then
@@ -195,7 +212,7 @@ cat << ENDofTask02 > perfect.nml
 &end
 ENDofTask02
 
-cat model.nml perfect.nml > input.nml
+cat model.nml assim_model.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -249,7 +266,7 @@ ENDofTask03
 set STRING = "1,$ s#xxxxxxxx#$num_ens_members#"
 sed -e "$STRING" filter.nml > input.nml
 
-cat model.nml >> input.nml
+cat model.nml assim_model.nml >> input.nml
 
 cp -f perfect_restart perfect_ics
 ./perfect_model_obs    ;# run again to generate a "useful" True_State
