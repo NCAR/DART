@@ -15,7 +15,21 @@ h2.indent1{font-size:1.50em; margin-left:0%}
 h3.indent1{font-size:1.25em; margin-left:0%}
 h4.indent1{font-size:1.00em; margin-left:0%}
 
-div.box   { border: solid; border-width: thin; width: 100% }
+div.box   { border:solid; border-width:thin; width:100% }
+div.routine {
+    background-color: rgb(225,225,225);
+    padding: 0.5em;
+    border: solid;
+    border-width: thin;
+    width: 100%;}
+
+div.type {
+    background-color: rgb(225,225,225);
+    padding: 0.5em;
+    border: solid;
+    border-width: thin;
+    width: 50%;}
+
 div.color {
     background-color: rgb(204,204,255);
     padding: 0.5em;
@@ -60,6 +74,8 @@ font-weight: normal;
 
 li{ font-size: 1.1em }
 
+a.optionalcode{ color:red;  font-style:typewriter } /* for links to optional code */
+a.code{         color:blue; font-style:typewriter } /* for links to code */
 a:link   { color: rgb(  0,   0, 153) } /* for unvisited links */
 a:visited{ color: rgb(153,   0, 153) } /* for visited links */
 a:active { color: rgb(255,   0, 102) } /* when link is clicked */
@@ -78,7 +94,7 @@ em.units{color:crimson; font-style:normal}
 
 em.code{color:blue; font-style:typewriter}
 
-em.call{color:blue; font-style:typewriter; font-size:1.50em}
+em.call{color:blue; font-style:typewriter; font-size:125%;}
 
 em.option{color:blue; font-style:italic}
 

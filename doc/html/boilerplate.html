@@ -32,7 +32,7 @@
 
 <DIV ALIGN="CENTER">
 <A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicRoutines">PUBLIC ROUTINES</A> / 
+<A HREF="#PublicEntities">PUBLIC ENTITIES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
@@ -87,7 +87,8 @@ fms_mod
 
 <TABLE>
 <TR><TD><em class=code>use xxxxxxx, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">yyyroutine1</A> &</TD></TR>
+                   <TD><A HREF="#yyypubtype1">yyypubtype1</A> &</TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">yyyroutine1</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">yyyroutine2</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">yyyroutine3</A></TD></TR>
 </TABLE>
@@ -100,30 +101,74 @@ may be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
-<!-- Declare all public routines ...                                  -->
+<!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 
-<A NAME="PublicRoutines"></A>
+<A NAME="PublicEntities"></A>
 <HR>
-<H2>PUBLIC ROUTINES</H2>
+<H2>PUBLIC ENTITIES</H2>
 <P>
 A note about documentation style. Optional arguments are enclosed in
 brackets <em class=optionalcode>[like this]</em>.
 </P>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+<!--===================== DESCRIPTION OF LOCAL TYPES ====================-->
 
-<HR width=50% align=left>
-<A NAME="yyyroutine1"></A>
-<P>
-<em class=call>call yyyroutine1( var1, var2, var3 </em>
-      <em class=optionalcode> [,global]</em>
-      <em class=call>)</em>
+<A NAME="yyypubtype1"></A>
+<div class=type>
+<pre>
+type location_type
+   private
+   real(r8) :: x
+end type location_type</pre>
+</div>
+
+<H3 class=indent1>Component Description</H3>
+
+<P><em class=code>location_type%x</em> is the nondimensional distance [0,1]
 </P>
 
-<H3 class=indent1>DESCRIPTION</H3>
+<A NAME="yyypubtype2"></A>
+<div class=type>
+<pre>
+type time_type
+   private
+   integer :: year
+   integer :: month
+   integer :: day
+   integer :: hour
+   integer :: minute
+   integer :: second
+   real(r8) :: umt
+end type time_type</pre>
+</div>
+
+<H3 class=indent1>Component Description</H3>
+
+<P><em class=code>time_type%year</em> &nbsp is the (non-negative) year<BR>
+   <em class=code>time_type%month</em> &nbsp is the month
+   <em class=code>time_type%month</em> &nbsp is the month
+   <em class=code>time_type%month</em> &nbsp is the month
+   <em class=code>time_type%month</em> &nbsp is the month
+   <em class=code>time_type%month</em> &nbsp is the month
+</P>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<HR>
+<P></P>
+<A NAME="yyyroutine1"></A>
+<div class=routine>
+<em class=call>call yyyroutine1( <A class=code HREF="#yyyroutine1.var1">var1</A>, 
+                                 <A class=code HREF="#yyyroutine1.var2">var2</A>,
+                                 <A class=code HREF="#yyyroutine1.var3">var3</A>,
+                         <A class=optionalcode HREF="#yyyroutine1.opt1">[,global]</A> )
+</em>
+</div>
+
+<H2 class=indent1>Description</H2>
 
 <P>
    Returns the resolution of compute domain for either the
@@ -135,70 +180,89 @@ brackets <em class=optionalcode>[like this]</em>.
    slices, dices and makes julienne fries. <em>But wait!</em> There's more!
 </P>
 
-<TABLE border summary="">
+<TABLE width=75% border="0" summary="" cellpadding=3>
 <TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">IN?OUT &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
+<TH align="left">Variable name</TH>
+<TH align="left">Intent</TH>
+<TH align="left">Type</TH>
+<TH align="left">Units</TH>
 </TR>
 
 <TR>
-<TD>var1</TD>
-<TD>IN</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
+<!--name  --><TD><A class=code HREF="#yyyroutine1.var1"> var1 </A></TD>
+<!--intent--><TD>IN</TD>
+<!--type  --><TD>time_type</TD>
+<!--units --><TD>depends on time_type</TD>
 </TR>
 
 <TR>
-<TD>var2</TD>
-<TD>INOUT</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
+<!--name  --><TD><A class=code HREF="#yyyroutine1.var2"> var2 </A></TD>
+<!--intent--><TD>INOUT</TD>
+<!--type  --><TD>time_type</TD>
+<!--units --><TD>depends on time_type</TD>
 </TR>
 
 <TR>
-<TD>var3</TD>
-<TD>OUT</TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
+<!--name  --><TD><A class=code HREF="#yyyroutine1.var3"> var3 </A></TD>
+<!--intent--><TD>OUT</TD>
+<!--type  --><TD>time_type</TD>
+<!--units --><TD>depends on time_type</TD>
 </TR>
 
 <TR>
-<TD><em class=optionalcode>global</em></TD>
-<TD>optional</TD>
-<TD>whatever it does, it does it really well.<BR>
-</TD>
+<!--name  --><TD><A class=optionalcode HREF="#yyyroutine1.opt1"> global </A></TD>
+<!--intent--><TD>optional</TD>
+<!--type  --><TD>r8</TD>
+<!--units --><TD>nondimensional</TD>
 </TR>
 </TABLE>
 
-<H3 class=indent1>DISCUSSION</H3>
+<H3 class=indent1>Detailed Variable Discussion</H3>
 
-<P>Var2 is used for both input and output. Upon input, this contains the
-   furlongs per weekday. Upon exit, we now have the number of spotted gobies
-   per square hectare. 
+<A NAME="yyyroutine1.var1"></A>
+<P><em class=code>var1</em> is the number of spark plugs in a '67 Cuda.
 </P>
 
-<H3 class=indent1>NOTES</H3>
+<A NAME="yyyroutine1.var2"></A>
+<P><em class=code>var2</em> is used for both input and output. 
+   Upon input, this contains the furlongs per weekday. 
+   Upon exit, we now have the number of spotted gobies per square hectare. 
+</P>
+
+<A NAME="yyyroutine1.var3"></A>
+<P><em class=code>var3</em> the number of feet in an orange-footed brush fowl,
+   indiginous to Australia. 
+</P>
+
+<A NAME="yyyroutine1.opt1"></A>
+<P><em class=optionalcode>global</em> is really, REALLY useful in certain situations.
+</P>
+
+<H3 class=indent1>Notes</H3>
 
 <P>would go here
 </P>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
-<HR width=50% align=left>
+<HR>
+<P></P>
 <A NAME="yyyroutine2"></A>
-<P>
-<em class=call>var = yyyroutine2( var1, var2, </em>
-      <em class=optionalcode> [,var3]</em>
-      <em class=call>)</em>
-</P>
+<div class=routine>
+<em class=call>
+<A class=code         HREF="#yyyroutine2.result">var</A> = yyyroutine2( 
+<A class=code         HREF="#yyyroutine2.var1"  >var1</A>, 
+<A class=code         HREF="#yyyroutine2.var2"  >var2</A>,
+<A class=optionalcode HREF="#yyyroutine2.opt1"  >[,bob]</A> )
+</em>
+</div>
 
-<H3 class=indent1>DESCRIPTION</H3>
+<H2 class=indent1>Description</H2>
 
 <P>
    Returns the resolution of compute domain for either the
-   current processor or the global domain.
+   current processor or the global domain.  All input variables are not changed. 
+   Otherwise, this would be a subroutine.
 </P>
 <P>
    This is the second-best thing since sliced bread. All you have to do is 
@@ -206,56 +270,59 @@ brackets <em class=optionalcode>[like this]</em>.
    deep fries.
 </P>
 
-<TABLE border summary="">
+<TABLE width="60%" border="0" summary="" cellpadding="3">
 <TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
+<TH align="left">Variable name</TH>
+<TH align="left">Type</TH>
+<TH align="left">Units</TH>
 </TR>
 
 <TR>
-<TD>var1</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
+<!--name  --><TD><A class=code HREF="#yyyroutine2.var1"> var1 </A></TD>
+<!--type  --><TD>time_type</TD>
+<!--units --><TD>depends on time_type</TD>
 </TR>
 
 <TR>
-<TD>var2</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-
-<TR>
-<TD><em class=optionalcode>var3</em></TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
+<!--name  --><TD><A class=code HREF="#yyyroutine2.var2"> var2 </A></TD>
+<!--type  --><TD>time_type</TD>
+<!--units --><TD>depends on time_type</TD>
 </TR>
 
 <TR>
-<TH colspan=2 align="left">return value<BR></TH>
+<!--name  --><TD><A class=optionalcode HREF="#yyyroutine2.opt1"> bob </A></TD>
+<!--type  --><TD>r8</TD>
+<!--units --><TD>nondimensional</TD>
 </TR>
 
 <TR>
-<TD> &nbsp; </TD>
-<TD>The result, naturally. <em class=unit>[time_type]</em><BR>
-</TD>
+<TH colspan=3 align="left">return value<BR></TH>
+</TR>
+
+<TR>
+<!--name  --><TD><A class=optionalcode HREF="#yyyroutine2.result"> var </A></TD>
+<!--type  --><TD>r8</TD>
+<!--units --><TD>nondimensional</TD>
 </TR>
 
 </TABLE>
 
-<H3 class=indent1>DISCUSSION</H3>
+<H3 class=indent1>Detailed Discussion</H3>
 
-<P>All input variables are not changed. Otherwise, this would be a subroutine.
-   Upon input, this contains the furlongs per weekday. Upon exit, we now 
-   have the number of spotted gobies per square hectare. 
+<A NAME="yyyroutine2.var1"></A>
+<P><em class=code>var1</em> The main ingredient for disaster.
 </P>
 
-<H3 class=indent1>NOTES</H3>
+
+<A NAME="yyyroutine2.var2"></A>
+<P><em class=code>var2</em> The disaster gestation duration.
+</P>
+
+
+<H3 class=indent1>Notes</H3>
 
 <P>would go here
 </P>
-
 
 
 <!--==================================================================-->
@@ -320,7 +387,7 @@ brackets <em class=optionalcode>[like this]</em>.
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class="color">
 
-<TABLE border="1" cellspacing="1" cellpadding="10">
+<TABLE border="1" cellspacing="1" cellpadding="10" width="100%">
 <TR><TH>Code</TH><TH>Routine</TH><TH>Condition</TH></TR>
 
 <TR><!--code here--><TD VALIGN="top">xxxx</TD>
@@ -365,6 +432,17 @@ brackets <em class=optionalcode>[like this]</em>.
 <A NAME="PrivateComponents"></A>
 <HR>
 <H2>PRIVATE Components</H2>
+
+<div class=routine>
+<pre>
+type location_type
+   private
+   real(r8) :: x
+end type location_type</pre>
+</div>
+
+<H3 class=indent1>Discussion</H3>
+
 
 <!--==================================================================-->
 
