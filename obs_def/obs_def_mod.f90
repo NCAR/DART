@@ -264,9 +264,9 @@ SELECT CASE (fileformat)
 END SELECT
 
 ! Read the location, kind and error variance
-obs_def%location = read_location(file, fform)
-obs_def%kind = read_kind(file, fform)
-obs_def%time = read_time(file, fform)
+obs_def%location = read_location(file, fileformat)
+obs_def%kind = read_kind(file, fileformat)
+obs_def%time = read_time(file, fileformat)
 
 SELECT CASE (fileformat)
    CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
@@ -304,9 +304,9 @@ SELECT CASE (fileformat)
 END SELECT
 
 ! Write out the location, kind and error variance
-call write_location(file, obs_def%location, fform)
-call write_kind(file, obs_def%kind, fform)
-call write_time(file, obs_def%time, fform)
+call write_location(file, obs_def%location, fileformat)
+call write_kind(file, obs_def%kind, fileformat)
+call write_time(file, obs_def%time, fileformat)
 
 SELECT CASE (fileformat)
    CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
