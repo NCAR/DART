@@ -37,7 +37,7 @@ ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 ln -s  ${PBS_O_WORKDIR}/VEGPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/SOILPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
-# WRF executable [in $ADV_MOD_COMMAND, read from wrf.info] is linked below
+ln -s  ${PBS_O_WORKDIR}/wrf.exe . 
 
 ln -s  ${PBS_O_WORKDIR}/wrf.exe .
 
@@ -111,8 +111,6 @@ set END_SEC     = $date[6]
 
 set MY_NUM_DOMAINS    = `head -4 wrf.info | tail -1`
 set ADV_MOD_COMMAND   = `head -5 wrf.info | tail -1`
-
-ln -s  ${PBS_O_WORKDIR}/${ADV_MOD_COMMAND} . # link to WRF executable
 
 if ( `expr $END_YEAR \% 4` == 0 ) then
    set days_in_month[2] = 29
