@@ -265,7 +265,7 @@ real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: type
 
-integer :: lower_index, upper_index
+integer :: lower_index, upper_index, i
 real(r8) :: lctn, lctnfrac
 
 ! Convert location to real
@@ -280,6 +280,37 @@ if(upper_index > model_size) upper_index = upper_index - model_size
 
 lctnfrac = lctn - int(lctn)
 model_interpolate = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
+
+if(1 == 1) return
+
+!!!model_interpolate = model_interpolate ** 2
+!!!if(1 == 1) return
+
+! Temporarily add on an observation from the other side of the domain, too
+lower_index = lower_index + model_size / 2
+if(lower_index > model_size) lower_index = lower_index - model_size
+upper_index = upper_index + model_size / 2
+if(upper_index > model_size) upper_index = upper_index - model_size
+model_interpolate = model_interpolate + &
+   lctnfrac * x(lower_index) + (1.0_r8 - lctnfrac) * x(upper_index)
+if(1 == 1) return
+
+
+! Next one does an average over a range of points
+model_interpolate = 0.0
+lower_index = lower_index - 7
+upper_index = upper_index - 7
+if(lower_index < 1) lower_index = lower_index + model_size
+if(upper_index < 1) upper_index = upper_index + model_size
+
+do i = 1, 15
+   if(lower_index > model_size) lower_index = lower_index - model_size
+   if(upper_index > model_size) upper_index = upper_index - model_size
+   model_interpolate = model_interpolate + &
+      (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
+   lower_index = lower_index + 1
+   upper_index = upper_index + 1
+end do
 
 end function model_interpolate
 
@@ -580,7 +611,6 @@ integer :: StateVarID
 !-----------------------------------------------------------------------------------------
 ! local variables
 !-----------------------------------------------------------------------------------------
-
 ierr = 0                      ! assume normal termination
 
 !-------------------------------------------------------------------------------
