@@ -601,8 +601,9 @@ if(type <  0 .or. type > max_type) &
    call error_handler('Illegal type in set_calendar_type')
 calendar_type = type
 
-if(type == GREGORIAN) &
-   call error_handler('set_calendar_type :: GREGORIAN CALENDAR not implemented')
+! GREGORIAN Calendar only partially implemented; get and set_date work
+!if(type == GREGORIAN) &
+!   call error_handler('set_calendar_type :: GREGORIAN CALENDAR not implemented')
 
 end subroutine set_calendar_type
 
