@@ -19,13 +19,13 @@ use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), 
                              operator(/=), set_date, set_calendar_type, get_time
 use utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
                           register_module, error_handler, E_ERR, E_MSG
-use obs_kind_mod, only : obs_kind_type, set_obs_kind 
-use location_mod, only : location_type, set_location
+use location_mod,  only : location_type, set_location
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, copy_obs, &
                              set_copy_meta_data, set_qc_meta_data, copy_obs, set_obs_def
 use time_manager_mod, only : time_type, read_time, set_time
+use obs_kind_mod
 
 implicit none
 
@@ -41,30 +41,28 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
-!-------------------------------------------------------------      
+!-------------------------------------------------      
 
 contains
 
-!----------------------------------------------------------------------
+!-------------------------------------------------
   subroutine initialize_module
-!----------------------------------------------------------------------
-! subroutine initialize_module
-
+!-------------------------------------------------
    call register_module(source, revision, revdate)
    module_initialized = .true.
 
 end subroutine initialize_module
 
 
-!=================================================
+!--------------------------------------------------------------------
   function real_obs_sequence()
-!=================================================
+!--------------------------------------------------------------------
 !  this function is to prepare NCEP BUFR data to DART sequence format
 !
   type(obs_sequence_type) :: real_obs_sequence
   type(obs_type) :: obs, prev_obs
   integer :: max_num_obs, num_copies, num_qc, i
-  integer :: days, seconds, obs_num,  calender_type, obs_day01
+  integer :: days, seconds, obs_num,  calender_type, obs_mon01, obs_day01, iskip
   integer :: obs_year, obs_month, obs_day, obs_hour, obs_min, obs_sec
   type(time_type) :: obs_time
 
@@ -76,11 +74,10 @@ end subroutine initialize_module
   character(len = 80) :: obsfile
   character(len = 129) :: copy_meta_data, qc_meta_data
 
-!-------------------------------------------------------------
-
-!*****************************************************************************
-   max_num_obs = 800000    !! for current NCEP daily RA+ACARS+SATWND data only
-!*****************************************************************************
+!*********************************************************************
+   max_num_obs = 800000    !! for NCEP daily RA+ACARS+SATWND data only
+!*********************************************************************
+! print*, 'ooo= ', KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV
 
    num_copies  = 1
    num_qc      = 1         !! the NCEP data passed NCEP QC procedure by readpb.f
@@ -104,9 +101,9 @@ end subroutine initialize_module
     call init_obs(obs, num_copies, num_qc)
     call init_obs(prev_obs, num_copies, num_qc)
 
-!-------------------------------------
+!----------------------------------
 !   for NCEP real data preparation
-!-------------------------------------
+!----------------------------------
 
 !   set observation time type
     calender_type = 3
@@ -114,7 +111,7 @@ end subroutine initialize_module
 
 !   read in namelist
     obs_unit = get_unit()
-    open(obs_unit, file='/home/hliu/newDART/ncep_obs/ncepobs.input', form='formatted')
+    open(obs_unit, file='../ncepobs.input', form='formatted')
     read(obs_unit, *) obs_year, obs_month, obs_day
     close(obs_unit)
 
@@ -135,25 +132,36 @@ end subroutine initialize_module
 
 !  open unit for NCEP observation file
     obs_unit = get_unit()
-    obsfile  = '/home/hliu/ncepobs/test/temp_obs.'//obsdate
+    obsfile  = '/project/dart/home/hliu/ncepobs/test/temp_obs.'//obsdate
     open(unit = obs_unit, file = obsfile, form='formatted', status='old')
-
-     print*, 'file opened= ', obsfile
+    print*, 'file opened= ', obsfile
     rewind (obs_unit)
 
     obs_num = 0
+    iskip = 0
 
-! Loop to set up each observation
-!
+!-----------------------------------------------------------------------
+!   Loop to set up each observation
+!   read in each obs from the daily files (include 06, 12, 18, 24/00Z)
+!-----------------------------------------------------------------------
 obsloop:  do i = 1, max_num_obs
    
      if(mod(i, 1000) ==0) print*, 'doing obs = ', i
-! read in each obs from the daily observation file (include 06, 12, 18, 24Z)
 
      read(obs_unit, 880, end=200) obs_err, lon, lat, lev, zob, zob2, count,time,type, iqc
-     obs_num = obs_num + 1
 
  880 format(f4.2, 2f7.3, e12.5, f7.2, f7.2, f9.0, f7.3, f5.0, i3)
+
+!------------------------------------------------------------------------
+!  added 01/04/2005 to skip the few observation at exact 00Z of each day
+!  to avoid a problem of timing in filter.
+     if(time == 3.0) then
+     iskip = iskip + 1
+     cycle obsloop 
+     endif 
+!------------------------------------------------------------------------
+
+     obs_num = obs_num + 1
 
 !  set up observation location
 
@@ -169,14 +177,11 @@ obsloop:  do i = 1, max_num_obs
 !   obs_kind = obs_prof*10000 + type 
 !   call obs_model_type(obs_kind, model_type)
                                                                                        
-! kdr Shouldn't the values given to obs_kind be defined in some other module
-!     and passed in here?  Then they'd be available to other obs sets.
-!     Pass in as an array, or as separate, mnemonic names (kind_u,...)
-    if(obs_prof == 2) obs_kind = 1           ! U
-    if(obs_prof == 9) obs_kind = 2           ! V
-    if(obs_prof == 3) obs_kind = 3           ! Ps
-    if(obs_prof == 1) obs_kind = 4           ! T
-    if(obs_prof == 5) obs_kind = 5           ! q
+    if(obs_prof == 2) obs_kind = KIND_U           ! U
+    if(obs_prof == 9) obs_kind = KIND_V           ! V
+    if(obs_prof == 3) obs_kind = KIND_PS          ! Ps
+    if(obs_prof == 1) obs_kind = KIND_T           ! T
+    if(obs_prof == 5) obs_kind = KIND_QV          ! q
 
     model_type = obs_kind
 
@@ -186,13 +191,13 @@ obsloop:  do i = 1, max_num_obs
     endif
 
     if (model_type == 3) then    ! for Ps
-     vloc = lev            ! station height, not used now for Ps obs
+     vloc = lev                  ! station height, not used now for Ps obs
      which_vert = -1
      obs_err = obs_err*100.0     ! convert obs_err to Pa
     endif
 
     if (model_type == 5) then    ! for Q
-     obs_err = obs_err*1.0e-3     ! convert obs_err to kg/kg
+     obs_err = obs_err*1.0e-3    ! convert obs_err to kg/kg
     endif
 
 !   set obs value and error covariance
@@ -206,31 +211,38 @@ obsloop:  do i = 1, max_num_obs
      endif
 
     aqc = iqc
-    var2 = obs_err**2                ! error_covariance
+    var2 = obs_err**2            ! error_covariance
 
 
 !   set obs time
 
-      obs_min  = 60*( time - ifix(time) )
+      obs_sec  = 0
+      obs_mon01 = obs_month
+      obs_min  = 60*( time - int(time) )
+
       if(time >= 24) then
        obs_hour   = time -24
        obs_day01  = obs_day + 1
+
+!      for Jan 2003 case only ---------
+        if(obs_day01 == 32 ) then
+        obs_mon01 = 2
+        obs_day01 = 1
+        endif
+!      for Jan 2003 case only ---------
+
       else
        obs_hour   = time
        obs_day01  = obs_day 
       endif
 
-      obs_sec  = 0
-
-      obs_time = set_date(obs_year, obs_month, obs_day01, obs_hour, obs_min, obs_sec)
+      obs_time = set_date(obs_year, obs_mon01, obs_day01, obs_hour, obs_min, obs_sec)
    
       call get_time(obs_time, seconds, days)
 !     write(*,*)  'obs time', seconds, days
 
-!-----------------------------------------------------------------------------------
-   call real_obs(num_copies, num_qc, obs, &
-       lon01, lat01, vloc, obs_value, var2, aqc, obs_kind, which_vert, seconds, days)
-!-----------------------------------------------------------------------------------
+   call real_obs(num_copies, num_qc, obs, lon01, lat01, vloc, obs_value, &
+                 var2, aqc, obs_kind, which_vert, seconds, days)
 
    if(i == 1) then
      call insert_obs_in_seq(real_obs_sequence, obs)
@@ -244,36 +256,32 @@ obsloop:  do i = 1, max_num_obs
      call insert_obs_in_seq(real_obs_sequence, obs)
    endif
 
-
 end do obsloop
 
  200 continue
    close(obs_unit)
 
-   print*, 'total obs num= ', obs_num, obsdate
+   print*, 'total obs num & skip= ', obs_num, obsdate, iskip
 
 end function real_obs_sequence
 
 
-!-----------------------------------------------------------------------------------
-  subroutine real_obs(num_copies, num_qc, obs, &
-       lon01, lat01, vloc, obs_value, var2, aqc, obs_kind, which_vert, seconds, days)
-!-----------------------------------------------------------------------------------
-
+!------------------------------------------------------------------------------
+  subroutine real_obs(num_copies, num_qc, obs, lon01, lat01, vloc, obs_value, &
+                      var2, aqc, obs_kind, which_vert, seconds, days)
+!------------------------------------------------------------------------------
   integer, intent(in) :: num_copies, num_qc
   type(obs_type), intent(inout) :: obs
   type(obs_def_type) :: obsdef0
 
-  integer :: i
-
-  integer :: obs_kind, which_vert, days, seconds
+  integer :: i, obs_kind, which_vert, days, seconds
   real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
   real (r8) :: aqc01(1), obs_value01(1)
 
 ! Does real initialization of an observation type
 
-  call real_obs_def(obsdef0, &
-       lon01, lat01, vloc, obs_value, var2, aqc, obs_kind, which_vert, seconds, days)
+  call real_obs_def(obsdef0, lon01, lat01, vloc, obs_value, &
+                    var2, aqc, obs_kind, which_vert, seconds, days)
   call set_obs_def(obs, obsdef0)
 
   do i = 1, num_copies
@@ -288,26 +296,25 @@ end function real_obs_sequence
 
 end subroutine real_obs
 
-!------------------------------------------------------------------------------------
-subroutine real_obs_def(obs_def, &
-       lon01, lat01, vloc, obs_value, var2, aqc, obs_kind, which_vert, seconds, days)
-!------------------------------------------------------------------------------------
+!----------------------------------------------------------------------
+subroutine real_obs_def(obs_def, lon01, lat01, vloc, obs_value, &
+                        var2, aqc, obs_kind, which_vert, seconds, days)
+!----------------------------------------------------------------------
   type(obs_def_type), intent(inout) :: obs_def
 
-  integer :: ind
   type(obs_kind_type) :: kind0
   type(location_type) :: loc0
 
-  integer :: obs_kind, which_vert, days, seconds
+  integer :: ind, obs_kind, which_vert, days, seconds
   real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
 
   if ( .not. module_initialized ) call initialize_module
 
-! set the location
+! set obs location
     loc0 = set_location(lon01, lat01, vloc, which_vert )
   call set_obs_def_location(obs_def, loc0)
 
-! set the obsrvation kind
+! set obs kind
   kind0 = set_obs_kind(obs_kind)
   call set_obs_def_kind(obs_def, kind0)
 
@@ -328,16 +335,16 @@ subroutine obs_model_type(kind, model_type, ncep_type)
 
   if ( .not. module_initialized ) call initialize_module
 
+  print*, 'oo2= ', KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV
     obs_prof = kind/10000
-    if(obs_prof == 2) model_type = 1         !! the model obs types
-    if(obs_prof == 9) model_type = 2
-    if(obs_prof == 3) model_type = 3
-    if(obs_prof == 1) model_type = 4
-    if(obs_prof == 5) model_type = 5
+    if(obs_prof == 2) model_type = KIND_U           ! U
+    if(obs_prof == 9) model_type = KIND_V           ! V
+    if(obs_prof == 3) model_type = KIND_PS          ! Ps
+    if(obs_prof == 1) model_type = KIND_T           ! T
+    if(obs_prof == 5) model_type = KIND_QV          ! q
 
     ncep_type = kind - obs_prof * 10000
 
 end subroutine obs_model_type
-
 
 end module real_obs_mod
