@@ -104,7 +104,7 @@ ensemble_manager
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / filter_nml / </em> &
-      async, adv_ens_command, ens_size, cutoff, cov_inflate, 
+      async, adv_ens_command, ens_size, cov_inflate, 
       start_from_restart, output_restart, 
       obs_sequence_in_name, obs_sequence_out_name, 
       restart_in_file_name, restart_out_file_name, 
@@ -112,7 +112,7 @@ ensemble_manager
       output_state_ens_mean, output_state_ens_spread, 
       output_obs_ens_mean,   output_obs_ens_spread, 
       num_output_state_members, num_output_obs_members, 
-      output_interval,  num_groups, confidence_slope, outlier_threshold, 
+      output_interval,  num_groups, outlier_threshold, 
       save_reg_series
 </pre></div>
 
@@ -140,12 +140,6 @@ ensemble_manager
     <!--  type  --><TD valign=top>integer                         </TD>
     <!--descript--><TD>Number of ensemble members to be integrated. 
                        Default is 20.</TD></TR>  
-<TR><!--contents--><TD valign=top>cutoff                       </TD>
-    <!--  type  --><TD valign=top>real(r8)                     </TD>
-    <!--descript--><TD>Cutoff controls a distance dependent weight that modulates
-                       the impact of an observation on a state variable. The units depend
-                       both on the location module being used and on the covariance cutoff
-                       module options selected. Default is 0.2.</TD></TR>
 <TR><!--contents--><TD valign=top>cov_inflate                  </TD>
     <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Covariance inflation factor applied to prior estimate before each
@@ -216,10 +210,6 @@ ensemble_manager
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Number of groups for hierarchical group filter. Should 
                        be a divisor of the ensemble size. Default is 1. </TD></TR>
-<TR><!--contents--><TD valign=top>confidence_slope             </TD>
-    <!--  type  --><TD valign=top>real(r8)                     </TD>
-    <!--descript--><TD>Controls strength of bias correction algorithm. See
-                       assim_tools module. Default is 0 (no correction). </TD></TR>
 <TR><!--contents--><TD valign=top>outlier_threshold            </TD>
     <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Discard all observations where the prior ensemble mean
