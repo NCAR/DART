@@ -289,7 +289,7 @@ AdvanceTime : do i = 1, num_obs_sets
          swath = get_ens_swath(ens_ptr, ens_size, ind)
 
 !!!         call update_from_obs_inc(ens_obs, obs_inc, &
-!!!                                  swath, ens_size, ens_inc, cov_factor)
+!!!                   swath, ens_size, ens_inc, cov_factor)
 ! Test of modified linear variance delta update for localization
          call linear_update_from_obs_inc(ens_obs, obs_inc, mean_inc, &
             swath, ens_size, ens_inc, cov_factor, sd_ratio)

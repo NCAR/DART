@@ -107,7 +107,13 @@ implicit none
 
 type(obs_kind_type), intent(out) :: kind
 
-kind%index = 1
+! For bgrid, enter kind of observation
+write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4'
+read(*, *) kind%index
+
+! Do default kind for surface pressure for cheat for now
+!!!kind%index = 3
+
 
 end subroutine interactive_kind
 
