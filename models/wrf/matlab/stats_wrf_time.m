@@ -4,22 +4,27 @@
 
 fname = 'Prior_Diag';
 
-dx = getnc(fname, 'DX');
+nc = netcdf( [fname,'.nc'] , 'nowrite' ) ;
 
-num_domains = size(dx,1);
+num_domains = size(nc('domain'),1);
 
-disp(['Number of domains: ',int2str(num_domains)])
+if (num_domains > 1)
 
-id = input('Input domain id: ');
+   disp(['Number of domains: ',int2str(num_domains)])
+   id = input('Input domain id: ');
 
-tlon = getnc(fname, ['XLON_d0',int2str(id)]);
-we = size(tlon, 2);
-tlat = getnc(fname, ['XLAT_d0',int2str(id)]);
-sn = size(tlat, 1);
-level = getnc(fname, ['level_d0',int2str(id)]);
-bt = size(level, 1);
-copy = getnc(fname, 'copy');
-ens_size = size(copy, 1) - 2;
+else
+
+   id = 1;
+
+end
+
+sls = size(nc(['soil_layers_stag_d0',int2str(id)]),1);
+we = size(nc(['west_east_d0',int2str(id)]), 1);
+sn = size(nc(['south_north_d0',int2str(id)]), 1);
+bt = size(nc(['bottom_top_d0',int2str(id)]), 1);
+ens_size = size(nc('copy'), 1) - 2;
+close(nc);
 
 true_times = getnc(fname, 'time');
 num_true_times = size(true_times, 1);
@@ -42,7 +47,9 @@ mean_ind = ens_size + 1;
 std_ind = mean_ind + 1;
 
 scrsz = get(0,'ScreenSize');
-figure('Position',[1 scrsz(4)/2 scrsz(3)/2 scrsz(4)])
+figure('Position',[1 scrsz(4)/2 0.7*scrsz(3) 0.7*scrsz(4)])
+
+axes('FontSize',12)
 
 for field_num = [1:9]
 
@@ -54,34 +61,34 @@ maxlev = bt;
 maxval = 8.0;
 if field_num > 1
 nx = we;
-ny = sn + 1;
-var_units = 'V (m/s)';
-var_name = ['V_d0',int2str(id)];
-end
-if field_num > 2
-nx = we;
 ny = sn;
 var_units = 'W (m/s)';
 var_name = ['W_d0',int2str(id)];
 maxlev = bt + 1;
 maxval = 0.03;
 end
-if field_num > 3
-var_units = 'GZ (m^2/s^2)';
+if field_num > 2
+var_units = 'PH (m^2/s^2)';
 var_name = ['PH_d0',int2str(id)];
 maxval = 700.0;
 end
-if field_num > 4
+if field_num > 3
 var_units = 'T (K)';
 var_name = ['T_d0',int2str(id)];
 maxlev = bt;
 maxval = 4.0;
 end
-if field_num > 5
+if field_num > 4
 var_units = 'MU (Pa)';
 var_name = ['MU_d0',int2str(id)];
 maxlev = 1;
 maxval = 700.0;
+end
+if field_num > 5
+var_units = 'TSLB (K)';
+var_name = ['TSLB_d0',int2str(id)];
+maxlev = sls;
+maxval = 4.0;
 end
 if field_num > 6
 var_units = 'QV (kg/kg)';
@@ -186,19 +193,20 @@ E2(2*itime) = E2(2*itime) + rms_mem(2*itime,imem);
 
 end
 
-
 subplot(3,3,field_num);
 
 %if (ens_size > 0.0)
 %     E2 = E2/ens_size;
 %     plot(x,rmse,x,spread,x,E2,'--m')
 %else
-     plot(x,rmse,x,spread)
+     plot(x,rmse,x,spread,'LineWidth',2)
+%     plot(x,rmse,x,rmse_3dvar(:,field_num),x,rmse_no_assim(:,field_num),'LineWidth',2)
+%     plot(x,rmse,x,rmse_3dvar(:,field_num),'LineWidth',2)
 %end
 
      plot_title = [var_units];
 
-     title(plot_title)
+     title(plot_title,'Fontsize',12)
 
 %     xlabel(time_unit)
 
@@ -207,6 +215,11 @@ subplot(3,3,field_num);
 %     axis ([(x(1)-room) (x(2*num_true_times)+room) min(min(rmse,spread)) max(max(rmse,spread))])
      axis ([(x(1)-room) (x(2*num_true_times)+room) 0.0 maxval])
 
+%     if (field_num == 6)
+%        legend('EnKF','3D-Var','no assim')
+%        legend('EnKF','3D-Var')
+%     end
+
 end
 
 %if (ens_size > 0.0)
@@ -214,8 +227,7 @@ end
 %else
      legend('RMS error','Spread')
 %end
-xlabel(time_unit)
+xlabel(time_unit,'Fontsize',12)
 
 % Loop for another try
 %map_wrf;
-

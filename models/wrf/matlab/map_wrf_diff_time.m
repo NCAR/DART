@@ -29,9 +29,16 @@ mp = getnc(fname, 'MAP_PROJ');
 
 num_domains = size(dx,1);
 
-disp(['Number of domains: ',int2str(num_domains)])
+if (num_domains > 1)
 
-id = input('Input domain id: ');
+   disp(['Number of domains: ',int2str(num_domains)])
+   id = input('Input domain id: ');
+
+else
+
+   id = 1;
+
+end
 
 xlon = getnc(fname, ['XLON_d0',int2str(id)]);
 we = size(xlon, 2);
@@ -55,6 +62,14 @@ if (fact(2) ~= 0.0) | (fact(3) ~= 0.0)
    disp(['The ensemble mean is copy #' int2str(ens_size+1)])
    disp(['The ensemble spread is copy #',int2str(ens_size+2)])
    cop(2:3) = input('Input copy for Prior and/or Posterior: ');
+end
+
+for iy = 1:sn
+   for ix = 1:we
+      if(xlon(iy,ix) > 0.0)
+         xlon(iy,ix) = xlon(iy,ix) - 360.0;
+      end
+   end
 end
 
 minlat = min(xlat(:)); maxlat = max(xlat(:));
@@ -105,7 +120,7 @@ if strcmp(field_name,'PH')
 end
 if strcmp(field_name,'T')
    var_units = ' (K)';
-   iso = [0.5:0.5:5];
+   iso = [0.25:0.5:5.25];
 end
 if strcmp(field_name,'MU')
    var_units = ' (Pa)';
@@ -135,6 +150,9 @@ figure('Position',[1 scrsz(4)/2 0.8*scrsz(4) 0.8*scrsz(4)])
 
 m = ceil(sqrt(ftime-stime+1));
 
+iso = [-3:0.25:3];
+%iso = [260:5:320];
+
 pane = 1;
 
 for itime = stime:ftime
@@ -153,6 +171,7 @@ for itime = stime:ftime
 
       if fact(istate) ~= 0.0
 
+	 fname = char(state_name(istate));
          if vert_coord == 1
 
 	    if strcmp(field_name,'MU')
@@ -169,7 +188,6 @@ for itime = stime:ftime
                stride = [1 1 1 1 1];
             end
 
-	    fname = char(state_name(istate));
 	    if strcmp(field_name,'VECT')
                stag_field = getnc(fname,uname,corner,end_point,stride);
                for iy = 1:sn
@@ -357,10 +375,11 @@ for itime = stime:ftime
    plotm(usalo('conusvec'),'color',[0 0 0]);
 
 % axis( [-0.6 0.6 .2 1.2 ]) % This works pretty well for present CONUS domain
+axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
 
    if strcmp(field_name,'VECT')
 
-      scale = ceil(we/10);
+      scale = ceil(we/20);
 
       quiverm(xlat([1:scale:sn],[1:scale:we]),xlon([1:scale:sn],[1:scale:we]), ...
 	      fieldv([1:scale:sn],[1:scale:we]),fieldu([1:scale:sn],[1:scale:we]),'k')
@@ -369,13 +388,22 @@ for itime = stime:ftime
 
       if min(min(field)) ~= max(max(field))
 
-         [C h] = contourm(xlat,xlon,field);
-         h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
+%         if (max(max(field)) > min(iso)) & (min(min(field)) < max(iso))
+%            [C h] = contourm(xlat,xlon,field, iso, 'r','LineWidth',2);
+%            h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',12);
+%            hold on
+%         end
+%         if (max(max(field)) > min(-iso)) & (min(min(field)) < max(-iso))
+%            [Cm hm] = contourm(xlat,xlon,field, -iso, 'b--','LineWidth',2);
+%            hm = clabelm(Cm,hm,'labelspacing',288);  set(hm,'Fontsize',12);
+%         end
+
+[C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
 
 %[C,h] = contour (field, iso);
 %hold on
 %[Cm,hm] = contour (field, -iso, '--');
-%colorbar('vert')
+colorbar('vert')
 %clabel(C, h);
 %clabel(Cm, hm);
 
@@ -383,7 +411,7 @@ for itime = stime:ftime
 
    end
 
-   title(plot_title)
+   title(plot_title,'Fontsize',12)
 
    pane = pane + 1;
 
