@@ -10,31 +10,27 @@
 #======================================================================
 
 set SNAME = $0
+set clobber
+set DART_HOME = ~/DART
 
 switch ( $#argv )
-   case 0:
-      # nothing to do ...
-      breaksw
    case 1:
       # supplying one argument -- assumed to be the model
-      set MODEL = $1
+      set Model = $1
       breaksw
    case 2:
       # supplying two arguments
-      set MODEL = $1
+      set Model = $1
       set DART_HOME = $2
       breaksw
    default:
       echo " "
-      echo "usage: $SNAME:t [MODEL [DARTHOME]]"
+      echo "usage: $SNAME:t MODEL [DART_HOME]"
       echo " "
       echo "This script is used to generate a set of initial conditions for some of the"
       echo "models supported by the Data Assimilation Research Testbed (DART) software."
-      echo "MODEL must be one of: 9var lorenz_63 lorenz_96 pe2lyr"
-      echo "DARTHOME must point to your DART directory."
-      echo " "
-      echo "Alternatively, you can set environment variables of the same name"
-      echo "and then use this function with no arguments."
+      echo "MODEL        must be one of: 9var lorenz_63 lorenz_84 lorenz_96 pe2lyr"
+      echo "DART_HOME    must point to your DART directory."
       echo " "
       echo "To generate a set of initial conditions, one has to advance the"
       echo "filter for some amount of time. The only way to do this is to create an"
@@ -54,33 +50,13 @@ endsw
 # the defaults appropriately.
 #======================================================================
 
-if ( ${?DART_HOME} ) then
-   if ( -d $DART_HOME ) then
-      setenv DARTHOME $DART_HOME
-   else
-      echo "$DART_HOME does not exist on this platform"
-   endif
-else if ( -d /home/${USER}/DART ) then
-   setenv DARTHOME /home/${USER}/DART
-else 
-   echo "no DART project"
-   exit
+setenv DARTDIR ${DART_HOME}/models/${Model}/work
+if ( ! -d ${DARTDIR} ) then
+   echo "${DARTDIR} does not exist ... "
+   exit 2
 endif
 
-if ( ${?MODEL} ) then
-   set Model = $MODEL
-else
-   set Model = lorenz_63
-endif
-
-if ( -d ${DARTHOME}/models/${Model}/work ) then
-   setenv DARTDIR ${DARTHOME}/models/${Model}/work
-else 
-   echo "no DART project"
-   exit
-endif
-
-echo "DART project directory is $DARTHOME"
+echo "DART project directory is $DART_HOME"
 echo "Building Initial Conditions for $Model"
 echo "in directory $DARTDIR"
 echo "You have 4 seconds to stop this ..."
@@ -97,14 +73,19 @@ cd ${DARTDIR}
 
 #======================================================================
 # Save any existing namelist ...
-# if there aren't any -- it generates a benign warning.
+# Creating a null namelist just to avoid moving nothing.
 #======================================================================
+
+touch nullnamelist$$.nml
+touch nullnamelist$$.nml_default
 
 set SAVEME = .NamelistStorage.$$
 if ( ! -d $SAVEME ) then
    mkdir ${SAVEME}
 endif
-mv -f *.nml ${SAVEME}
+foreach FILE ( *.nml *default )
+   mv -f *.nml ${SAVEME}
+end
 echo 'Saved all existing *.nml into directory '"$SAVEME"
 echo 'Will restore and remove the directory at the end.'
 
@@ -117,22 +98,18 @@ echo 'Will restore and remove the directory at the end.'
 
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
-   mv input.nml.mkmf input.nml.create_obs_set_def
    make || exit 1
 endif
 if !( -e create_obs_sequence ) then
    csh mkmf_create_obs_sequence
-   mv input.nml.mkmf input.nml.create_obs_sequence
    make || exit 1
 endif
 if !( -e perfect_model_obs ) then
    csh mkmf_perfect_model_obs
-   mv input.nml.mkmf input.nml.perfect_model_obs
    make || exit 1
 endif
 if !( -e filter ) then
    csh mkmf_filter
-   mv input.nml.mkmf input.nml.filter
    make || exit 1
 endif
 \rm -f *.o *.mod Makefile
@@ -199,18 +176,18 @@ switch ( ${Model} )
 
       set BINARY_RESTART_FILES = .true.
 
-      echo "set_def.out"   > $COSD 
+      echo "set_def.out"   > $COSD ;# output file name
       echo "1"            >> $COSD ;# # of unique observation SETS to define
       echo "1"            >> $COSD ;# # of observations in set 1
       echo "1000000.0"    >> $COSD ;# error variance for set 1, observation 1
       echo "1"            >> $COSD ;# observe state variable #1
 
-      echo "set_def.out"   > $COS
+      echo "set_def.out"   > $COS  ;# same filename as 'output' above
       echo "1"            >> $COS  ;# make a "regular" sequence
       echo "100"          >> $COS  ;# # of observations
       echo "1 0"          >> $COS  ;# first obs time (days, seconds)
       echo "1 0"          >> $COS  ;# observation interval (d, s)
-      echo "obs_seq.in"   >> $COS  ;# output file name
+      echo "obs_seq.in"   >> $COS  ;# output file name -- destined for perfect_model_obs
 
       echo " " > model.nml
 
@@ -226,17 +203,17 @@ switch ( ${Model} )
       echo "1000000.0   ;# error variance for set 1, observation 1" >> $COSD
       echo "1           ;# 1 == state variable 1"                   >> $COSD
 
-      echo "set_def.out"  > $COS
-      echo "1"           >> $COS
-      echo "1000"        >> $COS
-      echo "1 0"         >> $COS
-      echo "1 0"         >> $COS
-      echo "obs_seq.in"  >> $COS
+      echo "set_def.out"   > $COS  ;# same filename as 'output' above
+      echo "1"            >> $COS  ;# make a "regular" sequence
+      echo "1000"         >> $COS  ;# # of observations
+      echo "1 0"          >> $COS  ;# first obs time (days, seconds)
+      echo "1 0"          >> $COS  ;# observation interval (d, s)
+      echo "obs_seq.in"   >> $COS  ;# output file name -- destined for perfect_model_obs
 
       echo "&model_nml"          > model.nml
       echo "   deltat = 0.01 /" >> model.nml
 
-      set num_ens_members = 1000
+      set num_ens_members = 200
 
    breaksw
 
@@ -430,16 +407,20 @@ else
    echo " "
    echo "filter terminated normally"
    echo " "
+   \rm -f input*default utilities.nml perfect.nml model.nml assim_mod.nml filter.nml 
+   \rm -f set_def.out create_obs_set_def.in create_obs_sequence.in obs_seq.in
 endif
 
-cp perfect_restart perfect_ics
-cp filter_restart filter_ics
+mv perfect_restart perfect_ics
+mv filter_restart filter_ics
 
 #======================================================================
 # Restore the existing namelists ...
 #======================================================================
 
-foreach NAMELIST ( ${SAVEME}/*.nml )
-   mv ${NAMELIST} .
-end
+\mv -f ${SAVEME}/*.nml .
+\mv -f ${SAVEME}/*default .
 \rmdir ${SAVEME}
+\rm -f nullnamelist$$.nml nullnamelist$$.nml_default
+
+exit

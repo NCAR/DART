@@ -11,62 +11,138 @@
 # Find the project and build it, if need be.
 #======================================================================
 
-if ( ${?DART_HOME} ) then
-   if ( -d $DART_HOME ) then
-      setenv DARTHOME $DART_HOME
-   else
-      echo "$DART_HOME does not exist on this platform"
-   endif
-else if ( -d /export/data/gsp/${USER}/DART ) then
-   setenv DARTHOME /export/data/gsp/${USER}/DART
-else if ( -d /data/gsp/${USER}/DART ) then
-   setenv DARTHOME /data/gsp/${USER}/DART
-else if ( -d /home/${USER}/DART ) then
-   setenv DARTHOME /home/${USER}/DART
-else
-   echo "no DART project"
-   exit
-endif
-echo "DART project directory is $DARTHOME"
-sleep 2
-
+set SNAME = $0
+set clobber
+set DART_HOME = ~/DART
 set Model = lorenz_84
 
-cd ${DARTHOME}/models/${Model}/work
+switch ( $#argv )
+   case 1:
+      # supplying one argument -- the number of ensemble members
+      set NumEns = $1
+      breaksw
+   case 2:
+      # supplying two arguments
+      set NumEns = $1
+      set DART_HOME = $2
+      breaksw
+   default:
+      echo " "
+      echo "usage: $SNAME:t #_ensemble_members [DART_HOME]"
+      echo " "
+      echo "This script demonstrates how to conduct a DART assimilation experiment for"
+      echo "a given model which has already been spun-up and has initial conditions"
+      echo "files <perfect_ics> and <filter_ics>."
+      echo " "
+      echo "'#_ensemble_members' can be no greater than the number of ensemble members "
+      echo "in the <filter_ics> initial conditions file."
+      echo " "
+      echo "'DART_HOME' must point to your 'top-level' DART directory."
+      echo "If DART_HOME is not supplied -- it is assumed to be ~/DART."
+      echo " "
+      exit 1
+      breaksw
+endsw
 
-if !( -e create_obs_set_def ) then
-   csh mkmf_create_obs_set_def
-   mv input.nml.mkmf default_create_obs_set_def.nml
-   make || exit 1
+#======================================================================
+# Query all the environment variables.
+# This is only meant to be illustrative.
+# It is ABSOLUTELY not comprehensive.
+#======================================================================
+
+set obs_error_variance = 1.0
+if ( ${?ObsError} ) then
+   set obs_error_variance = $ObsError
 endif
-if !( -e create_obs_sequence ) then
-   csh mkmf_create_obs_sequence
-   mv input.nml.mkmf default_create_obs_sequence.nml
-   make || exit 1
+
+set num_obs = 1000
+set ob_day_1 = 0
+set ob_seconds_1 = 43200
+
+if ( ${?NumObs} ) then     ;# if environment var NumObs exists, use it
+   set num_obs = $NumObs
 endif
-if !( -e perfect_model_obs ) then
-   csh mkmf_perfect_model_obs
-   mv input.nml.mkmf default_perfect_model_obs.nml
-   make || exit 1
+if ( ${?ObDay1} ) then
+   set ob_day_1 = $ObDay1
 endif
-if !( -e filter ) then
-   csh mkmf_filter
-   mv input.nml.mkmf default_filter.nml
-   make || exit 1
+if ( ${?ObSec1} ) then
+   set ob_seconds_1 = $ObSec1
 endif
-\rm -f *.o *.d *.mod Makefile
+
+set cov_inflate = 1.00
+set cutoff = 22222222.0
+
+if ( ${?CovInflate} ) then
+   set cov_inflate = $CovInflate
+endif
+if ( ${?Cutoff} ) then
+   set cutoff = $Cutoff
+endif
+
+#======================================================================
+# This block checks to see if input is viable.
+#======================================================================
+
+setenv DARTDIR ${DART_HOME}/models/${Model}/work
+if ( ! -d ${DARTDIR} ) then                                                     
+   echo "${DARTDIR} does not exist ... "
+   exit 2
+endif
+
+echo "DART project directory is $DART_HOME"
+echo "Building Initial Conditions for $Model"
+echo "in directory $DARTDIR"
+echo "You have 4 seconds to stop this ..."
+sleep 1
+echo "3"
+sleep 1
+echo "2"
+sleep 1
+echo "1"
+sleep 1
+echo
+                                                                                
+cd ${DARTDIR}
 
 #======================================================================
 # Save any existing namelist ...
+# Creating a null namelist just to avoid moving nothing.
 #======================================================================
+
+touch nullnamelist$$.nml
+touch nullnamelist$$.nml_default
 
 set SAVEME = .NamelistStorage.$$
 if ( ! -d $SAVEME ) then
    mkdir ${SAVEME}
 endif
-foreach NAMELIST ( *.nml )
-   mv ${NAMELIST} ${SAVEME}
+foreach FILE ( *.nml *default )
+   \mv -f $FILE ${SAVEME}
 end
+echo 'Saved all existing *.nml into directory '"$SAVEME"
+echo 'Will restore and remove the directory at the end.'
+
+#======================================================================
+# Create the executables if they do not exist.
+#======================================================================
+
+if !( -e create_obs_set_def ) then
+   csh mkmf_create_obs_set_def
+   make || exit 1
+endif
+if !( -e create_obs_sequence ) then
+   csh mkmf_create_obs_sequence
+   make || exit 2
+endif
+if !( -e perfect_model_obs ) then
+   csh mkmf_perfect_model_obs
+   make || exit 3
+endif
+if !( -e filter ) then
+   csh mkmf_filter
+   make || exit 4
+endif
+\rm -f *.o *.d *.mod Makefile
 
 #======================================================================
 # Create common namelists -- lots of ways to do it.
@@ -75,14 +151,12 @@ end
 cat << ENDofTask00 > utilities.nml
 &utilities_nml
    logfilename = "create_obs_set_def.out",
-   TERMLEVEL = 1
-&end
+   TERMLEVEL = 1 /
 ENDofTask00
    
 cat << ENDofTask01 > assim_mod.nml
 &assim_model_nml
-   binary_restart_files = .false.
-&end
+   binary_restart_files = .false. /
 ENDofTask01
 
 cat << ENDofTask02 > model.nml
@@ -92,8 +166,7 @@ cat << ENDofTask02 > model.nml
    b      = 4.00,
    f      = 8.00,
    g      = 1.25,
-   deltat = 0.01
-&end
+   deltat = 0.01   /
 
 ENDofTask02
 
@@ -106,25 +179,20 @@ echo " "
 echo "Running create_obs_set_def ..."
 echo " "
 
-set obs_error_variance = 1.0
-if ( ${?ObsError} ) then
-   set obs_error_variance = $ObsError
-endif
 
-echo "set_def.out"        > create_obs_set_def.in
-echo "1       # of unique observation sets to define" >> create_obs_set_def.in
-echo "3       # of observations in set 1 (x,y,z)"     >> create_obs_set_def.in
-echo $obs_error_variance                              >> create_obs_set_def.in
-echo "1       1 == state variable 1 (X)"              >> create_obs_set_def.in
-echo $obs_error_variance                              >> create_obs_set_def.in
-echo "2       1 == state variable 1 (Y)"              >> create_obs_set_def.in
-echo $obs_error_variance                              >> create_obs_set_def.in
-echo "3       1 == state variable 1 (Z)"              >> create_obs_set_def.in
+echo "set_def.out"          > create_obs_set_def.in ;# output file name
+echo "1"                   >> create_obs_set_def.in ;# # of unique observation sets
+echo "3"                   >> create_obs_set_def.in ;# # of observations in set 1 (x,y,z)
+echo $obs_error_variance   >> create_obs_set_def.in ;# error variance for set 1, obs 1
+echo "1"                   >> create_obs_set_def.in ;# 1 == state variable 1 (X)
+echo $obs_error_variance   >> create_obs_set_def.in ;# error variance for set 1, obs 2
+echo "2"                   >> create_obs_set_def.in ;# 2 == state variable 2 (Y)
+echo $obs_error_variance   >> create_obs_set_def.in ;# error variance for set 1, obs 3
+echo "3"                   >> create_obs_set_def.in ;# 3 == state variable 3 (Z)
 
 echo '&utilities_nml'                                  > utilities.nml
 echo '   logfilename = "create_obs_set_def.out"'      >> utilities.nml
-echo '   TERMLEVEL = 1'                               >> utilities.nml
-echo '&end'                                           >> utilities.nml
+echo '   TERMLEVEL = 1   /'                           >> utilities.nml
 
 cat utilities.nml assim_mod.nml model.nml > input.nml
 
@@ -144,30 +212,17 @@ echo " "
 echo "Running create_obs_sequence ..."
 echo " "
 
-set num_obs = 1000
-set ob_day_1 = 0
-set ob_seconds_1 = 43200
-if ( ${?NumObs} ) then
-   set num_obs = $NumObs
-endif
-if ( ${?ObDay1} ) then
-   set ob_day_1 = $ObDay1
-endif
-if ( ${?ObSec1} ) then
-   set ob_seconds_1 = $ObSec1
-endif
 
-echo "set_def.out"            > create_obs_sequence.in
-echo "1"                     >> create_obs_sequence.in
-echo $num_obs                >> create_obs_sequence.in
-echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
-echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
-echo "obs_seq.in"            >> create_obs_sequence.in
+echo "set_def.out"            > create_obs_sequence.in ;# same filename as 'output' above
+echo "1"                     >> create_obs_sequence.in ;# make a "regular" sequence
+echo $num_obs                >> create_obs_sequence.in ;# number of observations in set 1
+echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in ;# time of first observation
+echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in ;# observation interval
+echo "obs_seq.in"            >> create_obs_sequence.in ;# output file name -- destined for perfect_model_obs
  
 echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "create_obs_sequence.out"' >> utilities.nml
-echo '   TERMLEVEL = 1'                           >> utilities.nml
-echo '&end'                                       >> utilities.nml
+echo '   TERMLEVEL = 1   /'                       >> utilities.nml
 
 cat utilities.nml assim_mod.nml model.nml > input.nml
 
@@ -200,14 +255,12 @@ cat << ENDofTask03 > perfect.nml
    restart_out_file_name = "perfect_restart",
    init_time_days = 0,
    init_time_seconds = 0,
-   output_interval = 1
-&end
+   output_interval = 1  /
 ENDofTask03
 
 echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
-echo '   TERMLEVEL = 1'                           >> utilities.nml
-echo '&end'                                       >> utilities.nml
+echo '   TERMLEVEL = 1  /'                        >> utilities.nml
 
 cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
 
@@ -235,9 +288,7 @@ echo "Running filter ..."
 echo " "
 
 set async = 0
-set ens_size = 20
-set cutoff = 22222222.0
-set cov_inflate = 1.00
+set ens_size = $NumEns
 set start_from_restart = .true.
 set output_restart = .true.
 set obs_sequence_file_name = '"obs_seq.out"'
@@ -247,24 +298,13 @@ set init_time_days = 0
 set init_time_seconds = 0
 set output_state_ens_mean = .true.
 set output_state_ens_spread = .true.
-set num_output_ens_members = 20
+set num_output_ens_members = $NumEns
 set output_interval = 1
 
-if ( ${?NumEns} ) then
-   set ens_size = $NumEns
-   set num_output_ens_members = $NumEns
-endif
-if ( ${?CovInflate} ) then
-   set cov_inflate = $CovInflate
-endif
-if ( ${?Cutoff} ) then
-   set cutoff = $Cutoff
-endif
 
 echo '&utilities_nml'                            > utilities.nml
 echo '   logfilename = "filter.out"'            >> utilities.nml
-echo '   TERMLEVEL = 1'                         >> utilities.nml
-echo '&end'                                     >> utilities.nml
+echo '   TERMLEVEL = 1   /'                     >> utilities.nml
 
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
@@ -282,8 +322,7 @@ echo "   init_time_seconds = $init_time_seconds ,"             >> filter.nml
 echo "   output_state_ens_mean = $output_state_ens_mean ,"     >> filter.nml
 echo "   output_state_ens_spread = $output_state_ens_spread ," >> filter.nml
 echo "   num_output_ens_members = $num_output_ens_members ,"   >> filter.nml
-echo "   output_interval = $output_interval "                  >> filter.nml
-echo "&end"                                                    >> filter.nml
+echo "   output_interval = $output_interval    /"              >> filter.nml
 echo " "                                                       >> filter.nml
 
 cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
@@ -298,15 +337,16 @@ else
    echo " "
    \rm -f create_obs_set_def.in create_obs_sequence.in 
    \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f set_def.out input.nml*default
 endif
 
 #======================================================================
 # Restore the existing namelists ...
 #======================================================================
 
-foreach NAMELIST ( ${SAVEME}/*.nml )
-   mv ${NAMELIST} .
-end
+\mv -f ${SAVEME}/*.nml .
+\mv -f ${SAVEME}/*default .
 \rmdir ${SAVEME}
+\rm -f nullnamelist$$.nml nullnamelist$$.nml_default
 
 exit
