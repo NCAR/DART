@@ -256,7 +256,8 @@ AdvanceTime : do
 !   end do
 
       call filter_assim(ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
-         num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit)
+         num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
+         obs_sequence_in_name)
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
