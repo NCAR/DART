@@ -338,7 +338,7 @@ integer,            intent(out) :: model_size, copies_of_field_per_time
 integer :: i
 
 init_diag_input = get_unit()
-open(unit = init_diag_input, fname = file_name)
+open(unit = init_diag_input, file = file_name)
 read(init_diag_input, *) global_meta_data
 
 ! Read the model size
