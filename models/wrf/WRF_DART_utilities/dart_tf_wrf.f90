@@ -11,10 +11,9 @@ PROGRAM dart_tf_wrf
 
 use        types_mod, only : r8
 use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR
-use netcdf
-use        model_mod, only : netcdf_read_write_var
-use wrf_data_module
+                             error_handler, E_ERR, E_MSG
+use  wrf_data_module, only : wrf_data
+use                          netcdf
 
 implicit none
 
@@ -39,15 +38,14 @@ logical :: dart_to_wrf
 type(wrf_data) :: wrf
 
 real(r8), pointer :: dart(:)
-integer       :: number_dart_values
-integer       :: seconds, days
+integer           :: number_dart_values
+integer           :: seconds, days
 
 !----
 !  misc stuff
 
-include 'netcdf.inc'
 logical, parameter :: debug = .true.
-integer :: mode, io, ierr
+integer :: mode, io, ierr,i,j,k
 
 !---
 !  begin
@@ -66,7 +64,17 @@ if(file_exist('input.nml')) then
 endif
 
 read(5,*) dart_to_wrf
-write(6,*) ' dart_to_wrf is : ',dart_to_wrf
+
+if ( dart_to_wrf ) then
+   call error_handler(E_MSG,'dart_to_wrf', &
+       'Converting a dart state vector to a WRF netcdf restart file', &
+       source, revision, revdate)
+else
+   call error_handler(E_MSG,'dart_to_wrf', &
+       'Converting a WRF netcdf restart file to a dart state vector', &
+       source, revision, revdate)
+endif
+
 
 if( (num_moist_vars >= 4).and.(num_moist_vars <= 6) ) then
    wrf%ice_micro = .true.
@@ -74,10 +82,11 @@ else
    wrf%ice_micro = .false.
 endif
 
-!  open wrf data file
+! open wrf data netcdf netCDF file 'wrfinput'
+! we get sizes of the WRF geometry and resolution
 
-mode = 0
-if( dart_to_wrf ) mode = NF_WRITE
+mode = NF90_NOWRITE                   ! read the netcdf file
+if( dart_to_wrf ) mode = NF90_WRITE   ! write to the netcdf file
 
 if(debug) write(6,*) ' wrf_open_and_alloc '
 call wrf_open_and_alloc( wrf, mode, debug )
@@ -92,11 +101,13 @@ call dart_open_and_alloc( wrf, dart, number_dart_values, &
      dart_unit, dart_to_wrf, debug  )
 if(debug) write(6,*) ' returned from dart_open_and_alloc '
 
-!---
+!----------------------------------------------------------------------
 !  get DART data or WRF data
 
 if(debug) write(6,*) ' state input '
+
 if( dart_to_wrf ) then
+
    call DART_IO( "INPUT ", dart, dart_unit, number_dart_values, &
         seconds, days, debug )
    iunit = get_unit()
@@ -104,8 +115,11 @@ if( dart_to_wrf ) then
    write (iunit,*) seconds
    write (iunit,*) days
    close(iunit)
+
 else
+
    call WRF_IO( wrf, "INPUT ", debug )
+
 end if
 if(debug) write(6,*) ' returned from state input '
 
@@ -122,6 +136,16 @@ if(debug) write(6,*) ' transfer complete '
 !---
 !  output 
 
+do k=1,wrf%bt
+   do j=1,wrf%sn
+      do i=1,wrf%we+1
+         if (wrf%u(i,j,k) < -90.0_r8) write(6,*) i,j,k,wrf%u(i,j,k)
+      enddo
+   enddo
+enddo
+write(6,*) 'wrf%u(1:20,1,1) = ',wrf%u(1:20,1,1)
+write(6,*) 'wrf%u(1:20,2,1) = ',wrf%u(1:20,2,1)
+
 if(debug) write(6,*) ' state output '
 if( dart_to_wrf ) then
    call WRF_IO( wrf, "OUTPUT", debug )
@@ -136,9 +160,13 @@ else
 end if
 if(debug) write(6,*) ' returned from state output '
 
-status = nf_close(wrf%ncid)
-if (status /= nf_noerr) call error_handler(E_ERR,'main', &
-     trim(nf_strerror(status)), source, revision, revdate)
+status = nf90_sync(wrf%ncid)
+if (status /= nf90_noerr) call error_handler(E_ERR,'main', &
+     trim(nf90_strerror(status)), source, revision, revdate)
+
+status = nf90_close(wrf%ncid)
+if (status /= nf90_noerr) call error_handler(E_ERR,'main', &
+     trim(nf90_strerror(status)), source, revision, revdate)
 
 contains
 
@@ -150,83 +178,143 @@ implicit none
 
 type(wrf_data) wrf
 character (len=6) :: in_or_out
-integer, dimension(5) :: map, count, start, stride
+integer, dimension(5) :: map, kount, start, stride
 integer :: k
 logical :: debug
 
 map = 1
 start = 1
 stride = 1
-count = 1
+kount = 1
 
-count(4) = 1
-count(3) = wrf%bt
-count(2) = wrf%sn
-count(1) = wrf%we+1
+!----------------------------------------------------------------------
+
+if (in_or_out  == "OUTPUT") then
+   call error_handler(E_MSG,'wrf_io','Writing to the WRF restart netCDF file.',source,revision,revdate)
+else
+   call error_handler(E_MSG,'wrf_io','Reading the WRF restart netCDF file.',source,revision,revdate)
+endif
+
+!----------------------------------------------------------------------
+! Reading or Writing the U variable. ignoring count, stride, map ...
+!----------------------------------------------------------------------
+
+kount(4) = 1
+kount(3) = wrf%bt
+kount(2) = wrf%sn
+kount(1) = wrf%we+1
 if(debug) write(6,*) ' calling netcdf read for u ', &
-     count(1), count(2), count(3), count(4)
-call netcdf_read_write_var( "U", wrf%ncid, wrf%u_id, wrf%u,    &
-     start, count, stride, map, in_or_out, debug, 4 )
+     kount(1), kount(2), kount(3), kount(4)
+
+if (in_or_out  == "OUTPUT") then
+   call check( nf90_put_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, 1 /)))
+else
+   call check( nf90_get_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, 1 /)))
+endif
+
 if(debug) write(6,*) ' returned from netcdf read for u '
 
-count(2) = wrf%sn+1
-count(1) = wrf%we
-if(debug) write(6,*) ' calling netcdf read for v '
-call netcdf_read_write_var( "V", wrf%ncid, wrf%v_id, wrf%v,    &
-     start, count, stride, map, in_or_out, debug, 4 )
+!----------------------------------------------------------------------
+! Reading or Writing the V variable. ignoring count, stride, map ...
+!----------------------------------------------------------------------
+
+kount(2) = wrf%sn+1
+kount(1) = wrf%we
+
+if (in_or_out  == "OUTPUT") then
+   call check( nf90_put_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, 1 /)))
+else
+   call check( nf90_get_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, 1 /)))
+endif
+
 if(debug) write(6,*) ' returned from netcdf read for v '
 
+!----------------------------------------------------------------------
+! Reading or Writing the W,PH,PHB variables. ignoring count, stride, map ...
+!----------------------------------------------------------------------
 
-count(3) = wrf%bt+1
-count(2) = wrf%sn
-count(1) = wrf%we
-if(debug) write(6,*) ' calling netcdf read for w '
-call netcdf_read_write_var( "W", wrf%ncid, wrf%w_id, wrf%w,    &
-     start, count, stride, map, in_or_out, debug, 4 )
-if(debug) write(6,*) ' returned from netcdf read for w '
-call netcdf_read_write_var( "PH", wrf%ncid, wrf%ph_id, wrf%ph,    &
-     start, count, stride, map, in_or_out, debug, 4 )
-if( in_or_out == "INPUT ")   &  ! get base state goepot. for full state computation
-     call netcdf_read_write_var( "PHB", wrf%ncid, wrf%phb_id, wrf%phb,    &
-     start, count, stride, map, in_or_out, debug, 4 )
+kount(3) = wrf%bt+1
+kount(2) = wrf%sn
+kount(1) = wrf%we
 
-count(3) = wrf%bt
-count(2) = wrf%sn
-count(1) = wrf%we
-call netcdf_read_write_var( "T", wrf%ncid, wrf%t_id, wrf%t,    &
-     start, count, stride, map, in_or_out, debug, 4 )
-call netcdf_read_write_var( "QVAPOR", wrf%ncid, wrf%qv_id, wrf%qv,    &
-     start, count, stride, map, in_or_out, debug, 4 )
-call netcdf_read_write_var( "QCLOUD", wrf%ncid, wrf%qc_id, wrf%qc,    &
-     start, count, stride, map, in_or_out, debug, 4 )
-call netcdf_read_write_var( "QRAIN", wrf%ncid, wrf%qr_id, wrf%qr,    &
-     start, count, stride, map, in_or_out, debug, 4 )
+if (in_or_out  == "OUTPUT") then
+   call check( nf90_put_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
+else
+   call check( nf90_get_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
+endif
 
+!----------------------------------------------------------------------
+! Reading or Writing the .... variables. ignoring count, stride, map ...
+!----------------------------------------------------------------------
 
+kount(3) = wrf%bt
+kount(2) = wrf%sn
+kount(1) = wrf%we
+
+if (in_or_out  == "OUTPUT") then
+   call check( nf90_put_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, 1 /)))
+else
+   call check( nf90_get_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_get_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, 1 /)))
+endif
+
+!----------------------------------------------------------------------
+! Reading or Writing the .... variables. ignoring count, stride, map ...
+!----------------------------------------------------------------------
 
 if(wrf%ice_micro) then
-   call netcdf_read_write_var( "QICE", wrf%ncid, wrf%qi_id, wrf%qi,    &
-        start, count, stride, map, in_or_out, debug, 4 )
-   call netcdf_read_write_var( "QSNOW", wrf%ncid, wrf%qs_id, wrf%qs,    &
-        start, count, stride, map, in_or_out, debug, 4 )
-   call netcdf_read_write_var( "QGRAP", wrf%ncid, wrf%qg_id, wrf%qg,    &
-        start, count, stride, map, in_or_out, debug, 4 )
+   if (in_or_out  == "OUTPUT") then
+      call check( nf90_put_var(wrf%ncid, wrf%qi_id, wrf%qi, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, 1 /)))
+   else
+      call check( nf90_get_var(wrf%ncid, wrf%qi_id, wrf%qi, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_get_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_get_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, 1 /)))
+   endif
 end if
 
-count(3) = 1
-count(2) = wrf%sn
-count(1) = wrf%we
-call netcdf_read_write_var( "MU", wrf%ncid, wrf%mu_id, wrf%mu,    &
-     start, count, stride, map, in_or_out, debug, 3 )
+!----------------------------------------------------------------------
+! Reading or Writing the .... variables. ignoring count, stride, map ...
+!----------------------------------------------------------------------
 
-if(debug) write(6,*) ' in_or_out is ',in_or_out
-if( in_or_out(1:5) == "INPUT")   then  ! get base state mu. for full state computation
+kount(3) = 1
+kount(2) = wrf%sn
+kount(1) = wrf%we
 
-   if(debug) write(6,*) ' reading mub '
-   call netcdf_read_write_var( "MUB", wrf%ncid, wrf%mub_id, wrf%mub,    &
-        start, count, stride, map, in_or_out, debug, 3 )
-   if(debug) write(6,*) ' returned from mub read '
+if (in_or_out  == "OUTPUT") then
+   call check( nf90_put_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
+else
+   call check( nf90_get_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
+endif
+
+!----------------------------------------------------------------------
+! Reading ....  get base state mu. for full state computation
+!----------------------------------------------------------------------
+
+if( in_or_out(1:5) == "INPUT")   then  
+
+   call check( nf90_get_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, 1 /)))
+
+   if(debug) then
+      write(6,*) ' returned from mub read '
+      write(6,*) ' corner vals for mub '
+      write(6,*) wrf%mub(1,1),wrf%mub(wrf%we,1),  &
+           wrf%mub(1,wrf%sn),wrf%mub(wrf%we,wrf%sn)
+   endif
+
 end if
+
+
 
 if(debug) then
    do k=1,wrf%bt
@@ -248,9 +336,6 @@ if(debug) then
    write(6,*) ' corner vals for mu '
    write(6,*) wrf%mu(1,1),wrf%mu(wrf%we,1),  &
         wrf%mu(1,wrf%sn),wrf%mu(wrf%we,wrf%sn)
-   write(6,*) ' corner vals for mub '
-   write(6,*) wrf%mub(1,1),wrf%mub(wrf%we,1),  &
-        wrf%mub(1,wrf%sn),wrf%mub(wrf%we,wrf%sn)
 end if
 
 end subroutine wrf_io
@@ -261,8 +346,6 @@ subroutine wrf_open_and_alloc( wrf, mode, debug )
 
 implicit none
 
-include 'netcdf.inc'
-
 integer            :: mode
 
 character (len=80) :: name
@@ -270,20 +353,21 @@ logical            :: debug
 
 type(wrf_data)     :: wrf
 
+integer :: i,bob,ndims, lngth, dimids(5)
 
-call check ( nf_open('wrfinput', mode, wrf%ncid) )
+call check ( nf90_open('wrfinput', mode, wrf%ncid) )
 if(debug) write(6,*) ' wrf%ncid is ',wrf%ncid
 
 ! get wrf grid dimensions
 
-call check ( nf_inq_dimid(wrf%ncid, "bottom_top", wrf%bt_id))
-call check ( nf_inq_dim(wrf%ncid, wrf%bt_id, name, wrf%bt))
+call check ( nf90_inq_dimid(wrf%ncid, "bottom_top", wrf%bt_id))
+call check ( nf90_inquire_dimension(wrf%ncid, wrf%bt_id, name, wrf%bt))
 
-call check ( nf_inq_dimid(wrf%ncid, "south_north", wrf%sn_id))
-call check ( nf_inq_dim(wrf%ncid, wrf%sn_id, name, wrf%sn))
+call check ( nf90_inq_dimid(wrf%ncid, "south_north", wrf%sn_id))
+call check ( nf90_inquire_dimension(wrf%ncid, wrf%sn_id, name, wrf%sn))
 
-call check ( nf_inq_dimid(wrf%ncid, "west_east", wrf%we_id))
-call check ( nf_inq_dim(wrf%ncid, wrf%we_id, name, wrf%we))
+call check ( nf90_inq_dimid(wrf%ncid, "west_east", wrf%we_id))
+call check ( nf90_inquire_dimension(wrf%ncid, wrf%we_id, name, wrf%we))
 
 write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 
@@ -291,64 +375,71 @@ write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 ! get wrf variable ids and allocate space for wrf variables
 
 
-call check ( nf_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id))
+call check ( nf90_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id))
 if(debug) write(6,*) ' ptop_id = ',wrf%ptop_id
 
-call check ( nf_inq_varid(wrf%ncid, "U", wrf%u_id))
+call check ( nf90_inq_varid(wrf%ncid, "U", wrf%u_id))
+
+!bob = nf90_inquire_variable(wrf%ncid, wrf%u_id, ndims=ndims, dimids=dimids)
+!do i = 1,ndims
+!   bob = nf90_inquire_dimension(WRF%ncid, dimids(i), len=lngth) 
+!   write(*,*)'dimension ',i,'is dimid ',dimids(i),' and has length ', lngth
+!enddo
+
 if(debug) write(6,*) ' u_id = ',wrf%u_id
 allocate(wrf%u(wrf%we+1,wrf%sn,wrf%bt))
 
-call check ( nf_inq_varid(wrf%ncid, "V", wrf%v_id))
+call check ( nf90_inq_varid(wrf%ncid, "V", wrf%v_id))
 if(debug) write(6,*) ' v_id = ',wrf%v_id
 allocate(wrf%v(wrf%we,wrf%sn+1,wrf%bt))
 
-call check ( nf_inq_varid(wrf%ncid, "W", wrf%w_id))
+call check ( nf90_inq_varid(wrf%ncid, "W", wrf%w_id))
 if(debug) write(6,*) ' w_id = ',wrf%w_id
 allocate(wrf%w(wrf%we,wrf%sn,wrf%bt+1))
 
-call check ( nf_inq_varid(wrf%ncid, "PH", wrf%ph_id))
+call check ( nf90_inq_varid(wrf%ncid, "PH", wrf%ph_id))
 if(debug) write(6,*) ' ph_id = ',wrf%ph_id
 allocate(wrf%ph(wrf%we,wrf%sn,wrf%bt+1))
 
-call check ( nf_inq_varid(wrf%ncid, "PHB", wrf%phb_id))
+call check ( nf90_inq_varid(wrf%ncid, "PHB", wrf%phb_id))
 if(debug) write(6,*) ' phb_id = ',wrf%phb_id
 allocate(wrf%phb(wrf%we,wrf%sn,wrf%bt+1))
 
-call check ( nf_inq_varid(wrf%ncid, "T", wrf%t_id))
+call check ( nf90_inq_varid(wrf%ncid, "T", wrf%t_id))
 if(debug) write(6,*) ' t_id = ',wrf%t_id
 allocate(wrf%t(wrf%we,wrf%sn,wrf%bt))
 
-call check ( nf_inq_varid(wrf%ncid, "MU", wrf%mu_id))
+call check ( nf90_inq_varid(wrf%ncid, "MU", wrf%mu_id))
 if(debug) write(6,*) ' mu_id = ',wrf%mu_id
 allocate(wrf%mu(wrf%we,wrf%sn))
 
-call check ( nf_inq_varid(wrf%ncid, "MUB", wrf%mub_id))
+call check ( nf90_inq_varid(wrf%ncid, "MUB", wrf%mub_id))
 if(debug) write(6,*) ' mub_id = ',wrf%mub_id
 allocate(wrf%mub(wrf%we,wrf%sn))
 
-call check ( nf_inq_varid(wrf%ncid, "QVAPOR", wrf%qv_id))
+call check ( nf90_inq_varid(wrf%ncid, "QVAPOR", wrf%qv_id))
 if(debug) write(6,*) ' qv_id = ',wrf%qv_id
 allocate(wrf%qv(wrf%we,wrf%sn,wrf%bt))
 
-call check ( nf_inq_varid(wrf%ncid, "QCLOUD", wrf%qc_id))
+call check ( nf90_inq_varid(wrf%ncid, "QCLOUD", wrf%qc_id))
 if(debug) write(6,*) ' qc_id = ',wrf%qc_id
 allocate(wrf%qc(wrf%we,wrf%sn,wrf%bt))
 
-call check ( nf_inq_varid(wrf%ncid, "QRAIN", wrf%qr_id))
+call check ( nf90_inq_varid(wrf%ncid, "QRAIN", wrf%qr_id))
 if(debug) write(6,*) ' qr_id = ',wrf%qr_id
 allocate(wrf%qr(wrf%we,wrf%sn,wrf%bt))
 
 if (wrf%ice_micro) then
 
-   call check ( nf_inq_varid(wrf%ncid, "QICE", wrf%qi_id))
+   call check ( nf90_inq_varid(wrf%ncid, "QICE", wrf%qi_id))
    if(debug) write(6,*) ' qi_id = ',wrf%qi_id
    allocate(wrf%qi(wrf%we,wrf%sn,wrf%bt))
 
-   call check ( nf_inq_varid(wrf%ncid, "QSNOW", wrf%qs_id))
+   call check ( nf90_inq_varid(wrf%ncid, "QSNOW", wrf%qs_id))
    if(debug) write(6,*) ' qs_id = ',wrf%qs_id
    allocate(wrf%qs(wrf%we,wrf%sn,wrf%bt))
 
-   call check ( nf_inq_varid(wrf%ncid, "QGRAUPEL", wrf%qg_id))
+   call check ( nf90_inq_varid(wrf%ncid, "QGRAUPEL", wrf%qg_id))
    if(debug) write(6,*) ' qg_id = ',wrf%qg_id
    allocate(wrf%qg(wrf%we,wrf%sn,wrf%bt))
 
@@ -359,14 +450,11 @@ end subroutine wrf_open_and_alloc
 
 !*****************************************************************************
 
-! Internal subroutine - checks error status after each netcdf, prints 
-!                       text message each time an error code is returned. 
 subroutine check(istatus)
-  integer, intent ( in) :: istatus 
-  if(istatus /= nf_noerr) call error_handler(E_ERR,'wrf_open_and_alloc', &
-       trim(nf_strerror(istatus)), source, revision, revdate) 
+     integer, intent ( in) :: istatus 
+     if(istatus /= nf90_noerr) call error_handler(E_ERR,'wrf_open_and_alloc', &
+       trim(nf90_strerror(istatus)), source, revision, revdate) 
 end subroutine check
-
 
 !*****************************************************************************
 
@@ -396,7 +484,7 @@ integer               :: n_values
 
 logical  :: binary_restart_files = .false.
 
-namelist /assim_nml/ binary_restart_files
+namelist /assim_model_nml/ binary_restart_files
 !-------------------------------------------------------------
 
 ! Read the namelist input
@@ -404,15 +492,15 @@ if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(iunit, nml = assim_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'assim_nml')
+      read(iunit, nml = assim_model_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'assim_model_nml')
    enddo
  11 continue
    call close_file(iunit)
 endif
 
 ! namelist validation
-write(*, *) 'assim_nml read; values are'
+write(*, *) 'assim_model_nml read; values are'
 write(*, *) 'binary_restart_files is ', binary_restart_files
 
 ! compute number of values in 1D vector
@@ -487,7 +575,6 @@ integer               :: n_values
 
 if(debug) then
    write(6,*)' in dart_io '
-   write(6,*)' seconds, days = ', seconds, days
    write(6,*)' number of values ', n_values
    write(6,*)' mode ',in_or_out
 end if
@@ -534,6 +621,9 @@ n_values = 0
 in = n_values+1
 call trans_3d( dart_to_wrf, dart(in:),wrf%u,wrf%we+1,wrf%sn,wrf%bt)
 n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we+1)  ! u field
+
+write(6,*) 'transfer_dart_wrf',wrf%u(1:20,1,1)
+write(6,*) 'transfer_dart_wrf',wrf%u(1:20,2,1)
 
 in = n_values+1
 call trans_3d( dart_to_wrf, dart(in:),wrf%v,wrf%we,wrf%sn+1,wrf%bt)
@@ -607,7 +697,20 @@ logical  :: one_to_two
 
 !---
 
-integer i,j
+integer :: i,j,m
+character(len=129) :: errstring
+
+i=size(a2d,1)
+j=size(a2d,2)
+m=size(a1d)
+
+if ( i /= nx .or. &
+     j /= ny .or. &
+     m < nx*ny) then
+   write(errstring,*)'nx, ny, not compatible ',i,j,nx,ny
+   call error_handler(E_ERR,'trans_2d',errstring,source,revision,revdate)
+endif
+
 
 if (one_to_two) then
 
@@ -637,12 +740,26 @@ implicit none
 
 integer  :: nx,ny,nz
 real(r8) :: a1d(:)
-real(r8) :: a3d(nx,ny,nz)
-logical  ::  one_to_three
+real(r8) :: a3d(:,:,:)
+logical  :: one_to_three
 
 !---
 
-integer i,j,k
+integer :: i,j,k,m
+character(len=129) :: errstring
+
+i=size(a3d,1)
+j=size(a3d,2)
+k=size(a3d,3)
+m=size(a1d)
+
+if ( i /= nx .or. &
+     j /= ny .or. &
+     k /= nz .or. &
+     m < nx*ny*nz) then
+   write(errstring,*)'nx, ny, nz, not compatible ',i,j,k,nx,ny,nz
+   call error_handler(E_ERR,'trans_3d',errstring,source,revision,revdate)
+endif
 
 if (one_to_three) then
 
