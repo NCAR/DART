@@ -41,8 +41,8 @@
    write_binary_obs_sequence = .true.  /
 
 &assim_model_nml
-   read_binary_restart_files = .true.,
-   write_binary_restart_files = .true. /
+   read_binary_restart_files = .false.,
+   write_binary_restart_files = .false. /
 
 &location_nml
    horiz_dist_only = .true.,

@@ -1,13 +1,13 @@
 &rose_nml
    ntime  = 8
    output_prog_diag = .false.
-   input_dir = '../DAinput/'
-   out_dir = '../DAoutput/' 
+   input_dir = '/DART/models/rose/DAinput/'
+   out_dir = '/DART/models/rose/DAoutput/' 
    ncep_file = 'nmc_lbc.02.nc'
-   restart_file = 'NMC_SOC.day151_2002.dat'
-   old_restart = .true.
-   nstart = 0
+   restart_file = 'rose_restart.dat'
    h_tune = 3.141592654
    z_tune = 1.0
+   old_restart = .true.
+   nstart = 0
    target_time = 168. /
 

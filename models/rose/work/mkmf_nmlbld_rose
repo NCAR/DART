@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p nmlbld_rose -t ../../../mkmf/mkmf.template \
+-c "-Duse_netCDF" -a "../../.." path_names_nmlbld_rose
