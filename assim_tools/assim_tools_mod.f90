@@ -35,7 +35,7 @@ public read_restart, write_restart, assim_tools_init, &
    obs_increment7, obs_increment8, obs_increment9, obs_increment10, &
    obs_increment11, obs_increment12, obs_increment13, obs_increment14, &
    obs_increment15, obs_increment16, obs_increment17, obs_increment18, &
-   obs_increment_group, &
+   obs_increment_group, obs_increment_particle, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
@@ -161,35 +161,91 @@ integer, intent(in) :: ens_size
 real(r8), intent(in) :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
-real(r8):: prior_cov, sx, s_x2
+real(r8) :: a, prior_mean, new_mean, prior_var, new_var, sum_x
 
-integer :: i
+! Compute prior variance and mean from sample
+sum_x = sum(ens)
+prior_mean = sum_x / ens_size
+prior_var = (sum(ens * ens) - sum_x**2 / ens_size) / (ens_size - 1)
 
-! Compute mt_rinv_y (obs error normalized by variance)
-obs_var_inv = 1.0 / obs_var
+new_var = 1.0 / (1.0 / prior_var + 1.0 / obs_var)
+new_mean = new_var * (prior_mean / prior_var + obs / obs_var)
 
-! Compute prior covariance and mean from sample
-sx = sum(ens)
-s_x2 = sum(ens * ens)
-prior_mean = sx / ens_size
-prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
-
-! TEMPORARY LOOK AT INFLATING HERE; see notes from 12 Sept. 2001
-!!!cov = cov * 1.01 OR prior_cov = prior_cov * 1.01
-
-prior_cov_inv = 1.0 / prior_cov
-new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
-
-new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
-
-a = sqrt(new_cov * prior_cov_inv)
-!!!write(*, *) 'a in base is ', a
+a = sqrt(new_var / prior_var)
 
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment
+
+
+subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
+!------------------------------------------------------------------------
+!
+! A observation space only particle filter implementation for a
+! two step sequential update filter. Second version, 2 October, 2003.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
+real(r8) :: base, frac, new_val(ens_size), weight_sum
+integer :: i, j, index(ens_size), ens_index(ens_size), new_index(ens_size)
+
+! Begin by computing a weight for each of the prior ensemble members
+do i = 1, ens_size
+   weight(i) = exp(-1.0 * (ens(i) - obs)**2 / (2.0 * obs_var))
+end do
+
+! Compute relative weight for each ensemble member
+weight_sum = sum(weight)
+do i = 1, ens_size
+   rel_weight(i) = weight(i) / weight_sum
+end do
+
+! Compute cumulative weights at boundaries
+cum_weight(0) = 0
+do i = 1, ens_size
+   cum_weight(i) = cum_weight(i - 1) + rel_weight(i)
+!   write(*, 131) i, weight(i), rel_weight(i), cum_weight(i)
+131 format(1x, i3, 3(e10.4, 1x))
+end do
+! Fix up for round-off error if any
+cum_weight(ens_size) = 1.0
+
+! Do a deterministic implementation: just divide interval into ens_size parts and see
+! which interval this is in (careful to offset; not start at 0)
+base = 1.0 / (ens_size * 2.0)
+do i = 1, ens_size
+   frac = base + (i - 1.0) / ens_size
+! Now search in the cumulative range to see where this frac falls
+! Can make this search more efficient by limiting base
+   do j = 1, ens_size
+      if(cum_weight(j - 1) < frac .and. frac < cum_weight(j)) then
+         index(i) = j
+!         write(*, *) i, frac, 'gets index ', j
+         goto 111
+      end if
+   end do
+111 continue
+end do
+
+! Set the new values for the ensemble members
+do i = 1, ens_size
+   new_val(i) = ens(index(i))
+!   write(*, *) 'new_val ', i, new_val(i)
+end do
+
+! Try sorting to make increments as small as possible
+call index_sort(ens, ens_index, ens_size)
+call index_sort(new_val, new_index, ens_size)
+do i = 1, ens_size
+   obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
+end do
+
+end subroutine obs_increment_particle
 
 
 
@@ -949,8 +1005,10 @@ real(r8) :: a, obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean
 real(r8):: prior_cov, sx, s_x2
 real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
-real(r8) :: factor
+real(r8) :: factor, b, c
 real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
+
+real(r8), parameter :: threshold = 1.0
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0 / obs_var
@@ -972,11 +1030,20 @@ diff_sd = sqrt(obs_var + prior_cov)
 ratio = abs(error / diff_sd)
 
 ! Only modify if the ratio exceeds the threshold value
-if(ratio > 1.0 .and. slope > 0.0) then
-   factor = 1.0 + (ratio - 1.0) * slope
+if(ratio > threshold .and. slope > 0.0) then
+   b = (1.0 / slope) ** (1.0 / (slope - 1.0))
+   c = -1.0 * b**slope
+   factor = ratio / ((ratio - threshold + b)**slope + c + threshold)
+!!!   factor = ratio / (0.5 + (ratio - 0.75)**0.5)
+
+
+!!!   factor = 1.0 + (ratio - 1.0)**0.2 * slope
 else 
    factor = 1.0
 endif
+
+!!!if(factor > 1.0) write(*, 11) ratio, factor, ratio/factor
+!!!11 format(1x, 'ratio, factor, adj ', 3(e10.4, 1x))
 
 ! Can now inflate by this ratio and then do adjustment
 inf_obs_var = factor**2 * obs_var
@@ -2384,7 +2451,8 @@ prior_mean = sx / n
 prior_var = (s_x2 - sx**2 / n) / (n - 1)
 
 ! Variance of difference between obs and mean should be sum of variances
-sq_err = (obs - prior_mean)**2
+!!!sq_err = (obs - prior_mean)**2
+sq_err = sum((obs - ens)**2) / n
 tot_var = obs_var + prior_var
 var_ratio = sq_err / tot_var
 
