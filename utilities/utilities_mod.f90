@@ -27,12 +27,17 @@ module utilities_mod
 !                       a unit number.  If the file is already open
 !                       the unit number is returned.
 !
+!      close_file       Closes the given unit_number. If the file is 
+!                       already closed, nothing happens.
+!
 !      print_version_number    Prints out a routine name and
 !                              version number to a specified unit
 !
 !-----------------------------------------------------------------------
 
 implicit none
+
+private
 
 !   ---- private data for check_nml_error ----
 
@@ -43,6 +48,9 @@ implicit none
 integer, parameter :: E_MSG = 0, E_WARN = 1, E_ERR = 2
 integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
 
+public file_exist, get_unit, error_mesg, check_nml_error, open_file, &
+       close_file, print_version_number, output_err, &
+       E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL 
 
 contains
 
@@ -319,15 +327,34 @@ end subroutine nml_error_init
 
 !#######################################################################
 
+
+
 subroutine close_file(unit)
+!-----------------------------------------------------------------------
+!
+! Closes the given unit_number. If the file is already closed, 
+! nothing happens. Pretty dramatic, eh?
+!
 
 integer, intent(in) :: unit
 
-close(unit)
+integer :: ios
+logical :: open
+
+inquire (unit=unit, opened=open, iostat=ios)
+if ( ios /= 0 ) then
+   print *,'Dagnabbit. Cannot inquire about unit # ',unit
+   print *,'Error status was ',ios
+   print *,'Hoping for the best and continuing.'
+endif
+
+if (open) close(unit)
 
 end subroutine close_file
 
-!#######################################################################
-
+!
+!=======================================================================
+! End of utilities_mod
+!=======================================================================
+!
 end module utilities_mod
-
