@@ -24,7 +24,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, get_num_qc, &
-   get_num_copies
+   get_num_copies, read_obs_seq_header
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
 
@@ -56,6 +56,7 @@ type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle
 
 integer                 :: i, j, iunit
+integer                 :: cnum_copies, cnun_qc, cnum_obs, cnum_max, additional_copies
 
 type(netcdf_file_type)  :: StateUnit
 integer                 :: ierr, io, istatus, num_obs_in_set
@@ -123,14 +124,22 @@ write(     *     , nml=perfect_model_obs_nml)
 ! Initialize the two obs type variables
 call init_obs(obs, 0, 0)
 
+! Find out how many data copies are in the obs_sequence 
+call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnun_qc, cnum_obs, cnum_max)
+
+! First two copies of output will be truth and observation;
+! Will overwrite first two existing copies in file if there are any
+additional_copies = 2 - cnum_copies
+if(additional_copies < 0) additional_copies = 0
+
 ! Just read in the definition part of the obs sequence; expand to include observation and truth field
-call read_obs_seq(obs_seq_in_file_name, 2, 0, 0, seq)
+call read_obs_seq(obs_seq_in_file_name, additional_copies, 0, 0, seq)
 
 ! Want to have error exit if input file has any obs values in it
-if(get_num_copies(seq) /= 2) then
-   write(msgstring, *) 'Input obs_sequence file should not have any copies of data associated with it'
-   call error_handler(E_ERR, 'perfect_model_obs', msgstring, source, revision, revdate)
-endif
+!if(get_num_copies(seq) /= 2) then
+!   write(msgstring, *) 'Input obs_sequence file should not have any copies of data associated with it'
+!   call error_handler(E_ERR, 'perfect_model_obs', msgstring, source, revision, revdate)
+!endif
 
 ! Need space to put in the obs_values in the sequence;
 copy_meta_data(1) = 'observations'
@@ -192,6 +201,9 @@ AdvanceTime: do
 ! How many observations in this set
    write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
    call error_handler(E_DBG,'perfect_model_obs',msgstring,source,revision,revdate)
+
+write(73, 77) ens
+77 format(3(f10.6, 1x))
 
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs_in_set
