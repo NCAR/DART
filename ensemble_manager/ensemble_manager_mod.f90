@@ -617,10 +617,12 @@ if(mean_allocated) deallocate(ens_mean)
 if(spread_allocated) deallocate(ens_spread)
 
 ! LETS GET RID OF ALL THE TEMP FILES, TOO!
-command_string = 'rm -f ' // trim(ens_file_name) // '.*'
-call system(command_string)
-command_string = 'rm -f ' // trim(reg_file_name) // '.*'
-call system(command_string)
+if(.not. in_core) then
+   command_string = 'rm -f ' // trim(ens_file_name) // '.*'
+   call system(command_string)
+   command_string = 'rm -f ' // trim(reg_file_name) // '.*'
+   call system(command_string)
+endif
 
 end subroutine end_ensemble_manager
 
