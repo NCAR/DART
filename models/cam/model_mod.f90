@@ -23,6 +23,9 @@ module model_mod
 ! author: Kevin Raeder 2/14/03  and 8/1/03
 !         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
 !
+! modified: Tim Hoar 02 Sep 03 
+!         nc_write_model_atts, nc_write_model_vars now write out "prognostic"
+!         files instead of a nondescript state variable vector glom
 !----------------------------------------------------------------------
 
 use netcdf
@@ -77,7 +80,7 @@ end type model_type
 ! output_state_vector = .true.     results in a "state-vector" netCDF file
 ! output_state_vector = .false.    results in a "prognostic-var" netCDF file
                                                                                                
-logical :: output_state_vector = .true.  ! output state-vector 
+logical :: output_state_vector = .false.  ! output state-vector 
                                                                                                
 namelist /model_nml/ output_state_vector
 
@@ -105,11 +108,15 @@ integer, parameter :: n2dflds=1     ! # of 2d fields to read from file
 integer, parameter :: n3tflds  = n3dflds+pcnst+pnats   ! # fields to read
 integer, parameter :: nflds  = n3tflds+n2dflds         ! # fields to read
 
-! Arrays to store lat and lon indices
-real(r8), allocatable :: lons(:), lats(:)
+! Arrays to store lats, lons, and gaussian weights
+real(r8), allocatable :: lons(:), lats(:), gw(:)
 
 !coef hybrid coeffs at interfaces and mid-levels
 real(r8), allocatable :: hyai(:), hybi(:), hyam(:), hybm(:)
+
+!reference pressure for pressure calculations using hybrid coeff 
+! should be read from same file as hybrid coeffs?
+real(r8):: P0               ! reference pressure
 
 ! list variables according to the category to which they belong, 
 ! in the order the categories appear above (n3dflds,pcnst,pnats,n2dflds).
@@ -147,7 +154,7 @@ character(len = *), intent(in) :: file_name
 integer, intent(out) :: num_lons, num_lats, num_levs
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
-integer :: londimid, levdimid, latdimid, ncfileid
+integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
 
 write(*, *) 'file_name in read_cam_init is ', trim(file_name)
 
@@ -197,6 +204,10 @@ call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid)
 !call check(nf90_inquire_dimension(ncfileid, latdimid, clat , plat ))
 !call check(nf90_inquire_dimension(ncfileid, levdimid, clev , plev ))
 
+! Get the Gaussian Weights
+! call check(nf90_inq_varid(ncfileid, 'gw', ncfldid))
+! call check(nf90_get_var(ncfileid, ncfldid, gw))
+
 !!! ??? I'm not sure what this next part is really doing, verify
 ! specify # vertical levels for 3D fields (2d have already been filled)
 !i=1
@@ -232,34 +243,64 @@ end do
 end subroutine read_cam_init
 
 !#######################################################################
-subroutine read_cam_coef(var, levs, cfield)
+subroutine read_cam_coord(var, dim, cfield)
 
 ! should be called with cfield = one of :
-!          (/'hyai    ','hybi    ','hyam    ','hybm    '/)
+!          (/'lat     ','lon     ','gw      ','P0      '
+!           ,'hyai    ','hybi    ','hyam    ','hybm    '/)
 
 implicit none
 
 !----------------------------------------------------------------------
 ! Local workspace
-integer :: i,j,ifld             ! grid indices
-integer :: ncfileid, ncfldid, levs
+integer :: i,ifld             ! grid indices
+integer :: ncfileid, ncfldid, dim
 
 !----------------------------------------------------------------------
-real(r8), dimension(levs), intent(out) :: var
+real(r8), dimension(dim), intent(out) :: var
 character (len=8), intent(in)  :: cfield 
 
 ! read CAM 'initial' file domain info
-call check(nf90_open(path = trim(model_config_file), mode = nf90_write, &
+call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
            ncid = ncfileid))
 
 ! read CAM 'initial' file field desired
-
 call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid))
+call check(nf90_get_var(ncfileid, ncfldid, var ,start=(/1/) ,count=(/dim/) ))
 PRINT*,'reading ',cfield,' using id ',ncfldid
-call check(nf90_get_var(ncfileid, ncfldid, var ,start=(/1/) ,count=(/levs/) ))
-WRITE(*,*) (var(i),i=1,levs)
+WRITE(*,*) (var(i),i=1,dim)
 
-end subroutine read_cam_coef
+end subroutine read_cam_coord
+
+
+
+subroutine read_cam_scalar (var, cfield)
+!
+! should be called with cfield = one of :
+!          (/'P0      '/)
+
+implicit none
+
+real(r8), intent(out) :: var
+character (len=8), intent(in)  :: cfield 
+
+!----------------------------------------------------------------------
+! Local workspace
+integer :: ncfileid, ncfldid
+
+! read CAM 'initial' file domain info
+call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
+           ncid = ncfileid))
+
+! read CAM 'initial' file field desired
+call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid))
+call check(nf90_get_var(ncfileid, ncfldid, var  ))
+PRINT*,'reading ',cfield,' using id ',ncfldid
+WRITE(*,*) var
+
+end subroutine read_cam_scalar
+
+
 
 !#######################################################################
 ! #include <misc.h>
@@ -306,7 +347,7 @@ integer , intent(in)  :: ncold              ! Declared longitude dimension
 !real(r8), intent(in) :: hybi(nver+1)        ! hybrid Bs at interface levels
 !real(r8), intent(in) :: hyam(nver)          ! hybrid As at layer mid points
 !real(r8), intent(in) :: hybm(nver)          ! hybrid Bs at layer mid points
-real(r8), parameter  :: ps0 = 1.0E+05       ! reference pressure
+!real(r8), parameter  :: P0 = 1.0E+05       ! reference pressure
 ! end coef
 real(r8), intent(in)  :: ps(ncold)          ! Surface pressure (pascals)
 real(r8), intent(out) :: pint(ncold,num_levs+1) ! Pressure at model interfaces
@@ -322,7 +363,7 @@ real(r8), intent(out) :: pint(ncold,num_levs+1) ! Pressure at model interfaces
 !
 do k=1,num_levs+1
    do i=1,ncol
-      pint(i,k) = hyai(k)*ps0 + hybi(k)*ps(i)
+      pint(i,k) = hyai(k)*P0 + hybi(k)*ps(i)
    end do
 end do
 !
@@ -331,7 +372,7 @@ end do
 ! coef
 !do k=1,num_levs
 !   do i=1,ncol
-!      pmid(i,k) = hyam(k)*ps0 + hybm(k)*ps(i)
+!      pmid(i,k) = hyam(k)*P0 + hybm(k)*ps(i)
 !      pdel(i,k) = pint(i,k+1) - pint(i,k)
 !   end do
 !end do
@@ -468,6 +509,7 @@ integer, intent ( in) :: status
 
 if (status /= nf90_noerr) then
    print *, trim(nf90_strerror(status))
+   stop
 end if
 
 return
@@ -538,24 +580,21 @@ model_size = num_lons * num_lats * (n2dflds + num_levs * &
    (n3dflds + pcnst + pnats))
 
 ! Allocate space for longitude and latitude global arrays
-allocate(lons(num_lons), lats(num_lats))
+allocate(lons(num_lons), lats(num_lats), gw(num_lats))
 ! Allocate space for hybrid vertical coord coef arrays
 allocate(hyai(num_levs+1), hybi(num_levs+1), hyam(num_levs), hybm(num_levs))
 
-! Need values for lons and lats, too; should come from netcdf file in read_cam_init_size
-do i = 1, num_lons
-   lons(i) = 360.0 * (i - 1.0) / num_lons
-end do
-
-do i = 1, num_lats
-   lats(i) = -90.0 + 180.0 * (i - 0.5) / num_lats
-end do
+! values for num_lons and num_lats should come from netcdf file in read_cam_init_size
+call read_cam_coord(lons, num_lons, 'lon     ')
+call read_cam_coord(lats, num_lats, 'lat     ')
+call read_cam_coord(gw  , num_lats, 'gw      ')
 
 ! read hybrid vert coord coefs
-call read_cam_coef(hyai, num_levs+1, 'hyai    ')
-call read_cam_coef(hybi, num_levs+1, 'hybi    ')
-call read_cam_coef(hyam, num_levs  , 'hyam    ')
-call read_cam_coef(hybm, num_levs  , 'hybm    ')
+call read_cam_coord(hyai, num_levs+1, 'hyai    ')
+call read_cam_coord(hybi, num_levs+1, 'hybi    ')
+call read_cam_coord(hyam, num_levs  , 'hyam    ')
+call read_cam_coord(hybm, num_levs  , 'hybm    ')
+call read_cam_scalar(P0, 'P0      ')    ! thats a p-zero
 
 write(*, *) 'CAM size initialized as ', model_size
 
@@ -1250,7 +1289,9 @@ end subroutine lon_search
 !#######################################################################
 
 function nc_write_model_atts( ncFileID ) result (ierr)
-
+! Writes the model-specific attributes to a netCDF file.
+! TJH Fri Aug 29 MDT 2003
+!
 use typeSizes
 use netcdf
 implicit none
@@ -1261,8 +1302,11 @@ integer              :: ierr          ! return value of function
 !-----------------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: IDimID, JDimID, levDimID, MemberDimID, StateVarDimID, TimeDimID
-integer :: IVarID, JVarID, levVarID, StateVarID, StateVarVarID
+integer :: lonDimID, latDimID, ilevDimID, ScalarDimID, TracerDimID
+integer :: MemberDimID, StateVarDimID, TimeDimID
+integer :: lonVarID, latVarID, ilevVarID, hyaiVarID, hybiVarID, P0VarID, gwVarID
+integer :: psVarID, TVarID, UVarID, VVarID, QVarID, ifld
+integer :: TracerVarID, StateVarID, StateVarVarID
 integer :: i
 
 ierr = 0     ! assume normal termination
@@ -1306,84 +1350,187 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
 
 ! how about namelist input? might be nice to save ...
 
+
+
 !-------------------------------------------------------------------------------
 ! Define the new dimensions IDs
 !-------------------------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="I",   len = num_lons,   dimid =   IDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="J",   len = num_lats,   dimid =   JDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="lev", len = num_levs,   dimid = levDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lat",  len = num_lats,   dimid = latDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lon",  len = num_lons,   dimid = lonDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="ilev", len = num_levs+1, dimid = ilevDimID))
+if ( num_tracers > 0 ) then
+call check(nf90_def_dim(ncid=ncFileID, name="tracers",len = num_tracers, dimid = TracerDimID))
+endif
 
 !-------------------------------------------------------------------------------
-! Create the (empty) Variables and the Attributes
+! Create the (empty) Coordinate Variables and their attributes
 !-------------------------------------------------------------------------------
 
-! Temperature Grid Longitudes
-call check(nf90_def_var(ncFileID, name="I", xtype=nf90_double, &
-                                               dimids=IDimID, varid=IVarID) )
-call check(nf90_put_att(ncFileID, IVarID, "long_name", "longitude"))
-call check(nf90_put_att(ncFileID, IVarID, "units", "degrees_east"))
-call check(nf90_put_att(ncFileID, IVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
+! Grid Longitudes
+call check(nf90_def_var(ncFileID, name="lon", xtype=nf90_double, &
+                                               dimids=lonDimID, varid=lonVarID) )
+call check(nf90_put_att(ncFileID, lonVarID, "long_name", "longitude"))
+call check(nf90_put_att(ncFileID, lonVarID, "units", "degrees_east"))
+call check(nf90_put_att(ncFileID, lonVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
 
-! Temperature Grid Latitudes
-call check(nf90_def_var(ncFileID, name="J", xtype=nf90_double, &
-                                               dimids=JDimID, varid=JVarID) )
-call check(nf90_put_att(ncFileID, JVarID, "long_name", "latitude"))
-call check(nf90_put_att(ncFileID, JVarID, "units", "degrees_north"))
-call check(nf90_put_att(ncFileID, JVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
+! Grid Latitudes
+call check(nf90_def_var(ncFileID, name="lat", xtype=nf90_double, &
+                                               dimids=latDimID, varid=latVarID) )
+call check(nf90_put_att(ncFileID, latVarID, "long_name", "latitude"))
+call check(nf90_put_att(ncFileID, latVarID, "units", "degrees_north"))
+call check(nf90_put_att(ncFileID, latVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
 
-! (Common) grid levels
-call check(nf90_def_var(ncFileID, name="level", xtype=nf90_int, &
-                                                dimids=levDimID, varid=levVarID) )
-call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"))
+! Hybrid grid levels
+call check(nf90_def_var(ncFileID, name="ilev", xtype=nf90_double, &
+                                                dimids=ilevDimID, varid=ilevVarID) )
+call check(nf90_put_att(ncFileID, ilevVarID, "long_name", "hybrid level at interfaces (1000*(A+B))"))
+call check(nf90_put_att(ncFileID, ilevVarID, "units", "level"))
+call check(nf90_put_att(ncFileID, ilevVarID, "positive", "down"))
+call check(nf90_put_att(ncFileID, ilevVarID, "standard_name", "atmosphere_hybrid_sigma_pressure_coordinate"))
+call check(nf90_put_att(ncFileID, ilevVarID, "formula_terms", "a: hyai b: hybi P0: P0 ps: PS"))
+
+! Hybrid grid level coefficients, parameters
+call check(nf90_def_var(ncFileID, name="hyai", xtype=nf90_double, &
+                                                dimids=ilevDimID, varid=hyaiVarID) )
+call check(nf90_put_att(ncFileID, hyaiVarID, "long_name", "hybrid A coefficient at layer interfaces" ))
+
+call check(nf90_def_var(ncFileID, name="hybi", xtype=nf90_double, &
+                                                dimids=ilevDimID, varid=hybiVarID) )
+call check(nf90_put_att(ncFileID, hybiVarID, "long_name", "hybrid B coefficient at layer interfaces"))
+call check(nf90_def_var(ncFileID, name="P0", xtype=nf90_double, &
+                                                dimids=ScalarDimID, varid=P0VarID) )
+call check(nf90_put_att(ncFileID, P0VarID, "long_name", "reference pressure"))
+call check(nf90_put_att(ncFileID, P0VarID, "units", "Pa"))
+
+! Gaussian weights -- because they're there.
+call check(nf90_def_var(ncFileID, name="gw", xtype=nf90_double, &
+                                                dimids=latDimID, varid=gwVarID) )
+call check(nf90_put_att(ncFileID, gwVarID, "long_name", "gauss weights"))
 
 ! Number of Tracers
-! call check(nf90_def_var(ncFileID, name="tracer", xtype=nf90_int, &
-!                                                  dimids=tracerDimID, varid=tracerVarID) )
-! call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"))
-! write (*,*)'tracerVarID determined'
+if ( num_tracers > 0 ) then
+   call check(nf90_def_var(ncFileID, name="tracer", xtype=nf90_int, &
+                                                  dimids=TracerDimID, varid=tracerVarID) )
+   call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"))
+endif
 
 if ( output_state_vector ) then
    !----------------------------------------------------------------------------
    ! Create attributes for the state vector
    !----------------------------------------------------------------------------
-                                                                                               
-  ! Define the state vector coordinate variable
+
+   ! Define the state vector coordinate variable
    call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
               dimids=StateVarDimID, varid=StateVarVarID))
    call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
    call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
    call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
-                                                                                               
+
    ! Define the actual state vector
    call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
               dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID))
    call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
    call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","CAM"))
 
-   ! Leave define mode so we can fill                                                          
-   call check(nf90_enddef(ncfileID))                                                           
-                                                                                               
-   ! Fill the state variable coordinate variable                                               
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))                
-                                                                                               
+   ! Leave define mode so we can fill 
+   call check(nf90_enddef(ncfileID))
+
+   ! Fill the state variable coordinate variable
+   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
+
 else
 
-   write(*,*)'ERROR:CAM:model_mod:    trying to output the prognostic variables.'
-   write(*,*)'      That is not implemented yet.'
-   write(*,*)'      TJH 27 June 2003'
-   stop
+!  write(*,*)'ERROR:CAM:model_mod:    trying to output the prognostic variables.'
+!  write(*,*)'      That is not implemented yet.'
+!  write(*,*)'      TJH 27 June 2003'
+!  stop
+
+   !----------------------------------------------------------------------------
+   ! We need to process the prognostic variables.
+   ! I like the CAM philosophy of using nflds to declare the number of prognostic
+   ! variables and an array of characters to specify them. This is clearly
+   ! the way it must be for models with "lots"/variable numbers of params. 
+   ! 
+   ! I'd like to see the metadata handled the same way.
+   !----------------------------------------------------------------------------
+   ! repeated for reference
+   !
+   !character (len=8),dimension(nflds) :: cflds = &
+   !       (/'PS      ','T       ','U       ','V       ','Q       ' /)
+   !
+   ! cflds(1) ... PS ... (lon,     lat,time)
+   ! cflds(2) ... T  ... (lon,ilev,lat,time)
+   ! cflds(3) ... U  ... (lon,ilev,lat,time)
+   ! cflds(4) ... V  ... (lon,ilev,lat,time)
+   ! cflds(5) ... Q  ... (lon,ilev,lat,time)
+
+   !----------------------------------------------------------------------------
+   ! Create the (empty) Variables and the Attributes
+   !----------------------------------------------------------------------------
+
+   ! PS ... ifld == 1 of nflds
+   ifld = 1
+   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+              dimids = (/ lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+              varid  = psVarID))
+   call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"))
+   call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"))
+   call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"))
+
+   ! T ... ifld == 2 of nflds
+   ifld = 2
+   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
+         varid  = TVarID))
+   call check(nf90_put_att(ncFileID, TVarID, "long_name", "Temperature"))
+   call check(nf90_put_att(ncFileID, TVarID, "units", "K"))
+
+! kdr these ilevDimIDs were levDimIDs in TJH code
+   ! U ... ifld == 3 of nflds
+   ifld = 3
+   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
+         varid  = UVarID))
+   call check(nf90_put_att(ncFileID, UVarID, "long_name", "Zonal Wind"))
+   call check(nf90_put_att(ncFileID, UVarID, "units", "m/s"))
+
+   ! V ... ifld == 4 of nflds
+   ifld = 4
+   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
+         varid  = VVarID))
+   call check(nf90_put_att(ncFileID, VVarID, "long_name", "Meridional Wind"))
+   call check(nf90_put_att(ncFileID, VVarID, "units", "m/s"))
+
+   ! Q ... ifld == 5 of nflds
+   ifld = 5
+   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
+         varid  = QVarID))
+   call check(nf90_put_att(ncFileID, QVarID, "long_name", "Specific Humidity"))
+   call check(nf90_put_att(ncFileID, QVarID, "units", "kg/kg"))
+
+   ! Leave define mode so we can fill 
+   call check(nf90_enddef(ncfileID))
 
 endif
 
 !-------------------------------------------------------------------------------
-! Fill the variables
+! Fill the coordinate variables
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID,      IVarID, lons ))
-call check(nf90_put_var(ncFileID,      JVarID, lats ))
-call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   num_levs) /) ))
-! call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ))
+call check(nf90_put_var(ncFileID,  ilevVarID, (/ (i,i=1, num_levs+1) /) ))
+call check(nf90_put_var(ncFileID,   latVarID, lats ))
+call check(nf90_put_var(ncFileID,   lonVarID, lons ))
+call check(nf90_put_var(ncFileID,  hyaiVarID, hyai ))
+call check(nf90_put_var(ncFileID,  hybiVarID, hybi ))
+call check(nf90_put_var(ncFileID,    gwVarID,   gw ))
+call check(nf90_put_var(ncFileID,    P0VarID,   P0 ))
+if ( num_tracers > 0 ) then
+   call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,num_tracers) /) ))
+endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -1441,37 +1588,18 @@ integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
 !-----------------------------------------------------------------------------------------
-real, dimension(SIZE(statevec)) :: x
-! type(prog_var_type) :: Var
+! real, dimension(SIZE(statevec)) :: x     CAM is r8, no need to make a r4 copy ...
+type(model_type) :: Var
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID, psVarID, tVarID, rVarID, uVarID, vVarID
-integer :: tis, tie, tjs, tje       ! temperature grid start/stop
-integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
-integer :: kub, klb
-integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
+integer :: StateVarID, ncfldid
+integer :: ifld
 
 ierr = 0     ! assume normal termination
 
-
 !-------------------------------------------------------------------------------
-! Get the bounds for storage on Temp and Velocity grids
-! Everything in here is from the bgrid ... don't have a clue for CAM ... yet.
+! CAM storage bounds are 'tight' -- no indices needed
 !-------------------------------------------------------------------------------
-
-! tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
-! tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
-! vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
-! vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
-! kub = Var_dt%kub
-! klb = Var_dt%klb
-
-nTmpI   = tie - tis + 1
-nTmpJ   = tje - tjs + 1
-! nlev    = Var_dt%kub - Var_dt%klb + 1
-! ntracer = Var_dt%ntrace 
-nVelI   = vie - vis + 1
-nVelJ   = vje - vjs + 1
 
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -1488,44 +1616,43 @@ if ( output_state_vector ) then
 
 else
 
-   write(*,*)'FATAL ERROR: CAM:nc_write_model_vars  is not operational.'
-   write(*,*)'   you should not be here ...'
-   write(*,*)'model_nml: output_state_vector  MUST be .true.    for now.'
-   write(*,*)'TJH ... 27 June 2003'
-   stop
+!  write(*,*)'FATAL ERROR: CAM:nc_write_model_vars  is not operational.'
+!  write(*,*)'   you should not be here ...'
+!  write(*,*)'model_nml: output_state_vector  MUST be .true.    for now.'
+!  write(*,*)'TJH ... 27 June 2003'
+!  stop
    
    !----------------------------------------------------------------------------
    ! Fill the variables
    !----------------------------------------------------------------------------
 
- ! x = statevec ! Unfortunately, have to explicity cast it ...
-                ! the filter uses a type=double,
-                ! the vector_to_prog_var function expects a single.
- !  call vector_to_prog_var(x, get_model_size(), Var)
+   call init_model_instance(Var)     ! NEED to check for MEMORY LEAK
+                                     ! EXPLICITLY DESTRUCT ????
+                                     ! COMPILER RELEASES AT END OF ROUTINE ????
+
+! kdr no size needed   call vector_to_prog_var(statevec, get_model_size(), Var)
+   call vector_to_prog_var(statevec,  Var)
    
+   TwoDVars : do ifld = 1, 1    ! PS always first? of one?
    
- ! call check(NF90_inq_varid(ncFileID, "ps", psVarID))
- ! call check(nf90_put_var( ncFileID, psVarID, Var%ps(tis:tie, tjs:tje), &
- !                          start=(/ 1, 1, copyindex, timeindex /) ))
+!   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+   call check(nf90_put_var( ncFileID, ncfldid, Var%vars_2d(:,:,1), &
+             start=(/ 1, 1, copyindex, timeindex /), count=(/num_lons, num_lats, 1, 1/) ))
+   enddo TwoDVars
 
- ! call check(NF90_inq_varid(ncFileID,  "t",  tVarID))
- ! call check(nf90_put_var( ncFileID,  tVarID, Var%t( tis:tie, tjs:tje, klb:kub ), &
- !                          start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   ThreeDVars : do ifld = 2,5
+   call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+   call check(nf90_put_var( ncFileID, ncfldid, Var%vars_3d(:,:,:,ifld-1), &
+        start=(/ 1,1,1,copyindex,timeindex /), count=(/num_lons,num_levs,num_lats,1,1/) ))
+   enddo ThreeDVars
 
- ! call check(NF90_inq_varid(ncFileID,  "u",  uVarID))
- ! call check(nf90_put_var( ncFileID,  uVarId, Var%u( vis:vie, vjs:vje, klb:kub ), &
- !                          start=(/ 1, 1, 1, copyindex, timeindex /) ))
-
- ! call check(NF90_inq_varid(ncFileID,  "v",  vVarID))
- ! call check(nf90_put_var( ncFileID,  vVarId, Var%v( vis:vie, vjs:vje, klb:kub ), &
- !                          start=(/ 1, 1, 1, copyindex, timeindex /) ))
-
- ! if ( ntracer > 0 ) then
- !    call check(NF90_inq_varid(ncFileID,  "r",  rVarID))
- !    call check(nf90_put_var( ncFileID,  rVarID, &
- !                  Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
- !                 start=(/   1,       1,       1,     1,    copyindex, timeindex /) ))
- ! endif
+   if ( num_tracers > 0 ) then
+      call check(NF90_inq_varid(ncFileID,  "tracers",  ncfldid))
+      call check(nf90_put_var( ncFileID,  ncfldid, Var%tracers(:,:,:,:), & 
+           start=(/ 1,1,1,1,copyindex,timeindex /), &
+           count=(/ num_lons, num_levs, num_lats, num_tracers,1,1/) ))
+   endif
 endif
 
 !-------------------------------------------------------------------------------
