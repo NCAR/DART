@@ -6,6 +6,7 @@ implicit none
 
 integer :: num_sets, level, obs_kind, num, num_done
 real :: err_var, bot_lat, top_lat, bot_lon, top_lon, lat, lon
+real, parameter :: pi = 3.14159
 type(random_seq_type) :: r
 
 ! Initialize the random sequence
@@ -32,7 +33,7 @@ write(*, *) 'input a lower bound on latitude -90 to 90'
 read(*, *) bot_lat
 write(*, *) 'input an upper bound on latitude -90 to 90'
 read(*, *) top_lat
-write(*, *) 'input a lower bound on longitude '
+write(*, *) 'input a lower bound on longitude: no wraparounds for now '
 read(*, *) bot_lon
 write(*, *) 'input an upper bound on longitude '
 read(*, *) top_lon
@@ -46,18 +47,28 @@ endif
 num_done = 0
 do while(num_done < num)
 ! Find a lat/lon pair in the box
-   lat = bot_lat + random_uniform(r) * (top_lat - bot_lat)
-   lon = bot_lon + random_uniform(r) * (top_lon - bot_lon)
-   write(*, *) lat, lon
+   ! Longitude is random from 0 to 360
+   lon = random_uniform(r) * 360.0
+
+   ! Latitude must be area weighted
+   lat = asin(random_uniform(r) * 2.0 - 1.0)
+   ! Now convert from radians to degrees latitude
+   lat = lat * 360.0 / (2.0 * pi)
+
+! Now see if this is in the box
+   if(lat >= bot_lat .and. lat <= top_lat .and. &
+      lon > bot_lon .and. lon <= top_lon) then
+      write(*, *) lat, lon
 
 ! Found one, output it
-   num_done = num_done + 1
-   write(20, *) err_var
-   write(20, *) -1
-   write(20, *) level
-   write(20, *) lon
-   write(20, *) lat
-   write(20, *) obs_kind
+      num_done = num_done + 1
+      write(20, *) err_var
+      write(20, *) -1
+      write(20, *) level
+      write(20, *) lon
+      write(20, *) lat
+      write(20, *) obs_kind
+   endif
 
 end do
 
