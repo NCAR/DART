@@ -641,7 +641,7 @@ end subroutine copy_assim_model
 
 
 
-subroutine advance_state(assim_model, num, target_time, asynch)
+subroutine advance_state(assim_model, num, target_time, asynch, adv_ens_command)
 !-----------------------------------------------------------------------
 !
 ! Advances the model extended state until time is equal (within roundoff?)
@@ -658,6 +658,7 @@ integer,                intent(in)    :: num
 type(assim_model_type), intent(inout) :: assim_model(num)
 type(time_type),        intent(in)    :: target_time
 integer,                intent(in)    :: asynch
+character (len=129),    intent(in)    :: adv_ens_command                                                  
 
 type(time_type) :: model_time(num)
 real(r8) :: model_state(num, size(assim_model(1)%state_vector))
@@ -669,7 +670,7 @@ do i = 1, num
    model_state(i, :) = assim_model(i)%state_vector
 end do
 
-call Aadvance_state(model_time, model_state, num, target_time, asynch)
+call Aadvance_state(model_time, model_state, num, target_time, asynch, adv_ens_command)
 
 ! Now put the times and states that are updated back into their storage
 do i = 1, num
@@ -682,7 +683,7 @@ end subroutine advance_state
 
 
 
-subroutine Aadvance_state(model_time, model_state, num, target_time, asynch)
+subroutine Aadvance_state(model_time, model_state, num, target_time, asynch, adv_ens_command)
 !-----------------------------------------------------------------------
 !
 ! Advances the model extended state until time is equal (within roundoff?)
@@ -691,11 +692,12 @@ subroutine Aadvance_state(model_time, model_state, num, target_time, asynch)
 
 implicit none
 
-integer,         intent(in)    :: num
-type(time_type), intent(inout) :: model_time(num)
-real(r8),        intent(inout) :: model_state(:, :)
-type(time_type), intent(in)    :: target_time
-integer,         intent(in)    :: asynch
+integer,            intent(in)    :: num
+type(time_type),    intent(inout) :: model_time(num)
+real(r8),           intent(inout) :: model_state(:, :)
+type(time_type),    intent(in)    :: target_time
+integer,            intent(in)    :: asynch
+character(len=129), intent(in)    :: adv_ens_command                                                      
 
 type(time_type) :: time_step
 
@@ -848,7 +850,17 @@ if(asynch /= 0) then
 
    elseif(asynch == 2) then
 
-      call system('./sync_filter.csh ; sleep 1')
+!      call system('./sync_filter.csh ; sleep 1')
+      call system('echo go > batchflag; '//adv_ens_command//' ; sleep 1')
+
+      do
+         if(file_exist('batchflag')) then
+            call system ('sleep 10')
+         else
+!            call system ('echo "All_done:Please_proceed"')
+            exit
+         endif
+      end do
 
    else
 
@@ -878,7 +890,7 @@ end subroutine Aadvance_state
 
 
 
-function interpolate(x, location, loctype)
+subroutine interpolate(x, location, loctype, obs_vals, istatus, rstatus)
 !---------------------------------------------------------------------
 !
 ! Interpolates from the state vector in an assim_model_type to the
@@ -891,14 +903,22 @@ function interpolate(x, location, loctype)
 
 implicit none
 
-real(r8) :: interpolate
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: loctype
+real(r8),           intent(out) :: obs_vals
+integer,  optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
-interpolate = model_interpolate(x, location, loctype)
+if(present(rstatus)) then
+   call model_interpolate(x, location, loctype, obs_vals, istatus, rstatus)
+elseif(present(istatus)) then
+   call model_interpolate(x, location, loctype, obs_vals, istatus)
+else
+   call model_interpolate(x, location, loctype, obs_vals)
+endif
 
-end function interpolate
+end subroutine interpolate
 
 
 

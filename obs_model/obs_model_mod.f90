@@ -10,15 +10,15 @@ module obs_model_mod
 ! $Date$
 ! $Author$
 
-use       types_mod, only : r8
-use   utilities_mod, only : register_module
-use    location_mod, only : location_type, interactive_location
-use assim_model_mod, only : interpolate, &
-                            am_get_close_states => get_close_states
-use    obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
+use       types_mod,  only : r8
+use   utilities_mod,  only : register_module
+use    location_mod,  only : location_type, interactive_location
+use assim_model_mod,  only : interpolate, &
+                             am_get_close_states => get_close_states
+use    obs_kind_mod,  only : obs_kind_type, interactive_kind, get_obs_kind
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
-   get_obs_def, init_obs, destroy_obs
-use obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_kind
+                             get_obs_def, init_obs, destroy_obs
+use obs_def_mod,      only : obs_def_type, get_obs_def_location, get_obs_def_kind
 
 
 implicit none
@@ -50,25 +50,33 @@ end subroutine initialize_module
 
 
 
-function take_obs(state_vector, location, obs_kind)
+subroutine take_obs(state_vector, location, obs_kind, obs_vals, istatus, rstatus)
 !--------------------------------------------------------------------
 !
 
 implicit none
 
-real(r8) :: take_obs
-real(r8), intent(in) :: state_vector(:)
+real(r8),            intent(in) :: state_vector(:)
 type(location_type), intent(in) :: location
 type(obs_kind_type), intent(in) :: obs_kind
+real(r8),           intent(out) :: obs_vals
+integer,  optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
 
-take_obs = interpolate(state_vector, location, get_obs_kind(obs_kind))
+if(present(rstatus)) then
+   call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus, rstatus)
+elseif(present(istatus)) then
+   call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus)
+else
+   call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals)
+endif
 
-end function take_obs
+end subroutine take_obs
 
 
 
@@ -93,21 +101,23 @@ call interactive_kind(obs_kind)
 end subroutine interactive_def
 
 
-subroutine get_expected_obs(seq, keys, state, obs_vals)
+subroutine get_expected_obs(seq, keys, state, obs_vals, istatus, rstatus)
 !---------------------------------------------------------------------------
 ! Compute forward operator for set of obs in sequence
 
 type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: keys(:)
-real(r8), intent(in) :: state(:)
-real(r8), intent(out) :: obs_vals(:)
+integer,                 intent(in) :: keys(:)
+real(r8),                intent(in) :: state(:)
+real(r8),               intent(out) :: obs_vals(:)
+integer,  optional,     intent(out) :: istatus
+real(r8), optional,     intent(out) :: rstatus(:,:)
 
-integer :: num_obs, i
+integer             :: num_obs, i
 type(location_type) :: location
 type(obs_kind_type) :: obs_kind
-type(obs_type) :: obs
-type(obs_def_type) :: obs_def
-integer :: obs_kind_ind
+type(obs_type)      :: obs
+type(obs_def_type)  :: obs_def
+integer             :: obs_kind_ind
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -126,9 +136,16 @@ do i = 1, num_obs
    obs_kind_ind = get_obs_kind(obs_kind)
    if(obs_kind_ind < 0) then
       obs_vals(i) = state(-1 * obs_kind_ind)
+      if(present(rstatus)) rstatus(i,1) = 0.0_r8
    else
 ! Otherwise do forward operator
-      obs_vals(i) = take_obs(state, location, obs_kind)
+      if(present(rstatus)) then
+         call take_obs(state, location, obs_kind, obs_vals(i), istatus, rstatus(i,1))
+      elseif(present(istatus)) then
+         call take_obs(state, location, obs_kind, obs_vals(i), istatus)
+      else
+         call take_obs(state, location, obs_kind, obs_vals(i))
+      endif
    endif
 end do
 

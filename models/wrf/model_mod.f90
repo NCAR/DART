@@ -43,8 +43,8 @@ public     get_model_size,                    &
            static_init_model,                 &
            netcdf_read_write_var,             &
            model_get_close_states,            &
-           get_wrf_date, set_wrf_date,          &
-           output_wrf_time, &
+           get_wrf_date, set_wrf_date,        &
+           output_wrf_time,                   &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
            TYPE_QV, TYPE_QC, TYPE_QR,         &
@@ -533,12 +533,12 @@ subroutine netcdf_read_write_char( variable, ncid, var_id, var,          &
 ! variable with a conformable variable -- no possibility for 
 ! us to write a subset of the domain.
 
-integer :: ncid, var_id, ndims
+integer                            :: ncid, var_id, ndims
 character(len=1), dimension(ndims) :: var
-character (len=6) :: in_or_out
-integer, dimension(ndims) :: start, kount, stride, map
-character (len=*) :: variable
-logical :: debug
+character (len=6)                  :: in_or_out
+integer, dimension(ndims)          :: start, kount, stride, map
+character (len=*)                  :: variable
+logical                            :: debug
 character (len=129) :: error_string
 
 if(debug) write(6,*) ' var for io is ',variable
@@ -556,7 +556,7 @@ else if( in_or_out(1:6) == "OUTPUT" ) then
 else
 
   write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
-  call error_handler(E_ERR,'netcdf_read_write_var', &
+  call error_handler(E_ERR,'netcdf_read_write_char', &
        error_string, source, revision,revdate)
 
 end if
@@ -566,7 +566,7 @@ contains
   !                       text message each time an error code is returned. 
   subroutine check(istatus)
     integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_var', &
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_char', &
        trim(nf90_strerror(istatus)), source, revision, revdate)
   end subroutine check
 end subroutine netcdf_read_write_char
@@ -583,13 +583,13 @@ subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
 ! variable with a conformable variable -- no possibility for 
 ! us to write a subset of the domain.
 
-integer :: ncid, var_id, ndims
+integer                    :: ncid, var_id, ndims
 real(r8), dimension(ndims) :: var
-character (len=6) :: in_or_out
-integer, dimension(ndims) :: start, kount, stride, map
-character (len=*) :: variable
-logical :: debug
-character (len=129) :: error_string
+character (len=6)          :: in_or_out
+integer, dimension(ndims)  :: start, kount, stride, map
+character (len=*)          :: variable
+logical                    :: debug
+character (len=129)        :: error_string
 
 if(debug) write(6,*) ' var for io is ',variable
 call check(  nf90_inq_varid(ncid, variable, var_id) )
@@ -789,20 +789,23 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-function model_interpolate(x, location, obs_kind)
-!!!function model_interpolate(x, lon, lat, level, type)
+subroutine model_interpolate(x, location, obs_kind, obs_val, istatus, rstatus)
 
-logical, parameter :: debug = .false.  
-real(r8) :: model_interpolate
-real(r8), intent(in) :: x(:)
+logical, parameter              :: debug = .false.  
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: obs_kind
-real(r8)            :: xloc, yloc, zloc, xyz_loc(3)
-integer             :: i, j, k, i1,i2,i3
-real(r8)            :: dx,dy,dxm,dym
-real(r8), dimension (wrf%bt)   :: v_h, v_p
-real(r8), dimension (wrf%bt  ) :: fld
-real(r8)                       :: p1,p2,p3,p4,a1
+integer,             intent(in) :: obs_kind
+real(r8),           intent(out) :: obs_val
+integer,  optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
+real(r8)                        :: xloc, yloc, zloc, xyz_loc(3)
+integer                         :: i, j, k, i1,i2,i3
+real(r8)                        :: dx,dy,dxm,dym
+real(r8), dimension (wrf%bt)    :: v_h, v_p
+real(r8), dimension (wrf%bt)    :: fld
+real(r8)                        :: p1,p2,p3,p4,a1
+
+if(present(rstatus)) rstatus = 0.0_r8
 
 xyz_loc(:) = get_location(location)
 call llxy(xyz_loc(1),xyz_loc(2),xloc,yloc)
@@ -813,81 +816,85 @@ call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_p,p1,p2,p3,p4)
 !  get model height profile
 call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_h)
 
-  if(nint(query_location(location,'which_vert')) == 1) then
+if(nint(query_location(location,'which_vert')) == 1) then
 
 !  If obs is by level
-     zloc = xyz_loc(3)
-     if(debug) print*,' obs is by location and zloc =',zloc
-  else if(nint(query_location(location,'which_vert')) == 2) then
-     ! get pressure vertical co-ordinate
-     call to_zk(xyz_loc(3), v_p, wrf%bt, v_interp_p,zloc) 
-     if(debug.and.obs_kind /=3) print*,' obs is by pressure and zloc =',zloc
-!     print*,'model pressure profile'
-!     print*,v_p
-  else if(nint(query_location(location,'which_vert')) == 3) then
-     ! get height vertical co-ordinate
-     call to_zk(xyz_loc(3), v_h, wrf%bt, v_interp_h,zloc) 
-     if(debug) print*,' obs is by height and zloc =',zloc
-  else if(nint(query_location(location,'which_vert')) == -1) then
-     ! get height vertical co-ordinate
-     if(debug) print*,' obs is surface pressure   = ', xyz_loc(3)
-  else
-     call error_handler(E_ERR,'model_interpolate', 'wrong option for which_vert', source, &
-          revision, revdate)
+   zloc = xyz_loc(3)
+   if(debug) print*,' obs is by location and zloc =',zloc
+else if(nint(query_location(location,'which_vert')) == 2) then
+   ! get pressure vertical co-ordinate
+   call to_zk(xyz_loc(3), v_p, wrf%bt, v_interp_p,zloc)
+   if(debug.and.obs_kind /=3) print*,' obs is by pressure and zloc =',zloc
+   if(debug) print*,'model pressure profile'
+   if(debug) print*,v_p
+else if(nint(query_location(location,'which_vert')) == 3) then
+   ! get height vertical co-ordinate
+   call to_zk(xyz_loc(3), v_h, wrf%bt, v_interp_h,zloc)
+   if(debug) print*,' obs is by height and zloc =',zloc
+else if(nint(query_location(location,'which_vert')) == -1) then
+   ! get height vertical co-ordinate
+   if(debug) print*,' obs is surface pressure   = ', xyz_loc(3)
+else
+   call error_handler(E_ERR,'model_interpolate', 'wrong option for which_vert', source, &
+        revision, revdate)
 
-  end if
+end if
 ! Get the desired field to be interpolated
- if( obs_kind == 1 ) then                 ! U
-  do k=1,wrf%bt
-     i1 = get_wrf_index(i,j,k,TYPE_U)   
-     i2 = get_wrf_index(i,j+1,k,TYPE_U)   
-    
-     fld(k) = dym*(dxm*(x(i1) + x(i1+1))*.5 + dx*(x(i1+1)+x(i1+2))*0.5) + &
-               dy*(dxm*(x(i2) + x(i2+1))*.5 + dx*(x(i2+1)+x(i2+2))*0.5)     
-!     if(debug) print*,k,' model u profile ',fld(k)
-  end do 
- else if( obs_kind == 2) then                 ! V
-  do k=1,wrf%bt
-     i1 = get_wrf_index(i,j,k,TYPE_V) 
-     i2 = get_wrf_index(i,j+1,k,TYPE_V) 
-     i3 = get_wrf_index(i,j+2,k,TYPE_V) 
-!
-     fld(k) = dym*(dxm*(x(i1) + x(i2))*.5 + dx*(x(i1+1)+x(i2+1))*0.5) + &
-               dy*(dxm*(x(i2) + x(i3))*.5 + dx*(x(i2+1)+x(i3+1))*0.5)     
-     if(debug) print*,k,' model v profile ',fld(k)
-  end do 
- else if( obs_kind == 4 ) then                ! T  
-  do k=1,wrf%bt
-     i1 = get_wrf_index(i,j,k,TYPE_T) 
-     i2 = get_wrf_index(i,j+1,k,TYPE_T) 
-     a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-     fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
-     if(debug) print*,k,' model temp profile ',fld(k)
-  end do 
- else if( obs_kind == 5) then                ! Q
-  do k=1,wrf%bt
+if( obs_kind == 1 ) then                 ! U
+   do k=1,wrf%bt
+      i1 = get_wrf_index(i,j,k,TYPE_U)
+      i2 = get_wrf_index(i,j+1,k,TYPE_U)
 
-     i1 = get_wrf_index(i,j,k,TYPE_QV)   
-     i2 = get_wrf_index(i,j+1,k,TYPE_QV)   
-     a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-     fld(k) = a1 /(1.0 + a1)      
-     if(debug) print*,k,' model q profile ',fld(k)
-  end do 
+      fld(k) = dym*(dxm*(x(i1) + x(i1+1))*.5 + dx*(x(i1+1)+x(i1+2))*0.5) + &
+                dy*(dxm*(x(i2) + x(i2+1))*.5 + dx*(x(i2+1)+x(i2+2))*0.5)
+      if(debug) print*,k,' model u profile ',fld(k)
+   end do
+else if( obs_kind == 2) then                 ! V
+   do k=1,wrf%bt
+      i1 = get_wrf_index(i,j,k,TYPE_V)
+      i2 = get_wrf_index(i,j+1,k,TYPE_V) 
+      i3 = get_wrf_index(i,j+2,k,TYPE_V)
+
+      fld(k) = dym*(dxm*(x(i1) + x(i2))*.5 + dx*(x(i1+1)+x(i2+1))*0.5) + &
+                dy*(dxm*(x(i2) + x(i3))*.5 + dx*(x(i2+1)+x(i3+1))*0.5)
+      if(debug) print*,k,' model v profile ',fld(k)
+   end do
+else if( obs_kind == 4 ) then                ! T
+   do k=1,wrf%bt
+      i1 = get_wrf_index(i,j,k,TYPE_T)
+      i2 = get_wrf_index(i,j+1,k,TYPE_T)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
+      if(debug) print*,k,' model temp profile ',fld(k)
+   end do
+else if( obs_kind == 5) then                ! Q
+   do k=1,wrf%bt
+
+      i1 = get_wrf_index(i,j,k,TYPE_QV)
+      i2 = get_wrf_index(i,j+1,k,TYPE_QV)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      fld(k) = a1 /(1.0 + a1)
+      if(debug) print*,k,' model q profile ',fld(k)
+   end do
 ! Do 1D interpolation
- else if( obs_kind == 3)then
-!  surfacce pressure
-  model_interpolate = wrf%p_top                                  +&
-                     dym*(dxm*wrf%mub(i,j)+dx*wrf%mub(i+1,j))    +&
-                     dy *(dxm*wrf%mub(i,j+1)+dx*wrf%mub(i+1,j+1))+&
-                     dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
-  if(debug) print*,' for sfc model val =',model_interpolate
- else
-  call error_handler(E_ERR,'model_interpolate', 'wrong obs kind', source, revision, revdate)
- end if
-  if(obs_kind /= 3) call Interp_lin_1D(fld, wrf%bt, zloc, model_interpolate)
-if(debug) print*,' interpolated value= ',model_interpolate
+else if( obs_kind == 3)then
+!  surface pressure
+   obs_val = wrf%p_top                             +&
+        dym*(dxm*wrf%mub(i,j)+dx*wrf%mub(i+1,j))    +&
+        dy *(dxm*wrf%mub(i,j+1)+dx*wrf%mub(i+1,j+1))+&
+        dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
+   if(debug) print*,' for sfc model val =',obs_val
+else
+   call error_handler(E_ERR,'model_interpolate', 'wrong obs kind', source, revision, revdate)
+end if
 
-end function model_interpolate
+if(obs_kind /= 3) call Interp_lin_1D(fld, wrf%bt, zloc, obs_val)
+
+if(obs_val == missing_r .and. present(rstatus)) rstatus = 1.0_r8
+
+if(debug) print*,' interpolated value= ',obs_val
+
+end subroutine model_interpolate
 
 !#######################################################################
 
@@ -2493,7 +2500,7 @@ implicit none
 
 integer, intent(out) :: year, month, day, hour, minute, second
 
-integer :: i
+integer                             :: i
 character(len=size(wrf%timestring)) :: tstring
 
 do i = 1, len(tstring)
@@ -2519,7 +2526,7 @@ implicit none
 
 integer, intent(in) :: year, month, day, hour, minute, second
 
-integer :: i
+integer          :: i
 character(len=4) :: ch_year
 character(len=2) :: ch_month, ch_day, ch_hour, ch_minute, ch_second
 
@@ -2557,9 +2564,9 @@ implicit none
 ! tags file wrfinput with a new time
 
 
-integer              :: mode, ncid, var_id
+integer               :: mode, ncid, var_id
 integer, dimension(5) :: kount, start, stride, map
-integer :: status 
+
 logical :: debug = .false.
 
 mode = NF90_WRITE

@@ -21,7 +21,7 @@ use time_manager_mod, only : time_type, set_time, print_time, operator(/=), oper
 
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
-   get_time_range_keys, get_obs_def, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
+   get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
@@ -34,7 +34,7 @@ use assim_model_mod, only  : assim_model_type, static_init_assim_model, get_mode
    get_closest_state_time_to, advance_state, set_model_time, &
    get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
    read_state_restart, write_state_restart, binary_restart_files
-use random_seq_mod, only  : random_seq_type, init_random_seq, random_gaussian
+use random_seq_mod,  only  : random_seq_type, init_random_seq, random_gaussian
 
 use netcdf, only : NF90_close
 
@@ -52,15 +52,15 @@ type(obs_def_type)      :: obs_def
 type(time_type)         :: time1, time2, next_time
 type(random_seq_type)   :: random_seq
 
-integer :: i, j, iunit, unit_out
-integer :: ierr, state_unit, StateUnit, io
-integer :: model_size, key_bounds(2), num_obs
-integer, allocatable :: keys(:)
-logical :: is_there_one, out_of_range, is_this_last
-real(r8) :: true_obs(1), obs_value(1)
+integer                 :: i, j, iunit
+integer                 :: ierr, StateUnit, io, istatus
+integer                 :: model_size, key_bounds(2), num_obs
+integer, allocatable    :: keys(:)
+logical                 :: is_there_one, out_of_range, is_this_last
+real(r8)                :: true_obs(1), obs_value(1), rstatus(1,1)
 
-type(assim_model_type) :: x(1)
-character(len=129) :: copy_meta_data(2), file_name
+type(assim_model_type)  :: x(1)
+character(len=129)      :: copy_meta_data(2)
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -70,12 +70,22 @@ integer :: async = 0
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1
-character(len = 129) :: restart_in_file_name = 'perfect_ics', &
+character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
-                        obs_seq_in_file_name = 'obs_seq.in', &
-                        obs_seq_out_file_name = 'obs_seq.out'
+                        obs_seq_in_file_name  = 'obs_seq.in',      &
+                        obs_seq_out_file_name = 'obs_seq.out',     &
+                        adv_ens_command       = './advance_ens.csh'
 
-namelist /perfect_model_obs_nml/ async, obs_seq_in_file_name, &
+
+! adv_ens_command  == 'qsub advance_ens.csh' -> system call advances ensemble by
+!                                               qsub submission of a batch job
+!                                               -l num_nodes can be inserted after qsub
+!                  == './advance_ens.csh'    -> advance ensemble using a script which
+!                                               explicitly distributes ensemble among nodes
+! advance_ens.csh is currently written to handle both batch submissions (qsub) and
+!                 non-batch executions.
+
+namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
    obs_seq_out_file_name, start_from_restart, output_restart, &
    restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &
    output_interval
@@ -183,7 +193,7 @@ Advance: do i = 1, get_num_times(seq)
 ! Figure out time to advance to
    time2 = get_closest_state_time_to(x(1), next_time)
 ! Advance the state to this time; zero length advance is problem for B-grid so avoid
-   if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, async)
+   if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, async, adv_ens_command)
 
 ! Output the true state
    if(i / output_interval * output_interval == i) &
@@ -195,14 +205,22 @@ Advance: do i = 1, get_num_times(seq)
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs
 ! Compute the observations from the state
-      call get_expected_obs(seq, keys(j:j), get_model_state_vector(x(1)), true_obs(1:1))
+      call get_expected_obs(seq, keys(j:j), get_model_state_vector(x(1)), true_obs(1:1), istatus, rstatus(1:1,1:1))
 
 ! Get the observational error covariance (diagonal at present)
       call get_obs_from_key(seq, keys(j), obs)
       call get_obs_def(obs, obs_def)
 
 ! Generate the synthetic observations by adding in error samples
-      obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
+
+      if(rstatus(1,1) == 0.0_r8) then
+         obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
+      else
+         obs_value(1) = true_obs(1)
+      endif
+
+      call set_qc(obs, rstatus(1,:), 1)
+
       call set_obs_values(obs, obs_value, 1)
       call set_obs_values(obs, true_obs, 2)
 

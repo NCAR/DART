@@ -1,5 +1,6 @@
 &filter_nml
    async = 0,
+   adv_ens_command = "./advance_ens.csh",
    ens_size = 20, 
    cutoff = 0.2,
    cov_inflate = 1.0,

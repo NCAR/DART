@@ -1,5 +1,6 @@
 &perfect_model_obs_nml
    async = 0,
+   adv_ens_command = "./advance_ens.csh",
    obs_seq_in_file_name = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
    start_from_restart = .false.,

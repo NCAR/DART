@@ -12,11 +12,11 @@ program filter
 !
 
 use        types_mod, only : r8, missing_r
-use obs_sequence_mod, only: read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
+use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
-   get_time_range_keys, get_obs_def, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
+   get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, get_obs_values, init_obs, assignment(=), &
-   get_num_copies, static_init_obs_sequence
+   get_num_copies, static_init_obs_sequence, get_qc
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
@@ -35,7 +35,7 @@ use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_ini
 use   cov_cutoff_mod, only : comp_cov_factor
 use   reg_factor_mod, only : comp_reg_factor
 use         sort_mod, only : sort
-use obs_model_mod, only        : get_close_states, get_expected_obs
+use    obs_model_mod, only : get_close_states, get_expected_obs
 
 implicit none
 
@@ -52,12 +52,12 @@ type(time_type)         :: time1, time2, next_time
 type(random_seq_type)   :: random_seq
 
 
-integer :: i, j, k, ind, iunit, posterior_obs_unit, io
+integer :: i, j, k, ind, iunit, io, istatus
 integer :: num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: model_size, num_obs_sets
-integer :: grp_size, grp_bot, grp_top, group, num_greater_1
-real(r8) :: reg_factor, median
+integer :: grp_size, grp_bot, grp_top, group
+real(r8) :: reg_factor
 real(r8), allocatable :: sum_reg_factor(:, :), reg_factor_series(:, :, :)
 real(r8), allocatable :: regress(:), a_returned(:), obs_vals(:)
 
@@ -73,19 +73,16 @@ real(r8),        allocatable :: ens(:, :), ens_mean(:), ens_spread(:), x(:)
 type(time_type), allocatable :: ens_time(:)
 type(time_type)              :: ens_mean_time, ens_spread_time, x_time
 
-real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:)
-real(r8), allocatable  :: obs_err_cov(:), obs(:)
-real(r8)               :: cov_factor, mean_inc, sd_ratio, obs_mean(1), obs_spread(1)
+real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:), rstatus(:,:)
+real(r8), allocatable  :: obs_err_cov(:), obs(:), qc(:)
+real(r8)               :: cov_factor, obs_mean(1), obs_spread(1)
 character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
 
 logical :: interf_provided, out_of_range, is_there_one, is_this_last
 
-! Storage with fixed size for observation space diagnostics
-real(r8) :: ges(1), anl(1)
-
 ! Set a reasonable upper bound on number of close states, will be increased if needed
 integer, parameter    :: first_num_close = 100000
-integer               :: num_close_ptr(1) 
+integer               :: num_close_ptr(1)
 integer,  allocatable :: close_ptr(:, :)         ! First element size should be 1
 real(r8), allocatable ::  dist_ptr(:, :)         ! First element size should be 1
 
@@ -110,13 +107,21 @@ integer  :: num_groups = 1
 real(r8) :: confidence_slope = 0.0_r8
 logical  :: get_mean_reg = .false., get_median_reg = .false.
 
-character(len = 129) :: obs_sequence_in_name = "obs_seq.out", &
-                        obs_sequence_out_name = "obs_seq.final", &
-                        restart_in_file_name = 'filter_ics', &
-                        restart_out_file_name = 'filter_restart'
+character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
+                        obs_sequence_out_name = "obs_seq.final",  &
+                        restart_in_file_name  = 'filter_ics',     &
+                        restart_out_file_name = 'filter_restart', &
+                        adv_ens_command       = './advance_ens.csh'
 
+! adv_ens_command  == 'qsub advance_ens.csh' -> system call advances ensemble by
+!                                               qsub submission of a batch job
+!                                               -l nodes=# can be inserted after qsub
+!                  == './advance_ens.csh'    -> advance ensemble using a script which
+!                                               explicitly distributes ensemble among nodes
+! advance_ens.csh is currently written to handle both batch submissions (qsub) and
+!                 non-batch executions.
 
-namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
+namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
    start_from_restart, output_restart, &
    obs_sequence_in_name, obs_sequence_out_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
@@ -155,7 +160,7 @@ write(logfileunit, nml=filter_nml)
 
 ! Now know the ensemble size; allocate all the storage
 write(*, *) 'the ensemble size is ', ens_size
-allocate(obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), &
+allocate(obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), rstatus(ens_size,1), &
    prior_copy_meta_data(ens_size + 2), posterior_copy_meta_data(ens_size + 1), &
    regress(num_groups), a_returned(num_groups), obs_vals(ens_size))
 
@@ -289,7 +294,7 @@ AdvanceTime : do i = 1, num_obs_sets
    time2 = aget_closest_state_time_to(ens_time(1), next_time)
 
    ! Advance all the ensembles (to the time of the first ensemble)
-   if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async)
+   if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async, adv_ens_command)
 
    ! Tag the ensemble mean and spread with the current time
    ens_mean_time   = ens_time(1)
@@ -348,7 +353,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 
    ! Allocate storage for the ensemble priors for this number of observations
-   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set)) 
+   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set), qc(num_obs_in_set)) 
 
    ! Get the observational error covariance (diagonal at present) and the obs values
    do j = 1, num_obs_in_set
@@ -356,6 +361,7 @@ AdvanceTime : do i = 1, num_obs_sets
       call get_obs_def(observation, obs_def)
 ! ???? Here's where the copy should not be hard coded to 1
       call get_obs_values(observation, obs(j:j), 1)
+      call get_qc(observation, qc(j:j), 1)
       obs_err_cov(j) = get_obs_def_error_variance(obs_def)
 
 ! Each ensemble member
@@ -389,7 +395,7 @@ AdvanceTime : do i = 1, num_obs_sets
    Observations : do j = 1, num_obs_in_set
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k))
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
       end do
 
       ! Divide ensemble into num_groups groups
@@ -410,6 +416,13 @@ AdvanceTime : do i = 1, num_obs_sets
          allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
          goto 222
       endif
+
+      do k = 1, ens_size
+         if (rstatus(k,1) /= 0.0_r8) num_close_ptr(1) = 0
+      end do
+      if (qc(j) /= 0.0_r8) num_close_ptr(1) = 0
+
+      write(*, *) 'Variables updated for obs ',j,' : ',num_close_ptr(1)
 
       ! Now loop through each close state variable for this observation
       do k = 1, num_close_ptr(1)
