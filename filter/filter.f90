@@ -170,24 +170,13 @@ endif
 
 ! Set up the metadata for the output ensemble observations
 do i = 1, num_output_ens_members
-   if(i < 10) then
-      write(ens_copy_meta_data(i), 21) 'ensemble member', i
-   else if(i < 100) then
-      write(ens_copy_meta_data(i), 31) 'ensemble member', i
-   else if(i < 1000) then
-      write(ens_copy_meta_data(i), 41) 'ensemble member', i
-   else if(i < 10000) then
-      write(ens_copy_meta_data(i), 51) 'ensemble member', i
+   if(i < 10000) then
+      write(ens_copy_meta_data(i), '(a15,1x,i6)') 'ensemble member', i
    else
-      write(ens_copy_meta_data(i), '(a15,i6.6)') 'ensemble member', i
-!     write(*, *) 'output metadata in filter needs ensemble size < 10000'
-!     call error_handler(E_ERR,'filter', 'output metadata in filter needs ensemble size < 10000', &
-!          source, revision, revdate)
+      write(*, *) 'output metadata in filter needs ensemble size < 10000'
+      call error_handler(E_ERR,'filter', 'output metadata in filter needs ensemble size < 10000', &
+           source, revision, revdate)
    endif
- 21   format(a15, i1)
- 31   format(a15, i2)
- 41   format(a15, i3)
- 51   format(a15, i4)
 end do
 
 meta_data_size = num_output_ens_members
