@@ -21,7 +21,7 @@ use location_mod, only : set_location
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
    add_to_list, write_set_def_list
 use obs_set_mod, only : init_obs_set, obs_set_type, set_obs_set_time, write_obs_set, &
-   get_obs_set_time
+   get_obs_set_time, get_num_obs
 use time_manager_mod, only : time_type, set_time
 use utilities_mod, only : open_file
 use assim_model_mod, only : assim_model_type, initialize_assim_model, get_model_size, &
@@ -41,14 +41,14 @@ integer, parameter :: num_steps = 100
 integer, parameter :: max_sets = 5
 integer, parameter :: num_obs = 10
 real(r8), parameter :: error_variance = 4.0
-integer :: i, j, obs_set_def_index, unit, test_unit, obs_set_unit
+integer :: i, j, obs_set_def_index, unit, test_unit, obs_set_unit, num_obs_in_set
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer, parameter :: ens_size = 20
 integer :: model_size, num_obs_sets
 
 type(assim_model_type) :: x, ens(ens_size)
-real(r8), allocatable :: ens_temp(:)
+real(r8), allocatable :: ens_temp(:), ens_obs(:, :)
 
 ! Initialize the obs_set_def
 obs_set_def = init_obs_set_def(num_obs)
@@ -103,6 +103,8 @@ deallocate(ens_temp)
 
 num_obs_sets = get_num_obs_sets(seq)
 
+! Advance the model and ensemble to the closest time to the next
+! available observations (need to think hard about these model time interfaces).
 do i = 1, num_obs_sets
    obs_set = get_obs_set(seq, i)
    time = get_obs_set_time(obs_set)
@@ -112,8 +114,27 @@ do i = 1, num_obs_sets
 ! Advance the state and the ensembles to this time
    x = advance_state(x, time2)
    do j = 1, ens_size
+      write(*, *) 'advancing ensemble ', j
       ens(j) =  advance_state(ens(j), time2)
    end do
+
+! How many observations in this set
+   num_obs_in_set = get_num_obs(obs_set)
+   write(*, *) 'num_obs_in_set is ', num_obs_in_set
+
+! Allocate storage for the ensemble priors for this number of observations
+   allocate( ens_obs(ens_size, num_obs_in_set))
+
+! Compute the ensemble priors
+   do j = 1, ens_size
+      write(*, *) 'getting expected obs ', j
+      ens_obs(j, :) = get_expected_obs(obs_set, ens(j))
+   end do
+
+
+! Deallocate the ens_obs storage
+   deallocate(ens_obs)
+
 end do
 
 

@@ -565,7 +565,8 @@ integer :: i
 x = get_model_state_vector(state)
 
 ! Update the time
-time = time + time_steP
+time = get_model_time(state)
+time = time + time_step
 
 !  Compute the first intermediate step
 

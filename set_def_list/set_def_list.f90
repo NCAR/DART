@@ -12,14 +12,16 @@ module set_def_list_mod
 
 use types_mod
 use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
-   read_obs_set_def, write_obs_set_def, obs_set_def_copy
+   read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
+   os_get_expected_obs => get_expected_obs
 
 private
 
 public set_def_list_type, list_element_type, get_number_obs_subsets, &
    init_set_def_list, add_to_list, get_from_list, get_total_num_obs, &
    write_set_def_list, read_set_def_list, write_list_element, &
-   read_list_element, list_element_copy, set_def_list_copy
+   read_list_element, list_element_copy, set_def_list_copy, &
+   get_expected_obs
 
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
@@ -86,6 +88,27 @@ do i = 1, list_in%num_sets
 end do
 
 end subroutine set_def_list_copy
+
+
+
+
+subroutine get_expected_obs(list_element, state, obs)
+!---------------------------------------------------------------
+!
+! Returns the expected value of the observations in this list_element
+! hierarchy of obs_sets given the state_vector. For now, sub_sets are
+! not implemented but need to do this.
+
+implicit none
+
+type(list_element_type), intent(in) :: list_element
+real(r8), intent(in) :: state(:)
+real(r8), intent(out) :: obs(:)
+
+! For now, just call os_get_expected_obs for the single set in the list_element
+call os_get_expected_obs(list_element%obs_set, state, obs)
+
+end subroutine get_expected_obs
    
 
 

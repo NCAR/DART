@@ -16,7 +16,7 @@ private
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    set_obs_values, set_obs_missing, set_obs_set_time, &
    contains_data, obs_value_missing, &
-   read_obs_set, write_obs_set, obs_set_copy
+   read_obs_set, write_obs_set, obs_set_copy, get_num_obs
 
 type obs_set_type
    private
@@ -125,6 +125,22 @@ type(obs_set_type), intent(in) :: set
 get_obs_set_time = set%time
 
 end function get_obs_set_time
+
+
+
+function get_num_obs(set)
+!-------------------------------------------------------
+!
+! Returns the number of obs in the set
+
+implicit none
+
+integer :: get_num_obs
+type(obs_set_type), intent(in) :: set
+
+get_num_obs = set%num_obs
+
+end function get_num_obs
 
 
 
