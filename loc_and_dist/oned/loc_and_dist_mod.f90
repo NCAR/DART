@@ -1,6 +1,7 @@
 module loc_and_dist_mod
 
-! CVS ID $ID$ 
+! CVS Header $Header$ 
+! CVS Id $Id$ 
 ! CVS Name $Name$ 
 ! CVS Revision $Revision$ 
 ! A simple prototype for a state variable location module. For one-d
