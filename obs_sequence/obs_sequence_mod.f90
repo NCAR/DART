@@ -916,7 +916,7 @@ else
 endif
 
 do i = 1, seq%num_obs
-   write(file_id, *) 'OBS ',seq%obs(i)%key
+   if(.not. write_binary_obs_sequence) write(file_id, *) 'OBS ',seq%obs(i)%key
    call write_obs(seq%obs(i), file_id, seq%num_copies, seq%num_qc)
 end do
 
@@ -991,7 +991,7 @@ endif
 
 ! Now read in all the previously defined observations
 do i = 1, num_obs
-   read(file_id,*) label(1)
+   if(.not. read_binary_obs_sequence) read(file_id,*) label(1)
    call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i))
 ! Also set the key in the obs
    seq%obs(i)%key = i
