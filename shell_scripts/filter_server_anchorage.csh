@@ -95,6 +95,9 @@ while(1 == 1)
       end
       all_elements_done:
 
+      # Make sure all processes complete before continuing
+      wait
+
       # finished with advance_model so remove the go_advance_model file
       echo "Completed this advance at " `date` >> filter_server.log
       echo --------- >> filter_server.log
@@ -133,6 +136,9 @@ while(1 == 1)
          @ batch++
       end
       all_regions_done:
+
+      # Make sure all processes complete before continuing
+      wait
 
       # signal to async_filter.csh to continue
       echo "Completed this assimilation at " `date` >> filter_server.log
