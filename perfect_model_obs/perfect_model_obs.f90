@@ -24,7 +24,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, get_num_qc, &
-   get_num_copies, read_obs_seq_header
+   get_num_copies, read_obs_seq_header, set_qc_meta_data
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
 
@@ -56,7 +56,8 @@ type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle
 
 integer                 :: i, j, iunit
-integer                 :: cnum_copies, cnun_qc, cnum_obs, cnum_max, additional_copies
+integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
+integer                 :: additional_qc, additional_copies
 
 type(netcdf_file_type)  :: StateUnit
 integer                 :: ierr, io, istatus, num_obs_in_set
@@ -65,7 +66,7 @@ integer, allocatable    :: keys(:)
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 real(r8), allocatable   :: ens(:)
-character(len=129)      :: copy_meta_data(2), msgstring
+character(len=129)      :: copy_meta_data(2), msgstring, qc_meta_data
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -121,25 +122,38 @@ call error_handler(E_MSG,'perfect_model_obs','perfect_model_obs_nml values are',
 write(logfileunit, nml=perfect_model_obs_nml)
 write(     *     , nml=perfect_model_obs_nml)
 
-! Initialize the two obs type variables
-call init_obs(obs, 0, 0)
-
 ! Find out how many data copies are in the obs_sequence 
-call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnun_qc, cnum_obs, cnum_max)
+call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max)
 
 ! First two copies of output will be truth and observation;
 ! Will overwrite first two existing copies in file if there are any
 additional_copies = 2 - cnum_copies
 if(additional_copies < 0) additional_copies = 0
 
+! Want to have a qc field available in case forward op wont work
+if(cnum_qc == 0) then
+   additional_qc = 1
+else
+   additional_qc = 0
+endif
+
 ! Just read in the definition part of the obs sequence; expand to include observation and truth field
-call read_obs_seq(obs_seq_in_file_name, additional_copies, 0, 0, seq)
+call read_obs_seq(obs_seq_in_file_name, additional_copies, additional_qc, 0, seq)
+
+! Initialize an obs type variable
+call init_obs(obs, cnum_copies + additional_copies, cnum_qc + additional_qc)
 
 ! Want to have error exit if input file has any obs values in it
 !if(get_num_copies(seq) /= 2) then
 !   write(msgstring, *) 'Input obs_sequence file should not have any copies of data associated with it'
 !   call error_handler(E_ERR, 'perfect_model_obs', msgstring, source, revision, revdate)
 !endif
+
+! Need metadata for added qc field
+if(additional_qc == 1) then
+   qc_meta_data = 'Quality Control'
+   call set_qc_meta_data(seq, 1, qc_meta_data)
+endif
 
 ! Need space to put in the obs_values in the sequence;
 copy_meta_data(1) = 'observations'
@@ -206,7 +220,6 @@ AdvanceTime: do
    do j = 1, num_obs_in_set
 ! Compute the observations from the state
       call get_expected_obs(seq, keys(j:j), ens, true_obs(1:1), istatus)
-      if(istatus /= 0) qc(1) = 1000.
 
 ! Get the observational error covariance (diagonal at present)
       call get_obs_from_key(seq, keys(j), obs)
@@ -216,11 +229,16 @@ AdvanceTime: do
 
       if(istatus == 0) then
          obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
+         ! Set qc to 0 if none existed before
+         if(cnum_qc == 0) then
+            qc(1) = 0.
+            call set_qc(obs, qc, 1)
+         endif
       else
          obs_value(1) = true_obs(1)
+         qc(1) = 1000.
+         call set_qc(obs, qc, 1)
       endif
-
-      if (num_qc > 0) call set_qc(obs, qc, 1)
 
       call set_obs_values(obs, obs_value, 1)
       call set_obs_values(obs, true_obs, 2)
