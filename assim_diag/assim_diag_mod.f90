@@ -97,7 +97,7 @@ d%sq_bias        = 0.0_r8
 if(add_on) then
 
    if(read_chan < 0) &
-      read_chan = open_file(file = 'diag_restart.in', action = 'read')
+      read_chan = open_file('diag_restart.in', action = 'read')
 
    read(read_chan, *) d%count, d%model_size, d%ens_size, d%num_var
    read(read_chan, *) d%total_rms_mean, d%mean_total_rms, d%mean_bias
@@ -272,8 +272,8 @@ end do
 ! Open the bin files if this is first call and restart file
 
 if(first) then
-   bin_unit   = open_file(file = 'bin',              action = 'write')
-   write_chan = open_file(file = 'diag_restart.out', action = 'write')
+   bin_unit   = open_file('bin',              action = 'write')
+   write_chan = open_file('diag_restart.out', action = 'write')
    first = .false.
 end if
 

@@ -143,7 +143,7 @@ SUBROUTINE Static_Model_Init()
 integer :: iunit, io, ierr
 
 if(file_exist('input.nml')) then
-   iunit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io)
    ierr = check_nml_error(io, 'model_nml')
    call close_file(iunit)

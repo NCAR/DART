@@ -80,7 +80,7 @@ integer :: unit, ierr, io
 ! Read namelist for run time control
 
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   unit = open_file('input.nml', action = 'read')
    ierr = 1
 
 ! TJH Coding Standard does not allow use of the "end=" construct.
@@ -104,7 +104,7 @@ endif
 
 ! Write the namelist and module info to a log file
 
-unit = open_file(file = 'logfile.out', action = 'append')
+unit = open_file('logfile.out', action = 'append')
 write(unit,*)'assim_tools attributes:'
 write(unit,*)'   ',trim(adjustl(source))
 write(unit,*)'   ',trim(adjustl(revision))
@@ -131,7 +131,7 @@ integer,  intent(inout) :: last_step
 
 integer :: chan
 
-chan = open_file(file = 'restart.in', action = 'read')
+chan = open_file('restart.in', action = 'read')
 read(chan, *) last_step
 read(chan, *) ens
 read(chan, *) x
@@ -154,7 +154,7 @@ integer,  intent(in) :: last_step
 
 integer :: chan
 
-chan = open_file(file = 'restart.out', action = 'write')
+chan = open_file('restart.out', action = 'write')
 write(chan, *) last_step
 write(chan, *) ens
 write(chan, *) x

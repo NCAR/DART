@@ -73,23 +73,23 @@ real(r8) :: comp_reg_factor
 
 real(r8) :: sum_reg2, mean_reg, var_reg, sum_reg_reg
 
-integer :: i, j, ii, jj, unit, ierr, io 
+integer :: i, j, ii, jj, iunit, ierr, io 
 
 !--------------------------------------------------------
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
    namelist_initialized = .true.
    if(file_exist('input.nml')) then
-      unit = open_file(file = 'input.nml', action = 'read')
+      iunit = open_file('input.nml', action = 'read')
       ierr = 1
 
       READBLOCK: do while(ierr /= 0)
-         read(unit, nml = reg_factor_nml, iostat = io)
+         read(iunit, nml = reg_factor_nml, iostat = io)
          if ( io < 0 ) exit READBLOCK          ! end-of-file
          ierr = check_nml_error(io, 'reg_factor_nml')
       enddo READBLOCK
 
-      call close_file(unit)
+      call close_file(iunit)
    endif
 endif
 !---------------------------------------------------------
@@ -128,16 +128,16 @@ else if(select_regression == 2) then
    if(first_call) then
       first_call = .false.
 ! Read in the regression statistics file
-      unit = get_unit()
-      open(unit = unit, file = input_reg_file)
-      read(unit, *) num_obs, model_size
+      iunit = get_unit()
+      open(unit = iunit, file = input_reg_file)
+      read(iunit, *) num_obs, model_size
       allocate(time_mean_reg(num_obs, model_size))
       do j = 1, num_obs
          do i = 1, model_size
-            read(unit, *) jj, ii, time_mean_reg(j, i)
+            read(iunit, *) jj, ii, time_mean_reg(j, i)
          end do
       end do
-      close(unit)
+      close(iunit)
    endif
 
    comp_reg_factor = time_mean_reg(obs_index, state_index)

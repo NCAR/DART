@@ -80,7 +80,7 @@ if(.not. namelist_initialized) then
    namelist_initialized = .true.
 
    if(file_exist('input.nml')) then
-      unit = open_file(file = 'input.nml', action = 'read')
+      unit = open_file('input.nml', action = 'read')
       ierr = 1
 
       READBLOCK: do while(ierr /= 0)

@@ -103,7 +103,7 @@ integer :: i, iunit, ierr, io
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   iunit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
       read(iunit, nml = model_nml, iostat = io, end = 11)

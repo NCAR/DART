@@ -65,7 +65,7 @@ integer :: iunit, ierr, io
 ! Read namelist for run time control
 
 if(file_exist('input.nml')) then
-   iunit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    ierr = 1
 
    READBLOCK: do while(ierr /= 0)
@@ -79,7 +79,7 @@ endif
 
 ! Write the namelist and module info to a log file
 
-iunit = open_file(file = 'logfile.out', action = 'append')
+iunit = open_file('logfile.out', action = 'append')
 write(iunit,*)'assim_tools attributes:'
 write(iunit,*)'   ',trim(adjustl(source))
 write(iunit,*)'   ',trim(adjustl(revision))

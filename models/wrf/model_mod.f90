@@ -163,7 +163,7 @@ real(r8)    :: theta1,theta2,cell,cell2,psx
 ! Begin by reading the namelist input                                           
 if(file_exist('input.nml')) then
 
-   unit = open_file(file = 'input.nml', action = 'read')
+   unit = open_file('input.nml', action = 'read')
    read(unit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
    call close_file(unit)                                                        

@@ -94,7 +94,7 @@ namelist /filter_nml/ cutoff, cov_inflate, cache_size,  &
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   unit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
       read(unit, nml = filter_nml, iostat = io, end = 11)

@@ -10,8 +10,7 @@ module obs_sequence_mod
 ! $Date$
 ! $Author$
 
-use types_mod, only : r8
-use utilities_mod,    only : open_file
+use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, operator(<=), operator(<)
 
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &

@@ -87,7 +87,7 @@ real(r8) :: temp_frac, numerator, denominator
 
 if(file_exist('input.nml')) then
 
-   unit = open_file(file = 'input.nml', action = 'read')
+   unit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)     ! TJH why is this in a loop?
       read(unit, nml = obs_nml, iostat = io, end = 11)
@@ -102,7 +102,7 @@ endif
 
 ! Write the namelist to a log file
 
-unit = open_file(file = 'logfile.out', action = 'append')
+unit = open_file('logfile.out', action = 'append')
 call print_version_number(unit, module_name, vers_num)
 write(unit, nml = obs_nml)
 call close_file(unit)
@@ -114,7 +114,7 @@ write(*, *) 'close_lat_window, close_lon_window ', close_lat_window, close_lon_w
 
 ! Read in the forced_barot_obs_def file
 
-unit_num = open_file(file = 'forced_barot_obs_def', action = 'read')
+unit_num = open_file('forced_barot_obs_def', action = 'read')
 read(unit_num, *) num_obs
 allocate(obs_def(num_obs), obs_loc(num_obs), obs_variance(num_obs))
 

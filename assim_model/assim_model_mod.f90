@@ -126,7 +126,7 @@ write(*,*)'   ',trim(adjustl(revdate))
 
 ! Read the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file(file = 'input.nml', action = 'read')
+   unit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
       read(unit, nml = assim_nml, iostat = io, end = 11)
@@ -338,7 +338,7 @@ integer,            intent(out) :: model_size, copies_of_field_per_time
 integer :: i
 
 init_diag_input = get_unit()
-open(unit = init_diag_input, file = file_name)
+open(unit = init_diag_input, fname = file_name)
 read(init_diag_input, *) global_meta_data
 
 ! Read the model size
