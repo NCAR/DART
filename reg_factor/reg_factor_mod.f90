@@ -72,7 +72,7 @@ integer, intent(in), optional :: obs_state_ind, obs_state_max
 real(r8), intent(in) :: regress(num_groups)
 real(r8) :: comp_reg_factor
 
-real(r8) :: sum_reg2, mean_reg, var_reg, sum_reg_reg
+real(r8) :: sum_reg2, sum_reg_reg
 
 integer :: i, j, ii, jj, iunit, ierr, io 
 
