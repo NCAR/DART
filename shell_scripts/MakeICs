@@ -60,10 +60,14 @@ endif
 # Save any existing namelist ...
 #======================================================================
 
-set SAVEME = input.nml.$$
-if ( -e input.nml ) then
-   mv input.nml $SAVEME
+set SAVEME = .NamelistStorage.$$
+if ( ! -d $SAVEME ) then
+   mkdir ${SAVEME}
 endif
+foreach NAMELIST ( *.nml )
+   mv ${NAMELIST} ${SAVEME}
+end
+echo "Saving any  namelists into directory $SAVEME"
 
 #======================================================================
 # Create common namelists ...
@@ -81,7 +85,6 @@ ENDofTask01
 #======================================================================
 # Define input files based on model
 #======================================================================
-
 
 set COSD = create_obs_set_def.in
 set COS = create_obs_sequence.in
@@ -134,6 +137,29 @@ switch ( ${Model} )
       echo "&end"             >> model.nml
 
       set num_ens_members = 200
+
+   breaksw
+
+   case pe2lyr:
+
+      echo "set_def.out"  > $COSD 
+      echo "1"           >> $COSD ;# # of unique observation SETS to define
+      echo "1"           >> $COSD ;# # of observations in set 1
+      echo "1000000.0"   >> $COSD ;# error variance for set 1, observation 1
+      echo "-1"          >> $COSD ;# not a state variable
+      echo "-1"          >> $COSD ;# surface observation
+      echo "30"          >> $COSD ;# longitude [0,360]
+      echo "40"          >> $COSD ;# latitude [-90,90]
+      echo "3"           >> $COSD ;# obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5
+
+      echo "set_def.out"  > $COS
+      echo "1"           >> $COS  ;# make a "regular" sequence
+      echo "100"         >> $COS  ;# # of observations
+      echo "1 0"         >> $COS  ;# first obs time (days, seconds)
+      echo "1 0"         >> $COS  ;# observation interval (d, s)
+      echo "obs_seq.in"  >> $COS  ;# output file name
+
+      set num_ens_members = 50
 
    breaksw
 
@@ -223,7 +249,6 @@ cat model.nml assim_model.nml perfect.nml > input.nml
 ./perfect_model_obs
  
 if ( $status > 0 ) then
-   mv $SAVEME input.nml
    echo "ERROR: perfect_model_obs (spinup) bombed ..."
    exit
 else
@@ -278,7 +303,6 @@ cp -f perfect_restart perfect_ics
 ./perfect_model_obs    ;# run again to generate a "useful" True_State
  
 if ( $status > 0 ) then
-   mv $SAVEME input.nml
    echo "ERROR: perfect_model_obs bombed ..."
    exit
 else
@@ -291,10 +315,9 @@ endif
 # Step 4: filter
 #----------------------------------------------------------------------
 
-./filter                            ;# asks for name of file that is 
-                                    ;# result of "perfect_model_obs"
+./filter
+
 if ( $status > 0 ) then
-   mv $SAVEME input.nml
    echo "ERROR: filter bombed ..."
    exit
 else
@@ -308,5 +331,11 @@ cp filter_restart filter_ics
 
 \rm -f Prior_Diag.nc Posterior_Diag.nc True_State.nc
 
-mv $SAVEME input.nml
-exit
+#======================================================================
+# Restore the existing namelists ...
+#======================================================================
+
+foreach NAMELIST ( ${SAVEME}/*.nml )
+   mv ${NAMELIST} .
+end
+\rmdir ${SAVEME}
