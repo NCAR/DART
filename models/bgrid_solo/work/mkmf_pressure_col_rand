@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p pressure_col_rand -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../../.." path_names_pressure_col_rand
