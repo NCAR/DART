@@ -24,7 +24,7 @@ module location_mod
 ! Note that for now, lev = -1 represents a surface quantity independent
 ! of vertical discretization as required for Bgrid surface pressure.
 
-use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD
+use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
