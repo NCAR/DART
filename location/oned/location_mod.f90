@@ -119,7 +119,7 @@ end function set_location
 
 
 
-subroutine write_location(locfile, loc)
+subroutine write_location(locfile, loc, fform)
 !----------------------------------------------------------------------------
 !
 ! Writes a oned location to the file. Implemented as a subroutine but  could
@@ -134,19 +134,30 @@ implicit none
 
 integer, intent(in) :: locfile
 type(location_type), intent(in) :: loc
+character(len = *), intent(in), optional :: fform
+
+character(len = 32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_location
 
+fileformat = "ascii"   ! supply default
+if(present(fform)) fileformat = trim(adjustl(fform))
+
 ! For now, output a character tag followed by the r8 value. 
 
-write(locfile, '(''loc1d'')' ) 
-write(locfile, *) loc%x
+SELECT CASE (fileformat)
+   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
+      write(locfile) loc%x
+   CASE DEFAULT
+      write(locfile, '(''loc1d'')' ) 
+      write(locfile, *) loc%x
+END SELECT
 
 end subroutine write_location
 
 
 
-function read_location(locfile)
+function read_location(locfile, fform)
 !----------------------------------------------------------------------------
 !
 ! Reads a oned location from file that was written by write_location. 
@@ -156,18 +167,26 @@ implicit none
 
 integer, intent(in) :: locfile
 type(location_type) :: read_location
+character(len = *), intent(in), optional :: fform
 
 character(len=5) :: header
+character(len = 32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_location
 
-! Will want to add additional error checks on the read
-read(locfile, '(a5)' ) header
-if(header /= 'loc1d') call error_handler(E_ERR, 'read_location', &
-    'Expected location header "loc1d" in input file', source, revision, revdate)
+fileformat = "ascii"   ! supply default
+if(present(fform)) fileformat = trim(adjustl(fform))
 
+SELECT CASE (fileformat)
+   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
+      read(locfile) read_location%x
+   CASE DEFAULT
+      read(locfile, '(a5)' ) header
+      if(header /= 'loc1d') call error_handler(E_ERR, 'read_location', &
+          'Expected location header "loc1d" in input file', source, revision, revdate)
 ! Now read the location data value
-read(locfile, *) read_location%x
+      read(locfile, *) read_location%x
+END SELECT
 
 end function read_location
 
