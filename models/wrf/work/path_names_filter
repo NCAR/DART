@@ -16,3 +16,4 @@ utilities/utilities_mod.f90
 time_manager/time_manager_mod.f90
 reg_factor/reg_factor_mod.f90
 platform/platform_mod.f90
+ensemble_manager/ensemble_manager_mod.f90
