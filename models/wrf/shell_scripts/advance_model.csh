@@ -39,8 +39,8 @@ ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
 
 ln -s  ${PBS_O_WORKDIR}/wrf.exe .
 
-echo $HOSTNAME > nfile
-echo $HOSTNAME >> nfile
+hostname > nfile
+hostname >> nfile
 ###ln -s  ${PBS_O_WORKDIR}/nfile$element nfile
 
 # Convert DART to wrfinput
