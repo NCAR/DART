@@ -1,7 +1,7 @@
 # Group of namelists required for bgrid model
 
 &model_nml
-     current_time = (/ 0, 0, 0, 0 /)
+     current_time =  0, 0, 0, 0
      override = .false.
      dt_atmos = 3600,
      days   = 10,
