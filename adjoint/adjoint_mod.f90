@@ -1,5 +1,11 @@
 module adjoint_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Does fake variational 4D fit; used to simulate optimal adjoint
 ! performance for comparison to other methods
 ! Makes use of NAG optimization routines, would have to be modified
