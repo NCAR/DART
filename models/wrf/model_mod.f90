@@ -44,7 +44,7 @@ public     adv_1step,           &
 
 character(len=128) :: version = "$Id$"
 character(len=128) :: tag = "$Name$"
-character(len=128) :: & 
+character(len=128) :: &
    source = "$Source$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
@@ -270,10 +270,9 @@ wrf%truelat2 = truelat2
 
 if(debug) write(6,*) ' truelat2 is ',wrf%truelat2
 
-theta1 = (90.0 - wrf%truelat1)*deg2rad
-theta2 = (90.0 - wrf%truelat2)*deg2rad
-
 if ( abs(truelat1-truelat2) .gt. 1.e-1 ) then
+   theta1 = (90.0 - wrf%truelat1)*deg2rad
+   theta2 = (90.0 - wrf%truelat2)*deg2rad
    wrf%cone_factor = (log(sin(theta1)) - log(sin(theta2))) &
         / (log(tan(theta1*0.5)) - log(tan(theta2*0.5)))
 else
@@ -1424,6 +1423,7 @@ if ( output_state_vector ) then
 
    call check(nf90_def_var(ncFileID, name="west_east", xtype=nf90_double, &
              dimids = weDimID, varid=LonVarID) )
+
    call check(nf90_put_att(ncFileID, LonVarID, "long_name", "longitude"))
    call check(nf90_put_att(ncFileID, LonVarID, "cartesian_axis", "X"))
    call check(nf90_put_att(ncFileID, LonVarID, "units", "degrees_east"))
@@ -1433,6 +1433,7 @@ if ( output_state_vector ) then
    ! Latitudes
    call check(nf90_def_var(ncFileID, name="south_north", xtype=nf90_double, &
              dimids = snDimID, varid=LatVarID) ) 
+
    call check(nf90_put_att(ncFileID, LatVarID, "long_name", "latitude"))
    call check(nf90_put_att(ncFileID, LatVarID, "cartesian_axis", "Y"))
    call check(nf90_put_att(ncFileID, LatVarID, "units", "degrees_north"))
@@ -1442,6 +1443,7 @@ if ( output_state_vector ) then
    ! grid levels
    call check(nf90_def_var(ncFileID, name="bottom_top", xtype=nf90_double, &
              dimids = btDimID, varid=ilevVarID) )
+
    call check(nf90_put_att(ncFileID, ilevVarID, "long_name", "level"))
    call check(nf90_put_att(ncFileID, ilevVarID, "cartesian_axis", "Z"))
    call check(nf90_put_att(ncFileID, ilevVarID, "units", "at this point, indexical"))
@@ -1450,6 +1452,7 @@ if ( output_state_vector ) then
 
    call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
               dimids=StateVarDimID, varid=StateVarVarID))
+
    call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
    call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
    call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, wrf%model_size /)))
@@ -1796,6 +1799,7 @@ contains
   !                       text message each time an error code is returned. 
   subroutine check(istatus)
     integer, intent ( in) :: istatus
+    integer :: ierr
 
     if(istatus /= nf90_noerr) then
        print *,'model_mod:nc_write_model_atts'
@@ -1854,7 +1858,7 @@ if ( output_state_vector ) then
                 start=(/ 1, copyindex, timeindex /)))                               
 
 else
-   
+
    !----------------------------------------------------------------------------
    ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,QV,QC,QR
    !----------------------------------------------------------------------------
@@ -2057,6 +2061,10 @@ subroutine init_time(i_time)
 implicit none
 
 type(time_type), intent(out) :: i_time
+
+!Where should initial time come from here?
+! WARNING: CURRENTLY SET TO 0
+i_time = set_time(0, 0)
 
 end subroutine init_time
 
@@ -2261,8 +2269,8 @@ end subroutine xyll
    
 !**********************************************
  subroutine Interp_lin_1D(fi1d, n1, z, fo1d)                        
-  real   ,     intent(in)  :: fi1d(n1)       ! Input variable
   integer,     intent(in)  :: n1          
+  real   ,     intent(in)  :: fi1d(n1)       ! Input variable
   real   ,     intent(in)  :: z        
   real   ,     intent(out) :: fo1d              ! Output variable 
 !
@@ -2282,8 +2290,8 @@ end subroutine Interp_lin_1D
 subroutine Interp_lin_2D(fi2d,n1,n2, x,y, fo2d)
   implicit none
 
-  real   ,     intent(in)  :: fi2d(n1,n2)       ! Input variable
   integer,     intent(in)  :: n1, n2          
+  real   ,     intent(in)  :: fi2d(n1,n2)       ! Input variable
   real   ,     intent(in)  :: x, y
   real   ,     intent(out) :: fo2d              ! Output variable 
 !
