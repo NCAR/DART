@@ -15,6 +15,7 @@ private
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type
 
 type obs_kind_type
+   private
    integer :: index
 end type obs_kind_type
 

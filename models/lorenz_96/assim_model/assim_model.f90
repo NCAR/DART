@@ -28,6 +28,7 @@ real(r8), parameter ::    delta_t = 0.05_r8
 ! Eventually need to be very careful to implement this to avoid state vector copies which
 ! will be excruciatingly costly (storage at least) in big models.
 type assim_model_type
+   private
    real(r8) :: state_vector(model_size)
    type(time_type) :: time
 end type assim_model_type

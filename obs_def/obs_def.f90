@@ -6,7 +6,6 @@ module obs_def_mod
 ! $Date$
 ! $Author$
 
-! NOTE: Make sure to add only clauses to all use statements throughtout!!!
 use types_mod
 use obs_kind_mod, only : obs_kind_type, read_kind, write_kind
 use location_mod, only : location_type, read_location, write_location
@@ -17,19 +16,15 @@ use assim_model_mod, only : am_get_close_states=>get_close_states, &
 private
 
 public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get_obs_def_kind, &
-   get_obs_def_key, get_num_close_states, get_close_states, set_obs_def_location, &
+   get_num_close_states, get_close_states, set_obs_def_location, &
    set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type
 
 type obs_def_type
+   private
    type(location_type) :: location
    type(obs_kind_type) :: kind
    real(r8) :: error_variance
-   integer :: key
 end type obs_def_type
-
-! This keeps a global count of keys to keep them unique. Need to think very hard about
-! how and when a new key gets assigned if an obs_def is assigned or modified.
-integer :: next_key = 1
 
 contains
 
@@ -49,8 +44,6 @@ real(r8) :: error_variance
 init_obs_def%location = location
 init_obs_def%kind = kind
 init_obs_def%error_variance = error_variance
-init_obs_def%key = next_key
-next_key = next_key + 1
 
 end function init_obs_def
 
@@ -117,21 +110,6 @@ end function get_obs_def_kind
 
 !----------------------------------------------------------------------------
 
-function get_obs_def_key(obs_def)
-
-! Returns unique integer key for observation. WARNING: NEEDS CAUTION.
-
-implicit none
-
-integer :: get_obs_def_key
-type(obs_def_type), intent(in) :: obs_def
-
-get_obs_def_key = obs_def%key
-
-end function get_obs_def_key
-
-!----------------------------------------------------------------------------
-
 function get_num_close_states(obs_def, radius)
 
 ! Returns the number of state variables that are within distance radius of this
@@ -189,8 +167,7 @@ end subroutine get_close_states
 
 function set_obs_location(obs_def, location)
 
-! Sets the location of an obs_def, puts in a new key? Maybe this whole key thing
-! should be dropped?
+! Sets the location of an obs_def
 
 implicit none
 
@@ -200,8 +177,6 @@ type(location_type), intent(in) :: location
 
 set_obs_location = obs_def
 set_obs_location%location = location
-set_obs_location%key = next_key + 1
-next_key = next_key + 1
 
 end function set_obs_location
 
@@ -209,8 +184,7 @@ end function set_obs_location
 
 function set_error_variance(obs_def, error_variance)
 
-! Sets the error variance of an obs_def, puts in a new key? Maybe this whole key thing
-! should be dropped?
+! Sets the error variance of an obs_def
 
 implicit none
 
@@ -220,8 +194,6 @@ real(r8), intent(in) :: error_variance
 
 set_error_variance = obs_def
 set_error_variance%error_variance = error_variance
-set_error_variance%key = next_key + 1
-next_key = next_key + 1
 
 end function set_error_variance
 
@@ -230,8 +202,7 @@ end function set_error_variance
 
 function set_obs_def_kind(obs_def, kind)
 
-! Sets the kind of an obs_def, puts in a new key? Maybe this whole key thing
-! should be dropped?
+! Sets the kind of an obs_def
 
 implicit none
 
@@ -241,8 +212,6 @@ type(obs_kind_type), intent(in) :: kind
 
 set_obs_def_kind = obs_def
 set_obs_def_kind%kind = kind
-set_obs_def_kind%key = next_key + 1
-next_key = next_key + 1
 
 end function set_obs_def_kind
 
@@ -261,8 +230,6 @@ integer, intent(in) :: file
 character*5 :: header
 
 ! Begin by reading five character ascii header, then location, kind, error variance
-! What happens to the key at output? Probably don't want to read and write key
-! (this may be more evidence of the fact that it's in the wrong place now).
 
 ! Need to add additional error checks on read
 read(file, 11) header
@@ -283,7 +250,7 @@ end function read_obs_def
 
 subroutine write_obs_def(file, obs_def)
 
-! Writes an obs_def to file. No attempt to write key at present.
+! Writes an obs_def to file.
 
 implicit none
 

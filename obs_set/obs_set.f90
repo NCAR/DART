@@ -8,23 +8,25 @@ module obs_set_mod
 !
 
 use types_mod
-use obs_set_def_mod, only : obs_set_def_type, read_obs_set_def, &
-   write_obs_set_def, get_total_num_obs
+use set_def_list_mod, only : set_def_list_type, get_total_num_obs
 use time_manager_mod, only : time_type, read_time, write_time
 
 private
 
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
-   set_obs_values, set_obs_missing, contains_data, obs_value_missing, &
+   set_obs_values, set_obs_missing, set_obs_set_time, &
+   contains_data, obs_value_missing, &
    read_obs_set, write_obs_set
 
 type obs_set_type
+   private
    real(r8), pointer :: obs(:, :)
    logical, pointer :: missing(:, :)
    integer :: num_copies
    integer :: num_obs
    type(time_type) :: time
-   type(obs_set_def_type) :: def
+   integer :: def_index
+!   type(obs_set_def_type) :: def
 end type obs_set_type
 
 
@@ -33,15 +35,16 @@ contains
 !=======================================================
 
 
-function init_obs_set(set_def, num_copies_in)
+function init_obs_set(set_def_list, index, num_copies_in)
 !--------------------------------------------------------------------
 !
 ! Creates and initializes storage for an obs_set associated
-! with the obs_set_def in set_def and with num_copies of the
+! with the obs_set_def index in obs_set_def_list and with num_copies of the
 ! observations associated (default is 1). 
 
 type(obs_set_type) :: init_obs_set
-type(obs_set_def_type), intent(in) :: set_def
+type(set_def_list_type), intent(in) :: set_def_list
+integer, intent(in) :: index
 integer, optional, intent(in) :: num_copies_in
 
 integer :: num_copies, num_obs
@@ -58,10 +61,10 @@ endif
 init_obs_set%num_copies = num_copies
 
 ! Assign the set definition
-init_obs_set%def = set_def
+init_obs_set%def_index = index
 
 ! Get the total number of obs in the set
-num_obs = get_total_num_obs(set_def)
+num_obs = get_total_num_obs(set_def_list, index)
 init_obs_set%num_obs = num_obs
 
 ! Allocate storage for obs; need to verify that the 0 size allocation
@@ -194,6 +197,22 @@ end subroutine set_obs_set_missing
 
 
 
+subroutine set_obs_set_time(set, time)
+!----------------------------------------------------
+!
+! Set the time for the obs_set
+
+implicit none
+
+type(obs_set_type), intent(inout) :: set
+type(time_type), intent(in) :: time
+
+set%time = time
+
+end subroutine set_obs_set_time
+
+
+
 
 function contains_data(set)
 !--------------------------------------------------------------------
@@ -267,8 +286,8 @@ if(header /= 'obset') then
    stop
 end if
 
-! Read the obs_set def
-read_obs_set%def = read_obs_set_def(file_id)
+! Read the obs_set def index
+read(file_id, *) read_obs_set%def_index
 
 ! Read the number of obs and the number of copies
 read(file_id, *) num_obs, num_copies
@@ -311,8 +330,8 @@ integer :: i
 ! First write ascii header saying set is coming
 write(file_id, *) 'obset'
 
-! Write the obs_set_def
-call write_obs_set_def(file_id, set%def)
+! Write the obs_set_def_index
+write(file_id, *) set%def_indeX
 
 ! The number of obs followed by the number of copies
 write(file_id, *) set%num_obs, set%num_copies
