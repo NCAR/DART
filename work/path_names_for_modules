@@ -1,0 +1,112 @@
+#set DEFAULT_COMPILE = 'f90 -c '
+set DEFAULT_COMPILE = 'pgf90 -c '
+###set DEFAULT_COMPILE = 'f90 -c -dp -O3 -O modinline -ef -l perf'
+#set DEFAULT_COMPILE = 'f90 -c -O3'
+#set DEFAULT_COMPILE = 'f90 -cef -O3 -l perf'
+#set DEFAULT_COMPILE = 'f90 -c -Rabcn'
+#set DEFAULT_COMPILE = 'f90 -cef '
+
+
+
+if ( `hostname` == "t90" || `hostname` == "t3e" || `hostname` == "t94") then
+   set SUPPORT_HOME = /users/jla/assim/red_spectral_model
+   set LINK_OPTS    = "-L/usr/local/lib -lnetcdf -lnag"
+###   set LINK_OPTS    = "-L/usr/local/lib -lnetcdf -lnag -O3 -O modinline -ef -l perf"
+#   set LINK_OPTS    = "-L/usr/local/lib -lnetcdf -lnag -O3"
+#   set LINK_OPTS    = "-L/usr/local/lib -lnetcdf -lnag -O3 -l perf"
+   set PREPROCESSOR = "cpp -P -C -N"
+   set FINAL_COMMAND = 'f90 $1.o -o $1 $LINK_OPTS'
+   set NAG_WRAP = /users/jla/assim/nag_wrap/nag_wrap.f90
+else
+   set SUPPORT_HOME = /users/jla/assim/red_spectral_model
+   set LINK_OPTS    = "-L/usr/local/lib -lnag -lnetcdf -F77"
+   set PREPROCESSOR = "cpp -P -C"
+   set FINAL_COMMAND = 'f90 -bd,$1 -o $1 $LINK_OPTS'
+   set NAG_WRAP = /net/jla/assim/nag_wrap/nag_wrap.f90
+endif
+
+
+# A variety of models
+#set MODEL = /users/jla/assim/models/null_model/null_model.f90
+#set MODEL = /users/jla/assim/models/forced_barot/model.f90
+#set MODEL = /users/jla/assim/models/lorenz_63/lorenz_63.f90
+set MODEL = /users/jla/assim/models/lorenz_96/lorenz_96.f90
+#set MODEL = /users/jla/assim/models/lorenz_96/imperfect.f90
+Eset MODEL = /users/jla/assim/models/9var/9var.f90
+#set MODEL = /users/jla/assim/models/9var/noisy_9var.f90
+#set MODEL = /users/jla/assim/models/oned_wave/oned_wave.f90
+#set MODEL = /users/jla/assim/models/oscillator/oscillator.f90
+
+
+# Obs for these models
+#set OBS = /users/jla/assim/models/null_model/obs/obs.f90
+#set OBS = /users/jla/assim/models/forced_barot/obs/obs.f90
+#set OBS = /users/jla/assim/models/lorenz_63/obs/obs.f90
+set OBS = /users/jla/assim/models/lorenz_96/obs/obs.f90
+#set OBS = /users/jla/assim/models/lorenz_96/obs/obs_identity.f90
+#set OBS = /users/jla/assim/models/lorenz_96/obs/imperfect_obs.f90
+#set OBS = /users/jla/assim/models/lorenz_96/obs/imperfect_nonlinear_obs.f90
+#set OBS = /users/jla/assim/models/lorenz_96/obs/nonlinear_obs.f90
+#set OBS = /users/jla/assim/models/9var/obs/obs.f90
+#set OBS = /users/jla/assim/models/oned_wave/obs/obs.f90
+#set OBS = /users/jla/assim/models/oscillator/obs/obs.f90
+
+# Routines to support assimilation
+set SEQ_OBS = /users/jla/assim/seq_obs/seq_obs.f90
+set CLEAN_SEQ_OBS = /users/jla/assim/seq_obs/clean_seq_obs.f90
+
+set COV_CUTOFF = /users/jla/assim/cov_cutoff/cov_cutoff.f90
+set ASSIM_TOOLS = /users/jla/assim/assim_tools/assim_tools.f90
+set OBS_TOOLS = /users/jla/assim/obs_tools/obs_tools.f90
+set LOC_AND_DIST = /users/jla/assim/loc_and_dist/oned_loc_and_dist.f90
+#set LOC_AND_DIST = /users/jla/assim/loc_and_dist/twod_loc_and_dist.f90
+set SORT = /users/jla/assim/sort/sort.f90
+set ASSIM_DIAG = /users/jla/assim/assim_diag/assim_diag.f90
+set FORECAST_EVAL = /users/jla/assim/forecast_eval/forecast_eval.f90
+#set FORECAST_EVAL = /users/jla/assim/forecast_eval/fake_forecast_eval.f90
+set CHISQ = /users/jla/assim/chisq/chisq.f90
+set QC = /users/jla/assim/qc/qc.f90
+set QC_TEST = /users/jla/assim/qc/qc_test.f90
+set RANDOM_SEQ = /users/jla/assim/random_seq/random_seq.f90
+set RANDOM_NUMERICAL_RECIPES = /users/jla/assim/random_numerical_recipes/random_numerical_recipes.f90
+set CORRECT_CORR = /users/jla/assim/correct_corr/correct_corr.f90
+
+# Stuff for spectral models follows
+set TRANSFORMS = /users/jla/assim/red_spectral_model/transforms.f90
+set GAUSS_AND_LEGENDRE = /users/jla/assim/red_spectral_model/gauss_and_legendre.f90
+set GRID_FOURIER = /users/jla/assim/red_spectral_model/grid_fourier.f90
+set SPHERICAL = /users/jla/assim/red_spectral_model/spherical.f90
+set SPHERICAL_FOURIER = /users/jla/assim/red_spectral_model/spherical_fourier.f90
+set WINDOWS = /users/jla/assim/red_spectral_model/windows.f90
+set FFT = /users/jla/assim/red_spectral_model/fft.f90
+
+# Utilities should now be from repository
+set UTILITIES = /users/jla/assim/utilities/utilities.f90
+#set UTILITIES = /t90/jla/fms/shared/utilities/utilities.f90
+
+# MPP support modules, slightly modified from Bombay checkouts
+set MPP = (/t90/jla/fms/shared/mpp/mpp.F90 \
+  '$PREPROCESSOR /t90/jla/fms/shared/mpp/mpp.F90 mpp.f90; $DEFAULT_COMPILE mpp.f90')
+set MPP_IO = (/t90/jla/fms/shared/mpp/mpp_io.F90 \
+  '$PREPROCESSOR /t90/jla/fms/shared/mpp/mpp_io.F90 mpp_io.f90; $DEFAULT_COMPILE mpp_io.f90')
+set MPP_DOMAINS = (/t90/jla/fms/shared/mpp/mpp_domains.F90 \
+  '$PREPROCESSOR /t90/jla/fms/shared/mpp/mpp_domains.F90 mpp_domains.f90; $DEFAULT_COMPILE mpp_domains.f90')
+
+
+# Diagnostic output modules
+set NCD_FILE      = ($SUPPORT_HOME/ncd_file.F90 \
+  '$PREPROCESSOR $SUPPORT_HOME/ncd_file.F90 ncd_file.f90; $DEFAULT_COMPILE ncd_file.f90')
+set DIAG_FIELD    = ($SUPPORT_HOME/diag_field.F90 \
+  '$PREPROCESSOR $SUPPORT_HOME/diag_field.F90 diag_field.f90; $DEFAULT_COMPILE diag_field.f90')
+set AXIS          = $SUPPORT_HOME/axis.f90
+#set ERROR_HANDLER = $SUPPORT_HOME/ncd_file/v1.1/error_handler.f90
+
+
+# Routines for special test applications with assimilation
+set ADJOINT = /users/jla/assim/adjoint/adjoint.f90
+set SYSTEM_SIMULATION = /users/jla/assim/system_simulation/system_simulation.f90
+set SYS_SIM2 = /users/jla/assim/system_simulation/sys_sim2.f90
+set SYS_SIM3 = /users/jla/assim/system_simulation/sys_sim3.f90
+set SYS_SIM4 = /users/jla/assim/system_simulation/sys_sim4.f90
+set SYS_SIM5 = /users/jla/assim/system_simulation/sys_sim5.f90
+set TEST_CORRECT_CORR = /users/jla/assim/correct_corr/test_correct_corr.f90

@@ -1,0 +1,143 @@
+#!/bin/csh
+# Need to determine if this is opening call and delete stuff if not
+if ($?First) then
+   setenv First no
+else
+   echo > .use_stuff
+   echo > .use_compiled
+   setenv First yes
+# A second argument specifies that only this module has been changed
+   setenv Arg_2 $2
+endif
+
+# Need to define shell variables that identify where modules are and
+# what actions to take
+source path_names_for_modules
+
+# Must have a module name specified
+if ($1 == '') then
+   echo FATAL ERROR IN compile_it: MUST SPECIFY A MODULE NAME AS ARGUMENT
+   exit(4)
+endif
+
+# Argument 1 on input is the module name (without the _mod)
+# Need to expand in order to get the file name from the shell variables
+# Expand the file name from the module name
+
+# Need argument name for possible error message
+set arg = `echo $1 | tr "[a-z]" "[A-Z]"`
+set e = `echo \$$1 | tr "[a-z]" "[A-Z]"`
+
+set f = "echo $e"
+
+set g = `eval $f`
+
+# Check for argument that is not in path_names_for_modules
+if ($#g == 0) then
+   echo FATAL ERROR IN compile_it: $arg not found in path_names_for_modules
+   exit(4)
+endif
+
+# If the module name is given as already_done then just return
+# This is a way to prune branches that are known to be okay
+
+if ($g[1] == already_done) then
+   echo MODULE $1 IS ALREADY DONE
+   exit
+endif
+
+# Need to make sure that the target file exists
+ls $g[1] > .use_garb
+if ($status != 0) then
+   echo FATAL ERROR IN COMPILE_IT: FILE $g[1] NOT FOUND
+   exit (4)
+endif
+
+
+
+# Find all the use statements from this source file
+# If the second argument (only file changed) is this module, don't go further
+if($Arg_2 == $1) then
+   echo > .use_temp
+else
+   grep -i '^[ 	\$]*use.*_mod' $g[1] > .use_temp
+endif
+
+# Remove everythng but module names (no _mod) from the use statements with ed
+ed .use_temp > .use_garb <<%
+1,\$s/[Uu][Ss][Ee]//
+1,\$s/\$/ /
+1,\$s/_[Mm][Oo][Dd][ 	,].*\$//
+w
+%
+
+# Variable d now contains list of all modules used by current module
+set d = `sort -fu .use_temp`
+
+# Do recursion through modules used if they aren't already done
+set USE_COMPILE = false
+foreach module ($d[*])
+   grep -i ^$module+ .use_stuff > .use_garb || echo CHECKING MODULE $module USED BY $1
+   grep -i ^$module+ .use_stuff > .use_garb || csh -f $0 $module
+
+# Check for cascading error on compile
+   if ($status != 0) then
+      exit (4)
+   endif
+
+# Now check to see if any of these used modules are on the compiled list
+# Want to compile this module if any of the used ones are on the compiled list
+   grep -i ^$module+ .use_compiled > .use_garb && set USE_COMPILE = true
+
+end
+
+# When popping back up from recursion check to see if current module
+# has already been taken care of (is it on the 'stuff' list?)  If not,
+# add its name to the stuff list and see if its source has been modified
+# more recently than the corresponding .o in the current directory. If
+# so compile it.
+
+grep -i ^$1+ .use_stuff > .use_garb
+if ($status != 0) then
+        echo $1'+' $d >> .use_stuff
+	set gt = `echo $g[1]:t`
+	set gt2 = `echo $gt:r.o`
+
+# See if the .o file doesn't exist at all or if it is older than .f90
+# Want null string in n if the file doesn't exist
+        set n = ""
+        ls $gt2 > .use_garb
+        if($status == 0) then
+# If it does exist need to check on its relative time
+ 		set n = `find $gt2 -name $gt2 -newer $g[1] -print -prune`
+	endif
+	if ($n == "" || $USE_COMPILE == true) then
+
+# Do we use default compile or is a special command provided?
+                if ($#g >= 2) then
+                   echo 'COMPILING FILE: ' $g[2-$#g]
+                   eval $g[2-$#g]
+                   if ($status != 0) then
+                      echo compile_it terminating on error
+                      exit (4)
+                   endif
+                else
+                   echo 'COMPILING FILE: ' $DEFAULT_COMPILE $g[1]
+                   $DEFAULT_COMPILE $g[1]
+                   if ($status != 0) then
+                      echo compile_it terminating on error
+                      exit (4)
+                   endif
+                endif
+
+		echo 'FINISHED COMPILING FILE ' $g[1] 
+# Add this module to the modules compiled list
+                echo $1'+' >> .use_compiled
+                
+	endif
+endif
+
+if ($First == yes) then
+   echo Do final command $FINAL_COMMAND
+   eval $FINAL_COMMAND
+endif

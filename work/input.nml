@@ -1,0 +1,22 @@
+&lim_obs_seq_nml
+   ens_size = 20, 
+   spin_up_steps = 0,
+   num_steps = 1200,
+   output_start = 200,
+   ens_spin_up_steps = 0,
+   obs_freq = 1,
+   cov_inflate = 1.01
+   mean_inflate = 1.0
+   restart = .FALSE.,
+   add_on = .FALSE.,
+   noise_amp = 0.0
+&end
+
+&assim_tools_nml
+   cor_cutoff = 0.0
+&end
+
+&obs_nml
+   close_lat_window = 10.0
+   close_lon_window = 10.0
+&end

@@ -1,0 +1,180 @@
+module model_mod
+
+! One dimensional oscillator model (model size is 2)
+
+use loc_and_dist_mod, only : loc_type, get_dist, set_loc
+
+private
+
+public init_model, get_model_size, init_conditions, adv_1step, advance, &
+   adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
+   model_output
+
+integer, parameter :: model_size = 2
+double precision, parameter :: delta_t = 0.01
+double precision, parameter :: alpha = 0.1
+
+logical :: output_init = .FALSE.
+
+! Define output indices for diagnostics
+integer :: diag_output_index(2)
+
+! Define the location of the state variables in module storage
+type(loc_type) :: state_loc(model_size)
+
+contains
+
+!==================================================================
+
+subroutine init_model()
+
+! Stub for model initialization, not needed for L96
+
+end subroutine init_model
+
+!==================================================================
+
+subroutine comp_dt(x, dt)
+
+implicit none
+
+! Computes the time tendency of a 1D oscillator
+
+double precision, intent(in) :: x(:)
+double precision, intent(out) :: dt(:)
+
+dt(1) = x(2)
+dt(2) = - x(1) + alpha * x(2)
+
+end subroutine comp_dt
+
+!
+!===================================================================
+!
+!
+!  Does single time step advance for lorenz 96 model
+!  using four step rk time step
+
+subroutine adv_1step(x)
+
+implicit none
+
+double precision, intent(inout) :: x(:)
+
+double precision :: dx(size(x))
+
+!  Compute the first intermediate step
+call comp_dt(x, dx)
+
+x = x + dx * delta_t
+
+end subroutine adv_1step
+
+!
+!----------------------------------------------------------------------
+!
+
+subroutine adv_true_state(x)
+
+implicit none
+
+double precision, intent(inout) :: x(:)
+
+!write(*, *) 'amp = ', sqrt(x(1)**2 + x(2)**2), ' phase = ', atan2(x(1), x(2))
+
+call adv_1step(x)
+
+end subroutine adv_true_state
+
+!
+!=====================================================================
+!
+
+subroutine init_conditions(x)
+
+!  Initial conditions for lorenz 96
+! It is assumed that this is called before any other routines in this
+! module. Should probably make that more formal and perhaps enforce for
+! more comprehensive models.
+
+implicit none
+
+double precision, intent(out) :: x(:)
+
+integer :: i
+double precision :: x_loc
+
+! Define the interesting indexes for variables to do diag output; span lats
+do i = 1, 2
+   diag_output_index(i) = i
+end do
+
+! Set position and velocity to 1.0
+x = 0.0
+
+! Define the locations of the state variables;
+do i = 1, model_size
+   x_loc = 0.0
+   call set_loc(state_loc(i), x_loc)
+end do
+
+end subroutine init_conditions
+
+!
+!====================================================================
+!
+
+!  Advances the lorenz-96 model by a given number of steps
+!  Current state in x, new state in xnew, num time steps advanced
+
+subroutine advance(x, num, xnew)
+
+implicit none
+
+double precision, intent(in) :: x(:)
+double precision, intent(out) :: xnew(:)
+integer, intent(in) :: num
+
+integer :: i
+
+!  Copy initial conditions to avoid overwrite
+xnew = x
+
+!  Advance the appropriate number of steps
+do i = 1, num
+   call adv_1step(xnew)
+end do
+
+end subroutine advance
+
+!
+!---------------------------------------------------------------------
+!
+
+subroutine get_close_pts(list, num)
+
+implicit none
+
+integer, intent(in) :: num
+integer, intent(inout) :: list(model_size, num)
+
+end subroutine get_close_pts
+
+!
+!===================================================================
+!
+
+function get_model_size()
+
+! Returns size of model
+
+integer :: get_model_size
+
+get_model_size = model_size
+
+end function get_model_size
+
+!
+!===================================================================
+!
+end module model_mod
