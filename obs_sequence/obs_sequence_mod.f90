@@ -703,9 +703,8 @@ if(seq%num_obs == 0) then
    get_first_obs = .false.
 else
    get_first_obs = .true.
+   obs = seq%obs(seq%first_time)
 endif
-
-obs = seq%obs(seq%first_time)
 
 end function get_first_obs
 
@@ -719,11 +718,11 @@ logical :: get_last_obs
 
 if(seq%num_obs == 0) then
    get_last_obs = .false.
+   return
 else
    get_last_obs = .true.
+   obs = seq%obs(seq%last_time)
 endif
-
-obs = seq%obs(seq%last_time)
 
 end function get_last_obs
 
