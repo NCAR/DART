@@ -33,8 +33,7 @@ private
 public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_level, &
-       LocationDims, LocationName, LocationLName, &
-       read_ncep_obs_location
+       LocationDims, LocationName, LocationLName
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -427,53 +426,6 @@ contains
   end subroutine check
 
 end subroutine nc_write_location
-
-
-
-!=============================================================
-  subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
-!=============================================================
-! read location (lon,lat,pressure) from NCEP observation files
-!  Input units are: radians and hPa.
-
-implicit none
-
-type(location_type) :: location
-
-integer :: obs_prof
-integer, intent(in) :: obsunit
-integer, intent(out) :: obsindex
-real (r8), intent(out) :: var
-real (r8) :: lon,lat,lev,zob, dummy,cnt,rtime,rtype
-
-if ( .not. module_initialized ) call initialize_module
-
-! Read location, kind and error variance of NCEP data
-
-    read(obsunit, 880) var, lon, lat, lev, zob, dummy,cnt,rtime,rtype
-  880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
-
-    location%lon = lon     ! in radian
-    location%lat = lat     ! in radian
-
-!   set up observation kind
-    obs_prof = cnt/1000000
-
-    if(obs_prof == 2) obsindex = 1
-    if(obs_prof == 9) obsindex = 2
-    if(obs_prof == 3) obsindex = 3
-    if(obs_prof == 1) obsindex = 4
-
-    if (obsindex .ne. 3) then      ! for u,v,t
-    location%pressure = lev*100.0   ! (transfer from mb to Pascal)
-    location%which_vert = 2
-    else
-    location%lev = -1      ! for Ps
-    location%which_vert = 1
-    var = var*100.0     ! convert to Pascal
-    endif
-
-end subroutine read_ncep_obs_location
 
 !----------------------------------------------------------------------------
 ! end of location/simple_threed_sphere/location_mod.f90

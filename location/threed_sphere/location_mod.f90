@@ -34,8 +34,7 @@ private
 public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-       LocationDims, LocationName, LocationLName, &
-       read_ncep_obs_location
+       LocationDims, LocationName, LocationLName
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -317,7 +316,7 @@ end function query_location
 subroutine write_location(ifile, loc, fform)
 !----------------------------------------------------------------------------
 !
-! Writes a oned location to the file. Implemented as a subroutine but  could
+! Writes location to the file. Implemented as a subroutine but  could
 ! rewrite as a function with error control info returned. For initial implementation,
 ! file is just an integer file unit number. Probably want to replace this with file
 ! as a file_type allowing more flexibility for IO at later point. file_type and 
@@ -353,7 +352,7 @@ end subroutine write_location
 function read_location(ifile, fform)
 !----------------------------------------------------------------------------
 !
-! Reads a oned location from file that was written by write_location.
+! Reads location from file that was written by write_location.
 ! See write_location for additional discussion.
 
 implicit none
@@ -438,7 +437,7 @@ else
    go to 100
 end if
 
-write(*, *) 'Input longitude for this obs: value 0 to 360.0 or a negative number for '
+write(*, *) 'Input longitude: value 0 to 360.0 or a negative number for '
 write(*, *) 'Uniformly distributed random location in the horizontal'
 read(*, *) lon
 
@@ -485,7 +484,7 @@ if(lon < 0.0_r8) then
 
 else
 
-   write(*, *) 'Input latitude for this obs: value -90.0 to 90.0'
+   write(*, *) 'Input latitude: value -90.0 to 90.0'
    read(*, *) lat
 
    do while(lat < -90.0_r8 .or. lat > 90.0_r8)
@@ -537,50 +536,6 @@ contains
 
 end subroutine nc_write_location
 
-
-subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
-!----------------------------------------------------------------------------
-!
-! Read location (lon,lat,pressure) from NCEP observation files
-! Input units are: radians and hPa.
-
-implicit none
-
-type(location_type)   :: location
-integer,  intent(in)  :: obsunit
-integer,  intent(out) :: obsindex
-real(r8), intent(out) :: var
-
-real(r8) :: lon, lat, lev, zob, dummy, cnt, rtime, rtype
-integer  :: obs_prof
-
-if ( .not. module_initialized ) call initialize_module
-
-! Read location, kind and error variance of NCEP data
-read(obsunit, 880) var, lon, lat, lev, zob, dummy, cnt, rtime, rtype
-880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
-
-location%lon = lon     ! in radian
-location%lat = lat     ! in radian
-
-!   set up observation kind
-obs_prof = cnt/1000000
-
-if(obs_prof == 2) obsindex = 1
-if(obs_prof == 9) obsindex = 2
-if(obs_prof == 3) obsindex = 3
-if(obs_prof == 1) obsindex = 4
-
-if (obsindex .ne. 3) then              ! for u,v,t
-   location%vloc       = lev*100.0_r8  ! (transfer from mb to Pascal)
-   location%which_vert = 2
-else
-   location%vloc       = -1            ! for Ps
-   location%which_vert = 1
-   var                 = var*100.0_r8  ! convert to Pascal
-endif
-
-end subroutine read_ncep_obs_location
 
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90
