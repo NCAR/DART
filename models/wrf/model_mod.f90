@@ -532,9 +532,10 @@ if(debug) write(6,*) variable, ' id = ',var_id
 
 if( in_or_out(1:5) == "INPUT" ) then
   if(debug) write(6,*) ' call netcdf read ', ncid, var_id
-  call check( nf90_get_var(ncid, var_id, var, start, count, stride ) )
+  call check( nf90_get_var(ncid, var_id, var, start, count, stride, map) )
   if(debug) write(6,*) ' returned netcdf read '
 else if( in_or_out(1:6) == "OUTPUT" ) then
+  if(debug) write(6,*) ' call netcdf write ', ncid, var_id
   call check( nf90_put_var(ncid, var_id, var, start, count, stride, map) )
 else
   write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
