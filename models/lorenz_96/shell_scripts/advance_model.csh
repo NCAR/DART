@@ -1,6 +1,14 @@
 #!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# Standard script for use in assimilation applications
+# where the model advance is executed as a separate process.
 
-# set echo verbose
+# This script copies the necessary files into the temporary directory
+# and then executes the fortran program integrate_model.
 
 set PBS_O_WORKDIR = $1
 set element = $2
