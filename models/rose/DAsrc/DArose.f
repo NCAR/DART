@@ -233,8 +233,9 @@
 !-------------------------------------------------------------------
 
          modday = float(nstep)/float(lengdy)
+
          iyear =  (      day0  + modday + float(ut0)/86400.- 1)/365
-         doy = mod(float(day0) + modday + float(ut0)/86400., 365)
+         doy   = mod(float(day0) + modday + float(ut0)/86400., 365.0)
          if(doy.eq.0) doy = 365
          utsec = mod( nstep*3600/ntime + ut0, 3600*24)
          gmt_frac = float(utsec)/(3600.0*24.0)
