@@ -1,5 +1,0 @@
-Created setheat.save and setatmos.save which include
-standard GSWM-98 FORTRAN code. The current versions
-of setheat.f and setatmos.f contain temporary
-modification in order to read in tables of O3, temp,
-pressure, rho for CRISTA runs.		M. Hagan (6/28/99)
