@@ -5,9 +5,9 @@
 module time_manager_mod
 
 ! <next four lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
+! $Source$
+! $Revision$
+! $Date$
 ! $Author$
 
 use     types_mod, only : r8
