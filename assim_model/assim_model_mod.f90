@@ -18,8 +18,13 @@ module assim_model_mod
 use location_mod, only : location_type, get_dist, write_location, read_location, &
                          LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
-use time_manager_mod
-use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file
+use time_manager_mod, only : time_type, get_time, read_time, write_time, &
+            nc_write_calendar_atts, nc_get_tindex, &
+            operator(<), operator(>), operator(+), operator(-), operator(/), operator(*), &
+            operator(==), operator(/=)
+                
+use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
+                          error_handler, E_ERR
 use types_mod, only : r8
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
@@ -192,8 +197,8 @@ integer :: LocationDimID, LocationVarID
 integer :: MetadataDimID, MetadataVarID
 
 if(.not. byteSizesOK()) then
-   print *, "Compiler does not appear to support required kinds of variables."
-   stop
+    call error_handler(E_ERR,'init_diag_output', &
+   'Compiler does not support required kinds of variables.',source,revision,revdate) 
 end if
 
 metadata_length = LEN(meta_data_per_copy(1))
@@ -294,12 +299,8 @@ contains
   !                       text message each time an error code is returned. 
   subroutine check(status)
     integer, intent ( in) :: status
-    
-    if(status /= nf90_noerr) then 
-      print *, trim(nf90_strerror(status))
-      print *,'assim_model_mod:init_diag_output'
-      stop
-    end if
+    if(status /= nf90_noerr) call error_handler(E_ERR,'init_diag_output', &
+                                  trim(nf90_strerror(status)), source, revision, revdate)
   end subroutine check  
 
 end function init_diag_output
@@ -365,7 +366,7 @@ integer, intent(in) :: file_id, model_size_out, num_copies
 type(location_type), intent(out) :: location(model_size_out)
 character(len = *) :: meta_data_per_copy(num_copies)
 
-character(len=129) :: header
+character(len=129) :: header, errstring
 integer :: i, j
 
 ! Should have space checks, etc here
@@ -377,8 +378,9 @@ end do
 ! Will need other metadata, too; Could be as simple as writing locations
 read(file_id, *) header
 if(header /= 'locat') then
-   write(*, *) 'Error: get_diag_input_copy_meta_data expected to read "locat"'
-   stop
+   write(errstring,*)'expected to read "locat" got ',trim(adjustl(header))
+   call error_handler(E_ERR,'get_diag_input_copy_meta_data', &
+        errstring, source, revision, revdate)
 endif
 
 ! Read in the locations
@@ -430,14 +432,17 @@ type(time_type) :: aget_closest_state_time_to
 
 type(time_type) :: delta_time, time_step
 
-! CAREFUL WITH FLOATING POINT DIVISION AND COMPARISONS
+character(len=129) :: errstring
+integer :: is1,is2,id1,id2
 
 ! Get the model time step capabilities
 time_step = get_model_time_step()
 
 if(model_time > time) then
-   write(*, *) 'Error in aget_closest_state_to_time: model time > time'
-   stop
+   call get_time(model_time,is1,id1)
+   call get_time(time,is2,id2)
+   write(errstring, *)'model time (',is1,id1,') > time (',is2,id2,')'
+   call error_handler(E_ERR,'aget_closest_state_time_to', errstring, source, revision, revdate)
 endif
 
 delta_time = time - model_time
@@ -707,8 +712,8 @@ integer :: seconds, days, i, control_unit, ic_file_unit, ud_file_unit
 
 character(len = 26), dimension(num) :: ic_file_name, ud_file_name 
 character(len = 128) :: input_string
-
-! NEED TO BE CAREFUL ABOUT FLOATING POINT TESTS: Being sloppy here
+character(len = 129) :: errstring
+integer :: is1,is2,id1,id2
 
 ! If none of these needs advancing just return
 do i = 1, num
@@ -716,24 +721,20 @@ do i = 1, num
 end do
 return
 
-
 ! Loop through each model state and advance
 10 do i = 1, num
-!   write(*, *) 'advancing model state ', i
 
-! Check for time error; use error handler when available
-! TJH -- cannot write time_type to stdout -- they have private
-!        components and the compiler balks. time_manager_mod
-!        provides a routine to return the seconds and days
-!        from a time type. 
+   ! Check for time error; use error handler when available
+   ! TJH -- cannot write time_type to stdout -- they have private
+   !        components and the compiler balks. time_manager_mod
+   !        provides a routine to return the seconds and days
+   !        from a time type. 
 
    if(model_time(i) > target_time) then
-      write(*, *) 'Error in Aadvance_state, target_time before model_time'
-      call get_time(model_time(i),seconds,days)
-      write(*, *) 'Model_time  (days, seconds) ', days, seconds
-      call get_time(target_time,seconds,days)
-      write(*, *) 'Target time (days, seconds) ', days, seconds
-      stop
+      call get_time(model_time(i),is1,id1)
+      call get_time(target_time,is2,id2)
+      write(errstring,*)'target time ',is2,id2,' is before model_time ',is1,id1
+      call error_handler(E_ERR,'Aadvance_state', errstring, source, revision, revdate)
    endif
 
 ! Two blocks here for now, one for single executable, one for asynch multiple execs
@@ -773,8 +774,8 @@ return
          write(ic_file_name(i), 41) 'assim_model_state_ic', i
          write(ud_file_name(i), 41) 'assim_model_state_ud', i
       else 
-         write(*, *) 'Aadvance_state in assim_model_mod needs ensemble size < 10000'
-         stop
+         write(ic_file_name(i), '(a21,i6.6)') 'assim_model_state_ic', i
+         write(ud_file_name(i), '(a21,i6.6)') 'assim_model_state_ud', i
       endif
 
  11   format(a21, i1)
@@ -790,7 +791,7 @@ return
       ic_file_unit = get_unit()
       if ( binary_restart_files ) then
             open(unit = ic_file_unit, file = ic_file_name(i),      form = 'unformatted')
-            call write_time(ic_file_unit, target_time,             form = 'unformatted')
+            call write_time(ic_file_unit, target_time,                    'unformatted')
             call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit, 'unformatted')
       else
             open(unit = ic_file_unit, file = ic_file_name(i))
@@ -857,9 +858,8 @@ if(asynch /= 0) then
 
    else
 
-      write(*, *) 'async = ',asynch,' is not allowed.'
-      write(*, *) 'Set async = 0, 1, or 2 in input.nml'
-      stop
+      write(errstring,*)'input.nml - async is ',asynch,' must be 0, 1, or 2' 
+      call error_handler(E_ERR,'Aadvance_state', errstring, source, revision, revdate)
 
    endif
 
@@ -934,10 +934,13 @@ implicit none
 type(assim_model_type), intent(inout) :: assim_model
 real(r8),               intent(in)    :: state(:)
 
+character(len=129) :: errstring
+
 ! Check the size for now
 if(size(state) /= get_model_size()) then
-   write(*, *) 'Error: Input state vector is wrong size in set_model_state_vector'
-   stop
+   write(errstring,*)'state vector has length ',size(state), &
+                     ' model size (',get_model_size(),') does not match.'
+   call error_handler(E_ERR,'set_model_state_vector', errstring, source, revision, revdate)
 endif
 
 assim_model%state_vector = state
@@ -997,7 +1000,7 @@ if (present(fform)) fileformat = trim(adjustl(fform))
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      call write_time(funit, model_time, form="unformatted")
+      call write_time(funit, model_time, "unformatted")
       write(funit) model_state
    CASE DEFAULT
       call write_time(funit, model_time)
@@ -1133,6 +1136,9 @@ integer, optional, intent(in) :: copy_index
 
 integer :: i,ierr, timeindex, copyindex
 
+character(len=129) :: errstring
+integer :: is1,id1
+
 if (.not. present(copy_index) ) then     ! we are dependent on the fact
    copyindex = 1                         ! there is a copyindex == 1
 else                                     ! if the optional argument is
@@ -1141,12 +1147,9 @@ endif                                    ! have a backup plan
 
 timeindex = nc_get_tindex(ncFileID, model_time)
 if ( timeindex < 0 ) then
-   write(*,*)'ERROR: ',trim(adjustl(source))
-   write(*,*)'ERROR: aoutput_diagnostics: model_time not in netcdf file'
-   write(*,*)'ERROR: model_time (seconds, days) : '
-   call write_time(6,model_time) ! hardwired unit will change with error handler
-   write(*,*)'ERROR: netcdf file ID ',ncFileID
-   stop
+   call get_time(model_time,is1,id1)
+   write(errstring,*)'model time ',is1,id1,' not in netcdf file ',ncFileID 
+   call error_handler(E_ERR,'aoutput_diagnostics', errstring, source, revision, revdate)
 endif
 
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
@@ -1191,9 +1194,8 @@ type(time_type), intent(inout) :: model_time
 real(r8),        intent(inout) :: model_state(:)
 integer,         intent(out)   :: copy_index
 
-character(len=5) :: header
-
-print *,'assim_model_mod:ainput_diagnostics ... reading from unit',file_id
+character(len=5)   :: header
+character(len=129) :: errstring
 
 ! Read in the time
 model_time = read_time(file_id)
@@ -1201,9 +1203,8 @@ model_time = read_time(file_id)
 ! Read in the copy index
 read(file_id, *) header
 if(header /= 'fcopy')  then
-   write(*, *) 'Error: expected "copy" in ainput_diagnostics'
-   write(*, *) 'header read was: ', header
-   stop
+   write(errstring,*)'expected "copy", got ',header
+   call error_handler(E_ERR,'ainput_diagnostics', errstring, source, revision, revdate)
 endif
 
 read(file_id, *) copy_index

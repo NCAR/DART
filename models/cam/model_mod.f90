@@ -275,9 +275,9 @@ end subroutine read_cam_init
 
 
 
-  subroutine read_cam_coord(var, dim, cfield)
+  subroutine read_cam_coord(var, idim, cfield)
 !=======================================================================
-! subroutine read_cam_coord(var, dim, cfield)
+! subroutine read_cam_coord(var, idim, cfield)
 !
 ! should be called with cfield = one of :
 !          (/'lat     ','lon     ','gw      ','P0      '
@@ -286,10 +286,10 @@ end subroutine read_cam_init
 !----------------------------------------------------------------------
 ! Local workspace
 integer :: i,ifld             ! grid indices
-integer :: ncfileid, ncfldid, dim
+integer :: ncfileid, ncfldid, idim
 
 !----------------------------------------------------------------------
-real(r8), dimension(dim), intent(out) :: var
+real(r8), dimension(idim), intent(out) :: var
 character (len=8), intent(in)  :: cfield 
 
 ! read CAM 'initial' file domain info
@@ -298,9 +298,9 @@ call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
 
 ! read CAM 'initial' file field desired
 call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid))
-call check(nf90_get_var(ncfileid, ncfldid, var ,start=(/1/) ,count=(/dim/) ))
+call check(nf90_get_var(ncfileid, ncfldid, var ,start=(/1/) ,count=(/idim/) ))
 PRINT*,'reading ',cfield,' using id ',ncfldid
-WRITE(*,*) (var(i),i=1,dim)
+WRITE(*,*) (var(i),i=1,idim)
 
 contains 
 
@@ -433,39 +433,39 @@ end subroutine plevs_cam
 type(model_type), intent(in) :: var
 real(r8), intent(out) :: x(:)
 
-integer :: i, j, k, nf, nt, index
+integer :: i, j, k, nf, nt, indx
+character(len=129) :: errstring
 
 ! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
 
 ! Start copying fields to straight vector
-index = 0
+indx = 0
 do i = 1, num_lons
    do j = 1, num_lats
 !  Surface pressure and other 2d flds are first
       do nf = 1, n2dflds
-         index = index + 1
-         x(index) = var%vars_2d(i, j, nf)
+         indx = indx + 1
+         x(indx) = var%vars_2d(i, j, nf)
       end do
 !     u,v,t,q, and tracers at successively lower levels
       do k = 1, num_levs
          do nf= 1, n3dflds
-            index = index + 1
-            x(index) = var%vars_3d(i, k, j, nf)
+            indx = indx + 1
+            x(indx) = var%vars_3d(i, k, j, nf)
          end do
          do nt = 1, num_tracers
             IF (i==1 .and. j==1) PRINT*,'filling tracers'
-            index = index + 1
-            x(index) = var%tracers(i, k, j, nt)
+            indx = indx + 1
+            x(indx) = var%tracers(i, k, j, nt)
          end do
       end do
    end do
 end do
 
 ! Temporary check
-if(index /= model_size) then
-   write(*, *) 'index, model_size ', index, model_size
-   call error_handler(E_ERR, 'prog_var_to_vector', &
-               'bad index sum', source, revision, revdate)
+if(indx /= model_size) then
+   write(errstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
+   call error_handler(E_ERR, 'prog_var_to_vector', errstring, source, revision, revdate)
 endif
 
 end subroutine prog_var_to_vector
@@ -481,36 +481,36 @@ end subroutine prog_var_to_vector
 real(r8), intent(in) :: x(:)
 type(model_type), intent(out) :: var
 
-integer :: i, j, k, nf, nt, n0, index
+integer :: i, j, k, nf, nt, n0, indx
+character(len=129) :: errstring
 
 ! Start copying fields from straight vector
-index = 0
+indx = 0
 do i = 1, num_lons
    do j = 1, num_lats
 ! Surface pressure and other 2d fields are first
       do nf = 1, n2dflds
-         index = index + 1
-         var%vars_2d(i, j, nf) = x(index)
+         indx = indx + 1
+         var%vars_2d(i, j, nf) = x(indx)
       end do
 !     u,v,t,q  and tracers at successive levels
       do k = 1, num_levs
          do nf = 1, n3dflds
-            index = index + 1
-            var%vars_3d(i, k, j, nf) = x(index)
+            indx = indx + 1
+            var%vars_3d(i, k, j, nf) = x(indx)
          end do 
          do nt = 1, num_tracers
-            index = index + 1
-            var%tracers(i, k, j, nt) = x(index)
+            indx = indx + 1
+            var%tracers(i, k, j, nt) = x(indx)
          end do
       end do
    end do
 end do
 
 ! Temporary check
-if(index /= model_size) then
-   write(*, *) 'index, model_size ', index, model_size
-   call error_handler(E_ERR, 'vector_to_prog_var', &
-               'bad index sum', source, revision, revdate)
+if(indx /= model_size) then
+   write(errstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
+   call error_handler(E_ERR, 'vector_to_prog_var', errstring, source, revision, revdate)
 endif
 
 end subroutine vector_to_prog_var
@@ -723,19 +723,19 @@ integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
-integer  :: index, num_per_col, col_num, col_elem, lon_index, lat_index
+integer  :: indx, num_per_col, col_num, col_elem, lon_index, lat_index
 real(r8) :: lon, lat, lev
 integer  :: local_var_type, var_type_temp
 
 ! Easier to compute with a 0 to size - 1 index
-index = index_in - 1
+indx = index_in - 1
 
 ! Compute number of items per column
 num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! What column is this index in
-col_num  = index / num_per_col 
-col_elem = index - col_num * num_per_col
+col_num  = indx / num_per_col 
+col_elem = indx - col_num * num_per_col
 
 ! What lon and lat index for this column
 lon_index = col_num / num_lats
@@ -1178,37 +1178,37 @@ real(r8) :: get_val
 real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, type
 
-integer :: per_col, index
+integer :: per_col, indx
 
 ! Compute size of grid storage in a column; includes tracers
 ! Single 2D state vector is pressure
 per_col = 1 + num_levs * n3tflds
 
 ! Find the starting index for this column
-index = per_col * (lat_index - 1 + (lon_index - 1) * num_lats)
+indx = per_col * (lat_index - 1 + (lon_index - 1) * num_lats)
 
 ! Pressure is first 
 if(type == 3) then
-   index = index + 1
+   indx = indx + 1
 else
 ! For interior fields compute the base for their level and add offset
-   index = index + 1 + (level - 1) * n3tflds
+   indx = indx + 1 + (level - 1) * n3tflds
 ! Temperature
    if(type == 4) then
-      index = index + 1
+      indx = indx + 1
 ! U wind component
    else if(type == 1) then
-      index = index + 2
+      indx = indx + 2
 ! V wind component
    else if(type == 2) then
-      index = index + 3
+      indx = indx + 3
 ! Tracers
    else if(type > 4) then
-      index = index + type - 1
+      indx = indx + type - 1
    end if
 endif
    
-get_val = x(index)
+get_val = x(indx)
 
 end function get_val
 
@@ -1523,6 +1523,7 @@ integer :: lonVarID, latVarID, ilevVarID, hyaiVarID, hybiVarID, P0VarID, gwVarID
 integer :: psVarID, TVarID, UVarID, VVarID, QVarID, ifld
 integer :: TracerVarID, StateVarID, StateVarVarID
 integer :: i
+character(len=129) :: errstring
 
 ierr = 0     ! assume normal termination
 
@@ -1542,10 +1543,8 @@ call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
 call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
 
 if ( TimeDimID /= unlimitedDimId ) then
-  write(*,*)'ERROR: nc_write_model_atts: Time      dimension is ',TimeDimID
-  write(*,*)'ERROR: nc_write_model_atts: unlimited dimension is ',unlimitedDimId
-  write(*,*)'ERROR: they must be the same.'
-  stop
+  write(errstring,*)'Time dimension ID ',TimeDimID,'must match Unlimited Dimension ID ',unlimitedDimId
+  call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
 endif
 
 !-------------------------------------------------------------------------------

@@ -11,6 +11,8 @@ module random_nr_mod
 ! $Author$ 
 !
 
+use utilities_mod, only : error_handler, E_ERR
+
 implicit none
 private
 
@@ -84,8 +86,7 @@ s%ix2 = mod(ia2*s%ix2 + ic2, m2)
 s%ix3 = mod(ia3*s%ix3 + ic3, m3)
 j = 1 + (97*s%ix3) / m3
 if(j > 97 .or. j < 1) then
-   write(*, *) 'Fatal error in random number generator ran1'
-   stop
+      call error_handler(E_ERR,' ran1', 'Fatal error in random number', source, revision, revdate)
 endif
 ran1 = s%r(j)
 s%r(j) = (dble(s%ix1) + dble(s%ix2)*rm2)*rm1

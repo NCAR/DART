@@ -12,6 +12,7 @@ module obs_set_mod
 !
 
 use        types_mod, only : r8
+use    utilities_mod, only : error_handler, E_ERR
 use set_def_list_mod, only : set_def_list_type, get_total_num_obs
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time
@@ -76,8 +77,7 @@ integer :: num_copies, num_obs
 num_copies = 1
 if(present(num_copies_in)) num_copies = num_copies_in
 if(num_copies < 0) then
-   write(*, *) 'Error: Negative num_copies in init_obs_set'
-   stop
+   call error_handler(E_ERR,'init_obs_set', 'Negative num_copies', source, revision, revdate)
 endif
 
 ! Set the number of copies
@@ -298,14 +298,12 @@ integer :: ind
 ind = 1
 if(present(index_in)) ind = index_in
 if((ind < 1) .or. (ind > set%num_copies)) then
-   write(*, *) 'Error: Out of range index in get_obs_values'
-   stop
+   call error_handler(E_ERR,'get_obs_values', 'Out of range index', source, revision, revdate)
 endif
 
 ! Next make sure there's enough room in obs
 if(size(obs) < set%num_obs) then
-   write(*, *) 'Error: obs array too small in get_obs_values'
-   stop
+   call error_handler(E_ERR,'get_obs_values', ' obs array too small', source, revision, revdate)
 endif
 
 !Copy the obs
@@ -332,14 +330,12 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error: Out of range copy in set_obs_values'
-   stop
+      call error_handler(E_ERR,'set_obs_values', 'Out of range copy', source, revision, revdate)
 endif
 
 ! Make sure the obs array is the right size
 if(size(obs) /= set%num_obs) then
-   write(*, *) 'Error: obs array wrong size in set_obs_values'
-   stop
+   call error_handler(E_ERR,'set_obs_values', 'obs array wrong size', source, revision, revdate)
 endif
 
 !Copy the obs
@@ -368,16 +364,14 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in 
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error(set_single_obs_value): Out of range "copy"'
    write(*, *) 'range is [1,',set%num_copies,'], "copy" is ',copy
-   stop
+   call error_handler(E_ERR,'set_single_obs_value', 'copy: out of range', source, revision, revdate)
 endif
 
 ! Make sure the obs index is legal
 if(num_obs > set%num_obs .or. num_obs < 1) then
-   write(*, *) 'Error(set_single_obs_value): "num_obs" wrong size'
    write(*, *) 'num_obs is ',num_obs,' must be between [1,',set%num_obs,']'
-   stop
+   call error_handler(E_ERR,'set_single_obs_value', 'num_obs: wrong size', source, revision, revdate)
 endif
 
 ! Copy the obs
@@ -405,14 +399,12 @@ integer :: ind
 ind = 1
 if(present(index_in)) ind = index_in
 if((ind < 1) .or. (ind > set%num_copies)) then
-   write(*, *) 'Error: Out of range index in init_obs_set'
-   stop
+      call error_handler(E_ERR,'set_obs_set_missing', 'Out of range index', source, revision, revdate)
 endif
 
 ! Make sure the missing array is the right size
 if(size(missing) /= set%num_obs) then
-   write(*, *) 'Error: missing array wrong size in set_obs_set_missing'
-   stop
+      call error_handler(E_ERR,'set_obs_set_missing', 'missing array wrong size', source, revision, revdate)
 endif
 
 ! Set the data missing
@@ -475,14 +467,12 @@ integer :: ind
 ind = 1
 if(present(index_in)) ind = index_in
 if(ind < 1 .or. ind > set%num_copies) then
-   write(*, *) 'Error: Out of range index in init_obs_set'
-   stop
+      call error_handler(E_ERR,'obs_value_missing', 'Out of range index', source, revision, revdate)
 endif
 
 ! Next make sure there's enough room in obs
 if(size(missing) /= set%num_obs) then
-   write(*, *) 'Error: missing array too small in obs_value_missing'
-   stop
+      call error_handler(E_ERR,'obs_value_missing', 'missing array too small', source, revision, revdate)
 endif
 
 ! Copy the missing data
@@ -509,8 +499,7 @@ integer :: num_obs, num_copies, i
 ! Read the header and verify 
 read(file_id, *) header
 if(header /= 'obset') then
-   write(*, *) 'Error: Expected "obset" in header in read_obs_set' 
-   stop
+      call error_handler(E_ERR,'read_obs_set', 'Expected "obset" in header', source, revision, revdate)
 end if
 
 ! Read the obs_set def index
@@ -561,8 +550,7 @@ logical, allocatable :: missing(:)
 ! Read the header and verify 
 read(file_id, *) header
 if(header /= 'obset') then
-   write(*, *) 'Error: Expected "obset" in header in read_obs_set_time' 
-   stop
+      call error_handler(E_ERR,'read_obs_set_time', 'Expected "obset" in header', source, revision, revdate)
 end if
 
 ! Read the obs_set def index
@@ -656,14 +644,12 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in 
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error: Out of range copy in get_single_obs_value'
-   stop
+   call error_handler(E_ERR,'get_single_obs_value', 'Out of range copy', source, revision, revdate)
 endif
 
 ! Make sure the obs index is legal
 if(num_obs > set%num_obs .or. num_obs < 1) then
-   write(*, *) 'Error: num_obs wrong size in get_single_obs_value'
-   stop
+   call error_handler(E_ERR,'get_single_obs_value', 'num_obs wrong siz', source, revision, revdate)
 endif
 
 ! Copy the obs

@@ -34,6 +34,7 @@ module history
 !-----------------------------------------------------------------------
 ! $Id$
 !-----------------------------------------------------------------------
+   use utilities_mod, only : error_handler, E_ERR
    use shr_kind_mod, only: r8 => shr_kind_r8, r4 => shr_kind_r4
    use ppgrid,    only: pcols
    use constituents, only: pcnst, pnats, cnst_name, cnst_longname
@@ -2857,6 +2858,8 @@ end function sec2hms
       type (hbuffer_3d) :: xyzbuf ! temporary array to hold data in COORDS order
       type (hbuffer_3d) :: xzybuf ! temporary array holding full x, y, z dims
 
+      character(len=129) :: errstring
+
 #ifdef SPMD
       integer :: coldimin         ! column dimension of model array
       integer :: numsend          ! number of items to be sent
@@ -2892,8 +2895,8 @@ end function sec2hms
 
       else
 
-         write(6,*)'DUMP_FIELD: bad numlev=', numlev
-         stop 999
+         write(errstring,*)'bad numlev ', numlev,' must be >= 1'
+         call error_handler(E_ERR,'dump_field', errstring, source, revision, revdate)
          
       end if
 
@@ -4640,6 +4643,7 @@ end function sec2hms
       integer :: n     ! loop index
       integer :: c     ! chunk (physics ) or latitude (dynamics) index
       integer :: ncol  ! number of columns per chunk
+      character(len=129) :: errstring
 !
 ! Ensure that required grid info is available now
 !
@@ -4678,9 +4682,9 @@ end function sec2hms
 ! Check number of fields against max for master list.
 !
       if (nfmaster > pflds) then
-         write(6,*)'ADDFLD: Too many fields for primary history file -- pflds,nfmaster=', &
+         write(errstring,*)'Too many fields for primary history file -- pflds,nfmaster=', &
                    pflds,nfmaster
-         stop 999
+      call error_handler(E_ERR,'ADDFLD', errstring, source, revision, revdate)
       end if
 
       masterlist(nfmaster)%field%name        = fname

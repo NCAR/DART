@@ -9,10 +9,10 @@ module obs_set_def_mod
 ! $Revision$
 ! $Date$
 ! $Author$
-!
 
-use   types_mod, only : r8
-use obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
+use     types_mod, only : r8
+use utilities_mod, only : error_handler, E_ERR
+use   obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
                         write_obs_def, get_error_variance, &
                         od_get_expected_obs => get_expected_obs, &
                         od_get_close_states=>get_close_states, &
@@ -20,7 +20,7 @@ use obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
                         od_get_seq_loc => get_seq_loc, &
                         od_get_obs_location4 => get_obs_location4, &
                         od_get_obs_kind4 => get_obs_kind4
-use location_mod, only: location_type, vert_is_level
+use   location_mod, only: location_type, vert_is_level
 
 implicit none
 private
@@ -111,8 +111,7 @@ type(obs_set_def_type), intent(in) :: set
 real(r8), intent(out) :: cov(:)
 
 if(size(cov) < set%num_obs_defs) then
-   write(*, *) 'Error: cov array too small in get_diag_obs_err_cov'
-   stop
+      call error_handler(E_ERR,'get_diag_obs_err_cov', 'cov array too small', source, revision, revdate)
 endif
 
 cov(1:set%num_obs_defs) = set%diag_cov
@@ -142,8 +141,7 @@ else
 
 ! Check for sufficient storage
    if(size(obs) < set%num_obs_defs) then
-      write(*, *) 'Error: obs array too small in get_expected_obs'
-      stop
+      call error_handler(E_ERR,'get_expected_obs', 'obs array too small', source, revision, revdate)
    endif
 
 
@@ -171,8 +169,7 @@ integer, intent(in) :: index
 
 ! Check for index exceeding total number of obs available
 if(index > get_num_obs(set)) then
-   write(*, *) 'Error: index too large in get_obs_def'
-   stop
+      call error_handler(E_ERR,'get_obs_def', 'index too large', source, revision, revdate)
 endif
 
 get_obs_def = set%obs_defs(index)
@@ -213,8 +210,7 @@ integer i
 
 ! Make sure locations array is big enough
 if(size(locations) < set%num_obs_defs) then
-   write(*, *) 'Error: locations array too small in get_obs_locations'
-   stop
+   call error_handler(E_ERR,'get_obs_locations','locations array too small', source, revision, revdate)
 endif
 
 do i = 1, set%num_obs_defs
@@ -244,13 +240,11 @@ integer :: i
 ! Make sure that number array is big enough to hold all obs in set
 if(present(obs_num)) then
    if(size(number) < 1) then
-      write(*, *) 'Error: number array too small in get_close_states'
-      stop
+      call error_handler(E_ERR,'get_close_states', 'number array too small', source, revision, revdate)
    endif
 else
    if(size(number) < set%num_obs_defs) then
-      write(*, *) 'Error: number array too small in get_close_states'
-      stop
+      call error_handler(E_ERR,'get_close_states', 'number array too small', source, revision, revdate)
    endif
 endif
 
@@ -286,8 +280,7 @@ integer :: i
 
 ! Make sure that number array is big enough to hold all obs in set
 if(size(number) < set%num_obs_defs) then
-   write(*, *) 'Error: number array too small in get_close_states'
-   stop
+      call error_handler(E_ERR,'get_num_close_states', 'number array too small', source, revision, revdate)
 endif
 
 ! Loop through the observations and get their close states
@@ -311,8 +304,7 @@ type(obs_set_def_type), intent(inout) :: set
 type(obs_def_type), intent(in) :: obs_def
 
 if(set%num_obs_defs == set%max_num_obs_defs) then
-   write(*, *) 'Error: no room for another obs_def in subroutine add_obs'
-   stop
+      call error_handler(E_ERR,'add_obs', 'no room for another obs_def', source, revision, revdate)
 endif
 
 set%num_obs_defs = set%num_obs_defs + 1
@@ -359,8 +351,8 @@ integer :: num, i
 ! Read the header for a set_def
 read(file_id, *) header
 if(header /= 'obset') then
-   write(*, *) 'Error: expected string "obset" in input file in read_obs_set_def'
-   stop
+    call error_handler(E_ERR,'read_obs_set_deF', 'expected string "obset" in input file', &
+                       source, revision, revdate)
 endif
 
 ! Read the number of observations in the set

@@ -19,7 +19,8 @@ module obs_kind_mod
 ! a good place to store other parameters associated with more complicated
 ! observation types.
 
-use types_mod, only : r8
+use     types_mod, only : r8
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 private
@@ -103,8 +104,8 @@ character(len=5) :: header
 ! Need additional error checks
 read(file, '(a5)' ) header
 if(header /= 'kind ') then
-   write(*, *) 'Error: Expected kind header "kind " in input file'
-   stop
+   call error_handler(E_ERR,'read_kind', 'Expected kind header "kind " in input file', &
+                      source, revision, revdate)
 endif
 
 ! Now read the kind index

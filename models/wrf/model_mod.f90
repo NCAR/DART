@@ -24,7 +24,7 @@ use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              LocationDims, LocationName, LocationLName, query_location
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR
+                             error_handler, E_ERR, E_MSG
 
 use netcdf
 use typesizes
@@ -164,7 +164,7 @@ real(r8)    :: theta1,theta2,cell,cell2,psx
 ! Begin by reading the namelist input                                           
 if(file_exist('input.nml')) then
 
-   iunit = open_file(file = 'input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
    call close_file(iunit)                                                        
@@ -597,10 +597,11 @@ real(r8) :: lon, lat, lev
 
 integer :: i, number_of_wrf_variables
 logical, parameter :: debug = .false.  
+character(len=129) :: errstring
 
 if(debug) then
-  write(6,*) ' in get_state_meta_data '
-  write(6,*) ' index in is ',index_in
+  write(errstring,*)' index_in = ',index_in
+  call error_handler(E_MSG,'get_state_meta_data',errstring,' ',' ',' ')
 endif
 
 index = index_in
@@ -610,7 +611,8 @@ var_found = .false.
 
   if(debug) then
     do i=1, wrf%number_of_wrf_variables
-      write(6,*) ' i, var_type(i) ',i,wrf%var_type(i)
+       write(errstring,*)' i, var_type(i) = ',i,wrf%var_type(i)
+       call error_handler(E_MSG,'get_state_meta_data',errstring,' ',' ',' ')
     enddo
   endif
 
@@ -624,10 +626,10 @@ var_found = .false.
        index = index - wrf%var_index(1,i) + 1
      end if
      if(i .gt. wrf%number_of_wrf_variables) then
-       write(6,*) ' index out of range in get_state_meta_data '
-       write(6,*) ' index is ',index
-       write(6,*) ' size of vector ',wrf%model_size
-       stop
+       write(errstring,*)' size of vector ',wrf%model_size
+       call error_handler(E_MSG,'get_state_meta_data', errstring, ' ', ' ', ' ')
+       write(errstring,*)' i,  number_of_wrf_variables ',i,wrf%number_of_wrf_variables
+       call error_handler(E_ERR,'get_state_meta_data', 'index out of range', source, revision, revdate)
      end if
    end do
 
@@ -753,8 +755,8 @@ call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_h)
      ! get height vertical co-ordinate
      if(debug) print*,' obs is surface pressure   = ', xyz_loc(3)
   else
-     print*,' wrong option for which_vert'
-     stop
+     call error_handler(E_ERR,'model_interpolate', 'wrong option for which_vert', source, &
+          revision, revdate)
 
   end if
 ! Get the desired field to be interpolated
@@ -803,8 +805,7 @@ call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_h)
                      dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
   if(debug) print*,' for sfc model val =',model_interpolate
  else
-  print*,'Do not know what to do for this observation kind type ',obs_kind
-  stop
+  call error_handler(E_ERR,'model_interpolate', 'wrong obs kind', source, revision, revdate)
  end if
   if(obs_kind /= 3) call Interp_lin_1D(fld, wrf%bt, zloc, model_interpolate)
 if(debug) print*,' interpolated value= ',model_interpolate
@@ -1317,6 +1318,7 @@ integer :: QVVarID, QCVarID, QRVarID
 integer :: i
 integer :: ncid            ! for wrfinput reading
 
+character(len=129) :: errstring
 !-----------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
@@ -1337,10 +1339,8 @@ call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
 call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
 
 if ( TimeDimID /= unlimitedDimId ) then
-  write(*,*)'ERROR: nc_write_model_atts: Time      dimension is ',TimeDimID
-  write(*,*)'ERROR: nc_write_model_atts: unlimited dimension is ',unlimitedDimId
-  write(*,*)'ERROR: they must be the same.'
-  stop
+  write(errstring,*)'Time Dimension ID ',TimeDimID,' must match Unlimited Dimension ID ',unlimitedDimID
+  call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
 endif
 
 !-----------------------------------------------------------------
@@ -1723,11 +1723,8 @@ else
    call check(nf90_put_att(ncFileId, QRVarID, "description", "-"))
 
    if ( wrf%n_moist > 3 ) then
-      write(*,*)' YO DUMMY -- NEED TO INITIALIZE THE SOLID PHASE WATER VARS'
-      write(*,*)' YO DUMMY -- NEED TO INITIALIZE THE SOLID PHASE WATER VARS'
-      write(*,*)' YO DUMMY -- NEED TO INITIALIZE THE SOLID PHASE WATER VARS'
-      write(*,*)' YO DUMMY -- NEED TO INITIALIZE THE SOLID PHASE WATER VARS'
-      stop
+   call error_handler(E_ERR,'nc_write_model_atts', &
+           'NEED TO INITIALIZE THE SOLID PHASE WATER VARS', source, revision, revdate)
    endif
 
    !-----------------------------------------------------------------
@@ -1952,13 +1949,9 @@ else
 
    deallocate(temp3d)
 
-
    if ( wrf%n_moist > 3 ) then
-      write(*,*)' YO DUMMY -- NEED TO OUTPUT THE SOLID PHASE WATER VARS'
-      write(*,*)' YO DUMMY -- NEED TO OUTPUT THE SOLID PHASE WATER VARS'
-      write(*,*)' YO DUMMY -- NEED TO OUTPUT THE SOLID PHASE WATER VARS'
-      write(*,*)' YO DUMMY -- NEED TO OUTPUT THE SOLID PHASE WATER VARS'
-      stop
+      call error_handler(E_ERR,'nc_write_model_vars', &
+               'NEED TO OUTPUT THE SOLID PHASE WATER VARS', source, revision, revdate)
    endif
 
 endif

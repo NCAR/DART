@@ -10,7 +10,7 @@ program ps_rand_local
 ! $Date$
 
 use      types_mod, only : r8, PI
-use  utilities_mod, only : get_unit
+use  utilities_mod, only : get_unit, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -57,8 +57,7 @@ read(*, *) top_lon
 
 ! Simple error check to let people know limits
 if(top_lat <= bot_lat .or. top_lon <= bot_lon) then
-   write(*, *) 'lat lon range error'
-   stop
+   call error_handler(E_ERR,'ps_rand_local', 'lat lon range error', source, revision, revdate)
 endif
 
 num_done = 0

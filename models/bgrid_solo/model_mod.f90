@@ -9,31 +9,6 @@ module model_mod
 !  $Revision$
 !  $Date$
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Flexible Modeling System (FMS).              !!
-!!                                                                       !!
-!! FMS is free software; you can redistribute it and/or modify           !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! FMS is distributed in the hope that it will be useful,                !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with FMS; if not, write to:                                     !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 ! Assimilation interface for Held-Suarez Bgrid
 
 !-----------------------------------------------------------------------
@@ -95,6 +70,7 @@ use          location_mod, only: location_type, get_location, set_location, &
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
+use         utilities_mod, only : error_handler, E_ERR
 
 !-----------------------------------------------------------------------
 
@@ -883,6 +859,7 @@ real(r8), intent(out) :: x(isize)
 integer :: i, j, k, nt, indx
 integer :: num_levs
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
+character(len=129) :: errstring
 
 ! Get the bounds for storage on Temp and Velocity grids
 tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
@@ -923,14 +900,10 @@ do i = vis, vie
    end do
 end do
    
-
-
-
 ! Temporary check
 if(indx /= isize) then
-   write(*, *) 'prog_var_to_vector bad index sum '
-   write(*, *) 'indx, isize ', indx, isize
-   stop
+   write(errstring, *) 'indx (',indx,') should be equal to (',isize,') isize'
+   call error_handler(E_ERR,'prog_var_to_vector', errstring, source, revision, revdate)
 endif
 
 end subroutine prog_var_to_vector
@@ -947,6 +920,8 @@ type(prog_var_type), intent(inout) :: vars
 integer :: i, j, k, nt, indx
 integer :: num_levs
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
+
+character(len=129) :: errstring
 
 ! Initialize the static parts of the prog var type
 ! Don't want to initialize prog_var_type vars if already done (memory)
@@ -1010,14 +985,11 @@ call update_halo (Dynam%Hgrid, TEMP, vars%ps)
 call update_halo (Dynam%Hgrid, TEMP, vars%pssl)
 
 
-
 ! Temporary check
 if(indx /= isize) then
-   write(*, *) 'vector_to_prog_var bad index sum '
-   write(*, *) 'indx, isize ', indx, isize
-   stop
+   write(errstring, *) 'indx (',indx,') should be equal to (',isize,') isize'
+   call error_handler(E_ERR,'vector_to_prog_var', errstring, source, revision, revdate)
 endif
-
 
 
 end subroutine vector_to_prog_var
@@ -1839,6 +1811,8 @@ integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
 integer :: klb, kub
 integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
 
+character(len=129) :: errstring
+
 !-----------------------------------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
@@ -1878,10 +1852,8 @@ call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
 call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
 
 if ( TimeDimID /= unlimitedDimId ) then
-  write(*,*)'ERROR: nc_write_model_atts: Time      dimension is ',TimeDimID
-  write(*,*)'ERROR: nc_write_model_atts: unlimited dimension is ',unlimitedDimId
-  write(*,*)'ERROR: they must be the same.'
-  stop
+   write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',ulimitedDimID
+   call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
 endif
 
 !-------------------------------------------------------------------------------

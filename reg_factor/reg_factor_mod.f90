@@ -13,7 +13,7 @@ module reg_factor_mod
 
 use     types_mod, only : r8
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
-                           close_file
+                          close_file, error_handler, E_ERR
 
 implicit none
 private
@@ -165,8 +165,8 @@ else if(select_regression == 3) then
 !_____________________________________________________________________
 
 else
-   write(*, *) 'Illegal value for namelist parameter select_regression in reg_factor_mod'
-   stop
+   call error_handler(E_ERR,'comp_reg_factor', &
+      'Illegal value for namelist parameter select_regression',source, revision, revdate)
 endif
 
 end function comp_reg_factor

@@ -209,21 +209,28 @@ real(r8), intent(in) :: lon, lat
 real(r8), intent(in) :: vert_loc
 integer,  intent(in) :: which_vert
 
-if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
-     'Longitude is out of [0,360] range', source, revision, revdate)
+character(len=129) :: errstring
 
-if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
-     'Latitude is out of -90->90 range', source, revision, revdate)
+if(lon < 0.0_r8 .or. lon > 360.0_r8) then
+   write(errstring,*)'longitude (',lon,') is not within range [0,360]'
+   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+endif
+
+if(lat < -90.0_r8 .or. lat > 90.0_r8) then
+   write(errstring,*)'latitude (',lat,') is not within range [-90,90]'
+   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+endif
 
 set_location%lon = lon * deg2rad
 set_location%lat = lat * deg2rad
 
-  if(which_vert < 1 .or. which_vert > 3  ) then
-      write(*, *) 'set which_vert is again'
-      stop
-  endif
-  set_location%which_vert = which_vert
-  set_location%vloc = vert_loc
+if(which_vert < 1 .or. which_vert > 3  ) then
+   write(errstring,*)'which_vert (',which_vert,') must be one of 1, 2, or 3'
+   call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
+endif
+
+set_location%which_vert = which_vert
+set_location%vloc = vert_loc
 
 end function set_location
 
@@ -292,13 +299,16 @@ implicit none
 integer, intent(in) :: ifile
 type(location_type) :: read_location
 
-character(len=5) :: header
+character(len=5)   :: header
+character(len=129) :: errstring
 
 ! Will want to add additional error checks on the read
 read(ifile, '(a5)' ) header
 
-if(header /= 'loc3d') call error_handler(E_ERR, 'read_location', &
-   'Expected location header "loc3d" in input file', source, revision, revdate)
+if(header /= 'loc3d') then
+   write(errstring,*)'Expected location header "loc3d" in input file, got ', header
+   call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+endif
 
 ! Now read the location data value
 read(ifile, *)read_location%lon, read_location%lat, &

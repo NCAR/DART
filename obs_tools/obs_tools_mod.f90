@@ -15,7 +15,8 @@ module obs_tools_mod
 ! These should be common to a variety of models and observational operator
 ! types.
 
-use types_mod, only : r8
+use     types_mod, only : r8
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 private
@@ -118,8 +119,7 @@ StateLoop : do i = 1, num_state
 
       num_pos_obs = num_pos_obs + 1
       if(num_pos_obs > max_num_pos_obs) then
-         write(*, *) 'error in dep_obs; max_num_pos_obs exceeded'
-         stop
+         call error_handler(E_ERR,'dep_obs', 'max_num_pos_obs exceeded', source, revision, revdate)
       endif
       obs_list(num_pos_obs) = ob
 
@@ -303,8 +303,8 @@ integer :: i
 n = obs_def%num
 
 if(size(state_ind, 1) < n) then
-   write(*, *) 'fatal: get_state_var_indices: state_ind array too small '
-   stop
+   call error_handler(E_ERR,'get_state_var_indices', &
+               'state_ind array too small', source, revision, revdate)
 endif
 
 do i = 1, n

@@ -10,19 +10,21 @@ module close_state_cache_mod
 ! $Date$
 ! $Author$
 
-use types_mod
+use        types_mod, only : r8
+use    utilities_mod, only : error_handler, E_ERR
 use obs_sequence_mod, only : obs_sequence_type, get_obs_def_index, &
-   get_num_close_states, get_close_states
+                             get_num_close_states, get_close_states
 
+implicit none
 private
 
-public close_state_cache_type, cache_init, get_close_cache
+public :: close_state_cache_type, cache_init, get_close_cache
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit 
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type close_state_cache_type
    private
@@ -108,8 +110,7 @@ cache%radius(i) = radius
 cache%num_obs(i) = num_obs_in_set
 
 if(ind > cache%size) then
-   write(*, *) 'Error in get_close_cache; cache is full'
-   stop
+      call error_handler(E_ERR,'get_close_cache', 'cache is full', source, revision, revdate)
 endif  
 
 ! Can I combine the allocations to avoid multiple memory stabs

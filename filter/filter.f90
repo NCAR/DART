@@ -20,7 +20,7 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, &
-   check_nml_error, file_exist
+   check_nml_error, file_exist, error_handler, E_ERR
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
@@ -177,8 +177,10 @@ do i = 1, num_output_ens_members
    else if(i < 10000) then
       write(ens_copy_meta_data(i), 51) 'ensemble member', i
    else
-      write(*, *) 'output metadata in filter needs ensemble size < 10000'
-      stop
+      write(ens_copy_meta_data(i), '(a15,i6.6)') 'ensemble member', i
+!     write(*, *) 'output metadata in filter needs ensemble size < 10000'
+!     call error_handler(E_ERR,'filter', 'output metadata in filter needs ensemble size < 10000', &
+!          source, revision, revdate)
    endif
  21   format(a15, i1)
  31   format(a15, i2)

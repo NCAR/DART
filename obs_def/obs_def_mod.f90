@@ -10,7 +10,8 @@ module obs_def_mod
 ! $Date$
 ! $Author$
 
-use    types_mod,    only : r8, pi
+use       types_mod, only : r8, pi
+use   utilities_mod, only : error_handler, E_ERR
 use    obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
                             IDENTITY_OBSERVATION, set_ncep_obs_kind, get_obs_kind
 use    location_mod, only : location_type, read_location, write_location, &
@@ -292,8 +293,8 @@ character(len=5) :: header
 read(file, 11) header
 11 format(a5)
 if(header /= 'obdef') then
-   write(*, *) 'Error: Expected location header "obdef" in input file'
-   stop
+   call error_handler(E_ERR,'read_obs_def', 'Expected location header "obdef" in input file', &
+                      source, revision, revdate)
 endif
 
 ! Read the location, kind and error variance

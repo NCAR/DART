@@ -14,6 +14,7 @@ module chisq_mod
 
 
 use types_mod
+use utilities_mod, only : error_handler, E_ERR
 
 implicit none
 
@@ -61,13 +62,14 @@ real(r8), intent(out) :: chsq, df, prob
 !  NORMALLY CONTAIN INTEGER VALUES.
 
 integer :: j
+character(len=129) :: errstring
 
 df = size(bins) - knstrn
 chsq = 0.0_r8
 do j = 1, size(bins)
    if( ebins(j) < 0.0_r8 ) then
-      write(*, *) 'FATAL ERROR: bad expected number in bins in chsone '
-      stop
+      write(errstring,*)'bad expected number (',ebins(j),') in bin ',j
+      call error_handler(E_ERR,'chsone', errstring, source, revision, revdate)
    endif
    chsq = chsq + (bins(j) - ebins(j))**2 / ebins(j)
 end do 
@@ -90,9 +92,11 @@ real(r8)             :: gammq
 
 real(r8) :: gammcf, gamser, gln
 
+character(len=129) :: errstring
+
 if( x < 0.0_r8 .or. a < 0.0_r8) then
-   write(*, *) 'FATAL ERROR: Bad arguments to gammq in chisq computation'
-   stop
+   write(errstring,*)'x ',x,' or a ',a,' < 0.0'
+   call error_handler(E_ERR,'gammq', errstring, source, revision, revdate)
 endif
 
 if(x < a+1.0_r8) then
@@ -120,11 +124,12 @@ real(r8), intent(out) ::  gamser, gln
 
 integer  :: n
 real(r8) :: ap, del, sum
+character(len=129) :: errstring
 
 gln = gammln(a)
 if(x < 0.0_r8) then
-   write(*, *) 'ERROR: x < 0 in gser in computing chisq'
-   stop
+   write(errstring,*)'x ',x,' < 0.0'
+   call error_handler(E_ERR,'gser', errstring, source, revision, revdate)
 endif
 
 if(x == 0._r8) then
@@ -191,8 +196,7 @@ do i = 1, itmax
 
 end do
 
-write(*, *) 'ERROR: a too large, itmax too small in gcf'
-stop
+   call error_handler(E_ERR,'gcf', 'a too large, itmax too small', source, revision, revdate)
 
 1  gammcf = exp(-x + a * log(x) - gln) * h
 

@@ -445,9 +445,8 @@ a(3, 3) =    -b * deltat + 1.0_r8
    
 !  initialize copy of dx
 
-write(*, *) 'this routine is not up to date'
+  call error_handler(E_ERR,'inv_linear_dt', 'this routine is not up to date', source, revision, revdate)
 
-if(1 == 1) stop
 !      tdx(i) = dx(i)
    tdx = dx
 

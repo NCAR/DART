@@ -15,7 +15,7 @@ module assim_tools_mod
 use types_mod, only :: r8
 !!!use obs_mod,        only : num_obs, obs_var
 use utilities_mod,  only : file_exist, open_file, check_nml_error, &
-                           close_file
+                           close_file, error_handler, E_ERR
 !                           print_version_number, close_file
 use sort_mod,       only : index_sort
 
@@ -2323,21 +2323,23 @@ subroutine local_update_from_obs_inc(obs, obs_inc, state, ens_size, &
 
 implicit none
 
-integer, intent(in) :: ens_size, half_num_neighbors
+integer, intent(in)   :: ens_size, half_num_neighbors
 integer, intent(in), optional :: index_in(ens_size)
-real(r8), intent(in) :: obs(ens_size), obs_inc(ens_size)
-real(r8), intent(in) :: state(ens_size), cov_factor
+real(r8), intent(in)  :: obs(ens_size), obs_inc(ens_size)
+real(r8), intent(in)  :: state(ens_size), cov_factor
 real(r8), intent(out) :: state_inc(ens_size)
 
 real(r8) :: ens(2, ens_size), cov(2, 2), y2(ens_size), xy(ens_size)
 real(r8) :: sx, sy, s_y2, sxy, reg
-integer :: index_lo(ens_size), i, lower, upper, num_neighbors
+integer  :: index_lo(ens_size), i, lower, upper, num_neighbors
+
+character(len=129) :: errstring
 
 ! Make sure num_neighbors isn't too big to make sense
 num_neighbors = 2 * half_num_neighbors
 if(num_neighbors > ens_size - 1) then
-   write(*, *) 'num_neighbors too big in local_update_from_obs_inc'
-   stop
+   write(errstring,*)'half_num_neighbors (',half_num_neighbors,') too big for ens_size = ',ens_size
+   call error_handler(E_ERR,'local_update_from_obs_inc', errstring, source, revision, revdate)
 endif
 
 ! Need to sort the observations to be able to find local structure

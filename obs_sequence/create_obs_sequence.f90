@@ -22,12 +22,12 @@ program create_obs_sequence
 !    fashion. At some point we need to sort these sets.
 
 use        types_mod, only : r8
+use    utilities_mod, only : open_file, error_handler, E_ERR
 use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
 use      obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
 use time_manager_mod, only : time_type, set_time, get_time, operator(*), operator(+)
-use    utilities_mod, only : open_file
 use         sort_mod, only : index_sort
 
 implicit none
@@ -112,8 +112,8 @@ do i = 1, num_obs_set_defs
       do j = 1, num_obs
          indx = indx + 1
          if(indx > max_obs) then
-            write(*, *) 'Number of observations exceeds max_obs'
-            stop
+            call error_handler(E_ERR,'create_obs_sequence', 'Number of observations exceeds max_obs', &
+                               source, revision, revdate)
          endif
          set_index(indx) = i
          ob_time(indx) = init_time + (j - 1) * period
@@ -139,8 +139,8 @@ do i = 1, num_obs_set_defs
          indx = indx + 1
          set_index(indx) = i
          if(indx > max_obs) then
-            write(*, *) 'Number of observations exceeds max_obs'
-            stop
+            call error_handler(E_ERR,'create_obs_sequence', 'Number of observations exceeds max_obs', &
+                               source, revision, revdate)
          endif
          ob_time(indx) = this_time 
 

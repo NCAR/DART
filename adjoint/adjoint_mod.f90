@@ -15,10 +15,11 @@ module adjoint_mod
 ! Makes use of NAG optimization routines, would have to be modified
 ! to run on platforms without NAG support.
 
-use types_mod
-use obs_mod,      only : take_obs
-use model_mod,    only : advance, adv_1step
-use nag_wrap_mod, only : e04dgf_wrap
+use     types_mod, only : r8
+use utilities_mod, only : get_unit, error_handler, E_ERR
+use       obs_mod, only : take_obs
+use     model_mod, only : advance, adv_1step
+use  nag_wrap_mod, only : e04dgf_wrap
 
 ! implicit none?
 private
@@ -27,9 +28,9 @@ public min_cost, adj_forecast_eval, adj_forecast_out
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 real(r8), parameter :: small_dist = 0.001_r8, delta = 1e-10
 integer, parameter :: max_1d = 100, max_iters = 100, num_refine = 20
@@ -208,10 +209,10 @@ do i = 1, max_1d
    new_cost = get_cost(xnew, obs, num_obs, n_times, obs_freq)
    write(*, *) 'cost ', i, ' in one_d_min ', new_cost
    if(new_cost > cost) then
-      if(i < 3) then
-         write(*, *) 'ERROR(one_d_min): no min found'
-         stop
-      endif
+
+      if(i < 3) call error_handler(E_ERR,'one_d_min', &
+             'no min found', source, revision, revdate)
+      
       xnew = x - 2**(i - 2) * small_dist * grad
       call refine_one_d(x - 2**(i - 3) * small_dist * grad, &
          x - 2**(i - 1) * small_dist * grad, obs, num_obs, n_times, obs_freq, xnew)
@@ -220,8 +221,7 @@ do i = 1, max_1d
    cost = new_cost
 end do   
 
-write(*, *) 'ERROR(one_d_min): fell off the end'
-stop
+call error_handler(E_ERR,' one_d_min', 'fell off the end', source, revision, revdate)
 
 end subroutine one_d_min
 

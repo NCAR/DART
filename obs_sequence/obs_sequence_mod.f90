@@ -11,6 +11,7 @@ module obs_sequence_mod
 ! $Author$
 
 use        types_mod, only : r8
+use    utilities_mod, only : open_file, error_handler, E_ERR
 use time_manager_mod, only : time_type, set_time, operator(<=), operator(<)
 
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
@@ -198,8 +199,7 @@ integer :: old_num, new_num, i
 
 ! Check to make sure the increment is positive
 if(inc < 0) then
-   write(*, *) 'Error: increment must be positive in inc_num_obs_copies'
-   stop
+      call error_handler(E_ERR,'inc_num_obs_copies', 'increment must be positive', source, revision, revdate)
 endif
 
 ! Get current num copies and adjust the metadata in sequnce
@@ -603,15 +603,15 @@ type(time_type) :: t
 if(sequence%num_obs_sets /= 0) then
    t = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
    if(get_obs_set_time(obs_set) < t .and. sequence%num_obs_sets > 0) then
-      write(*, *) 'Error: obs_set being added to sequence is not in time order: add_obs_set'
-      stop
+   call error_handler(E_ERR,'add_obs_set', 'obs_set being added to sequence is not in time order', &
+                      source, revision, revdate)
    endif
 endif
 
 ! Make sure there's room in the fixed storage implementation
 if(sequence%num_obs_sets == sequence%max_obs_sets) then
-   write(*, *) 'Error: No more room in sequence in add_obs_set'
-   stop
+   call error_handler(E_ERR,'add_obs_set', ' No more room in sequence', &
+                      source, revision, revdate)
 endif
 
 ! Increment counters and add
