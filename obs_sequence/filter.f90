@@ -148,20 +148,22 @@ num_obs_sets = get_num_obs_sets(seq)
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
-do i = 1, num_obs_sets
+AdvanceTime : do i = 1, num_obs_sets
+
    time = get_obs_sequence_time(seq, i)
-!   write(*, *) 'time of obs set ', i
+   !   write(*, *) 'time of obs set ', i
    call print_time(time)
+
    time2 = get_closest_state_time_to(ens(1), time)
-! Advance the ensembles to this time
+   ! Advance the ensembles to this time
    do j = 1, ens_size
       call advance_state(ens(j), time2)
-! Output the prior ensemble state
+      ! Output the prior ensemble state
       call output_diagnostics(prior_state_unit, ens(j), j)
    end do
 
-! Do a covariance inflation for now?
-! Inflate the ensemble state estimates
+   ! Do a covariance inflation for now? 
+   ! Inflate the ensemble state estimates
    do k = 1, model_size
       ens_mean = get_ens_mean(ens_ptr, ens_size, k)
       do j = 1, ens_size
@@ -170,74 +172,69 @@ do i = 1, num_obs_sets
       end do
    end do
 
-! How many observations in this set
+   ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
-!   write(*, *) 'num_obs_in_set is ', num_obs_in_set
+   !   write(*, *) 'num_obs_in_set is ', num_obs_in_set
 
-! Allocate storage for the ensemble priors for this number of observations
+   ! Allocate storage for the ensemble priors for this number of observations
    allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set))
 
-! Get the observational error covariance (diagonal at present)
+   ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
 
-! Get the observations; from copy 1 for now
+   ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
 
 
 
-
-
-
-! Try out the cache
+   ! Try out the cache
    call get_close_cache(cache, seq, i, radius, num_obs_in_set, &
       num_close_ptr, close_ptr, dist_ptr)
 
 
+   ! Loop through each observation in the set
+   Observations : do j = 1, num_obs_in_set
 
-
-! Loop through each observation in the set
-   do j = 1, num_obs_in_set
-
-! Compute the ensemble prior for this ob
+      ! Compute the ensemble prior for this ob
       do k = 1, ens_size
-         call get_expected_obs(seq, i, ens_ptr(k)%state, &
-            ens_obs(k:k), j)
+         call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
       end do
 
-      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), &
-         obs_inc)
+      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
 
-! Output the ensemble prior and posterior to diagnostic files
+      ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
          call set_single_obs_value(prior_seq, i, j, ens_obs(k), k)
          call set_single_obs_value(posterior_seq, i, j, ens_obs(k) + obs_inc(k), k)
       end do
 
-! Now loop through each close state variable for this observation
+      ! Now loop through each close state variable for this observation
       do k = 1, num_close_ptr(j)
          ind = close_ptr(j, k)
 
-! Compute distance dependent envelope
+         ! Compute distance dependent envelope
          cov_factor = comp_cov_factor(dist_ptr(j, k), cutoff)
-! Get the ensemble elements for this state variable and do regression
+
+         ! Get the ensemble elements for this state variable and do regression
          swath = get_ens_swath(ens_ptr, ens_size, ind)
+
          call update_from_obs_inc(ens_obs, obs_inc, &
-            swath, ens_size, ens_inc, cov_factor)
+                                  swath, ens_size, ens_inc, cov_factor)
          call inc_ens_swath(ens_ptr, ens_size, ind, ens_inc)
       end do
 
-   end do
+   end do Observations
 
-! Put the ensemble storage back into the ens
+   ! Put the ensemble storage back into the ens
    do j = 1, ens_size
-! Output the posterior ensemble state
+      ! Output the posterior ensemble state
       call output_diagnostics(posterior_state_unit, ens(j), j)
    end do
 
-! Deallocate the ens_obs storage for this obs set
+   ! Deallocate the ens_obs storage for this obs set
    deallocate(obs_err_cov, obs)
 
-end do
+end do AdvanceTime
 
 
 ! Initialize the model state space diagnostic output files
@@ -266,9 +263,9 @@ function get_ens_swath(ens_ptr, ens_size, index)
 
 implicit none
 
-integer, intent(in) :: ens_size, index
+integer,                    intent(in) :: ens_size, index
 type(model_state_ptr_type), intent(in) :: ens_ptr(ens_size)
-real(r8) :: get_ens_swath(ens_size)
+real(r8)                               :: get_ens_swath(ens_size)
 
 integer :: i
 
@@ -288,9 +285,9 @@ subroutine inc_ens_swath(ens_ptr, ens_size, index, ens_inc)
 
 implicit none
 
-integer, intent(in) :: ens_size, index
+integer,                    intent(in)    :: ens_size, index
 type(model_state_ptr_type), intent(inout) :: ens_ptr(ens_size)
-real(r8), intent(in) :: ens_inc(ens_size)
+real(r8),                   intent(in)    :: ens_inc(ens_size)
 
 integer :: i
 
@@ -310,9 +307,9 @@ function get_ens_mean(ens_ptr, ens_size, index)
 
 implicit none
 
-integer, intent(in) :: ens_size, index
+integer,                    intent(in) :: ens_size, index
 type(model_state_ptr_type), intent(in) :: ens_ptr(ens_size)
-real(r8) :: get_ens_mean
+real(r8)                               :: get_ens_mean
 
 integer :: i
 
@@ -325,8 +322,9 @@ get_ens_mean = get_ens_mean / ens_size
 
 end function get_ens_mean
 
-
-
-
-
 end program filter
+
+
+
+
+
