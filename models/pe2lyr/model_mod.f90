@@ -318,23 +318,24 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-subroutine model_interpolate(x, location, type, obs_val, istatus, rstatus)
+subroutine model_interpolate(x, location, type, obs_val, istatus)
 
 implicit none
 
 
-real(r8), intent(in) :: x(:)
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer,             intent(in) :: type
 real(r8),           intent(out) :: obs_val
-integer,  optional, intent(out) :: istatus
-real(r8), optional, intent(out) :: rstatus
+integer,            intent(out) :: istatus
 
 integer :: lon_below, lon_above, lat_below, lat_above, i
 real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real :: lon, lat, level, lon_lat_lev(3)
 
+! All interpolations okay for now
+istatus = 0
 
 lon_lat_lev = get_location(location)
 lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
@@ -463,13 +464,14 @@ end subroutine init_time
 !#############################################################
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, number, indices, dist, x)
 implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
 integer, intent(out) :: number, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (number = -1 return)
