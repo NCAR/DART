@@ -147,7 +147,7 @@ if(start_from_assim_restart) then
    read(restart_unit, *) res_num_domains
    ! If the file doesn't have same number of domains as requested domains, die
    if(res_num_domains /= num_domains) then
-      write(errstring, *) 'num_domains in restart not same as in namelist ' 
+      write(errstring, *) 'num_domains in assim_restart not same as in namelist ' 
       call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
    endif
    ! Read in the covariance values for each domain

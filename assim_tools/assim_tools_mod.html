@@ -449,16 +449,17 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
     <!--  type  --><TD valign=top>real(r8)    </TD>
     <!--descript--><TD>Initial mean value of the observation space covariance 
                        inflation factor. If start_from_assim_restart is true, this is 
-                       overwritten by the value in the file. If the value is 
-                       less than 0, no observation space
-                       covariance inflation is applied. Defalut value is -1
+                       overwritten by the value for each region (the first of each pair
+                       in the restart file). If the value is less than 0, no observation 
+                       space covariance inflation is applied. Default value is -1
                        (no inflation).</TD></TR>
 <TR><!--contents--><TD valign=top>cov_inflate_sd </TD>
     <!--  type  --><TD valign=top>real(r8)       </TD>
     <!--descript--><TD> Initial value of the standard deviation of the 
                         observation space covariance inflation factor. If
                         start_from_assim_restart is true, this is overwritten
-                        by the second value in the restart file. If this value
+                        by the value for each region (the second value of each pair
+                        in the restart file). If this value
                         is less than 0.0, the mean value stays constant in 
                         time. If the value is greater than the sd_lower_bound (see
                         below), an adjustment of this value takes place at
@@ -481,8 +482,8 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
                         is true.</TD></TR>
 <TR><!--contents--><TD valign=top>start_from_assim_restart </TD>
     <!--  type  --><TD valign=top>logical                  </TD>
-    <!--descript--><TD>If true, values of cov_inflate and cov_inflate_sd are
-                       read from a file. Default: false.</TD></TR>
+    <!--descript--><TD>If true, values of cov_inflate and cov_inflate_sd for each region
+                       are read from a file. Default: false.</TD></TR>
 <TR><!--contents--><TD valign=top>assim_restart_in_file_name </TD>
     <!--  type  --><TD valign=top>character(len=129)         </TD>
     <!--descript--><TD>Name of file from which to read in cov_inflate and 
@@ -516,7 +517,7 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 <LI>assim_tools_ics:  Default name for file containing initial values of 
                       cov_inflate and cov_inflate_sd.
 <LI>assim_tools_restart:  Default name for file containing restart values of 
-                      cov_inflate and cov_inflate_sd.
+                      cov_inflate and cov_inflate_sd for each region.
 <LI>filter_assim_region__in####:  Contains ensemble state for region.
 <LI>filter_assim_region_out####:  Contains updated state for region.
 <LI>assim_region_control:  Used to provide number of regions to shell execution.
