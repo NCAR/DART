@@ -11,6 +11,10 @@ function var_vec = get_var_series(fname, copynum, state_var)
 % state_var = 3;        % which state variable
 % var_vec   = get_var_series(fname, copynum, state_var);
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 f = netcdf(fname);
 model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables

@@ -2,6 +2,10 @@
 % Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 if (exist('fname') ~=1)
    disp('Input name of file;')
    fname = input('<cr> for Prior_Diag.nc\n','s');

@@ -1,3 +1,7 @@
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 % Assumes first two copies are ensemble mean and ensemble spread
 % Should be automated
 

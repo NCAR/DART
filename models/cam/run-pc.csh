@@ -1,4 +1,9 @@
 #! /bin/tcsh -f
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
 #  #td means code added to specify an arbitrary forecast duration
 #      using [START,STOP]_[YMD,TOD] passed as a -namelist argument
 

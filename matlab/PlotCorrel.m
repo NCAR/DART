@@ -20,6 +20,9 @@ function PlotCorrel( pinfo )
 % pinfo.base_time      = 238;        % ditto
 % PlotCorrel(pinfo)                  % generates a plot
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 % TJH Wed Jul  2 08:39:46 MDT 2003
 
 if (exist(pinfo.fname) ~= 2), error(sprintf('%s does not exist.',pinfo.fname)), end

@@ -8,7 +8,10 @@
 %              of information ... the model types are determined and 
 %              additional user input may be queried.
 
-
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 if (exist('diagn_file') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');

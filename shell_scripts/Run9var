@@ -1,5 +1,9 @@
 #!/bin/csh
 #
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
 # script to run an experiment with existing intial conditions
 # Interesting case #1
 # identity obs for all 9 state vars, var = 1.0, obdelta =3600s

@@ -26,8 +26,10 @@
 % plot_phase_space
 %
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 % TJH Wed Jul  2 10:11:04 MDT 2003
-
 
 if (exist('fname') ~=1)
    fname = input('Input name of netCDF file; <cr> for True_State.nc  ','s');

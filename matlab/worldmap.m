@@ -31,6 +31,9 @@ function worldmap(ifill,lonorg)
 % worldmap('solid');			% SOLID LANDMASSES
 %
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 % tjh   1998.mar.26
 
 filltype  = 'hollow';

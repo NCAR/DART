@@ -1,8 +1,10 @@
-% LIST COPIES  Lists the copy_meta_data for an input relative or
-% absolute path.
-
 function list_copies(fname)
+% LIST COPIES  Lists the copy_meta_data for an input relative or absolute path.
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 
 fprintf('------------------------------------------\n');
 fprintf('Contents of netcdf file %s\n ', fname);

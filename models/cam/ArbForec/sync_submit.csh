@@ -1,4 +1,9 @@
 #!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
 ## || marks changes to make the script run CAM in parallel (and batch)
 ## 'sl' marks changes to make the script run on /scratch/local on each node
 #

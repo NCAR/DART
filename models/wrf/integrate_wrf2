@@ -1,4 +1,9 @@
 #!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
 # shell script to run the WRF model from DART input
 set verbose
 

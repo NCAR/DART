@@ -1,11 +1,14 @@
-%INTERACTIVE GET_STATE_COPY  Gets a particular copy of state from netcdf file
-
+function state_vec = interactive_get_state_copy(copy, default_file)
+% INTERACTIVE GET_STATE_COPY  Gets a particular copy of state from netcdf file
+%
 % Retrieves a particular copy of a state vector from a file specified
 % interactively. The copy meta_data string and a default file name
 % to get this info are passed as arguments and the state vector is 
 % returned. NEED TO DEAL WITH ERRORS.
 
-function state_vec = interactive_get_state_copy(copy, default_file)
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 % Input the working directory
 dir_name = input('Input directory; return for current directory');

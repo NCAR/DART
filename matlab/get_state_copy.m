@@ -1,10 +1,14 @@
 function state_vec = get_state_copy(fname, copyindex)
 %GET_STATE_COPY  Gets a particular copy (one ensemble member) of state from netcdf file
-
+%
 % Retrieves a particular copy of a state vector from a file whose
 % full or relative path is specified in the file argument.
 % NEED TO DEAL WITH ERRORS.
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 % Need to get a copy with the label copy
 copy_meta_data = getnc(fname, 'CopyMetaData');
 

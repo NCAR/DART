@@ -13,8 +13,9 @@
 %
 %  scalebar ONLY uses the first 64 colors in a colormap ...
 
-%  modified Apr.  8, 1996 to handle the userdata bounds
-%  greatly simplified Aug. 21, 1997
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
    if nargin <= 4,
       zmin = get(gca,'UserData');

@@ -1,3 +1,7 @@
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 % Matlab routine to do simple read of netcdf file and production of
 % animation.  Lots of things could be improved.
 %

@@ -1,11 +1,14 @@
-%GET_STATE_COPY_NAME  Gets a particular copy of state from netcdf file
-
+function state_vec = get_state_copy_name(copy, fname)
+% GET_STATE_COPY_NAME  Gets a particular copy of state from netcdf file
+%
 % Retrieves a particular copy of a state vector from a file whose
 % full or relative path is specified in the file argument.
 % NEED TO DEAL WITH ERRORS.
 
-function state_vec = get_state_copy_name(copy, fname)
-
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 loc = getnc(fname, 'loc1d');
 num_loc = size(loc, 1);
 times = getnc(fname, 'time');

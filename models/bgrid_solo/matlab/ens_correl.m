@@ -1,3 +1,7 @@
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 fname = input('Input file name for True state');
 %fname = 'True_State.nc';
 tlon = getnc(fname, 'TmpI');

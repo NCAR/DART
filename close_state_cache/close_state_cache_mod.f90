@@ -1,12 +1,14 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 module close_state_cache_mod
-!
+
 ! <next four lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
-!
-
 
 use types_mod
 use obs_sequence_mod, only : obs_sequence_type, get_obs_def_index, &

@@ -9,6 +9,10 @@ function ens = get_ens_series(fname, state_var_index)
 % ens = get_ens_series(fname,state_var_index);
 %
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 f = netcdf(fname);
 model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables

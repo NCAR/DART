@@ -2,6 +2,10 @@ function corr = ens_correl(base_var, base_time, state_var)
 % ens_correl  Computes correlation of a variable at a time to a time series of
 % another variable (could be the same one)
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 %Extract sample of base at base time
 %base_ens = base_var(base_time, :);
 

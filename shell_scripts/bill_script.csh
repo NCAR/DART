@@ -1,3 +1,9 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 From chriss@ucar.edu Fri Dec 20 15:10:47 2002
 Date: Thu, 19 Dec 2002 16:18:10 -0700 (MST)
 From: Chris Snyder <chriss@ucar.edu>

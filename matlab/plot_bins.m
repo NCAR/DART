@@ -14,6 +14,10 @@
 % diagn_file = 'Prior_Diag.nc';
 % plot_bins
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 % error_checking ... 
 % exist('bob') == 1   means the variable exists. 
 %                     the value of the variable is checked later.

@@ -1,4 +1,9 @@
 #!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
 # Shell script to do repeated segment integrations
 # This runs on the master node (c#, where # is the largest #
 # allotted to this job).  submit_cam.csh runs CAM on 

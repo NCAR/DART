@@ -1,8 +1,11 @@
-
 function test(dir_name,true_name,ens_name,dir_name)
 % Assumes two copies are ensemble mean followed by ensemble spread
 % Should be automated and checked at some point
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+ 
 if (nargin == 2)     % files must be in MATLABPATH ...
 
    if (exist(true_name) ~=2 ) 

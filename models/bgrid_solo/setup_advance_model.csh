@@ -1,3 +1,9 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# 
 # Script to guide in getting required files for running
 # a b-grid model DART assimilation starting in the PWD.
 # Might want to make this more modification friendly.
