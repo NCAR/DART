@@ -50,12 +50,14 @@ integer, private :: num_nml_error_codes, nml_error_codes(5)
 logical, private :: do_nml_error_init = .true.
 private  nml_error_init
 
-integer, parameter ::   E_MSG = 0,  E_WARN = 1, E_ERR = 2
-integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
+integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
+integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
 public file_exist, get_unit, check_nml_error, open_file, timestamp, &
-       close_file, register_module, error_handler, initialize_utilities, &
-       finalize_utilities, E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL, logfileunit
+       close_file, register_module, error_handler, logfileunit, &
+       initialize_utilities, finalize_utilities, &
+       E_DBG, E_MSG, E_WARN, E_ERR, &
+       DEBUG, MESSAGE, WARNING, FATAL
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
