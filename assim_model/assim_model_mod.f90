@@ -34,7 +34,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
 
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
-! will be excruciatingly costly (storage at least) in big models.
+! will be excruciatingly costly (storage at least) in big models. 
 type assim_model_type
 !   private
    real(r8), pointer :: state_vector(:)
