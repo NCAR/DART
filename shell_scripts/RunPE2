@@ -19,11 +19,11 @@ set Model = pe2lyr
 switch ($#argv) 
    case 1:
       set pe2lyr_case = $1
-   case 2:
    breaksw
+   case 2:
       set pe2lyr_case = $1
       set DART_HOME = $2
-      breaksw
+   breaksw
    default:
       echo " "
       echo "usage: $SNAME:t scenarionumber [DART_HOME]"

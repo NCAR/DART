@@ -45,8 +45,8 @@ if !( -e model_mod ) then
    csh mkmf_model_mod
    make || exit 4
 endif
-if !( -e create_obs_set_def ) then
-   csh mkmf_create_obs_set_def
+if !( -e create_fixed_network_seq ) then
+   csh mkmf_create_fixed_network_seq
    make || exit 5
 endif
 if !( -e create_obs_sequence ) then
@@ -60,6 +60,14 @@ endif
 if !( -e filter ) then
    csh mkmf_filter
    make || exit 8
+endif
+if !( -e trans_pv_sv ) then
+   csh mkmf_trans_pv_sv
+   make || exit 9
+endif
+if !( -e trans_sv_pv ) then
+   csh mkmf_trans_sv_pv
+   make || exit 10
 endif
 \rm -f *.o *.d *.mod Makefile
 

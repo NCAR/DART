@@ -65,12 +65,12 @@ if ( ${?ObSec1} ) then
 endif
 
 set ens_size = $NumEns
-set num_output_ens_members = 10
+set num_output_members = 10
 set cov_inflate = 1.00
 set cutoff = 0.2
 
 if ( ${?NumOutputEnsMembers} ) then
-   set num_output_ens_members = $NumOutputEnsMembers
+   set num_output_members = $NumOutputEnsMembers
 endif
 if ( ${?CovInflate} ) then
    set cov_inflate = $CovInflate
@@ -402,8 +402,6 @@ else
    echo " "
 endif
 
-exit
-
 #======================================================================
 # Simulate a particular observing system
 # 4) Filter
@@ -419,13 +417,16 @@ echo " "
 set async = 0
 set start_from_restart = .true.
 set output_restart = .true.
-set obs_sequence_file_name = '"obs_seq.out"'
+set obs_sequence_in_name = '"obs_seq.out"'
+set obs_sequence_out_name = '"obs_seq.final"'
 set restart_in_file_name = '"filter_ics"'
 set restart_out_file_name = '"filter_restart"'
 set init_time_days = 0
 set init_time_seconds = 0
 set output_state_ens_mean = .true.
 set output_state_ens_spread = .true.
+set output_obs_ens_mean = .true.
+set output_obs_ens_spread = .true.
 set output_interval = 1
 
 
@@ -441,14 +442,18 @@ echo "   cutoff = $cutoff ,"                                   >> filter.nml
 echo "   cov_inflate = $cov_inflate ,"                         >> filter.nml
 echo "   start_from_restart = $start_from_restart ,"           >> filter.nml
 echo "   output_restart = $output_restart ,"                   >> filter.nml
-echo "   obs_sequence_file_name = $obs_sequence_file_name ,"   >> filter.nml
+echo "   obs_sequence_in_name = $obs_sequence_in_name ,"       >> filter.nml
+echo "   obs_sequence_out_name = $obs_sequence_out_name ,"     >> filter.nml
 echo "   restart_in_file_name = $restart_in_file_name ,"       >> filter.nml
 echo "   restart_out_file_name = $restart_out_file_name ,"     >> filter.nml
 echo "   init_time_days = $init_time_days ,"                   >> filter.nml
 echo "   init_time_seconds = $init_time_seconds ,"             >> filter.nml
 echo "   output_state_ens_mean = $output_state_ens_mean ,"     >> filter.nml
 echo "   output_state_ens_spread = $output_state_ens_spread ," >> filter.nml
-echo "   num_output_ens_members = $num_output_ens_members ,"   >> filter.nml
+echo "   output_obs_ens_mean = $output_obs_ens_mean ,"         >> filter.nml
+echo "   output_obs_ens_spread = $output_obs_ens_spread ,"     >> filter.nml
+echo "   num_output_state_members = $num_output_members ,"     >> filter.nml
+echo "   num_output_obs_members =   $num_output_members ,"     >> filter.nml
 echo "   output_interval = $output_interval    /"              >> filter.nml
 echo " "                                                       >> filter.nml
 

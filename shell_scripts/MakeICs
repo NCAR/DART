@@ -203,15 +203,16 @@ switch ( ${Model} )
       echo "1 0"          >> $CFN  ;# observation interval (days, seconds)
       echo "obs_seq.in"   >> $CFN  ;# output file -- destined for perfect_model_obs
 
-      echo "&model_nml"               > model.nml
-      echo "   model_size_x = 36,"   >> model.nml
-      echo "   y_per_x = 10,"        >> model.nml
-      echo "   forcing = 10.00,"     >> model.nml
-      echo "   delta_t = 0.005,"     >> model.nml
-      echo "   coupling_b = 10.0,"   >> model.nml
-      echo "   coupling_c = 10.0,"   >> model.nml
-      echo "   coupling_h =  1.0,"   >> model.nml
-      echo "   local_y = .false.  /" >> model.nml
+      echo "&model_nml"                           > model.nml
+      echo "   model_size_x = 36,"               >> model.nml
+      echo "   y_per_x = 10,"                    >> model.nml
+      echo "   forcing = 10.00,"                 >> model.nml
+      echo "   delta_t = 0.005,"                 >> model.nml
+      echo "   coupling_b = 10.0,"               >> model.nml
+      echo "   coupling_c = 10.0,"               >> model.nml
+      echo "   coupling_h =  1.0,"               >> model.nml
+      echo "   output_state_vector = .false.,"   >> model.nml
+      echo "   local_y = .false.  /"             >> model.nml
 
       set num_ens_members = 100
 
