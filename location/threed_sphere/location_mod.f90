@@ -25,7 +25,8 @@ module location_mod
 ! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
-use  utilities_mod, only : register_module, error_handler, E_ERR
+use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, &
+                           register_module, error_handler, E_ERR, E_MSG, logfileunit
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -57,22 +58,76 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical,save :: module_initialized = .false.
 
+! Global storage for vertical distance normalization factors
+real(r8) :: vert_normalization(3)
+
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dsphere"
 character(len = 129), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, lev or pressure"
 
+!-----------------------------------------------------------------
+! Namelist with default values
+! horiz_dist_only == .true.  ->  Only the great circle horizontal distance is
+!                                computed in get_dist.
+! horiz_dist_only == .false. ->  Square root of sum of squared horizontal and
+!                                normalized vertical distance computed in get_dist
+! vert_normalization_pressure    Number of pascals that give a distance equivalent
+!                                to one radian in horizontal
+! vert_normalization_height ->   Number of meters that give a distance equivalent 
+!                                to one radian in horizontal
+! vert_normalization_level ->    Number of levels that give a distnace equivalent
+!                                to one radian in horizontal
+
+logical  :: horiz_dist_only = .true.
+real(r8) :: vert_normalization_pressure = 100000.0_r8
+real(r8) :: vert_normalization_height   = 10000.0_r8
+real(r8) :: vert_normalization_level    = 20.0_r8 
+
+namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
+   vert_normalization_height, vert_normalization_level
+!-----------------------------------------------------------------
 
 contains
 
 
 
-  subroutine initialize_module
+subroutine initialize_module
 !----------------------------------------------------------------------------
 ! subroutine initialize_module
 
-   call register_module(source, revision, revdate)
-   module_initialized = .true.
+integer :: iunit, ierr, io
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
+
+! Read namelist for run time control
+
+if(file_exist('input.nml')) then
+   iunit = open_file('input.nml', action = 'read')
+   ierr = 1
+
+   READBLOCK: do while(ierr /= 0)
+      read(iunit, nml = location_nml, iostat = io)
+      if ( io < 0 ) exit READBLOCK          ! end-of-file
+      ierr = check_nml_error(io, 'location_nml')
+   enddo READBLOCK
+
+   call close_file(iunit)
+endif
+
+! Write the namelist values to the log file
+
+call error_handler(E_MSG,'initialize_module','location namelist values',' ',' ',' ')
+write(logfileunit, nml=location_nml)
+
+! Copy the normalization factors in the vertical into an array
+vert_normalization(1) = vert_normalization_level
+vert_normalization(2) = vert_normalization_pressure
+vert_normalization(3) = vert_normalization_height
+
+write(*, *) 'vert-normalization ', vert_normalization
+write(*, *) 'horizontal only ', horiz_dist_only
 
 end subroutine initialize_module
 
@@ -90,21 +145,41 @@ implicit none
 type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 
-real(r8) :: lon_dif
+real(r8) :: lon_dif, horiz_dist, vert_dist
 
 if ( .not. module_initialized ) call initialize_module
 
-! Returns distance in radians (independent of diameter of sphere)
+! Returns horizontal distance in radians (independent of diameter of sphere)
 
+! Begin with the horizontal distance
 ! Compute great circle path shortest route between two points
 lon_dif = abs(loc1%lon - loc2%lon)
 if(lon_dif > PI) lon_dif = 2.0_r8 * PI - lon_dif
 
 if(cos(loc1%lat) == 0) then
-   get_dist = abs(loc2%lat - loc1%lat)
+   horiz_dist = abs(loc2%lat - loc1%lat)
 else
-   get_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
+   horiz_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
       cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif))
+endif
+
+! Now compute a vertical distance if requested, 
+if(horiz_dist_only) then
+   get_dist = horiz_dist
+else
+   ! Vert distance can only be done for like vertical locations types
+   if(loc1%which_vert /= loc2%which_vert) then
+      call error_handler(E_ERR, 'get_dist', &
+         'Dont know how to compute vertical distance for unlike vertical coordinates', &
+         source, revision, revdate)
+   endif
+
+   ! Compute the difference and divide by the appropriate normalization factor
+   ! Normalization factor computes relative distance in vertical compared to one radian
+   vert_dist = abs(loc1%vloc - loc2%vloc) / vert_normalization(loc1%which_vert)
+
+   ! Spherical distance shape is computed here, other flavors can be computed
+   get_dist = sqrt(horiz_dist**2 + vert_dist**2)
 endif
 
 end function get_dist
@@ -154,7 +229,7 @@ end function vert_is_pressure
 function vert_is_height(loc)
 !---------------------------------------------------------------------------
 !
-! Given a location, return true if vertical coordinate is pressure, else false
+! Given a location, return true if vertical coordinate is height, else false
 
 logical :: vert_is_height
 type(location_type), intent(in) :: loc
@@ -172,7 +247,7 @@ end function vert_is_height
 function vert_is_level(loc)
 !---------------------------------------------------------------------------
 !
-! Given a location, return true if vertical coordinate is pressure, else false
+! Given a location, return true if vertical coordinate is level, else false
 
 logical :: vert_is_level
 type(location_type), intent(in) :: loc
