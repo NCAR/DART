@@ -23,7 +23,7 @@ use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart
+   write_state_restart, read_state_restart, binary_restart_files
 
 implicit none
 
@@ -70,9 +70,15 @@ iunit = get_unit()
 !!!open(unit = iunit, file = restart_in_file_name)
 open(unit = iunit, file = 'temp_ic')
 ! Read in the target time
-target_time = read_time(iunit)
-call init_assim_model(x(1))
-call read_state_restart(x(1), iunit)
+if ( binary_restart_files ) then
+   target_time = read_time(iunit, 'unformatted')
+   call init_assim_model(x(1))
+   call read_state_restart(x(1), iunit, 'unformatted')
+else
+   target_time = read_time(iunit)
+   call init_assim_model(x(1))
+   call read_state_restart(x(1), iunit)
+endif
 close(iunit)
 !-----------------  Restart read in --------------------------------
 
