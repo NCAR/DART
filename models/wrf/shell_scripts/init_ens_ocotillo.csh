@@ -40,6 +40,8 @@ setenv DAT_DIR     `pwd`                      # Scratch data space.
 setenv WRF_DIR        /ocotillo1/${USER}/WRFV2   # WRF
 setenv WRFSI_DIR_SRC  ${WRF_DIR}/wrfsi        # WRF SI.
 
+setenv VARTMP         /var/tmp                # Remote work directory
+
 set startnode = 1
 set endnode = 10
 
@@ -94,7 +96,7 @@ while ( $ICYC <= $NCYCLE )
    while ( $NC <= $ES )
 
    set END_DATE = `advance_cymdh $START_DATE $FCST_RANGE`  # End time of forecast.
-   set DAT_DIR_MEM = /var/tmp/GEN_INIT_ENS_${NC}
+   set DAT_DIR_MEM = ${VARTMP}/${user}_GEN_INIT_ENS_${NC}
 
 #---------------------------------------------------
 # 1) Prepare global analysis (NCEP/FNL - 1deg res.).
@@ -139,7 +141,7 @@ while ( $ICYC <= $NCYCLE )
    rm ${WRFSI_DIR_SRC}/data/siprd/real_input_em* >& /dev/null 
 
    rm -f preprocess_${NC} >& /dev/null
-   set WRFSI_DIR = /var/tmp/wrfsi_${NC}
+   set WRFSI_DIR = ${VARTMP}/${user}_wrfsi_${NC}
    (rsh -n node$inode "rm -rf ${WRFSI_DIR} >& /dev/null" )
    rcp -r $WRFSI_DIR_SRC node${inode}:${WRFSI_DIR}
    set INSTALLROOT = $WRFSI_DIR
@@ -192,16 +194,16 @@ while ( $NC <= $ES )
 #--------------------------------------------------------------------
 
    rm ${WRF_DIR}/test/em_real/wrf_real_input_em*
-   rcp -r node${inode}:/var/tmp/GEN_INIT_ENS_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
+   rcp -r node${inode}:${VARTMP}/${user}_GEN_INIT_ENS_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
 
-########   (rsh -n node$inode "rm -rf /var/tmp/GEN_INIT_ENS_${NC}" )
+########   (rsh -n node$inode "rm -rf ${VARTMP}/${user}_GEN_INIT_ENS_${NC}" )
 
    mv ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em* ${WRF_DIR}/test/em_real/.
    rm -r ${WRF_DIR}/test/em_real/siprd
 
    ./run_wrfreal.csh $NC $START_DATE $FCST_RANGE $INTERVAL $WRF_DT $OUT_FREQ $WRF_DIR $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE
 
-##############   (rsh -n node$inode "rm -rf /var/tmp/wrfsi_${NC}")
+##############   (rsh -n node$inode "rm -rf ${VARTMP}/${user}_wrfsi_${NC}")
 
    mv ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_${NC}
    mv ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
