@@ -4,5 +4,5 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-../../../mkmf/mkmf -p create_obs_set_def -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../mkmf/mkmf -p create_obs_set_def -t ../../../mkmf/mkmf.template -c"-Duse_netCDF -DIFC80" \
  -a "../../.." path_names_create_obs_set_def
