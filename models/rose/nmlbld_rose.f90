@@ -22,7 +22,7 @@ program nmlbld_rose
    character (len=30) :: restart_file = 'NMC_SOC.day151_2002.dat'  
    real(kind=r8)      :: h_tune = pi
    real(kind=r8)      :: z_tune = 1.0
-   real(kind=r8)      :: target_time = 168.0 ! 7 days * 24 [hr]  
+   real(kind=r8)      :: target_time =  0.125 ! e.g, 168 = 7 days * 24 [hr]  
    integer            :: nstart = 0
    integer            :: ntime = 8
 

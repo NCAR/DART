@@ -29,6 +29,7 @@ else
 endif
 
 cp $PBS_O_WORKDIR/input.nml input.nml
+cp $PBS_O_WORKDIR/rose.nml rose.nml
 
 # Get target_time from temp_ic
 if (-e temp_ic && -e $PBS_O_WORKDIR/trans_time) then
@@ -42,7 +43,7 @@ else
 endif
 
 # Create rose namelist
-   cp $PBS_O_WORKDIR/rose.nml rose.nml_default
+   cp rose.nml rose.nml_default
    set NML = namelist.in
    echo $ROSE_old_restart 
    echo $ROSE_old_restart   > $NML

@@ -73,7 +73,7 @@
 
       integer :: doy             ! day of year
       integer :: utsec           ! universal time of model in seconds
-      integer :: modday          ! number of days model has run
+      real    :: modday          ! number of days model has run
       integer :: iyear           ! number of years model has run
 
       real    :: gmt_frac        ! fraction of day since 0Z
@@ -232,9 +232,9 @@
 !  define time & date variables
 !-------------------------------------------------------------------
 
-         modday = nstep/lengdy
-         iyear = (day0 + modday - 1)/365
-         doy = mod( day0 + modday, 365)
+         modday = float(nstep)/float(lengdy)
+         iyear =  (      day0  + modday + float(ut0)/86400.- 1)/365
+         doy = mod(float(day0) + modday + float(ut0)/86400., 365)
          if(doy.eq.0) doy = 365
          utsec = mod( nstep*3600/ntime + ut0, 3600*24)
          gmt_frac = float(utsec)/(3600.0*24.0)

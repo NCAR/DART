@@ -1,5 +1,9 @@
 #!/bin/tcsh
 
+# Modified to use /scratch/local/raeder instead of /scratch/cluster for CAM runs
+# See #sl
+# Modified to use actual times/dates from DART; see #td
+
 #   Multi-processor jobs must be submitted as batch, under PBS
 ### Job name
 #PBS -N dart_rose
@@ -10,7 +14,7 @@
 #PBS -o dart_rose.log
 ### Queue name (small, medium, long, verylong)
 #PBS -q medium
-#PBS -l nodes=1
+#PBS -l nodes=5
 
 ### This job's working directory; must cd to it, or it will run in /home...
 if ($?PBS_O_WORKDIR) then
@@ -45,12 +49,12 @@ endif
 cat "$PBS_NODEFILE"
 echo This job has allocated $NPROCS nodes
 
-# First line of filter_control should have number of model states to be integrated
-set nensmbl = `head -1 filter_control`
+# First line of filter_control should have number of regions to be assimilated
+set nregions = `head -1 assim_region_control`
 
-# figure # batches of CAM runs to do, from # ensemble members and # processors
-@ nbatch = $nensmbl / $NPROCS
-if ($nensmbl % $NPROCS != 0 ) @ nbatch++
+# figure # batches of CAM runs to do, from # regions and # processors
+@ nbatch = $nregions / $NPROCS
+if ($nregions % $NPROCS != 0 ) @ nbatch++
 echo $nbatch batches will be executed
 
 # Create a directory for each member to run in for namelists
@@ -59,12 +63,12 @@ set batch = 1
 while($batch <= $nbatch)
    foreach node ( `cat $PBS_NODEFILE` )
       @ element++
-      if ($element > $nensmbl) goto all_elements_done
+      if ($element > $nregions) goto all_elements_done
 
-      rsh $node "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/cluster/tmatsuo/tmp$user$$$element " &
+      rsh $node "csh $PBS_O_WORKDIR/assim_region.csh $PBS_O_WORKDIR $element /scratch/local/tmp$user$$$element " &
 
       echo rsh $node \
-         "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/cluster/tmatsuo/tmp$user$$$element " &
+         "csh $PBS_O_WORKDIR/assim_region.csh $PBS_O_WORKDIR $element /scratch/local/tmp$user$$$element " &
 
    end
 # Another way to monitor progress.  batchflag has other info to start,

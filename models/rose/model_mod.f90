@@ -23,6 +23,7 @@ use     location_mod, only : location_type, set_location, get_location,&
                              query_location, get_dist  
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &       
                              error_handler, E_ERR, E_MSG, E_WARN, logfileunit
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 ! ROSE Modules
 use params, only : nx, ny, nz, nbcon
  
@@ -60,12 +61,18 @@ type model_type
 end type model_type
 
 !----------------------------------------------------------------------
+
 ! Global storage for describing ROSE model class
 integer :: model_size 
 type(time_type) :: Time_step_ROSE
 
 ! Arrays to store lats, lons
 real(r8) :: lons(nx), lats(ny), levs(nz)
+
+! Random sequence and init for pert_model_state
+logical :: first_pert_call = .true.
+type(random_seq_type)   :: random_seq
+
 !----------------------------------------------------------------------
 ! Nameslist variables with default values follow
 ! Namelist variables for defining state vector, and default values
@@ -82,7 +89,7 @@ character (len=30) :: ncep_file = 'nmc_lbc.02.nc'              !NOT USED
 character (len=30) :: restart_file = 'NMC_SOC.day151_2002.dat' !NOT USED
 real(kind=r8) :: h_tune = pi                                   !NOT USED  
 real(kind=r8) :: z_tune = 1.0                                  !NOT USED
-real(kind=r8) :: target_time = 168.0 ! 7 days * 24 [hr]        !NOT USED
+real(kind=r8) :: target_time = 0.125 ! e.g., 168.0 = 7 days * 24 [hr]        !NOT USED
 
 namelist /rose_nml/ old_restart, nstart, target_time, &
                     input_dir, out_dir, ncep_file, restart_file,&
@@ -134,6 +141,8 @@ if(file_exist('rose.nml')) then
       ierr = check_nml_error(io, 'rose_nml')
    end do
    call close_file(iunit)
+else
+call error_handler(E_MSG,'static_init_model','rose_nml not available',source,revision,revdate)
 endif
 
 call error_handler(E_MSG,'static_init_model','rose_nml values are',source,revision,revdate)
@@ -150,7 +159,7 @@ if(file_exist('input.nml')) then
    end do
    call close_file(iunit)
 else
-   call error_handler(E_WARN,'static_init_model','rose_nml values are',source,revision,revdate)
+call error_handler(E_MSG,'static_init_model','model_nml not available',source,revision,revdate)
 endif
 
 call error_handler(E_MSG,'static_init_model','model_nml values are',source,revision,revdate)
@@ -811,7 +820,27 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-interf_provided = .false.
+integer                 :: i, variable_type
+type(location_type)     :: temp_loc
+
+! An interface is provided
+interf_provided = .true.
+
+! If first call initialize random sequence
+if(first_pert_call) then
+   call init_random_seq(random_seq)
+   first_pert_call = .false.
+endif
+
+do i = 1, get_model_size()
+   call get_state_meta_data(i, temp_loc, variable_type)
+   if(variable_type == TYPE_U .or. variable_type == TYPE_V .or. variable_type == TYPE_T .or. &
+   variable_type == TYPE_U0 .or. variable_type == TYPE_V0 .or. variable_type == TYPE_T0) then
+      pert_state(i) = random_gaussian(random_seq, state(i), 0.5_r8)
+   else
+      pert_state(i) = state(i)
+   endif
+end do
 
 end subroutine pert_model_state
 
@@ -1289,7 +1318,12 @@ var%vars_3d(:,:,:,7) = qn1(:,:,:,7)  ! H
 var%vars_3d(:,:,:,8) = qn1(:,:,:,8)  ! OH
 var%vars_3d(:,:,:,9) = qn1(:,:,:,18) ! O
 
+print*, "read_ROSE_restart: BEFORE model_time: utsec = ", utsec
+print*, "read_ROSE_restart: BEFORE model_time: doy = ", doy
 model_time = set_time(utsec, doy)
+print*, "read_ROSE_restart: AFTER model_time :"
+call print_time(model_time)
+
 
 end subroutine read_ROSE_restart
 

@@ -24,10 +24,16 @@
    outlier_threshold = -1.0,
    save_reg_series = .false.  /
 
+&ensemble_manager_nml
+   in_core = .true. /
+
 &assim_tools_nml
    prior_spread_correction = .false.,
    filter_kind = 1,
-   slope_threshold = 1.0  /
+   slope_threshold = 1.0  
+   do_parallel = 0,
+   num_domains = 1,
+   parallel_command = "qsub ./assim_filter.csh" /
 
 &cov_cutoff_nml
    select_localization = 1  /
