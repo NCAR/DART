@@ -22,6 +22,7 @@ use random_seq_mod, only : random_seq_type, random_gaussian, &
                            init_random_seq, random_uniform
 
 logical :: first_ran_call = .true., first_inc_ran_call = .true.
+logical :: first_obs18_call = .true.
 
 type (random_seq_type) :: ran_seq, inc_ran_seq
 
@@ -33,7 +34,8 @@ public read_restart, write_restart, assim_tools_init, &
    obs_inc_index, obs_inc4_index, obs_increment5, obs_increment6, &
    obs_increment7, obs_increment8, obs_increment9, obs_increment10, &
    obs_increment11, obs_increment12, obs_increment13, obs_increment14, &
-   obs_increment15, obs_increment16, obs_increment17, &
+   obs_increment15, obs_increment16, obs_increment17, obs_increment18, &
+   obs_increment_group, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
@@ -183,10 +185,347 @@ new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
 new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
 
 a = sqrt(new_cov * prior_cov_inv)
+!!!write(*, *) 'a in base is ', a
 
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment
+
+
+
+
+subroutine obs_increment18(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+
+! Working with sampling error correction in obs space from 23 Sept. 2003
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8) :: prior_cov, sx, s_x2
+real(r8) :: base_fract, new_fract, final_mean
+real(r8) :: ratio(189), factor(189), var_ratio, this_factor
+
+integer :: i, index
+
+! Need to read in files for factor if this is first time through
+if(first_obs18_call) then
+   first_obs18_call = .false.
+   open(unit = 51, file = 'inc18_factor')
+   do i = 1, 189
+      read(51, *) ratio(i), factor(i)
+!      write(*, *) 'reading ', i, ratio(i), factor(i)
+   end do
+endif
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Find the factor for this var ratio
+var_ratio = prior_cov / obs_var
+if(var_ratio > ratio(189)) then
+   this_factor = 1.0
+else
+   do i = 1, 189
+      if(var_ratio < ratio(i)) then
+         this_factor = factor(i)
+         goto 111
+      endif
+   end do
+endif
+   
+111 continue
+!write(*, *) 'var_ratio, this_factor ', var_ratio, this_factor
+!!!if(this_factor < 1.01) this_factor = 1.015
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! From work on 22 Sept. 2003 (see sys_sim203) to handle sampling bias
+a = sqrt(this_factor * new_cov * prior_cov_inv)
+
+! Also want to increase fraction moved towards ob by same factor
+base_fract = (new_mean - prior_mean) / (obs - prior_mean)
+new_fract = this_factor * base_fract
+final_mean = new_fract * (obs - prior_mean) + prior_mean
+
+obs_inc = a * (ens - prior_mean) + final_mean - ens
+
+end subroutine obs_increment18
+
+
+
+
+subroutine obs_increment_group(ens, ens_size, obs, obs_var, obs_inc, &
+   num_groups)
+!========================================================================
+!
+! EAKF version of obs increment for groups of ensembles
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+integer, intent(in) :: num_groups
+
+real(r8) :: a, a1(num_groups), obs_var_inv
+real(r8) :: new_mean(num_groups)
+real(r8) :: prior_mean(num_groups), prior_cov(num_groups)
+real(r8) :: sx, s_x2
+real(r8) :: mean_mean, mean_var, inf_prior_cov_inv, inf_prior_cov
+real(r8) :: inf_new_cov(num_groups)
+real(r8) :: new_ens(ens_size) 
+
+integer :: grp_size, group, grp_bot, grp_top
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute the prior_mean and variance for each group
+! Divide ensemble into num_groups groups
+grp_size = ens_size / num_groups
+do group = 1, num_groups
+   grp_bot = (group - 1) * grp_size + 1
+   grp_top = grp_bot + grp_size - 1
+
+! Compute prior covariance and mean from sample
+   sx = sum(ens(grp_bot:grp_top))
+   s_x2 = sum(ens(grp_bot:grp_top) * ens(grp_bot:grp_top))
+   prior_mean(group) = sx / grp_size
+   prior_cov(group) = (s_x2 - sx**2 / grp_size) / (grp_size - 1)
+end do
+
+! Compute the variance of the prior mean estimates between groups
+sx = sum(prior_mean)
+s_x2 = sum(prior_mean * prior_mean)
+mean_mean = sx / num_groups
+mean_var = (s_x2 - sx**2 / num_groups) / (num_groups - 1)
+
+!!!write(*, *) 'mean var is ', mean_var
+
+! Can use incremented variance for computing new means only
+
+do group = 1, num_groups
+   grp_bot = (group - 1) * grp_size + 1
+   grp_top = grp_bot + grp_size - 1
+
+! Look out for next; probably not exactly right
+   inf_prior_cov = prior_cov(group) + mean_var
+   a1(group) = sqrt(inf_prior_cov / prior_cov(group))
+!   write(*, *) 'a1 ', a1(group), 1.0 / a1(group)
+! Also need to inflate the ensemble beforehand
+   new_ens(grp_bot:grp_top) = a1(group) * (ens(grp_bot:grp_top) - prior_mean(group)) + &
+      prior_mean(group)
+
+   inf_prior_cov_inv = 1.0 / inf_prior_cov
+   inf_new_cov(group) = 1.0 / (inf_prior_cov_inv + obs_var_inv)
+   a = sqrt(inf_new_cov(group) * inf_prior_cov_inv)
+!   write(*, *) 'first a ', a
+
+   new_mean(group) = inf_new_cov(group) * (inf_prior_cov_inv * prior_mean(group) + obs / obs_var)
+   
+   new_ens(grp_bot:grp_top) = a * (new_ens(grp_bot:grp_top) - prior_mean(group)) &
+      + new_mean(group)
+end do
+
+
+! Quick, more stable cheat??? Just restore the factor added in
+!!!do group = 1, num_groups
+!!!   grp_bot = (group - 1) * grp_size + 1
+!!!   grp_top = grp_bot + grp_size - 1
+!!!   new_ens(grp_bot:grp_top) = (1.0 / a1(group)) * &
+!!!      (new_ens(grp_bot:grp_top) - new_mean(group)) + new_mean(group)
+!!!   obs_inc(grp_bot:grp_top) = new_ens(grp_bot:grp_top) - ens(grp_bot:grp_top)
+!!!end do
+
+!!!if(1 == 1) return
+
+
+! Now, have to remove that portion of the variance that is held in the varying means
+! Compute the variance of the posterior mean estimates between groups
+sx = sum(new_mean)
+s_x2 = sum(new_mean * new_mean)
+mean_mean = sx / num_groups
+mean_var = (s_x2 - sx**2 / num_groups) / (num_groups - 1)
+
+! Now, remove this part of variance from the individual groups of ensembles
+do group = 1, num_groups
+   grp_bot = (group - 1) * grp_size + 1
+   grp_top = grp_bot + grp_size - 1
+   if(mean_var > 1.00 * inf_new_cov(group)) then
+      a = 0.0
+   else
+      a = sqrt((inf_new_cov(group) - mean_var) / inf_new_cov(group))
+   endif
+!   write(*, *) 'inf second a ', a
+   new_ens(grp_bot:grp_top) =  a * (new_ens(grp_bot:grp_top) - new_mean(group)) &
+      + new_mean(group)
+   obs_inc(grp_bot:grp_top) = new_ens(grp_bot:grp_top) - ens(grp_bot:grp_top)
+end do
+
+end subroutine obs_increment_group
+
+
+
+
+subroutine third_increment_group(ens, ens_size, obs, obs_var, obs_inc, &
+   num_groups)
+!========================================================================
+!
+! EAKF version of obs increment for groups of ensembles
+
+! Approach here failed. Be sure to understand why.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+integer, intent(in) :: num_groups
+
+real(r8) :: a(num_groups), prior_mean(num_groups), new_mean(num_groups)
+real(r8) :: ens2(1, ens_size), obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_cov_inv, new_cov
+real(r8) :: prior_cov, sx, s_x2, new_global_mean, mean_sum
+real(r8) :: mean_mean, a_min
+
+integer :: i, grp_size, group, grp_bot, grp_top
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+
+! Now do the variance from the individual groups
+! Divide ensemble into num_groups groups
+grp_size = ens_size / num_groups
+do group = 1, num_groups
+   grp_bot = (group - 1) * grp_size + 1
+   grp_top = grp_bot + grp_size - 1
+
+! Compute prior covariance and mean from sample
+   sx = sum(ens(grp_bot:grp_top))
+   s_x2 = sum(ens(grp_bot:grp_top) * ens(grp_bot:grp_top))
+   prior_mean(group) = sx / grp_size
+   prior_cov = (s_x2 - sx**2 / grp_size) / (grp_size - 1)
+
+   prior_cov_inv = 1.0 / prior_cov
+   new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+   new_mean(group) = new_cov * (prior_cov_inv * prior_mean(group) + obs / obs_var)
+
+   a(group) = sqrt(new_cov * prior_cov_inv)
+
+end do
+
+write(*, *) 'a are ', a
+a_min = maxval(a)
+!a_min = sum(a) / num_groups
+
+
+do group = 1, num_groups
+   grp_bot = (group - 1) * grp_size + 1
+   grp_top = grp_bot + grp_size - 1
+
+   obs_inc(grp_bot:grp_top) = a_min * (ens(grp_bot:grp_top) - prior_mean(group)) &
+      + new_mean(group) - ens(grp_bot:grp_top)
+
+end do
+
+end subroutine third_increment_group
+
+
+
+
+subroutine bad_increment_group(ens, ens_size, obs, obs_var, obs_inc, &
+   num_groups)
+!========================================================================
+!
+! EAKF version of obs increment for groups of ensembles
+
+! Approach here failed. Be sure to understand why.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+integer, intent(in) :: num_groups
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8) :: prior_cov, sx, s_x2, new_global_mean, mean_sum
+real(r8) :: mean_mean
+
+integer :: i, grp_size, group, grp_bot, grp_top
+
+! Accumulate individual ensemble means for grand mean
+mean_sum = 0.0
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! First compute the new mean from larger group statistics
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_global_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+
+! Now do the variance from the individual groups
+! Divide ensemble into num_groups groups
+grp_size = ens_size / num_groups
+do group = 1, num_groups
+   grp_bot = (group - 1) * grp_size + 1
+   grp_top = grp_bot + grp_size - 1
+
+! Compute prior covariance and mean from sample
+   sx = sum(ens(grp_bot:grp_top))
+   s_x2 = sum(ens(grp_bot:grp_top) * ens(grp_bot:grp_top))
+   prior_mean = sx / grp_size
+   prior_cov = (s_x2 - sx**2 / grp_size) / (grp_size - 1)
+
+   prior_cov_inv = 1.0 / prior_cov
+   new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+   new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+   mean_sum = mean_sum + new_mean
+
+   a = sqrt(new_cov * prior_cov_inv)
+
+   obs_inc(grp_bot:grp_top) = a * (ens(grp_bot:grp_top) - prior_mean) &
+      + new_mean - ens(grp_bot:grp_top)
+
+end do
+
+mean_mean = mean_sum / num_groups
+!!!write(*, *) 'global and mean mean ', new_global_mean, mean_mean
+
+! Add on the difference to all ensemble members
+obs_inc = obs_inc + (new_global_mean - mean_mean)
+
+end subroutine bad_increment_group
 
 
 
@@ -650,6 +989,7 @@ inf_prior_cov_inv = 1.0 / inf_prior_cov
 new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
 
 a = sqrt(new_cov * inf_prior_cov_inv)
+!!!write(*, *) 'a in 17 is ', a
 
 obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
 
