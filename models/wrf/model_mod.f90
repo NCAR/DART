@@ -788,8 +788,12 @@ else if(which_vert == 3) then
    call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
    if(debug) print*,' obs is by height and zloc =',zloc
 else if(which_vert == -1) then
-   ! get height vertical co-ordinate
-   zloc = xyz_loc(3)
+   ! get terrain height
+   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
+                   dx*wrf%dom(id)%hgt(i+1,j) ) + &
+             dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
+                   dx*wrf%dom(id)%hgt(i+1,j+1) )
+   zloc = 0.0_r8
    if(debug) print*,' obs is at the surface = ', xyz_loc(3)
 else
    call error_handler(E_ERR,'model_interpolate', 'wrong option for which_vert', &
@@ -1757,35 +1761,43 @@ call get_wrf_horizontal_location( i, j, var_type, id, long, lat )
 
 which_vert = nint(query_location(o_loc,'which_vert'))
 
-if(which_vert == 1 ) then
+if(horiz_dist_only .or. which_vert == -2) then
 
-   if( (var_type == type_w ) .or. (var_type == type_gz) ) then
-      vloc = real(k) - 0.5_r8
-   else
-      vloc = real(k)
-   endif
-
-elseif(which_vert == 2 ) then
-
-   vloc = model_pressure(i,j,k,id,var_type,x)
-
-elseif(which_vert == 3 ) then
-
-   vloc = model_height(i,j,k,id,var_type,x)
-
-elseif(which_vert == -1 ) then
-
-   vloc = wrf%dom(id)%hgt(i,j)
+   vloc = missing_r8
 
 else
-   write(errstring, *) 'Which_vert = ',which_vert, ' is not allowed.'
-   call error_handler(E_ERR,'get_dist_wrf', errstring, source, revision, revdate)
-endif
 
-if (vloc == missing_r8 ) then
-   print*,i,j,k, id, var_type,which_vert
-   write(errstring, *) 'Unable to define vloc.'
-   call error_handler(E_ERR,'get_dist_wrf', errstring, source, revision, revdate)
+   if(which_vert == 1 ) then
+
+      if( (var_type == type_w ) .or. (var_type == type_gz) ) then
+         vloc = real(k) - 0.5_r8
+      else
+         vloc = real(k)
+      endif
+
+   elseif(which_vert == 2 ) then
+
+      vloc = model_pressure(i,j,k,id,var_type,x)
+
+   elseif(which_vert == 3 ) then
+
+      vloc = model_height(i,j,k,id,var_type,x)
+
+   elseif(which_vert == -1 ) then
+
+      vloc = wrf%dom(id)%hgt(i,j)
+
+   else
+      write(errstring, *) 'Which_vert = ',which_vert, ' is not allowed.'
+      call error_handler(E_ERR,'get_dist_wrf', errstring, source, revision, revdate)
+   endif
+
+   if (vloc == missing_r8 ) then
+      print*,i,j,k, id, var_type,which_vert
+      write(errstring, *) 'Unable to define vloc.'
+      call error_handler(E_ERR,'get_dist_wrf', errstring, source, revision, revdate)
+   endif
+
 endif
 
 loc          = set_location(long, lat, vloc, which_vert)
