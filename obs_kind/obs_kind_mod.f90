@@ -1,4 +1,11 @@
 module obs_kind_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 ! This module is designed to provide general information about observation 
 ! types. It is not clear at present whether this is going to be viable or
@@ -100,19 +107,16 @@ end function read_kind
 subroutine interactive_kind(kind)
 !-------------------------------------------------------------------------
 !
-! Allows interactive input of kind. For now, this module only allows
-! a single kind so there is no need to do anything except set to 1
+! Allows interactive input of kind.
 
 implicit none
 
 type(obs_kind_type), intent(out) :: kind
 
 ! For bgrid, enter kind of observation
-write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4'
+write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5'
 read(*, *) kind%index
 
-! Do default kind for surface pressure for cheat for now
-!!!kind%index = 3
 
 
 end subroutine interactive_kind
