@@ -1,15 +1,15 @@
 # Group of namelists required for bgrid model
 
-&model_nml
+ &model_nml
      current_time =  0, 0, 0, 0
-     override = .false.
+     override = .false.,
      dt_atmos = 3600,
-     days   = 10,
-     hours = 0, 
-     minutes = 0,
-     seconds = 0,
-     noise_sd = 0.0
-     dt_bias = -1
+     days     = 10,
+     hours    = 0, 
+     minutes  = 0,
+     seconds  = 0,
+     noise_sd = 0.0,
+     dt_bias  = -1,
      output_state_vector = .false. /
 #
 # namelists used for cold start of bgrid core (N45L20)
@@ -23,7 +23,9 @@
 
 # only used if initial conditions file not specified in run
  &bgrid_cold_start_nml
-     nlon = 60, nlat = 30, nlev = 5,
+     nlon = 60, 
+     nlat = 30, 
+     nlev = 5,
      equal_vert_spacing = .true. /
 
 #Values set in hs_forcing_nml are from:

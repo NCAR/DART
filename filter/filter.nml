@@ -22,5 +22,5 @@
    num_groups = 1,
    confidence_slope = 0.0,
    get_mean_reg = .false.,
-   get_median_reg = .false.
-&end
+   get_median_reg = .false.  /
+

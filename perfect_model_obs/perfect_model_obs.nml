@@ -9,5 +9,5 @@
    restart_out_file_name = "perfect_restart",
    init_time_days = 0,
    init_time_seconds = 0,
-   output_interval = 1
-&end
+   output_interval = 1  /
+

@@ -1,4 +1,4 @@
 &obs_sequence_nml
    read_binary_obs_sequence = .false.,
-   write_binary_obs_sequence = .false.
-&end
+   write_binary_obs_sequence = .false.  /
+

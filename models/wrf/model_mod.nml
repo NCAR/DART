@@ -1,4 +1,4 @@
 &model_nml
    output_state_vector = .false.,
-   num_moist_vars = 3
-&end
+   num_moist_vars = 3  /
+
