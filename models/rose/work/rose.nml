@@ -1,13 +1,12 @@
 &rose_nml
-   ntime  = 8
-   output_prog_diag = .true.
-   input_dir = '/project/gsp/tmatsuo/DART/models/rose/DAinput/'
-   out_dir = '/project/gsp/tmatsuo/DART/models/rose/DAoutput/' 
-   ncep_file = 'nmc_lbc.02.nc'
-   restart_file = 'rose_restart.dat'
-   h_tune = 3.141592654
-   z_tune = 1.0
-   old_restart = .true.
-   nstart = 0
-   target_time = 168. /
-
+ntime =  8
+output_prog_diag =  T
+input_dir = '/home/tmatsuo/DART/models/rose/DAinput/'
+out_dir = '/home/tmatsuo/DART/models/rose/DAoutput/'
+ncep_file = 'nmc_lbc.02.nc'
+restart_file = 'rose_restart.dat'
+h_tune =    3.1415926540
+z_tune =    1.0000000000
+old_restart =  F
+nstart =  1
+target_time = 3624.0000000000/

@@ -50,7 +50,8 @@ public :: get_model_size, &
           vector_to_prog_var, &
           read_ROSE_restart, &
           write_ROSE_restart, &
-          init_model_instance
+          init_model_instance, &
+          end_model_instance
 
 !-----------------------------------------------------------------------
 
@@ -502,7 +503,181 @@ use netcdf
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
 
-ierr = 0  
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+
+integer :: MemberDimID, TimeDimID
+integer :: lonDimID, latDimID, levDimID
+integer :: lonVarID, latVarID, levVarID
+integer :: u1VarID, v1VarID, t1VarID, uVarID, vVarID, tVarID
+integer :: qnHVarID, qnOHVarID, qnOVarID
+
+character(len=129) :: errstring
+character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=NF90_MAX_NAME) :: str1
+
+!------------------------------------------------------------------
+
+ierr = 0  ! assume normal termination 
+
+!--------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file
+!--------------------------------------------------------------------
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(nf90_Redef(ncFileID))
+
+!-------------------------------------------------------------------------------
+! We need the dimension ID for the number of copies
+!-------------------------------------------------------------------------------
+                                                                                                           
+call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
+call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
+                                                                                                           
+if ( TimeDimID /= unlimitedDimId ) then
+   write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',unlimitedDimID
+   call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
+endif
+
+!-------------------------------------------------------------------------------
+! Write Global Attributes
+!-------------------------------------------------------------------------------
+                                                                                                           
+call DATE_AND_TIME(crdate,crtime,crzone,values)
+write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+                  values(1), values(2), values(3), values(5), values(6), values(7)
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","ROSE"))
+
+!-------------------------------------------------------------------------------
+! Define the dimensions IDs
+!-------------------------------------------------------------------------------
+
+call check(nf90_def_dim(ncid=ncFileID, name="lon",   len = nx,   dimid =   lonDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lat",   len = ny,   dimid =   latDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lev",   len = nz,   dimid =   levDimID))
+
+!-------------------------------------------------------------------------------
+! Create the (empty) Variables and the Attributes
+!-------------------------------------------------------------------------------
+
+call check(nf90_def_var(ncFileID, name="lon", xtype=nf90_double, &
+                                                dimids=lonDimID, varid=lonVarID) ) 
+call check(nf90_put_att(ncFileID, lonVarID, "long_name", "longitude"))
+call check(nf90_put_att(ncFileID, lonVarID, "cartesian_axis", "X"))
+call check(nf90_put_att(ncFileID, lonVarID, "units", "degrees_east")) ! check
+call check(nf90_put_att(ncFileID, lonVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
+
+call check(nf90_def_var(ncFileID, name="lat", xtype=nf90_double, &
+                                                dimids=latDimID, varid=latVarID) ) 
+call check(nf90_put_att(ncFileID, latVarID, "long_name", "latitude"))
+call check(nf90_put_att(ncFileID, latVarID, "cartesian_axis", "Y"))
+call check(nf90_put_att(ncFileID, latVarID, "units", "degrees_north")) !check
+call check(nf90_put_att(ncFileID, latVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
+
+call check(nf90_def_var(ncFileID, name="lev", xtype=nf90_double, &
+                                                dimids=levDimID, varid=levVarID) ) 
+call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"))
+call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"))
+call check(nf90_put_att(ncFileID, levVarID, "units", "hPa"))
+call check(nf90_put_att(ncFileID, levVarID, "positive", "down")) !check
+
+!----------------------------------------------------------------------------
+! Create attributes for the state vector
+!----------------------------------------------------------------------------
+
+call check(nf90_def_var(ncid=ncFileID, name="u1", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = u1VarID))
+call check(nf90_put_att(ncFileID, u1VarID, "long_name", "zonal wind component")) !check
+call check(nf90_put_att(ncFileID, u1VarID, "units", "m/s"))
+                                                                                                           
+call check(nf90_def_var(ncid=ncFileID, name="v1", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = v1VarID))
+call check(nf90_put_att(ncFileID, v1VarID, "long_name", "meridional wind component")) !check
+call check(nf90_put_att(ncFileID, v1VarID, "units", "m/s"))
+
+call check(nf90_def_var(ncid=ncFileID, name="t1", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = t1VarID))
+call check(nf90_put_att(ncFileID, t1VarID, "long_name", "temperature")) !check
+call check(nf90_put_att(ncFileID, t1VarID, "units", "degrees Kelvin"))
+
+
+call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = uVarID))
+call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"))
+call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"))
+                                                                                                           
+call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = vVarID))
+call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"))
+call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"))
+
+call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = tVarID))
+call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"))
+call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"))
+
+call check(nf90_def_var(ncid=ncFileID, name="qnH", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = qnHVarID))
+call check(nf90_put_att(ncFileID, qnHVarID, "long_name", "mixing ratio H"))
+call check(nf90_put_att(ncFileID, qnHVarID, "units", "?"))
+
+call check(nf90_def_var(ncid=ncFileID, name="qnOH", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = qnOHVarID))
+call check(nf90_put_att(ncFileID, qnOHVarID, "long_name", "mixing ratio OH"))
+call check(nf90_put_att(ncFileID, qnOHVarID, "units", "?"))
+
+call check(nf90_def_var(ncid=ncFileID, name="qnO", xtype=nf90_real, &
+       dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+       varid  = qnOVarID))
+call check(nf90_put_att(ncFileID, qnOVarID, "long_name", "mixing ratio O"))
+call check(nf90_put_att(ncFileID, qnOVarID, "units", "?"))
+
+call check(nf90_enddef(ncfileID))
+
+!-------------------------------------------------------------------------------
+! Fill the variables
+!-------------------------------------------------------------------------------
+
+call check(nf90_put_var(ncFileID, lonVarID, lons))
+call check(nf90_put_var(ncFileID, latVarID, lats))
+call check(nf90_put_var(ncFileID, levVarID, levs))
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+
+call check(nf90_sync(ncFileID))
+write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+contains
+                                                                                                           
+! Internal subroutine - checks error status after each netcdf, prints
+!                       text message each time an error code is returned.
+
+subroutine check(istatus)
+    integer, intent (in) :: istatus
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+end subroutine check
+
+
 end function nc_write_model_atts
 
 
@@ -540,7 +715,72 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-ierr = 0
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: u1VarID, v1VarID, t1VarID, uVarID, vVarID, tVarID
+integer :: qnHVarID, qnOHVarID, qnOVarID
+type(model_type)                   :: Var
+
+ierr = 0  ! assume normal termination
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+
+
+call init_model_instance(Var)
+call vector_to_prog_var(statevec, Var)
+
+call check(NF90_inq_varid(ncFileID,  "u1",  u1VarID))
+call check(nf90_put_var( ncFileID,  u1VarId, var%vars_3d(:,:,:, 1), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+                                                                                                                                     
+call check(NF90_inq_varid(ncFileID,  "v1",  v1VarID))
+call check(nf90_put_var( ncFileID,  v1VarId, var%vars_3d(:,:,:, 2), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+                                                                                                                                     
+call check(NF90_inq_varid(ncFileID,  "t1",  t1VarID))
+call check(nf90_put_var( ncFileID,  t1VarId, var%vars_3d(:,:,:, 3), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+call check(NF90_inq_varid(ncFileID,  "u",  uVarID))
+call check(nf90_put_var( ncFileID,  uVarId, var%vars_3d(:,:,:, 4), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+call check(NF90_inq_varid(ncFileID,  "v",  vVarID))
+call check(nf90_put_var( ncFileID,  vVarId, var%vars_3d(:,:,:, 5), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+call check(NF90_inq_varid(ncFileID,  "t",  tVarID))
+call check(nf90_put_var( ncFileID,  tVarId, var%vars_3d(:,:,:, 6), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+call check(NF90_inq_varid(ncFileID,  "qnH",  qnHVarID))
+call check(nf90_put_var( ncFileID,  qnHVarId, var%vars_3d(:,:,:, 7), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+call check(NF90_inq_varid(ncFileID,  "qnOH",  qnOHVarID))
+call check(nf90_put_var( ncFileID,  qnOHVarId, var%vars_3d(:,:,:, 8), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+call check(NF90_inq_varid(ncFileID,  "qnH",  qnOVarID))
+call check(nf90_put_var( ncFileID,  qnOVarId, var%vars_3d(:,:,:, 9), &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+write (*,*)'Finished filling variables ...'
+call check(nf90_sync(ncFileID))
+write (*,*)'netCDF file is synched ...'
+
+call end_model_instance(Var)   ! should avoid any memory leaking
+
+contains
+                                                                                                         
+ ! Internal subroutine - checks error status after each netcdf, prints
+ !                       text message each time an error code is returned.
+ subroutine check(istatus)
+  integer, intent ( in) :: istatus
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_vars', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+                                                                                                         
+ end subroutine check
+
 end function nc_write_model_vars
 
 
@@ -897,6 +1137,17 @@ allocate(var%vars_3d(nz, nx, ny, state_num_3d))
 
 end subroutine init_model_instance
 
+subroutine end_model_instance(var)
+!=======================================================================
+! subroutine end_model_instance(var)
+!
+! Ends an instance of a rose model state variable
+                                                                                                         
+type(model_type), intent(inout) :: var
+                                                                                                         
+deallocate(var%vars_3d)
+                                                                                                         
+end subroutine end_model_instance
 
 subroutine write_ROSE_restart(file_name, var)
 !=======================================================================
