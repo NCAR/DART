@@ -16,7 +16,8 @@ program perfect_model_obs
 
 use types_mod,        only : r8
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
-                             initialize_utilities, finalize_utilities, register_module, logfileunit
+                             initialize_utilities, register_module, &
+                             logfileunit, timestamp
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), operator(*), operator(+)
 
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
@@ -267,6 +268,7 @@ endif
 write(logfileunit,*)'FINISHED perfect_model_obs.'
 write(logfileunit,*)
 
-call finalize_utilities ! closes the log file.
+! closes the log file.
+call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
  
 end program perfect_model_obs
