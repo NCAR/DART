@@ -294,17 +294,17 @@ if(indx < u_indxmax) then
    lev_index = indx/(nlats*nlons) +1
    lat_index = ((indx - ((lev_index-1)*nlats*nlons))/nlons +1)
    lon_index = indx - (lev_index-1)*nlats*nlons - (lat_index-1)*nlons  
-   var_type = TYPE_u
+   if(present(var_type)) var_type = TYPE_u
 else if(indx<v_indxmax) then
    lev_index = (indx - u_indxmax)/(nlats*nlons) +1
    lat_index = ((indx -u_indxmax- ((lev_index-1)*nlats*nlons))/nlons +1)
    lon_index = indx -u_indxmax - (lev_index-1)*nlats*nlons - (lat_index-1)*nlons  
-   var_type = TYPE_v
+   if(present(var_type)) var_type = TYPE_v
 else
    lev_index = (indx - v_indxmax)/(nlats*nlons) +1
    lat_index = ((indx -v_indxmax- ((lev_index-1)*nlats*nlons))/nlons +1)
    lon_index = indx -v_indxmax - (lev_index-1)*nlats*nlons - (lat_index-1)*nlons  
-   var_type = TYPE_z
+   if(present(var_type)) var_type = TYPE_z
 endif 
 
 
