@@ -180,8 +180,8 @@ AdvanceTime: do
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
 ! Output the true state
+   call get_ensemble_member(ens_handle, 1, ens, time1)
    if(i / output_interval * output_interval == i) then
-      call get_ensemble_member(ens_handle, 1, ens, time1)
       call aoutput_diagnostics(StateUnit, time1, ens, 1)
    endif
 
@@ -192,7 +192,6 @@ AdvanceTime: do
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs_in_set
 ! Compute the observations from the state
-      call get_ensemble_member(ens_handle, 1, ens, time1)
       call get_expected_obs(seq, keys(j:j), ens, true_obs(1:1), istatus)
       if(istatus /= 0) qc(1) = 1000.
 
