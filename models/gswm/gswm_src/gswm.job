@@ -32,7 +32,7 @@
 setenv JOB gswm
 setenv EXEC gswm
 setenv TMPDIR /ptmp/hagan
-setenv REMOTE coyote.hao.ucar.edu:/home/hagan/ntwk
+setenv REMOTE coyote.hao:/home/hagan/ntwk
 setenv OUTPUT $JOB.$$.out
 setenv POSTCLEAN 0
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -163,30 +163,16 @@ echo " "
 # Get source and Makefile:
 # (INCLUDE statements are resolved by "submit" script (hao:/home/tgcm/bld/submit))
 #
-INCLUDE -h ~hagan/GSWM/Makefile
-INCLUDE -h ~hagan/GSWM/GSWM.inp
-INCLUDE -h ~hagan/GSWM/waves.inp
-INCLUDE -h /home/gswm/GSWM/GSWM/*.f
+INCLUDE -h /coyote/i/hagan/GSWM/tomoko/Makefile
+INCLUDE -h /coyote/i/hagan/GSWM/tomoko/GSWM.inp
+INCLUDE -h /coyote/i/hagan/GSWM/tomoko/waves.inp
+INCLUDE -h /coyote/i/hagan/GSWM/tomoko/*.f
 INCLUDE -h /home/gswm/GSWM/lib/*.f
 INCLUDE -h /home/gswm/GSWM/dat/ciraO3_*
-#INCLUDE -h /home/gswm/GSWM/dat/criso3_*
-#INCLUDE -h /home/gswm/GSWM/dat/halmls_*
-INCLUDE -h /home/gswm/GSWM/dat/groves_*
 INCLUDE -h /home/gswm/GSWM/dat/h2o_*diurn
-#INCLUDE -h /home/gswm/GSWM/dat/h2o_*semi
+INCLUDE -h /home/gswm/GSWM/dat/h2o_*semi
 INCLUDE -h /home/gswm/GSWM/dat/hrdi0*
-#INCLUDE -h /home/gswm/GSWM/dat/crista_u*
-#INCLUDE -h /home/gswm/GSWM/dat/cris_*
 INCLUDE -h /home/gswm/GSWM/dat/revised_gs_50.tables
-#INCLUDE -h /home/gswm/GSWM/dat/randel*
-#INCLUDE -h /home/gswm/GSWM/dat/khattatov.kzz
-INCLUDE -h /home/gswm/GSWM/dat/gciforce/7yr-jan*.diurn_sm
-#INCLUDE -h /home/gswm/GSWM/dat/gciforce/7yr-jan*.semid_sm
-#INCLUDE -h /home/gswm/GSWM/dat/gciforce/*W1*.diurn_sm
-#INCLUDE -h /home/gswm/GSWM/dat/gciforce/*W2*.semid_sm
-#INCLUDE -h /home/gswm/GSWM/dat/7yr-12mos.*
-#INCLUDE -h /home/gswm/GSWM/dat/euv_*x.diu
-#INCLUDE -h /home/gswm/GSWM/dat/euv_*x.sem
 #
 # Include user's input file:
 #
