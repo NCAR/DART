@@ -13,7 +13,7 @@ use location_mod, only : location_type, get_dist, set_location, get_location, &
 use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
 use time_manager_mod
 
-use random_seq_mod,   only : random_gaussian, random_seq_type, &
+use random_seq_mod,   only : random_seq_type, random_gaussian, &
                             init_random_seq, several_random_gaussians
 
 private
