@@ -7,6 +7,8 @@ program seq_obs
 ! two dimensions or anything else. Also should be faster since
 ! the update computations need not be done.
 
+! This comment to test CVS checkin, 26 Feb. 2002
+
 !----------------------------------------------------------------------
 
 use assim_tools_mod, only : add_noise, read_restart, write_restart, &
