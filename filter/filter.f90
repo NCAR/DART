@@ -61,6 +61,7 @@ type(random_seq_type)   :: random_seq
 
 integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
+integer :: PriorStateUnit, PosteriorStateUnit
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer, parameter :: ens_size = 20
@@ -142,12 +143,15 @@ call cache_init(cache, cache_size)
 
 ! Set up diagnostic output for model state
 
-!prior_state_unit = init_diag_output('prior_diag', &
-prior_state_unit = init_diag_outputORG('prior_diag', &
-   'prior ensemble state', ens_size, ens_copy_meta_data)
-!posterior_state_unit = init_diag_output('posterior_diag', &
+PriorStateUnit     = init_diag_output('Prior_Diag', &
+                        'prior ensemble state', ens_size, ens_copy_meta_data)
+PosteriorStateUnit = init_diag_output('Posterior_Diag', &
+                        'posterior ensemble state', ens_size, ens_copy_meta_data)
+
+prior_state_unit     = init_diag_outputORG('prior_diag', &
+                        'prior ensemble state', ens_size, ens_copy_meta_data)
 posterior_state_unit = init_diag_outputORG('posterior_diag', &
-   'posterior ensemble state', ens_size, ens_copy_meta_data)
+                        'posterior ensemble state', ens_size, ens_copy_meta_data)
 
 !------------------- Read restart if requested ----------------------
 if(start_from_restart) then
@@ -221,8 +225,9 @@ AdvanceTime : do i = 1, num_obs_sets
 ! Advancing to same time causes problem with B-grid diag calls
       if(time2 /= get_model_time(ens(j))) call advance_state(ens(j), time2)
       call output_diagnosticsORG(prior_state_unit, ens(j), j)
+      call output_diagnostics(     PriorStateUnit, ens(j), j)
    end do
-   ierr = NF90_sync(prior_state_unit)   ! just for good measure -- TJH 
+   ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
 
    ! Do a covariance inflation for now? 
    ! Inflate the ensemble state estimates
@@ -285,8 +290,9 @@ AdvanceTime : do i = 1, num_obs_sets
    ! Put the ensemble storage back into the ens
    do j = 1, ens_size
         call output_diagnosticsORG(posterior_state_unit, ens(j), j)
+        call output_diagnostics(     PosteriorStateUnit, ens(j), j)
    end do
-   ierr = NF90_sync(posterior_state_unit)   ! just for good measure -- TJH 
+   ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
 
    ! Deallocate the ens_obs storage for this obs set
    deallocate(obs_err_cov, obs)
@@ -295,8 +301,8 @@ end do AdvanceTime
 
 ! properly dispose of the diagnostics files
 
-ierr = NF90_close(prior_state_unit)
-ierr = NF90_close(posterior_state_unit)
+ierr = NF90_close(PriorStateUnit)
+ierr = NF90_close(PosteriorStateUnit)
 
 ! Initialize the model state space diagnostic output files
 
