@@ -69,7 +69,7 @@ character(len=129) :: copy_meta_data(2), file_name
 ! Namelist with default values
 !
 logical :: start_from_restart = .false., output_restart = .false.
-logical :: async = .false.
+integer :: async = 0
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer :: init_time_days = -1, init_time_seconds = -1, output_interval = 1
@@ -106,8 +106,10 @@ if(file_exist('input.nml')) then
 endif
 
 ! Read in an observation sequence, only definitions part will be used (no data used)
+
 iunit = get_unit()
 open(file = obs_seq_in_file_name, unit = iunit)
+
 ! Just read in the definition part of the obs sequence
 seq = read_obs_sequence_def(iunit)
 
@@ -121,6 +123,8 @@ endif
 ! Initialize the model now that obs_sequence is all set up
 call static_init_assim_model()
 model_size = get_model_size()
+
+write(*,*)'Model size = ',model_size
 
 !------------------- Read restart if requested ----------------------
 
@@ -202,7 +206,11 @@ Advance: do i = 1, num_obs_sets
 
 ! Generate the synthetic observations by adding in error samples
    do j = 1, num_obs_in_set
-      obs(j) = random_gaussian(random_seq, true_obs(j), sqrt(obs_err_cov(j)))
+      if (true_obs(j) /= missing_r) then
+         obs(j) = random_gaussian(random_seq, true_obs(j), sqrt(obs_err_cov(j)))
+      else
+         obs(j) = true_obs(j)
+      endif
    end do
 !   write(*, *) 'obs with error added are ', obs
 
