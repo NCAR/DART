@@ -63,7 +63,7 @@ real(r8), allocatable :: regress(:), a_returned(:), obs_vals(:)
 
 integer, allocatable :: keys(:)
 integer :: key_bounds(2)
-integer :: num_state_copies, num_obs_copies
+integer :: num_state_copies, num_obs_copies, in_obs_copy
 integer :: output_state_mean_index, output_state_spread_index
 integer :: prior_obs_mean_index, posterior_obs_mean_index
 integer :: prior_obs_spread_index, posterior_obs_spread_index
@@ -169,11 +169,13 @@ allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
 ! Determine the number of output obs space fields
 num_obs_copies = 2 * num_output_obs_members
-if(output_obs_ens_mean) num_obs_copies = num_obs_copies + 1
-if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 1
+if(output_obs_ens_mean) num_obs_copies = num_obs_copies + 2
+if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
 
 ! Read in with enough space for diagnostic output values
 call read_obs_seq(obs_sequence_in_name, num_obs_copies, 0, 0, seq)
+
+ in_obs_copy = get_num_copies(seq) - num_obs_copies
 
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_times(seq)
@@ -188,7 +190,7 @@ if(output_state_ens_spread) allocate(ens_spread(model_size))
 
 ! Initialize the output sequences and state files and set their meta data
 call generate_copy_meta_data(output_state_ens_mean, output_state_ens_spread, &
-   num_output_state_members, output_obs_ens_mean, output_obs_ens_spread, &
+   num_output_state_members, in_obs_copy, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_obs_members, num_state_copies, num_obs_copies, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index, &
@@ -382,7 +384,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Output all of these that are required to the sequence file
       do k = 1, num_output_obs_members
-         call set_obs_values(observation, obs_vals(k:k), 2*k - 1)
+         call set_obs_values(observation, obs_vals(k:k), in_obs_copy + 2*k - 1)
       end do
 ! If requested output the ensemble mean
       if(output_obs_ens_mean) & 
@@ -503,7 +505,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Output all of these that are required to the sequence file
       do k = 1, num_output_obs_members
-         call set_obs_values(observation, obs_vals(k:k), 2*k)
+         call set_obs_values(observation, obs_vals(k:k), in_obs_copy + 2*k)
       end do
 ! If requested output the ensemble mean
       if(output_obs_ens_mean) &
@@ -627,7 +629,7 @@ end function get_ens_spread
 !-----------------------------------------------------------
 
 subroutine generate_copy_meta_data(output_state_ens_mean, output_state_ens_spread, &
-   num_output_state_members, output_obs_ens_mean, output_obs_ens_spread, &
+   num_output_state_members, in_obs_copy, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_obs_members, num_state_copies, num_obs_copies, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index, &
@@ -641,7 +643,7 @@ implicit none
 
 logical, intent(in) :: output_state_ens_mean, output_state_ens_spread
 logical, intent(in) :: output_obs_ens_mean, output_obs_ens_spread
-integer, intent(in) :: num_output_state_members, num_output_obs_members
+integer, intent(in) :: num_output_state_members, num_output_obs_members, in_obs_copy
 integer, intent(out) :: output_state_mean_index, output_state_spread_index
 integer, intent(out) :: prior_obs_mean_index, posterior_obs_mean_index
 integer, intent(out) :: prior_obs_spread_index, posterior_obs_spread_index
@@ -699,11 +701,11 @@ do i = 1, num_output_obs_members
       write(*, *) 'output metadata in filter needs ensemble size < 10000'
       stop
    endif
-   call set_copy_meta_data(seq, 2*i - 1, prior_meta_data)
-   call set_copy_meta_data(seq, 2*i, posterior_meta_data)
+   call set_copy_meta_data(seq, in_obs_copy + 2*i - 1, prior_meta_data)
+   call set_copy_meta_data(seq, in_obs_copy + 2*i, posterior_meta_data)
 end do
 
-num_obs_copies = 2 * num_output_obs_members
+num_obs_copies = in_obs_copy + 2 * num_output_obs_members
 if(output_obs_ens_mean) then
    num_obs_copies = num_obs_copies + 1
    prior_meta_data = 'prior ensemble mean'
