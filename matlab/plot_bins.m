@@ -38,7 +38,7 @@ switch lower(vars.model)
 
       disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
       disp(['Using State Variable IDs ', num2str(varid)])
-      PlotBins(truth_file, diagn_file, pinfo);
+      PlotBins(pinfo);
 
    case 'fms_bgrid'
 
@@ -48,7 +48,7 @@ switch lower(vars.model)
 
       pinfo                            % just echo stuff for posterity.
 
-      PlotBins(truth_file, diagn_file, pinfo);
+      PlotBins(pinfo);
 
    otherwise
 

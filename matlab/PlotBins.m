@@ -1,33 +1,38 @@
-function PlotBins(truth_file, diagn_file, pinfo)
+function PlotBins(pinfo)
 % PlotBins Plots rank histograms of ensemble mean
 %
 % PlotBins is intended to be called by 'plot_bins'.
+% The only input argument is a structure with model-dependent
+% components.
 %
-% USAGE: PlotBins(truth_file, diagn_file, state_var_inds)
-%
+% USAGE: PlotBins(pinfo)
+% 
+% STRUCTURE COMPONENTS FOR low-order models
 % truth_file      name of netCDF DART file with copy tagged 'true state'
 % diagn_file      name of netCDF DART file with copy tagged 'ensemble mean'
 % state_var_inds  indices of state variables of interest
 %
 % Example 1 (Lorenz_96  model)
 %%-------------------------------------------------------- 
-% truth_file = 'True_State.nc';
-% diagn_file = 'Prior_Diag.nc';
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
 % pinfo.state_var_inds = [3 4 36 39 22];
-% PlotBins(truth_file, diagn_file, state_var_inds);
+% PlotBins( pinfo );
 %
 % Example 2 (FMS BGrid model)
 %%-------------------------------------------------------- 
-% truth_file = 'True_State.nc';
-% diagn_file = 'Prior_Diag.nc';
-% pinfo.var       = 'u';
-% pinfo.level     = 3;
-% pinfo.latitude  = 23.5;
-% pinfo.longitude = 45.67;
-% PlotBins(truth_file, diagn_file, pinfo);
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.var        = 'u';
+% pinfo.level      = 3;
+% pinfo.latitude   = 23.5;
+% pinfo.longitude  = 45.67;
+% PlotBins( pinfo );
 
 % Wed Jul  2 09:56:40 MDT 2003
 
+truth_file = pinfo.truth_file;
+diagn_file = pinfo.diagn_file;
 CheckModelCompatibility(truth_file, diagn_file)
 
 % Get the state for the truth
