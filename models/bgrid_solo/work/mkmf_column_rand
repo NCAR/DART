@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p column_rand -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../../.." path_names_column_rand

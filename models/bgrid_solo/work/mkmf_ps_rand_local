@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p ps_rand_local -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../../.." path_names_ps_rand_local
