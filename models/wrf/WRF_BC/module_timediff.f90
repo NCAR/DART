@@ -11,7 +11,7 @@ MODULE module_timediff
 ! $Author$ 
 
   use        types_mod, only : r8, i8
-  use time_manager_mod, only : time_type, set_date, get_time
+  use time_manager_mod, only : time_type, set_date_gregorian, get_time
 
   implicit none
   private
@@ -48,8 +48,8 @@ SUBROUTINE time_diff(stime,etime,diff)
   read(etime(15:16),*) emi
   read(etime(18:19),*) ess
 
-  sdate = set_date(syy,smm,sdd,shr,smi,sss)
-  edate = set_date(eyy,emm,edd,ehr,emi,ess)
+  sdate = set_date_gregorian(syy,smm,sdd,shr,smi,sss)
+  edate = set_date_gregorian(eyy,emm,edd,ehr,emi,ess)
 
 !!$  s_secs = shr*3600 + smi*60 +sss
 !!$  e_secs = ehr*3600 + emi*60 +ess
