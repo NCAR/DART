@@ -85,14 +85,12 @@ integer            :: Ne,                 & ! Ensemble size
 
 type(time_type)   :: dart_time(2)
 integer           :: year, month, day, hour, minute, second
-integer           :: ndays
 
 character(len=19) :: timestring
 
 read(5,*) Ne       ! Read ensemble size from stdin.
 read(5,*) scale    ! Read scaling       from stdin.
 
-!debug = .false.
 debug = .false.
 
 call initialize_utilities
@@ -215,16 +213,6 @@ do i=1,Ne
    if(debug) write(6,*) 'writing START_DATE = ',timestring
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "START_DATE", timestring) )
 
-   !- Julian year, day, and GMT correspond to the end of the next BD time???
-
-   call get_date(dart_time(2), year, month, day, hour, minute, second)
-   call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULYR", year) )
-   if(debug) write(6,*) 'writing JULYR = ',year
-
-   ndays = julian_day(year, month, day)
-
-   call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULDAY", ndays) )
-   if(debug) write(6,*) 'writing JULDAY = ',ndays
    call check( nf90_inq_varid(wrf_bdy%ncid, 'md___nextbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', var_id) )
    call check( nf90_get_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
    if(debug) write(6,*) 'Original_nextbdytime = ',timestring
