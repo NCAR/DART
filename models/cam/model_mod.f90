@@ -1,3 +1,7 @@
+! FIX (see more below); 1D component of state vector dimension; handle f(lat,lon, or height)
+
+
+
 ! Data Assimilation Research Testbed -- DART
 ! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
@@ -85,6 +89,8 @@ integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 
 ! A type for cam model, very simple for now for conversion only
 type model_type
     private
+   real(r8), pointer :: vars_0d(:)
+   real(r8), pointer :: vars_1d(:, :)
    real(r8), pointer :: vars_2d(:, :, :)
    real(r8), pointer :: vars_3d(:, :, :, :)
 end type model_type
@@ -110,11 +116,15 @@ real(r8) :: highest_obs_pressure_mb = 30.0
 
 ! Namelist variables for defining state vector, and default values
 ! Better names than CAM code
+integer :: state_num_0d = 0              ! # of 2d fields to read from file
+integer :: state_num_1d = 0              ! # of 3d fields to read from file
 integer :: state_num_2d = 1              ! # of 2d fields to read from file
 integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
 ! make these allocatable?  Where would I define the default values?
 integer :: i
+character (len=8),dimension(20) :: state_names_0d = (/('        ',i=1,20)/)
+character (len=8),dimension(20) :: state_names_1d = (/('        ',i=1,20)/)
 character (len=8),dimension(20) :: state_names_2d = (/'PS      ',('        ',i=1,19)/)
 character (len=8),dimension(20) :: state_names_3d =  &
           (/'T       ','U       ','V       ','Q       ',('        ',i=1,16)/)
@@ -129,7 +139,8 @@ character (len=8),dimension(20) :: state_names_3d =  &
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
 namelist /model_nml/ output_state_vector, model_config_file, highest_obs_pressure_mb, &
-   state_num_2d  , state_num_3d  , state_names_2d, state_names_3d, &
+   state_num_0d, state_num_1d, state_num_2d, state_num_3d, &
+   state_names_0d, state_names_1d, state_names_2d, state_names_3d, &
    Time_step_seconds, Time_step_days
 
 !----------------------------------------------------------------------
@@ -159,7 +170,8 @@ real(r8):: P0               ! reference pressure
 ! list of variables to be included in the state vector,
 ! according to the category to which they belong, 
 ! in the order of 
-!   (state_num_2d, state_num_3d, state_num_adv_tracers, state_num_notadv_tracers).
+!   (state_num_0d, state_num_1d, state_num_2d, state_num_3d, 
+!    state_num_adv_tracers, state_num_notadv_tracers).
 
 ! CAM3 array 'cflds' is filled with simple loops over state_names_xxx, 
 ! which requires that the field names be provided in the right order.
@@ -241,7 +253,7 @@ type(model_type), intent(out) :: var
 
 ! Local workspace
 integer :: i,j,ifld  ! grid and constituent indices
-integer :: plon, plat, plev
+integer :: plon, plat, plev, num_coord
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
 integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
@@ -252,7 +264,31 @@ call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid)
 
 ! read CAM 'initial' file fields desired
 
+
 ifld = 0
+!0d fields; scalars are recognized and handled differently than vectors
+!           by NetCDF
+do i= 1, state_num_0d
+   ifld = ifld + 1
+   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+!  fields on file are 1D; TIME(=1)
+   call check(nf90_get_var(ncfileid, ncfldid, var%vars_0d(i) ))
+end do
+             
+
+!1d fields
+do i= 1, state_num_1d
+   ifld = ifld + 1
+   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+!  fields on file are 2D; (height, lat, or lon!?) TIME(=1)
+!  assume longest for now; lon
+   num_coord = num_lons
+   call check(nf90_get_var(ncfileid, ncfldid, var%vars_1d(:, i) &
+             ,start=(/1,1/) ,count=(/num_coord, 1/) ))
+end do
+
 !2d fields
 do i= 1, state_num_2d
    ifld = ifld + 1
@@ -489,9 +525,22 @@ character(len=129) :: errstring
 
 ! Start copying fields to straight vector
 indx = 0
+
+!  0d variables
+do nf = 1, state_num_0d
+   indx = indx + 1
+   x(indx) = var%vars_0d(nf)
+end do
+
 do i = 1, num_lons
+!  1d variables
+!  FIX for flexible dimension; move out of this loop
+   do nf = 1, state_num_1d
+      indx = indx + 1
+      x(indx) = var%vars_1d(i, nf)
+   end do
    do j = 1, num_lats
-!  Surface pressure and other 2d flds are first
+!  Surface pressure and other 2d 
       do nf = 1, state_num_2d
          indx = indx + 1
          x(indx) = var%vars_2d(i, j, nf)
@@ -530,9 +579,22 @@ character(len=129) :: errstring
 
 ! Start copying fields from straight vector
 indx = 0
+
+! 0d arrays
+do nf = 1, state_num_0d
+   indx = indx + 1
+   var%vars_0d(nf) = x(indx)
+end do
+
 do i = 1, num_lons
+! 1d arrays
+! FIX for flexible dimension; move out of this loop?
+   do nf = 1, state_num_1d
+      indx = indx + 1
+      var%vars_1d(i, nf) = x(indx)
+   end do
    do j = 1, num_lats
-! Surface pressure and other 2d fields are first
+! Surface pressure and other 2d fields 
       do nf = 1, state_num_2d
          indx = indx + 1
          var%vars_2d(i, j, nf) = x(indx)
@@ -573,7 +635,23 @@ integer ifld, ncfileid, ncfldid
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
 ifld = 0
-! 2d fields are first
+! 0d fields are first
+do i = 1, state_num_0d
+   ifld = ifld + 1
+   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call check(nf90_put_var(ncfileid, ncfldid, var%vars_0d(i) ))
+end do 
+
+! 1d fields 
+do i = 1, state_num_1d
+   ifld = ifld + 1
+   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+! FIX; for flexible dimension
+   call check(nf90_put_var(ncfileid, ncfldid, var%vars_1d(:, i), &
+      start=(/1, 1/), count = (/num_lons, 1/)))
+end do 
+
+! 2d fields 
 do i = 1, state_num_2d
    ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
@@ -668,7 +746,9 @@ Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
 call print_time(Time_step_atmos)
 
 ! Compute overall model size and put in global storage
-model_size = num_lons * num_lats * (state_num_2d + num_levs * state_num_3d) 
+! FIX for flexible 1D size
+model_size = state_num_0d + num_lons * (state_num_1d + num_lats *  &
+            (state_num_2d + num_levs * state_num_3d) )
 
 ! Allocate space for longitude and latitude global arrays
 ! and Allocate space for hybrid vertical coord coef arrays
@@ -690,7 +770,8 @@ call read_cam_scalar(P0, 'P0      ')    ! thats a p-zero
 write(*, *) 'CAM size initialized as ', model_size
 
 ! CAM3 subroutine to order the state vector parts into cflds 
-nflds   = state_num_3d + state_num_2d      ! # fields to read
+nflds   = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
+! # fields to read
 allocate (cflds(nflds))
 call order_state_fields (cflds, nflds)
 
@@ -714,7 +795,11 @@ type(model_type), intent(out) :: var
 
 ! Initialize the storage space and return
 
-allocate(var%vars_2d(num_lons, num_lats, state_num_2d), &
+! FIX for flexible 1d dimension
+allocate( &
+   var%vars_0d(                              state_num_0d), &
+   var%vars_1d(num_lons,                     state_num_1d), &
+   var%vars_2d(num_lons,           num_lats, state_num_2d), &
    var%vars_3d(num_lons, num_levs, num_lats, state_num_3d))
 
 end subroutine init_model_instance
@@ -730,7 +815,7 @@ end subroutine init_model_instance
 
 type(model_type), intent(inout) :: var
 
-deallocate(var%vars_2d, var%vars_3d)
+deallocate(var%vars_0d, var%vars_1d, var%vars_2d, var%vars_3d)
 
 end subroutine end_model_instance
 
@@ -778,6 +863,8 @@ integer  :: local_var_type, var_type_temp
 
 ! Easier to compute with a 0 to size - 1 index
 indx = index_in - 1
+
+! FIX; where would 1d and 0d variables fit in here?
 
 ! Compute number of items per column
 num_per_col = num_levs * state_num_3d + state_num_2d
@@ -846,7 +933,7 @@ type(location_type), intent(in) :: location
 integer,             intent(in) :: type
 integer,            intent(out) :: istatus
 
-integer :: lon_below, lon_above, lat_below, lat_above, i
+integer :: lon_below, lon_above, lat_below, lat_above, i, vstatus, which_vert
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
@@ -857,6 +944,8 @@ real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
 
 ! Start with no errors in 
 istatus = 0
+vstatus = 0
+
 
 ! Get the position, determine if it is model level or pressure in vertical
 lon_lat_lev = get_location(location)
@@ -923,17 +1012,17 @@ endif
 ! Case 1: model level specified in vertical
 if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
-   call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, istatus)
-   if (istatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, istatus)
-   if (istatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, istatus)
-   if (istatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, istatus)
+   call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, vstatus)
+   if (vstatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, vstatus)
+   if (vstatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, vstatus)
+   if (vstatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, vstatus)
 
 else
 ! Case of pressure specified in vertical
-   call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, istatus)
-   if (istatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, istatus)
-   if (istatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, istatus)
-   if (istatus /= 1) call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type, istatus)
+   call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, vstatus)
+   if (vstatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, vstatus)
+   if (vstatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, vstatus)
+   if (vstatus /= 1) call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type, vstatus)
 endif
 
 ! if (pflag > 0) write(53,'(A,2F7.2/)') '  subsurface obs lat, lon = ',lat,lon
@@ -946,6 +1035,7 @@ endif
 ! 1         fatal problem;           no                     no
 ! 2         exclude valid obs        yes                    no
 !
+istatus = vstatus
 if(istatus /= 1) then
    do i = 1, 2
       a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
@@ -976,14 +1066,19 @@ integer, intent(out) :: istatus
 
 real(r8) :: ps(1), pfull(1, num_levs), fraction
 type(location_type) :: ps_location
-integer :: top_lev, bot_lev, i, k
+integer :: top_lev, bot_lev, i, k, vstatus
 real(r8) :: bot_val, top_val, ps_lon
 
 ! No errors to start with
 istatus = 0
+vstatus = 0
 
 ! Need to get the surface pressure at this point. Easy for A-grid.
-call get_val(ps(1), x, lon_index, lat_index, -1, 3, istatus)
+call get_val(ps(1), x, lon_index, lat_index, -1, 3, vstatus)
+
+
+! TEST vstatus and return if non-0 ?
+
 
 ! Next, get the values on the levels for this ps
 call plevs_cam (1, 1, ps, pfull)
@@ -993,6 +1088,9 @@ call plevs_cam (1, 1, ps, pfull)
 ! Interpolate in vertical to get two bounding levels
 !write(*, *)' pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
+   istatus = 1
+   val = 0.
+elseif (type == 3 .or. type == 5) then
    istatus = 1
    val = 0.
 else 
@@ -1015,9 +1113,14 @@ else
 
 21 continue
    !get_val does not return a value of istatus yet.  Should it? then test here.
-   call get_val(bot_val, x, lon_index, lat_index, bot_lev, type, istatus)
-   call get_val(top_val, x, lon_index, lat_index, top_lev, type, istatus)
-   val = (1.0 - fraction) * bot_val + fraction * top_val
+   call get_val(bot_val, x, lon_index, lat_index, bot_lev, type, vstatus)
+   if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, type, vstatus)
+   if (vstatus == 0) then
+      val = (1.0 - fraction) * bot_val + fraction * top_val
+   else
+      istatus = 0
+      val = 0.
+   endif
 end if
 
 end subroutine get_val_pressure
@@ -1042,6 +1145,9 @@ istatus = 0
 
 ! Compute size of grid storage in a column; includes tracers
 ! Single 2D state vector is pressure
+
+! FIX; would 1d and 0d variables be needed here?
+
 per_col = 1 + num_levs * state_num_3d
 
 ! Find the starting index for this column
@@ -1172,6 +1278,7 @@ call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
 
 ! Compute size of grid storage for full levels
 hsize = num_lons * num_lats
+! FIX; would 0d and 1d fields need to go in here?
 num_per_col = num_levs * state_num_3d + state_num_2d
 
 ! For vertical localization need the vertical pressure structure for this column
@@ -1179,7 +1286,10 @@ do i = 1, num
    col_base_index = ((lon_ind(i) - 1) * num_lats + lat_ind(i) - 1) * num_per_col
 
 ! Compute the ps from the state for this column
-   call get_val(ps(1), x, lon_ind(i), lat_ind(i), -1, 3, istatus)
+! DOES NOT WORK FOR > 1 REGION
+!   call get_val(ps(1), x, lon_ind(i), lat_ind(i), -1, 3, istatus)
+! TEMP FIX
+    ps(1) = 100000.
 !   write(*, *) 'ps in model_get_close_states is ', i, ps(1)
 ! Next get the values on the levels for this ps
    call plevs_cam(1, 1, ps, pfull)
@@ -1581,8 +1691,31 @@ else
    ! Create the (empty) Variables and the Attributes
    !----------------------------------------------------------------------------
 
-   ! 2-d fields
+   ! 0-d fields
    ifld = 0
+   do i = 1,state_num_0d
+      ifld = ifld + 1
+      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+                 dimids = (/ MemberDimID, unlimitedDimID /), &
+                 varid  = xVarID))
+      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
+      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
+!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+   enddo
+
+   ! 1-d fields
+! FIX; handle flexible 1d variables
+   do i = 1,state_num_1d
+      ifld = ifld + 1
+      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+                 dimids = (/ lonDimID, MemberDimID, unlimitedDimID /), &
+                 varid  = xVarID))
+      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
+      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
+!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+   enddo
+
+   ! 2-d fields
    do i = 1,state_num_2d
       ifld = ifld + 1
       call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
@@ -1710,6 +1843,24 @@ else
    call vector_to_prog_var(statevec,  Var)
    
    ifld = 0
+   ZeroDVars : do i = 1, state_num_0d    
+      ifld = ifld + 1
+      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+      call check(nf90_put_var( ncFileID, ncfldid, Var%vars_0d(i), &
+                 start=(/ copyindex, timeindex /) ))
+!, &
+!                 count=(/1, 1/) ))
+   end do ZeroDVars
+
+! FIX flexible 1d variable size
+   OneDVars : do i = 1, state_num_1d    
+      ifld = ifld + 1
+      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+      call check(nf90_put_var( ncFileID, ncfldid, Var%vars_1d(:,i), &
+                 start=(/ 1, copyindex, timeindex /), &
+                 count=(/num_lons, 1, 1/) ))
+   end do OneDVars
+
    TwoDVars : do i = 1, state_num_2d    
       ifld = ifld + 1
       call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
@@ -1864,6 +2015,18 @@ character (len = *), dimension(nflds), intent(out) :: cflds
 character (len = 129) :: errstring
 
 nfld = 0
+
+! 0D fields
+do i=1,state_num_0d
+   nfld = nfld + 1
+   cflds(nfld)(:) = state_names_0d(i)
+end do
+
+! 1D fields
+do i=1,state_num_1d
+   nfld = nfld + 1
+   cflds(nfld)(:) = state_names_1d(i)
+end do
 
 ! 2D fields
 do i=1,state_num_2d
