@@ -190,7 +190,6 @@ real(r8), intent(inout) :: x(:)
 real(r8), intent(in)    :: fract
 
 real(r8) :: x1(3), x2(3), dx(3)
-integer  :: i
 
 call comp_dt(x, dx)            !  compute the first intermediate step
 x1 = x + fract * deltat * dx
@@ -236,7 +235,7 @@ end subroutine init_time
 
 
 
-function model_interpolate(x, location, itype)
+subroutine model_interpolate(x, location, itype, obs_val, istatus, rstatus)
 !------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -249,10 +248,12 @@ function model_interpolate(x, location, itype)
 ! Type is needed to allow swap consistency with more complex models.
 
 
-real(r8)                        :: model_interpolate
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: itype
+real(r8),           intent(out) :: obs_val
+integer,  optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
 integer  :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
@@ -268,9 +269,9 @@ if(lower_index > model_size) lower_index = lower_index - model_size
 if(upper_index > model_size) upper_index = upper_index - model_size
 
 lctnfrac = lctn - int(lctn)
-model_interpolate = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
+obs_val = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
 
-end function model_interpolate
+end subroutine model_interpolate
 
 
 
@@ -301,7 +302,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
 
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: var_type                                      
+integer,             intent(out), optional :: var_type
 
 location = state_loc(index_in)
 if (present(var_type)) var_type = 1    ! default variable type
@@ -369,48 +370,48 @@ use netcdf
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
 
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! General netCDF variables
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! netCDF variables for Location
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
-integer :: LocationDimID, LocationVarID
+integer :: LocationVarID
 integer :: StateVarDimID, StateVarVarID
 integer :: StateVarID, MemberDimID, TimeDimID
 
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! local variables
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
-integer             :: i, Nlocations
+integer             :: i
 type(location_type) :: lctn 
 ierr = 0                      ! assume normal termination
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
 call check(nf90_Redef(ncFileID))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Determine ID's from stuff already in the netCDF file
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 ! make sure time is unlimited dimid
 
 call check(nf90_inq_dimid(ncFileID,"copy",dimid=MemberDimID))
 call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Write Global Attributes 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
@@ -421,19 +422,19 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_b", b ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_sigma", sigma ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_deltat", deltat ))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
                         len=model_size, dimid = StateVarDimID)) 
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
 ! Some of the atts come from location_mod (via the USE: stmnt)
 ! CF standards for Locations:
 ! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
               dimids = StateVarDimID, varid=LocationVarID) )
@@ -442,9 +443,9 @@ call check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ))
 call check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
 call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 ! Define the state vector coordinate variable
 call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
@@ -464,18 +465,18 @@ call check(nf90_enddef(ncfileID))
 ! Fill the state variable coordinate variable
 call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Fill the location variable
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 do i = 1,model_size
    call get_state_meta_data(i,lctn)
    call check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ))
 enddo
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 call check(nf90_sync(ncFileID))
 
 write (*,*)'Model attributes written, netCDF file synched ...'
@@ -526,22 +527,22 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! General netCDF variables
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! local variables
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 ierr = 0                      ! assume normal termination
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 
@@ -617,8 +618,6 @@ real(r8), intent(in)    :: fract
 
 real(r8) :: x1(3), x2(3), x3(3), x4(3), dx(3), inter(3)
 
-integer i
-
 call comp_dt(x, dx)         !  compute the first intermediate step
 x1    = fract * deltat * dx
 inter = x + x1 / 2.0_r8
@@ -654,7 +653,6 @@ real(r8), intent(in)  :: x(:), dx(:)
 real(r8), intent(out) :: px(3)
 
 real(r8) a(3, 3), fact, tdx(3)
-integer i
 
 a(1, 1) = -sigma * deltat + 1.0_r8
 a(1, 2) =  sigma * deltat

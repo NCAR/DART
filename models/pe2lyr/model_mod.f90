@@ -318,18 +318,20 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-function model_interpolate(x, location, type)
+subroutine model_interpolate(x, location, type, obs_val, istatus, rstatus)
 
 implicit none
 
 
-real :: model_interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: type
+real(r8),           intent(out) :: obs_val
+integer,  optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
-integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
-real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
+integer :: lon_below, lon_above, lat_below, lat_above, i
+real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real :: lon, lat, level, lon_lat_lev(3)
 
@@ -337,7 +339,7 @@ real :: lon, lat, level, lon_lat_lev(3)
 lon_lat_lev = get_location(location)
 lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
 
-! Get lon and lat grid specs, num_lons, num_lats are globally defined for pe2lyr
+! Get lon and lat grid specs are globally defined for pe2lyr
    bot_lon = lons(1)
    top_lon = lons(nlons)
    delta_lon = lons(2) - lons(1)
@@ -403,10 +405,10 @@ do i = 1, 2
    a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
 end do
 
-model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
+obs_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 
 
-end function model_interpolate
+end subroutine model_interpolate
 
 !#######################################################################
 
@@ -418,7 +420,7 @@ real :: get_val
 real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, type
 
-integer :: per_col, indx
+integer :: indx
 
 
 ! order is u,v,z 
@@ -486,32 +488,31 @@ integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! netCDF variables
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
-!integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: latDimID, lonDimID, levDimID,  MemberDimID
-integer :: levVarID, StateVarID
-integer :: StateVarDimID, StateVarVarID, TimeDimID
-integer :: latVarID, lonVarID, levelVarID, uVarID, vVarID,zVarID
-integer :: nlev, i
+integer :: levVarID
+integer :: StateVarDimID, TimeDimID
+integer :: latVarID, lonVarID, uVarID, vVarID,zVarID
+integer :: i
 
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! local variables
-!-----------------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 character(len=129) :: errstring
 
 ierr = 0                      ! assume normal termination
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 call check(nf90_Redef(ncFileID))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Determine ID's from stuff already in the netCDF file
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 ! make sure time is unlimited dimid
 
@@ -522,31 +523,31 @@ if ( TimeDimID /= unlimitedDimId ) then
    write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',unlimitedDimID
    call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
 endif
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
                         len=model_size, dimid = StateVarDimID))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Write Global Attributes 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","pe2lyr"))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Define the new dimensions IDs
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_def_dim(ncid=ncFileID, name="lat",   len = nlats,   dimid = latDimID)) 
 call check(nf90_def_dim(ncid=ncFileID, name="lon",   len = nlons,   dimid = lonDimID)) 
 call check(nf90_def_dim(ncid=ncFileID, name="lev",   len = nlevs,   dimid = levDimID)) 
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 ! Temperature Grid Longitudes
 call check(nf90_def_var(ncFileID, name="lon", xtype=nf90_double, &
@@ -591,17 +592,17 @@ call check(nf90_put_att(ncFileID, vVarID, "units", "meters"))
 
 call check(nf90_enddef(ncfileID))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Fill the variables
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_put_var(ncFileID,   lonVarID, lons(:) ))
 call check(nf90_put_var(ncFileID,   latVarID, lats(:) ))
 call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   nlevs) /) ))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 call check(nf90_sync(ncFileID))
 write(errstring,*)'netCDF file ',ncFileID,' is synched ...'
 call error_handler(E_MSG,'nc_write_model_atts',errstring,source,revision, revdate)
@@ -619,34 +620,34 @@ end function nc_write_model_atts
 !##########################################################
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-use typeSizes                                                                                  
-use netcdf                                                                                     
-implicit none                                                                                  
-                                                                                               
-integer,                intent(in) :: ncFileID      ! netCDF file identifier                   
-real(r8), dimension(:), intent(in) :: statevec                                                 
-integer,                intent(in) :: copyindex                                                
-integer,                intent(in) :: timeindex                                                
+use typeSizes
+use netcdf
+implicit none
+
+integer,                intent(in) :: ncFileID      ! netCDF file identifier
+real(r8), dimension(:), intent(in) :: statevec
+integer,                intent(in) :: copyindex
+integer,                intent(in) :: timeindex
 integer                            :: ierr          
 
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID,latDimID,lonDimID,levDimID,uVarID,vVarID,zVarID
+integer :: uVarID,vVarID,zVarID
 
 integer :: mm,i,j
 real, dimension(nlons,nlats,2) :: ug,vg,zg
 !integer :: i
 real, dimension(SIZE(statevec)) :: x
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! local variables
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 ierr = 0                      ! assume normal termination
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 
@@ -678,9 +679,9 @@ call check(NF90_inq_varid(ncFileID,  "z",  zVarID))
 call check(nf90_put_var( ncFileID,  zVarId, zg( :, :, : ), &
                             start=(/ 1, 1, 1, copyindex, timeindex /) ))
 
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
+!--------------------------------------------------------------------
 
 call check(nf90_sync(ncFileID))
 
@@ -690,7 +691,7 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
     if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars', &
-            trim(nf90_strerror(istatus)), source, revision,revdate) 
+            trim(nf90_strerror(istatus)), source, revision,revdate)
   end subroutine check
 
 end function nc_write_model_vars

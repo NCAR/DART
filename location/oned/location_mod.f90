@@ -273,8 +273,7 @@ subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
 
 implicit none
 
-type(location_type)    :: location 
-integer                :: obs_prof
+type(location_type)    :: location
 integer,   intent(in)  :: obsunit
 integer,   intent(out) :: obsindex
 real (r8), intent(out) :: var

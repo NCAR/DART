@@ -209,7 +209,7 @@
    type (sphere), intent(inout) :: sphere_dat
    real, dimension(:), allocatable :: pnm_tmp,hnm_tmp
    double precision, dimension(:), allocatable :: gaulats_tmp,weights_tmp
-   integer :: nmdim,nmstrt,m,n,i,j,nm
+   integer :: nmdim,m,n,j
 
    sphere_dat%nlons = nlon
    sphere_dat%nlats = nlat
@@ -290,7 +290,7 @@
 
  double precision, intent (inout), dimension(:) :: sinlats, wts
 
- integer :: itermax, log_unit
+ integer :: itermax
  integer :: i, iter, j, nlat, nprec
  double precision :: pi, pp, p1, p2, p3, z, z1, converg, ten
 
