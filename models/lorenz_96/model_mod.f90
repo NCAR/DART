@@ -49,9 +49,8 @@ revdate  = "$Date$"
 integer  :: model_size = 40
 real(r8) :: forcing    = 8.00_r8
 real(r8) :: delta_t    = 0.05_r8
-logical  :: output_state_vector = .true.  ! output state vector                  
 
-namelist /model_nml/ model_size, forcing, delta_t, output_state_vector
+namelist /model_nml/ model_size, forcing, delta_t
 !----------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
@@ -495,31 +494,23 @@ call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
 !-------------------------------------------------------------------------------
 
-if ( output_state_vector ) then
+! Define the state vector coordinate variable
+call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+           dimids=StateVarDimID, varid=StateVarVarID))                     
+call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
+call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
+call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
 
-   ! Define the state vector coordinate variable
-   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID))                     
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
+! Define the actual state vector
+call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
+           dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
+call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy")) 
 
-   ! Define the actual state vector
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-              dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy")) 
+! Leave define mode so we can fill
+call check(nf90_enddef(ncfileID))
 
-   ! Leave define mode so we can fill
-   call check(nf90_enddef(ncfileID))
-
-   ! Fill the state variable coordinate variable
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
-
-else
-
-   write(*,*)'Nothing to write -- want "prognostic" variables.'
-
-endif
+! Fill the state variable coordinate variable
+call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 
 !-------------------------------------------------------------------------------
 ! Fill the location variable

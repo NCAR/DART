@@ -127,13 +127,13 @@ revdate  = "$Date$"
 
    integer, dimension(4) :: current_time = (/ 0, 0, 0, 0 /)
    logical  :: override = .false.  ! override restart values for date
-   integer  :: days=0, hours=0, minutes=0, seconds=0
-   integer  :: dt_atmos = 0
+   integer  :: days=10, hours=0, minutes=0, seconds=0
+   integer  :: dt_atmos = 3600
    real(r8) :: noise_sd = 0.0_r8
    integer  :: dt_bias  = -1
    logical  :: output_state_vector = .false.  ! output prognostic variables
 
-   namelist /main_nml/ current_time, override, dt_atmos, &
+   namelist /model_nml/ current_time, override, dt_atmos, &
                        days, hours, minutes, seconds, noise_sd, &
                        dt_bias, output_state_vector 
 
@@ -382,16 +382,16 @@ end subroutine init_conditions
 
    iunit = open_namelist_file ( )
    ierr=1; do while (ierr /= 0)
-          read  (iunit, nml=main_nml, iostat=io, end=10)
-          ierr = check_nml_error (io, 'main_nml')
+          read  (iunit, nml=model_nml, iostat=io, end=10)
+          ierr = check_nml_error (io, 'model_nml')
    enddo
 10 call mpp_close (iunit)
 
 !----- write namelist to logfile -----
 
    call write_version_number (version,tag)
-   if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=main_nml)
-   if ( mpp_pe() == mpp_root_pe() ) write (logfileunit, nml=main_nml)
+   if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=model_nml)
+   if ( mpp_pe() == mpp_root_pe() ) write (logfileunit, nml=model_nml)
 
    if(dt_atmos == 0) then
      call error_mesg ('program atmos_model', 'dt_atmos has not been specified', FATAL)

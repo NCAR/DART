@@ -1,0 +1,4 @@
+&reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"
+&end

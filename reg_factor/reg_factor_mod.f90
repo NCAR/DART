@@ -32,7 +32,7 @@ integer :: select_regression = 1
 ! Value 3 selects bgrid archive default: Reads in file from bgrid experiments
 character(len = 129) :: input_reg_file = "time_mean_reg"
 
-namelist / reg_factor_nml / select_regression
+namelist / reg_factor_nml / select_regression, input_reg_file
 
 !============================================================================
 

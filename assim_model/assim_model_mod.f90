@@ -74,9 +74,9 @@ type(time_type) :: time_step
 !                                     Portable, but loses precision,
 !                                     slower, and larger.
 
-logical  :: binary_restart_files = .false.
+logical  :: binary_restart_files = .true.
 
-namelist /assim_nml/ binary_restart_files
+namelist /assim_model_nml/ binary_restart_files
 !-------------------------------------------------------------
 
 contains
@@ -128,8 +128,8 @@ if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(iunit, nml = assim_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'assim_nml')
+      read(iunit, nml = assim_model_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'assim_model_nml')
    enddo
  11 continue
    call close_file(iunit)
@@ -137,7 +137,7 @@ endif
 
 ! Record the namelist values used for the run ... 
 call error_handler(E_MSG,'static_init_assim_model','assim_model namelist values: ',' ',' ',' ')
-write(logfileunit, nml=assim_nml)
+write(logfileunit, nml=assim_model_nml)
 
 ! Call the underlying model's static initialization
 call static_init_model()

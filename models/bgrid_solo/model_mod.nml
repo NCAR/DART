@@ -1,8 +1,16 @@
 # Group of namelists required for bgrid model
 
- &main_nml
+&model_nml
+     current_time = (/ 0, 0, 0, 0 /)
+     override = .false.
+     dt_atmos = 3600,
      days   = 10,
-     dt_atmos = 3600 /
+     hours = 0, 
+     minutes = 0,
+     seconds = 0,
+     noise_sd = 0.0
+     dt_bias = -1
+     output_state_vector = .false. /
 #
 # namelists used for cold start of bgrid core (N45L20)
 # running the held-suarez benchmark

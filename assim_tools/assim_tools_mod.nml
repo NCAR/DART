@@ -1,0 +1,5 @@
+&assim_tools_nml
+   prior_spread_correction = .false.,
+   filter_kind = 1,
+   slope_threshold = 1.0
+&end

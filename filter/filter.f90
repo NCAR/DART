@@ -95,7 +95,7 @@ integer :: slope_index = 0
 ! Namelist input with default values
 !
 integer  :: async = 0, ens_size = 20
-real(r8) :: cutoff      = 200.0_r8
+real(r8) :: cutoff      = 0.2_r8
 real(r8) :: cov_inflate = 1.0_r8
 logical  :: start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
@@ -110,9 +110,9 @@ integer  :: num_groups = 1
 real(r8) :: confidence_slope = 0.0_r8
 logical  :: get_mean_reg = .false., get_median_reg = .false.
 
-character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
-                        restart_in_file_name = 'filter_restart_in', &
-                        restart_out_file_name = 'filter_restart_out'
+character(len = 129) :: obs_sequence_file_name = "obs_seq.in", &
+                        restart_in_file_name = 'filter_ics', &
+                        restart_out_file_name = 'filter_restart'
 
 logical :: output_obs_diagnostics = .false.
 
@@ -392,11 +392,8 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
    endif
 
-   write(*, *) 'confidence slope is ', confidence_slope
-
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
-      write(*, *) 'obs ', j
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, i, ens(k, :), ens_obs(k:k), j)
@@ -426,7 +423,6 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       if (obs(j) == missing_r) num_close_ptr(1) = 0
 
-      write(*, *) 'Variables updated: ', num_close_ptr(1)
 
       ! Now loop through each close state variable for this observation
       do k = 1, num_close_ptr(1)
