@@ -1,5 +1,11 @@
 module loc_and_dist_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Two d spherical location and distance module. Inputs are latitude and 
 ! longitude in degrees.
 

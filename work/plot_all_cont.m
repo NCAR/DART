@@ -1,3 +1,10 @@
+%
+
+% <next four lines automatically updated by CVS, do not edit>
+% $Source$ 
+% $Revision$ 
+% $Date$ 
+% $Author$ 
 
 figure(1);
 orient tall;

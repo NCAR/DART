@@ -1,5 +1,11 @@
 module model_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! NOTE: This was created on 30 November, 2000 to work on evaluating 
 ! Ensemble Kalman Filter. It is almost identical to the version of the
 ! Lorenz 96 model in existence at this time except that it has extremely

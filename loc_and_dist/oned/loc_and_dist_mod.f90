@@ -1,5 +1,5 @@
 module loc_and_dist_mod
-
+!
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 

@@ -1,4 +1,11 @@
 module obs_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use types_mod
 !use nag_wrap_mod,    only : g05ddf_wrap

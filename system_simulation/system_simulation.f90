@@ -1,9 +1,16 @@
 program system_simulation
-
-! See notes from first two weeks of December, 2001. This program begins attempts 
-! to analyze the value of particular observations. Here, we begin by trying to 
-! determine the value of observations with a given correlation to a state variable
-! using an N member ensemble to compute the correlations.
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
+! See notes from first two weeks of December, 2001. 
+! This program begins attempts to analyze the value of particular 
+! observations. Here, we begin by trying to determine the value of 
+! observations with a given correlation to a state variable using an 
+! N member ensemble to compute the correlations.
 
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, twod_gaussians
 

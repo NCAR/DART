@@ -1,6 +1,11 @@
 program seq_obs
-
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! CREATED 9 April, 2001: Uses update of observation only followed by 
 ! correlative update of each associated state variable. This allows
 ! arbitrarily fancy updates of the obs state without having to mess with

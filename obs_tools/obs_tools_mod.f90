@@ -1,5 +1,11 @@
 module obs_tools_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Provides a set of tools that are used by observations modules to generate
 ! data structures and information needed to do ensemble assimilation.
 ! These should be common to a variety of models and observational operator

@@ -1,5 +1,11 @@
 program sys_sim5
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Work done during last week of January 2002 (28 Jan init) to investigate
 ! impacts of sampling error from small ensembles on update for a single 
 ! variable that is exactly observed; applicable to observation variable 

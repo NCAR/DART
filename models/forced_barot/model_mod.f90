@@ -1,5 +1,11 @@
 module model_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! This is a non-divergent barotropic model on the sphere. Currently makes
 ! use of NAG based transforms which are not available on NCAR systems.
 

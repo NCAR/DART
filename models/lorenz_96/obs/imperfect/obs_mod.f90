@@ -1,5 +1,11 @@
 module obs_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! MODIFIED FROM REGULAR L96 OBS, 10 JULY, 2000
 
 use types_mod

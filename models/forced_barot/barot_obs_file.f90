@@ -1,5 +1,11 @@
 program barot_obs_file
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Generates a regular set, currently hardcoded to 40 by 30,
 ! of observation file locations for the forced barot model.
 

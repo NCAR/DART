@@ -1,5 +1,13 @@
 % Matlab code to do fig A for paper
 
+
+% <next four lines automatically updated by CVS, do not edit>
+% $Source$ 
+% $Revision$ 
+% $Date$ 
+% $Author$ 
+
+
 % This is schematic text of filter impacts
 
 figure(1)

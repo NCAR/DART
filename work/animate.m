@@ -1,5 +1,12 @@
 % Matlab routine to do simple read of netcdf file and production of
 % animation.  Lots of things could be improved.
+%
+
+% <next four lines automatically updated by CVS, do not edit>
+% $Source$ 
+% $Revision$ 
+% $Date$ 
+% $Author$ 
 
 % Use netcdf utilities to read in field f
 f = getcdf_batch('one_d', 'f')

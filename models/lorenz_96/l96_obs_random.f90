@@ -1,5 +1,11 @@
 program l96_obs_random
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Needs to be modified to use new random number packages.
 
 use nag_wrap_mod, only : g05caf_wrap

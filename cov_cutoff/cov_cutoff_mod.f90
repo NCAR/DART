@@ -1,4 +1,11 @@
 module cov_cutoff_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use types_mod
 

@@ -1,4 +1,11 @@
 module model_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use types_mod
 use loc_and_dist_mod, only : loc_type, get_dist, set_loc

@@ -1,10 +1,16 @@
 module model_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use types_mod
 use loc_and_dist_mod, only : loc_type, get_dist, set_loc
-
-use random_seq_mod, only : random_gaussian, random_seq_type, init_random_seq, &
-   several_random_gaussians
+use random_seq_mod,   only : random_gaussian, random_seq_type, &
+                            init_random_seq, several_random_gaussians
 
 private
 

@@ -1,13 +1,19 @@
 module obs_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use types_mod
-
-use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use model_mod, only : get_model_size
-use obs_tools_mod, only : conv_state_to_obs, obs_def_type, obs_m_rinv, &
-   dep_obs, def_single_obs
+use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
+use model_mod,        only : get_model_size
+use obs_tools_mod,    only : conv_state_to_obs, obs_def_type, obs_m_rinv, &
+                             dep_obs, def_single_obs
 use loc_and_dist_mod, only : loc_type, set_loc, get_loc
-use utilities_mod, only : open_file, close_file
+use utilities_mod,    only : open_file, close_file
 
 private
 

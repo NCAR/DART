@@ -1,5 +1,11 @@
 program sys_sim2
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! This one is described in notes from 14 Dec. or thereabout, 2001. Sample the
 ! uncertainty in the correlation coefficient due to sample size and approximate
 ! the resulting distribution in terms of a Gaussian (mean and variance). Probably

@@ -1,15 +1,18 @@
 module assim_tools_mod
-
-use types_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! A variety of operations required by assimilation.
 
-use obs_mod, only : num_obs, obs_var, take_obs
-
-use utilities_mod, only : file_exist, open_file, check_nml_error, &
-                          print_version_number, close_file
-
-use sort_mod, only : index_sort
+use types_mod
+use obs_mod,        only : num_obs, obs_var, take_obs
+use utilities_mod,  only : file_exist, open_file, check_nml_error, &
+                           print_version_number, close_file
+use sort_mod,       only : index_sort
 
 ! Added 22 January, 2001 to duplicate observations no matter what else is
 ! done with random number generator. Allows clear enkf_2d comparisons.

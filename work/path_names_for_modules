@@ -1,6 +1,14 @@
 #======================================================================
 # START of      path_names_for_modules
 #======================================================================
+# 
+# <next four lines automatically updated by CVS, do not edit>
+# $Source$ 
+# $Revision$ 
+# $Date$ 
+# $Author$ 
+#
+#======================================================================
 
 if ( $OSTYPE == "solaris") then
 
@@ -47,11 +55,11 @@ set TYPES = ../common/types_mod.f90
  set MODEL = ../models/lorenz_96/model_mod.f90
 #set MODEL = ../models/9var/model_mod.f90
 
-#set MODEL = ../models/9var/noisy_9var.f90
-#set MODEL = ../models/oned_wave/oned_wave.f90
-#set MODEL = ../models/oscillator/oscillator.f90
+#set MODEL = ../models/9var/noisy_9var.f90        existence?
+#set MODEL = ../models/oned_wave/model_mod.f90    needs types
+#set MODEL = ../models/oscillator/model_mod.f90   needs types
 #set MODEL = ../models/forced_barot/model_mod.f90
-#set MODEL = ../models/lorenz_96/imperfect.f90    hunh?
+#set MODEL = ../models/lorenz_96/imperfect.f90    whatdoIdowiththis?
 
 #----------------------------------------------------------------------
 # Obs for these models
@@ -61,12 +69,13 @@ set TYPES = ../common/types_mod.f90
 #set OBS = ../models/lorenz_63/obs/obs_mod.f90
  set OBS = ../models/lorenz_96/obs/linear/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/nonlinear/obs_mod.f90
+#set OBS = ../models/lorenz_96/obs/imperfect/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/imperfect_nonlinear/obs_mod.f90
 #set OBS = ../models/9var/obs/obs_mod.f90
 
-#set OBS = ../models/oned_wave/obs/obs.f90
-#set OBS = ../models/oscillator/obs/obs.f90
-#set OBS = ../models/forced_barot/obs/obs.f90
+#set OBS = ../models/oned_wave/obs/obs.f90     needs types
+#set OBS = ../models/oscillator/obs/obs.f90    needs types
+#set OBS = ../models/forced_barot/obs/obs.f90  needs types
 #set OBS = ../models/lorenz_96/obs/imperfect/obs_mod.f90   see bomb note
 
 #----------------------------------------------------------------------
@@ -83,20 +92,24 @@ set CLEAN_SEQ_OBS = ../seq_obs/clean_seq_obs.f90
  set LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
 #set LOC_AND_DIST = ../loc_and_dist/twod/loc_and_dist_mod.f90
 
- set SORT = ../sort/sort.f90
- set ASSIM_DIAG = ../assim_diag/assim_diag.f90 
- set FORECAST_EVAL = ../forecast_eval/forecast_eval.f90
+ set SORT = ../sort/sort_mod.f90
+ set ASSIM_DIAG = ../assim_diag/assim_diag_mod.f90 
+ set FORECAST_EVAL = ../forecast_eval/forecast_eval_mod.f90
 #set FORECAST_EVAL = ../forecast_eval/fake_forecast_eval.f90
 
-set CHISQ = ../chisq/chisq.f90
-set QC = ../qc/qc.f90
+set CHISQ = ../chisq/chisq_mod.f90
+set QC = ../qc/qc_mod.f90
 set QC_TEST = ../qc/qc_test.f90
-set RANDOM_SEQ = ../random_seq/random_seq.f90
-set RANDOM_NR = ../random_nr/random_nr.f90
-set CORRECT_CORR = ../correct_corr/correct_corr.f90
+set QC_TEST = ../qc/qc_test2.f90
+set RANDOM_SEQ = ../random_seq/random_seq_mod.f90
+set RANDOM_SEQ_TEST = ../random_seq/test_random.f90
+set RANDOM_NR = ../random_nr/random_nr_mod.f90
+set RANDOM_NR_TEST = ../random_nr/test_random_nr.f90
+set CORRECT_CORR = ../correct_corr/correct_corr_mod.f90
 
 #----------------------------------------------------------------------
 # Stuff for spectral models follows
+# TJH 1 Apr 2002 ... red_spectral_model  directory does not exist...
 #----------------------------------------------------------------------
 
 set TRANSFORMS = ../red_spectral_model/transforms.f90
@@ -111,7 +124,7 @@ set FFT = ../red_spectral_model/fft.f90
 # Utilities should now be from repository
 #----------------------------------------------------------------------
 
-set UTILITIES = ../utilities/utilities.f90
+set UTILITIES = ../utilities/utilities_mod.f90
 
 #----------------------------------------------------------------------
 # Diagnostic output modules
@@ -128,7 +141,7 @@ set AXIS          = ../$SUPPORT_HOME/axis.f90
 # Routines for special test applications with assimilation
 #----------------------------------------------------------------------
 
-set ADJOINT = ../adjoint/adjoint.f90
+set ADJOINT = ../adjoint/adjoint_mod.f90
 set SYSTEM_SIMULATION = ../system_simulation/system_simulation.f90
 set SYS_SIM2 = ../system_simulation/sys_sim2.f90
 set SYS_SIM3 = ../system_simulation/sys_sim3.f90

@@ -1,5 +1,11 @@
 module assim_diag_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Does a variety of diagnostics to evaluate the performance of the assimilation
 ! algorithms. A defined type is used to keep track of the RMS errors, bias,
 ! and order statistic bins.

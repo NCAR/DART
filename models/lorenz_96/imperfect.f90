@@ -1,5 +1,11 @@
 module model_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! A version of the L96 model where the assimilating model doesn't know
 ! what the value of the forcing is in the true state model. Ends up
 ! being a 10 variable model; useful for testing model parameter

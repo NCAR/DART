@@ -1,4 +1,11 @@
 program barot_obs_random
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use nag_wrap_mod, only : g05ddf_wrap
 

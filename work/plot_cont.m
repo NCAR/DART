@@ -1,3 +1,11 @@
+%
+
+% <next four lines automatically updated by CVS, do not edit>
+% $Source$ 
+% $Revision$ 
+% $Date$ 
+% $Author$ 
+
 figure(1);
 load bin;
 c = size(bin);

@@ -1,4 +1,11 @@
 module obs_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use types_mod
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian

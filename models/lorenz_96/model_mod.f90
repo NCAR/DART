@@ -1,4 +1,11 @@
 module model_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 !use ncd_file_mod, only : init_ncd_file, def_axis, def_time_axis, &
 !   init_diag_field, output_diag, sum_diag

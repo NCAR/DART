@@ -1,8 +1,15 @@
 program sys_sim3
-
-! In this variant modified slightly from system simulation original, try to determine
-! what fraction of the recommended small sample update should be used to adjust the mean
-! to get the smallest error variance. See notes from ~ 19 Dec. 2001.
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
+! In this variant modified slightly from system simulation original, 
+! try to determine what fraction of the recommended small sample update 
+! should be used to adjust the mean to get the smallest error variance. 
+! See notes from ~ 19 Dec. 2001.
 
 
 
