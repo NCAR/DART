@@ -302,8 +302,6 @@ IF (wrf%map_proj.EQ.3) THEN
    wrf%ycntr = - earth_radius*COS(wrf%psi1)* log(cell)
 ENDIF
 
-! wrf%n_moist = 3  ! determined in namelist input 
-
 !  get 1D (z) static data defining grid levels
 
 kount(1)  = wrf%bt
