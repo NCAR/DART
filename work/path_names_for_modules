@@ -153,8 +153,10 @@ set            SYS_SIM5 = ../system_simulation/sys_sim5.f90
 
 set   TEST_CORRECT_CORR = ../correct_corr/test_correct_corr.f90
 set        TIME_MANAGER = ../time_manager/time_manager_mod.f90
-set            LOCATION = ../location/oned/location_mod.f90
-set       LOCATION_TEST = ../location/oned/location_test.f90
+#set            LOCATION = ../location/oned/location_mod.f90
+set            LOCATION = ../location/twod_sphere/location_mod.f90
+#set       LOCATION_TEST = ../location/oned/location_test.f90
+set       LOCATION_TEST = ../location/twod_sphere/location_test.f90
 set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model.f90
 
 set            OBS_KIND = ../obs_kind/obs_kind.f90

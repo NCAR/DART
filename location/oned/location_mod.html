@@ -26,25 +26,32 @@
 -->
 
 <HTML>
-<TITLE>module oned/location_mod</TITLE>
-<link rel=stylesheet type="text/css" href="../../doc/html/doc.css">
+<TITLE>module xxxxxxx</TITLE>
+<link rel=stylesheet type=text/css href=doc.css>
 <BODY>
 
-<DIV ALIGN="CENTER">
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#ERRORS">ERRORS</A>
+<DIV ALIGN=CENTER>
+<A HREF="#Interface">INTERFACE</A> / 
+<A HREF="#PublicEntities">PUBLIC ENTITIES</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATES</A>
 </DIV>
 
 <!--==================================================================-->
 
-<H1>MODULE oned/location_mod</H1>
+<H1>MODULE xxxxxxx</H1>
 <A NAME="HEADER"></A>
 <TABLE summary="">
-   <TR><TD>Contact:</TD><TD>Jeff Anderson</TD></TR>
-   <TR><TD>Reviewers:</TD><TD>     </TD></TR>
-   <TR><TD>Change history:</TD><TD>see CVS log (cop-out, I know)</TD></TR>
+   <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
+   <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
+   <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+   <TR><TD>Change history:</TD><TD> see CVS log (cop-out, I know)</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -54,24 +61,22 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   This module defines the concepts of "location" and distance for a 
-ONE-D periodic domain.
-
-  
+   A note about documentation style. Optional arguments are enclosed in
+   brackets <em class=optionalcode>[like this]</em>.
 </P>
-
-<!--==================================================================-->
-
-<A NAME="DESCRIPTION"></A>
 <P>
-   Tim: I was wondering if the Description and Overview sections
-aren't redundant???
+   Provides a representation of a physical location on a one dimensional
+   periodic domain. A type that abstracts the location is provided along
+   with operators to compute the distance between two locations. This is
+   a member of a class of similar location modules that provide the same 
+   abstraction for different represenations of physical space (for instance
+   a three dimensional shell on a sphere).
 </P>
 
 <!--==================================================================-->
 
 <A NAME="OTHER MODULES USED"></A>
-<HR>
+<BR><HR><BR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -80,525 +85,225 @@ random_seq_mod
 </PRE>
 
 <!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
 
-<A NAME="INTERFACE"></A>
-<HR>
+<A NAME="Interface"></A>
+<BR><HR><BR>
 <H2>PUBLIC INTERFACE</H2>
 
-<P>
-<em class=code>use location_mod </em><em class=optionalcode> [,only: location_type, 
-get_dist, get_location, set_location, write_location, read_location, 
-interactive_location ]</em>
-</P>
+<TABLE>
+<TR><TD><em class=code>use xxxxxxx, only : </em></TD>
+                   <TD><A HREF="#location_type">location_type</A> &</TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A> &</TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_location">get_location</A> &</TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_location">set_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_location">write_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_location">read_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_location">interactive_location</A></TD></TR>
+</TABLE>
 
 <H3 class=indent1>NOTES</H3>
 
+<P>
+Optional namelist interface <em class=code>&atmosphere_nml</em> 
+may be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
-<!-- Declare all public routines ...                                  -->
+<!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 
-<A NAME="ROUTINES"></A>
-<HR>
-<H2>PUBLIC ROUTINES</H2>
-<P>
-A note about documentation style. Optional arguments are enclosed in
-brackets <em class=optionalcode>[like this]</em>.
+<A NAME="PublicEntities"></A>
+<BR><HR><BR>
+<H2>PUBLIC ENTITIES</H2>
+<P>fill in text here
 </P>
 
-<UL>
-   <LI><A HREF="#get_dist">get_dist</A>
-   <LI><A HREF="#get_location">get_location</A>
-   <LI><A HREF="#set_location">set_location</A>
-   <LI><A HREF="#write_location">write_location</A>
-   <LI><A HREF="#read_location">read_location</A>
-   <LI><A HREF="#interactive_location">interactive_location</A>
-</UL><BR>
+<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
+<A NAME="location_type"></A>
+<BR><HR><BR>
+<div class=type><pre>
+type location_type
+   private
+   real(r8) :: x
+end type location_type
+</pre></div>
 
-<HR width=50% align=left>
-<A NAME="get_dist"></A>
-<P></P>
-<em class=call>result = get_dist(loc1, loc2)
+<H3 class=indent1>Detailed Description</H3>
 
-<H3 class=indent1>DESCRIPTION</H3>
-
-<P>
-   Returns the real distance between two location_type variables.
+<P>Provides an abstract representation of physical location on a 
+one dimensional periodic domain.
 </P>
 
-<TABLE border summary="">
-<TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
-
-<TR>
-<TD>loc1</tD>
-<TD>Location of one end point for distance. <em class=unit>[location_type]</Em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD>loc2</tD>
-<TD>Location of second end point for distance. <em class=unit>[location_type]</Em><BR>
-</TD>
-</TR>
-
-
-<TR>
-<TH colspan=2 align="left">Result<BR></TH>
-</TR>
-
-<TR>
-<TD> &nbsp; </TD>
-<TD>Distance between the two locations. <em class=unit>[real_r8]</em><BR>
-</TD>
-</TR>
-
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Component   </TH>
+    <TH align=left>Description </TH></TR>
+<TR><TD valign=top> x                       </TD>
+    <TD>the nondimensional distance [0,1]</TD></TR>
 </TABLE>
-
-<H3 class=indent1>DISCUSSION</H3>
-
-<P>
-   There's not much to say here for this one; will there ever be?
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>This module is a member of a class that computes distances 
-between two locations for a variety of spatial models. 
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>  I'm assuming that there are two notes sections because I mispasted.
-</P>
-
-
-<!--==================================================================-->
-
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
-
-<HR width=50% align=left>
-<A NAME="get_location"></A>
-<P></P>
-<em class=call>var = get_location( var1, var2, </em>
-      <em class=optionalcode> [,var3]</em>
-      <em class=call>)</em>
-
-<H3 class=indent1>DESCRIPTION</H3>
-
-<P>
-   Returns the resolution of compute domain for either the
-   current processor or the global domain.
-</P>
-<P>
-   This is the second-best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the function automatically 
-   deep fries.
-</P>
-
-<TABLE border summary="">
-<TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
-
-<TR>
-<TD>var1</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD>var2</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-
-<TR>
-<TD><em class=optionalcode>var3</em></TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TH colspan=2 align="left">return value<BR></TH>
-</TR>
-
-<TR>
-<TD> &nbsp; </TD>
-<TD>The result, naturally. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-</TABLE>
-
-<H3 class=indent1>DISCUSSION</H3>
-
-<P>All input variables are not changed. Otherwise, this would be a subroutine.
-   Upon input, this contains the furlongs per weekday. Upon exit, we now 
-   have the number of spotted gobies per square hectare. 
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
-</P>
-
-
-<!--==================================================================-->
-
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
-
-<HR width=50% align=left>
-<A NAME="set_location"></A>
-<P></P>
-<em class=call>var = set_location( var1, var2, </em>
-      <em class=optionalcode> [,var3]</em>
-      <em class=call>)</em>
-
-<H3 class=indent1>DESCRIPTION</H3>
-
-<P>
-   Returns the resolution of compute domain for either the
-   current processor or the global domain.
-</P>
-<P>
-   This is the second-best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the function automatically 
-   deep fries.
-</P>
-
-<TABLE border summary="">
-<TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
-
-<TR>
-<TD>var1</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD>var2</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-
-<TR>
-<TD><em class=optionalcode>var3</em></TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TH colspan=2 align="left">return value<BR></TH>
-</TR>
-
-<TR>
-<TD> &nbsp; </TD>
-<TD>The result, naturally. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-</TABLE>
-
-<H3 class=indent1>DISCUSSION</H3>
-
-<P>All input variables are not changed. Otherwise, this would be a subroutine.
-   Upon input, this contains the furlongs per weekday. Upon exit, we now 
-   have the number of spotted gobies per square hectare. 
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
-</P>
-
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
-<HR width=50% align=left>
 <A NAME="write_location"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call write_location(file, loc)</em>
+<pre>
+integer,               intent(in)    :: <em class=code> file </em>
+type(location_type),   intent(inout) :: <em class=code> loc </em>
+</pre></div>
+
+<H2 class=indent1>Description</H2>
+
 <P>
-<em class=call>call write_location( var1, var2, var3 </em>
-      <em class=optionalcode> [,global]</em>
-      <em class=call>)</em>
-</P>
-
-<H3 class=indent1>DESCRIPTION</H3>
-
-<P>
-   Returns the resolution of compute domain for either the
-   current processor or the global domain.
+   Given an integer IO channel of an open file and a location, writes the
+   location to this file.
 </P>
 <P>
-   This is the best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the subroutine automatically 
-   slices, dices and makes julienne fries. <em>But wait!</em> There's more!
-</P>
 
-<TABLE border=0 summary="">
-<TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">IN?OUT &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR>
-<TD>var1</TD>
-<TD>IN</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
+<TR><TD valign=top><em class=code>file</em></TD>
+    <TD>the unit number of the open file.</TD></TR>
 
-<TR>
-<TD>var2</TD>
-<TD>INOUT</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>location type to be written. </TD></TR>
 
-<TR>
-<TD>var3</TD>
-<TD>OUT</TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD><em class=optionalcode>global</em></TD>
-<TD>optional</TD>
-<TD>whatever it does, it does it really well.<BR>
-</TD>
-</TR>
 </TABLE>
 
-<H3 class=indent1>DISCUSSION</H3>
+<H3 class=indent1>Notes</H3>
 
-<P>Var2 is used for both input and output. Upon input, this contains the
-   furlongs per weekday. Upon exit, we now have the number of spotted gobies
-   per square hectare. 
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
+<P>Eventually, a more general file descriptor type should replace the
+use of the integer unit number.
 </P>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
-<HR width=50% align=left>
-<A NAME="read_location"></A>
-<P></P>
-<em class=call>var = read_location( var1, var2, </em>
-      <em class=optionalcode> [,var3]</em>
-      <em class=call>)</em>
+<A NAME="get_dist"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> var = get_dist( loc1, loc2)</em>
+<pre>
+type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
+real(r8)                             :: <em class=code> var </em>
+</pre></div>
 
-<H3 class=indent1>DESCRIPTION</H3>
+<H2 class=indent1>Description</H2>
 
 <P>
-   Returns the resolution of compute domain for either the
-   current processor or the global domain.
-</P>
-<P>
-   This is the second-best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the function automatically 
-   deep fries.
+   Returns the distance between two locations.
 </P>
 
-<TABLE border summary="">
-<TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR>
-<TD>var1</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
+<TR><TD valign=top><em class=code>loc1 &nbsp; &nbsp; </em></TD>
+    <TD>first location.</TD></TR>
 
-<TR>
-<TD>var2</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
+<TR><TD valign=top><em class=code>loc2</em></TD>
+    <TD>second location.</TD></TR>
 
-
-<TR>
-<TD><em class=optionalcode>var3</em></TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TH colspan=2 align="left">return value<BR></TH>
-</TR>
-
-<TR>
-<TD> &nbsp; </TD>
-<TD>The result, naturally. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>distance between loc1 and loc2.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>DISCUSSION</H3>
-
-<P>All input variables are not changed. Otherwise, this would be a subroutine.
-   Upon input, this contains the furlongs per weekday. Upon exit, we now 
-   have the number of spotted gobies per square hectare. 
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
-</P>
-
-
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<HR width=50% align=left>
-<A NAME="interactive_location"></A>
-<P>
-<em class=call>call interactive_location( var1, var2, var3 </em>
-      <em class=optionalcode> [,global]</em>
-      <em class=call>)</em>
-</P>
-
-<H3 class=indent1>DESCRIPTION</H3>
-
-<P>
-   Returns the resolution of compute domain for either the
-   current processor or the global domain.
-</P>
-<P>
-   This is the best thing since sliced bread. All you have to do is 
-   throw some arguments in the call and the subroutine automatically 
-   slices, dices and makes julienne fries. <em>But wait!</em> There's more!
-</P>
-
-<TABLE border=0 summary="">
-<TR>
-<TH align="left">Variable name &nbsp; </TH>
-<TH align="left">IN?OUT &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
-
-<TR>
-<TD>var1</TD>
-<TD>IN</TD>
-<TD>The initial (or base) time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD>var2</TD>
-<TD>INOUT</TD>
-<TD>The current time. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD>var3</TD>
-<TD>OUT</TD>
-<TD>The atmospheric model/physics time step. <em class=unit>[time_type]</em><BR>
-</TD>
-</TR>
-
-<TR>
-<TD><em class=optionalcode>global</em></TD>
-<TD>optional</TD>
-<TD>whatever it does, it does it really well.<BR>
-</TD>
-</TR>
-</TABLE>
-
-<H3 class=indent1>DISCUSSION</H3>
-
-<P>Var2 is used for both input and output. Upon input, this contains the
-   furlongs per weekday. Upon exit, we now have the number of spotted gobies
-   per square hectare. 
-</P>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>would go here
 </P>
 
 <!--==================================================================-->
 
-<A NAME="NAMELIST"></A>
-<HR>
+<A NAME="Namelist"></A>
+<P></P><HR><P></P>
 <H2>NAMELIST</H2>
 
-<em class="file">&atmosphere_nml</em>
+<em class=file>None</em><BR>
 
-<TABLE border summary="">
-<TR>
-<TH align="left">Contents &nbsp; </TH>
-<TH align="left">meaning <em class=unit>[units look like this]</em><BR>
-</TH>
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<P></P><HR><P></P>
+<H2>FILES</H2>
+<UL><LI>None
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<P></P><HR><P></P>
+<H2>REFERENCES</H2>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=color>
+
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Code</TH><TH>Routine</TH><TH>Condition</TH></TR>
+
+<TR><!--code here--><TD VALIGN=top>xxxx</TD>
+    <!--routine  --><TD VALIGN=top>yyyyy</TD>
+    <!--condition--><TD VALIGN=top>size of [argument] is incorrect<BR>
+        The size of [argument] must be between 1 and 4.</TD>
 </TR>
 
-<TR>
-<TD>physics_window</TD>
-<TD>The number of "i" and "j" rows processed each time the modular 
-    physics is called. To process the entire domain use 
-    physics_window = 0,0 <em class="unit">[integer, default: 0,0 ]</em><BR>
-</TD>
+<TR><!--code here--><TD VALIGN=top>xxxx</TD>
+    <!--routine  --><TD VALIGN=top>yyyyy</TD>
+    <!--condition--><TD VALIGN=top>bad judgement<BR>
+                        What were you thinking?</TD>
 </TR>
 </TABLE>
 
-
+</div>
 
 <!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
 
-<A NAME="ERRORS"></A>
-<HR>
-<H2>ERROR MESSAGES</H2>
-<PRE>
+<A NAME="KnownBugs"></A>
+<P></P><HR><P></P>
+<H2>KNOWN BUGS</H2>
+<P>
+None.
+</P>
 
-<b>FATAL errors from get_atmosphere_axes in atmosphere_mod</b>
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
 
-    <b>size of argument is incorrect</b>
-        The size of the argument to get_atmosphere_axes must be
-        between 1 and 4.
+<A NAME="FuturePlans"></A>
+<P></P><HR><P></P>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
 
+<!--==================================================================-->
+<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!--==================================================================-->
 
-</PRE>
+<A NAME="PrivateComponents"></A>
+<P></P><HR><P></P>
+<H2>PRIVATE Components</H2>
+
+<div class=routine>
+<pre>
+type location_type
+   private
+   real(r8) :: x
+end type location_type</pre>
+</div>
+
+<H3 class=indent1>Discussion</H3>
 
 <!--==================================================================-->
 
