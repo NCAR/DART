@@ -2,14 +2,15 @@
 
 truth_file = input('Input name of True State file; <cr> for True_State.nc');
 if sum(size(truth_file)) == 0
-   truth_file = 'True_State.nc';
+   truth_file = '../work/True_State.nc';
 end
 
 ens_file = input('Input name of prior or posterior diagnostics file; <cr> for Prior_Diag.nc');
 if sum(size(ens_file)) == 0
-   ens_file = 'Prior_Diag.nc';
+   ens_file = '../work/Prior_Diag.nc';
 end
 
+clf;
 
 % Get the state for the truth
 truth_index = get_copy_index('true state', truth_file);

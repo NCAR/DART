@@ -1,23 +1,34 @@
+function ens = get_ens_series(fname, state_var_index)
 %GET_ENS_SERIES: Returns array of time series for all members of ensemble for varible
 
-function ens = get_ens_series(var, fname)
+f = netcdf(fname);
+model      = f.model(:);
+num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
+num_copies = ncsize(f{'copy'}); % determine # of ensemble members
+num_times  = ncsize(f{'time'}); % determine # of output times
 
-% Need to get a copy with the label copy
-copy_meta_data = getnc(fname, 'CopyMetaData');
-% For a single copy, the size is nx1, for more k copies, it's kxn
-if size(copy_meta_data, 2) == 1
-   copy_meta_data = transpose(copy_meta_data);
-end
-num_copies = size(copy_meta_data, 1);
+% disp(sprintf('get_ens_series: fname is %s',fname))
+% disp(sprintf('get_ens_series: state_var_index is %d',state_var_index))
+% disp(sprintf('get_ens_series: num_times   is %d',num_times))
+% disp(sprintf('get_ens_series: num_copies  is %d',num_copies))
+% disp(sprintf('get_ens_series: num_vars    is %d',num_vars))
 
-% Try to loop through each possible ensemble member
+% Try to loop through each possible ensemble member.
+% As long as we keep generating valid copy_indexes, we keep going.
+
+% It would be more efficient to search though the metadata 
+% to collect the useful copy indices and then preallocate
+% storage ...
+
 ens_num = 1;
-index = get_copy_index('ensemble member1', fname);
-while index > 0,
-   ens(:, ens_num) = get_var_series(var, index, fname);
-   ens_num = ens_num + 1;
+copy_index = get_copy_index(fname, 'ensemble member1');
+while copy_index > 0,
+   ens(:, ens_num) = get_var_series(fname, copy_index, state_var_index);
+   ens_num = ens_num + 1;    % advance to next potential member
    copy_string = ['ensemble member', num2str(ens_num)];
-   index = get_copy_index(copy_string, fname);
+   copy_index = get_copy_index(fname, copy_string);
 end
 
-fprintf('Total number of ensemble members is %d \n', ens_num - 1);
+% disp(sprintf('Total number of ensemble members is %d', ens_num - 1));
+disp(sprintf('Read %d ensemble members for state variable %d', ...
+             ens_num-1, state_var_index));

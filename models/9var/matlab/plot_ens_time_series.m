@@ -1,5 +1,25 @@
-% Plots time series of ensemble members, mean and truth for 9 variable
 
+function plot_ens_time_series(tfile,dfile)
+% Plots time series of ensemble members, mean and truth for 9 variable
+%
+% Example 2
+% tfile = 'True_State.nc';
+% dfile = 'Posterior_Diag.nc';
+% plot_ens_time_series(tfile,dfile);
+
+if nargin < 2                                                                   
+
+   truth_file = '../work/True_State.nc';
+   ens_file = '../work/Prior_Diag.nc';
+
+else
+                                                                                
+   disp('\n Remember to enclose your responses in single quotes.\n')            
+                                                                                
+   dir_name = input('Input directory; . for current directory  ');              
+   tname    = input('Input file name for True state  ');                        
+   ename    = input('Input file name for ensemble  ');                          
+                                                                                
 truth_file = input('Input name of True State file; <cr> for True_State.nc');
 if sum(size(truth_file)) == 0
    truth_file = 'True_State.nc';
@@ -9,6 +29,9 @@ ens_file = input('Input name of prior or posterior diagnostics file; <cr> for Pr
 if sum(size(ens_file)) == 0
    ens_file = 'Prior_Diag.nc';
 end
+
+
+end 
 
 
 % Get the state for the truth
