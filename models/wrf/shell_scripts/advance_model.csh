@@ -30,7 +30,7 @@ cd     $temp_dir
 # Copy the initial condition file to the temp directory
 
 cp ${PBS_O_WORKDIR}/wrfinput .
-cp ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
+mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
 
 # Copy the boundary condition file to the temp directory.
