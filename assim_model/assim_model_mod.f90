@@ -19,7 +19,7 @@ use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, clos
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars
+   end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, pert_model_state
 
 private
 
@@ -30,7 +30,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
    get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files, &
    finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
-   awrite_state_restart, Aadvance_state
+   awrite_state_restart, Aadvance_state, pert_model_state
 
 character(len=128) :: &
 source   = "$Source$", &
@@ -1202,6 +1202,8 @@ type(assim_model_type), intent(in) :: assim_model
 get_model_state_vector = assim_model%state_vector
 
 end function get_model_state_vector
+
+
 
 
 !
