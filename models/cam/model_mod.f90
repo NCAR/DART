@@ -959,7 +959,8 @@ endif
 if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
    if(present(rstatus)) then
-      call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, istatus, rstatus)
+      call                   get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, &
+          istatus, rstatus)
       if (istatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, &
           istatus, rstatus)
       if (istatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, &
@@ -967,7 +968,7 @@ if(vert_is_level(location)) then
       if (istatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, &
           istatus, rstatus)
    else if(present(istatus)) then
-      call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, istatus)
+      call                   get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, istatus)
       if (istatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, istatus)
       if (istatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, istatus)
       if (istatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, istatus)
@@ -981,7 +982,8 @@ if(vert_is_level(location)) then
 else
 ! Case of pressure specified in vertical
    if(present(rstatus)) then
-      call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, istatus, rstatus)
+      call                   get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, &
+          istatus, rstatus)
       if (istatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, &
           istatus, rstatus)
       if (istatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, &
@@ -989,7 +991,8 @@ else
       if (istatus /= 1) call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type, &
           istatus, rstatus)
    else if(present(istatus)) then
-      call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, istatus)
+      call                   get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, &
+          istatus)
       if (istatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, &
           istatus)
       if (istatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, &
