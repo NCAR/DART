@@ -21,6 +21,8 @@
 # For the full text of the GNU General Public License,
 # write to: Free Software Foundation, Inc.,
 #           675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# modified 4/23 to concatenate all namelist files into one.
 #-----------------------------------------------------------------------
 
 require 5;
@@ -52,9 +54,13 @@ push @targets, @ARGV;		# then add remaining arguments on command line
 
 ensureTrailingSlash($opt_a) if $opt_a;
 
+# the name of the output namelist file
+my $nmlfile = "input.nml.mkmf";
+
 #some generic declarations
-my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word );
+my( $file, $include, $line, $module, $name, $object, $path, $source, $suffix, $target, $word, $nml );
 my @list;
+my @nml_list;
 #some constants
 my $endline = $/;
 my @src_suffixes = ( q/\.F/, q/\.F90/, q/\.c/, q/\.f/, q/\.f90/ );
@@ -217,6 +223,9 @@ foreach $target ( @targets ) {
 		     $compile_cmd{$file} = $line;
 		     print "Special command for file $file: ($line)\n" if $opt_v;
 		  }
+#check for namelist files in the path and add it to the list
+                  $nml = "${path}${name}.nml";
+                  push @nml_list, $nml if -e $nml;
 	       }
 	    }
 	    close CMDFILE;
@@ -224,6 +233,23 @@ foreach $target ( @targets ) {
       }
    }
 }
+
+#before proceeding, dump namelist file if any
+if ( @nml_list ) {
+  unlink $nmlfile if -e $nmlfile;
+  open NMLFILE, ">$nmlfile"; 
+  foreach ( @nml_list ) {
+    open THISNML, "$_";
+    while (<THISNML>) {
+      print NMLFILE;
+    }
+    close THISNML;
+  }
+  close NMLFILE;
+} else {
+print "Did not find any namelist files - not touching $nmlfile\n";
+}
+
 delete $source_of{''};
 my @dirs = keys %scanned;
 my @sources = values %source_of;

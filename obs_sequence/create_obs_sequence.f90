@@ -187,7 +187,7 @@ call write_obs_sequence(out_unit, seq)
 !out_unit2 = open_file('garb_out')
 !call write_obs_sequence(out_unit2, seq)
 
-write(logfileunit,*)'wrote (empty) observation sequence to ',trim(file_name)
+write(logfileunit,*)'wrote observation sequence template to ',trim(file_name)
 write(logfileunit,*)'FINISHED create_obs_sequence.'
 write(logfileunit,*)
 
