@@ -12,7 +12,7 @@ program obs_diag
 !
 use        types_mod, only: r8, pi
 use obs_sequence_mod, only: read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
-                get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, &
+                            get_obs_from_key, get_obs_def, &
                    get_obs_time_range, get_time_range_keys, get_num_obs, &
                  get_next_obs, get_num_times, get_obs_values, init_obs, assignment(=), &
                 get_num_copies, static_init_obs_sequence, get_qc, destroy_obs_sequence
@@ -22,7 +22,6 @@ use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_ti
 
 use location_mod, only : location_type, get_location
 use obs_kind_mod, only : obs_kind_type, get_obs_kind
-use real_obs_mod, only : obs_model_type
 
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), operator(>)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
@@ -45,7 +44,7 @@ type(location_type)     :: obs_loc
 type(time_type)         :: next_time
 
 !---------------------
-integer :: i, j, k, ind, iunit, io
+integer :: i, j, k, iunit, io
 integer :: num_obs_in_set, ierr, obs_used
 integer :: num_obs_sets, in_obs_copy
 
@@ -59,26 +58,57 @@ real(r8) :: pre_obs
 
 integer :: prior_mean_obs_index, posterior_mean_obs_index
 integer :: prior_spread_obs_index, posterior_spread_obs_index
-integer :: key_bounds(2), kind, model_type, ncep_type
-integer :: num_state_copies, num_obs_copies
+integer :: key_bounds(2), kind, model_type
+integer :: num_obs_copies
 
 real(r8), allocatable  :: obs_err_cov(:), obs(:), qc(:)
 integer, allocatable :: keys(:)
 
-character(len=129), allocatable :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
 logical :: out_of_range, is_there_one, is_this_last
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer  :: ens_size = 20
+integer  :: async = 0, ens_size = 20
+real(r8) :: cutoff      = 0.2_r8
+real(r8) :: cov_inflate = 1.0_r8
+logical  :: start_from_restart = .false., output_restart = .false.
+! if init_time_days and seconds are negative initial time is 0, 0
+! for no restart or comes from restart if restart exists
+integer  :: init_time_days    = 0
+integer  :: init_time_seconds = 0
+! Control diagnostic output for state variables
+logical  :: output_state_ens_mean = .true., output_state_ens_spread = .true.
 logical  :: output_obs_ens_mean   = .true., output_obs_ens_spread   = .true.
+integer  :: num_output_state_members = 0
 integer  :: num_output_obs_members   = 0
+integer  :: output_interval = 1
+integer  :: num_groups = 1
+real(r8) :: confidence_slope = 0.0_r8
+real(r8) :: outlier_threshold = -1.0_r8
+logical  :: save_reg_series = .false.
 
-character(len = 129) :: obs_sequence_in_name = "obs_seq.final"
+character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
+                        obs_sequence_out_name = "obs_seq.final",  &
+                        restart_in_file_name  = 'filter_ics',     &
+                        restart_out_file_name = 'filter_restart', &
+                        adv_ens_command       = './advance_ens.csh'
 
-namelist /filter_nml/obs_sequence_in_name, output_obs_ens_mean, &
-                     output_obs_ens_spread, num_output_obs_members, ens_size
+! adv_ens_command  == 'qsub advance_ens.csh' -> system call advances ensemble by
+!                                               qsub submission of a batch job
+!                                               -l nodes=# can be inserted after qsub
+!                  == './advance_ens.csh'    -> advance ensemble using a script which
+!                                               explicitly distributes ensemble among nodes
+! advance_ens.csh is currently written to handle both batch submissions (qsub) and
+!                 non-batch executions.
+
+namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
+   start_from_restart, output_restart, &
+   obs_sequence_in_name, obs_sequence_out_name, restart_in_file_name, restart_out_file_name, &
+   init_time_days, init_time_seconds, output_state_ens_mean, &
+   output_state_ens_spread, output_obs_ens_mean, output_obs_ens_spread, &
+   num_output_state_members, num_output_obs_members, output_interval, &
+   num_groups, confidence_slope, outlier_threshold, save_reg_series
 
 !--------------------------------------------------------------------------
 integer, parameter :: max_sets=999, narea = 4       ! /'NH', 'SH', 'TR', 'NA'/
@@ -87,7 +117,6 @@ integer, parameter :: nlev=11, nlon=361, nlat=181
 integer :: tot_sets, iskip, ktype, n
 integer :: ipressure, plev(nlev), pint(nlev+1)
 real(r8) :: lon0, lat0, obsloc3(3)
-real(r8) :: speed_obs, speed_ges, speed_anl
 real(r8) :: speed_obs2, speed_ges2, speed_anl2
 
 integer  :: level, iday, tot_days
@@ -138,23 +167,23 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
 
 ! Begin by reading the namelist input
   if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = filter_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'filter_nml')
-   enddo
-   11 continue
-   call close_file(iunit)
+     iunit = open_file('input.nml', action = 'read')
+     ierr = 1
+     do while(ierr /= 0)
+        read(iunit, nml = filter_nml, iostat = io, end = 11)
+        ierr = check_nml_error(io, 'filter_nml')
+     enddo
+11   continue
+     call close_file(iunit)
   endif
   write(logfileunit,nml=filter_nml) ! echo namelist params to log file.
 
   allocate ( prior_ens_obs(ens_size), posterior_ens_obs(ens_size) )
 
 ! Determine the number of output obs space fields
-    num_obs_copies = 2 * num_output_obs_members
-    if(output_obs_ens_mean) num_obs_copies = num_obs_copies + 2
-    if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
+  num_obs_copies = 2 * num_output_obs_members
+  if(output_obs_ens_mean) num_obs_copies = num_obs_copies + 2
+  if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
 
   iunit = get_unit()
   open(iunit, file='obs_diag.in', form='formatted')
@@ -164,7 +193,7 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
   read(iunit,*) rat_cri
 
   do i=1, tot_days
-  read(iunit,FMT='(a6)') day_num(i)
+     read(iunit,FMT='(a6)') day_num(i)
   enddo
   close(iunit)
 
@@ -175,66 +204,66 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
   write(iunit,*) plev(level_index(level)), tot_days, iskip
   close(iunit)
 
-     do i=1, nlon
-        alon(i) = i-1
-     enddo
-     do j=1, nlat
-        alat(j) = j-1
-     enddo
+  do i=1, nlon
+     alon(i) = i-1
+  enddo
+  do j=1, nlat
+     alat(j) = j-1
+  enddo
 
-     do n=1, narea
+  do n=1, narea
      do k=1, nlev
-     rms_ges_ver_W(k,n) = 0.0
-     rms_anl_ver_W(k,n) = 0.0
-     rms_ges_ver_T(k,n) = 0.0
-     rms_anl_ver_T(k,n) = 0.0
+        rms_ges_ver_W(k,n) = 0.0_r8
+        rms_anl_ver_W(k,n) = 0.0_r8
+        rms_ges_ver_T(k,n) = 0.0_r8
+        rms_anl_ver_T(k,n) = 0.0_r8
 
-     bias_ges_ver_W(k,n) = 0.0
-     bias_anl_ver_W(k,n) = 0.0
-     bias_ges_ver_T(k,n) = 0.0
-     bias_anl_ver_T(k,n) = 0.0
+        bias_ges_ver_W(k,n) = 0.0_r8
+        bias_anl_ver_W(k,n) = 0.0_r8
+        bias_ges_ver_T(k,n) = 0.0_r8
+        bias_anl_ver_T(k,n) = 0.0_r8
 
-     num_ver_W(k,n) = 0
-     num_ver_T(k,n) = 0
+        num_ver_W(k,n) = 0
+        num_ver_T(k,n) = 0
      enddo
-     enddo
+  enddo
 
 ! set up the areas' limits
-  lonlim1(1)= 0.0        ! NH
-  lonlim2(1)= 360.0
-  latlim1(1)= 110.0
-  latlim2(1)= 170.0
+  lonlim1(1)= 0.0_r8        ! NH
+  lonlim2(1)= 360.0_r8
+  latlim1(1)= 110.0_r8
+  latlim2(1)= 170.0_r8
 
-  lonlim1(2)= 0.0        ! SH
-  lonlim2(2)= 360.0
-  latlim1(2)= 10.0
-  latlim2(2)= 70.0
+  lonlim1(2)= 0.0_r8        ! SH
+  lonlim2(2)= 360.0_r8
+  latlim1(2)= 10.0_r8
+  latlim2(2)= 70.0_r8
 
-  lonlim1(3)= 0.0        ! TR
-  lonlim2(3)= 360.0
-  latlim1(3)= 70.0
-  latlim2(3)= 110.0
+  lonlim1(3)= 0.0_r8        ! TR
+  lonlim2(3)= 360.0_r8
+  latlim1(3)= 70.0_r8
+  latlim2(3)= 110.0_r8
 
-  lonlim1(4)= 235.0      ! NA
-  lonlim2(4)= 295.0
-  latlim1(4)= 115.0
-  latlim2(4)= 145.0
+  lonlim1(4)= 235.0_r8      ! NA
+  lonlim2(4)= 295.0_r8
+  latlim1(4)= 115.0_r8
+  latlim2(4)= 145.0_r8
 
   tot_sets = 0
 !-------------------------------
   DayLoop : do iday=1, tot_days
 !-------------------------------
 
-     write(msgstring,*)'opened ', day_num(iday), trim(obs_sequence_in_name)
+     write(msgstring,*)'opened ', day_num(iday), trim(obs_sequence_out_name)
      call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
 
 ! Read in with enough space for diagnostic output values
-    call read_obs_seq(day_num(iday)//obs_sequence_in_name, 0, 0, 0, seq)
+     call read_obs_seq(day_num(iday)//obs_sequence_out_name, 0, 0, 0, seq)
 
      write(msgstring,*)'get_num_copies = ', get_num_copies(seq)
      call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
 
-    if(iday == 1) in_obs_copy = get_num_copies(seq) - num_obs_copies   !! NCEP obs copy =1
+     if(iday == 1) in_obs_copy = get_num_copies(seq) - num_obs_copies   !! NCEP obs copy =1
 
 ! Count of number of sets in the sequence
     num_obs_sets = get_num_times(seq)
@@ -243,43 +272,43 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
      call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
 
 ! Initialize the output sequences and state files and set their meta data
-  if(iday ==1 ) then
-call gen_copy_meta_data(output_obs_ens_mean, output_obs_ens_spread, num_output_obs_members,&
-                        num_obs_copies, prior_mean_obs_index, posterior_mean_obs_index, &
-                       prior_spread_obs_index, posterior_spread_obs_index, in_obs_copy, seq)
+     if(iday ==1 ) then
+        call gen_copy_meta_data(output_obs_ens_mean, output_obs_ens_spread, num_output_obs_members,&
+             num_obs_copies, prior_mean_obs_index, posterior_mean_obs_index, &
+             prior_spread_obs_index, posterior_spread_obs_index, in_obs_copy)
 !  print*, 'index= ', prior_mean_obs_index, posterior_mean_obs_index, &
-!          prior_spread_obs_index, posterior_spread_obs_index
-  endif
+        !          prior_spread_obs_index, posterior_spread_obs_index
+     endif
 
 ! Get the time of the first observation in the sequence
-    is_there_one = get_first_obs(seq, observation)
-    call get_obs_def(observation, obs_def)
-    next_time = get_obs_def_time(obs_def)
+     is_there_one = get_first_obs(seq, observation)
+     call get_obs_def(observation, obs_def)
+     next_time = get_obs_def_time(obs_def)
 
 !====================================================
 Advancesets : do i = 1, num_obs_sets
 !====================================================
 
-    do n=1, narea
-     rms_ges_mean_W(n)   = 0.0
-     rms_anl_mean_W(n)   = 0.0
-     rms_ges_mean_T(n)   = 0.0
-     rms_anl_mean_T(n)   = 0.0
+   do n=1, narea
+      rms_ges_mean_W(n)   = 0.0_r8
+      rms_anl_mean_W(n)   = 0.0_r8
+      rms_ges_mean_T(n)   = 0.0_r8
+      rms_anl_mean_T(n)   = 0.0_r8
 
-     rms_ges_spread_W(n) = 0.0
-     rms_anl_spread_W(n) = 0.0
-     rms_ges_spread_T(n) = 0.0
-     rms_anl_spread_T(n) = 0.0
+      rms_ges_spread_W(n) = 0.0_r8
+      rms_anl_spread_W(n) = 0.0_r8
+      rms_ges_spread_T(n) = 0.0_r8
+      rms_anl_spread_T(n) = 0.0_r8
 
-     num_in_level_W(n)   = 0
-     num_in_level_T(n)   = 0
-    enddo
+      num_in_level_W(n)   = 0
+      num_in_level_T(n)   = 0
+   enddo
 
    call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs_in_set, &
                            out_of_range, observation)
 
-    obs_used = 0
-     write(*, *) 'num_obs_in_set of ', i, ' = ', num_obs_in_set
+   obs_used = 0
+   write(*, *) 'num_obs_in_set of ', i, ' = ', num_obs_in_set
 
    allocate(keys(num_obs_in_set), obs_err_cov(num_obs_in_set), obs(num_obs_in_set), &
             qc(num_obs_in_set))
@@ -289,9 +318,9 @@ Advancesets : do i = 1, num_obs_sets
 
 ! Allocate storage for the ensemble priors for this number of observations
 
-   ! Get the observation value and interpolated ones at obs locations
+! Get the observation value and interpolated ones at obs locations
 !--------------------------------------------------------
-  ObservationLoop : do j = 1, num_obs_in_set
+   ObservationLoop : do j = 1, num_obs_in_set
 !--------------------------------------------------------
       call get_obs_from_key(seq, keys(j), observation)
 
@@ -302,29 +331,22 @@ Advancesets : do i = 1, num_obs_sets
 
       lon0 = obsloc3(1) + 1.01_r8                            ! 0-360
       lat0 = obsloc3(2) + 1.01_r8 + 90.0_r8                  ! 0-180
-      ipressure = 0.01 * obsloc3(3)                          ! mb
+      ipressure = 0.01_r8 * obsloc3(3)                          ! mb
 
       obs_err_cov(j) = get_obs_def_error_variance(obs_def)
       call get_qc(observation, qc(j:j), 1)
 
       obs_kind  = get_obs_def_kind(obs_def)
       kind = get_obs_kind(obs_kind)
-       model_type = kind
-!     call obs_model_type(kind, model_type, ncep_type)
-
-!if(mod(j,800) == 0 ) then
-! print*, 'kind, type= ', j, kind
-! print*, 'loc= ', j, obsloc3(1)*3.14159/180.0, obsloc3(2)*3.14159/180.0, obsloc3(3)
-! print*, 'cov, qc= ', j, obs_err_cov(j), qc(j)
-!endif
+      model_type = kind
 
       call get_obs_values(observation, obs(j:j), 1)
 
 !   get interpolated values of prior and posterior ensembles 
-     do k = 1, num_output_obs_members
-      call get_obs_values(observation,     prior_ens_obs(k:k), in_obs_copy + 2*k-1)
-      call get_obs_values(observation, posterior_ens_obs(k:k), in_obs_copy + 2*k  )
-     end do
+      do k = 1, num_output_obs_members
+         call get_obs_values(observation,     prior_ens_obs(k:k), in_obs_copy + 2*k-1)
+         call get_obs_values(observation, posterior_ens_obs(k:k), in_obs_copy + 2*k  )
+      end do
 
 !   get interpolated values of prior and posterior ensemble mean
       call get_obs_values(observation,     prior_mean,     prior_mean_obs_index)
@@ -336,13 +358,8 @@ Advancesets : do i = 1, num_obs_sets
       call get_obs_values(observation,     prior_spread,     prior_spread_obs_index)
       call get_obs_values(observation, posterior_spread, posterior_spread_obs_index)
 !    print*, 'prior_spread_obs_index= ', prior_spread_obs_index, posterior_spread_obs_index
-!if(mod(j,800) == 0 ) then
-!  print*, 'obs values= ', j, obs(j),prior_mean, posterior_mean
-!  print*, 'obs sp values= ', j, prior_spread, posterior_spread
-!endif
-
 !--------------------------------------------------------
-condition1: if( qc(j) .lt. 4.0 ) then
+condition1: if( qc(j) .lt. 4.0_r8 ) then
 
    obs_used = obs_used + 1
 
@@ -362,22 +379,19 @@ condition3:  if(ipressure .le. pint(level_index(level)) .and.    &
     
 variable: if(model_type == 2 ) then               !! Wind v-component
 
-! if(ktype == 2 .and. ncep_type >= 230) go to 250
-! if(ktype == 3 .and. ncep_type == 220) go to 250
-
   if(ktype == 2) then
 !   temporary keep RA only skip ACARS and SATWND data 
-     if( abs(sqrt( obs_err_cov(j))-2.5) <= 0.1)              go to 250           !!  ACARS wind
-     if( sqrt( obs_err_cov(j)) > 3.3)                        go to 250
-     if( sqrt( obs_err_cov(j)) > 2.5 .and. ipressure .gt. 420 ) go to 250
-     if( sqrt( obs_err_cov(j)) > 1.7 .and. ipressure .gt. 680 ) go to 250 
+     if( abs(sqrt( obs_err_cov(j))-2.5_r8) <= 0.1_r8)              go to 250           !!  ACARS wind
+     if( sqrt( obs_err_cov(j)) > 3.3_r8)                        go to 250
+     if( sqrt( obs_err_cov(j)) > 2.5_r8 .and. ipressure .gt. 420 ) go to 250
+     if( sqrt( obs_err_cov(j)) > 1.7_r8 .and. ipressure .gt. 680 ) go to 250 
   endif
 
   if(ktype == 3) then
 !   temporary to keep ACARS and SATWND data  only 
-     if( sqrt( obs_err_cov(j)) < 2.5 .and. ipressure < 400 )    go to 250
-     if( sqrt( obs_err_cov(j)) > 2.5 .and. sqrt( obs_err_cov(j)) < 3.5 .and. ipressure < 400 ) go to 250
-     if( sqrt( obs_err_cov(j)) <= 1.7)                          go to 250
+     if( sqrt( obs_err_cov(j)) < 2.5_r8 .and. ipressure < 400 )    go to 250
+     if( sqrt( obs_err_cov(j)) > 2.5_r8 .and. sqrt( obs_err_cov(j)) < 3.5_r8 .and. ipressure < 400 ) go to 250
+     if( sqrt( obs_err_cov(j)) <= 1.7_r8)                          go to 250
   endif
 
 
@@ -400,17 +414,14 @@ variable: if(model_type == 2 ) then               !! Wind v-component
 
 elseif (model_type == 4 ) then               !! Temperature
 
-! if(ktype == 2 .and. ncep_type >= 130) go to 252
-! if(ktype == 3 .and. ncep_type == 120) go to 252
-
   if(ktype == 2) then
   !   temporary keep RA only 
-     if( abs(sqrt( obs_err_cov(j))-1.0) <= 0.1) go to 252
+     if( abs(sqrt( obs_err_cov(j))-1.0_r8) <= 0.1_r8) go to 252
   endif
 
   if(ktype == 3) then
 !   temporary keep only ACARS and SATWND data  
-     if( abs(sqrt( obs_err_cov(j))-1.0) > 0.1) go to 252
+     if( abs(sqrt( obs_err_cov(j))-1.0_r8) > 0.1_r8) go to 252
   endif
 
     ratio = abs(prior_mean(1)- obs(j)) / sqrt( prior_spread(1)**2 + obs_err_cov(j) )
@@ -449,23 +460,20 @@ condition5: if(ipressure .le. pint(1) .and. ipressure .gt. pint(nlev+1) ) then
 
 variable2: if(model_type == 2 ) then               !! Wind v-component
 
-! if(ktype == 2 .and. ncep_type >= 230) go to 254
-! if(ktype == 3 .and. ncep_type == 220) go to 254
-
 !------------------------------------------------
   if(ktype == 2) then
 !   temporary keep RA only skip ACARS and SATWND data 
-     if( abs(sqrt( obs_err_cov(j))-2.5) <= 0.1)                  go to 254  !!  ACARS wind
-     if( sqrt( obs_err_cov(j)) > 3.3)                            go to 254
-     if( sqrt( obs_err_cov(j)) > 2.5 .and. ipressure .gt. 420 )  go to 254
-     if( sqrt( obs_err_cov(j)) > 1.7 .and. ipressure .gt. 680 )  go to 254 
+     if( abs(sqrt( obs_err_cov(j))-2.5_r8) <= 0.1_r8)                  go to 254  !!  ACARS wind
+     if( sqrt( obs_err_cov(j)) > 3.3_r8)                            go to 254
+     if( sqrt( obs_err_cov(j)) > 2.5_r8 .and. ipressure .gt. 420 )  go to 254
+     if( sqrt( obs_err_cov(j)) > 1.7_r8 .and. ipressure .gt. 680 )  go to 254 
   endif
 
   if(ktype == 3) then
 !   temporary to keep ACARS and SATWND data  only 
-     if( sqrt( obs_err_cov(j)) < 2.5 .and. ipressure < 400 )     go to 254
-     if( sqrt( obs_err_cov(j)) > 2.5 .and. sqrt( obs_err_cov(j)) < 3.5 .and. ipressure < 400 ) go to 254
-     if( sqrt( obs_err_cov(j)) <= 1.7)                           go to 254
+     if( sqrt( obs_err_cov(j)) < 2.5_r8 .and. ipressure < 400 )     go to 254
+     if( sqrt( obs_err_cov(j)) > 2.5_r8 .and. sqrt( obs_err_cov(j)) < 3.5_r8 .and. ipressure < 400 ) go to 254
+     if( sqrt( obs_err_cov(j)) <= 1.7_r8)                           go to 254
   endif
 !------------------------------------------------
 
@@ -491,17 +499,14 @@ variable2: if(model_type == 2 ) then               !! Wind v-component
 
 else if (model_type == 4 ) then               !! Temperature
 
-! if(ktype == 2 .and. ncep_type >= 130) go to 256
-! if(ktype == 3 .and. ncep_type == 120) go to 256
-
   if(ktype == 2) then
   !   temporary keep RA only 
-     if( abs(sqrt( obs_err_cov(j))-1.0) <= 0.1) go to 256
+     if( abs(sqrt( obs_err_cov(j))-1.0_r8) <= 0.1_r8) go to 256
   endif
 
   if(ktype == 3) then
 !   temporary keep only ACARS and SATWND data  
-     if( abs(sqrt( obs_err_cov(j))-1.0) > 0.1) go to 256
+     if( abs(sqrt( obs_err_cov(j))-1.0_r8) > 0.1_r8) go to 256
   endif
 
 
@@ -682,12 +687,12 @@ contains
 subroutine gen_copy_meta_data(output_obs_ens_mean, output_obs_ens_spread, &
                           num_output_obs_members, num_obs_copies,  &
                           prior_mean_obs_index, posterior_mean_obs_index, &
-           prior_spread_obs_index, posterior_spread_obs_index, in_obs_copy, seq)
+           prior_spread_obs_index, posterior_spread_obs_index, in_obs_copy)
 
 implicit none
 
 ! Figures out the strings describing the output copies for the three output files.
-! THese are the prior and posterior state output files and the observation sequence
+! These are the prior and posterior state output files and the observation sequence
 ! output file which contains both prior and posterior data.
 
 logical, intent(in) :: output_obs_ens_mean, output_obs_ens_spread
@@ -695,7 +700,6 @@ integer, intent(in) :: num_output_obs_members, in_obs_copy
 integer, intent(out) :: prior_mean_obs_index, posterior_mean_obs_index
 integer, intent(out) :: prior_spread_obs_index, posterior_spread_obs_index
 integer, intent(out) :: num_obs_copies
-type(obs_sequence_type), intent(inout) :: seq
 
 character(len=129) :: prior_meta_data, posterior_meta_data
 integer :: i
@@ -709,32 +713,26 @@ do i = 1, num_output_obs_members
       write(*, *) 'output metadata in filter needs ensemble size < 10000'
       stop
    endif
-!  call set_copy_meta_data(seq, in_obs_copy + 2*i - 1, prior_meta_data)
-!  call set_copy_meta_data(seq, in_obs_copy + 2*i, posterior_meta_data)
 end do
 
 num_obs_copies = in_obs_copy + 2 * num_output_obs_members
 if(output_obs_ens_mean) then
    num_obs_copies = num_obs_copies + 1
    prior_meta_data = 'prior ensemble mean'
-!  call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
    prior_mean_obs_index = num_obs_copies
 
    num_obs_copies = num_obs_copies + 1
    posterior_meta_data = 'posterior ensemble mean'
-!  call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
    posterior_mean_obs_index = num_obs_copies 
 endif
 
 if(output_obs_ens_spread) then
    num_obs_copies = num_obs_copies + 1
    prior_meta_data = 'prior ensemble spread'
-!  call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
    prior_spread_obs_index = num_obs_copies
 
    num_obs_copies = num_obs_copies + 1
    posterior_meta_data = 'posterior ensemble spread'
-!  call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
    posterior_spread_obs_index = num_obs_copies
 endif
 
