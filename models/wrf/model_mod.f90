@@ -43,6 +43,8 @@ public     get_model_size,                    &
            static_init_model,                 &
            netcdf_read_write_var,             &
            model_get_close_states,            &
+           get_wrf_date, set_wrf_date,          &
+           output_wrf_time, &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
            TYPE_QV, TYPE_QC, TYPE_QR,         &
@@ -124,6 +126,9 @@ TYPE wrf_static_data_for_dart
    integer, dimension(:,:), pointer :: land
    character(len=8), dimension(:), pointer :: var_name
 
+   integer :: date_len
+   character(len=1), dimension(:), pointer :: timestring
+
 end type
 
 type(wrf_static_data_for_dart) :: wrf
@@ -143,6 +148,7 @@ integer :: io, ierr, iunit
 character (len=80)    :: name
 logical, parameter    :: debug = .false.
 integer               :: var_id, ind, i, map_proj
+
 integer, dimension(5) :: kount, start, stride, map
 real(r8)              :: zero_d(1)
 
@@ -210,6 +216,10 @@ if(debug) then
    write(6,*) ' dimensions bt, sn, we are ',wrf%bt, wrf%sn, wrf%we
    write(6,*) ' staggered  bt, sn, we are ',wrf%bts,wrf%sns,wrf%wes
 endif
+
+! data char length
+call check(nf90_inq_dimid(ncid, "DateStrLen", we_id))    ! reuse we_id, no harm
+call check(nf90_inquire_dimension(ncid, we_id, name, wrf%date_len))
 
 ! get meta data and static data we need
 
@@ -300,6 +310,15 @@ IF (wrf%map_proj.EQ.3) THEN
 ENDIF
 
 !  get 1D (z) static data defining grid levels
+
+kount(1)  = wrf%date_len
+print*,wrf%date_len
+allocate(wrf%timestring(1:wrf%date_len))
+wrf%timestring = "0"
+call netcdf_read_write_char( "Times",ncid, var_id, wrf%timestring,        &
+                            start, kount, stride, map, 'INPUT ', debug, 2  )
+
+if(debug) write(6,*) ' Time ',wrf%timestring
 
 kount(1)  = wrf%bt
 allocate(wrf%dn(1:wrf%bt))
@@ -501,6 +520,56 @@ contains
 end subroutine static_init_model
 
 
+!**********************************************************************
+
+subroutine netcdf_read_write_char( variable, ncid, var_id, var,          &
+                                  start, kount, stride, map, in_or_out, debug, ndims )
+
+! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
+! module routine. There used to be TWO routines that did the same thing.
+! 
+! As such 'kount', 'stride','map' all become meaningless because
+! the whole process is slaved to simply replace an existing netcdf
+! variable with a conformable variable -- no possibility for 
+! us to write a subset of the domain.
+
+integer :: ncid, var_id, ndims
+character(len=1), dimension(ndims) :: var
+character (len=6) :: in_or_out
+integer, dimension(ndims) :: start, kount, stride, map
+character (len=*) :: variable
+logical :: debug
+character (len=129) :: error_string
+
+if(debug) write(6,*) ' var for io is ',variable
+call check(  nf90_inq_varid(ncid, variable, var_id) )
+if(debug) write(6,*) variable, ' id = ',var_id
+
+if( in_or_out(1:5) == "INPUT" ) then
+
+  call check( nf90_get_var(ncid, var_id, var(1:kount(1)), start=start, count=kount, stride=stride) )
+
+else if( in_or_out(1:6) == "OUTPUT" ) then
+
+  call check( nf90_put_var(ncid, var_id, var(1:kount(1)), start, kount, stride, map) )
+
+else
+
+  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
+  call error_handler(E_ERR,'netcdf_read_write_var', &
+       error_string, source, revision,revdate)
+
+end if
+
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_var', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+  end subroutine check
+end subroutine netcdf_read_write_char
 !**********************************************************************
 
 subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
@@ -2413,6 +2482,110 @@ interf_provided = .false.
 
 end subroutine pert_model_state
 
+!#######################################################
 
+subroutine get_wrf_date (year, month, day, hour, minute, second)
+implicit none
+!--------------------------------------------------------
+! Returns integers taken from wrf%timestring
+! NOTE: Right now this string needs to be the cold start init!
+! It is assumed that the WRF char array is as YYYY-MM-DD_hh:mm:ss
+
+integer, intent(out) :: year, month, day, hour, minute, second
+
+integer :: i
+character(len=size(wrf%timestring)) :: tstring
+
+do i = 1, len(tstring)
+  tstring(i:i) = wrf%timestring(i)
+enddo
+
+read(tstring(1:4),'(i4)') year
+read(tstring(6:7),'(i2)') month
+read(tstring(9:10),'(i2)') day
+read(tstring(12:13),'(i2)') hour
+read(tstring(15:16),'(i2)') minute
+read(tstring(18:19),'(i2)') second
+
+end subroutine get_wrf_date
+
+!#######################################################
+
+subroutine set_wrf_date (year, month, day, hour, minute, second)
+implicit none
+!--------------------------------------------------------
+! Updates wrf%timestring with new date integers
+! It is assumed that the WRF char array is as YYYY-MM-DD_hh:mm:ss
+
+integer, intent(in) :: year, month, day, hour, minute, second
+
+integer :: i
+character(len=4) :: ch_year
+character(len=2) :: ch_month, ch_day, ch_hour, ch_minute, ch_second
+
+write(ch_year,'(i4)') year
+write(ch_month,'(i2)') month
+if (ch_month(1:1) == " ") ch_month(1:1) = "0"
+write(ch_day,'(i2)') day
+if (ch_day(1:1) == " ") ch_day(1:1) = "0"
+write(ch_hour,'(i2)') hour
+if (ch_hour(1:1) == " ") ch_hour(1:1) = "0"
+write(ch_minute,'(i2)') minute
+if (ch_minute(1:1) == " ") ch_minute(1:1) = "0"
+write(ch_second,'(i2)') second
+if (ch_second(1:1) == " ") ch_second(1:1) = "0"
+
+do i = 1,4
+  wrf%timestring(i) = ch_year(i:i)
+enddo
+do i = 1,2
+  wrf%timestring(i+5) = ch_month(i:i)
+  wrf%timestring(i+8) = ch_day(i:i)
+  wrf%timestring(i+11) = ch_hour(i:i)
+  wrf%timestring(i+14) = ch_minute(i:i)
+  wrf%timestring(i+17) = ch_second(i:i)
+enddo
+
+end subroutine set_wrf_date
+
+!#######################################################
+
+subroutine output_wrf_time()
+use netcdf
+implicit none
+!--------------------------------------------------------
+! tags file wrfinput with a new time
+
+
+integer              :: mode, ncid, var_id
+integer, dimension(5) :: kount, start, stride, map
+integer :: status 
+logical :: debug = .false.
+
+mode = NF90_WRITE
+call check(nf90_open('wrfinput', mode, ncid) )
+
+kount  = 1
+start  = 1
+stride = 1
+map    = 1
+
+kount(1)  = wrf%date_len
+call netcdf_read_write_char( "Times",ncid, var_id, &
+                            wrf%timestring(1:wrf%date_len),        &
+                            start, kount, stride, map, 'OUTPUT ', debug, 2  )
+
+call check(nf90_close(ncid))
+
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'output_wrf_time', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+  end subroutine check
+
+end subroutine output_wrf_time
 
 end module model_mod
