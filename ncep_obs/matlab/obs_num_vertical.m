@@ -1,92 +1,165 @@
+function obs_num_vertical(ddir)
+% obs_num_vertical    plots the number of observations as a function of height for several different regions.
+% 
+% ddir     is an optional argument specifying the directory containing
+%               the data files as preprocessed by the support routines.
+% 
+% USAGE:
+% 
+% obs_num_vertical('plot')
+
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% $Source$
+% $Revision$
+% $Date$
+% $Id$
+
+% This ensures the datafiles exist. 
+if ( nargin > 0 )
+   Tfname = fullfile(ddir,'Tges_ver_ave.dat');
+   Wfname = fullfile(ddir,'Wges_ver_ave.dat');
+else
+   Tfname = 'Tges_ver_ave.dat';
+   Wfname = 'Wges_ver_ave.dat'; 
+end
+if ( exist(Tfname,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.',Tfname))
+end
+if ( exist(Wfname,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.',Wfname))
+end
+
 % obsfit.m plot of the error of analysis and guess
-clf
-p_v=load('Tges_ver_ave.dat');
-yp_v=p_v(:,1);
-xp_v_num=p_v(:,3);
-%
-subplot('position', [0.1,0.6,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%%axis([0 10 100 1000])
+figure(1); clf
+p_v      = load(Tfname);
+
+yp_v     = p_v(:,1); 
+nT_NH    = p_v(:,3);
+nT_SH    = p_v(:,5);
+nT_TR    = p_v(:,7);
+nT_NA    = p_v(:,9);
+
+linewidth = 2.0;
+
+subplot('position', [0.1,0.6,0.35,0.35])
+plot(nT_NH, yp_v, 'gs-', 'LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('T num, NH', 'fontsize', 10)
-legend('guess', 'analysis')
-h=legend;
-legend(h,'boxoff')
-%
-xp_v_num=p_v(:,5);
-%
-subplot('position', [0.6,0.6,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([0 10 100 1000])
+title('Northern Hemisphere')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Temperature Observations','fontsize',10)
+
+subplot('position', [0.6,0.6,0.35,0.35])
+plot(nT_SH, yp_v, 'bd-', 'LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('T num, SH', 'fontsize', 10)
-legend('guess', 'analysis')
-h=legend;
-legend(h,'boxoff')
-%
-xp_v_num=p_v(:,7);
-subplot('position', [0.1,0.1,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([0 10 100 1000])
+title('Southern Hemisphere')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Temperature Observations','fontsize',10)
+
+subplot('position', [0.1,0.1,0.35,0.35])
+plot(nT_TR, yp_v, 'ro-', 'LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('T num, TR', 'fontsize', 10)
-%
-xp_v_num=p_v(:,9);
-subplot('position', [0.6,0.1,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([0 10 100 1000])
+title('Tropics')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Temperature Observations','fontsize',10)
+
+subplot('position', [0.6,0.1,0.35,0.35])
+plot(nT_NA, yp_v, 'k+-', 'LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('T num, NA', 'fontsize', 10)
-%
+title('North America')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Temperature Observations','fontsize',10)
+
+% disp('Pausing, hit any key ...'); pause
 print -dpsc t_num_vert.ps
-pause
-%
-%
-% - ----------------- W --------------
-p_v=load('Wges_ver_ave.dat');
-yp_v=p_v(:,1);
-xp_v_num=p_v(:,3);
-%
-subplot('position', [0.1,0.6,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([2 15 100 1000])
+
+%----------------------------------------------------------------------
+% All regions on one large figure
+%----------------------------------------------------------------------
+
+figure(2); clf
+
+h = plot(nT_NH, yp_v, 'gs-', ...
+         nT_SH, yp_v, 'bd-', ...
+         nT_TR, yp_v, 'ro-', ...
+         nT_NA, yp_v, 'k+-', 'LineWidth', linewidth);
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('wind num,  NH', 'fontsize', 10)
-legend('guess', 'analysis')
-h=legend;
-legend(h,'boxoff')
-%
-xp_v_num=p_v(:,5);
-%
-subplot('position', [0.6,0.6,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([2 15 100 1000])
+title('# of Temperature Observations by Region','FontSize',14,'FontWeight','bold')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Observations','fontsize',10)
+
+legend('Northern Hemisphere','Southern Hemisphere','Tropics','North America')
+
+%----------------------------------------------------------------------
+% Wind Observations ... Individual regions 
+%----------------------------------------------------------------------
+
+figure(3); clf
+p_v   = load(Wfname);
+yp_v  = p_v(:,1);
+nW_NH = p_v(:,3);
+nW_SH = p_v(:,5);
+nW_TR = p_v(:,7);
+nW_NA = p_v(:,9);
+
+subplot('position', [0.1,0.6,0.35,0.35])
+plot(nW_NH ,yp_v,'gs-','LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel(' wind num, SH', 'fontsize', 10)
-legend('guess', 'analysis')
-h=legend;
-legend(h,'boxoff')
-%
-xp_v_num=p_v(:,7);
-subplot('position', [0.1,0.1,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([2 15 100 1000])
+title('Northern Hemisphere')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('NH', 'fontsize', 10)
+xlabel('# of Wind Observations','fontsize',10)
+
+
+subplot('position', [0.6,0.6,0.35,0.35])
+plot(nW_SH ,yp_v,'bd-','LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel(' wind num, TR', 'fontsize', 10)
-%
-xp_v_num=p_v(:,9);
-subplot('position', [0.6,0.1,0.35,0.35]), plot(xp_v_num ,yp_v,'c+-')
-%axis([2 15 100 1000])
+title('Southern Hemisphere')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Wind Observations','fontsize',10)
+
+subplot('position', [0.1,0.1,0.35,0.35])
+plot(nW_TR ,yp_v,'ro-','LineWidth', linewidth)
 grid
 set(gca,'YDir', 'reverse')
-%%ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel(' wind num, NA', 'fontsize', 10)
-%
+title('Tropics')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Wind Observations','fontsize',10)
+
+subplot('position', [0.6,0.1,0.35,0.35])
+plot(nW_NA ,yp_v,'k+-','LineWidth', linewidth)
+grid
+set(gca,'YDir', 'reverse')
+title('North America')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Wind Observations','fontsize',10)
+
 print -dpsc w_num_vert.ps
+
+%----------------------------------------------------------------------
+% All regions on one large figure
+%----------------------------------------------------------------------
+
+figure(4); clf
+
+h = plot(nT_NH, yp_v, 'gs-', ...
+         nT_SH, yp_v, 'bd-', ...
+         nT_TR, yp_v, 'ro-', ...
+         nT_NA, yp_v, 'k+-', 'LineWidth', linewidth);
+grid
+set(gca,'YDir', 'reverse')
+title('# of Wind Observations by Region','FontSize',14,'FontWeight','bold')
+ylabel('Pressure(hPa)', 'fontsize', 10)
+xlabel('# of Observations','fontsize',10)
+
+legend('Northern Hemisphere','Southern Hemisphere','Tropics','North America')
+
