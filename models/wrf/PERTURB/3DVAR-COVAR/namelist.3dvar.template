@@ -1,0 +1,117 @@
+&record1
+ MODEL_TYPE = 'WRF',
+ WRITE_INCREMENTS = .FALSE. /
+
+&record2
+ ANALYSIS_TYPE = 'randomcv',
+ ANALYSIS_DATE = '2003-01-01_00:00:00.0000',
+ ANALYSIS_ACCU = 900 /
+
+&record3
+ fg_format = 1, 
+ ob_format = 2 /
+
+&record4
+ PROCESS_OBS    = 'YES',
+ obs_qc_pointer = 0,
+ Use_SynopObs   = .TRUE.,
+ Use_ShipsObs   = .TRUE.,
+ Use_MetarObs   = .TRUE.,
+ Use_PilotObs   = .TRUE.,
+ Use_SoundObs   = .TRUE.,
+ Use_SatemObs   = .TRUE.,
+ Use_SatobObs   = .TRUE.,
+ Use_AirepObs   = .TRUE.,
+ Use_GpspwObs   = .TRUE.,
+ Use_ProfilerObs = .TRUE., 
+ Use_BuoyObs     = .TRUE.,
+ Use_SsmiRetrievalObs = .FALSE.,
+ Use_SsmiTbObs  = .FALSE.,
+ use_ssmt1obs   = .FALSE.,
+ use_ssmt2obs   = .FALSE.,
+ use_qscatobs   = .TRUE.,
+ use_radarobs   = .FALSE.,
+ check_max_iv   = .TRUE.,
+ use_obs_errfac = .FALSE.,
+ put_rand_seed  = .TRUE.,
+ omb_set_rand   = .FALSE.,
+ omb_add_noise  = .FALSE. /
+
+&record5
+ TIME_WINDOW    = 3.,
+ PRINT_DETAIL   = 0 /
+
+&record6
+ max_ext_its    = 1,
+ EPS            = 1.E-02, 1.E-02, 1.E-02, 1.E-02, 1.E-02, 1.E-02, 1.E-02,,
+ NTMAX          = 100,
+ NSAVE          = 4,
+ WRITE_SWITCH   = .FALSE.,
+ WRITE_INTERVAL = 5 /
+
+&record7
+ RF_PASSES      = 6,
+ VAR_SCALING1   = 1.0,
+ VAR_SCALING2   = 1.0,
+ VAR_SCALING3   = 1.0,
+ VAR_SCALING4   = 1.0,
+ VAR_SCALING5   = 1.0,
+ LEN_SCALING1   = 1.0,
+ LEN_SCALING2   = 1.0,
+ LEN_SCALING3   = 1.0,
+ LEN_SCALING4   = 1.0,
+ LEN_SCALING5   = 1.0 /
+
+&record8
+ def_sub_domain = .FALSE.,
+ x_start_sub_domain = 55.0,
+ y_start_sub_domain = 35.0,
+ x_end_sub_domain   = 80.0,
+ y_end_sub_domain   = 60.0 /
+
+&record10
+ Testing_3DVAR  = .FALSE.,
+ Test_Transforms = .FALSE.,
+ Test_Statistics = .FALSE.,
+ Interpolate_Stats = .TRUE. /
+ 
+&record11
+ minimisation_option = 2,
+ write_outer_loop    = .FALSE.,
+ lat_stats_option    = .FALSE.,
+ calculate_cg_cost_function = .FALSE.,
+ cv_options     = 3,
+ cv_options_hum = 1,
+ check_rh       = 1,
+ as1            = 0.25, 0.75, 1.5,
+ as2            = 0.25, 0.75, 1.5,
+ as3            = 0.25, 0.75, 1.5,
+ as4            = 0.25, 0.75, 1.5,
+ as5            = 0.25, 0.75, 1.5,
+sfc_assi_options = 1,
+ set_omb_rand_fac = 1.0,
+ seed_array1    = SEED1,
+ seed_array2    = SEED2/
+ 
+&record12
+ balance_type   = 1 /
+ 
+&record13
+ vert_corr      = 2,
+ vertical_ip    = 0,
+ vert_evalue    = 1,
+ max_vert_var1  = 99.0,
+ max_vert_var2  = 99.0,
+ max_vert_var3  = 99.0,
+ max_vert_var4  = 99.0,
+ max_vert_var5  = 0.0 /
+ 
+&pseudo_ob_nl
+ num_pseudo     = 0, 
+ pseudo_x       = 1.0,
+ pseudo_y       = 1.0,
+ pseudo_z       = 1.0,
+ pseudo_val     = 1.0,
+ pseudo_err     = 1.0,
+ pseudo_var     = 't' /
+
