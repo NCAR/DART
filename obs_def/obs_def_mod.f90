@@ -343,6 +343,7 @@ else
 ! Call obs_model interfaces to set up kind and location
    call interactive_def(interactive_obs_def%location, interactive_obs_def%kind)
    interactive_obs_def%error_variance = error_variance
+   interactive_obs_def%model_state_index = -1
 endif
 
 end function interactive_obs_def
