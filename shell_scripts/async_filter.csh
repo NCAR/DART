@@ -9,7 +9,7 @@ if ($?First) then
 # Do nothing if this is not the first time
 else
    setenv First no
-   rm -f async_may_go
+###   rm -f async_may_go
 # Clean up any assim_model_ic and ud files and temp directories
    rm -f assim_model_ic*
    rm -f assim_model_ud*
@@ -19,6 +19,7 @@ else
 endif
 
 while(1 == 1)
+   rm -f .async_may_go
    ls async_may_go > .async_garb
    if($status == 0) break
    echo waiting_for_async_may_go_file
