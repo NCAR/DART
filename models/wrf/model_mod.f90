@@ -24,10 +24,10 @@ module model_mod
 use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use      location_mod, only : location_type, get_location, set_location, &
-                              get_dist, &
+                              get_dist, horiz_dist_only, &
                               LocationDims, LocationName, LocationLName, &
                               query_location
-use     utilities_mod, only : file_exist, open_file, check_nml_error, &
+use     utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
                               close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit
@@ -83,8 +83,9 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, &
                      adv_mod_command
 
+integer :: seed1 = 0
 
-! Public definition of model variable types
+! Private definition of model variable types
 
 integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_GZ  = 4,   TYPE_T   = 5,  TYPE_MU = 6,  &
@@ -1019,7 +1020,7 @@ real(r8),            intent(in) :: x(:)
 
 integer                         :: u_pts, v_pts, p_pts, w_pts
 integer                         :: i,k,indmax, ii, jj, id
-integer                         :: num, max_size
+integer                         :: max_size
 integer,            allocatable :: lon_ind(:), lat_ind(:), vert_ind(:)
 real(r8),           allocatable :: close_dist(:)
 
@@ -1039,7 +1040,7 @@ do id=1,num_domains
 
 ! Look for close grid points.
    call grid_close_states( o_loc, &
-        radius, id, num, lon_ind, lat_ind, vert_ind, close_dist, &
+        radius, id, lon_ind, lat_ind, vert_ind, close_dist, &
         u_pts, v_pts, p_pts, w_pts, x )
 
 ! start with u_pts
@@ -1137,7 +1138,7 @@ do id=1,num_domains
 
 ! last -> p_pts (t + wrf%dom(id)%n_moist variables)
 
-   do i = u_pts+v_pts+w_pts+1, num
+   do i = u_pts+v_pts+w_pts+1, u_pts+v_pts+w_pts+p_pts
 
       ii = lon_ind(i)
       jj = lat_ind(i)
@@ -1237,7 +1238,7 @@ end function get_wrf_index
 
 !-----------------------------------------------------------------
 
-subroutine grid_close_states( o_loc, radius_in, id, num,  &
+subroutine grid_close_states( o_loc, radius_in, id,  &
                               close_lon_ind, close_lat_ind, close_vert_ind, &
                               close_dist, u_pts, v_pts, p_pts, w_pts, x )
 
@@ -1246,7 +1247,6 @@ subroutine grid_close_states( o_loc, radius_in, id, num,  &
 type(location_type), intent(in) :: o_loc
 real(r8),            intent(in) :: radius_in
 integer,             intent(in) :: id
-integer,            intent(out) :: num
 integer,            intent(out) :: close_lon_ind(:), close_lat_ind(:), close_vert_ind(:)
 real(r8),           intent(out) :: close_dist(:)
 integer,            intent(out) :: u_pts, v_pts, p_pts, w_pts
@@ -1256,7 +1256,7 @@ real(r8)            :: radius
 real(r8)            :: rad, radn, dxr, dyr, sdx, sdy, gdist
 integer             :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 
-integer             :: i, j, k, n, m
+integer             :: i, j, k, n, m, fis, is, ie, num
 
 logical,  parameter :: debug = .false.  
 
@@ -1350,81 +1350,235 @@ if(debug) write(6,*) 'radius (radian) ',radius
 ! check distance for u points, expand box so that
 ! we don't leave possible points out of check
 
-do k = 1, wrf%dom(id)%bt
-   do j = jymin, jymax
-      do i = max(1,ixmin-1), ixmax+1
+k = 1
+do j = jymin, jymax
+   do i = max(1,ixmin-1), ixmax+1
 
-         gdist = get_dist_wrf(i,j,k, type_u, o_loc, id, x)
-         if ( gdist <= radius ) then
-            num = num + 1
-            if(debug) write(6,*) ' u pt ',num,i,j,k, id,gdist
-            close_lon_ind(num) = i
-            close_lat_ind(num) = j
-            close_vert_ind(num) = k
-            close_dist(num) = gdist
-         end if
+      gdist = get_dist_wrf(i,j,k, type_u, o_loc, id, x)
+      if ( gdist <= radius ) then
+         num = num + 1
+         if(debug) write(6,*) ' u pt ',num,i,j,k, id,gdist
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_vert_ind(num) = k
+         close_dist(num) = gdist
+      end if
 
-      enddo
    enddo
 enddo
 
 u_pts = num
 
-do k = 1, wrf%dom(id)%bt
-   do j = max(1,jymin-1), jymax+1
-      do i = ixmin, ixmax
+if(horiz_dist_only) then
 
-         gdist = get_dist_wrf(i,j,k, type_v, o_loc, id, x)
-         if ( gdist <= radius ) then
-            num = num + 1
-            close_lon_ind(num) = i
-            close_lat_ind(num) = j
-            close_vert_ind(num) = k
-            close_dist(num) = gdist
-            if(debug) write(6,*) ' v pt ',num,i,j,gdist
-         end if
+   fis = 1
+   is = num + 1
+   ie = num + u_pts
+   do k = 2, wrf%dom(id)%bt
+      close_lon_ind(is:ie) = close_lon_ind(fis:num)
+      close_lat_ind(is:ie) = close_lat_ind(fis:num)
+      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_dist(is:ie) = close_dist(fis:num)
+      is = is + u_pts
+      ie = ie + u_pts
+   enddo
+
+   num = num + u_pts*(wrf%dom(id)%bt - 1)
+
+else
+
+   do k = 2, wrf%dom(id)%bt
+      do j = jymin, jymax
+         do i = max(1,ixmin-1), ixmax+1
+
+            gdist = get_dist_wrf(i,j,k, type_u, o_loc, id, x)
+            if ( gdist <= radius ) then
+               num = num + 1
+               if(debug) write(6,*) ' u pt ',num,i,j,k, id,gdist
+               close_lon_ind(num) = i
+               close_lat_ind(num) = j
+               close_vert_ind(num) = k
+               close_dist(num) = gdist
+            end if
+
+         enddo
       enddo
+   enddo
+
+endif
+
+u_pts = num
+
+k = 1
+do j = max(1,jymin-1), jymax+1
+   do i = ixmin, ixmax
+
+      gdist = get_dist_wrf(i,j,k, type_v, o_loc, id, x)
+      if ( gdist <= radius ) then
+         num = num + 1
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_vert_ind(num) = k
+         close_dist(num) = gdist
+         if(debug) write(6,*) ' v pt ',num,i,j,gdist
+      end if
    enddo
 enddo
 
 v_pts = num - u_pts
 
-do k = 1, wrf%dom(id)%bts
-   do j = jymin, jymax
-      do i = ixmin, ixmax
+if(horiz_dist_only) then
 
-         gdist = get_dist_wrf(i,j,k, type_w, o_loc, id, x)
-         if ( gdist <= radius ) then
-            num = num + 1
-            close_lon_ind(num) = i
-            close_lat_ind(num) = j
-            close_vert_ind(num) = k
-            close_dist(num) = gdist
-            if(debug) write(6,*) ' w pt ',num,i,j,gdist
-         end if
+   fis = u_pts + 1
+   is = num + 1
+   ie = num + v_pts
+   do k = 2, wrf%dom(id)%bt
+      close_lon_ind(is:ie) = close_lon_ind(fis:num)
+      close_lat_ind(is:ie) = close_lat_ind(fis:num)
+      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_dist(is:ie) = close_dist(fis:num)
+      is = is + v_pts
+      ie = ie + v_pts
+   enddo
+
+   num = num + v_pts*(wrf%dom(id)%bt - 1)
+
+else
+
+   do k = 2, wrf%dom(id)%bt
+      do j = max(1,jymin-1), jymax+1
+         do i = ixmin, ixmax
+
+            gdist = get_dist_wrf(i,j,k, type_v, o_loc, id, x)
+            if ( gdist <= radius ) then
+               num = num + 1
+               close_lon_ind(num) = i
+               close_lat_ind(num) = j
+               close_vert_ind(num) = k
+               close_dist(num) = gdist
+               if(debug) write(6,*) ' v pt ',num,i,j,gdist
+            end if
+         enddo
       enddo
+   enddo
+
+endif
+
+v_pts = num - u_pts
+
+k = 1
+do j = jymin, jymax
+   do i = ixmin, ixmax
+
+      gdist = get_dist_wrf(i,j,k, type_w, o_loc, id, x)
+      if ( gdist <= radius ) then
+         num = num + 1
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_vert_ind(num) = k
+         close_dist(num) = gdist
+         if(debug) write(6,*) ' w pt ',num,i,j,gdist
+      end if
    enddo
 enddo
 
 w_pts = num - u_pts - v_pts
 
-do k = 1, wrf%dom(id)%bt
-   do j = jymin, jymax
-      do i = ixmin, ixmax
+if(horiz_dist_only) then
 
-         gdist = get_dist_wrf(i,j,k, type_t, o_loc, id, x)
-         if ( gdist <= radius ) then
-            num = num + 1
-            close_lon_ind(num) = i
-            close_lat_ind(num) = j
-            close_vert_ind(num) = k
-            close_dist(num) = gdist
-            if(debug) write(6,*) ' p pt ',num,i,j,gdist
-         end if
+   fis = u_pts + v_pts + 1
+   is = num + 1
+   ie = num + w_pts
+   do k = 2, wrf%dom(id)%bts
+      close_lon_ind(is:ie) = close_lon_ind(fis:num)
+      close_lat_ind(is:ie) = close_lat_ind(fis:num)
+      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_dist(is:ie) = close_dist(fis:num)
+      is = is + w_pts
+      ie = ie + w_pts
+   enddo
 
+   num = num + w_pts*(wrf%dom(id)%bts - 1)
+
+else
+
+   do k = 2, wrf%dom(id)%bts
+      do j = jymin, jymax
+         do i = ixmin, ixmax
+
+            gdist = get_dist_wrf(i,j,k, type_w, o_loc, id, x)
+            if ( gdist <= radius ) then
+               num = num + 1
+               close_lon_ind(num) = i
+               close_lat_ind(num) = j
+               close_vert_ind(num) = k
+               close_dist(num) = gdist
+               if(debug) write(6,*) ' w pt ',num,i,j,gdist
+            end if
+         enddo
       enddo
    enddo
+
+endif
+
+w_pts = num - u_pts - v_pts
+
+k = 1
+do j = jymin, jymax
+   do i = ixmin, ixmax
+
+      gdist = get_dist_wrf(i,j,k, type_t, o_loc, id, x)
+      if ( gdist <= radius ) then
+         num = num + 1
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_vert_ind(num) = k
+         close_dist(num) = gdist
+         if(debug) write(6,*) ' p pt ',num,i,j,gdist
+      end if
+
+   enddo
 enddo
+
+p_pts = num - u_pts - v_pts - w_pts
+
+if(horiz_dist_only) then
+
+   fis = u_pts + v_pts + w_pts + 1
+   is = num + 1
+   ie = num + p_pts
+   do k = 2, wrf%dom(id)%bt
+      close_lon_ind(is:ie) = close_lon_ind(fis:num)
+      close_lat_ind(is:ie) = close_lat_ind(fis:num)
+      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_dist(is:ie) = close_dist(fis:num)
+      is = is + p_pts
+      ie = ie + p_pts
+   enddo
+
+   num = num + p_pts*(wrf%dom(id)%bt - 1)
+
+else
+
+   do k = 2, wrf%dom(id)%bt
+      do j = jymin, jymax
+         do i = ixmin, ixmax
+
+            gdist = get_dist_wrf(i,j,k, type_t, o_loc, id, x)
+            if ( gdist <= radius ) then
+               num = num + 1
+               close_lon_ind(num) = i
+               close_lat_ind(num) = j
+               close_vert_ind(num) = k
+               close_dist(num) = gdist
+               if(debug) write(6,*) ' p pt ',num,i,j,gdist
+            end if
+
+         enddo
+      enddo
+   enddo
+
+endif
 
 p_pts = num - u_pts - v_pts - w_pts
 
@@ -2247,6 +2401,8 @@ if ( output_state_vector ) then
 
 else
 
+j = 0
+
 do id=1,num_domains
 
    write( idom , '(I1)') id
@@ -2259,7 +2415,7 @@ do id=1,num_domains
    varname = 'U_d0'//idom
    !----------------------------------------------------------------------------
    call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
-   i       = 1
+   i       = j + 1
    j       = i + wrf%dom(id)%wes * wrf%dom(id)%sn * wrf%dom(id)%bt - 1 
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
               trim(adjustl(varname)),i,j,wrf%dom(id)%wes,wrf%dom(id)%sn,wrf%dom(id)%bt 
@@ -2706,56 +2862,6 @@ subroutine Interp_lin_1D(fi1d, n1, z, fo1d)
   endif
 
 end subroutine Interp_lin_1D
-
-!**********************************************
-subroutine Interp_lin_2D(fi2d,n1,n2, x,y, fo2d)
-
-  integer,  intent(in)  :: n1, n2
-  real(r8), intent(in)  :: fi2d(n1,n2)
-  real(r8), intent(in)  :: x, y
-  real(r8), intent(out) :: fo2d
-
-  integer   :: i, j
-  real(r8)  :: dx, dxm, dy, dym
-
-  fo2d = missing_r8
-
-  call toGrid (x,i,dx,dxm)
-  call toGrid (y,j,dy,dym)
-
-  if(i >= 1 .and. i < n1 .and. j >= 1 .and. j < n2) then
-     fo2d = dym*(dxm*fi2d(i,j  ) + dx*fi2d(i+1,j  )) &
-          + dy *(dxm*fi2d(i,j+1) + dx*fi2d(i+1,j+1))
-  endif
-
-end subroutine Interp_lin_2D
-   
-!**********************************************
-
-subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
-
-  integer,  intent(in)  :: n1,n2,n3
-  real(r8), intent(in)  :: fi3d(n1,n2,n3)
-  real(r8), intent(in)  :: x, y, z
-  real(r8), intent(out) :: fo3d
-
-  integer   :: i, j, k
-  real(r8)  :: dx, dxm, dy, dym, dz, dzm
-  real(r8)  :: fiz(n3)
-
-  fo3d = missing_r8
-
-  call toGrid (x,i,dx,dxm)
-  call toGrid (y,j,dy,dym)
-  call toGrid (z,k,dz,dzm)
-
-  if(i >= 1 .and. i < n1 .and. j >= 1 .and. j < n2 .and. k >= 1 .and. k < n3) then
-     fiz(1:n3) = dym*(dxm*fi3d(i, j,   1:n3) + dx *fi3d(i+1 ,j  ,1:n3))&
-          + dy *(dxm*fi3d(i, j+1, 1:n3) + dx *fi3d(i+1, j+1,1:n3))
-     fo3d = dzm*fiz(k) + dz*fiz(k+1)
-  endif
-
-end subroutine Interp_lin_3D
 
 !#######################################################################
 subroutine toGrid (x, j, dx, dxm)
