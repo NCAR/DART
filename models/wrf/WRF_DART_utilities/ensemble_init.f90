@@ -371,6 +371,8 @@ contains
  wrf_a%t = a * wrf_a%t + b * wrf_b%t
  wrf_a%mu = a * wrf_a%mu + b * wrf_b%mu
  wrf_a%mub = a * wrf_a%mub + b * wrf_b%mub
+ wrf_a%tslb = a * wrf_a%tslb + b * wrf_b%tslb
+ wrf_a%tsk = a * wrf_a%tsk + b * wrf_b%tsk
  if(wrf%n_moist > 0) then
     wrf_a%qv = a * wrf_a%qv + b * wrf_b%qv
  endif
