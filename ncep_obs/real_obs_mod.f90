@@ -169,6 +169,9 @@ obsloop:  do i = 1, max_num_obs
 !   obs_kind = obs_prof*10000 + type 
 !   call obs_model_type(obs_kind, model_type)
                                                                                        
+! kdr Shouldn't the values given to obs_kind be defined in some other module
+!     and passed in here?  Then they'd be available to other obs sets.
+!     Pass in as an array, or as separate, mnemonic names (kind_u,...)
     if(obs_prof == 2) obs_kind = 1           ! U
     if(obs_prof == 9) obs_kind = 2           ! V
     if(obs_prof == 3) obs_kind = 3           ! Ps
