@@ -324,10 +324,10 @@ loc = get_location(location)
 ! Multiply by model size assuming domain is [0, 1] cyclic
 loc = model_size * loc
 
-lower_index = int(loc)
+lower_index = int(loc) + 1
 upper_index = lower_index + 1
-if(upper_index > model_size) upper_index = 1
-if(lower_index == 0) lower_index = model_size
+if(lower_index > model_size) lower_index = lower_index - model_size
+if(upper_index > model_size) upper_index = upper_index - model_size
 
 fraction = loc - int(loc)
 model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
