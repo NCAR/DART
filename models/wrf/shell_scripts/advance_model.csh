@@ -33,19 +33,16 @@ cp ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
 
 # Copy the boundary condition file to the temp directory.
-cp /ocotillo1/caya/GEN_TRUTH/wrfbdy_${days}_${secs}_81 wrfbdy_d01
+cp ${PBS_O_WORKDIR}/GEN_TRUTH/wrfbdy_${days}_${secs}_81 wrfbdy_d01
 
 # Copy WRF input namelist to the temp directory.
-ln -s /ocotillo1/caya/GEN_TRUTH/namelist.input_${days}_${secs}_81 namelist.input
+ln -s  ${PBS_O_WORKDIR}/GEN_TRUTH/namelist.input_${days}_${secs}_81 namelist.input
 ln -s  ${PBS_O_WORKDIR}/RRTM_DATA .
 ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 
-echo ".true." >  input_dart_to_wrf
-echo ".false." >  input_wrf_to_dart
-
 # Convert DART to wrfinput
 
-${PBS_O_WORKDIR}/dart_tf_wrf < input_dart_to_wrf >& out.dart_to_wrf
+echo ".true." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
 
 mv wrfinput wrfinput_d01
 
@@ -59,7 +56,7 @@ mv wrfout_d01_000000 wrfinput
 mv dart_wrf_vector dart_wrf_vector.input
 
 # create new input to DART (taken from "wrfinput")
-${PBS_O_WORKDIR}/dart_tf_wrf < input_wrf_to_dart >& out.wrf_to_dart
+echo ".false." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
 
 mv dart_wrf_vector $PBS_O_WORKDIR/assim_model_state_ud$element
 
