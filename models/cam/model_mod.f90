@@ -42,7 +42,7 @@ implicit none
 private
 
 public model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
-   read_cam_init_size, init_model_instance, &
+   read_cam_init_size, init_model_instance, end_model_instance, &
    write_cam_init, get_model_size, static_init_model, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
    init_conditions, init_time, adv_1step, end_model, &
@@ -618,7 +618,19 @@ allocate(var%vars_2d(num_lons, num_lats, n2dflds), &
 
 end subroutine init_model_instance
 
-!----------------------------------------------------------------------
+!#######################################################################
+
+subroutine end_model_instance(var)
+
+! Ends an instance of a cam model state variable
+
+implicit none
+
+type(model_type), intent(inout) :: var
+
+deallocate(var%vars_2d, var%vars_3d, var%tracers)
+
+end subroutine end_model_instance
 
 !#######################################################################
 
@@ -1735,21 +1747,12 @@ if ( output_state_vector ) then
 
 else
 
-!  write(*,*)'FATAL ERROR: CAM:nc_write_model_vars  is not operational.'
-!  write(*,*)'   you should not be here ...'
-!  write(*,*)'model_nml: output_state_vector  MUST be .true.    for now.'
-!  write(*,*)'TJH ... 27 June 2003'
-!  stop
-   
    !----------------------------------------------------------------------------
    ! Fill the variables
    !----------------------------------------------------------------------------
 
-   call init_model_instance(Var)     ! NEED to check for MEMORY LEAK
-                                     ! EXPLICITLY DESTRUCT ????
-                                     ! COMPILER RELEASES AT END OF ROUTINE ????
+   call init_model_instance(Var)     ! Explicity released at end of routine. 
 
-! kdr no size needed   call vector_to_prog_var(statevec, get_model_size(), Var)
    call vector_to_prog_var(statevec,  Var)
    
    TwoDVars : do ifld = 1, 1    ! PS always first? of one?
@@ -1781,6 +1784,8 @@ endif
 write (*,*)'Finished filling variables ...'
 call check(nf90_sync(ncFileID))
 write (*,*)'netCDF file is synched ...'
+
+call end_model_instance(Var)   ! should avoid any memory leaking
 
 contains
 
