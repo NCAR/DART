@@ -35,8 +35,6 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, &
    filter_assim
-use   cov_cutoff_mod, only : comp_cov_factor
-use   reg_factor_mod, only : comp_reg_factor
 use    obs_model_mod, only : get_close_states, get_expected_obs, move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
@@ -60,12 +58,12 @@ type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
-integer :: i, j, k, ind, iunit, io, istatus, days, secs, reg_series_unit
-integer :: time_step_number, num_domains
+integer :: i, j, iunit, io, days, secs, reg_series_unit
+integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: grp_size, grp_bot, grp_top, group
-real(r8) :: reg_factor
+
 real(r8), allocatable :: regress(:), a_returned(:)
 
 integer, allocatable :: keys(:)
@@ -76,23 +74,17 @@ integer :: prior_obs_mean_index, posterior_obs_mean_index
 integer :: prior_obs_spread_index, posterior_obs_spread_index
 
 ! Storage for direct access to ensemble state vectors
-real(r8),        allocatable ::  ens_mean(:), temp_ens(:)
+real(r8),        allocatable :: ens_mean(:), temp_ens(:)
 type(time_type)              :: ens_mean_time, temp_time
 
 ! Storage for use with parallelizable efficient filter
 real(r8), allocatable  :: ens_obs(:, :)
 real(r8), allocatable  :: obs_err_var(:), obs(:)
-real(r8)               :: cov_factor, obs_mean(1), obs_spread(1), qc(1)
+
 character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
 
 logical :: interf_provided
 logical, allocatable :: compute_obs(:)
-
-! Set a reasonable upper bound on number of close states, will be increased if needed
-integer, parameter    :: first_num_close = 100000
-integer               :: num_close_ptr(1)
-integer,  allocatable :: close_ptr(:, :)         ! First element size should be 1
-real(r8), allocatable ::  dist_ptr(:, :)         ! First element size should be 1
 
 logical, allocatable :: my_state(:)
 
@@ -225,17 +217,18 @@ write(*, *) 'starting advance time loop;'
    endif
    ! Get the observational values, error covariance, and input qc value
    call filter_get_obs_info()
-   
-   ! Do prior state space diagnostics and associated quality control
+
+   ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .true., 0, &
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
-   
+
    call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
          num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
          obs_sequence_in_name)
-   ! Do prior state space diagnostic output as required
+
+   ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
 
@@ -418,9 +411,6 @@ write(msgstring, *) 'the ensemble size is ', ens_size
 call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
 allocate( prior_copy_meta_data(ens_size + 2), posterior_copy_meta_data(ens_size + 1), &
    regress(num_groups), a_returned(num_groups))
-
-! Set an initial size for the close state pointers
-allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
 end subroutine filter_alloc_ens_size_storage
 
@@ -653,7 +643,7 @@ real(r8) :: obs_mean(1), obs_spread(1)
 real(r8) :: error, diff_sd, ratio
 type(obs_type) :: observation
 
-! Construnct an observation temporary
+! Construct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
 ens_obs = 0.0
@@ -699,7 +689,7 @@ do j = 1, num_obs_in_set
    if(output_ens_mean) call set_obs_values(observation, obs_mean, ens_mean_index)
    ! If requested output the ensemble spread
    if(output_ens_spread) call set_obs_values(observation, obs_spread, ens_spread_index)
-   
+
    ! Set the qc value, too
    call set_qc(observation, qc(j:j), 1)
 
