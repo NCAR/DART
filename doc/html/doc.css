@@ -15,6 +15,11 @@ h2.indent1{font-size:1.50em; margin-left:0%}
 h3.indent1{font-size:1.25em; margin-left:0%}
 h4.indent1{font-size:1.00em; margin-left:0%}
 
+h1.indent2{font-size:2.00em; margin-left:4%}
+h2.indent2{font-size:1.50em; margin-left:4%}
+h3.indent2{font-size:1.25em; margin-left:4%}
+h4.indent2{font-size:1.00em; margin-left:4%}
+
 div.box   { 
     border:solid; 
     border-width:thin; 
@@ -28,11 +33,26 @@ div.namelist {
     width: 100%;}
 
 div.routine {
-    background-color: rgb(225,225,225);
-    padding: 0.5em;
+    background-color: rgb(240,240,240);
+    padding: 1.0em;
     border: solid;
     border-width: thin;
     width: 100%;}
+
+div.routineIndent1 {
+    background-color: rgb(240,240,240);
+    padding: 1.0em;
+    border: solid;
+    border-width: thin;
+    margin-left: 4%;
+    width: 92%;}
+
+table.indent1 {
+    border: 0;
+    border-width: thin;
+    cellpadding: 1;
+    margin-left: 4%;
+    width: 96%;}
 
 div.type {
     background-color: rgb(225,225,225);
@@ -53,6 +73,23 @@ div.color {
     border: none;
     width: 100%;}
 
+div.unix {
+    background-color: rgb(204,204,204);
+    font-style: typewriter,
+    padding: 1.0em;
+    border: none;
+    margin-left: 4%;
+    width: 96%;}
+
+div.disclaimer {
+    background-color: rgb(240,240,240);
+    font-style: typewriter;
+    font-size:0.75em;
+    padding: 1.0em;
+    border: none;
+    margin-left: 0%;
+    width: 96%;}
+
 p.changed {
     padding-left: 0.2em;
     border-left: solid;
@@ -68,8 +105,8 @@ p.indent1{
     font-weight: normal; }
 
 p.indent2{
-    margin-left: 10%;
-    margin-right: 5%;
+    margin-left: 8%;
+    margin-right: 8%;
     font-weight: normal; }
 
 p.abstract{
@@ -114,10 +151,19 @@ em.code{
     color:blue;
     font-style:typewriter}
 
+em.changed{
+    color:blue; 
+    font-style:typewriter; 
+    background-color: #FFCCFF}
+
 em.call{
     color:blue; 
     font-style:typewriter; 
     font-size:1.5em}
+
+em.input{
+    color:magenta; 
+    font-weight:bold}
 
 em.option{
     color:blue; 
@@ -126,6 +172,10 @@ em.option{
 em.optionalcode{
     color:red; 
     font-style:typewriter}
+
+em.program{
+    color:green; 
+    font-style:italic}
 
 em.file{
     color:green; 
@@ -157,6 +207,10 @@ em.head{
     font-style:normal; 
     font-size:1.2em;}
 
+em.italic{
+    font-style:italic;
+    color:red;}
+
 em{
     font-style:normal;
     color:red;}
@@ -164,3 +218,5 @@ em{
 em.nav{
     font-style:normal;
     color:white;}
+
+# RGB(204,204,204) == "#CCCCCC"
