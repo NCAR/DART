@@ -1343,7 +1343,6 @@ call get_horiz_grid_size (Dynam % Hgrid, TGRID, tnlon, tnlat, .true.)
 call get_horiz_grid_size (Dynam % Hgrid, VGRID, vnlon, vnlat, .true.)
 
 ! Do the t_grid and then the v_grid
-open(unit = 51, file = 'temp_point')
 
 ! Num of close horizontal grid points starts at 0, too
 num = 0
@@ -1357,10 +1356,6 @@ allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 call grid_close_states(o_loc, t_lons, t_lats, tnlon, tnlat, radius, &
    num, lon_ind, lat_ind, close_dist)
 write(*, *) 'back from first grid_close_states num = ', num
-do i = 1, num
-   write(51, 91) t_lons(lon_ind(i)), t_lats(lat_ind(i)), close_dist(i)
-end do
-
 
 ! Compute size of grid storage for full levels
 t_size = tnlon * tnlat
@@ -1395,15 +1390,7 @@ do i = num1, num
    end do
 end do
 
-do i = num1, num
-   write(51, 91) v_lons(lon_ind(i)), v_lats(lat_ind(i)), close_dist(i)
-end do
-
-91       format(1x, 3(f8.4, 3x))
-
 deallocate(lon_ind, lat_ind, close_dist)
-
-close(unit = 51)
 
 end subroutine model_get_close_states
 
