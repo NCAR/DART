@@ -1,3 +1,7 @@
+% Select field to plot (U, V, W, GZ, T, MU, QV, QC, QR)
+
+     field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');
+
 % Get file name of true state file
 fname = 'True_State';
 tlon = getnc(fname, 'west_east');
@@ -13,10 +17,6 @@ state_vec = getnc(fname, 'state');
 itime = input('Input time level: ');
 
 single_state = state_vec(itime, :);
-
-% Select field to plot (U, V, W, GZ, T, MU, QV, QC, QR)
-
-     field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');
 
 % Get level for free atmosphere fields
 if field_num == 6

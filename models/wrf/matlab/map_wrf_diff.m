@@ -88,11 +88,17 @@ field = reshape(field_vec, [nx, ny]);
 %nc=5
 
 %colormap = (prism(nc))
-[C, h] = contourf(field');
+if field_num > 2
+[C, h] = contourf(tlon,tlat,field');
+else
+%[C, h] = contourf(field');
+[C,h] = contour ( field' , [0.5:1:5] );
+hold on
+[Cm,hm] = contour ( field' ,- [0.5:1:5] , 'k:');
+end
 title(plot_title)
 colorbar('vert')
 clabel(C, h);
 
 % Loop for another try
 %map_wrf;
-
