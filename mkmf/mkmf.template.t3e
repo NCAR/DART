@@ -3,9 +3,9 @@
 FC = f90
 LD = f90
 CPPFLAGS = -F
+LIST = -O negmsgs -rs
 FFLAGS = -dp -O2,unroll2
 LDFLAGS = -Wl"-Dpreset=nan;streams=on;permok=yes -Xm $(LIBS)"
-LIST = -O negmsgs -rs
 
 # you should never need to change any lines below.
 
