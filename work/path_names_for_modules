@@ -69,7 +69,7 @@ set TYPES = ../common/types_mod.f90
 
 #set OBS = ../models/null_model/obs/obs_mod.f90
 #set OBS = ../models/lorenz_63/obs/obs_mod.f90
- set OBS = ../models/lorenz_96/obs/linear/obs_mod.f90
+## set OBS = ../models/lorenz_96/obs/linear/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/nonlinear/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/imperfect/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/imperfect_nonlinear/obs_mod.f90
@@ -84,14 +84,14 @@ set TYPES = ../common/types_mod.f90
 # Routines to support assimilation
 #----------------------------------------------------------------------
 
-set         SEQ_OBS = ../seq_obs/seq_obs.f90
-set   CLEAN_SEQ_OBS = ../seq_obs/clean_seq_obs.f90
+#set         SEQ_OBS = ../seq_obs/seq_obs.f90
+#set   CLEAN_SEQ_OBS = ../seq_obs/clean_seq_obs.f90
 
 set      COV_CUTOFF = ../cov_cutoff/cov_cutoff_mod.f90
 set     ASSIM_TOOLS = ../assim_tools/assim_tools_mod.f90
 set       OBS_TOOLS = ../obs_tools/obs_tools_mod.f90
 
-set    LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
+#set    LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
 #set   LOC_AND_DIST = ../loc_and_dist/twod/loc_and_dist_mod.f90
 
 set            SORT = ../sort/sort_mod.f90

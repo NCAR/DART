@@ -7,11 +7,8 @@ location+ types utilities random_seq
 time_manager+ types
 model+ location time_manager types
 assim_model+ location model time_manager types utilities
-loc_and_dist+
-obs_tools+ types
 sort+
-obs+ loc_and_dist model obs_tools random_seq sort types utilities
-assim_tools+ obs random_seq sort types utilities
+assim_tools+ random_seq sort types utilities
 obs_kind+ types
 obs_model+ assim_model location obs_kind types
 obs_def+ assim_model location obs_kind obs_model types

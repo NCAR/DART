@@ -9,7 +9,7 @@ module assim_tools_mod
 ! A variety of operations required by assimilation.
 
 use types_mod
-use obs_mod,        only : num_obs, obs_var, take_obs
+!!!use obs_mod,        only : num_obs, obs_var
 use utilities_mod,  only : file_exist, open_file, check_nml_error, &
                            print_version_number, close_file
 use sort_mod,       only : index_sort
@@ -26,7 +26,7 @@ type (random_seq_type) :: ran_seq, inc_ran_seq
 
 private
 
-public add_noise, read_restart, write_restart, assim_tools_init, &
+public read_restart, write_restart, assim_tools_init, &
    obs_increment, obs_increment2, obs_increment3, obs_increment4, &
    update_from_obs_inc, local_update_from_obs_inc, robust_update_from_obs_inc, &
    obs_inc_index, obs_inc4_index
@@ -94,80 +94,6 @@ write(*, *) 'Correlation cutoff in fast_seq_non_identity_prod is ', cor_cutoff
 
 end subroutine assim_tools_init
 
-
-
-function add_noise(obs)
-!============================================================================
-! function add_noise(obs)
-!
-! Given the perfect set of observations of the system, adds in observational
-! error using the observational error covariance matrix. Current 
-! implementation assumes that the covariance matrix is diagonal and makes
-! direct use of the var array defined in the model obs module.
-!
-! obs(obs_num):		Array of observations of system, h(x)
-! add_noise(num_obs):	Returns observations with observational noise added.
-!---------------------------------------------------------------------------
-
-implicit none
-
-real(r8), intent(in) ::       obs(num_obs)
-real(r8)             :: add_noise(num_obs)
-
-!real(r8) :: c(size(obs, 1), size(obs, 1))
- real(r8) :: var(size(obs, 1))
-!real(r8) :: r(((size(obs, 1) + 1) * (size(obs, 1) + 2)) / 2)
-
-integer :: d, nr, ifail
-integer :: i
-
-! Do we need to initialize the repeatable random gen (added 22 Jan 2001)
-
-if(first_ran_call) then
-   first_ran_call = .false.
-   call init_random_seq(ran_seq)
-end if
-
-d = size(obs, 1)       ! Observational dimension
-
-! CURRENT IMPLEMENTATION ASSUMES NO COVARIANCE
-! Generate random numbers using observational error variance matrix
-
-var = obs_var()
-
-do i = 1, d
-   ! MODIFIED 22 JAN 2001 to ALLOW REPRODUCING OBS SEQUENCES; Modified 14 Feb.
-   ! to allow negative variance to mean don't use this ob.
-
-   if(var(i) < 0.0) then
-      add_noise(i) = obs(i)
-   else
-      add_noise(i) = obs(i) + &
-         sqrt(var(i)) * random_gaussian(ran_seq, 0.0_r8, 1.0_r8)
-   endif
-end do
-
-! STOP here to use diagonal covariance matrix
-if(1 == 1) return
-
-! Need to get the covariance matrix here; not implemented
-
-! Setup call for random number generator for covariance matrix
-!nr = ((d + 1) * (d + 2)) / 2
-!call g05eaf_wrap(obs, d, c, d, dble(0.0), r, nr, ifail)
-!if(ifail /= 0) then 
-!   write(*, *) 'bad return from g05eaf in add_noise, ifail = ', ifail
-!   stop
-!end if
-
-! Now generate a random sample 
-!call g05ezf_wrap(add_noise, d, r, nr, ifail)
-!if(ifail /= 0) then 
-!   write(*, *) 'bad return from g05ezf in add_noise, ifail = ', ifail
-!   stop
-!end if
-
-end function add_noise
 
 
 
