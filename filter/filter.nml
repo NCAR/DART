@@ -22,6 +22,5 @@
    num_groups = 1,
    confidence_slope = 0.0,
    outlier_threshold = -1.0,
-   get_mean_reg = .false.,
-   get_median_reg = .false.  /
+   save_reg_series = .false.  /
 
