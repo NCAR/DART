@@ -1,3 +1,11 @@
+! vars_3d still has order of variables; lon,lev,lat,field in some(?) routines
+!  (use vars_3d as a search tag if I decide to change over to all lon,lat,lev)
+! ARE THEY SEPARATE?
+!  no; Tim's routines call vector_to_prog_var to fill Var, as do mine (write_cam_init)
+!      these are used for P{oste}rior_Diag.nc; don't change until I verify that
+!      assim_model/assim_model_mod.f90 doesn't rely on coordinate order.
+!    do we want to change that to a more standard?  nc_write_model_atts, trans_xxx...?
+
 ! NOVERT marks modifications for fields with no vertical location,
 ! i.e. GWD parameters.
 
@@ -70,6 +78,7 @@ use     location_mod, only : location_type, get_location, set_location, &
 use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P
 !    and maybe KIND_W, KIND_QR, KIND_TD, KIND_VR, KIND_REF, KIND_U10, KIND_V10, 
 !              KIND_T2, KIND_Q2, KIND_TD2
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 
 implicit none
@@ -120,6 +129,10 @@ integer :: model_size, num_lons, num_lats, num_levs
 
 type(time_type) :: Time_step_atmos
 
+! Random sequence and init for pert_model_state
+logical :: first_pert_call = .true.
+type(random_seq_type)   :: random_seq
+
 !----------------------------------------------------------------------
 ! Namelist variables with default values follow
 
@@ -169,15 +182,20 @@ integer , dimension(20) :: which_vert_3d = (/( 1,i=1,20)/)
 ! the  subroutine which sorts state_names?
 ! Yes, use two namelists model_nml_1 and model_nml_2 at future date
 
+! list of fields which trans_pv_sv_pert0 needs to perturb because they're
+! constant valued model parameters and show no spread when start_from_restart = .true.
+character (len=8),dimension(20) :: state_names_pert = (/('        ',i=1,20)/)
+
+
 ! Specify shortest time step that the model will support
 ! This is limited below by CAMs fixed time step but is also impacted
 ! by numerical stability concerns for repeated restarting in leapfrog.
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
 namelist /model_nml/ output_state_vector, model_version, model_config_file, &
-   state_num_0d, state_num_1d, state_num_2d, state_num_3d, &
+   state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d, &
    state_names_0d, state_names_1d, state_names_2d, state_names_3d, &
-                   which_vert_1d,  which_vert_2d,  which_vert_3d, &
+                   which_vert_1d,  which_vert_2d,  which_vert_3d, state_names_pert, &
    highest_obs_pressure_mb, Time_step_seconds, Time_step_days
 
 !----------------------------------------------------------------------
@@ -295,18 +313,20 @@ character(len = *), intent(in) :: file_name
 type(model_type), intent(out) :: var
 
 ! Local workspace
-integer :: i,j,ifld  ! grid and constituent indices
-integer :: plon, plat, plev, num_coord
+integer :: i, j, k, n, m, ifld  ! grid and constituent indices
+integer :: plon, plat, plev, num_coord, coord_order
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
 integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
 integer :: coord_3d(3), coord_2d(2)
+real(r8), allocatable :: temp_3d(:,:,:)
 
 !----------------------------------------------------------------------
 ! read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
-call size_coord(coord_3d,coord_2d)
+call size_coord(coord_3d,coord_2d, coord_order)
+allocate (temp_3d(coord_3d(1),coord_3d(2),coord_3d(3)))
 
 ! read CAM 'initial' file fields desired
 
@@ -354,10 +374,27 @@ do i=1, state_num_3d
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 4D; lon, lev, lat, TIME(=1) 
-   call check(nf90_get_var(ncfileid, ncfldid, var%vars_3d(:, :, :, i) &
+!                     or; lon, lat, lev, TIME
+   call check(nf90_get_var(ncfileid, ncfldid, temp_3d  &
              ,start=(/1,1,1,1/) ,count=(/coord_3d(1), coord_3d(2), coord_3d(3),1/) ))
+! read into dummy variable, then repackage depending on coord_order
+! put it into lon,lev,lat order for continuity with Tim's/historical.
+   if (coord_order == 1) then
+!     lon,lev,lat as in original CAM
+      var%vars_3d(:, :, :, i) = temp_3d
+   elseif (coord_order == 2) then
+!     lon,lat,lev as in new CAM
+      do k=1,coord_3d(3)
+      do n=1,coord_3d(2)
+      do m=1,coord_3d(1)
+         var%vars_3d(m,k,n,i) = temp_3d(m,n,k)
+      end do
+      end do
+      end do
+   end if
 end do
 
+deallocate (temp_3d)
 
 contains 
 
@@ -372,20 +409,21 @@ contains
 end subroutine read_cam_init
 
 
-  subroutine size_coord(coord_3d, coord_2d)
+  subroutine size_coord(coord_3d, coord_2d, coord_order)
 !=======================================================================
 ! subroutine size_coord(coord_3d, coord_2d)
 !
 
 ! Figure out which coordinates are lon, lat, lev, based on CAM version
 ! from the namelist, and has form #.#[.#[.#]]
-integer, intent(out) :: coord_3d(3), coord_2d(2)
+integer,           intent(out) :: coord_3d(3), coord_2d(2)
+integer, optional, intent(out) :: coord_order
 
 ! local workspace
 character (len=4)      :: form_version = '(I0)'
 character (len=4)      :: char_version
 integer, dimension(4)  :: int_version = (/(0,i=1,4)/)
-integer                :: part, nchars, tot_chars, i, coord_order
+integer                :: part, nchars, tot_chars, i
 
 
 ! Choose order of coordinates based on CAM version
@@ -470,8 +508,10 @@ do i = 1,nflds
    ierr = nf90_inquire_attribute(ncfileid, ncfldid, trim(att), att_type, nchars, ncattid) 
 
    if (ierr == nf90_noerr) then
+      att_vals(i)(1:64) = '                                                                '
+      att_vals(i)(65:128) = '                                                                '
       call check(nf90_get_att(ncfileid, ncfldid, trim(att) ,att_vals(i) ))
-      WRITE(*,*) ncfldid, cflds(i), trim(att_vals(i))
+      WRITE(*,'(I6,2A)') ncfldid, cflds(i), trim(att_vals(i))
    else
       WRITE(*,*) ncfldid, cflds(i), 'NOT AVAILABLE'
    end if
@@ -631,7 +671,7 @@ end subroutine plevs_cam
 type(model_type), intent(in) :: var
 real(r8), intent(out) :: x(:)
 
-integer :: i, j, k, nf, nt, indx
+integer :: i, j, k, nf, nt, indx, coord_3d(3), coord_2d(2), coord_order
 character(len=129) :: errstring
 
 ! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
@@ -643,6 +683,9 @@ if (state_num_0d .ne. 0 .or. state_num_1d .ne. 0) then
    call error_handler(E_ERR, 'prog_var_to_vector', errstring, source, revision, revdate)
 endif
 
+! vars_3d; need this if rearranging coordinates here (?)
+! Get order of coordinates to be consistent with read/write_cam_init
+! call size_coord(coord_3d, coord_2d, coord_order)
 
 ! Start copying fields to straight vector
 indx = 0
@@ -716,14 +759,14 @@ do nf = 1, state_num_0d
 end do
 
 do i = 1, num_lons
-! 1d arrays
-! FIX for flexible dimension; move out of this loop?
+!  1d arrays
+!  FIX for flexible dimension; move out of this loop?
    do nf = 1, state_num_1d
       indx = indx + 1
       var%vars_1d(i, nf) = x(indx)
    end do
    do j = 1, num_lats
-! Surface pressure and other 2d fields 
+!  Surface pressure and other 2d fields 
       do nf = 1, state_num_2d
          indx = indx + 1
          var%vars_2d(i, j, nf) = x(indx)
@@ -758,14 +801,16 @@ end subroutine vector_to_prog_var
 character (len = *), intent(in) :: file_name
 type(model_type), intent(in) :: var
 
-integer ifld, ncfileid, ncfldid
-integer :: coord_3d(3), coord_2d(2)
+integer k, n, m, ifld, ncfileid, ncfldid
+integer :: coord_3d(3), coord_2d(2), coord_order
+real(r8), allocatable :: temp_3d(:,:,:)
 
 ! Read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
-
+ 
 ! Figure out coordinate sizes based on CAM version
-call size_coord(coord_3d,coord_2d)
+call size_coord(coord_3d, coord_2d, coord_order)
+allocate (temp_3d(coord_3d(1),coord_3d(2),coord_3d(3)))
 
 ifld = 0
 ! 0d fields are first
@@ -799,11 +844,27 @@ end do
 ! 3d fields
 do i = 1, state_num_3d
    ifld = ifld + 1
+!  repackage depending on coord_order then write the dummy variable
+!  put it into lon,lev,lat order for continuity with Tim's/historical.
+   if (coord_order == 1) then
+!     lon,lev,lat as in original CAM
+      temp_3d = var%vars_3d(:, :, :, i)
+   else if (coord_order == 2) then
+!     lon,lat,lev as in new CAM
+      do k=1,coord_3d(3)
+      do n=1,coord_3d(2)
+      do m=1,coord_3d(1)
+         temp_3d(m,n,k) = var%vars_3d(m,k,n,i)
+      end do
+      end do
+      end do
+   end if
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, var%vars_3d(:,:,:,i) &
+   call check(nf90_put_var(ncfileid, ncfldid, temp_3d &
              ,start=(/1,1,1,1/) ,count=(/coord_3d(1), coord_3d(2), coord_3d(3), 1/) ))
 end do
 
+deallocate (temp_3d)
 call check(nf90_close(ncfileid))
 
 contains 
@@ -871,10 +932,8 @@ else
    write(logfileunit, '(A)') 'WARNING; input.nml not available for read of model_nml'
 endif
 
-! Record the namelist values used for the run ...
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+! Record the namelist values 
 write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
 
 ! Get num lons, lats and levs from netcdf and put in global storage
 call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)
@@ -909,7 +968,7 @@ call read_cam_scalar(P0, 'P0      ')    ! thats a p-zero
 write(*, *) 'CAM size initialized as ', model_size
 
 ! CAM3 subroutine to order the state vector parts into cflds 
-nflds   = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
+nflds = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
 ! # fields to read
 allocate (cflds(nflds))
 call order_state_fields (cflds, nflds)
@@ -1240,7 +1299,7 @@ call plevs_cam (1, 1, ps, pfull)
 
 ! Interpolate in vertical to get two bounding levels
 !if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 .and. pressure > 90000.) &
-!write(*, *)' pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
+!   write(*, *)'    pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
 
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
    istatus = 1
@@ -1350,8 +1409,8 @@ else
    istatus = 1
    val = 0.
    return
-endif
-   
+end if
+
 val = x(indx)
 
 
@@ -1503,6 +1562,24 @@ do i = 1, num
       endif
 
       t_dist = get_dist(s_loc, o_loc)
+
+! kdr
+! reduce influence of obs on points obove 150 hPa, which is cap of obs too
+! linear with pressure
+! ERROR; PS model points have no m_press, so they may be included in this;
+!        add which_vert condition
+      if (which_vert == 1 .and. m_press < (highest_obs_pressure_mb*100._r8)) then
+!         WRITE(*,*) 'model_get_close_states; increasing t_dist from ',t_dist
+         t_dist = t_dist / (m_press/(highest_obs_pressure_mb*100._r8))
+!         WRITE(*,'(2(A,F10.4),A,3F10.4)') '   to ',t_dist,' for m_press = ',m_press, &
+!                    ' and o_loc = ',(loc_array(i),i=1,3)
+!         if (t_dist > radius) WRITE(*,*) '   Point ',col_base_index+j,' should be excluded'
+      endif
+! kdr end
+
+! radius is 2x cutoff 
+! These distances are passed through, so recomputation without the tapering is not a problem.
+! They're used in cov_cutoff/cov_cutoff_mod.f90.
 
       if(t_dist < radius) then
          nfound = nfound + 1
@@ -2065,6 +2142,7 @@ else
    ThreeDVars : do i = 1,state_num_3d
       ifld = ifld + 1
       call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+! changing to lon,lat,lev might cause P{oste}rior_Diag.nc files to be different
       call check(nf90_put_var( ncFileID, ncfldid, Var%vars_3d(:,:,:,i), &
                  start=(/ 1,1,1,copyindex,timeindex /), &
                  count=(/num_lons,num_levs,num_lats,1,1/) ))
@@ -2173,9 +2251,8 @@ end if
 end function get_closest_lon_index
 
 
-
-
   subroutine pert_model_state(state, pert_state, interf_provided)
+!       call pert_model_state(ens_mean, temp_ens, interf_provided)
 !=======================================================================
 ! subroutine pert_model_state(state, pert_state, interf_provided)
 !
@@ -2183,11 +2260,39 @@ end function get_closest_lon_index
 ! Returning interf_provided means go ahead and do this with uniform
 ! small independent perturbations.
 
-real(r8),  intent(in) :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
+! added to give each ens member a different sequence when perturbing model parameter fields
 
-interf_provided = .false.
+real(r8), intent(in)    :: state(:)
+real(r8), intent(out)   :: pert_state(:)
+logical,  intent(out)   :: interf_provided
+
+integer                 :: i, variable_type
+type(location_type)     :: temp_loc
+
+! An interface is provided
+interf_provided = .true.
+
+! If first call initialize random sequence
+if(first_pert_call) then 
+   call init_random_seq(random_seq)
+   first_pert_call = .false.
+endif
+
+! UPGRADE; there's a namelist variable, state_names_pert, which can be used to 
+!          select fields for initial perturbation, instead of hard-coding
+!          Using this in sv space would require a loop over state_names_pert entries
+!          for each sv element, with a query inside about whether it matched variable_type.
+!          This eliminates need to recompile codes when different fields will be perturbed.
+!          See also model_mod_gwd.f90 for doing this in model space.
+
+do i = 1, get_model_size()
+   call get_state_meta_data(i, temp_loc, variable_type)
+   if(variable_type == TYPE_U .or. variable_type == TYPE_V .or. variable_type == TYPE_T) then
+      pert_state(i) = random_gaussian(random_seq, state(i), 0.5_r8) 
+   else
+      pert_state(i) = state(i)
+   endif
+end do
 
 end subroutine pert_model_state
 
