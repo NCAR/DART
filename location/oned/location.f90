@@ -11,6 +11,7 @@ module location_mod
 
 use types_mod
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use utilities_mod, only : error_mesg
 
 private
 
@@ -27,9 +28,9 @@ logical :: ran_seq_init = .false.
 
 contains
 
-!----------------------------------------------------------------------------
 
 function get_dist(loc1, loc2)
+!----------------------------------------------------------------------------
 
 implicit none
 
@@ -42,10 +43,10 @@ if(get_dist > 0.5_r8) get_dist = 1.0_r8 - get_dist
 
 end function get_dist
 
-!----------------------------------------------------------------------------
 
 function set_location(x)
-
+!----------------------------------------------------------------------------
+!
 ! Given a location type and a double precision value between 0 and 1
 ! puts this value into the location.
 

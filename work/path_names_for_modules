@@ -31,7 +31,8 @@ else if( `hostname` == "longs" ) then
 else
 
    set DEFAULT_COMPILE = 'pgf90 -c '
-   set FINAL_COMMAND = 'f90 -bd,$1 -o $1 $LINK_OPTS'
+   set FINAL_COMMAND = 'pgf90 -o $1 *.o'
+#   set FINAL_COMMAND = 'f90 -bd,$1 -o $1 $LINK_OPTS'
    set LINK_OPTS    = "-L/usr/local/lib -lnag -lnetcdf -F77"
 
 endif
@@ -164,6 +165,8 @@ set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
 set CREATE_OBS_DEF = ../obs_sequence/create_obs_def.f90
 set FILTER = ../obs_sequence/filter.f90
 set PERFECT_MODEL_OBS = ../obs_sequence/perfect_model_obs.f90
+set RMS_DIAG = ../obs_sequence/rms_diag.f90
+set POINTER_TEST = ../obs_sequence/pointer_test.f90
 
 #======================================================================
 # END of      path_names_for_modules

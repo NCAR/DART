@@ -8,10 +8,12 @@ module assim_model_mod
 !
 
 ! NEED TO ADD ON ONLY CLAUSES
-use types_mod
-use location_mod
+use location_mod, only : location_type, write_location, set_location, get_dist, &
+   read_location, get_location
+! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod
-use utilities_mod
+use utilities_mod, only : get_unit
+use types_mod
 
 private
 
@@ -19,7 +21,8 @@ public initialize_assim_model, init_diag_output, get_model_size, get_closest_sta
    get_initial_condition, get_state_meta_data, get_close_states, get_num_close_states, &
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
-   output_diagnostics, end_assim_model, assim_model_type
+   output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
+   get_diag_input_copy_meta_data
 
 integer,  parameter :: model_size =   40
 real(r8), parameter ::    forcing = 8.00_r8
@@ -30,17 +33,12 @@ real(r8), parameter ::    delta_t = 0.05_r8
 type assim_model_type
    private
    real(r8) :: state_vector(model_size)
+! Need to change to pointer to do more efficient pointer work in assim
+!!!   real(r8), pointer :: state_vector(:)
    type(time_type) :: time
 end type assim_model_type
 
-logical :: output_init = .FALSE.
-
-! Define output indices for diagnostics
-
-integer :: diag_output_index(9)
-
 ! Define the location of the state variables in module storage
-
 type(location_type) :: state_loc(model_size)
 
 type(time_type) :: time_step
@@ -105,23 +103,109 @@ function init_diag_output(file_name, global_meta_data, &
 ! for now just opens file and dumps stuff. A file_id is returned which
 ! is simply implemented as an integer unit number for now. 
 
+! NOTE: Almost all of this output plus many other things can go in a 
+! general model independent tool kit to avoid the burden of creating
+! assim_model stuff.
+
 implicit none
 
 integer :: init_diag_output
-character(len=*), intent(in) :: file_name
-character, intent(in) :: global_meta_data(:)
+character(len = *), intent(in) :: file_name, global_meta_data
 integer, intent(in) :: copies_of_field_per_time
-character, intent(in) :: meta_data_per_copy(:, :)
+character(len = *), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 
 integer :: i
 
-init_diag_output = open_file(file_name)
-write(init_diag_output) global_meta_data
+init_diag_output = get_unit()
+open(unit = init_diag_output, file = file_name)
+!!!init_diag_output = open_file(file_name)
+write(init_diag_output, *) global_meta_data
+
+! Write the model size
+write(init_diag_output, *) model_size
+
+! Write number of copies of field per time plus the meta data per copy
+write(init_diag_output, *) copies_of_field_per_time
 do i = 1, copies_of_field_per_time
-   write(init_diag_output, *) i, meta_data_per_copy(:, i)
+   write(init_diag_output, *) i, meta_data_per_copy(i)
+end do
+
+! Will need other metadata, too; Could be as simple as writing locations
+write(init_diag_output, *) 'locat'
+do i = 1, model_size
+   call write_location(init_diag_output, state_loc(i))
 end do
 
 end function init_diag_output
+
+
+
+function init_diag_input(file_name, global_meta_data, model_size, copies_of_field_per_time)
+!--------------------------------------------------------------------------
+!
+! Initializes a model state diagnostic file for input. A file id is
+! returned which for now is just an integer unit number.
+
+implicit none
+
+integer :: init_diag_input
+character(len = *), intent(in) :: file_name
+character(len = *), intent(out) ::  global_meta_data
+integer, intent(out) :: model_size, copies_of_field_per_time
+
+integer :: i
+
+init_diag_input = get_unit()
+open(unit = init_diag_input, file = file_name)
+read(init_diag_input, *) global_meta_data
+
+! Read the model size
+read(init_diag_input, *) model_size
+
+! Read the number of copies of field per time
+read(init_diag_input, *) copies_of_field_per_time
+
+end function init_diag_input
+
+
+
+subroutine get_diag_input_copy_meta_data(file_id, model_size_out, num_copies, &
+   location, meta_data_per_copy)
+!-------------------------------------------------------------------------
+!
+! Returns the meta data associated with each copy of data in
+! a diagnostic input file. Should be called immediately after 
+! function init_diag_input.
+
+implicit none
+
+integer, intent(in) :: file_id, model_size_out, num_copies
+type(location_type), intent(out) :: location(model_size_out)
+character(len = *) :: meta_data_per_copy(num_copies)
+
+character(len=129) :: header
+integer :: i, j
+
+! Should have space checks, etc here
+! Read the meta data associated with each copy
+do i = 1, num_copies
+   read(file_id, *) j, meta_data_per_copy(i)
+end do
+
+! Will need other metadata, too; Could be as simple as writing locations
+read(file_id, *) header
+if(header /= 'locat') then
+   write(*, *) 'Error: get_diag_input_copy_meta_data expected to read "locat"'
+   stop
+endif
+
+! Read in the locations
+do i = 1, model_size_out
+   location(i) =  read_location(file_id)
+end do
+
+end subroutine get_diag_input_copy_meta_data
+
 
 
 
@@ -494,22 +578,64 @@ end function read_state_restart
 
 
 
-subroutine output_diagnostics(file_id, state_vector, time, copy_index)
+subroutine output_diagnostics(file_id, state, copy_index)
 !-------------------------------------------------------------------
 !
 ! Outputs a copy of the state vector to the file (currently just an
 ! integer unit number), the time, and an optional index saying which
 ! copy of the metadata this state is associated with.
+! Need to make a much better coordinated facility for doing this,
+! providing buffering, insuring that ordering is appropriate for
+! time (and copy), etc. For now, this just writes what it receives
+! with a header stating time and copy_index.
 
 integer, intent(in) :: file_id
-real(r8), intent(in) :: state_vector(:)
-type(time_type), intent(in) :: time
+type(assim_model_type), intent(in) :: state
 integer, optional, intent(in) :: copy_index
 
-! Stub for now
+! Write the time and copy_index
+call write_time(file_id, state%time)
+write(file_id, *) 'fcopy '
+write(file_id, *) copy_index
 
+! Write the data, unformatted for now
+write(file_id, *) state%state_vector
 
 end subroutine output_diagnostics
+
+
+
+subroutine input_diagnostics(file_id, state, copy_index)
+!------------------------------------------------------------------
+!
+! Reads in diagnostic state output from file_id for copy_index
+! copy. Need to make this all more rigorously enforced.
+
+implicit none
+
+integer, intent(in) :: file_id
+! MAYBE SHOULDN'T use assim model type here, but just state and time ?
+type(assim_model_type), intent(out) :: state
+integer, intent(out) :: copy_index
+
+character*5 :: header
+
+! Read in the time
+state%time = read_time(file_id)
+
+! Read in the copy index
+read(file_id, *) header
+if(header /= 'fcopy')  then
+   write(*, *) 'Error: expected "copy" in input_diagnostics'
+   stop
+endif
+
+read(file_id, *) copy_index
+
+! Read in the state vector
+read(file_id, *) state%state_vector
+
+end subroutine input_diagnostics
 
 
 

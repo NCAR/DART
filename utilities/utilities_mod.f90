@@ -40,6 +40,8 @@ implicit none
    logical, private :: do_nml_error_init = .true.
    private  nml_error_init
 
+integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
+
 
 contains
 

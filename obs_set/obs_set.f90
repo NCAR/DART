@@ -14,10 +14,11 @@ use time_manager_mod, only : time_type, read_time, write_time
 private
 
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
-   set_obs_values, set_obs_missing, set_obs_set_time, &
+   set_obs_values, set_single_obs_value, set_obs_missing, set_obs_set_time, &
    contains_data, obs_value_missing, &
    read_obs_set, write_obs_set, obs_set_copy, get_num_obs, &
-   get_obs_def_index, inc_num_obs_copies, read_obs_set_time
+   get_obs_def_index, inc_num_obs_copies, read_obs_set_time, &
+   obs_set_time_copy
 
 type obs_set_type
    private
@@ -112,6 +113,33 @@ set_out%obs = set_in%obs
 set_out%missing = set_in%missing
 
 end subroutine obs_set_copy
+
+
+
+
+subroutine obs_set_time_copy(set_out, set_in)
+!-----------------------------------------------------------
+!
+! Copy just the definition (time and set_def portion) of an 
+! obs set. This could really have been set as an intermediate
+! object (the obs_set part). NEED TO WATCH TERMINOLOGY.
+
+implicit none
+
+type(obs_set_type), intent(out) :: set_out
+type(obs_set_type), intent(in) :: set_in
+
+! Set the sizes, num_copies is reset to 0
+set_out%num_copies = 0
+set_out%num_obs = set_in%num_obs
+set_out%time = set_in%time
+set_out%def_index = set_in%def_index
+
+! Allocate storage for obs and missing
+allocate(set_out%obs(set_in%num_obs, 0), &
+   set_out%missing(set_in%num_obs, 0))
+
+end subroutine obs_set_time_copy
 
 
 
@@ -244,24 +272,24 @@ end subroutine get_obs_values
 
 
 
-subroutine set_obs_values(set, obs, index_in)
+subroutine set_obs_values(set, obs, copy_in)
 !--------------------------------------------------------------------
 !
-! Sets the obs values; index is optional with default 1.
+! Sets the obs values; copy_in is optional with default 1.
 
 implicit none
 
 type(obs_set_type), intent(inout) :: set
 real(r8), intent(in) :: obs(:)
-integer, optional, intent(in) :: index_in
+integer, optional, intent(in) :: copy_in
 
-integer :: index
+integer :: copy
 
-! Get the appropriate index
-index = 1
-if(present(index_in)) index = index_in
-if(index < 1 .or. index > set%num_copies) then
-   write(*, *) 'Error: Out of range index in init_obs_set'
+! Get the appropriate copycopy
+copy = 1
+if(present(copy_in)) copy = copy_in
+if(copy < 1 .or. copy > set%num_copies) then
+   write(*, *) 'Error: Out of range copy in set_obs_values'
    stop
 endif
 
@@ -272,9 +300,45 @@ if(size(obs) /= set%num_obs) then
 endif
 
 !Copy the obs
-set%obs(:, index) = obs
+set%obs(:, copy) = obs
 
 end subroutine set_obs_values
+
+
+
+
+subroutine set_single_obs_value(set, num_obs, obs, copy_in)
+!--------------------------------------------------------------------
+!
+! Sets the obs value number num_obs;  copy_in is optional with default 1.
+
+implicit none
+
+type(obs_set_type), intent(inout) :: set
+integer, intent(in) :: num_obs
+real(r8), intent(in) :: obs
+integer, optional, intent(in) :: copy_in
+
+integer :: copy
+
+! Get the appropriate copy
+copy = 1
+if(present(copy_in)) copy = copy_in 
+if(copy < 1 .or. copy > set%num_copies) then
+   write(*, *) 'Error: Out of range copy in set_single_obs_value'
+   stop
+endif
+
+! Make sure the obs index is legal
+if(num_obs > set%num_obs .or. num_obs < 1) then
+   write(*, *) 'Error: num_obs wrong size in set_single_obs_value'
+   stop
+endif
+
+! Copy the obs
+set%obs(num_obs, copy) = obs
+
+end subroutine set_single_obs_value
 
 
 

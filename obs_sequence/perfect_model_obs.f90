@@ -30,7 +30,7 @@ use utilities_mod, only : open_file
 use assim_model_mod, only : assim_model_type, initialize_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
-   get_model_time
+   get_model_time, init_diag_output, output_diagnostics
 use random_seq_mod, only : random_seq_type, init_random_seq, &
    random_gaussian
 
@@ -45,7 +45,7 @@ type(obs_set_type) :: obs_set
 type(time_type) :: time, time2
 type(random_seq_type) :: random_seq
 
-integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set
+integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set, state_unit
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer :: model_size, num_obs_sets
@@ -68,6 +68,9 @@ model_size = get_model_size()
 
 ! Get the initial condition
 x = get_initial_condition()
+
+! Set up output of truth for state
+state_unit = init_diag_output('true_state', 'true state from control', 1, (/'true state'/))
 
 ! Advance for a long time (5 days) to get things started?
 time = set_time(0, 5)
@@ -98,6 +101,9 @@ do i = 1, num_obs_sets
    time2 = get_closest_state_time_to(x, time)
 ! Advance the state to this time
    x = advance_state(x, time2)
+
+! Output the true state
+   call output_diagnostics(state_unit, x, 1)
 
 ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)

@@ -10,8 +10,10 @@ module obs_sequence_mod
 use types_mod
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
    obs_set_copy, get_num_obs, get_obs_def_index, read_obs_set_time, &
+   obs_set_time_copy, &
    os_get_obs_values => get_obs_values, &
    os_set_obs_values => set_obs_values, &
+   os_set_single_obs_value => set_single_obs_value, &
    os_inc_num_obs_copies => inc_num_obs_copies
 use set_def_list_mod, only : set_def_list_type, &
    read_set_def_list, write_set_def_list, set_def_list_copy, &
@@ -31,7 +33,8 @@ public obs_sequence_type, init_obs_sequence, &
    get_obs_sequence_time, get_num_obs_in_set, &
    get_expected_obs, get_diag_obs_err_cov, get_obs_values, &
    inc_num_obs_copies, set_obs_values, get_num_close_states, &
-   get_close_states, read_obs_sequence_def
+   get_close_states, read_obs_sequence_def, obs_sequence_def_copy, &
+   set_single_obs_value
 	
 
 type obs_sequence_type 
@@ -110,7 +113,8 @@ seq_out%max_obs_sets = seq_in%max_obs_sets
 seq_out%num_obs_sets = seq_in%num_obs_sets
 
 ! Allocate and copy the meta_data
-allocate(seq_out%copy_meta_data(seq_in%num_copies))
+allocate(seq_out%copy_meta_data(seq_in%num_copies), &
+   seq_out%obs_sets(seq_in%max_obs_sets))
 seq_out%copy_meta_data = seq_in%copy_meta_data
 
 ! Copy the set_def_list
@@ -122,6 +126,39 @@ do i = 1, seq_in%num_obs_sets
 end do
 
 end subroutine obs_sequence_copy
+
+
+
+subroutine obs_sequence_def_copy(seq_out, seq_in)
+!---------------------------------------------------------------------------------
+!
+! Comprehensive copy for obs_sequence_type
+
+implicit none
+
+type(obs_sequence_type), intent(out) :: seq_out
+type(obs_sequence_type), intent(in) :: seq_in
+
+integer :: i
+
+! Copy just the definition part of the sequence setting copies to 0
+seq_out%num_copies = 0
+seq_out%max_obs_sets = seq_in%max_obs_sets
+seq_out%num_obs_sets = seq_in%num_obs_sets
+
+! Allocate the copy metadata space to 0 and the obs space
+allocate(seq_out%copy_meta_data(0), seq_out%obs_sets(seq_in%max_obs_sets))
+
+! Copy the set_def_list
+call set_def_list_copy(seq_out%def_list, seq_in%def_list)
+
+! Copy the obs sets one by one, just the def info
+do i = 1, seq_in%num_obs_sets
+   call obs_set_time_copy(seq_out%obs_sets(i), seq_in%obs_sets(i))
+end do
+
+end subroutine obs_sequence_def_copy
+
 
 
 
@@ -249,6 +286,31 @@ if(present(copy_in)) copy = copy_in
 call os_set_obs_values(seq%obs_sets(index), obs, copy)
 
 end subroutine set_obs_values
+
+
+
+
+subroutine set_single_obs_value(seq, index, num_obs, obs, copy_in)
+!----------------------------------------------------
+!
+! Sets the num_obs obs of the index obs_set in the sequence to the obs input.
+
+implicit none
+
+type(obs_sequence_type), intent(inout) :: seq
+integer, intent(in) :: index, num_obs
+real(r8), intent(in) :: obs
+integer, intent(in), optional :: copy_in
+
+integer :: copy
+
+! Default value for copy is 1
+copy = 1
+if(present(copy_in)) copy = copy_in
+
+call os_set_single_obs_value(seq%obs_sets(index), num_obs, obs, copy)
+
+end subroutine set_single_obs_value
 
 
 
