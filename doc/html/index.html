@@ -83,10 +83,10 @@ chmod g+s `find . -type d`          <FONT color="blue">;# recursively set group 
 <P>I set the group sticky bit on the repository, so everything added to
 the repository will inherit the repository group attributes (including
 ... group). To set the sticky
-bit (assuming the project already has the right attributes): 
+bit in your sandbox (assuming the project already has the right attributes): 
 <PRE>
 chgrp -R cgddart DART
-chmod -R g+s DART</PRE>
+chmod g+s `find DART -type d`</PRE>
 
 <P><B>setting the sticky bit for your personal sandbox is a good thing.</B>
 
