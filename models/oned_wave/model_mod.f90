@@ -310,7 +310,7 @@ end function barot_to_dp
 
 
 
-subroutine model_get_close_states(o_loc, radius, numb, indices, dist)
+subroutine model_get_close_states(o_loc, radius, numb, indices, dist, x)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -321,6 +321,7 @@ type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
 integer, intent(out) :: numb, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (numb = -1 return)
