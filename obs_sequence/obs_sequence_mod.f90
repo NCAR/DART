@@ -889,7 +889,8 @@ endif
 if(write_binary_obs_sequence) then
    write(file_id) seq%num_copies, seq%num_qc, seq%num_obs, seq%max_num_obs
 else
-   write(file_id, *) seq%num_copies, seq%num_qc, seq%num_obs, seq%max_num_obs
+   write(file_id, *) ' num_copies: ',seq%num_copies, ' num_qc: ',     seq%num_qc
+   write(file_id, *) ' num_obs: ',   seq%num_obs,    ' max_num_obs: ',seq%max_num_obs
 endif 
 
 do i = 1, seq%num_copies
@@ -911,11 +912,11 @@ end do
 if(write_binary_obs_sequence) then
    write(file_id) seq%first_time, seq%last_time
 else
-   write(file_id, *) seq%first_time, seq%last_time
+   write(file_id, *) ' first: ',seq%first_time, ' last: ',seq%last_time
 endif
 
-! write(*, *) first_avail_time, last_avail_time
 do i = 1, seq%num_obs
+   write(file_id, *) 'OBS ',seq%obs(i)%key
    call write_obs(seq%obs(i), file_id, seq%num_copies, seq%num_qc)
 end do
 
@@ -935,6 +936,7 @@ subroutine read_obs_seq(file_name, add_copies, add_qc, add_obs, seq)
 ! Be able to increase size at read in time for efficiency
 
 character(len = 129), intent(in) :: file_name
+character(len = 16) label(2)
 integer, intent(in) :: add_copies, add_qc, add_obs
 type(obs_sequence_type), intent(out) :: seq
 
@@ -952,7 +954,8 @@ endif
 if(read_binary_obs_sequence) then
    read(file_id) num_copies, num_qc, num_obs, max_num_obs
 else
-   read(file_id, *) num_copies, num_qc, num_obs, max_num_obs
+   read(file_id, *) label(1), num_copies,label(2), num_qc
+   read(file_id, *) label(1), num_obs,   label(2), max_num_obs
 endif
 
 call init_obs_sequence(seq, num_copies + add_copies, &
@@ -982,14 +985,13 @@ end do
 ! Read the first and last avail_time pointers
 if(read_binary_obs_sequence) then
    read(file_id) seq%first_time, seq%last_time
-   !read(file_id) seq%first_avail_time, seq%last_avail_time
 else
-   read(file_id, *) seq%first_time, seq%last_time
-   !read(file_id, *) seq%first_avail_time, seq%last_avail_time
+   read(file_id, *) label(1),seq%first_time,label(2), seq%last_time
 endif
 
 ! Now read in all the previously defined observations
 do i = 1, num_obs
+   read(file_id,*) label(1)
    call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i))
 ! Also set the key in the obs
    seq%obs(i)%key = i
