@@ -629,8 +629,9 @@ do j = 1, get_num_copies(seq)
       if(index(get_copy_meta_data(seq, j), 'observation') > 0) goto 333
 end do
 ! Falling off end means 'observations' not found; die
-write(*, *) 'Did not find observation copy with metadata "observations"'
-stop
+call error_handler(E_ERR, 'filter_get_obs_info', &
+   'Did not find observation copy with metadata "observations"', &
+   source, revision, revdate)
 
 ! Get the observational values, error covariance, and input qc value
 333 continue
