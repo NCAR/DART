@@ -25,10 +25,11 @@ rm -rf $temp_dir
 mkdir  $temp_dir
 cd     $temp_dir
 
-# Copy the initial condition file to the temp directory
+# Copy or link the required files to the temp directory
 
-cp ${PBS_O_WORKDIR}/wrfinput_d0? .
-mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector
+mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
+cp ${PBS_O_WORKDIR}/wrfinput_d0? . 
+                   # Provides auxilliary info not avail. from DART state vector
 ln -s ${PBS_O_WORKDIR}/input.nml .
 
 ln -s  ${PBS_O_WORKDIR}/RRTM_DATA .
@@ -36,6 +37,7 @@ ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
 ln -s  ${PBS_O_WORKDIR}/VEGPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/SOILPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
+# WRF executable [in $ADV_MOD_COMMAND, read from wrf.info] is linked below
 
 ln -s  ${PBS_O_WORKDIR}/wrf.exe .
 
@@ -61,6 +63,7 @@ set wrfkey = `expr $wrfkey \+ $wrfsecs`
 
 # Find all BC's file available and sort them with "keys".
 
+#--1st, check if LBCs are "specified" (in which case wrfbdy files are req'd)
 set SPEC_BC = `grep specified ${PBS_O_WORKDIR}/namelist.input | grep true | cat | wc -l`
 
 if ($SPEC_BC > 0) then
@@ -108,6 +111,8 @@ set END_SEC     = $date[6]
 
 set MY_NUM_DOMAINS    = `head -4 wrf.info | tail -1`
 set ADV_MOD_COMMAND   = `head -5 wrf.info | tail -1`
+
+ln -s  ${PBS_O_WORKDIR}/${ADV_MOD_COMMAND} . # link to WRF executable
 
 if ( `expr $END_YEAR \% 4` == 0 ) then
    set days_in_month[2] = 29
@@ -231,6 +236,9 @@ cat > script.sed << EOF
  end_second                 = ${END_SEC}, ${END_SEC}, ${END_SEC}
  /history_interval/c\
  history_interval           = ${INTERVAL_MIN}, ${INTERVAL_MIN}, ${INTERVAL_MIN}
+#  dart_tf_wrf is expecting only a single time per file
+ /frames_per_outfile/c\
+ frames_per_outfile         = 1, 1, 1,
 EOF
 
  sed -f script.sed \
