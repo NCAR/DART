@@ -84,8 +84,8 @@ contains
    integer :: iunit, io
    logical :: lfile
 
-   character(len= 8) :: date
-   character(len=10) :: time
+   character(len= 8) :: cdate
+   character(len=10) :: ctime
    character(len= 5) :: zone
    integer, dimension(8) :: values
 
@@ -158,7 +158,7 @@ contains
 
          ! Log the run-time 
 
-         call DATE_AND_TIME(date, time, zone, values)
+         call DATE_AND_TIME(cdate, ctime, zone, values)
 
          write(logfileunit,*)
          write(logfileunit,*)'--------------------------------------'
@@ -280,14 +280,14 @@ contains
       character(len=*), optional, intent(in) :: string3
       character(len=*),           intent(in) :: pos
 
-      character(len= 8) :: date
-      character(len=10) :: time
+      character(len= 8) :: cdate
+      character(len=10) :: ctime
       character(len= 5) :: zone
       integer, dimension(8) :: values
 
       if ( .not. module_initialized ) call initialize_utilities
 
-      call DATE_AND_TIME(date, time, zone, values)
+      call DATE_AND_TIME(cdate, ctime, zone, values)
 
       ! check to see if values are valid on this system
 

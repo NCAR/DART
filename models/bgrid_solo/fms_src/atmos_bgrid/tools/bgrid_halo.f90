@@ -356,7 +356,7 @@ contains
 
 !#######################################################################
 
- subroutine clock_init
+ subroutine clock_init()
    id_update3 = mpp_clock_init ('BGRID: update_halo', time_level, &
                                 flags=MPP_CLOCK_SYNC)
    do_clock_init = .false.
