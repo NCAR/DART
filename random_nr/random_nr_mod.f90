@@ -11,6 +11,7 @@ module random_nr_mod
 ! $Author$ 
 !
 
+use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR
 
 implicit none
@@ -27,12 +28,12 @@ revdate  = "$Date$"
 integer, parameter :: m1 = 259200, ia1 = 7141, ic1 = 54773
 integer, parameter :: m2 = 134456, ia2 = 8121, ic2 = 28411
 integer, parameter :: m3 = 243000, ia3 = 4561, ic3 = 51349
-double precision, parameter :: rm1 = 1./m1, rm2 = 1./m2
+real(r8), parameter :: rm1 = 1./m1, rm2 = 1./m2
 
 type random_seq_type
    private
    integer :: ix1, ix2, ix3, iset
-   double precision :: r(97), gset
+   real(r8) :: r(97), gset
 end type random_seq_type
 
 logical, save :: module_initialized = .false.
@@ -76,7 +77,7 @@ s%ix3 = mod(s%ix1, m3)
 do j = 1, 97
    s%ix1 = mod(ia1*s%ix1 + ic1, m1)
    s%ix2 = mod(ia2*s%ix2 + ic2, m2)
-   s%r(j) = (dble(s%ix1) + dble(s%ix2)*rm2)*rm1
+   s%r(j) = (s%ix1 + s%ix2*rm2)*rm1
 end do
 
 ! Initialize the value needed for Gaussian efficiency
@@ -92,7 +93,7 @@ function ran1(s)
 implicit none
 
 type(random_seq_type), intent(inout) :: s
-double precision :: ran1
+real(r8) :: ran1
 
 integer :: j
 
@@ -108,7 +109,7 @@ if(j > 97 .or. j < 1) then
       call error_handler(E_ERR,' ran1', 'Fatal error in random number', source, revision, revdate)
 endif
 ran1 = s%r(j)
-s%r(j) = (dble(s%ix1) + dble(s%ix2)*rm2)*rm1
+s%r(j) = (s%ix1 + s%ix2*rm2)*rm1
 return
 end function ran1
 
@@ -121,9 +122,9 @@ function gasdev(s)
 implicit none
 
 type(random_seq_type), intent(inout) :: s
-double precision :: gasdev
+real(r8) :: gasdev
 
-double precision :: v1, v2, r, fac
+real(r8) :: v1, v2, r, fac
 
 if ( .not. module_initialized ) call initialize_module
 

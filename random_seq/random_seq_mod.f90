@@ -10,7 +10,7 @@ module random_seq_mod
 ! $Date$ 
 ! $Author$ 
 
-
+use     types_mod, only : r8
 use utilities_mod, only : register_module
 use random_nr_mod, only : random_seq_type, init_ran1, ran1, gasdev
 
@@ -70,7 +70,7 @@ function random_uniform(r)
 implicit none
 
 type(random_seq_type), intent(inout) :: r
-double precision :: random_uniform
+real(r8) :: random_uniform
 
 random_uniform = ran1(r)
 
@@ -83,8 +83,8 @@ function random_gaussian(r, mean, standard_deviation)
 implicit none
 
 type(random_seq_type), intent(inout) :: r
-double precision, intent(in) :: mean, standard_deviation
-double precision :: random_gaussian
+real(r8), intent(in) :: mean, standard_deviation
+real(r8) :: random_gaussian
 
 random_gaussian = gasdev(r) * standard_deviation + mean
 
@@ -97,9 +97,9 @@ subroutine several_random_gaussians(r, mean, standard_deviation, n, rnum)
 implicit none
 
 type(random_seq_type), intent(inout) :: r
-double precision, intent(in) :: mean, standard_deviation
+real(r8), intent(in) :: mean, standard_deviation
 integer, intent(in) :: n
-double precision, intent(out) :: rnum(n)
+real(r8), intent(out) :: rnum(n)
 
 integer :: i
 
@@ -116,10 +116,10 @@ subroutine twod_gaussians(r, mean, cov, rnum)
 implicit none
 
 type(random_seq_type), intent(inout) :: r
-double precision, intent(in) :: mean(2), cov(2, 2)
-double precision, intent(out) :: rnum(2)
+real(r8), intent(in) :: mean(2), cov(2, 2)
+real(r8), intent(out) :: rnum(2)
 
-double precision :: a11, a21, a22, x1, x2
+real(r8) :: a11, a21, a22, x1, x2
 
 ! Use method from Knuth, exercise 13, section 3.4.1 to generate random
 ! numbers with this mean and covariance
