@@ -13,12 +13,12 @@ implicit none
 ! Need to initialize modules used as appropriate
 call initialize_utilities
 !  call register_module(source, revision, revdate)
-call assim_tools_init()
+call assim_tools_init(.true.)
 call static_init_obs_sequence()
 call static_init_assim_model()
 
-write(*, *) 'programm assim region calling async_assim_region'
+write(*, *) 'program assim region calling async_assim_region'
 call async_assim_region('filter_assim_region_in', 'filter_assim_region_out')
-write(*, *) 'programm assim region back from async_assim_region'
+write(*, *) 'program assim region back from async_assim_region'
 
 end program assim_region
