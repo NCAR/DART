@@ -1,4 +1,11 @@
 program test_random_nr
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 ! use random_numerical_recipes_mod, only : random_seq_type, init_ran1, ran1, gasdev
 use random_nr_mod, only : random_seq_type, init_ran1, ran1, gasdev

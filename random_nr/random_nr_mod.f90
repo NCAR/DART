@@ -1,5 +1,12 @@
 ! module random_numerical_recipes_mod
 module random_nr_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 implicit none
 
