@@ -22,7 +22,7 @@ use time_manager_mod, only : time_type,set_time,print_time
 use     location_mod, only : location_type, set_location, get_location,&
                              query_location, get_dist  
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &       
-                             error_handler, E_ERR, logfileunit
+                             error_handler, E_ERR, E_MSG, E_WARN, logfileunit
 ! ROSE Modules
 use params, only : nx, ny, nz, nbcon
  
@@ -122,9 +122,8 @@ integer :: Time_step_seconds, Time_step_days
 integer :: seconds_of_day = 86400
 real(r8) :: d_lat, d_lon
 real(r8) :: z_m
-real(r8) :: dz = 2500._r8, zbot = 17500._r8
+real(r8) :: dz = 2500.0_r8, zbot = 17500.0_r8
 
-!call msetvar()
 
 ! Reading the namelist input
 if(file_exist('rose.nml')) then
@@ -137,6 +136,11 @@ if(file_exist('rose.nml')) then
    call close_file(iunit)
 endif
 
+call error_handler(E_MSG,'static_init_model','rose_nml values are',source,revision,revdate)
+write(logfileunit,nml=rose_nml)
+write(     *     ,nml=rose_nml)
+
+
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
@@ -146,8 +150,13 @@ if(file_exist('input.nml')) then
    end do
    call close_file(iunit)
 else
-   write(logfileunit, '(A)') 'WARNING; input.nml not available for read of model_nml'
+   call error_handler(E_WARN,'static_init_model','rose_nml values are',source,revision,revdate)
 endif
+
+call error_handler(E_MSG,'static_init_model','model_nml values are',source,revision,revdate)
+write(logfileunit,nml=model_nml)
+write(     *     ,nml=model_nml)
+
 
 ! Compute overall model size and put in global storage
 model_size = nx * ny * nz * state_num_3d
@@ -155,7 +164,7 @@ model_size = nx * ny * nz * state_num_3d
 ! Set the model minimum time step from the namelist seconds and days input
 ! ROSE control variable "ntime" specify the number of steps per hour
 
-Time_step_seconds = nint(3600._r8 / real(ntime))
+Time_step_seconds = nint(3600.0_r8 / real(ntime))
 Time_step_days = 0
 write(*, *) 'time step secs days ' , Time_step_seconds, Time_step_days
 if (Time_step_seconds > seconds_of_day) then
@@ -167,13 +176,13 @@ Time_step_ROSE = set_time(Time_step_seconds, Time_step_days)
 call print_time(Time_step_ROSE)
 
 ! lon: long_name = "geographic longitude", units = "degrees" ;
-d_lon = 360._r8/real(nx)
+d_lon = 360.0_r8/real(nx)
 do i = 1, nx
    lons(i) = (i-1)*d_lon
 enddo
 
 ! lat: long_name = "geographic latitude",  units = "degrees" ;
-d_lat = 180._r8/real(ny)
+d_lat = 180.0_r8/real(ny)
 do j = 1, ny
    lats(j) = -90 + d_lat/2. + (j-1)*d_lat
 enddo
@@ -187,7 +196,6 @@ levs(k) = 1013._r8*exp(-z_m/7.e3)   ![hPa]
 enddo
 
 end subroutine static_init_model
-
 
 
 subroutine init_conditions(x)
@@ -505,6 +513,8 @@ integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
+
+integer :: StateVarDimID
 integer :: MemberDimID, TimeDimID
 integer :: lonDimID, latDimID, levDimID
 integer :: lonVarID, latVarID, levVarID
@@ -1183,8 +1193,7 @@ if(file_exist(file_name)) then
                qn1, q_o2, q_n2
    call close_file(iunit)
 else
-   write(logfileunit, '(A)') 'ERROR; "rose_restart.dat" not available'
-   stop
+   call error_handler(E_ERR,'write_ROSE_restart','rose_restart.dat not available',source,revision,revdate)
 endif
 
 un1 = var%vars_3d(:,:,:,1)
@@ -1205,8 +1214,7 @@ if(file_exist(file_name)) then
                 qn1, q_o2, q_n2
    call close_file(iunit)
 else
-   write(logfileunit, '(A)') 'ERROR; "rose_restart.dat" not available'
-   stop
+   call error_handler(E_ERR,'write_ROSE_restart','rose_restart.dat not available',source,revision,revdate)
 endif
 
 end subroutine write_ROSE_restart
@@ -1257,7 +1265,7 @@ if(file_exist(file_name)) then
       
       doy   = mod(dummy_rose(3), 365) 
       utsec = int(gmt_frac * 24.0 * 3600.)
-                                                                                                                  
+                                                                                                              
    else
 
       read(iunit) iyear, doy, utsec, year0, day0, ut0, tref, & 
@@ -1268,9 +1276,7 @@ if(file_exist(file_name)) then
 
    call close_file(iunit)
 else
-   write(logfileunit, '(A)') 'ERROR; "rose_restart.dat" not available'
-   write(logfileunit, '(A)')  file_name
-   stop
+   call error_handler(E_ERR,'read_ROSE_restart','rose_restart.dat not available',source,revision,revdate)
 endif
 
 var%vars_3d(:,:,:,1)  = un1 
