@@ -1,13 +1,29 @@
-# template for the Intel Fortran Compiler Version 8.x on machine "ghotiol"
+# template for Intel 8.x Fortran Compiler on a Fedora Core 2 Intel architecture
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next two lines are maintained by CVS, please do not edit>
+# $Id$
+# $Name$
+#
 # typical use with mkmf
 # mkmf -t template.ifc -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
 #
-# LIBS needs to be customized for your site
+# NETCDF and LIBS needs to be customized for your site
+#
+# FFLAGS
+#     -fpp     run Fortran preprocessor on source files prior to compilation
+#
+# FFLAGS   useful for benchmarking
+#     -O0      disable optimizations
+#     -pc64    set internal FPU precision to 53 bit significand
 #
 FC = ifort
 LD = ifort
 NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
 INCS = -I$(NETCDF)/include
-FFLAGS = -i4 -r8 -fpp -O0 $(INCS)
+FFLAGS = -fpp -O0 $(INCS)
 LIBS = -L$(NETCDF)/lib -lnetcdf -L/usr/local/lib -ludunits
 LDFLAGS = $(NETCDF)/include/typeSizes.o $(NETCDF)/include/netcdf.o $(INCS) $(LIBS)
