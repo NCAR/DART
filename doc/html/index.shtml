@@ -26,6 +26,7 @@ this to be a problem any time soon.
     <LI><A HREF="#build">Building an executable</A>
     <LI><A HREF="#AssimilationSequence">The Assimilation Sequence</A>
     <LI><A HREF="http://www.cgd.ucar.edu/~thoar/cvs_primer.html">my cheat-sheet of CVS commands</A>
+    <LI><A HREF="#acronyms">acronyms</A>
 </OL>
 
 <P><b>Hmnnnnn</b> how does the group enter into play?   
@@ -186,25 +187,31 @@ staus quo "build" procedure.
     <LI>state_loc ... array of meta_data
 </OL>
 
-<A NAME="acronyms">
 
-<PRE>
-CVS-Concurrent Versions System
-DA-Data Assimilation
-DAI-Data Assimilation Initiative
-DART-Data Assimilation Research Testbed
-EAKF-Ensemble Adjustment Kalman Filter
-EnKF-Ensemble Kalman Filter
-ESMF-Earth System Modeling Framework
-L96-the Lorenz 96 model
-NetCDF-Network Common Data Format
-OSSE-Observing System Simulation Experiment
-PE-Primitive Equations
-RMS-Root Mean Square (Error)
-RMSE-Root Mean Square Error
-TLM-Tangent Linear Model
-WRF-Weather Research and Forecasting Model
-</PRE>
+<P>
+<A NAME="acronyms">
+<H1>Acronyms</H1>
+
+<TABLE>
+<TR><TH>Alphabet Soup &nbsp &nbsp</TH><TH ALIGN="LEFT">Description</TH></TR>
+
+<TR><TD>CVS   </TD><TD>Concurrent Versions System</TD></TR>
+<TR><TD>DA    </TD><TD> Data Assimilation</TD></TR>
+<TR><TD>DAI   </TD><TD> Data Assimilation Initiative</TD></TR>
+<TR><TD>DART  </TD><TD> Data Assimilation Research Testbed</TD></TR>
+<TR><TD>DODS  </TD><TD> Distributed Oceanographic Data Server</TD></TR>
+<TR><TD>EAKF  </TD><TD> Ensemble Adjustment Kalman Filter</TD></TR>
+<TR><TD>EnKF  </TD><TD> Ensemble Kalman Filter</TD></TR>
+<TR><TD>ESMF  </TD><TD>Earth System Modeling Framework</TD></TR>
+<TR><TD>L96   </TD><TD>the Lorenz 96 model</TD></TR>
+<TR><TD>NetCDF</TD><TD>Network Common Data Format</TD></TR>
+<TR><TD>OSSE  </TD><TD>Observing System Simulation Experiment</TD></TR>
+<TR><TD>PE    </TD><TD>Primitive Equations</TD></TR>
+<TR><TD>RMS   </TD><TD>Root Mean Square (Error)</TD></TR>
+<TR><TD>RMSE  </TD><TD>Root Mean Square Error</TD></TR>
+<TR><TD>TLM   </TD><TD>Tangent Linear Model</TD></TR>
+<TR><TD>WRF   </TD><TD>Weather Research and Forecasting Model</TD></TR>
+</TABLE>
 
 <P>
 <HR>
