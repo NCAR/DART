@@ -10,7 +10,6 @@ use    utilities_mod, only :  get_unit, open_file, close_file, register_module, 
                               check_nml_error, file_exist, error_handler, &
                               E_ERR, E_WARN, E_MSG, E_DBG, initialize_utilities, &
                               logfileunit, timestamp
-use time_manager_mod, only : time_type
 use assim_model_mod, only : aread_state_restart, awrite_state_restart, open_restart_read, &
    open_restart_write, close_restart, assim_model_type, get_model_time_step, adv_1step
 use time_manager_mod, only : time_type, get_time, read_time, write_time, get_calendar_type, &
