@@ -21,7 +21,7 @@ interface assignment(=)
 end interface
 
 public platform_type, set_platform_location, copy_platform, write_platform, assignment(=), &
-       read_platform
+       read_platform, get_platform_location
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -76,6 +76,21 @@ if ( .not. module_initialized ) call initialize_module
 platform%location = location
 
 end subroutine set_platform_location
+
+!---------------------------------------------------------------------
+
+function get_platform_location(platform)
+
+! Sets the location of a platform
+
+type(platform_type), intent(in) :: platform
+type(location_type)             :: get_platform_location
+
+if ( .not. module_initialized ) call initialize_module
+
+get_platform_location = platform%location
+
+end function get_platform_location
 
 !---------------------------------------------------------------------
 
