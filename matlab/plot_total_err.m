@@ -1,8 +1,8 @@
-% plot_rms_err    summary plots of global error and spread
+% plot_total_err    summary plots of global error and spread
 % Example 1
 % truth_file = 'True_State.nc';
 % diagn_file = 'Posterior_Diag.nc';
-% plot_rms_err
+% plot_total_err
 
 if (exist('truth_file') ~= 1)
    truth_file = input('Input name of True State file; <cr> for ../work/True_State.nc\n','s');
@@ -21,4 +21,4 @@ end
 
 disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
 
-PlotRMSErr(truth_file,diagn_file)
+PlotTotalErr(truth_file,diagn_file)

@@ -1,10 +1,10 @@
-function PlotRMSErr(truth_file,diagn_file)
+function PlotTotalErr(truth_file,diagn_file)
 % Plots summary plots of global error and spread
 %
 % Example 1
 % truth_file = 'True_State.nc';
 % diagn_file = 'Posterior_Diag.nc';
-% PlotRMSErr(truth_file,diagn_file);
+% PlotTotalErr(truth_file,diagn_file);
 
 if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
 if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
@@ -50,17 +50,17 @@ switch lower(t.model)
       spread = get_state_copy(diagn_file,ens_spread_index);
 
       % Also need to compute the spread; zero truth for this and compute
-      % RMS distance from 0 (verify algorithm)
-      rms        = rms_err(truth, ens);
-      rms_spread = rms_err(zeros(size(spread)), spread);
+      % distance from 0 (verify algorithm)
+      err        = total_err(truth, ens);
+      err_spread = total_err(zeros(size(spread)), spread);
 
       clf;
-      plot(times,rms, 'b', times,rms_spread, 'r');
-      legend('Ensemble Mean RMSE','Ensemble Spread',0)
-      title(sprintf('model %s RMSE over all %d variables',...
+      plot(times,err, 'b', times,err_spread, 'r');
+      legend('Ensemble Mean Total Error','Ensemble Spread',0)
+      title(sprintf('model %s Total Error over all %d variables',...
                      t.model, d.num_vars),'interpreter','none')
       xlabel(sprintf('model time (%d timesteps)',t.num_times))
-      ylabel('RMS Error')
+      ylabel('Error')
 
    case 'lorenz_63'
 
@@ -70,17 +70,17 @@ switch lower(t.model)
       spread = get_state_copy(diagn_file,ens_spread_index);
 
       % Also need to compute the spread; zero truth for this and compute
-      % RMS distance from 0 (verify algorithm)
-      rms        = rms_err(truth, ens);
-      rms_spread = rms_err(zeros(size(spread)), spread);
+      % distance from 0 (verify algorithm)
+      err        = total_err(truth, ens);
+      err_spread = total_err(zeros(size(spread)), spread);
 
       clf;
-      plot(times,rms, 'b', times,rms_spread, 'r');
-      legend('Ensemble Mean RMSE','Ensemble Spread',0)
-      title(sprintf('model %s RMSE over all %d variables',...
+      plot(times,err, 'b', times,err_spread, 'r');
+      legend('Ensemble Mean Total Error','Ensemble Spread',0)
+      title(sprintf('model %s Total Error over all %d variables',...
                      t.model, d.num_vars),'interpreter','none')
       xlabel(sprintf('model time (%d timesteps)',t.num_times))
-      ylabel('RMS Error')
+      ylabel('Total Error')
 
    case 'lorenz_96'
       disp('lorenz_96 not implemented yet.')
