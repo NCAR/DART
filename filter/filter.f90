@@ -8,47 +8,26 @@ program filter
 ! $Author$
 
 
-! WARNING: The question of where to put in covariance inflation is
-! still central. The old seq_obs program inflates the whole ensemble
-! up front whenever an observation is present. This is clearly incorrect
-! in the general case, since a single low quality local observation should
-! NOT impact the whole state distribution. However, in some homogeneous
-! cases, it may still produce better results. The implementation in the
-! filter at the moment only applies covariance inflate when computing the
-! update increments (and the regression ???).
-
-! Program to build a simple obs_sequence file for use in testing filters
-! for spatial domains with one periodic dimension.
-
 use types_mod
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
-   get_obs_values, &
-   obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, &
-   set_single_obs_value, get_obs_def_index, get_num_close_states, &
-   get_close_states
+   get_obs_values, obs_sequence_def_copy, inc_num_obs_copies, &
+   set_single_obs_value, get_num_close_states, get_close_states
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
-use utilities_mod,    only :  get_unit, open_file, close_file, check_nml_error, &
-   file_exist
+use utilities_mod,    only :  get_unit, open_file, close_file, &
+   check_nml_error, file_exist
 use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
-   get_model_size, get_initial_condition, get_closest_state_time_to, &
+   get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data
-
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
-   linear_obs_increment, linear_update_from_obs_inc, look_for_bias, &
-   obs_increment5, obs_increment6, obs_increment7, obs_increment8, &
-   obs_increment9, obs_increment10, obs_increment11, obs_increment12, &
-   obs_increment13, obs_increment14, obs_increment15, obs_increment16, &
-   obs_increment17
+   look_for_bias, obs_increment17
 use cov_cutoff_mod,   only : comp_cov_factor
-
 use location_mod, only : location_type
-
 use typeSizes
 use netcdf
 
@@ -148,7 +127,6 @@ close(unit)
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_obs_sets(seq)
 
-
 ! Copy just the definitions part of the sequence to the two output obs sequences
 !!!call obs_sequence_def_copy(prior_seq, seq)
 !!!call obs_sequence_def_copy(posterior_seq, seq)
@@ -238,7 +216,6 @@ else
    end do
 
 ! Get the initial condition
-!!!   call get_initial_condition(x)
    call read_state_restart(x, unit)
    close(unit)
 
@@ -320,15 +297,13 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       call output_diagnostics(PriorStateUnit, ens_spread, output_ens_spread_index)
    endif
-   ! ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
-
 
    ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
 
    ! Allocate storage for the ensemble priors for this number of observations
-! Temporary assumption of fixed obs set
-   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set))
+   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set), &
+      num_close(num_obs_in_set), num_close_ptr(num_obs_in_set))
 
    ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
@@ -339,11 +314,9 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Following block replaces cache block -----------------------------
    write(*, *) 'calling get_close_states'
-   allocate(num_close(num_obs_in_set))
    call get_num_close_states(seq, i, 2.0*cutoff, num_close)
 ! Allocate storage for num_close, close, and distance
-   allocate(num_close_ptr(num_obs_in_set), &
-      close_ptr(num_obs_in_set, maxval(num_close)), &
+   allocate(close_ptr(num_obs_in_set, maxval(num_close)), &
       dist_ptr(num_obs_in_set, maxval(num_close)))
 ! Now get the values
    call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr)
@@ -405,9 +378,6 @@ AdvanceTime : do i = 1, num_obs_sets
 
       call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
 !!!      call obs_increment17(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc, slope)
-! Test of modified linear variance delta update for localization, 13 Dec. 2002
-!!!         call linear_obs_increment(ens_obs, ens_size, obs(j), &
-!!!            obs_err_cov(j), obs_inc, mean_inc, sd_ratio)
 
       ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
@@ -427,19 +397,14 @@ AdvanceTime : do i = 1, num_obs_sets
          call update_from_obs_inc(ens_obs, obs_inc, &
                    swath, ens_size, ens_inc, cov_factor)
 
-! Test of modified linear variance delta update for localization
-!!!         call linear_update_from_obs_inc(ens_obs, obs_inc, mean_inc, &
-!!!            swath, ens_size, ens_inc, cov_factor, sd_ratio)
-
-
          call inc_ens_swath(ens_ptr, ens_size, ind, ens_inc)
       end do
 
    end do Observations
 
 ! Free up the storage for close
-   deallocate(num_close_ptr, close_ptr, dist_ptr)
-   deallocate(num_close)
+   deallocate(close_ptr, dist_ptr)
+   deallocate(obs_err_cov, obs, num_close, num_close_ptr)
 
 ! Output posterior diagnostics
 ! Output state diagnostics as requested
@@ -468,9 +433,6 @@ AdvanceTime : do i = 1, num_obs_sets
       call output_diagnostics(PosteriorStateUnit, ens_spread, output_ens_spread_index)
    endif
    ! ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
-
-   ! Deallocate the ens_obs storage for this obs set
-   deallocate(obs_err_cov, obs)
 
 end do AdvanceTime
 
@@ -603,8 +565,6 @@ end do
 get_ens_spread = sqrt(get_ens_spread / (ens_size - 1))
 
 end function get_ens_spread
-
-
 
 
 end program filter

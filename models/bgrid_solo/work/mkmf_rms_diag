@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p rms_diag -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../../.." path_names_rms_diag

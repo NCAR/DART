@@ -13,6 +13,7 @@ use types_mod
 use time_manager_mod
 use location_mod, only : location_type, get_dist, set_location, get_location, &
                          LocationDims, LocationName, LocationLName
+use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
 
 implicit none
 private
@@ -31,11 +32,19 @@ public   get_model_size, &
 
 !  define model parameters
 
+! Model size is fixed for Lorenz-63
 integer,  parameter :: model_size = 3
-real(r8), parameter ::  sigma = 10.0_r8
-real(r8), parameter ::      r = 28.0_r8
-real(r8), parameter ::      b = 8.0_r8 / 3.0_r8
-real(r8), parameter :: deltat = 0.01_r8
+
+!-------------------------------------------------------------
+! Namelist with default values
+!
+real(r8) ::  sigma = 10.0_r8
+real(r8) ::      r = 28.0_r8
+real(r8) ::      b = 8.0_r8 / 3.0_r8
+real(r8) :: deltat = 0.01_r8
+
+namelist /model_nml/ sigma, r, b, deltat
+!---------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
 type(location_type) :: state_loc(model_size)
@@ -63,7 +72,27 @@ subroutine static_init_model()
 
 implicit none
 real(r8) :: x_loc
-integer :: i
+integer :: i, unit, ierr, io
+
+! Begin by reading the namelist input
+if(file_exist('input.nml')) then
+   unit = open_file(file = 'input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(unit, nml = model_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'model_nml')
+   enddo
+ 11 continue
+   call close_file(unit)
+endif
+
+! Temporary namelist validation
+write(*, *) 'namelist read; values are'
+write(*, *) 'sigma is ', sigma
+write(*, *) 'r is ', r
+write(*, *) 'b is ', b
+write(*, *) 'deltat is ', deltat
+
 
 ! Ultimately,  change output to diagnostic output block ...
 

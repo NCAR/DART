@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p integrate_model -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../../.." path_names_integrate_model

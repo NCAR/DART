@@ -11,6 +11,7 @@ use types_mod
 use time_manager_mod
 use location_mod, only : location_type, get_dist, set_location, get_location, &
                          LocationDims, LocationName, LocationLName
+use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
 
 implicit none
 private
@@ -27,25 +28,28 @@ public   get_model_size, &
          model_get_close_states, &
          nc_write_model_atts 
 
-!  define model parameters                                                      
-
- integer,  parameter :: model_size =   40
- real(r8), parameter ::    forcing = 8.00_r8
-!!! real(r8), parameter ::    delta_t = 0.05_r8   ! Original timestep 
-! Erroroneous timestep for bias simulation
- real(r8), parameter ::    delta_t = 0.04_r8   
-
-!real(r8), parameter ::    delta_t = 0.005_r8  ! timestep for assim experiments
-
-! Define the location of the state variables in module storage
-type(location_type) :: state_loc(model_size)
-type(time_type)     :: time_step
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
+
+! Basic model parameters controlled by nameslist; have defaults
+
+!---------------------------------------------------------------
+! Namelist with default values
+!
+integer :: model_size = 40
+real(r8) :: forcing = 8.00_r8, delta_t = 0.05_r8
+
+namelist /model_nml/ model_size, forcing, delta_t 
+!----------------------------------------------------------------
+
+! Define the location of the state variables in module storage
+type(location_type), allocatable :: state_loc(:)
+type(time_type)     :: time_step
+
 
 contains
 
@@ -63,7 +67,29 @@ subroutine static_init_model()
 
 implicit none
 real(r8) :: x_loc
-integer :: i
+integer :: i, unit, ierr, io
+
+! Begin by reading the namelist input
+if(file_exist('input.nml')) then
+   unit = open_file(file = 'input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(unit, nml = model_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'model_nml')
+   enddo
+ 11 continue
+   call close_file(unit)
+endif
+
+! Temporary namelist validation
+write(*, *) 'namelist read; values are'
+write(*, *) 'model size is ', model_size
+write(*, *) 'forcing is ', forcing
+write(*, *) 'delta_t is ', delta_t
+
+! Create storage for locations
+allocate(state_loc(model_size))
+
 
 ! Ultimately,  change output to diagnostic output block ...
 

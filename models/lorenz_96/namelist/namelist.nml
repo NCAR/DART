@@ -1,0 +1,5 @@
+&model_nml
+   model_size = 40,
+   forcing = 8.00,
+   delta_t = 0.005
+&end
