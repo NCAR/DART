@@ -69,7 +69,6 @@ if ( .not. module_initialized ) call initialize_module
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
 
-stop 'here'
 if(present(rstatus)) then
    call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus, rstatus)
 elseif(present(istatus)) then
