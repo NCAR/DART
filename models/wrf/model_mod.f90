@@ -39,6 +39,7 @@ public     get_model_size,                    &
            model_interpolate,                 &
            get_model_time_step,               &
            static_init_model,                 &
+           netcdf_read_write_var,             &
            model_get_close_states,            &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
@@ -140,7 +141,7 @@ subroutine static_init_model()
 character (len = 80)      :: path
      integer              :: mode
      integer              :: ncid, bt_id, we_id, sn_id
-     integer              :: io, ierr, unit
+     integer              :: io, ierr, iunit
 
 integer :: status
 character (len=80) :: name
@@ -163,10 +164,10 @@ real(r8)    :: theta1,theta2,cell,cell2,psx
 ! Begin by reading the namelist input                                           
 if(file_exist('input.nml')) then
 
-   unit = open_file('input.nml', action = 'read')
-   read(unit, nml = model_nml, iostat = io )
+   iunit = open_file(file = 'input.nml', action = 'read')
+   read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
-   call close_file(unit)                                                        
+   call close_file(iunit)                                                        
 
    wrf%n_moist = num_moist_vars
 
@@ -717,9 +718,9 @@ real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: obs_kind
-real (r8)           :: xloc, yloc, zloc, xyz_loc(3)
+real(r8)            :: xloc, yloc, zloc, xyz_loc(3)
 integer             :: i, j, k, i1,i2,i3
-real                :: dx,dy,dxm,dym
+real(r8)            :: dx,dy,dxm,dym
 real(r8), dimension (wrf%bt)   :: v_h, v_p
 real(r8), dimension (wrf%bt  ) :: fld
 real(r8)                       :: p1,p2,p3,p4,a1
@@ -1088,27 +1089,22 @@ if(debug) write(6,*) ' observations long and lat ',o_lon,o_lat
 
 n = size( lat, 1 )
 m = size( lat, 2 )
-!<<<alain
 
-!===alainrad = (o_lon-lon(1,1))**2 + (o_lat-lat(1,1))**2
- rad = get_dist_wrf(1,1,0, type_t, o_loc)
+rad = get_dist_wrf(1,1,0, type_t, o_loc)
 i_closest = 1
 j_closest = 1
 
 ! brute force search
 do j=1,m
-do i=1,n
-!===alain  radn = (o_lon-lon(i,j))**2 + (o_lat-lat(i,j))**2
-   radn = get_dist_wrf(i,j,0, type_t, o_loc)
-  if( radn .lt. rad ) then
-    rad = radn
-    i_closest = i
-    j_closest = j
-  end if
+   do i=1,n
+      radn = get_dist_wrf(i,j,0, type_t, o_loc)
+      if( radn .lt. rad ) then
+         rad = radn
+         i_closest = i
+         j_closest = j
+      end if
+   enddo
 enddo
-enddo
-
-!>>>alain
 
 if(debug) write(6,*) ' closest wrf long and lat is ',i_closest,j_closest,lon(i_closest,j_closest),lat(i_closest,j_closest)
 if(debug) write(6,*) ' radius is ',radius
