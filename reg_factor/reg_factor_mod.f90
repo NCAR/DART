@@ -101,18 +101,24 @@ if(1 == 1) return
 
 333 continue
 
+! If only one group, don't know what else to do
+if(num_groups == 1) then
+   comp_reg_factor = 1
+   return
+endif
+
 ! At start, need to read in table data
 if(first_call) then
    first_call = .false.
    unit = get_unit()
    if(num_groups == 2) then
-      open(unit = unit, file = "stats_2_mean10000_1000000")
+      open(unit = unit, file = "smooth3_regconf2")
    else if(num_groups == 4) then
-      open(unit = unit, file = "stats_4_mean10000_1000000")
+      open(unit = unit, file = "smooth3_regconf4")
    else if(num_groups == 8) then
-      open(unit = unit, file = "stats_8_mean10000_1000000")
+      open(unit = unit, file = "smooth3_regconf8")
    else if(num_groups == 16) then
-      open(unit = unit, file = "stats_16_mean10000_1000000")
+      open(unit = unit, file = "smooth3_regconf16")
    else
       write(*, *) 'a stats file is not available for regression '
       write(*, *) 'with ', num_groups, ' groups: see reg_factor_mod'
@@ -122,12 +128,6 @@ if(first_call) then
       read(unit, *) garb, table(j)
    end do
    close(unit)
-endif
-
-! If only one group, don't know what else to do
-if(num_groups == 1) then
-   comp_reg_factor = 1
-   return
 endif
 
 sum_reg = sum(regress)
