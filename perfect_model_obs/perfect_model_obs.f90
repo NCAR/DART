@@ -11,7 +11,7 @@ program perfect_model_obs
 ! for spatial domains with one periodic dimension.
 
 use types_mod
-use utilities_mod,    only : open_file
+use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
 
 use obs_sequence_mod, only : init_obs_sequence, obs_sequence_type, &
@@ -33,7 +33,7 @@ use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
    get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
-   init_diag_outputORG, output_diagnosticsORG
+   read_state_restart, write_state_restart
 use random_seq_mod, only : random_seq_type, init_random_seq, &
    random_gaussian
 
@@ -50,7 +50,7 @@ type(time_type)         :: time, time2
 type(random_seq_type)   :: random_seq
 
 integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set
-integer :: ierr, state_unit, StateUnit
+integer :: ierr, state_unit, StateUnit, io
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer :: model_size, num_obs_sets
@@ -58,6 +58,34 @@ integer :: model_size, num_obs_sets
 type(assim_model_type) :: x(1)
 real(r8), allocatable :: obs_err_cov(:), obs(:), true_obs(:)
 character(len=129) :: copy_meta_data(2), file_name
+
+!-----------------------------------------------------------------------------
+! Namelist wit default values
+!
+logical :: start_from_restart = .false., output_restart = .false.
+! if init_time_days and seconds are negative initial time is 0, 0
+! for no restart or comes from restart if restart exists
+integer :: init_time_days = -1, init_time_seconds = -1
+character(len = 129) :: restart_in_file_name = 'perfect_restart_in', &
+                        restart_out_file_name = 'perfect_restart_out'
+
+
+namelist /perfect_model_obs_nml/ start_from_restart, output_restart, &
+   restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds
+
+!------------------------------------------------------------------------------
+
+! Begin by reading the namelist input
+if(file_exist('input.nml')) then
+   unit = open_file(file = 'input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(unit, nml = perfect_model_obs_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'perfect_model_obs_nml')
+   enddo
+ 11 continue
+   call close_file(unit)
+endif
 
 ! Read in an observation sequence, only definitions part will be used (no data used)
 write(*, *) 'input file name for obs sequence definition [obs_seq.in]'
@@ -70,17 +98,42 @@ open(file = file_name, unit = 10)
 ! Just read in the definition part of the obs sequence
 seq = read_obs_sequence_def(unit)
 
+! Set a time type for initial time if namelist inputs are not negative
+if(init_time_days >= 0) then
+   time = set_time(init_time_seconds, init_time_days)
+else
+   time = set_time(0, 0)
+endif
+
 ! Initialize the model now that obs_sequence is all set up
 call static_init_assim_model()
 model_size = get_model_size()
 
-! Get the initial condition
-call init_assim_model(x(1))
-call get_initial_condition(x(1))
+!------------------- Read restart if requested ----------------------
+if(start_from_restart) then
+   unit = get_unit()
+   open(unit = unit, file = restart_in_file_name)
+   call init_assim_model(x(1))
+   call read_state_restart(x(1), unit)
+! If init_time_days an init_time_seconds are not < 0, set time to them
+   if(init_time_days >= 0) call set_model_time(x(1) , time)
+   close(unit)
+!-----------------  Restart read in --------------------------------
+
+else
+
+!-----  Block to do cold start initialization ----------
+! Initialize the control run
+   call init_assim_model(x(1))
+   call get_initial_condition(x(1))
+
+! Set time to 0, 0 if none specified, otherwise to specified
+   call set_model_time(x(1), time)
+!-------------------- End of cold start ensemble initialization block ------
+endif
 
 ! Set up output of truth for state
 StateUnit  = init_diag_output(   'True_State', 'true state from control', 1, (/'true state'/))
-state_unit = init_diag_outputORG('true_state', 'true state from control', 1, (/'true state'/))
 
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)
@@ -112,7 +165,6 @@ Advance: do i = 1, num_obs_sets
 
 ! Output the true state
    call output_diagnostics(    StateUnit, x(1), 1)
-   call output_diagnosticsORG(state_unit, x(1), 1)
 
 ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
@@ -148,7 +200,6 @@ end do Advance
 
 ierr = NF90_close(StateUnit)
 
-! 10 continue                  ! seems like it is not used
 ! Write out the sequence
 write(*, *) 'What is file name for output obs sequence? [obs_seq.out]'
 read(*, *, iostat=ierr) file_name
@@ -159,5 +210,13 @@ endif
 unit_out = 11
 open(file = file_name, unit = 11)
 call write_obs_sequence(unit_out, seq)
+
+! Output a restart file if requested
+if(output_restart) then
+   unit = get_unit()
+   open(unit = unit, file = restart_out_file_name)
+   call write_state_restart(x(1), unit)
+   close(unit)
+endif
 
 end program perfect_model_obs

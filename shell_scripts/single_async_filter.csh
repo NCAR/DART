@@ -43,12 +43,11 @@ while($element <= $num)
    cp input.nml tempdir$element
 # Change to temp directory and run integrate
    cd tempdir$element
-   ../integrate_model  &
+   ../integrate_model
    cd ..
    @ element++
 end
 
-wait
 
 # All model runs complete, move the updated file up
 set element = 1

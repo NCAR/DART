@@ -634,6 +634,7 @@ type(time_type) :: model_time, time_step
 integer :: seconds, days, i, len, control_unit, ic_file_unit, ud_file_unit
 
 character(len = 26), dimension(num) :: ic_file_name, ud_file_name 
+character(len = 128) :: input_string
 
 ! NEED TO BE CAREFUL ABOUT FLOATING POINT TESTS: Being sloppy here
 
@@ -689,17 +690,34 @@ return
 !-------------- Block for multiple asynch executables -----------------
 
 ! Loop to write out state for each member to separate file, preface with target time
-      write(ic_file_name(i), 11) 'assim_model_state_ic', i / 10000.0
-      write(ud_file_name(i), 11) 'assim_model_state_ud', i / 10000.0
- 11   format(a21, f5.4)
+      if(i < 10) then
+         write(ic_file_name(i), 11) 'assim_model_state_ic', i
+         write(ud_file_name(i), 11) 'assim_model_state_ud', i
+      else if(i < 100) then
+         write(ic_file_name(i), 21) 'assim_model_state_ic', i
+         write(ud_file_name(i), 21) 'assim_model_state_ud', i
+      else if(i < 1000) then
+         write(ic_file_name(i), 31) 'assim_model_state_ic', i
+         write(ud_file_name(i), 31) 'assim_model_state_ud', i
+      else if(i < 10000) then
+         write(ic_file_name(i), 41) 'assim_model_state_ic', i
+         write(ud_file_name(i), 41) 'assim_model_state_ud', i
+      else 
+         write(*, *) 'advance_state in assim_model_mod needs ensemble size < 10000'
+         stop
+      endif
+
+ 11   format(a21, i1)
+ 21   format(a21, i2)
+ 31   format(a21, i3)
+ 41   format(a21, i4)
       write(*, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
 
 ! Output the destination time followed by assim_model_state 
       ic_file_unit = get_unit()
       open(unit = ic_file_unit, file = ic_file_name(i))
 ! Write the time to which to advance
-      call get_time(assim_model(i)%time, days, seconds)
-      write(ic_file_unit, *) seconds, days
+      call write_time(ic_file_unit, target_time)
 ! Write the assim model extended state   
       call write_state_restart(assim_model(i), ic_file_unit)
       close(ic_file_unit)
@@ -717,14 +735,27 @@ if(asynch) then
    open(unit = control_unit, file = 'filter_control')
    write(control_unit, *) num
    do i = 1, num
-      write(control_unit, 21) ic_file_name(i)
-      write(control_unit, 21) ud_file_name(i)
- 21   format(a26)
+      write(control_unit, 51) ic_file_name(i)
+      write(control_unit, 51) ud_file_name(i)
+ 51   format(a26)
    end do
    close(control_unit)
 
+! Create the file async_may_go to allow the async model integrations
+   control_unit = get_unit()
+   open(unit = control_unit, file = 'async_may_go')
+   write(control_unit, *) 1
+   close(control_unit)
+
 ! Suspend on a read from standard in for integer value
-   read(*, *) i
+   do 
+      read(*, *) input_string
+      if(trim(input_string) == 'All_done:Please_proceed') exit
+      write(*, *) 'ECHO:', input_string
+   end do
+
+
+write(*, *) 'got clearance to proceed in advance_state'
 
 ! All should be done, read in the states and proceed
    do i = 1, num
@@ -818,8 +849,8 @@ integer, intent(in) :: file
 integer :: days, seconds
 
 ! This needs to be done more carefully, consider this an extended stub
-call get_time(assim_model%time, days, seconds)
-write(file, *) seconds, days
+! Write time first
+call write_time(file, assim_model%time)
 
 ! Write the state vector
 write(file, *) assim_model%state_vector
@@ -840,8 +871,8 @@ integer, intent(in) :: file
 
 integer :: seconds, days
 
-read(file, *) seconds, days
-assim_model%time = set_time(seconds, days)
+! Read the time
+assim_model%time = read_time(file)
 
 ! Read the state vector
 read(file, *) assim_model%state_vector
