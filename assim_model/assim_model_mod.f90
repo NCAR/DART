@@ -725,7 +725,7 @@ if(asynch) then
 ! Create the file async_may_go to allow the async model integrations
    control_unit = get_unit()
    open(unit = control_unit, file = 'async_may_go')
-   write(control_unit, *) 1
+   call write_time(control_unit, target_time)
    close(control_unit)
 
 ! Suspend on a read from standard in for integer value
