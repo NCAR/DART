@@ -30,6 +30,7 @@
 <link rel=stylesheet type=text/css href=../../doc/html/doc.css>
 <BODY>
 
+<!--kdr PRIVATE COMPONENTS has no destination -->
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -77,7 +78,7 @@ and do spatial interpolation for model state variables.
 <PRE>
 types_mod
 time_manager_mod
-location_mod
+oned/location_mod
 utilities_mod
 </PRE>
 
@@ -106,6 +107,11 @@ utilities_mod
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&#38;model_mod_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
 
 
 <!--==================================================================-->
@@ -127,7 +133,7 @@ utilities_mod
 <div class=routine>
 <em class=call> var = get_model_size( )</em>
 <pre>
-integer                               :: <em class=code> var </em>
+integer                               :: <em class=code> get_model_size </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -223,18 +229,20 @@ of ways is provided. </TD></TR>
 <A NAME="yyyroutine4"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> var = model_interpolate(x, location, itype)</em>
+<em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
 <pre>
 real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
 type(location_type),      intent(in)  :: <em class=code> location </em>
 integer,                  intent(in)  :: <em class=code> itype </em>
 real(r8)                              :: <em class=code> var </em>
+real(r8),                 intent(out) :: <em class=code> obs_val </em>
+integer,                  intent(out) :: <em class=code> istatus </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Given model state, returns the value of variable type interpolated to a given 
+Given model state, returns the value of variable itype interpolated to a given 
 location by a method of the model's choosing. At present, this is the only 
 support for forward operators that is required from the model_mod. As observations 
 with more complex forward operators are explored a significant additional 
@@ -253,8 +261,11 @@ complexity may be required for forward operator interfaces.
     <TD>Integer indexing which type of state variable is to be interpolated. 
 Can be ignored for low order models with a single type of variable.</TD></TR>
 
-<TR><TD valign=top><em class=code>var</em></TD>
-    <TD>Value interpolated to location.</TD></TR>
+<TR><TD valign=top><em class=code>obs_val</em></TD>
+    <TD> The value of the observation from the model.</TD></TR>
+
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Quality control information about the observation of the model state.</TD></TR>
 
 </TABLE>
 
@@ -268,15 +279,15 @@ Can be ignored for low order models with a single type of variable.</TD></TR>
 <div class=routine>
 <em class=call> var = get_model_time_step( )</em>
 <pre>
-type(time_type)                       :: <em class=code> var </em>
+type(time_type)                       :: <em class=code> get_model_time_step </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Returns the models base time step as a time_type. In the long run, 
-a more general extended interface may be required that specifies the models 
-range of time stepping possibilities.
+Returns the models base time step, or forecast length, as a time_type. 
+In the long run, a more general extended interface may be required that 
+specifies the models range of time stepping possibilities.
 </P>
 
 <H3 class=indent1>Notes</H3>
@@ -314,7 +325,7 @@ Can be a stub for most applications.
 
 <P>
 Used for runtime initialization of a model, for instance calculating storage 
-requirements, intializing model parameters, etc. This is the first call 
+requirements, initializing model parameters, etc. This is the first call 
 made to a model by any DART compliant assimilation routine.
 </P>
 
@@ -328,7 +339,7 @@ made to a model by any DART compliant assimilation routine.
 <div class=routine>
 <em class=call>call init_time(time) </em>
 <pre>
-type(time_type),          intent(in)    :: <em class=code> time </em>
+type(time_type),          intent(out)    :: <em class=code> time </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -375,13 +386,14 @@ state is always to be provided from input files.
 <A NAME="yyyroutine10"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call model_get_close_states( oloc, radius, inum, indices, dist) </em>
+<em class=call>call model_get_close_states( o_loc, radius, inum, indices, dist, x) </em>
 <pre>
-type(location_type),      intent(in)    :: <em class=code> oloc </em>
+type(location_type),      intent(in)    :: <em class=code> o_loc </em>
 real(r8),                 intent(in)    :: <em class=code> radius </em>
 integer,                  intent(out)   :: <em class=code> inum </em>
 integer, dimension(:),    intent(out)   :: <em class=code> indices </em>
 real(r8), dimension(:),   intent(out)   :: <em class=code> dist </em>
+real(r8), dimension(:),   intent(in)    :: <em class=code> x </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -398,7 +410,7 @@ implemented in a very efficient fashion to support a number of assimilation algo
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>oloc</em></TD>
+<TR><TD valign=top><em class=code>o_loc</em></TD>
     <TD>Location of observation.</TD></TR>
 
 <TR><TD valign=top><em class=code>radius</em></TD>
@@ -415,6 +427,9 @@ is returned. The model_mod gets to decide what subset this is.. </TD></TR>
 <TR><TD valign=top><em class=code>dist</em></TD>
     <TD>Distance between observation and state variables indexed in indices array..</TD></TR>
 
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>Model state vector.  Often needed by GCMs to calculate vertical distance.</TD></TR>
+
 </TABLE>
 
 <H3 class=indent1>Notes</H3>
@@ -428,8 +443,8 @@ is returned. The model_mod gets to decide what subset this is.. </TD></TR>
 <div class=routine>
 <em class=call> ierr = nc_write_model_atts(ncFileId) </em>
 <pre>
+integer,                              :: <em class=code> nc_write_model_atts </em>
 integer,                  intent(in)  :: <em class=code> ncFileId </em>
-integer,                              :: <em class=code> ierr </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -463,11 +478,11 @@ identified by ncFileID.
 <div class=routine>
 <em class=call> ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
+integer                               :: <em class=code> nc_write_model_vars </em>
 integer,                  intent(in)  :: <em class=code> ncFileID </em>
 real(r8), dimension(:),   intent(in)  :: <em class=code> statevec </em>
 integer,                  intent(in)  :: <em class=code> copyindex</em>
 integer,                  intent(in)  :: <em class=code> timeindex </em>
-integer                               :: <em class=code> ierr </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -554,8 +569,8 @@ serious model errors.
 '&#38;' and terminating with a slash '/'.
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &#38;
-    model_size, forcing, delta_t
+<em class=call>namelist / model_nml / </em> &#38
+    model_size, forcing, delta_t, time_step_days, time_step_seconds
 </pre>
 </div>
 </P>
@@ -575,9 +590,15 @@ serious model errors.
 <TR><!--contents--><TD valign=top>forcing         </TD>
     <!--  type  --><TD valign=top>real(r8)        </TD>
     <!--descript--><TD>Forcing, F, for model, default 8.0 </TD></TR>
-<TR><!--contents--><TD valign=top>delta_t         </TD>
-    <!--  type  --><TD valign=top>real(r8)        </TD>
+<TR><!--contents--><TD valign=top>delta_t              </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
     <!--descript--><TD>Non-dimensional timestep, default 0.05</TD></TR>
+<TR><!--contents--><TD valign=top>time_step_days       </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD>???, default 0</TD></TR>
+<TR><!--contents--><TD valign=top>time_step_seconds    </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD>???, default 3600</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -587,7 +608,8 @@ serious model errors.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL> <LI>namelistfile
+<UL> 
+    <LI>model_mod.nml in input.nml
     <LI>netCDF output state diagnostics files
 </UL>
 
@@ -608,6 +630,18 @@ serious model errors.
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class="errors">
+
+</TABLE>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+<TR><!-- routine --><TD VALIGN=top>
+                                   nc_write_model_atts <BR>
+                                   nc_write_model_vars <BR>
+    </TD>
+    <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error messages</TD>
+    <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in the named routine</TD>
+</TR>
+</TABLE>
 </div>
 
 <!--==================================================================-->

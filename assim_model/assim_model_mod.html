@@ -72,11 +72,7 @@
    time stepping, restart files, and computations about the locations
    of model state variables and the distance between observations and
    state variables. Many of the interfaces are passed through nearly directly
-   to the model_mod which is documented in detail in the DART views 
-   document.
-</P>
-<!--kdr link to the DART views document? -->
-<P>
+   to the model_mod.
 </P>
 
 <!--==================================================================-->
@@ -86,7 +82,7 @@
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
-location_mod
+location_mod (model dependent choice)
 time_manager_mod
 utilities_mod
 model_mod
@@ -95,11 +91,6 @@ model_mod
 <!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
 
-<!--kdr I removed & from end of first 4 lines -->
-<!--kdr Should these be alphabetical? -->
-<!--kdr get_model_size is in model_mod, and doesn't appear to be a passthrough -->
-<! so I'll comment it out.
-<!<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_model_size</A></TD></TR>
 
 <A NAME="Interface"></A>
 <BR><HR><BR>
@@ -111,6 +102,7 @@ model_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2">netcdf_file_type</A> </TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">static_init_assim_model</A> </TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">init_diag_output</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_model_size</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_closest_state_time_to</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">aget_initial_condition</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">get_state_meta_data</A></TD></TR>
@@ -151,10 +143,10 @@ model_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;assim_model_nml</em> 
+Optional namelist interface 
+<A HREF="#Namelist"> <em class=code>&#38;assim_model_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
-<!--kdr link to namelist here? -->
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -165,7 +157,7 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-</P>
+<BR>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
@@ -267,13 +259,13 @@ causes unacceptable performance degradation over "long" integrations.
 <em class=call> ncFileID = init_diag_output(FileName, global_meta_data, 
    copies_of_field_per_time, meta_data_per_copy) </em>
 <pre>
-character (len = *)                                                   :: <em class=code> FileName </em>
-character (len = *)                                                   :: <em class=code> global_meta_data </em>
-integer, intent(in)                                                   :: <em class=code> copies_of_field_per_time </em>
-character (len = *), intent(in), dimension(copies_of_field_per_time)  :: <em class=code> meta_data_per_copy </em>
-integer                                                               :: <em class=code> ncFileID </em>
+integer                                        :: <em class=code> init_diag_output </em>
+character (len = *)                            :: <em class=code> FileName </em>
+character (len = *)                            :: <em class=code> global_meta_data </em>
+integer, intent(in)                            :: <em class=code> copies_of_field_per_time </em>
+character (len = *), intent(in), &
+          dimension(copies_of_field_per_time)  :: <em class=code> meta_data_per_copy </em>
 </pre></div>
-<!--kdr Should result of a function call be first in this list, instead of at end? -->
 
 <H3 class=indent1>Description</H3>
 
@@ -303,16 +295,16 @@ integer                                                               :: <em cla
 
 </TABLE>
 
-</P>
+<BR>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
-<!-- <A NAME="yyyroutine3"></A>
+<A NAME="yyyroutine3"></A>
 <P></P><HR><P></P>
 <div class=routine>
 <em class=call> var = get_model_size() </em>
 <pre>
-integer                               :: <em class=code>var </em>
+integer                               :: <em class=code>get_model_size </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -321,9 +313,8 @@ integer                               :: <em class=code>var </em>
   Returns the size of the model state vector. This is a direct pass 
    through to the model_mod.   
 </P>
--->
 
-</P>
+<BR>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
@@ -332,9 +323,9 @@ integer                               :: <em class=code>var </em>
 <div class=routine>
 <em class=call> var = get_closest_state_time_to(assim_model, time) </em>
 <pre>
+type(time_type)                                   :: <em class=code> get_closest_state_time_to </em>
 type(assim_model_type), intent(in)                :: <em class=code> assim_model </em>
 type(time_type), intent(in)                       :: <em class=code> time</em>
-type(time_type)                                   :: <em class=code> get_closest_state_time_to </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -358,14 +349,16 @@ type(time_type)                                   :: <em class=code> get_closest
 
 </TABLE>
 
-</P>
+<BR>
 
 <!--==================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 
 <!--kdr this was misnamed get_initial condition,and was missing the time variable -->
 <!--    Also note that description in code is wrong; it's the same as get_initial_condition! -->
-<!--    And I think that x should not be inout, but out only -->
+<!--    And I think that x should not be inout, but out only  YES -->
+<!--    FIX in code and tell Jeff  -->
+
 
  <A NAME="yyyroutine5"></A>
  <P></P><HR><P></P>
@@ -373,7 +366,7 @@ type(time_type)                                   :: <em class=code> get_closest
  <em class=call> call aget_initial_condition(time,x) </em>
  <pre>
  type(time_type), intent(out) :: <em class=code>time</em>
- type(r8), intent(inout) :: <em class=code>x</em>
+ type(r8), intent(out) :: <em class=code>x</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -386,7 +379,8 @@ type(time_type)                                   :: <em class=code> get_closest
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>Contains state of input state vector on return</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE ======================-->
  <A NAME="yyyroutine6"></A>
@@ -401,7 +395,8 @@ SEE model_mod for arguments and description.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine7"></A>
@@ -442,7 +437,8 @@ cases, sigma models for instance, and is passed along.
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>Model state vector; needed to determine location in some cases</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine8"></A>
@@ -469,7 +465,8 @@ cases, sigma models for instance, and is passed along.
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>Model state, sometimes needed for computing locations</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine9"></A>
@@ -490,7 +487,8 @@ cases, sigma models for instance, and is passed along.
  <TR><TD valign=top><em class=code>assim_model&nbsp; &nbsp; </em></TD>
      <TD>Assim_model type from which to extract time</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine10"></A>
@@ -513,7 +511,8 @@ cases, sigma models for instance, and is passed along.
  <TR><TD valign=top><em class=code>assim_model&nbsp; &nbsp; </em></TD>
      <TD>Input assim_model_type</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine11"></A>
@@ -534,7 +533,8 @@ Copies one assim_model_type to another.
  <TR><TD valign=top><em class=code>model_in&nbsp; &nbsp; </em></TD>
      <TD>Copy</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine13"></A>
@@ -566,7 +566,8 @@ model_mod.  See model_mod for the error return values in istatus.
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
      <TD>Returned as 0 if all is well, else various errors.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine15"></A>
@@ -587,7 +588,8 @@ model_mod.  See model_mod for the error return values in istatus.
  <TR><TD valign=top><em class=code>time&nbsp; &nbsp; </em></TD>
      <TD>Set to this time</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine16"></A>
@@ -608,7 +610,8 @@ model_mod.  See model_mod for the error return values in istatus.
  <TR><TD valign=top><em class=code>state&nbsp; &nbsp; </em></TD>
      <TD>The state vector to be inserted.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine17"></A>
@@ -632,7 +635,8 @@ Writes a restart from an assim_model_type with an optional target_time.
  <TR><TD valign=top><em class=code>target_time&nbsp; &nbsp; </em></TD>
      <TD>If present, put this target time at the front of the restart file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine18"></A>
@@ -657,7 +661,8 @@ target time.
  <TR><TD valign=top><em class=code>target_time&nbsp; &nbsp; </em></TD>
      <TD>If present, read a target time from the front of the file into this.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine19"></A>
@@ -681,7 +686,8 @@ Writes one copy of the state time and vector to a netCDF file.
  <TR><TD valign=top><em class=code>copy_index&nbsp; &nbsp; </em></TD>
      <TD>Which copy of state is to be output</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine20"></A>
@@ -697,7 +703,8 @@ to model_mod.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine23"></A>
@@ -723,15 +730,16 @@ state diagnostics file.
  <TR><TD valign=top><em class=code>copy_index&nbsp; &nbsp; </em></TD>
      <TD>Which copy of state to be read.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine22"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = init_diag_input(file_name,global_meta_data,model_size,cop
- ies_of_field_per_time) </em>
+ <em class=call> var = init_diag_input(file_name, global_meta_data, model_size, 
+ copies_of_field_per_time) </em>
  <pre>
  integer                       :: <em class=code>init_diag_input</em>
  character(len=*), intent(in)  :: <em class=code>file_name</em>
@@ -757,7 +765,8 @@ number of data copies.
  TD>
      <TD>Number of copies of the state vector at each time.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine25"></A>
@@ -775,7 +784,8 @@ number of data copies.
  <TR><TD valign=top><em class=code>state&nbsp; &nbsp; </em></TD>
      <TD>An assim_model_type that needs storage created.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine24"></A>
@@ -808,7 +818,8 @@ locations of each state variable and the text description of each copy.
  <TR><TD valign=top><em class=code>meta_data_per_copy&nbsp; &nbsp; </em></TD>
      <TD>Meta data describing what is in each copy of state vector</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine26"></A>
@@ -830,7 +841,8 @@ unlikely to be supported in the future.
  <TR><TD valign=top><em class=code>assim_model&nbsp; &nbsp; </em></TD>
      <TD>An assim_model_type whose state is to be pointed to.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine28"></A>
@@ -852,7 +864,8 @@ for passing to the netcdf error handling routines.
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
      <TD>Netcdf file id of an open file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine30"></A>
@@ -881,13 +894,14 @@ from a state restart file.
  <TR><TD valign=top><em class=code>target_time&nbsp; &nbsp; </em></TD>
      <TD>If present, this time is read from the front of the restart file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine31"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = aget_closest_state_time_to(model_time,time) </em>
+ <em class=call> var = aget_closest_state_time_to (model_time, time) </em>
  <pre>
  type(time_type)             :: <em class=code>aget_closest_state_time_to</em>
  type(time_type), intent(in) :: <em class=code>model_time</em>
@@ -907,7 +921,8 @@ the current model time and a target time.
  <TR><TD valign=top><em class=code>time&nbsp; &nbsp; </em></TD>
      <TD>The time we want to get close to.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine29"></A>
@@ -935,7 +950,8 @@ the current model time and a target time.
      <TD>Which copy of state vector is to be written, default is copy 1</TD></TR
  >
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine32"></A>
@@ -964,7 +980,8 @@ prepends a target time.
  <TR><TD valign=top><em class=code>target_time&nbsp; &nbsp; </em></TD>
      <TD>If present, time to be prepended to state time / vector.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine34"></A>
@@ -980,7 +997,8 @@ documentation for arguments and details.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
 <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine35"></A>
@@ -1006,7 +1024,8 @@ a coordinate variable AND it is the unlimited dimension.
  <TR><TD valign=top><em class=code>time&nbsp; &nbsp; </em></TD>
      <TD>The next time to be added to the file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine36"></A>
@@ -1033,7 +1052,8 @@ time manager an writes it to a netcdf file.
  <TR><TD valign=top><em class=code>TimeVarID&nbsp; &nbsp; </em></TD>
      <TD>The index of the time variable in the netcdf file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine37"></A>
@@ -1059,7 +1079,8 @@ deleted from future releases.
  <TR><TD valign=top><em class=code>statetime&nbsp; &nbsp; </em></TD>
      <TD>The time to be found in the netcdf file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine38"></A>
@@ -1078,7 +1099,8 @@ arguments and details.
  <TR><TD valign=top><em class=code>get_model_time_step&nbsp; &nbsp; </em></TD>
      <TD>Returns time step of model.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine39"></A>
@@ -1099,7 +1121,8 @@ arguments and details.
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>Name of restart file to be open for reading.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
 <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine40"></A>
@@ -1120,7 +1143,8 @@ arguments and details.
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>File name of restart file to be opened.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine41"></A>
@@ -1138,7 +1162,8 @@ arguments and details.
  <TR><TD valign=top><em class=code>file_unit&nbsp; &nbsp; </em></TD>
      <TD>File descriptor (channel number) of open restart file.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine42"></A>
@@ -1154,16 +1179,16 @@ documentation for arguments and details.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<!--kdr Should this really be inout in code?  I think it's only intent(out) -->
 <A NAME="yyyroutine43"></A>
  <P></P><HR><P></P>
  <div class=routine>
  <em class=call> call get_initial_condition(x) </em>
  <pre>
- type(assim_model_type), intent(inout) :: <em class=code>x</em>
+ type(assim_model_type), intent(out) :: <em class=code>x</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -1173,7 +1198,8 @@ documentation for arguments and details.
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>assim_model into which an initial model state can be written.</TD></TR>
  </TABLE>
- <P>
+ <BR>
+
  <!--================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 
@@ -1182,6 +1208,7 @@ documentation for arguments and details.
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
 '&' and terminating with a slash '/'.
+</P>
 <div class=namelist><pre>
 <em class=call>namelist / assim_model_nml / </em> &
     read_binary_restart_files, write_binary_restart_files
@@ -1221,8 +1248,8 @@ documentation for arguments and details.
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>filter_restart specified in DART/filter/filter.nml: restart_in_filename
-    <LI>assim_model_mod.nml
     <LI>filter_restart specified in DART/filter/filter.nml: restart_out_filename
+    <LI>assim_model_mod.nml in input.nml
 </UL>
 
 <!--==================================================================-->
@@ -1238,7 +1265,6 @@ documentation for arguments and details.
 <!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
-<!--kdr Error codes section not completed -->
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
@@ -1246,16 +1272,94 @@ documentation for arguments and details.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>size of [argument] is incorrect</TD>
-    <!-- comment --><TD VALIGN=top>The size of [argument] must be 1 and 4</TD>
+<TR><!-- routine --><TD VALIGN=top>init_diag_output</TD>
+    <!-- message --><TD VALIGN=top>Compiler does not support required kinds of variables.</TD>
+    <!-- comment --><TD VALIGN=top>NetCDF-f90 interface function byteSizeOK returned FALSE</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>yyyyy</TD>
-    <!-- comment --><TD VALIGN=top>bad judgement<BR>
-                        What were you thinking?</TD>
+<TR><!-- routine --><TD VALIGN=top>init_diag_output and various nc_XXX</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned by one of the NetCDF calls in this subroutine. 
+      Consult the NetCDF manual. </TD>
 </TR>
+<TR><!-- routine --><TD VALIGN=top>get_diag_input_copy_meta_data</TD>
+    <!-- message --><TD VALIGN=top>expected to read "locat" got ...</TD> 
+    <!-- comment --><TD VALIGN=top>The header of the metadata for the copies of the data 
+                        in diagnostic input file is not = 'locat'</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>aget_closest_state_time_to</TD>
+    <!-- message --><TD VALIGN=top>model time (days,secs) > time (days,secs)</TD>
+    <!-- comment --><TD VALIGN=top>model time has already advanced beyond this observation time.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>set_model_state_vector</TD>
+    <!-- message --><TD VALIGN=top>state vector has length # 
+                      model size (#) does not match.</TD>
+    <!-- comment --><TD VALIGN=top>Check your model resolution and fields included in the state vector.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>aread_state_restart</TD>
+    <!-- message --><TD VALIGN=top>read error is : # </TD>
+    <!-- comment --><TD VALIGN=top>Unable to read model state from assim_model_state_ic# file. 
+                        # is error condition retured by read statement.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>open_restart_read</TD>
+    <!-- message --><TD VALIGN=top>OPEN status was #</TD>
+    <!-- comment --><TD VALIGN=top>Failed to open file listed for reason #.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>aoutput_diagnostics</TD>
+    <!-- message --><TD VALIGN=top>model time (d,s) (#,#) is index # in ncFileID # </TD>
+    <!-- comment --><TD VALIGN=top>Time index for file listed is < 0 </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>ainput_diagnostics</TD>
+    <!-- message --><TD VALIGN=top>expected "copy", got _____'</TD>
+    <!-- comment --><TD VALIGN=top>Trying to read diagnostic state output header.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>"time" expected to be rank-1</TD>
+    <!-- comment --><TD VALIGN=top>ndims /= 1 <BR>
+      The time array of the NetCDF file should be 1-dimensional</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>unlimited dimension expected to be slowest-moving</TD>
+    <!-- comment --><TD VALIGN=top>dimids(1) /= unlimitedDimID</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>time mirror and netcdf file time dimension out-of-sync</TD>
+    <!-- comment --><TD VALIGN=top>lngth /= ncFileId%Ntimes</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 error messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
+      Consult the NetCDF manual. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>trouble deep ... can go no farther. Stopping.</TD>
+    <!-- comment --><TD VALIGN=top>timeindex < -1</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>Model time preceeds earliest netCDF time.</TD>
+    <!-- comment --><TD VALIGN=top>Time of current assim_model is earlier than all the times 
+     on the NetCDF file to which the state is to be written by aoutput_diagnostics.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>subsequent netCDF time (days, seconds) # # </TD>
+    <!-- comment --><TD VALIGN=top>Time of current assim_model is in the midst of the times 
+     on the NetCDF file to which the state is to be written by aoutput_diagnostics,
+     but doesn't match any of them.  Very bad.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 error messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
+      Consult the NetCDF manual. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_write_calendar_atts</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 error messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
+      Consult the NetCDF manual. </TD>
+</TR>
+<!--<TR><!-- routine --><TD VALIGN=top>xxx</TD>
+    <!-- message --><TD VALIGN=top>xxx </TD>
+    <!-- comment --><TD VALIGN=top>xxx </TD>
+</TR> -->
 </TABLE>
 </div>
 

@@ -30,16 +30,17 @@
 <link rel=stylesheet type=text/css href=../../doc/html/doc.css>
 <BODY>
 
+<!--kdr PRIVATE COMPONENTS has no destination -->
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC ENTITIES</A> / 
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATES</A>
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
 </DIV>
 
 <!--==================================================================-->
@@ -62,8 +63,7 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   A note about documentation style. Optional arguments are enclosed in
-   brackets <em class=optionalcode>[like this]</em>.
+   Optional arguments are enclosed in brackets <em class=optionalcode>[like this]</em>.
 </P>
 <P>
    Provides a representation of a physical location on a 3-D spherical
@@ -115,7 +115,8 @@ random_seq_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;location_nml</em> 
+Optional namelist interface 
+<A HREF="#Namelist"><em class=code>&#38;location_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -159,7 +160,8 @@ three-d spherical shell.
 <TR><TD valign=top> vloc                       </TD>
     <TD>vertical location, units as selected by which_vert</TD></TR>
 <TR><TD valign=top> which_vert                       </TD>
-    <TD>type of vertical location: -1=surface; 1=level; 2=pressure; 3=height</TD></TR>
+    <TD>type of vertical location: -2=no vert location; -1=surface; 
+        1=level; 2=pressure; 3=height</TD></TR>
 </TABLE>
 
 <!--================================================================-->
@@ -192,11 +194,11 @@ location from a location type and returns in a 3 element real array.
  <div class=routine>
  <em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
  <pre>
- type(location_type), intent(in) :: <em class=code>set_location</em>
- real(r8), intent(in)            :: <em class=code>lon</em>
- real(r8), intent(in)            :: <em class=code>lat</em>
- real(r8), intent(in)            :: <em class=code>vert_loc</em>
- integer, intent(in)             :: <em class=code>which_vert</em>
+ type(location_type)     :: <em class=code>set_location</em>
+ real(r8), intent(in)    :: <em class=code>lon</em>
+ real(r8), intent(in)    :: <em class=code>lat</em>
+ real(r8), intent(in)    :: <em class=code>vert_loc</em>
+ integer, intent(in)     :: <em class=code>which_vert</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -223,10 +225,11 @@ in degrees) and the vertical location of type specified by which_vert.
 <A NAME="write_location"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call write_location(file, loc <em class=optionalcode>[, fform]</em>)</em>
+<em class=call>call write_location(file, loc
+     <em class=optionalcode>[,fform]</em>) </em>
 <pre>
 integer,               intent(in)      :: <em class=code> file </em>
-type(location_type),   intent(inout)   :: <em class=code> loc </em>
+type(location_type),   intent(in)      :: <em class=code> loc </em>
 character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 </pre></div>
 
@@ -266,8 +269,8 @@ use of the integer unit number.
 <div class=routine>
 <em class=call> var = get_dist( loc1, loc2)</em>
 <pre>
+real(r8)                             :: <em class=code> get_dist </em>
 type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
-real(r8)                             :: <em class=code> var </em>
 </pre></div>
 
 <H2 class=indent1>Description</H2>
@@ -301,8 +304,10 @@ that is equally weighted as a horizontal distance of 1 radian.
 <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="read_location"></A>
  <P></P><HR><P></P>
+<!--kdr ifile is locfile in ../oned/location_mod.* -->
  <div class=routine>
- <em class=call> var = read_location(ifile <em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> var = read_location(ifile
+     <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  type(location_type)                    :: <em class=code>read_location</em>
  integer, intent(in)                    :: <em class=code>ifile</em>
@@ -328,7 +333,8 @@ fform (default is formatted).
 <A NAME="interactive_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
-	 <em class=call> call interactive_location(location <em class=optionalcode>[, set_to_default]</em>) </em>
+ <em class=call> call interactive_location(location
+     <em class=optionalcode>[,set_to_default]</em>) </em>
  <pre>
  type(location_type), intent(out) :: <em class=code>location</em>
  logical, optional, intent(in)    :: <em class=optionalcode>set_to_default</em>
@@ -437,7 +443,8 @@ Returns true if which_vert is for height, else false.
 <A NAME="query_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
-	 <em class=call> var = query_location(loc <em class=optionalcode>[, attr]</em>) </em>
+ <em class=call> var = query_location(loc
+     <em class=optionalcode>[,attr]</em>) </em>
  <pre>
  real(r8), intent(out)                  :: <em class=code>query_location</em>
  type(location_type), intent(in)        :: <em class=code>loc</em>
@@ -453,8 +460,8 @@ and attr='VLOC' returns the vertical location.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>query_location&nbsp; &nbsp; </em></TD>
-     <TD>Returns longitude, latitude, vertical location, or which_vert (converte
- d to real)</TD></TR>
+     <TD>Returns longitude, latitude, vertical location, or which_vert 
+ (converted to real)</TD></TR>
  <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
      <TD>A location type</TD></TR>
  <TR><TD valign=top><em class=optionalcode>attr&nbsp; &nbsp; </em></TD>
@@ -503,6 +510,8 @@ is horizontal only or not.
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
+<H2>NAMELIST</H2>
+
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
@@ -531,8 +540,8 @@ vertical and horizontal separation.
 	                 Default: true</TD></TR>
  <TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
      <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>How many hectopascals should be equivalent distance to 
-	                one radian? Default: 1000000.0</TD></TR>
+     <!--descript--><TD>How many pascals should be equivalent distance to one 
+                        radian? Default: 100000.0</TD></TR>
  <TR><!--contents--><TD valign=top>vert_normalization_height</TD>
      <!--  type  --><TD valign=top>real(r8)</TD>
      <!--descript--><TD>How many geopotential meters should be equal to one radian? 
@@ -551,7 +560,8 @@ vertical and horizontal separation.
 <A NAME="FilesUsed"></A>
 <P></P><HR><P></P>
 <H2>FILES</H2>
-<UL><LI>None
+<UL>
+    <LI> location_mod.nml from input.nml
 </UL>
 
 <!--==================================================================-->
@@ -576,8 +586,33 @@ vertical and horizontal separation.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>get_dist</TD>
-    <!-- message --><TD VALIGN=top>Dont know how to compute vertical distance for unlike vertical coordinates</TD>
+    <!-- message --><TD VALIGN=top>Dont know how to compute vertical distance 
+                    for unlike vertical coordinates</TD>
     <!-- comment --><TD VALIGN=top>Need same which_vert for distances.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>set_location</TD>
+    <!-- message --><TD VALIGN=top>longitude (#) is not within range [0,360]</TD>
+    <!-- comment --><TD VALIGN=top>Is it really a longitude?</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>set_location</TD>
+    <!-- message --><TD VALIGN=top>latitude (#) is not within range [-90,90]</TD>
+    <!-- comment --><TD VALIGN=top>Is it really a latitude?</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>set_location</TD>
+    <!-- message --><TD VALIGN=top>which_vert (#) must be one of 1, 2, or 3</TD>
+    <!-- comment --><TD VALIGN=top>Vertical coordinate type restricted to:<BR>
+               -1 = surface value <BR>
+                1 = level <BR>
+                2 = pressure <BR>
+                3 = height <BR>      </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>read_location</TD>
+    <!-- message --><TD VALIGN=top>Expected location header "loc3d" in input file, got ___</TD>
+    <!-- comment --><TD VALIGN=top>Vertical coordinate confusion involving NetCDF file.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_write_location</TD>
+    <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error messages</TD>
+    <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in nc_write_location</TD>
 </TR>
 
 </TABLE>

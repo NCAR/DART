@@ -32,14 +32,14 @@
 
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC ENTITIES</A> / 
+<A HREF="#PublicComponents">PUBLIC COMPONENTS</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATES</A>
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
 </DIV>
 
 <!--==================================================================-->
@@ -62,8 +62,7 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   A note about documentation style. Optional arguments are enclosed in
-   brackets <em class=optionalcode>[like this]</em>.
+   Optional arguments are enclosed in brackets <em class=optionalcode>[like this]</em>.
 </P>
 <P>
    Provides a representation of a physical location on 1-D periodic
@@ -110,16 +109,21 @@ random_seq_mod
 
 <H3 class=indent1>NOTES</H3>
 
+<P>
+Optional namelist interface 
+<A HREF="#Namelist"> <em class=code>&location_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 
-<A NAME="PublicEntities"></A>
+<A NAME="PublicComponents"></A>
 <BR><HR><BR>
-<H2>PUBLIC ENTITIES</H2>
-<P>
+<H2>PUBLIC COMPONENTS</H2>
 </P>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
@@ -133,10 +137,10 @@ type location_type
 end type location_type
 </pre></div>
 
-<H3 class=indent1>Detailed Description</H3>
+<H3 class=indent1>Description</H3>
 
 <P>Provides an abstract representation of physical location on a 
-one dimensional periodic domain.
+one-dimensional periodic domain.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -196,10 +200,11 @@ Returns a location type with the location x.
 <A NAME="write_location"></A>
 <P></P><HR><P></P>
 <div class=routine>
-	<em class=call>call write_location(file, loc <em class=optionalcode>[, fform]</em>)</em>
+<em class=call>call write_location(locfile, loc
+     <em class=optionalcode>[,fform]</em>) </em>
 <pre>
-integer,               intent(in)      :: <em class=code> file </em>
-type(location_type),   intent(inout)   :: <em class=code> loc </em>
+integer,               intent(in)      :: <em class=code> locfile </em>
+type(location_type),   intent(in)      :: <em class=code> loc </em>
 character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 </pre></div>
 
@@ -213,7 +218,7 @@ character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>file</em></TD>
+<TR><TD valign=top><em class=code>locfile</em></TD>
     <TD>the unit number of the open file.</TD></TR>
 
 <TR><TD valign=top><em class=code>loc</em></TD>
@@ -226,9 +231,6 @@ character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 
 <H3 class=indent1>Notes</H3>
 
-<P>Eventually, a more general file descriptor type should replace the
-use of the integer unit number.
-</P>
 
 <!--===================================================================-->
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
@@ -238,8 +240,8 @@ use of the integer unit number.
 <div class=routine>
 <em class=call> var = get_dist( loc1, loc2)</em>
 <pre>
+real(r8)                             :: <em class=code> get_dist </em>
 type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
-real(r8)                             :: <em class=code> var </em>
 </pre></div>
 
 <H2 class=indent1>Description</H2>
@@ -267,21 +269,22 @@ real(r8)                             :: <em class=code> var </em>
 <A NAME="read_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
-	 <em class=call> var = read_location(ifile <em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> var = read_location(locfile
+     <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  type(location_type)                    :: <em class=code>read_location</em>
- integer, intent(in)                    :: <em class=code>ifile</em>
+ integer, intent(in)                    :: <em class=code>locfile</em>
  character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Reads a location_type from a file open on channel ifile using format
+Reads a location_type from a file open on channel locfile using format
 fform (default is formatted).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>read_location&nbsp; &nbsp; </em></TD>
      <TD>Returned location type read from file</TD></TR>
- <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>locfile&nbsp; &nbsp; </em></TD>
      <TD>Integer channel opened to a file to be read</TD></TR>
  <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
      <TD>Optional format specifier (FORMATTED or UNFORMATTED)</TD></TR>
@@ -293,7 +296,8 @@ fform (default is formatted).
 <A NAME="interactive_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
-	 <em class=call> call interactive_location(location <em class=optionalcode>[,set_to_default]</em>) </em>
+ <em class=call> call interactive_location(location
+     <em class=optionalcode>[,set_to_default]</em>) </em>
  <pre>
  type(location_type), intent(out) :: <em class=code>location</em>
  logical, optional, intent(in)    :: <em class=optionalcode>set_to_default</em>
@@ -307,7 +311,7 @@ get one with all elements set to 0.
  <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
      <TD>Location created from standard input</TD></TR>
  <TR><TD valign=top><em class=optionalcode>set_to_default&nbsp; &nbsp; </em></TD>
-     <TD>If true, sets all elments of location type to 0</TD></TR>
+     <TD>If true, sets all elements of location type to 0</TD></TR>
  </TABLE>
  <BR>
 
@@ -318,7 +322,7 @@ get one with all elements set to 0.
  <div class=routine>
  <em class=call> var = set_location_missing() </em>
  <pre>
- type(location_type), intent(in) :: <em class=code>set_location_missing</em>
+ type(location_type) :: <em class=code>set_location_missing</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -335,7 +339,8 @@ Returns a location with location set to missing value from types_mod.
 <A NAME="query_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = query_location(loc <em class=optionalcode>[, attr]</em>) </em>
+ <em class=call> var = query_location(loc
+     <em class=optionalcode>[,attr]</em>) </em>
  <pre>
  real(r8), intent(out)                  :: <em class=code>query_location</em>
  type(location_type), intent(in)        :: <em class=code>loc</em>
@@ -343,7 +348,8 @@ Returns a location with location set to missing value from types_mod.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Returns the value of x if attr = 'X' or if attr is not passed.
+Returns the value of x (model state component of location type) 
+if attr = 'X' or if attr is not passed.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>query_location&nbsp; &nbsp; </em></TD>
@@ -381,6 +387,7 @@ in netCDF output metadata.
  <H3 class=indent1>Global variable: character(len=129) :: LocationLName</H3>
 A parameter set to "one-dimensional location" used 
 to identify this location module in netCDF output long name metadata.
+
  <BR>
 
 <!--==================================================================-->
@@ -390,7 +397,8 @@ to identify this location module in netCDF output long name metadata.
 <A NAME="FilesUsed"></A>
 <P></P><HR><P></P>
 <H2>FILES</H2>
-<UL><LI>None
+<UL>
+   <LI>location_mod.nml in input.nml
 </UL>
 
 <!--==================================================================-->
@@ -414,7 +422,7 @@ to identify this location module in netCDF output long name metadata.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>set_location_missing</TD>
+<TR><!-- routine --><TD VALIGN=top>set_location</TD>
     <!-- message --><TD VALIGN=top>Value of x is out of 0->1 range</TD>
     <!-- comment --><TD VALIGN=top>x cannot be less than 0 or greater than 1</TD>
 </TR>
@@ -451,7 +459,8 @@ None.
 <A NAME="FuturePlans"></A>
 <P></P><HR><P></P>
 <H2>FUTURE PLANS</H2>
-<P>
+<P>Eventually, a more general file descriptor type should replace the
+use of the integer unit number.
 </P>
 
 <!--==================================================================-->
