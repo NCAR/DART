@@ -32,7 +32,7 @@ TYPE wrf_data
    integer :: ncid                                    ! netcdf id for file
    integer :: sls_id, sls, bt_id, bt, sn_id, sn, we_id, we
    integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, tslb_id, mu_id, mub_id, &
-              qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
+              tsk_id, qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
               u10_id, v10_id, t2_id, q2_id, ps_id
 
    integer :: n_moist
@@ -49,6 +49,7 @@ TYPE wrf_data
    real(r8), pointer :: phb(:,:,:)
    real(r8), pointer :: t(:,:,:)
    real(r8), pointer :: tslb(:,:,:)
+   real(r8), pointer :: tsk(:,:)
    real(r8), pointer :: qv(:,:,:)
    real(r8), pointer :: qc(:,:,:)
    real(r8), pointer :: qr(:,:,:)
@@ -190,10 +191,6 @@ call check ( nf90_inq_varid(wrf%ncid, "T", wrf%t_id))
 if(debug) write(6,*) ' t_id = ',wrf%t_id
 allocate(wrf%t(wrf%we,wrf%sn,wrf%bt))
 
-call check ( nf90_inq_varid(wrf%ncid, "TSLB", wrf%tslb_id))
-if(debug) write(6,*) ' tslb_id = ',wrf%tslb_id
-allocate(wrf%tslb(wrf%we,wrf%sn,wrf%sls))
-
 call check ( nf90_inq_varid(wrf%ncid, "MU", wrf%mu_id))
 if(debug) write(6,*) ' mu_id = ',wrf%mu_id
 allocate(wrf%mu(wrf%we,wrf%sn))
@@ -201,6 +198,14 @@ allocate(wrf%mu(wrf%we,wrf%sn))
 call check ( nf90_inq_varid(wrf%ncid, "MUB", wrf%mub_id))
 if(debug) write(6,*) ' mub_id = ',wrf%mub_id
 allocate(wrf%mub(wrf%we,wrf%sn))
+
+call check ( nf90_inq_varid(wrf%ncid, "TSLB", wrf%tslb_id))
+if(debug) write(6,*) ' tslb_id = ',wrf%tslb_id
+allocate(wrf%tslb(wrf%we,wrf%sn,wrf%sls))
+
+call check ( nf90_inq_varid(wrf%ncid, "TSK", wrf%tsk_id))
+if(debug) write(6,*) ' tsk_id = ',wrf%tsk_id
+allocate(wrf%tsk(wrf%we,wrf%sn))
 
 if(wrf%n_moist > 0) then
    call check ( nf90_inq_varid(wrf%ncid, "QVAPOR", wrf%qv_id))
@@ -294,9 +299,10 @@ deallocate(wrf%w)
 deallocate(wrf%ph)
 deallocate(wrf%phb)
 deallocate(wrf%t)
-deallocate(wrf%tslb)
 deallocate(wrf%mu)
 deallocate(wrf%mub)
+deallocate(wrf%tslb)
+deallocate(wrf%tsk)
 if(wrf%n_moist > 0) then
    deallocate(wrf%qv)
 endif
@@ -971,15 +977,14 @@ call check( nf90_inquire_dimension(wrf%ncid, dimids(ndims), len=lngth) )
 if(debug) write(6,*) 'len= ',lngth,' n_moist = ',wrf%n_moist
 
 if (in_or_out  == "OUTPUT") then
-   call check( nf90_put_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, 1 /)))
-!!$   call check( nf90_put_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%tslb_id,  wrf%tslb,  start = (/ 1, 1, 1, 1 /)))
-!!$   call check( nf90_put_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%u_id,    wrf%u,    start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%v_id,    wrf%v,    start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%w_id,    wrf%w,    start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%ph_id,   wrf%ph,   start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%t_id,    wrf%t,    start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%mu_id,   wrf%mu,   start = (/ 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%tslb_id, wrf%tslb, start = (/ 1, 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%tsk_id,  wrf%tsk,  start = (/ 1, 1, 1 /)))
    if(wrf%n_moist > 0) then
       call check( nf90_put_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
    endif
@@ -1023,15 +1028,16 @@ if (in_or_out  == "OUTPUT") then
       endif
    endif
 else
-   call check( nf90_get_var(wrf%ncid, wrf%u_id,   wrf%u,   start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%v_id,   wrf%v,   start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%t_id,   wrf%t,   start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%mu_id,  wrf%mu,  start = (/ 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%tslb_id,   wrf%tslb,   start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%u_id,    wrf%u,    start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%v_id,    wrf%v,    start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%w_id,    wrf%w,    start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%ph_id,   wrf%ph,   start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%phb_id,  wrf%phb,  start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%t_id,    wrf%t,    start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%mu_id,   wrf%mu,   start = (/ 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%mub_id,  wrf%mub,  start = (/ 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%tslb_id, wrf%tslb, start = (/ 1, 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%tsk_id,  wrf%tsk,  start = (/ 1, 1, lngth /)))
    if(wrf%n_moist > 0) then
       call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, lngth /)))
    endif

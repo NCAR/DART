@@ -276,6 +276,7 @@ do id=1,num_domains
    n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
    n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
+   n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
 ! moist variables. Order is qv, qc, qr, qi, qs, qg.
 
@@ -357,6 +358,10 @@ do id=1,num_domains
    in = n_values+1
    call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%tslb,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
    n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
+
+   in = n_values+1
+   call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%tsk,wrf%dom(id)%we,wrf%dom(id)%sn)
+   n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
 ! moist variables
 
