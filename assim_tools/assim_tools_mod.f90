@@ -146,14 +146,14 @@ var_ratio = obs_var / (prior_var + obs_var)
 new_mean = var_ratio * (prior_mean  + prior_var*obs / obs_var)
 
 ! THIS POINT CAN EVALUATE INCONSISTENCY if needed
-if(slope /= 0.0 .or. present(bias_ratio_out)) then
+if(abs(slope) > 0.0000001_r8 .or. present(bias_ratio_out)) then
    error = prior_mean - obs
    diff_sd = sqrt(obs_var + prior_var)
    ratio = abs(error / diff_sd)
 endif
 if(present(bias_ratio_out)) bias_ratio_out = ratio
 
-if(slope == 0.0) then
+if(abs(slope) < 0.0000001_r8) then
    a = sqrt(var_ratio)
    obs_inc = a * (ens - prior_mean) + new_mean - ens
 else
@@ -211,7 +211,7 @@ integer :: i, j, index(ens_size), ens_index(ens_size), new_index(ens_size)
 a = -1
 
 ! Slope correction not currently implemented with kernel filter
-if(slope > 0.0) then
+if(abs(slope) > 0.0000001_r8) then
    write(*, *) 'confidence slope bias correction is not implemented with kernel filter'
    stop
 endif
@@ -300,7 +300,7 @@ integer :: i
 a = -1
 
 ! Slope correction not currently implemented with kernel filter
-if(slope > 0.0) then
+if(abs(slope) > 0.0000001_r8) then
    write(*, *) 'confidence slope bias correction is not implemented with kernel filter'
    stop
 endif
@@ -379,7 +379,7 @@ integer :: i, j, kernel, ens_index(ens_size), new_index(ens_size)
 a = -1
 
 ! Slope correction not currently implemented with kernel filter
-if(slope > 0.0) then
+if(abs(slope) > 0.0000001_r8) then
    write(*, *) 'confidence slope bias correction is not implemented with kernel filter'
    stop
 endif
