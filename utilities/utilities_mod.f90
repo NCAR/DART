@@ -53,7 +53,7 @@ private  nml_error_init
 integer, parameter ::   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
 
-public file_exist, get_unit, error_mesg, check_nml_error, open_file, &
+public file_exist, get_unit, check_nml_error, open_file, timestamp, &
        close_file, register_module, error_handler, initialize_utilities, &
        finalize_utilities, E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL, logfileunit
 
@@ -78,9 +78,15 @@ contains
 !#######################################################################
 
    subroutine initialize_utilities
-   ! integer :: logfileunit -- private module variable
+   ! integer :: logfileunit -- public module variable
    integer :: iunit, io
    logical :: lfile
+
+   character(len= 8) :: date
+   character(len=10) :: time
+   character(len= 5) :: zone
+   integer, dimension(8) :: values
+
 
       if ( module_initialized ) then ! nothing to do
 
@@ -110,7 +116,7 @@ contains
             if ( iunit < 0 ) then
                write(*,*)'   unable to get a unit to use to read the namelist.'
                write(*,*)'   stopping.'
-               stop
+               stop 99
             endif
 
             ! If the file exists, it might still not contain the utilities_nml namelist
@@ -129,7 +135,7 @@ contains
          if ( logfileunit < 0 ) then
             write(*,*)'   unable to get a unit to use for the logfile.'
             write(*,*)'   stopping.'
-            stop
+            stop 99
          endif
 
          write(*,*)'Trying to read from unit ', logfileunit
@@ -145,7 +151,22 @@ contains
             write(*,*)'   unable to open the logfile.'
             write(*,*)'   the intended file name was <',trim(logfilename),'>'
             write(*,*)'   stopping.'
+            stop 99
          endif
+
+         ! Log the run-time 
+
+         call DATE_AND_TIME(date, time, zone, values)
+
+         write(logfileunit,*)
+         write(logfileunit,*)'--------------------------------------'
+         write(logfileunit,*)'Running  ... at YYYY MM DD HH MM SS = '
+         write(logfileunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
+                           values(3),  values(5), values(6), values(7)
+         if ( values(4) /= -HUGE(0) ) &
+         write(logfileunit,*)'time zone offset is ',values(4),' minutes.'
+         write(logfileunit,*)'--------------------------------------'
+         write(logfileunit,*)
 
          ! Check to make sure termlevel is set to a reasonable value
          call checkTermLevel
@@ -242,6 +263,75 @@ contains
 
 !#######################################################################
 
+   subroutine timestamp(string1,string2,string3,pos)
+      ! values(1) year
+      ! values(2) month
+      ! values(3) day
+      ! values(4) minutes diff from UTC
+      ! values(5) hour
+      ! values(6) minutes
+      ! values(7) seconds
+      ! values(8) milliseconds
+
+      character(len=*), optional, intent(in) :: string1
+      character(len=*), optional, intent(in) :: string2
+      character(len=*), optional, intent(in) :: string3
+      character(len=*),           intent(in) :: pos
+
+      character(len= 8) :: date
+      character(len=10) :: time
+      character(len= 5) :: zone
+      integer, dimension(8) :: values
+
+      if ( .not. module_initialized ) call initialize_utilities
+
+      call DATE_AND_TIME(date, time, zone, values)
+
+      ! check to see if values are valid on this system
+
+      if ( any(values /= -HUGE(0)) ) then ! at least one is valid
+
+         SELECT CASE ( pos )
+
+            CASE ( 'end' )
+
+               write(logfileunit,*)
+               write(logfileunit,*)'--------------------------------------'
+               write(logfileunit,*)'Finished ... at YYYY MM DD HH MM SS = '
+               write(logfileunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
+                           values(3),  values(5), values(6), values(7)
+
+               if(present(string1)) write(logfileunit,*)trim(string1)
+               if(present(string2)) write(logfileunit,*)trim(string2)
+               if(present(string3)) write(logfileunit,*)trim(string3)
+               write(logfileunit,*)'--------------------------------------'
+
+               call finalize_utilities
+         
+            CASE DEFAULT
+
+               write(logfileunit,*)
+               write(logfileunit,*)'--------------------------------------'
+               write(logfileunit,*)'Time is YYYY MM DD HH MM SS = '
+               write(logfileunit,'(9x,i4,5(1x,i2))') values(1), values(2), &
+                           values(3),  values(5), values(6), values(7)
+
+               if(present(string1)) write(logfileunit,*)trim(string1)
+               if(present(string2)) write(logfileunit,*)trim(string2)
+               if(present(string3)) write(logfileunit,*)trim(string3)
+
+               if ( values(4) /= -HUGE(0) ) &
+               write(logfileunit,*)'time zone offset is ',values(4),' minutes.'
+               write(logfileunit,*)'--------------------------------------'
+
+         END SELECT
+          
+      endif
+
+   end subroutine timestamp
+
+!#######################################################################
+
    function file_exist (file_name)
 
       character(len=*), intent(in) :: file_name
@@ -303,11 +393,10 @@ contains
              case (1)
                 print *, ' WARNING in ',routine(1:len_trim(routine))
                 print *, ' ',message(1:len_trim(message))
-                stop
              case default
                 print *, ' ERROR in ',routine(1:len_trim(routine))
                 print *, ' ',message(1:len_trim(message))
-                stop
+                stop 99
           end select
 
 !         --------------------------------------------
@@ -374,7 +463,7 @@ select case(level)
 end select
 
 ! TERMLEVEL gets set in the namelist
-if( level >= TERMLEVEL ) stop
+if( level >= TERMLEVEL ) stop 99
 
 end subroutine error_handler
 
