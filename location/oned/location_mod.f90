@@ -17,7 +17,9 @@ private
 
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
-       LocationDims, LocationName, LocationLName
+       LocationDims, LocationName, LocationLName, &
+! FOLLOWING INTERFACES ARE TEMPORARY LINK PATHCES, SHOULD BE REMOVED
+      vert_is_level, read_ncep_obs_location
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
@@ -213,6 +215,43 @@ end if
 end subroutine interactive_location
 
 
+
+function vert_is_level(loc)
+!---------------------------------------------------------------------------
+!
+! Stub needed for temporary linking
+
+logical :: vert_is_level
+type(location_type), intent(in) :: loc
+
+vert_is_level = .false.
+write(*, *) 'vert_is_level is not supported for 1D location module'
+stop
+
+end function vert_is_level
+
+
+
+!=============================================================
+  subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
+!=============================================================
+
+! Stub needed for temporary linking
+
+implicit none
+
+type(location_type) :: location
+
+integer :: obs_prof
+integer, intent(in) :: obsunit
+integer, intent(out) :: obsindex
+real (r8), intent(out) :: var
+
+write(*, *) 'read_ncep_obs_location is not supported for 1D location module'
+stop
+
+
+end subroutine read_ncep_obs_location
 
 !
 !----------------------------------------------------------------------------
