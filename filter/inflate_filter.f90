@@ -533,7 +533,9 @@ AdvanceTime : do i = 1, num_obs_sets
 ! Look at local work with inflate
          mean_correl = abs(sum(correl) / num_groups)
          bias_wt(ind) = bias_wt(ind) + reg_factor * mean_correl
+!!!         bias_wt(ind) = bias_wt(ind) + mean_correl
          bias_sum(ind) = bias_sum(ind) + reg_factor * mean_correl * mean_bias_mag
+!!!         bias_sum(ind) = bias_sum(ind) + mean_correl * mean_bias_mag
       end do
 
    end do Observations
@@ -550,7 +552,7 @@ AdvanceTime : do i = 1, num_obs_sets
       end if
 
 ! Reduce the increment if the weight is small
-      if(bias_wt(j) < 1.0) inflate_inc = inflate_inc * bias_wt(j) / 1.0
+      if(bias_wt(j) < 1.00) inflate_inc = inflate_inc * bias_wt(j) / 1.00
 
       if(inflate_inc > 0.05) inflate_inc = 0.05
       if(inflate_inc < -0.05) inflate_inc = -0.05
