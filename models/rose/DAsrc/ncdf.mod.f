@@ -239,12 +239,15 @@
       integer, dimension(var_cnt), intent(in) ::  var_ids
       real, dimension(nz, nx, ny, var_cnt), intent(in) :: vars 
 
+
 !... local variables 
 
       integer :: iret                  ! error status return
       integer :: i
       real    :: t_elap
        
+      integer, dimension(mtime_len,1) :: mtime_dummy
+
 !... rank (number of dimensions) for each variable
 
       integer, parameter :: mtime_rank = 2
@@ -264,13 +267,16 @@
       iret = nf_put_vara_int(ncid, nstp_id, frame, 1, nstep)
       call check_err(iret)
 
-      t_elap = 60.0 * nstep / ntime
+      t_elap = 60.0 * real(nstep) / real(ntime)
       iret = nf_put_vara_real(ncid, time_id, frame, 1, t_elap )
       call check_err(iret)
 
       mtime_start(2) = frame
+      mtime_dummy(1,1) = mtime(1) 
+      mtime_dummy(2,1) = mtime(2)
+      mtime_dummy(3,1) = mtime(3)
       iret = nf_put_vara_int(ncid, mtime_id, mtime_start,
-     $                       mtime_count, mtime )
+     $                       mtime_count, mtime_dummy )
       call check_err(iret)
 
 !... save dynamical fields

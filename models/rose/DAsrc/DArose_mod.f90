@@ -11,8 +11,8 @@ module DArose_mod
 ! $Author$
 ! $Name$
 
-   use params, only : ntime, nout, noutdiag, nouttid, nend, nseg,&
-       & nstart, nsave
+   use params, only : ntime, nout, noutdiag, nouttid, nend,&
+       & nsave
    use dynam,  only : deltat, dtleap, ntrans, ndiabat, ninterp, &
        & namf10, namf12, namf13, namf14, namf17, & 
        & namf20, namf23, namf26, namf27, namf28, &
@@ -26,10 +26,9 @@ module DArose_mod
 
    implicit none
    private
-   public :: msetvar, old_restart, output_prog_diag, & 
+   public :: msetvar, output_prog_diag, & 
              h_tune, z_tune
 
-   logical :: old_restart = .true.
    logical :: output_prog_diag = .false.
    character (len=50) :: input_dir = '../DAinput/'
    character (len=50) :: out_dir   = '../DAoutput/'
@@ -41,7 +40,7 @@ module DArose_mod
    integer       :: lengdy 
 
 
-   namelist /rose_nml/ old_restart, nstart, target_time, &
+   namelist /rose_nml/ target_time, &
                        input_dir, out_dir, ncep_file, restart_file,&
                        output_prog_diag, &
                        h_tune, z_tune, &
@@ -54,8 +53,7 @@ subroutine msetvar
 
       integer :: iunit, io, ierr
  
-      !data nstart /0/                     ! =0 initial run; =1 restart
-      !data ntime  /8/                     ! number of steps per hour
+      ntime = 8              ! number of steps per hour
 
       if(file_exist('rose.nml')) then
          iunit = open_file('rose.nml', action = 'read')
@@ -68,8 +66,6 @@ subroutine msetvar
       endif
 
       write(*,*) 'rose_nml values  --- may come from rose.nml'
-      write(*,*) 'old_restart ', old_restart
-      write(*,*) 'nstart ', nstart
       write(*,*) 'target_time ', target_time
       write(*,*) 'input_dir ', input_dir 
       write(*,*) 'out_dir ', out_dir
@@ -115,11 +111,11 @@ subroutine msetvar
 !  variable - update for each run   ! need to be added to namelist
 !-------------------------------------------------------------------
 
-      if (nstart == 0) then  
-        nseg = 1       ! segment number (=1 for initial run)
-      else             ! used for tracking NetCDF output files
-        nseg = 2       ! USED WHEN output_prog_diag = .true. 
-      endif
+!      if (nstart == 0) then  
+!        nseg = 1       ! segment number (=1 for initial run)
+!      else             ! used for tracking NetCDF output files
+!        nseg = 2       ! USED WHEN output_prog_diag = .true. 
+!      endif
 
 !-------------------------------------------------------------------
 !  fixed for all portions of run
@@ -192,7 +188,7 @@ subroutine msetvar
 !         ! restart fields from previous run
 !         write(namf17,'(a,"rose_restart.dat")') trim(input_dir) 
 !      end if
-       write(namf17,'("rose_restart.dat")')
+       namf17 = trim(restart_file)
 
 !-------------------------------------------------------------------
 !... output
@@ -200,18 +196,18 @@ subroutine msetvar
 
     if (output_prog_diag) then
 !   unit 10 output for plotting, diagnostics, etc. - STANDARD 
-      write(namf10,120) trim(out_dir), nseg
- 120  format(a, 'day151.nc', i1)
+      write(namf10,120) trim(out_dir)
+ 120  format(a, 'day151.nc')
       print *, namf10
 
 !   unit 41 output for plotting - ADDITIONAL DIAGNOSTICS
-      write(namf41,125) trim(out_dir), nseg
- 125  format(a, 'day151.diag.nc',i1)
+      write(namf41,125) trim(out_dir)
+ 125  format(a, 'day151.diag.nc')
       print *, namf41
 
 !   unit 13 - 32 times per day output for tidal analysis
-      write(namf13,140) trim(out_dir), nseg
- 140  format(a, 'day151.tides.nc',i1)
+      write(namf13,140) trim(out_dir)
+ 140  format(a, 'day151.tides.nc')
     endif
 
 !   unit 14 data for restarting integration

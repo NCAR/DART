@@ -1277,13 +1277,21 @@ qn1(:,:,:,7)  = var%vars_3d(:,:,:,7) ! H
 qn1(:,:,:,8)  = var%vars_3d(:,:,:,8) ! OH
 qn1(:,:,:,18) = var%vars_3d(:,:,:,9) ! O
 
-iftype = 2 ! ALWAYS want to write the 'new-style' restart file.
 
 iunit = open_file(file_name, form = 'unformatted', action = 'write')
-write(iunit) iftype
-write(iunit) iyear, doy, utsec, year0, day0, ut0, &
+
+if (iftype == 1) then ! style 1 (old school) restart file.
+  write(iunit) iftype
+  write(iunit) dummy_rose, gmt_frac, daynum, tref, treflb, &
+                  trefub, un1, vn1, tn1, un0, vn0, tn0, &
+                  qn1(:,:,:,1:nbcon-1), q_o2, q_n2
+else
+  write(iunit) iftype
+  write(iunit) iyear, doy, utsec, year0, day0, ut0, &
              tref, treflb, trefub, un1, vn1, tn1, &
              un0, vn0, tn0, qn1, q_o2, q_n2
+endif
+
 call close_file(iunit)
 
 end subroutine update_ROSE_restart
@@ -1359,7 +1367,7 @@ if(file_exist(file_name)) then
                   treflb, trefub, un1, vn1, tn1, un0, vn0, tn0, &
                   qn1, q_o2, q_n2
       if ( ierr /= 0 ) then
-         write(errstring,*)'type ',iunit,' restart file is ',trim(adjustl(file_name))
+         write(errstring,*)'type ', iftype ,' restart file is ',trim(adjustl(file_name))
          call error_handler(E_MSG,'read_ROSE_restart',errstring,source,revision,revdate)
          call error_handler(E_ERR,'read_ROSE_restart','read error',&
               source,revision,revdate)

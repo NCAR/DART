@@ -62,8 +62,9 @@
       use output
       use diagnostic
 
-      use utilities_mod, only : open_file, close_file
-      use DArose_mod, only : msetvar, old_restart, output_prog_diag
+      use utilities_mod, only : open_file, close_file, 
+     $                          error_handler, E_ERR, E_MSG, E_WARN
+      use DArose_mod, only : msetvar, output_prog_diag
 
       implicit none
 
@@ -83,6 +84,8 @@
       integer :: i, k
       integer :: dummy(3)
       integer :: daynum
+      integer :: ierr, iftype
+      character(len=129) :: errstring
 
       real, dimension (nz,nx,ny,nvars) :: vars
 
@@ -90,6 +93,11 @@
       
       real, parameter :: gcp = 9.8e-03
 
+!-------------------------------------------------------------------
+! CVS Generated file description for error handling, do not edit
+      character(len=128) :: source = " "
+      character(len=128) :: revision = " "
+      character(len=128) :: revdate = " "
 !-------------------------------------------------------------------
 !  set variable program parameters including program control
 !  parameters and i/o file names
@@ -113,30 +121,53 @@
       print *, 'startup: ', namf17
 
       iunit = open_file(namf17,form='unformatted',action='read')
+      read(iunit, iostat=ierr) iftype
+      if ( ierr /= 0 ) then
+      write(errstring,*)'restart file is ',trim(adjustl(namf17))
+      call error_handler(E_MSG,'rose main: ',
+     $     errstring,source,revision,revdate)
+      call error_handler(E_ERR,'rose main: ',
+     $     'unknown restart file type ',source,revision,revdate)
+      endif
 
 !     open (unit   = 17, 
 !    $         file   = namf17,
 !    $         form   = 'unformatted',
 !    $         status = 'old')
 
-      if (old_restart) then
+      if (iftype == 1) then !! old_restart == .true.
 
-        read(iunit) dummy, gmt_frac, daynum, tref, treflb,
+        read(iunit,iostat=ierr) dummy, gmt_frac, daynum, tref, treflb,
      $              trefub, un1, vn1, tn1, un0, vn0, tn0, 
      $              qn1(:,:,:,1:nbcon-1), q_o2, q_n2
+        if ( ierr /= 0 ) then
+          write(errstring,*)'restart file is ',trim(adjustl(namf17))
+          call error_handler(E_MSG,'rose main: ',
+     $         errstring,source,revision,revdate)
+          call error_handler(E_ERR,'rose main: ',
+     $         'read error ',source,revision,revdate)
+        endif
 
         day0 = dummy(3)
         print *, 'day0:', day0, 'gmt_frac:', gmt_frac
         ut0 = int(gmt_frac * 24.0 * 3600.)
-
         iyear = (day0 - 1)/365
         doy = mod( day0, 365)
 
-      else
+        nstart = 0
 
-        read(iunit) iyear, doy, utsec, year0, day0, ut0, tref, 
+      else !! old_restart == .false.
+
+        read(iunit,iostat=ierr) iyear,doy,utsec,year0,day0,ut0,tref, 
      $              treflb, trefub, un1, vn1, tn1, un0, vn0, tn0, 
      $              qn1, q_o2, q_n2
+        if ( ierr /= 0 ) then
+          write(errstring,*)'restart file is ',trim(adjustl(namf17))
+          call error_handler(E_MSG,'rose main: ',
+     $         errstring,source,revision,revdate)
+          call error_handler(E_ERR,'rose main: ',
+     $         'read error ',source,revision,revdate)
+        endif
 
         ut0 = utsec
         gmt_frac = float(utsec)/(3600.0*24.0)
@@ -145,9 +176,12 @@
         day0 = doy
         print *, iyear, doy, utsec, year0, day0, ut0
 
+        nstart = 1
+
       endif 
 
       call close_file(iunit) 
+
 !-------------------------------------------------------------------
 !   other initial fields
 !-------------------------------------------------------------------
@@ -470,7 +504,9 @@
     
             iunit = open_file(namf14,form='unformatted',action='write')
 !           open (unit = 14, file = namf14, form = 'unformatted')
-
+   
+            iftype = 2 ! ALWAYS want to write the 'new-style' restart file.
+            write(iunit) iftype !  old_restart == .true.
             write(iunit) iyear, doy, utsec, year0, day0, ut0, 
      $                   tref, treflb, trefub, 
      $                   un1, vn1, tn1, un0, vn0, tn0, 

@@ -43,7 +43,7 @@ program nmlbld_rose
          call close_file(iunit)
    endif
 
-      read(*,*)  nstart, target_time
+      read(*,*)  target_time
 
       iunit = open_file('rose.nml',action = 'write')
 
