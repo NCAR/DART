@@ -141,13 +141,13 @@ allocate(state_loc(l96%model_size))
 ! Carrying all three for now - may not be necessary
 kount = 1
 do i = 1, l96%x_size
-   l96%x_loc = (i - 1.0) / l96%x_size
-   state_loc(kount) =  set_location(l96%x_loc)
+   l96%x_loc(i) = (i - 1.0) / l96%x_size
+   state_loc(kount) =  set_location(l96%x_loc(i))
    kount = kount+1
 end do
 do i = 1, l96%y_size
-   l96%y_loc = (i - 1.0) / l96%y_size
-   state_loc(kount) =  set_location(l96%y_loc)
+   l96%y_loc(i) = (i - 1.0) / l96%y_size
+   state_loc(kount) =  set_location(l96%y_loc(i))
    kount = kount+1
 end do
 
