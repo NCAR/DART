@@ -1,6 +1,11 @@
-
 module utilities_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 !-----------------------------------------------------------------------
 !
 !   A collection of simple useful programs.
