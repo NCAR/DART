@@ -207,7 +207,7 @@ real(r8), intent(out), optional :: bias_ratio_out
 
 real(r8) :: weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
 real(r8) :: base, frac, new_val(ens_size), weight_sum
-integer  :: i, j, index(ens_size), ens_index(ens_size), new_index(ens_size)
+integer  :: i, j, indx(ens_size), ens_index(ens_size), new_index(ens_size)
 
 ! The factor a is not defined for particle filters
 a = -1.0_r8
@@ -249,7 +249,7 @@ do i = 1, ens_size
    ! Can make this search more efficient by limiting base
    do j = 1, ens_size
       if(cum_weight(j - 1) < frac .and. frac < cum_weight(j)) then
-         index(i) = j
+         indx(i) = j
 !         write(*, *) i, frac, 'gets index ', j
          goto 111
       end if
@@ -261,7 +261,7 @@ end do
 
 ! Set the new values for the ensemble members
 do i = 1, ens_size
-   new_val(i) = ens(index(i))
+   new_val(i) = ens(indx(i))
 !   write(*, *) 'new_val ', i, new_val(i)
 end do
 
