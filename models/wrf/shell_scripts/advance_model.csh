@@ -63,6 +63,7 @@ set RUN_HOURS         = `expr $INTERVAL_SS \/ 3600`
 set REMAIN            = `expr $INTERVAL_SS \% 3600`
 set RUN_MINUTES       = `expr $REMAIN \/ 60`
 set RUN_SECONDS       = `expr $REMAIN \% 60`
+set HISTORY_INTERVAL  = `expr $INTERVAL_SS \/ 60`
 set WRF_DT            = `head -5 wrf.info | tail -1`
 set GRID_DISTANCE     = `head -6 wrf.info | tail -1`
 set WEST_EAST_GRIDS   = `head -7 wrf.info | tail -1`
@@ -93,7 +94,7 @@ cat >! namelist.input << EOF
  end_second                          = ${END_SEC},   ${END_SEC},   ${END_SEC},
  interval_seconds                    = ${INTERVAL_SS},
  input_from_file                     = .true.,.false.,.false.,
- history_interval                    = 360,  60,   60,
+ history_interval                    = ${HISTORY_INTERVAL},  60,   60,
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
  restart_interval                    = 5000,
