@@ -31,10 +31,15 @@
 <BODY>
 
 <DIV ALIGN="CENTER">
-<A HREF="#INTERFACE">PUBLIC INTERFACE</A> / 
-<A HREF="#ROUTINES">ROUTINES</A> / 
-<A HREF="#NAMELIST">NAMELIST</A> / 
-<A HREF="#ERRORS">ERRORS</A>
+<A HREF="#Interface">INTERFACE</A> / 
+<A HREF="#PublicRoutines">PUBLIC ROUTINES</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATES</A>
 </DIV>
 
 <!--==================================================================-->
@@ -62,16 +67,6 @@
 
 <!--==================================================================-->
 
-<A NAME="DESCRIPTION"></A>
-<P>
-   This module provides a standard interface to the B-grid dynamical
-   core and B-grid interface to the simple physics.
-   A similar interface for the spectral dynamical core exists that
-   may be easily switched with this interface.
-</P>
-
-<!--==================================================================-->
-
 <A NAME="OTHER MODULES USED"></A>
 <HR>
 <H2>OTHER MODULES USED</H2>
@@ -84,14 +79,18 @@ fms_mod
 </PRE>
 
 <!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
 
-<A NAME="INTERFACE"></A>
+<A NAME="Interface"></A>
 <HR>
 <H2>PUBLIC INTERFACE</H2>
 
-<P>
-<em class=code>use xxxxxxx </em><em class=optionalcode> [,only: xxxxxxx, xxxxxxx, xxxxxxx ]</em>
-</P>
+<TABLE>
+<TR><TD><em class=code>use xxxxxxx, only : </em></TD>
+                   <TD><A HREF="#yyyroutine1">yyyroutine1</A> &</TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">yyyroutine2</A> &</TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">yyyroutine3</A></TD></TR>
+</TABLE>
 
 <H3 class=indent1>NOTES</H3>
 
@@ -106,18 +105,13 @@ may be read from file <em class=file>input.nml</em>.
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 
-<A NAME="ROUTINES"></A>
+<A NAME="PublicRoutines"></A>
 <HR>
 <H2>PUBLIC ROUTINES</H2>
 <P>
 A note about documentation style. Optional arguments are enclosed in
 brackets <em class=optionalcode>[like this]</em>.
 </P>
-
-<UL>
-   <LI><A HREF="#yyyroutine1">yyyroutine1</A>
-   <LI><A HREF="#yyyroutine2">yyyroutine2</A>
-</UL><BR>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
@@ -266,7 +260,7 @@ brackets <em class=optionalcode>[like this]</em>.
 
 <!--==================================================================-->
 
-<A NAME="NAMELIST"></A>
+<A NAME="Namelist"></A>
 <HR>
 <H2>NAMELIST</H2>
 
@@ -300,26 +294,77 @@ brackets <em class=optionalcode>[like this]</em>.
 <P>would go here
 </P>
 
-
 <!--==================================================================-->
-<!-- Describe all the errors                                          -->
+<!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
-<A NAME="ERRORS"></A>
+<A NAME="FilesUsed"></A>
 <HR>
+<H2>FILES</H2>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<HR>
+<H2>REFERENCES</H2>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
 <div class="color">
-<H2>ERROR MESSAGES</H2>
-<PRE>
 
-<b>FATAL errors from get_atmosphere_axes in atmosphere_mod</b>
+<TABLE border="1" cellspacing="1" cellpadding="10">
+<TR><TH>Code</TH><TH>Routine</TH><TH>Condition</TH></TR>
 
-    <b>size of argument is incorrect</b>
-        The size of the argument to get_atmosphere_axes must be
-        between 1 and 4.
+<TR><!--code here--><TD VALIGN="top">xxxx</TD>
+    <!--routine  --><TD VALIGN="top">yyyyy</TD>
+    <!--condition--><TD VALIGN="top">size of [argument] is incorrect<BR>
+        The size of [argument] must be between 1 and 4.</TD>
+</TR>
 
+<TR><!--code here--><TD VALIGN="top">xxxx</TD>
+    <!--routine  --><TD VALIGN="top">yyyyy</TD>
+    <!--condition--><TD VALIGN="top">bad judgement<BR>
+                        What were you thinking?</TD>
+</TR>
+</TABLE>
 
-</PRE>
 </div>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<HR>
+<H2>PRIVATE Components</H2>
 
 <!--==================================================================-->
 
