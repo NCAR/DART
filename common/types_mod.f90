@@ -7,6 +7,7 @@ MODULE types_mod
 ! $Author$ 
 !
 
+
 IMPLICIT NONE
 
 ! let CVS fill strings ... DO NOT EDIT ...
@@ -14,6 +15,8 @@ character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
+
+private :: source, revision, revdate
 
 SAVE
 
