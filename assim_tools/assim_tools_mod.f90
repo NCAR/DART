@@ -160,7 +160,7 @@ real(r8) :: new_var, inf_ens(ens_size)
 ! Compute prior variance and mean from sample
 sum_x      = sum(ens)
 prior_mean = sum_x / ens_size
-prior_var  = (sum(ens * ens) - sum_x**2 / ens_size) / (ens_size - 1)
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
 if (obs_var /= 0.0_r8) then
    var_ratio = obs_var / (prior_var + obs_var)
