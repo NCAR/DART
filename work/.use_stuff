@@ -1,8 +1,10 @@
+
 chisq+
 utilities+
 assim_diag+ chisq utilities
 loc_and_dist+
-model+ loc_and_dist
+types+
+model+ loc_and_dist types
 obs_tools+
 random_nr+
 random_seq+ random_nr

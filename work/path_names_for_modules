@@ -33,13 +33,19 @@ endif
    set NAG_WRAP = /net/jla/assim/nag_wrap/nag_wrap.f90
 
 #----------------------------------------------------------------------
+# Common definitions, etc.
+#----------------------------------------------------------------------
+
+set TYPES = ../common/types_mod.f90
+
+#----------------------------------------------------------------------
 # A variety of models
 #----------------------------------------------------------------------
 
 #set MODEL = ../models/null_model/null_model.f90
 #set MODEL = ../models/forced_barot/model.f90
 #set MODEL = ../models/lorenz_63/lorenz_63.f90
- set MODEL = ../models/lorenz_96/lorenz_96.f90
+ set MODEL = ../models/lorenz_96/model_mod.f90
 #set MODEL = ../models/lorenz_96/imperfect.f90
 #set MODEL = ../models/9var/9var.f90
 #set MODEL = ../models/9var/noisy_9var.f90
@@ -72,8 +78,8 @@ set CLEAN_SEQ_OBS = ../seq_obs/clean_seq_obs.f90
  set COV_CUTOFF = ../cov_cutoff/cov_cutoff.f90
  set ASSIM_TOOLS = ../assim_tools/assim_tools.f90
  set OBS_TOOLS = ../obs_tools/obs_tools.f90
- set LOC_AND_DIST = ../loc_and_dist/oned_loc_and_dist.f90
-#set LOC_AND_DIST = ../loc_and_dist/twod_loc_and_dist.f90
+ set LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
+#set LOC_AND_DIST = ../loc_and_dist/twod/loc_and_dist_mod.f90
 
  set SORT = ../sort/sort.f90
  set ASSIM_DIAG = ../assim_diag/assim_diag.f90 
