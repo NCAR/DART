@@ -45,7 +45,7 @@ integer           :: seconds, days
 !  misc stuff
 
 logical, parameter :: debug = .false.
-integer :: mode, io, ierr,i,j,k
+integer :: mode, io, ierr
 
 !---
 !  begin
