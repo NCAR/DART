@@ -532,7 +532,7 @@ do id=1,num_domains
    enddo
 
    if(wrf%dom(id)%surf_obs ) then
-      do i = 1, 4
+      do i = 1, 5
          ind = ind + 1                   ! *** Surface variable ***
          wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
          wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
@@ -706,11 +706,11 @@ integer,            intent(out) :: istatus
 
 logical, parameter  :: debug = .false.
 real(r8)            :: xloc, yloc, zloc, xloc_u, yloc_v, xyz_loc(3)
-integer                         :: which_vert
+integer             :: which_vert
 integer             :: i, i_u, j, j_v, k, k2, i1,i2
 real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
 real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
-integer                         :: in, ii, id
+integer             :: in, ii, id
 
 real(r8), dimension(2) :: fld
 real(r8), allocatable, dimension(:) :: v_h, v_p
@@ -782,9 +782,9 @@ else if(which_vert == 2) then
    if(debug) print*,'model pressure profile'
    if(debug) print*,v_p
 else if(which_vert == 3) then
-!  get model height profile
+   ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
-!  get height vertical co-ordinate
+   ! get height vertical co-ordinate
    call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
    if(debug) print*,' obs is by height and zloc =',zloc
 else if(which_vert == -1) then
@@ -828,15 +828,15 @@ if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
          call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
               utrue, vtrue)
 
-   if( obs_kind == KIND_U) then
+         if( obs_kind == KIND_U) then
 
             fld(k2) = utrue
 
-   else   ! must want v
+         else   ! must want v
 
             fld(k2) = vtrue
 
-   endif
+         endif
 
       enddo
 
@@ -851,9 +851,9 @@ else if( obs_kind == KIND_T ) then                ! T
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-         i1 = get_wrf_index(i,j,k,TYPE_T,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
       pres1 = model_pressure_t(i  ,j  ,k,id,x)
       pres2 = model_pressure_t(i+1,j  ,k,id,x)
       pres3 = model_pressure_t(i  ,j+1,k,id,x)
@@ -912,8 +912,8 @@ else if( obs_kind == KIND_W ) then                ! W
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_W) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_W)) then
 
-         i1 = get_wrf_index(i,j,k,TYPE_W,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
+      i1 = get_wrf_index(i,j  ,k,TYPE_W,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
       fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
       i1 = get_wrf_index(i,j  ,k+1,TYPE_W,id)
@@ -926,7 +926,7 @@ else if( obs_kind == KIND_W ) then                ! W
 
    endif
 
-else if( obs_kind == KIND_QV) then                ! QV
+else if( obs_kind == KIND_QV ) then                ! QV
 
    in = 0
    do ii = 1, wrf%dom(id)%number_of_wrf_variables 
@@ -936,9 +936,9 @@ else if( obs_kind == KIND_QV) then                ! QV
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
 
-         i1 = get_wrf_index(i,j,k,TYPE_QV,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
       fld(1) = a1 /(1.0_r8 + a1)
 
       i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
@@ -962,8 +962,8 @@ else if( obs_kind == KIND_QR) then                ! QR
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
 
-         i1 = get_wrf_index(i,j,k,TYPE_QR,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
+      i1 = get_wrf_index(i,j  ,k,TYPE_QR,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
       fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
       i1 = get_wrf_index(i,j  ,k+1,TYPE_QR,id)
@@ -2954,7 +2954,7 @@ subroutine pres_to_zk(pres, mdl_v, n3, zk)
   real(r8), intent(in)  :: mdl_v(0:n3)
   real(r8), intent(out) :: zk
 
-  integer   :: k
+  integer  :: k
 
   zk = missing_r8
 
@@ -3091,13 +3091,13 @@ if( (var_type == type_w) .or. (var_type == type_gz) ) then
       pres2 = model_pressure_t(i,j,k-2,id,x)
       model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
-else
+   else
 
       pres1 = model_pressure_t(i,j,k,id,x)
       pres2 = model_pressure_t(i,j,k-1,id,x)
       model_pressure = (pres1 + pres2)/2.0_r8
 
-endif
+   endif
 
 elseif( var_type == type_u ) then
 
@@ -3119,7 +3119,7 @@ elseif( var_type == type_u ) then
       pres2 = model_pressure_t(i-1,j,k,id,x)
       model_pressure = (pres1 + pres2)/2.0_r8
 
-endif
+   endif
 
 elseif( var_type == type_v ) then
 
@@ -3141,7 +3141,7 @@ elseif( var_type == type_v ) then
       pres2 = model_pressure_t(i,j-1,k,id,x)
       model_pressure = (pres1 + pres2)/2.0_r8
 
-endif
+   endif
 
 elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
         var_type == type_ps  .or. var_type == type_u10 .or. &
@@ -3155,8 +3155,8 @@ elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
 
    else
 
-   imu = get_wrf_index(i,j,1,TYPE_MU,id)
-   model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
+      imu = get_wrf_index(i,j,1,TYPE_MU,id)
+      model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
 
    endif
 
@@ -3251,17 +3251,17 @@ real(r8), intent(out) :: v_h(0:n)
 real(r8)  :: fll(n+1)
 integer   :: i1,i2,k
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-        j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
+if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
+   j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
 
-      do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
-         i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
-         fll(k) = (dym*( dxm*(wrf%dom(id)%phb(i,j,k)+x(i1)) + &
-              dx*(wrf%dom(id)%phb(i+1,j,k)+x(i1+1))) + &
-              dy*(dxm*(wrf%dom(id)%phb(i,j+1,k)+x(i2)) + &
-              dx*(wrf%dom(id)%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
-      end do
+   do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
+      i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
+      fll(k) = (dym*( dxm*(wrf%dom(id)%phb(i,j,k)+x(i1)) + &
+           dx*(wrf%dom(id)%phb(i+1,j,k)+x(i1+1))) + &
+           dy*(dxm*(wrf%dom(id)%phb(i,j+1,k)+x(i2)) + &
+           dx*(wrf%dom(id)%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
+   end do
 
    do k=1,n
       v_h(k) = 0.5_r8*(fll(k) + fll(k+1) )
@@ -3272,7 +3272,7 @@ integer   :: i1,i2,k
              dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
                    dx*wrf%dom(id)%hgt(i+1,j+1) )
 
-   else
+else
 
    print*,'Not able the get height_profile'
    print*,i,j,dx,dy,dxm,dym,n,id,wrf%dom(id)%var_size(1,TYPE_GZ), &
@@ -3280,7 +3280,7 @@ integer   :: i1,i2,k
 
    v_h(:) =  missing_r8
 
-   endif
+endif
 
 end subroutine get_model_height_profile
 
@@ -3323,7 +3323,7 @@ elseif( var_type == type_u ) then
                              -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
                              -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
 
-else
+   else
 
       i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
       i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
@@ -3351,7 +3351,7 @@ elseif( var_type == type_v ) then
 
    elseif( j == 1 ) then
 
-         i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
       i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
       i3 = get_wrf_index(i,j+1,k  ,TYPE_GZ,id)
       i4 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
@@ -3406,7 +3406,7 @@ end function model_height
 
 
 
-  subroutine pert_model_state(state, pert_state, interf_provided)
+subroutine pert_model_state(state, pert_state, interf_provided)
 !----------------------------------------------------------------------
 ! subroutine pert_model_state(state, pert_state, interf_provided)
 !
