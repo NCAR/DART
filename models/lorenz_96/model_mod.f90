@@ -366,7 +366,7 @@ do i = 1, Nlocations
    call nc_write_location(ncFileID, LocationVarID, state_loc(i), start=i)
 enddo
 
-call check(nf90_close(ncFileID))
+call check(nf90_sync(ncFileID))      ! LEAVES FILE OPEN -- tjh
 
 contains
 

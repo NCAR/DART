@@ -43,6 +43,9 @@ use cov_cutoff_mod,   only : comp_cov_factor
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
    get_close_cache
 
+use typeSizes
+use netcdf
+
 implicit none
 
 ! Define a type for doing direct access to ensemble state vectors
@@ -216,6 +219,7 @@ AdvanceTime : do i = 1, num_obs_sets
       if(time2 /= get_model_time(ens(j))) call advance_state(ens(j), time2)
       call output_diagnostics(prior_state_unit, ens(j), j)
    end do
+   ierr = NF90_sync(prior_state_unit)   ! just for good measure -- TJH 
 
    ! Do a covariance inflation for now? 
    ! Inflate the ensemble state estimates
@@ -286,12 +290,17 @@ AdvanceTime : do i = 1, num_obs_sets
    do j = 1, ens_size
         call output_diagnostics(posterior_state_unit, ens(j), j)
    end do
+   ierr = NF90_sync(posterior_state_unit)   ! just for good measure -- TJH 
 
    ! Deallocate the ens_obs storage for this obs set
    deallocate(obs_err_cov, obs)
 
 end do AdvanceTime
 
+! properly dispose of the diagnostics files
+
+ierr = NF90_close(prior_state_unit)
+ierr = NF90_close(posterior_state_unit)
 
 ! Initialize the model state space diagnostic output files
 

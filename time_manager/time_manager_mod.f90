@@ -39,7 +39,7 @@ public operator(+),  operator(-),   operator(*),   operator(/),  &
 
 ! Subroutines and functions operating on time_type
 public set_time, increment_time, decrement_time, get_time, interval_alarm
-public repeat_alarm, write_time, read_time
+public repeat_alarm, write_time, read_time, nc_append_time
 
 ! List of available calendar types
 public    THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NO_LEAP,   NO_CALENDAR
@@ -2229,6 +2229,73 @@ call get_time(time, secs, days)
 write(file, *) secs, days
 
 end subroutine write_time
+
+
+
+function nc_append_time(ncFileID, time) result(len)
+!------------------------------------------------------------------------
+! The current time is appended to the "time" coordinate variable.
+! The new length of the "time" variable is returned.
+! 
+! This REQUIRES that "time" is a coordinate variable AND it is the
+! unlimited dimension. If not ... bad things happen.
+!
+! TJH Wed Aug 28 15:40:25 MDT 2002
+
+use typeSizes
+use netcdf
+implicit none
+
+integer,         intent(in) :: ncFileID
+type(time_type), intent(in) :: time
+integer                     :: len
+
+integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer  :: TimeVarID, i,ierr
+integer  :: secs, days
+real(r8) :: r8time         ! gets promoted to nf90_double ...
+
+character(len=NF90_MAX_NAME)          :: varname
+integer                               :: xtype, ndims, nAtts
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
+
+len = -1 ! assume a bad termination
+
+call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(NF90_Inq_Varid(ncFileID, "time", TimeVarID))
+call check(NF90_Inquire_Variable(ncFileID, TimeVarID, varname, xtype, ndims, dimids, nAtts))
+
+if ( ndims /= 1 ) then
+   write(*,*)'Warning:nc_append_time: "time" expected to be rank-1' 
+endif
+
+if ( dimids(1) /= unlimitedDimID ) then
+   write(*,*)'Warning:nc_append_time: no idea what you are trying to pull here ...'
+endif
+
+call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, len ))
+
+write(*,*)'Current length of ',trim(adjustl(varname)),' time variable is ',len  ! DEBUG
+
+call get_time(time, secs, days)
+r8time = days + secs/86400.0_r8    ! time base is "days since ..."
+
+len = len + 1
+call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ len /) ))
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(status)
+    integer, intent ( in) :: status
+
+    if(status /= nf90_noerr) then
+      print *, trim(nf90_strerror(status))
+    end if
+  end subroutine check
+
+end function nc_append_time
 
 
 
