@@ -85,16 +85,15 @@ td{font-weight:normal;}
 form{font-weight:normal;}
 option{font-weight:normal;}
 
-pre.indent1{
-margin-left:  5%;
-margin-right:10%;
-font-weight:normal;}
+pre.indent1{ margin-left:  5%;
+             margin-right:10%;
+             font-weight:normal;}
 
 em.units{color:crimson; font-style:normal}
 
 em.code{color:blue; font-style:typewriter}
 
-em.call{color:blue; font-style:typewriter; font-size:125%;}
+em.call{color:blue; font-style:typewriter}
 
 em.option{color:blue; font-style:italic}
 
