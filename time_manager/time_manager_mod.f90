@@ -2360,6 +2360,8 @@ if ( dimids(1) /= unlimitedDimID ) then
 endif
 if ( timeindex < 0 ) then
    write(*,*)'ERROR:nc_get_tindex: trouble deep ... can go no farther.'
+   write(*,*)'ERROR:nc_get_tindex: stopping.'
+   stop
 endif
 
 ! get time of "state", convert to time base of "days since ..."
