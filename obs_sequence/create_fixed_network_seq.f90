@@ -1,7 +1,18 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program create_fixed_network_seq
 
+! <next five lines automatically updated by CVS, do not edit>
+! $Name$
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+
 use        types_mod, only : r8
-use    utilities_mod, only : open_file, close_file
+use    utilities_mod, only : timestamp, register_module, open_file, close_file
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_num_obs, init_obs_sequence, get_first_obs, write_obs_seq, set_copy_meta_data, &
@@ -12,6 +23,13 @@ use time_manager_mod, only : time_type, operator(*), operator(+), set_time
 
 implicit none
 
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
+
 type(obs_sequence_type) :: seq, seq_in
 type(obs_type)          :: obs, next_obs, new_obs
 type(obs_def_type)      :: obs_def
@@ -20,11 +38,14 @@ logical                 :: is_there_one, is_this_last
 type(time_type)         :: ob_time, init_time, this_time, period
 integer                 :: seconds, days, i, j, network_size, option, num_times, num_copies, num_qc
 
+! Record the current time, date, etc. to the logfile
+call register_module(source,revision,revdate)
+
 ! Initialize the obs_sequence module
 call static_init_obs_sequence
 
 ! Write the sequence to a file
-write(*, *) 'Input filename for network definition sequence '
+write(*, *) 'Input filename for network definition sequence (usually  set_def.out  )'
 read(*, *) file_name
 call read_obs_seq(file_name, 0, 0, 0, seq_in)
 
@@ -141,9 +162,11 @@ else
    goto 20
 endif
 
-write(*, *) 'What is output file name for sequence'
+write(*, *) 'What is output file name for sequence (  obs_seq.in   is recommended )'
 read(*, *) file_name
 call write_obs_seq(seq, file_name)
 
+! Clean up
+call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
 
 end program create_fixed_network_seq

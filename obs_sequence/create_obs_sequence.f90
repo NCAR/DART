@@ -1,12 +1,33 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program create_obs_sequence
 
-use utilities_mod, only : open_file, close_file
-use obs_sequence_mod, only : obs_sequence_type, interactive_obs, &
-   write_obs_seq, interactive_obs_sequence, static_init_obs_sequence
-use assim_model_mod, only : static_init_assim_model
+! <next four lines automatically updated by CVS, do not edit>                             
+! $Source$         
+! $Revision$                                                                       
+! $Date$                                                            
+! $Author$
+
+use    utilities_mod, only : timestamp, register_module, open_file, close_file
+use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
+                             interactive_obs_sequence, static_init_obs_sequence
+use  assim_model_mod, only : static_init_assim_model
+
+implicit none
+
+! CVS Generated file description for error handling, do not edit                          
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 character(len = 129)    :: file_name
+
+! Record the current time, date, etc. to the logfile
+call register_module(source,revision,revdate)
 
 ! Initialize the assim_model module, need this to get model
 ! state meta data for locations of identity observations
@@ -19,8 +40,11 @@ call static_init_obs_sequence()
 seq = interactive_obs_sequence()
 
 ! Write the sequence to a file
-write(*, *) 'Input filename for sequence'
+write(*, *) 'Input filename for sequence (  set_def.out   usually works well)'
 read(*, *) file_name
 call write_obs_seq(seq, file_name)
+
+! Clean up
+call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
 
 end program create_obs_sequence
