@@ -21,7 +21,7 @@ use utilities_mod,    only :  get_unit, open_file, close_file, &
 use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
-   output_diagnostics, init_assim_model, get_state_vector_ptr, &
+   output_diagnostics, finalize_diag_output, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data, &
    binary_restart_files
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
@@ -31,8 +31,6 @@ use cov_cutoff_mod,   only : comp_cov_factor
 use location_mod, only : location_type
 use reg_factor_mod, only : comp_reg_factor
 use sort_mod, only : sort
-use typeSizes
-use netcdf
 
 implicit none
 
@@ -228,7 +226,7 @@ endif
 if(start_from_restart) then
    call init_assim_model(x)
    unit = get_unit()
-   if (binary_restart_files == .true.) then
+   if ( binary_restart_files ) then
       open(unit = unit, file = restart_in_file_name, form = "unformatted")
    else
       open(unit = unit, file = restart_in_file_name)
@@ -241,7 +239,7 @@ if(start_from_restart) then
       call init_assim_model(ens(i))
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
 
-      if (binary_restart_files == .true.) then
+      if ( binary_restart_files ) then
          call read_state_restart(ens(i), unit, form = "unformatted")
       else
          call read_state_restart(ens(i), unit)
@@ -262,7 +260,7 @@ else
 ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
    call init_assim_model(x)
    unit = get_unit()
-   if (binary_restart_files == .true.) then
+   if ( binary_restart_files ) then
       open(unit = unit, file = restart_in_file_name, form = "unformatted")
    else
       open(unit = unit, file = restart_in_file_name)
@@ -276,7 +274,7 @@ else
    end do
 
 ! Get the initial condition
-   if (binary_restart_files == .true.) then
+   if ( binary_restart_files ) then
       call read_state_restart(x, unit, form = "unformatted")
    else
       call read_state_restart(x, unit)
@@ -566,8 +564,8 @@ end do AdvanceTime
 
 ! properly dispose of the diagnostics files
 
-ierr = NF90_close(PriorStateUnit)
-ierr = NF90_close(PosteriorStateUnit)
+ierr = finalize_diag_output(PriorStateUnit)
+ierr = finalize_diag_output(PosteriorStateUnit)
 
 ! Initialize the model state space diagnostic output files
 
@@ -590,7 +588,7 @@ ierr = NF90_close(PosteriorStateUnit)
 ! Output a restart file if requested
 if(output_restart) then
    unit = get_unit()
-   if (binary_restart_files == .true.) then
+   if ( binary_restart_files ) then
       open(unit = unit, file = restart_out_file_name, form = "unformatted")
       do i = 1, ens_size
          call write_state_restart(ens(i), unit, form = "unformatted")
