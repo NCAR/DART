@@ -276,7 +276,7 @@ SELECT CASE (fileformat)
    CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
       write(ifile) loc%lon, loc%lat, loc%lev
    CASE DEFAULT
-      write(ifile, '(''loc2s'')' ) 
+      write(ifile, '(''loc3s'')' ) 
       write(ifile, *) loc%lon, loc%lat, loc%lev
 end SELECT
 
