@@ -485,8 +485,8 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !---- open and close output restart to make sure directory is there ----
 
-      iunit = open_restart_file ('RESTART/atmos_model.res', 'write')
-      call mpp_close (iunit, action=MPP_DELETE)
+      !!!iunit = open_restart_file ('RESTART/atmos_model.res', 'write')
+      !!!call mpp_close (iunit, action=MPP_DELETE)
 
 
 !  ---- terminate timing ----
