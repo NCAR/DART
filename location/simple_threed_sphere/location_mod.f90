@@ -309,8 +309,8 @@ SELECT CASE (fileformat)
       read(ifile) read_location%lon, read_location%lat, read_location%lev
    CASE DEFAULT
       read(ifile, '(a5)' ) header
-      if(header /= 'loc2s') call error_handler(E_ERR, 'read_location', &
-          'Expected location header "loc2s" in input file', source, revision, revdate)
+      if(header /= 'loc3s') call error_handler(E_ERR, 'read_location', &
+          'Expected location header "loc3s" in input file', source, revision, revdate)
       read(ifile, *) read_location%lon, read_location%lat, read_location%lev
 end SELECT
 
