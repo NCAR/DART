@@ -103,10 +103,11 @@ end type obs_cov_type
 !                                     Portable, but loses precision,
 !                                     slower, and larger.
 
-logical  :: read_binary_obs_sequence = .false.
-logical  :: write_binary_obs_sequence = .false.
+logical :: read_binary_obs_sequence  = .false.
+logical :: write_binary_obs_sequence = .false.
 
-namelist /obs_sequence_nml/ read_binary_obs_sequence, write_binary_obs_sequence
+namelist /obs_sequence_nml/ read_binary_obs_sequence, &
+                            write_binary_obs_sequence
 
 !--------------------------------------------------------------
 

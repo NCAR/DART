@@ -76,7 +76,8 @@ if ( .not. module_initialized ) call initialize_module
 
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
-   call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus)
+
+call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus)
 
 end subroutine take_obs
 
@@ -373,14 +374,14 @@ if(next_time < start_time .or. next_time > end_time) then
       source, revision, revdate)
 endif
 
-! Get all the obsevations at exactly this time
+! Get all the observations at exactly this time
 call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
 ! Advance all ensembles (to the time of the first ensemble)
 if(time2 /= ens_time) call Aadvance_state(ens_handle, time2, async, adv_ens_command)
 
-! Release the storage associated with the observation temp varialbe
+! Release the storage associated with the observation temp variable
 call destroy_obs(observation)
 
 end subroutine move_ahead
