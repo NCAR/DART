@@ -1,5 +1,5 @@
 &filter_nml
-   async = .false.
+   async = 2,
    ens_size = 20,
    cutoff = 0.20,
    cov_inflate = 1.0,
@@ -12,16 +12,16 @@
    init_time_seconds = 0, 
    output_state_ens_mean = .true.,
    output_state_ens_spread = .true.,
-   num_output_ens_members = 20 ,
+   num_output_ens_members = 20,
    output_interval = 1
 &end
 
 
 &perfect_model_obs_nml
-   async = .false.,
+   async = 2,
    obs_seq_in_file_name = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   start_from_restart = .false.,
+   start_from_restart = .true.,
    output_restart = .true.,
    restart_in_file_name = "perfect_ics",
    restart_out_file_name = "perfect_restart",
