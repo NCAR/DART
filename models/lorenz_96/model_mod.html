@@ -489,7 +489,7 @@ include multiple ensemble estimates of the state.
     <TD>State vector.</TD></TR>
 
 <TR><TD valign=top><em class=code>copyindex</em></TD>
-    <TD> Integer index to which copy is to be written. </em><TD>
+    <TD> Integer index to which copy is to be written. </TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
     <TD>Integer index of which time in the file is being written.</TD></TR>
@@ -500,7 +500,6 @@ include multiple ensemble estimates of the state.
 </TABLE>
 
 <H3 class=indent1>Notes</H3>
-
 
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
@@ -555,10 +554,13 @@ serious model errors.
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
 '&' and terminating with a slash '/'.
-<div class=namelist><pre>
+<div class=namelist>
+<pre>
 <em class=call>namelist / model_nml / </em> &
     model_size, forcing, delta_t
-</pre></div>
+</pre>
+</div>
+</P>
 
 <H3 class=indent1>Discussion</H3>
 
@@ -577,7 +579,7 @@ serious model errors.
     <!--descript--><TD>Forcing, F, for model, default 8.0 </TD></TR>
 <TR><!--contents--><TD valign=top>delta_t              </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Non-dimensional timestep, default 0.05                </TD></TR>
+    <!--descript--><TD>Non-dimensional timestep, default 0.05</TD></TR>
 </TABLE>
 
 <!--==================================================================-->

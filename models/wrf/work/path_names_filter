@@ -2,7 +2,6 @@ filter/filter.f90
 assim_tools/assim_tools_mod.f90
 sort/sort_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
-close_state_cache/close_state_cache_mod.f90
 obs_sequence/obs_sequence_mod.f90
 obs_set/obs_set_mod.F90
 obs_kind/obs_kind_mod.f90
