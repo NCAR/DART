@@ -24,10 +24,9 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    output_diagnostics, finalize_diag_output, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, get_state_meta_data, &
    binary_restart_files, aoutput_diagnostics, aread_state_restart, &
-   aget_closest_state_time_to, awrite_state_restart, Aadvance_state
+   aget_closest_state_time_to, awrite_state_restart, Aadvance_state, pert_model_state
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
-   look_for_bias, obs_increment17, obs_increment18
+use assim_tools_mod,  only : obs_increment, update_from_obs_inc, assim_tools_init
 use cov_cutoff_mod,   only : comp_cov_factor
 use location_mod, only : location_type
 use reg_factor_mod, only : comp_reg_factor
@@ -40,11 +39,6 @@ character(len=128) :: &
    source   = "$Source$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
-
-! Define a type for doing direct access to ensemble state vectors
-type model_state_ptr_type
-   real(r8), pointer :: state(:)
-end type model_state_ptr_type
 
 type(obs_sequence_type) :: seq, prior_seq, posterior_seq
 type(time_type)         :: time1, time2
@@ -60,7 +54,7 @@ integer            :: model_size, num_obs_sets
 integer :: grp_size, grp_bot, grp_top, group, num_greater_1
 real(r8) :: reg_factor, median
 real(r8), allocatable :: sum_reg_factor(:, :), reg_factor_series(:, :, :)
-real(r8), allocatable :: regress(:)
+real(r8), allocatable :: regress(:), a_returned(:)
 
 ! Storage for direct access to ensemble state vectors
 real(r8), allocatable :: ens(:, :), ens_mean(:), ens_spread(:), x(:)
@@ -71,6 +65,8 @@ real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:)
 real(r8), allocatable  :: obs_err_cov(:), obs(:)
 real(r8)               :: cov_factor, mean_inc, sd_ratio
 character(len = 129), allocatable   :: ens_copy_meta_data(:)
+
+logical :: interf_provided
 
 ! Storage with fixed size for observation space diagnostics
 real(r8) :: ges(1), anl(1)
@@ -106,6 +102,7 @@ integer :: num_output_ens_members = 0
 integer :: output_interval = 1
 integer :: num_groups = 1
 real(r8) :: confidence_slope = 0.0
+logical :: get_mean_reg = .false., get_median_reg = .false.
 
 character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
@@ -118,8 +115,11 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
    obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, num_output_ens_members, output_interval, &
-   num_groups, confidence_slope, output_obs_diagnostics
+   num_groups, confidence_slope, output_obs_diagnostics, get_mean_reg, get_median_reg
 !----------------------------------------------------------------
+
+! Initialize the assim_tools modeule
+call assim_tools_init()
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -138,7 +138,7 @@ write(*,*)'start_from_restart = ',start_from_restart
 ! Now know the ensemble size; allocate all the storage
 write(*, *) 'the ensemble size is ', ens_size
 allocate(obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), &
-   ens_copy_meta_data(ens_size + 2), regress(num_groups))
+   ens_copy_meta_data(ens_size + 2), regress(num_groups), a_returned(num_groups))
 
 ! Set an initial size for the close state pointers
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
@@ -190,21 +190,20 @@ if(output_state_ens_spread) then
 endif
 
 !  to add the ens_mean to the output in addition to the ensemble members
-   if(output_obs_diagnostics) then
-      call inc_num_obs_copies(prior_seq, ens_size + 1, ens_copy_meta_data)
-      call inc_num_obs_copies(posterior_seq, ens_size + 1, ens_copy_meta_data)
-   endif
+if(output_obs_diagnostics) then
+   call inc_num_obs_copies(prior_seq, ens_size + 1, ens_copy_meta_data)
+   call inc_num_obs_copies(posterior_seq, ens_size + 1, ens_copy_meta_data)
+endif
 
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
 model_size = get_model_size()
 allocate(ens(ens_size, model_size), ens_time(ens_size), ens_mean(model_size))
 
-! Allocate storage for ensemble mean (and spread if needed)
+! Allocate storage for ensemble spread if needed
 if(output_state_ens_spread) allocate(ens_spread(model_size))
 
 ! Set up diagnostic output for model state, if output is desired
-
 if(  output_state_ens_spread .or. output_state_ens_mean .or. &
     ( num_output_ens_members > 0 ) ) then
    PriorStateUnit     = init_diag_output('Prior_Diag', &
@@ -221,8 +220,6 @@ else
 endif
 
 !------------------- Read restart if requested ----------------------
-! We need to initialize the assim_model to determine what kind (binary/etc)
-! of restart file we expect.
 
 if(start_from_restart) then
    unit = get_unit()
@@ -270,21 +267,16 @@ else
    close(unit)
 
 ! Initialize a repeatable random sequence for perturbations
-! Where should the magnitude of the perturbations come from here???
    call init_random_seq(random_seq)
 ! Perturb for ensembles; 
    do i = 1, ens_size
-      do j = 1, model_size
-! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
-         call get_state_meta_data(j, location, var_type)
-         if(var_type < 4) then 
-!!!            ens(i, j) = random_gaussian(random_seq, x(j), 2.0_r8) 
+      call pert_model_state(x, ens(i, :), interf_provided)
+! If model does not provide a perturbing interface, do it here with uniform 0.002
+      if(.not. interf_provided) then
+         do j = 1, model_size
             ens(i, j) = random_gaussian(random_seq, x(j), 0.002_r8) 
-         else
-            ens(i, j) = random_gaussian(random_seq, x(j), 0.002_r8) 
-         endif
-         
-      end do
+         end do
+      endif
 ! Set time to 0, 0 if none specified, otherwise to specified
       ens_time(i) = time1
    end do
@@ -295,7 +287,6 @@ endif
 ! Temporary print of initial model time
 write(*, *) 'initial model time is '
 call print_time(ens_time(1))
-
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
@@ -311,8 +302,7 @@ AdvanceTime : do i = 1, num_obs_sets
    if(ens_time(1) > time1) cycle AdvanceTime
 
    time2 = aget_closest_state_time_to(ens_time(1), time1)
-!   write(*, *) 'advancing to time2 '
-!   call  print_time(time2)
+
 ! Advance all the ensembles (to the time of the first ensemble)
    if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async)
 
@@ -320,10 +310,7 @@ AdvanceTime : do i = 1, num_obs_sets
    ens_mean_time   = ens_time(1)
    ens_spread_time = ens_time(1)
 
-   ! Do a covariance inflation for now? 
-   ! Inflate the ensemble state estimates
-! Inflate each group separately
-! Divide ensemble into num_groups groups
+! Inflate each group separately;  Divide ensemble into num_groups groups
    grp_size = ens_size / num_groups
    Group_inflate: do group = 1, num_groups
       grp_bot = (group - 1) * grp_size + 1
@@ -367,23 +354,23 @@ AdvanceTime : do i = 1, num_obs_sets
    allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set)) 
 
 
-! Temporary work for diagnosing fixed obs set reg_factor
+! Storage for diagnosing fixed obs set reg_factor
    if(i == 1) then
-!!!      allocate(sum_reg_factor(num_obs_in_set, model_size))
-!!!      allocate(reg_factor_series(num_obs_in_set, model_size, num_obs_sets))
-!!!      sum_reg_factor = 0.0
-!!!      reg_factor_series = 0.0
+      if(get_mean_reg) then
+         allocate(sum_reg_factor(num_obs_in_set, model_size))
+         sum_reg_factor = 0.0
+      endif
+      if(get_median_reg) then
+         allocate(reg_factor_series(num_obs_in_set, model_size, num_obs_sets))
+         reg_factor_series = 0.0
+      endif
    endif
-
-
 
    ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
 
    ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
-
-
 
 !   output the ensemble mean and all ensemble members at observation space 
      if(output_obs_diagnostics) then
@@ -403,38 +390,6 @@ AdvanceTime : do i = 1, num_obs_sets
          end do
       endif
 
-
-! A preliminary search for bias???
-   var_ratio_sum = 0.0
-   num_greater_1 = 0
-   do j = 1, num_obs_in_set
-! Get all the prior estimates
-!      do k = 1, ens_size
-!         call get_expected_obs(seq, i, ens(k, :), ens_obs(k:k), j)
-!      end do
-! Call a subroutine to evaluate how many S.D.s away the ob value is
-!      call look_for_bias(ens_obs, ens_size, obs(j), obs_err_cov(j), var_ratio)
-!      var_ratio_sum = var_ratio_sum + var_ratio
-!      if(var_ratio > 1.0) num_greater_1 = num_greater_1 + 1
-   end do
-  
-!   write(*, *) 'mean var_ratio is ', var_ratio_sum / num_obs_in_set
-!   write(73, *) var_ratio_sum / num_obs_in_set
-!   write(*, *) 'num > 1 is ', num_greater_1
-
-!   if(var_ratio_sum / num_obs_in_set > 1.05) then
-!      confidence_slope = confidence_slope - 0.02
-!   else if(var_ratio_sum / num_obs_in_set < 1.05) then
-!      confidence_slope = confidence_slope + 0.02
-!   endif
-!   if(confidence_slope > 1.0) confidence_slope = 1.0
-!   if(confidence_slope < 0.2) confidence_slope = 0.2
-
-!   if(num_greater_1 > num_obs_in_set / 2) then 
-!      confidence_slope = confidence_slope + 0.02
-!   else if(confidence_slope > 0.085) then
-!      confidence_slope = confidence_slope - 0.02
-!   endif   
    write(*, *) 'confidence slope is ', confidence_slope
 
 
@@ -451,14 +406,9 @@ AdvanceTime : do i = 1, num_obs_sets
          grp_bot = (group - 1) * grp_size + 1
          grp_top = grp_bot + grp_size - 1
 
-! Call fast obs_increment if no confidence correction
-      if(confidence_slope == 0.0) then
+! Call obs_increment to do observation space
          call obs_increment(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
-            obs_err_cov(j), obs_inc(grp_bot:grp_top))
-      else
-         call obs_increment17(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
-            obs_err_cov(j), obs_inc(grp_bot:grp_top), confidence_slope)
-      endif
+            obs_err_cov(j), obs_inc(grp_bot:grp_top), confidence_slope, a_returned(group))
       end do Group1
 
 ! Getting close states for each scalar observation for now
@@ -480,23 +430,20 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Loop through the groups
          Group2: do group = 1, num_groups
-         grp_bot = (group - 1) * grp_size + 1
-         grp_top = grp_bot + grp_size - 1
-         call update_from_obs_inc(ens_obs(grp_bot:grp_top), &
-            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
-! NO LONGER PASS COV_INFLATE TO UPDATE_FROM_OBS; JLA 11/19/03; bit reproduces for 1 group
-            ens_inc(grp_bot:grp_top), 1.0)
-            regress(group) = ens_inc(grp_bot) / obs_inc(grp_bot)
-!!!         write(*, *) 'group ', group, 'reg coeff is ', regress(group)
+            grp_bot = (group - 1) * grp_size + 1
+            grp_top = grp_bot + grp_size - 1
+            call update_from_obs_inc(ens_obs(grp_bot:grp_top), &
+               obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+               a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
          end do Group2
 
 ! Compute an information factor for impact of this observation on this state
-         if(num_groups == 1) then
+         if(num_groups == 0) then
              reg_factor = 1.0
          else
             reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
-!!!         sum_reg_factor(j, k) = sum_reg_factor(j, k) + reg_factor
-!!!         reg_factor_series(j, k, i) = reg_factor
+            if(get_mean_reg) sum_reg_factor(j, k) = sum_reg_factor(j, k) + reg_factor
+            if(get_median_reg) reg_factor_series(j, k, i) = reg_factor
          endif
 
 ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
@@ -600,20 +547,32 @@ if(output_restart) then
    close(unit)
 endif
 
-! Output the regression factor means
-do j = 1, num_obs_in_set
-   do i = 1, model_size
-!!!      write(45, *) j, i, sum_reg_factor(j, i) / num_obs_sets
+! Output the regression factor means if requested
+if(get_mean_reg) then
+   unit = get_unit()
+   open(unit = unit, file = 'time_mean_reg')
+   write(unit, *) num_obs_in_set, model_size
+   do j = 1, num_obs_in_set
+      do i = 1, model_size
+         write(unit, *) j, i, sum_reg_factor(j, i) / num_obs_sets
+      end do
    end do
-end do
+   close(unit)
+endif
 
-! Also compute and output median for a test
-do j = 1, num_obs_in_set
-   do i = 1, model_size
-!!!      reg_factor_series(j, i, :) = sort(reg_factor_series(j, i, :))
-!!!      write(47, *) j, i, reg_factor_series(j, i, num_obs_sets / 2)
+! Output the regression factor medians if requested
+if(get_median_reg) then
+   unit = get_unit()
+   open(unit = unit, file = 'time_median_reg')
+   write(unit, *) num_obs_in_set, model_size
+   do j = 1, num_obs_in_set
+      do i = 1, model_size
+         reg_factor_series(j, i, :) = sort(reg_factor_series(j, i, :))
+         write(unit, *) j, i, reg_factor_series(j, i, num_obs_sets / 2)
+      end do
    end do
-end do
+   close(unit)
+endif
 
 !===========================================================
 
