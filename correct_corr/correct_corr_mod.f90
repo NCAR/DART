@@ -1,5 +1,11 @@
 module correct_corr_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! A module to do updates taking into account errors in correlation computation 
 ! resulting from finite sample size. See notes from second week of Dec. 2001.
 
