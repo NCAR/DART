@@ -329,7 +329,7 @@ function get_model_size()
 integer :: get_model_size
 
 get_model_size = l96%model_size
-print*, 'model size is ',l96%model_size
+!print*, 'model size is ',l96%model_size
 
 end function get_model_size
 
