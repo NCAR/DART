@@ -328,8 +328,8 @@ endif
 set_location%lon = lon * DEG2RAD
 set_location%lat = lat * DEG2RAD
 
-if(which_vert < 1 .or. which_vert > 3  ) then
-   write(errstring,*)'which_vert (',which_vert,') must be one of 1, 2, or 3'
+if(which_vert < -1 .or. which_vert > 3 .or. which_vert == 0) then
+   write(errstring,*)'which_vert (',which_vert,') must be one of -1, 1, 2, or 3'
    call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
 endif
 
