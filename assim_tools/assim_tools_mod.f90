@@ -30,7 +30,7 @@ use obs_model_mod, only    : get_expected_obs, get_close_states
 use reg_factor_mod, only   : comp_reg_factor
 use location_mod, only     : location_type, get_dist
 use time_manager_mod, only : time_type
-use ensemble_manager_mod, only : put_ensemble_region, ensemble_type, &
+use ensemble_manager_mod, only : ensemble_type, &
                                  transpose_ens_to_regions, transpose_regions_to_ens, &
                                  put_region_by_number, get_region_by_number, is_ens_in_core, &
                                  ens_direct => ens
@@ -65,9 +65,9 @@ revdate  = "$Date$"
 integer  :: filter_kind     = 1
 real(r8) :: cutoff = 0.2_r8
 logical  :: sort_obs_inc = .false.
-real(r8) :: cov_inflate = -1.0
-real(r8) :: cov_inflate_sd = 0.05
-real(r8) :: sd_lower_bound = 0.05
+real(r8) :: cov_inflate = -1.0_r8
+real(r8) :: cov_inflate_sd = 0.05_r8
+real(r8) :: sd_lower_bound = 0.05_r8
 logical  :: deterministic_cov_inflate = .true.
 logical  :: start_from_assim_restart = .false.
 character(len = 129) :: assim_restart_in_file_name = 'assim_tools_ics'
@@ -174,7 +174,7 @@ end subroutine assim_tools_init
 
 subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
    my_cov_inflate, my_cov_inflate_sd)
-                         
+
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens_in(ens_size), obs, obs_var
@@ -189,19 +189,19 @@ integer :: i, ens_index(ens_size), new_index(ens_size)
 ! If observation space inflation is being done, compute the initial 
 ! increments and update the inflation factor and its standard deviation
 ! as needed. my_cov_inflate < 0 means don't do any of this.
-if(my_cov_inflate > 0.0) then
+if(my_cov_inflate > 0.0_r8) then
    ! Compute prior variance and mean from sample
    sum_x      = sum(ens_in)
    prior_mean = sum_x / ens_size
    prior_var = sum((ens_in - prior_mean)**2) / (ens_size - 1)
 
    ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
-   if(my_cov_inflate_sd > 0.0) then
+   if(my_cov_inflate_sd > 0.0_r8) then
       call bayes_cov_inflate(prior_mean, sqrt(prior_var), obs, sqrt(obs_var), &
          my_cov_inflate, my_cov_inflate_sd, new_cov_inflate, new_cov_inflate_sd)
 
       ! Keep the covariance inflation > 1.0 for most model situations
-      if(new_cov_inflate < 1.0) new_cov_inflate = 1.0
+      if(new_cov_inflate < 1.0_r8) new_cov_inflate = 1.0_r8
       !write(*, *) 'old, new my_cov_inflate', my_cov_inflate, new_cov_inflate
 
       my_cov_inflate = new_cov_inflate
@@ -211,7 +211,7 @@ if(my_cov_inflate > 0.0) then
       if(my_cov_inflate_sd < sd_lower_bound) my_cov_inflate_sd = sd_lower_bound
 
       ! Ad hoc mechanism for reducing cov_inflate_sd
-      !!!my_cov_inflate_sd = my_cov_inflate_sd - (my_cov_inflate_sd - sd_lower_bound) / 10000.0
+      !!!my_cov_inflate_sd = my_cov_inflate_sd - (my_cov_inflate_sd - sd_lower_bound) / 10000.0_r8
    endif
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
@@ -233,7 +233,7 @@ if(my_cov_inflate > 0.0) then
       endif
 
       ! Figure out required sd for random noise being added
-      if(my_cov_inflate > 1.0) then
+      if(my_cov_inflate > 1.0_r8) then
          ! Don't allow covariance deflation in this version
          rand_sd = sqrt(my_cov_inflate*prior_var - prior_var)
          !write(*, *) 'rand_sd increment needed is ', sqrt(prior_var), rand_sd
@@ -275,7 +275,7 @@ else
 endif
 
 ! Add in the extra increments if doing observation space covariance inflation
-if(my_cov_inflate > 0.0) then
+if(my_cov_inflate > 0.0_r8) then
    obs_inc = obs_inc + inflate_inc
 endif
 
@@ -356,7 +356,7 @@ integer, intent(in)   :: ens_size
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
 real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
 integer :: i
 
@@ -419,9 +419,8 @@ integer, intent(in)   :: ens_size
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
-real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
-real(r8) :: cdf, t, num, denom
+real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: temp_var, new_ens(ens_size), new_var
 integer :: i
 
 ! Compute prior variance and mean from sample
@@ -452,54 +451,54 @@ if(ens_size /= 20) then
 endif
 
 ! This is believed to have kurtosis of 3.0, verify again from initial uniform
-!new_ens(1) = -2.146750
-!new_ens(2) = -1.601447
-!new_ens(3) = -1.151582
-!new_ens(4) = -0.7898650
-!new_ens(5) = -0.5086292
-!new_ens(6) = -0.2997678
-!new_ens(7) = -0.1546035
-!new_ens(8) = -6.371084E-02
-!new_ens(9) = -1.658448E-02
-!new_ens(10) = -9.175255E-04
+!new_ens(1) = -2.146750_r8
+!new_ens(2) = -1.601447_r8
+!new_ens(3) = -1.151582_r8
+!new_ens(4) = -0.7898650_r8
+!new_ens(5) = -0.5086292_r8
+!new_ens(6) = -0.2997678_r8
+!new_ens(7) = -0.1546035_r8
+!new_ens(8) = -6.371084E-02_r8
+!new_ens(9) = -1.658448E-02_r8
+!new_ens(10) = -9.175255E-04_r8
 
 ! This is believed to have kurtosis of 3.0, verify again from initial inverse gaussian
-!new_ens(1) = -2.188401
-!new_ens(2) = -1.502174
-!new_ens(3) = -1.094422
-!new_ens(4) = -0.8052422
-!new_ens(5) = -0.5840152
-!new_ens(6) = -0.4084518
-!new_ens(7) = -0.2672727
-!new_ens(8) = -0.1547534
-!new_ens(9) = -6.894587E-02
-!new_ens(10) = -1.243549E-02
+!new_ens(1) = -2.188401_r8
+!new_ens(2) = -1.502174_r8
+!new_ens(3) = -1.094422_r8
+!new_ens(4) = -0.8052422_r8
+!new_ens(5) = -0.5840152_r8
+!new_ens(6) = -0.4084518_r8
+!new_ens(7) = -0.2672727_r8
+!new_ens(8) = -0.1547534_r8
+!new_ens(9) = -6.894587E-02_r8
+!new_ens(10) = -1.243549E-02_r8
 
 ! This is believed to have kurtosis of 2.0, verify again 
-new_ens(1) = -1.789296
-new_ens(2) = -1.523611
-new_ens(3) = -1.271505
-new_ens(4) = -1.033960
-new_ens(5) = -0.8121864
-new_ens(6) = -0.6077276
-new_ens(7) = -0.4226459
-new_ens(8) = -0.2598947
-new_ens(9) = -0.1242189
-new_ens(10) = -2.539018E-02
+new_ens(1) = -1.789296_r8
+new_ens(2) = -1.523611_r8
+new_ens(3) = -1.271505_r8
+new_ens(4) = -1.033960_r8
+new_ens(5) = -0.8121864_r8
+new_ens(6) = -0.6077276_r8
+new_ens(7) = -0.4226459_r8
+new_ens(8) = -0.2598947_r8
+new_ens(9) = -0.1242189_r8
+new_ens(10) = -2.539018E-02_r8
 
 ! This is believed to have kurtosis of 1.7, verify again 
-!new_ens(1) = -1.648638
-!new_ens(2) = -1.459415
-!new_ens(3) = -1.272322
-!new_ens(4) = -1.087619
-!new_ens(5) = -0.9056374
-!new_ens(6) = -0.7268229
-!new_ens(7) = -0.5518176
-!new_ens(8) = -0.3816142
-!new_ens(9) = -0.2179997
-!new_ens(10) = -6.538583E-02
+!new_ens(1) = -1.648638_r8
+!new_ens(2) = -1.459415_r8
+!new_ens(3) = -1.272322_r8
+!new_ens(4) = -1.087619_r8
+!new_ens(5) = -0.9056374_r8
+!new_ens(6) = -0.7268229_r8
+!new_ens(7) = -0.5518176_r8
+!new_ens(8) = -0.3816142_r8
+!new_ens(9) = -0.2179997_r8
+!new_ens(10) = -6.538583E-02_r8
 do i = 11, 20
-   new_ens(i) = -1.0 * new_ens(20 + 1 - i)
+   new_ens(i) = -1.0_r8 * new_ens(20 + 1 - i)
 end do
 
 ! Right now, this ensemble has mean 0 and some variance
@@ -755,8 +754,7 @@ real(r8), intent(in)            :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in)            :: state(ens_size)
 real(r8), intent(out)           :: state_inc(ens_size), reg_coef
 
-real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty, correl
-real(r8) :: sum_y, sum_y2, state_var_norm
+real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty
 
 ! For efficiency, just compute regression coefficient here
 sum_x  = sum(obs)
@@ -833,7 +831,7 @@ allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
 ! Initialize search for close states in my domain
-if(num_domains == 1) then 
+if(num_domains == 1) then
    local_close_state = .true.
 else
    local_close_state = .false.
@@ -891,7 +889,7 @@ end do
 Observations : do jjj = 1, num_obs_in_set
    j = order(jjj)
    if(.not. local_close_state(j)) cycle Observations
-   
+
    ! Get this observation in a temporary and get its qc value for possible update
    call get_obs_from_key(seq, keys(j), observation)
 
@@ -900,7 +898,7 @@ Observations : do jjj = 1, num_obs_in_set
    obs_err_var(j) = get_obs_def_error_variance(obs_def)
    ! Just skip observations that have failed prior qc ( >4 for now)
    if(qc(j) > 4.01_r8 .or. obs(j) == missing_r8) cycle Observations
-   
+
    ! Compute the ensemble prior for this ob
    if(compute_obs(j)) then
       do k = 1, ens_size
@@ -1003,7 +1001,7 @@ Observations : do jjj = 1, num_obs_in_set
       obs_dist = get_dist(obs_loc(k), obs_loc(j))
       ! Compute distance dependent envelope
       cov_factor = comp_cov_factor(obs_dist, cutoff)
-      if(cov_factor <= 0.0) cycle
+      if(cov_factor <= 0.0_r8) cycle
       ! Get the ensemble elements for this state variable and do regression
        swath = ens_obs(:, k)
 
@@ -1069,7 +1067,7 @@ integer :: base_size, remainder, domain_top, domain_bottom
 logical :: compute_obs(num_obs_in_set), my_state(model_size)
 real(r8), allocatable :: ens(:, :)
 integer, allocatable :: indices(:)
-type(time_type) :: ens_time(ens_size)
+
 character(len=28) :: in_file_name(num_domains), out_file_name(num_domains)
 character(len=129) :: temp_obs_seq_file, errstring
 
@@ -1125,8 +1123,6 @@ call transpose_ens_to_regions(ens_handle, num_domains, which_domain, region_size
 
 
 
-base_size = model_size / num_domains
-remainder = model_size - base_size * num_domains
 domain_top = 0
 do j = 1, num_domains
    domain_bottom = domain_top + 1
@@ -1253,8 +1249,6 @@ if(do_parallel == 2 .or. do_parallel == 3) then
 
    end if
 
-   base_size = model_size / num_domains
-   remainder = model_size - base_size * num_domains
    domain_top = 0
    do j = 1, num_domains
    ! Find out which state variables are in my domain
@@ -1380,7 +1374,7 @@ real(r8), intent(out) :: new_cov_inflate, new_cov_inflate_sd
 integer, parameter :: max_num_iters = 100
 integer, parameter :: sd_range = 4
 integer, parameter :: sd_intervals = 4
-real(r8), parameter :: tol = 0.00000001
+real(r8), parameter :: tol = 0.00000001_r8
 integer :: i
 
 real(r8) :: d(3), lam(3), d_new, lam_new, new_max, ratio, x_dist
@@ -1529,4 +1523,3 @@ end subroutine assim_tools_end
 !========================================================================
 
 end module assim_tools_mod
-
