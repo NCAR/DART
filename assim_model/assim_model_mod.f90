@@ -548,25 +548,36 @@ type(time_type), intent(in) :: target_time
 
 type(time_type) :: model_time, time_step
 
+integer :: seconds, days
+
 ! NEED TO BE CAREFUL ABOUT FLOATING POINT TESTS: Being sloppy here
 
 model_time = get_model_time(assim_model)
+
 ! Check for time error; use error handler when available
+! TJH -- cannot write time_type to stdout -- they have private
+!        components and the compiler balks. time_manager_mod
+!        provides a routine to return the seconds and days
+!        from a time type. 
 if(model_time > target_time) then
    write(*, *) 'Error in advance_state, target_time before model_time'
-   write(*, *) 'Model_time ', model_time
-   write(*, *) 'Target time ', target_time
+   call get_time(model_time,seconds,days)
+   write(*, *) 'Model_time  (days, seconds) ', days, seconds
+   call get_time(target_time,seconds,days)
+   write(*, *) 'Target time (days, seconds) ', days, seconds
    stop
 endif
 
 ! At some point probably need to push the determination of the time back
 ! into the model itself and out of assim_model
 time_step = get_model_time_step()
-write(*, *) 'in advance state, time step ', time_step
+call get_time(time_step,seconds,days)
+write(*, *) 'in advance state, time step (days,seconds) ', days, seconds
 do while(model_time < target_time)
    call adv_1step(assim_model%state_vector, model_time)
    model_time = model_time + time_step
-   write(*, *) 'model time in advance_state ', model_time
+   call get_time(model_time,seconds,days)
+   write(*, *) 'model time in advance_state (days,seconds) ', days, seconds
 end do
 
 ! Set the time to updated value
