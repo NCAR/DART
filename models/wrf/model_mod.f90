@@ -1147,7 +1147,7 @@ real(r8),           intent(out) :: dist(:)
 real(r8),            intent(in) :: x(:)
 
 integer                         :: u_pts, v_pts, p_pts, w_pts
-integer                         :: i,k,indmax, ii, jj, id
+integer                         :: i,k,indmax, ii, jj, kk, id
 integer                         :: max_size
 integer,            allocatable :: lon_ind(:), lat_ind(:), vert_ind(:)
 real(r8),           allocatable :: close_dist(:)
@@ -1231,6 +1231,20 @@ do id=1,num_domains
             indices(num_total) = get_wrf_index(ii,jj,k,type_mu,id)
             dist(num_total) = close_dist(i)
          end if
+
+         num_total = num_total + 1
+         if(num_total <= indmax) then
+            indices(num_total) = get_wrf_index(ii,jj,k,type_tsk,id)
+            dist(num_total) = close_dist(i)
+         end if
+
+         do kk = 1, wrf%dom(id)%sls
+            num_total = num_total + 1
+            if(num_total <= indmax) then
+               indices(num_total) = get_wrf_index(ii,jj,kk,type_tslb,id)
+               dist(num_total) = close_dist(i)
+            end if
+         enddo
 
          if(wrf%dom(id)%surf_obs ) then
 
