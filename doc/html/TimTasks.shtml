@@ -23,7 +23,7 @@
        <!-- task     --><TD> talk w/ David Neckels about ESMF build mechanisms</TD></TR>
 
    <TR><!-- due date --><TD> &nbsp - &nbsp </TD>
-       <!-- com date --><TD> &nbsp - &nbsp </TD>
+       <!-- com date --><TD> 2 Apr 2002 </TD>
        <!-- task     --><TD> auto-tagging version info @ "co"</TD></TR>
 
    <TR><!-- due date --><TD> &nbsp - &nbsp </TD>
@@ -47,6 +47,10 @@
    <TR><!-- due date --><TD> &nbsp - &nbsp </TD>
        <!-- com date --><TD> &nbsp - &nbsp</TD>
        <!-- task     --><TD> install xdiff? </TD></TR>
+
+   <TR><!-- due date --><TD> &nbsp - &nbsp </TD>
+       <!-- com date --><TD> &nbsp - &nbsp</TD>
+       <!-- task     --><TD> more efficient sort_mod ... with interface ops </TD></TR>
 
 </TABLE>
 
