@@ -93,7 +93,7 @@ subroutine adv_1step(x, time)
 ! the vector x is the starting condition and x is updated to reflect
 ! the changed state after a timestep. The time argument is intent
 ! in and is used for models that need to know the date/time to 
-! compute a timestep, for instance for radiation compuations.
+! compute a timestep, for instance for radiation computations.
 ! This interface is only called if the namelist parameter
 ! async is set to 0 in perfect_model_obs of filter or if the 
 ! program integrate_model is to be used to advance the model
@@ -145,14 +145,14 @@ subroutine model_interpolate(x, location, itype, obs_val, istatus)
 !------------------------------------------------------------------
 !
 ! Given a state vector, a location, and a model state variable type,
-! interpolates the state variable field`to that location and returns
+! interpolates the state variable field to that location and returns
 ! the value in obs_val. The istatus variable should be returned as
 ! 0 unless there is some problem in computing the interpolation in
 ! which case an alternate value should be returned. The itype variable
 ! is a model specific integer that specifies the type of field (for
 ! instance temperature, zonal wind component, etc.). In low order
 ! models that have no notion of types of variables, this argument can
-! be ingored. For applications in which only perfect model experiments
+! be ignored. For applications in which only perfect model experiments
 ! with identity observations (i.e. only the value of a particular
 ! state variable is observerd), this can be a NULL INTERFACE.
 
@@ -206,7 +206,7 @@ subroutine end_model()
 !------------------------------------------------------------------
 !
 ! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storgae, etc.
+! INTERFACE if the model has no need to clean up storage, etc.
 
 end subroutine end_model
 
@@ -280,7 +280,7 @@ end function nc_write_model_atts
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
 !------------------------------------------------------------------
-! Writes the model-specific attributes to a netCDF file
+! Writes the model variables to a netCDF file
 ! TJH 23 May 2003
 !
 ! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
@@ -322,11 +322,11 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! Perturbs a model state for generating initial ensembles.
 ! The perturbed state is returned in pert_state.
 ! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the inter_provided argument. This indicates to
+! .false. for the interf_provided argument. This indicates to
 ! the filter that if it needs to generate perturbed states, it
 ! may do so by adding an O(0.1) magnitude perturbation to each
 ! model state variable independently. The interf_provided argument
-! should be returned as .true. if the model want to do its own
+! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
 
 real(r8), intent(in)  :: state(:)
