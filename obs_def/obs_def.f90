@@ -8,10 +8,10 @@ module obs_def_mod
 
 ! NOTE: Make sure to add only clauses to all use statements throughtout!!!
 use types_mod
-use obs_kind_mod
-use location_mod
-use obs_model_mod
-use assim_model_mod, am_get_close_states=>get_close_states, &
+use obs_kind_mod, only : obs_kind_type, read_kind, write_kind
+use location_mod, only : location_type, read_location, write_location
+use obs_model_mod, only : take_obs
+use assim_model_mod, only : am_get_close_states=>get_close_states, &
    am_get_num_close_states=>get_num_close_states
 
 private

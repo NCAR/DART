@@ -158,7 +158,8 @@ set OBS_MODEL = ../obs_model/obs_model.f90
 set OBS_DEF = ../obs_def/obs_def.f90
 set OBS_SET_DEF = ../obs_set_def/obs_set_def.f90
 set OBS_SET = ../obs_set/obs_set.f90
-
+set OBS_SEQUENCE = ../obs_sequence/obs_sequence.f90
+set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
 
 #======================================================================
 # END of      path_names_for_modules

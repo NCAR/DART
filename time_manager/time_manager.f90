@@ -35,7 +35,7 @@ public operator(+),  operator(-),   operator(*),   operator(/),  &
 
 ! Subroutines and functions operating on time_type
 public set_time, increment_time, decrement_time, get_time, interval_alarm
-public repeat_alarm
+public repeat_alarm, write_time, read_time
 
 ! List of available calendar types
 public    THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NO_LEAP,   NO_CALENDAR
@@ -1926,6 +1926,39 @@ character(len=9) :: mon
 
 end subroutine print_date
 
+!--------------------------------------------------------------------------------
+
+function read_time(file)
+
+implicit none
+
+type(time_type) :: read_time
+integer, intent(in) :: file
+
+integer :: secs, days
+
+read(file, *) secs, days
+read_time = set_time(secs, days)
+
+end function read_time
+
 !------------------------------------------------------------------------
+
+subroutine write_time(file, time)
+
+implicit none
+
+integer, intent(in) :: file
+
+integer :: secs, days
+
+type(time_type), intent(in) :: time
+
+call get_time(time, secs, days)
+write(file, *) secs, days
+
+end subroutine write_time
+
+
 
 end module time_manager_mod

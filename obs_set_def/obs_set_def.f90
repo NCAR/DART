@@ -8,15 +8,19 @@ module obs_set_def_mod
 !
 
 use types_mod
-use obs_def_mod, od_get_expected_obs => get_expected_obs, &
+use obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
+   write_obs_def, od_get_expected_obs => get_expected_obs, &
    od_get_close_states=>get_close_states, &
    od_get_num_close_states=>get_num_close_states
-use location_mod
+use location_mod, only : location_type
 
 private
 
-public obs_set_def_type, init_obs_set_def, get_expected_obs, &
-   get_obs_set_def_key
+public obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
+   get_expected_obs, get_obs_set_def_key, get_total_num_obs, get_obs_def, &
+   get_number_single_obs, get_number_obs_subsets, get_single_obs_def, &
+   get_obs_locations, get_close_states, get_num_close_states, add_obs, &
+   diag_obs_err_cov, read_obs_set_def, write_obs_set_def
 
 ! Initial implementation allows only sets of scalar obs (no
 ! nested subsets) and supports only diagonal error covariance.

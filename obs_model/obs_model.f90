@@ -7,9 +7,9 @@ module obs_model_mod
 ! $Author$
 
 use types_mod
-use location_mod
-use assim_model_mod
-use obs_kind_mod
+use location_mod, only : location_type
+use assim_model_mod, only : interpolate
+use obs_kind_mod, only : obs_kind_type
 
 private
 
