@@ -154,7 +154,7 @@ contains
     type(atttype), dimension(:), allocatable :: att
     real, dimension(:), allocatable :: data, tmp
 
-    integer :: i, len
+    integer :: i, lngth
     character(len=128) :: bounds_name = 'none', name, units
     character(len=256) :: longname
     character(len=1) :: cartesian
@@ -176,28 +176,28 @@ contains
     if (trim(bounds_name) /= 'none') then
        do i=1,size(axes)
           call mpp_get_atts(axes(i),name=name)
-          if (lowercase(trim(name)) == lowercase(trim(bounds_name))) then
+          if (trim(lowercase(name)) == trim(lowercase(bounds_name))) then
              axis_bound = axes(i)
           endif
        enddo
-       call mpp_get_atts(axis_bound,len=len)
-       if (len < 1) call mpp_error(FATAL,'error locating boundary axis')
+       call mpp_get_atts(axis_bound,lngth=lngth)
+       if (lngth < 1) call mpp_error(FATAL,'error locating boundary axis')
     else
        call mpp_get_atts(axis,name=name,units=units,longname=longname,&
-            cartesian=cartesian,len=len)
+            cartesian=cartesian,lngth=lngth)
        name = trim(name)//'_bounds'
        longname = trim(longname)//' bounds'
-       allocate(tmp(len))
+       allocate(tmp(lngth))
        call mpp_get_axis_data(axis,tmp)
-       allocate(data(len+1))
-       do i=2,len
+       allocate(data(lngth+1))
+       do i=2,lngth
           data(i)= tmp(i-1)+fp5*(tmp(i)-tmp(i-1))
        enddo
        data(1)= tmp(1)- fp5*(tmp(2)-tmp(1))
        if (abs(data(1)) < epsln) data(1) = 0.0
-       data(len+1)= tmp(len)+ fp5*(tmp(len)-tmp(len-1))         
+       data(lngth+1)= tmp(lngth)+ fp5*(tmp(lngth)-tmp(lngth-1))         
        if (data(1) == 0.0) then
-          if (abs(data(len+1)-360.) > epsln) data(len+1)=360.0
+          if (abs(data(lngth+1)-360.) > epsln) data(lngth+1)=360.0
        endif
        call mpp_modify_meta(axis_bound,name=name,units=units,longname=&
             longname,cartesian=cartesian,data=data)
@@ -222,7 +222,7 @@ contains
 
     get_axis_modulo=.false.
     do i = 1,natt
-       if (lowercase(trim(atts(i)%name)) == 'modulo') get_axis_modulo = .true.
+       if (trim(lowercase(atts(i)%name)) == 'modulo') get_axis_modulo = .true.
     enddo
 
     deallocate(atts)
@@ -294,17 +294,17 @@ contains
     integer, intent(out) :: istrt
 
 
-    integer :: len, i
+    integer :: lngth, i
     real :: lon_strt, tmp(size(lon)-1)
 
-    len = size(lon)
+    lngth = size(lon)
 
-    do i=1,len
+    do i=1,lngth
        lon(i) = lon_in_range(lon(i),lon_start)
     enddo
 
     istrt=0
-    do i=1,len-1
+    do i=1,lngth-1
        if (lon(i+1) < lon(i)) then
           istrt=i+1 
           exit
@@ -312,15 +312,15 @@ contains
     enddo
 
     if (istrt>1) then ! grid is not monotonic
-       if (abs(lon(len)-lon(1)) < epsln) then 
-          tmp = cshift(lon(1:len-1),istrt-1)
-          lon(1:len-1) = tmp
-          lon(len) = lon(1)
+       if (abs(lon(lngth)-lon(1)) < epsln) then 
+          tmp = cshift(lon(1:lngth-1),istrt-1)
+          lon(1:lngth-1) = tmp
+          lon(lngth) = lon(1)
        else
           lon = cshift(lon,istrt-1)
        endif
        lon_strt = lon(1)
-       do i=2,len+1
+       do i=2,lngth+1
           lon(i) = lon_in_range(lon(i),lon_strt)
           lon_strt = lon(i)
        enddo
