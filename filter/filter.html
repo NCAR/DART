@@ -65,7 +65,8 @@
    provides a number of options that are driven from its namelist. The
    number of assimilation steps to be done are controlled by the input
    observation sequence and by the time-stepping capabilities of the model
-   being used in the assimilation.
+   being used in the assimilation. This documentation was created for the
+   H-release of DART.
 </P>
 
 <!--==================================================================-->
@@ -76,15 +77,16 @@
 <PRE>
 types_mod
 obs_sequence_mod
+obs_def_mod
 time_manager_mod
 utilities_mod
 assim_model_mod
 random_seq_mod
 assim_tools_mod
 cov_cutoff_mod
-location_mod
 reg_factor_mod
-sort_mod
+obs_model_mod
+ensemble_manager
 </PRE>
 
 
@@ -98,11 +100,12 @@ sort_mod
 '&' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / filter_nml / </em> &
-      async, ens_size, cutoff, cov_inflate, start_from_restart, output_restart &
-      obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
-      init_time_days, init_time_seconds, output_state_ens_mean, &
-      output_state_ens_spread, num_output_ens_members, output_interval, &
-      num_groups, confidence_slope, output_obs_diagnostics, get_mean_reg, get_median_reg
+      async, adv_ens_command, ens_size, cutoff, cov_inflate, start_from_restart, 
+      output_restart, obs_sequence_in_name, obs_sequence_out_name, 
+      restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, 
+      output_state_ens_mean, output_state_ens_spread, num_output_ens_members, 
+      output_interval,  num_groups, confidence_slope, outlier_threshold, 
+      save_reg_series
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -168,16 +171,33 @@ sort_mod
 <TR><!--contents--><TD valign=top>output_state_ens_mean            </TD>
     <!--  type  --><TD>logical                         </TD>
     <!--descript--><TD>Output ensemble mean in state diagnostic files. </TD></TR>
-<TR><!--contents--><TD valign=top>num_output_ens_members            </TD>
+<TR><!--contents--><TD valign=top>output_state_ens_spread
+    <!--  type  --><TD>logical                         </TD>
+    <!--descript--><TD>Output ensemble spread in state diagnostic files. </TD></TR>
+<TR><!--contents--><TD valign=top>output_obs_ens_mean            </TD>
+    <!--  type  --><TD>logical                         </TD>
+    <!--descript--><TD>Output ensemble mean in observation output file. </TD></TR>
+<TR><!--contents--><TD valign=top>output_state_ens_spread
+    <!--  type  --><TD>logical                         </TD>
+    <!--descript--><TD>Output ensemble spread in observation output file. </TD></TR>
+<TR><!--contents--><TD valign=top>num_output_state_members            </TD>
     <!--  type  --><TD>integer                         </TD>
     <!--descript--><TD>This number of ensemble members is output to the
                        state diagnostics file. If this is less than the total
                        number of ensemble members the first subset is output. 
                        Default is 0.</TD></TR>
+<TR><!--contents--><TD valign=top>num_output_obs_members            </TD>
+    <!--  type  --><TD>integer                         </TD>
+    <!--descript--><TD>This number of ensemble members is output to the
+                       observation output file. If this is less than the total
+                       number of ensemble members the first subset is output. 
+                       Default is 0.</TD></TR>
 <TR><!--contents--><TD valign=top>output_interval            </TD>
     <!--  type  --><TD>integer                         </TD>
-    <!--descript--><TD>The frequency with which output diagnostics are written.
-                       Default value is 1. </TD></TR>
+    <!--descript--><TD>The frequency with which output state diagnostics are 
+                       in assimilation times written.
+                       Default value is 1 meaning output is written at
+                       every observation time. </TD></TR>
 <TR><!--contents--><TD valign=top>num_groups            </TD>
     <!--  type  --><TD>integer                         </TD>
     <!--descript--><TD>Number of groups for hierarchical group filter. Should 
@@ -186,18 +206,21 @@ sort_mod
     <!--  type  --><TD>real(r8)                        </TD>
     <!--descript--><TD>Controls strength of bias correction algorithm. See
                        assim_tools module. Default is 0 (no correction). </TD></TR>
-<TR><!--contents--><TD valign=top>output_obs_diagnostics            </TD>
+<TR><!--contents--><TD valign=top>outlier_threshold
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD>Discard all observations where the prior ensemble mean
+                       and the observation value differ by more than this many
+                       of the expected standard deviations. A quality control
+                       flag value is incremented by 10000 if this check is
+                       violated for the prior estimate. Negative value 
+                       means no quality control of this kind. 
+                       Default value is -1.0 </TD></TR>
+<TR><!--contents--><TD valign=top>save_reg_series </TD>
     <!--  type  --><TD>logical                         </TD>
-    <!--descript--><TD>Should an observation space diagnostics file be output.
-                       Default value is .false. </TD></TR>
-<TR><!--contents--><TD valign=top>get_mean_reg            </TD>
-    <!--  type  --><TD>logical                         </TD>
-    <!--descript--><TD>Compute time mean regressions from group filter and output
-                       to file. Only works with group filter. Default is .false. </TD></TR>
-<TR><!--contents--><TD valign=top>get_median_reg            </TD>
-    <!--  type  --><TD>logical                         </TD>
-    <!--descript--><TD>Compute time median regression from group filter and output
-                       to file. Only works with group filter. Default is .false. </TD></TR>
+    <!--descript--><TD>Save statistics about the regression series for different
+                       observation / state variable pairs. Currently only
+                       minimally supported for non-parallel low-order models.
+                       Default is .false. </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -207,12 +230,12 @@ sort_mod
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>observation sequence input file
-    <LI>state restart file
-    <LI>output state space diagnostics file
-    <LI>ouptut observation space diagnostic file
-    <LI>output time mean regression file
-    <LI>output time median regression file
+<UL><LI>observation sequence input file; from obs_sequence_in_name
+    <LI>state restart input file; from restart_in_file_name
+    <LI>state restart output file; from restart_out_file_name
+    <LI>output state space prior diagnostics file; Prior_Diag.nc
+    <LI>output state space posterior diagnostics file; Posterior_Diag.nc
+    <LI>ouptut observation space diagnostic file; from obs_sequence_out_name
 </UL>
 
 <!--==================================================================-->
@@ -235,9 +258,9 @@ sort_mod
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>filter</TD>
+<TR><!-- routine --><TD VALIGN=top>filter_generate_copy_meta_data</TD>
     <!-- message --><TD VALIGN=top>output metadata in filter needs ensemble size < 10000</TD>
-    <!-- comment --><TD VALIGN=top>Ensemble sizes greater than require modifications to output ensemble code.</TD>
+    <!-- comment --><TD VALIGN=top>Ensemble sizes greater than require modifications to output ensemble code. </TD>
 </TR>
 
 </TABLE>
@@ -261,11 +284,8 @@ sort_mod
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
-   The filter will be modified to support parallel implementation and
-   use of observations that can only be computed from the state prior
-   once at the start of the assimilation. A new observation sequence
-   module is also under development to support this and clean up the
-   use of observations.
+Further development to better support observations that can only be
+computed once is needed.
 </P>
 
 <!--==================================================================-->

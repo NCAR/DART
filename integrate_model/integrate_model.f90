@@ -21,10 +21,13 @@ use    utilities_mod, only : get_unit, open_file, close_file, check_nml_error, &
                              file_exist
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
-   advance_state, set_model_time, get_model_time, init_diag_output, &
+   set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart, open_restart_read, &
-   open_restart_write, close_restart
+   open_restart_write, close_restart, awrite_state_restart, aread_state_restart
+
+use ensemble_manager_mod, only : init_ensemble_manager, put_ensemble_member, &
+   end_ensemble_manager, Aadvance_state, ensemble_type, get_ensemble_member
 
 implicit none
 
@@ -34,9 +37,10 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-type(time_type)         :: time, target_time
-type(assim_model_type) :: x(1)
+type(time_type)         :: time, target_time, model_time
+real(r8), allocatable   :: x(:)
 integer :: iunit, ierr, io, model_size
+type(ensemble_type) :: ens_handle
 
 character (len=129)    :: adv_ens_command = ''
 !----------------------------------------------------------------
@@ -69,22 +73,27 @@ model_size = get_model_size()
 !------------------- Read restart from file ----------------------
 iunit = open_restart_read(ic_file_name)
 ! Read in the target time
-call init_assim_model(x(1))
-call read_state_restart(x(1), iunit, target_time)
+allocate(x(model_size))
+call aread_state_restart(model_time, x, iunit, target_time)
 call close_restart(iunit)
 !-----------------  Restart read in --------------------------------
 
+! Put this into and ensemble_manager type
+call init_ensemble_manager(ens_handle, 1, model_size)
+call put_ensemble_member(ens_handle, 1, x, model_time)
+
 ! Advance this state to the target time (which comes from namelist)
 ! If the model time is past the obs set time, just need to skip
-call print_time(target_time, 'target time is')
-call print_time(get_model_time(x(1)), 'model time is')
-if(get_model_time(x(1)) < target_time) then
-   call advance_state(x, 1, target_time, 0, adv_ens_command)
+!call print_time(target_time, 'target time is')
+!call print_time(model_time, 'model time is')
+if(model_time < target_time) then
+   call Aadvance_state(ens_handle, target_time, 0, adv_ens_command)
 endif
 
 ! Output the restart file if requested
 iunit = open_restart_write(ud_file_name)
-call write_state_restart(x(1), iunit)
+call get_ensemble_member(ens_handle, 1, x, model_time)
+call awrite_state_restart(model_time, x, iunit)
 call close_restart(iunit)
 
 end program integrate_model
