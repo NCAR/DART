@@ -14,40 +14,10 @@
 & MODEL SETTING  <-31 Spaces-> |#	COMMENTS
 &---------------------------------------------------------
 ---JOB COMMENTS-72 CHARACTERS-----------------------------
-test run:  late+rad; HRDI Winds; CIRA O3; Hdiff is ON; Taylor BC FIX
+test run:Test for Tomoko; HRDI Winds; CIRA O3; Hdiff is ON; Taylor BC FIX
 ---BACKGROUND ATMOSPHERE------ ----------------------------
-ZERO MEAN WINDS (0,1)          |0	0=STANDARD BACKGROUND; 1=NO WIND
-GROVES (0,1,2)                 |0	0=STANDARD
-HRDI (0,1,2)                   |2	2=STANDARD
-PORTNYAGIN (0,1)               |0	0=STANDARD
-RANDEL (0,1,2)                 |0	0=STANDARD
-HWM93 (0,1,2)                  |2	2=STANDARD w/ HRDI=2; 1=all HWM93
 LAT GRADIENTS ==0  (0,1)       |0	0=STANDARD; 1=GRADIENTS==0
 POLAR BC (1,2,3,4)             |2       1=STANDARD(old) 2=STD (hdiff)
-[O3] BACKGROUND (0,1,2,3,4)    |1	(ONLY IF HEATING=1) 1=CIRA 4=UARS
-7YR MONTHLY DCA RATES (0,1)    |1	(ONLY IF NON-MIG HEATING=0) 0=OFF
----MIGRATING TIDAL FORCING MODELS--------------------------------
-HEATING (0-6)                  |4	SEE README; 1=Heat92; 4=Heat92+Late
-  2X HOUGH FORCING(0,1)        |0	0: 0=OFF; 1=DOUBLE
-  DIURNAL O3 (0,1,2)           |0	1: 0=OFF (STD)
-  O3 PEAK (0,1)                |1	1: 1=BJARNSON (STD)
-  SKIP O3 (0,1)                |0	1: 0=O3 FORCING (STD); 1=NO FORCING
-  SKIP IR (0,1)                |0	1: 0=IR FORCING (STD); 1=NO FORCING
-  LATENT (0,1)                 |0	2: 0=MON MEAN (STD); 1=ANN MEAN
-  SOLAR CYCLE (1,2,3)          |2       6: 1=MIN;2=MED;3=MAX
----NON-MIGRATING TIDAL FORCING MODELS----------------------------
-HEATING (0,1,2)                |0	SEE README; 0=DCA; 1=IR; 2=BOTH
---- TIDAL DISSIPATION MODELS--------------------------------
-KHATTATOV (0,1)                |0	0=OFF (STD); 1=ON
-EDDY MODEL (0,1,2)             |1	1=GS  (STD); 0=WEAK; 2=ANALYTIC
-HORIZONTAL DIFFUSION (0,1)     |1	1=ON  (STD for DIURNAL); 0=OFF
-LAT INVARIANT MU0, K0 (0,1)    |0	0=OFF (STD); 1=INVARIANT
-ION DRAG (0,1)                 |1	1=ON (STD); 0=OFF
-VIAL COEFF (0,1)               |0	IF EDDY=2: 0=OFF; 1=ON (STD)
-GRAVITY WAVE STRESS (0,1)      |1	1=ON (STD for DIURNAL); 0=OFF
----POST RUN PROCESSING------------------------------------
-HOUGH DECOMPOSITION (0,1)      |0	0=OFF (STD); 1=ON for MIGRATING ONLY
-DENSITY/PRESSURE PERTURB (0,1) |0	0=OFF (STD); 1=ON
 ---END
 
 
