@@ -11,7 +11,7 @@ module close_state_cache_mod
 ! $Author$
 
 use        types_mod, only : r8
-use    utilities_mod, only : error_handler, E_ERR
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use obs_sequence_mod, only : obs_sequence_type, get_obs_def_index, &
                              get_num_close_states, get_close_states
 
@@ -40,9 +40,21 @@ type cache_element_type
    real(r8), pointer :: dist(:, :)
 end type cache_element_type
 
+logical, save :: module_initialized = .false.
+
 contains
 
 !===============================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
+
+
 
 subroutine cache_init(cache, size)
 !-----------------------------------------------------
@@ -53,6 +65,8 @@ implicit none
 
 type(close_state_cache_type), intent(out) :: cache
 integer, intent(in) :: size
+
+if ( .not. module_initialized ) call initialize_module
 
 cache%size = size
 cache%num = 0
@@ -86,6 +100,8 @@ integer, pointer :: num_close(:), close(:, :)
 real(r8), pointer :: dist(:, :)
 
 integer :: def_index, i, ind
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the index for the associated obs_set_def
 def_index = get_obs_def_index(seq, index)

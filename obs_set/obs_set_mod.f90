@@ -12,7 +12,7 @@ module obs_set_mod
 !
 
 use        types_mod, only : r8
-use    utilities_mod, only : error_handler, E_ERR
+use    utilities_mod, only : error_handler, E_ERR, register_module
 use set_def_list_mod, only : set_def_list_type, get_total_num_obs
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time
@@ -45,6 +45,7 @@ type obs_set_type
    integer :: def_index
 end type obs_set_type
 
+logical, save :: module_initialized = .false.
 
 ! NOTE: There are a variety of places where some no change lock mechanism
 ! needs to be implemented. Once obs_set_defs are in the table they should
@@ -57,6 +58,13 @@ end type obs_set_type
 contains
 
 !=======================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
 
 
 function init_obs_set(set_def_list, ind, num_copies_in)
@@ -72,6 +80,8 @@ integer, intent(in) :: ind
 integer, optional, intent(in) :: num_copies_in
 
 integer :: num_copies, num_obs
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Begin by getting the number of copies
 num_copies = 1
@@ -116,6 +126,8 @@ type(obs_set_type), intent(inout) :: set_out
 type(obs_set_type), intent(in) :: set_in
 
 integer :: days, seconds
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Set the sizes
 set_out%num_copies = set_in%num_copies
@@ -172,6 +184,8 @@ implicit none
 type(obs_set_type), intent(out) :: set_out
 type(obs_set_type), intent(in) :: set_in
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Set the sizes, num_copies is reset to 0
 set_out%num_copies = 0
 set_out%num_obs = set_in%num_obs
@@ -201,6 +215,8 @@ integer, intent(in) :: inc
 logical :: temp_missing(set%num_obs, set%num_copies)
 real(r8) :: temp_obs(set%num_obs, set%num_copies)
 integer :: old_num, new_num
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Increment the number of copies
 old_num = set%num_copies
@@ -238,6 +254,8 @@ implicit none
 integer :: get_obs_def_index
 type(obs_set_type), intent(in) :: obs_set
 
+if ( .not. module_initialized ) call initialize_module
+
 get_obs_def_index = obs_set%def_index
 
 end function get_obs_def_index
@@ -256,6 +274,8 @@ implicit none
 type(time_type) :: get_obs_set_time
 type(obs_set_type), intent(in) :: set
 
+if ( .not. module_initialized ) call initialize_module
+
 get_obs_set_time = set%time
 
 end function get_obs_set_time
@@ -271,6 +291,8 @@ implicit none
 
 integer :: get_num_obs
 type(obs_set_type), intent(in) :: set
+
+if ( .not. module_initialized ) call initialize_module
 
 get_num_obs = set%num_obs
 
@@ -293,6 +315,8 @@ real(r8), intent(out) :: obs(:)
 integer, optional, intent(in) :: index_in
 
 integer :: ind
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the appropriate index
 ind = 1
@@ -325,6 +349,8 @@ real(r8), intent(in) :: obs(:)
 integer, optional, intent(in) :: copy_in
 
 integer :: copy
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the appropriate copycopy
 copy = 1
@@ -359,6 +385,8 @@ real(r8), intent(in) :: obs
 integer, optional, intent(in) :: copy_in
 
 integer :: copy
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the appropriate copy
 copy = 1
@@ -395,6 +423,8 @@ integer, optional, intent(in) :: index_in
 
 integer :: ind
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the appropriate index
 ind = 1
 if(present(index_in)) ind = index_in
@@ -424,6 +454,8 @@ implicit none
 type(obs_set_type), intent(inout) :: set
 type(time_type), intent(in) :: time
 
+if ( .not. module_initialized ) call initialize_module
+
 set%time = time
 
 end subroutine set_obs_set_time
@@ -441,6 +473,8 @@ implicit none
 
 logical :: contains_data
 type(obs_set_type), intent(in) :: set
+
+if ( .not. module_initialized ) call initialize_module
 
 contains_data = set%num_copies > 0
 
@@ -462,6 +496,8 @@ logical, intent(out) :: missing(:)
 integer, optional, intent(in) :: index_in
 
 integer :: ind
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the appropriate index
 ind = 1
@@ -495,6 +531,8 @@ integer, intent(in) :: file_id
 
 character(len=5) :: header
 integer :: num_obs, num_copies, i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read the header and verify 
 read(file_id, *) header
@@ -546,6 +584,8 @@ character(len=5) :: header
 integer :: num_obs, num_copies, i
 real(r8), allocatable :: obs(:)
 logical, allocatable :: missing(:)
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read the header and verify 
 read(file_id, *) header
@@ -601,6 +641,8 @@ integer, intent(in) :: file_id
 
 integer :: i, j
 
+if ( .not. module_initialized ) call initialize_module
+
 ! First write ascii header saying set is coming
 write(file_id, *) 'obset'
 
@@ -639,6 +681,8 @@ real(r8), intent(out) :: obs
 integer, optional, intent(in) :: copy_in
 
 integer :: copy
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the appropriate copy
 copy = 1

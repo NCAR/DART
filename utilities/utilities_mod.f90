@@ -50,12 +50,12 @@ integer, private :: num_nml_error_codes, nml_error_codes(5)
 logical, private :: do_nml_error_init = .true.
 private  nml_error_init
 
-integer, parameter :: E_MSG = 0, E_WARN = 1, E_ERR = 2
+integer, parameter ::   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
 
 public file_exist, get_unit, error_mesg, check_nml_error, open_file, &
-       close_file, print_version_number, error_handler, &
-       E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL 
+       close_file, register_module, error_handler, initialize_utilities, &
+       finalize_utilities, E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL, logfileunit
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -63,7 +63,181 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+logical, save :: module_initialized = .false.
+integer, save :: logfileunit = -1
+
+!----------------------------------------------------------------
+! Namelist input with default values
+integer  :: TERMLEVEL = E_ERR     ! E_ERR All warnings/errors are assumed fatal.
+character(len=129) :: logfilename = 'logfile.out'
+
+namelist /utilities_nml/TERMLEVEL, logfilename
+
 contains
+
+!#######################################################################
+
+   subroutine initialize_utilities
+   ! integer :: logfileunit -- private module variable
+   integer :: i, iunit, io
+   logical :: lfile
+
+      if ( module_initialized ) then ! nothing to do
+
+         ! write(*,*)'Module initialized ... carry on.'
+
+         return
+
+      else ! initialize the module
+
+         ! Since the logfile is not open yet, the error terminations
+         ! must be handled differently than all other cases.
+         ! The routines that normally write to the logfile cannot
+         ! be used just yet. If we cannot open a logfile, we
+         ! always abort execution at this step.
+
+         write(*,*)'Initializing the utilities module.'
+
+         inquire (file = 'input.nml', exist = lfile) ! does a namelist exist
+
+         ! Read the namelist input if it exists
+         if( lfile ) then
+
+            ! write(*,*)'Determine unit for namelist'
+
+            ! determine an open unit for the namelist 
+            iunit = nextunit()
+            if ( iunit < 0 ) then
+               write(*,*)'   unable to get a unit to use to read the namelist.'
+               write(*,*)'   stopping.'
+               stop
+            endif
+
+            ! If the file exists, it might still not contain the utilities_nml namelist
+            open( iunit, file='input.nml')
+            read( iunit, nml = utilities_nml, iostat = io)
+            if (io /= 0 ) then
+               write(*,*)'  No utilities_nml in input.nml, iostat was ',io 
+               write(*,*)'  using default values ...'
+            endif
+            close(iunit)
+
+         endif
+
+         ! Open the log file with the name from the namelist 
+         logfileunit = nextunit()
+         if ( logfileunit < 0 ) then
+            write(*,*)'   unable to get a unit to use for the logfile.'
+            write(*,*)'   stopping.'
+            stop
+         endif
+
+         write(*,*)'Trying to read from unit ', logfileunit
+         write(*,*)'Trying to open file ', trim(adjustl(logfilename))
+
+         open(logfileunit, file=trim(adjustl(logfilename)), form='formatted', &
+                           position='append', iostat = io )
+         if ( io /= 0 ) then
+            write(*,*)'FATAL ERROR in initialize_utilities'
+            write(*,*)'  ',trim(adjustl(source))
+            write(*,*)'  ',trim(adjustl(revision))
+            write(*,*)'  ',trim(adjustl(revdate))
+            write(*,*)'   unable to open the logfile.'
+            write(*,*)'   the intended file name was <',trim(adjustl(logfilename)),'>'
+            write(*,*)'   stopping.'
+         endif
+
+         ! Check to make sure termlevel is set to a reasonable value
+         call checkTermLevel
+
+         module_initialized = .true.
+
+         ! Echo the module information using normal mechanism
+         call register_module(source, revision, revdate)
+
+         ! Echo the namelist values for this module using normal mechanism
+         write(logfileunit, nml=utilities_nml)
+         write(     *     , nml=utilities_nml)
+
+      endif
+
+   contains
+
+      function nextunit() result(iunit)
+         integer :: iunit
+
+         logical :: open
+         integer :: i
+
+         iunit = -1
+         UnitLoop : do i = 10, 80
+            inquire (i, opened=open)
+            if (.not. open) then
+               iunit = i
+               exit UnitLoop
+            endif
+         enddo UnitLoop
+         if ( iunit < 0 ) then 
+            write(*,*)'FATAL ERROR in initialize_utilities'
+            write(*,*)'  ',trim(adjustl(source))
+            write(*,*)'  ',trim(adjustl(revision))
+            write(*,*)'  ',trim(adjustl(revdate))
+         endif
+      end function nextunit
+
+      subroutine checktermlevel
+         select case (TERMLEVEL)
+             case (E_MSG)
+                ! do nothing
+             case (E_WARN)
+                ! do nothing
+             case (E_ERR)
+                ! do nothing
+             case default
+                print *, ' MESSAGE from initialize_utilities'
+                print *, ' namelist input of TERMLEVEL is ',TERMLEVEL
+                print *, ' possible values are ',E_MSG, E_WARN, E_ERR
+                if (TERMLEVEL < E_WARN ) TERMLEVEL = E_WARN
+                if (TERMLEVEL > E_ERR  ) TERMLEVEL = E_ERR
+                print *, ' using ',TERMLEVEL
+         end select
+      end subroutine checktermlevel
+
+   end subroutine initialize_utilities
+
+
+   subroutine finalize_utilities
+   ! integer :: logfileunit -- private module variable
+
+      close(logfileunit)
+
+   end subroutine finalize_utilities
+
+
+!#######################################################################
+
+   subroutine register_module(src, rev, rdate)
+   character(len=*), intent(in) :: src, rev, rdate
+
+      if ( .not. module_initialized ) call initialize_utilities
+
+      write(logfileunit,*)
+      write(logfileunit,*)'Registering module :'
+      write(logfileunit,*)trim(adjustl(src))
+      write(logfileunit,*)trim(adjustl(rev))
+      write(logfileunit,*)trim(adjustl(rdate))
+      write(logfileunit,*)'Registration complete.'
+      write(logfileunit,*)
+
+      write(     *     ,*)
+      write(     *     ,*)'Registering module :'
+      write(     *     ,*)trim(adjustl(src))
+      write(     *     ,*)trim(adjustl(rev))
+      write(     *     ,*)trim(adjustl(rdate))
+      write(     *     ,*)'Registration complete.'
+      write(     *     ,*)
+
+   end subroutine register_module
 
 !#######################################################################
 
@@ -72,30 +246,34 @@ contains
       character(len=*), intent(in) :: file_name
       logical  file_exist
 
+      if ( .not. module_initialized ) call initialize_utilities
+
       inquire (file=file_name(1:len_trim(file_name)), exist=file_exist)
 
    end function file_exist
 
 !#######################################################################
 
-   function get_unit () result (unit)
+   function get_unit () result (iunit)
 
-      integer  i, unit
-      logical  open
+      integer :: i, iunit
+      logical :: open
+
+      if ( .not. module_initialized ) call initialize_utilities
 
 ! ---- get available unit ----
 
-      unit = -1
+      iunit = -1
       do i = 10, 80
          inquire (i, opened=open)
          if (.not.open) Then
-            unit = i
+            iunit = i
             exit
          endif
       enddo
 
-      if (unit == -1) call error_handler(E_ERR,'get_unit', &
-             'no available units.',source, revision, revdate)
+      if (iunit == -1) call error_handler(E_ERR,'get_unit', &
+             'No available units.', source, revision, revdate)
 
    end function get_unit
 
@@ -137,33 +315,65 @@ contains
 
 !#######################################################################
 
-subroutine error_handler(level, routine, text, src, rev, rdate, aut )
-
+  subroutine error_handler(level, routine, text, src, rev, rdate, aut )
+!----------------------------------------------------------------------
+! subroutine error_handler(level, routine, text, src, rev, rdate, aut )
+!
+! logs warning/error 
 implicit none
 
 integer, intent(in) :: level
 character(len = *), intent(in) :: routine, text, src, rev, rdate
 character(len = *), intent(in), OPTIONAL :: aut
 
+if ( .not. module_initialized ) call initialize_utilities
+
 select case(level)
    case (E_MSG)
-      write(*, *) 'MESSAGE FROM:'
+
+      write(     *     , *) trim(adjustl(routine)),' ', trim(text)
+      write(logfileunit, *) trim(adjustl(routine)),' ', trim(text)
+
    case (E_WARN)
-      write(*, *) 'WARNING FROM:'
+
+      write(     *     , *) 'WARNING FROM:'
+      write(     *     , *) '   routine       : ', trim(routine)
+      write(     *     , *) '   source file   : ', trim(src)
+      write(     *     , *) '   file revision : ', trim(rev)
+      write(     *     , *) '   revision date : ', trim(rdate)
+      write(     *     , *) '   message       : ', trim(text)
+
+      write(logfileunit, *) 'WARNING FROM:'
+      write(logfileunit, *) '   routine       : ', trim(routine)
+      write(logfileunit, *) '   source file   : ', trim(src)
+      write(logfileunit, *) '   file revision : ', trim(rev)
+      write(logfileunit, *) '   revision date : ', trim(rdate)
+      if(present(aut)) &
+      write(logfileunit, *) '   last editor   : ', trim(aut)
+      write(logfileunit, *) '   message       : ', trim(text)
+
    case(E_ERR)
-      write(*, *) 'ERROR FROM:'
+
+      write(     *     , *) 'ERROR FROM:'
+      write(     *     , *) '   routine       : ', trim(routine)
+      write(     *     , *) '   source file   : ', trim(src)
+      write(     *     , *) '   file revision : ', trim(rev)
+      write(     *     , *) '   revision date : ', trim(rdate)
+      write(     *     , *) '   message       : ', trim(text)
+
+      write(logfileunit, *) 'ERROR FROM:'
+      write(logfileunit, *) '   routine       : ', trim(routine)
+      write(logfileunit, *) '   source file   : ', trim(src)
+      write(logfileunit, *) '   file revision : ', trim(rev)
+      write(logfileunit, *) '   revision date : ', trim(rdate)
+      if(present(aut)) &
+      write(logfileunit, *) '   last editor   : ', trim(aut)
+      write(logfileunit, *) '   message       : ', trim(text)
+
 end select
 
-write(*, *) '   routine       : ', trim(routine)
-write(*, *) '   source file   : ', trim(src)
-write(*, *) '   file revision : ', trim(rev)
-write(*, *) '   revision date : ', trim(rdate)
-if(present(aut)) &
-write(*, *) '   last editor   : ', trim(aut)
-write(*, *) '   message       : ', trim(text)
-
-! Stop for all but message; 
-if(level /= E_MSG) stop
+! TERMLEVEL gets set in the namelist
+if( level >= TERMLEVEL ) stop
 
 end subroutine error_handler
 
@@ -175,6 +385,8 @@ function check_nml_error (iostat, nml_name) result (error_code)
    character(len=*), intent(in) :: nml_name
    integer   error_code, i
    character(len=128) :: err_str
+
+   if ( .not. module_initialized ) call initialize_utilities
 
    if (do_nml_error_init) call nml_error_init
 
@@ -200,28 +412,30 @@ subroutine nml_error_init
 
 !   private routine for initializing allowable error codes
 
-   integer  unit, io, ir
+   integer  iunit, io, ir
    real(r8) ::  b=1.0_r8
    namelist /b_nml/  b
+
+      if ( .not. module_initialized ) call initialize_utilities
 
       nml_error_codes(1) = 0
 
 !     ---- create dummy namelist file ----
-      unit=get_unit(); open (unit, file='_read_error.nml')
-      write (unit, 10)
+      iunit=get_unit(); open (iunit, file='_read_error.nml')
+      write (iunit, 10)
   10  format (' &a_nml  a=1.  /',  &
              /'-------------------',  &
              /' &b_nml  e=5.  &end')
-      close (unit)
+      close (iunit)
 
 !     ---- read namelist file and save error codes ----
-      unit=get_unit(); open (unit, file='_read_error.nml')
+      iunit=get_unit(); open (iunit, file='_read_error.nml')
       ir=1; io=1; do
-         read  (unit, nml=b_nml, iostat=io, end=20)
+         read  (iunit, nml=b_nml, iostat=io, end=20)
          if (io == 0) exit
          ir=ir+1; nml_error_codes(ir)=io
       enddo
-  20  close (unit, status='delete')
+  20  close (iunit, status='delete')
 
       num_nml_error_codes = ir
 !del  print *, 'nml_error_codes=', nml_error_codes(1:ir)
@@ -232,18 +446,20 @@ end subroutine nml_error_init
 !#######################################################################
 !#######################################################################
 
-   function open_file (file, form, action) result (unit)
+   function open_file (fname, form, action) result (iunit)
 
-   character(len=*), intent(in) :: file
+   character(len=*), intent(in) :: fname
    character(len=*), intent(in), optional :: form, action
-   integer  :: unit
+   integer  :: iunit
 
    integer           :: nc
    logical           :: open
    character(len=11) :: format
    character(len=6)  :: location
 
-      inquire (file=file(1:len_trim(file)), opened=open, number=unit,  &
+   if ( .not. module_initialized ) call initialize_utilities
+
+      inquire (file=fname(1:len_trim(fname)), opened=open, number=iunit,  &
                form=format)
 
      if (open) then
@@ -286,15 +502,15 @@ end subroutine nml_error_init
                 location = 'rewind'
          endif
 
-         unit = get_unit()
+         iunit = get_unit()
 
          if (format == 'formatted  ' .or. format == 'FORMATTED  ') then
-             open (unit, file=file(1:len_trim(file)),      &
+             open (iunit, file=fname(1:len_trim(fname)),      &
                          form=format(1:len_trim(format)),  &
                      position=location(1:len_trim(location)),  &
                         delim='apostrophe')
          else
-             open (unit, file=file(1:len_trim(file)),      &
+             open (iunit, file=fname(1:len_trim(fname)),      &
                          form=format(1:len_trim(format)),  &
                      position=location(1:len_trim(location)) )
          endif
@@ -305,26 +521,28 @@ end subroutine nml_error_init
 
 !#######################################################################
 
-   subroutine print_version_number (unit, routine, version)
+   subroutine print_version_number (iunit, routine, version)
 
 ! *** prints routine name and version number to a log file ***
 !
-!    in:  unit    = unit number to direct output
+!    in:  iunit    = unit number to direct output
 !         routine = routine name (character, max len = 20)
 !         version = version name or number (character, max len = 8)
 
-   integer,          intent(in) :: unit
+   integer,          intent(in) :: iunit
    character(len=*), intent(in) :: routine, version
 
    integer           :: n
    character(len=20) :: name
    character(len=8)  :: vers
 
+   if ( .not. module_initialized ) call initialize_utilities
+
      n = min(len(routine),20); name = adjustl(routine(1:n))
      n = min(len(version), 8); vers = adjustl(version(1:n))
 
-     if (unit > 0) then
-         write (unit,10) name, vers
+     if (iunit > 0) then
+         write (iunit,10) name, vers
      else
          write (*,10) name, vers
      endif
@@ -342,26 +560,28 @@ end subroutine nml_error_init
 
 
 
-subroutine close_file(unit)
+subroutine close_file(iunit)
 !-----------------------------------------------------------------------
 !
 ! Closes the given unit_number. If the file is already closed, 
 ! nothing happens. Pretty dramatic, eh?
 !
 
-integer, intent(in) :: unit
+integer, intent(in) :: iunit
 
 integer :: ios
 logical :: open
 
-inquire (unit=unit, opened=open, iostat=ios)
+if ( .not. module_initialized ) call initialize_utilities
+
+inquire (unit=iunit, opened=open, iostat=ios)
 if ( ios /= 0 ) then
-   print *,'Dagnabbit. Cannot inquire about unit # ',unit
+   print *,'Dagnabbit. Cannot inquire about unit # ',iunit
    print *,'Error status was ',ios
    print *,'Hoping for the best and continuing.'
 endif
 
-if (open) close(unit)
+if (open) close(iunit)
 
 end subroutine close_file
 

@@ -11,6 +11,7 @@ module obs_model_mod
 ! $Author$
 
 use       types_mod, only : r8
+use   utilities_mod, only : register_module
 use    location_mod, only : location_type, interactive_location
 use assim_model_mod, only : interpolate
 use    obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
@@ -26,9 +27,23 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+
+logical, save :: module_initialized = .false.
+
 contains
 
 !======================================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
+
+
+
 
 function take_obs(state_vector, location, obs_kind)
 !--------------------------------------------------------------------
@@ -40,6 +55,8 @@ real(r8) :: take_obs
 real(r8), intent(in) :: state_vector(:)
 type(location_type), intent(in) :: location
 type(obs_kind_type), intent(in) :: obs_kind
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
@@ -62,6 +79,8 @@ implicit none
 
 type(location_type), intent(out) :: location
 type(obs_kind_type), intent(out) :: obs_kind
+
+if ( .not. module_initialized ) call initialize_module
 
 call interactive_location(location)
 call interactive_kind(obs_kind)

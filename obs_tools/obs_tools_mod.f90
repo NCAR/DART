@@ -16,7 +16,7 @@ module obs_tools_mod
 ! types.
 
 use     types_mod, only : r8
-use utilities_mod, only : error_handler, E_ERR
+use utilities_mod, only : register_module, error_handler, E_ERR
 
 implicit none
 private
@@ -47,7 +47,21 @@ type state_obs_dep_type
    integer, pointer :: obs_index(:)
 end type state_obs_dep_type
 
+logical, save :: module_initialized = .false.
+
+
+
 contains
+
+
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   initialize_module = .true.
+
+end subroutine initialize_module
+
 
 
 
@@ -67,6 +81,8 @@ type (obs_def_type), intent(in) :: obs_def(num_obs)
 real(r8)                        :: conv_state_to_obs(num_obs)
 
 integer :: i, j
+
+if ( .not. module_initialized ) call initialize_module
 
 conv_state_to_obs = 0.0_r8
 do i = 1, num_obs
@@ -98,6 +114,8 @@ type(obs_def_type),       intent(in)  :: obs_def(num_obs)
 integer,                  intent(out) :: obs_list(max_num_pos_obs), num_dep_obs
 
 integer :: i, j, num_pos_obs, ind, ob, k
+
+if ( .not. module_initialized ) call initialize_module
 
 ! First get a non-redundant list of all the obs that are candidates
 
@@ -173,6 +191,8 @@ real(r8),            intent(out) :: m(n_state, n_obs), r_inv(n_obs, n_obs)
 
 integer :: i, ob, sv, j, k
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get inverse of covariance matrix for this set of obs; for now assues
 ! that the full observational covariance matrix is diagonal (could be extended)
 
@@ -220,6 +240,8 @@ type(obs_def_type),       intent(in)    :: obs_def(num_obs)
 type(state_obs_dep_type), intent(inout) :: state_obs_dep(model_size)
 
 integer :: i, j, num, ind
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Initialize count of obs per state variable to 0
 
@@ -271,6 +293,8 @@ type(obs_def_type), intent(inout) :: obs_def
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Set aside storage for defining this ob
 
 obs_def%num = num_state
@@ -299,6 +323,8 @@ type(obs_def_type), intent(in)  :: obs_def
 integer,            intent(out) :: n, state_ind(:)
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 n = obs_def%num
 

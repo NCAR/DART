@@ -20,7 +20,7 @@ module obs_kind_mod
 ! observation types.
 
 use     types_mod, only : r8
-use utilities_mod, only : error_handler, E_ERR
+use utilities_mod, only : register_module, error_handler, E_ERR
 
 implicit none
 private
@@ -40,8 +40,21 @@ type obs_kind_type
 end type obs_kind_type
 
 integer, parameter :: IDENTITY_OBSERVATION = -1
+logical, save :: module_initialized = .false.
 
 contains
+
+
+!----------------------------------------------------------------------------
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
+
 
 !----------------------------------------------------------------------------
 
@@ -54,6 +67,8 @@ implicit none
 
 integer :: get_obs_kind
 type(obs_kind_type), intent(in) :: obs_kind
+
+if ( .not. module_initialized ) call initialize_module
 
 get_obs_kind = obs_kind%index
 
@@ -70,6 +85,8 @@ implicit none
 type(obs_kind_type) :: set_obs_kind
 integer, intent(in) :: index
 
+if ( .not. module_initialized ) call initialize_module
+
 set_obs_kind%index = index
 
 end function set_obs_kind
@@ -83,6 +100,8 @@ implicit none
 
 integer, intent(in) :: file
 type(obs_kind_type), intent(in) :: kind
+
+if ( .not. module_initialized ) call initialize_module
 
 ! For now output a character tag followed by the integer index.
 write(file, '(''kind'')' )
@@ -100,6 +119,8 @@ type(obs_kind_type) :: read_kind
 integer, intent(in) :: file
 
 character(len=5) :: header
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Need additional error checks
 read(file, '(a5)' ) header
@@ -123,6 +144,8 @@ implicit none
 
 type(obs_kind_type), intent(out) :: kind
 
+if ( .not. module_initialized ) call initialize_module
+
 ! For bgrid, enter kind of observation
 write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5'
 read(*, *) kind%index
@@ -138,6 +161,8 @@ implicit none
 
 type(obs_kind_type) :: set_ncep_obs_kind
 integer, intent(in) :: obsindex
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Now set the kind index
  set_ncep_obs_kind%index = obsindex

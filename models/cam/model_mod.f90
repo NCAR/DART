@@ -9,7 +9,6 @@ module model_mod
 ! $Revision$
 ! $Date$
 !
-
 ! changes for reading hybrid coefficients from initial file are marked with 'coef'
 ! changes for calculating pressures on cam vertical levels are marked with  'plevs'
 ! 
@@ -41,7 +40,7 @@ use netcdf
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, print_time
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 use     location_mod, only : location_type, get_location, set_location, &
                              get_dist, vert_is_level, query_location, &
                              LocationDims, LocationName, LocationLName
@@ -590,29 +589,26 @@ end function get_model_size
 ! name netcdf file. Need to make this file a namelist parameter
 ! at some point.
 
+integer :: i, j, iunit, ierr, io
 
-integer :: i, j, unit, ierr, io
+! Register the module
+call register_module(source, revision, revdate)
 
-! Begin by reading the namelist input
+! Reading the namelist input
 if(file_exist('input.nml')) then
-   unit = open_file('input.nml', action = 'read')
+   iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(unit, nml = model_nml, iostat = io, end = 11)
+      read(iunit, nml = model_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'model_nml')
    enddo
  11 continue
-   call close_file(unit)
+   call close_file(iunit)
 endif
 
-! Temporary namelist validation
-write(*, *)'namelist read: values are'
-write(*, *)'output_state_vector is ', output_state_vector
-
-write(*,*)'model attributes:'
-write(*,*)'   ',source
-write(*,*)'   ',revision
-write(*,*)'   ',revdate
+! Record the namelist values 
+call error_handler(E_MSG,'static_init_model','namelist model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
 
 ! Get num lons, lats and levs from netcdf and put in global storage
 call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)

@@ -22,7 +22,8 @@ program create_obs_sequence
 !    fashion. At some point we need to sort these sets.
 
 use        types_mod, only : r8
-use    utilities_mod, only : open_file, error_handler, E_ERR
+use    utilities_mod, only : initialize_utilities, finalize_utilities, open_file, &
+                             error_handler, E_MSG, E_WARN, E_ERR, register_module, logfileunit
 use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
@@ -55,12 +56,9 @@ integer :: i, j, obs_set_def_index, indx = 0, days, seconds, option
 integer :: num_obs_set_defs, num_obs
 character(len = 129) :: file_name
 
-! Change output to diagnostic output block ...
-write(*,*)'create_obs_sequence attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
-write(*,*)'   '
+call initialize_utilities
+call register_module(source, revision, revdate)
+write(logfileunit,*)'STARTING create_obs_sequence ...'
 
 ! Get file name for input set_def_list
 write(*, *) 'What is name of set_def_list? [set_def.out]'
@@ -188,5 +186,11 @@ call write_obs_sequence(out_unit, seq)
 !write(*, *) 'rewriting to  garb_out' 
 !out_unit2 = open_file('garb_out')
 !call write_obs_sequence(out_unit2, seq)
+
+write(logfileunit,*)'wrote (empty) observation sequence to ',trim(file_name)
+write(logfileunit,*)'FINISHED create_obs_sequence.'
+write(logfileunit,*)
+
+call finalize_utilities ! closes the log file.
 
 end program create_obs_sequence

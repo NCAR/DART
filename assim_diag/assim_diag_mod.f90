@@ -19,21 +19,20 @@ module assim_diag_mod
 ! Need to generalize this code. Note that multiple calls to output_diag
 ! must be in same order as calls to assim_diag_init.
 
-use types_mod
-use chisq_mod, only: chsone
-use utilities_mod, only : open_file
+use     types_mod, only : r8
+use     chisq_mod, only : chsone
+use utilities_mod, only : open_file, register_module
 
-implicit none
-
+implicit none 
 private
 
-public bin_num, save_diagnostics, output_diagnostics, assim_diag_init
+public :: bin_num, save_diagnostics, output_diagnostics, assim_diag_init
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 type, public :: diag_type
    private
@@ -46,6 +45,8 @@ end type diag_type
 
 logical :: first = .true.
 integer :: bin_unit, obs_bin_unit, read_chan = -1, write_chan
+
+logical, save :: module_initialized = .false.
 
 contains
 
@@ -63,6 +64,8 @@ logical,          intent(in) :: add_on
 type (diag_type), intent(inout) :: d
 
 ! First thing that should be done is to output version number to logfile
+
+call register_module(source, revision, revdate)
 
 ! Initialize the diag_type structure
 
@@ -131,6 +134,7 @@ type (diag_type), intent(inout) :: d
 real(r8) :: squared_dif
 integer  :: i, j, ind, num
 
+if ( .not. module_initialized ) call assim_diag_init
 
 d%count = d%count + 1         ! Increment the number of obs times
 
@@ -219,6 +223,8 @@ real(r8) :: df, chsq, chsq_prob, desired, trms_mean
 real(r8) :: tmean_rms, tbias, tsq_bias
 integer  :: i, j
 real     :: dummy    ! intentionally single precision, used for printing only
+
+if ( .not. module_initialized ) call assim_diag_init
 
 ! If no assims were done, just return for now
 
@@ -327,6 +333,8 @@ real(r8), intent(in) :: x(:), a
 integer              :: bin_num
 
 integer :: i
+
+if ( .not. module_initialized ) call assim_diag_init
 
 bin_num = 0
 do i = 1, size(x)

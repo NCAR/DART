@@ -12,10 +12,10 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use types_mod,      only : r8
-use utilities_mod,  only : file_exist, open_file, check_nml_error, &
-                           close_file, error_handler, FATAL
-use sort_mod,       only : index_sort 
+use      types_mod, only : r8
+use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, &
+                           register_module, error_handler, E_ERR, E_MSG, logfileunit
+use       sort_mod, only : index_sort 
 use random_seq_mod, only : random_seq_type, random_gaussian, &
                            init_random_seq, random_uniform
 
@@ -62,6 +62,9 @@ implicit none
 
 integer :: iunit, ierr, io
 
+character(len=129) :: errstring
+call register_module(source, revision, revdate)
+
 ! Read namelist for run time control
 
 if(file_exist('input.nml')) then
@@ -77,18 +80,12 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-! Write the namelist and module info to a log file
+! Write the namelist values to the log file
 
-iunit = open_file('logfile.out', action = 'append')
-write(iunit,*)'assim_tools attributes:'
-write(iunit,*)'   ',trim(adjustl(source))
-write(iunit,*)'   ',trim(adjustl(revision))
-write(iunit,*)'   ',trim(adjustl(revdate))
-write(iunit, nml = assim_tools_nml)
-call close_file(iunit)
+call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
+write(logfileunit, nml=assim_tools_nml)
 
 end subroutine assim_tools_init
-
 
 !-------------------------------------------------------------
 
@@ -113,7 +110,7 @@ else if(filter_kind == 3) then
 else if(filter_kind == 4) then
    call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc, slope, a, bias_ratio_out)
 else 
-   call error_handler(FATAL,'obs_increment', &
+   call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind in assim_tools namelist [1-4 OK]', &
               source, revision, revdate)
 endif
@@ -217,7 +214,7 @@ integer  :: i, j, index(ens_size), ens_index(ens_size), new_index(ens_size)
 a = -1.0_r8
 
 ! Slope correction not currently implemented with particle filter
-if( abs(slope) > 0.0000001_r8 ) call error_handler(FATAL,'obs_increment_particle', &
+if( abs(slope) > 0.0000001_r8 ) call error_handler(E_ERR,'obs_increment_particle', &
                 'Confidence slope bias correction is not implemented.', &
                  source, revision, revdate)
 
@@ -309,7 +306,7 @@ integer  :: i
 a = -1.0_r8
 
 ! Slope correction not currently implemented
-if(abs(slope) > 0.0000001_r8) call error_handler(FATAL,'obs_increment_enkf', &
+if(abs(slope) > 0.0000001_r8) call error_handler(E_ERR,'obs_increment_enkf', &
           'Confidence slope bias correction is not implemented.', &
           source, revision, revdate)
 
@@ -387,7 +384,7 @@ integer :: i, j, kernel, ens_index(ens_size), new_index(ens_size)
 a = -1.0_r8
 
 ! Slope correction not currently implemented with kernel filter
-if( abs(slope) > 0.0000001_r8 ) call error_handler(FATAL,'obs_increment_kernel', &
+if( abs(slope) > 0.0000001_r8 ) call error_handler(E_ERR,'obs_increment_kernel', &
               'Confidence slope bias correction is not implemented.', &
                source, revision, revdate)
 
@@ -507,7 +504,7 @@ state_inc = reg_coef * obs_inc
 if(.not. prior_spread_correction) return
 
 ! Won't work with non-EAKF filters
-if( a < 0.0_r8 ) call error_handler(FATAL,'update_from_obs_inc', & 
+if( a < 0.0_r8 ) call error_handler(E_ERR,'update_from_obs_inc', & 
    'The prior_spread_correction algorithm only works with EAKF filters. Do not select prior_spread_correction = .true. with other filters.', &
               source, revision, revdate)
 

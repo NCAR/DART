@@ -1,31 +1,30 @@
 ! Data Assimilation Research Testbed -- DART
 ! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-!
+
 module model_ensemble_mod
-!
+
 ! <next four lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
-!
 
-! Add use only clauses
-use types_mod
-use assim_model_mod, only : assim_model_type, get_state_vector_ptr, &
-   init_assim_model
+use        types_mod, only : r8
+use    utilities_mod, only : register_module
+use  assim_model_mod, only : assim_model_type, get_state_vector_ptr, init_assim_model
 use time_manager_mod, only : time_type
 
+implicit none
 private
 
-public model_ensemble_type
+public :: model_ensemble_type
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! For efficiency, we risk the danger of direct pointers into the assim model
 ! storage for state. 
@@ -39,9 +38,20 @@ type state_pointer_type
    real(r8), pointer :: state(:)
 end type state_pointer_type
 
+logical, save :: module_initialized = .false.
+
 contains
 
 !================================================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
+
 
 subroutine init_model_ensemble(ens, ens_size)
 !--------------------------------------------------------------------------------
@@ -54,6 +64,8 @@ type(model_ensemble_type), intent(out) :: ens
 integer, intent(in) :: ens_size
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Set size
 ens%ens_size = ens_size
@@ -84,6 +96,8 @@ type(model_ensemble_type), intent(in) :: ens
 integer, intent(in) :: i
 type(assim_model_type), intent(out) :: x
 
+if ( .not. module_initialized ) call initialize_module
+
 call copy_assim_model(x, ens%member(i))
 
 end subroutine get_ens
@@ -100,6 +114,8 @@ implicit none
 type(model_ensemble_type), intent(inout) :: ens
 integer, intent(in) :: i
 type(assim_model_stype), intent(in) :: x
+
+if ( .not. module_initialized ) call initialize_module
 
 call copy_assim_model(ens%member(i), x)
 
@@ -121,6 +137,8 @@ type(model_ensemble_type), intent(in) :: ens
 real(r8) :: ensemble_mean(ens%ens_size)
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ensemble_mean = ens%state_ptr(1)%state
 
@@ -147,6 +165,8 @@ real(r8) :: get_ens_state(model_size)
 type(model_ensemble_type), intent(in) :: ens
 integer, intent(in) :: i, model_size
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Do error checks on value of i needed
 get_ens_state = ens%state_ptr(i)%state
 
@@ -164,6 +184,8 @@ implicit none
 type(model_ensemble_type), intent(inout) :: ens
 integer, intent(in) :: i
 real(r8), intent(in) :: x(:)
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Do error checks on value of i needed, also need to make sure x is right size?
 ens%state_ptr(i)%state = x
@@ -187,6 +209,8 @@ real(r8) :: get_ens_members(ens%ens_size)
 
 integer :: j
 
+if ( .not. module_initialized ) call initialize_module
+
 do j = 1, ens%ens_size
    get_ens_members(j) = ens%state_ptr(j)%state(i)
 end do
@@ -208,6 +232,8 @@ real(r8), intent(in) :: x(ens%ens_size)
 
 integer :: j
 
+if ( .not. module_initialized ) call initialize_module
+
 do j = 1, ens%ens_size
    ens%state_ptr(j)%state(i) = x(j)
 end do
@@ -225,6 +251,8 @@ implicit none
 
 type(model_ensemble_type), intent(in) :: ens
 type(time_type), intent(in) :: time
+
+if ( .not. module_initialized ) call initialize_module
 
 do i = 1, ens%ens_size
    call advance_state(ens%member(i), time)
@@ -245,6 +273,8 @@ implicit none
 type(time_type) :: get_ens_time
 type(model_ensemble_type), intent(in) :: ens
 integer, intent(in) :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 get_ens_time = get_model_time(ens%member(i))
 

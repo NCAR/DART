@@ -18,7 +18,7 @@ module location_mod
 ! from -90 to 90 for consistency with most applications in the field.
 
 use      types_mod, only : r8, PI
-use  utilities_mod, only : error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -40,9 +40,21 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
+logical, save :: module_initialized = .false.
 
 
 contains
+
+
+  subroutine initialize_module
+!----------------------------------------------------------------------------
+! subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_intialized = .true.
+
+end subroutine initialize_module
+
 
 
 function get_dist(loc1, loc2)
@@ -54,6 +66,8 @@ type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 
 real(r8) :: lon_dif
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Returns distance in radians (independent of diameter of sphere)
 
@@ -83,6 +97,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(2) :: get_location
 
+if ( .not. module_initialized ) call initialize_module
+
 get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * PI)
 get_location(2) = loc%lat * 180.0_r8 / PI
 
@@ -100,6 +116,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
+if ( .not. module_initialized ) call initialize_module
+
 get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * PI)
 
 end function get_location_lon
@@ -115,6 +133,8 @@ implicit none
 
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
+
+if ( .not. module_initialized ) call initialize_module
 
 get_location_lat = loc%lat * 180.0_r8 / PI
 
@@ -132,6 +152,8 @@ implicit none
 
 type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat
+
+if ( .not. module_initialized ) call initialize_module
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
        'Longitude is out of [0,360] range', source, revision, revdate) 
@@ -162,6 +184,8 @@ implicit none
 integer, intent(in) :: ifile
 type(location_type), intent(in) :: loc
 
+if ( .not. module_initialized ) call initialize_module
+
 ! For now, output a character tag followed by the r8 value.
 
 write(ifile, '(''loc2s'')' ) 
@@ -182,7 +206,9 @@ implicit none
 integer, intent(in) :: ifile
 type(location_type) :: read_location
 
-character*5 :: header
+character(len=5) :: header
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Will want to add additional error checks on the read
 read(ifile, '(a5)' ) header
@@ -207,6 +233,8 @@ implicit none
 type(location_type), intent(out) :: location
 
 real(r8) :: lon, lat
+
+if ( .not. module_initialized ) call initialize_module
 
 write(*, *) 'Input longitude for this obs: value 0 to 360.0 or a negative number for '
 write(*, *) 'Uniformly distributed random location'

@@ -9,9 +9,9 @@ module sort_mod
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
 
-use types_mod, only : r8
+use     types_mod, only : r8
+use utilities_mod, only : register_module
 
 implicit none
 private
@@ -24,7 +24,19 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+logical, save :: module_initialized = .false.
+
 contains
+
+
+!=======================================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
 
 !=======================================================================
 
@@ -38,6 +50,8 @@ real(r8), intent(in) :: x(:)
 real(r8) :: sort(size(x))
 real(r8) :: tmp
 integer j, k
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Copy to sort
 sort = x
@@ -66,6 +80,8 @@ end function sort
    integer num, index(num)
    real(r8) dist(num)
    integer i, j, k, itmp
+
+if ( .not. module_initialized ) call initialize_module
 
 !  INITIALIZE THE INDEX ARRAY TO INPUT ORDER
 do i = 1, num

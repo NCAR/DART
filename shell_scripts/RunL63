@@ -52,15 +52,27 @@ if !( -e filter ) then
 endif
 \rm -f *.o *.d *.mod Makefile
 
+#======================================================================
+# Save any existing namelist ...
+# The foreach loop guards against nothing to move. 
+#======================================================================
+
+set SAVEME = .NamelistStorage.$$
+if ( ! -d $SAVEME ) then
+   mkdir ${SAVEME}
+endif
+foreach NAMELIST ( *.nml )
+   mv ${NAMELIST} ${SAVEME}
+end
 
 #======================================================================
 # Save any existing namelist ...
 #======================================================================
 
-set SAVEME = input.nml.$$
-if ( -e input.nml ) then
-   mv input.nml $SAVEME
-endif
+#set SAVEME = input.nml.$$
+#if ( -e input.nml ) then
+#   mv input.nml $SAVEME
+#endif
 
 #======================================================================
 # Create common namelists
@@ -90,12 +102,14 @@ ENDofTask02
 # 1) declare an observation set definition
 #======================================================================
 
+echo " "
+echo "Running create_obs_set_def ..."
+echo " "
+
 set obs_error_variance = 1.0
 if ( ${?ObsError} ) then
    set obs_error_variance = $ObsError
 endif
-
-cat assim_model.nml model.nml > input.nml
 
 echo "set_def.out"        > create_obs_set_def.in
 echo "1       # of unique observation sets to define" >> create_obs_set_def.in
@@ -106,6 +120,13 @@ echo $obs_error_variance                              >> create_obs_set_def.in
 echo "2       1 == state variable 1 (Y)"              >> create_obs_set_def.in
 echo $obs_error_variance                              >> create_obs_set_def.in
 echo "3       1 == state variable 1 (Z)"              >> create_obs_set_def.in
+
+echo '&utilities_nml'                                  > utilities.nml
+echo '   logfilename = "create_obs_set_def.out"'      >> utilities.nml
+echo '   TERMLEVEL = 1'                               >> utilities.nml
+echo '&end'                                           >> utilities.nml
+
+cat utilities.nml assim_model.nml model.nml > input.nml
 
 ./create_obs_set_def < create_obs_set_def.in
 
@@ -118,6 +139,11 @@ endif
 # Simulate a particular observing system:
 # 2) declare sequences of observation sets
 #======================================================================
+
+echo " "
+echo "Running create_obs_sequence ..."
+echo " "
+
 set num_obs = 1000
 set ob_day_1 = 0
 set ob_seconds_1 = 43200
@@ -137,6 +163,13 @@ echo $num_obs                >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo "obs_seq.in"            >> create_obs_sequence.in
+ 
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "create_obs_sequence.out"' >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
+
+cat utilities.nml assim_model.nml model.nml > input.nml
 
 ./create_obs_sequence < create_obs_sequence.in
 
@@ -150,6 +183,10 @@ endif
 # 3) Populate the observation sequences with synthetic observations
 #    creates files True_State.nc, obs_seq.out
 #======================================================================
+
+echo " "
+echo "Running perfect_model_obs ..."
+echo " "
 
 cat << ENDofTask03 > perfect.nml
 
@@ -167,7 +204,12 @@ cat << ENDofTask03 > perfect.nml
 &end
 ENDofTask03
 
-cat model.nml assim_model.nml perfect.nml > input.nml
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
+
+cat utilities.nml assim_model.nml model.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -176,7 +218,7 @@ if ( $status > 0 ) then
    exit
 else
    echo " "
-   echo "perfect_model_obs (synthetic) teminated normally"
+   echo "perfect_model_obs (synthetic) terminated normally"
    echo " "
 endif
 
@@ -187,6 +229,10 @@ endif
 #======================================================================
 # Set defaults
 #======================================================================
+
+echo " "
+echo "Running filter ..."
+echo " "
 
 set async = 0
 set ens_size = 20
@@ -235,22 +281,37 @@ echo "   output_interval = $output_interval "                  >> filter.nml
 echo "&end"                                                    >> filter.nml
 echo " "                                                       >> filter.nml
 
-cat filter.nml >> input.nml
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "filter.out"'              >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
+
+cat utilities.nml assim_model.nml model.nml perfect.nml filter.nml > input.nml
 
 time ./filter
 
 if ( $status > 0 ) then
    echo "ERROR: filter bombed ..."
-   exit
+#   exit
 else
    echo " "
-   echo "filter teminated normally"
+   echo "filter terminated normally"
    echo " "
-   \rm -f create_obs_set_def.in create_obs_sequence.in input.nml perfect.nml filter.nml assim_model.nml model.nml
+   \rm -f create_obs_set_def.in create_obs_sequence.in 
+   \rm -f utilities.nml assim_model.nml model.nml perfect.nml filter.nml input.nml
 endif
 
-if ( -e ${SAVEME} ) then
-   mv $SAVEME input.nml
-endif
+#======================================================================
+# Restore the existing namelists ...
+#======================================================================
+
+foreach NAMELIST ( ${SAVEME}/*.nml )
+   mv ${NAMELIST} .
+end
+\rmdir ${SAVEME}
+
+#if ( -e ${SAVEME} ) then
+#   mv $SAVEME input.nml
+#endif
 
 exit

@@ -9,12 +9,14 @@ module random_seq_mod
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
 
+
+use utilities_mod, only : register_module
 use random_nr_mod, only : random_seq_type, init_ran1, ran1, gasdev
 
 implicit none
 private
+
 public random_seq_type, init_random_seq, random_gaussian, &
    several_random_gaussians, random_uniform, twod_gaussians
 
@@ -31,17 +33,29 @@ revdate  = "$Date$"
 ! Used to give different sequences a different but repeatable start
 ! There may be problems with incestuous series here; be cautious of this
 ! in the future.
+
 integer :: seq_number = -1
 
+logical, save :: module_initialized = .false.
+
 contains
+
 
 !========================================================================
 
 subroutine init_random_seq(r)
-
+!----------------------------------------------------------------------
+! You cannot generate any random numbers without calling this,
+! so this is a sufficient entry point for initializing the module.
+!
 implicit none
 
 type(random_seq_type), intent(inout) :: r
+
+if ( .not. module_initialized ) then
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+endif
 
 ! Initialize the generator
 call init_ran1(r, seq_number)

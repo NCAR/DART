@@ -15,7 +15,8 @@ program perfect_model_obs
 ! for spatial domains with one periodic dimension.
 
 use types_mod,        only : r8, missing_r
-use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file
+use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
+                             initialize_utilities, finalize_utilities, register_module, logfileunit
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
 
 use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
@@ -88,13 +89,9 @@ namelist /perfect_model_obs_nml/ async, obs_seq_in_file_name, &
 
 !------------------------------------------------------------------------------
 
-! Change output to diagnostic output block ...
-write(*,*)'perfect_model_obs attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
-write(*,*)'   '
-write(*,*)'    Reading input from input.nml namelist=perfect_model_obs_nml ...'
+call initialize_utilities
+call register_module(source, revision, revdate)
+write(logfileunit,*)'STARTING perfect_model_obs ...'
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -107,6 +104,7 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(iunit)
 endif
+write(logfileunit,nml=perfect_model_obs_nml)
 
 ! Read in an observation sequence, only definitions part will be used (no data used)
 
@@ -248,4 +246,9 @@ if(output_restart) then
    close(iunit)
 endif
 
+write(logfileunit,*)'FINISHED perfect_model_obs.'
+write(logfileunit,*)
+
+call finalize_utilities ! closes the log file.
+ 
 end program perfect_model_obs

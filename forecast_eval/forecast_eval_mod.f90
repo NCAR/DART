@@ -12,21 +12,22 @@ module forecast_eval_mod
 !
 ! Computes ensemble forecasts and statistics for evaluating their quality
 
-use types_mod
+use      types_mod, only : r8
+use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use assim_diag_mod, only : diag_type, output_diagnostics, save_diagnostics, &
                            assim_diag_init
 use model_mod,      only : advance
 
 implicit none
-
 private
+
 public forecast_advance, forecast_out
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Maximum number of observation periods for which forecasts should extend
 
@@ -65,6 +66,7 @@ logical :: add_on
 
 integer  :: ens_size, model_size, num_steps, i, j
 real(r8) :: ens_mean(size(ens, 1))
+character(len=129) :: errstring
 
 ens_size   = size(ens, 2)
 model_size = size(truth)
@@ -72,6 +74,8 @@ model_size = size(truth)
 ! Is this first call? If so initialize storage and pointers
 
 if( last_time_step == -1 ) then
+
+   call register_module(source, revision, revdate) ! may not be right place
 
    last_time_step = time
    allocate(f(model_size, ens_size, max_leads))
@@ -82,9 +86,11 @@ if( last_time_step == -1 ) then
    ind = 2
    num_avail = 1
 
-   ! Also need to initialize assim_diag structures (added 12 Feb. 2001)
+   ! Also need to initialize assim_diag structures
 
-   write(*, *) 'initializing forecast_advance ens_size ', ens_size
+   write(errstring,*)'initializing ens_size to ',ens_size
+   call error_handler(E_MSG,'forecast_advance',errstring,source,revision,revdate)
+
    do i = 1, max_leads
       call assim_diag_init(diag_stuff(i), model_size, ens_size, var_list, num_var, add_on)
    end do

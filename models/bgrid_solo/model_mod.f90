@@ -70,7 +70,7 @@ use          location_mod, only: location_type, get_location, set_location, &
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
-use         utilities_mod, only : error_handler, E_ERR
+use         utilities_mod, only: error_handler, E_ERR, logfileunit
 
 !-----------------------------------------------------------------------
 
@@ -370,6 +370,8 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !----- initialization timing identifiers ----
 
+ if ( mpp_pe() == mpp_root_pe() ) call register_module(source,revision,revdate)
+
  id_init = mpp_clock_init ('MAIN: initialization', timing_level, flags=MPP_CLOCK_SYNC)
  id_loop = mpp_clock_init ('MAIN: time loop'     , timing_level, flags=MPP_CLOCK_SYNC)
  id_end  = mpp_clock_init ('MAIN: termination'   , timing_level, flags=MPP_CLOCK_SYNC)
@@ -389,6 +391,7 @@ end subroutine init_conditions
 
    call write_version_number (version,tag)
    if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=main_nml)
+   if ( mpp_pe() == mpp_root_pe() ) write (logfileunit, nml=main_nml)
 
    if(dt_atmos == 0) then
      call error_mesg ('program atmos_model', 'dt_atmos has not been specified', FATAL)
@@ -529,6 +532,7 @@ integer :: i
 
     call write_version_number ( version, tag )
     if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=atmosphere_nml)
+    if ( mpp_pe() == mpp_root_pe() ) write (logfileunit, nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 

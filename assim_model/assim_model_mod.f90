@@ -10,26 +10,23 @@ module assim_model_mod
 ! $Date$ 
 ! $Author$ 
 !
-
 ! This module is used to wrap around the basic portions of existing dynamical models to
 ! add capabilities needed by the standard assimilation methods.
 
-! NEED TO ADD ON ONLY CLAUSES
+use    types_mod, only : r8
 use location_mod, only : location_type, get_dist, write_location, read_location, &
                          LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod, only : time_type, get_time, read_time, write_time, &
-            nc_write_calendar_atts, nc_get_tindex, &
-            operator(<), operator(>), operator(+), operator(-), operator(/), operator(*), &
-            operator(==), operator(/=)
-                
+                             nc_write_calendar_atts, nc_get_tindex, &
+                             operator(<), operator(>), operator(+), operator(-), &
+                             operator(/), operator(*), operator(==), operator(/=) 
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
-                          error_handler, E_ERR
-use types_mod, only : r8
-use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
-   get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-   pert_model_state
+                          register_module, error_handler, E_ERR, E_MSG, logfileunit
+use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
+            get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
+            end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
+            pert_model_state
 
 implicit none
 private
@@ -122,12 +119,9 @@ implicit none
 
 integer :: i, iunit, ierr, io
 
-! Change output to diagnostic output block ... 
+! First thing to do is echo info to logfile ... 
 
-write(*,*)'assim_model attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
+call register_module(source, revision, revdate)
 
 ! Read the namelist input
 if(file_exist('input.nml')) then
@@ -141,9 +135,9 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-! namelist validation
-write(*, *) 'assim_nml read; values are'
-write(*, *) 'binary_restart_files is ', binary_restart_files
+! Record the namelist values used for the run ... 
+call error_handler(E_MSG,'static_init_assim_model','assim_model namelist values: ',' ',' ',' ')
+write(logfileunit, nml=assim_nml)
 
 ! Call the underlying model's static initialization
 call static_init_model()

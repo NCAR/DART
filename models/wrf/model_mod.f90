@@ -24,7 +24,7 @@ use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              LocationDims, LocationName, LocationLName, query_location
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR, E_MSG
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 use netcdf
 use typesizes
@@ -159,9 +159,14 @@ real(r8), allocatable, dimension(:,:) :: temp
 integer :: n_values
 
 real(r8)    :: theta1,theta2,cell,cell2,psx
-!----------
+character(len=129) :: errstring
 
-! Begin by reading the namelist input                                           
+!----------------------------------------------------------------------
+
+! Register the module
+call register_module(source, revision, revdate)
+
+! Reading the namelist input                                           
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
@@ -182,6 +187,9 @@ if(file_exist('input.nml')) then
    endif
 endif
 
+! Record the namelist values in the logfile
+call error_handler(E_MSG,'static_init_model','namelist model_nml values are:',' ',' ',' ')
+write(logfileunit, nml=model_nml)'output_state_vector = ',output_state_vector
 
 mode = 0
 call check( nf90_open('wrfinput', mode, ncid) )

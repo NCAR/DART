@@ -18,8 +18,8 @@ use     nag_wrap_mod, only : g05ddf_wrap
 use    obs_tools_mod, only : conv_state_to_obs, obs_def_type, def_single_obs
 !!!use transforms_mod
 use loc_and_dist_mod, only : loc_type, set_loc, get_loc
-use    utilities_mod, only : file_exist, open_file, check_nml_error, &
-                             print_version_number, close_file
+use    utilities_mod, only : file_exist, open_file, close_file, check_nml_error, &
+                             register_module, error_handler, E_ERR, E_MSG
 
 implicit none
 private
@@ -83,29 +83,32 @@ integer  :: state_index(4), unit, ierr, io
 real(r8) :: olon, olat, coef(4), temp_lon, frac_lon, frac_lat
 real(r8) :: temp_frac, numerator, denominator
 
+character(len=129) :: errstring
 ! Read namelist for run time control
+
+call register_module(source,revision,revdate)
 
 if(file_exist('input.nml')) then
 
    unit = open_file('input.nml', action = 'read')
    ierr = 1
-   do while(ierr /= 0)     ! TJH why is this in a loop?
+   do while(ierr /= 0)
       read(unit, nml = obs_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'obs_nml')
    enddo
- 11 continue      ! TJH need to remove deprecated "end=" construct ...
+ 11 continue
    call close_file(unit)
 
-else
-   write(*,*)'WARNING(init_obs): input.nml not found ... using defaults.'
 endif
 
-! Write the namelist to a log file
+namelist /obs_nml/ close_lat_window, close_lon_window
 
-unit = open_file('logfile.out', action = 'append')
-call print_version_number(unit, module_name, vers_num)
-write(unit, nml = obs_nml)
-call close_file(unit)
+! Write the namelist to the log file 
+call error_handler(E_MSG,'init_obs','obs_nml namelist values:',' ',' ',' ')
+write(errstring,*)'close_lat_window = ',close_lat_window
+call error_handler(E_MSG,'   ',errstring,' ',' ',' ')
+write(errstring,*)'close_lon_window = ',close_lon_window
+call error_handler(E_MSG,'   ',errstring,' ',' ',' ')
 
 ! Initialization for identity observations
 

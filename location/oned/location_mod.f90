@@ -14,7 +14,7 @@ module location_mod
 ! allowing an arbitrary real domain size at some point.
 
 use      types_mod, only : r8
-use  utilities_mod, only : error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -39,6 +39,7 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
+logical, save :: module_initialized = .false.
 
 integer,              parameter :: LocationDims = 1
 character(len = 129), parameter :: LocationName = "loc1d"
@@ -46,6 +47,18 @@ character(len = 129), parameter :: LocationLName = "one-dimensional location"
 
 
 contains
+
+  subroutine initialize_location
+!----------------------------------------------------------------------------
+! subroutine initialize_location
+!
+! pretty simple for this module.
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_location
+
 
 
 function get_dist(loc1, loc2)
@@ -55,6 +68,8 @@ implicit none
 
 type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
+
+if ( .not. module_initialized ) call initialize_location
 
 ! Reentrant domain, if distance is greater than half wraparound the other way.
 get_dist = abs(loc1%x - loc2%x)
@@ -74,6 +89,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location
 
+if ( .not. module_initialized ) call initialize_location
+
 get_location = loc%x
 
 end function get_location
@@ -90,6 +107,8 @@ implicit none
 
 type (location_type) :: set_location
 real(r8), intent(in) :: x
+
+if ( .not. module_initialized ) call initialize_location
 
 if(x < 0.0_r8 .or. x > 1.0_r8) call error_handler(E_ERR, 'set_location', &
          'Value of x is out of 0->1 range', source, revision, revdate)
@@ -116,6 +135,8 @@ implicit none
 integer, intent(in) :: locfile
 type(location_type), intent(in) :: loc
 
+if ( .not. module_initialized ) call initialize_location
+
 ! For now, output a character tag followed by the r8 value. 
 
 write(locfile, '(''loc1d'')' ) 
@@ -137,6 +158,8 @@ integer, intent(in) :: locfile
 type(location_type) :: read_location
 
 character(len=5) :: header
+
+if ( .not. module_initialized ) call initialize_location
 
 ! Will want to add additional error checks on the read
 read(locfile, '(a5)' ) header
@@ -161,6 +184,8 @@ implicit none
 type(location_type), intent(out) :: location
 
 real(r8) :: x
+
+if ( .not. module_initialized ) call initialize_location
 
 write(*, *) 'Input location for this obs: value 0 to 1 or a negative number for '
 write(*, *) 'Uniformly distributed random location'
@@ -201,6 +226,8 @@ function vert_is_level(loc)
 logical :: vert_is_level
 type(location_type), intent(in) :: loc
 
+if ( .not. module_initialized ) call initialize_location
+
 vert_is_level = .false.
 
 call error_handler(E_ERR, 'vert_is_level', &
@@ -223,6 +250,8 @@ integer                :: obs_prof
 integer,   intent(in)  :: obsunit
 integer,   intent(out) :: obsindex
 real (r8), intent(out) :: var
+
+if ( .not. module_initialized ) call initialize_location
 
 call error_handler(E_ERR, 'read_ncep_obs_location', &
            '"read_ncep_obs_location" is not supported for 1D location module', &

@@ -10,12 +10,9 @@ module time_manager_mod
 ! $Date$ 
 ! $Author$
 
-! The use of fms utilities below have all been temporarily commented out.
-! Should be re-examined.
-!!!use fms_mod, only: error_mesg, FATAL, write_version_number, stdout
-
-
-use types_mod, only : r8
+use     types_mod, only : r8
+use utilities_mod, only : error_handler, E_MSG, E_WARN, E_ERR, &
+                          register_module
 
 implicit none
 private
@@ -39,51 +36,51 @@ private
 !====================================================================
 
 ! Module defines a single type
-public time_type
+public :: time_type
 
 ! Operators defined on time_type
-public operator(+),  operator(-),   operator(*),   operator(/),  &
-       operator(>),  operator(>=),  operator(==),  operator(/=), &
-       operator(<),  operator(<=),  operator(//)
+public :: operator(+),  operator(-),   operator(*),   operator(/),  &
+          operator(>),  operator(>=),  operator(==),  operator(/=), &
+          operator(<),  operator(<=),  operator(//)
 
 ! Subroutines and functions operating on time_type
-public set_time, increment_time, decrement_time, get_time, interval_alarm
-public repeat_alarm
+public :: set_time, increment_time, decrement_time, get_time, interval_alarm
+public :: repeat_alarm
 
 ! List of available calendar types
 !!! NO_LEAP changed to NOLEAP for some weird FMS Havana compliance
-public    THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR
+public :: THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR
 
 ! Subroutines and functions involving relations between time and calendar
-public set_calendar_type, get_calendar_type
-public set_date,       set_date_gregorian,         set_date_julian, &
-                       set_date_thirty,            set_date_no_leap
-public get_date,       get_date_gregorian,         get_date_julian, &
-                       get_date_thirty,            get_date_no_leap
-public increment_date, increment_gregorian,        increment_julian, &
-                       increment_thirty,           increment_no_leap
-public decrement_date, decrement_gregorian,        decrement_julian, &
-                       decrement_thirty,           decrement_no_leap
-public days_in_month,  days_in_month_gregorian,    days_in_month_julian, &
-                       days_in_month_no_leap,      days_in_month_thirty
-public leap_year,      leap_year_gregorian,        leap_year_julian, &
-                       leap_year_no_leap,          leap_year_thirty
-public length_of_year, length_of_year_thirty,      length_of_year_julian, &
-                       length_of_year_gregorian,   length_of_year_no_leap
-public days_in_year,   days_in_year_thirty,        days_in_year_julian, &
-                       days_in_year_gregorian,     days_in_year_no_leap
-public month_name
+public :: set_calendar_type, get_calendar_type
+public :: set_date,       set_date_gregorian,         set_date_julian, &
+                          set_date_thirty,            set_date_no_leap
+public :: get_date,       get_date_gregorian,         get_date_julian, &
+                          get_date_thirty,            get_date_no_leap
+public :: increment_date, increment_gregorian,        increment_julian, &
+                          increment_thirty,           increment_no_leap
+public :: decrement_date, decrement_gregorian,        decrement_julian, &
+                          decrement_thirty,           decrement_no_leap
+public :: days_in_month,  days_in_month_gregorian,    days_in_month_julian, &
+                          days_in_month_no_leap,      days_in_month_thirty
+public :: leap_year,      leap_year_gregorian,        leap_year_julian, &
+                          leap_year_no_leap,          leap_year_thirty
+public :: length_of_year, length_of_year_thirty,      length_of_year_julian, &
+                          length_of_year_gregorian,   length_of_year_no_leap
+public :: days_in_year,   days_in_year_thirty,        days_in_year_julian, &
+                          days_in_year_gregorian,     days_in_year_no_leap
+public :: month_name
 
 ! Subroutines and functions for basic I/O
 public :: time_manager_init, print_time, print_date
 public :: write_time, read_time
 public :: nc_append_time, nc_get_tindex, nc_write_calendar_atts
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = '$Source$', &
-   revision = '$Revision$', &
-   revdate  = '$Date$'
+source   = '$Source$', &
+revision = '$Revision$', &
+revdate  = '$Date$'
 
 !====================================================================
 
@@ -123,9 +120,7 @@ interface operator (//);  module procedure time_real_divide; end interface
 
 !======================================================================
 
-character(len=128) :: version='$Id$'
-character(len=128) :: tagname='$Id$'
-logical :: do_init = .true.
+logical, save :: module_initialized = .false.
 
 !======================================================================
 
@@ -147,21 +142,29 @@ integer, intent(in)           :: seconds
 integer, intent(in), optional :: days
 type(time_type)               :: set_time
 
-integer :: days_in
+integer            :: days_in
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 days_in = 0;  if (present(days)) days_in = days
 
 ! Negative time offset is illegal
 
-if(seconds < 0 .or. days_in < 0) call error_handler('Negative input in set_time')
+write(errstring,*)'seconds, days are ',seconds, days_in,' cannot be negative'
+if(seconds < 0 .or. days_in < 0) &
+   call error_handler(E_ERR,'set_time',errstring,source,revision,revdate)
 
 ! Make sure seconds greater than a day are fixed up
 
 set_time%seconds = seconds - seconds / (60*60*24) * (60*60*24)
 
 ! Check for overflow on days before doing operation
+
+write(errstring,*)'seconds is ',seconds,' overflowing conversion to days'
 if(seconds / (60*60*24)  >= huge(days_in) - days_in) &
-   call error_handler('Integer overflow in days in set_time')
+   call error_handler(E_ERR,'set_time',errstring,source,revision,revdate)
+
 set_time%days = days_in + seconds / (60*60*24)
 
 end function set_time
@@ -179,13 +182,22 @@ type(time_type), intent(in)            :: time
 integer,         intent(out)           :: seconds
 integer,         intent(out), optional :: days
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 seconds = time%seconds
 if (present(days)) then
   days = time%days
 else
+
+  write(errstring,*)'seconds is ',seconds,' overflowing conversion to days'
+
   if (time%days > (huge(seconds) - seconds)/(60*60*24)) &
-  call error_handler('Integer overflow in seconds in get_time use days')
+     call error_handler(E_ERR,'get_time',errstring,source,revision,revdate)
+
   seconds = seconds + time%days * (60*60*24)
+
 endif
 
 end subroutine get_time
@@ -204,22 +216,31 @@ integer,         intent(in)           :: seconds
 integer,         intent(in), optional :: days
 type(time_type)                       :: increment_time
 
-integer :: days_in
+integer            :: days_in
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 days_in = 0;  if (present(days)) days_in = days
 
 ! Increment must be positive definite
 
-if(seconds < 0 .or. days_in < 0) &
-   call error_handler('Negative increment in increment_time')
+if(seconds < 0 .or. days_in < 0) then
+   write(errstring,*)'Negative increment (',seconds, days,') (seconds,days) not allowed'
+   call error_handler(E_ERR,'increment_time',errstring,source,revision,revdate)
+endif
 
 ! Watch for immediate overflow on days or seconds
 
-if(days_in >= huge(days_in) - time%days) &
-   call error_handler('Integer overflow in days in increment_time')
+if(days_in >= huge(days_in) - time%days) then
+   write(errstring,*)'integer overflow (',days_in, time%days,') in days'
+   call error_handler(E_ERR,'increment_time',errstring,source,revision,revdate)
+endif
 
-if(seconds >= huge(seconds) - time%seconds) &
-   call error_handler('Integer overflow in seconds in increment_time')
+if(seconds >= huge(seconds) - time%seconds) then
+   write(errstring,*)'integer overflow (',seconds, time%seconds,') in days'
+   call error_handler(E_ERR,'increment_time',errstring,source,revision,revdate)
+endif
 
 increment_time = set_time(time%seconds + seconds, time%days + days_in)
 
@@ -239,14 +260,19 @@ integer,         intent(in)           :: seconds
 integer,         intent(in), optional :: days
 type(time_type)                       :: decrement_time
 
-integer :: cseconds, cdays
+integer            :: cseconds, cdays
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 cdays = 0;  if (present(days)) cdays = days
 
 ! Decrement must be positive definite
 
-if(seconds < 0 .or. cdays < 0) &
-   call error_handler('Negative decrement in decrement_time')
+if(seconds < 0 .or. cdays < 0) then
+   write(errstring,*)'Negative decrement (',seconds,cdays,') (seconds,days) not allowed.'
+   call error_handler(E_ERR,'decrement_time',errstring,source,revision,revdate)
+endif
 
 cseconds = time%seconds - seconds
 cdays    = time%days - cdays
@@ -260,7 +286,10 @@ end if
 
 ! Check for illegal negative time
 
-if(cdays < 0) call error_handler('Negative time results in decrement_time')
+if(cdays < 0) then
+   write(errstring,*)'Negative time result (',cdays,') (days) not allowed.'
+   call error_handler(E_ERR,'decrement_time',errstring,source,revision,revdate)
+endif
 
 decrement_time%seconds = cseconds
 decrement_time%days    = cdays
@@ -278,6 +307,8 @@ implicit none
 
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_gt
+
+if ( .not. module_initialized ) call time_manager_init
 
 time_gt = (time1%days > time2%days)
 
@@ -297,6 +328,8 @@ implicit none
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_ge
 
+if ( .not. module_initialized ) call time_manager_init
+
 time_ge = (time_gt(time1, time2) .or. time_eq(time1, time2))
 
 end function time_ge
@@ -312,6 +345,8 @@ implicit none
 
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_lt
+
+if ( .not. module_initialized ) call time_manager_init
 
 time_lt = (time1%days < time2%days)
 if(time1%days == time2%days) time_lt = (time1%seconds < time2%seconds)
@@ -330,6 +365,8 @@ implicit none
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_le
 
+if ( .not. module_initialized ) call time_manager_init
+
 time_le = (time_lt(time1, time2) .or. time_eq(time1, time2))
 
 end function time_le
@@ -345,6 +382,8 @@ implicit none
 
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_eq
+
+if ( .not. module_initialized ) call time_manager_init
 
 time_eq = (time1%seconds == time2%seconds .and. time1%days == time2%days)
 
@@ -362,6 +401,8 @@ implicit none
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_ne
 
+if ( .not. module_initialized ) call time_manager_init
+
 time_ne = (.not. time_eq(time1, time2))
 
 end function time_ne
@@ -377,6 +418,8 @@ implicit none
 
 type(time_type), intent(in) :: time1, time2
 type(time_type)             :: time_plus
+
+if ( .not. module_initialized ) call time_manager_init
 
 time_plus = increment_time(time1, time2%seconds, time2%days)
 
@@ -394,6 +437,8 @@ implicit none
 
 type(time_type), intent(in) :: time1, time2
 type(time_type)             :: time_minus
+
+if ( .not. module_initialized ) call time_manager_init
 
 if(time1 > time2) then
    time_minus = decrement_time(time1, time2%seconds, time2%days)
@@ -416,8 +461,11 @@ type(time_type), intent(in) :: time
 integer,         intent(in) :: n
 type(time_type)             :: time_scalar_mult
 
-integer  :: days, seconds
-real(r8) :: sec_prod 
+integer            :: days, seconds
+real(r8)           :: sec_prod 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Multiplying here in a reasonable fashion to avoid overflow is tricky
 ! Could multiply by some large factor n, and seconds could be up to 86399
@@ -429,8 +477,10 @@ sec_prod = (time%seconds*1.0_r8) * (n*1.0_r8)
 ! can go bad.  Need to warn and abort on this.
 
 if(sec_prod /= 0.0_r8) then
-   if(log10(sec_prod) > precision(sec_prod) - 3) call error_handler( &
-      'Insufficient precision to handle scalar product in time_scalar_mult; contact developer')
+   if(log10(sec_prod) > precision(sec_prod) - 3) then
+      write(errstring,*)'Insufficient precision to handle scalar product.'
+      call error_handler(E_ERR,'time_scalar_mult',errstring,source,revision,revdate) 
+   endif
 end if
 
 days    = sec_prod / (24.0_r8 * 60._r8 * 60.0_r8)
@@ -453,6 +503,8 @@ integer,         intent(in) :: n
 type(time_type), intent(in) :: time
 type(time_type)             :: scalar_time_mult
 
+if ( .not. module_initialized ) call time_manager_init
+
 scalar_time_mult = time_scalar_mult(time, n)
 
 end function scalar_time_mult
@@ -469,7 +521,10 @@ implicit none
 type(time_type), intent(in) :: time1, time2
 integer                     :: time_divide
 
-real(r8) :: d1, d2
+real(r8)           :: d1, d2
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time intervals to floating point days; risky for general performance?
 
@@ -482,8 +537,10 @@ time_divide = d1 / d2
 
 ! Verify time_divide*time2 is <= time1 and (time_divide + 1)*time2 is > time1
 
-if(time_divide * time2 > time1 .or. (time_divide + 1) * time2 <= time1) &
-   call error_handler('time_divide quotient error :: notify developer')
+if(time_divide * time2 > time1 .or. (time_divide + 1) * time2 <= time1) then
+   write(errstring,*)'quotient error time1,time2 = ',time1, time2
+   call error_handler(E_ERR,'time_divide',errstring,source,revision,revdate)
+endif
 
 end function time_divide
 
@@ -500,6 +557,8 @@ type(time_type), intent(in) :: time1, time2
 real(r8)                    :: time_real_divide
 
 real(r8) :: d1, d2
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time intervals to floating point days; risky for general performance?
 
@@ -526,6 +585,9 @@ type(time_type)             :: time_scalar_divide
 real(r8)        :: d, div
 integer         :: days, seconds
 type(time_type) :: prod1, prod2
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time interval to floating point days; risky for general performance?
 
@@ -541,8 +603,10 @@ time_scalar_divide = set_time(seconds, days)
 prod1 = n * time_scalar_divide
 prod2 = n * (increment_time(time_scalar_divide, 1, 0)) 
 
-if(prod1 > time .or. prod2 <= time) &
-   call error_handler('time_scalar_divide quotient error :: notify developer')
+if(prod1 > time .or. prod2 <= time) then
+   write(errstring,*)'quotient error: ',n,time,prod1,prod2
+   call error_handler(E_ERR,'time_scalar_divide',errstring,source,revision,revdate)
+endif
 
 end function time_scalar_divide
 
@@ -563,6 +627,8 @@ implicit none
 type(time_type), intent(in)    :: time, time_interval, alarm_interval
 type(time_type), intent(inout) :: alarm
 logical                        :: interval_alarm
+
+if ( .not. module_initialized ) call time_manager_init
 
 if((alarm - time) <= (time_interval / 2)) then
    interval_alarm = .TRUE.
@@ -592,6 +658,8 @@ logical                     :: repeat_alarm
 
 type(time_type) :: prev, next
 
+if ( .not. module_initialized ) call time_manager_init
+
 prev = (time / alarm_frequency) * alarm_frequency
 next = prev + alarm_frequency
 
@@ -616,8 +684,14 @@ implicit none
 
 integer, intent(in) :: type
 
-if(type <  0 .or. type > max_type) &
-   call error_handler('Illegal type in set_calendar_type')
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
+if(type <  0 .or. type > max_type) then
+   write(errstring,*)'Illegal type ',type,' must be > 0 or < ',max_type
+   call error_handler(E_ERR,'set_calendar_type',errstring,source,revision,revdate)
+endif
 calendar_type = type
 
 ! GREGORIAN Calendar only partially implemented; get and set_date work
@@ -636,6 +710,8 @@ function get_calendar_type()
 implicit none
 
 integer :: get_calendar_type
+
+if ( .not. module_initialized ) call time_manager_init
 
 get_calendar_type = calendar_type
 
@@ -657,6 +733,10 @@ implicit none
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 select case(calendar_type)
 case(THIRTY_DAY_MONTHS)
    call get_date_thirty(time, year, month, day, hour, minute, second)
@@ -667,7 +747,9 @@ case(JULIAN)
 case(NOLEAP)
    call get_date_no_leap(time, year, month, day, hour, minute, second)
 case default
-   call error_handler('Invalid calendar type in get_date')
+   write(errstring,*)'type is ',calendar_type,' must be one of ', &
+                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP
+   call error_handler(E_ERR,'get_date',errstring,source,revision,revdate)
 end select
 end subroutine get_date
 
@@ -689,6 +771,8 @@ integer ndiy,nex,ibaseyr, num_days, iyear, days_this_month, days_this_year
 logical :: leap
 
 integer, parameter :: base_year= 1601
+
+if ( .not. module_initialized ) call time_manager_init
 
 
 ! Do this the inefficient inelegant way for now, top is 10000 years
@@ -760,6 +844,8 @@ integer,         intent(out) :: second, minute, hour, day, month, year
 integer :: m, t, nfour, nex, days_this_month
 logical :: leap
 
+if ( .not. module_initialized ) call time_manager_init
+
 ! find number of four year periods; also get modulo number of days
 
 nfour = time%days / (4 * 365 + 1) 
@@ -813,6 +899,8 @@ integer,         intent(out) :: second, minute, hour, day, month, year
 
 integer :: t, dmonth, dyear
 
+if ( .not. module_initialized ) call time_manager_init
+
 t      = time%days
 dyear  = t / (30 * 12)
 year   = dyear + 1
@@ -842,6 +930,8 @@ type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
 integer :: m, t
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! get modulo number of days
 
@@ -885,7 +975,10 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date
 
-integer :: oseconds, ominutes, ohours
+integer            :: oseconds, ominutes, ohours
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 oseconds = 0; if(present(seconds)) oseconds = seconds
@@ -902,7 +995,9 @@ case(JULIAN)
 case(NOLEAP)
    set_date =   set_date_no_leap(year, month, day, ohours, ominutes, oseconds)
 case default
-   call error_handler('Invalid calendar type in set_date')
+   write(errstring,*)'type is ',calendar_type,' must be one of ', &
+                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP
+   call error_handler(E_ERR,'set_date',errstring,source,revision,revdate)
 end select
 end function set_date
 
@@ -919,10 +1014,13 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_gregorian
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m, nleapyr
 integer :: base_year = 1601
 logical :: leap
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -937,11 +1035,15 @@ if(    oseconds > 59 .or. oseconds < 0 .or. &
        ohours   > 23 .or. ohours   < 0 .or. &
                           day      < 1 .or. &
        month    > 12 .or. month    < 1 .or. &
-                          year     < base_year) &
-      call error_handler('Invalid date in set_date_gregorian')
+                          year     < base_year) then
+   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
+endif
 
-if(month /= 2 .and. day > days_per_month(month)) &
-   call error_handler('Invalid day in set_date_gregorian')
+if(month /= 2 .and. day > days_per_month(month)) then
+   write(errstring,*)'month (',month,') does not have ',day,' days.'
+   call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
+endif
 
 ! Is this a leap year? Gregorian calandar assigns each year evenly
 ! divisible by 4 that is not a century year unevenly divisible by 400
@@ -952,9 +1054,10 @@ if(month /= 2 .and. day > days_per_month(month)) &
   endif
 
 ! Finish checking for day specication errors
-if(month == 2 .and. (day > 29 .or. ((.not. leap) .and. day > 28))) &
-   call error_handler('Invalid number of days in month 2 in set_date_gregorian')
-
+if(month == 2 .and. (day > 29 .or. ((.not. leap) .and. day > 28))) then
+   write(errstring,*)'month (',month,') does not have ',day,' days in a lon-leap year.'
+   call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
+endif
 
 ! compute number of leap years fully past since base_year
 
@@ -985,9 +1088,12 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_julian
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m, nleapyr
 logical :: leap
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1002,11 +1108,15 @@ if( oseconds > 59 .or. oseconds < 0 .or. &
     ohours   > 23 .or. ohours   < 0 .or. &
                        day      < 1 .or. &
     month    > 12 .or. month    < 1 .or. &
-                       year     < 1) &
-   call error_handler('Invalid date in set_date_julian')
+                       year     < 1) then
+   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   call error_handler(E_ERR,'set_date_julian',errstring,source,revision,revdate)
+endif
 
-if(month /= 2 .and. day > days_per_month(month)) &
-   call error_handler('Invalid day in set_date_julian')
+if(month /= 2 .and. day > days_per_month(month)) then
+   write(errstring,*)'month (',month,') does not have ',day,' days.'
+   call error_handler(E_ERR,'set_date_julian',errstring,source,revision,revdate)
+endif
 
 ! Is this a leap year? 
 leap = (modulo(year,4) == 0)
@@ -1016,8 +1126,10 @@ nleapyr = (year - 1) / 4
 
 ! Finish checking for day specication errors
 
-if(month == 2 .and. (day > 29 .or. ((.not. leap) .and. day > 28))) &
-   call error_handler('Invalid number of days in month 2 in set_date_julian')
+if(month == 2 .and. (day > 29 .or. ((.not. leap) .and. day > 28))) then
+   write(errstring,*)'non-leapyear month (',month,') does not have ',day,' days.'
+   call error_handler(E_ERR,'set_date_julian',errstring,source,revision,revdate)
+endif
 
 ndays = 0
 do m = 1, month - 1
@@ -1043,7 +1155,10 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_thirty
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1058,8 +1173,10 @@ if( oseconds > 59 .or. oseconds < 0 .or. &
     ohours   > 23 .or. ohours   < 0 .or. &
     day      > 30 .or. day      < 1 .or. &
     month    > 12 .or. month    < 1 .or. &
-                       year     < 1 ) &
-      call error_handler('Invalid date in set_date_thirty')
+                       year     < 1 ) then
+   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   call error_handler(E_ERR,'set_date_thirty',errstring,source,revision,revdate)
+endif
 
 set_date_thirty%days    = (day - 1) + 30 * ((month - 1) + 12 * (year - 1))
 set_date_thirty%seconds = oseconds + 60 * (ominutes + 60 * ohours)
@@ -1079,8 +1196,11 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_no_leap
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1096,7 +1216,8 @@ if( oseconds > 59 .or. oseconds < 0 .or. &
     day      > 31 .or. day      < 1 .or. &
     month    > 12 .or. month    < 1 .or. &
                        year     < 1 ) then
-   call error_handler('Invalid date in set_date_no_leap')
+   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   call error_handler(E_ERR,'set_date_no_leap',errstring,source,revision,revdate)
 endif
 
 ndays = 0
@@ -1132,6 +1253,9 @@ integer,         intent(in), optional :: seconds, minutes, hours, days, months, 
 type(time_type)                       :: increment_date
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1156,7 +1280,9 @@ case(NOLEAP)
    increment_date = increment_no_leap(time, oyears, omonths, odays, &
                                      ohours, ominutes, oseconds)
 case default
-   call error_handler('Invalid calendar type in increment_date')
+   write(errstring,*)'calendar type (',calendar_type,') must be one of ', &
+                      THIRTY_DAY_MONTHS ,GREGORIAN,JULIAN,NOLEAP
+   call error_handler(E_ERR,'increment_date',errstring,source,revision,revdate)
 end select
 end function increment_date
 
@@ -1175,8 +1301,11 @@ type(time_type)                       :: increment_gregorian
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
+character(len=129) :: errstring
 
-call error_handler('increment_gregorian not implemented')
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'increment_gregorian','not implemented',source,revision,revdate)
 
 ! Missing optionals are set to 0
 
@@ -1191,8 +1320,11 @@ oyears   = 0; if(present(years  )) oyears   = years
 
 if( oseconds < 0 .or. ominutes < 0 .or. &
     ohours   < 0 .or. odays    < 0 .or. &
-    omonths  < 0 .or. oyears   < 0) &
-    call error_handler('Illegal increment in increment_gregorian')
+    omonths  < 0 .or. oyears   < 0) then
+   write(errstring,*)'illegal increment s,m,h,d,mn,y', &
+                      oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'increment_gregorian',errstring,source,revision,revdate)
+endif
 
 ! First convert time into date
 
@@ -1229,6 +1361,9 @@ type(time_type)                       :: increment_julian
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear, dyear
 type(time_type) :: t
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1243,8 +1378,11 @@ oyears   = 0; if(present(years  )) oyears   = years
 
 if( oseconds < 0 .or. ominutes < 0 .or. &
     ohours   < 0 .or. odays    < 0 .or. &
-    omonths  < 0 .or. oyears   < 0 ) &
-    call error_handler('Illegal increment in increment_julian')
+    omonths  < 0 .or. oyears   < 0 ) then
+   write(errstring,*)'illegal increment s,m,h,d,mn,y', &
+                     oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'increment_julian',errstring,source,revision,revdate)
+endif
 
 !  There are a number of other bad types of increments that should be
 !  prohibited here; the addition is not associative
@@ -1254,14 +1392,18 @@ if( oseconds < 0 .or. ominutes < 0 .or. &
 ! QJLA .... see above comment ... will year be a problem?
 
 if( omonths /= 0 .and. &
-    (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-     odays    /= 0 .or. oyears   /= 0)  ) call error_handler  &
-   ('increment_julian: month must not be incremented with other units')
+    ( oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
+      odays    /= 0 .or. oyears   /= 0)  ) then
+   call error_handler(E_ERR,'increment_julian', &
+      'month must not be incremented with other units',source,revision,revdate)
+endif
 
 if( oyears /= 0 .and. &
     (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-     odays    /= 0 .or. omonths  /= 0) ) call error_handler &
-   ('increment_julian: year must not be incremented with other units')
+     odays    /= 0 .or. omonths  /= 0) ) then
+   call error_handler(E_ERR,'increment_julian', &
+      'year must not be incremented with other units',source,revision,revdate)
+endif
 
 !  For non-month and non-year part can just use increment_thirty
 
@@ -1301,8 +1443,11 @@ type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: increment_thirty
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cday
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1317,8 +1462,11 @@ oyears   = 0; if(present(years  )) oyears   = years
 
 if( oseconds < 0 .or. ominutes < 0 .or. &
     ohours   < 0 .or. odays    < 0 .or. &
-    omonths  < 0 .or. oyears   < 0 ) &
-    call error_handler('Illegal increment in increment_thirty')
+    omonths  < 0 .or. oyears   < 0 ) then
+   write(errstring,*)'illegal increment s,m,h,d,mn,y', &
+                     oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'increment_thirty',errstring,source,revision,revdate)
+endif
 
 ! Do increment to seconds portion first
 
@@ -1344,6 +1492,9 @@ type(time_type)                       :: increment_no_leap
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear, dyear
 type(time_type) :: t
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1358,8 +1509,11 @@ oyears   = 0; if(present(years  )) oyears   = years
 
 if( oseconds < 0 .or. ominutes < 0 .or. &
     ohours   < 0 .or. odays    < 0 .or. &
-    omonths  < 0 .or. oyears   < 0) &
-    call error_handler('Illegal increment in increment_no_leap')
+    omonths  < 0 .or. oyears   < 0) then
+    write(errstring,*)'illegal increment s,m,h,d,mn,y', &
+                     oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'increment_no_leap',errstring,source,revision,revdate)
+endif
 
 !  There are a number of other bad types of increments that should be
 !  prohibited here; the addition is not associative
@@ -1368,13 +1522,17 @@ if( oseconds < 0 .or. ominutes < 0 .or. &
 
 if(omonths /= 0 .and. &
    (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-    odays    /= 0 .or. oyears   /= 0)) call error_handler &
-   ('increment_no_leap: month must not be incremented with other units')
+    odays    /= 0 .or. oyears   /= 0)) then
+   call error_handler(E_ERR,'increment_no_leap', &
+      'month must not be incremented with other units',source,revision,revdate)
+endif
 
 if(oyears /= 0 .and. &
    (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-    odays    /= 0 .or. omonths  /= 0)) call error_handler &
-   ('increment_no_leap: year must not be incremented with other units')
+    odays    /= 0 .or. omonths  /= 0)) then
+   call error_handler(E_ERR,'increment_no_leap', &
+      'year must not be incremented with other units',source,revision,revdate)
+endif
 
 !  For non-month and non-year part can just use increment_thirty
 
@@ -1423,6 +1581,9 @@ integer,         intent(in), optional :: seconds, minutes, hours, days, months, 
 type(time_type)                       :: decrement_date
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1447,7 +1608,8 @@ case(NOLEAP)
    decrement_date = decrement_no_leap(time, oyears, omonths, odays, &
                        ohours, ominutes, oseconds)
 case default
-   call error_handler('Invalid calendar type in decrement_date')
+   write(errstring,*)'calendar type (',calendar_type,') not allowed.'
+   call error_handler(E_ERR,'decrement_date',errstring,source,revision,revdate)
 end select
 
 end function decrement_date
@@ -1465,10 +1627,13 @@ type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: decrement_gregorian
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
 
-call error_handler('decrement_gregorian not implemented')
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'decrement_gregorian','not implemented',source,revision,revdate)
 
 ! Missing optionals are set to 0
 
@@ -1485,8 +1650,10 @@ oyears   = 0; if(present(years  )) oyears   = years
 
 if( oseconds < 0 .or. ominutes < 0 .or. &
     ohours   < 0 .or. odays    < 0 .or. &
-    omonths  < 0 .or. oyears < 0) &
-    call error_handler('Illegal decrement in decrement_gregorian')
+    omonths  < 0 .or. oyears < 0) then
+    write(errstring,*)'illegal decrement ',oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'decrement_gregorian',errstring,source,revision,revdate)
+endif
 
 ! First convert time into date
 
@@ -1523,6 +1690,9 @@ type(time_type)                       :: decrement_julian
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
 type(time_type) :: t
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1536,8 +1706,10 @@ oyears   = 0; if(present(years  )) oyears   = years
 ! Increment must be positive definite
 
 if( oseconds < 0 .or. ominutes < 0 .or. ohours < 0 .or. &
-    odays    < 0 .or. omonths  < 0 .or. oyears < 0) &
-   call error_handler('Illegal increment in decrement_julian')
+    odays    < 0 .or. omonths  < 0 .or. oyears < 0) then
+    write(errstring,*)'illegal decrement ',oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'decrement_julian',errstring,source,revision,revdate)
+endif
 
 !  There are a number of other bad types of decrements that should be
 !  prohibited here; the subtraction is not associative
@@ -1545,12 +1717,16 @@ if( oseconds < 0 .or. ominutes < 0 .or. ohours < 0 .or. &
 !  This is slight overkill since year is not really a problem.
 
 if(omonths /= 0 .and. (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-   odays  /= 0 .or. oyears /= 0)) call error_handler &
-   ('decrement_julian: month must not be decremented with other units')
+   odays  /= 0 .or. oyears /= 0)) then
+   call error_handler(E_ERR,'decrement_julian', &
+      'month must not be decremented with other units',source,revision,revdate)
+endif
 
 if(oyears /= 0 .and. (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-   odays  /= 0 .or. omonths /= 0)) call error_handler &
-   ('decrement_julian: year must not be decremented with other units')
+   odays  /= 0 .or. omonths /= 0)) then
+   call error_handler(E_ERR,'decrement_julian', &
+      'year must not be decremented with other units',source,revision,revdate)
+endif
 
 !  For non-month and non-year can just use decrement_thirty
 
@@ -1569,7 +1745,10 @@ if(cmonth < 1) then
 end if
 
 ! Check for negative years
-if(cyear < 1) call error_handler('Illegal date results in decrement_julian')
+if(cyear < 1) then
+   write(errstring,*)'Illegal date results ... ',cyear
+   call error_handler(E_ERR,'decrement_julian',errstring,source,revision,revdate)
+endif
 
 ! Convert this back into a time
 decrement_julian = set_date_julian(cyear, cmonth, cday, chour, cminute, csecond)
@@ -1589,8 +1768,11 @@ type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: decrement_thirty
 
+character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cday
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1604,8 +1786,10 @@ oyears   = 0; if(present(years  )) oyears   = years
 ! Increment must be positive definite
 
 if( oseconds < 0 .or. ominutes < 0 .or. ohours < 0 .or. &
-    odays    < 0 .or. omonths  < 0 .or. oyears < 0) &
-    call error_handler('Illegal decrement in decrement_thirty')
+    odays    < 0 .or. omonths  < 0 .or. oyears < 0) then
+    write(errstring,*)'illegal decrement ',oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'decrement_thirty',errstring,source,revision,revdate)
+endif
 
 csecond = oseconds + 60 * (ominutes + 60 * ohours)
 cday    = odays + 30 * (omonths + 12 * oyears)
@@ -1629,6 +1813,9 @@ type(time_type)                       :: decrement_no_leap
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
 type(time_type) :: t
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! Missing optionals are set to 0
 
@@ -1642,8 +1829,10 @@ oyears   = 0; if(present(years  )) oyears   = years
 ! Increment must be positive definite
 
 if( oseconds < 0 .or. ominutes < 0 .or. ohours < 0 .or. &
-    odays    < 0 .or. omonths  < 0 .or. oyears < 0 ) &
-    call error_handler('Illegal increment in decrement_no_leap')
+    odays    < 0 .or. omonths  < 0 .or. oyears < 0 ) then
+    write(errstring,*)'illegal decrement ',oseconds,ominutes,ohours,odays,omonths,oyears
+    call error_handler(E_ERR,'decrement_no_leap',errstring,source,revision,revdate)
+endif
 
 !  There are a number of other bad types of decrements that should be
 !  prohibited here; the subtraction is not associative
@@ -1651,12 +1840,16 @@ if( oseconds < 0 .or. ominutes < 0 .or. ohours < 0 .or. &
 !  This is slight overkill since year is not really a problem.
 
 if(omonths /= 0 .and. (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-   odays   /= 0 .or. oyears /= 0)) call error_handler &
-   ('decrement_no_leap: month must not be decremented with other units')
+   odays   /= 0 .or. oyears /= 0)) then
+   call error_handler(E_ERR,'decrement_no_leap', &
+      'month must not be decremented with other units',source,revision,revdate)
+endif
 
 if(oyears /= 0 .and. (oseconds /= 0 .or. ominutes /= 0 .or. ohours /= 0 .or. &
-   odays  /= 0 .or. omonths /= 0)) call error_handler &
-   ('decrement_no_leap: year must not be decremented with other units')
+   odays  /= 0 .or. omonths /= 0)) then
+   call error_handler(E_ERR,'decrement_no_leap', &
+      'year must not be decremented with other units',source,revision,revdate)
+endif
 
 !  For non-month and non-year can just use decrement_thirty
 
@@ -1676,7 +1869,10 @@ end if
 
 ! Check for negative years
 
-if(cyear < 1) call error_handler('Illegal date results in decrement_no_leap')
+if(cyear < 1) then
+   write(errstring,*)'Illegal date results ... ',cyear
+   call error_handler(E_ERR,'decrement_no_leap',errstring,source,revision,revdate)
+endif
 
 ! Convert this back into a time
 
@@ -1703,6 +1899,10 @@ implicit none
 type(time_type), intent(in) :: time
 integer                     :: days_in_month
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 select case(calendar_type)
 case(THIRTY_DAY_MONTHS)
    days_in_month = days_in_month_thirty(time)
@@ -1713,7 +1913,8 @@ case(JULIAN)
 case(NOLEAP)
    days_in_month = days_in_month_no_leap(time)
 case default
-   call error_handler('Invalid calendar type in days_in_month')
+   write(errstring,*)'Invalid calendar type (',calendar_type,')'
+   call error_handler(E_ERR,'days_in_month',errstring,source,revision,revdate)
 end select
 end function days_in_month
 
@@ -1728,8 +1929,11 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_gregorian
+character(len=129) :: errstring
 
-call error_handler('days_in_month_gregorian not implemented')
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'days_in_month_gregorian','not implemented',source,revision,revdate)
 days_in_month_gregorian = -1
 
 end function days_in_month_gregorian
@@ -1747,6 +1951,8 @@ type(time_type), intent(in) :: time
 integer                     :: days_in_month_julian
 
 integer :: seconds, minutes, hours, day, month, year
+
+if ( .not. module_initialized ) call time_manager_init
 
 call get_date_julian(time, year, month, day, hours, minutes, seconds)
 days_in_month_julian = days_per_month(month)
@@ -1766,6 +1972,8 @@ implicit none
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_thirty
 
+if ( .not. module_initialized ) call time_manager_init
+
 days_in_month_thirty = 30
 
 end function days_in_month_thirty
@@ -1782,6 +1990,8 @@ type(time_type), intent(in) :: time
 integer                     :: days_in_month_no_leap
 
 integer :: seconds, minutes, hours, day, month, year
+
+if ( .not. module_initialized ) call time_manager_init
 
 call get_date_no_leap(time, year, month, day, hours, minutes, seconds)
 days_in_month_no_leap= days_per_month(month)
@@ -1805,6 +2015,10 @@ implicit none
 type(time_type), intent(in) :: time
 logical                     :: leap_year
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 select case(calendar_type)
 case(THIRTY_DAY_MONTHS)
    leap_year = leap_year_thirty(time)
@@ -1815,7 +2029,8 @@ case(JULIAN)
 case(NOLEAP)
    leap_year = leap_year_no_leap(time)
 case default
-   call error_handler('Invalid calendar type in leap_year')
+   write(errstring,*)'invalid calendar type (',calendar_type,')'
+   call error_handler(E_ERR,'leap_year',errstring,source,revision,revdate)
 end select
 end function leap_year
 
@@ -1831,7 +2046,12 @@ implicit none
 type(time_type), intent(in) :: time
 logical                     :: leap_year_gregorian
 
-call error_handler('leap_year_gregorian not implemented')
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'leap_year_gregorian','not implemented',source,revision,revdate)
+
 leap_year_gregorian = .FALSE.
 
 end function leap_year_gregorian
@@ -1849,6 +2069,8 @@ type(time_type), intent(in) :: time
 logical                     :: leap_year_julian
 
 integer :: seconds, minutes, hours, day, month, year
+
+if ( .not. module_initialized ) call time_manager_init
 
 call get_date(time, year, month, day, hours, minutes, seconds)
 leap_year_julian = ((year / 4 * 4) == year)
@@ -1869,6 +2091,8 @@ implicit none
 type(time_type), intent(in) :: time
 logical                     :: leap_year_thirty
 
+if ( .not. module_initialized ) call time_manager_init
+
 leap_year_thirty = .FALSE.
 
 end function leap_year_thirty
@@ -1884,6 +2108,8 @@ implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year_no_leap
+
+if ( .not. module_initialized ) call time_manager_init
 
 leap_year_no_leap = .FALSE.
 
@@ -1906,6 +2132,10 @@ implicit none
 
 type(time_type) :: length_of_year
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 select case(calendar_type)
 case(THIRTY_DAY_MONTHS)
    length_of_year = length_of_year_thirty()
@@ -1916,7 +2146,8 @@ case(JULIAN)
 case(NOLEAP)
    length_of_year = length_of_year_no_leap()
 case default
-   call error_handler('Invalid calendar type in length_of_year')
+   write(errstring,*)'invalid calendar type (',calendar_type,')'
+   call error_handler(E_ERR,'length_of_year',errstring,source,revision,revdate)
 end select
 end function length_of_year
 
@@ -1929,6 +2160,8 @@ function length_of_year_thirty()
 implicit none
 
 type(time_type) :: length_of_year_thirty
+
+if ( .not. module_initialized ) call time_manager_init
 
 length_of_year_thirty = set_time(0, 360)
 
@@ -1943,9 +2176,12 @@ implicit none
 
 type(time_type) :: length_of_year_gregorian
 
+if ( .not. module_initialized ) call time_manager_init
+
 length_of_year_gregorian = set_time(0, 0)
 
-call error_handler('length_of_year_gregorian not implemented')
+call error_handler(E_ERR,'length_of_year_gregorian', &
+       'not implemented',source,revision,revdate)
 
 end function length_of_year_gregorian
 
@@ -1957,6 +2193,8 @@ function length_of_year_julian()
 implicit none
 
 type(time_type) :: length_of_year_julian
+
+if ( .not. module_initialized ) call time_manager_init
 
 length_of_year_julian = set_time((24 / 4) * 60 * 60, 365)
 
@@ -1970,6 +2208,8 @@ function length_of_year_no_leap()
 implicit none
 
 type(time_type) :: length_of_year_no_leap
+
+if ( .not. module_initialized ) call time_manager_init
 
 length_of_year_no_leap = set_time(0, 365)
 
@@ -1993,6 +2233,10 @@ implicit none
 type(time_type), intent(in) :: time
 integer                     :: days_in_year
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 select case(calendar_type)
 case(THIRTY_DAY_MONTHS)
    days_in_year = days_in_year_thirty(time)
@@ -2003,7 +2247,8 @@ case(JULIAN)
 case(NOLEAP)
    days_in_year = days_in_year_no_leap(time)
 case default
-   call error_handler('Invalid calendar type in days_in_year')
+   write(errstring,*)'invalid calendar type (',calendar_type,')'
+   call error_handler(E_ERR,'days_in_year',errstring,source,revision,revdate)
 end select
 end function days_in_year
 
@@ -2016,6 +2261,8 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_thirty
+
+if ( .not. module_initialized ) call time_manager_init
 
 days_in_year_thirty = 360
 
@@ -2031,9 +2278,14 @@ implicit none
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_gregorian
 
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
 days_in_year_gregorian = 0
 
-call error_handler('days_in_year_gregorian not implemented')
+call error_handler(E_ERR,'days_in_year_gregorian', &
+      'not implemented',source,revision,revdate)
 
 end function days_in_year_gregorian
 
@@ -2046,6 +2298,8 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_julian
+
+if ( .not. module_initialized ) call time_manager_init
 
 if(leap_year_julian(time)) then
    days_in_year_julian = 366
@@ -2064,6 +2318,8 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_no_leap
+
+if ( .not. module_initialized ) call time_manager_init
 
 days_in_year_no_leap = 365
 
@@ -2088,7 +2344,14 @@ character(len=9), dimension(12) :: months = (/'January  ','February ','March    
                                               'July     ','August   ','September',&
                                               'October  ','November ','December '/) 
 
-if(n < 1 .or. n > 12) call error_handler('Illegal month index')
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call time_manager_init
+
+if( n < 1 .or. n > 12 ) then
+   write(errstring,*)'Illegal month (',n,')'
+   call error_handler(E_ERR,'month_name',errstring,source,revision,revdate)
+endif
 
 month_name = months(n)
 
@@ -2097,34 +2360,17 @@ end function month_name
 !==========================================================================
 
 
-
-subroutine error_handler(s)
-
-implicit none
-
-character (*), intent(in) :: s
-
-! Stub until module for error_handler available
-write(*, *) 'ERROR: In time_manager_mod.f90: ', s
-stop
-
-!   call error_mesg ('time_manager', s, FATAL)
-
-end subroutine error_handler
-
-
-
 subroutine time_manager_init ( )
 !------------------------------------------------------------------------
 !
 ! initialization routine
-! this routine does not have to be called, all it does is write
+! this routine should be called, even though all it does is write
 ! the version information to the log file
 
-  if (.not.do_init) return  ! silent return if already called
+   if ( .not. module_initialized ) return  ! silent return if already called
 
-!  call write_version_number (version, tagname)
-!  do_init = .false.
+   call register_module (source, revision, revdate)
+   module_initialized  = .true.
 
 end subroutine time_manager_init
 
@@ -2139,6 +2385,8 @@ integer          , intent(in), optional :: unit
 
 integer           :: s,d, ns,nd, unit_in
 character(len=13) :: fmt
+
+if ( .not. module_initialized ) call time_manager_init
 
 ! prints the time to standard output (or optional unit) as days and seconds
 ! NOTE: there is no check for PE number
@@ -2179,6 +2427,8 @@ integer          , intent(in), optional :: unit
 integer          :: y,mo,d,h,m,s, unit_in
 character(len=9) :: mon
 
+if ( .not. module_initialized ) call time_manager_init
+
 ! prints the time to standard output (or optional unit) as a date
 ! NOTE: there is no check for PE number
 
@@ -2212,6 +2462,8 @@ type(time_type)   :: read_time
 integer           :: secs, days
 character(len=32) :: fileformat
 
+if ( .not. module_initialized ) call time_manager_init
+
 fileformat = "ascii"   ! supply default
 if (present(form)) fileformat = trim(adjustl(form))
 
@@ -2242,6 +2494,8 @@ character(len=*), intent(in), optional :: form
 
 integer           :: secs, days
 character(len=32) :: fileformat
+
+if ( .not. module_initialized ) call time_manager_init
 
 fileformat = "ascii"   ! supply default
 if (present(form)) fileformat = trim(adjustl(form))
@@ -2285,6 +2539,8 @@ real(r8) :: r8time         ! gets promoted to nf90_double ...
 character(len=NF90_MAX_NAME)          :: varname
 integer                               :: xtype, ndims, nAtts
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
+
+if ( .not. module_initialized ) call time_manager_init
 
 len = -1 ! assume a bad termination
 
@@ -2376,6 +2632,8 @@ real(r8)        :: r8time          ! same as "statetime", different base
 integer,         SAVE :: ntimes    ! current working length of the times array
 type(time_type), SAVE, allocatable, dimension(:) :: times
 type(time_type),       allocatable, dimension(:) :: temp
+
+if ( .not. module_initialized ) call time_manager_init
 
 timeindex = 0 ! assume bad things are going to happen
 
@@ -2549,6 +2807,7 @@ integer  :: length
 character(len=NF90_MAX_NAME) :: varname
 character(len=80)            :: routine_name
 
+if ( .not. module_initialized ) call time_manager_init
 
 ierr = 0
 routine_name = 'nc_write_calendar_atts:'
@@ -2587,7 +2846,8 @@ contains
     integer, intent ( in) :: status
 
     if(status /= nf90_noerr) then
-      call error_handler( routine_name//trim(nf90_strerror(status)) )
+      call error_handler(E_ERR,'nc_write_calendar_atts', &
+         trim(nf90_strerror(status)), source,revision,revdate )
     end if
   end subroutine check
 

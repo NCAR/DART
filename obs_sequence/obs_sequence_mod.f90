@@ -11,7 +11,7 @@ module obs_sequence_mod
 ! $Author$
 
 use        types_mod, only : r8
-use    utilities_mod, only : open_file, error_handler, E_ERR
+use    utilities_mod, only : open_file, register_module, error_handler, E_ERR, E_MSG
 use time_manager_mod, only : time_type, set_time, operator(<=), operator(<)
 
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
@@ -65,9 +65,21 @@ type obs_sequence_type
    type(obs_set_type),   pointer :: obs_sets(:)
 end type obs_sequence_type
 
+logical, save :: module_initialized = .false.
+
 contains
 
 !===============================================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
+
+
 
 function init_obs_sequence(max_obs_sets, num_copies_in, copy_meta_data)
 !------------------------------------------------------------------------------
@@ -86,6 +98,8 @@ integer, optional,  intent(in) :: num_copies_in
 character(len = *), intent(in), optional :: copy_meta_data(:)
 
 integer :: file_id, num_copies, i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the actual number of copies
 num_copies = 1
@@ -127,6 +141,8 @@ type(obs_sequence_type), intent(in)  :: seq_in
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 seq_out%num_copies   = seq_in%num_copies
 seq_out%max_obs_sets = seq_in%max_obs_sets
 seq_out%num_obs_sets = seq_in%num_obs_sets
@@ -160,6 +176,8 @@ type(obs_sequence_type), intent(out) :: seq_out
 type(obs_sequence_type), intent(in)  :: seq_in
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Copy just the definition part of the sequence setting copies to 0
 seq_out%num_copies   = 0
@@ -196,6 +214,8 @@ character(len=129),      intent(in)    :: copy_meta_data(inc)
 
 character(len=129) :: temp_meta_data(inc + seq%num_copies)
 integer :: old_num, new_num, i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Check to make sure the increment is positive
 if(inc < 0) then
@@ -237,6 +257,8 @@ implicit none
 integer :: get_num_obs_copies
 type(obs_sequence_type), intent(in) :: sequence
 
+if ( .not. module_initialized ) call initialize_module
+
 get_num_obs_copies = sequence%num_copies
 
 end function get_num_obs_copies
@@ -253,6 +275,8 @@ implicit none
 
 integer :: get_num_obs_sets
 type(obs_sequence_type) :: sequence
+
+if ( .not. module_initialized ) call initialize_module
 
 get_num_obs_sets = sequence%num_obs_sets
 
@@ -275,6 +299,8 @@ integer, optional,       intent(in)  :: copy_in
 
 integer :: copy
 
+if ( .not. module_initialized ) call initialize_module
+
 copy = 1
 if(present(copy_in)) copy = copy_in
 
@@ -296,6 +322,8 @@ integer                             :: get_obs_def_index
 type(obs_sequence_type), intent(in) :: seq
 integer,                 intent(in) :: indx
 
+if ( .not. module_initialized ) call initialize_module
+
 get_obs_def_index = os_get_obs_def_index(seq%obs_sets(indx))
 
 end function get_obs_def_index
@@ -316,6 +344,8 @@ real(r8),                intent(in)    :: obs(:)
 integer, optional,       intent(in)    :: copy_in
 
 integer :: copy
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Default value for copy is 1
 copy = 1
@@ -342,6 +372,8 @@ integer, optional,       intent(in)    :: copy_in
 
 integer :: copy
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Default value for copy is 1
 copy = 1
 if(present(copy_in)) copy = copy_in
@@ -364,6 +396,8 @@ type(obs_sequence_type) :: sequence
 integer, optional, intent(in) :: index_in
 
 integer :: indx
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the proper index
 indx = 1
@@ -389,6 +423,8 @@ type(obs_set_type), intent(out)     :: obs_set
 type(obs_sequence_type), intent(in) :: sequence
 integer,                 intent(in) :: indx
 
+if ( .not. module_initialized ) call initialize_module
+
 ! ????? Should this really do a copy???
 call obs_set_copy(obs_set, sequence%obs_sets(indx))
 
@@ -407,6 +443,8 @@ implicit none
 type(obs_set_type)                  :: old_get_obs_set
 type(obs_sequence_type), intent(in) :: sequence
 integer,                 intent(in) :: indx
+
+if ( .not. module_initialized ) call initialize_module
 
 call obs_set_copy(old_get_obs_set, sequence%obs_sets(indx))
 
@@ -433,6 +471,8 @@ real(r8),                intent(out) :: cov(:)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the set_def_list index for this obs_set
 !call get_obs_set(obs_set, seq, indx)
@@ -461,6 +501,8 @@ integer,                 intent(out) :: num(:)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the set_def_list index for this obs_set
 !call get_obs_set(obs_set, seq, indx)
@@ -491,6 +533,8 @@ integer, optional,       intent(in)  :: obs_num
 
 type(obs_set_type) :: obs_set
 integer :: def_index
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the set_def_list index for this obs_set
 !call get_obs_set(obs_set, seq, indx)
@@ -529,6 +573,8 @@ integer, optional,       intent(in)  :: num
 type(obs_set_type) :: obs_set
 integer :: def_index
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the set_def_list index for this obs_set
 !call get_obs_set(obs_set, sequence, indx)
 !def_index = os_get_obs_def_index(obs_set)
@@ -558,6 +604,8 @@ integer,                 intent(in) :: indx
 
 type(obs_set_type) :: obs_set
 
+if ( .not. module_initialized ) call initialize_module
+
 call get_obs_set(obs_set, sequence, indx)
 !!!obs_set = get_obs_set(sequence, indx)
 time = get_obs_set_time(obs_set)
@@ -579,6 +627,8 @@ integer,                 intent(in) :: indx
 
 type(obs_set_type) :: obs_set
 
+if ( .not. module_initialized ) call initialize_module
+
 call get_obs_set(obs_set, sequence, indx)
 !!!obs_set = get_obs_set(sequence, indx)
 get_num_obs_in_set = get_num_obs(obs_set)
@@ -597,6 +647,8 @@ type(obs_sequence_type), intent(inout) :: sequence
 type(obs_set_type),      intent(in)    :: obs_set
 
 type(time_type) :: t
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Make sure the times are ascending
 ! If there are no other obs in sequence, nothing to check
@@ -637,6 +689,8 @@ implicit none
 type(obs_sequence_type), intent(inout) :: sequence
 type(set_def_list_type), intent(in)    :: def_list
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Is default copy sufficient?
 call set_def_list_copy(sequence%def_list, def_list)
 !!!sequence%def_list = def_list
@@ -656,6 +710,7 @@ type(obs_sequence_type), intent(in) :: sequence
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
 
 ! Write number of copies of data 
 write(file_id, *) sequence%num_copies
@@ -689,21 +744,29 @@ implicit none
 type(obs_sequence_type) :: read_obs_sequence 
 integer,     intent(in) :: file_id
 
-integer :: i, num_copies, num_obs_sets
+integer :: i, num_copies, num_obs_sets, io
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read number of copies of data 
-read(file_id, *) num_copies
+read(file_id, *, iostat = io) num_copies
+if ( io /= 0 )  &
+    call error_handler(E_ERR,'read_obs_sequence','reading num_copies',source,revision,revdate)
 
 ! Read the number of observations in set
-read(file_id, *) num_obs_sets
+read(file_id, *, iostat = io) num_obs_sets
+if ( io /= 0 )  &
+    call error_handler(E_ERR,'read_obs_sequence','reading num_obs_sets',source,revision,revdate)
 
 ! Initialize the sequence
-read_obs_sequence = init_obs_sequence(num_obs_sets, num_copies)
+read_obs_sequence              = init_obs_sequence(num_obs_sets, num_copies)
 read_obs_sequence%num_obs_sets = num_obs_sets
 
 ! Read the per copy metadata
 do i = 1, num_copies
-   read(file_id, *) read_obs_sequence%copy_meta_data(i)
+   read(file_id, *, iostat = io) read_obs_sequence%copy_meta_data(i)
+   if ( io /= 0 )  &
+       call error_handler(E_ERR,'read_obs_sequence','reading per copy metadata',source,revision,revdate)
 end do
 
 ! Read the observation definition list
@@ -730,6 +793,8 @@ type(obs_sequence_type) :: read_obs_sequence_def
 integer,     intent(in) :: file_id
 
 integer :: i, num_copies, num_obs_sets
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read number of copies of data 
 read(file_id, *) num_copies
@@ -774,6 +839,8 @@ integer, optional,       intent(in)  :: num
 type(obs_set_type) :: obs_set
 integer :: def_index
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the set_def_list index for this obs_set
 call get_obs_set(obs_set, sequence, index)
 !!!obs_set = get_obs_set(sequence, index)
@@ -800,6 +867,8 @@ integer, optional,       intent(in)    :: copy_in
 
 integer :: copy
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Default value for copy is 1
 copy = 1
 if(present(copy_in)) copy = copy_in
@@ -822,6 +891,8 @@ real(r8),                intent(out) :: obsloc(:, :)
 type(obs_set_type) :: obs_set
 integer :: def_index
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the set_def_list index for this obs_set
 call get_obs_set(obs_set, sequence, index)
 !!!obs_set = get_obs_set(sequence, index)
@@ -843,6 +914,8 @@ real(r8),                intent(out) :: obskind(:)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the set_def_list index for this obs_set
 call get_obs_set(obs_set, sequence, index)

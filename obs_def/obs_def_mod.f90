@@ -11,7 +11,7 @@ module obs_def_mod
 ! $Author$
 
 use       types_mod, only : r8, pi
-use   utilities_mod, only : error_handler, E_ERR
+use   utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use    obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
                             IDENTITY_OBSERVATION, set_ncep_obs_kind, get_obs_kind
 use    location_mod, only : location_type, read_location, write_location, &
@@ -50,12 +50,28 @@ type obs_def_type
    integer :: model_state_index ! indexes into model state for identity obs
 end type obs_def_type
 
+logical, save :: module_initialized = .false.
+
+
 contains
 
+
+  subroutine initialize_module
 !----------------------------------------------------------------------------
+! subroutine initialize_module
 
-function init_obs_def1(location, knd, error_variance)
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
 
+end subroutine initialize_module
+
+
+
+
+  function init_obs_def1(location, knd, error_variance)
+!----------------------------------------------------------------------------
+! function init_obs_def1(location, knd, error_variance)
+!
 ! Constructor for an obs_def that is not identity observation.
 
 implicit none
@@ -65,11 +81,12 @@ type(location_type), intent(in) :: location
 type(obs_kind_type), intent(in) :: knd
 real(r8), intent(in) :: error_variance
 
+if ( .not. module_initialized ) call initialize_module
+
 init_obs_def1%location       = location
 init_obs_def1%kind           = knd
 init_obs_def1%error_variance = error_variance
-! This is not an identity observation
-init_obs_def1%model_state_index = -1
+init_obs_def1%model_state_index = -1       ! This is not an identity observation
 
 end function init_obs_def1
 
@@ -85,6 +102,8 @@ implicit none
 type(obs_def_type) :: init_obs_def2
 integer, intent(in) :: ind
 real(r8), intent(in) :: error_variance
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Having a non-zero index indicates this is an identity observation
 init_obs_def2%model_state_index = ind
@@ -111,6 +130,8 @@ real(r8) :: get_expected_obs
 type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: state_vector(:)
 
+if ( .not. module_initialized ) call initialize_module
+
 ! If this is identity obs, can just return from state vector now
 if(obs_def%model_state_index > 0) then
    get_expected_obs = state_vector(obs_def%model_state_index)
@@ -130,6 +151,8 @@ implicit none
 real(r8) :: get_error_variance
 type(obs_def_type), intent(in) :: obs_def
 
+if ( .not. module_initialized ) call initialize_module
+
 get_error_variance = obs_def%error_variance
 
 end function get_error_variance
@@ -145,6 +168,8 @@ implicit none
 type(location_type) :: get_obs_location
 type(obs_def_type), intent(in) :: obs_def
 
+if ( .not. module_initialized ) call initialize_module
+
 get_obs_location = obs_def%location
 
 end function get_obs_location
@@ -159,6 +184,8 @@ implicit none
 
 type(obs_kind_type) :: get_obs_def_kind
 type(obs_def_type), intent(in) :: obs_def
+
+if ( .not. module_initialized ) call initialize_module
 
 get_obs_def_kind = obs_def%kind
 
@@ -179,6 +206,8 @@ implicit none
 integer :: get_num_close_states
 type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: radius
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Call to assim_model level which knows how to work with locations
 get_num_close_states = am_get_num_close_states(obs_def%location, radius)
@@ -203,6 +232,8 @@ real(r8), intent(in) :: radius
 integer, intent(out) :: number
 integer, intent(out) :: close_state_list(:)
 real(r8), intent(out) :: dist(:)
+
+if ( .not. module_initialized ) call initialize_module
 
 ! For now, do this in inefficient redundant way; need to make more efficient soon
 ! NOTE: Could do the error checking on storage in assim_model if desired, probably
@@ -233,6 +264,8 @@ type(obs_def_type) :: set_obs_location
 type(obs_def_type), intent(in) :: obs_def
 type(location_type), intent(in) :: location
 
+if ( .not. module_initialized ) call initialize_module
+
 set_obs_location = obs_def
 set_obs_location%location = location
 
@@ -249,6 +282,8 @@ implicit none
 type(obs_def_type) :: set_error_variance
 type(obs_def_type), intent(in) :: obs_def
 real(r8), intent(in) :: error_variance
+
+if ( .not. module_initialized ) call initialize_module
 
 set_error_variance = obs_def
 set_error_variance%error_variance = error_variance
@@ -268,6 +303,8 @@ type(obs_def_type) :: set_obs_def_kind
 type(obs_def_type), intent(in) :: obs_def
 type(obs_kind_type), intent(in) :: kind
 
+if ( .not. module_initialized ) call initialize_module
+
 set_obs_def_kind = obs_def
 set_obs_def_kind%kind = kind
 
@@ -286,6 +323,8 @@ type(obs_def_type) :: read_obs_def
 integer, intent(in) :: file
 
 character(len=5) :: header
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Begin by reading five character ascii header, then location, kind, error variance, index
 
@@ -316,6 +355,8 @@ implicit none
 integer, intent(in) :: file
 type(obs_def_type), intent(in) :: obs_def
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Write the 5 character identifier
 write(file, 11)
 11 format('obdef')
@@ -341,6 +382,8 @@ type(obs_def_type) :: interactive_obs_def
 
 integer :: ind
 real(r8) :: error_variance
+
+if ( .not. module_initialized ) call initialize_module
 
 write(*, *) 'Input error variance for this observation definition '
 read(*, *) error_variance
@@ -372,7 +415,9 @@ integer, intent(in) :: obsunit
 integer :: obsindex
 real (r8) :: var
 
-! Read in NCEP observation location, kind and error variance
+   if ( .not. module_initialized ) call initialize_module
+
+   ! Read in NCEP observation location, kind and error variance
    call read_ncep_obs_location(read_ncep_obs_def%location, obsunit, obsindex, var)
 
    read_ncep_obs_def%kind              = set_ncep_obs_kind(obsindex)
@@ -392,17 +437,19 @@ type(obs_def_type), intent(in) :: obs_def
 type(location_type) :: location                           
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure                     
 
-    lon_lat_lev = get_location(obs_def%location)                                       
-    lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
+   if ( .not. module_initialized ) call initialize_module
+
+   lon_lat_lev = get_location(obs_def%location)                                       
+   lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
                                                     
-    if(vert_is_level(obs_def%location)) then                                           
-       level = lon_lat_lev(3)                    
-    else                      
-      pressure = lon_lat_lev(3)       
-    endif                                                                                        
-    obsloc0(1) = lon    ! degree
-    obsloc0(2) = lat    ! degree
-    obsloc0(3) = pressure  ! Pascal
+   if(vert_is_level(obs_def%location)) then                                           
+      level = lon_lat_lev(3)                    
+   else                      
+     pressure = lon_lat_lev(3)       
+   endif                                                                                        
+   obsloc0(1) = lon       ! degree
+   obsloc0(2) = lat       ! degree
+   obsloc0(3) = pressure  ! Pascal
 
 end subroutine get_seq_loc
 
@@ -416,17 +463,19 @@ type(obs_def_type), intent(in) :: obs_def
 type(location_type) :: location                           
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure       
 
-     lon_lat_lev = get_location(obs_def%location)                                       
-     lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
+   if ( .not. module_initialized ) call initialize_module
+
+   lon_lat_lev = get_location(obs_def%location)                                       
+   lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
                                                     
-     if(vert_is_level(obs_def%location)) then                                           
-        level = lon_lat_lev(3)                    
-     else                      
-        pressure = lon_lat_lev(3)       
-     endif                                                                                        
-    obsloc0(1) = lon*pi/180.0_r8    ! degree
-    obsloc0(2) = lat*pi/180.0_r8    ! degree
-    obsloc0(3) = pressure           ! Pascal
+   if(vert_is_level(obs_def%location)) then                                           
+      level = lon_lat_lev(3)                    
+   else                      
+      pressure = lon_lat_lev(3)       
+   endif                                                                                        
+   obsloc0(1) = lon*pi/180.0_r8    ! degree
+   obsloc0(2) = lat*pi/180.0_r8    ! degree
+   obsloc0(3) = pressure           ! Pascal
                                        
 end subroutine get_obs_location4
 
@@ -437,7 +486,9 @@ real(r8), intent(out) :: obskind0
 type(obs_def_type), intent(in) :: obs_def
 type(obs_kind_type) :: kind                           
 
-    obskind0 = get_obs_kind(obs_def%kind)                                       
+   if ( .not. module_initialized ) call initialize_module
+
+   obskind0 = get_obs_kind(obs_def%kind)                                       
                                        
 end subroutine get_obs_kind4
 

@@ -10,15 +10,14 @@ module model_mod
 ! $Date$ 
 ! $Author$ 
 !
-
 ! Revised assim_model version of Lorenz-63 3-variable model
 
-use        types_mod, only: r8
-use time_manager_mod
+use        types_mod, only : r8
+use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 implicit none
 private
@@ -75,10 +74,11 @@ subroutine static_init_model()
 !------------------------------------------------------------------
 ! Initializes class data for L63 model and outputs I.D.
 !
-!
 
 real(r8) :: x_loc
 integer  :: i, iunit, ierr, io
+
+call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -92,21 +92,9 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-! Temporary namelist validation
-write(*, *) 'namelist read; values are'
-write(*, *) 'sigma is ', sigma
-write(*, *) 'r is ', r
-write(*, *) 'b is ', b
-write(*, *) 'deltat is ', deltat
-write(*, *) 'output_state_vector is ', output_state_vector
-
-
-! Ultimately,  change output to diagnostic output block ...
-
-write(*,*)'model attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
+! record namelist values
+call error_handler(E_MSG,'static_init_model','namelist read, values are:',' ',' ',' ')
+write(logfileunit,nml=model_nml)
 
 ! Define the locations of the model state variables
 do i = 1, model_size

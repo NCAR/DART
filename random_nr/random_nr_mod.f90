@@ -11,7 +11,7 @@ module random_nr_mod
 ! $Author$ 
 !
 
-use utilities_mod, only : error_handler, E_ERR
+use utilities_mod, only : register_module, error_handler, E_ERR
 
 implicit none
 private
@@ -35,7 +35,22 @@ type random_seq_type
    double precision :: r(97), gset
 end type random_seq_type
 
+logical, save :: module_initialized = .false.
+
+
 contains
+
+
+
+subroutine initialize_module
+
+   call register_module(source,revision,revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
+
+
 
 !-------------------------------------------------------------------
 
@@ -48,7 +63,9 @@ integer, intent(in) :: temp
 type(random_seq_type), intent(out) :: s
 integer iff, j
 
-! Initialize the numerical recipes ran1 generator for use with
+if ( .not. module_initialized ) call initialize_module
+
+! Initialize the generator for use with
 ! repeatable sequences
 
 s%ix1 = mod(ic1 - temp, m1)
@@ -79,6 +96,8 @@ double precision :: ran1
 
 integer :: j
 
+if ( .not. module_initialized ) call initialize_module
+
 !  Gives a U(0,1) random number
 
 s%ix1 = mod(ia1*s%ix1 + ic1, m1)
@@ -106,6 +125,8 @@ double precision :: gasdev
 
 double precision :: v1, v2, r, fac
 
+if ( .not. module_initialized ) call initialize_module
+
 if(s%iset == 0) then
 10 v1 = 2. * ran1(s) - 1.
    v2 = 2. * ran1(s) - 1.
@@ -125,4 +146,3 @@ end function gasdev
 !------------------------------------------------------------------------
 
 end module random_nr_mod
-! end module random_numerical_recipes_mod

@@ -10,22 +10,22 @@ module chisq_mod
 ! $Date$ 
 ! $Author$ 
 !
-! Computes chi square statistics and significance, from numerical recipes
+! Computes chi square statistics and significance
 
 
-use types_mod
+use     types_mod, only : r8
 use utilities_mod, only : error_handler, E_ERR
 
 implicit none
-
 private
+
 public chsone
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 integer, parameter :: itmax = 100
 real(r8), parameter :: eps = 3.e-7
@@ -39,8 +39,7 @@ real(r8) :: cof(6) = (/76.18009172947146_r8, -86.50532032941677_r8, &
 contains
 
 
-!  CHISQUARE TEST MATERIAL FROM NUMERICAL RECIPES AND ASSOCIATED SUPPORTING
-!  SUBROUTINES
+!  CHISQUARE TEST AND SUPPORTING SUBROUTINES
 
   subroutine chsone(bins, ebins, knstrn, df, chsq, prob)
 !==============================================================================

@@ -9,17 +9,16 @@ module reg_factor_mod
 ! $Revision$
 ! $Date$
 ! $Author$
-!
 
 use     types_mod, only : r8
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
-                          close_file, error_handler, E_ERR
+                          register_module, close_file, error_handler, E_ERR, &
+                          logfileunit
 
 implicit none
 private
 
-public comp_reg_factor
-
+public :: comp_reg_factor
 
 !============================================================================
 
@@ -55,7 +54,9 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+
 CONTAINS
+
 
 function comp_reg_factor(num_groups, regress, time_index, &
    obs_index, state_index, obs_state_ind, obs_state_max)
@@ -78,6 +79,9 @@ integer :: i, j, ii, jj, iunit, ierr, io
 !--------------------------------------------------------
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
+
+   call register_module(source,revision,revdate)
+
    namelist_initialized = .true.
    if(file_exist('input.nml')) then
       iunit = open_file('input.nml', action = 'read')
@@ -91,6 +95,10 @@ if(.not. namelist_initialized) then
 
       call close_file(iunit)
    endif
+
+   ! Record the namelist values in the logfile
+   write(logfileunit,nml=reg_factor_nml)
+
 endif
 !---------------------------------------------------------
 

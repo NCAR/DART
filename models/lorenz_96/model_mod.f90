@@ -12,11 +12,11 @@ module model_mod
 !
 
 use        types_mod, only : r8
-use time_manager_mod
+use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR
+                             error_handler, E_MSG, E_WARN, E_ERR, register_module, logfileunit
 
 implicit none
 private
@@ -74,7 +74,11 @@ subroutine static_init_model()
 ! the time type for the time stepping (is this general enough for time???)
 
 real(r8) :: x_loc
-integer :: i, iunit, ierr, io
+integer  :: i, iunit, ierr, io
+character(len=129) :: errstring
+
+! Print module information to log file and stdout.
+call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -88,23 +92,13 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-! Temporary namelist validation
-write(*, *) 'namelist read; values are'
-write(*, *) 'model size is ', model_size
-write(*, *) 'forcing is ', forcing
-write(*, *) 'delta_t is ', delta_t
-write(*, *) 'output_state_vector is ', output_state_vector
+! Record the namelist to the logfile
+call error_handler(E_MSG,'static_init_model', &
+     'model_mod namelist values follow', source, revision, revdate)
+write(logfileunit,nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(model_size))
-
-
-! Ultimately,  change output to diagnostic output block ...
-
-write(*,*)'model attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
 
 ! Define the locations of the model state variables
 do i = 1, model_size

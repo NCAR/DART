@@ -16,12 +16,12 @@ module adjoint_mod
 ! to run on platforms without NAG support.
 
 use     types_mod, only : r8
-use utilities_mod, only : get_unit, error_handler, E_ERR
+use utilities_mod, only : get_unit, register_module, error_handler, E_ERR
 use       obs_mod, only : take_obs
 use     model_mod, only : advance, adv_1step
 use  nag_wrap_mod, only : e04dgf_wrap
 
-! implicit none?
+implicit none
 private
 
 public min_cost, adj_forecast_eval, adj_forecast_out

@@ -25,7 +25,7 @@ module location_mod
 ! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, PI, rad2deg, deg2rad
-use  utilities_mod, only : error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -44,8 +44,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 type location_type
-   private
-
+   private 
    real(r8) :: lon, lat, vloc
    integer  :: which_vert
    ! which_vert determines if the location is by level or by height/pressure
@@ -57,6 +56,7 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
+logical,save :: module_initialized = .false.
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dsphere"
@@ -65,6 +65,18 @@ character(len = 129), parameter :: LocationLName = &
 
 
 contains
+
+
+
+  subroutine initialize_module
+!----------------------------------------------------------------------------
+! subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
 
 
 function get_dist(loc1, loc2)
@@ -80,6 +92,8 @@ type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 
 real(r8) :: lon_dif
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Returns distance in radians (independent of diameter of sphere)
 
@@ -110,9 +124,12 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
-  get_location(1) = loc%lon * rad2deg                 
-  get_location(2) = loc%lat * rad2deg                 
-  get_location(3) = loc%vloc     
+   if ( .not. module_initialized ) call initialize_module
+
+   get_location(1) = loc%lon * rad2deg                 
+   get_location(2) = loc%lat * rad2deg                 
+   get_location(3) = loc%vloc     
+
 end function get_location
 
 
@@ -124,6 +141,8 @@ function vert_is_pressure(loc)
 
 logical :: vert_is_pressure
 type(location_type), intent(in) :: loc
+
+if ( .not. module_initialized ) call initialize_module
 
 if(loc%which_vert == 2) then
    vert_is_pressure = .true.
@@ -141,6 +160,8 @@ function vert_is_height(loc)
 logical :: vert_is_height
 type(location_type), intent(in) :: loc
 
+if ( .not. module_initialized ) call initialize_module
+
 if(loc%which_vert == 3 ) then
    vert_is_height = .true.
 else
@@ -156,6 +177,8 @@ function vert_is_level(loc)
 
 logical :: vert_is_level
 type(location_type), intent(in) :: loc
+
+if ( .not. module_initialized ) call initialize_module
 
 if(loc%which_vert == 1) then
    vert_is_level = .true.
@@ -175,6 +198,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
+if ( .not. module_initialized ) call initialize_module
+
 get_location_lon = loc%lon * rad2deg    
 
 end function get_location_lon
@@ -188,6 +213,8 @@ implicit none
 
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
+
+if ( .not. module_initialized ) call initialize_module
 
 get_location_lat = loc%lat * rad2deg      
 
@@ -210,6 +237,8 @@ real(r8), intent(in) :: vert_loc
 integer,  intent(in) :: which_vert
 
 character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    write(errstring,*)'longitude (',lon,') is not within range [0,360]'
@@ -247,6 +276,9 @@ character(len=*), optional, intent(in) :: attr
 real(r8)                               :: fval
 
 character(len=16) :: attribute
+
+if ( .not. module_initialized ) call initialize_module
+
 attribute = 'which_vert'
 
 if (present(attr)) attribute = attr
@@ -281,6 +313,8 @@ implicit none
 integer,             intent(in) :: ifile
 type(location_type), intent(in) :: loc
 
+if ( .not. module_initialized ) call initialize_module
+
 write(ifile, '(''loc3d'')' ) 
 
 ! Write out pressure or level along with integer tag
@@ -301,6 +335,8 @@ type(location_type) :: read_location
 
 character(len=5)   :: header
 character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Will want to add additional error checks on the read
 read(ifile, '(a5)' ) header
@@ -327,6 +363,8 @@ implicit none
 type(location_type), intent(out) :: location
 
 real(r8) :: lon, lat, vloc, minlon, maxlon, minlat, maxlat
+
+if ( .not. module_initialized ) call initialize_module
 
 write(*, *)'Vertical co-ordinate options'
 write(*, *)'-1 -> surface, 1 -> model level, 2 -> pressure, 3 -> height'
@@ -429,6 +467,8 @@ integer, intent(in)             :: ncFileID, LocationVarID
 type(location_type), intent(in) :: loc
 integer, intent(in)             :: start
 
+if ( .not. module_initialized ) call initialize_module
+
 call check(nf90_put_var(ncFileID, LocationVarID, loc%lon,  (/ start, 1 /) ))
 call check(nf90_put_var(ncFileID, LocationVarID, loc%lat,  (/ start, 2 /) ))
 call check(nf90_put_var(ncFileID, LocationVarID, loc%vloc, (/ start, 3 /) ))
@@ -463,6 +503,8 @@ real(r8), intent(out) :: var
 
 real(r8) :: lon, lat, lev, zob, dummy, count, time, type
 integer  :: obs_prof
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read location, kind and error variance of NCEP data
 read(obsunit, 880) var, lon, lat, lev, zob, dummy, count, time, type

@@ -15,10 +15,10 @@ use        types_mod, only : r8
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 use   random_seq_mod, only : random_seq_type, random_gaussian, &
                              init_random_seq, several_random_gaussians
-use time_manager_mod
+use time_manager_mod, only : time_type, set_time
 
 implicit none
 private
@@ -99,9 +99,12 @@ implicit none
 real(r8) :: x_loc
 integer :: i, iunit, ierr, io
 
-! Ultimately,  change output to diagnostic output block ...
+character(len=129) :: errstring
 
-! Begin by reading the namelist input
+! Register the module into the logfile
+call register_module(source, revision, revdate)
+
+! Reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
@@ -113,16 +116,9 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-write(*,*)'model_mod attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
-
-! Temporary namelist validation
-write(*,*)'   namelist read: values are'
-write(*,*)'   g is ', g
-write(*,*)'   deltat is ', deltat
-write(*,*)'   output_state_vector is ', output_state_vector
+! Record namelist in logfile
+call error_handler(E_MSG,'static_init_model','namelist read, values are:',' ',' ',' ')
+write(logfileunit, nml=model_nml)
 
 ! Define the locations of the model state variables
 do i = 1, model_size

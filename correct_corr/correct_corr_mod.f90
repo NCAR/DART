@@ -13,11 +13,11 @@ module correct_corr_mod
 ! A module to do updates taking into account errors in correlation computation 
 ! resulting from finite sample size. See notes from second week of Dec. 2001.
 
-use types_mod
+use      types_mod, only : r8
+use  utilities_mod, only : register_module
 use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
-implicit none
-
+implicit none 
 private
 
 logical               :: first_call = .true.
@@ -28,17 +28,28 @@ real(r8)              :: var_table(0:table_size), inverse_var_table(0:table_size
 type (random_seq_type) :: r
 integer, parameter     :: n_mc = 10000
 
-public init_table, corr_update_from_obs_inc, corr_obs_increment, &
+public :: init_table, corr_update_from_obs_inc, corr_obs_increment, &
        get_correct_correlation
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
+logical, save :: module_initialized = .false.
+
 
 contains
 
+
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
 
 
   subroutine init_table(n)
@@ -61,6 +72,8 @@ integer, intent(in) :: n
 real(r8) :: mean(2), c(2, 2), corr, rnum(2, n_mc), sample_correl
 real(r8) :: correl_2
 integer  :: i, j, k
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Initialize a repeatable random sequence for computing expected correlation
 
@@ -150,6 +163,8 @@ real(r8), intent(out) :: est_correl, var_correl
 real(r8) :: c, sign, fract, interval
 integer  :: upper, lower
 
+if ( .not. module_initialized ) call initialize_module
+
 ! There's an intrinsic to do this sign stuff
 
 if(sample_correl >= 0.0_r8) then
@@ -194,6 +209,8 @@ real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
 real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
 real(r8) :: prior_cov, sx, s_x2
 integer  :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 if(first_call) then
    call init_table(ens_size)
@@ -242,6 +259,8 @@ real(r8) :: sum_x, sum_y, sum_xy, sum_x2, reg_coef, creg_coef
 real(r8) :: sum_y2, correl, est_correl, var_correl, varx, sample_factor
 real(r8) :: temp_ens(2, ens_size), temp_correl
  
+if ( .not. module_initialized ) call initialize_module
+
 ens(1, :) = state      ! Create combined matrix for covariance
 ens(2, :) = obs
  
@@ -325,6 +344,8 @@ real(r8), intent(out) :: correl
 
 real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
  
+if ( .not. module_initialized ) call initialize_module
+
 sum_x  = sum(ens(2, :))
 sum_y  = sum(ens(1, :))
 sum_xy = sum(ens(2, :) * ens(1, :))

@@ -12,15 +12,11 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use types_mod, only :: r8
+use      types_mod, only : r8
 !!!use obs_mod,        only : num_obs, obs_var
-use utilities_mod,  only : file_exist, open_file, check_nml_error, &
-                           close_file, error_handler, E_ERR
-!                           print_version_number, close_file
+use utilities_mod,  only : file_exist, open_file, check_nml_error, close_file, &
+                           register_module, error_handler, E_ERR, E_MSG, logfileunit
 use sort_mod,       only : index_sort
-
-! Added 22 January, 2001 to duplicate observations no matter what else is
-! done with random number generator. Allows clear enkf_2d comparisons.
 
 use random_seq_mod, only : random_seq_type, random_gaussian, &
                            init_random_seq, random_uniform
@@ -44,23 +40,17 @@ public read_restart, write_restart, assim_tools_init, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
-
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 !---- namelist with default values
 
 real(r8) :: cor_cutoff = 0.0_r8
 
 namelist / assim_tools_nml / cor_cutoff
-
-character(len=128), parameter :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
 
 !============================================================================
 
@@ -76,20 +66,15 @@ subroutine assim_tools_init()
 implicit none
 
 integer :: unit, ierr, io
+character(len=129) :: errstring
+
+call register_module(source, revision, revdate)
 
 ! Read namelist for run time control
 
 if(file_exist('input.nml')) then
    unit = open_file('input.nml', action = 'read')
    ierr = 1
-
-! TJH Coding Standard does not allow use of the "end=" construct.
-!
-!  do while(ierr /= 0)
-!     read(unit, nml = assim_tools_nml, iostat = io, end = 11)
-!     ierr = check_nml_error(io, 'assim_tools_nml')
-!  enddo
-!11 continue
 
    READBLOCK: do while(ierr /= 0)
       read(unit, nml = assim_tools_nml, iostat = io)
@@ -100,19 +85,9 @@ if(file_exist('input.nml')) then
    call close_file(unit)
 endif
 
-! TJH 14.03.2002 What do we do if the namelist does not exist?
-
-! Write the namelist and module info to a log file
-
-unit = open_file('logfile.out', action = 'append')
-write(unit,*)'assim_tools attributes:'
-write(unit,*)'   ',trim(adjustl(source))
-write(unit,*)'   ',trim(adjustl(revision))
-write(unit,*)'   ',trim(adjustl(revdate))
-write(unit, nml = assim_tools_nml)
-call close_file(unit)
-
-write(*, *) 'Correlation cutoff in fast_seq_non_identity_prod is ', cor_cutoff
+! Write the namelist values to the log file
+call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
+write(logfileunit,nml=assim_tools_nml)
 
 end subroutine assim_tools_init
 

@@ -16,7 +16,7 @@ module set_def_list_mod
 
 use       types_mod, only :  r8
 use    location_mod, only : location_type
-use   utilities_mod, only : error_handler, E_ERR
+use   utilities_mod, only : register_module, error_handler, E_ERR
 use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
                             read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
                             os_get_expected_obs => get_expected_obs, &
@@ -64,9 +64,20 @@ end type list_element_type
 ! How to really do total_num_obs and keep hierarchical subset
 ! count. Need back pointers, just ignore???
 
+logical, save :: module_initialized = .false.
+
 contains
 
 !==============================================================
+
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
 
 
 function init_set_def_list(max_sets)
@@ -78,6 +89,8 @@ implicit none
 
 type(set_def_list_type) :: init_set_def_list
 integer, intent(in) :: max_sets
+
+if ( .not. module_initialized ) call initialize_module
 
 init_set_def_list%max_sets = max_sets
 init_set_def_list%num_sets = 0
@@ -99,6 +112,8 @@ type(set_def_list_type), intent(in) :: list_in
 type(set_def_list_type), intent(out) :: list_out
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 list_out%max_sets = list_in%max_sets
 list_out%num_sets = list_in%num_sets
@@ -129,6 +144,8 @@ real(r8), intent(in) :: state(:)
 real(r8), intent(out) :: obs(:)
 integer, intent(in), optional :: num
 
+if ( .not. module_initialized ) call initialize_module
+
 ! For now, just call os_get_expected_obs for the single set in the list_element
 if(present(num)) then
    call os_get_expected_obs(list%sets(list_index)%obs_set, state, obs, num)
@@ -155,6 +172,8 @@ type(list_element_type) :: list_out
 type(list_element_type), intent(in) :: list_in
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 list_out%obs_set = list_in%obs_set
 list_out%index = list_in%index
@@ -186,6 +205,8 @@ type(obs_set_def_type), intent(in) :: set
 integer, intent(in), optional :: max_subsets_in
 
 integer :: max_subsets, indx
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Default for max_subsets is 0
 max_subsets = 0
@@ -229,6 +250,8 @@ type(obs_set_def_type) :: get_def_from_list
 type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
 
+if ( .not. module_initialized ) call initialize_module
+
 if(indx > list%num_sets .or. indx < 1) call error_handler(E_ERR, 'get_def_from_list',&
     'bad index in get_def_from_list',source, revision, revdate)
 
@@ -248,6 +271,8 @@ implicit none
 integer :: get_num_sets_in_list
 type(set_def_list_type), intent(in) :: list
 
+if ( .not. module_initialized ) call initialize_module
+
 get_num_sets_in_list = list%num_sets
 
 end function get_num_sets_in_list
@@ -266,6 +291,8 @@ implicit none
 integer :: get_total_num_obs
 type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
+
+if ( .not. module_initialized ) call initialize_module
 
 if(indx > list%num_sets .or. indx < 1) call error_handler(E_ERR,'get_total_num_obs',&
    'bad index in get_total_num_obs', source, revision, revdate)
@@ -289,6 +316,8 @@ type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
 real(r8), intent(out) :: cov(:)
 
+if ( .not. module_initialized ) call initialize_module
+
 call os_get_diag_obs_err_cov(list%sets(indx)%obs_set, cov)
 
 end subroutine get_diag_obs_err_cov
@@ -308,6 +337,8 @@ type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
 real(r8), intent(in) :: radius
 integer, intent(out) :: num(:)
+
+if ( .not. module_initialized ) call initialize_module
 
 call os_get_num_close_states(list%sets(indx)%obs_set, radius, num)
 
@@ -329,6 +360,8 @@ real(r8), intent(in) :: radius
 integer, intent(out) :: num(:), indices(:, :)
 real(r8), intent(out) :: dist(:, :)
 integer, optional, intent(in) :: obs_num
+
+if ( .not. module_initialized ) call initialize_module
 
 if(present(obs_num)) then
    call os_get_close_states(list%sets(indx)%obs_set, radius, num, &
@@ -354,6 +387,8 @@ integer :: get_number_obs_subsets
 type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: indx
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Return 0 for limited implementation
 ! Eventually need to do recursive pass (or forbid adding
 ! subsets below existing subsets?)
@@ -375,6 +410,8 @@ integer, intent(in) :: file_id
 type(set_def_list_type), intent(in) :: list
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! write(*,*)'DEBUG(set_def_list_mod:write_set_def_list) file id is ',file_id
 
@@ -409,6 +446,8 @@ character(len=5) :: header
 integer :: i, num_sets
 type(list_element_type) :: list_element
 character(len=129) :: stringerror
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read header
 read(file_id, *) header
@@ -449,6 +488,8 @@ type(list_element_type), intent(in) :: element
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 ! write(*,*)'DEBUG(set_def_list_mod:write_list_element): file_id is ',file_id
 
 ! Write out a sequence of integer arguments
@@ -477,6 +518,8 @@ type(list_element_type) :: read_list_element
 integer, intent(in) :: file_id
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read in a sequence of integer arguments
 read(file_id, *) read_list_element%index
@@ -508,6 +551,8 @@ integer, intent(in) :: list_index
 real(r8), intent(out) :: obsloc0(:)
 integer, intent(in), optional :: num
 
+if ( .not. module_initialized ) call initialize_module
+
 ! For now, just call os_get_seq_loc for the single set in the list_element
 if(present(num)) then
    call os_get_seq_loc(list%sets(list_index)%obs_set, obsloc0, num)
@@ -526,6 +571,8 @@ type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: list_index
 real(r8), intent(out) :: obsloc(:, :)
 
+if ( .not. module_initialized ) call initialize_module
+
 ! For now, just call os_get_seq_loc for the single set in the list_element
    call os_get_obs_location3(list%sets(list_index)%obs_set, obsloc)
 
@@ -540,6 +587,8 @@ implicit none
 type(set_def_list_type), intent(in) :: list
 integer, intent(in) :: list_index
 real(r8), intent(out) :: obskind(:)
+
+if ( .not. module_initialized ) call initialize_module
 
 ! For now, just call os_get_seq_loc for the single set in the list_element
    call os_get_obs_kind3(list%sets(list_index)%obs_set, obskind)

@@ -24,7 +24,7 @@ module location_mod
 ! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, PI
-use  utilities_mod, only : error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -52,6 +52,7 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
+logical, save :: module_initialized = .false.
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dsphere"
@@ -60,6 +61,17 @@ character(len = 129), parameter :: LocationLName = &
 
 
 contains
+
+
+  subroutine initialize_module
+!----------------------------------------------------------------------------
+! subroutine initialize_module
+
+   call register_module(source,revision,revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
 
 
 function get_dist(loc1, loc2)
@@ -74,6 +86,8 @@ type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 
 real(r8) :: lon_dif
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Returns distance in radians (independent of diameter of sphere)
 
@@ -104,6 +118,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
+if ( .not. module_initialized ) call initialize_module
+
 get_location(1) = loc%lon * 180.0_r8 / PI
 get_location(2) = loc%lat * 180.0_r8 / PI
 get_location(3) = loc%lev
@@ -119,6 +135,8 @@ function vert_is_level(loc)
 
 logical :: vert_is_level
 type(location_type), intent(in) :: loc
+
+if ( .not. module_initialized ) call initialize_module
 
 if(loc%which_vert == 1) then
    vert_is_level = .true.
@@ -140,6 +158,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
+if ( .not. module_initialized ) call initialize_module
+
 get_location_lon = loc%lon * 180.0_r8 / PI
 
 end function get_location_lon
@@ -155,6 +175,8 @@ implicit none
 
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
+
+if ( .not. module_initialized ) call initialize_module
 
 get_location_lat = loc%lat * 180.0_r8 / PI
 
@@ -172,6 +194,8 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lev
 
+if ( .not. module_initialized ) call initialize_module
+
 get_location_lev = loc%lev
 
 end function get_location_lev
@@ -188,6 +212,8 @@ implicit none
 
 type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat, lev
+
+if ( .not. module_initialized ) call initialize_module
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
         'Longitude is out of [0,360] range', source, revision, revdate)
@@ -219,6 +245,8 @@ implicit none
 integer, intent(in) :: ifile
 type(location_type), intent(in) :: loc
 
+if ( .not. module_initialized ) call initialize_module
+
 ! For now, output a character tag followed by the r8 value. 
 
 write(ifile, '(''loc2s'')' ) 
@@ -240,6 +268,8 @@ integer, intent(in) :: ifile
 type(location_type) :: read_location
 
 character(len=5) :: header
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Will want to add additional error checks on the read
 read(ifile, '(a5)' ) header
@@ -265,6 +295,8 @@ implicit none
 type(location_type), intent(out) :: location
 
 real(r8) :: lon, lat, lev
+
+if ( .not. module_initialized ) call initialize_module
 
 write(*, *) 'Input level for this observation: -1 for surface '
 read(*, *) lev
@@ -328,6 +360,8 @@ integer, intent(in)             :: ncFileID, LocationVarID
 type(location_type), intent(in) :: loc
 integer, intent(in)             :: start
 
+if ( .not. module_initialized ) call initialize_module
+
 call check(nf90_put_var(ncFileID, LocationVarID, loc%lon, (/ start, 1 /) ))
 call check(nf90_put_var(ncFileID, LocationVarID, loc%lat, (/ start, 2 /) ))
 call check(nf90_put_var(ncFileID, LocationVarID, loc%lev, (/ start, 3 /) ))
@@ -363,6 +397,8 @@ integer, intent(in) :: obsunit
 integer, intent(out) :: obsindex
 real (r8), intent(out) :: var
 real (r8) :: lon,lat,lev,zob, dummy,count,time,type
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read location, kind and error variance of NCEP data
 

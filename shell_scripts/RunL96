@@ -58,18 +58,56 @@ endif
 
 #======================================================================
 # Save any existing namelist ...
+# The foreach loop guards against nothing to move. 
 #======================================================================
 
-set SAVEME = input.nml.$$
-if ( -e input.nml ) then
-   mv input.nml $SAVEME
+set SAVEME = .NamelistStorage.$$
+if ( ! -d $SAVEME ) then
+   mkdir ${SAVEME}
 endif
+foreach NAMELIST ( *.nml ) 
+   mv ${NAMELIST} ${SAVEME}
+end
+
+#======================================================================
+# Create common namelists
+#======================================================================
+
+cat << ENDofTask00 > utilities.nml
+
+&utilities_nml
+   logfilename = "create_obs_set_def.out",
+   TERMLEVEL = 1
+&end
+   
+ENDofTask00
+   
+cat << ENDofTask01 > assim_model.nml
+   
+&assim_nml
+   binary_restart_files = .true.
+&end
+   
+ENDofTask01
+
+cat << ENDofTask02 > model.nml
+
+&model_nml
+   sigma  = 10.0,
+   r      = 28.0,
+   b      = 2.6666666666667,
+   deltat = 0.01
+&end
+   
+ENDofTask02
+
 
 #======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
 #======================================================================
 
+cat utilities.nml > input.nml
 ./create_obs_set_def < ../random_obs.input
 
 if ( $status > 0 ) then
@@ -81,6 +119,13 @@ endif
 # Simulate a particular observing system:
 # 2) declare sequences of observation sets
 #======================================================================
+cat << ENDofTask02 > utilities.nml
+&utilities_nml
+   logfilename = "create_obs_sequence1.out"
+   TERMLEVEL = 1
+&end
+ENDofTask02
+
 set num_obs = 200
 set ob_day_1 = 0
 set ob_seconds_1 = 43200
@@ -101,6 +146,7 @@ echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo "obs_seq.in"            >> create_obs_sequence.in
 
+cat utilities.nml > input.nml
 ./create_obs_sequence < create_obs_sequence.in
 
 if ( $status > 0 ) then
@@ -114,12 +160,19 @@ endif
 #    creates files True_State.nc, obs_seq.out
 #======================================================================
 
-cat << ENDofTask03 > input.nml
-&model_nml
-   model_size = 40,
-   forcing = 8.0,
-   deltat = 0.005
-&end
+echo '&utilities_nml'                            > utilities.nml
+echo '   logfilename = "perfect_model_obs.out"' >> utilities.nml
+echo '   TERMLEVEL = 1'                         >> utilities.nml
+echo '&end'                                     >> utilities.nml
+
+echo ' '                                         > model.nml
+echo '&model_nml'                               >> model.nml
+echo '   model_size = 40,'                      >> model.nml
+echo '   forcing = 8.0,'                        >> model.nml
+echo '   deltat = 0.005'                        >> model.nml
+echo '&end'                                     >> model.nml
+
+cat << ENDofTask03 > perfect.nml
 
 &perfect_model_obs_nml
    async = 0,
@@ -134,6 +187,8 @@ cat << ENDofTask03 > input.nml
    output_interval = 1
 &end
 ENDofTask03
+
+cat utilities.nml model.nml perfect.nml > input.nml 
 
 ./perfect_model_obs
  
@@ -181,6 +236,11 @@ if ( ${?Cutoff} ) then
    set cutoff = $Cutoff
 endif
 
+echo '&utilities_nml'                            > utilities.nml
+echo '   logfilename = "filter.out"'            >> utilities.nml
+echo '   TERMLEVEL = 1'                         >> utilities.nml
+echo '&end'                                     >> utilities.nml
+
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
 echo "   async = $async ,"                                     >> filter.nml
@@ -201,27 +261,29 @@ echo "   output_interval = $output_interval "                  >> filter.nml
 echo "&end"                                                    >> filter.nml
 echo " "                                                       >> filter.nml
 
-cat filter.nml >> input.nml
+cat utilities.nml model.nml filter.nml > input.nml
 
 ./filter
 
 if ( $status > 0 ) then
    mv $SAVEME input.nml
    echo "ERROR: filter bombed ..."
-   exit
+#   exit
 else
    echo " "
    echo "filter teminated normally"
    echo " "
-   \rm -f create_obs_set_def.in create_obs_sequence.in input.nml filter.nml
+   \rm -f create_obs_set_def.in create_obs_sequence.in 
+   \rm -f utilities.nml model.nml perfect.nml filter.nml input.nml
 endif
 
 #======================================================================
-# Restore the existing namelist ...
+# Restore the existing namelists ...
 #======================================================================
 
-if ( -e ${SAVEME} ) then
-   mv $SAVEME input.nml
-endif
+foreach NAMELIST ( ${SAVEME}/*.nml ) 
+   mv ${NAMELIST} .
+end
+\rmdir ${SAVEME}
 
 exit

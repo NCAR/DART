@@ -16,7 +16,7 @@ module forecast_eval_mod
 
 ! Computes ensemble forecasts and statistics for evaluating their quality
 
-use types_mod
+use      types_mod, only : r8
 use assim_diag_mod, only : diag_type, output_diagnostics, save_diagnostics, &
                            assim_diag_init
 use model_mod,      only : advance
@@ -26,11 +26,11 @@ implicit none
 private
 public forecast_advance, forecast_out
 
-! let CVS fill strings ... DO NOT EDIT ...
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Maximum number of observation periods for which forecasts should extend
 

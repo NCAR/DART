@@ -11,7 +11,7 @@ module obs_set_def_mod
 ! $Author$
 
 use     types_mod, only : r8
-use utilities_mod, only : error_handler, E_ERR
+use utilities_mod, only : register_module, error_handler, E_ERR, register_module
 use   obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
                         write_obs_def, get_error_variance, &
                         od_get_expected_obs => get_expected_obs, &
@@ -45,9 +45,20 @@ type obs_set_def_type
    integer :: num_obs_defs
 end type obs_set_def_type
 
+
+logical, save :: module_initialized = .false.
+
 contains
 
 !===============================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
+
 
 
 function init_obs_set_def(max_num_obs)
@@ -62,6 +73,8 @@ implicit none
 
 type(obs_set_def_type) :: init_obs_set_def
 integer, intent(in) :: max_num_obs
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Allocate storage for the inividual observations
 allocate(init_obs_set_def%diag_cov(max_num_obs), &
@@ -87,6 +100,8 @@ type(obs_set_def_type), intent(in) :: set_in
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 set_out = init_obs_set_def(set_in%max_num_obs_defs)
 
 ! Loop to add in the obs_defs
@@ -109,6 +124,8 @@ implicit none
 
 type(obs_set_def_type), intent(in) :: set
 real(r8), intent(out) :: cov(:)
+
+if ( .not. module_initialized ) call initialize_module
 
 if(size(cov) < set%num_obs_defs) then
       call error_handler(E_ERR,'get_diag_obs_err_cov', 'cov array too small', source, revision, revdate)
@@ -134,6 +151,8 @@ real(r8), intent(out) :: obs(:)
 integer, intent(in), optional :: num
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 if(present(num)) then
    obs(1) = od_get_expected_obs(set%obs_defs(num), state)
@@ -167,6 +186,8 @@ type(obs_def_type) :: get_obs_def
 type(obs_set_def_type), intent(in) :: set
 integer, intent(in) :: index
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Check for index exceeding total number of obs available
 if(index > get_num_obs(set)) then
       call error_handler(E_ERR,'get_obs_def', 'index too large', source, revision, revdate)
@@ -188,6 +209,8 @@ implicit none
 integer :: get_num_obs
 type(obs_set_def_type), intent(in) :: set
 
+if ( .not. module_initialized ) call initialize_module
+
 get_num_obs = set%num_obs_defs
 
 end function get_num_obs
@@ -207,6 +230,8 @@ type(obs_set_def_type), intent(in) :: set
 type(location_type), intent(out) :: locations(:)
 
 integer i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Make sure locations array is big enough
 if(size(locations) < set%num_obs_defs) then
@@ -236,6 +261,8 @@ real(r8), intent(out) :: dist(:, :)
 integer, optional, intent(in) :: obs_num
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Make sure that number array is big enough to hold all obs in set
 if(present(obs_num)) then
@@ -278,6 +305,8 @@ integer, intent(out) :: number(:)
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Make sure that number array is big enough to hold all obs in set
 if(size(number) < set%num_obs_defs) then
       call error_handler(E_ERR,'get_num_close_states', 'number array too small', source, revision, revdate)
@@ -302,6 +331,8 @@ implicit none
 
 type(obs_set_def_type), intent(inout) :: set
 type(obs_def_type), intent(in) :: obs_def
+
+if ( .not. module_initialized ) call initialize_module
 
 if(set%num_obs_defs == set%max_num_obs_defs) then
       call error_handler(E_ERR,'add_obs', 'no room for another obs_def', source, revision, revdate)
@@ -329,6 +360,8 @@ implicit none
 logical :: diag_obs_err_cov
 type(obs_set_def_type), intent(in) :: set
 
+if ( .not. module_initialized ) call initialize_module
+
 diag_obs_err_cov = .true.
 
 end function diag_obs_err_cov
@@ -347,6 +380,8 @@ integer, intent(in) :: file_id
 
 character(len=5) :: header
 integer :: num, i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Read the header for a set_def
 read(file_id, *) header
@@ -386,6 +421,8 @@ type(obs_set_def_type), intent(in) :: set
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 !write(*,*)'DEBUG(obs_set_def_mod:write_obs_set_def), fid/N is ', &
 !          file_id, set%num_obs_defs
 
@@ -419,6 +456,8 @@ integer, intent(in), optional :: num
 
 integer :: i
 
+if ( .not. module_initialized ) call initialize_module
+
 if(present(num)) then
    call od_get_seq_loc(set%obs_defs(num), obsloc0)
 endif
@@ -436,6 +475,8 @@ real(r8), intent(out) :: obsloc(:, :)
 real(r8) :: obsloc0(3)
 
 integer :: i
+
+   if ( .not. module_initialized ) call initialize_module
 
    do i = 1, set%num_obs_defs
       call od_get_obs_location4(set%obs_defs(i), obsloc0)
@@ -457,6 +498,8 @@ real(r8), intent(out) :: obskind(:)
 real(r8) :: obskind0
 
 integer :: i
+
+   if ( .not. module_initialized ) call initialize_module
 
    do i = 1, set%num_obs_defs
       call od_get_obs_kind4(set%obs_defs(i), obskind0)

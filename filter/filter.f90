@@ -19,8 +19,9 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    set_single_obs_value, get_num_close_states, get_close_states
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
-use    utilities_mod, only :  get_unit, open_file, close_file, &
-   check_nml_error, file_exist, error_handler, E_ERR
+use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
+                              check_nml_error, file_exist, error_handler, E_ERR, &
+                              logfileunit, initialize_utilities, finalize_utilities
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
@@ -126,7 +127,9 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
 ! Start of the routine
 !----------------------------------------------------------------
 
-! Initialize the assim_tools modeule
+call initialize_utilities
+call register_module(source,revision,revdate)
+write(logfileunit,*)'STARTING filter ...'
 call assim_tools_init()
 
 ! Begin by reading the namelist input
@@ -140,8 +143,7 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(iunit)
 endif
-
-write(*,*)'start_from_restart = ',start_from_restart
+write(logfileunit, nml=filter_nml)
 
 ! Now know the ensemble size; allocate all the storage
 write(*, *) 'the ensemble size is ', ens_size
@@ -296,7 +298,8 @@ else
 endif
 
 ! Temporary print of initial model time
-write(*, *) 'initial model time is '
+write(logfileunit, *) 'initial model time is '
+write(     *     , *) 'initial model time is '
 call print_time(ens_time(1))
 
 ! Advance the model and ensemble to the closest time to the next
@@ -593,6 +596,11 @@ if(get_median_reg) then
 endif
 
 !===========================================================
+
+write(logfileunit,*)'FINISHED filter.'
+write(logfileunit,*)
+
+call finalize_utilities ! closes the log file.
 
 contains
 

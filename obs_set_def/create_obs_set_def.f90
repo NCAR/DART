@@ -21,7 +21,8 @@ use      obs_def_mod, only : obs_def_type, init_obs_def, interactive_obs_def
 use  obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
    add_to_list, write_set_def_list, read_set_def_list
-use    utilities_mod, only : open_file
+use    utilities_mod, only : open_file, register_module, error_handler, E_MSG, E_WARN, E_ERR, &
+                             initialize_utilities, finalize_utilities, logfileunit
 use  assim_model_mod, only : static_init_assim_model, get_model_size
 
 implicit none
@@ -40,12 +41,11 @@ integer :: max_sets, num_obs
 integer :: i, j, obs_set_def_index, unit
 character(len = 129) :: file_name
 
-! Write program control information
-write(*,*)'create_obs_set_def attributes:'
-write(*,*)'   ',trim(adjustl(source))
-write(*,*)'   ',trim(adjustl(revision))
-write(*,*)'   ',trim(adjustl(revdate))
-write(*,*)'   '
+! Write program control information, once to logfile, once to stdout
+call initialize_utilities()
+write(logfileunit,*)'STARTING create_obs_set_def ...'
+
+call register_module(source, revision, revdate)
 
 ! Get output filename
 write(*, *) 'Input the filename for output of observation set_def_list? [set_def.out]'
@@ -61,26 +61,27 @@ read(*, *) max_sets
 set_def_list = init_set_def_list(max_sets)
 
 ! Loop through to get definitions for each set
-do i = 1, max_sets
+SetDefLoop : do i = 1, max_sets
+
    write(*, *) 'How many observations in set ', i
    read(*, *) num_obs
 
-! Initialize the obs_set_def
+   ! Initialize the obs_set_def
    obs_set_def = init_obs_set_def(num_obs)
 
-! Build a set of obs_defs and put them into an obs_set_def
+   ! Build a set of obs_defs and put them into an obs_set_def
    do j = 1, num_obs
-! Make calls to obs_def to define observations
+      ! Make calls to obs_def to define observations
       write(*, *) 'Defining observation ', j
       obs_def = interactive_obs_def()
-! Insert this obs_def into an obs_set
+      ! Insert this obs_def into an obs_set
       call add_obs(obs_set_def, obs_def)
    end do
 
-! Insert this obs_set_def into the list
+   ! Insert this obs_set_def into the list
    obs_set_def_index = add_to_list(set_def_list, obs_set_def)
 
-end do
+end do SetDefLoop
 
 ! write(*,*)'DEBUG(obs_set_def:create_obs_set_def): finished definition for each set'
 ! write(*,*)'DEBUG(obs_set_def:create_obs_set_def): opening file ',trim(adjustl(file_name))
@@ -102,5 +103,11 @@ close(unit)
 
 write(*, *)trim(adjustl(file_name)),' successfully created.'
 write(*, *)'Terminating normally.'
+
+write(logfileunit, *)trim(adjustl(file_name)),' successfully created.'
+write(logfileunit, *)'Terminating normally.'
+write(logfileunit, *)'FINISHED create_obs_set_def ...'
+write(logfileunit, *)
+call finalize_utilities()       ! gracefully closes logfile.
 
 end program create_obs_set_def

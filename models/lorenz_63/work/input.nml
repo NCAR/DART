@@ -1,3 +1,16 @@
+&utilities_nml
+   logfilename = "Filter.out",
+   TERMLEVEL = 1
+&end
+
+&model_nml
+   deltat = 0.01
+&end
+
+&assim_nml
+   binary_restart_files = .true.
+&end
+
 &perfect_model_obs_nml
    async = 0,
    obs_seq_in_file_name = "obs_seq.in",
@@ -28,11 +41,5 @@
    num_output_ens_members = 0,
    output_interval = 1
 &end
-&model_nml
-deltat = 0.01
-&end
 
-&assim_nml
-   binary_restart_files = .true.
-&end
 

@@ -12,8 +12,8 @@ module cov_cutoff_mod
 !
 
 use     types_mod, only : r8
-use utilities_mod, only : file_exist, open_file, check_nml_error, &
-                          close_file, error_handler, FATAL
+use utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                          register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 implicit none
 private
@@ -68,8 +68,9 @@ implicit none
 real(r8), intent(in) :: z_in, c
 real(r8)             :: comp_cov_factor
 
-real(r8) :: z, r
-integer  :: iunit, ierr, io
+real(r8)           :: z, r
+integer            :: iunit, ierr, io
+character(len=129) :: errstring
 
 z = abs(z_in)
 
@@ -77,10 +78,12 @@ z = abs(z_in)
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
 
+   call register_module(source, revision, revdate)
+
    namelist_initialized = .true.
 
    if(file_exist('input.nml')) then
-      iunit = open_file(file = 'input.nml', action = 'read')
+      iunit = open_file('input.nml', action = 'read')
       ierr = 1
 
       READBLOCK: do while(ierr /= 0)
@@ -91,6 +94,10 @@ if(.not. namelist_initialized) then
 
       call close_file(iunit)
    endif
+
+   call error_handler(E_MSG,'comp_cov_factor','namelist values are:',' ',' ',' ')
+   write(logfileunit,nml=cov_cutoff_nml)
+
 endif
 !---------------------------------------------------------
 
@@ -136,7 +143,7 @@ else if(select_localization == 1) then ! Standard Gaspari Cohn localization
 
 else ! Otherwise namelist parameter is illegal; this is an error
 
-     call error_handler(FATAL,'comp_cov_factor', &
+     call error_handler(E_ERR,'comp_cov_factor', &
               'Illegal value of "select_localization" in cov_cutoff_mod namelist', &
                source, revision, revdate )
 
