@@ -1,13 +1,24 @@
-function PlotEnsMeanTimeSeries(truth_file,diagn_file)
-% Plots time series of ensemble members, mean and truth
+function PlotEnsMeanTimeSeries(truth_file, diagn_file, state_var_inds)
+% PlotEnsMeanTimeSeries : plots time series of ensemble members, mean and truth 
 %
-% Example 1
-% truth_file = 'True_State.nc';
-% diagn_file = 'Prior_Diag.nc';
-% PlotEnsMeanTimeSeries(truth_file,diagn_file)
+% PlotEnsMeanTimeSeries is intended to be called by 'plot_ens_mean_time_series'
+%
+% USAGE:    PlotEnsMeanTimeSeries(truth_file, diagn_file, state_var_inds)
+%
+% truth_file      name of netCDF DART file with copy tagged 'true state'
+% diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
+%                 and 'ensemble spread'
+% state_var_inds  indices of state variables of interest. Each variable gets
+%                 plotted on its own axis.
+%
+% Example 1  (9variable model)
+%%-------------------------------------------------------------
+% truth_file     = 'True_State.nc';
+% diagn_file     = 'Prior_Diag.nc';
+% state_var_inds = [ 4 5 6 ];
+% PlotEnsMeanTimeSeries(truth_file, diagn_file, state_var_inds)
 
-if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
-if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
+% TJH Wed Jul  2 09:56:40 MDT 2003
 
 CheckModelCompatibility(truth_file, diagn_file)
 
@@ -68,16 +79,16 @@ switch lower(t.model)
 
    case 'lorenz_63'
 
-      % Use one figure with three subplots
-      clf
-      for j = 1:t.num_vars,
-            disp(sprintf('plotting model %s Variable %d ...',t.model,j))
+      % Use one figure with three(usually) subplots
+      figure(1); clf; iplot = 0;
+      for ivar = state_var_inds,
+            iplot = iplot + 1;
             % Get the truth for this variable
-            truth    = get_var_series(truth_file, truth_index, j);
-            ens_mean = get_var_series(diagn_file, ens_mean_index, j);
-            subplot(t.num_vars, 1, j);
+            truth    = get_var_series(truth_file, truth_index, ivar);
+            ens_mean = get_var_series(diagn_file, ens_mean_index, ivar);
+            subplot(length(state_var_inds), 1, iplot);
             plot(times,truth, 'b',times,ens_mean,'r')
-            title(sprintf('%s Variable %d of %s',t.model,j,diagn_file), ...
+            title(sprintf('%s Variable %d of %s',t.model,ivar,diagn_file), ...
                   'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',t.num_times))
             s = 'Ensemble Mean';
@@ -100,7 +111,25 @@ switch lower(t.model)
       zlabel('state variable 3')
 
    case 'lorenz_96'
-      disp('lorenz_96 not implemented yet.')
+      
+      % Plot all variables in own subplot ... might get cluttered.
+      figure(1); clf; iplot = 0;
+      for ivar = state_var_inds,
+            iplot = iplot + 1;
+            % Get the truth for this variable
+            truth    = get_var_series(truth_file, truth_index, ivar);
+            ens_mean = get_var_series(diagn_file, ens_mean_index, ivar);
+            subplot(length(state_var_inds), 1, iplot);
+            plot(times,truth, 'b',times,ens_mean,'r')
+            title(sprintf('%s Variable %d of %s',t.model,ivar,diagn_file), ...
+                  'interpreter','none','fontweight','bold')
+            xlabel(sprintf('model time (%d timesteps)',t.num_times))
+            s = 'Ensemble Mean';
+            legend('True State',s,0)
+            legend boxoff
+      end
 
    otherwise
+      error(sprintf('model %s unknown.',t.model))
+
 end

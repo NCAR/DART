@@ -1,13 +1,23 @@
-function PlotEnsErrSpread(truth_file,diagn_file, state_var_inds)
-% Plots summary plots of error and spread 
+function PlotEnsErrSpread(truth_file, diagn_file, state_var_inds)
+% PlotEnsErrSpread     Creates summary plots of error and spread 
 %
-% Example 1
-% truth_file = 'True_State.nc';
-% diagn_file = 'Prior_Diag.nc';
-% PlotEnsErrSpread(truth_file,diagn_file)
+% PlotEnsErrSpread is intended to be called by 'plot_ens_err_spread'.
+%
+% USAGE: EnsErrSpread(truth_file, diagn_file, state_var_inds)
+%
+% truth_file      name of netCDF DART file with copy tagged 'true state'
+% diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
+%                 and 'ensemble spread'
+% state_var_inds  indices of state variables of interest 
+%
+% Example 1   (Lorenz_96  model)
+%%--------------------------------------------------------
+% truth_file     = 'True_State.nc';
+% diagn_file     = 'Prior_Diag.nc';
+% state_var_inds = [ 3 4 36 39 22 ];
+% PlotEnsErrSpread(truth_file, diagn_file, state_var_inds)
 
-if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
-if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
+% TJH Wed Jul  2 08:51:50 MDT 2003
 
 CheckModelCompatibility(truth_file,diagn_file)
 

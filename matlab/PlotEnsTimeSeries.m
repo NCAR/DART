@@ -1,13 +1,23 @@
-function PlotEnsTimeSeries(truth_file,diagn_file)
-% Plots time series of ensemble members, mean and truth for 9 variable
+function PlotEnsTimeSeries(truth_file, diagn_file, state_var_inds )
+% PlotEnsTimeSeries: Plots time series of ensemble members, mean and truth.
 %
-% Example 1
-% truth_file = 'True_State.nc';
-% diagn_file = 'Posterior_Diag.nc';
-% PlotEnsTimeSeries(truth_file,diagn_file);
+% PlotEnsTimeSeries is intended to be called by 'plot_ens_time_series'
+%
+% USAGE: PlotEnsTimeSeries(truth_file, diagn_file, state_var_inds);
+%
+% truth_file      name of netCDF DART file with copy tagged 'true state'
+% diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
+%                 and 'ensemble spread'
+% state_var_inds  indices of state variables of interest
+%
+% Example 1 ( 9var model )
+%%--------------------------------------------------------
+% truth_file     = 'True_State.nc';
+% diagn_file     = 'Posterior_Diag.nc';
+% state_var_inds = [ 4 5 6 ];
+% PlotEnsTimeSeries(truth_file, diagn_file, state_var_inds);
 
-if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
-if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
+% TJH Wed Jul  2 09:56:40 MDT 2003
 
 CheckModelCompatibility(truth_file, diagn_file)
 
@@ -71,14 +81,15 @@ switch lower(t.model)
    case 'lorenz_63'
 
       % Use one figure with three subplots 
-      figure(1); clf
-      for j = 1:t.num_vars
+      figure(1); clf; iplot = 0;
+      for ivar = state_var_inds,
 
-            truth       = get_var_series(truth_file, truth_index, j);
-            ens_mean    = get_var_series(diagn_file, ens_mean_index, j);
-            ens_members = get_ens_series(diagn_file, j);  % all members
+            truth       = get_var_series(truth_file, truth_index, ivar);
+            ens_mean    = get_var_series(diagn_file, ens_mean_index, ivar);
+            ens_members = get_ens_series(diagn_file, ivar);  % all members
 
-            subplot(t.num_vars, 1, j);
+            iplot = iplot + 1;
+            subplot(length(state_var_inds), 1, iplot);
                % This is a bit wasteful, but we plot everything once to define
                % the color order for the legend and then again for visibility
                plot(times,      truth,'b','LineWidth',1.0); hold on;
@@ -90,10 +101,9 @@ switch lower(t.model)
                plot(times,   truth,'b','LineWidth',1.0); % plot again - on top
                plot(times,ens_mean,'r','LineWidth',1.0); %      again - on top
                title(sprintf('%s Variable %d Ensemble Members of %s',...
-                     t.model, j, diagn_file), ...
+                     t.model, ivar, diagn_file), ...
                      'interpreter','none','fontweight','bold')
                xlabel(sprintf('model time (%d timesteps)',t.num_times))
-           
       end
       % as a bonus, plot the mean attractors.
       figure(2); clf
@@ -111,7 +121,33 @@ switch lower(t.model)
       zlabel('state variable 3')
 
    case 'lorenz_96'
-      disp('lorenz_96 not implemented yet.')
+
+      % Use one figure with subplots 
+      figure(1); clf; iplot = 0;
+      for ivar = state_var_inds,
+
+            truth       = get_var_series(truth_file, truth_index, ivar);
+            ens_mean    = get_var_series(diagn_file, ens_mean_index, ivar);
+            ens_members = get_ens_series(diagn_file, ivar);  % all members
+
+            iplot = iplot + 1;
+            subplot(length(state_var_inds), 1, iplot);
+               % This is a bit wasteful, but we plot everything once to define
+               % the color order for the legend and then again for visibility
+               plot(times,      truth,'b','LineWidth',2); hold on;
+               plot(times,   ens_mean,'r','LineWidth',2);
+               plot(times,ens_members,'g');
+               legend('True State','Ensemble Mean', ...
+                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
+               legend boxoff
+               plot(times,   truth,'b','LineWidth',2); % plot again - on top
+               plot(times,ens_mean,'r','LineWidth',2); %      again - on top
+               title(sprintf('%s Variable %d Ensemble Members of %s',...
+                     t.model, ivar, diagn_file), ...
+                     'interpreter','none','fontweight','bold')
+               xlabel(sprintf('model time (%d timesteps)',t.num_times))
+      end
 
    otherwise
+      error(sprintf('model %s unknown.',t.model))
 end

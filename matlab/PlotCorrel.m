@@ -1,6 +1,23 @@
 function PlotCorrel(fname, base_var_index, base_time)
-% Plots space-time series of correlation between a given variable at a given
-% time and all other variable at all times in an ensemble time sequence.
+% PlotCorrel   space-time series of correlation between a variable at a given
+% time and all variables at all times in an ensemble time sequence.
+%
+% PlotCorrel is intended to be called by 'plot_correl'.
+%
+% USAGE: PlotCorrel(fname, base_var_index, base_time)
+%
+% fname             name of netCDF file containing a DART ensemble
+% base_var_index    index of state variable used as standard in correlation
+% base_time         index of time series to use as the standard for correlation
+%
+% Example 1   (9var model with 1000 time steps)
+%%------------------------------------------------------------------
+% fname          = 'Prior_Diag.nc';
+% base_var_index = 5;                           % picked arbitrarily
+% base_time      = 238;                         % ditto
+% PlotCorrel(fname, base_var_index, base_time)  % generates a plot
+
+% TJH Wed Jul  2 08:39:46 MDT 2003
 
 if (exist(fname) ~= 2), error(sprintf('%s does not exist.',fname)), end
 
@@ -12,20 +29,13 @@ num_times  = ncsize(f{'time'}); % determine # of output times
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
 close(f)
 
-% disp(sprintf('PlotCorrel: fname is %s',fname))
-% disp(sprintf('PlotCorrel: base_var_index is %d',base_var_index))
-% disp(sprintf('PlotCorrel: base_time      is %d',base_time))
-% disp(sprintf('PlotCorrel: num_vars is %d',num_vars))
-
 % The Base Variable Index must be a valid state variable
-
 if ( base_var_index > num_vars )
    disp( sprintf('%s only has %d state variables', fname, num_vars))
    error(sprintf('you wanted variable # %d ', base_var_index))
 end
 
 % The Time must be within range also.
-
 if ( base_time > num_times )
    disp( sprintf('%s only has %d output times', fname, num_times))
    error(sprintf('you wanted time # %d ', base_time))
@@ -63,5 +73,3 @@ colorbar
 
 hold on;
 plot(base_time,base_var_index,'kh','MarkerSize',12,'MarkerFaceColor','k')
-
-% Y = { '\tt 1', '\tt 2', '\bf 3', '\tt 4', '\tt 5', '\tt 6', '\tt 7', '\tt 8', '\tt 9'}; set(gca,'YTickLabel',Y);

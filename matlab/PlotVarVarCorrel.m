@@ -1,6 +1,26 @@
 function PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
 % Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.
+% The correlation is done across ensemble members.
+%
+% PlotVarVarCorrel is intended to be called by 'plot_var_var_correl'
+%
+% USAGE: PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
+%
+% fname
+% base_var_index    index of one of the state variables to correlate  
+% base_time         index of the time of interest (timestep)
+% state_var_index   index of the other state variable of interest.
+%
+% Example  (lorenz 63 model with 1000 timesteps)
+%%--------------------------------------------------------
+% fname = 'Posterior_Diag.nc';
+% base_var_index    = 2;
+% base_time         = 500;
+% state_var_index   = 1;
+% PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
+
+% TJH Wed Jul  2 09:52:18 MDT 2003
 
 if (exist(fname) ~= 2), error(sprintf('%s does not exist.',fname)), end
 

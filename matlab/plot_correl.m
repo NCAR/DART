@@ -24,3 +24,5 @@ disp(sprintf('Correlating state variable %d at time %d.', ...
               base_var_index, base_time))
 
 PlotCorrel(diagn_file, base_var_index, base_time)
+
+clear vars inputstring

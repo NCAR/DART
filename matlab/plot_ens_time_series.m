@@ -21,7 +21,15 @@ if (exist('diagn_file') ~=1)
 end
 
 CheckModelCompatibility(truth_file, diagn_file)
+vars = CheckModel(truth_file);   % also gets default values for this file.
 
 disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
+disp(['using variables ',num2str(vars.def_state_vars)])
 
-PlotEnsTimeSeries(truth_file,diagn_file)
+% here's where the "if you don't like these values, input something else"
+% block should go ...
+% vars.def_state_vars = [ 1 2 3 34 35 18];
+
+PlotEnsTimeSeries(truth_file, diagn_file, vars.def_state_vars)
+clear vars
+

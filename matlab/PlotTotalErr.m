@@ -1,13 +1,25 @@
-function PlotTotalErr(truth_file,diagn_file)
-% Plots summary plots of global error and spread
+function PlotTotalErr(truth_file, diagn_file)
+% PlotTotalErr Plots summary plots of global error and spread
+%
+% The error is a measure of the distance between the 
+% 'ensemble mean' and the 'true_state'. The distance of the 
+% spread is also plotted.
+%
+% PlotTotalErr is intended to be called by 'plot_total_err'
+%
+% USAGE: PlotTotalErr(truth_file, diagn_file)
+%
+% truth_file      name of netCDF DART file with copy tagged 'true state'
+% diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
+%                 and 'ensemble spread'
 %
 % Example 1
+%%--------------------------------------------------------
 % truth_file = 'True_State.nc';
 % diagn_file = 'Posterior_Diag.nc';
-% PlotTotalErr(truth_file,diagn_file);
+% PlotTotalErr(truth_file,diagn_file)
 
-if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
-if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
+% TJH Wed Jul  2 09:56:40 MDT 2003
 
 CheckModelCompatibility(truth_file, diagn_file)
 
@@ -39,33 +51,11 @@ times = getnc(truth_file,'time');
 
 switch lower(t.model)
 
-   case '9var'
+   case 'MysteryModel'
 
-      % Get the appropriate netcdf variables
-      truth  = get_state_copy(truth_file,     truth_index);
-      ens    = get_state_copy(diagn_file,  ens_mean_index);
-      spread = get_state_copy(diagn_file,ens_spread_index);
+      disp(sprintf('unknown model %s -- doing nothing',t.model))
 
-      % Also need to compute the spread; zero truth for this and 
-      % compute distance from 0
-      err        = total_err(truth, ens);
-      err_spread = total_err(zeros(size(spread)), spread);
-      errTotal   = sum(err);
-      spreadTotal= sum(err_spread);
-      string1 = ['Ensemble Mean Total Error \Sigma = ' num2str(errTotal)];
-      string2 = ['Ensemble Spread Total Error \Sigma = ' num2str(spreadTotal)];
-
-      clf;
-      plot(times,err, 'b', times,err_spread, 'r');
-      legend(string1,string2,0)
-      legend boxoff
-      title(sprintf('%s Total Error over all %d variables for %s',...
-                    t.model, d.num_vars, diagn_file), ...
-            'interpreter','none','fontweight','bold')
-      xlabel(sprintf('model time (%d timesteps)',t.num_times))
-      ylabel('Error')
-
-   case 'lorenz_63'
+   otherwise
 
       % Get the appropriate netcdf variables
       truth  = get_state_copy(truth_file,     truth_index);
@@ -91,9 +81,4 @@ switch lower(t.model)
       xlabel(sprintf('model time (%d timesteps)',t.num_times))
       ylabel('Total Error')
 
-   case 'lorenz_96'
-      disp('lorenz_96 not implemented yet.')
-
-   otherwise
-      error(sprintf('model %s unknown.',t.model))
 end

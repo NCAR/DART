@@ -1,23 +1,38 @@
-function objh = PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
-% Plots time series of ensemble members, mean and truth
+function PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
+% PlotPhaseSpace: Plots trajectories of 3 variables for any ensemble member
 %
-% Example 1
-% fname = 'True_State.nc';
-% ens_mem_id = 1;
-% var1 = 1;
-% var2 = 2;
-% var3 = 3;
-% ltype = 'b-';
-% PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
-% hold on
-% fname = 'Prior_Diag.nc';
-% ens_mem_id = 3;
-% var1 = 1;
-% var2 = 2;
-% var3 = 3;
-% ltype = 'r-';
+% PlotPhaseSpace is intended to be called by 'plot_phase_space'
+%
+% USAGE: PlotPhaseSpace(fname, ens_mem_id, var1, var2, var3, ltype)
+%
+% fname        name of netCDF DART file
+% ens_mem_id   ensemble member ID (or, if you prefer, copy #)
+% var1         ID of state variable to plot as 'X'
+% var2         ID of state variable to plot as 'Y'
+% var3         ID of state variable to plot as 'Z'
+% ltype        line type (see 'help plot' for details)
+%
+% Example 1   ( 9 variable model )
+%%--------------------------------------------------------
+% fname      = 'True_State.nc';
+% ens_mem_id = 1;    % true state only has 1 ens mem ...
+% var1       = 3;    
+% var2       = 6;
+% var3       = 7;
+% ltype      = 'b-'; % solid blue line
 % PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
 %
+% that worked so well, lets overlay another (using the same state variables)
+%
+% hold on;    
+% fname      = 'Prior_Diag.nc';
+% ens_mem_id = 8;               % why not?
+% ltype      = 'r:';            % plot it in a red 'dotted' line
+% PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
+%
+% note the legend has both lines annotated.
+
+% TJH Wed Jul  2 09:28:08 MDT 2003
 
 if ( exist(fname) ~= 2 ), error(sprintf('file %s does not exist.',fname)), end
 

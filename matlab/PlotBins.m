@@ -1,11 +1,22 @@
 function PlotBins(truth_file, diagn_file, state_var_inds)
-
-% Plots ensemble rank histograms for several low-order models
+% PlotBins Plots rank histograms of ensemble mean
 %
-% Example 1
+% PlotBins is intended to be called by 'plot_bins'.
+%
+% USAGE: PlotBins(truth_file, diagn_file, state_var_inds)
+%
+% truth_file      name of netCDF DART file with copy tagged 'true state'
+% diagn_file      name of netCDF DART file with copy tagged 'ensemble mean'
+% state_var_inds  indices of state variables of interest
+%
+% Example 1 (Lorenz_96  model)
+%%-------------------------------------------------------- 
 % truth_file = 'True_State.nc';
 % diagn_file = 'Prior_Diag.nc';
-% PlotBins(truth_file,diagn_file);
+% state_var_inds = [ 3 4 36 39 22 ];
+% PlotBins(truth_file, diagn_file, state_var_inds);
+
+% Wed Jul  2 09:56:40 MDT 2003
 
 CheckModelCompatibility(truth_file,diagn_file)
 
