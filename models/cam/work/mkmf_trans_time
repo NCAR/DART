@@ -4,5 +4,7 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-../../../mkmf/mkmf -p trans_time -t ../../../mkmf/mkmf.template \
--c "-Duse_netCDF" -a "../../.." path_names_trans_time
+# $Id$
+#
+../../../mkmf/mkmf -p trans_time -t ../../../mkmf/mkmf.template -c "-Duse_netCDF" \
+ -a "../../.." path_names_trans_time
