@@ -940,13 +940,25 @@ real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: loctype
 real(r8),           intent(out) :: obs_vals
-integer,  optional, intent(out) :: istatus
-real(r8), optional, intent(out) :: rstatus
+integer,  optional, intent(out) :: istatus 
+real(r8), optional, intent(out) :: rstatus 
+real(r8)                        :: rstat
+integer                         :: istat
+
+! FOR GUAM; istatus and rstatus are not optional; they must be defined
+!           rather than defining in each model, define them here, and
+!           allow model_interpolate to overwrite them
+!
+istat=0
+rstat=0.0_r8
 
 if(present(rstatus)) then
-   call model_interpolate(x, location, loctype, obs_vals, istatus, rstatus)
+   call model_interpolate(x, location, loctype, obs_vals, istat, rstat)
+   istatus = istat
+   rstatus = rstat
 elseif(present(istatus)) then
-   call model_interpolate(x, location, loctype, obs_vals, istatus)
+   call model_interpolate(x, location, loctype, obs_vals, istat)
+   istatus = istat
 else
    call model_interpolate(x, location, loctype, obs_vals)
 endif

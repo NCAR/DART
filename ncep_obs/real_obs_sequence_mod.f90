@@ -32,7 +32,8 @@ implicit none
 private
 
 ! Public interfaces for obs sequences
-public  real_obs_sequence
+!kdr orig; public  real_obs_sequence
+public  real_obs_sequence, obs_model_type
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -164,7 +165,7 @@ obsloop:  do i = 1, max_num_obs
     obs_prof = count/1000000
     obs_kind = obs_prof*10000 + type 
 
-    call what_obs_model_type(obs_kind, basic_type)
+    call obs_model_type(obs_kind, basic_type)
 
     if (basic_type == 1 .or. basic_type ==2 .or. basic_type ==4 ) then      ! for u,v,t
      vloc = lev*100.0            ! (transfer Pressure coordinate from mb to Pascal)                          
@@ -293,7 +294,7 @@ end subroutine real_obs_def
 
 !----------------------------------------------------------------
 
-subroutine what_obs_model_type(kind, basic_type)
+subroutine obs_model_type(kind, basic_type)
 !-------------------------------------------------------------------------
   implicit none
 
@@ -303,13 +304,18 @@ subroutine what_obs_model_type(kind, basic_type)
 
   if ( .not. module_initialized ) call initialize_module
 
-    obs_prof = kind/10000
-    if(obs_prof == 2) basic_type = 1         !! the model obs types
-    if(obs_prof == 9) basic_type = 2
-    if(obs_prof == 3) basic_type = 3
-    if(obs_prof == 1) basic_type = 4
+    if (kind < 10000) then
+       basic_type = kind
+       return
+    else
+       obs_prof = kind/10000
+       if(obs_prof == 2) basic_type = 1         !! the model obs types
+       if(obs_prof == 9) basic_type = 2
+       if(obs_prof == 3) basic_type = 3
+       if(obs_prof == 1) basic_type = 4
+    endif
 
-end subroutine what_obs_model_type
+end subroutine obs_model_type
 
 
 end module real_obs_sequence_mod

@@ -16,7 +16,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, get_obs_values, init_obs, assignment(=), &
-   get_num_copies, static_init_obs_sequence, get_qc, set_qc, get_num_qc
+   get_num_copies, static_init_obs_sequence, get_qc, get_num_qc, set_qc
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod, only : time_type, get_time, set_time, print_time, &
                              operator(/=), operator(>)
@@ -60,6 +60,7 @@ type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: model_size, num_obs_sets
 integer :: grp_size, grp_bot, grp_top, group
 real(r8) :: reg_factor
+real(r8) :: bias_ratio
 real(r8), allocatable :: sum_reg_factor(:, :), reg_factor_series(:, :, :)
 real(r8), allocatable :: regress(:), a_returned(:), obs_vals(:)
 
@@ -80,7 +81,7 @@ real(r8), allocatable  :: obs_err_cov(:), obs(:), qc(:)
 real(r8)               :: cov_factor, obs_mean(1), obs_spread(1)
 character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
 
-logical :: interf_provided, out_of_range, is_there_one, is_this_last
+logical :: interf_provided, out_of_range, is_there_one, is_this_last, qc_good
 
 ! Set a reasonable upper bound on number of close states, will be increased if needed
 integer, parameter    :: first_num_close = 100000
@@ -107,6 +108,7 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: confidence_slope = 0.0_r8
+real(r8) :: outlier_threshold = 5.0_r8
 logical  :: get_mean_reg = .false., get_median_reg = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
@@ -129,7 +131,7 @@ namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_state_members, num_output_obs_members, output_interval, &
-   num_groups, confidence_slope, get_mean_reg, get_median_reg
+   num_groups, confidence_slope, outlier_threshold, get_mean_reg, get_median_reg
 
 !----------------------------------------------------------------
 ! Start of the routine
@@ -143,10 +145,6 @@ call assim_tools_init()
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
-
-! Initialize the observation type variables
-call init_obs(observation, 0, 0) 
-call init_obs(next_obs, 0, 0)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -179,7 +177,14 @@ if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
 ! Read in with enough space for diagnostic output values
 call read_obs_seq(obs_sequence_in_name, num_obs_copies, 0, 0, seq)
 
- in_obs_copy = get_num_copies(seq) - num_obs_copies
+! Get num of obs copies and num_qc
+num_qc = get_num_qc(seq)
+in_obs_copy = get_num_copies(seq) - num_obs_copies
+
+! Create two observation type temporaries for use in filter
+call init_obs(observation, get_num_copies(seq), num_qc)
+call init_obs(next_obs, get_num_copies(seq), num_qc)
+
 
 ! Count of number of sets in the sequence
 num_obs_sets = get_num_times(seq)
@@ -285,8 +290,6 @@ call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
 ! Get the time of the first observation in the sequence
 is_there_one = get_first_obs(seq, observation)
 
-num_qc = get_num_qc(seq)
-
 ! Test for no data at all here?
 call get_obs_def(observation, obs_def)
 next_time = get_obs_def_time(obs_def)
@@ -386,14 +389,24 @@ AdvanceTime : do i = 1, num_obs_sets
       obs_err_cov(j) = get_obs_def_error_variance(obs_def)
 
 ! Each ensemble member
+      qc_good = .true.
       do k = 1, ens_size
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
-         if(istatus == 1 ) qc(j) = 99.0_r8
+         call get_expected_obs(seq, keys(j:j), ens(k, :), obs_vals(k:k), istatus, rstatus(k:k,1:1))
+         if(istatus > 0 .and. qc_good) then
+            qc(j) = qc(j) + 100.0_r8
+            qc_good = .false.
+         endif
       enddo
 
 ! Compute observation prior ensemble mean
-      obs_mean(1) = sum(obs_vals) / ens_size
-      obs_spread(1) = sqrt(sum((obs_vals - obs_mean(1))**2) / (ens_size - 1))
+      if(qc_good) then
+         obs_mean(1) = sum(obs_vals) / ens_size
+         obs_spread(1) = sqrt(sum((obs_vals - obs_mean(1))**2) / (ens_size - 1))
+      else
+         obs_mean(1) = 0.
+         obs_spread(1) = 0.
+      endif
+    
 
 ! Output all of these that are required to the sequence file
       do k = 1, num_output_obs_members
@@ -407,8 +420,6 @@ AdvanceTime : do i = 1, num_obs_sets
       if(output_obs_ens_spread) &
          call set_obs_values(observation, obs_spread, prior_obs_spread_index)
 
-         if(qc(j) == 99.0_r8 ) call set_qc(observation, qc(j:j), 1)
-
 ! Finally store the prior observation space stuff for this observation into sequence
       call set_obs(seq, observation, keys(j))
    end do
@@ -420,8 +431,12 @@ AdvanceTime : do i = 1, num_obs_sets
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
-
-         if(istatus == 1) cycle Observations
+         if (istatus > 0) then
+            qc(j) = qc(j) + 200.0_r8
+            write(msgstring,*) 'skip obs for Xstatus,qc = ',istatus,rstatus(k:k,1:1),qc(j)
+            call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+            cycle Observations
+         endif
       end do
 
       ! Divide ensemble into num_groups groups
@@ -432,7 +447,14 @@ AdvanceTime : do i = 1, num_obs_sets
 
          ! Call obs_increment to do observation space
          call obs_increment(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
-            obs_err_cov(j), obs_inc(grp_bot:grp_top), confidence_slope, a_returned(group))
+            obs_err_cov(j), obs_inc(grp_bot:grp_top), confidence_slope, &
+            a_returned(group), bias_ratio)
+         ! qc; reject outliers
+         if (bias_ratio > outlier_threshold) then
+            obs_inc = 0.0
+            a_returned(group) = 1.0
+            qc(j) = qc(j) + 10.
+         endif
       end do Group1
 
       ! Getting close states for each scalar observation for now
@@ -443,10 +465,20 @@ AdvanceTime : do i = 1, num_obs_sets
          goto 222
       endif
 
-      do k = 1, ens_size
-         if (rstatus(k,1) /= 0.0_r8) num_close_ptr(1) = 0
-      end do
-      if (qc(j) /= 0.0_r8) num_close_ptr(1) = 0
+      ! test qc and rstatus to see whether to increment close model points.
+      if (qc(j) > 4.0_r8) then
+         num_close_ptr(1) = 0
+         write(msgstring, *) 'num_close_ptr = 0 for j,qc = ',j,qc(j)
+         call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+      else
+         do k = 1, ens_size
+            if (rstatus(k,1) /= 0.0_r8) then
+               num_close_ptr(1) = 0
+               write(msgstring, *) 'num_close_ptr = 0 for obs,ens_member,rstatus = ',j,k,rstatus(k,1)
+               call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+            endif
+         end do
+      endif
 
       write(msgstring, *) 'Variables updated for obs ',j,' : ',num_close_ptr(1)
       call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
@@ -488,7 +520,7 @@ AdvanceTime : do i = 1, num_obs_sets
    end do Observations
 
    ! Free up the storage for this obs set
-   deallocate(obs_err_cov, obs, qc)
+   deallocate(obs_err_cov, obs)
 
    ! Output posterior diagnostics
 
@@ -513,13 +545,24 @@ AdvanceTime : do i = 1, num_obs_sets
       call get_obs_from_key(seq, keys(j), observation)
 
 ! Each ensemble member
+      qc_good = .true.
       do k = 1, ens_size
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
+         call get_expected_obs(seq, keys(j:j), ens(k, :), obs_vals(k:k), istatus, rstatus(k:k,1:1))
+         if(istatus > 0 .and. qc_good) then
+            qc(j) = qc(j) + 400.0_r8
+            qc_good = .false.
+         endif
       enddo
 
 ! Compute observation posterior ensemble mean
-      obs_mean(1) = sum(obs_vals) / ens_size
-      obs_spread(1) = sqrt(sum((obs_vals - obs_mean(1))**2) / (ens_size - 1))
+      if(qc_good) then
+         obs_mean(1) = sum(obs_vals) / ens_size
+         obs_spread(1) = sqrt(sum((obs_vals - obs_mean(1))**2) / (ens_size - 1))
+      else
+         obs_mean(1) = 0.
+         obs_spread(1) = 0.
+      endif
+    
 
 ! Output all of these that are required to the sequence file
       do k = 1, num_output_obs_members
@@ -533,8 +576,16 @@ AdvanceTime : do i = 1, num_obs_sets
       if(output_obs_ens_spread) &
          call set_obs_values(observation, obs_spread, posterior_obs_spread_index)
 
+! THIS ASSUMES THAT QC VALUES FROM THE OBS_SEQ FILE ARE >= 0
+      if(qc(j) >= 100.0_r8 ) then
+         call set_qc(observation, qc(j:j), 1)
+         write(msgstring,*) 'calling set_qc = ',qc(j),' for obs ',j
+         call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+      endif
+
 ! Finally store the posterior observation space stuff for this observation into sequence
       call set_obs(seq, observation, keys(j))
+
    end do
 
 !--------------------------------------------------------------------
@@ -558,7 +609,7 @@ AdvanceTime : do i = 1, num_obs_sets
    next_time = get_obs_def_time(obs_def)
 
 ! Deallocate storage used for each set
-   deallocate(keys)
+   deallocate(keys,qc)
 
 end do AdvanceTime
 

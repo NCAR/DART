@@ -38,7 +38,8 @@ module model_mod
 
 use netcdf
 use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_time, print_time
+use time_manager_mod, only : time_type, set_time, print_time, set_calendar_type, &
+                             THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
 use     location_mod, only : location_type, get_location, set_location, &
@@ -590,9 +591,15 @@ end function get_model_size
 ! at some point.
 
 integer :: i, j, iunit, ierr, io
+! calendar types listed in time_manager_mod.f90
+integer :: calendar_type = GREGORIAN
 
 ! Register the module
 call register_module(source, revision, revdate)
+
+! setting calendar type
+! this information is NOT passed to CAM; it must be set in the CAM namelist
+call set_calendar_type(calendar_type)
 
 ! Reading the namelist input
 if(file_exist('input.nml')) then
@@ -951,44 +958,76 @@ endif
 ! Case 1: model level specified in vertical
 if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
-   val(1, 1) = get_val(x, lon_below, lat_below, nint(level), type)
-   val(1, 2) = get_val(x, lon_below, lat_above, nint(level), type)
-   val(2, 1) = get_val(x, lon_above, lat_below, nint(level), type)
-   val(2, 2) = get_val(x, lon_above, lat_above, nint(level), type)
+   if(present(rstatus)) then
+      call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, istatus, rstatus)
+      if (istatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, &
+          istatus, rstatus)
+      if (istatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, &
+          istatus, rstatus)
+      if (istatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, &
+          istatus, rstatus)
+   else if(present(istatus)) then
+      call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, istatus)
+      if (istatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, istatus)
+      if (istatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, istatus)
+      if (istatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, istatus)
+   else
+      call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type)
+      call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type)
+      call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type)
+      call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type)
+   endif
 
 else
 ! Case of pressure specified in vertical
-   val(1, 1) = get_val_pressure(x, lon_below, lat_below, pressure, type)
-   val(1, 2) = get_val_pressure(x, lon_below, lat_above, pressure, type)
-   val(2, 1) = get_val_pressure(x, lon_above, lat_below, pressure, type)
-   val(2, 2) = get_val_pressure(x, lon_above, lat_above, pressure, type)
+   if(present(rstatus)) then
+      call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, istatus, rstatus)
+      if (istatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, &
+          istatus, rstatus)
+      if (istatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, &
+          istatus, rstatus)
+      if (istatus /= 1) call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type, &
+          istatus, rstatus)
+   else if(present(istatus)) then
+      call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, istatus)
+      if (istatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, &
+          istatus)
+      if (istatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, &
+          istatus)
+      if (istatus /= 1) call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type, &
+          istatus)
+   else
+      call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type)
+      call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type)
+      call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type)
+      call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type)
+   endif
 endif
 
 ! if (pflag > 0) write(53,'(A,2F7.2/)') '  subsurface obs lat, lon = ',lat,lon
 
 ! Do the weighted average for interpolation
 !write(*, *) 'fracts ', lon_fract, lat_fract
-if (val(1,1) == -9.999E+30 .or. val(1,2) == -9.999E+30  .or.  &
-    val(2,1) == -9.999E+30 .or. val(2,2) == -9.999E+30) then
-   interp_val = -9.999E+30
-else
+! kdr Guam;
+! istatus   meaning                  return expected obs?   assimilate?
+! 0         obs and model are fine;  yes                    yes
+! 1         fatal problem;           no                     no
+! 2         exclude valid obs        yes                    no
+!
+if( (present(istatus) .and. istatus /= 1) .or. .not.present(istatus) ) then
    do i = 1, 2
       a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
    end do
    interp_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
-
-! kdr
-!if (interp_val > 500.) then
-!   WRITE(53,'(A,/I3,3F9.2,1p4E12.4)') 'type, lat_lon_lev, a1 a2 fract model_int'  &
-!        ,type,(lon_lat_lev(i),i=1,3) ,a(1),a(2),lat_fract,model_interpolate
-!endif
+else
+   interp_val = 0.
 endif
 
 end subroutine model_interpolate
 
 
 
-  function get_val_pressure(x, lon_index, lat_index, pressure, type)
+  subroutine get_val_pressure(val, x, lon_index, lat_index, pressure, type, istatus, rstatus)
 !=======================================================================
 ! function get_val_pressure(x, lon_index, lat_index, pressure, type)
 !
@@ -999,9 +1038,11 @@ end subroutine model_interpolate
 ! highest level pressure.
 
 
-real(r8) :: get_val_pressure
+real(r8) :: val
 real(r8), intent(in) :: x(:), pressure
 integer, intent(in) :: lon_index, lat_index, type 
+integer, optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
 real(r8) :: ps(1), pfull(1, num_levs), fraction
 type(location_type) :: ps_location
@@ -1009,24 +1050,44 @@ integer :: top_lev, bot_lev, i, k
 real(r8) :: bot_val, top_val, ps_lon
 
 ! Need to get the surface pressure at this point. Easy for A-grid.
-ps = get_val(x, lon_index, lat_index, -1, 3)
+if (present(rstatus)) then
+   !get_val does not return a value of istatus or rstatus yet.  Should it? then test here.
+   call get_val(ps(1), x, lon_index, lat_index, -1, 3, istatus, rstatus)
+else if (present(istatus)) then
+   call get_val(ps(1), x, lon_index, lat_index, -1, 3, istatus)
+else
+   call get_val(ps(1), x, lon_index, lat_index, -1, 3)
+endif
 
 ! Next, get the values on the levels for this ps
-! Kevin, you need to insert the appropriate call for you routine here
-! ps and pfull are currently 2 and 3D arrays to support Bgrid interface
-! I assume that you might want to change to a scalar and a 1D array?
-! call compute_pres_full(Dynam%Vgrid, ps, pfull)
 call plevs_cam (1, 1, ps, pfull)
 
 ! Interpolate in vertical to get two bounding levels
 
 if(pressure < pfull(1, 1) ) then
-   get_val_pressure = -9.999E+30
-else if(pressure < 20000.) then
-   get_val_pressure = -9.999E+30
+   if(present(istatus)) then
+      istatus = 1
+      if (present(rstatus)) rstatus = pfull(1, 1)
+   endif
+   val = 0.
 else if(pressure > pfull(1, num_levs)) then
-   get_val_pressure = -9.999E+30
+   if(present(istatus)) then
+      istatus = 1
+      if (present(rstatus)) rstatus = pfull(1, num_levs)
+   endif
+   val = 0.
 else
+   if(pressure < 20000.) then
+      if(present(istatus)) then
+         istatus = 2
+         if (present(rstatus)) rstatus = pressure
+      endif
+   else
+      if(present(istatus)) then
+         istatus = 0
+         if (present(rstatus)) rstatus = 0.
+      endif
+   endif
 ! Search down through pressures
    do i = 2, num_levs 
       if(pressure < pfull(1, i)) then
@@ -1037,12 +1098,22 @@ else
          goto 21
       endif
    end do
-21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
-   top_val = get_val(x, lon_index, lat_index, top_lev, type)
-   get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+
+21 if (present(rstatus)) then
+      !get_val does not return a value of istatus or rstatus yet.  Should it? then test here.
+      call get_val(bot_val, x, lon_index, lat_index, bot_lev, type, istatus, rstatus)
+      call get_val(top_val, x, lon_index, lat_index, top_lev, type, istatus, rstatus)
+   else if (present(istatus)) then
+      call get_val(bot_val, x, lon_index, lat_index, bot_lev, type, istatus)
+      call get_val(top_val, x, lon_index, lat_index, top_lev, type, istatus)
+   else
+      call get_val(bot_val, x, lon_index, lat_index, bot_lev, type)
+      call get_val(top_val, x, lon_index, lat_index, top_lev, type)
+   endif 
+   val = (1.0 - fraction) * bot_val + fraction * top_val
 end if
 
-end function get_val_pressure
+end subroutine get_val_pressure
 
 
 
@@ -1166,14 +1237,16 @@ end function get_val_pressure
 
 
 
-  function get_val(x, lon_index, lat_index, level, type)
+  subroutine get_val(val, x, lon_index, lat_index, level, type, istatus, rstatus)
 !=======================================================================
 ! function get_val(x, lon_index, lat_index, level, type)
 !
 
-real(r8) :: get_val
+real(r8) :: val
 real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, type
+integer, optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
 integer :: per_col, indx
 
@@ -1205,9 +1278,10 @@ else
    end if
 endif
    
-get_val = x(indx)
+val = x(indx)
 
-end function get_val
+
+end subroutine get_val
 
 
 
@@ -1302,14 +1376,14 @@ allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 ! Look for close grid points on the 
 call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
    num, lon_ind, lat_ind, close_dist)
-write(*, *) 'back from grid_close_states num = ', num
+! kdr write(*, *) 'back from grid_close_states num = ', num
 
 ! Compute size of grid storage for full levels
 hsize = num_lons * num_lats
 num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
 
 ! Add all variables in this column to the close list with this distance
-write(*, *) 'available space is size(indices) ', size(indices)
+! kdr write(*, *) 'available space is size(indices) ', size(indices)
 do i = 1, num
    col_base_index = ((lon_ind(i) - 1) * num_lats + lat_ind(i) - 1) * num_per_col
    do j = 1, num_per_col
@@ -1318,7 +1392,7 @@ do i = 1, num
       if(nfound <= size(dist)) dist(nfound) = close_dist(i)
    end do
 end do
-write(*, *) 'number at end is ', nfound
+! kdr write(*, *) 'number at end is ', nfound
 
 deallocate(lon_ind, lat_ind, close_dist)
 
