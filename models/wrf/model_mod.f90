@@ -12,7 +12,7 @@ module model_mod
 !-----------------------------------------------------------------------
 use time_manager_mod, only : time_type, set_time
 use location_mod    , only : location_type, get_location, set_location, get_dist, &
-                             LocationDims, LocationName, LocationLName
+                             LocationDims, LocationName, LocationLName, query_location
 use types_mod
 
 implicit none
@@ -26,8 +26,8 @@ public     get_model_size,                    &
            get_model_time_step,               &
            static_init_model,                 &
            model_get_close_states,            &
-           TYPE_MU, TYPE_T, TYPE_U, TYPE_V,    &
-           TYPE_W, TYPE_GZ,                   &
+           TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
+           TYPE_T, TYPE_MU,                   &
            TYPE_QV, TYPE_QC, TYPE_QR
 
 !  public stubs 
@@ -45,9 +45,10 @@ character(len=128) :: version = "$Id$"
 
 character(len=128) :: tag = "$Name$"
 
-character(len=128) :: &                                                                              
-   source = "$Source$", &                    
-   revision = "$Revision$", &                                                                 
+character(len=128) :: &
+
+   source = "$Source$", &
+   revision = "$Revision$", &
    revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
@@ -58,13 +59,32 @@ character(len=128) :: &
 
 ! Public definition of variable types
 
-integer, parameter :: TYPE_MU = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, &
-                      TYPE_W = 4,  TYPE_GZ = 5,                        &
-                      TYPE_QV = 6,  TYPE_QC = 7,  TYPE_QR = 8,         &
-                      TYPE_QI = 9,  TYPE_QS = 10, TYPE_QG = 11
+integer, parameter :: TYPE_U = 1, TYPE_V = 2, TYPE_W = 3, TYPE_GZ = 4, &
+                      TYPE_T = 5,  TYPE_MU = 6,                        &
+                      TYPE_QV = 7,  TYPE_QC = 8,  TYPE_QR = 9,         &
+                      TYPE_QI = 10,  TYPE_QS = 11, TYPE_QG = 12
 
 
 !-----------------------------------------------------------------------
+
+real (kind=r8), PARAMETER    :: gas_constant = 287.04_r8
+real (kind=r8), PARAMETER    :: gas_constant_v = 461.51_r8
+real (kind=r8), PARAMETER    :: cp = 1004.0_r8
+real (kind=r8), PARAMETER    :: t_kelvin = 273.15_r8
+real (kind=r8), PARAMETER    :: gamma = 1.4_r8
+
+real (kind=r8), PARAMETER    :: kappa = gas_constant / cp
+real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
+real (kind=r8), PARAMETER    :: rd_over_rv1 = 1.0 - rd_over_rv
+
+!  Earth constants:
+real (kind=r8), PARAMETER    :: gravity = 9.81_r8
+real (kind=r8), PARAMETER    :: earth_radius = 6378.15_r8
+INTEGER, PARAMETER           :: v_interp_p = 1, v_interp_h = 2
+real (kind=r8), PARAMETER    :: ts0 = 300.0_r8
+real (kind=r8), PARAMETER    :: ps0 = 100000.0_r8
+!
+
 !---- private data ----
 
 TYPE wrf_static_data_for_dart
@@ -72,7 +92,12 @@ TYPE wrf_static_data_for_dart
    integer :: bt, sn, we
 
    real :: p_top, dx, dy, dt
-   real, dimension(:), pointer :: dn, dnw
+
+   integer :: map_proj
+
+   real    :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1
+
+   real, dimension(:), pointer :: znu, dn, dnw
    integer :: n_moist
    real, dimension(:,:), pointer :: mub, latitude, longitude
    real, dimension(:,:), pointer :: mapfac_m, mapfac_u, mapfac_v
@@ -109,17 +134,19 @@ character (len = 80)      :: path
 
 integer :: status
 character (len=80) :: name
-logical, parameter :: debug = .false.
-integer :: var_id, ind, i
+logical, parameter :: debug = .false.  
+integer :: var_id, ind, i, map_proj 
 integer, dimension(5) :: count, start, stride, map
 real    :: zero_d(1)
 
 real :: dx, dy, dt
 
+real :: cen_lat, cen_lon, truelat1, truelat2
 real, dimension(:,:,:), pointer :: mub_test
 
 integer :: n_values
 
+real    :: theta1,theta2,cell,cell2,psx
 !----------
 
 mode = 0
@@ -146,7 +173,7 @@ if (status /= nf90_noerr) call handle_err(3,status)
 
 if(debug) write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 
-! get meta data adn static data we need
+! get meta data and static data we need
 
 count  = 1
 start  = 1
@@ -173,6 +200,64 @@ call netcdf_read_write_var( "P_TOP", ncid, var_id, zero_d,        &
 wrf%p_top = zero_d(1)
 if(debug) write(6,*) ' p_top is ',wrf%p_top
 
+status = nf90_get_att(ncid, nf90_global, 'MAP_PROJ', map_proj)
+
+if (status /= nf90_noerr) call handle_err(4,status)
+
+wrf%map_proj = map_proj
+
+if(debug) write(6,*) ' map_proj is ',map_proj
+status = nf90_get_att(ncid, nf90_global, 'CEN_LAT', cen_lat)
+
+wrf%cen_lat = cen_lat
+if(debug) write(6,*) ' cen_lat is ',wrf%cen_lat
+
+status = nf90_get_att(ncid, nf90_global, 'CEN_LON', cen_lon)
+
+wrf%cen_lon = cen_lon
+status = nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1)
+
+wrf%truelat1 = truelat1
+status = nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2)
+
+wrf%truelat2 = truelat2
+
+if(debug) write(6,*) ' truelat2 is ',wrf%truelat2
+
+      theta1 = (90.0 - wrf%truelat1)*deg2rad
+      theta2 = (90.0 - wrf%truelat2)*deg2rad
+      wrf%cone_factor = (log(sin(theta1)) - log(sin(theta2))) &
+                  / (log(tan(theta1*0.5)) - log(tan(theta2*0.5)))
+
+      write(unit=*, fmt='(2(a, e16.6))')'cone_factor  =', wrf%cone_factor  
+
+       IF (wrf%map_proj.EQ.1 .OR. wrf%map_proj.EQ.2) THEN
+          IF(wrf%cen_lat.LT.0)THEN 
+            wrf%psi1 = -(90.+wrf%truelat1)
+          ELSE
+            wrf%psi1 = 90.-wrf%truelat1            
+          ENDIF
+        ELSE
+          wrf%psi1 = 0.            
+        ENDIF
+        wrf%psi1 = deg2rad * wrf%psi1             
+        IF (wrf%map_proj.NE.3) THEN
+           psx = (90.0 - wrf%cen_lat)*deg2rad    
+           IF (wrf%map_proj.EQ.1) THEN
+              cell  = earth_radius*SIN(wrf%psi1)/wrf%cone_factor
+              cell2 = (TAN(psx/2.))/(TAN(wrf%psi1/2.))
+           ENDIF
+           IF (wrf%map_proj.EQ.2) THEN
+              cell  = earth_radius*SIN(psx)/wrf%cone_factor
+              cell2 = (1. + COS(wrf%psi1))/(1. + COS(psx))
+           ENDIF
+          wrf%ycntr = - cell*(cell2)**wrf%cone_factor
+        ENDIF
+! -----FOR MERCATOR PROJECTION, THE PROJECTION IS TRUE AT LAT AT PHI1
+        IF (wrf%map_proj.EQ.3) THEN
+         cell      = COS(wrf%cen_lat*deg2rad)/(1.0+SIN(wrf%cen_lat*deg2rad))
+         wrf%ycntr = - earth_radius*COS(wrf%psi1)* log(cell)
+        ENDIF
 
 wrf%n_moist = 3  ! hardwired for now, need a way to find this
 
@@ -184,6 +269,12 @@ call netcdf_read_write_var( "DN",ncid, var_id, wrf%dn,        &
                             start, count, stride, map, 'INPUT ', debug, 2  )
 if(debug) write(6,*) ' dn ',wrf%dn
 
+count(1)  = wrf%bt
+allocate(wrf%znu(1:wrf%bt))
+call netcdf_read_write_var( "ZNU",ncid, var_id, wrf%znu,        &
+                            start, count, stride, map, 'INPUT ', debug, 2  )
+if(debug) write(6,*) ' znu is ',wrf%znu
+!
 count(1)  = wrf%bt
 allocate(wrf%dnw(1:wrf%bt))
 call netcdf_read_write_var( "DNW",ncid, var_id, wrf%dnw,        &
@@ -341,13 +432,9 @@ if (status /= nf90_noerr) call handle_err(4,status)
   wrf%model_size = wrf%var_index(2,wrf%number_of_wrf_variables)
   write(6,*) ' wrf model size is ',wrf%model_size
 
-! we're finished here
-
-!**********************************************************************
-
 end subroutine static_init_model
 
-!****************************1***********************************
+!**********************************************************************
 
 subroutine handle_err(ifn,status)
 use netcdf
@@ -457,7 +544,7 @@ logical :: var_found
 real    :: lon, lat, lev
 
 integer :: i, number_of_wrf_variables
-logical, parameter :: debug = .false.
+logical, parameter :: debug = .false.  
 
 if(debug) then
   write(6,*) ' in get_state_meta_data '
@@ -562,8 +649,8 @@ var_found = .false.
    lev = float(kp)
 
    if(debug) write(6,*) 'lon, lat, lev: ',lon, lat, lev
-
-   location = set_location(lon, lat, lev)
+          
+   location = set_location(lon, lat, lev, 1)
 
    if(present(var_type)) var_type = var_type_out
 
@@ -571,43 +658,120 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-function model_interpolate(x, location, type)
+function model_interpolate(x, location, obs_kind)
 !!!function model_interpolate(x, lon, lat, level, type)
 
 implicit none
 
-!!! EVENTUALLY NEED TO DO SOMETHING WITH TYPE; BUT FOR NOW THIS JUST FINDS
-!!! THE HORIZONTAL PART OF THE INTPERPOLATION??? SHOULD ARGUMENT BE A HYBRID
-!!! LOCATION TYPE VARIABLE HERE???
-
+logical, parameter :: debug = .false.  
 real :: model_interpolate
 real, intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer, intent(in) :: obs_kind
+real (r8)           :: xloc, yloc, zloc, xyz_loc(3)
+integer             :: i, j, k, i1,i2,i3
+real                :: dx,dy,dxm,dym
+real(r8), dimension (wrf%bt)   :: v_h, v_p
+real(r8), dimension (wrf%bt  ) :: fld
+real(r8)                       :: p1,p2,p3,p4,a1
 
-write(6,*) ' need to build function interpolate '
-write(6,*) ' error step '
-stop
+xyz_loc(:) = get_location(location)
+call llxy(xyz_loc(1),xyz_loc(2),xloc,yloc)
+call toGrid(xloc,wrf%we,i,dx,dxm)
+call toGrid(yloc,wrf%sn,j,dy,dym)
+!  get model pressure profile
+call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_p,p1,p2,p3,p4)
+!  get model height profile
+call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_h)
 
-model_interpolate = 0.
+  if(nint(query_location(location,'which_vert')) == 1) then
+
+!  If obs is by level
+     zloc = xyz_loc(3)
+     if(debug) print*,' obs is by location and zloc =',zloc
+  else if(nint(query_location(location,'which_vert')) == 2) then
+     ! get pressure vertical co-ordinate
+     call to_zk(xyz_loc(3), v_p, wrf%bt, v_interp_p,zloc) 
+     if(debug.and.obs_kind /=3) print*,' obs is by pressure and zloc =',zloc
+!     print*,'model pressure profile'
+!     print*,v_p
+  else if(nint(query_location(location,'which_vert')) == 3) then
+     ! get height vertical co-ordinate
+     call to_zk(xyz_loc(3), v_h, wrf%bt, v_interp_h,zloc) 
+     if(debug) print*,' obs is by height and zloc =',zloc
+  else if(nint(query_location(location,'which_vert')) == -1) then
+     ! get height vertical co-ordinate
+     if(debug) print*,' obs is surface pressure   = ', xyz_loc(3)
+  else
+     print*,' wrong option for which_vert'
+     stop
+
+  end if
+! Get the desired field to be interpolated
+ if( obs_kind == 1 ) then                 ! U
+  do k=1,wrf%bt
+     i1 = get_wrf_index(i,j,k,TYPE_U)   
+     i2 = get_wrf_index(i,j+1,k,TYPE_U)   
+    
+     fld(k) = dym*(dxm*(x(i1) + x(i1+1))*.5 + dx*(x(i1+1)+x(i1+2))*0.5) + &
+               dy*(dxm*(x(i2) + x(i2+1))*.5 + dx*(x(i2+1)+x(i2+2))*0.5)     
+!     if(debug) print*,k,' model u profile ',fld(k)
+  end do 
+ else if( obs_kind == 2) then                 ! V
+  do k=1,wrf%bt
+     i1 = get_wrf_index(i,j,k,TYPE_V) 
+     i2 = get_wrf_index(i,j+1,k,TYPE_V) 
+     i3 = get_wrf_index(i,j+2,k,TYPE_V) 
+!
+     fld(k) = dym*(dxm*(x(i1) + x(i2))*.5 + dx*(x(i1+1)+x(i2+1))*0.5) + &
+               dy*(dxm*(x(i2) + x(i3))*.5 + dx*(x(i2+1)+x(i3+1))*0.5)     
+     if(debug) print*,k,' model v profile ',fld(k)
+  end do 
+ else if( obs_kind == 4 ) then                ! T  
+  do k=1,wrf%bt
+     i1 = get_wrf_index(i,j,k,TYPE_T) 
+     i2 = get_wrf_index(i,j+1,k,TYPE_T) 
+     a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+     fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
+     if(debug) print*,k,' model temp profile ',fld(k)
+  end do 
+ else if( obs_kind == 5) then                ! Q
+  do k=1,wrf%bt
+
+     i1 = get_wrf_index(i,j,k,TYPE_QV)   
+     i2 = get_wrf_index(i,j+1,k,TYPE_QV)   
+     a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+     fld(k) = a1 /(1.0 + a1)      
+     if(debug) print*,k,' model q profile ',fld(k)
+  end do 
+! Do 1D interpolation
+ else if( obs_kind == 3)then
+!  surfacce pressure
+  model_interpolate = wrf%p_top                                  +&
+                     dym*(dxm*wrf%mub(i,j)+dx*wrf%mub(i+1,j))    +&
+                     dy *(dxm*wrf%mub(i,j+1)+dx*wrf%mub(i+1,j+1))+&
+                     dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
+  if(debug) print*,' for sfc model val =',model_interpolate
+ else
+  print*,'Do not know what to do for this observation kind type ',obs_kind
+  stop
+ end if
+  if(obs_kind /= 3) call Interp_lin_1D(fld, wrf%bt, zloc, model_interpolate)
+if(debug) print*,' interpolated value= ',model_interpolate
 
 end function model_interpolate
 
 !#######################################################################
 
-function get_val(x, lon_index, lat_index, level, type)
+function get_val(x, lon_index, lat_index, level, obs_kind)
 
 implicit none
 
 real :: get_val
 real, intent(in) :: x(:)
-integer, intent(in) :: lon_index, lat_index, level, type
+integer, intent(in) :: lon_index, lat_index, level, obs_kind
 
-write(6,*) ' need to build function get_val '
-write(6,*) ' error step '
-stop
-
-get_val = 0.
+get_val = x(get_wrf_index(lon_index,lat_index,level,obs_kind))
 
 end function get_val
 
@@ -648,7 +812,6 @@ max_size = wrf%we*wrf%sn + (wrf%we+1)*wrf%sn + wrf%we*(wrf%sn+1)
 allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 
 ! Look for close grid points on the horizontal grid (2D)
-
 call grid_close_states( o_loc, wrf%latitude, wrf%longitude, radius,  &
                         num, lon_ind, lat_ind, close_dist, u_pts, v_pts, p_pts )
 
@@ -861,7 +1024,7 @@ integer :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 
 integer :: i, j, n, m
 real(r8), parameter :: r_earth = 6.37e+06 ! earth radius in meters
-logical, parameter :: debug=.false.
+logical, parameter :: debug= .false.  
 
 type(location_type) :: loc
 
@@ -883,11 +1046,10 @@ if(debug) write(6,*) ' observations long and lat ',o_lon,o_lat
 
 n = size( lat, 1 )
 m = size( lat, 2 )
-
 !<<<alain
 
 !===alainrad = (o_lon-lon(1,1))**2 + (o_lat-lat(1,1))**2
-rad = get_dist_wrf(1,1,0, type_t, o_loc)
+ rad = get_dist_wrf(1,1,0, type_t, o_loc)
 i_closest = 1
 j_closest = 1
 
@@ -1031,7 +1193,6 @@ real :: long, lat, lev
 
 
 !  get distance for input var_type
-
    if(var_type == type_u) then
 
      if (i == 1) then
@@ -1068,9 +1229,7 @@ real :: long, lat, lev
 
       long = wrf%longitude(i,j)
       lat = wrf%latitude(i,j)
-
    end if
-
    if( (var_type == type_w ) .or. &
         (var_type == type_gz) .or. &
         (var_type == type_mu)     ) then
@@ -1087,7 +1246,7 @@ real :: long, lat, lev
 
    if (long > 360.0_r8) long = long - 360.0
 
-   loc = set_location(long,lat,lev)
+   loc = set_location(long,lat,lev, 1)
    get_dist_wrf = get_dist(loc,o_loc)
 
    end function get_dist_wrf
@@ -1095,7 +1254,7 @@ real :: long, lat, lev
 !---------------------------------
 
 function nc_write_model_atts( ncFileID ) result (ierr)
-!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! A. Caya May 7 2003
 !
@@ -1107,7 +1266,7 @@ implicit none
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
 
-!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: longDimID, latDimID, levDimID, MemberDimID
@@ -1115,21 +1274,21 @@ integer :: longVarID, latVarID, levVarID, StateVarID
 integer :: StateVarDimID, StateVarVarID, TimeDimID
 integer :: i
 
-!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
 ! and then put into define mode.
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 call check(nf90_Redef(ncFileID))
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! We need the dimension ID for the number of copies 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
 call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
@@ -1141,15 +1300,15 @@ if ( TimeDimID /= unlimitedDimId ) then
   stop
 endif
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
                         len=wrf%model_size, dimid = StateVarDimID))
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Write Global Attributes 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
@@ -1159,9 +1318,9 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "DY", wrf%dy))
 
 ! how about namelist input? might be nice to save ...
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Define the dimensions IDs
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_def_dim(ncid=ncFileID, name="west_east",   len = wrf%we, dimid = longDimID)) 
 call check(nf90_def_dim(ncid=ncFileID, name="south_north", len = wrf%sn, dimid = latDimID)) 
@@ -1171,9 +1330,9 @@ call check(nf90_def_dim(ncid=ncFileID, name="bottom_top",  len = wrf%bt,  dimid 
 ! call check(nf90_def_dim(ncid=ncFileID, name="locationrank", &
 !   len = LocationDims, dimid = LocationDimID))
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 ! Longitudes
 call check(nf90_def_var(ncFileID, name="west_east", xtype=nf90_double, &
@@ -1200,11 +1359,11 @@ call check(nf90_put_att(ncFileID, levVarID, "units", "???"))
 
 if ( output_state_vector ) then
 
-   !----------------------------------------------------------------------------
-   ! Create attributes for the state vector 
-   !----------------------------------------------------------------------------
+!-----------------------------------------------------------------
+! Create attributes for the state vector 
+!-----------------------------------------------------------------
 
-  ! Define the state vector coordinate variable
+! Define the state vector coordinate variable
    call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
               dimids=StateVarDimID, varid=StateVarVarID))
    call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
@@ -1226,9 +1385,9 @@ call check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"))
 call check(nf90_put_att(ncFileID, StateVarId, "QC_units","kg/kg"))
 call check(nf90_put_att(ncFileID, StateVarId, "QR_units","kg/kg"))
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Leave define mode so we can actually fill the variables.
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_enddef(ncfileID))
 
@@ -1237,9 +1396,9 @@ call check(nf90_enddef(ncfileID))
 
 endif
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Fill the variables
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_put_var(ncFileID, LongVarID, wrf%longitude(1:wrf%we,1) ))
 call check(nf90_put_var(ncFileID, LatVarID, wrf%latitude(1,1:wrf%sn) ))
@@ -1247,9 +1406,10 @@ call check(nf90_put_var(ncFileID, LatVarID, wrf%latitude(1,1:wrf%sn) ))
 call check(nf90_put_var(ncFileID,  levVarID, wrf%dn(1:wrf%bt) ))
 !call check(nf90_put_var(ncFileID,  levVarID, (/ (i,i=1,   wrf%bt) /) ))
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
+
 call check(nf90_sync(ncFileID))
 
 write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
@@ -1274,14 +1434,14 @@ end function nc_write_model_atts
 
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Writes the model-specific variables to a netCDF file
 ! TJH 25 June 2003
 !
 ! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
 ! return code is always '0 == normal', since the fatal errors stop execution.
-!                                                                                
-! There are two different (staggered) 3D grids being used simultaneously here. 
+
+! There are two different (staggered) 3D grids being used simultaneously here.
 ! The routines "prog_var_to_vector" and "vector_to_prog_var", 
 ! packs the prognostic variables into
 ! the requisite array for the data assimilation routines. That routine
@@ -1306,7 +1466,7 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 real, dimension(SIZE(statevec)) :: x
 !!$type(prog_var_type) :: Var
 
@@ -1319,12 +1479,12 @@ integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
 
 ierr = 0     ! assume normal termination
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Get the bounds for storage on Temp and Velocity grids
 ! ?JEFF why can't I use the components of the prog_var_type?  
 ! More precisely, why doesn't prog_var_type drag around the necessary
 ! indices instead of just the extents?
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 !!$tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
 !!$tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
@@ -1340,10 +1500,10 @@ ierr = 0     ! assume normal termination
 !!$nVelI   = vie - vis + 1
 !!$nVelJ   = vje - vjs + 1
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
 ! then get all the Variable ID's we need.
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 
@@ -1394,9 +1554,9 @@ call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimite
 !!$   endif
 !!$endif
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------
 
 write (*,*)'Finished filling variables ...'
 call check(nf90_sync(ncFileID))
@@ -1468,6 +1628,406 @@ implicit none
 real, intent(inout) :: x(:)
 
 end subroutine init_conditions
+!**********************************************
+subroutine llxy (xloni,xlatj,x,y)
+!-----------------------------------------------------------------
+!
+!                 ROUTINE LLXY
+!                **************
+!
+!
+! PURPOSE:  CALCULATES THE (X,Y) LOCATION (DOT) IN THE MESOSCALE GRIDS
+! -------   FROM LATITUDES AND LONGITUDES
+!
+!
+!  INPUT:
+!  -----
+!   XLAT:    LATITUDES
+!   XLON:    LONGITUDES
+!
+! OUTPUT:
+! -----
+!   X:        THE COORDINATE IN X (I)-DIRECTION.
+!   Y:        THE COORDINATE IN Y (J)-DIRECTION.
+!
+!-----------------------------------------------------------------
+   
+   implicit none
+   
+   real, intent(in)  :: xloni, xlatj
+   real, intent(out) :: x, y
+
+   real              :: dxlon
+   real              :: xlat, xlon
+   real              :: xx, yy, xc, yc
+   real              :: cell, psi0, psx, r, flp
+   real              :: centri, centrj
+   real              :: ds       
+   real              :: bb,c2
+   
+!-----------------------------------------------------------------
+   ds = 0.001 *wrf%dx
+   xlon = xloni
+   xlat = xlatj
+   xlat = max (xlat, -89.9999)
+   xlat = min (xlat, +89.9999)
+   
+!-----------------------------------------------------------------
+   c2 = earth_radius * COS(wrf%psi1)
+
+   if (wrf%map_proj == 3) then
+      xc = 0.0
+      yc = wrf%ycntr 
+
+      cell = cos(xlat*deg2rad)/(1.0+sin(xlat*deg2rad))
+      yy = -c2*alog(cell)
+      xx = c2*(xlon-wrf%cen_lon)*deg2rad
+
+   else
+
+      psi0 = ( 90.0 - wrf%cen_lat)*deg2rad
+      xc = 0.0
+
+!-----CALCULATE X,Y COORDS. RELATIVE TO POLE
+
+      dxlon = xlon - wrf%cen_lon
+      if (dxlon >  180) dxlon = dxlon - 360.
+      if (dxlon < -180) dxlon = dxlon + 360.
+   
+      flp = wrf%cone_factor*dxlon*deg2rad
+   
+      psx = ( 90.0 - xlat )*deg2rad
+   
+      if (wrf%map_proj == 2) then
+! ...... Polar stereographics:
+         bb = 2.0*(cos(wrf%psi1/2.0)**2)
+         yc = -earth_radius*bb*tan(psi0/2.0)
+          r = -earth_radius*bb*tan(psx/2.0)
+      else
+! ...... Lambert conformal:
+         bb = -earth_radius/wrf%cone_factor*sin(wrf%psi1)
+         yc = bb*(tan(psi0/2.0)/tan(wrf%psi1/2.0))**wrf%cone_factor
+          r = bb*(tan(psx /2.0)/tan(wrf%psi1/2.0))**wrf%cone_factor
+      endif
+
+      if (wrf%cen_lat < 0.0) then
+         xx = r*sin(flp)
+         yy = r*cos(flp)
+      else
+         xx = -r*sin(flp)
+         yy =  r*cos(flp)
+      endif
+
+   endif
+
+! TRANSFORM (1,1) TO THE ORIGIN
+! the location of the center in the coarse domain
+
+   centri = real (wrf%we)/2.0  
+   centrj = real (wrf%sn)/2.0  
+! the (X,Y) coordinates in the coarse domain
+   x = ( xx - xc )/ds + centri  
+   y = ( yy - yc )/ds + centrj  
+             
+
+!--only add 0.5 so that x/y is relative to first cross points (MM5 input):
+
+   x = (x - 1.0) + 0.5
+   y = (y - 1.0) + 0.5
+
+end subroutine llxy
+   
+!**********************************************
+SUBROUTINE XYLL(XX,YY,XLAT,XLON)
+!               
+!   PURPOSE      : CALCULATES THE LATITUDES AND LONGITUDES FROM THE
+!                  (X,Y) LOCATION (DOT) IN THE MESOSCALE GRIDS.
+!   ON ENTRY     :   
+!   X            : THE COORDINATE IN X (J)-DIRECTION.
+!   Y            : THE COORDINATE IN Y (I)-DIRECTION.
+!
+!   ON EXIT      :                      
+!   XLAT         : LATITUDES 
+!   XLON         : LONGITUDES 
+!
+
+   IMPLICIT NONE
+
+   REAL, INTENT(IN)  :: XX, YY
+   REAL, INTENT(OUT) :: XLAT,XLON
+        
+   REAL              :: flp, flpp, r, cell, cel1, cel2, c2
+   REAL              :: psx,Rcone_factor
+   REAL              :: centri, centrj, x, y, xcntr
+
+   c2 = earth_radius * COS(wrf%psi1)
+   centri = real (wrf%we)/2.0  
+   centrj = real (wrf%sn)/2.0  
+!   CNTRI = float(coarse_iy+1)/2.
+!   CNTRJ = float(coarse_jx+1)/2. 
+   
+   xcntr = 0.0
+
+!-----CALCULATE X AND Y POSITIONS OF GRID
+   X = ( XCNTR+(XX-1.0) +(1.0 - CENTRI) ) * wrf%dx*0.001 
+   Y = ( wrf%YCNTR+(YY-1.0) +(1.0 - CENTRJ) ) * wrf%dx*0.001
+!-----NOW CALCULATE LAT AND LON OF THIS POINT
+
+   IF (wrf%map_proj.NE.3) THEN
+      IF(Y.EQ.0.) THEN      
+        IF(X.GE.0.0) FLP =  90.0*deg2rad 
+        IF(X.LT.0.0) FLP = -90.0*deg2rad
+      ELSE
+        IF (wrf%cen_lat.LT.0.0)THEN
+            FLP = ATAN2(X,Y)   
+        ELSE
+            FLP = ATAN2(X,-Y) 
+        ENDIF
+      ENDIF 
+      FLPP = (FLP/wrf%cone_factor)*rad2deg+wrf%cen_lon
+      IF (FLPP.LT.-180.) FLPP = FLPP + 360    
+      IF (FLPP.GT.180.)  FLPP = FLPP - 360.  
+      XLON = FLPP 
+!--------NOW SOLVE FOR LATITUDE
+      R = SQRT(X*X+Y*Y)  
+      IF (wrf%cen_lat.LT.0.0) R = -R  
+      IF (wrf%map_proj.EQ.1) THEN   
+         CELL = (R*wrf%cone_factor)/(earth_radius*SIN(wrf%PSI1))    
+         Rcone_factor  = 1.0/wrf%cone_factor   
+         CEL1 = TAN(wrf%PSI1/2.)*(CELL)**Rcone_factor    
+      ENDIF 
+      IF (wrf%map_proj.EQ.2) THEN
+         CELL = R/earth_radius        
+         CEL1 = CELL/(1.0+COS(wrf%PSI1))  
+      ENDIF 
+      CEL2 = ATAN(CEL1)    
+      PSX  = 2.*CEL2*rad2deg 
+      XLAT = 90.0-PSX 
+   ENDIF   
+!-----CALCULATIONS FOR MERCATOR LAT,LON    
+   IF (wrf%map_proj.EQ.3) THEN   
+      XLON = wrf%cen_lon + ((X-XCNTR)/C2)*rad2deg
+      IF (XLON.LT.-180.) XLON = XLON + 360
+      IF (XLON.GT.180.)  XLON = XLON - 360.
+      CELL = EXP(Y/C2)  
+      XLAT = 2.*(rad2deg*ATAN(CELL))-90.0 
+   ENDIF
+end subroutine xyll
+   
+!**********************************************
+ subroutine Interp_lin_1D(fi1d, n1, z, fo1d)                        
+  real   ,     intent(in)  :: fi1d(n1)       ! Input variable
+  integer,     intent(in)  :: n1          
+  real   ,     intent(in)  :: z        
+  real   ,     intent(out) :: fo1d              ! Output variable 
+!
+  integer                  :: k
+  real                     :: dz, dzm
+
+  fo1d = missing_r
+
+     if(z > 0.0) then
+        call toGrid(z,n1, k, dz, dzm)
+        fo1d = dzm*fi1d(k) + dz*fi1d(k+1)
+     endif
+
+end subroutine Interp_lin_1D
+
+!**********************************************
+subroutine Interp_lin_2D(fi2d,n1,n2, x,y, fo2d)
+  implicit none
+
+  real   ,     intent(in)  :: fi2d(n1,n2)       ! Input variable
+  integer,     intent(in)  :: n1, n2          
+  real   ,     intent(in)  :: x, y
+  real   ,     intent(out) :: fo2d              ! Output variable 
+!
+  integer                  :: i, j
+  real                     :: dx, dxm, dy, dym
+
+  call toGrid (x,n1,i,dx,dxm)
+  call toGrid (y,n2,j,dy,dym)
+
+  fo2d   = dym*(dxm*fi2d(i,j  ) + dx*fi2d(i+1,j  )) &
+         + dy *(dxm*fi2d(i,j+1) + dx*fi2d(i+1,j+1))
+end subroutine Interp_lin_2D
+   
+!**********************************************
+
+subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
+
+  implicit none
+
+  real,dimension(n1,n2,n3), intent(in)  :: fi3d      ! Input variable
+  real,                     intent(in)  :: x, y , z 
+  integer,                  intent(in)  :: n1,n2,n3                        
+  real,                     intent(out) :: fo3d      ! Output variable 
+!
+  integer                  :: i, j, k, kk
+  real                     :: dx, dxm, dy, dym, dz, dzm
+  real                     :: fiz (n3)
+
+  call toGrid (x,n1,i,dx,dxm)
+  call toGrid (y,n2,j,dy,dym)
+
+  fiz(1:n3) = dym*(dxm*fi3d(i, j,   1:n3) + dx *fi3d(i+1 ,j  ,1:n3))&
+            + dy *(dxm*fi3d(i, j+1, 1:n3) + dx *fi3d(i+1, j+1,1:n3))
+
+  fo3d = missing_r
+
+     if(z > 0.0) then
+        call toGrid(z,n3, k, dz, dzm)
+        fo3d = dzm*fiz(k) + dz*fiz(k+1)
+     endif
+
+end subroutine Interp_lin_3D
 
 !#######################################################################
+subroutine toGrid (x, jx, j, dx, dxm)
+   
+!  Transfer obs. x to grid j and calculate its
+!  distance to grid j and j+1
+
+   implicit none
+
+   real,                     intent(in)  :: x
+   integer,                  intent(in)  :: jx
+   real,                     intent(out) :: dx, dxm
+   integer,                  intent(out) :: j
+   
+   j = int (x)
+
+   if (j <=  0) j = 1
+   if (j >= jx) j = jx - 1
+
+   dx = x - real (j)
+
+   dxm= 1.0 - dx
+
+end subroutine toGrid
+!#######################################################################
+
+subroutine to_zk(obs_v, mdl_v, n3, v_interp_optn, zk)
+
+   implicit none
+
+   real,      intent(in)  :: obs_v
+   integer,   intent(in)  :: n3, v_interp_optn
+   real,      intent(in)  :: mdl_v(n3)
+   real,      intent(out) :: zk
+
+   integer                :: k
+
+   zk = missing_r
+
+   if(v_interp_optn == v_interp_p) then
+
+      if (obs_v > mdl_v(1) .or. obs_v < mdl_v(n3)) return
+
+      do k = 1,n3-1
+         if(obs_v <= mdl_v(k) .and. obs_v >= mdl_v(k+1)) then
+            zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
+            exit
+         endif
+      enddo
+   else if(v_interp_optn == v_interp_h) then
+      if (obs_v < mdl_v(1) .or. obs_v > mdl_v(n3)) return
+
+      do k = 1,n3-1
+         if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
+            zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
+            exit
+         endif
+      enddo
+   endif
+
+end subroutine to_zk
+!#######################################################
+subroutine get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,fld,&
+                                      pp11,pp21,pp31,pp41)
+
+   implicit none
+
+integer,           intent(in)  :: i,j,n
+real,              intent(in)  :: dx,dy,dxm,dym
+real, intent(in)               :: x(:)
+real,dimension(n), intent(out) :: fld      
+real(r8),          intent(out) :: pp11,pp21,pp31,pp41
+ 
+integer                        :: i1,i2,k,q1,q2,q3,q4
+real(r8)                       :: qv1,qv2,qv3,qv4
+real(r8), dimension(n)         :: pp1,pp2,pp3,pp4,pb,pp
+
+
+do k=1,n
+   pb(k) = wrf%p_top + wrf%znu(k)*  &
+          (  dym*(dxm*wrf%mub(i,j  ) + dx*wrf%mub(i+1,j  )) + &
+             dy *(dxm*wrf%mub(i,j+1) + dx*wrf%mub(i+1,j+1)) )  
+end do
+  i1 = get_wrf_index(i,j,1,TYPE_MU)
+  i2 = get_wrf_index(i,j+1,1,TYPE_MU)
+  q1 = get_wrf_index(i,j,n,TYPE_QV)
+  q2 = get_wrf_index(i,j+1,n,TYPE_QV)
+  qv1 = x(q1)/(1.0+x(q1))
+  qv2 = x(q1+1)/(1.0+x(q1+1))
+  qv3 = x(q2)/(1.0+x(q2))
+  qv4 = x(q2+1)/(1.0+x(q2+1))
+  pp1(n) = -0.5 *(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dnw(n)*(1.0 + x(q1))
+  pp2(n) = -0.5 *(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dnw(n)*(1.0 + x(q1+1))
+  pp3(n) = -0.5 *(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dnw(n)*(1.0 + x(q2))
+  pp4(n) = -0.5 *(x(i2+1)+qv4*wrf%mub(i+1,j+1))*wrf%dnw(n)*(1.0 + x(q2+1))
+  pp(n)  = dym*(dxm*pp1(n)+dx*pp2(n)) + dy*(dxm*pp3(n)+dx*pp4(n))
+  fld(n) = pp(n) + pb(n)                                            
+do k= n-1,1,-1   
+   q1 = get_wrf_index(i,j,k,TYPE_QV)
+   q2 = get_wrf_index(i,j+1,k,TYPE_QV)
+   q3 = get_wrf_index(i,j,k+1,TYPE_QV)
+   q4 = get_wrf_index(i,j+1,k+1,TYPE_QV)
+   qv1 = 0.5*(x(q1)+x(q3))/(1.0+0.5*(x(q1)+x(q3)))
+   qv2 = 0.5*(x(q1+1)+x(q3+1))/(1.0+0.5*(x(q1+1)+x(q3+1)))
+   qv3 = 0.5*(x(q2)+x(q4))/(1.0+0.5*(x(q2)+x(q4)))
+   qv4 = 0.5*(x(q2+1)+x(q4+1))/(1.0+0.5*(x(q2+1)+x(q4+1)))
+
+   pp1(k) = pp1(k+1) -(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dn(k+1)* &
+                (1.0 + 0.5*(x(q1) + x(q3)))
+   pp2(k) = pp2(k+1) -(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dn(k+1)* &
+                (1.0 + 0.5*(x(q1+1) + x(q3+1)))
+   pp3(k) = pp3(k+1) -(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dn(k+1)* &
+                (1.0 + 0.5*(x(q2) + x(q4)))
+   pp4(k) = pp4(k+1) -(x(i2+1)  +qv4*wrf%mub(i+1,j+1))*wrf%dn(k+1)* &
+                (1.0 + 0.5*(x(q2+1) + x(q4+1)))
+
+   pp(k)  = dym*(dxm*pp1(k)+dx*pp2(k)) + dy*(dxm*pp3(k)+dx*pp4(k))
+   fld(k) = pp(k) + pb(k)                                             
+end do
+   pp11 = pp1(1)
+   pp21 = pp2(1)
+   pp31 = pp3(1)
+   pp41 = pp4(1)
+end subroutine get_model_pressure_profile
+!#######################################################
+subroutine get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,fld)
+
+   implicit none
+
+integer,           intent(in)  :: i,j,n
+real,              intent(in)  :: dx,dy,dxm,dym
+real, intent(in)               :: x(:)
+real,dimension(n), intent(out) :: fld      
+real                           :: fll(n+1)
+ 
+integer                        :: i1,i2,k     
+            
+do k = 1, wrf%var_size(3,TYPE_GZ) 
+   i1 = get_wrf_index(i,j,k,TYPE_GZ)
+   i2 = get_wrf_index(i,j+1,k,TYPE_GZ)
+   fll(k) = (dym*( dxm*(wrf%phb(i,j,k)+x(i1))+dx*(wrf%phb(i+1,j,k)+x(i1+1)))+&
+   dy*(dxm*(wrf%phb(i,j+1,k)+x(i2)) + dx*(wrf%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
+end do
+
+do k=1,n        
+   fld(k) = 0.5*(fll(k) + fll(k+1) )
+end do
+end subroutine get_model_height_profile
+!#######################################################
 end module model_mod
