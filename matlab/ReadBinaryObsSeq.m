@@ -28,14 +28,14 @@ function a = ReadBinaryObsSeq(fname,machineformat)
 % $Revision$
 % $Date$
 
-if (nargin < 1 )
+if (nargin <= 1 )
    fname = 'obs_seq.final';
    machineformat = 'native';
 elseif (nargin < 2 )
    fname = 'obs_seq.final';
 end
 
-fid = fopen(fname,'rt',machineformat);
+fid = fopen(fname,'rb',machineformat);
 
 % Read and parse the information that will help us read the rest of the file.
 

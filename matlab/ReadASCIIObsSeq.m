@@ -2,7 +2,7 @@ function a = ReadASCIIObsSeq(fname)
 % ReadASCIIObsSeq       reads the diagnostic output observation sequence file.
 %
 % 
-% a = ReadASCIIObsSeq('obs_seq.final')
+% a = ReadASCIIObsSeq('obs_seq.final');
 %
 % This is pretty slow -- lots of logic and nested loops -- hard to vectorize. 
 
