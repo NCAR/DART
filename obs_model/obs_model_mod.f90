@@ -27,11 +27,9 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
 use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_kind, &
                              get_obs_def_time
 !WRF use      obs_def_mod, only : get_obs_def_platform
-!WRF use     platform_mod, only : platform_type, get_platform_location
-use utilities_mod,    only : error_handler, E_ERR
+!WRF use     platform_mod, only : platform_type, get_platform_orientation
 use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
                              operator(-), operator(/), operator(+)
-
 
 implicit none
 private
@@ -57,8 +55,6 @@ subroutine initialize_module
    module_initialized = .true.
 
 end subroutine initialize_module
-
-
 
 
 
@@ -113,7 +109,7 @@ type(obs_sequence_type), intent(in)  :: seq
 integer,                 intent(in)  :: keys(:)
 real(r8),                intent(in)  :: state(:)
 real(r8),                intent(out) :: obs_vals(:)
-integer,                intent(out) :: istatus
+integer,                 intent(out) :: istatus
 
 integer             :: num_obs, i
 type(location_type) :: location
@@ -162,7 +158,6 @@ call destroy_obs(obs)
 end subroutine get_expected_obs
 
 
-
 subroutine get_close_states(seq, key, radius, numinds, indices, dist, x)
 !------------------------------------------------------------------------
 !
@@ -208,14 +203,14 @@ type(obs_def_type),  intent(in) :: obs_def
 real(r8),           intent(out) :: vr
 integer,            intent(out) :: istatus
 
-type(location_type) :: location, platform_location
+type(location_type) :: location
 
 real(r8) :: u, v, w, p, qr, alpha, wt, direction(3)
 
 if ( .not. module_initialized ) call initialize_module
 
 location = get_obs_def_location(obs_def)
-!WRF direction = get_location(get_platform_location(get_obs_def_platform(obs_def)))
+!WRF direction = get_platform_orientation(get_obs_def_platform(obs_def))
 
 call interpolate(state_vector, location, KIND_U, u, istatus)
 call interpolate(state_vector, location, KIND_V, v, istatus)
