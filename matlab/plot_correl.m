@@ -1,5 +1,5 @@
-% Plots space-time series of correlation between a given variable at a given
-% time and all other variable at all times in an ensemble time  sequence
+% plot_correl   Plots space-time series of correlation between a given variable at a given
+% time and all other variable at all times in an ensemble time sequence
 
 if (exist('diagn_file') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
@@ -9,10 +9,14 @@ if (exist('diagn_file') ~=1)
    end                                                                          
 end 
 
-inputstring = input('Input index for base variable\n','s');
+vars = CheckModel(diagn_file);   % also gets default values for this file.
+
+inputstring = input(sprintf('Input index for base variable (between %d and %d)  ', ...
+                               vars.min_state_var,vars.max_state_var),'s');
 base_var_index = str2num(deblank(inputstring));
 
-inputstring = input('Input time index for base point\n','s');
+inputstring = input(sprintf('Input time index for base point (between 1 and %d)  ', ...
+                               vars.time_series_length),'s');
 base_time = str2num(deblank(inputstring));
 
 disp(sprintf('Using diagnostic file %s',diagn_file))

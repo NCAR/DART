@@ -15,6 +15,16 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
+CheckModelCompatibility(truth_file,diagn_file)
 
-PlotEnsErrSpread(truth_file,diagn_file)
+vars = CheckModel(truth_file);   % also gets default values for this file.
+
+disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
+disp(['using variables ',num2str(vars.def_state_vars)]) 
+
+% here's where the "if you don't like these values, input something else"
+% block should go ...
+
+% vars.def_state_vars = [ 1 2 3 34 35 18];
+
+PlotEnsErrSpread(truth_file,diagn_file, vars.def_state_vars)

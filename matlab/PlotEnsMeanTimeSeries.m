@@ -9,6 +9,8 @@ function PlotEnsMeanTimeSeries(truth_file,diagn_file)
 if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
 if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
 
+CheckModelCompatibility(truth_file, diagn_file)
+
 % Get some information from the truth_file 
 ft = netcdf(truth_file);
 t.model      = ft.model(:);
@@ -24,23 +26,6 @@ d.num_vars   = ncsize(fd{'StateVariable'}); % determine # of state variables
 d.num_copies = ncsize(fd{'copy'}); % determine # of ensemble members
 d.num_times  = ncsize(fd{'time'}); % determine # of output times
 close(fd);
-
-% rudimentary bulletproofing
-if (strcmp(t.model,d.model) ~= 1)
-   disp(sprintf('%s has model %s ',truth_file,t.model))
-   disp(sprintf('%s has model %s ',diagn_file,d.model))
-   error('no No NO ... models must be the same')
-end
-if (t.num_vars ~= d.num_vars)
-   disp(sprintf('%s has %d state variables',truth_file,t.num_vars))
-   disp(sprintf('%s has %d state variables',diagn_file,d.num_vars))
-   error('no No NO ... both files must have same number of state variables.')
-end
-if (t.num_times ~= d.num_times)
-   disp(sprintf('%s has %d timesteps',truth_file,t.num_times))
-   disp(sprintf('%s has %d timesteps',diagn_file,d.num_times))
-   error('ugh ... both files must have same number of timesteps.')
-end
 
 % Get the indices for the true state, ensemble mean and spread
 % The metadata is queried to determine which "copy" is appropriate.

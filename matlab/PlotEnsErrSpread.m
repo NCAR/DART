@@ -1,4 +1,4 @@
-function PlotEnsErrSpread(truth_file,diagn_file)
+function PlotEnsErrSpread(truth_file,diagn_file, state_var_inds)
 % Plots summary plots of error and spread 
 %
 % Example 1
@@ -8,6 +8,8 @@ function PlotEnsErrSpread(truth_file,diagn_file)
 
 if ( exist(truth_file) ~= 2 ), error(sprintf('(truth_file) %s does not exist.',truth_file)), end
 if ( exist(diagn_file) ~= 2 ), error(sprintf('(diagn_file) %s does not exist.',diagn_file)), end
+
+CheckModelCompatibility(truth_file,diagn_file)
 
 % Get some information from the truth_file 
 ft = netcdf(truth_file);
@@ -24,23 +26,6 @@ d.num_vars   = ncsize(fd{'StateVariable'}); % determine # of state variables
 d.num_copies = ncsize(fd{'copy'}); % determine # of ensemble members
 d.num_times  = ncsize(fd{'time'}); % determine # of output times
 close(fd);
-
-% rudimentary bulletproofing
-if (strcmp(t.model,d.model) ~= 1)
-   disp(sprintf('%s has model %s ',truth_file,t.model))
-   disp(sprintf('%s has model %s ',diagn_file,d.model))
-   error('no No NO ... models must be the same')
-end
-if (t.num_vars ~= d.num_vars)
-   disp(sprintf('%s has %d state variables',truth_file,t.num_vars))
-   disp(sprintf('%s has %d state variables',diagn_file,d.num_vars))
-   error('no No NO ... both files must have same number of state variables.')
-end
-if (t.num_times ~= d.num_times)
-   disp(sprintf('%s has %d timesteps',truth_file,t.num_times))
-   disp(sprintf('%s has %d timesteps',diagn_file,d.num_times))
-   error('ugh ... both files must have same number of timesteps.')
-end
 
 % Get the indices for the true state, ensemble mean and spread
 % The metadata is queried to determine which "copy" is appropriate.
@@ -89,24 +74,20 @@ switch lower(t.model)
 
    case 'lorenz_63'
 
-      % disp('lorenz_63 not implemented yet.')
-      % Use one figure with three subplots
-      clf
-      for j = 1:t.num_vars
-
-            err         = total_err(ens_mean(:,j) , truth(:,j));  
+      clf; iplot = 0;
+      for ivar = state_var_inds,
+            iplot = iplot + 1;
+            err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
             errTotal    = sum(err);
-            spreadTotal = sum(ens_spread(:,j));
+            spreadTotal = sum(ens_spread(:,ivar));
             string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
             string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
 
-            disp(sprintf('model %s Variable %d',t.model,j))
-
-            subplot(t.num_vars, 1, j);
+            subplot(length(state_var_inds), 1, iplot);
                plot(times,err, 'b', ...
-                    times,ens_spread(:, j), 'r');
+                    times,ens_spread(:, ivar), 'r');
                s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...
-                            t.model,j,diagn_file);
+                            t.model,ivar,diagn_file);
                title(s1,'interpreter','none','fontweight','bold')
                legend(string1,string2,0)
                legend boxoff
@@ -114,7 +95,28 @@ switch lower(t.model)
       end
 
    case 'lorenz_96'
-      disp('lorenz_96 not implemented yet.')
+      % disp('lorenz_96 not implemented yet.')
+      clf; iplot = 0;
+      for ivar = state_var_inds,
+            iplot = iplot + 1;
+            err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
+            errTotal    = sum(err);
+            spreadTotal = sum(ens_spread(:,ivar));
+            string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
+            string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
+
+            subplot(length(state_var_inds), 1, iplot);
+               plot(times,err, 'b', ...
+                    times,ens_spread(:, ivar), 'r');
+               s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...
+                            t.model,ivar,diagn_file);
+               title(s1,'interpreter','none','fontweight','bold')
+               legend(string1,string2,0)
+               legend boxoff
+               xlabel(sprintf('model time (%d timesteps)',t.num_times))
+      end
+
 
    otherwise
+      error(sprintf('model %s unknown.',t.model))
 end

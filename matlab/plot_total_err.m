@@ -19,6 +19,8 @@ if (exist('diagn_file') ~=1)
    end
 end
 
+CheckModelCompatibility(truth_file, diagn_file)
+
 disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
 
 PlotTotalErr(truth_file,diagn_file)
