@@ -16,7 +16,7 @@ program perfect_model_obs
 
 use types_mod,        only : r8
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
-                             initialize_utilities, register_module, &
+                             initialize_utilities, register_module, error_handler, E_MSG, &
                              logfileunit, timestamp
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), operator(*), operator(+)
 
@@ -61,7 +61,7 @@ logical                 :: is_there_one, out_of_range, is_this_last
 real(r8)                :: true_obs(1), obs_value(1), rstatus(1,1)
 
 type(assim_model_type)  :: x(1)
-character(len=129)      :: copy_meta_data(2)
+character(len=129)      :: copy_meta_data(2), msgstring
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -95,7 +95,7 @@ namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
 
 call initialize_utilities
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING perfect_model_obs ...'
+call error_handler(E_MSG,'perfect_model_obs','STARTING',source,revision,revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -129,7 +129,8 @@ endif
 call static_init_assim_model()
 model_size = get_model_size()
 
-write(*,*)'Model size = ',model_size
+write(msgstring,*)'Model size = ',model_size
+call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
 
 !------------------- Read restart if requested ----------------------
 
@@ -175,10 +176,12 @@ call set_copy_meta_data(seq, 1, copy_meta_data(1))
 call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
 ! Get the time of the first observation in the sequence
-write(*, *) 'number of obs in sequence is ', get_num_obs(seq)
+write(msgstring, *) 'number of obs in sequence is ', get_num_obs(seq)
+call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
 
 num_qc = get_num_qc(seq)
-write(*, *) 'number of qc values is ',num_qc
+write(msgstring, *) 'number of qc values is ',num_qc
+call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
 
 is_there_one = get_first_obs(seq, obs)
 ! Test for no data at all here?
@@ -192,7 +195,8 @@ Advance: do i = 1, get_num_times(seq)
    call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs, out_of_range, obs)
    allocate(keys(num_obs))
    call get_time_range_keys(seq, key_bounds, num_obs, keys)
-   write(*, *) 'time of obs set ', i
+   write(msgstring, *) 'time of obs set ', i
+   call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
    call print_time(next_time)
 
 ! Figure out time to advance to
@@ -205,7 +209,8 @@ Advance: do i = 1, get_num_times(seq)
       call output_diagnostics(    StateUnit, x(1), 1)
 
 ! How many observations in this set
-   write(*, *) 'num_obs_in_set is ', num_obs
+   write(msgstring, *) 'num_obs_in_set is ', num_obs
+   call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
 
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs
@@ -265,8 +270,7 @@ if(output_restart) then
    close(iunit)
 endif
 
-write(logfileunit,*)'FINISHED perfect_model_obs.'
-write(logfileunit,*)
+call error_handler(E_MSG,'perfect_model_obs','FINISHED',source,revision,revdate)
 
 ! closes the log file.
 call timestamp(string1=source,string2=revision,string3=revdate,pos='end')

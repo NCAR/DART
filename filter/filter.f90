@@ -11,7 +11,7 @@ program filter
 ! $Author$
 !
 
-use        types_mod, only : r8, missing_r
+use        types_mod, only : r8
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
@@ -21,7 +21,7 @@ use obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_ti
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
-                              check_nml_error, file_exist, error_handler, E_ERR, &
+                              check_nml_error, file_exist, error_handler, E_ERR, E_MSG, &
                               logfileunit, initialize_utilities, finalize_utilities, &
                               timestamp
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
@@ -52,7 +52,7 @@ type(obs_def_type)      :: obs_def
 type(time_type)         :: time1, time2, next_time
 type(random_seq_type)   :: random_seq
 
-
+character(len=129) :: msgstring
 integer :: i, j, k, ind, iunit, io, istatus
 integer :: num_obs_in_set, ierr, num_qc
 integer :: PriorStateUnit, PosteriorStateUnit
@@ -136,7 +136,8 @@ namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
 
 call initialize_utilities
 call register_module(source,revision,revdate)
-write(logfileunit,*)'STARTING filter ...'
+call error_handler(E_MSG,'filter','STARTING',source,revision,revdate)
+
 call assim_tools_init()
 
 ! Initialize the obs sequence module
@@ -160,7 +161,8 @@ endif
 write(logfileunit, nml=filter_nml)
 
 ! Now know the ensemble size; allocate all the storage
-write(*, *) 'the ensemble size is ', ens_size
+write(msgstring, *) 'the ensemble size is ', ens_size
+call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
 allocate(obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), rstatus(ens_size,1), &
    prior_copy_meta_data(ens_size + 2), posterior_copy_meta_data(ens_size + 1), &
    regress(num_groups), a_returned(num_groups), obs_vals(ens_size))
@@ -215,7 +217,8 @@ if(start_from_restart) then
    endif
 
    do i = 1, ens_size
-      write(*, *) 'trying to read restart ', i
+      write(msgstring, *) 'trying to read restart ', i
+      call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
       if (binary_restart_files ) then
          call aread_state_restart(ens_time(i), ens(i, :), iunit, "unformatted")
       else
@@ -270,7 +273,8 @@ else
 endif
 
 ! Temporary print of initial model time
-write(*, *) 'initial model time is '
+write(msgstring, *) 'initial model time is '
+call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
 call print_time(ens_time(1))
 
 ! Get the time of the first observation in the sequence
@@ -291,7 +295,8 @@ AdvanceTime : do i = 1, num_obs_sets
    call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs_in_set, out_of_range, observation)
    allocate(keys(num_obs_in_set))
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-   write(*, *) 'time of obs set ', i
+   write(msgstring, *) 'time of obs set ', i
+   call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
    call print_time(next_time)
 
    ! If the model time is past the obs set time, just need to skip???
@@ -432,7 +437,8 @@ AdvanceTime : do i = 1, num_obs_sets
       end do
       if (qc(j) /= 0.0_r8) num_close_ptr(1) = 0
 
-      write(*, *) 'Variables updated for obs ',j,' : ',num_close_ptr(1)
+      write(msgstring, *) 'Variables updated for obs ',j,' : ',num_close_ptr(1)
+      call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
 
       ! Now loop through each close state variable for this observation
       do k = 1, num_close_ptr(1)
@@ -653,7 +659,7 @@ integer, intent(out) :: PriorStateUnit, PosteriorStateUnit
 type(obs_sequence_type), intent(inout) :: seq
 
 
-character(len=129) :: prior_meta_data, posterior_meta_data
+character(len=129) :: prior_meta_data, posterior_meta_data, msgstring
 character(len=129) :: state_meta(num_output_state_members + 2)
 integer :: i
 
@@ -663,8 +669,9 @@ do i = 1, num_output_state_members
    if(i < 10000) then
       write(state_meta(i), '(a15, 1x, i6)') 'ensemble member', i
    else
-      write(*, *) 'output metadata in filter needs ensemble size < 10000'
-      stop
+      write(msgstring, *)'output metadata in filter needs state ensemble size < 10000, not ', &
+                         num_output_state_members
+      call error_handler(E_ERR,'generate_copy_meta_data',msgstring,source,revision,revdate)
    endif
 end do
 
@@ -691,16 +698,15 @@ if(  output_state_ens_spread .or. output_state_ens_mean .or. &
 endif
 
 
-
-
 ! Set up the metadata for the output ensemble observations space file
 do i = 1, num_output_obs_members
    if(i < 10000) then
       write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
       write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
    else
-      write(*, *) 'output metadata in filter needs ensemble size < 10000'
-      stop
+      write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
+                         num_output_obs_members
+      call error_handler(E_ERR,'generate_copy_meta_data',msgstring,source,revision,revdate)
    endif
    call set_copy_meta_data(seq, in_obs_copy + 2*i - 1, prior_meta_data)
    call set_copy_meta_data(seq, in_obs_copy + 2*i, posterior_meta_data)

@@ -13,18 +13,16 @@ module location_mod
 ! implementation has domain 'longitude' running from 0 to 1. May want to investigate
 ! allowing an arbitrary real domain size at some point.
 
-use      types_mod, only : r8
+use      types_mod, only : r8, MISSING_R8
 use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, &
+public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
-       LocationDims, LocationName, LocationLName, &
-! FOLLOWING INTERFACES ARE TEMPORARY LINK PATHCES, SHOULD BE REMOVED
-      vert_is_level, read_ncep_obs_location
+       LocationDims, LocationName, LocationLName
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -116,6 +114,21 @@ if(x < 0.0_r8 .or. x > 1.0_r8) call error_handler(E_ERR, 'set_location', &
 set_location%x = x
 
 end function set_location
+
+
+
+function set_location_missing
+!----------------------------------------------------------------------------
+!
+implicit none
+
+type (location_type) :: set_location_missing
+
+if ( .not. module_initialized ) call initialize_location
+
+set_location_missing%x = MISSING_R8
+
+end function set_location_missing
 
 
 
@@ -243,49 +256,6 @@ else
 end if
 
 end subroutine interactive_location
-
-
-
-function vert_is_level(loc)
-!---------------------------------------------------------------------------
-!
-! Stub needed for temporary linking
-
-logical :: vert_is_level
-type(location_type), intent(in) :: loc
-
-if ( .not. module_initialized ) call initialize_location
-
-vert_is_level = .false.
-
-call error_handler(E_ERR, 'vert_is_level', &
-           '"vert_is_level" is not supported for 1D location module', &
-            source, revision, revdate)
-
-end function vert_is_level
-
-
-
-subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
-!---------------------------------------------------------------------------
-!
-! Stub needed for temporary linking
-
-implicit none
-
-type(location_type)    :: location
-integer,   intent(in)  :: obsunit
-integer,   intent(out) :: obsindex
-real (r8), intent(out) :: var
-
-if ( .not. module_initialized ) call initialize_location
-
-call error_handler(E_ERR, 'read_ncep_obs_location', &
-           '"read_ncep_obs_location" is not supported for 1D location module', &
-            source, revision, revdate)
-
-end subroutine read_ncep_obs_location
-
 
 !----------------------------------------------------------------------------
 ! end of location/oned/location_mod.f90

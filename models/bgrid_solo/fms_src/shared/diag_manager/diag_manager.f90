@@ -931,8 +931,14 @@ if(num_output_fields > max_output_fields) then
 endif
 out_num = num_output_fields
 
+write(*,*)'TJH init_output_field :<',module_name,'>'
+write(*,*)'TJH init_output_field :<',field_name,'>'
+
 ! First, find the index to the associated input field
 in_num = find_input_field(module_name, field_name)
+
+write(*,*)'TJH init_output_field : in_num = ',in_num
+
 if(in_num < 0) then
    call error_mesg('init_output_field', &
       'module_name / field_name pair not registered as an input field', FATAL)
@@ -1103,6 +1109,12 @@ do while (nfields <= max_output_fields)
    name_len= len_trim(textB%name)
    if (textB%name(name_len-2:name_len) == '.nc') &
         textB%name = textB%name(1:name_len-3)
+
+   write(*,*)'TJH diag_manager_init:textB%module_name<',trim(textB%module_name),'>'
+   write(*,*)'TJH diag_manager_init:textB%field_name <',trim(textB%field_name),'>'
+   write(*,*)'TJH diag_manager_init:textB%output_name<',trim(textB%output_name),'>'
+   write(*,*)'TJH diag_manager_init:textB%name       <',trim(textB%name),'>' 
+
    call init_output_field(textB%module_name,textB%field_name,textB%output_name,&
         textB%name,textB%time_avg,textB%pack)
 93 continue

@@ -11,88 +11,163 @@
 # Find the project and build it, if need be.
 #======================================================================
 
-set echo
-
+set SNAME = $0
+set clobber
+set DART_HOME = ~/DART
 set Model = bgrid_solo
 
-if ( ${?DART_HOME} ) then
-   if ( -d $DART_HOME ) then
-      setenv DARTHOME $DART_HOME
-   else
-      echo "$DART_HOME does not exist on this platform"
-   endif
-else if ( -d /export/data/gsp/${USER}/DART ) then
-   setenv DARTHOME /export/data/gsp/${USER}/DART
-else if ( -d /data/gsp/${USER}/DART ) then
-   setenv DARTHOME /data/gsp/${USER}/DART
-else if ( -d /home/${USER}/DART ) then
-   setenv DARTHOME /home/${USER}/DART
-else
-   echo "no DART project"
-   exit
-endif
-echo "DART project directory is $DARTHOME"
-echo "       working with model $Model"
-sleep 2
+switch ( $#argv )
+   case 1:
+      # supplying one argument -- the number of ensemble members
+      set NumEns = $1
+      breaksw
+   case 2:
+      # supplying two arguments
+      set NumEns = $1
+      set DART_HOME = $2
+      breaksw
+   default:
+      echo " "
+      echo "usage: $SNAME:t #_ensemble_members [DART_HOME]"
+      echo " "
+      echo "This script demonstrates how to conduct a DART assimilation experiment for"
+      echo "a given model which has already been spun-up and has initial conditions"
+      echo "files <perfect_ics> and <filter_ics>."
+      echo " "
+      echo "'#_ensemble_members' can be no greater than the number of ensemble members "
+      echo "in the <filter_ics> initial conditions file."
+      echo " "
+      echo "'DART_HOME' must point to your 'top-level' DART directory."
+      echo "If DART_HOME is not supplied -- it is assumed to be ~/DART."
+      echo " "
+      exit 1
+      breaksw
+endsw
 
-cd ${DARTHOME}/models/${Model}/work
+#======================================================================
+# Query all the environment variables.
+# This is only meant to be illustrative.
+# It is ABSOLUTELY not comprehensive.
+#======================================================================
 
-if !( -e column_rand ) then    ;# interactively builds a set of randomly-
-   csh mkmf_column_rand        ;# located column observations
-   mv input.nml.mkmf default_column_rand.nml
-   make || exit 1              ;# specify 5 vertical levels
-endif                          ;# create_obs_set_def < column_rand.out
-if !( -e ps_rand_local ) then  ;# randomly-located surface pressure obs
-   csh mkmf_ps_rand_local      ;# can be confined to a lat/lon rectangle
-   mv input.nml.mkmf default_ps_rand_local.nml
-   make || exit 2              ;# create_obs_set_def < ps_rand.out
+set      num_obs = 10
+set     ob_day_1 = 0
+set ob_seconds_1 = 43200
+
+if ( ${?NumObs} ) then     ;# if environment var NumObs exists, use it
+   set num_obs = $NumObs
 endif
-if !( -e create_obs_set_def ) then
-   csh mkmf_create_obs_set_def
-   mv input.nml.mkmf default_create_obs_set_def.nml
-   make || exit 3
+if ( ${?ObDay1} ) then
+   set ob_day_1 = $ObDay1
 endif
-if !( -e create_obs_sequence ) then
-   csh mkmf_create_obs_sequence
-   mv input.nml.mkmf default_create_obs_sequence.nml
-   make || exit 4
+if ( ${?ObSec1} ) then
+   set ob_seconds_1 = $ObSec1
 endif
-if !( -e perfect_model_obs ) then
-   csh mkmf_perfect_model_obs
-   mv input.nml.mkmf default_perfect_model_obs.nml
-   make || exit 5
+
+set ens_size = $NumEns
+set num_output_ens_members = 10
+set cov_inflate = 1.00
+set cutoff = 0.2
+
+if ( ${?NumOutputEnsMembers} ) then
+   set num_output_ens_members = $NumOutputEnsMembers
 endif
-if !( -e filter ) then
-   csh mkmf_filter
-   mv input.nml.mkmf default_filter.nml
-   make || exit 6
+if ( ${?CovInflate} ) then
+   set cov_inflate = $CovInflate
 endif
-\rm -f *.o *.d *.mod Makefile
+if ( ${?Cutoff} ) then
+   set cutoff = $Cutoff
+endif
+
+#======================================================================
+# This block checks to see if input is viable.
+#======================================================================
+
+setenv DARTDIR ${DART_HOME}/models/${Model}/work
+if ( ! -d ${DARTDIR} ) then                                                     
+   echo "${DARTDIR} does not exist ... "
+   exit 2
+endif
+
+echo "DART project directory is $DART_HOME"
+echo "Building Initial Conditions for $Model"
+echo "in directory $DARTDIR"
+echo "You have 4 seconds to stop this ..."
+sleep 1
+echo "3"
+sleep 1
+echo "2"
+sleep 1
+echo "1"
+sleep 1
+echo
+                                                                                
+cd ${DARTDIR}
 
 #======================================================================
 # Save any existing namelist ...
+# Creating a null namelist just to avoid moving nothing.
 #======================================================================
+
+touch nullnamelist$$.nml
+touch nullnamelist$$.nml_default
 
 set SAVEME = .NamelistStorage.$$
 if ( ! -d $SAVEME ) then
    mkdir ${SAVEME}
 endif
-foreach NAMELIST ( *.nml )
-   mv ${NAMELIST} ${SAVEME}
+foreach FILE ( *.nml *default )
+   \mv -f $FILE ${SAVEME}
 end
+echo 'Saved all existing *.nml into directory '"$SAVEME"
+echo 'Will restore and remove the directory at the end.'
+
+#======================================================================
+# Create the executables if they do not exist.
+#======================================================================
+
+#if !( -e column_rand ) then    ;# interactively builds a set of randomly-
+#   csh mkmf_column_rand        ;# located column observations
+#   make || exit 1              ;# specify 5 vertical levels
+#endif                          ;# create_obs_set_def < column_rand.out
+#if !( -e ps_rand_local ) then  ;# randomly-located surface pressure obs
+#   csh mkmf_ps_rand_local      ;# can be confined to a lat/lon rectangle
+#   make || exit 2              ;# create_obs_set_def < ps_rand.out
+#endif
+if !( -e create_obs_sequence ) then
+   csh mkmf_create_obs_sequence
+   make || exit 3
+endif
+if !( -e create_fixed_network_seq ) then
+   csh mkmf_create_fixed_network_seq
+   make || exit 4
+endif
+if !( -e perfect_model_obs ) then
+   csh mkmf_perfect_model_obs
+   make || exit 5
+endif
+if !( -e filter ) then
+   csh mkmf_filter
+   make || exit 6
+endif
+\rm -f *.o *.d *.mod Makefile
 
 #======================================================================
 # Create common namelists -- lots of ways to do it.
 # The default initial conditions (i.e. restart files) are in ascii.
 #======================================================================
 
-echo '&assim_model_nml'                            > assim_mod.nml
-echo '   binary_restart_files = .false. /'        >> assim_mod.nml
+echo '&assim_model_nml'                           > assim_mod.nml
+echo '   binary_restart_files = .false. /'       >> assim_mod.nml
+
+echo '&obs_sequence_nml'                          > obs_sequence.nml
+echo '   read_binary_obs_sequence = .false. ,'   >> obs_sequence.nml
+echo '  write_binary_obs_sequence = .false. /'   >> obs_sequence.nml
 
 cat << ENDofTask01 > model.nml
 &model_nml
-   days                =   10,
-   dt_atmos            = 3600,
+   dt_atmos     = 3600,
+   days         = 10,
    output_state_vector = .false. /
 
 &fms_nml
@@ -143,7 +218,23 @@ ENDofTask01
 #======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
-# run either ps_rand_local _OR_ column_rand -- do not run both
+# run either ps_rand_local _OR_ column_rand -- this script is not 
+# configured to run both "at the same time" 
+#
+#
+# echo "set_def.out"    > bob.in
+# echo "1"             >> bob.in ;# one observation set
+# echo "2"             >> bob.in ;# two observations
+# echo "23"            >> bob.in ;# error variance obs 1
+# echo "-1"            >> bob.in ;# -1 is a non-identity observation
+# echo "-1"            >> bob.in ;# -1 is surface
+# echo "1000"          >> bob.in ;# Vertical co-ordinate surface pressure (in hPa)
+#
+#
+
+
+# ./create_obs_sequence
+#
 #======================================================================
 
 set bgrid_case = 0
@@ -155,85 +246,83 @@ case 1:
    echo "Running create_obs_set_def ... ps_rand_local case"
    echo " "
 
-   echo "1800          of observations"                  > ps_rand_local.in
-   echo "10000  Pa     obs error variance (10,000=1mb)" >> ps_rand_local.in
-   echo "-90           lower latitude [-90,xxx]"        >> ps_rand_local.in
-   echo " 90           upper latitude [xxx, 90]"        >> ps_rand_local.in
-   echo "  0           west longitude [0,360]"          >> ps_rand_local.in
-   echo "360           east longitude [0,360]"          >> ps_rand_local.in
+   echo "1800"        > ps_rand_local.in ;# of observations
+   echo "10000"      >> ps_rand_local.in ;# obs error variance in Pa 10,000=1mb
+   echo "-90"        >> ps_rand_local.in ;# lower latitude [-90,xxx]
+   echo " 90"        >> ps_rand_local.in ;# upper latitude [xxx, 90]
+   echo "  0"        >> ps_rand_local.in ;# west longitude [0,360]
+   echo "360"        >> ps_rand_local.in ;# east longitude [0,360]
 
    echo '&utilities_nml'                                      > utilities.nml
-   echo '   logfilename = "create_obs_set_def_ps_rand.out",' >> utilities.nml
+   echo '   logfilename = "create_obs_sequence_ps_rand.out",' >> utilities.nml
    echo '   TERMLEVEL = 1 /'                                 >> utilities.nml
    
-   cat utilities.nml assim_mod.nml model.nml > input.nml
+   cat utilities.nml assim_mod.nml obs_sequence.nml model.nml > input.nml
    
-   ./ps_rand_local < ps_rand_local.in
-   ./create_obs_set_def < ps_rand.out
+   ./ps_rand_local < ps_rand_local.in || exit 7
+   ./create_obs_sequence < ps_rand.out || exit 8
    
    if ( $status > 0 ) then
-      echo "ERROR: running create_obs_set_def bombed ..."
-      exit
+      echo "ERROR: running create_obs_sequence bombed ..."
+      exit 8
    endif
 
 breaksw
 case 2:
 
    echo " "
-   echo "Running create_obs_set_def ... column_rand case"
+   echo "Running create_obs_sequence ... column_rand case"
    echo " "
 
-   echo "400           # of observations"                > column_rand.in
-   echo "5             model levels "                   >> column_rand.in
-   echo "10000  Pa     obs error variance (10,000=1mb)" >> column_rand.in
-   echo "1.0           T obs error variance"            >> column_rand.in
-   echo "1.0           U,V obs error variance"          >> column_rand.in
+   echo "400"         > column_rand.in ;# # of observations
+   echo "5"          >> column_rand.in ;# model levels
+   echo "10000"      >> column_rand.in ;# obs error variance (in Pa) (10,000=1mb)
+   echo "1.0"        >> column_rand.in ;# T obs error variance
+   echo "1.0"        >> column_rand.in ;# U,V obs error variance
 
    echo '&utilities_nml'                                          > utilities.nml
-   echo '   logfilename = "create_obs_set_def_column_rand.out",' >> utilities.nml
+   echo '   logfilename = "create_obs_sequence_column_rand.out",' >> utilities.nml
    echo '   TERMLEVEL = 1 /'                                     >> utilities.nml
 
-   cat utilities.nml assim_mod.nml model.nml > input.nml
+   cat utilities.nml assim_mod.nml obs_sequence.nml model.nml > input.nml
 
-   ./column_rand < column_rand.in
-   ./create_obs_set_def < column_rand.out
+   ./column_rand < column_rand.in || exit 9
+   ./create_obs_sequence < column_rand.out || exit 10
 
    if ( $status > 0 ) then
-      echo "ERROR: running create_obs_set_def bombed ..."
-      exit
+      echo "ERROR: running create_obs_sequence bombed ..."
+      exit 10
    endif
 
 breaksw
 default:
 
    echo " "
-   echo "Running create_obs_set_def ... just a few locations case"
+   echo "Running create_obs_sequence ... just a few locations case"
    echo "observation locations and error variances are entirely random."
    echo " "
 
-   echo "set_def.out"                > create_obs_set_def.in  ;# output filename
-   echo "1"                         >> create_obs_set_def.in  ;# number of obs SETS
-   echo "4"                         >> create_obs_set_def.in  ;# num obs in first set
-   echo "1.0"                       >> create_obs_set_def.in  ;# error variance for first obs
-   echo "10"                        >> create_obs_set_def.in  ;# observing state var #10
-   echo "23.0"                      >> create_obs_set_def.in  ;# error variance for next obs
-   echo "123"                       >> create_obs_set_def.in  ;# observing state var #123
-   echo "2.0"                       >> create_obs_set_def.in  ;# error variance for next obs
-   echo "975"                       >> create_obs_set_def.in  ;# observing state var #975
-   echo "1.0"                       >> create_obs_set_def.in  ;# error variance for next obs
-   echo "1000"                      >> create_obs_set_def.in  ;# observing state var #975
+   echo "10"                 > create_obs_sequence.in  ;# Upper bound on # obs in sequence 
+   echo "0"                 >> create_obs_sequence.in  ;# # of copies of data
+   echo "0"                 >> create_obs_sequence.in  ;# # of QC values per field
+   echo "0"                 >> create_obs_sequence.in  ;# anything but -1 to continue
+   echo "-123"              >> create_obs_sequence.in  ;# observing state var #123
+   echo "0 0"               >> create_obs_sequence.in  ;# time in seconds and days
+   echo "23.0"              >> create_obs_sequence.in  ;# error variance for next obs
+   echo "-1"                >> create_obs_sequence.in  ;# -1 to exit
+   echo "set_def.out"       >> create_obs_sequence.in  ;# output filename
 
-   echo '&utilities_nml'                              > utilities.nml
-   echo '   logfilename = "create_obs_set_def.out",' >> utilities.nml
-   echo '   TERMLEVEL = 1 /'                         >> utilities.nml
+   echo '&utilities_nml'                               > utilities.nml
+   echo '   logfilename = "create_obs_sequence.out",' >> utilities.nml
+   echo '   TERMLEVEL = 1 /'                          >> utilities.nml
 
-   cat utilities.nml assim_mod.nml model.nml > input.nml
+   cat utilities.nml assim_mod.nml obs_sequence.nml model.nml > input.nml
 
-   ./create_obs_set_def < create_obs_set_def.in
+   ./create_obs_sequence < create_obs_sequence.in || exit 11
 
    if ( $status > 0 ) then
-      echo "ERROR: running create_obs_set_def bombed ..."
-      exit
+      echo "ERROR: running create_obs_sequence bombed ..."
+      exit 11
    endif
 
 breaksw
@@ -246,38 +335,29 @@ endsw
 # 43200 -> every 12 hours
 #======================================================================
 
-set      num_obs = 10
-set     ob_day_1 = 0
-set ob_seconds_1 = 43200
+echo " "
+echo "Running create_fixed_network_seq ..."
+echo " "
 
-if ( ${?NumObs} ) then
-   set num_obs = $NumObs
-endif
-if ( ${?ObDay1} ) then
-   set ob_day_1 = $ObDay1
-endif
-if ( ${?ObSec1} ) then
-   set ob_seconds_1 = $ObSec1
-endif
 
-echo "set_def.out"            > create_obs_sequence.in
-echo "1"                     >> create_obs_sequence.in
-echo $num_obs                >> create_obs_sequence.in
-echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
-echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
-echo "obs_seq.in"            >> create_obs_sequence.in
-
+echo "set_def.out"            > create_fixed_network_seq.in ;# same filename as 'output' above
+echo "1"                     >> create_fixed_network_seq.in ;# make a "regular" sequence
+echo $num_obs                >> create_fixed_network_seq.in ;# number of observations in set 1
+echo $ob_day_1 $ob_seconds_1 >> create_fixed_network_seq.in ;# time of first observation
+echo $ob_day_1 $ob_seconds_1 >> create_fixed_network_seq.in ;# observation interval
+echo "obs_seq.in"            >> create_fixed_network_seq.in ;# output file name -- destined for perfect_model_obs
+ 
 echo '&utilities_nml'                               > utilities.nml
-echo '   logfilename = "create_obs_sequence.out",' >> utilities.nml
-echo '   TERMLEVEL = 1 /'                          >> utilities.nml
+echo '   logfilename = "create_fixed_network_seq.out"' >> utilities.nml
+echo '   TERMLEVEL = 1   /'                        >> utilities.nml
 
 cat utilities.nml assim_mod.nml model.nml > input.nml
 
-./create_obs_sequence < create_obs_sequence.in
+./create_fixed_network_seq < create_fixed_network_seq.in || exit 12
 
 if ( $status > 0 ) then
-   echo "ERROR: create_obs_sequence bombed ..."
-   exit
+   echo "ERROR: create_fixed_network_seq bombed ..."
+   exit 12
 endif
 
 #======================================================================
@@ -286,13 +366,18 @@ endif
 #    creates files True_State.nc, obs_seq.out
 #======================================================================
 
+echo " "
+echo "Running perfect_model_obs ..."
+echo " "
+
 cat << ENDofTask03 > perfect.nml
+
 &perfect_model_obs_nml
    async                 = 0,
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   start_from_restart    = .true.,
-   output_restart        = .true.,
+   start_from_restart    = .false.,
+   output_restart        = .false.,
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
    init_time_days        = 0,
@@ -300,22 +385,24 @@ cat << ENDofTask03 > perfect.nml
    output_interval       = 1 /
 ENDofTask03
 
-echo '&utilities_nml'                             > utilities.nml
-echo '   logfilename = "perfect_model_obs.out",' >> utilities.nml
-echo '   TERMLEVEL = 1 /'                        >> utilities.nml
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
+echo '   TERMLEVEL = 1  /'                        >> utilities.nml
 
-cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
+cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
 
-./perfect_model_obs
+./perfect_model_obs || exit 13
  
 if ( $status > 0 ) then
    echo "ERROR: perfect_model_obs (synthetic) bombed ..."
-   exit
+   exit 13
 else
    echo " "
-   echo "perfect_model_obs (synthetic) teminated normally"
+   echo "perfect_model_obs (synthetic) terminated normally"
    echo " "
 endif
+
+exit
 
 #======================================================================
 # Simulate a particular observing system
@@ -325,10 +412,11 @@ endif
 # Set defaults
 #======================================================================
 
+echo " "
+echo "Running filter ..."
+echo " "
+
 set async = 0
-set ens_size = 20
-set cutoff = 0.2
-set cov_inflate = 1.00
 set start_from_restart = .true.
 set output_restart = .true.
 set obs_sequence_file_name = '"obs_seq.out"'
@@ -338,21 +426,12 @@ set init_time_days = 0
 set init_time_seconds = 0
 set output_state_ens_mean = .true.
 set output_state_ens_spread = .true.
-set num_output_ens_members = 10
 set output_interval = 1
 
-if ( ${?EnsSize} ) then
-   set ens_size = $EnsSize
-endif
-if ( ${?NumOutputEnsMembers} ) then
-   set num_output_ens_members = $NumOutputEnsMembers
-endif
-if ( ${?CovInflate} ) then
-   set cov_inflate = $CovInflate
-endif
-if ( ${?Cutoff} ) then
-   set cutoff = $Cutoff
-endif
+
+echo '&utilities_nml'                            > utilities.nml
+echo '   logfilename = "filter.out"'            >> utilities.nml
+echo '   TERMLEVEL = 1   /'                     >> utilities.nml
 
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
@@ -370,35 +449,31 @@ echo "   init_time_seconds = $init_time_seconds ,"             >> filter.nml
 echo "   output_state_ens_mean = $output_state_ens_mean ,"     >> filter.nml
 echo "   output_state_ens_spread = $output_state_ens_spread ," >> filter.nml
 echo "   num_output_ens_members = $num_output_ens_members ,"   >> filter.nml
-echo "   output_interval = $output_interval /"                 >> filter.nml
+echo "   output_interval = $output_interval    /"              >> filter.nml
 echo " "                                                       >> filter.nml
 
-echo '&utilities_nml'                  > utilities.nml
-echo '   logfilename = "filter.out",' >> utilities.nml
-echo '   TERMLEVEL = 1 /'             >> utilities.nml
+cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
 
-cat utilities.nml assim_mod.nml perfect.nml filter.nml model.nml > input.nml
-
-./filter
+./filter || exit 14
 
 if ( $status > 0 ) then
    echo "ERROR: filter bombed ..."
-   exit
 else
    echo " "
-   echo "filter teminated normally"
+   echo "filter terminated normally"
    echo " "
-   \rm -f create_obs_set_def.in create_obs_sequence.in
+   \rm -f create_obs_set_def.in create_obs_sequence.in 
    \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f set_def.out input.nml*default
 endif
 
 #======================================================================
 # Restore the existing namelists ...
 #======================================================================
 
-foreach NAMELIST ( ${SAVEME}/*.nml )
-   mv ${NAMELIST} .
-end
+\mv -f ${SAVEME}/*.nml .
+\mv -f ${SAVEME}/*default .
 \rmdir ${SAVEME}
+\rm -f nullnamelist$$.nml nullnamelist$$.nml_default
 
 exit

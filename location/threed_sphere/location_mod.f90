@@ -24,14 +24,14 @@ module location_mod
 ! Note that for now, lev = -1 represents a surface quantity independent
 ! of vertical discretization as required for Bgrid surface pressure.
 
-use      types_mod, only : r8, PI, rad2deg, deg2rad
+use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD
 use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, &
+public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, vert_is_height, query_location, &
        LocationDims, LocationName, LocationLName, &
@@ -126,8 +126,8 @@ real(r8), dimension(3) :: get_location
 
    if ( .not. module_initialized ) call initialize_module
 
-   get_location(1) = loc%lon * rad2deg                 
-   get_location(2) = loc%lat * rad2deg                 
+   get_location(1) = loc%lon * RAD2DEG                 
+   get_location(2) = loc%lat * RAD2DEG                 
    get_location(3) = loc%vloc     
 
 end function get_location
@@ -200,7 +200,7 @@ real(r8) :: get_location_lon
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lon = loc%lon * rad2deg    
+get_location_lon = loc%lon * RAD2DEG    
 
 end function get_location_lon
 
@@ -216,7 +216,7 @@ real(r8) :: get_location_lat
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lat = loc%lat * rad2deg      
+get_location_lat = loc%lat * RAD2DEG      
 
 end function get_location_lat
 
@@ -250,8 +250,8 @@ if(lat < -90.0_r8 .or. lat > 90.0_r8) then
    call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location%lon = lon * deg2rad
-set_location%lat = lat * deg2rad
+set_location%lon = lon * DEG2RAD
+set_location%lat = lat * DEG2RAD
 
 if(which_vert < 1 .or. which_vert > 3  ) then
    write(errstring,*)'which_vert (',which_vert,') must be one of 1, 2, or 3'
@@ -262,6 +262,23 @@ set_location%which_vert = which_vert
 set_location%vloc = vert_loc
 
 end function set_location
+
+
+
+function set_location_missing
+!----------------------------------------------------------------------------
+!
+
+type (location_type) :: set_location_missing
+
+set_location_missing%lon        = missing_r8
+set_location_missing%lat        = missing_r8
+set_location_missing%vloc       = missing_r8
+set_location_missing%which_vert = missing_i
+
+end function set_location_missing
+
+
 
 function query_location(loc,attr) result(fval)
 !---------------------------------------------------------------------------
@@ -441,11 +458,11 @@ if(lon < 0.0_r8) then
 
    write(*, *) 'Input minimum longitude (0 to 360.0)'
    read(*, *) minlon
-   minlon = minlon * deg2rad
+   minlon = minlon * DEG2RAD
 
    write(*, *) 'Input maximum longitude (0 to 360.0)'
    read(*, *) maxlon
-   maxlon = maxlon * deg2rad
+   maxlon = maxlon * DEG2RAD
 
    ! Longitude is random from minlon to maxlon
 !   location%lon = random_uniform(ran_seq) * 2.0_r8 * PI
@@ -453,18 +470,18 @@ if(lon < 0.0_r8) then
 
    write(*, *) 'Input minimum latitude (-90.0 to 90.0)'
    read(*, *) minlat
-   minlat = sin(minlat * deg2rad)
+   minlat = sin(minlat * DEG2RAD)
 
    write(*, *) 'Input maximum latitude (-90.0 to 90.0)'
    read(*, *) maxlat
-   maxlat = sin(maxlat * deg2rad)
+   maxlat = sin(maxlat * DEG2RAD)
 
    ! Latitude must be area weighted
 !   location%lat = asin(random_uniform(ran_seq) * 2.0_r8 - 1.0_r8)
    location%lat = asin(random_uniform(ran_seq) * (maxlat-minlat) + minlat)
 
-   write(*, *) 'random location is ', location%lon / deg2rad, &
-                                      location%lat / deg2rad
+   write(*, *) 'random location is ', location%lon / DEG2RAD, &
+                                      location%lat / DEG2RAD
 
 else
 
@@ -476,8 +493,8 @@ else
       read(*, *) lat
    end do
 
-   location%lat = lat*deg2rad
-   location%lon = lon*deg2rad
+   location%lat = lat*DEG2RAD
+   location%lon = lon*DEG2RAD
 
 end if
 

@@ -463,7 +463,7 @@ select case(level)
 end select
 
 ! TERMLEVEL gets set in the namelist
-if( level >= TERMLEVEL ) stop 99
+if( level >= TERMLEVEL ) call exit( 99 ) 
 
 end subroutine error_handler
 

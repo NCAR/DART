@@ -10,11 +10,13 @@ module obs_def_mod
 ! $Date$
 ! $Author$
 
-use        types_mod, only : r8
+use        types_mod, only : r8, missing_i, missing_r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_kind, get_obs_kind
-use     location_mod, only : location_type, read_location, write_location, interactive_location
-use time_manager_mod, only : time_type, read_time, write_time, set_time
+use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_kind, &
+                             get_obs_kind, set_obs_kind
+use     location_mod, only : location_type, read_location, write_location, set_location, &
+                             interactive_location, set_location_missing
+use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing
 use  assim_model_mod, only : get_state_meta_data
 
 implicit none
@@ -352,17 +354,30 @@ obs_def%time = set_time(seconds, days)
 write(*, *) 'Input error variance for this observation definition '
 read(*, *) obs_def%error_variance
 
+! TJH -- might want to do some sort of error checking (i.e. for positive values) 
+
 end subroutine interactive_obs_def
+
 
 !----------------------------------------------------------------
 
-subroutine destroy_obs_def(obs_def)
 
-type(obs_def_type), intent(in) :: obs_def
+subroutine destroy_obs_def(obs_def)
+! TECHNICALLY NEED TO CALL DESTRUCTORS FOR ALL SUBCOMPONENTS, NO ALLOCATED STORAGE YET
+! obs_def_type has the following components:
+! type(location_type) :: location      ! center of mass, so to speak
+! type(obs_kind_type) :: kind          ! keyword, BUFR values for now
+! type(time_type)     :: time
+! real(r8)            :: error_variance
+
+type(obs_def_type), intent(inout) :: obs_def
 
 if ( .not. module_initialized ) call initialize_module
 
-! TECHNICALLY NEED TO CALL DESTRUCTORS FOR ALL SUBCOMPONENTS, NO ALLOCATED STORAGE YET
+call set_obs_def_location(       obs_def, set_location_missing() )
+call set_obs_def_kind(           obs_def, set_obs_kind(missing_i) )
+call set_obs_def_time(           obs_def, set_time_missing() )
+call set_obs_def_error_variance( obs_def, missing_r8)
 
 end subroutine destroy_obs_def
 

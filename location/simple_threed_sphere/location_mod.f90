@@ -23,14 +23,14 @@ module location_mod
 ! Note that for now, lev = -1 represents a surface quantity independent
 ! of vertical discretization as required for Bgrid surface pressure.
 
-use      types_mod, only : r8, PI
+use      types_mod, only : r8, PI, DEG2RAD, RAD2DEG, MISSING_R8
 use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, &
+public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_level, &
        LocationDims, LocationName, LocationLName, &
@@ -120,8 +120,8 @@ real(r8), dimension(3) :: get_location
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location(1) = loc%lon * 180.0_r8 / PI
-get_location(2) = loc%lat * 180.0_r8 / PI
+get_location(1) = loc%lon * RAD2DEG
+get_location(2) = loc%lat * RAD2DEG
 get_location(3) = loc%lev
 
 end function get_location
@@ -160,7 +160,7 @@ real(r8) :: get_location_lon
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lon = loc%lon * 180.0_r8 / PI
+get_location_lon = loc%lon * RAD2DEG
 
 end function get_location_lon
 
@@ -178,7 +178,7 @@ real(r8) :: get_location_lat
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lat = loc%lat * 180.0_r8 / PI
+get_location_lat = loc%lat * RAD2DEG
 
 end function get_location_lat
 
@@ -221,11 +221,29 @@ if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
 if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
         'Latitude is out of [-90,90] range', source, revision, revdate)
 
-set_location%lon = lon * PI / 180.0_r8
-set_location%lat = lat * PI / 180.0_r8
+set_location%lon = lon * DEG2RAD
+set_location%lat = lat * DEG2RAD
 set_location%lev = lev
 
 end function set_location
+
+
+
+function set_location_missing
+!----------------------------------------------------------------------------
+!
+
+implicit none
+
+type (location_type) :: set_location_missing
+
+if ( .not. module_initialized ) call initialize_module
+
+set_location_missing%lon = MISSING_R8
+set_location_missing%lat = MISSING_R8
+set_location_missing%lev = MISSING_R8
+
+end function set_location_missing
 
 
 
@@ -356,8 +374,8 @@ if(lon < 0.0_r8) then
    location%lat = asin(random_uniform(ran_seq) * 2.0_r8 - 1.0_r8)
    location%lev = lev
 
-   write(*, *) 'random location is ', location%lon * 180.0 / PI, &
-                                      location%lat * 180.0 / PI
+   write(*, *) 'random location is ', location%lon * RAD2DEG, &
+                                      location%lat * RAD2DEG
 
 else
 

@@ -17,14 +17,14 @@ module location_mod
 ! representation is longitude in degrees from 0 to 360 and latitude 
 ! from -90 to 90 for consistency with most applications in the field.
 
-use      types_mod, only : r8, PI
+use      types_mod, only : r8, DEG2RAD, PI, MISSING_R8
 use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, &
+public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location
 
 ! CVS Generated file description for error handling, do not edit
@@ -161,10 +161,29 @@ if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
 if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
        'Latitude is out of [-90,90] range', source, revision, revdate)
 
-set_location%lon = lon * 2.0_r8 * PI / 360.0_r8
-set_location%lat = lat * PI / 180.0_r8
+set_location%lon = lon * DEG2RAD
+set_location%lat = lat * DEG2RAD
 
 end function set_location
+
+
+
+function set_location_missing
+!----------------------------------------------------------------------------
+!
+! Given a longitude and latitude
+! puts this value into the location.
+
+implicit none
+
+type (location_type) :: set_location_missing
+
+if ( .not. module_initialized ) call initialize_module
+
+set_location_missing%lon = MISSING_R8
+set_location_missing%lat = MISSING_R8
+
+end function set_location_missing
 
 
 

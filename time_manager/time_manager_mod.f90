@@ -10,7 +10,7 @@ module time_manager_mod
 ! $Date$
 ! $Author$
 
-use     types_mod, only : r8
+use     types_mod, only : r8, missing_i
 use utilities_mod, only : error_handler, E_MSG, E_WARN, E_ERR, &
                           register_module
 
@@ -44,8 +44,8 @@ public :: operator(+),  operator(-),   operator(*),   operator(/),  &
           operator(<),  operator(<=),  operator(//)
 
 ! Subroutines and functions operating on time_type
-public :: set_time, increment_time, decrement_time, get_time, interval_alarm
-public :: repeat_alarm
+public :: set_time, set_time_missing, increment_time, decrement_time, get_time
+public :: interval_alarm, repeat_alarm
 
 ! List of available calendar types
 !!! NO_LEAP changed to NOLEAP for some weird FMS Havana compliance
@@ -168,6 +168,21 @@ if(seconds / (60*60*24)  >= huge(days_in) - days_in) &
 set_time%days = days_in + seconds / (60*60*24)
 
 end function set_time
+
+
+
+function set_time_missing
+!---------------------------------------------------------------------------
+!
+! Returns a time interval corresponding to this number of days and seconds.
+! The arguments must not be negative but are otherwise unrestricted.
+
+type(time_type) :: set_time_missing
+
+set_time_missing%seconds = missing_i
+set_time_missing%days    = missing_i
+
+end function set_time_missing
 
 
 

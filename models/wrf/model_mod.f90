@@ -21,7 +21,7 @@ module model_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r8, deg2rad, rad2deg, missing_r
+use        types_mod, only : r8, deg2rad, rad2deg, missing_r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              LocationDims, LocationName, LocationLName, query_location
@@ -890,7 +890,7 @@ end if
 
 if(obs_kind /= 3) call Interp_lin_1D(fld, wrf%bt, zloc, obs_val)
 
-if(obs_val == missing_r .and. present(rstatus)) rstatus = 1.0_r8
+if(obs_val == missing_r8 .and. present(rstatus)) rstatus = 1.0_r8
 
 if(debug) print*,' interpolated value= ',obs_val
 
@@ -2275,7 +2275,7 @@ subroutine Interp_lin_1D(fi1d, n1, z, fo1d)
   integer   :: k
   real(r8)  :: dz, dzm
 
-  fo1d = missing_r
+  fo1d = missing_r8
 
      if(z > 0.0_r8) then
         call toGrid(z,n1, k, dz, dzm)
@@ -2322,7 +2322,7 @@ subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
   fiz(1:n3) = dym*(dxm*fi3d(i, j,   1:n3) + dx *fi3d(i+1 ,j  ,1:n3))&
             + dy *(dxm*fi3d(i, j+1, 1:n3) + dx *fi3d(i+1, j+1,1:n3))
 
-  fo3d = missing_r
+  fo3d = missing_r8
 
      if(z > 0.0) then
         call toGrid(z,n3, k, dz, dzm)
@@ -2363,7 +2363,7 @@ subroutine to_zk(obs_v, mdl_v, n3, v_interp_optn, zk)
 
    integer   :: k
 
-   zk = missing_r
+   zk = missing_r8
 
    if(v_interp_optn == v_interp_p) then
 

@@ -13,7 +13,8 @@ MODULE types_mod
 implicit none
 private 
 
-public :: r8, pi, deg2rad, rad2deg, missing_r, missing_data
+public :: r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
+public :: MISSING_I, MISSING_DATA
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -48,11 +49,13 @@ SAVE
 ! Constants ... 
 !----------------------------------------------------------------------------
 
-real(kind=r8), parameter :: pi = 3.1415926535897932346_r8
-real(kind=r8), parameter :: deg2rad = pi / 180.0_r8
-real(kind=r8), parameter :: rad2deg = 180.0_r8 / pi
+real(kind=r8), parameter :: PI = 3.1415926535897932346_r8
+real(kind=r8), parameter :: DEG2RAD = PI / 180.0_r8
+real(kind=r8), parameter :: RAD2DEG = 180.0_r8 / PI
 
-integer,       PARAMETER ::  missing_data = -88
-real(kind=r8), PARAMETER ::  missing_r    = -888888.0_r8
+integer,       PARAMETER ::  MISSING_I    = -888888
+integer,       PARAMETER ::  MISSING_DATA = -88
+real(kind=r4), PARAMETER ::  MISSING_R4   = -888888.0_r4
+real(kind=r8), PARAMETER ::  MISSING_R8   = -888888.0_r8
 
 END MODULE types_mod

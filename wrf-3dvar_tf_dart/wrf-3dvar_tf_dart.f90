@@ -9,7 +9,7 @@ PROGRAM wrf_3dvar_tf_dart
 ! $Revision$
 ! $Date$
 
-use        types_mod, only : r8, missing_r, missing_data
+use        types_mod, only : r8, missing_r8, missing_data
 use    utilities_mod, only : open_file, check_nml_error, close_file, file_exist, initialize_utilities, &
                              finalize_utilities, register_module, logfileunit
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
@@ -164,7 +164,7 @@ loop_level: DO ii = 1, levels
         rf_qc,          &
         rf_error
 
-   if (rv_inv /= missing_r) then
+   if (rv_inv /= missing_r8) then
 
       num_obs = num_obs + 1
 
@@ -180,10 +180,10 @@ loop_level: DO ii = 1, levels
       kind = set_obs_kind(100)
       call set_obs_def_kind(obs_def, kind)
 
-      if (rv_error /= missing_r) then
+      if (rv_error /= missing_r8) then
          call set_obs_def_error_variance(obs_def, rv_error*rv_error)
       else
-         call set_obs_def_error_variance(obs_def, missing_r)
+         call set_obs_def_error_variance(obs_def, missing_r8)
       endif
 
       call set_obs_def(obs, obs_def)
@@ -191,8 +191,8 @@ loop_level: DO ii = 1, levels
       obs_value(1) = rv_inv
       call set_obs_values(obs, obs_value, 1)
 
-      if (rv_inv == missing_r .or. &
-           rv_error == missing_r ) then
+      if (rv_inv == missing_r8 .or. &
+           rv_error == missing_r8 ) then
 
          rv_qc = missing_data
 
@@ -211,17 +211,17 @@ loop_level: DO ii = 1, levels
 
    endif
 
-   if (rf_inv /= missing_r) then
+   if (rf_inv /= missing_r8) then
 
       num_obs = num_obs + 1
 
       kind = set_obs_kind(101)
       call set_obs_def_kind(obs_def, kind)
 
-      if (rv_error /= missing_r) then
+      if (rv_error /= missing_r8) then
          call set_obs_def_error_variance(obs_def, rf_error*rf_error)
       else
-         call set_obs_def_error_variance(obs_def, missing_r)
+         call set_obs_def_error_variance(obs_def, missing_r8)
       endif
 
       call set_obs_def(obs, obs_def)
@@ -229,8 +229,8 @@ loop_level: DO ii = 1, levels
       obs_value(1) = rf_inv
       call set_obs_values(obs, obs_value, 1)
 
-      if (rf_inv == missing_r .or. &
-           rf_error == missing_r ) then
+      if (rf_inv == missing_r8 .or. &
+           rf_error == missing_r8 ) then
 
          rf_qc = missing_data
 
