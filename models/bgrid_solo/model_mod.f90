@@ -82,6 +82,7 @@ use hs_forcing_mod       , only: hs_forcing_init, hs_forcing
 use location_mod         , only: location_type, get_location, set_location, get_dist, &
                                  LocationDims, LocationName, LocationLName
 
+use random_seq_mod       , only: random_seq_type, init_random_seq, random_gaussian
 use types_mod
 
 !-----------------------------------------------------------------------
@@ -134,9 +135,10 @@ character(len=128) :: &
       logical :: override = .false.  ! override restart values for date
       integer :: days=0, hours=0, minutes=0, seconds=0
       integer :: dt_atmos = 0
+      real :: noise_sd = 0.0
 
       namelist /main_nml/ current_time, override, dt_atmos, &
-                          days, hours, minutes, seconds
+                          days, hours, minutes, seconds, noise_sd
 
 !-----------------------------------------------------------------------
 ! More stuff from atmos_solo driver
@@ -180,6 +182,10 @@ real, dimension(:), pointer        :: v_lons, v_lats, t_lons, t_lats
 
 
 !-----------------------------------------------------------------------
+
+! Stuff to allow addition of random 'sub-grid scale' noise
+type(random_seq_type) :: random_seed
+logical :: first_call = .true.
 
 contains
 
@@ -235,6 +241,9 @@ type(time_type), intent(in) :: Time
 type(prog_var_type) :: Var
 type(time_type) :: Time_next
 
+integer :: i, j, k
+real(r8) :: temp_t
+
 ! Convert the vector to a B-grid native state representation
 call vector_to_prog_var(x, get_model_size(), Var)
 
@@ -249,6 +258,31 @@ call bgrid_core_driver(Time_next, Var, Var_dt, Dynam, omega)
 ! dt_atmos is seconds for time step from namelist for now
 call bgrid_physics(physics_window, real(dt_atmos), Time_next, &
    Dynam%Hgrid, Dynam%Vgrid, Dynam, Var, Var_dt)
+
+write(*, *) 'max tendency ', maxval(abs(Var_dt%t))
+write(*, *) 'mean tendency ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
+
+! First pass at creating some random 'sub-grid' noise 
+! Need to initialize random sequence on first call
+if(first_call) then
+   write(*, *) 'NOISE_SD is ', noise_sd
+   call init_random_seq(random_seed)
+   first_call = .false.
+endif
+
+! Just modify T for now by multiplying by 1 + r(0.0, noise_sd) * dt
+do i = 1, size(Var_dt%t, 1)
+   do j = 1, size(Var_dt%t, 2)
+      do k = 1, size(Var_dt%t, 3)
+         temp_t = Var_dt%t(i, j, k)
+         Var_dt%t(i, j, k) = &
+            (1.0 + random_gaussian(random_seed, dble(0.0), dble(noise_sd))) * Var_dt%t(i, j, k)
+      end do
+   end do
+end do
+
+write(*, *) 'max tendency with noise ', maxval(abs(Var_dt%t))
+write(*, *) 'mean tendency with noise ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
 
 ! Time differencing and diagnostics
 call bgrid_core_time_diff(omega, Time_next, Dynam, Var, Var_dt)

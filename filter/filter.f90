@@ -40,7 +40,9 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
-   linear_obs_increment, linear_update_from_obs_inc, look_for_bias
+   linear_obs_increment, linear_update_from_obs_inc, look_for_bias, &
+   obs_increment5, obs_increment6, obs_increment7, obs_increment8, &
+   obs_increment9, obs_increment10
 use cov_cutoff_mod,   only : comp_cov_factor
 
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &

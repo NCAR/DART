@@ -30,7 +30,8 @@ private
 public read_restart, write_restart, assim_tools_init, &
    obs_increment, obs_increment2, obs_increment3, obs_increment4, &
    update_from_obs_inc, local_update_from_obs_inc, robust_update_from_obs_inc, &
-   obs_inc_index, obs_inc4_index, &
+   obs_inc_index, obs_inc4_index, obs_increment5, obs_increment6, &
+   obs_increment7, obs_increment8, obs_increment9, obs_increment10, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
@@ -184,6 +185,547 @@ a = sqrt(new_cov * prior_cov_inv)
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment
+
+
+
+
+subroutine obs_increment7(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! Third try messing around on 24 March, inflate obs_var and prior_var
+! by same factor to make them consistent with difference between mean
+! and obs and then proceed.
+
+! In cases with no systematic error, this worked extremely well, slightly
+! reducing error and vastly increasing spread. The test is exp_test2 was
+! done with the threshold for correction beginning when the error is 
+! more than 2 sd's of the expected.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+
+! AT THIS POINT CAN EVALUATE INCONSISTENCY
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / (3.0 * diff_sd))
+
+! Only work with ratio's larger than 1?
+if(ratio < 1.0) ratio = 1.0
+
+! Can now inflate by this ratio and then do adjustment
+inf_obs_var = ratio**2 * obs_var
+obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + ratio * (ens - prior_mean)
+prior_cov = ratio**2 * prior_cov
+
+
+! CHECK ALL THIS
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / inf_obs_var)
+
+a = sqrt(new_cov * prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment7
+
+
+
+
+
+subroutine obs_increment8(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! Uses a semi-formal model of systematic error. Here, assumes this
+! is only in model. See notes from 1 April, 2003. Idea is that a
+! distribution is hypothesized for an inflation factor, 1+alpha,
+! and then the product of the probablility of a given value of
+! alpha and the probability of the observation given this alpha
+! is maximized by linear search.
+
+! In cases with no systematic error, this worked extremely well, slightly
+! reducing error and vastly increasing spread. The test is exp_test2 was
+! done with the threshold for correction beginning when the error is 
+! more than 2 sd's of the expected.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: inf_ens(ens_size), alpha
+! The tuning knob on the systematic error model, see 1 April, 01
+real(r8), parameter :: sigma_alpha = 0.25
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Use maximum likelihood bias model to get inflation for model only
+! Eventually want to split between model and obs
+call bias_max_likelihood(prior_cov, sigma_alpha, abs(obs - prior_mean), &
+   obs_var, alpha)
+
+! Can now inflate by factor (1 + alpha)
+! Form inflated ensemble
+inf_ens = prior_mean + (1.0 + alpha) * (ens - prior_mean)
+prior_cov = (1.0 + alpha)**2 * prior_cov
+
+
+! CHECK ALL THIS
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+a = sqrt(new_cov * prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment8
+
+
+
+
+
+subroutine obs_increment9(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! Uses a semi-formal model of systematic error. Here, assumes this
+! is only in model. See notes from 1 April, 2003. Idea is that a
+! distribution is hypothesized for an inflation factor, 1+alpha,
+! and then the product of the probablility of a given value of
+! alpha and the probability of the observation given this alpha
+! is maximized by linear search.
+
+! In cases with no systematic error, this worked extremely well, slightly
+! reducing error and vastly increasing spread. The test is exp_test2 was
+! done with the threshold for correction beginning when the error is 
+! more than 2 sd's of the expected.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: inf_ens(ens_size), alpha, inf_obs_var
+! The tuning knob on the systematic error model, see 1 April, 01
+real(r8), parameter :: sigma_alpha = 0.350
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! Use maximum likelihood bias model to get inflation for model only
+! Eventually want to split between model and obs
+call bias_max_likelihood2(prior_cov, sigma_alpha, abs(obs - prior_mean), &
+   obs_var, alpha)
+
+! Can now inflate by factor (1 + alpha)
+inf_obs_var = (1.0 + alpha)**2 * obs_var
+obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_ens = prior_mean + (1.0 + alpha) * (ens - prior_mean)
+prior_cov = (1.0 + alpha)**2 * prior_cov
+
+
+! CHECK ALL THIS
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / inf_obs_var)
+
+a = sqrt(new_cov * prior_cov_inv)
+
+obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment9
+
+
+
+
+
+subroutine obs_increment10(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! Uses a semi-formal model of systematic error. Here, assumes this
+! is only in model. See notes from 1 April, 2003. Idea is that a
+! distribution is hypothesized for an inflation factor, 1+alpha,
+! and then the product of the probablility of a given value of
+! alpha and the probability of the observation given this alpha
+! is maximized by linear search.
+! This version only inflates the variance. It adjusts the mean with
+! the unmodified algorithm. Hope is to avoid being knocked around
+! by sampling error in obs error while still dealing with persistent
+! systematic error by increasing spread.
+
+! In cases with no systematic error, this worked extremely well, slightly
+! reducing error and vastly increasing spread. The test is exp_test2 was
+! done with the threshold for correction beginning when the error is 
+! more than 2 sd's of the expected.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: inf_ens(ens_size), alpha, inf_obs_var, new_ens(ens_size)
+real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv, inf_new_cov
+! The tuning knob on the systematic error model, see 1 April, 01
+real(r8), parameter :: sigma_alpha = 0.50
+
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! Use maximum likelihood bias model to get inflation for model only
+! Eventually want to split between model and obs
+call bias_max_likelihood2(prior_cov, sigma_alpha, abs(obs - prior_mean), &
+   obs_var, alpha)
+
+!write(*, *) 'orig mean and cov ', prior_mean, prior_cov
+
+! Can now inflate by factor (1 + alpha)
+inf_obs_var = (1.0 + alpha)**2 * obs_var
+inf_obs_var_inv = 1.0 / inf_obs_var
+! Form inflated ensemble
+inf_prior_cov = (1.0 + alpha)**2 * prior_cov
+
+! CHECK ALL THIS
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+inf_new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
+
+! Don't let obs increase uncertainty
+if(inf_new_cov > prior_cov) inf_new_cov = prior_cov
+
+a = sqrt(inf_new_cov * prior_cov_inv)
+obs_inc = a * (ens - prior_mean) + new_mean - ens
+write(*, *) 'sd factor a is ', a
+
+end subroutine obs_increment10
+
+
+
+
+subroutine bias_max_likelihood(prior_var, sigma_alpha, delta, obs_var, max_alpha)
+
+implicit none
+
+real(r8), intent(in) :: prior_var, sigma_alpha, delta, obs_var
+real(r8), intent(out) :: max_alpha
+
+real(r8) :: prior_sd, obs_sd
+real(r8) :: alpha, sigma_t, prob_obs, prob_alpha, prob
+real(r8) :: max_prob, max_prob_obs, max_prob_alpha
+real(r8), parameter :: pi = 3.14159
+integer :: i, max_i
+
+write(*, *) '-----------------------------------------------'
+write(*, *) sqrt(prior_var), delta, sqrt(obs_var)
+
+! Zero out the max_prob initial
+max_prob = 0.0
+
+! Convert variance to SD
+prior_sd = sqrt(prior_var)
+obs_sd = sqrt(obs_var)
+
+! Do an outward search on alpha for a maximum likelihood state
+do i = 0, 100
+   alpha = i * 0.02
+
+! Compute the expected variance of the difference
+   sigma_t = sqrt(((1.0 + alpha) * prior_sd)**2 + obs_sd**2)
+
+! Probability that obs would be taken is
+   prob_obs = (1.0 / (sigma_t * sqrt(2.0) * pi)) * exp((delta / sigma_t)**2 / (-2.0))
+!  NOTE: MULTIPLYING BY 2.0 BECAUSE DISTRIBUTION IS ONE-SIDED; CHECK THIS
+! TURNS OUT THAT THIS DOESN"T MATTER FOR MINIMIZING???
+   prob_alpha = 2.0 * (1.0 / (sigma_alpha * sqrt(2.0) * pi)) * exp((alpha / sigma_alpha)**2 / (-2.0))
+   prob = prob_obs * prob_alpha
+
+!   write(*, 11) i, alpha, prob_obs, prob_alpha, prob
+! 11 format(1x, i3, 1x, 4(e10.4, 1x))
+
+! Keep the maximum likelihood state
+   if(max_prob < prob) then
+      max_prob = prob
+      max_prob_obs = prob_obs
+      max_prob_alpha = prob_alpha
+      max_alpha = alpha
+      max_i = i
+   end if
+end do
+
+!write(*, *) 'max       i     alpha        prob_obs       prob_alpha      prob'
+write(*, 21) max_alpha, max_prob_obs, max_prob_alpha, max_prob
+21 format(1x, 4(e10.4, 1x))
+
+end subroutine bias_max_likelihood
+
+
+
+
+
+subroutine bias_max_likelihood2(prior_var, sigma_alpha, delta, obs_var, max_alpha)
+
+implicit none
+
+real(r8), intent(in) :: prior_var, sigma_alpha, delta, obs_var
+real(r8), intent(out) :: max_alpha
+
+real(r8) :: prior_sd, obs_sd
+real(r8) :: alpha, sigma_t, prob_obs, prob_alpha, prob
+real(r8) :: max_prob, max_prob_obs, max_prob_alpha
+real(r8), parameter :: pi = 3.14159
+integer :: i, max_i
+
+write(*, *) '-----------------------------------------------'
+write(*, *) sqrt(prior_var), delta, sqrt(obs_var)
+
+! Zero out the max_prob initial
+max_prob = 0.0
+
+! Convert variance to SD
+prior_sd = sqrt(prior_var)
+obs_sd = sqrt(obs_var)
+
+! Do an outward search on alpha for a maximum likelihood state
+do i = 0, 100
+   alpha = i * 0.02
+
+! Compute the expected variance of the difference
+   sigma_t = sqrt(((1.0 + alpha) * prior_sd)**2 + &
+       ((1.0 + alpha) * obs_sd)**2)
+
+! Probability that obs would be taken is
+   prob_obs = (1.0 / (sigma_t * sqrt(2.0) * pi)) * exp((delta / sigma_t)**2 / (-2.0))
+!  NOTE: MULTIPLYING BY 2.0 BECAUSE DISTRIBUTION IS ONE-SIDED; CHECK THIS
+! TURNS OUT THAT THIS DOESN"T MATTER FOR MINIMIZING???
+   prob_alpha = 2.0 * (1.0 / (sigma_alpha * sqrt(2.0) * pi)) * exp((alpha / sigma_alpha)**2 / (-2.0))
+   prob = prob_obs * prob_alpha
+
+!   write(*, 11) i, alpha, prob_obs, prob_alpha, prob
+! 11 format(1x, i3, 1x, 4(e10.4, 1x))
+
+! Keep the maximum likelihood state
+   if(max_prob < prob) then
+      max_prob = prob
+      max_prob_obs = prob_obs
+      max_prob_alpha = prob_alpha
+      max_alpha = alpha
+      max_i = i
+   end if
+end do
+
+!write(*, *) 'max       i     alpha        prob_obs       prob_alpha      prob'
+write(*, 21) max_alpha, max_prob_obs, max_prob_alpha, max_prob
+21 format(1x, 4(e10.4, 1x))
+
+end subroutine bias_max_likelihood2
+
+
+
+
+
+subroutine obs_increment6(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! Second try on 24 March to deal with bias. this time don't reduce
+! spread when there seems to be a large bias.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, ratio, inv_ratio, delta_cov, rev_new_cov
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! TEMPORARY LOOK AT INFLATING HERE; see notes from 12 Sept. 2001
+!!!cov = cov * 1.01 OR prior_cov = prior_cov * 1.01
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+! Look for signs of bias
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+ratio = abs(error / diff_sd)
+if(ratio > 1.0) then
+   inv_ratio = 1.0 / ratio
+   delta_cov = new_cov - prior_cov
+   delta_cov = inv_ratio * delta_cov
+   rev_new_cov = prior_cov + delta_cov
+else
+   rev_new_cov = new_cov
+endif
+
+
+!write(*, *) 'error, diff_sd ', error, diff_sd
+!write(*, *) 'inv_ratio ', inv_ratio
+!write(*, *) 'new, rev_new_cov ', new_cov, rev_new_cov
+
+ 
+
+
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+a = sqrt(rev_new_cov * prior_cov_inv)
+
+obs_inc = a * (ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment6
+
+
+
+
+
+subroutine obs_increment5(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! Test version from 24 March, 2003 looking at local explicit handling
+! of prior bias.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8) :: error, diff_sd, bias
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! TEMPORARY LOOK AT INFLATING HERE; see notes from 12 Sept. 2001
+!!!cov = cov * 1.01 OR prior_cov = prior_cov * 1.01
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+a = sqrt(new_cov * prior_cov_inv)
+
+obs_inc = a * (ens - prior_mean) + new_mean - ens
+
+
+! Look for bias based inconsistency in the original distribution and
+! do explicit correction
+error = prior_mean - obs
+diff_sd = sqrt(obs_var + prior_cov)
+if(abs(error) > 3.0 * diff_sd) then
+   bias = (abs(error) - 3.0 * diff_sd) * (error / abs(error))
+else
+   bias = 0.0
+endif
+
+obs_inc = obs_inc - bias
+
+!write(*, *) 'prior_mean, obs, error', prior_mean, obs, error
+!write(*, *) 'obs_sd, prior_sd, diff_sd ', sqrt(obs_var), sqrt(prior_cov), diff_sd
+!write(*, *) 'computed bias ', bias
+
+end subroutine obs_increment5
 
 
 

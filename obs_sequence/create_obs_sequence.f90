@@ -19,10 +19,10 @@ program create_obs_sequence
 !    fashion. At some point we need to sort these sets.
 
 
-use obs_sequence_mod, only : init_obs_sequence, obs_sequence_type, &
+use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
    add_obs_set, write_obs_sequence, associate_def_list, read_obs_sequence
 use set_def_list_mod, only : set_def_list_type, get_num_sets_in_list, read_set_def_list
-use obs_set_mod, only : init_obs_set, obs_set_type, set_obs_set_time
+use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time
 use time_manager_mod, only : time_type, set_time, operator(*), operator(+)
 use utilities_mod, only : open_file
 
