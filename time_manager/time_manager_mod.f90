@@ -2576,11 +2576,11 @@ integer                        :: second, minute, hour, day, month, year
 if ( .not. module_initialized ) call time_manager_init
 
 if (calendar_type == GREGORIAN) then
-   write(*, *) 'input date year month day hour minute second'
+   write(*, *) 'input date (as integers): year month day hour minute second'
    read(*, *) year, month, day, hour, minute, second
    time = set_date(year, month, day, hour, minute, second)
 else
-   write(*, *) 'input time in days and seconds'
+   write(*, *) 'input time in days and seconds (as integers)'
    read(*, *) day, second
    time = set_time(second, day)
 endif
