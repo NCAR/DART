@@ -6,6 +6,8 @@
 # If this is first of recursive calls need to get rid of async_may_go
 # Technically, this could lock, but seems incredibly unlikely
 if ($?First) then
+# Do nothing if this is not the first time
+else
    setenv First no
    rm -f async_may_go
 # Clean up any assim_model_ic and ud files and temp directories
