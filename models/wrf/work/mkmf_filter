@@ -1,0 +1,2 @@
+./mkmf -p filter -t mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../DART" path_names_filter /usr/local/include

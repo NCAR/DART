@@ -1,0 +1,2 @@
+./mkmf -p create_obs_set_def -t mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../DART" path_names_create_obs_set_def /usr/local/include

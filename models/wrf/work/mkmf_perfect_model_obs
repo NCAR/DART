@@ -1,0 +1,2 @@
+./mkmf -p perfect_model_obs -t mkmf.template.ifc -c"-Duse_netCDF" \
+ -a "../DART" path_names_perfect_model_obs /usr/local/include
