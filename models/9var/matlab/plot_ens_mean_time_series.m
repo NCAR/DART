@@ -33,18 +33,14 @@ for i = 1:3
 % Get the truth for this variable
       copy = get_copy_index('Truth', truth_file);
       truth = get_var_series(var, copy, truth_file);
-% Plot the truth 
       figure(i);
       subplot(3, 1, j);
       hold on;
       plot(truth, 'b');
-% Get the individual ensemble members
-      ens = get_ens_series(var, ens_file);
-      plot(ens, 'g');
 % Get the ensemble mean
-      copy = get_copy_index('ensemble mean', ens_file);
-      ens_mean = get_var_series(var, copy, ens_file);
-      plot(ens_mean, 'r');
+      copy = get_copy_index('ensemble mean', ens_file)
+      ens_mean = get_var_series(var, copy, ens_file)
+      plot(ens_mean, 'r')
    end
 end
 

@@ -1,4 +1,4 @@
-% Plots time series of ensemble members, mean and truth for 9 variable
+% Plots summary plots of global error and spread
 
 truth_file = input('Input name of True State file; <cr> for True_State.nc');
 if sum(size(truth_file)) == 0
@@ -22,30 +22,18 @@ ens_spread_index = get_copy_index('ensemble spread', ens_file);
 truth = get_state_copy(truth_index, truth_file);
 ens = get_state_copy(ens_mean_index, ens_file);
 
-%err = rms_err(ens, truth);
-
 spread = get_state_copy(ens_spread_index, ens_file);
 
-% Use three different figures with three subplots each
-for i = 1:3
-   for j = 1:3
-      var = (i - 1)*3 + j;
-% Get the truth for this variable
-      copy = get_copy_index('Truth', truth_file);
-      truth = get_var_series(var, copy, truth_file);
-% Plot the truth 
-      figure(i);
-      subplot(3, 1, j);
-      hold on;
-      plot(truth, 'b');
-% Get the individual ensemble members
-      ens = get_ens_series(var, ens_file);
-      plot(ens, 'g');
-% Get the ensemble mean
-      copy = get_copy_index('ensemble mean', ens_file);
-      ens_mean = get_var_series(var, copy, ens_file);
-      plot(ens_mean, 'r');
-   end
-end
+% Compute RMS
+rms = rms_err(truth, ens);
+plot(rms, 'b');
+
+% Also need to compute the spread; zero truth for this and compute
+% RMS distance from 0 (verify algorithm)
+truth(:) = 0.0;
+rms_spread = rms_err(truth, spread);
+hold on;
+plot(rms_spread, 'r');
+
 
 
