@@ -34,7 +34,7 @@ program ensemble_init
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, get_date, read_time, set_calendar_type, &
-                             GREGORIAN, days_per_month
+                             GREGORIAN, julian_day
 use  wrf_data_module, only : wrf_data, wrf_bdy_data, &
                              wrf_open_and_alloc, wrfbdy_open_and_alloc, &
                              wrf_dealloc, wrfbdy_dealloc, &
@@ -73,13 +73,13 @@ type(wrf_bdy_data) :: wrf_bdy, wrf_bdy_mean, wrf_bdy_tmp
 real(r8)           :: scale       ! each deviation scaled by this amt
 
 character (len=6)  :: imem  
-logical            :: debug, leap
+logical            :: debug
 integer            :: Ne,                 & ! Ensemble size
                       i
 
 type(time_type)   :: dart_time(2)
 integer           :: year, month, day, hour, minute, second
-integer           :: ndays, m
+integer           :: ndays
 
 character(len=19) :: timestring
 
@@ -244,16 +244,9 @@ do i=1,Ne
    call get_date(dart_time(1), year, month, day, hour, minute, second)
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULYR", year) )
    if(debug) write(6,*) 'writing JULYR = ',year
-   ndays = 0
-   leap = (modulo(year,4) == 0)
-   if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
-      leap=.false.
-   endif
-   do m = 1, month - 1
-      ndays = ndays + days_per_month(m)
-      if(leap .and. m == 2) ndays = ndays + 1
-   enddo
-   ndays = ndays + day
+
+   ndays = julian_day(year, month, day)
+
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "JULDAY", ndays) )
    if(debug) write(6,*) 'writing JULDAY = ',ndays
    call check( nf90_inq_varid(wrf_bdy%ncid, 'md___nextbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', var_id) )
