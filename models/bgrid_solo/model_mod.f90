@@ -79,7 +79,10 @@ use bgrid_halo_mod       , only: update_halo, UWND, VWND, TEMP, &
                                  NORTH, EAST, WEST, SOUTH
 use hs_forcing_mod       , only: hs_forcing_init, hs_forcing
 
-use location_mod         , only: location_type, get_location, set_location, get_dist
+use location_mod         , only: location_type, get_location, set_location, get_dist, &
+                                 nc_write_location
+
+use types_mod
 
 !-----------------------------------------------------------------------
 
@@ -106,7 +109,8 @@ public  atmosphere,      &
         static_init_model,  &
         init_model_instance, &
         init_time, &
-        init_conditions
+        init_conditions, &
+        nc_write_locations
 
 !-----------------------------------------------------------------------
 
@@ -1269,6 +1273,97 @@ end subroutine init_time
 
 
 !#######################################################################
+
+
+
+
+subroutine nc_write_locations(ncFileID,FileName)
+!----------------------------------------------------------------------------
+!
+! Defines a oned location variable and the attributes in the netCDF file.
+! The dimension of the variable is set by passing in the dimids ...
+! in other models, dimids will be an array ...
+!
+! Typical sequence for adding new dimensions,variables,attributes:
+! NF90_OPEN             ! open existing netCDF dataset
+!    NF90_redef         ! put into define mode
+!    NF90_def_dim       ! define additional dimensions (if any)
+!    NF90_def_var       ! define variables: from name, type, and dims
+!    NF90_put_att       ! assign attribute values
+! NF90_ENDDEF           ! end definitions: leave define mode
+!    NF90_put_var       ! provide values for variable
+! NF90_CLOSE            ! close: save updated netCDF dataset
+!
+
+use typeSizes
+use netcdf
+implicit none
+
+integer, intent(inout)       :: ncFileID
+character(len=*), intent(in) :: FileName
+
+integer :: paramDimID, LocationVarID, Nlocations
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: i,ierr
+
+type(location_type) :: state_loc
+
+! does ncFileID refer to an open netCDF file
+ierr = NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID)
+
+if ( ierr /= NF90_noerr ) then
+   call check(NF90_Open(path = trim(FileName)//".nc", mode = nf90_write, ncid = ncFileID))
+endif
+call check(NF90_redef(ncFileID))        ! put into define mode
+
+! find the DimensionID(s), create variable and atts
+! then leave define mode
+
+call check(NF90_inq_dimid(ncid=ncFileID, name="StateVariable", dimid = ParamDimID))
+call check(NF90_def_var(ncFileID, name="loc1d", xtype=nf90_double, &
+                                      dimids=ParamDimID, varid=LocationVarID) )
+call check(NF90_put_att(ncFileID, LocationVarID, "long_name", "one-dimensional location"))
+call check(NF90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
+call check(NF90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
+call check(NF90_enddef(ncfileID))   ! Leave define mode
+
+! Write all the locations
+! Question:  do we want to use get_model_size ...
+
+call check(NF90_Inquire_Dimension(ncid=ncFileID, dimid = ParamDimID, len=Nlocations))
+
+if ( Nlocations /= model_size ) then
+   write(*, *) 'Error: nc_write_locations : model_size is ',model_size
+   write(*, *) '       but netCDF thinks we have ',Nlocations,' state variables.'
+   stop
+endif
+
+
+do i = 1, Nlocations
+   call get_state_meta_data(i, state_loc)
+   call nc_write_location(ncFileID, LocationVarID, state_loc, start=i)
+end do
+!!!do i = 1, Nlocations
+!!! !  call get_state_meta_data(i, state_loc)
+!!!   call nc_write_location(ncFileID, LocationVarID, state_loc(i), start=i)
+!!!enddo
+
+call check(nf90_close(ncFileID))
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(status)
+    integer, intent ( in) :: status
+
+    if(status /= nf90_noerr) then
+      print *, trim(NF90_strerror(status))
+    end if
+  end subroutine check
+
+end subroutine nc_write_locations
+
 
 end module model_mod
 

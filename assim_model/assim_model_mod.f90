@@ -152,7 +152,8 @@ metadata_length = LEN(meta_data_per_copy(1))
 ! Create the file
 call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid = ncFileID))
 
-  
+ write(*,*)'Init_diag_output: ncFileID is ',ncFileID
+ 
 ! Define the dimensions
 call check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
                                        len=model_size,               dimid = StateVarDimID))
@@ -230,6 +231,7 @@ contains
     
     if(status /= nf90_noerr) then 
       print *, trim(nf90_strerror(status))
+      stop
     end if
   end subroutine check  
 
