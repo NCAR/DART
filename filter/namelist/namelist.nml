@@ -3,7 +3,6 @@
    ens_size = 20,
    cutoff = 0.20
    cov_inflate = 1.00,
-   cache_size = 1,
    start_from_restart = .true.,
    output_restart = .true.
    obs_sequence_file_name = "obs_seq.out",

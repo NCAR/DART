@@ -1,0 +1,4 @@
+&model_nml
+   g = 8.0,
+   deltat = 1.0 / 12.0
+&end

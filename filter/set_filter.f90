@@ -61,11 +61,8 @@ real(r8), allocatable  :: obs_err_cov(:), obs(:)
 real(r8)               :: cov_factor, mean_inc, sd_ratio
 character(len = 129), allocatable   :: ens_copy_meta_data(:)
 
-! Set a reasonable upper bound on number of close states, will be increased if needed
-integer, parameter :: first_num_close = 100000
-integer :: num_close_ptr(1) 
-integer, allocatable :: close_ptr(:, :)         ! First element size should be 1
-real(r8), allocatable :: dist_ptr(:, :)         ! First element size should be 1
+integer,  allocatable :: num_close_ptr(:), close_ptr(:, :), num_close(:)
+real(r8), allocatable :: dist_ptr(:, :)
 
 ! Test storage for variance ratio
 real(r8) :: var_ratio_sum, var_ratio
@@ -76,13 +73,14 @@ type(location_type) :: location
 
 ! Temporary storage to test adaptive error capability; should be moved to assim_tools
 integer :: slope_index = 0
-real(r8) :: confidence_slope = 0.0
+real(r8) :: slope = 0.0
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
 integer :: ens_size = 20
 real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
+integer :: cache_size = 10
 logical :: async = .false., start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -96,7 +94,7 @@ character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
                         restart_out_file_name = 'filter_restart_out'
 
-namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
+namelist /filter_nml/async, ens_size, cutoff, cov_inflate, cache_size, &
    start_from_restart, output_restart, &
    obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
@@ -121,9 +119,6 @@ allocate(ens_ptr(ens_size), ens(ens_size), obs_inc(ens_size), &
    ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), &
    ens_copy_meta_data(ens_size + 2))
 
-! Set an initial size for the close state pointers
-allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
-
 ! Input the obs_sequence
 unit = get_unit()
 open(unit = unit, file = obs_sequence_file_name)
@@ -135,27 +130,10 @@ num_obs_sets = get_num_obs_sets(seq)
 ! Copy just the definitions part of the sequence to the two output obs sequences
 !!!call obs_sequence_def_copy(prior_seq, seq)
 !!!call obs_sequence_def_copy(posterior_seq, seq)
-
 ! Set up the metadata for the output ensemble observations
 do i = 1, num_output_ens_members
-   if(i < 10) then
-      write(ens_copy_meta_data(i), 21) 'ensemble member', i
-   else if(i < 100) then
-      write(ens_copy_meta_data(i), 31) 'ensemble member', i
-   else if(i < 1000) then
-      write(ens_copy_meta_data(i), 41) 'ensemble member', i
-   else if(i < 10000) then
-      write(ens_copy_meta_data(i), 51) 'ensemble member', i
-   else
-      write(*, *) 'output metadata in filter needs ensemble size < 10000'
-      stop
-   endif
- 21   format(a15, i1)
- 31   format(a15, i2)
- 41   format(a15, i3)
- 51   format(a15, i4)
+   write(ens_copy_meta_data(i), *) 'ensemble ', i
 end do
-
 meta_data_size = num_output_ens_members
 if(output_state_ens_mean) then
    meta_data_size = meta_data_size + 1
@@ -324,13 +302,26 @@ AdvanceTime : do i = 1, num_obs_sets
    num_obs_in_set = get_num_obs_in_set(seq, i)
 
    ! Allocate storage for the ensemble priors for this number of observations
-   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set)) 
+   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set), &
+      num_close(num_obs_in_set), num_close_ptr(num_obs_in_set))
 
    ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
 
    ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
+
+
+! Following block replaces cache block -----------------------------
+   write(*, *) 'calling get_close_states'
+   call get_num_close_states(seq, i, 2.0*cutoff, num_close)
+! Allocate storage for num_close, close, and distance
+   allocate(close_ptr(num_obs_in_set, maxval(num_close)), &
+      dist_ptr(num_obs_in_set, maxval(num_close)))
+! Now get the values
+   call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr)
+   write(*, *) 'back form get_close_states'
+!--------------------------------------------------------------------
 
 
 ! A preliminary search for bias???
@@ -347,27 +338,34 @@ AdvanceTime : do i = 1, num_obs_sets
   
 !!!   write(*, *) 'mean var_ratio is ', var_ratio_sum / num_obs_in_set
    
-! Adjust the confidence_slope for error_correcting filter given var_ratio
-!!!   if(var_ratio_sum / num_obs_in_set > 1.0 .and. confidence_slope < 1.0) then
+! Adjust the slope for error_correcting filter given var_ratio
+!!!   if(var_ratio_sum / num_obs_in_set > 1.0 .and. slope < 1.0) then
 !!!      slope_index = slope_index + 1
 !!!   endif
 
 !!!   if(var_ratio_sum / num_obs_in_set < 1.00) then
 !!!      slope_index = slope_index - 1
 !!!   endif
-!!! !!!   confidencee_slope = (slope_index * 0.02) ** 2
+!!! !!!   slope = (slope_index * 0.02) ** 2
 !!!   if(slope_index > 3) then 
-!!!      confidence_slope = ((slope_index - 3) * 0.04) ** 2
+!!!      slope = ((slope_index - 3) * 0.04) ** 2
 !!!   else if(slope_index < -3) then
-!!!      confidence_slope = (slope_index + 3) * 0.01
+!!!      slope = (slope_index + 3) * 0.01
 !!!   else
-!!!      confidence_slope = 0.0
+!!!      slope = 0.0
 !!!   endif
 
 
 !!! LOOKING AT TUNING FOR PS ONLY
-!!!confidence_slope = 0.05
-!!!   write(*, *) 'UPDATED SLOPE IS ', confidence_slope
+!!!slope = 0.05
+!!!   write(*, *) 'UPDATED SLOPE IS ', slope
+
+
+
+
+
+
+
 
 
 
@@ -378,12 +376,8 @@ AdvanceTime : do i = 1, num_obs_sets
          call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
       end do
 
-! Call fast obs_increment if no confidence correction
-      if(confidence_slope == 0.0) then
-         call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
-      else
-         call obs_increment17(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc, confidence_slope)
-      endif
+      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
+!!!      call obs_increment17(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc, slope)
 
       ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
@@ -391,19 +385,12 @@ AdvanceTime : do i = 1, num_obs_sets
 !!!         call set_single_obs_value(posterior_seq, i, j, ens_obs(k) + obs_inc(k), k)
       end do
 
-! Getting close states for each scalar observation for now
-222   call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr, j)
-      if(num_close_ptr(1) < 0) then
-         deallocate(close_ptr, dist_ptr)
-         allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
-         goto 222
-      endif
-      
       ! Now loop through each close state variable for this observation
-      do k = 1, num_close_ptr(1)
-         ind = close_ptr(1, k)
+      do k = 1, num_close_ptr(j)
+         ind = close_ptr(j, k)
          ! Compute distance dependent envelope
-         cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
+         cov_factor = comp_cov_factor(dist_ptr(j, k), cutoff)
+
          ! Get the ensemble elements for this state variable and do regression
          swath = get_ens_swath(ens_ptr, ens_size, ind)
 
@@ -415,8 +402,9 @@ AdvanceTime : do i = 1, num_obs_sets
 
    end do Observations
 
-! Free up the storage for this obs set
-   deallocate(obs_err_cov, obs)
+! Free up the storage for close
+   deallocate(close_ptr, dist_ptr)
+   deallocate(obs_err_cov, obs, num_close, num_close_ptr)
 
 ! Output posterior diagnostics
 ! Output state diagnostics as requested

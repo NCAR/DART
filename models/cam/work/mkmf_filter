@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p filter -t ../../../mkmf/mkmf.template.anchorage -c"-Duse_netCDF" \
+ -a "../../.." path_names_filter
