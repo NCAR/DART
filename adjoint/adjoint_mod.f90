@@ -16,9 +16,16 @@ use obs_mod,      only : take_obs
 use model_mod,    only : advance, adv_1step
 use nag_wrap_mod, only : e04dgf_wrap
 
+! implicit none?
 private
 
 public min_cost, adj_forecast_eval, adj_forecast_out
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 real(r8), parameter :: small_dist = 0.001_r8, delta = 1e-10
 integer, parameter :: max_1d = 100, max_iters = 100, num_refine = 20
