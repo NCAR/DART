@@ -1,5 +1,11 @@
 module chisq_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Computes chi square statistics and significance, from numerical recipes
 
 implicit none
