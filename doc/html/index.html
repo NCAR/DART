@@ -40,7 +40,6 @@ none of the following applies.</FONT>
     <LI><A HREF="#AssimilationSequence">The Assimilation Sequence</A>
     <LI><A HREF="http://www.cgd.ucar.edu/~thoar/cvs_primer.html">my cheat-sheet of CVS commands</A>
     <LI><A HREF="#acronyms">acronyms</A>
-    <LI><A HREF="TimTasks.shtml#status">Tim's tasks</A>
     <LI><A HREF="#related">Related links</A>
 </OL>
 
@@ -74,14 +73,56 @@ out the repository, your sandbox will be installed in a directory also
 called <TT>DART</TT>. You can sue me later. At this point, it is in
 my home directory, we will move it when the RAID array is operational.
 [That should be a momentary inconvenience.] Since it is in my home
-directory, I would ask that you not add any large files to the repository,
-such as object or data files. At this time, I have about 300MB of space
-and the current project is about 3+MB; so I don't really envision
-this to be a problem any time soon.
+directory, I would <B>ask that you not add any large files to the repository,
+such as object or data files</B>. At this time, I have about 200 MB of free space
+and the current project is about 34+MB.
 
-<P>I predict these will be useful ... you have to be positioned just
-<b>before</b> the DART directory for the ones that specifically reference
-DART.
+<!-- remote sandbox --------------------------------------------------->
+
+<P>
+<A NAME="sandboxSSH">
+<H2>On a remote filesystem</H2>
+This necessitates a valid account on goldhill and presumes you are running csh,tcsh
+on a remote machine. 
+<OL><LI>From your remote machine, set some environment variables and
+        check out the project: <PRE>setenv CVS_RSH ssh
+setenv CVSROOT :ext:goldhill.cgd.ucar.edu:/home/thoar/CVS.REPOS
+cvs co DART</PRE>
+The first two commands can be (should be) put in your dotfiles.
+If you are using multiple CVS repositories, you can obviate the need
+to keep switching your CVSROOT variable by using this alternate form of the
+"checkout" command:  
+
+<PRE>setenv CVS_RSH ssh
+cvs -d :ext:goldhill.cgd.ucar.edu:/home/thoar/CVS.REPOS co DART</PRE>
+
+    <LI>Play till the cows come home.
+    <LI>When you want to update the repository <PRE>cvs update -dRP
+cvs commit <font color="#0000FF">[-m "your message goes here"]</font></PRE>
+    <LI>And, if you like, you can remove the sandbox. Simply deleting the
+        sandbox counfounds CVS' ability to track who has the project checked out.
+        Gracefully exiting is appreciated. 
+        <PRE>cd ..<directory above sandbox>
+cvs release -d DART</PRE>
+</OL>
+
+Creating some ssh keys (
+<A HREF="http://www.cgd.ucar.edu/pipermail/ccsm-progs/2001-April/000092.html">
+ssh-keygen</A> ) is a great way to avoid botching your password every time you issue a 
+cvs command when using ssh.
+
+<P>
+<A NAME="sandboxCGD">
+<H3>One more thing ...</H3>
+
+<P>I predict this will be useful for those of us with multiple "groups".
+Sometimes it is terribly useful to have the entire project under the SAME
+unix group, this can be accomplished by setting the "sticky" information
+for the entire DART sandbox. In this example, I am presuming you want to
+change the DART project so that all the members of the group "cgddart" 
+(which must include yourself) be allowed to peruse the project. 
+You have to be positioned just <b>before</b> the DART directory for the ones 
+that specifically reference DART.
 <PRE>
 newgrp cgddart             <FONT color="blue">;# change default group</font>
 cd DART                    <FONT color="blue">;# get to DART sandbox</font>
@@ -103,70 +144,6 @@ chmod g+s `find DART -type d`</PRE>
 <P>The current "tag" of the project is <TT>rel-0-0</TT>&nbsp. 
 We need to come up with a policy regarding when to "commit" a 
 sandbox to the repository. (i.e. does it need to pass a test suite...)
-
-<OL><LI><A HREF="#sandboxCGD">on a CGD filesystem</A>
-    <LI><A HREF="#sandboxSSH">on a remote filesystem using SSH</A>
-</OL>
-
-<!-- CGD sandbox ------------------------------------------------------>
-
-<P>
-<A NAME="sandboxCGD">
-<H2>On a CGD filesystem</H2>
-This example presumes csh or tcsh syntax ...
-<UL><LI>Set your CVSROOT environment variable to point to the repository. 
-        <PRE>setenv CVSROOT /home/thoar/CVS.REPOS</PRE>
-    <LI>make sure you are in the proper group <PRE>newgrp cgddart</PRE>
-    <LI>move to wherever you want the sandbox, create the project.
-        <PRE>cd /data/$USER/
-cvs co DART</PRE>
--- OR -- if you don't want the sandbox to live in a directory called 
-something other than <TT>DART</TT>
-<PRE>cvs co -d SomeOtherName DART</PRE>
-    <LI>Play till the cows come home.
-    <LI>When you want to update the repository <PRE>cvs update
-cvs commit <font color="#0000FF">[-m "your message goes here"]</font></PRE>
-    <LI>And, if you like, you can remove the sandbox. Simply deleting the
-        sandbox counfounds CVS' ability to track who has the project checked out.
-        Gracefully exiting is appreciated. 
-        <PRE>cd ..<directory above sandbox>
-cvs release -d DART</PRE>
-</UL>
-
-
-<!-- remote sandbox --------------------------------------------------->
-
-<P>
-<A NAME="sandboxSSH">
-<H2>On a remote filesystem</H2>
-This presumes you have a valid account on goldhill and are running csh,tcsh
-on a remote machine. 
-<OL><LI>From your remote machine, set some environment variables and
-        check out the project: <PRE>setenv CVS_RSH ssh
-setenv CVSROOT :ext:goldhill.cgd.ucar.edu:/home/thoar/CVS.REPOS
-cvs co DART</PRE>
-The first two commands can be (should be) put in your dotfiles.
-If you are using multiple CVS repositories, you can obviate the need
-to keep switching your CVSROOT variable by using this alternate form of the
-"checkout" command:  
-
-<PRE>setenv CVS_RSH ssh
-cvs -d :ext:goldhill.cgd.ucar.edu:/home/thoar/CVS.REPOS co DART</PRE>
-
-    <LI>Play till the cows come home.
-    <LI>When you want to update the repository <PRE>cvs update
-cvs commit <font color="#0000FF">[-m "your message goes here"]</font></PRE>
-    <LI>And, if you like, you can remove the sandbox. Simply deleting the
-        sandbox counfounds CVS' ability to track who has the project checked out.
-        Gracefully exiting is appreciated. 
-        <PRE>cd ..<directory above sandbox>
-cvs release -d DART</PRE>
-</OL>
-
-Creating some ssh keys (
-<A HREF="http://www.cgd.ucar.edu/pipermail/ccsm-progs/2001-April/000092.html">
-ssh-keygen</A> ) is a great way to avoid botching your password every time you issue a 
-cvs command when using ssh.
 
 <!--------------------------------------------------------------------->
 <!-- Coding Standards ------------------------------------------------->
