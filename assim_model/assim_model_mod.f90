@@ -658,7 +658,7 @@ integer,                intent(in)    :: num
 type(assim_model_type), intent(inout) :: assim_model(num)
 type(time_type),        intent(in)    :: target_time
 integer,                intent(in)    :: asynch
-character (len=129),    intent(in)    :: adv_ens_command                                                  
+character (len=129),    intent(in)    :: adv_ens_command
 
 type(time_type) :: model_time(num)
 real(r8) :: model_state(num, size(assim_model(1)%state_vector))
