@@ -38,12 +38,17 @@ else if( `hostname` == "longs" ) then
    CPPFLAGS = -DLAPACK -DLINUX
    set LINK_OPTS    = "-L/usr/local/lib -lnag -lnetcdf -F77"
 
+else if( `hostname` == "elm" ) then
+
+   set DEFAULT_COMPILE = 'pgf90 -c -I/usr/local/netcdf-pgi/include -I/usr/local/include'
+   set LINK_OPTS       = "-L/usr/local/netcdf-pgi/lib -lnetcdf"
+   set FINAL_COMMAND   = 'pgf90 -o $1 *.o ${LINK_OPTS}'
+
 else
 
-   set DEFAULT_COMPILE = 'pgf90 -c '
-   set FINAL_COMMAND = 'pgf90 -o $1 *.o'
-#  set FINAL_COMMAND = 'f90 -bd,$1 -o $1 $LINK_OPTS'
-   set LINK_OPTS    = "-L/usr/local/lib -lnag -lnetcdf -F77"
+   set DEFAULT_COMPILE = 'f90 -c -module /usr/local/netcdf-pgi/include -I/usr/local/include'
+   set LINK_OPTS       = "-L/usr/local/lib -L/usr/local/netcdf-pgi/lib -lnag -lnetcdf -F77"
+   set FINAL_COMMAND   = 'f90 -bd,$1 -o $1 $LINK_OPTS'
 
 endif
 
