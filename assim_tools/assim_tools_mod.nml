@@ -1,5 +1,8 @@
 &assim_tools_nml
    prior_spread_correction = .false.,
    filter_kind = 1,
-   slope_threshold = 1.0  /
+   slope_threshold = 1.0, 
+   do_parallel = .false., 
+   num_domains = 1
+   parallel_command = "./assim_filter.csh" /
 
