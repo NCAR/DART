@@ -37,19 +37,19 @@ contains
 
 !-------------------------------------------------------------------
 
-!  package or random number generators from numerical recipes
-subroutine init_ran1(s, idum)
+!  A random congruential random number generator (see Knuth)
+subroutine init_ran1(s, temp)
 
 implicit none
 
-integer, intent(in) :: idum
+integer, intent(in) :: temp
 type(random_seq_type), intent(out) :: s
 integer iff, j
 
 ! Initialize the numerical recipes ran1 generator for use with
 ! repeatable sequences
 
-s%ix1 = mod(ic1 - idum, m1)
+s%ix1 = mod(ic1 - temp, m1)
 s%ix1 = mod(ia1*s%ix1 + ic1, m1)
 s%ix2 = mod(s%ix1, m2)
 s%ix1 = mod(ia1*s%ix1 + ic1, m1)
@@ -67,7 +67,7 @@ end subroutine init_ran1
 
 !-----------------------------------------------------------------
 
-!  package or random number generators from numerical recipes
+!  A random congruential random number generator (see Knuth)
 function ran1(s)
 
 implicit none
@@ -77,7 +77,7 @@ double precision :: ran1
 
 integer :: j
 
-!  returns a uniform random deviate between 0.0 and 1.0.
+!  Gives a U(0,1) random number
 
 s%ix1 = mod(ia1*s%ix1 + ic1, m1)
 s%ix2 = mod(ia2*s%ix2 + ic2, m2)
@@ -95,8 +95,8 @@ end function ran1
 !---------------------------------------------------------------------
 
 function gasdev(s)
-!  returns a normally distributed deviate with zero mean and unit 
-!  variance using ran1 as source of uniform deviates.
+
+! Returns a N(0, 1) random number
 
 implicit none
 
