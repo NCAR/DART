@@ -164,7 +164,7 @@ if ( .not. module_initialized ) call initialize_module
 lon_dif = abs(loc1%lon - loc2%lon)
 if(lon_dif > PI) lon_dif = 2.0_r8 * PI - lon_dif
 
-if(cos(loc1%lat) == 0) then
+if(cos(loc1%lat) == 0.0_r8 .or. cos(loc2%lat) == 0.0_r8 .or. lon_dif == 0.0_r8) then
    horiz_dist = abs(loc2%lat - loc1%lat)
 else
    horiz_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
