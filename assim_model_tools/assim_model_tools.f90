@@ -1,4 +1,4 @@
-module assim_model_tools_mod
+module assim_model_mod
 !
 ! <next four lines automatically updated by CVS, do not edit>
 ! $Source$ 
@@ -7,6 +7,9 @@ module assim_model_tools_mod
 ! $Author$ 
 !
 
+! This module is used to wrap around the basic portions of existing dynamical models to
+! add capabilities needed by the standard assimilation methods.
+
 ! NEED TO ADD ON ONLY CLAUSES
 use location_mod, only : location_type, write_location, set_location, get_dist, &
    read_location, get_location
@@ -14,6 +17,8 @@ use location_mod, only : location_type, write_location, set_location, get_dist, 
 use time_manager_mod
 use utilities_mod, only : get_unit
 use types_mod
+use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
+   get_model_time_step, model_interpolate
 
 private
 
@@ -24,26 +29,21 @@ public static_init_assim_model, init_diag_output, get_model_size, get_closest_st
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
    get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr
 
+
 ! Eventually need to be very careful to implement this to avoid state vector copies which
 ! will be excruciatingly costly (storage at least) in big models.
 type assim_model_type
-   private
-!!!   real(r8) :: state_vector(model_size)
-! Need to change to pointer to do more efficient pointer work in assim
+!   private
    real(r8), pointer :: state_vector(:)
    type(time_type) :: time
 end type assim_model_type
 
-! Define the location of the state variables in module storage
-type(location_type) :: state_loc(model_size)??? Model size not available???
 
-type(time_type) :: time_step ???
+type(time_type) :: time_step
 
 contains
 
 !======================================================================
-
-
 
 
 subroutine init_assim_model(state)
@@ -58,9 +58,50 @@ implicit none
 
 type(assim_model_type), intent(inout) :: state
 
+integer :: model_size
+
+! Get the model_size from the model
+model_size = get_model_size()
+
 allocate(state%state_vector(model_size))
 
 end subroutine init_assim_model
+
+
+
+
+subroutine static_init_assim_model()
+!----------------------------------------------------------------------
+! subroutine static_init_assim_model()
+!
+! Initializes class data for the assim_model. Also calls the static
+! initialization for the underlying model. So far, this simply 
+! is initializing the position of the state variables as location types.
+
+implicit none
+
+
+character(len=128) :: source,revision,revdate
+real(r8) :: x_loc
+integer :: i
+
+! Change output to diagnostic output block ... 
+
+source   = "$Source$"
+revision = "$Revision$"
+revdate  = "$Date$"
+
+! Change output to diagnostic output block ... 
+
+write(*,*)'assim_model attributes:'
+write(*,*)'   ',source
+write(*,*)'   ',revision
+write(*,*)'   ',revdate
+
+! Call the underlying model's static initialization
+call static_init_model()
+
+end subroutine static_init_assim_model
 
 
 
@@ -73,10 +114,6 @@ function init_diag_output(file_name, global_meta_data, &
 ! for now just opens file and dumps stuff. A file_id is returned which
 ! is simply implemented as an integer unit number for now. 
 
-! NOTE: Almost all of this output plus many other things can go in a 
-! general model independent tool kit to avoid the burden of creating
-! assim_model stuff.
-
 implicit none
 
 integer :: init_diag_output
@@ -84,7 +121,8 @@ character(len = *), intent(in) :: file_name, global_meta_data
 integer, intent(in) :: copies_of_field_per_time
 character(len = *), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 
-integer :: i
+integer :: i, model_size
+type(location_type) :: state_loc
 
 init_diag_output = get_unit()
 open(unit = init_diag_output, file = file_name)
@@ -92,6 +130,7 @@ open(unit = init_diag_output, file = file_name)
 write(init_diag_output, *) global_meta_data
 
 ! Write the model size
+model_size = get_model_size()
 write(init_diag_output, *) model_size
 
 ! Write number of copies of field per time plus the meta data per copy
@@ -103,7 +142,8 @@ end do
 ! Will need other metadata, too; Could be as simple as writing locations
 write(init_diag_output, *) 'locat'
 do i = 1, model_size
-   call write_location(init_diag_output, state_loc(i))
+   call get_state_meta_data(i, state_loc)
+   call write_location(init_diag_output, state_loc)
 end do
 
 end function init_diag_output
@@ -179,12 +219,13 @@ end subroutine get_diag_input_copy_meta_data
 
 
 
-
   function get_closest_state_time_to(assim_model, time)
 !----------------------------------------------------------------------
 !
 ! Returns the time closest to the given time that the model can reach
-! with its state. For L96, the time step is fixed at ???
+! with its state. Initial implementation just assumes fixed timestep.
+! Need to describe potentially more general time-stepping capabilities
+! from the underlying model in the long run.
 
 implicit none
 
@@ -192,9 +233,12 @@ type(assim_model_type), intent(in) :: assim_model
 type(time_type), intent(in) :: time
 type(time_type) :: get_closest_state_time_to
 
-type(time_type) :: model_time, delta_time
+type(time_type) :: model_time, delta_time, time_step
 
 ! CAREFUL WITH FLOATING POINT DIVISION AND COMPARISONS
+
+! Get the model time step capabilities
+time_step = get_model_time_step()
 
 model_time = assim_model%time
 if(model_time > time) then
@@ -210,35 +254,41 @@ end function get_closest_state_time_to
 
 
 
-
-subroutine get_state_meta_data(index, location)
-!---------------------------------------------------------------------
+subroutine get_initial_condition(x)
+!----------------------------------------------------------------------
+! function get_initial_condition()
 !
-! Given an integer index into the state vector structure, returns the
-! associated location. This is not a function because the more general
-! form of the call has a second intent(out) optional argument kind. 
-! Maybe a functional form should be added?
+! Initial conditions . This returns an initial assim_model_type
+! which includes both a state vector and a time. Design of exactly where this 
+! stuff should come from is still evolving (12 July, 2002) but for now can 
+! start at time offset 0 with the initial state .
+! Need to carefully coordinate this with the times for observations.
 
 implicit none
 
-integer, intent(in) :: index
-type(location_type), intent(out) :: location
+type(assim_model_type), intent(inout) :: x
 
-location = state_loc(index)
+call init_conditions(x%state_vector)
 
-end subroutine get_state_meta_data
+call init_time(x%time)
+
+end subroutine get_initial_condition
 
 
 
-??? Could be generic and get over-defined for more efficient specific
-??? instances.:
+
 subroutine get_close_states(location, radius, number, indices, dist)
 !---------------------------------------------------------------------
 ! subroutine get_close_states(location, radius, number, indices)
 !
 ! Returns a list of indices for model state vector points that are
 ! within distance radius of the location. Might want to add an option
-! to return the distances, too.
+! to return the distances, too. This is written in a model independent
+! form at present, hence it is in assim_model_mod. HOWEVER, for
+! efficiency in large models, this will have to be model specific at
+! some point. At that time, need a way to test to see if this 
+! generic form should be over loaded (how to do this in F90 ) by 
+! some model specific method.
 
 implicit none
 
@@ -247,15 +297,18 @@ real(r8), intent(in) :: radius
 integer, intent(out) :: number, indices(:)
 real(r8), intent(out) :: dist(:)
 
-integer :: index, i
+type(location_type) :: state_loc
+integer :: index, i, model_size
 real(r8) :: this_dist
 
 ! For large models this will have to be VERY efficient; here can just search
 index = 0
+model_size = get_model_size
 do i = 1, model_size
-   this_dist = get_dist(location, state_loc(i))
+   call get_state_meta_data(i, state_loc)
+   this_dist = get_dist(location, state_loc)
    if(this_dist < radius) then
-      index = index + 1 
+      index = index + 1
       if(index <= size(indices)) indices(index) = i
       if(index <= size(dist)) dist(index) = this_dist
    end if
@@ -263,12 +316,11 @@ end do
 
 if(index > size(indices)) then
    number = -1 * index
-else 
+else
    number = index
 end if
-      
-end subroutine get_close_states
 
+end subroutine get_close_states
 
 
 
@@ -278,19 +330,22 @@ function get_num_close_states(location, radius)
 ! Returns number of state vector points located within distance radius
 ! of the location.
 
+implicit none
+
 integer :: get_num_close_states
 type(location_type), intent(in) :: location
 real(r8), intent(in) :: radius
 
-integer :: i
+type(location_type) :: state_loc
+integer :: i, model_size
 
 ! For large models this will have to be VERY efficient; here can just search
 get_num_close_states = 0
 do i = 1, model_size
-
+   call get_state_meta_data(i, state_loc)
 ! INTERESTING NOTE: Because of floating point round-off in comps
 ! this can give a 'variable' number of num close for certain obs, should fix
-   if(get_dist(location, state_loc(i)) < radius) get_num_close_states= get_num_close_states + 1
+   if(get_dist(location, state_loc) < radius) get_num_close_states= get_num_close_states + 1
 end do
 
 end function get_num_close_states
@@ -302,6 +357,8 @@ function get_model_time(assim_model)
 !
 ! Returns the time component of a assim_model extended state.
 
+implicit none
+
 type(time_type) :: get_model_time
 type(assim_model_type), intent(in) :: assim_model
 
@@ -311,24 +368,12 @@ end function get_model_time
 
 
 
-function get_model_state_vector(assim_model)
-!-----------------------------------------------------------------------
-!
-! Returns the state vector  component of a assim_model extended state.
-
-real(r8) :: get_model_state_vector(model_size)
-type(assim_model_type), intent(in) :: assim_model
-
-get_model_state_vector = assim_model%state_vector
-
-end function get_model_state_vector
-
-
-
 function get_state_vector_ptr(assim_model)
 !------------------------------------------------------------------------
 !
 ! Returns a pointer directly into the assim_model state vector storage.
+
+implicit none
 
 real(r8), pointer :: get_state_vector_ptr(:)
 type(assim_model_type), intent(in) :: assim_model
@@ -358,7 +403,7 @@ integer :: i
 ! Need to make sure to copy the actual storage and not just the pointer (verify)
 model_out%time = model_in%time
 
-do i = 1, model_size
+do i = 1, get_model_size()
    model_out%state_vector(i) = model_in%state_vector(i)
 end do
 
@@ -380,7 +425,7 @@ implicit none
 type(assim_model_type), intent(inout) :: assim_model
 type(time_type), intent(in) :: target_time
 
-type(time_type) :: model_time
+type(time_type) :: model_time, time_step
 
 ! NEED TO BE CAREFUL ABOUT FLOATING POINT TESTS: Being sloppy here
 
@@ -391,9 +436,12 @@ if(model_time > target_time) then
    stop
 endif
 
+! At some point probably need to push the determination of the time back
+! into the model itself and out of assim_model
+time_step = get_model_time_step()
 do while(model_time < target_time)
-   call adv_1step(assim_model)
-   model_time = get_model_time(assim_model)
+   call adv_1step(assim_model%state_vector)
+   model_time = model_time + time_step
 end do
 
 end subroutine advance_state
@@ -403,32 +451,17 @@ end subroutine advance_state
 function interpolate(x, location)
 !---------------------------------------------------------------------
 !
-! Interpolates from state vector x to the location. Might want to overload
-! this to allow the first argument to be an assim_model_type, too. Need to
-! decide if state_vectors or assim_model_types are coming down the obs
-! side of the calling tree. Might help to have the time along?
+! Interpolates from the state vector in an assim_model_type to the
+! location. Will need to be generalized for more complex state vector
+! types.
 
 implicit none
 
 real(r8) :: interpolate
-real(r8), intent(in) :: x(:)
+type(assim_model_type) :: x
 type(location_type), intent(in) :: location
 
-integer :: lower_index, upper_index
-real(r8) :: loc, fraction
-
-! Convert location to real
-loc = get_location(location)
-! Multiply by model size assuming domain is [0, 1] cyclic
-loc = model_size * loc
-
-lower_index = int(loc)
-upper_index = lower_index + 1
-if(upper_index > model_size) upper_index = 1
-if(lower_index == 0) lower_index = model_size
-
-fraction = loc - int(loc)
-interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
+interpolate = model_interpolate(x%state_vector, location)
 
 end function interpolate
 
@@ -461,7 +494,7 @@ type(assim_model_type), intent(inout) :: assim_model
 real(r8), intent(in) :: state(:)
 
 ! Check the size for now
-if(size(state) /= model_size) then
+if(size(state) /= get_model_size()) then
    write(*, *) 'Error: Input state vector is wrong size in set_model_state_vector'
    stop
 endif
@@ -531,6 +564,8 @@ subroutine output_diagnostics(file_id, state, copy_index)
 ! time (and copy), etc. For now, this just writes what it receives
 ! with a header stating time and copy_index.
 
+implicit none
+
 integer, intent(in) :: file_id
 type(assim_model_type), intent(in) :: state
 integer, optional, intent(in) :: copy_index
@@ -587,99 +622,30 @@ subroutine end_assim_model()
 !
 ! Closes down assim_model; nothing to do for L96
 
+implicit none
+
+call end_model()
+
 end subroutine end_assim_model
 
 
 
-
-subroutine comp_dt(x, dt)
-!----------------------------------------------------------------------
-! subroutine comp_dt(x, dt)
-! 
-! Computes the time tendency of the lorenz 1996 model given current state
-
-implicit none
-
-real(r8), intent( in) :: x(:)
-real(r8), intent(out) :: dt(:)
-
-integer :: j, jp1, jm1, jm2
-
-do j = 1, model_size
-   jp1 = j + 1
-   if(jp1 > model_size) jp1 = 1
-   jm2 = j - 2
-   if(jm2 < 1) jm2 = model_size + jm2
-   jm1 = j - 1
-   if(jm1 < 1) jm1 = model_size
-   
-   dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
-end do
-
-end subroutine comp_dt
-
-
-
-subroutine adv_1step(state)
-!----------------------------------------------------------------------
-! subroutine adv_1step(state)
+function get_model_state_vector(assim_model)
+!--------------------------------------------------------------------
 !
-! Does single time step advance for lorenz 96 model
-! using four-step rk time step
+! Returns the state vector component of an assim_model extended state.
 
-implicit none
+real(r8) :: get_model_state_vector(:)
+type(assim_model_type), intent(in) :: assim_model
 
-type(assim_model_type), intent(inout) :: state
+get_model_state_vector = assim_model%state_vector
 
-real(r8), dimension(model_size) :: x, x1, x2, x3, x4, dx, inter
-type(time_type) :: time
-integer :: i
-
-! Get the state vector from the state; More copying?
-x = get_model_state_vector(state)
-
-!  Compute the first intermediate step
-
-call comp_dt(x, dx)
-x1    = delta_t * dx
-inter = x + x1 / 2.0_r8
-
-!  Compute the second intermediate step
-
-call comp_dt(inter, dx)
-x2    = delta_t * dx
-inter = x + x2 / 2.0_r8
-
-!  Compute the third intermediate step
-
-call comp_dt(inter, dx)
-x3    = delta_t * dx
-inter = x + x3
-
-!  Compute fourth intermediate step
-
-call comp_dt(inter, dx)
-x4 = delta_t * dx
-
-!  Compute new value for x
-
-x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
-
-! Update the time
-time = get_model_time(state)
-time = time + time_step
-
-! Load x and the updated time back into output
-call set_model_time(state, time)
-call set_model_state_vector(state, x)
-
-end subroutine adv_1step
-
+end function get_model_state_vector
 
 
 !
 !===================================================================
-! End of assim_model_tools_mod
+! End of assim_model_mod
 !===================================================================
 !
-end module assim_model_tools_mod
+end module assim_model_mod

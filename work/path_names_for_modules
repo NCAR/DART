@@ -53,7 +53,7 @@ set TYPES = ../common/types_mod.f90
 
 #set MODEL = ../models/null_model/model_mod.f90
 #set MODEL = ../models/lorenz_63/model_mod.f90
- set MODEL = ../models/lorenz_96/model_mod.f90
+ set MODEL = ../models/lorenz_96/new_model_mod.f90
 #set MODEL = ../models/9var/model_mod.f90
 
 #set MODEL = ../models/9var/noisy_9var.f90        existence?
@@ -153,10 +153,10 @@ set            SYS_SIM5 = ../system_simulation/sys_sim5.f90
 
 set   TEST_CORRECT_CORR = ../correct_corr/test_correct_corr.f90
 set        TIME_MANAGER = ../time_manager/time_manager_mod.f90
-#set            LOCATION = ../location/oned/location_mod.f90
-set            LOCATION = ../location/twod_sphere/location_mod.f90
-#set       LOCATION_TEST = ../location/oned/location_test.f90
-set       LOCATION_TEST = ../location/twod_sphere/location_test.f90
+set            LOCATION = ../location/oned/location_mod.f90
+#set            LOCATION = ../location/twod_sphere/location_mod.f90
+set       LOCATION_TEST = ../location/oned/location_test.f90
+#set       LOCATION_TEST = ../location/twod_sphere/location_test.f90
 set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model.f90
 
 set            OBS_KIND = ../obs_kind/obs_kind.f90
@@ -176,6 +176,8 @@ set        POINTER_TEST = ../obs_sequence/pointer_test.f90
 
 set      MODEL_ENSEMBLE = ../model_ensemble/model_ensemble.f90
 set   CLOSE_STATE_CACHE = ../close_state_cache/close_state_cache.f90
+
+set ASSIM_MODEL_TOOLS = ../assim_model_tools/assim_model_tools.f90
 
 #======================================================================
 # END of      path_names_for_modules

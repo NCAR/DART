@@ -61,7 +61,7 @@ integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set
 
 ! Need to set up namelists for controlling all of this mess, too!
-integer, parameter :: ens_size = 20
+integer, parameter :: ens_size = 100
 integer :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
@@ -159,8 +159,13 @@ AdvanceTime : do i = 1, num_obs_sets
    ! Advance the ensembles to this time
    do j = 1, ens_size
       call advance_state(ens(j), time2)
+<<<<<<< filter.f90
+! Output the prior ensemble state
+!      call output_diagnostics(prior_state_unit, ens(j), j)
+=======
       ! Output the prior ensemble state
       call output_diagnostics(prior_state_unit, ens(j), j)
+>>>>>>> 1.11
    end do
 
    ! Do a covariance inflation for now? 
@@ -228,8 +233,13 @@ AdvanceTime : do i = 1, num_obs_sets
 
    ! Put the ensemble storage back into the ens
    do j = 1, ens_size
+<<<<<<< filter.f90
+! Output the posterior ensemble state
+!      call output_diagnostics(posterior_state_unit, ens(j), j)
+=======
       ! Output the posterior ensemble state
       call output_diagnostics(posterior_state_unit, ens(j), j)
+>>>>>>> 1.11
    end do
 
    ! Deallocate the ens_obs storage for this obs set
