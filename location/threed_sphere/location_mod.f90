@@ -35,7 +35,7 @@ private
 public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-       LocationDims, LocationName, LocationLName
+       LocationDims, LocationName, LocationLName, horiz_dist_only
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -76,7 +76,7 @@ character(len = 129), parameter :: LocationLName = &
 !                                to one radian in horizontal
 ! vert_normalization_height ->   Number of meters that give a distance equivalent 
 !                                to one radian in horizontal
-! vert_normalization_level ->    Number of levels that give a distnace equivalent
+! vert_normalization_level ->    Number of levels that give a distance equivalent
 !                                to one radian in horizontal
 
 logical  :: horiz_dist_only = .true.
