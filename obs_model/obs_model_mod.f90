@@ -107,6 +107,7 @@ type(location_type) :: location
 type(obs_kind_type) :: obs_kind
 type(obs_type) :: obs
 type(obs_def_type) :: obs_def
+integer :: obs_kind_ind
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -121,7 +122,14 @@ do i = 1, num_obs
    call get_obs_def(obs, obs_def)
    location = get_obs_def_location(obs_def)
    obs_kind = get_obs_def_kind(obs_def)
-   obs_vals(i) = take_obs(state, location, obs_kind)
+! Check in kind for negative for identity obs
+   obs_kind_ind = get_obs_kind(obs_kind)
+   if(obs_kind_ind < 0) then
+      obs_vals(i) = state(-1 * obs_kind_ind)
+   else
+! Otherwise do forward operator
+      obs_vals(i) = take_obs(state, location, obs_kind)
+   endif
 end do
 
 ! Need to destroy this obs to free up allocated space
