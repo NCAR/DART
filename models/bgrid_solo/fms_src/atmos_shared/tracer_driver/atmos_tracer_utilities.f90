@@ -59,7 +59,6 @@ use tracer_manager_mod, only : query_method, &
 use  field_manager_mod, only : MODEL_ATMOS, parse
 use      constants_mod, only : grav, rdgas, PI
 use   horiz_interp_mod, only : horiz_interp
-use      constants_mod, only : PI
 
 implicit none
 private
