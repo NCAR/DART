@@ -253,15 +253,15 @@ do id=1,num_domains
 
 !-- Allocate arrays for input data
 
-   call wrf_open_and_alloc( wrf, 'wrfinput_d0'//idom//'_1', NF90_NOWRITE, debug )
+   call wrf_open_and_alloc( wrf, 'wrfinput_d0'//idom//'_1', NF90_WRITE, debug )
    call check ( nf90_close(wrf%ncid) )
 
 !-- Read data to be used as ensemble mean (plus open,close netcdf file)
-   call wrf_open_and_alloc( wrf_mean, 'wrfinput_d0'//idom//'_mean', NF90_NOWRITE, debug )
+   call wrf_open_and_alloc( wrf_mean, 'wrfinput_d0'//idom//'_mean', NF90_WRITE, debug )
    call wrf_io( wrf_mean, "INPUT ", debug )
    call check ( nf90_close(wrf_mean%ncid) )
 
-   call wrf_open_and_alloc( wrf_tmp, 'wrfinput_d0'//idom//'_mean', NF90_NOWRITE, debug )
+   call wrf_open_and_alloc( wrf_tmp, 'wrfinput_d0'//idom//'_mean', NF90_WRITE, debug )
    call check ( nf90_close(wrf_tmp%ncid) )
 
    call wrf_add   ( wrf_tmp    , 0.0_r8, wrf_mean    ,  0.0_r8)

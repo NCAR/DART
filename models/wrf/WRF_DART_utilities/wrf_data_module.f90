@@ -30,10 +30,10 @@ revdate  = "$Date$"
 TYPE wrf_data
 
    integer :: ncid                                    ! netcdf id for file
-   integer :: bt_id, bt, sn_id, sn, we_id, we
-   integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, mu_id, mub_id, &
-        qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
-        u10_id, v10_id, t2_id, q2_id
+   integer :: sls_id, sls, bt_id, bt, sn_id, sn, we_id, we
+   integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, tslb_id, mu_id, mub_id, &
+              qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
+              u10_id, v10_id, t2_id, q2_id, ps_id
 
    integer :: n_moist
    logical :: surf_obs
@@ -48,6 +48,7 @@ TYPE wrf_data
    real(r8), pointer :: ph(:,:,:)
    real(r8), pointer :: phb(:,:,:)
    real(r8), pointer :: t(:,:,:)
+   real(r8), pointer :: tslb(:,:,:)
    real(r8), pointer :: qv(:,:,:)
    real(r8), pointer :: qc(:,:,:)
    real(r8), pointer :: qr(:,:,:)
@@ -60,6 +61,7 @@ TYPE wrf_data
    real(r8), pointer :: v10(:,:)
    real(r8), pointer :: t2(:,:)
    real(r8), pointer :: q2(:,:)
+   real(r8), pointer :: ps(:,:)
 
 end type
 
@@ -135,7 +137,7 @@ implicit none
 type(wrf_data)     :: wrf
 character (len=*)  :: file_name   ! filename from which dimensions, 
                                   ! variable id's are read
-integer            :: mode
+integer            :: mode, istatus
 logical            :: debug
 
 character (len=80) :: name
@@ -155,6 +157,9 @@ call check ( nf90_inquire_dimension(wrf%ncid, wrf%sn_id, name, wrf%sn) )
 
 call check ( nf90_inq_dimid(wrf%ncid, "west_east", wrf%we_id) )
 call check ( nf90_inquire_dimension(wrf%ncid, wrf%we_id, name, wrf%we) )
+
+call check ( nf90_inq_dimid(wrf%ncid, "soil_layers_stag", wrf%sls_id) )
+call check ( nf90_inquire_dimension(wrf%ncid, wrf%sls_id, name, wrf%sls) )
 
 if(debug) write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
 
@@ -184,6 +189,10 @@ allocate(wrf%phb(wrf%we,wrf%sn,wrf%bt+1))
 call check ( nf90_inq_varid(wrf%ncid, "T", wrf%t_id))
 if(debug) write(6,*) ' t_id = ',wrf%t_id
 allocate(wrf%t(wrf%we,wrf%sn,wrf%bt))
+
+call check ( nf90_inq_varid(wrf%ncid, "TSLB", wrf%tslb_id))
+if(debug) write(6,*) ' tslb_id = ',wrf%tslb_id
+allocate(wrf%tslb(wrf%we,wrf%sn,wrf%sls))
 
 call check ( nf90_inq_varid(wrf%ncid, "MU", wrf%mu_id))
 if(debug) write(6,*) ' mu_id = ',wrf%mu_id
@@ -244,6 +253,19 @@ if( wrf%surf_obs ) then
    call check ( nf90_inq_varid(wrf%ncid, "Q2", wrf%q2_id))
    allocate(wrf%q2(wrf%we,wrf%sn))
 
+   istatus = nf90_inq_varid(wrf%ncid, "PSFC", wrf%ps_id)
+   if(istatus /= nf90_noerr) then
+      call error_handler(E_MSG,'PSFC', &
+           trim(nf90_strerror(istatus)), source, revision, revdate)
+      call error_handler(E_MSG,'wrf_open_and_alloc', &
+         'creates PSFC', source, revision, revdate)
+      call check(nf90_Redef(wrf%ncid))
+      call check(nf90_def_var(wrf%ncid, name="PSFC", xtype=nf90_real, &
+           dimids= (/ wrf%we_id,  wrf%sn_id/), varid=wrf%ps_id) )
+      call check(nf90_enddef(wrf%ncid))
+   endif
+   allocate(wrf%ps(wrf%we,wrf%sn))
+
 endif
 
 contains
@@ -272,6 +294,7 @@ deallocate(wrf%w)
 deallocate(wrf%ph)
 deallocate(wrf%phb)
 deallocate(wrf%t)
+deallocate(wrf%tslb)
 deallocate(wrf%mu)
 deallocate(wrf%mub)
 if(wrf%n_moist > 0) then
@@ -310,6 +333,7 @@ if( wrf%surf_obs ) then
    deallocate(wrf%v10)
    deallocate(wrf%t2)
    deallocate(wrf%q2)
+   deallocate(wrf%ps)
 endif
 
 end subroutine wrf_dealloc
@@ -921,7 +945,7 @@ type(wrf_data)    :: wrf
 character (len=6) :: in_or_out
 logical           :: debug
 
-integer :: k, ndims, lngth, dimids(5)
+integer :: k, ndims, lngth, dimids(5), istatus
 
 !----------------------------------------------------------------------
 
@@ -954,6 +978,7 @@ if (in_or_out  == "OUTPUT") then
 !!$   call check( nf90_put_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
+   call check( nf90_put_var(wrf%ncid, wrf%tslb_id,  wrf%tslb,  start = (/ 1, 1, 1, 1 /)))
 !!$   call check( nf90_put_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, 1 /)))
    if(wrf%n_moist > 0) then
       call check( nf90_put_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
@@ -984,6 +1009,18 @@ if (in_or_out  == "OUTPUT") then
       call check( nf90_put_var(wrf%ncid, wrf%v10_id, wrf%v10, start = (/ 1, 1, 1 /)))
       call check( nf90_put_var(wrf%ncid, wrf%t2_id, wrf%t2, start = (/ 1, 1, 1 /)))
       call check( nf90_put_var(wrf%ncid, wrf%q2_id, wrf%q2, start = (/ 1, 1, 1 /)))
+      istatus = nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /))
+      if(istatus /= nf90_noerr) then
+         call error_handler(E_MSG,'PSFC', &
+              trim(nf90_strerror(istatus)), source, revision, revdate)
+         call error_handler(E_MSG,'wrf_io', &
+              'creates PSFC', source, revision, revdate)
+         call check(nf90_Redef(wrf%ncid))
+         call check(nf90_def_var(wrf%ncid, name="PSFC", xtype=nf90_real, &
+              dimids= (/ wrf%we_id,  wrf%sn_id/), varid=wrf%ps_id) )
+         call check(nf90_enddef(wrf%ncid))
+         call check( nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /)))
+      endif
    endif
 else
    call check( nf90_get_var(wrf%ncid, wrf%u_id,   wrf%u,   start = (/ 1, 1, 1, lngth /)))
@@ -993,6 +1030,7 @@ else
    call check( nf90_get_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%t_id,   wrf%t,   start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%mu_id,  wrf%mu,  start = (/ 1, 1, lngth /)))
+   call check( nf90_get_var(wrf%ncid, wrf%tslb_id,   wrf%tslb,   start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, lngth /)))
    if(wrf%n_moist > 0) then
       call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, lngth /)))
@@ -1023,6 +1061,14 @@ else
       call check( nf90_get_var(wrf%ncid, wrf%v10_id,  wrf%v10,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%t2_id,  wrf%t2,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%q2_id,  wrf%q2,  start = (/ 1, 1, lngth /)))
+      istatus = nf90_get_var(wrf%ncid, wrf%ps_id,  wrf%ps,  start = (/ 1, 1, lngth /))
+      if(istatus /= nf90_noerr) then
+         call error_handler(E_MSG,'PSFC', &
+              trim(nf90_strerror(istatus)), source, revision, revdate)
+      call error_handler(E_MSG,'wrf_io', &
+         'sets PSFC to zero', source, revision, revdate)
+      wrf%ps(:,:) = 0.0_r8
+   endif
    endif
 endif
 

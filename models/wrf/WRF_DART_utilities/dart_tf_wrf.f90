@@ -275,6 +275,7 @@ do id=1,num_domains
    n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! geopotential
    n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
+   n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
 
 ! moist variables. Order is qv, qc, qr, qi, qs, qg.
 
@@ -286,7 +287,7 @@ do id=1,num_domains
    endif
 
    if( wrf%dom(id)%surf_obs ) then
-      n_values = n_values + 4 * wrf%dom(id)%sn * wrf%dom(id)%we
+      n_values = n_values + 5 * wrf%dom(id)%sn * wrf%dom(id)%we
    endif
 
 enddo
@@ -353,6 +354,10 @@ do id=1,num_domains
    call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%mu,wrf%dom(id)%we,wrf%dom(id)%sn)
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
 
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%tslb,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
+   n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
+
 ! moist variables
 
    if(wrf%dom(id)%n_moist >= 1) then
@@ -408,6 +413,10 @@ do id=1,num_domains
       in = n_values+1
       call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%q2,wrf%dom(id)%we,wrf%dom(id)%sn)
       n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! q2
+
+      in = n_values+1
+      call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%ps,wrf%dom(id)%we,wrf%dom(id)%sn)
+      n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! ps
 
    endif
 
@@ -494,7 +503,7 @@ if ( i /= nx .or. &
      j /= ny .or. &
      k /= nz .or. &
      m < nx*ny*nz) then
-   write(errstring,*)'nx, ny, nz, not compatible ',i,j,k,nx,ny,nz
+   write(errstring,*)'nx, ny, nz, not compatible ',i,j,k,nx,ny,nz,m
    call error_handler(E_ERR,'trans_3d',errstring,source,revision,revdate)
 endif
 
