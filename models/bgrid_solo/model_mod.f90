@@ -103,7 +103,6 @@ public  atmosphere,      &
         get_state_meta_data, &
         model_interpolate, &
         get_val, &              ! THIS SHOULD ONLY BE FOR TEMP TEST
-        model_interpolate, &
         get_model_time_step, &
         end_model, &
         static_init_model,  &
@@ -170,7 +169,8 @@ real,    dimension(:,:,:), pointer :: omega
 integer, dimension(4)              :: atmos_axes
 integer                            :: num_levels
 integer                            :: ntracers 
-integer                            :: nprognostic
+! Havana no longer distinguishes dynamic tracers
+!!!integer                            :: nprognostic
 
 real, dimension(:), pointer        :: v_lons, v_lats, t_lons, t_lats
 
@@ -285,7 +285,9 @@ implicit none
 
 type(prog_var_type), intent(out) :: Var
 
-call prog_var_init(Dynam%Hgrid, num_levels, ntracers, nprognostic, Var)
+call prog_var_init(Dynam%Hgrid, num_levels, ntracers, Var)
+! Havana no longer distinguishes prognostic tracers
+!!!call prog_var_init(Dynam%Hgrid, num_levels, ntracers, nprognostic, Var)
 
 end subroutine init_model_instance
 
@@ -297,18 +299,24 @@ implicit none
 
 ! Reads in restart initial conditions from B-grid and converts to vector
 
-real, intent(in) :: x(:)
+! Following changed to intent(inout) for ifc compiler;should be like this
+real, intent(inout) :: x(:)
 
 type(prog_var_type) :: Var
 real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: fis, res
 real, allocatable, dimension(:) :: eta, peta
-integer :: ix, jx, kx, nt, ntp
+integer :: ix, jx, kx, nt
+! Havana no longer distinguishes prognostic tracers
+!!!integer :: ix, jx, kx, nt, ntp
 
 ! Need to initialize var???
 call init_model_instance(Var)
 
 ! FOR NOW, TRY TO READ IN CURRENT ICS via read_prog_var
-call open_prog_var_file(ix, jx, kx, nt, ntp)
+call open_prog_var_file(ix, jx, kx)
+! Havana no longer distinguishes prognostic tracers
+! Havana no longer returns the number of tracers on this call
+!!!call open_prog_var_file(ix, jx, kx, nt, ntp)
 
 allocate(eta(kx + 1), peta(kx + 1))
 
@@ -546,7 +554,8 @@ write(*, *) 'model_size ', model_size
 
 ! Also static store the number of levels, ntracers, and prognostic tracers
 ntracers = Var%ntrace
-nprognostic = Var%ntprog
+! Havana no longer distinguishes prognostic tracers
+!!!nprognostic = Var%ntprog
 
 ! Get the lats and lons of the actual grid points; keep in static store
 allocate(t_lons(tnlon), t_lats(tnlat), v_lons(vnlon), v_lats(vnlat))
@@ -897,7 +906,9 @@ integer :: num_levs
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 
 ! Initialize the static parts of the prog var type
-call prog_var_init(Dynam%Hgrid, num_levels, ntracers, nprognostic, vars)
+call prog_var_init(Dynam%Hgrid, num_levels, ntracers, vars)
+! Havana no longer distinguishes prognostic tracers
+!!!call prog_var_init(Dynam%Hgrid, num_levels, ntracers, nprognostic, vars)
 
 ! Get the bounds for storage on Temp and Velocity grids
 tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
