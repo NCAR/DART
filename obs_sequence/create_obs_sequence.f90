@@ -44,7 +44,7 @@ integer :: num_obs_set_defs, num_obs
 character(len = 129) :: file_name
 
 ! Get file name for input set_def_list
-write(*, *) 'What is name of set_def_list?'
+write(*, *) 'What is name of set_def_list? [set_def.out]'
 read(*, *) file_name
 in_unit = open_file(file_name, action = 'read')
 
@@ -145,7 +145,7 @@ enddo
 
 ! Output the obs_sequence to a file
 
-write(*, *) 'Input file name for output of obs_sequence'
+write(*, *) 'Input file name for output of obs_sequence? [obs_seq.in]'
 read( *, *) file_name
 out_unit = open_file(file_name, action = 'write')
 call write_obs_sequence(out_unit, seq)

@@ -19,7 +19,7 @@ use utilities_mod, only : get_unit
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model, model_get_close_states
+   end_model, model_get_close_states, nc_write_model_atts
 
 private
 
@@ -248,21 +248,32 @@ call check(nf90_put_var(ncFileID, MemberVarID,   (/ (i,i=1,copies_of_field_per_t
 call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
-write(*,*)'assim_model_mod:init_diag_output ... filling location variable.'
-! Fill the location variable
-do i = 1, model_size
-   call get_state_meta_data(i, state_loc)
-   call nc_write_location(ncFileID, LocationVarID, state_loc, start=i)
-
-   if (mod(i,1000) == 0 ) &
-      write(*,*)'assim_model_mod:init_diag_output writing loc ',i,' of ',model_size
-end do
+!-------------------------------------------------------------------------------
+! Because the locations are now writen by the nc_write_model_atts, 
+! This section is no longer needed.
+!-------------------------------------------------------------------------------
+! write(*,*)'assim_model_mod:init_diag_output ... filling location variable.'
+! ! Fill the location variable
+! do i = 1, model_size
+!    call get_state_meta_data(i, state_loc)
+!    call nc_write_location(ncFileID, LocationVarID, state_loc, start=i)
+! 
+!    if (mod(i,1000) == 0 ) &
+!       write(*,*)'assim_model_mod:init_diag_output writing loc ',i,' of ',model_size
+! end do
 
 call check(nf90_sync(ncFileID))               ! sync to disk, but leave open
 
 ! The time variable is filled as time progresses.
 ! The state variable is filled similarly ...
 
+i =  nc_write_model_atts(ncFileID)
+
+if ( i < 0 ) then
+   print *,'assim_model_mod:nc_write_model_atts  bombed ', i
+else if ( i > 0 ) then
+   print *,'assim_model_mod:nc_write_model_atts  bombed ', i
+endif
 contains
 
   ! Internal subroutine - checks error status after each netcdf, prints 

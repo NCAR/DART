@@ -37,7 +37,7 @@ public obs_sequence_type, init_obs_sequence, &
    inc_num_obs_copies, set_obs_values, get_num_close_states, &
    get_close_states, read_obs_sequence_def, obs_sequence_def_copy, &
    set_single_obs_value, get_obs_def_index
-	
+
 
 type obs_sequence_type 
    private

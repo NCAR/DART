@@ -470,7 +470,7 @@ implicit none
 type(obs_set_type) :: read_obs_set
 integer, intent(in) :: file_id
 
-character*5 :: header
+character(len=5) :: header
 integer :: num_obs, num_copies, i
 
 ! Read the header and verify 
@@ -519,7 +519,7 @@ implicit none
 type(obs_set_type) :: read_obs_set_time
 integer, intent(in) :: file_id
 
-character*5 :: header
+character(len=5) :: header
 integer :: num_obs, num_copies, i
 real(r8), allocatable :: obs(:)
 logical, allocatable :: missing(:)

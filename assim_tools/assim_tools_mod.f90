@@ -805,7 +805,7 @@ do i = 1, ens_size
       s_y2 = sum(y2(lower:upper))
       sxy = sum(xy(lower:upper))
       reg = (sxy - sx * sy / (num_neighbors + 1)) / &
-	 (s_y2 - sy**2 / (num_neighbors + 1))
+             (s_y2 - sy**2 / (num_neighbors + 1))
 !      write(*, *) 'reg ', i, real(reg)
    endif
    state_inc(index(i)) = (cov_factor * reg) * obs_inc(index(i))

@@ -37,18 +37,20 @@ use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model
 use random_seq_mod, only : random_seq_type, init_random_seq, &
    random_gaussian
 
+use netcdf, only : NF90_close
 
 implicit none
 
 type(obs_sequence_type) :: seq
-type(obs_def_type) :: obs_def
+type(obs_def_type)      :: obs_def
 type(set_def_list_type) :: set_def_list
-type(obs_set_def_type) :: obs_set_def
-type(obs_set_type) :: obs_set
-type(time_type) :: time, time2
-type(random_seq_type) :: random_seq
+type(obs_set_def_type)  :: obs_set_def
+type(obs_set_type)      :: obs_set
+type(time_type)         :: time, time2
+type(random_seq_type)   :: random_seq
 
-integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set, state_unit
+integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set
+integer :: ierr, state_unit, StateUnit
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer :: model_size, num_obs_sets
@@ -58,8 +60,11 @@ real(r8), allocatable :: obs_err_cov(:), obs(:), true_obs(:)
 character(len=129) :: copy_meta_data(2), file_name
 
 ! Read in an observation sequence, only definitions part will be used (no data used)
-write(*, *) 'input file name for obs sequence definition '
-read(*, *) file_name
+write(*, *) 'input file name for obs sequence definition [obs_seq.in]'
+read(*, *, iostat=ierr ) file_name
+if ( ierr < 0 ) then
+   file_name = "obs_seq.in"
+endif
 unit = 10
 open(file = file_name, unit = 10)
 ! Just read in the definition part of the obs sequence
@@ -74,7 +79,7 @@ call init_assim_model(x)
 call get_initial_condition(x)
 
 ! Set up output of truth for state
-!state_unit = init_diag_output('true_state', 'true state from control', 1, (/'true state'/))
+StateUnit  = init_diag_output(   'True_State', 'true state from control', 1, (/'true state'/))
 state_unit = init_diag_outputORG('true_state', 'true state from control', 1, (/'true state'/))
 
 ! Advance for a long time (5 days) to get things started?
@@ -95,7 +100,7 @@ call inc_num_obs_copies(seq, 2, copy_meta_data)
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
-do i = 1, num_obs_sets
+Advance: do i = 1, num_obs_sets
    call get_obs_sequence_time(seq, i, time)
    write(*, *) 'time of obs set ', i
    call print_time(time)
@@ -110,7 +115,7 @@ do i = 1, num_obs_sets
    if(time2 /= get_model_time(x)) call advance_state(x, time2)
 
 ! Output the true state
-!   call output_diagnostics(state_unit, x, 1)
+   call output_diagnostics(    StateUnit, x, 1)
    call output_diagnosticsORG(state_unit, x, 1)
 
 ! How many observations in this set
@@ -136,17 +141,24 @@ do i = 1, num_obs_sets
 
 ! Insert the observations into the sequence first copy
    call set_obs_values(seq, i, true_obs, 2)
-   call set_obs_values(seq, i, obs, 1)
+   call set_obs_values(seq, i,      obs, 1)
 
 ! Deallocate the obs size storage
    deallocate(obs_err_cov, true_obs, obs)
 
-end do
+end do Advance
 
-10 continue
+! properly dispose of the diagnostics files
+
+ierr = NF90_close(StateUnit)
+
+! 10 continue                  ! seems like it is not used
 ! Write out the sequence
-write(*, *) 'What is file name for output obs sequence?'
-read(*, *) file_name
+write(*, *) 'What is file name for output obs sequence? [obs_seq.out]'
+read(*, *, iostat=ierr) file_name
+if ( ierr < 0 ) then
+   file_name = "obs_seq.out"
+endif
 !unit_out = open_file(file_name, action = 'write')
 unit_out = 11
 open(file = file_name, unit = 11)

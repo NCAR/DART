@@ -31,7 +31,7 @@ integer :: i, j, obs_set_def_index, unit
 character(len = 129) :: file_name
 
 ! Get output filename
-write(*, *) 'Input the filename for output of observation set_def_list'
+write(*, *) 'Input the filename for output of observation set_def_list? [set_def.out]'
 read(*, *) file_name
 
 ! With potential for perfect model observations, must do static_init of model
