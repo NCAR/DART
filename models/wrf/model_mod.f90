@@ -50,7 +50,6 @@ public     get_model_size,                    &
            get_model_time_step,               &
            static_init_model,                 &
            model_get_close_states,            &
-           get_wrf_date,                      &
            output_wrf_time,                   &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
@@ -2570,33 +2569,6 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
-
-!#######################################################
-
-subroutine get_wrf_date (year, month, day, hour, minute, second)
-implicit none
-!--------------------------------------------------------
-! Returns integers taken from wrf%timestring
-! NOTE: Right now this string needs to be the cold start init!
-! It is assumed that the WRF char array is as YYYY-MM-DD_hh:mm:ss
-
-integer, intent(out) :: year, month, day, hour, minute, second
-
-integer                             :: i
-character(len=size(wrf%timestring)) :: tstring
-
-do i = 1, len(tstring)
-  tstring(i:i) = wrf%timestring(i)
-enddo
-
-read(tstring(1:4),'(i4)') year
-read(tstring(6:7),'(i2)') month
-read(tstring(9:10),'(i2)') day
-read(tstring(12:13),'(i2)') hour
-read(tstring(15:16),'(i2)') minute
-read(tstring(18:19),'(i2)') second
-
-end subroutine get_wrf_date
 
 !#######################################################
 

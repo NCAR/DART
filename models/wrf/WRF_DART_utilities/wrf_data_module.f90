@@ -19,7 +19,7 @@ implicit none
 private
 
 public wrf_data, wrf_bdy_data, wrf_open_and_alloc, wrfbdy_open_and_alloc, &
-       wrf_dealloc, wrfbdy_dealloc, wrf_io, wrfbdy_io, set_wrf_date
+       wrf_dealloc, wrfbdy_dealloc, wrf_io, wrfbdy_io, set_wrf_date, get_wrf_date
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -1402,5 +1402,27 @@ timestring(17:17) = ":"
 timestring(18:19) = ch_second
 
 end subroutine set_wrf_date
+
+!#######################################################
+
+subroutine get_wrf_date (tstring, year, month, day, hour, minute, second)
+implicit none
+!--------------------------------------------------------
+! Returns integers taken from wrf%timestring
+! NOTE: Right now this string needs to be the cold start init!
+! It is assumed that the WRF char array is as YYYY-MM-DD_hh:mm:ss
+
+integer, intent(out) :: year, month, day, hour, minute, second
+
+character(len=19) :: tstring
+
+read(tstring(1:4),'(i4)') year
+read(tstring(6:7),'(i2)') month
+read(tstring(9:10),'(i2)') day
+read(tstring(12:13),'(i2)') hour
+read(tstring(15:16),'(i2)') minute
+read(tstring(18:19),'(i2)') second
+
+end subroutine get_wrf_date
 
 END MODULE wrf_data_module

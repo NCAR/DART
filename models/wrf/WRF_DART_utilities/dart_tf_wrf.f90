@@ -10,12 +10,13 @@ PROGRAM dart_tf_wrf
 ! $Date$
 
 use        types_mod, only : r8
-use time_manager_mod, only : time_type, write_time, read_time, get_date, operator(-), &
+use time_manager_mod, only : time_type, write_time, read_time, get_date, set_date, operator(-), &
                              get_time, print_time, set_calendar_type, GREGORIAN, days_per_month
 use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
                              finalize_utilities, register_module, logfileunit
-use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date
+use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date, &
+                             get_wrf_date
 use                          netcdf
 
 implicit none
@@ -61,6 +62,9 @@ type(time_type)   :: dart_time(2), interval_time
 integer           :: number_dart_values, days, seconds, &
                      year, month, day, hour, minute, second
 integer           :: ndays, m
+integer           :: ndims, idims(2), dimids(2)
+integer           :: i, ivtype
+character(len=80) :: varname
 
 character(len=19) :: timestring
 
@@ -200,9 +204,20 @@ if( dart_to_wrf ) then
    call WRF_IO( wrf, "OUTPUT", debug )
 else
    iunit = get_unit()
-   open(unit = iunit, file = 'wrf.info')
-   dart_time(1) = read_time(iunit)
-   close(iunit)
+   call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
+   call check( nf90_Inquire_Variable(wrf%ncid, var_id, varname, xtype=ivtype, ndims=ndims, dimids=dimids) )
+   do i=1,ndims
+      call check( nf90_inquire_dimension(wrf%ncid, dimids(i), len=idims(i)) )
+      if(debug) write(6,*) ' dimension ',i,idims(i)
+   enddo
+
+   call check( nf90_get_var(wrf%ncid, var_id, timestring, start = (/ 1, idims(2) /)) )
+   call get_wrf_date(timestring, year, month, day, hour, minute, second)
+   dart_time(1) = set_date(year, month, day, hour, minute, second)
+
+   if(debug) write(6,*) 'Correct?'
+   if(debug) call print_time(dart_time(1))
+
    call DART_IO( "OUTPUT", dart, dart_unit, dart_time, binary_restart_files, debug )
 end if
 if(debug) write(6,*) ' returned from state output '
