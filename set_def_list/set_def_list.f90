@@ -12,26 +12,26 @@ module set_def_list_mod
 
 use types_mod
 use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
-   read_obs_set_def, write_obs_set_def
+   read_obs_set_def, write_obs_set_def, obs_set_def_copy
 
 private
 
 public set_def_list_type, list_element_type, get_number_obs_subsets, &
    init_set_def_list, add_to_list, get_from_list, get_total_num_obs, &
    write_set_def_list, read_set_def_list, write_list_element, &
-   read_list_element
+   read_list_element, list_element_copy, set_def_list_copy
 
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
 type set_def_list_type
-   private
+!   private
    integer :: max_sets
    integer :: num_sets
    type(list_element_type), pointer :: sets(:)
 end type set_def_list_type
 
 type list_element_type
-   private
+!   private
    type(obs_set_def_type) :: obs_set
    integer :: index
    integer :: total_num_obs
@@ -61,6 +61,58 @@ init_set_def_list%num_sets = 0
 allocate(init_set_def_list%sets(max_sets))
 
 end function init_set_def_list
+
+
+
+
+subroutine set_def_list_copy(list_out, list_in)
+!--------------------------------------------------------------
+! 
+! Full copy of set_def_list_type
+
+implicit none
+
+type(set_def_list_type), intent(in) :: list_in
+type(set_def_list_type), intent(out) :: list_out
+
+integer :: i
+
+list_out%max_sets = list_in%max_sets
+list_out%num_sets = list_in%num_sets
+allocate(list_out%sets(list_in%max_sets))
+
+do i = 1, list_in%num_sets
+   call list_element_copy(list_out%sets(i), list_in%sets(i))
+end do
+
+end subroutine set_def_list_copy
+   
+
+
+
+subroutine list_element_copy(list_out, list_in)
+!---------------------------------------------------------------
+!
+! Overloaded to = for list_element
+
+implicit none
+
+type(list_element_type) :: list_out
+type(list_element_type), intent(in) :: list_in
+
+integer :: i
+
+list_out%obs_set = list_in%obs_set
+list_out%index = list_in%index
+list_out%total_num_obs = list_in%total_num_obs
+list_out%num_subsets = list_in%num_subsets
+list_out%max_subsets = list_in%max_subsets
+allocate(list_out%subset(list_in%max_subsets))
+do i = 1, list_in%max_subsets
+   list_out%subset(i) = list_in%subset(i)
+end do
+
+end subroutine list_element_copy
 
 
 
@@ -101,6 +153,9 @@ list%sets(ind)%num_subsets = 0
 list%sets(ind)%max_subsets = max_subsets
 allocate(list%sets(ind)%subset(max_subsets))
 
+! Copy in the obs_set_def
+call obs_set_def_copy(list%sets(ind)%obs_set, set)
+
 ! Return the index
 add_to_list = ind
 
@@ -127,7 +182,8 @@ if(index > list%num_sets .or. index < 1) then
    stop
 endif
 
-get_def_from_list = list%sets(index)%obs_set
+call obs_set_def_copy(get_def_from_list, list%sets(index)%obs_set)
+!!!get_def_from_list = list%sets(index)%obs_set
 
 end function get_def_from_list
 
@@ -230,11 +286,9 @@ endif
 ! Read the number of sets
 read(file_id, *) num_sets
 
-read_set_def_list%max_sets = num_sets
-read_set_def_list%num_sets = num_sets
-
 ! Initialize storage
 read_set_def_list = init_set_def_list(num_sets)
+read_set_def_list%num_sets = num_sets
 
 
 ! Need to verify that storage is okay through here, fear null pointer
@@ -242,7 +296,9 @@ read_set_def_list = init_set_def_list(num_sets)
 
 ! Loop through each set and read its info (eventually will have subsets here)
 do i = 1, num_sets
-   read_set_def_list%sets(i) = read_list_element(file_id)
+! May want to re-examine function syntax for reads and perhaps make then copy
+! subroutines ???
+   call list_element_copy(read_set_def_list%sets(i), read_list_element(file_id))
 end do
 
 end function read_set_def_list
@@ -299,7 +355,9 @@ do i = 1, read_list_element%num_subsets
 end do
 
 ! Read the obs_set_def for this set
-read_list_element%obs_set = read_obs_set_def(file_id)
+call obs_set_def_copy(read_list_element%obs_set, read_obs_set_def(file_id))
+!!!read_list_element%obs_set = read_obs_set_def(file_id)
+
 
 end function read_list_element
 

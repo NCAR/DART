@@ -8,9 +8,10 @@ module obs_sequence_mod
 !
 
 use types_mod
-use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time
+use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
+   obs_set_copy
 use set_def_list_mod, only : set_def_list_type, &
-   read_set_def_list, write_set_def_list
+   read_set_def_list, write_set_def_list, set_def_list_copy
 use utilities_mod, only : open_file
 use time_manager_mod, only : time_type, set_time, operator(<=)
 
@@ -18,8 +19,8 @@ private
 
 public obs_sequence_type, init_obs_sequence, &
    get_num_obs_copies, get_copy_meta_data, &
-   get_obs_set, add_obs_set, set_def_list, read_obs_sequence, &
-   write_obs_sequence
+   get_obs_set, add_obs_set, associate_def_list, read_obs_sequence, &
+   write_obs_sequence, obs_sequence_copy, get_num_obs_sets
 	
 
 type obs_sequence_type 
@@ -81,6 +82,39 @@ end function init_obs_sequence
 
 
 
+subroutine obs_sequence_copy(seq_out, seq_in)
+!---------------------------------------------------------------------------------
+!
+! Comprehensive copy for obs_sequence_type
+
+implicit none
+
+type(obs_sequence_type), intent(out) :: seq_out
+type(obs_sequence_type), intent(in) :: seq_in
+
+integer :: i
+
+seq_out%num_copies = seq_in%num_copies
+seq_out%max_obs_sets = seq_in%max_obs_sets
+seq_out%num_obs_sets = seq_in%num_obs_sets
+
+! Allocate and copy the meta_data
+allocate(seq_out%copy_meta_data(seq_in%num_copies))
+seq_out%copy_meta_data = seq_in%copy_meta_data
+
+! Copy the set_def_list
+call set_def_list_copy(seq_out%def_list, seq_in%def_list)
+
+! Copy the obs sets one by one
+do i = 1, seq_in%num_obs_sets
+   call obs_set_copy(seq_out%obs_sets(i), seq_in%obs_sets(i))
+end do
+
+end subroutine obs_sequence_copy
+
+
+
+
 function get_num_obs_copies(sequence)
 !--------------------------------------------------------------------------------
 !
@@ -94,6 +128,23 @@ type(obs_sequence_type), intent(in) :: sequence
 get_num_obs_copies = sequence%num_copies
 
 end function get_num_obs_copies
+
+
+
+
+function get_num_obs_sets(sequence)
+!---------------------------------------------------------------------------------
+!
+! Returns number of obs_sets in this sequence (want this to be dynamic eventually)
+
+implicit none
+
+integer :: get_num_obs_sets
+type(obs_sequence_type) :: sequence
+
+get_num_obs_sets = sequence%num_obs_sets
+
+end function get_num_obs_sets
 
 
 
@@ -133,7 +184,8 @@ type(obs_set_type) :: get_obs_set
 type(obs_sequence_type), intent(in) :: sequence
 integer, intent(in) :: index
 
-get_obs_set = sequence%obs_sets(index)
+call obs_set_copy(get_obs_set, sequence%obs_sets(index))
+!!!get_obs_set = sequence%obs_sets(index)
 
 end function get_obs_set
 
@@ -152,8 +204,8 @@ type(time_type) :: time
 
 ! Make sure the times are ascending
 time = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
-if(get_obs_set_time(obs_set) <= time) then
-   write(*, *) 'Error: obs_set being added to sequence is not in time order: output_obs_set'
+if(get_obs_set_time(obs_set) <= time .and. sequence%num_obs_sets > 0) then
+   write(*, *) 'Error: obs_set being added to sequence is not in time order: add_obs_set'
    stop
 endif
 
@@ -164,15 +216,17 @@ if(sequence%num_obs_sets == sequence%max_obs_sets) then
 endif
 
 ! Increment counters and add
+! Is Default copy sufficient
 sequence%num_obs_sets = sequence%num_obs_sets + 1
-sequence%obs_sets(sequence%num_obs_sets) = obs_set
+call obs_set_copy(sequence%obs_sets(sequence%num_obs_sets), obs_set)
+!!!sequence%obs_sets(sequence%num_obs_sets) = obs_set
 
 end subroutine add_obs_set
 
 
 
 
-subroutine set_def_list(sequence, def_list)
+subroutine associate_def_list(sequence, def_list)
 !------------------------------------------------------------------
 !
 ! Set the def_list associated with the sequence. May just want to
@@ -184,9 +238,11 @@ implicit none
 type(obs_sequence_type), intent(inout) :: sequence
 type(set_def_list_type), intent(in) :: def_list
 
-sequence%def_list = def_list
+! Is default copy sufficient?
+call set_def_list_copy(sequence%def_list, def_list)
+!!!sequence%def_list = def_list
 
-end subroutine set_def_list
+end subroutine associate_def_list
 
 
 
@@ -216,7 +272,7 @@ end do
 call write_set_def_list(file_id, sequence%def_list)
 
 ! Write out the obs sets 
-do i = 1, sequence%num_copies
+do i = 1, sequence%num_obs_sets
    call write_obs_set(file_id, sequence%obs_sets(i))
 end do
 
@@ -240,21 +296,25 @@ read(file_id, *) num_copies
 
 ! Read the number of observations in set
 read(file_id, *) num_obs_sets
+write(*, *) 'in read_obs_sequence number of obs_sets ', num_obs_sets
 
 ! Initialize the sequence
 read_obs_sequence = init_obs_sequence(num_obs_sets, num_copies)
+read_obs_sequence%num_obs_sets = num_obs_sets
 
 ! Read the per copy metadata
 do i = 1, num_copies
    read(file_id, *) read_obs_sequence%copy_meta_data(i)
 end do
 
-! Read out the observation definition list
-read_obs_sequence%def_list =  read_set_def_list(file_id)
+! Read the observation definition list
+call set_def_list_copy(read_obs_sequence%def_list, read_set_def_list(file_id))
+!!!read_obs_sequence%def_list =  read_set_def_list(file_id)
 
 ! Read the obs sets 
-do i = 1, read_obs_sequence%num_copies
-   read_obs_sequence%obs_sets(i) = read_obs_set(file_id)
+do i = 1, read_obs_sequence%num_obs_sets
+   call obs_set_copy(read_obs_sequence%obs_sets(i), read_obs_set(file_id))
+!!!   read_obs_sequence%obs_sets(i) = read_obs_set(file_id)
 end do
 
 end function read_obs_sequence

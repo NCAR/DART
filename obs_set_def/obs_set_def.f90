@@ -21,7 +21,7 @@ public obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
    get_expected_obs, get_obs_def, &
    get_num_obs, get_number_obs_subsets, &
    get_obs_locations, get_close_states, get_num_close_states, add_obs, &
-   diag_obs_err_cov, read_obs_set_def, write_obs_set_def
+   diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy
 
 type obs_set_def_type
    private
@@ -56,6 +56,32 @@ init_obs_set_def%max_num_obs_defs = max_num_obs
 init_obs_set_def%num_obs_defs = 0
 
 end function init_obs_set_def
+
+
+
+
+subroutine obs_set_def_copy(set_out, set_in)
+!--------------------------------------------------------------
+!
+! Needs to be used in place of assignement for obs_set_defs to
+! get full copy functionality.
+
+implicit none
+
+type(obs_set_def_type), intent(out) :: set_out
+type(obs_set_def_type), intent(in) :: set_in
+
+integer :: i
+
+set_out = init_obs_set_def(set_in%max_num_obs_defs)
+
+! Loop to add in the obs_defs
+do i = 1, set_in%num_obs_defs
+   call add_obs(set_out, set_in%obs_defs(i))
+end do
+
+end subroutine obs_set_def_copy
+
 
 
 
@@ -307,6 +333,7 @@ read(file_id, *) num
 
 ! Initialize the obs_set for this many obs
 read_obs_set_def = init_obs_set_def(num)
+read_obs_set_def%num_obs_defs = num
 
 ! Loop to read each obs in the set and insert it
 do i = 1, num

@@ -16,18 +16,26 @@ private
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    set_obs_values, set_obs_missing, set_obs_set_time, &
    contains_data, obs_value_missing, &
-   read_obs_set, write_obs_set
+   read_obs_set, write_obs_set, obs_set_copy
 
 type obs_set_type
    private
+! The two arrays will be allocated as (num_obs, num_copies)
    real(r8), pointer :: obs(:, :)
    logical, pointer :: missing(:, :)
    integer :: num_copies
    integer :: num_obs
    type(time_type) :: time
    integer :: def_index
-!   type(obs_set_def_type) :: def
 end type obs_set_type
+
+
+! NOTE: There are a variety of places where some no change lock mechanism
+! needs to be implemented. Once obs_set_defs are in the table they should
+! not have internals changed (except links). Once they are used by an 
+! obs_set they should not be changed at all. Same thing with obs_sets,
+! once they are in a sequence they should not be changed. Will need to
+! implement lock semaphore in structures.
 
 
 contains
@@ -72,6 +80,35 @@ init_obs_set%num_obs = num_obs
 allocate(init_obs_set%obs(num_obs, num_copies), init_obs_set%missing(num_obs, num_copies))
 
 end function init_obs_set
+
+
+
+subroutine obs_set_copy(set_out, set_in)
+!-----------------------------------------------------------
+!
+! Comprehensive copy for obs_set
+
+implicit none
+
+type(obs_set_type), intent(out) :: set_out
+type(obs_set_type), intent(in) :: set_in
+
+! Set the sizes
+set_out%num_copies = set_in%num_copies
+set_out%num_obs = set_in%num_obs
+set_out%time = set_in%time
+set_out%def_index = set_in%def_index
+
+! Allocate storage for obs and missing
+allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
+   set_out%missing(set_in%num_obs, set_in%num_copies))
+
+! Copy the values in obs and missing
+set_out%obs = set_in%obs
+set_out%missing = set_in%missing
+
+end subroutine obs_set_copy
+
 
 
 
@@ -255,7 +292,7 @@ if(index < 1 .or. index > set%num_copies) then
 endif
 
 ! Next make sure there's enough room in obs
-if(size(missing) < set%num_obs) then
+if(size(missing) /= set%num_obs) then
    write(*, *) 'Error: missing array too small in obs_value_missing'
    stop
 endif
@@ -269,7 +306,7 @@ end subroutine obs_value_missing
 function read_obs_set(file_id)
 !------------------------------------------------------------------------
 !
-! Reads and obs_set from a file
+! Reads an obs_set from a file
 
 implicit none
 
@@ -331,7 +368,7 @@ integer :: i
 write(file_id, *) 'obset'
 
 ! Write the obs_set_def_index
-write(file_id, *) set%def_indeX
+write(file_id, *) set%def_index
 
 ! The number of obs followed by the number of copies
 write(file_id, *) set%num_obs, set%num_copies
