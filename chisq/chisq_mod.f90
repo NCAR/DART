@@ -10,32 +10,35 @@ module chisq_mod
 
 implicit none
 
+use types_mod
+
 private
 public chsone
 
 integer, parameter :: itmax = 100
-double precision, parameter :: eps = 3.e-7
-double precision, parameter :: fpmin = 1.e-30
+real(r8), parameter :: eps = 3.e-7
+real(r8), parameter :: fpmin = 1.e-30
 
-double precision, parameter :: stp = 2.5066282746310005D0
-double precision :: cof(6) = (/76.18009172947146D0, -86.50532032941677D0, &
-   24.01409824083091D0, -1.231739572450155D0, &
-   .1208650973866179D-2, -.5395239384953D-5/)
+real(r8), parameter :: stp = 2.5066282746310005_r8
+real(r8) :: cof(6) = (/76.18009172947146_r8, -86.50532032941677_r8, &
+                       24.01409824083091_r8, -1.231739572450155_r8, &
+                     0.01208650973866179_r8, -0.000005395239384953_r8/)
 
 contains
 
-!==============================================================================
 
 !  CHISQUARE TEST MATERIAL FROM NUMERICAL RECIPES AND ASSOCIATED SUPPORTING
 !  SUBROUTINES
 
-subroutine chsone(bins, ebins, knstrn, df, chsq, prob)
+  subroutine chsone(bins, ebins, knstrn, df, chsq, prob)
+!==============================================================================
+! subroutine chsone(bins, ebins, knstrn, df, chsq, prob)
 
 implicit none
 
-integer, intent(in) :: knstrn
-double precision, intent(in) :: bins(:), ebins(:)
-double precision, intent(out) :: chsq, df, prob
+integer,  intent(in)  :: knstrn
+real(r8), intent(in)  :: bins(:), ebins(:)
+real(r8), intent(out) :: chsq, df, prob
 
 !  GIVEN THE ARRAY BINS(1:NBINS) CONTAINING THE OBSERVED NUMBER OF EVENTS,
 !  AND AN ARRAY EBINS(1:NBINS) CONTAINING THE EXPECTED NUMBERS OF EVENTS,
@@ -46,12 +49,12 @@ double precision, intent(out) :: chsq, df, prob
 !  EBINS.  NOTE THAT BINS AND EBINS ARE BOTH REAL ARRAYS, ALTHOUGH BINS WILL
 !  NORMALLY CONTAIN INTEGER VALUES.
 
-INTEGER J
+integer :: j
 
 df = size(bins) - knstrn
-chsq = 0.
+chsq = 0.0_r8
 do j = 1, size(bins)
-   if(ebins(j) < 0.) then
+   if( ebins(j) < 0.0_r8 ) then
       write(*, *) 'FATAL ERROR: bad expected number in bins in chsone '
       stop
    endif
@@ -61,27 +64,29 @@ prob = gammq(0.5*df, 0.5*chsq)
 
 end subroutine chsone
 
-!==========================================================================
 
-function gammq(a, x)
+
+  function gammq(a, x)
+!==========================================================================
+! function gammq(a, x)
+!
+!  RETURNS THE INCOMPLETE GAMMA FUNCTION Q(A, X) = 1 - P(A, X)
 
 implicit none
 
-double precision :: gammq
-double precision, intent(in) :: a, x
+real(r8), intent(in) :: a, x
+real(r8)             :: gammq
 
-!  RETURNS THE INCOMPLETE GAMMA FUNCTION Q(A, X) = 1 - P(A, X)
+real(r8) :: gammcf, gamser, gln
 
-double precision :: gammcf, gamser, gln
-
-if(x < 0. .or. a < 0.) then
+if( x < 0.0_r8 .or. a < 0.0_r8) then
    write(*, *) 'FATAL ERROR: Bad arguments to gammq in chisq computation'
    stop
 endif
 
-if(x < a+1.) then
+if(x < a+1.0_r8) then
    call gser(gamser, a, x, gln)
-   gammq = 1. - gamser
+   gammq = 1.0_r8 - gamser
 else
    call gcf(gammcf, a, x, gln)
    gammq = gammcf
@@ -89,35 +94,36 @@ endif
 
 end function gammq
 
-!==========================================================================
 
-subroutine gser(gamser, a, x, gln)
+  subroutine gser(gamser, a, x, gln)
+!==========================================================================
+! subroutine gser(gamser, a, x, gln)
+!
+! RETURNS THE INCOMPLETE GAMMA FUNCTION P(A, X) EVALUATED BY ITS SERIES
+! REPRESENTATION AS GAMSER.  ALSO RETURN IN(GAMMA(A)) AS GLN.
 
 implicit none
 
-double precision, intent(in) :: a, x
-double precision, intent(out) ::  gamser, gln
+real(r8), intent(in)  :: a, x
+real(r8), intent(out) ::  gamser, gln
 
-!  RETURNS THE INCOMPLETE GAMMA FUNCTION P(A, X) EVALUATED BY ITS SERIES
-!  REPRESENTATION AS GAMSER.  ALSO RETURN IN(GAMMA(A)) AS GLN.
-
-integer :: n
-double precision :: ap, del, sum
+integer  :: n
+real(r8) :: ap, del, sum
 
 gln = gammln(a)
-if(x < 0.0) then
+if(x < 0.0_r8) then
    write(*, *) 'ERROR: x < 0 in gser in computing chisq'
    stop
 endif
 
-if(X == 0.) then
-   gamser = 0.
+if(x == 0._r8) then
+   gamser = 0.0_r8
 else
    ap = a
-   sum = 1. / a
+   sum = 1.0_r8 / a
    del = sum
    do n = 1, itmax
-      ap = ap + 1.
+      ap = ap + 1.0_r8
       del = del * x / ap
       sum = sum + del
       if(abs(del) < abs(sum) * eps) goto 1
@@ -128,41 +134,52 @@ endif
 
 end subroutine gser
 
-!===========================================================================
 
-subroutine gcf(gammcf, a, x, gln)
+
+  subroutine gcf(gammcf, a, x, gln)
+!===========================================================================
+! subroutine gcf(gammcf, a, x, gln)
+!
+! RETURNS THE INCOMPLETE GAMMA FUNCTION Q(A, X) EVALUATED BY ITS CONTINUED 
+! FRACTION REPRESENTATION AS GAMMCF.  ALSO RETURNS IN(GAMMA(A)) AS GLN.
+! PARAMETERS: ITMAX IS THE MAXIMUM ALLOWED NUMBER OF ITERATIONS; EPS IS
+! THE RELATIVE ACCURACY; FPMIN IS A NUMBER NEAR THE SMALLEST REPRESENTABLE
+! FLOATING-POINT NUMBER.
 
 implicit none
 
-double precision, intent(in) :: a, x
-double precision, intent(out) :: gammcf, gln
+real(r8), intent(in)  :: a, x
+real(r8), intent(out) :: gammcf, gln
 
-!  RETURNS THE INCOMPLETE GAMMA FUNCTION Q(A, X) EVALUATED BY ITS CONTINUED 
-!  FRACTION REPRESENTATION AS GAMMCF.  ALSO RETURNS IN(GAMMA(A)) AS GLN.
-!  PARAMETERS: ITMAX IS THE MAXIMUM ALLOWED NUMBER OF ITERATIONS; EPS IS
-!  THE RELATIVE ACCURACY; FPMIN IS A NUMBER NEAR THE SMALLEST REPRESENTABLE
-!  FLOATING-POINT NUMBER.
-
-integer :: i
-double precision :: an, b, c, d, del, h
+integer  :: i
+real(r8) :: an, b, c, d, del, h
 
 gln = gammln(a)
-b = x + 1. - a
-c = 1. / fpmin
-d = 1. / b
-h = d
+b   = x + 1.0_r8 - a
+c   = 1.0_r8 / fpmin
+d   = 1.0_r8 / b
+h   = d
+
 do i = 1, itmax
+
    an = -i * (i - a)
-   b = b + 2.
-   d = an * d + b
+   b  = b + 2.0_r8
+   d  = an * d + b
+
    if(abs(d) < fpmin) d = fpmin
+
    c = b + an / c
+
    if(abs(c) < fpmin) c = fpmin
-   d = 1. / d
+
+   d   = 1.0_r8 / d
    del = d * c
-   h = h * del
+   h   = h * del
+
    if(abs(del - 1.) < eps) goto 1
+
 end do
+
 write(*, *) 'ERROR: a too large, itmax too small in gcf'
 stop
 
@@ -170,36 +187,41 @@ stop
 
 end subroutine gcf
 
-!============================================================================
 
-function gammln(xx)
+  function gammln(xx)
+!============================================================================
+! function gammln(xx)
+!
+! returns the value  in(gamma(xx)) for xx > 0
+!
+! internal arithmetic will be done in double precision, a nicety that you
+! can omit if five-figure accuracy is good enough.
 
 implicit none
 
-double precision gammln
-double precision, intent(in) :: xx
+real(r8), intent(in) :: xx
+real(r8)             :: gammln
 
-!  returns the value  in(gamma(xx)) for xx > 0
+integer  :: j
+real(r8) :: ser, tmp, x, y
 
-integer j
-double precision ser, tmp, x, y
+x   = xx
+y   = x
+tmp = x + 5.5_r8
+tmp = (x + 0.5_r8) * log(tmp) - tmp
+ser = 1.000000000190015_r8
 
-!  INTERNAL ARITHMETIC WILL BE DONE IN DOUBLE PRECISION, A NICETY THAT YOU
-!  CAN OMIT IF FIVE-FIGURE ACCURACY IS GOOD ENOUGH.
-
-x = xx
-y = x
-tmp = x + 5.5d0
-tmp = (x + 0.5d0) * log(tmp) - tmp
-ser = 1.000000000190015d0
 do j = 1, 6
-   y = y + 1.d0
+   y   = y + 1.0_r8
    ser = ser + cof(j) / y
 end do
+
 gammln = tmp + log(stp*ser/x)
 
 end function gammln
 
+!=============================================================================
+! end of chisq_mod.f90
 !=============================================================================
 
 end module chisq_mod
