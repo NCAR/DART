@@ -22,12 +22,12 @@ use time_manager_mod, only : time_type, set_time, print_time, operator(/=), oper
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
-   get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence
+   get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, get_num_qc
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
 
 use obs_model_mod,    only : get_expected_obs
-   
+
 
 use assim_model_mod, only  : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
@@ -54,7 +54,7 @@ type(random_seq_type)   :: random_seq
 
 integer                 :: i, j, iunit
 integer                 :: ierr, StateUnit, io, istatus
-integer                 :: model_size, key_bounds(2), num_obs
+integer                 :: model_size, key_bounds(2), num_obs, num_qc
 integer, allocatable    :: keys(:)
 logical                 :: is_there_one, out_of_range, is_this_last
 real(r8)                :: true_obs(1), obs_value(1), rstatus(1,1)
@@ -175,6 +175,10 @@ call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
 ! Get the time of the first observation in the sequence
 write(*, *) 'number of obs in sequence is ', get_num_obs(seq)
+
+num_qc = get_num_qc(seq)
+write(*, *) 'number of qc values is ',num_qc
+
 is_there_one = get_first_obs(seq, obs)
 ! Test for no data at all here?
 call get_obs_def(obs, obs_def)
@@ -213,13 +217,13 @@ Advance: do i = 1, get_num_times(seq)
 
 ! Generate the synthetic observations by adding in error samples
 
-      if(rstatus(1,1) == 0.0_r8) then
+      if(istatus == 0) then
          obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
       else
          obs_value(1) = true_obs(1)
       endif
 
-      call set_qc(obs, rstatus(1,:), 1)
+      if (num_qc > 0) call set_qc(obs, rstatus(1,:), 1)
 
       call set_obs_values(obs, obs_value, 1)
       call set_obs_values(obs, true_obs, 2)
