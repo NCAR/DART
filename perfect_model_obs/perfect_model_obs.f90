@@ -229,10 +229,6 @@ AdvanceTime: do
 
 end do AdvanceTime
 
-! Send a message to the asynchronous version 3 that all is done
-! Must be done always because this also terminates option 3 for assim_tools!
-call system('echo a > go_end_filter')
-
 ! properly dispose of the diagnostics files
 
 ierr = finalize_diag_output(StateUnit)
@@ -249,6 +245,10 @@ if(output_restart) then
 endif
 
 call error_handler(E_MSG,'perfect_model_obs','FINISHED',source,revision,revdate)
+
+! Send a message to the asynchronous version 3 that all is done
+! Must be done always because this also terminates option 3 for assim_tools!
+call system('echo a > go_end_filter')
 
 ! closes the log file.
 call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
