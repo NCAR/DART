@@ -306,9 +306,9 @@ end subroutine read_cam_scalar
 ! #include <misc.h>
 ! #include <params.h>
 
-subroutine plevs_cam (ncol    , ncold   ,ps      ,pint    )
+subroutine plevs_cam (ncol    , ncold   ,ps      ,pmid    )
 
-! ,nver    , & pmid    ,pdel)
+! ,nver    , & pint    ,pdel)
 
 !-----------------------------------------------------------------------
 !
@@ -350,8 +350,8 @@ integer , intent(in)  :: ncold              ! Declared longitude dimension
 !real(r8), parameter  :: P0 = 1.0E+05       ! reference pressure
 ! end coef
 real(r8), intent(in)  :: ps(ncold)          ! Surface pressure (pascals)
-real(r8), intent(out) :: pint(ncold,num_levs+1) ! Pressure at model interfaces
-!real(r8), intent(out) :: pmid(ncold,num_levs)   ! Pressure at model levels
+!real(r8), intent(out) :: pint(ncold,num_levs+1) ! Pressure at model interfaces
+real(r8), intent(out) :: pmid(ncold,num_levs)   ! Pressure at model levels
 !real(r8), intent(out) :: pdel(ncold,num_levs)   ! Layer thickness (pint(k+1) - pint(k))
 !-----------------------------------------------------------------------
 
@@ -361,21 +361,21 @@ real(r8), intent(out) :: pint(ncold,num_levs+1) ! Pressure at model interfaces
 !
 ! Set interface pressures
 !
-do k=1,num_levs+1
-   do i=1,ncol
-      pint(i,k) = hyai(k)*P0 + hybi(k)*ps(i)
-   end do
-end do
+!do k=1,num_levs+1
+!   do i=1,ncol
+!      pint(i,k) = hyai(k)*P0 + hybi(k)*ps(i)
+!   end do
+!end do
 !
 ! Set midpoint pressures and layer thicknesses
 !
 ! coef
-!do k=1,num_levs
-!   do i=1,ncol
-!      pmid(i,k) = hyam(k)*P0 + hybm(k)*ps(i)
+do k=1,num_levs
+   do i=1,ncol
+      pmid(i,k) = hyam(k)*P0 + hybm(k)*ps(i)
 !      pdel(i,k) = pint(i,k+1) - pint(i,k)
-!   end do
-!end do
+   end do
+end do
 
 return
 end subroutine plevs_cam
@@ -888,26 +888,38 @@ endif
 ! Case 1: model level specified in vertical
 if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
-   val(1, 1) =  get_val(x, lon_below, lat_below, nint(level), type)
-   val(1, 2) =  get_val(x, lon_below, lat_above, nint(level), type)
-   val(2, 1) =  get_val(x, lon_above, lat_below, nint(level), type)
-   val(2, 2) =  get_val(x, lon_above, lat_above, nint(level), type)
+   val(1, 1) = get_val(x, lon_below, lat_below, nint(level), type)
+   val(1, 2) = get_val(x, lon_below, lat_above, nint(level), type)
+   val(2, 1) = get_val(x, lon_above, lat_below, nint(level), type)
+   val(2, 2) = get_val(x, lon_above, lat_above, nint(level), type)
 
 else
 ! Case of pressure specified in vertical
-   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, type)
-   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, type)
-   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, type)
-   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, type)
+   val(1, 1) = get_val_pressure(x, lon_below, lat_below, pressure, type)
+   val(1, 2) = get_val_pressure(x, lon_below, lat_above, pressure, type)
+   val(2, 1) = get_val_pressure(x, lon_above, lat_below, pressure, type)
+   val(2, 2) = get_val_pressure(x, lon_above, lat_above, pressure, type)
 endif
+
+! if (pflag > 0) write(53,'(A,2F7.2/)') '  subsurface obs lat, lon = ',lat,lon
 
 ! Do the weighted average for interpolation
 !write(*, *) 'fracts ', lon_fract, lat_fract
-do i = 1, 2
-   a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
-end do
+if (val(1,1) == -9.999E+30 .or. val(1,2) == -9.999E+30  .or.  &
+    val(2,1) == -9.999E+30 .or. val(2,2) == -9.999E+30) then
+   model_interpolate = -9.999E+30
+else
+   do i = 1, 2
+      a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
+   end do
+   model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 
-model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
+! kdr
+!if (model_interpolate > 500.) then
+!   WRITE(53,'(A,/I3,3F9.2,1p4E12.4)') 'type, lat_lon_lev, a1 a2 fract model_int'  &
+!        ,type,(lon_lat_lev(i),i=1,3) ,a(1),a(2),lat_fract,model_interpolate
+!endif
+endif
 
 end function model_interpolate
 
@@ -915,19 +927,22 @@ end function model_interpolate
 !
 function get_val_pressure(x, lon_index, lat_index, pressure, type)
 
+! Gets the vertically interpolated value on pressure for variable type
+! at lon_index, lat_index horizontal grid point
+
+! This version excludes observations below lowest level pressure and above
+! highest level pressure.
+
 implicit none
 
 real :: get_val_pressure
 real, intent(in) :: x(:), pressure
-integer, intent(in) :: lon_index, lat_index, type
+integer, intent(in) :: lon_index, lat_index, type 
 
-real :: ps(1), pfull(1, num_levs+1), fraction
+real :: ps(1), pfull(1, num_levs), fraction
 type(location_type) :: ps_location
-integer :: top_lev, bot_lev, i
+integer :: top_lev, bot_lev, i, k
 real :: bot_val, top_val, ps_lon
-
-! Gets the vertically interpolated value on pressure for variable type
-! at lon_index, lat_index horizontal grid point
 
 ! Need to get the surface pressure at this point. Easy for A-grid.
 ps = get_val(x, lon_index, lat_index, -1, 3)
@@ -940,25 +955,16 @@ ps = get_val(x, lon_index, lat_index, -1, 3)
 call plevs_cam (1, 1, ps, pfull)
 
 ! Interpolate in vertical to get two bounding levels
-! What to do about pressures above top??? Just use the top for now.
-! Could extrapolate, but that would be very tricky. Might need to
-! reject somehow.
-if(pressure < pfull(1, 1)) then
-   top_lev = 1
-   bot_lev = 2
-   fraction = 1.0
-! Kevin, Dynam%Vgrid%nlev is the number of full model levels, you'll
-! have your own value for this
 
-else if(pressure > pfull(1, num_levs+1)) then
-! Same for bottom
-   bot_lev = num_levs + 1
-   top_lev = bot_lev - 1
-   fraction = 0.0
-
+if(pressure < pfull(1, 1) ) then
+   get_val_pressure = -9.999E+30
+else if(pressure < 20000.) then
+   get_val_pressure = -9.999E+30
+else if(pressure > pfull(1, num_levs)) then
+   get_val_pressure = -9.999E+30
 else
 ! Search down through pressures
-   do i = 2, num_levs + 1
+   do i = 2, num_levs 
       if(pressure < pfull(1, i)) then
          top_lev = i -1
          bot_lev = i
@@ -967,18 +973,131 @@ else
          goto 21
       endif
    end do
-end if
-
-! Get the value at these two points
 21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
-top_val = get_val(x, lon_index, lat_index, top_lev, type)
-!write(*, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
-
-get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
-!write(*, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
+   top_val = get_val(x, lon_index, lat_index, top_lev, type)
+   get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+end if
 
 end function get_val_pressure
 
+!#######################################################################
+!
+!function get_val_pressure(x, lon_index, lat_index, pressure, type, pflag)
+!
+!! This version does extrapolations in log pressure below surface and above
+!!  top model layer.
+!
+!implicit none
+!
+!real :: get_val_pressure
+!real, intent(in) :: x(:), pressure
+!integer, intent(in) :: lon_index, lat_index, type 
+!integer, intent(inout) :: pflag
+!
+!real :: ps(1), pfull(1, num_levs), fraction
+!type(location_type) :: ps_location
+!integer :: top_lev, bot_lev, i, k
+!real :: bot_val, top_val, ps_lon
+!
+!! Gets the vertically interpolated value on pressure for variable type
+!! at lon_index, lat_index horizontal grid point
+!
+!! Need to get the surface pressure at this point. Easy for A-grid.
+!ps = get_val(x, lon_index, lat_index, -1, 3)
+!
+! Next, get the values on the levels for this ps
+!!! Kevin, you need to insert the appropriate call for you routine here
+!! ps and pfull are currently 2 and 3D arrays to support Bgrid interface
+!! I assume that you might want to change to a scalar and a 1D array?
+!! call compute_pres_full(Dynam%Vgrid, ps, pfull)
+!call plevs_cam (1, 1, ps, pfull)
+!
+!! Interpolate in vertical to get two bounding levels
+!! What to do about pressures above top??? Just use the top for now.
+!! Could extrapolate, but that would be very tricky. Might need to
+!! reject somehow.
+
+!!! kdr 10/3/03
+!! We'll extrapolate for now, but may need to reject some data instead.
+!
+!if(pressure > ps(1)*1.05 .and. pflag == 0) then
+!   write(53,'(/A,1p3E14.5)')  &
+!        'WARNING; obs press > CAM surf press (&pfull)' &
+!        ,pressure,ps(1),pfull(1,num_levs)
+!   pflag = pflag + 1
+!   write(53,'(A,1p3E14.5)')  &
+!!!        'WARNING; obs press > CAM surf press (&pfull)' &
+!!        ,pressure,ps(1),pfull(1,num_levs)
+!endif
+!if(pressure < pfull(1,1)*0.9 .and. pflag == 0) then
+!   write(53,'(/A,1p3E14.5)')  &
+!        'WARNING; obs press < .9xCAM top layer pressure ' &
+!        ,pressure,pfull(1,1)
+!   pflag = pflag + 1
+!endif
+!
+!!if(pressure < pfull(1, 1) .and. pfull(1,top_lev) .ne. 0.) then
+!! Extrapolate linearly in log(pressure)
+!   top_lev = 1
+!   bot_lev = 2
+!   bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
+!   top_val = get_val(x, lon_index, lat_index, top_lev, type)
+!   fraction = (bot_val - top_val)/(alog(pfull(1,bot_lev)/pfull(1,top_lev)))
+!   get_val_pressure = top_val + fraction * (alog(pressure/pfull(1,top_lev)))
+!   if (pressure > ps(1)*1.05) then
+!   write(53,'(A,1p4E12.5)') '     pressure, pfull(1:2) =         ' &
+!        ,pressure,pfull(1,top_lev),pfull(1,bot_lev)
+!   write(53, '(A,2I3,1p4E12.5)') 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
+!!   write(53, '(A,1p3E12.5/)') '     bot_val, top_val, get_val_press', bot_val, top_val, get_val_pressure
+!   endif
+
+!!else if(pressure > pfull(1, num_levs)) then
+!! Extrapolate linearly in log(pressure)
+!   bot_lev = num_levs 
+!   top_lev = bot_lev - 1
+!   if(pfull(1,top_lev)*pfull(1,bot_lev) .ne. 0.  ) then
+!!      bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
+!      top_val = get_val(x, lon_index, lat_index, top_lev, type)
+!      fraction = (bot_val - top_val)/(alog(pfull(1,bot_lev)/pfull(1,top_lev)))
+!      get_val_pressure = bot_val + fraction * (alog(pressure/pfull(1,bot_lev)))
+!   if (pressure > ps(1)*1.05) then
+!      write(53,'(A,1p4E12.5)') '     pressure, pfull(bot:top)  =         ' &
+!           ,pressure, pfull(1,bot_lev),pfull(1,top_lev)
+!!   write(53, '(A,2I3,1p4E12.5)') 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
+!      write(53, '(A,1p3E12.5)') '     get_val_press, bot_val, top_val ' &
+!                                      ,get_val_pressure,bot_val,top_val
+!!   endif
+!    else
+!      write(53, '(A,1p4E12.5)') 'pfull(1,top_lev)*pfull(1,bot_lev) = 0.' &
+!           ,pfull(1,top_lev),pfull(1,bot_lev)
+!    endif
+!
+!else
+!! Search down through pressures
+!   do i = 2, num_levs 
+!      if(pressure < pfull(1, i)) then
+!!         top_lev = i -1
+!         bot_lev = i
+!         fraction = (pfull(1, i) - pressure) / &
+!            (pfull(1, i) - pfull(1, i - 1))
+!         goto 21
+!      endif
+!   end do
+!21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
+!   top_val = get_val(x, lon_index, lat_index, top_lev, type)
+!   get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+!end if
+!
+!!! Get the value at these two points
+!!21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
+!!top_val = get_val(x, lon_index, lat_index, top_lev, type)
+!!write(53, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
+!!
+!!get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+!!write(53, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
+!
+!end function get_val_pressure
+!
 !#######################################################################
 
 function get_val(x, lon_index, lat_index, level, type)
