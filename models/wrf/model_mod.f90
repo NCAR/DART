@@ -533,7 +533,7 @@ if(debug) write(6,*) variable, ' id = ',var_id
 
 if( in_or_out(1:5) == "INPUT" ) then
 
-  call check( nf90_get_var(ncid, var_id, var, start=start, count=kount, stride=stride, map=map) )
+  call check( nf90_get_var(ncid, var_id, var, start=start, count=kount, stride=stride) )
 
 else if( in_or_out(1:6) == "OUTPUT" ) then
 
