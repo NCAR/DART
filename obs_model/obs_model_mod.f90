@@ -19,6 +19,7 @@ use    obs_kind_mod,  only : obs_kind_type, interactive_kind, get_obs_kind
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
                              get_obs_def, init_obs, destroy_obs
 use obs_def_mod,      only : obs_def_type, get_obs_def_location, get_obs_def_kind
+use utilities_mod,    only : error_handler, E_ERR
 
 
 implicit none
@@ -68,6 +69,7 @@ if ( .not. module_initialized ) call initialize_module
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
 
+stop 'here'
 if(present(rstatus)) then
    call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus, rstatus)
 elseif(present(istatus)) then
@@ -135,6 +137,10 @@ do i = 1, num_obs
 ! Check in kind for negative for identity obs
    obs_kind_ind = get_obs_kind(obs_kind)
    if(obs_kind_ind < 0) then
+      if ( -obs_kind_ind > size(state) ) call error_handler(E_ERR, &
+         'get_expected_obs', &
+         'identity obs is outside of state vector ', &
+         source, revision, revdate)
       obs_vals(i) = state(-1 * obs_kind_ind)
       if(present(rstatus)) rstatus(i,1) = 0.0_r8
    else
