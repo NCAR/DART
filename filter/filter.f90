@@ -283,7 +283,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
    time2 = get_closest_state_time_to(ens(1), time)
 !   write(*, *) 'advancing to time2 '
-   call  print_time(time2)
+!   call  print_time(time2)
 ! Advance all the ensembles (to the time of the first ensemble)
    if(time2 /= get_model_time(ens(1))) call advance_state(ens, ens_size, time2, async)
 
@@ -305,7 +305,7 @@ AdvanceTime : do i = 1, num_obs_sets
    if(i / output_interval * output_interval == i) then
       do j = 1, num_output_ens_members
          ! TJH debugging block.
-         print *,'Going one time, i,noem= ',j,num_output_ens_members
+!         print *,'Going one time, i,noem= ',j,num_output_ens_members
          call output_diagnostics(     PriorStateUnit, ens(j), j)
       end do
    end if
