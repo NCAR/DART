@@ -41,12 +41,14 @@ revdate  = "$Date$"
 
 type location_type
    private
-   real(r8) :: lon, lat, vloc             
+
+   real(r8) :: lon, lat, vloc
    integer  :: which_vert
-   ! which_vert determines if the location is by level or by height/pressure     
-   ! 1 ===> obs is by level 
-   ! 2 ===> obs is by pressure 
-   ! 3 ===> obs is by height 
+   ! which_vert determines if the location is by level or by height/pressure
+   ! 1 ===> obs is by level
+   ! 2 ===> obs is by pressure
+   ! 3 ===> obs is by height
+
 end type location_type
 
 type(random_seq_type) :: ran_seq
@@ -132,7 +134,7 @@ function vert_is_height(loc)
 !
 ! Given a location, return true if vertical coordinate is pressure, else false
 
-logical :: vert_is_height      
+logical :: vert_is_height
 type(location_type), intent(in) :: loc
 
 if(loc%which_vert == 3 ) then
@@ -159,8 +161,6 @@ endif
 
 end function vert_is_level
 
-
-
 function get_location_lon(loc)
 !---------------------------------------------------------------------------
 !
@@ -174,8 +174,6 @@ real(r8) :: get_location_lon
 get_location_lon = loc%lon * rad2deg    
 
 end function get_location_lon
-
-
 
 function get_location_lat(loc)
 !---------------------------------------------------------------------------
@@ -213,14 +211,14 @@ if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
 if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
      'Latitude is out of -90->90 range', source, revision, revdate)
 
-set_location%lon = lon * deg2rad                    
-set_location%lat = lat * deg2rad       
+set_location%lon = lon * deg2rad
+set_location%lat = lat * deg2rad
 
   if(which_vert < 1 .or. which_vert > 3  ) then
-      write(*, *) 'set which_vert is again'             
+      write(*, *) 'set which_vert is again'
       stop
-   endif
-  set_location%which_vert = which_vert 
+  endif
+  set_location%which_vert = which_vert
   set_location%vloc = vert_loc
 
 end function set_location
@@ -228,12 +226,12 @@ end function set_location
 function query_location(loc,attr) result(fval)
 !---------------------------------------------------------------------------
 !
-! Returns the value of the attribute 
-! 
+! Returns the value of the attribute
+!
 
 implicit none
 
-type(location_type),        intent(in) :: loc 
+type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
 real(r8)                               :: fval
 
@@ -248,11 +246,12 @@ selectcase(adjustl(attribute))
    fval = loc%lat
  case ('lon','LON')
    fval = loc%lon
- case ('vloc','VLOC')           
-   fval = loc%vloc       
+ case ('vloc','VLOC')
+   fval = loc%vloc
  case default
    fval = loc%which_vert
 end select
+
 end function query_location
 
 subroutine write_location(ifile, loc)
@@ -277,8 +276,6 @@ write(ifile, '(''loc3d'')' )
 write(ifile, *)loc%lon, loc%lat, loc%vloc, loc%which_vert
 
 end subroutine write_location
-
-
 
 function read_location(ifile)
 !----------------------------------------------------------------------------
@@ -305,8 +302,6 @@ read(ifile, *)read_location%lon, read_location%lat, &
 
 end function read_location
 
-
-
 subroutine interactive_location(location)
 !--------------------------------------------------------------------------
 !
@@ -317,21 +312,29 @@ implicit none
 
 type(location_type), intent(out) :: location
 
-real(r8) :: lon, lat, lev, pressure
+real(r8) :: lon, lat, vloc, minlon, maxlon, minlat, maxlat
 
-write(*, *) 'Input model level with -1 for surface or a -99 to input pressure'
-
-read(*, *) lev
-
-if(lev < -98.0_r8) then
-! Convert from Millibars to Pascals as required for model internals
-   write(*, *) 'Input pressure for this observation in PASCALS'
-!  read(*, *) location%pressure
-   location%which_vert = 2
+write(*, *)'Vertical co-ordinate options'
+write(*, *)'-1 -> surface, 1 -> model level, 2 -> pressure, 3 -> height'
+100   read(*, *) location%which_vert
+if(location%which_vert == 1 ) then
+   write(*, *) 'Vertical co-ordinate model level'
+   read(*, *) location%vloc
+else if(location%which_vert == 2 ) then
+   write(*, *) 'Vertical co-ordinate Pressure (in hPa)'
+   read(*, *) location%vloc
+   location%vloc = 100.0 * location%vloc
+else if(location%which_vert == 3 ) then
+   write(*, *) 'Vertical co-ordinate height (in gpm)'
+   read(*, *) location%vloc
+else if(location%which_vert == -1 ) then
+   write(*, *) 'Vertical co-ordinate surface pressure (in hPa)'
+   read(*, *) location%vloc
+   location%vloc = 100.0 * location%vloc
 else
-   location%vloc = lev
-   location%which_vert = 1
-endif
+   write(*, *) 'Wrong choice of which_vert try again between -1 and 3'
+   go to 100
+end if
 
 write(*, *) 'Input longitude for this obs: value 0 to 360.0 or a negative number for '
 write(*, *) 'Uniformly distributed random location in the horizontal'
@@ -351,14 +354,32 @@ if(lon < 0.0_r8) then
       ran_seq_init = .TRUE.
    endif
 
-   ! Longitude is random from 0 to 2 PI
-   location%lon = random_uniform(ran_seq) * 2.0_r8 * PI
+   write(*, *) 'Input minimum longitude (0 to 360.0)'
+   read(*, *) minlon
+   minlon = minlon * deg2rad
 
-   ! Latitude must be area weightedA
-   location%lat = asin(random_uniform(ran_seq) * 2.0_r8 - 1.0_r8)
+   write(*, *) 'Input maximum longitude (0 to 360.0)'
+   read(*, *) maxlon
+   maxlon = maxlon * deg2rad
 
-   write(*, *) 'random location is ', location%lon * 180.0 / PI, &
-                                      location%lat * 180.0 / PI
+   ! Longitude is random from minlon to maxlon
+!   location%lon = random_uniform(ran_seq) * 2.0_r8 * PI
+   location%lon = random_uniform(ran_seq) * (maxlon-minlon) + minlon
+
+   write(*, *) 'Input minimum latitude (-90.0 to 90.0)'
+   read(*, *) minlat
+   minlat = sin(minlat * deg2rad)
+
+   write(*, *) 'Input maximum latitude (-90.0 to 90.0)'
+   read(*, *) maxlat
+   maxlat = sin(maxlat * deg2rad)
+
+   ! Latitude must be area weighted
+!   location%lat = asin(random_uniform(ran_seq) * 2.0_r8 - 1.0_r8)
+   location%lat = asin(random_uniform(ran_seq) * (maxlat-minlat) + minlat)
+
+   write(*, *) 'random location is ', location%lon / deg2rad, &
+                                      location%lat / deg2rad
 
 else
 
@@ -370,8 +391,8 @@ else
       read(*, *) lat
    end do
 
-   location%lon = lon
-   location%lat = lat
+   location%lat = lat*deg2rad
+   location%lon = lon*deg2rad
 
 end if
 
@@ -413,8 +434,7 @@ contains
 end subroutine nc_write_location
 
 
-
-subroutine read_ncep_obs_location(location, obsunit, obsindex, var)                            
+subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
 !----------------------------------------------------------------------------
 !
 ! Read location (lon,lat,pressure) from NCEP observation files
@@ -430,30 +450,30 @@ real(r8), intent(out) :: var
 real(r8) :: lon, lat, lev, zob, dummy, count, time, type
 integer  :: obs_prof
 
-! Read location, kind and error variance of NCEP data 
-    read(obsunit, 880) var, lon, lat, lev, zob, dummy, count, time, type               
-  880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
+! Read location, kind and error variance of NCEP data
+read(obsunit, 880) var, lon, lat, lev, zob, dummy, count, time, type
+880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
 
-    location%lon = lon     ! in radian
-    location%lat = lat     ! in radian
-                                                                                            
+location%lon = lon     ! in radian
+location%lat = lat     ! in radian
+
 !   set up observation kind
-    obs_prof = count/1000000
+obs_prof = count/1000000
 
-    if(obs_prof == 2) obsindex = 1
-    if(obs_prof == 9) obsindex = 2
-    if(obs_prof == 3) obsindex = 3
-    if(obs_prof == 1) obsindex = 4
+if(obs_prof == 2) obsindex = 1
+if(obs_prof == 9) obsindex = 2
+if(obs_prof == 3) obsindex = 3
+if(obs_prof == 1) obsindex = 4
 
-    if (obsindex .ne. 3) then              ! for u,v,t
-       location%vloc       = lev*100.0_r8  ! (transfer from mb to Pascal)                          
-       location%which_vert = 2                                                                 
-    else                                                                                    
-       location%vloc       = -1            ! for Ps
-       location%which_vert = 1                                                                 
-       var                 = var*100.0_r8  ! convert to Pascal
-    endif                                                                                   
-                                                                                            
+if (obsindex .ne. 3) then              ! for u,v,t
+   location%vloc       = lev*100.0_r8  ! (transfer from mb to Pascal)
+   location%which_vert = 2
+else
+   location%vloc       = -1            ! for Ps
+   location%which_vert = 1
+   var                 = var*100.0_r8  ! convert to Pascal
+endif
+
 end subroutine read_ncep_obs_location
 
 !----------------------------------------------------------------------------
