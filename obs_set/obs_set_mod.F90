@@ -12,6 +12,7 @@ module obs_set_mod
 !
 
 use        types_mod, only : r8
+use    utilities_mod, only : error_handler, E_ERR, E_MSG, register_module
 use set_def_list_mod, only : set_def_list_type, get_total_num_obs
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time
@@ -44,6 +45,7 @@ type obs_set_type
    integer :: def_index
 end type obs_set_type
 
+logical, save :: module_initialized = .false.
 
 ! NOTE: There are a variety of places where some no change lock mechanism
 ! needs to be implemented. Once obs_set_defs are in the table they should
@@ -56,6 +58,13 @@ end type obs_set_type
 contains
 
 !=======================================================
+
+subroutine initialize_module
+
+   call register_module(source, revision, revdate)
+   module_initialized = .true.
+
+end subroutine initialize_module
 
 
 function init_obs_set(set_def_list, ind, num_copies_in)
@@ -72,12 +81,13 @@ integer, optional, intent(in) :: num_copies_in
 
 integer :: num_copies, num_obs
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Begin by getting the number of copies
 num_copies = 1
 if(present(num_copies_in)) num_copies = num_copies_in
 if(num_copies < 0) then
-   write(*, *) 'Error: Negative num_copies in init_obs_set'
-   stop
+   call error_handler(E_ERR,'init_obs_set', 'Negative num_copies', source, revision, revdate)
 endif
 
 ! Set the number of copies
@@ -117,6 +127,8 @@ type(obs_set_type), intent(in) :: set_in
 
 integer :: days, seconds
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Set the sizes
 set_out%num_copies = set_in%num_copies
 set_out%num_obs = set_in%num_obs
@@ -129,16 +141,21 @@ set_out%time = set_time(seconds, days)
 set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
-! INTEL 7.1 compiler with full obs checking dies on this for uninitialized
-! HOWEVER, memory leaks here without this. Try leaving for now.
-! TJH Jan 25, 2003 ... tried to fix it, have not checked.
 
 #ifdef IFC80
+
+   ! This works "as expected" for the Intel 8.0 compiler.
+   ! If other compilers work "as they should" we should
+   ! probably make this the default option.
 
    nullify(set_out%obs)
    nullify(set_out%missing)
 
 #else
+
+   ! INTEL 7.1 compiler with full obs checking dies on this for uninitialized
+   ! HOWEVER, memory leaks here without this. Try leaving for now.
+   ! TJH Jan 25, 2003 ... tried to fix it, have not checked.
 
    ! This is needed for the Intel 7.1 compiler.
    ! I am not sure if it hurts with the PG compiler.
@@ -181,6 +198,8 @@ implicit none
 type(obs_set_type), intent(out) :: set_out
 type(obs_set_type), intent(in) :: set_in
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Set the sizes, num_copies is reset to 0
 set_out%num_copies = 0
 set_out%num_obs = set_in%num_obs
@@ -210,6 +229,8 @@ integer, intent(in) :: inc
 logical :: temp_missing(set%num_obs, set%num_copies)
 real(r8) :: temp_obs(set%num_obs, set%num_copies)
 integer :: old_num, new_num
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Increment the number of copies
 old_num = set%num_copies
@@ -247,6 +268,8 @@ implicit none
 integer :: get_obs_def_index
 type(obs_set_type), intent(in) :: obs_set
 
+if ( .not. module_initialized ) call initialize_module
+
 get_obs_def_index = obs_set%def_index
 
 end function get_obs_def_index
@@ -265,6 +288,8 @@ implicit none
 type(time_type) :: get_obs_set_time
 type(obs_set_type), intent(in) :: set
 
+if ( .not. module_initialized ) call initialize_module
+
 get_obs_set_time = set%time
 
 end function get_obs_set_time
@@ -280,6 +305,8 @@ implicit none
 
 integer :: get_num_obs
 type(obs_set_type), intent(in) :: set
+
+if ( .not. module_initialized ) call initialize_module
 
 get_num_obs = set%num_obs
 
@@ -303,18 +330,18 @@ integer, optional, intent(in) :: index_in
 
 integer :: ind
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the appropriate index
 ind = 1
 if(present(index_in)) ind = index_in
 if((ind < 1) .or. (ind > set%num_copies)) then
-   write(*, *) 'Error: Out of range index in get_obs_values'
-   stop
+   call error_handler(E_ERR,'get_obs_values', 'Out of range index', source, revision, revdate)
 endif
 
 ! Next make sure there's enough room in obs
 if(size(obs) < set%num_obs) then
-   write(*, *) 'Error: obs array too small in get_obs_values'
-   stop
+   call error_handler(E_ERR,'get_obs_values', ' obs array too small', source, revision, revdate)
 endif
 
 !Copy the obs
@@ -337,18 +364,18 @@ integer, optional, intent(in) :: copy_in
 
 integer :: copy
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the appropriate copycopy
 copy = 1
 if(present(copy_in)) copy = copy_in
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error: Out of range copy in set_obs_values'
-   stop
+      call error_handler(E_ERR,'set_obs_values', 'Out of range copy', source, revision, revdate)
 endif
 
 ! Make sure the obs array is the right size
 if(size(obs) /= set%num_obs) then
-   write(*, *) 'Error: obs array wrong size in set_obs_values'
-   stop
+   call error_handler(E_ERR,'set_obs_values', 'obs array wrong size', source, revision, revdate)
 endif
 
 !Copy the obs
@@ -372,21 +399,24 @@ real(r8), intent(in) :: obs
 integer, optional, intent(in) :: copy_in
 
 integer :: copy
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Get the appropriate copy
 copy = 1
 if(present(copy_in)) copy = copy_in 
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error(set_single_obs_value): Out of range "copy"'
-   write(*, *) 'range is [1,',set%num_copies,'], "copy" is ',copy
-   stop
+   write(errstring, *) 'range is [1,',set%num_copies,'], "copy" is ',copy
+   call error_handler(E_MSG,'set_single_obs_value', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_single_obs_value', 'copy: out of range', source, revision, revdate)
 endif
 
 ! Make sure the obs index is legal
 if(num_obs > set%num_obs .or. num_obs < 1) then
-   write(*, *) 'Error(set_single_obs_value): "num_obs" wrong size'
-   write(*, *) 'num_obs is ',num_obs,' must be between [1,',set%num_obs,']'
-   stop
+   write(errstring, *) 'num_obs is ',num_obs,' must be between [1,',set%num_obs,']'
+   call error_handler(E_MSG,'set_single_obs_value', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_single_obs_value', 'num_obs: wrong size', source, revision, revdate)
 endif
 
 ! Copy the obs
@@ -410,18 +440,18 @@ integer, optional, intent(in) :: index_in
 
 integer :: ind
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the appropriate index
 ind = 1
 if(present(index_in)) ind = index_in
 if((ind < 1) .or. (ind > set%num_copies)) then
-   write(*, *) 'Error: Out of range index in init_obs_set'
-   stop
+      call error_handler(E_ERR,'set_obs_set_missing', 'Out of range index', source, revision, revdate)
 endif
 
 ! Make sure the missing array is the right size
 if(size(missing) /= set%num_obs) then
-   write(*, *) 'Error: missing array wrong size in set_obs_set_missing'
-   stop
+      call error_handler(E_ERR,'set_obs_set_missing', 'missing array wrong size', source, revision, revdate)
 endif
 
 ! Set the data missing
@@ -441,6 +471,8 @@ implicit none
 type(obs_set_type), intent(inout) :: set
 type(time_type), intent(in) :: time
 
+if ( .not. module_initialized ) call initialize_module
+
 set%time = time
 
 end subroutine set_obs_set_time
@@ -458,6 +490,8 @@ implicit none
 
 logical :: contains_data
 type(obs_set_type), intent(in) :: set
+
+if ( .not. module_initialized ) call initialize_module
 
 contains_data = set%num_copies > 0
 
@@ -480,18 +514,18 @@ integer, optional, intent(in) :: index_in
 
 integer :: ind
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the appropriate index
 ind = 1
 if(present(index_in)) ind = index_in
 if(ind < 1 .or. ind > set%num_copies) then
-   write(*, *) 'Error: Out of range index in init_obs_set'
-   stop
+      call error_handler(E_ERR,'obs_value_missing', 'Out of range index', source, revision, revdate)
 endif
 
 ! Next make sure there's enough room in obs
 if(size(missing) /= set%num_obs) then
-   write(*, *) 'Error: missing array too small in obs_value_missing'
-   stop
+      call error_handler(E_ERR,'obs_value_missing', 'missing array too small', source, revision, revdate)
 endif
 
 ! Copy the missing data
@@ -515,11 +549,12 @@ integer, intent(in) :: file_id
 character(len=5) :: header
 integer :: num_obs, num_copies, i
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Read the header and verify 
 read(file_id, *) header
 if(header /= 'obset') then
-   write(*, *) 'Error: Expected "obset" in header in read_obs_set' 
-   stop
+      call error_handler(E_ERR,'read_obs_set', 'Expected "obset" in header', source, revision, revdate)
 end if
 
 ! Read the obs_set def index
@@ -567,11 +602,12 @@ integer :: num_obs, num_copies, i
 real(r8), allocatable :: obs(:)
 logical, allocatable :: missing(:)
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Read the header and verify 
 read(file_id, *) header
 if(header /= 'obset') then
-   write(*, *) 'Error: Expected "obset" in header in read_obs_set_time' 
-   stop
+      call error_handler(E_ERR,'read_obs_set_time', 'Expected "obset" in header', source, revision, revdate)
 end if
 
 ! Read the obs_set def index
@@ -622,6 +658,8 @@ integer, intent(in) :: file_id
 
 integer :: i, j
 
+if ( .not. module_initialized ) call initialize_module
+
 ! First write ascii header saying set is coming
 write(file_id, *) 'obset'
 
@@ -661,18 +699,18 @@ integer, optional, intent(in) :: copy_in
 
 integer :: copy
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Get the appropriate copy
 copy = 1
 if(present(copy_in)) copy = copy_in 
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error: Out of range copy in get_single_obs_value'
-   stop
+   call error_handler(E_ERR,'get_single_obs_value', 'Out of range copy', source, revision, revdate)
 endif
 
 ! Make sure the obs index is legal
 if(num_obs > set%num_obs .or. num_obs < 1) then
-   write(*, *) 'Error: num_obs wrong size in get_single_obs_value'
-   stop
+   call error_handler(E_ERR,'get_single_obs_value', 'num_obs wrong siz', source, revision, revdate)
 endif
 
 ! Copy the obs
