@@ -80,7 +80,7 @@ use bgrid_halo_mod       , only: update_halo, UWND, VWND, TEMP, &
 use hs_forcing_mod       , only: hs_forcing_init, hs_forcing
 
 use location_mod         , only: location_type, get_location, set_location, get_dist, &
-                                 nc_write_location
+                                 LocationDims, LocationName, LocationLName
 
 use types_mod
 
@@ -104,10 +104,15 @@ public        get_model_size, &
         nc_write_model_atts
 
 !-----------------------------------------------------------------------
+! let CVS fill strings ... DO NOT EDIT ...
 
 character(len=128) :: version = "$Id$"
-
 character(len=128) :: tag = "$Name$"
+
+character(len=128) :: &
+   source = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 !---- namelist (saved in file input.nml) ----
@@ -1693,6 +1698,19 @@ integer :: tis, tie, tjs, tje       ! temperature grid start/stop
 integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
 integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
 
+
+integer :: LocationDimID, LocationVarID, LocationXType, LocationNDims
+integer :: LocationNAtts, LocationLen
+integer, dimension(NF90_MAX_VAR_DIMS) :: LocationDimIDs
+character (len=NF90_MAX_NAME) :: LocationVarName
+
+integer :: StateVarDimID, StateVarVarID, StateVarXType, StateVarNDims
+integer :: StateVarNAtts, StateVarLen
+integer, dimension(NF90_MAX_VAR_DIMS) :: StateVarDimIDs
+character (len=NF90_MAX_NAME) :: StateVarVarName
+
+
+
 ierr = 0     ! assume normal termination
 
 !-------------------------------------------------------------------------------
@@ -1722,6 +1740,33 @@ call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimite
 call check(nf90_Redef(ncFileID))
 
 !-------------------------------------------------------------------------------
+! Write Global Attributes 
+!-------------------------------------------------------------------------------
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
+
+! how about namelist input? might be nice to save ...
+
+!-------------------------------------------------------------------------------
+! Find the StateVariable info and [NOT YET perform some sanity checks]
+!-------------------------------------------------------------------------------
+
+call check(NF90_inq_dimid(ncid=ncFileID, name="StateVariable", dimid = StateVarDimID ))
+call check(NF90_inquire_dimension(ncid=ncFileID, dimid=StateVarDimID, len=StateVarLen))
+
+call check(nf90_inq_varid(ncid=ncFileID, name="StateVariable", varid = StateVarVarID))
+call check(nf90_inquire_variable(ncid   = ncFileID, &
+                                 varid  = StateVarVarID, &
+                                 name   = StateVarVarName, &
+                                 xtype  = StateVarXType, &
+                                 ndims  = StateVarNDims, &
+                                 dimids = StateVarDimIDs, &
+                                 nAtts  = StateVarNAtts) )
+! sanity checks go here
+
+!-------------------------------------------------------------------------------
 ! Define the dimensions IDs
 !-------------------------------------------------------------------------------
 
@@ -1733,9 +1778,17 @@ call check(nf90_def_dim(ncid=ncFileID, name="lev",    len = nlev,    dimid =    
 call check(nf90_def_dim(ncid=ncFileID, name="VelI",   len = nVelI,   dimid =   VelIDimID)) 
 call check(nf90_def_dim(ncid=ncFileID, name="VelJ",   len = nVelJ,   dimid =   VelJDimID)) 
 
+! should implement "trajectory-like" coordinate defn ... a'la section 5.4, 5.5 of CF standard
+! call check(nf90_def_dim(ncid=ncFileID, name="locationrank", &
+!   len = LocationDims, dimid = LocationDimID))
+
 !-------------------------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
 !-------------------------------------------------------------------------------
+
+! (array) StateVariable Locations ... before being parsed back into prognostic vars
+!call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
+!            dimids=(/ StateVarDimID, LocationDimID /), varid=LocationVarID) )
 
 ! Temperature Grid Longitudes
 call check(nf90_def_var(ncFileID, name="TmpI", xtype=nf90_double, &
@@ -1791,6 +1844,10 @@ write (*,*)'VelJVarID determined'
 
 call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable ID
 call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","FMS-Bgrid"))
+call check(nf90_put_att(ncFileID, StateVarId, "temperature_units","degrees Kelvin"))
+call check(nf90_put_att(ncFileID, StateVarId, "pressure_units","Pa"))
+call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"))
+call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"))
 
 !-------------------------------------------------------------------------------
 ! Leave define mode so we can actually fill the variables.
