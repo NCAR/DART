@@ -913,10 +913,11 @@ endif
 !!!write(*, *) 'ratio ', cov_factor / linear_factor
 
 ! Following line moves mean more (may not be right)
-state_inc = linear_factor * reg_coef * var_inc + cov_factor * reg_coef * mean_inc
+!!!state_inc = linear_factor * reg_coef * var_inc + cov_factor * reg_coef * mean_inc
 
 ! Test of moving mean the same as the rest of things
-!!!state_inc = linear_factor * reg_coef * var_inc + linear_factor * reg_coef * mean_inc
+! Appears to be correct solution
+state_inc = linear_factor * reg_coef * var_inc + linear_factor * reg_coef * mean_inc
 
 
 end subroutine linear_update_from_obs_inc
