@@ -111,7 +111,7 @@ if(select_regression == 1) then
       comp_reg_factor = 1
    else
 
-      sum_reg_reg = 0.0
+      sum_reg_reg = 0.0_r8
       sum_reg2 = sum(regress * regress)
       do i = 1, num_groups
          do j = i + 1, num_groups
@@ -120,7 +120,7 @@ if(select_regression == 1) then
       end do
       comp_reg_factor = 2 * sum_reg_reg / (sum_reg2 * (num_groups - 1))
 
-      if(comp_reg_factor < 0.0) comp_reg_factor = 0.0
+      if(comp_reg_factor < 0.0) comp_reg_factor = 0.0_r8
 
 !!!      if(obs_index == 14) write(44, *) time_index, obs_index, state_index, &
 !!!         comp_reg_factor
@@ -150,20 +150,20 @@ else if(select_regression == 2) then
 
    comp_reg_factor = time_mean_reg(obs_index, state_index)
 
-   if(comp_reg_factor < 0.0) comp_reg_factor = 0.0
+   if(comp_reg_factor < 0.0) comp_reg_factor = 0.0_r8
 
 !_____________________________________________________________________
 
 else if(select_regression == 3) then
 
    if(first_call) then
-      allocate(obs_state_reg(obs_state_max))
       first_call = .false.
+      iunit = get_unit()
+      open(unit = iunit, file = 'obs_state_reg_file')
+      allocate(obs_state_reg(obs_state_max))
       do i = 1, obs_state_max
-! WARNING: PLEASE USE OPEN_FILE
-         open(unit = 51, file = 'obs_state_reg_file')
-         read(51, 11) obs_state_reg(i)
-         close(unit = 51)
+         read(iunit, 11) obs_state_reg(i)
+         close(unit = iunit)
 11    format(f5.3)
       end do 
    end if
