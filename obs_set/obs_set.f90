@@ -16,7 +16,8 @@ private
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    set_obs_values, set_obs_missing, set_obs_set_time, &
    contains_data, obs_value_missing, &
-   read_obs_set, write_obs_set, obs_set_copy, get_num_obs
+   read_obs_set, write_obs_set, obs_set_copy, get_num_obs, &
+   get_obs_def_index, inc_num_obs_copies
 
 type obs_set_type
    private
@@ -79,6 +80,9 @@ init_obs_set%num_obs = num_obs
 ! is legal F90
 allocate(init_obs_set%obs(num_obs, num_copies), init_obs_set%missing(num_obs, num_copies))
 
+! Initialize all obs to present
+init_obs_set%missing = .FALSE.
+
 end function init_obs_set
 
 
@@ -108,6 +112,66 @@ set_out%obs = set_in%obs
 set_out%missing = set_in%missing
 
 end subroutine obs_set_copy
+
+
+
+subroutine inc_num_obs_copies(set, inc)
+!------------------------------------------------------
+!
+! Increments the number of obs_copies and creates space.
+! Current hard storage version requires ugly release
+! and reallocation which may lead to fragmentation issues.
+
+implicit none
+
+type(obs_set_type), intent(inout) :: set
+integer, intent(in) :: inc
+
+logical :: temp_missing(set%num_obs, set%num_copies)
+real(r8) :: temp_obs(set%num_obs, set%num_copies)
+integer :: old_num, new_num
+
+! Increment the number of copies
+old_num = set%num_copies
+new_num = old_num + inc
+set%num_copies = new_num
+
+! Copy to temporary storage for obs and missing
+temp_missing = set%missing
+temp_obs = set%obs
+
+! Deallocate and reallocate
+deallocate(set%obs, set%missing)
+allocate(set%obs(set%num_obs, new_num), &
+   set%missing(set%num_obs, new_num))
+
+! Copy in the existing data
+set%missing(:, 1:old_num) = temp_missing
+set%obs(:, 1:old_num) = temp_obs
+
+! Set new missing to false
+set%missing(:, old_num + 1 : new_num) = .FALSE.
+
+end subroutine inc_num_obs_copies
+
+
+
+
+function get_obs_def_index(obs_set)
+!-------------------------------------------------------
+!
+! Returns the index of the obs_set_def in the set_def_list
+! associated with this obs_set.
+
+implicit none
+
+integer :: get_obs_def_index
+type(obs_set_type), intent(in) :: obs_set
+
+get_obs_def_index = obs_set%def_index
+
+end function get_obs_def_index
+
 
 
 
@@ -164,7 +228,7 @@ integer :: index
 index = 1
 if(present(index_in)) index = index_in
 if(index < 1 .or. index > set%num_copies) then
-   write(*, *) 'Error: Out of range index in init_obs_set'
+   write(*, *) 'Error: Out of range index in get_obs_values'
    stop
 endif
 

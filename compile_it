@@ -15,7 +15,7 @@ else
    echo > .use_compiled
    setenv First yes
 
-   \rm -i *.o         # removes existing objects that probably do 
+#   \rm -i *.o         # removes existing objects that probably do 
                       # not have proper dependencies ...
 
    # A second argument specifies that only this module has been changed

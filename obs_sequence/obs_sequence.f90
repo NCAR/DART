@@ -9,9 +9,16 @@ module obs_sequence_mod
 
 use types_mod
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
-   obs_set_copy
+   obs_set_copy, get_num_obs, get_obs_def_index, &
+   os_get_obs_values => get_obs_values, &
+   os_set_obs_values => set_obs_values, &
+   os_inc_num_obs_copies => inc_num_obs_copies
 use set_def_list_mod, only : set_def_list_type, &
-   read_set_def_list, write_set_def_list, set_def_list_copy
+   read_set_def_list, write_set_def_list, set_def_list_copy, &
+   sd_get_expected_obs => get_expected_obs, &
+   sd_get_diag_obs_err_cov => get_diag_obs_err_cov, &
+   sd_get_num_close_states => get_num_close_states, &
+   sd_get_close_states => get_close_states
 use utilities_mod, only : open_file
 use time_manager_mod, only : time_type, set_time, operator(<=)
 
@@ -20,7 +27,11 @@ private
 public obs_sequence_type, init_obs_sequence, &
    get_num_obs_copies, get_copy_meta_data, &
    get_obs_set, add_obs_set, associate_def_list, read_obs_sequence, &
-   write_obs_sequence, obs_sequence_copy, get_num_obs_sets
+   write_obs_sequence, obs_sequence_copy, get_num_obs_sets, &
+   get_obs_sequence_time, get_num_obs_in_set, &
+   get_expected_obs, get_diag_obs_err_cov, get_obs_values, &
+   inc_num_obs_copies, set_obs_values, get_num_close_states, &
+   get_close_states
 	
 
 type obs_sequence_type 
@@ -114,6 +125,50 @@ end subroutine obs_sequence_copy
 
 
 
+subroutine inc_num_obs_copies(seq, inc, copy_meta_data)
+!---------------------------------------------------------
+!
+! Increments the number of copies of the actual data associated
+! with an obs sequence while retaining all the other information.
+! This requires an inefficient re-allocation in the current
+! fixed storage version.
+
+type(obs_sequence_type), intent(inout) :: seq
+integer, intent(in) :: inc
+character(len=129), intent(in) :: copy_meta_data(inc)
+
+character(len=129) :: temp_meta_data(inc + seq%num_copies)
+integer :: old_num, new_num, i
+
+! Check to make sure the increment is positive
+if(inc < 0) then
+   write(*, *) 'Error: increment must be positive in inc_num_obs_copies'
+   stop
+endif
+
+! Get current num copies and adjust the metadata in sequnce
+old_num = seq%num_copies
+new_num = old_num + inc
+seq%num_copies = new_num
+
+! Need temporary storage for metadata
+temp_meta_data(1:old_num) = seq%copy_meta_data
+temp_meta_data(old_num + 1:new_num) = copy_meta_data
+
+! Deallocate and reallocate (really want to avoid this for fragmentation
+! possibilities?)
+deallocate(seq%copy_meta_data)
+allocate(seq%copy_meta_data(new_num))
+seq%copy_meta_data = temp_meta_data
+
+! Now need to loop through all the obs_sets and add extra space there
+do i = 1, seq%num_obs_sets
+   call os_inc_num_obs_copies(seq%obs_sets(i), inc)
+end do
+
+end subroutine inc_num_obs_copies
+
+
 
 function get_num_obs_copies(sequence)
 !--------------------------------------------------------------------------------
@@ -145,6 +200,41 @@ type(obs_sequence_type) :: sequence
 get_num_obs_sets = sequence%num_obs_sets
 
 end function get_num_obs_sets
+
+
+
+subroutine get_obs_values(seq, index, obs)
+!---------------------------------------------------
+!
+! Returns the observed values associated with the index set
+! in the sequence.
+
+implicit none
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: index
+real(r8), intent(out) :: obs(:)
+
+call os_get_obs_values(seq%obs_sets(index), obs)
+
+end subroutine get_obs_values
+
+
+
+subroutine set_obs_values(seq, index, obs)
+!----------------------------------------------------
+!
+! Sets the index obs_set in the sequence to the obs input.
+
+implicit none
+
+type(obs_sequence_type), intent(inout) :: seq
+integer, intent(in) :: index
+real(r8), intent(in) :: obs(:)
+
+call os_set_obs_values(seq%obs_sets(index), obs)
+
+end subroutine set_obs_values
 
 
 
@@ -188,6 +278,159 @@ call obs_set_copy(get_obs_set, sequence%obs_sets(index))
 !!!get_obs_set = sequence%obs_sets(index)
 
 end function get_obs_set
+
+
+
+subroutine get_diag_obs_err_cov(seq, index, cov)
+!-------------------------------------------------------------
+!
+! Returns the diagonal part of observational error covariance
+! for index observation in the sequence.
+
+implicit none
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: index
+real(r8), intent(out) :: cov(:)
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+obs_set = get_obs_set(seq, index)
+def_index = get_obs_def_index(obs_set)
+
+call sd_get_diag_obs_err_cov(seq%def_list, def_index, cov)
+
+end subroutine get_diag_obs_err_cov
+
+
+
+
+subroutine get_num_close_states(seq, index, radius, num)
+!------------------------------------------------------
+! 
+! Gets the number of state variables within distance radius
+! of each of the observations in the index set in sequence.
+
+implicit none
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: index
+real(r8), intent(in) :: radius
+integer, intent(out) :: num(:)
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+obs_set = get_obs_set(seq, index)
+def_index = get_obs_def_index(obs_set)
+
+call sd_get_num_close_states(seq%def_list, def_index, radius, num)
+
+end subroutine get_num_close_states
+
+
+
+
+subroutine get_close_states(seq, index, radius, num, indices)
+!------------------------------------------------------
+!
+! Gets the number and index of state variables within distance radius
+! of each of the observations in the index set in sequence.
+
+implicit none
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: index
+real(r8), intent(in) :: radius
+integer, intent(out) :: num(:), indices(:, :)
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+obs_set = get_obs_set(seq, index)
+def_index = get_obs_def_index(obs_set)
+
+call sd_get_close_states(seq%def_list, def_index, radius, num, indices)
+
+end subroutine get_close_states
+
+
+
+
+subroutine get_expected_obs(sequence, index, state, obs, num)
+!------------------------------------------------------
+!
+! Gets the expected value of observations for the obs_set_def
+! corresponding to the index obs_set in the sequence with
+! the state given. num allows selection of a single observation
+! from the set.
+
+implicit none
+
+type(obs_sequence_type), intent(in) :: sequence
+integer, intent(in) :: index
+real(r8), intent(in) :: state(:)
+real(r8), intent(out) :: obs(:)
+integer, intent(in), optional :: num
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+obs_set = get_obs_set(sequence, index)
+def_index = get_obs_def_index(obs_set)
+
+if(present(num)) then
+   call sd_get_expected_obs(sequence%def_list, def_index, state, obs, num)
+else
+   call sd_get_expected_obs(sequence%def_list, def_index, state, obs)
+endif
+
+end subroutine get_expected_obs
+
+
+
+function get_obs_sequence_time(sequence, index)
+!-----------------------------------------------------
+!
+! Returns the time of the index-th obs_set in the sequence.
+
+implicit none
+
+type(time_type) :: get_obs_sequence_time
+type(obs_sequence_type), intent(in) :: sequence
+integer, intent(in) :: index
+
+type(obs_set_type) :: obs_set
+
+obs_set = get_obs_set(sequence, index)
+get_obs_sequence_time = get_obs_set_time(obs_set)
+
+end function get_obs_sequence_time
+
+
+
+function get_num_obs_in_set(sequence, index)
+!-------------------------------------------------
+!
+! Gets the number of obs in the index obs_set in the sequence
+
+implicit none
+
+integer :: get_num_obs_in_set
+type(obs_sequence_type), intent(in) :: sequence
+integer, intent(in) :: index
+
+type(obs_set_type) :: obs_set
+
+obs_set = get_obs_set(sequence, index)
+get_num_obs_in_set = get_num_obs(obs_set)
+
+end function get_num_obs_in_set
 
 
 

@@ -13,7 +13,11 @@ module set_def_list_mod
 use types_mod
 use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
    read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
-   os_get_expected_obs => get_expected_obs
+   os_get_expected_obs => get_expected_obs, &
+   os_get_diag_obs_err_cov => get_diag_obs_err_cov, &
+   os_get_num_close_states => get_num_close_states, &
+   os_get_close_states => get_close_states
+
 
 private
 
@@ -21,7 +25,8 @@ public set_def_list_type, list_element_type, get_number_obs_subsets, &
    init_set_def_list, add_to_list, get_from_list, get_total_num_obs, &
    write_set_def_list, read_set_def_list, write_list_element, &
    read_list_element, list_element_copy, set_def_list_copy, &
-   get_expected_obs
+   get_expected_obs, get_diag_obs_err_cov, get_num_close_states, &
+   get_close_states
 
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
@@ -92,21 +97,31 @@ end subroutine set_def_list_copy
 
 
 
-subroutine get_expected_obs(list_element, state, obs)
+subroutine get_expected_obs(list, list_index, state, obs, num)
 !---------------------------------------------------------------
 !
 ! Returns the expected value of the observations in this list_element
 ! hierarchy of obs_sets given the state_vector. For now, sub_sets are
-! not implemented but need to do this.
+! not implemented but need to do this.  num allows picking a single
+! obs from the set for efficiency.
 
 implicit none
 
-type(list_element_type), intent(in) :: list_element
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: list_index
 real(r8), intent(in) :: state(:)
 real(r8), intent(out) :: obs(:)
+integer, intent(in), optional :: num
 
 ! For now, just call os_get_expected_obs for the single set in the list_element
-call os_get_expected_obs(list_element%obs_set, state, obs)
+if(present(num)) then
+   call os_get_expected_obs(list%sets(list_index)%obs_set, state, obs, num)
+else
+   call os_get_expected_obs(list%sets(list_index)%obs_set, state, obs)
+endif
+
+! Note that list is not currently used, included for later subset
+! applications, make sure this is appropriate
 
 end subroutine get_expected_obs
    
@@ -233,6 +248,64 @@ endif
 get_total_num_obs = list%sets(index)%total_num_obs
 
 end function get_total_num_obs
+
+
+
+subroutine get_diag_obs_err_cov(list, index, cov)
+!----------------------------------------------------
+!
+! Returns the diagonal part of the observational error
+! covariance for this list_element. For now, with no subsets
+! implemented, this can just call for this individual set.
+
+implicit none
+
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: index
+real(r8), intent(out) :: cov(:)
+
+call os_get_diag_obs_err_cov(list%sets(index)%obs_set, cov)
+
+end subroutine get_diag_obs_err_cov
+
+
+
+subroutine get_num_close_states(list, index, radius, num)
+!-------------------------------------------------------
+!
+! Returns the number of close states for the index list_element
+! in the list. For now, with no subsets implemented, this can
+! just call for this individual set.
+
+implicit none
+
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: index
+real(r8), intent(in) :: radius
+integer, intent(out) :: num(:)
+
+call os_get_num_close_states(list%sets(index)%obs_set, radius, num)
+
+end subroutine get_num_close_states
+
+
+
+subroutine get_close_states(list, index, radius, num, indices)
+!-------------------------------------------------------
+!
+! Returns the list of indices of the close states for this
+! set_def_list.
+
+implicit none
+
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: index
+real(r8), intent(in) :: radius
+integer, intent(out) :: num(:), indices(:, :)
+
+call os_get_close_states(list%sets(index)%obs_set, radius, num, indices)
+
+end subroutine get_close_states
 
 
 

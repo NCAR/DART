@@ -107,7 +107,7 @@ end subroutine get_diag_obs_err_cov
 
 
 
-subroutine get_expected_obs(set, state, obs)
+subroutine get_expected_obs(set, state, obs, num)
 !--------------------------------------------------------------
 !
 ! Returns the expected value of the observations in this set given
@@ -118,19 +118,25 @@ implicit none
 type(obs_set_def_type), intent(in) :: set
 real(r8), intent(in) :: state(:)
 real(r8), intent(out) :: obs(:)
+integer, intent(in), optional :: num
 
 integer :: i
 
+if(present(num)) then
+   obs(1) = od_get_expected_obs(set%obs_defs(num), state)
+else
+
 ! Check for sufficient storage
-if(size(obs) < set%num_obs_defs) then
-   write(*, *) 'Error: obs array too small in get_expected_obs'
-   stop
+   if(size(obs) < set%num_obs_defs) then
+      write(*, *) 'Error: obs array too small in get_expected_obs'
+      stop
+   endif
+
+
+   do i = 1, set%num_obs_defs
+      obs(i) = od_get_expected_obs(set%obs_defs(i), state)
+   end do
 endif
-
-
-do i = 1, set%num_obs_defs
-   obs(i) = od_get_expected_obs(set%obs_defs(i), state)
-end do
 
 end subroutine get_expected_obs
 

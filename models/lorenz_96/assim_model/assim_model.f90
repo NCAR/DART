@@ -275,6 +275,9 @@ integer :: i
 ! For large models this will have to be VERY efficient; here can just search
 get_num_close_states = 0
 do i = 1, model_size
+
+! INTERESTING NOTE: Because of floating point round-off in comps
+! this can give a 'variable' number of num close for certain obs, should fix
    if(get_dist(location, state_loc(i)) < radius) get_num_close_states= get_num_close_states + 1
 end do
 
@@ -359,7 +362,7 @@ endif
 advance_state = assim_model
 
 do while(model_time < target_time)
-   advance_state = adv_1step(assim_model)
+   advance_state = adv_1step(advance_state)
    model_time = get_model_time(advance_state)
 end do
 
@@ -564,10 +567,6 @@ integer :: i
 ! Get the state vector from the state; More copying?
 x = get_model_state_vector(state)
 
-! Update the time
-time = get_model_time(state)
-time = time + time_step
-
 !  Compute the first intermediate step
 
 call comp_dt(x, dx)
@@ -594,6 +593,10 @@ x4 = delta_t * dx
 !  Compute new value for x
 
 x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
+
+! Update the time
+time = get_model_time(state)
+time = time + time_step
 
 ! Load x and the updated time back into output
 call set_model_time(adv_1step, time)
