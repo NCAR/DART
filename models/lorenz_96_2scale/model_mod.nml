@@ -5,7 +5,7 @@
    delta_t = 0.005,
    coupling_b = 10.0,
    coupling_c = 10.0,
-   coupling_h = 1.0
-   output_state_vector = .false.
-   local_y = .false.
-&end
+   coupling_h = 1.0,
+   output_state_vector = .false.,
+   local_y = .false.   /
+
