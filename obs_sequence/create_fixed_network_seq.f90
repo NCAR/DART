@@ -104,7 +104,7 @@ else if(option == 2) then
 ! Initialize the output sequence
    call init_obs_sequence(seq, 0, 0, network_size * num_times)
 
-   IRREGULAR : do
+   IRREGULAR : do j = 1, num_times
 
       write(*, *) 'Input time in days and seconds, negative days if finished with this set'
       read(*, *) days, seconds
