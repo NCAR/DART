@@ -15,7 +15,9 @@ program trans_time
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time, operator(-), get_date, &
                              set_calendar_type, GREGORIAN, NOLEAP
-                         
+use assim_model_mod, only : static_init_assim_model, binary_restart_files
+
+
                          
 use utilities_mod, only : get_unit
 
@@ -28,20 +30,30 @@ integer               :: file_unit(2), seconds, days, &
                          cam_date, cam_tod
 type(time_type)       :: dart_time(2), forecast_length
 character (len = 128) :: file_name = 'assim_model_state_ic1', file_out = 'times'
+character (len = 16)  :: file_form
 
 call set_calendar_type(calendar_type)
 
+! Static init assim model calls static_init_model
+call static_init_assim_model()
+
+! get form of file output from assim_model_mod
+if (binary_restart_files == .true.) then
+   file_form = 'unformatted'
+else
+   file_form = 'formatted'
+endif
 file_unit(1) = get_unit()
 
 ! write out a test file
-!open(unit = file_unit(1), file = file_name)
+!open(unit = file_unit(1), file = file_name, form=file_form)
 !forecast_length = set_time(0, 2)
 !call write_time (file_unit(1),forecast_length)
 !forecast_length = set_time(43200, 1)
 !call write_time (file_unit(1),forecast_length)
 !close(unit = file_unit(1))
 
-open(unit = file_unit(1), file = file_name)
+open(unit = file_unit(1), file = file_name, form=file_form)
 file_unit(2) = get_unit()
 open(unit = file_unit(2), file = file_out)
 ! end time is first, then beginning time
@@ -49,7 +61,7 @@ open(unit = file_unit(2), file = file_out)
 !                     STOP_YMD=$times[1] STOP_TOD=$times[2] NHTFRQ=$times[5] /" \
 
 do n=1,ntimes
-   dart_time(n) = read_time(file_unit(1))
+   dart_time(n) = read_time(file_unit(1), file_form)
    call get_date(dart_time(n), year, month, day, hour, minute, second)
    PRINT*,'date = ',year, month, day, hour, minute, second
    if (calendar_type.eq.GREGORIAN) then

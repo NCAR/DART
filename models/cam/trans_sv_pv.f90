@@ -17,7 +17,8 @@ use types_mod
 use model_mod, only : model_type, init_model_instance, write_cam_init, &
    vector_to_prog_var
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
-   init_assim_model, get_model_size, get_model_state_vector, read_state_restart
+   init_assim_model, get_model_size, get_model_state_vector, read_state_restart, &
+   binary_restart_files
 use utilities_mod, only : get_unit
 
 type(assim_model_type) :: x
@@ -25,20 +26,33 @@ type(model_type) :: var
 real(r8), allocatable :: x_state(:)
 integer :: file_unit, x_size
 character (len = 128) :: file_name = 'caminput.nc', file_in = 'temp_ic'
+character (len = 16)  :: file_form
 
 ! Static init assim model calls static_init_model
+PRINT*,'static_init_assim_model in trans_sv_pv'
 call static_init_assim_model()
 call init_assim_model(x)
 
 ! Allocate the instance of the cam model type for storage
 call init_model_instance(var)
 
+! get form of file input from assim_model_mod
+if (binary_restart_files ) then
+   file_form = 'unformatted'
+else
+   file_form = 'formatted'
+endif
+PRINT*,'In trans_sv_pv binary_restart_files, file_form = ',binary_restart_files, file_form
+
 ! Get file for DART vector input
-file_unit = get_unit()
-open(unit = file_unit, file = file_in)
+! debug file_unit = get_unit()
+file_unit = 17
+PRINT*,'In trans_sv_pv file_in unit  = ',file_unit
+PRINT*,' '
+open(unit = file_unit, file = file_in, form = file_form)
 
 ! read in state vector from DART
-call read_state_restart(x, file_unit)
+call read_state_restart(x, file_unit, file_form)
 close(file_unit)
 
 ! Get the state part of the assim_model type x
