@@ -5,8 +5,10 @@ function corr = ens_correl(base_var, base_time, state_var)
 %Extract sample of base at base time
 base_ens = base_var(base_time, :);
 
-% size(base_ens)
+% size(base_var)
+% size(base_time)
 % size(state_var)
+% size(base_ens)
 
 % Loop through time to correlate with the other ensemble series
 num_times = size(state_var, 1);

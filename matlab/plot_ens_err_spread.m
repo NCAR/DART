@@ -23,15 +23,20 @@ switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_96'}
 
-      disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
-      disp(['Using State Variable IDs ', num2str(varid)]) 
-      PlotEnsErrSpread(truth_file, diagn_file, varid)
+      pinfo = struct('state_var_inds',varid);
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
+
+      disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
+      disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)]) 
+      PlotEnsErrSpread( pinfo )
 
    case 'fms_bgrid'
 
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
 
-      PlotCEnsErrSpread(truth_file, diagn_file)
-
+      PlotCEnsErrSpread( pinfo )
 
    otherwise
 

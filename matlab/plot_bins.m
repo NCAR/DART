@@ -36,9 +36,8 @@ switch lower(vars.model)
       pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
       pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
 
-      disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
-      disp(['Using State Variable IDs ', num2str(varid)])
-      PlotBins(pinfo);
+      disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
+      disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)])
 
    case 'fms_bgrid'
 
@@ -48,12 +47,11 @@ switch lower(vars.model)
 
       pinfo                            % just echo stuff for posterity.
 
-      PlotBins(pinfo);
-
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
 
+PlotBins(pinfo);
 clear vars varid

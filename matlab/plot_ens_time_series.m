@@ -20,13 +20,37 @@ if (exist('diagn_file') ~=1)
    end
 end
 
+
 CheckModelCompatibility(truth_file, diagn_file)
 vars  = CheckModel(truth_file);   % also gets default values for this model.
 varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
-disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
-disp(['Using State Variable IDs ',num2str(varid)])
 
-PlotEnsTimeSeries(truth_file, diagn_file, varid)
+switch lower(vars.model)
+
+   case {'9var','lorenz_63','lorenz_96'}
+
+      pinfo = struct('state_var_inds',varid);
+      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
+      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+
+      disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
+      disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)])
+
+   case 'fms_bgrid'
+
+      pinfo = GetBgridInfo(diagn_file, 'PlotEnsTimeSeries');
+      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
+      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+
+      pinfo                            % just echo stuff for posterity.
+
+   otherwise
+
+      error(sprintf('model %s not implemented yet', vars.model))
+
+end
+
+PlotEnsTimeSeries( pinfo )
 clear vars varid
 

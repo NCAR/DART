@@ -1,11 +1,11 @@
-function PlotCEnsErrSpread(truth_file, diagn_file)
+function PlotCEnsErrSpread( pinfo )
 %
 %
 %
 
-CheckModelCompatibility(truth_file,diagn_file)
+CheckModelCompatibility(pinfo.truth_file,pinfo.diagn_file)
 
-ft     = netcdf(truth_file);
+ft     = netcdf(pinfo.truth_file);
 model  = ft.model(:); 
 close(ft);
 
@@ -13,16 +13,16 @@ nvars = 4;
 
 % Since the models are "compatible", get the info from either one.
 
-tlons    = getnc(truth_file,  'TmpI'); num_tlons  = length(tlons );
-tlats    = getnc(truth_file,  'TmpJ'); num_tlats  = length(tlats );
-vlons    = getnc(truth_file,  'VelI'); num_vlons  = length(vlons );
-vlats    = getnc(truth_file,  'VelJ'); num_vlats  = length(vlats );
-levels   = getnc(truth_file, 'level'); num_levels = length(levels);
-times    = getnc(truth_file,  'time'); num_times  = length(times );
-ens_mems = getnc(diagn_file,  'copy'); ens_size   = length(ens_mems);
+tlons    = getnc(pinfo.truth_file,  'TmpI'); num_tlons  = length(tlons );
+tlats    = getnc(pinfo.truth_file,  'TmpJ'); num_tlats  = length(tlats );
+vlons    = getnc(pinfo.truth_file,  'VelI'); num_vlons  = length(vlons );
+vlats    = getnc(pinfo.truth_file,  'VelJ'); num_vlats  = length(vlats );
+levels   = getnc(pinfo.truth_file, 'level'); num_levels = length(levels);
+times    = getnc(pinfo.truth_file,  'time'); num_times  = length(times );
+ens_mems = getnc(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
 
 % Try to coordinate "time" ... a poor attempt, needs refining
-ens_times     = getnc(diagn_file, 'time'); 
+ens_times     = getnc(pinfo.diagn_file, 'time'); 
 num_ens_times = length(ens_times);
 if num_ens_times < num_times
    times     =     ens_times;
@@ -35,9 +35,9 @@ sd_final = zeros(num_times, nvars, num_levels);
 
 % Get the indices for the true state, ensemble mean and spread                  
 % The metadata is queried to determine which "copy" is appropriate.             
-truth_index      = get_copy_index(truth_file, 'true state' ); 
-ens_mean_index   = get_copy_index(diagn_file, 'ensemble mean');
-ens_spread_index = get_copy_index(diagn_file, 'ensemble spread');
+truth_index      = get_copy_index(pinfo.truth_file, 'true state' ); 
+ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
+ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 
 % Can we afford to get the whole thing at once ???
@@ -51,9 +51,9 @@ disp('Processing surface pressure ...')
 ivar   = 1;
 ilevel = 1;
 
-field  = GetPS(truth_file,      truth_index);
-ens    = GetPS(diagn_file,   ens_mean_index);
-sd     = GetPS(diagn_file, ens_spread_index);
+field  = GetPS(pinfo.truth_file,      truth_index);
+ens    = GetPS(pinfo.diagn_file,   ens_mean_index);
+sd     = GetPS(pinfo.diagn_file, ens_spread_index);
 
 % Compute statistics of the UNWEIGHTED error field
 % should weight by the area ...
@@ -78,9 +78,9 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 2;
 
-   field      = GetLevel(truth_file, ivar,      truth_index, ilevel);
-   ens        = GetLevel(diagn_file, ivar,   ens_mean_index, ilevel);
-   sd         = GetLevel(diagn_file, ivar, ens_spread_index, ilevel);
+   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
+   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
+   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
 
    % Compute statistics of the UNWEIGHTED error field
    % should weight by the area ...
@@ -94,9 +94,9 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 3;
 
-   field      = GetLevel(truth_file, ivar,      truth_index, ilevel);
-   ens        = GetLevel(diagn_file, ivar,   ens_mean_index, ilevel);
-   sd         = GetLevel(diagn_file, ivar, ens_spread_index, ilevel);
+   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
+   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
+   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
 
    % Compute statistics of the UNWEIGHTED error field
    % should weight by the area ...
@@ -110,9 +110,9 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 4;
 
-   field      = GetLevel(truth_file, ivar,      truth_index, ilevel);
-   ens        = GetLevel(diagn_file, ivar,   ens_mean_index, ilevel);
-   sd         = GetLevel(diagn_file, ivar, ens_spread_index, ilevel);
+   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
+   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
+   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
 
    % Compute statistics of the UNWEIGHTED error field
    % should weight by the area ...
@@ -132,7 +132,7 @@ figure(1); clf;
       ivar = 1;
       plot(times, rms(:, ivar, 1), '-', times, sd_final(:, ivar, 1), '--');
 
-      s1 = sprintf('%s model ''ps'' Ensemble Mean for %s', model,diagn_file);
+      s1 = sprintf('%s model ''ps'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
       s1 = sprintf('time-mean ensemble mean error  = %f', mean(     rms(:, ivar, 1)));
@@ -149,7 +149,7 @@ figure(2); clf;
 
       h1 = plot(times, squeeze(     rms(:, ivar, :)),'-'); hold on;
       h2 = plot(times, squeeze(sd_final(:, ivar, :)),'--');
-      s1 = sprintf('%s model ''temperature'' Ensemble Mean for %s', model,diagn_file);
+      s1 = sprintf('%s model ''temperature'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
       for i = 1:num_levels,
@@ -168,7 +168,7 @@ figure(3); clf;
 
       h1 = plot(times, squeeze(     rms(:, ivar, :)),'-'); hold on;
       h2 = plot(times, squeeze(sd_final(:, ivar, :)),'--');
-      s1 = sprintf('%s model ''U'' Ensemble Mean for %s', model,diagn_file);
+      s1 = sprintf('%s model ''U'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
       for i = 1:num_levels,
@@ -187,7 +187,7 @@ figure(4); clf;
 
       h1 = plot(times, squeeze(     rms(:, ivar, :)),'-'); hold on;
       h2 = plot(times, squeeze(sd_final(:, ivar, :)),'--');
-      s1 = sprintf('%s model ''V'' Ensemble Mean for %s', model,diagn_file);
+      s1 = sprintf('%s model ''V'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
       for i = 1:num_levels,

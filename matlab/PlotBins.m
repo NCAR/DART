@@ -31,13 +31,11 @@ function PlotBins(pinfo)
 
 % Wed Jul  2 09:56:40 MDT 2003
 
-truth_file = pinfo.truth_file;
-diagn_file = pinfo.diagn_file;
-CheckModelCompatibility(truth_file, diagn_file)
+CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
 % Get the state for the truth
-truth_index = get_copy_index(truth_file,'true state');
-true_model  = GetAtt(truth_file,'model');
+truth_index = get_copy_index(pinfo.truth_file,'true state');
+true_model  =         GetAtt(pinfo.truth_file,'model');
 
 switch lower(true_model)
 
@@ -48,13 +46,13 @@ switch lower(true_model)
          figure(i); clf
          for j = 1:3
             ivar = (i - 1)*3 + j;
-            ens   = get_ens_series(diagn_file, ivar );
-            truth = get_var_series(truth_file, truth_index, ivar);
+            ens   = get_ens_series(pinfo.diagn_file, ivar );
+            truth = get_var_series(pinfo.truth_file, truth_index, ivar);
             bins  = rank_hist(ens, truth);
             subplot(3, 1, j);
             bar(bins);
             title(sprintf('%s Variable %d for %s', ...
-                  true_model,ivar,diagn_file), ...
+                  true_model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')
          end
       end
@@ -64,13 +62,13 @@ switch lower(true_model)
       clf; iplot = 0;
       for ivar = pinfo.state_var_inds,
          iplot = iplot + 1;
-         truth = get_var_series(truth_file, truth_index, ivar);
-         ens   = get_ens_series(diagn_file, ivar );
+         truth = get_var_series(pinfo.truth_file, truth_index, ivar);
+         ens   = get_ens_series(pinfo.diagn_file, ivar );
          bins  = rank_hist(ens, truth);
          subplot(length(pinfo.state_var_inds), 1, iplot);
          bar(bins);
          title(sprintf('%s Variable %d for %s', ...
-               true_model,ivar,diagn_file), ...
+               true_model,ivar,pinfo.diagn_file), ...
                'interpreter','none','fontweight','bold')
       end
 
@@ -82,8 +80,8 @@ switch lower(true_model)
 
       clf;
 
-      truth = GetCopy(truth_file, truth_index, pinfo);
-      ens   = GetEns( diagn_file, pinfo );
+      truth = GetCopy(pinfo.truth_file, truth_index, pinfo);
+      ens   = GetEns( pinfo.diagn_file, pinfo );
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -92,7 +90,7 @@ switch lower(true_model)
       bins  = rank_hist(ens, truth);
       bar(bins);
       title({ ...
-        sprintf('%s ''%s'' for %s ', true_model, pinfo.var, diagn_file), ...
+        sprintf('%s ''%s'' for %s ', true_model, pinfo.var, pinfo.diagn_file), ...
         sprintf('level %d lat %.2f lon %.2f',pinfo.level, pinfo.latitude, ...
                  pinfo.longitude)}, 'interpreter','none','fontweight','bold')
 

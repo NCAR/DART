@@ -11,25 +11,41 @@ if (exist('fname') ~=1)
 end 
 
 vars = CheckModel(fname);   % also gets default values for this file.
+pinfo.fname = fname;
 
-inputstring = input(sprintf('Input index for base variable (between %d and %d)  ', ...
+switch lower(vars.model)
+
+   case {'9var','lorenz_63','lorenz_96'}
+
+      inputstring = input(sprintf('Input index for base variable (between %d and %d)  ', ...
                                vars.min_state_var, vars.max_state_var), 's');
-base_var_index = str2num(deblank(inputstring));
+      pinfo.base_var_index = str2num(deblank(inputstring));
 
-inputstring = input(sprintf('Input time index for base point (between 1 and %d)  ', ...
+      inputstring = input(sprintf('Input time index for base point (between 1 and %d)  ', ...
                                vars.time_series_length),'s');
-base_time = str2num(deblank(inputstring));
+      pinfo.base_time = str2num(deblank(inputstring));
 
-inputstring = input(sprintf('Input variable index for correlation (between %d and %d)  ', ...
+      inputstring = input(sprintf('Input variable index for correlation (between %d and %d)  ', ...
                                vars.min_state_var, vars.max_state_var), 's');
-state_var_index = str2num(deblank(inputstring));
+      pinfo.state_var_index = str2num(deblank(inputstring));
 
-disp(sprintf('Using diagnostic file %s',diagn_file))
-disp(sprintf('Correlating state variable %d at time %d with state variable %d.', ...
-              base_var_index, base_time, state_var_index))
+      disp(sprintf('Using diagnostic file %s',fname))
+      disp(sprintf('Correlating state variable %d at time %d with state variable %d.', ...
+              pinfo.base_var_index, pinfo.base_time, pinfo.state_var_index))
 
+   case 'fms_bgrid'
+
+      pinfo = GetBgridInfo(fname, 'PlotVarVarCorrel');
+
+      pinfo                            % just echo stuff for posterity.
+
+   otherwise
+
+      error(sprintf('model %s not implemented yet', vars.model))
+
+end
 
 % could/should check input for valid range, etc.
 
-PlotVarVarCorrel(diagn_file, base_var_index, base_time, state_var_index)
+PlotVarVarCorrel( pinfo )
 clear vars inputstring

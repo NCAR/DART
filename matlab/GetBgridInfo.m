@@ -41,6 +41,20 @@ switch lower(deblank(routine))
               'longitude',lon  ,   'lonindex',lonind, ...
               'latitude' ,lat  ,   'latindex',latind);
 
+   case 'plotcorrel'
+
+      pgvar           = GetVar(prognostic_vars);  % Determine prognostic variable
+      [level, lvlind] = GetLevel(pgvar,levels);   % Determine level and index
+      [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
+      [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
+
+      pinfo = struct('model',model, ...
+              'fname',fname, ...
+              'var',pgvar, ...
+              'level'    ,level, 'levelindex',lvlind, ...
+              'longitude',lon  ,   'lonindex',lonind, ...
+              'latitude' ,lat  ,   'latindex',latind);
+
    otherwise
 
 end
