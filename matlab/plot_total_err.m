@@ -19,8 +19,12 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-CheckModelCompatibility(truth_file, diagn_file)
+pinfo.truth_file = truth_file;
+pinfo.diagn_file = diagn_file;
 
-disp(sprintf('Comparing %s and \n          %s',truth_file,diagn_file))
+CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
-PlotTotalErr(truth_file, diagn_file)
+disp(sprintf('Comparing %s and \n          %s',pinfo.truth_file, pinfo.diagn_file))
+
+PlotTotalErr( pinfo )
+clear pinfo

@@ -13,11 +13,6 @@ close(ft);
 nvars = 4;
 
 % Since the models are "compatible", get the info from either one.
-
-tlons    = getnc(pinfo.truth_file,  'TmpI'); num_tlons  = length(tlons );
-tlats    = getnc(pinfo.truth_file,  'TmpJ'); num_tlats  = length(tlats );
-vlons    = getnc(pinfo.truth_file,  'VelI'); num_vlons  = length(vlons );
-vlats    = getnc(pinfo.truth_file,  'VelJ'); num_vlats  = length(vlats );
 levels   = getnc(pinfo.truth_file, 'level'); num_levels = length(levels);
 times    = getnc(pinfo.truth_file,  'time'); num_times  = length(times );
 ens_mems = getnc(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);

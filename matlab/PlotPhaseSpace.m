@@ -42,9 +42,9 @@ if ( exist(pinfo.fname) ~= 2 ), error(sprintf('file %s does not exist.',pinfo.fn
 % Get some information from the file 
 f          = netcdf(pinfo.fname);
 model      = f.model(:);
-num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
-num_copies = ncsize(f{'copy'}); % determine # of ensemble members
-num_times  = ncsize(f{'time'}); % determine # of output times
+num_vars   = ncsize(f('StateVariable')); % determine # of state variables
+num_copies = ncsize(f('copy')); % determine # of ensemble members
+num_times  = ncsize(f('time')); % determine # of output times
 close(f);
 
 

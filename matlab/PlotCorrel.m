@@ -27,9 +27,9 @@ if (exist(pinfo.fname) ~= 2), error(sprintf('%s does not exist.',pinfo.fname)), 
 % Get some file-specific information.
 f = netcdf(pinfo.fname,'nowrite');
 model      = f.model(:);
-num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
-num_times  = ncsize(f{'time'}); % determine # of output times
-num_copies = ncsize(f{'copy'}); % determine # of ensemble members
+num_vars   = ncsize(f('StateVariable')); % determine # of state variables
+num_times  = ncsize(f('time')); % determine # of output times
+num_copies = ncsize(f('copy')); % determine # of ensemble members
 close(f)
 
 switch(lower(model))

@@ -43,29 +43,28 @@ switch lower(deblank(routine))
 
    case 'plotcorrel'
 
-      % "base" variable 
-      base_pgvar            = GetVar(prognostic_vars);
-      [base_tme, base_tmeind] = GetTime(     base_pgvar,times);
-      [base_lvl, base_lvlind] = GetLevel(    base_pgvar,levels);
-      [base_lon, base_lonind] = GetLongitude(base_pgvar,TmpI,VelI);
-      [base_lat, base_latind] = GetLatitude( base_pgvar,TmpJ,VelJ);
+      disp('Getting information for the ''base'' variable.')
+       base_var               = GetVar(prognostic_vars);
+      [base_tme, base_tmeind] = GetTime(     base_var,times);
+      [base_lvl, base_lvlind] = GetLevel(    base_var,levels);
+      [base_lon, base_lonind] = GetLongitude(base_var,TmpI,VelI);
+      [base_lat, base_latind] = GetLatitude( base_var,TmpJ,VelJ);
 
-      % "comparison" variable 
-      comp_pgvar            = GetVar(prognostic_vars);
-      [comp_lvl, comp_lvlind] = GetLevel(    comp_pgvar,levels);
-      [comp_lon, comp_lonind] = GetLongitude(comp_pgvar,TmpI,VelI);
-      [comp_lat, comp_latind] = GetLatitude( comp_pgvar,TmpJ,VelJ);
+      disp('Getting information for the ''comparison'' variable.')
+       comp_var               = GetVar(prognostic_vars,          base_var);
+      [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvl);
+      [comp_lon, comp_lonind] = GetLongitude(comp_var,TmpI,VelI, base_lon);
+      [comp_lat, comp_latind] = GetLatitude( comp_var,TmpJ,VelJ, base_lat);
 
-      pinfo = struct('model',model, 'fname' ,fname, ...
-              'base_var'      ,base_pgvar, ...
-              'base_time'     ,base_time  , 'base_tmeind',base_tmeind, ...
-              'base_level'    ,base_level , 'base_lvlind',base_lvlind, ...
-              'base_longitude',base_lon   , 'base_lonind',base_lonind, ...
-              'base_latitude' ,base_lat   , 'base_latind',base_latind, ...
-              'comp_var'      ,comp_pgvar, ...
-              'comp_level'    ,comp_level , 'comp_lvlind',comp_lvlind, ...
-              'comp_longitude',comp_lon   , 'comp_lonind',comp_lonind, ...
-              'comp_latitude' ,comp_lat   , 'comp_latind',comp_latind);
+      pinfo = struct('model',model, 'fname'      , fname,       ...
+              'base_var' ,base_var, 'comp_var'   , comp_var,    ...
+              'base_tme' ,base_tme, 'base_tmeind', base_tmeind, ...
+              'base_lvl' ,base_lvl, 'base_lvlind', base_lvlind, ...
+              'base_lon' ,base_lon, 'base_lonind', base_lonind, ...
+              'base_lat' ,base_lat, 'base_latind', base_latind, ...
+              'comp_lvl' ,comp_lvl, 'comp_lvlind', comp_lvlind, ...
+              'comp_lon' ,comp_lon, 'comp_lonind', comp_lonind, ...
+              'comp_lat' ,comp_lat, 'comp_latind', comp_latind);
 
    case 'plotphasespace'
 
@@ -116,9 +115,12 @@ function pgvar = GetVar(prognostic_vars, defvar)
 %----------------------------------------------------------------------
 if (nargin == 2), pgvar = defvar; else pgvar = 'ps'; end
 
+str = sprintf(' %s ',prognostic_vars{1});
+for i = 2:length(prognostic_vars),
+   str = sprintf(' %s %s ',str,prognostic_vars{i});
+end
 disp(sprintf('Default variable is ''%s'', if this is OK, <cr>;',pgvar))  
-disp('If not, please enter one of following possible ')
-prognostic_vars
+disp(sprintf('If not, please enter one of: %s',str))
 varstring = input('(no syntax required)\n','s');
 
 if ~isempty(varstring), pgvar = deblank(varstring); end 
