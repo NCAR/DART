@@ -1,0 +1,4 @@
+&obs_sequence_nml
+   read_binary_obs_sequence,
+   write_binary_obs_sequence
+&end
