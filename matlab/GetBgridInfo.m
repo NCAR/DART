@@ -9,6 +9,7 @@ function pinfo = GetBgridInfo(fname,routine);
 
 ft         = netcdf(fname);
 model      = ft.model(:);
+close(ft)
 
 if strcmp(lower(model),'fms_bgrid') ~= 1
    error('Not so fast, this is not a bgrid model.')
@@ -38,7 +39,7 @@ switch lower(deblank(routine))
               'var',pgvar, ...
               'level'    ,level, 'levelindex',lvlind, ...
               'longitude',lon  ,   'lonindex',lonind, ...
-              'latitude' ,lat  ,   'latindex',latind) 
+              'latitude' ,lat  ,   'latindex',latind);
 
    otherwise
 
