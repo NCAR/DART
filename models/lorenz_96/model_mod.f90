@@ -49,8 +49,10 @@ revdate  = "$Date$"
 integer  :: model_size = 40
 real(r8) :: forcing    = 8.00_r8
 real(r8) :: delta_t    = 0.05_r8
+integer  :: time_step_days = 0
+integer  :: time_step_seconds = 3600
 
-namelist /model_nml/ model_size, forcing, delta_t
+namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_seconds
 !----------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
@@ -103,19 +105,9 @@ end do
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L96 from
 ! Shree Khare.
-time_step = set_time(3600, 0)
+time_step = set_time(time_step_seconds, time_step_days)
 
 end subroutine static_init_model
-
-
-
-subroutine init_model_instance()
-!------------------------------------------------------------------
-! subroutine init_model_instance
-!
-! Initializes instance dependent state for model. Null for L96.
-
-end subroutine init_model_instance
 
 
 
@@ -233,7 +225,7 @@ end subroutine init_time
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus, rstatus)
+subroutine model_interpolate(x, location, itype, obs_val, istatus)
 !------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -250,11 +242,13 @@ real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: itype
 real(r8),           intent(out) :: obs_val
-integer,  optional, intent(out) :: istatus
-real(r8), optional, intent(out) :: rstatus
+integer,            intent(out) :: istatus
 
 integer :: lower_index, upper_index, i
 real(r8) :: lctn, lctnfrac
+
+! All forward operators supported
+istatus = 0
 
 ! Convert location to real
 lctn = get_location(location)
@@ -350,7 +344,7 @@ end subroutine end_model
 
 
 
-subroutine model_get_close_states(o_loc, radius, inum, indices, dist)
+subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
 !------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -359,6 +353,7 @@ type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
 integer, intent(out) :: inum, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (inum = -1 return)
