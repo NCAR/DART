@@ -16,9 +16,9 @@
    cutoff = 0.2, 
    cov_inflate = 1.0,
    cache_size = 10,
-   start_from_restart = .true.,
+   start_from_restart = .false.,
    output_restart = .true.
-   obs_sequence_file_name = "obs_seq_out",
+   obs_sequence_file_name = "obs_seq.out",
    restart_in_file_name = "filter_restart", 
    restart_out_file_name = "filter_restart" 
 &end

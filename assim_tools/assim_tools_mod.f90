@@ -37,7 +37,7 @@ public read_restart, write_restart, assim_tools_init, &
 
 real(r8) :: cor_cutoff = 0.0_r8
 
-namelist / assim_tools_nml/ cor_cutoff
+namelist / assim_tools_nml / cor_cutoff
 
 !---- module name and version number
 character(len = 11), parameter :: module_name = 'assim_tools'

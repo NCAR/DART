@@ -39,12 +39,12 @@ normalized ratio is  1.0232953
 
 # Step 1: Create SETS of observation definitions
  rm *.mod *.o                        ;# necessary ... create_obs_def.o ...
- ../compile_it create_obs_def        ;# build the executable
- ./create_obs_def                    ;# answer the questions -OR- modify &
-                                     ;# redirect create_obs_def.in
+ ../compile_it create_obs_set_def    ;# build the executable
+ ./create_obs_set_def                ;# answer the questions -OR- modify &
+                                     ;# redirect create_obs_set_def.in
 
 # Step 2: Create SEQUENCES of observation SETS
- rm create_obs_def.o                 ;# necessary 
+ rm create_obs_set_def.o                 ;# necessary 
  ../compile_it create_obs_sequence   ;# build the executable
  ./create_obs_sequence               ;# answer the questions -OR- modify &
                                      ;# redirect create_obs_sequence.in

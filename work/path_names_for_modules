@@ -12,11 +12,20 @@
 
 if ( $OSTYPE == "solaris") then
 
-   set NETCDFLOC       = "/opt/local/netcdf-3.5.0"
+#   set NETCDFLOC       = "/opt/local/netcdf-3.5.0"
+   set NETCDFLOC       = "/opt/local/netcdf"
    set MOD_INCS        = "-M${NETCDFLOC}/include -I${NETCDFLOC}/include"
    set DEFAULT_COMPILE = "f90 -g -c ${MOD_INCS}"
    set LINK_OPTS       = "-L${NETCDFLOC}/lib -lnetcdf"
    set FINAL_COMMAND   = 'f90 -o $1 *.o ${LINK_OPTS}'
+
+else if( `hostname` == "dataproc" ) then
+
+   set NETCDFLOC       = "/usr/local/apps/netcdf-3.5/lib64/r4i4"
+   set MOD_INCS        = "-I${NETCDFLOC}"
+   set DEFAULT_COMPILE = "f90 -64 -mips4 -g -c ${MOD_INCS}"
+   set LINK_OPTS       = "-L${NETCDFLOC}/lib -lnetcdf"
+   set FINAL_COMMAND   = 'f90 -64 -mips4 -o $1 *.o ${LINK_OPTS}'
 
 else if( `hostname` == "longs" ) then
 
@@ -138,7 +147,7 @@ set             OBS_SET = ../obs_set/obs_set_mod.f90
 
 set        OBS_SEQUENCE = ../obs_sequence/obs_sequence_mod.f90
 set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
-set CREATE_OBS_DEF      = ../obs_set_def/create_obs_set_def.f90
+set CREATE_OBS_SET_DEF  = ../obs_set_def/create_obs_set_def.f90
 set              FILTER = ../filter/filter.f90
 set   PERFECT_MODEL_OBS = ../perfect_model_obs/perfect_model_obs.f90
 set            RMS_DIAG = ../diagnostics/rms_diag.f90

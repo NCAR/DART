@@ -17,7 +17,7 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 private
 
 public location_type, get_dist, get_location, set_location, &
-       write_location, read_location, interactive_location
+       write_location, read_location, interactive_location, nc_write_location
 
 type location_type
    private
@@ -186,6 +186,38 @@ else
 end if
 
 end subroutine interactive_location
+
+
+subroutine nc_write_location(ncFileID, LocationVarID, loc, start)
+!----------------------------------------------------------------------------
+!
+! Writes a SINGLE location to the specified netCDF variable and file. 
+!
+
+use typeSizes
+use netcdf
+
+implicit none
+
+integer, intent(in)             :: ncFileID, LocationVarID
+type(location_type), intent(in) :: loc
+integer, intent(in)             :: start
+
+integer  :: status
+! double precision :: x
+
+! x      = loc%x    ! coerce to approved type
+
+  status = nf90_put_var(ncFileID, LocationVarID, loc%x, (/start/) )
+! status = nf_put_vara_double(ncFileID, LocationVarID, start, 1, x)
+
+if(status /= nf90_noerr) then
+   print *, trim(NF90_strerror(status))
+end if
+
+end subroutine nc_write_location
+
+
 
 !
 !----------------------------------------------------------------------------

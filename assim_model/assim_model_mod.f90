@@ -19,7 +19,7 @@ use utilities_mod, only : get_unit
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model
+   end_model, nc_write_locations 
 
 private
 
@@ -111,7 +111,15 @@ function init_diag_output(FileName, global_meta_data, &
                   copies_of_field_per_time, meta_data_per_copy) result(ncFileID)
 !--------------------------------------------------------------------------------
 !
-!
+! Typical sequence:
+! NF90_OPEN             ! create netCDF dataset: enter define mode
+!    NF90_def_dim       ! define dimenstions: from name and length
+!    NF90_def_var       ! define variables: from name, type, and dims
+!    NF90_put_att       ! assign attribute values
+! NF90_ENDDEF           ! end definitions: leave define mode
+!    NF90_put_var       ! provide values for variable
+! NF90_CLOSE            ! close: save updated netCDF dataset
+
 use typeSizes
 use netcdf
 implicit none
@@ -124,8 +132,8 @@ integer                      :: ncFileID
 integer             :: i, model_size, metadata_length
 type(location_type) :: state_loc
 
+integer :: StateVarDimID, StateVarVarID     ! for each model parameter/State Variable
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
-integer ::    ParamDimID,    ParamVarID     ! for each model parameter
 integer ::     TimeDimID,     TimeVarID     ! duh ...
 integer :: MetadataDimID, MetadataVarID
 
@@ -134,37 +142,43 @@ if(.not. byteSizesOK()) then
    stop
 end if
 
-model_size = get_model_size()
+model_size      = get_model_size()
 metadata_length = LEN(meta_data_per_copy(1))
+
 
 ! Create the file
 call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid = ncFileID))
+
   
 ! Define the dimensions
-call check(nf90_def_dim(ncid=ncFileID, name="parameter",      &
-                                       len=model_size,               dimid=ParamDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
+                                       len=model_size,               dimid = StateVarDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="copy",           &
-                                       len=copies_of_field_per_time, dimid=MemberDimID))
+                                       len=copies_of_field_per_time, dimid = MemberDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="time",           &
                                        len = nf90_unlimited,         dimid = TimeDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="metadatalength", &
                                        len = metadata_length,        dimid = metadataDimID))
 
-! Create variables and attributes
-call check(nf90_def_var(ncid=ncFileID,name="parameter", xtype=nf90_int, dimids=ParamDimID, varid=ParamVarID))
-call check(nf90_put_att(ncFileID, ParamVarID, "long_name", "model parameter number"))
-call check(nf90_put_att(ncFileID, ParamVarID, "units",     "nondimensional") )
-call check(nf90_put_att(ncFileID, ParamVarID, "valid_range", (/ 1, model_size /)))
 
-call check(nf90_def_var(ncid=ncFileID,name="copy", xtype=nf90_int, dimids=MemberDimID, varid=MemberVarID))
+! Create variables and attributes
+call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+                                     dimids=StateVarDimID, varid=StateVarVarID))
+call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
+call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "nondimensional") )
+call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
+
+
+call check(nf90_def_var(ncid=ncFileID, name="copy", xtype=nf90_int, dimids=MemberDimID, &
+                                                                    varid=MemberVarID))
 call check(nf90_put_att(ncFileID, MemberVarID, "long_name", "ensemble member or copy"))
 call check(nf90_put_att(ncFileID, MemberVarID, "units",     "nondimensional") )
 call check(nf90_put_att(ncFileID, MemberVarID, "valid_range", (/ 1, copies_of_field_per_time /)))
 
 call check(nf90_def_var(ncid=ncFileID,name="CopyMetaData", xtype=nf90_char,    &
-        dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID))
+                        dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID))
 call check(nf90_put_att(ncFileID, metadataVarID, "long_name",       &
-       "Metadata for each copy/member"))
+                        "Metadata for each copy/member"))
 
 ! Time is a funny beast ... 
 ! Many packages decode the time:units attribute to convert the offset to a calendar
@@ -177,7 +191,8 @@ call check(nf90_put_att(ncFileID, metadataVarID, "long_name",       &
 !  julian   Julian calendar. 
 !  none     No calendar. 
 
-call check(nf90_def_var(ncFileID, name="time", xtype=nf90_double, dimids=TimeDimID, varid=TimeVarID) )
+call check(nf90_def_var(ncFileID, name="time", xtype=nf90_double, dimids=TimeDimID, &
+                                                                  varid =TimeVarID) )
 call check(nf90_put_att(ncFileID, TimeVarID, "long_name", "time"))
 call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "gregorian"))
 call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
@@ -185,29 +200,17 @@ call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:
 
 ! Global attributes
 call check(nf90_put_att(ncFileID, nf90_global, "title", global_meta_data))
-  
+
 ! Leave define mode
 call check(nf90_enddef(ncfileID))
-  
+
 ! Write the dimension variables
-call check(nf90_put_var(ncFileID, MemberVarID,  (/ (i,i=1,copies_of_field_per_time) /) ))
-call check(nf90_put_var(ncFileID, ParamVarID,   (/ (i,i=1,model_size) /) ))
+call check(nf90_put_var(ncFileID, MemberVarID,   (/ (i,i=1,copies_of_field_per_time) /) ))
+call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
-! FOR NOW -- LETS BE HAPPY WITH THIS!
-call check(nf90_close(ncFileID))
-
-! BUT NOT BREAK ANYTHING FARTHER ON ...
-
-ncFileID = get_unit()
-open(unit = ncFileID, file = FileName)
-
-! Will need other metadata, too; Could be as simple as writing locations
-write(ncFileID, *) 'locat'
-do i = 1, model_size
-   call get_state_meta_data(i, state_loc)
-   call write_location(ncFileID, state_loc)
-enddo
+call nc_write_locations(ncFileID,FileName)    ! Each model_mod must write its own locations.
+call check(nf90_close(ncFileID))              ! tidy up
 
 contains
 
