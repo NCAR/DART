@@ -1,0 +1,555 @@
+---GENERAL INFORMATION ABOUT THE GLOBAL SCALE WAVE MODEL AND INPUT FILES-----
+*
+* See the Word.doc version for completeness and formatting
+* File saved as: ~hackney/GSWM.doc
+*
+*
+*
+*
+--THIS DOCUMENT
+
+	-Describes the GSWM program.
+	-Describes its output.
+	-Contains a guide to using the program's input file, mig.inp.
+	-Refers to papers from which algorithms or models are derived.
+
+--THE PROGRAM
+
+The Global Scale Wave Model calculates a steady-state diurnal or semidiurnal
+migrating or non-migrating tidal wave
+for zonal (U), meridional (V), and vertical (W) wind fields, and temperature
+field (T).  The propagation of the wave is represented in an output table which
+contains the amplitude and phase of each component of the wave at
+gridpoints of latitude and altitude.
+
+The user has the ability to choose different sub-models of atmospheric
+influences on the waves, both to investigate the sensitivity of the model,
+and to perform numeric experiments on migrating tidal waves.
+
+There are two input files, and three types of output files, that the user
+has to be concerned with.
+
+--OUTPUT FILES
+
+The names of the output files are controlled by the user in one of the
+input files of the program and in the submitting script.  See the
+script ~hackney/scripts/GSWM.script:
+
+1) 'gswm.out': ASCII file mirrors the user's desired model
+configuration and prints warnings and error messages resulting during the
+run.  Named in the submitting script.  This file contains the only
+information that identifies the configuration
+of the model that created each output file, so it should be saved for future
+reference.  It is the standard output unit on the Cray (FORTRAN * or 6).
+
+2) 'XXXXXXXX.back': short (approx 10kB) ASCII file prints a summary
+of the background, or
+unperturbed rest atmosphere that the user has programmed for each unique
+wave and month.  The wind and temperature information is presented on an
+altitude/latitude grid.  The first grid contains temperature (K).  The
+second grid contains zonal mean zonal wind (m/s).  The format for each
+grid is:
+	(4X, 19I4) for the 10-degree latitude grid across the top line
+	(90 degrees North to -90 degrees South, L-->R);
+followed by:
+	(20I4) for each block of 39 subsequent lines of data.
+The first (I4) contains the altitude in km, and the 19 remaining (I4)
+contain temperature or wind values.
+The altitudes are printed from 304km to 0km, top to bottom, every 8 km.
+Some background files also contain values for normalized intrinsic frequency
+and eddy diffusivity.
+The file is assigned unit 10 on the Cray.
+
+3) 'XXXXXXXX.test': long (approx. 175 kB) ASCII file of wave amplitudes
+ and phases.  The file is
+divided by altitude levels into blocks of amplitude and phase values for 4
+waves, U, V, W, and T.  These values are listed in this order on each line
+within each block as a function of latitude. Latitude values range from
+87 degrees (North) to -87 degrees (South), every 3 degrees, giving 59
+measurements each of U,V,W,and T, in each altitude block.
+
+The altitude of each block is indicated at the top of the block by the scale
+height index, X, and the corresponding geographic height, Z(km).  Blocks are
+printed approximately every 4 km of altitude, beginning at 0km and continuing
+to 140km, making 35 blocks.
+
+The format in pseudocode and FORTRAN to read each block is:
+
+	READ *             Skip the line before the block
+	READ X,Z           Read the altitude of this block
+	FOR LOOP 1 to 59   Read a Line for each of the Latitude values
+	   READ(5x,f5.1,5x,e8.3,1x,f5.1,4x,e8.3,1x,f5.1,4x,e8.3,1x,f5.1,
+     +     4x,e8.3,1x,f5.1)
+	READ *             Skip the line after the block
+
+The variables read in for each latitude value are: Latitude,  U_amplitude,
+U_phase, V_amplitude, V_phase, W_amp,W_phz, and T_amp,T_phz.  The units of
+amplitude/phase are m/s for the wind, degrees Kelvin for temperature, and
+hours of phase.
+
+There are 4 lines at the top of the file which identify the run. The
+file is assigned to unit 7 on the Cray.
+
+--INPUT FILES
+
+There are two input files.  "GSWM.inp" contains a set of flags which
+control the sub-models within the GSWM tide program.  "waves.inp" is a file
+which sets the number of waves to run for each set of flags, and describes
+each wave's characteristics and the filenames for its output.
+
+1) GSMW.inp:
+
+By changing the flags, and the models that are run together,
+the user can perform numerical experiments with migrating or non-migrating
+waves.  Each wave that is run in one batch will use the same flag settings.
+
+The user must not change the format of the input file, or the program will
+return a read error and stop.  All flags must be placed at the 32nd space
+from the left margin.  Text in the first 31 spaces is ignored except for
+the COMMENT line.
+
+Messages about the run are contained in the 'gswm.out' output file.
+
+All of the flags in the input file must be specified, even if particular flag
+settings will be ignored in the program in certain model configurations.  The
+user may receive warnings or errors if flag settings request ambiguous or
+incompatible calculations.
+
+In the case of a flag whose value will be ignored, it is still important that
+the flag value that is specified be of the correct variable type and within the
+range specified in this README file.  Flags outside this range or of the wrong
+variable type will cause the program to return a read error and stop.
+
+All flags are single-digit integers unless otherwise noted.
+
+---COMMENT
+
+72 characters maximum to describe the job.  Re-printed in the 'gswm.out'
+file for each wave.
+
+---BACKGROUND ATMOSPHERE
+
+The program has the option of using several sets of empirical observations to
+initilialize portions of the background winds, or of setting the background
+winds to zero.  If the flags, "ZERO MEAN WIND", "GROVES", "HRDI", "PORTNYAGIN",
+AND "RANDEL" winds are set to zero, the background wind will be the derived
+geostrophic winds.
+
+ZERO MEAN WINDS	0=OFF;
+		1=ON;
+		STANDARD: 0
+
+		Sets up a classical atmosphere with zero background winds
+		in the zonal, meriodional, and upward directions.  Flag LAT
+		GRADIENTS must also be turned off (0) to be consistent with no
+		background winds.
+
+GROVES		0=OFF;
+		1=ON FOR ALL ALTITUDES;
+		2=ON FOR LOW ALTITUDES;
+		STANDARD: 2
+
+		Overwrites the Groves/MSIS90 winds dataset over the standard
+		background geostrophic winds.  0 turns this option off (no
+		overwrite);1 overwrites all of the background winds to an
+		altitude of 108km; 2 overwrites the background winds to an
+		altitude of 12km, smoothing the values from 12 to 20km.  All
+		other winds must be turned "OFF" for GROVES=1 to give the
+		expected background (ERR). The dataset is available for all
+		months.
+
+		Include files, 'groves_*' if GROVES is not 0.
+
+HRDI		0=OFF;
+		1=52-96km;
+		2=0-128km;
+		STANDARD: 0
+
+		Overwrites the HRDI winds dataset over the standard background
+		geostrophic winds.  0 turns this option off; 1 overwrites the
+		data from the altitude of 52 to 96km, smoothing the upper
+		boundary between 96-104km and the lower between 44-52km; 2
+		uses HRDI data (pre-smoothed with Groves data below 12 km)
+		for the entire background from 0-128km.  GROVES
+		flag must = 0 if HRDI = 2 (ERR). The dataset is available
+		for all months.
+
+		Include files, 'hrdi0-128_*' if HRDI is not 0.
+
+PORTNYAGIN	0=OFF;
+		1=ON;
+		STANDARD: 1
+
+		Overwrites the Portnyagin winds parametrized model over the
+		standard background geostrophic winds.  0 turns this option
+		off; 1 overwrites the background data from the altitude of
+		80-108km, smoothing the lower boundary between 72 and 80km.
+		The winds can be calculated for any month.
+
+RANDEL		0=OFF;
+		1=JAN;
+		2=JULY;
+		STANDARD: 0
+
+		Overwrites the NMC (Randel) winds dataset over the standard
+		background geostrophic winds.  0 turns this option off; 1
+		overwrites January data from the altitude of 12km - 48km; 2
+		overwrites these altitudes for July.  Winds are smoothed from
+		4-12km and from 48-56km.  NMC (Randel) winds are only
+		available for January and July.
+
+		Include files,'randel_*' if RANDEL is not 0.
+
+NO LAT GRADIENTS 0=OFF;
+		1=ON;
+		STANDARD: 0
+
+		Enforces constant temperature and density with latitude by
+		setting their first and second derivatives to zero.
+
+		!!Like old nowind, this comes after setting the derivatives
+		in surf1/surfd.  Originates in array d, gtd6.  Can be more
+		efficient!!
+
+POLAR BC	0=LATERAL;
+		1=TAYLOR;
+		STANDARD: 1
+
+		0 uses a lateral boundary condition for winds at the poles.
+		1 uses a standard Taylor series expansion for the boundary
+		condition.
+
+[O3] BACKGROUND	0=NOT SET;
+		1=CIRA;
+		2=CLAES;
+		3=MLS;
+		4=HALOE/MLS183;
+		STANDARD: 1
+
+		Chooses whether to set a background ozone concentration, and
+		which dataset to use to set this concentration. Each dataset
+		contains measurements of [O3] in ppmv, determined by a
+		different instrument and averaged over different time periods.
+		
+		The ozone concentrations are used to calculate heat forcing
+		functions in the heating model "HEAT92", which is chosen with
+		the HEATING flag = 1.  The [O3] are read in the program
+		setheat.f.
+
+		If no concentration is set, the user must either choose a heat
+		forcing algorithm which does not require the initialization
+		of an atmospheric ozone concentration (see HEATING for choices)
+		or, if the user has chosen HEATING =1 without specifying an
+		ozone file, CIRA will be the default.
+
+		Include files:		BACKGROUND #
+			ciraO3_*		1
+			CLAESe_*		2
+			MLSo3o_*		3
+			halmls_*		4
+
+---WAVE FORCING MODELS
+
+MIGRATING
+HEATING		0=Simple Hough(1,1) Driver;
+		1=Use [O3] Background in HEAT92;
+		2=Latent_Heat_Tides Algorithm;
+		3=Honglate Algorithm;
+		4=Use [O3] with HEAT92 and Latent_Heat_Tides;
+		5=Use [O3] with HEAT92 and Honglate;
+		STANDARD: 1
+
+		The heating functions which use [O3] require that the flag for
+		background ozone be nonzero; one of the databases must be
+		selected or the default will be CIRA (see [O3] flag description
+		above).
+
+	0:	Hough (1,1) Mode Driver: Tropospheric Hough(1,1) Drive which
+		uses derived tables of heating rates to drive diurnal migrating
+		oscillations from the "ground".
+		
+	1:	HEAT92 Driver: Combines absorption of UV by stratospheric O3
+		layers and IR by tropospheric H2O (vapor and clouds) for
+		diurnal and semidiurnal migrating forcing.  IR heating by
+		Groves is available only for months 1,4,7,10.
+
+		Include files,'h2o_*.diurn','h2o_*.semi' if SKIP IR is OFF.
+		
+	2:	Latent Heat Tides Driver:  The forcing originates from
+		latent heat released and absorbed by meteorlogical transport
+		of H2O.
+
+	3:	Honglate Driver:  The forcing originiates from meteorological
+		convective activity (Hong and Wang (1980, Bull. Geophys.,
+		19, 56-84), Reed and Recker (1971) and Nitta (1972)).
+
+	4:	HEAT92 with Latent Heat Tides:  Adds the two effects.
+
+	5:	HEAT92 with Honglate:  Adds the two effects.
+
+------The Following Flags Depend on the Choice of Migrating Heating Model
+
+HEATING=0:
+
+	2XHOUGH FORCING	0= OFF;
+			1= ON;
+			STANDARD: 0
+
+		This option is ignored unless the Hough (1,1) heat forcing
+		model is chosen in option HEATING (HEATING flag=0).  Choosing
+		to turn on this option will double the amplitude of the Hough
+		heat forcing.  Turning it off will leave the Hough forcing at
+		its original value.
+
+HEATING=1,4,5:
+
+	DIURNAL O3	0= OFF;
+			1= KEATING MODEL;
+			2= BJARNSON MODEL;
+			STANDARD: 0
+
+		This option turns on one of two models for diurnal variation
+		in ozone concentration in the background atmosphere.  Refer
+		to Keating, et al. (1990) and Bjarnson, et al. (1987).  The
+		values are added to the background values initialized by the
+		[O3] flag.  Used only by heat forcing functions that use [O3].
+		(HEATING=1,4,5).
+
+	O3 PEAK		0= OFF;
+			1= BJARNSON MODEL;
+			STANDARD: 1
+
+		This option models an additional ozone concentration peak
+		between 82-100km.  The values are added to the background
+		values initialized by the [O3] flag.  See Bjarnson, et al.
+		(1987).  Used only with heat forcing functions which use [O3]
+		(HEATING=1,4,5).
+
+	SKIP O3		0= OFF;
+			1= ON;
+			STANDARD: 0
+
+		This option turns off all heat forcing due to atmospheric
+		ozone.  It is used for testing model sensitivity to assumptions
+		of the heat forcing caused by [O3]. See Hagan (1996).
+		Works with HEATING=1,4,5.
+
+	SKIP IR		0= OFF;
+			1= ON;
+			STANDARD: 0
+
+		This option turns off all heat forcing due to atmospheric
+		H2O.  It is used for testing model sensitivity to assumptions
+		of the heat forcing caused by [H2O].  If this option is off,
+		the [H2O] background data is given by tables based on
+		parametrizations in Groves (JATP, 1982).  If it is on, there
+		will be no IR heat forcing.  See Hagan (1996).
+		Works with HEATING = 1,4,5.
+
+		Include files,'h2o_*.diurn','h2o_*.semi' if OFF.
+
+HEATING=2:
+
+	LATENT		0= OFF;
+			1= ON;
+			STANDARD: 0
+
+		This flag is ignored unless the HEATING flag=2
+		(Latent_Heat_Tides Algorithm).  If LATENT is off, monthly mean
+		latent heating values are read in from a table.  If the flag is
+		on, the	values are calculated from annual means in a
+		subroutine called "getlate".
+
+		Include files: '7yr-12mos.diurn','7yr-12mos.semid'
+		if LATENT=0.
+---------------
+NON-MIGRATING
+HEATING		0=Latent Heating
+		1=Infrared Heating
+		2=Combined Latent + IR
+		STANDARD:0
+
+	0:	Latent Heat Driver:  The forcing originates from
+		latent heat released and absorbed by meteorlogical transport
+		of H2O and deep convective activity.  Uses global cloud
+		imagery to set H2O migration.
+
+		Include files,'7yr-*.diurn' or '7yr-*.semi'
+		(e.g. 7yr-janE3.diurn).
+
+	1:	Infrared Heating: Complex number version of the Groves
+		IR energy absorption by tropospheric H2O.
+
+		Include files,'h2o_*.eastward1','h2o_*.standing0',
+		'h2o_*.westward2','h2o_*.westward3 where * is 3 letters for
+		the month.
+
+	2:	Combined:  Adds latent heating and infrared heating drivers.
+
+
+---WAVE DISSIPATION MODELS
+
+KHATTATOV	0=OFF;
+		1=ON;
+		STANDARD: 0
+
+		This flag introduces the Khattatov dissipation parametrization
+		to provide all of the wave damping in the model.  Since this
+		parameter represents all forms of dissipation that act on
+		tidal waves, all other dissipation models must be turned off
+		if Khattatov is used (ERR).
+
+		Include file,'khattatov.kzz'.
+
+EDDY MODEL	0=WEAK;
+		1=GARCIA-SOLOMON;
+		2=ANALYTICAL MODEL;
+		STANDARD: 1
+
+		This flag controls models of eddy dissipation of the migrating
+		waves which results when gravity waves break and generate
+		turbulence.
+
+	0:	Weak, invariant diffusion enforces a constant value, low
+		influence throughout all altitudes and latitudes.
+
+	1:	Garcia-	Solomon eddy diffusion is based on an observed and
+		fitted altitude/latitude distribution of diffusivity as
+		described in Garcia and Solomon (1985).  Its use in the model
+		is described in Hagan, et al. (1995).  G & S molecular
+		diffusion and breaking tidal waves are removed from the
+		diffusivities because they are calculated elsewhere in the
+		model.
+
+		Include file,'revised_gs_50.tables'.
+
+	2:	The analytical eddy model uses tables of diffusivity calculated
+		a priori.
+
+LATITUDE-CONSTANT
+DISSIPATION	0=OFF;
+		1=ON;
+		STANDARD: 1
+
+		This flag controls the molecular diffusion and thermal
+		conductivity in the thermosphere.  If it is off, the program
+		assigns values that vary with latitude.  If the flag is on,
+		the dissipation is constant with latitude and equal to the
+		value that varying dissipation would have at the equator.
+
+ION DRAG	0=OFF;
+		1=ON;
+		STANDARD: 1
+
+		The ion drag subroutine calculates the reduction in tidal
+		wave amplitude which results from the acceleration of the
+		ionized component of the upper atmosphere.  It is normally
+		turned 'on'.  For information about the algorithm, see
+		Forbes and Garret (1978), Chiu (1975).
+
+VIAL
+DISSIPATION	0=OFF;
+		1=ON;
+		STANDARD: ON
+
+		Variation of analytical eddy dissipation algorithm.
+		Reduces amplitude of eddy coefficients from 1.36 to 1.0.
+
+GW STRESS	0=OFF;
+		1=ON;
+		STANDARD: ON
+
+		Gravity waves have been observed to reduce the amplitude of
+		diurnal tidal waves near the poles in the MLT region.  A model
+		of effective Rayleigh friction mimics this effect through a set
+		of coefficients that depend on altitude and latitude.  The
+		solstice coefficients are based on Miyahara and Forbes (1991).
+		The equinox coefficients are set at 10% of the solstice values
+		(Hagan, 1998?).  This stress has no effect on semidiurnal
+		waves, and is ignored in semidiurnal runs.
+
+-------POST PROCESSING----
+
+HOUGH
+DECOMPOSITION	0=OFF;
+		1=ON;
+		STANDARD:  OFF
+
+		This option lets the user print out a amplitudes and phases
+		of the results in a Hough mode decomposition for use in other
+		atmospheric wave models.
+
+DENSITY,
+PRESSURE
+PERTURBATION	0=OFF;
+		1=ON;
+		STANDARD: OFF
+
+		Setting this flag to "1" makes the program print out the
+		density and pressure perturbations that result from the tidal
+		wave, in addition to the wind and tempertature amplitudes
+		reported in a standard run.
+-----------
+2) waves.inp
+
+The upper left corner contains an integer called isize, which is the number of
+waves that the batch run will process.
+
+The next line is blank
+
+The next line contains the column names for the numeric descriptors of the
+waves that will be run.
+
+The next line contains an underscore to set up a table for the numeric
+descriptors.
+
+Numeric descriptors and filenames must line up with the xxx's at the bottom
+of the table, or they will be read incorrectly by the program.
+
+PERIOD: the period of the wave is the number in the first column.  It is a real
+	of format F3.1.  Only diurnal (1.0) and semidiurnal (0.5) waves are
+	calculated.
+
+WAVE
+NUMBER: the number of peaks (or valleys) of the wave in one complete circle
+	of the Earth.  Integer in the range -6 to 6.  Positive wavenumbers
+	propagate westward in this model.
+
+MONTH:	the number of the month (1-12) in which the wave is to be calculated.
+	Heat92 migrating driver only supports months 1,4,7, and 10.
+
+RUNTITLE:
+	the 8 character root name for the background and output files of the
+	wave.  A new background file is written for each new month.  All
+	*.back and *.test files are to be copied back to the local machine.
+
+To test the setup of both input files, run the program 'gswm_read'.  It will
+write the same gswm.out output to the screen that the Cray will generate, and
+will identify which wave requests may cause the user problems.
+
+RUNNING THE PROGRAM
+
+See the file ~hackney/scripts/GSWM.script for a sample running script.  Be sure
+that the required files from the /dat directory are copied to the same
+directory as the source code.  Compile the *.f files and run.  Then copy
+the *.out, *.back, and *.test files from the Cray to your home machine.  Make
+sure your respective .rhosts comply with the requested machines.
+
+In the .out file, or when the program 'gswm_read' is run:
+
+		-If the user receives a warning, the output may contain
+		unexpected values.  The input file should be carefully checked
+		and compared with the 'gswm.out' file that reflects the
+		input configuration of the model.
+
+		-If the user receives an error for a particular wave, the
+		program will not execute for that wave,	because there is an
+		unresolvable ambiguity in the input file.  It will skip to
+		the next wave it knows how to calculate.  The conflicting
+		commands that caused the  problem will be identified in
+		'gswm.out'.
+
+Be sure to rename 'gswm.out' when it returns to the home machine, or it will
+be written over by the next batch job.  It contains valuable information about
+the run that will help to identify the output later on when you've forgotten
+what your filename means.

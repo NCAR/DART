@@ -1,0 +1,129 @@
+	program setatmos
+C***************MODIFIED VERSION----WORKS ONLY FOR CRISTA INPUT FILES*********
+c Modified to include HWM93 wind option		M. Hagan (10/20/98)
+c
+        real x1C(19),d1t(19),d1r(19),d1pr(19)
+        real ri(19,33), pri(19,33), xC(37), s1(4), s2(4)
+	real tiC(37,33), priC(37,33), riC(37,33), ariC(37,33)
+c
+	integer ti, ix1C, ialt
+c
+	dimension ti(19,33), ix1C(19), ialt(33)
+
+      character*10 tfile,ofile,pfile
+C
+C CRISTA input data for Aug and Nov only (else dummy files)
+C   T=temp(K) format 223; P=pressure(hPa) format 2222; R=rho(kg/m3) format 222
+      data tfile/'cris_T_aug'/
+      data ofile/'cris_R_aug'/
+      data pfile/'cris_P_aug'/
+
+	pi=acos(-1.)
+	pio2=pi/2.
+        dtor=pi/180.
+        rtod=180./pi
+
+	iyd=15+30*(mois-1)
+
+201	format(/,4x,19(1x,i3))
+221	format(/)
+222	format(5x,19(1x,e10.4))
+2222	format(4x,19(1x,e10.4))
+223	format(1x,i3,19(1x,i3))
+
+	OPEN(UNIT=83,file=tfile,form='formatted')
+C  Read in latitude for CRISTA grid
+	read(83,201) (ix1C(i),i=1,19)
+	write(10,*) (ix1C(i),i=1,19)
+
+C convert to colatitude (radians) and build 5-deg grid:
+	do 22 j=1,19
+        x1C(j)=pio2-float(ix1C(j))*dtor    
+        jj=2*(j-1)+1
+        xC(jj)=x1C(j)
+	write(10,*) j,jj,xC(jj)
+        if(j.lt.19) then
+          jk=2*j
+	  xC(jk)=xC(jk-1)+5.*dtor
+	write(10,*) j,jk,xC(jk)
+	endif
+   22  continue
+
+C  Read in altitude and CRISTA temperatures (K)
+
+	do 3 j=1,33    
+	read(83,223) ialt(j),(ti(i,j),i=1,19)
+	do 3 i=1,19    
+        ii=2*(i-1)+1
+        tiC(ii,j)=ti(i,j)
+    3  continue
+
+	CLOSE(UNIT=83)
+
+	OPEN(UNIT=84,file=ofile,form='formatted')
+
+C  Read in altitude and CRISTA mass densities (kg/m3)
+	read(84,221)
+	do 39 j=1,33    
+	read(84,222) (ri(i,j),i=1,19)
+	do 39 i=1,19    
+        ii=2*(i-1)+1
+        riC(ii,j)=ri(i,j)
+        dum=ri(i,j)
+        ariC(ii,j)=alog(dum)
+   39   continue
+
+	CLOSE(UNIT=84)
+
+	OPEN(UNIT=85,file=pfile,form='formatted')
+
+C  Read in CRISTA pressures (hPa); convert to mks
+c 		 Pa to mbar ==>p/100.; mbar to PA ==> p*100.
+	read(85,221)
+	do 38 j=1,33    
+	read(85,2222) (pri(i,j),i=1,19)
+	do 38 i=1,19    
+        ii=2*(i-1)+1
+        priC(ii,j)=pri(i,j)*100.
+   38   continue
+
+	CLOSE(UNIT=85)
+   
+c  Fill in the missing latitude grid points in the 0-128 in 4-km inc
+
+      do 14 j=1,33
+
+      do 15 i=1,19
+      ii=2*i-1
+      d1t(i)=tiC(ii,j)
+      d1r(i)=riC(ii,j)
+      d1pr(i)=priC(ii,j)
+   15 continue
+
+C  Take care of +85 to -85 (interpolate)
+
+C     write(10,*) (x1C(i),i=1,19)
+      do 16 i=1,18
+      ii=2*i
+      xl=x1C(i)
+      xp=xl*rtod
+      call atsm(xl,x1C,d1t,19,1,s1,s2,4)
+      call ali(xl,s1,s2,xd,4,1.0e-03,ier)
+      tiC(ii,j)=xd
+      call atsm(xl,x1C,d1r,19,1,s1,s2,4)
+      call ali(xl,s1,s2,xd,4,1.0e-03,ier)
+      riC(ii,j)=xd
+      ariC(ii,j)=alog(xd)
+      call atsm(xl,x1C,d1pr,19,1,s1,s2,4)
+      call ali(xl,s1,s2,xd,4,1.0e-03,ier)
+      priC(ii,j)=xd
+   16 continue
+	write(10,*)  ialt(j),(tiC(i,j),i=1,37)
+c	write(10,*) (riC(i,j),i=1,37)
+c	write(10,*) (ariC(i,j),i=1,37)
+c	write(10,*) (priC(i,j),i=1,37)
+
+   14 continue
+
+	stop
+	end

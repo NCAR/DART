@@ -1,0 +1,23 @@
+From hagan@hao.ucar.edu Tue Mar  2 10:36:19 2004
+Date: Mon, 1 Mar 2004 14:52:42 -0700 (MST)
+From: Maura Hagan <hagan@hao.ucar.edu>
+To: tmatsuo@cgd.ucar.edu
+Subject: Re: GSWM
+
+Tomoko-
+  Sorry for the delay in responding to you! You're most welcome
+to look at the code, but I warn you that it's far from elegant.
+I'd be happy to meet with you briefly to give you an overview.
+But, if you'd rather "have at it" on your own, you can find it
+in 3 directories: /home/gswm/GSWM/GSWM  (primary source code)
+                  /home/gswm/GSWM/lib   (library routines)
+                  /home/gswm/GSWM/dat   (input files)
+You can probably only access these directories from your hao
+account. I haven't run the model in more than a year, but the
+script that I used is at /home/hagan/GSWM/gswm.job (for use
+with Ben Foster's "submit" command). In that same directory
+you'll also find the Makefile as well as the 2 additional input
+files (GSWM.inp and waves.inp) that are needed to run the model.
+All the best.
+--Maura
+ 
