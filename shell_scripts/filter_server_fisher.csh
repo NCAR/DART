@@ -14,7 +14,7 @@ rm -f filter_server.log
 
 ### Output to confirm job characteristics
 echo "filter_server Running on host "`hostname` >> filter_server.log
-echo "Initialized at " `date`
+echo "Initialized at " `date` >> filter_server.log
 echo "This job runs on the following processors:" >> filter_server.log
 
 ### Define number of processors; # of lines in PBS_NODEFILE

@@ -1,62 +1,82 @@
 #!/bin/tcsh
-#
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-#
-# $Id$
-#
+
+# Modified to use /scratch/local/raeder instead of /scratch/cluster for CAM runs
+# See #sl
+# Modified to use actual times/dates from DART; see #td
+
+#   Multi-processor jobs must be submitted as batch, under PBS
+### Job name
+#PBS -N dart_cam
+### Declare job non-rerunable
+#PBS -r n
+### Output files
+#PBS -e dart_cam.err
+#PBS -o dart_cam.log
+### Queue name (small, medium, long, verylong)
+#PBS -q medium
+#PBS -l nodes=4
+
 
 ### This job's working directory; must cd to it, or it will run in /home...
-setenv PBS_O_WORKDIR `pwd`
+if ($?PBS_O_WORKDIR) then
+   cd $PBS_O_WORKDIR
+else
+   setenv PBS_O_WORKDIR `pwd`
+endif
 
-# Get rid of any pre-existing go_advance or go_filter files
-# Need to guarantee this gets done before filter gets to advance
-rm -f go_advance_model
-rm -f go_end_filter
-rm -f go_assim_regions
+# Clear out the log file
+rm -f filter_server.log
 
 ### Output to confirm job characteristics
-echo "Running on host "`hostname`
-echo "Time is "`date`
-echo "Directory is "`pwd`
-echo "This job runs on the following processors:"
+if ($?PBS_JOBNAME) then
+   echo Running $PBS_JOBNAME on host `hostname` >> filter_server.log
+else
+   echo "Running on host "`hostname` >> filter_server.log
+endif
+echo Initialized at `date` >> filter_server.log
+echo Directory is `pwd` >> filter_server.log
+echo This job runs on the following processors: >> filter_server.log
 
 ### Define number of processors; # of lines in PBS_NODEFILE
+if ($?PBS_NODEFILE) then
+   setenv NPROCS `wc -l < $PBS_NODEFILE`
+   cat $PBS_NODEFILE >> filter_server.log
+else
    setenv PBS_NODEFILE nodefile
    rm -f $PBS_NODEFILE
-   set NPROCS = 4
-   set iproc = 1
-   while($iproc <= $NPROCS)
-      echo proc$iproc >> $PBS_NODEFILE
-      @ iproc ++
+   set NPROCS = 10
+   set inode = 1
+   while($inode <= $NPROCS)
+      echo node$inode >> $PBS_NODEFILE
+      echo node$inode >> filter_server.log
+      @ inode ++
    end
-cat "$PBS_NODEFILE"
-echo This_job_has_allocated $NPROCS nodes
-
+endif
+echo This job has allocated $NPROCS nodes >> filter_server.log
 
 # Hang around forever for now and wait for go_advance file to appear
 while(1 == 1)
    # If go_end_filter exists then stop this process
    ls go_end_filter > .option3_garb
-   if($status == 0) exit
- 
+   if($status == 0) then
+      echo "terminating normally at " `date` >> filter_server.log
+      exit
+   endif
 
 #--------------------------------------------------------------------------------------- 
    # Check to see if the go_advance_model file exists
    ls go_advance_model > .option3_garb
    if($status == 0) then
 
-
-      # First line of filter_control should have number of model states to be 
-      # integrated
+      # First line of filter_control should have number of model states to be integrated
       set nensmbl = `head -1 filter_control`
+      echo "advancing $nensmbl members at " `date` >> filter_server.log
 
-      # figure # batches of runs to do, from # ensemble members and # processors
+      # figure # batches of CAM runs to do, from # ensemble members and # processors
       @ nbatch = $nensmbl / $NPROCS
       if ($nensmbl % $NPROCS != 0 ) @ nbatch++
-      echo $nbatch batches will be executed
-      #
+      echo $nbatch batches will be executed >> filter_server.log
+
       # Create a directory for each member to run in for namelists
       set element = 0
       set batch = 1
@@ -64,81 +84,59 @@ while(1 == 1)
          foreach node ( `cat $PBS_NODEFILE` )
             @ element++
             if ($element > $nensmbl) goto all_elements_done
-   
-            $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element ${USER}_tempdir${element} &
 
-            sleep 0.1
+            rsh $node "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/local/tmp$user$$$element " &
 
          end
-      # Another way to monitor progress.  batchflag has other info to start,
-      # so this echo can be removed and scripts will still work.
-         echo waiting to finish batch $batch  >> $PBS_O_WORKDIR/batchflag
+         echo waiting to finish batch $batch at `date` >> filter_server.log
          wait
-
-         sleep 1
 
          @ batch++
       end
       all_elements_done:
 
-      # Wait for all *background* processes to finish up
-      wait
-
-      # 
-      rm -f $PBS_O_WORKDIR/batchflag
-
       # finished with advance_model so remove the go_advance_model file
+      echo "Completed this advance at " `date` >> filter_server.log
+      echo --------- >> filter_server.log
       rm -f go_advance_model
+
    endif
 
 #--------------------------------------------------------------------------------------- 
-   # Check to see if the go_advance_model file exists
+   # Check to see if the go_advance_regions file exists
    ls go_assim_regions > .option3_garb
    if($status == 0) then
 
-# First line of assim_region_control should have number of regions to be assimilated
-set nregions = `head -1 assim_region_control`
+      # First line of filter_control should have number of regions to be assimilated
+      set nregions = `head -1 assim_region_control`
+      echo "assimilating $nregions regions at " `date`>> filter_server.log
 
-# figure # batches of runs to do, from # ensemble members and # processors
-@ nbatch = $nregions / $NPROCS
-if ($nregions % $NPROCS != 0 ) @ nbatch++
-echo $nbatch batches will be executed
-#
-# Create a directory for each member to run in for namelists
-set element = 0
-set batch = 1
-while($batch <= $nbatch)
-   foreach node ( `cat $PBS_NODEFILE` )
-      @ element++
-      if ($element > $nregions) goto all_regions_done
+      # figure # batches of CAM runs to do, from # regions and # processors
+      @ nbatch = $nregions / $NPROCS
+      if ($nregions % $NPROCS != 0 ) @ nbatch++
+      echo $nbatch batches will be executed >> filter_server.log
 
-      $PBS_O_WORKDIR/assim_region.csh $PBS_O_WORKDIR $element ${USER}_tempdir${element} &
+      # Create a directory for each member to run in for namelists
+      set element = 0
+      set batch = 1
+      while($batch <= $nbatch)
+         foreach node ( `cat $PBS_NODEFILE` )
+            @ element++
+            if ($element > $nregions) goto all_regions_done
 
-      sleep 0.1
+            rsh $node "csh $PBS_O_WORKDIR/assim_region.csh $PBS_O_WORKDIR $element /scratch/local/tmp$user$$$element " &
 
-   end
-# Another way to monitor progress.  batchflag has other info to start,
-# so this echo can be removed and scripts will still work.
-      echo waiting to finish batch $batch  >> $PBS_O_WORKDIR/batchflag
-      wait
+         end
+         echo "waiting to finish batch $batch" `date`  >> filter_server.log
+         wait
 
-      sleep 1
+         @ batch++
+      end
+      all_regions_done:
 
-   @ batch++
-end
-all_regions_done:
-
-# Wait for all *background* processes to finish up
-wait
-
-#
-# signal to async_filter.csh to continue
-rm -f $PBS_O_WORKDIR/batchflag
-
-
-
-
-
+      # signal to async_filter.csh to continue
+      echo "Completed this assimilation at " `date` >> filter_server.log
+      echo --------- >> filter_server.log
       rm -f go_assim_regions
 
    endif
@@ -147,6 +145,5 @@ rm -f $PBS_O_WORKDIR/batchflag
 #--------------------------------------------------------------------------------------- 
 
 # No files found, wait and check again
-   sleep 1
+   #sleep 1
 end
-
