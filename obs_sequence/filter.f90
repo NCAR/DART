@@ -28,11 +28,13 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, &
    set_single_obs_value, get_obs_def_index
 use time_manager_mod, only : time_type, set_time, print_time
-use utilities_mod, only :  get_unit
+use utilities_mod, only :  get_unit, open_file, close_file, check_nml_error, &
+   file_exist
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
-   output_diagnostics, init_assim_model, get_state_vector_ptr
+   output_diagnostics, init_assim_model, get_state_vector_ptr, &
+   write_state_restart, read_state_restart
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod, only : obs_increment, update_from_obs_inc
 use cov_cutoff_mod, only : comp_cov_factor
@@ -47,21 +49,16 @@ type model_state_ptr_type
    real(r8), pointer :: state(:)
 end type model_state_ptr_type
 
-
 type(obs_sequence_type) :: seq, prior_seq, posterior_seq
 type(time_type) :: time, time2
 type(random_seq_type) :: random_seq
 
-real(r8), parameter :: cutoff = 0.2, radius = 2.0 * cutoff
-real(r8), parameter :: cov_inflate = 1.04_r8
-integer, parameter :: cache_size = 10
-character(len = 129) file_name
-
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit
-integer :: prior_state_unit, posterior_state_unit, num_obs_in_set
+integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
+integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer, parameter :: ens_size = 20
+
 integer :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
@@ -71,7 +68,7 @@ type(assim_model_type) :: x, ens(ens_size)
 real(r8) :: obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size)
 real(r8) ::  swath(ens_size), ens_mean
 real(r8), allocatable :: obs_err_cov(:), obs(:)
-real(r8) :: rms, sum_rms = 0.0_r8, cov_factor
+real(r8) :: cov_factor
 character(len = 129) :: ens_copy_meta_data(ens_size)
 
 ! Storage for caching close states
@@ -79,14 +76,46 @@ type(close_state_cache_type) :: cache
 integer, pointer :: num_close_ptr(:), close_ptr(:, :)
 real(r8), pointer :: dist_ptr(:, :)
 
+!----------------------------------------------------------------
+! Namelist input with default values
+!
+real(r8) :: cutoff = 1.0, cov_inflate = 1.0_r8
+integer :: cache_size = 10
+logical :: start_from_restart = .false., output_restart = .false.
+! ens_size needs to be added as parameter at some point, but requires 
+! massive changes to allocate storage
+!integer :: ens_size = 20
+
+character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
+                        restart_in_file_name = 'filter_restart_in', &
+                        restart_out_file_name = 'filter_restart_out'
+
+namelist /filter_nml/cutoff, cov_inflate, cache_size, &
+   start_from_restart, output_restart, &
+   obs_sequence_file_name, restart_in_file_name, restart_out_file_name
+!----------------------------------------------------------------
+
+
+! Begin by reading the namelist input
+if(file_exist('input.nml')) then
+   unit = open_file(file = 'input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(unit, nml = filter_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'filter_nml')
+   enddo
+ 11 continue
+   call close_file(unit)
+endif
 
 ! Input the obs_sequence
-write(*, *) 'input name of obs sequence file'
-read(*, *) file_name
 unit = get_unit()
-open(unit = unit, file = file_name)
+open(unit = unit, file = obs_sequence_file_name)
 seq = read_obs_sequence(unit)
 close(unit)
+! Count of number of sets in the sequence
+num_obs_sets = get_num_obs_sets(seq)
+
 
 ! Copy just the definitions part of the sequence to the two output obs sequences
 call obs_sequence_def_copy(prior_seq, seq)
@@ -100,53 +129,68 @@ end do
 call inc_num_obs_copies(prior_seq, ens_size, ens_copy_meta_data)
 call inc_num_obs_copies(posterior_seq, ens_size, ens_copy_meta_data)
 
-! Initialize the model now that obs_sequence is all set up
+! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
 model_size = get_model_size()
-
-! Initialize the control and ensemble states and set up direct pointers
-call init_assim_model(x)
-x_ptr%state => get_state_vector_ptr(x)
-do i = 1, ens_size
-   call init_assim_model(ens(i))
-   ens_ptr(i)%state => get_state_vector_ptr(ens(i))
-end do
 
 ! Initialize a cache for close state information
 call cache_init(cache, cache_size)
 
-! Get the initial condition
-call get_initial_condition(x)
-
 ! Set up diagnostic output for model state
-
 prior_state_unit = init_diag_output('prior_diag', &
    'prior ensemble state', ens_size, ens_copy_meta_data)
 posterior_state_unit = init_diag_output('posterior_diag', &
    'posterior ensemble state', ens_size, ens_copy_meta_data)
 
+!------------------- Read restart if requested ----------------------
+if(start_from_restart) then
+   unit = get_unit()
+   open(unit = unit, file = restart_in_file_name)
+   do i = 1, ens_size
+      write(*, *) 'trying to read restart ', i
+      call read_state_restart(ens(i), unit)
+   end do
+   close(unit)
+   write(*, *) 'successfully read state restart'
+!-----------------  Restart read in --------------------------------
+
+else
+
+!-----  Block to do cold start initialization of ensembles ----------
+! Initialize the control and ensemble states and set up direct pointers
+   call init_assim_model(x)
+   x_ptr%state => get_state_vector_ptr(x)
+   do i = 1, ens_size
+      call init_assim_model(ens(i))
+      ens_ptr(i)%state => get_state_vector_ptr(ens(i))
+   end do
+
+! Get the initial condition
+   call get_initial_condition(x)
+
 ! Advance for a long time (5 days) to get things started?
 ! This should all be parameterized and controlled
-time = set_time(0, 5)
-write(*, *) 'calling advance state for x 5 days'
-call advance_state(x, time)
-write(*, *) 'back from advance state for x 5 days'
+   time = set_time(0, 5)
+   write(*, *) 'calling advance state for x 5 days'
+   call advance_state(x, time)
+   write(*, *) 'back from advance state for x 5 days'
 
-! Reset the control model time to 0
-time = set_time(0, 0)
-call set_model_time(x, time)
+! Reset the control model time to 0; or a time specified in namelist
+   time = set_time(0, 0)
+   call set_model_time(x, time)
 
 ! Initialize a repeatable random sequence for perturbations
 ! Where should the magnitude of the perturbations come from here???
-call init_random_seq(random_seq)
+   call init_random_seq(random_seq)
 ! Perturb for ensembles; 
-do i = 1, ens_size
-   do j = 1, model_size
-      ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 1.0_r8)
+   do i = 1, ens_size
+      do j = 1, model_size
+         ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 1.0_r8)
+      end do
    end do
-end do
+!-------------------- End of cold start ensemble initialization block ------
+endif
 
-num_obs_sets = get_num_obs_sets(seq)
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
@@ -195,7 +239,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 
    ! Try out the cache
-   call get_close_cache(cache, seq, i, radius, num_obs_in_set, &
+   call get_close_cache(cache, seq, i, 2.0*cutoff, num_obs_in_set, &
       num_close_ptr, close_ptr, dist_ptr)
 
 
@@ -262,6 +306,16 @@ posterior_obs_unit = get_unit()
 open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
 call write_obs_sequence(posterior_obs_unit, posterior_seq)
 close(posterior_obs_unit)
+
+! Output a restart file if requested
+if(output_restart) then
+   unit = get_unit()
+   open(unit = unit, file = restart_out_file_name)
+   do i = 1, ens_size
+      call write_state_restart(ens(i), unit)
+   end do
+   close(unit)
+endif
 
 
 

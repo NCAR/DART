@@ -303,7 +303,7 @@ real(r8) :: this_dist
 
 ! For large models this will have to be VERY efficient; here can just search
 index = 0
-model_size = get_model_size
+model_size = get_model_size()
 do i = 1, model_size
    call get_state_meta_data(i, state_loc)
    this_dist = get_dist(location, state_loc)

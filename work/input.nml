@@ -12,6 +12,17 @@
    noise_amp = 0.0
 &end
 
+&filter_nml
+   cutoff = 0.2, 
+   cov_inflate = 1.0,
+   cache_size = 10,
+   start_from_restart = .true.,
+   output_restart = .true.
+   obs_sequence_file_name = "obs_seq_out",
+   restart_in_file_name = "filter_restart", 
+   restart_out_file_name = "filter_restart" 
+&end
+
 &assim_tools_nml
    cor_cutoff = 0.0
 &end

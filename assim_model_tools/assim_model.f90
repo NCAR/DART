@@ -305,7 +305,7 @@ real(r8) :: this_dist
 
 ! For large models this will have to be VERY efficient; here can just search
 index = 0
-model_size = get_model_size
+model_size = get_model_size()
 do i = 1, model_size
    call get_state_meta_data(i, state_loc)
    this_dist = get_dist(location, state_loc)
@@ -538,26 +538,25 @@ end subroutine write_state_restart
 
 
 
-function read_state_restart(file)
+subroutine read_state_restart(assim_model, file)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
 
 implicit none
 
-type(assim_model_type) :: read_state_restart
+type(assim_model_type), intent(out) :: assim_model
 integer, intent(in) :: file
 
 integer :: seconds, days
 
-! WARNING : TIME TYPE IS CURRENTLY DOING REGULAR REALS, NOT R8s
 read(file, *) seconds, days
-read_state_restart%time = set_time(seconds, days)
+assim_model%time = set_time(seconds, days)
 
 ! Read the state vector
-read(file, *) read_state_restart%state_vector
+read(file, *) assim_model%state_vector
 
-end function read_state_restart
+end subroutine read_state_restart
 
 
 
