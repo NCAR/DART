@@ -1,5 +1,6 @@
 perfect_model_obs/perfect_model_obs.f90
 assim_tools/assim_tools_mod.f90
+reg_factor/reg_factor_mod.f90
 sort/sort_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 obs_sequence/obs_sequence_mod.f90
