@@ -54,15 +54,15 @@ echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 foreach MODEL ( 9var MITgcm_annulus bgrid_solo cam wrf pe2lyr \
             lorenz_04 lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale )
 
-    echo "-------------------------------------------"
+    echo "----------------------------------------------------------"
     echo "Compiling $MODEL at "`date`
     echo ""
 
     cd ${DARTHOME}/models/${MODEL}/work
-    rm -f *.o *.mod filter Makefile input.nml.filter_default 
+    rm -f *.o *.mod filter Makefile input.nml.filter_default .cppdefs
     csh mkmf_filter   || exit $makenum
     make              || exit $modelnum
-    rm -f *.o *.mod filter Makefile input.nml.filter_default
+    rm -f *.o *.mod filter Makefile input.nml.filter_default .cppdefs
 
    @ makenum  = $makenum  + 1
    @ modelnum = $modelnum + 1
@@ -72,7 +72,7 @@ end
 # Lots of tests for L96
 #----------------------------------------------------------------------
 
-echo "-------------------------------------------"
+echo "----------------------------------------------------------"
 echo "Testing lorenz_96 (L96) at "`date`
 echo ""
 
