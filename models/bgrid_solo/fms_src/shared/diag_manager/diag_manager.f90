@@ -80,10 +80,10 @@ use          fms_mod, only: error_mesg, FATAL, WARNING, NOTE,          &
 
 use    diag_axis_mod, only: diag_axis_init, get_axis_length
 
-use  diag_output_mod, only: diag_output_init, write_axis_meta_data,  &
+use  diag_output_mod, only: diag_fieldtype, diag_output_init, write_axis_meta_data,  &
                             write_field_meta_data, done_meta_data, &
                             diag_field_out, diag_output_end,       &
-                            diag_flush, diag_fieldtype
+                            diag_flush 
 
 implicit none
 private
