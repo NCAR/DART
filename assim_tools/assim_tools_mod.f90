@@ -1295,8 +1295,8 @@ endif
 call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
 
 
-write(*, *) 'done with subroutine filter_assim reg_cov_inflate is ', reg_cov_inflate
-write(logfileunit, *) 'done with subroutine filter_assim reg_cov_inflate is ', reg_cov_inflate
+write(*, *) 'done with routine filter_assim reg_cov_inflate is ', reg_cov_inflate
+write(logfileunit, *) 'done with routine filter_assim reg_cov_inflate is ', reg_cov_inflate
 
 end subroutine filter_assim
 
