@@ -54,7 +54,7 @@ set TYPES = ../common/types_mod.f90
 
 #set MODEL = ../models/null_model/model_mod.f90
 #set MODEL = ../models/lorenz_63/model_mod.f90
- set MODEL = ../models/lorenz_96/new_model_mod.f90
+ set MODEL = ../models/lorenz_96/model_mod.f90
 #set MODEL = ../models/lorenz_63/new_model_mod.f90
 #set MODEL = ../models/9var/model_mod.f90
 
