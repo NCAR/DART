@@ -201,7 +201,7 @@ endif
 
 AdvanceTime : do i = 1, num_obs_sets
 
-   time = get_obs_sequence_time(seq, i)
+   call get_obs_sequence_time(seq, i, time)
    write(*, *) 'time of obs set ', i
    call print_time(time)
 
@@ -369,6 +369,7 @@ do i = 1, ens_size
 end do
 
 end subroutine inc_ens_swath
+
 
 
 

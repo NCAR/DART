@@ -520,14 +520,15 @@ end subroutine get_expected_obs
 
 
 
-function get_obs_sequence_time(sequence, index)
+
+subroutine get_obs_sequence_time(sequence, index, time)
 !-----------------------------------------------------
 !
 ! Returns the time of the index-th obs_set in the sequence.
 
 implicit none
 
-type(time_type)                     :: get_obs_sequence_time
+type(time_type), intent(out)        :: time
 type(obs_sequence_type), intent(in) :: sequence
 integer,                 intent(in) :: index
 
@@ -535,9 +536,9 @@ type(obs_set_type) :: obs_set
 
 call get_obs_set(obs_set, sequence, index)
 !!!obs_set = get_obs_set(sequence, index)
-get_obs_sequence_time = get_obs_set_time(obs_set)
+time = get_obs_set_time(obs_set)
 
-end function get_obs_sequence_time
+end subroutine get_obs_sequence_time
 
 
 
