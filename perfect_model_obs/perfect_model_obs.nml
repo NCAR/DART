@@ -6,7 +6,7 @@
    output_restart = .false.,
    restart_in_file_name = "perfect_ics",
    restart_out_file_name = "perfect_restart",
-   init_time_days = -1,
-   init_time_seconds = -1,
+   init_time_days = 0,
+   init_time_seconds = 0,
    output_interval = 1
 &end

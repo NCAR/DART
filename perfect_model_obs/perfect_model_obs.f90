@@ -76,7 +76,7 @@ logical :: start_from_restart = .false., output_restart = .false.
 integer :: async = 0
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer :: init_time_days = -1, init_time_seconds = -1, output_interval = 1
+integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1
 character(len = 129) :: restart_in_file_name = 'perfect_ics', &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name = 'obs_seq.in', &
