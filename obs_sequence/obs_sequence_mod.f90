@@ -381,6 +381,7 @@ type(obs_set_type), intent(out)     :: obs_set
 type(obs_sequence_type), intent(in) :: sequence
 integer,                 intent(in) :: indx
 
+! ????? Should this really do a copy???
 call obs_set_copy(obs_set, sequence%obs_sets(indx))
 
 end subroutine get_obs_set
@@ -426,9 +427,9 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, seq, indx)
-!!!obs_set = get_obs_set(seq, indx)
-def_index = os_get_obs_def_index(obs_set)
+!call get_obs_set(obs_set, seq, indx)
+!def_index = os_get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(seq%obs_sets(indx))
 
 call sd_get_diag_obs_err_cov(seq%def_list, def_index, cov)
 
@@ -454,9 +455,9 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, seq, indx)
-!!!obs_set = get_obs_set(seq, indx)
-def_index = os_get_obs_def_index(obs_set)
+!call get_obs_set(obs_set, seq, indx)
+!def_index = os_get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(seq%obs_sets(indx))
 
 call sd_get_num_close_states(seq%def_list, def_index, radius, num)
 
@@ -484,9 +485,9 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, seq, indx)
-!!!obs_set = get_obs_set(seq, indx)
-def_index = os_get_obs_def_index(obs_set)
+!call get_obs_set(obs_set, seq, indx)
+!def_index = os_get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(seq%obs_sets(indx))
 
 if(present(obs_num)) then
    call sd_get_close_states(seq%def_list, def_index, radius, num, &
@@ -521,9 +522,9 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, sequence, indx)
-!!!obs_set = get_obs_set(sequence, indx)
-def_index = os_get_obs_def_index(obs_set)
+!call get_obs_set(obs_set, sequence, indx)
+!def_index = os_get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(sequence%obs_sets(indx))
 
 if(present(num)) then
    call sd_get_expected_obs(sequence%def_list, def_index, state, obs, num)
