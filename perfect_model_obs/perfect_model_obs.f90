@@ -14,32 +14,27 @@ program perfect_model_obs
 ! Program to build a simple obs_sequence file for use in testing filters
 ! for spatial domains with one periodic dimension.
 
-use types_mod,        only : r8, missing_r
+use types_mod,        only : r8
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
                              initialize_utilities, finalize_utilities, register_module, logfileunit
-use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
+use time_manager_mod, only : time_type, set_time, print_time, operator(/=), operator(*), operator(+)
 
-use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
-   add_obs_set, write_obs_sequence, read_obs_sequence, associate_def_list, &
-   get_num_obs_sets, get_obs_set, get_obs_sequence_time, &
-   get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
-   get_obs_values, get_num_obs_copies, inc_num_obs_copies, set_obs_values, &
-   read_obs_sequence_def
+use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
+   get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
+   get_time_range_keys, get_obs_def, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
+   get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence
 
-use obs_def_mod, only : obs_def_type, init_obs_def
-use obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
-use obs_kind_mod, only : set_obs_kind
-use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
-   add_to_list, write_set_def_list
-use obs_set_mod, only : obs_set_type, init_obs_set, set_obs_set_time, write_obs_set, &
-   get_obs_set_time, get_num_obs
-use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
+use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
+
+use obs_model_mod,    only : get_expected_obs
+   
+
+use assim_model_mod, only  : assim_model_type, static_init_assim_model, get_model_size, &
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    get_closest_state_time_to, advance_state, set_model_time, &
    get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
    read_state_restart, write_state_restart, binary_restart_files
-use random_seq_mod, only : random_seq_type, init_random_seq, &
-   random_gaussian
+use random_seq_mod, only  : random_seq_type, init_random_seq, random_gaussian
 
 use netcdf, only : NF90_close
 
@@ -52,18 +47,20 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
-type(time_type)         :: time1, time2
+type(obs_type)          :: obs, next_obs
+type(obs_def_type)      :: obs_def
+type(time_type)         :: time1, time2, next_time
 type(random_seq_type)   :: random_seq
 
-integer :: i, j, iunit, unit_out, num_obs_in_set
-integer :: ierr, StateUnit, io
-
-! Need to set up namelists for controlling all of this mess, too!
-integer :: model_size, num_obs_sets
+integer :: i, j, iunit, unit_out
+integer :: ierr, state_unit, StateUnit, io
+integer :: model_size, key_bounds(2), num_obs
+integer, allocatable :: keys(:)
+logical :: is_there_one, out_of_range, is_this_last
+real(r8) :: true_obs(1), obs_value(1)
 
 type(assim_model_type) :: x(1)
-real(r8), allocatable :: obs_err_cov(:), obs(:), true_obs(:)
-character(len=129) :: copy_meta_data(2)
+character(len=129) :: copy_meta_data(2), file_name
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -102,13 +99,13 @@ if(file_exist('input.nml')) then
 endif
 write(logfileunit,nml=perfect_model_obs_nml)
 
-! Read in an observation sequence, only definitions part will be used (no data used)
+! Initialize the two obs type variables
+call init_obs(obs, 0, 0)
+call init_obs(next_obs, 0, 0)
 
-iunit = get_unit()
-open(file = obs_seq_in_file_name, unit = iunit)
-
-! Just read in the definition part of the obs sequence
-seq = read_obs_sequence_def(iunit)
+! Just read in the definition part of the obs sequence; expand to include observation and truth field
+call static_init_obs_sequence()
+call read_obs_seq(obs_seq_in_file_name, 2, 0, 0, seq)
 
 ! Set a time type for initial time if namelist inputs are not negative
 if(init_time_days >= 0) then
@@ -160,25 +157,31 @@ StateUnit  = init_diag_output(   'True_State', 'true state from control', 1, (/'
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)
 
-num_obs_sets = get_num_obs_sets(seq)
-
 ! Need space to put in the obs_values in the sequence;
 copy_meta_data(1) = 'observations'
 copy_meta_data(2) = 'truth'
+call set_copy_meta_data(seq, 1, copy_meta_data(1))
+call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
-! Really need a way to read in just the definitions part of an obs_sequence
-call inc_num_obs_copies(seq, 2, copy_meta_data)
+! Get the time of the first observation in the sequence
+write(*, *) 'number of obs in sequence is ', get_num_obs(seq)
+is_there_one = get_first_obs(seq, obs)
+! Test for no data at all here?
+call get_obs_def(obs, obs_def)
+next_time = get_obs_def_time(obs_def)
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
-Advance: do i = 1, num_obs_sets
-   call get_obs_sequence_time(seq, i, time1)
-   write(*, *) ' '
+Advance: do i = 1, get_num_times(seq)
+! Verify that starting search at obs works here
+   call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs, out_of_range, obs)
+   allocate(keys(num_obs))
+   call get_time_range_keys(seq, key_bounds, num_obs, keys)
    write(*, *) 'time of obs set ', i
-   call print_time(time1)
+   call print_time(next_time)
 
 ! Figure out time to advance to
-   time2 = get_closest_state_time_to(x(1), time1)
+   time2 = get_closest_state_time_to(x(1), next_time)
 ! Advance the state to this time; zero length advance is problem for B-grid so avoid
    if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, async)
 
@@ -187,36 +190,35 @@ Advance: do i = 1, num_obs_sets
       call output_diagnostics(    StateUnit, x(1), 1)
 
 ! How many observations in this set
-   num_obs_in_set = get_num_obs_in_set(seq, i)
-   write(*, *) 'num_obs_in_set is ', num_obs_in_set
+   write(*, *) 'num_obs_in_set is ', num_obs
 
-! Allocate storage for the observations and covariances
-   allocate(obs_err_cov(num_obs_in_set), &
-      true_obs(num_obs_in_set), obs(num_obs_in_set))
-
+! Can do this purely sequentially in perfect_model_obs for now if desired
+   do j = 1, num_obs
 ! Compute the observations from the state
-   call get_expected_obs(seq, i, get_model_state_vector(x(1)), true_obs)
-!   write(*, *) 'exact obs ', true_obs
+      call get_expected_obs(seq, keys(j:j), get_model_state_vector(x(1)), true_obs(1:1))
 
 ! Get the observational error covariance (diagonal at present)
-   call get_diag_obs_err_cov(seq, i, obs_err_cov)
+      call get_obs_from_key(seq, keys(j), obs)
+      call get_obs_def(obs, obs_def)
 
 ! Generate the synthetic observations by adding in error samples
-   do j = 1, num_obs_in_set
-      if (true_obs(j) /= missing_r) then
-         obs(j) = random_gaussian(random_seq, true_obs(j), sqrt(obs_err_cov(j)))
-      else
-         obs(j) = true_obs(j)
-      endif
-   end do
-!   write(*, *) 'obs with error added are ', obs
+      obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
+      call set_obs_values(obs, obs_value, 1)
+      call set_obs_values(obs, true_obs, 2)
 
 ! Insert the observations into the sequence first copy
-   call set_obs_values(seq, i, true_obs, 2)
-   call set_obs_values(seq, i,      obs, 1)
+      call set_obs(seq, obs, keys(j))
+
+   end do
+
+! Get the next time (if any) in the sequence
+   call get_next_obs(seq, obs, next_obs, is_this_last)
+   if(is_this_last) exit
+   call get_obs_def(next_obs, obs_def)
+   next_time = get_obs_def_time(obs_def)
 
 ! Deallocate the obs size storage
-   deallocate(obs_err_cov, true_obs, obs)
+   deallocate(keys)
 
 end do Advance
 
@@ -225,9 +227,7 @@ end do Advance
 ierr = NF90_close(StateUnit)
 
 ! Write out the sequence
-unit_out = get_unit()
-open(file = obs_seq_out_file_name, unit = unit_out, status = 'replace')
-call write_obs_sequence(unit_out, seq)
+call write_obs_seq(seq, obs_seq_out_file_name)
 
 ! Output a restart file if requested
 if(output_restart) then
