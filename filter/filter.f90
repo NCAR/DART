@@ -54,6 +54,7 @@ type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
 integer :: i, j, k, ind, iunit, io, istatus, days, secs, reg_series_unit
+integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: grp_size, grp_bot, grp_top, group
@@ -74,7 +75,7 @@ type(time_type)              :: ens_mean_time, ens_spread_time
 
 real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:)
 real(r8), allocatable  :: obs_err_var(:), obs(:)
-real(r8)               :: cov_factor, obs_mean(1), obs_spread(1), qc(1)
+real(r8)               :: cov_factor, qc(1)
 character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
 
 logical :: interf_provided
@@ -173,7 +174,11 @@ endif
 ! Start out with no previously used observations
 last_key_used = -99
 
-AdvanceTime : do 
+time_step_number = 0
+
+AdvanceTime : do
+
+   time_step_number = time_step_number + 1
 
    ! Get the model to a good time to use a next set of observations
    call move_ahead(ens, ens_time, ens_size, model_size, seq, last_key_used, &
@@ -196,7 +201,7 @@ AdvanceTime : do
    call filter_ensemble_inflate()
 
    ! Do prior state space diagnostic output as required
-   if(i / output_interval * output_interval == i)then 
+   if(time_step_number / output_interval * output_interval == time_step_number)then 
       call filter_state_space_diagnostics(PriorStateUnit)
    endif
 
@@ -275,7 +280,7 @@ AdvanceTime : do
          if(num_groups == 0) then
              reg_factor = 1.0_r8
          else
-            reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
+            reg_factor = comp_reg_factor(num_groups, regress, time_step_number, j, ind)
          endif
          if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
 
@@ -284,6 +289,7 @@ AdvanceTime : do
 
          ! Do the final update for this state variable
          ens(:, ind) = ens(:, ind) + reg_factor * ens_inc(:)
+
       end do
 
 !--------------------- End sequential filter section --------------
@@ -294,7 +300,7 @@ AdvanceTime : do
    end do Observations
 
    ! Do prior state space diagnostic output as required
-   if(i / output_interval * output_interval == i) &
+   if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
 
 ! Do posterior observation space diagnostics
@@ -321,7 +327,7 @@ call write_obs_seq(seq, obs_sequence_out_name)
 ! Output a restart file if requested
 call filter_output_restart()
 
-! Close regrssion time series file if needed
+! Close regression time series file if needed
 if(save_reg_series) close(reg_series_unit)
 
 write(logfileunit,*)'FINISHED filter.'
@@ -504,7 +510,7 @@ end subroutine filter_alloc_ens_size_storage
 
 subroutine filter_setup_obs_sequence()
 
-integer :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc, num_obs
+integer :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc
 real(r8) :: qc(1)
 character(len = 129) :: qc_meta_data = 'quality control'
 
