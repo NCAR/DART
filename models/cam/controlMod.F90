@@ -3,6 +3,10 @@
 
 module controlMod
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
   use shr_kind_mod, only: r8 => shr_kind_r8
   use clm_varpar        !parameter statements 
   use clm_varctl        !run control variables 
@@ -10,6 +14,14 @@ module controlMod
   use spmdMod           !spmd routines and variables
 
   implicit none
+
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
   save
 
 ! Namelist variables only used locally

@@ -18,6 +18,12 @@ use nag_wrap_mod, only : g05ddf_wrap
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer :: num_obs
 real, parameter :: variance = (1e6)**2
 real :: x, y, z, lon, length, lat

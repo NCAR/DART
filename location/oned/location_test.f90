@@ -1,11 +1,21 @@
 program location_test
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 ! Simple test program to exercise oned location module.
 
 use location_mod
 use types_mod
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type(location_type) :: loc1, loc2
 integer :: unit, i

@@ -12,6 +12,12 @@ use types_mod
 private
 public sort, index_sort
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 contains
 
 !=======================================================================

@@ -16,6 +16,11 @@ private
 
 public close_state_cache_type, cache_init, get_close_cache
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type close_state_cache_type
    private

@@ -21,6 +21,12 @@ private
 public num_obs, obs_var, take_obs, ens_ics, state_to_obs, &
        init_obs, take_single_obs, get_close_state, obs_loc
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer :: num_obs = 0
 
 ! Following is to allow initialization of obs_def_type

@@ -3,6 +3,10 @@
 
 module inicFileMod
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 !----------------------------------------------------------------------- 
 ! Purpose: 
 ! read and writes initial data netCDF history files
@@ -32,6 +36,13 @@ module inicFileMod
   use RtmMod      , only : volr
 #endif
   implicit none
+
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! netcdf data
 

@@ -25,6 +25,12 @@ private
 
 public bin_num, save_diagnostics, output_diagnostics, assim_diag_init
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type, public :: diag_type
    private
    integer  :: count, model_size, ens_size, num_var

@@ -6,6 +6,7 @@ module reg_factor_mod
 ! $Revision$
 ! $Date$
 ! $Author$
+!
 
 use types_mod
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
@@ -39,7 +40,17 @@ real(r8) :: time_mean_reg(40, 40)
 ! Global storage for bgrid mean regression factor file
 real(r8), allocatable :: obs_state_reg(:)
 
-contains
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
+
+CONTAINS
+
+
 
 function comp_reg_factor(num_groups, regress, time_index, &
    obs_index, state_index, obs_state_ind, obs_state_max)

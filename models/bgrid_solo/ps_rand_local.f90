@@ -1,8 +1,18 @@
 program ps_rand_local
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: num_sets, level, obs_kind, num, num_done
 real :: err_var, bot_lat, top_lat, bot_lon, top_lon, lat, lon

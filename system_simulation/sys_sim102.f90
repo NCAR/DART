@@ -23,6 +23,12 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type (random_seq_type) :: r
 integer, parameter :: num_tries = 1001
 double precision :: mean_abs_error(num_tries)

@@ -3,6 +3,10 @@
 
 subroutine parse_namelist
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -48,6 +52,12 @@ subroutine parse_namelist
 #endif
 
    implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 #include <comadj.h>
 #include <comctl.h>

@@ -32,6 +32,11 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
    awrite_state_restart, Aadvance_state
 
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
 ! will be excruciatingly costly (storage at least) in big models. 
@@ -50,13 +55,6 @@ integer :: model_size
 
 
 type(time_type) :: time_step
-
-! Everybody needs to know about this ... TJH Jan 28, 2003
-
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
 
 !-------------------------------------------------------------
 ! Namelist with default values

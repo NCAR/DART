@@ -23,6 +23,12 @@ public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get
    interactive_obs_def, &
    read_ncep_obs_def, get_seq_loc, get_obs_location4, get_obs_kind4
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! Need overloaded interface for init_obs_def
 interface init_obs_def
    module procedure init_obs_def1

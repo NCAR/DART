@@ -1,7 +1,3 @@
-!  $Source$
-!  $Revision$
-!  $Date$
-
 #include <misc.h>
 #include <params.h>
 
@@ -11,6 +7,11 @@
 !      history.F90 now has changes to translate prog_var <-> vector
 
 module history
+
+!  $Source$
+!  $Revision$
+!  $Date$
+
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: History module.  Contains data and functions for writing history files.

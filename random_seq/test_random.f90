@@ -12,6 +12,13 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use nag_wrap_mod, only : g05ddf_wrap
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer :: i, n1, n2
 double precision :: rb(10), r2(10)
 type (random_seq_type) :: r

@@ -23,6 +23,12 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type(time_type)         :: time, target_time
 type(assim_model_type) :: x(1)
 integer :: unit, ierr, io, model_size

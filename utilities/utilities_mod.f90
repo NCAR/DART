@@ -52,6 +52,12 @@ public file_exist, get_unit, error_mesg, check_nml_error, open_file, &
        close_file, print_version_number, output_err, &
        E_MSG, E_WARN, E_ERR, MESSAGE, WARNING, FATAL 
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 contains
 
 !#######################################################################

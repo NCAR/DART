@@ -38,6 +38,12 @@ public read_restart, write_restart, assim_tools_init, &
    obs_increment_group, obs_increment_particle, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 !============================================================================
 
 !---- namelist with default values

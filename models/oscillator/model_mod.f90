@@ -16,6 +16,12 @@ public init_model, get_model_size, init_conditions, adv_1step, advance, &
    adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
    model_output, model_get_close_states
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer, parameter :: model_size = 2
 double precision, parameter :: delta_t = 0.01
 double precision, parameter :: alpha = 0.1

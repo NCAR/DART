@@ -18,6 +18,12 @@ use nag_wrap_mod, only : g01haf_wrap
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer :: i, j, ifail = 0
 double precision :: x, y, rho
 

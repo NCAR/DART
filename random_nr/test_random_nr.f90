@@ -12,6 +12,12 @@ use random_nr_mod, only : random_seq_type, init_ran1, ran1, gasdev
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type (random_seq_type) :: r
 integer :: i, n
 double precision :: r1, dist, mean_dist

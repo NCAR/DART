@@ -20,6 +20,12 @@ use location_mod, only : location_type
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer :: prior_unit, posterior_unit, truth_unit, ens_size, model_size, copies
 type(location_type), allocatable :: location(:)
 character(len = 129), allocatable :: meta_data(:)

@@ -1,6 +1,16 @@
 program sys_sim401
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer n, n_samples, i, j
 double precision :: sd_ratio, alpha

@@ -1,5 +1,9 @@
 program trans_sv_pv
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
 !
@@ -12,6 +16,12 @@ program trans_sv_pv
 !         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
 !
 !----------------------------------------------------------------------
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 use types_mod
 use model_mod, only : model_type, init_model_instance, write_cam_init, &

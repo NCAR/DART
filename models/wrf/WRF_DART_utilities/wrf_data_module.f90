@@ -1,5 +1,16 @@
 MODULE wrf_data_module
+
+!  $Source$
+!  $Revision$
+!  $Date$
+
 TYPE wrf_data
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
    integer :: ncid  ! netcdf id for file
    integer :: bt_id, bt, sn_id, sn, we_id, we

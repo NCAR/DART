@@ -1,6 +1,16 @@
 ! program to read in wrf metadata and static data for DART
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 TYPE wrf_static_data_for_dart
 

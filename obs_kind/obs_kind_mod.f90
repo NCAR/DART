@@ -22,6 +22,12 @@ private
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
    interactive_kind, IDENTITY_OBSERVATION, set_ncep_obs_kind
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type obs_kind_type
    private
    integer :: index

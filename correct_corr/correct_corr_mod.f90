@@ -27,6 +27,12 @@ integer, parameter     :: n_mc = 10000
 public init_table, corr_update_from_obs_inc, corr_obs_increment, &
        get_correct_correlation
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 contains
 
 

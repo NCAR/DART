@@ -19,6 +19,12 @@ use qc_mod
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer :: i, j, k, ifail = 0
 double precision :: x, y, rho, ens(2, 20), obs(2), obs_variance(2), mean(2)
 

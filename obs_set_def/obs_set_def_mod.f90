@@ -27,6 +27,12 @@ public obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
    diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
    get_seq_loc, get_obs_location3, get_obs_kind3
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type obs_set_def_type
    private
    real(r8), pointer  :: diag_cov(:)

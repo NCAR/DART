@@ -23,6 +23,12 @@ public delta_t, adv_true_state
 public location_type, model_state_location, loc_dist, diag_output_index
 public model_get_close_state
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer, parameter :: reps = 1
 integer, parameter :: points_per_rep = 20
 integer, parameter :: model_size = reps * points_per_rep

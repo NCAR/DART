@@ -23,6 +23,12 @@ public init_model, get_model_size, lat_max, num_lon, init_conditions, &
    num_fourier, num_spherical, model_output, trans_spherical_to_grid, &
    get_close_pts, grid_to_dp, state_loc, model_get_close_states
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! Flag for using real data or perfect model
 logical, parameter :: use_real_data = .false.
 

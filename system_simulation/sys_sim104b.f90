@@ -17,12 +17,16 @@ program sys_sim104b
 
 ! USE THE FORMULA 1 / (ratio**2 + 1) to get factor and compute mean factor
 
-
-
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
    twod_gaussians, random_uniform
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type (random_seq_type) :: r
 double precision :: sd_ratio, mean_move, mean_move_2, alpha, ratio

@@ -40,6 +40,12 @@ public read_restart, write_restart, assim_tools_init, &
 
 !============================================================================
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 !---- namelist with default values
 
 real(r8) :: cor_cutoff = 0.0_r8

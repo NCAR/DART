@@ -1,5 +1,9 @@
 module model_mod
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                                       !!
 !!                   GNU General Public License                          !!

@@ -8,9 +8,16 @@ module cov_cutoff_mod
 !
 
 use types_mod
-
 use utilities_mod,  only : file_exist, open_file, check_nml_error, &
                            close_file
+
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 
 !============================================================================
 

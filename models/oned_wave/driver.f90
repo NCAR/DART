@@ -10,6 +10,12 @@ program driver
 use types_mod
 use model_mod
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 real(r8) :: x(model_size)
 
 integer :: i, j

@@ -33,6 +33,12 @@ public set_def_list_type, list_element_type, get_number_obs_subsets, &
    get_seq_loc, get_obs_location2, get_obs_kind2, &
    get_close_states, get_num_sets_in_list
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
 type set_def_list_type

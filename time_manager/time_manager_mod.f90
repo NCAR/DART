@@ -1,5 +1,9 @@
 module time_manager_mod
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 ! The use of fms utilities below have all been temporarily commented out.
 ! Should be re-examined.
 !!!use fms_mod, only: error_mesg, FATAL, write_version_number, stdout
@@ -69,6 +73,12 @@ public month_name
 public :: time_manager_init, print_time, print_date
 public :: write_time, read_time
 public :: nc_append_time, nc_get_tindex, nc_write_calendar_atts
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 !====================================================================
 

@@ -46,6 +46,11 @@ public obs_sequence_type, init_obs_sequence, &
    get_close_states, read_obs_sequence_def, obs_sequence_def_copy, &
    set_single_obs_value, get_obs_def_index
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type obs_sequence_type 
    private

@@ -1,10 +1,20 @@
 program id_set_def_stdin
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 use model_mod, only : static_init_model, get_model_size, &
    TYPE_PS, get_state_meta_data
 use location_mod, only : location_type
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: i, model_size, var_type
 type(location_type) :: location

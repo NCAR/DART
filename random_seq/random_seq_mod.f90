@@ -14,6 +14,11 @@ private
 public random_seq_type, init_random_seq, random_gaussian, &
    several_random_gaussians, random_uniform, twod_gaussians
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! Gives ability to generate unique repeatable sequences of random numbers
 ! using numerical recipes package. Needed to allow different assim algorithms 

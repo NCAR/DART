@@ -14,6 +14,12 @@ private
 
 public single_ob_qc, pair_ob_qc
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 contains
 
 !==========================================================================

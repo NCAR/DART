@@ -27,6 +27,12 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type (random_seq_type) :: r
 double precision, allocatable :: rnum(:)
 double precision :: sigma_y_p, y_p, sigma_y_o, y_o, var_of_var

@@ -1,8 +1,18 @@
 PROGRAM dart_tf_wrf
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 use wrf_data_module
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: status, unit
 logical :: dart_to_wrf

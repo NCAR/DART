@@ -19,6 +19,11 @@ public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
        LocationDims, LocationName, LocationLName
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type location_type
    private

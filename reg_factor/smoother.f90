@@ -3,7 +3,17 @@
 
 program smoother
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: i, j , n, width
 double precision, allocatable :: x(:), y(:), garb(:)

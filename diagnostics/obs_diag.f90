@@ -21,6 +21,12 @@ use typeSizes
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! Define a type for doing direct access to ensemble state vectors
 
 type(obs_sequence_type) :: seq, prior_seq, posterior_seq

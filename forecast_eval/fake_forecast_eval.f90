@@ -22,6 +22,12 @@ implicit none
 private
 public forecast_advance, forecast_out
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! Maximum number of observation periods for which forecasts should extend
 
 integer, parameter :: max_leads = 100, eval_freq = 10

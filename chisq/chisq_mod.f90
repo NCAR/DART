@@ -16,6 +16,12 @@ implicit none
 private
 public chsone
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer, parameter :: itmax = 100
 real(r8), parameter :: eps = 3.e-7
 real(r8), parameter :: fpmin = 1.e-30

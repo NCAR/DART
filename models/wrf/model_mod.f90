@@ -1,5 +1,9 @@
 module model_mod
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 ! Assimilation interface for WRF model
 
 !-----------------------------------------------------------------------
@@ -41,6 +45,12 @@ public     adv_1step,           &
            nc_write_model_vars
 
 !-----------------------------------------------------------------------
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 character(len=128) :: version = "$Id$"
 character(len=128) :: tag = "$Name$"

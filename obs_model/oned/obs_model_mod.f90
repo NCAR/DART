@@ -15,6 +15,12 @@ private
 
 public take_obs, interactive_def
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 contains
 
 !======================================================================

@@ -33,6 +33,12 @@ use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian, 
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! Define a type for doing direct access to ensemble state vectors
 type model_state_ptr_type
    real(r8), pointer :: state(:)

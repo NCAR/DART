@@ -15,6 +15,12 @@ private
 public num_obs, obs_var, take_obs, ens_ics
 public num_obs_int, obs_var_int, take_obs_int, obs_location
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer, parameter :: num_obs = model_size
 integer, parameter :: num_obs_int = model_size
 

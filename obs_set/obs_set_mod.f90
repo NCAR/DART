@@ -24,6 +24,12 @@ public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    get_obs_def_index, inc_num_obs_copies, read_obs_set_time, &
    obs_set_time_copy
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type obs_set_type
    private
 ! The two arrays will be allocated as (num_obs, num_copies)

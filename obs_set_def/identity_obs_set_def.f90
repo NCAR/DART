@@ -27,6 +27,12 @@ use model_mod, only : get_close_states_devel, get_state_meta_data
 
 implicit none
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 type(obs_def_type) :: obs_def
 type(set_def_list_type) :: set_def_list
 type(obs_set_def_type) :: obs_set_def

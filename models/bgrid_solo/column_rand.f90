@@ -1,5 +1,9 @@
 program column_rand
 
+!  $Source$
+!  $Revision$
+!  $Date$
+
 ! Allows creation of input file for generating a set of randomly located
 ! observation stations with full column of obs for b-grid model. Should be
 ! nearly identical to similar thing for CAM, etc.
@@ -7,6 +11,12 @@ program column_rand
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: num_sets, level, num_cols, num_levs, i
 real :: lat, lon, t_err_var, uv_err_var, ps_err_var

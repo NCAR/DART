@@ -18,6 +18,7 @@ private
 public conv_state_to_obs, obs_def_type, obs_m_rinv, state_obs_dep_type, &
    dep_obs, init_state_obs_dep, def_single_obs, get_state_var_indices
 
+
 ! Define a type for linear model operator
 
 type obs_def_type
@@ -27,6 +28,11 @@ type obs_def_type
    real(r8), pointer :: coef(:)
 end type obs_def_type
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! Type that keeps list of which observations depend on which state variables
 

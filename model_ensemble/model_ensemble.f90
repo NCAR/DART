@@ -17,6 +17,12 @@ private
 
 public model_ensemble_type
 
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! For efficiency, we risk the danger of direct pointers into the assim model
 ! storage for state. 
 type model_ensemble_type
