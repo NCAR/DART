@@ -434,6 +434,7 @@ AdvanceTime : do i = 1, num_obs_sets
    end do
 
        write(*, *) 'max ', maxval(inflate), 'mean inflate ', sum(inflate) / model_size
+       write(*, *) 'max loc is ', maxloc(inflate)
    
 ! Add a counter to keep track of observation / state variable pairs for regression history
    obs_state_ind = 0
@@ -529,26 +530,34 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Do the inflation as indicated by weighted mean
    do j = 1, model_size
-     my_mean_bias = bias_sum(j) / bias_wt(j)
-     bias_slope = 0.010
-     bias_intercept = 0.80
-     inflate_inc = (my_mean_bias - bias_intercept) * bias_slope
-     if(inflate_inc > 0.05) inflate_inc = 0.05
-     if(inflate_inc < -0.05) inflate_inc = -0.05
-     inflate(j) = inflate(j) + inflate_inc
-     if(inflate(j) < 1.0) inflate(j) = 1.0
+      my_mean_bias = bias_sum(j) / bias_wt(j)
+      bias_slope = 0.025
+      bias_intercept = -0.19
+      if(my_mean_bias > bias_intercept) then
+         inflate_inc = (my_mean_bias - bias_intercept) * bias_slope
+      else
+         inflate_inc = 0.0
+      end if
+
+! Reduce the increment if the weight is small
+      if(bias_wt(j) < 1.0) inflate_inc = inflate_inc * bias_wt(j) / 1.0
+
+      if(inflate_inc > 0.05) inflate_inc = 0.05
+      if(inflate_inc < -0.05) inflate_inc = -0.05
+      inflate(j) = inflate(j) + inflate_inc
+      if(inflate(j) < 1.0) inflate(j) = 1.0
    end do
 ! A background deflation of the growth rate for inflate, also
-!   do j = 1, model_size
-!      inflate(j) = inflate(j) - 0.0010
-!      if(inflate(j) < 1.0) inflate(j) = 1.0
-!   end do
+   do j = 1, model_size
+      inflate(j) = inflate(j) - 0.025
+      if(inflate(j) < 1.0) inflate(j) = 1.0
+   end do
 
 ! Output the inflate field
-!   do j = 1, model_size
-!      write(59, 333) inflate(j)
-!   end do
-!333 format(f8.5)
+   do j = 1, model_size
+      write(59, 333) inflate(j)
+   end do
+333 format(f8.5)
 
 ! Free up the storage for this obs set
    deallocate(obs_err_cov, obs)
