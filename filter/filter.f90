@@ -22,7 +22,8 @@ use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
    operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
                               check_nml_error, file_exist, error_handler, E_ERR, &
-                              logfileunit, initialize_utilities, finalize_utilities
+                              logfileunit, initialize_utilities, finalize_utilities, &
+                              timestamp
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
@@ -601,7 +602,7 @@ endif
 write(logfileunit,*)'FINISHED filter.'
 write(logfileunit,*)
 
-call finalize_utilities ! closes the log file.
+call timestamp(source,revision,revdate,'end') ! closes the log file.
 
 contains
 
