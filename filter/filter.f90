@@ -51,10 +51,10 @@ integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji, meta_data_size
 integer ::  output_ens_mean_index, output_ens_spread_index
 integer            :: model_size, num_obs_sets
-integer, parameter :: num_groups = 4
 integer :: grp_size, grp_bot, grp_top, group
-real(r8) :: regress(num_groups), reg_factor, median
+real(r8) :: reg_factor, median
 real(r8), allocatable :: sum_reg_factor(:, :), reg_factor_series(:, :, :)
+real(r8), allocatable :: regress(:)
 
 ! Storage for direct access to ensemble state vectors
 type(model_state_ptr_type), allocatable :: ens_ptr(:)
@@ -82,7 +82,6 @@ type(location_type) :: location
 
 ! Temporary storage to test adaptive error capability; should be moved to assim_tools
 integer :: slope_index = 0
-real(r8) :: confidence_slope = 0.0
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -97,6 +96,8 @@ integer :: init_time_days = -1, init_time_seconds = -1
 logical :: output_state_ens_mean = .true., output_state_ens_spread = .true.
 integer :: num_output_ens_members = 0
 integer :: output_interval = 1
+integer :: num_groups = 1
+real(r8) :: confidence_slope = 0.0
 
 character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
@@ -106,7 +107,8 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
    start_from_restart, output_restart, &
    obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
-   output_state_ens_spread, num_output_ens_members, output_interval
+   output_state_ens_spread, num_output_ens_members, output_interval, &
+   num_groups, confidence_slope
 !----------------------------------------------------------------
 
 ! Begin by reading the namelist input
@@ -127,7 +129,7 @@ write(*,*)'start_from_restart = ',start_from_restart
 write(*, *) 'the ensemble size is ', ens_size
 allocate(ens_ptr(ens_size), ens(ens_size), obs_inc(ens_size), &
    ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), &
-   ens_copy_meta_data(ens_size + 2))
+   ens_copy_meta_data(ens_size + 2), regress(num_groups))
 
 ! Set an initial size for the close state pointers
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
@@ -385,7 +387,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 
 !!! LOOKING AT TUNING FOR PS ONLY: THIS WORKED FOR FULLY ADAPTIVE!!!
-confidence_slope = 0.01
+!!!confidence_slope = 0.01
 !!!   write(*, *) 'UPDATED SLOPE IS ', confidence_slope
 
 
