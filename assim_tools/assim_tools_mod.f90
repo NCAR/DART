@@ -32,6 +32,7 @@ public read_restart, write_restart, assim_tools_init, &
    update_from_obs_inc, local_update_from_obs_inc, robust_update_from_obs_inc, &
    obs_inc_index, obs_inc4_index, obs_increment5, obs_increment6, &
    obs_increment7, obs_increment8, obs_increment9, obs_increment10, &
+   obs_increment11, obs_increment12, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias
 
 !============================================================================
@@ -185,6 +186,113 @@ a = sqrt(new_cov * prior_cov_inv)
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment
+
+
+
+
+subroutine obs_increment12(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+! Look at adding additional variance from systematic error. Add same
+! amount to each observation. 11 April, 2003.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2, inf_prior_cov, inf_prior_cov_inv
+! WARNING, CLEARLY ONLY WORKS FOR ONLY SURFACE PRESSURE OBS RIGHT NOW
+real(r8), parameter :: add_cov = 100.0
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+! Do the mean with the uninflated values???
+inf_prior_cov = prior_cov + add_cov
+inf_prior_cov_inv = 1.0 / inf_prior_cov
+new_cov = 1.0 / (inf_prior_cov_inv + obs_var_inv)
+if(new_cov > prior_cov) new_cov = prior_cov
+write(*, *) 'prior, new cov ', prior_cov, new_cov
+
+a = sqrt(new_cov * prior_cov_inv)
+
+obs_inc = a * (ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment12
+
+
+
+subroutine obs_increment11(ens, ens_size, obs, obs_var, obs_inc)
+!========================================================================
+! subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc)
+!
+! EAKF version of obs increment
+
+! Ideas from 9 April, 2003. Single global tuning factor that reduces
+! amount by which covariance is decreased by constant global factor.
+
+implicit none
+
+integer, intent(in) :: ens_size
+real(r8), intent(in) :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
+real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8):: prior_cov, sx, s_x2
+real(r8), parameter :: red_factor = 0.1
+
+integer :: i
+
+! Compute mt_rinv_y (obs error normalized by variance)
+obs_var_inv = 1.0 / obs_var
+
+! Compute prior covariance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_cov = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+! TEMPORARY LOOK AT INFLATING HERE; see notes from 12 Sept. 2001
+!!!cov = cov * 1.01 OR prior_cov = prior_cov * 1.01
+
+prior_cov_inv = 1.0 / prior_cov
+new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
+
+new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
+
+a = sqrt(new_cov * prior_cov_inv)
+write(*, *) 'red_factor,  original a', red_factor, a
+
+! Adjust a to reduce it
+a = 1.0 - red_factor * (1.0 - a)
+write(*, *) '1 - a ', 1.0 - a
+write(*, *) 'dif term ', red_factor * (1.0 - a)
+write(*, *) 'reduced a', a
+
+obs_inc = a * (ens - prior_mean) + new_mean - ens
+
+end subroutine obs_increment11
+
 
 
 
@@ -464,7 +572,7 @@ inf_prior_cov_inv = 1.0 / inf_prior_cov
 inf_new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
 
 ! Don't let obs increase uncertainty
-if(inf_new_cov > prior_cov) inf_new_cov = prior_cov
+if(inf_new_cov > 1.0 * prior_cov) inf_new_cov = 1.0 * prior_cov
 
 a = sqrt(inf_new_cov * prior_cov_inv)
 obs_inc = a * (ens - prior_mean) + new_mean - ens

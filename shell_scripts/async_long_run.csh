@@ -9,10 +9,10 @@ set i = 1
 while($i <= 2)
 
 # Run perfect model obs to get truth series
-   ./perfect_model_obs
+   csh ./async_filter.csh | ./perfect_model_obs
 
 # Run filter
-   ./filter
+   csh ./async_filter.csh | ./filter
 
 # Not yet; Run diagnostics to generate some standard figures
 

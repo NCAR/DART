@@ -1,20 +1,17 @@
 #!/bin/csh
 # Shell script to do repeated segment integrations
-# BUT, don't know how to do MATLAB from script yet
 
 set output_dir = out_
 
 # Have an overall outer loop
-set i = 1
-while($i <= 2)
+set i = 3
+while($i <= 4)
 
 # Run perfect model obs to get truth series
-   ./perfect_model_obs
+   csh cam_async.csh | ./cam_perfect_model_obs
 
 # Run filter
-   ./filter
-
-# Not yet; Run diagnostics to generate some standard figures
+   csh cam_async.csh | ./cam_filter
 
 # Move the netcdf files to an output directory
    mkdir $output_dir$i
@@ -22,7 +19,7 @@ while($i <= 2)
 
 # Copy the perfect model and filter restarts to start files
    cp filter_restart filter_ics
-   cp perfect_restart perfect_ics
+   cp cam_perfect_restart cam_perfect_ics
 
 # Move along to next iteration
    @ i++

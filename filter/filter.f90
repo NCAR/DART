@@ -42,7 +42,7 @@ use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
    linear_obs_increment, linear_update_from_obs_inc, look_for_bias, &
    obs_increment5, obs_increment6, obs_increment7, obs_increment8, &
-   obs_increment9, obs_increment10
+   obs_increment9, obs_increment10, obs_increment11, obs_increment12
 use cov_cutoff_mod,   only : comp_cov_factor
 
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
@@ -252,7 +252,7 @@ else
 ! TEMPORARY KLUGE FOR GETTING CAM ROLLING: NEED A PERTURB_MODEL_ENS interface
          call get_state_meta_data(j, location, var_type)
          if(var_type < 4) then 
-            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 1.0_r8) 
+            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 2.0_r8) 
          else
             ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 0.000001_r8) 
          endif

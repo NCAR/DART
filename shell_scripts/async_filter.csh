@@ -8,6 +8,12 @@
 if ($?First) then
    setenv First no
    rm -f async_may_go
+# Clean up any assim_model_ic and ud files and temp directories
+   rm -f assim_model_ic*
+   rm -f assim_model_ud*
+   rm -rf tempdir*
+# Call the model's initialization script to allow it to set up if needed
+   csh ./init_advance_model.csh
 endif
 
 while(1 == 1)
@@ -26,13 +32,13 @@ set element = 1
 while($element <= $num)
 # Make a temporary directory for this element's run
    mkdir tempdir$element
-# Copy the initial condition file to the temp directory
-   cp -r RESTART tempdir$element
+# Copy the appropriate ics file to the temp directory
    mv assim_model_state_ic$element tempdir$element/temp_ic
-   cp diag_table input.nml tempdir$element
 # Change to temp directory and run integrate
    cd tempdir$element
-   ../integrate_model  &
+   csh ../advance_model.csh 
+###   csh advance_model.csh &
+# Pop back up to main directory
    cd ..
    @ element++
 end
