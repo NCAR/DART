@@ -1,3 +1,7 @@
+!  $Source$
+!  $Revision$
+!  $Date$
+
 #include <misc.h>
 #include <params.h>
 
@@ -62,6 +66,13 @@ PRIVATE
       integer, pointer :: colperdim3(:)         ! number of valid elements per chunk or lat
    end type field_info
 !
+
+! let CVS fill strings ... DO NOT EDIT ...
+character(len=128) :: &
+   source   = "$Source$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 ! master_entry: elements of an entry in the master field list
 !
    type master_entry
