@@ -16,4 +16,3 @@ utilities/utilities_mod.f90
 time_manager/time_manager_mod.f90
 reg_factor/reg_factor_mod.f90
 platform/platform_mod.f90
-models/wrf/WRF_BC/module_netcdf_interface.f90
