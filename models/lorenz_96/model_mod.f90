@@ -27,7 +27,8 @@ public   get_model_size, &
          init_conditions, &
          model_get_close_states, &
          nc_write_model_atts, & 
-         nc_write_model_vars
+         nc_write_model_vars, &
+         pert_model_state
 
 
 ! let CVS fill strings ... DO NOT EDIT ...
@@ -645,6 +646,23 @@ contains
 
 end function nc_write_model_vars
 
+
+
+subroutine pert_model_state(state, pert_state, interf_provided)
+
+implicit none
+
+! Perturbs a model state for generating initial ensembles
+! Returning interf_provided means go ahead and do this with uniform
+! small independent perturbations.
+
+real(r8), intent(in) :: state(:)
+real(r8), intent(out) :: pert_state(:)
+logical, intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_state
 
 !===================================================================
 ! End of model_mod
