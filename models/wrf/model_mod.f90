@@ -28,7 +28,7 @@ use      location_mod, only : location_type, get_location, set_location, &
                               get_dist, horiz_dist_only, &
                               LocationDims, LocationName, LocationLName, &
                               query_location
-use     utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
+use     utilities_mod, only : file_exist, open_file, check_nml_error, &
                               close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit
@@ -86,6 +86,8 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, &
                      adv_mod_command
 
+!-----------------------------------------------------------------------
+
 ! Private definition of model variable types
 
 integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
@@ -93,10 +95,9 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_QV  = 7,   TYPE_QC  = 8,  TYPE_QR = 9,  &
                       TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
                       TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
-                      TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18
+                      TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18, &
+                      TYPE_TSK = 19
 
-
-!-----------------------------------------------------------------------
 
 real (kind=r8), PARAMETER    :: cp = 7.0_r8*gas_constant/2.0_r8
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
@@ -316,18 +317,6 @@ do id=1,num_domains
            wrf%dom(id)%sn)
    end if
 
-!!$   do j=1,wrf%dom(id)%sn
-!!$      do i=1,wrf%dom(id)%we
-!!$         if(wrf%dom(id)%longitude(i,j) < 0.0_r8) then
-!!$            write(6,*) wrf%dom(id)%longitude(i,j)+360_r8,wrf%dom(id)%latitude(i,j)
-!!$         else
-!!$            write(6,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%latitude(i,j)
-!!$         endif
-!!$      enddo
-!!$   enddo
-!!$
-!!$   stop
-
    if(debug) then
       write(6,*) ' corners of lat '
       write(6,*) wrf%dom(id)%latitude(1,1),wrf%dom(id)%latitude(wrf%dom(id)%we,1),  &
@@ -399,7 +388,7 @@ do id=1,num_domains
 
 !  build the map into the 1D DART vector for WRF data
 
-   wrf%dom(id)%number_of_wrf_variables = 7 + wrf%dom(id)%n_moist
+   wrf%dom(id)%number_of_wrf_variables = 8 + wrf%dom(id)%n_moist
    if( wrf%dom(id)%surf_obs ) then
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 5
    endif
@@ -411,7 +400,8 @@ do id=1,num_domains
    wrf%dom(id)%var_type(5)  = TYPE_T
    wrf%dom(id)%var_type(6)  = TYPE_MU
    wrf%dom(id)%var_type(7)  = TYPE_TSLB
-   ind = 7
+   wrf%dom(id)%var_type(8)  = TYPE_TSK
+   ind = 8
    if( wrf%dom(id)%n_moist >= 1) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_QV
@@ -513,6 +503,16 @@ do id=1,num_domains
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
+   dart_index = dart_index + 1
+   wrf%dom(id)%var_index(1,ind) = dart_index
+   dart_index = dart_index - 1 +  &
+        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
+   wrf%dom(id)%var_index(2,ind) = dart_index
+
+   ind = ind + 1                   ! *** tsk field ***
+   wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+   wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+   wrf%dom(id)%var_size(3,ind) = 1
    dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
    dart_index = dart_index - 1 +  &
@@ -1511,7 +1511,7 @@ if(horiz_dist_only) then
    do k = 2, wrf%dom(id)%bt
       close_lon_ind(is:ie) = close_lon_ind(fis:num)
       close_lat_ind(is:ie) = close_lat_ind(fis:num)
-      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_vert_ind(is:ie) = k
       close_dist(is:ie) = close_dist(fis:num)
       is = is + u_pts
       ie = ie + u_pts
@@ -1569,7 +1569,7 @@ if(horiz_dist_only) then
    do k = 2, wrf%dom(id)%bt
       close_lon_ind(is:ie) = close_lon_ind(fis:num)
       close_lat_ind(is:ie) = close_lat_ind(fis:num)
-      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_vert_ind(is:ie) = k
       close_dist(is:ie) = close_dist(fis:num)
       is = is + v_pts
       ie = ie + v_pts
@@ -1626,7 +1626,7 @@ if(horiz_dist_only) then
    do k = 2, wrf%dom(id)%bts
       close_lon_ind(is:ie) = close_lon_ind(fis:num)
       close_lat_ind(is:ie) = close_lat_ind(fis:num)
-      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_vert_ind(is:ie) = k
       close_dist(is:ie) = close_dist(fis:num)
       is = is + w_pts
       ie = ie + w_pts
@@ -1684,7 +1684,7 @@ if(horiz_dist_only) then
    do k = 2, wrf%dom(id)%bt
       close_lon_ind(is:ie) = close_lon_ind(fis:num)
       close_lat_ind(is:ie) = close_lat_ind(fis:num)
-      close_vert_ind(is:ie) = close_vert_ind(fis:num)
+      close_vert_ind(is:ie) = k
       close_dist(is:ie) = close_dist(fis:num)
       is = is + p_pts
       ie = ie + p_pts
@@ -2191,6 +2191,7 @@ if ( output_state_vector ) then
    call check(nf90_put_att(ncFileID, StateVarId, "T_units","K"))
    call check(nf90_put_att(ncFileID, StateVarId, "MU_units","Pa"))
    call check(nf90_put_att(ncFileID, StateVarId, "TSLB_units","K"))
+   call check(nf90_put_att(ncFileID, StateVarId, "TSK_units","K"))
    if( wrf%dom(num_domains)%n_moist >= 1) then
       call check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"))
    endif
@@ -2324,6 +2325,21 @@ do id=1,num_domains
    call check(nf90_put_att(ncFileID, var_id, "units", "K"))
    call check(nf90_put_att(ncFileId, var_id, "description", &
         "SOIL TEMPERATURE"))
+
+
+   !      float TSK(Time, south_north, west_east) ;
+   !         TSK:FieldType = 104 ;
+   !         TSK:MemoryOrder = "XY " ;
+   !         TSK:description = "SURFACE SKIN TEMPERATURE" ;
+   !         TSK:units = "K" ;
+   !         TSK:stagger = "" ;
+   call check(nf90_def_var(ncid=ncFileID, name="TSK_d0"//idom, xtype=nf90_real, &
+         dimids = (/ weDimID(id), snDimID(id), MemberDimID, &
+         unlimitedDimID /), varid  = var_id))
+   call check(nf90_put_att(ncFileID, var_id, "long_name", "tsk field"))
+   call check(nf90_put_att(ncFileID, var_id, "units", "K"))
+   call check(nf90_put_att(ncFileId, var_id, "description", &
+        "SURFACE SKIN TEMPERATURE"))
 
 
    !      float QVAPOR(Time, bottom_top, south_north, west_east) ;
@@ -2540,7 +2556,7 @@ do id=1,num_domains
    write( idom , '(I1)') id
 
    !----------------------------------------------------------------------------
-   ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,QV,QC,QR,...
+   ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,TSLB,TSK,QV,QC,QR,...
    !----------------------------------------------------------------------------
 
    !----------------------------------------------------------------------------
@@ -2643,6 +2659,19 @@ do id=1,num_domains
    call check(nf90_put_var( ncFileID, VarID, temp3d, &
                             start=(/ 1, 1, 1, copyindex, timeindex /) ))
    deallocate(temp3d)
+
+
+   !----------------------------------------------------------------------------
+   varname = 'TSK_d0'//idom
+   !----------------------------------------------------------------------------
+   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   i       = j + 1
+   j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
+   if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+   temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
+   call check(nf90_put_var( ncFileID, VarID, temp2d, &
+                            start=(/ 1, 1, copyindex, timeindex /) ))
 
 
    if( wrf%dom(id)%n_moist >= 1) then
@@ -2842,11 +2871,11 @@ subroutine adv_1step(x, Time)
 ! Does single time-step advance with vector state as
 ! input and output.
 
-real(r8), intent(inout) :: x(:)
+  real(r8), intent(inout) :: x(:)
 
 ! Time is needed for more general models like this; need to add in to 
 ! low-order models
-type(time_type), intent(in) :: Time
+  type(time_type), intent(in) :: Time
 
 end subroutine adv_1step
 
@@ -2860,11 +2889,11 @@ end subroutine end_model
 subroutine init_time(i_time)
 ! For now returns value of Time_init which is set in initialization routines.
 
-type(time_type), intent(out) :: i_time
+  type(time_type), intent(out) :: i_time
 
 !Where should initial time come from here?
 ! WARNING: CURRENTLY SET TO 0
-i_time = set_time(0, 0)
+  i_time = set_time(0, 0)
 
 end subroutine init_time
 
@@ -2874,7 +2903,7 @@ subroutine init_conditions(x)
 ! Reads in restart initial conditions and converts to vector
 
 ! Following changed to intent(inout) for ifc compiler;should be like this
-real(r8), intent(inout) :: x(:)
+  real(r8), intent(inout) :: x(:)
 
 end subroutine init_conditions
 
@@ -2909,20 +2938,20 @@ subroutine pres_to_zk(pres, mdl_v, n3, zk)
   integer,  intent(in)  :: n3
   real(r8), intent(in)  :: pres
   real(r8), intent(in)  :: mdl_v(0:n3)
-   real(r8), intent(out) :: zk
+  real(r8), intent(out) :: zk
 
-   integer   :: k
+  integer   :: k
 
-   zk = missing_r8
+  zk = missing_r8
 
   if (pres > mdl_v(0) .or. pres < mdl_v(n3)) return
 
   do k = 0,n3-1
      if(pres <= mdl_v(k) .and. pres >= mdl_v(k+1)) then
         zk = real(k) + (mdl_v(k) - pres)/(mdl_v(k) - mdl_v(k+1))
-            exit
-         endif
-      enddo
+        exit
+     endif
+  enddo
 
 end subroutine pres_to_zk
 
@@ -2945,11 +2974,11 @@ subroutine height_to_zk(obs_v, mdl_v, n3, zk)
   if (obs_v < mdl_v(0) .or. obs_v > mdl_v(n3)) return
 
   do k = 0,n3-1
-         if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
-            zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
-            exit
-         endif
-      enddo
+     if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
+        zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
+        exit
+     endif
+  enddo
 
 end subroutine height_to_zk
 
@@ -2977,7 +3006,7 @@ if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       pres3 = model_pressure_t(i  ,j+1,k,id,x)
       pres4 = model_pressure_t(i+1,j+1,k,id,x)
       v_p(k) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-enddo
+   enddo
 
    if(wrf%dom(id)%surf_obs ) then
 
@@ -2999,7 +3028,7 @@ enddo
 
       endif
 
-else
+   else
 
       pres1 = model_pressure_t(i  ,j  ,2,id,x)
       pres2 = model_pressure_t(i+1,j  ,2,id,x)
@@ -3008,7 +3037,7 @@ else
       v_p(0) = (3.0_r8*v_p(1) - &
            dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
 
-endif
+   endif
 
 else
 
@@ -3102,7 +3131,8 @@ endif
 
 elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
         var_type == type_ps  .or. var_type == type_u10 .or. &
-        var_type == type_v10 .or. var_type == type_t2 .or. var_type == type_q2 ) then
+        var_type == type_v10 .or. var_type == type_t2 .or. &
+        var_type == type_q2  .or. var_type == type_tsk) then
 
    if(wrf%dom(id)%surf_obs ) then
 
@@ -3331,7 +3361,8 @@ elseif( var_type == type_v ) then
 
    endif
 
-elseif( var_type == type_mu .or. var_type == type_ps) then
+elseif( var_type == type_mu .or. var_type == type_ps .or. &
+        var_type == type_tsk) then
 
    model_height = wrf%dom(id)%hgt(i,j)
 
