@@ -60,18 +60,22 @@ real(r8), allocatable :: obs_err_cov(:), obs(:), true_obs(:)
 character(len=129) :: copy_meta_data(2), file_name
 
 !-----------------------------------------------------------------------------
-! Namelist wit default values
+! Namelist with default values
 !
 logical :: start_from_restart = .false., output_restart = .false.
+logical :: async = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer :: init_time_days = -1, init_time_seconds = -1
+integer :: init_time_days = -1, init_time_seconds = -1, output_interval = 1
 character(len = 129) :: restart_in_file_name = 'perfect_restart_in', &
-                        restart_out_file_name = 'perfect_restart_out'
+                        restart_out_file_name = 'perfect_restart_out', &
+                        obs_seq_in_file_name = 'obs_seq.in', &
+                        obs_seq_out_file_name = 'obs_seq.out'
 
-
-namelist /perfect_model_obs_nml/ start_from_restart, output_restart, &
-   restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds
+namelist /perfect_model_obs_nml/ async, obs_seq_in_file_name, &
+   obs_seq_out_file_name, start_from_restart, output_restart, &
+   restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &
+   output_interval
 
 !------------------------------------------------------------------------------
 
@@ -88,13 +92,8 @@ if(file_exist('input.nml')) then
 endif
 
 ! Read in an observation sequence, only definitions part will be used (no data used)
-write(*, *) 'input file name for obs sequence definition [obs_seq.in]'
-read(*, *, iostat=ierr ) file_name
-if ( ierr < 0 ) then
-   file_name = "obs_seq.in"
-endif
 unit = 10
-open(file = file_name, unit = 10)
+open(file = obs_seq_in_file_name, unit = 10)
 ! Just read in the definition part of the obs sequence
 seq = read_obs_sequence_def(unit)
 
@@ -161,10 +160,11 @@ Advance: do i = 1, num_obs_sets
 ! Figure out time to advance to
    time2 = get_closest_state_time_to(x(1), time)
 ! Advance the state to this time; zero length advance is problem for B-grid so avoid
-   if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, .false.)
+   if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, async)
 
 ! Output the true state
-   call output_diagnostics(    StateUnit, x(1), 1)
+   if(i / output_interval * output_interval == i) &
+      call output_diagnostics(    StateUnit, x(1), 1)
 
 ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
@@ -201,14 +201,8 @@ end do Advance
 ierr = NF90_close(StateUnit)
 
 ! Write out the sequence
-write(*, *) 'What is file name for output obs sequence? [obs_seq.out]'
-read(*, *, iostat=ierr) file_name
-if ( ierr < 0 ) then
-   file_name = "obs_seq.out"
-endif
-!unit_out = open_file(file_name, action = 'write')
 unit_out = 11
-open(file = file_name, unit = 11)
+open(file = obs_seq_out_file_name, unit = 11)
 call write_obs_sequence(unit_out, seq)
 
 ! Output a restart file if requested

@@ -97,6 +97,7 @@ integer :: init_time_days = -1, init_time_seconds = -1
 ! Control diagnostic output for state variables
 logical :: output_state_ens_mean = .true., output_state_ens_spread = .true.
 integer :: num_output_ens_members = 0
+integer :: output_interval = 1
 
 character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
@@ -106,7 +107,7 @@ namelist /filter_nml/async, ens_size, cutoff, cov_inflate, cache_size, &
    start_from_restart, output_restart, &
    obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
-   output_state_ens_spread, num_output_ens_members
+   output_state_ens_spread, num_output_ens_members, output_interval
 !----------------------------------------------------------------
 
 ! Begin by reading the namelist input
@@ -269,13 +270,16 @@ AdvanceTime : do i = 1, num_obs_sets
    end do
 
 ! Output state diagnsotics as required: NOTE: Prior has been inflated
-   do j = 1, num_output_ens_members
-      call output_diagnostics(     PriorStateUnit, ens(j), j)
-   end do
+   if(i / output_interval * output_interval == i) then
+      do j = 1, num_output_ens_members
+         call output_diagnostics(     PriorStateUnit, ens(j), j)
+      end do
+   end if
 ! Output ensemble mean if requested
-   if(output_state_ens_mean) call output_diagnostics(PriorStateUnit, ens_mean, output_ens_mean_index)
+   if(output_state_ens_mean .and. i / output_interval * output_interval == i) &
+      call output_diagnostics(PriorStateUnit, ens_mean, output_ens_mean_index)
 ! Compute and output ensemble spread if requested
-   if(output_state_ens_spread) then
+   if(output_state_ens_spread  .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_spread_ptr%state(k) = get_ens_spread(ens_ptr, &
             ens_mean_ptr%state(k), ens_size, k)
@@ -344,20 +348,24 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Output posterior diagnostics
 ! Output state diagnostics as requested
-   do j = 1, num_output_ens_members
-        call output_diagnostics(     PosteriorStateUnit, ens(j), j)
-   end do
+   if(i / output_interval * output_interval == i) then
+      do j = 1, num_output_ens_members
+          call output_diagnostics(     PosteriorStateUnit, ens(j), j)
+      end do
+   end if
 ! Compute ensemble mean if either mean or spread to be output
-   if(output_state_ens_mean .or. output_state_ens_spread) then
+   if(output_state_ens_mean .or. output_state_ens_spread  &
+      .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_mean_ptr%state(k) = get_ens_mean(ens_ptr, ens_size, k)
       end do
    endif
 
 ! Output an ensemble mean if requested
-   if(output_state_ens_mean) call output_diagnostics(PosteriorStateUnit, ens_mean, output_ens_mean_index)
+   if(output_state_ens_mean  .and. i / output_interval * output_interval == i) &
+      call output_diagnostics(PosteriorStateUnit, ens_mean, output_ens_mean_index)
 ! Compute and output state_ens_spread if requested
-   if(output_state_ens_spread) then
+   if(output_state_ens_spread  .and. i / output_interval * output_interval == i) then
       do k = 1, model_size
          ens_spread_ptr%state(k) = get_ens_spread(ens_ptr, &
             ens_mean_ptr%state(k), ens_size, k)
