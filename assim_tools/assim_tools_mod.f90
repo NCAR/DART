@@ -21,7 +21,7 @@ use random_seq_mod, only : random_seq_type, random_gaussian, &
 
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
    init_obs, get_obs_from_key, get_obs_def, get_obs_values, get_qc, set_qc, &
-   set_obs
+   set_obs, get_copy_meta_data
    
 use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location
 use cov_cutoff_mod, only   : comp_cov_factor
@@ -592,7 +592,7 @@ real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series
 
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
-integer :: num_close_ptr(1), index
+integer :: num_close_ptr(1), indx
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
 real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
@@ -608,7 +608,7 @@ type(location_type) :: obs_loc(num_obs_in_set)
 ! Set an initial size for the close state pointers
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
-write(*, *) 'initializing an observation temporary', get_num_copies(seq), get_num_qc(seq)
+!write(*, *) 'initializing an observation temporary', get_num_copies(seq), get_num_qc(seq)
 ! Construnct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
@@ -620,19 +620,19 @@ do i = 1, num_obs_in_set
 end do
 
 ! Reorder the observations to get rid of the ones that can't be recomputed first
-index = 1
+indx = 1
 do i = 1, num_obs_in_set
    if(.not. compute_obs(i)) then
-      order(index) = i
-      index = index + 1
+      order(indx) = i
+      indx = indx + 1
    endif
 end do
 
 ! Then put in all the ones that can be recomputed
 do i = 1, num_obs_in_set
    if(compute_obs(i)) then
-      order(index) = i
-      index = index + 1
+      order(indx) = i
+      indx = indx + 1
    endif
 end do
 
@@ -788,9 +788,9 @@ end subroutine seq_filter_assim
 
 !===========================================================================
 
-subroutine filter_assim_region(num_domains, my_domain, domain_size, ens, ens_obs_in, compute_obs, &
-   ens_size, model_size, num_obs_in_set, num_groups, seq, keys, obs_val_index, confidence_slope, &
-   cutoff, save_reg_series, reg_series_unit, my_state)
+subroutine filter_assim_region(num_domains, my_domain, domain_size, ens_size, model_size, &
+   num_groups, num_obs_in_set, compute_obs, obs_val_index, confidence_slope, cutoff, &
+   save_reg_series, reg_series_unit, ens, ens_obs_in, seq, keys, my_state)
 
 integer, intent(in) :: num_domains, my_domain, domain_size
 integer, intent(in) :: ens_size, model_size, num_groups, keys(num_obs_in_set), num_obs_in_set
@@ -803,7 +803,7 @@ real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series, my_state(model_size)
 
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
-integer :: num_close_ptr(1), index
+integer :: num_close_ptr(1), indx
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
 real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
@@ -823,12 +823,12 @@ integer, allocatable :: indices(:)
 ! Generate an array with the indices of my state variables
 allocate(indices(domain_size))
 inv_indices = 0
-index = 1
+indx = 1
 do i = 1, model_size
    if(my_state(i)) then
-      indices(index) = i
-      inv_indices(i) = index
-      index = index + 1
+      indices(indx) = i
+      inv_indices(i) = indx
+      indx = indx + 1
    endif
 end do 
 
@@ -845,7 +845,7 @@ ens_obs = ens_obs_in
 ! Set an initial size for the close state pointers
 allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
 
-write(*, *) 'initializing an observation temporary', get_num_copies(seq), get_num_qc(seq)
+!write(*, *) 'initializing an observation temporary', get_num_copies(seq), get_num_qc(seq)
 ! Construnct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
@@ -857,19 +857,19 @@ do i = 1, num_obs_in_set
 end do
 
 ! Reorder the observations to get rid of the ones that can't be recomputed first
-index = 1
+indx = 1
 do i = 1, num_obs_in_set
    if(.not. compute_obs(i)) then
-      order(index) = i
-      index = index + 1
+      order(indx) = i
+      indx = indx + 1
    endif
 end do
 
 ! Then put in all the ones that can be recomputed
 do i = 1, num_obs_in_set
    if(compute_obs(i)) then
-      order(index) = i
-      index = index + 1
+      order(indx) = i
+      indx = indx + 1
    endif
 end do
 
@@ -1054,7 +1054,7 @@ type(obs_sequence_type), intent(inout) :: seq
 real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series
 
-integer :: i, j, num_domains, domain_size, index
+integer :: i, j, num_domains, domain_size, indx, obs_val_index
 logical :: compute_obs(num_obs_in_set), my_state(model_size)
 real(r8), allocatable :: ens(:, :)
 integer, allocatable :: indices(:)
@@ -1065,10 +1065,22 @@ compute_obs = compute_obs_in
 ! Set compute obs to false for all obs for easy parallel testing
 compute_obs = .false.
 
-! WARNING: NEED TO AUTOMATE DETERMINATION OF WHICH COPY HAS ACTUAL OBS!!!
+! Determine which copy has actual obs
+do j = 1, get_num_copies(seq)
+   obs_val_index = j
+   ! Need to look for 'observation'
+   if(index(get_copy_meta_data(seq, j), 'observation') > 0) goto 444
+end do
+! Falling of end means 'observations' not found; die
+call error_handler(E_ERR,'filter_assim', &
+        'Did not find observation copy with metadata "observation"', &
+         source, revision, revdate)
+
+
 ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL
 ! SEQUENTIAL ANSWER
-num_domains = 2
+444 continue
+num_domains = 1
 
 do j = 1, num_domains
 
@@ -1082,12 +1094,11 @@ do j = 1, num_domains
    ! Generate an array with the indices of my state variables
    allocate(ens(ens_size, domain_size), indices(domain_size))
 
-   write(*, *) 'domain size is ', domain_size
-   index = 1
+   indx = 1
    do i = 1, model_size
       if(my_state(i)) then
-         indices(index) = i
-         index = index + 1
+         indices(indx) = i
+         indx = indx + 1
       endif
    end do 
 
@@ -1095,9 +1106,9 @@ do j = 1, num_domains
 !!!   call get_ensemble_region(ens, ens_time, state_vars_in = indices)
 
 ! Do ensemble filter update for this region
-   call filter_assim_region(num_domains, j, domain_size, ens, ens_obs, compute_obs, &
-      ens_size, model_size, num_obs_in_set, num_groups, seq, keys, 1, confidence_slope, cutoff, &
-      save_reg_series, reg_series_unit, my_state)
+   call filter_assim_region(num_domains, j, domain_size, ens_size, model_size, num_groups, &
+      num_obs_in_set, compute_obs, 1, confidence_slope, cutoff, save_reg_series, &
+      reg_series_unit, ens, ens_obs, seq, keys, my_state)
 
    ! Put this region into storage
 !!!   call put_ensemble_region(ens, ens_time, state_vars_in = indices)
