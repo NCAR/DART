@@ -21,12 +21,20 @@ module model_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r8, deg2rad, rad2deg, missing_r8
-use time_manager_mod, only : time_type, set_time
-use     location_mod, only : location_type, get_location, set_location, get_dist, &
-                             LocationDims, LocationName, LocationLName, query_location
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             register_module, error_handler, E_ERR, E_MSG, logfileunit
+use               types_mod, only : r8, deg2rad, rad2deg, missing_r8
+use        time_manager_mod, only : time_type, set_time
+use            location_mod, only : location_type, get_location, set_location, &
+                                    get_dist, &
+                                    LocationDims, LocationName, LocationLName, &
+                                    query_location
+use           utilities_mod, only : file_exist, open_file, check_nml_error, &
+                                    close_file, &
+                                    register_module, error_handler, E_ERR, &
+                                    E_MSG, logfileunit
+use module_netcdf_interface, only : netcdf_read_write_var
+use            obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
+                                    KIND_P, KIND_TD, KIND_VR, &
+                                    KIND_REF
 
 use netcdf
 use typesizes
@@ -41,9 +49,8 @@ public     get_model_size,                    &
            model_interpolate,                 &
            get_model_time_step,               &
            static_init_model,                 &
-           netcdf_read_write_var,             &
            model_get_close_states,            &
-           get_wrf_date, set_wrf_date,        &
+           get_wrf_date,                      &
            output_wrf_time,                   &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
@@ -89,12 +96,8 @@ integer, parameter :: TYPE_U = 1, TYPE_V = 2, TYPE_W = 3, TYPE_GZ = 4, &
 real (kind=r8), PARAMETER    :: gas_constant = 287.04_r8
 real (kind=r8), PARAMETER    :: gas_constant_v = 461.51_r8
 real (kind=r8), PARAMETER    :: cp = 1004.0_r8
-real (kind=r8), PARAMETER    :: t_kelvin = 273.15_r8
-real (kind=r8), PARAMETER    :: gamma = 1.4_r8
 
 real (kind=r8), PARAMETER    :: kappa = gas_constant / cp
-real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
-real (kind=r8), PARAMETER    :: rd_over_rv1 = 1.0 - rd_over_rv
 
 !  Earth constants:
 real (kind=r8), PARAMETER    :: gravity = 9.81_r8
@@ -108,14 +111,14 @@ real (kind=r8), PARAMETER    :: ps0 = 100000.0_r8
 
 TYPE wrf_static_data_for_dart
 
-   integer  :: bt, bts, sn, sns, we, wes 
-   real(r8) :: p_top, dx, dy, dt 
-   integer  :: map_proj 
-   real(r8) :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1 
+   integer  :: bt, bts, sn, sns, we, wes
+   real(r8) :: p_top, dx, dy, dt
+   integer  :: map_proj
+   real(r8) :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1
 
    integer  :: n_moist
    real(r8), dimension(:),     pointer :: znu, dn, dnw
-   real(r8), dimension(:,:),   pointer :: mub, latitude, longitude
+   real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
    real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
    real(r8), dimension(:,:,:), pointer :: phb
 
@@ -175,8 +178,11 @@ if(file_exist('input.nml')) then
    wrf%n_moist = num_moist_vars
 
    if ( debug ) then
-      write(*,'(''num_moist_vars = '',i3)')num_moist_vars
       write(*,'(''wrf%n_moist = '',i3)')wrf%n_moist
+      if( wrf%n_moist > 6) then
+         call error_handler(E_ERR,'static_init_model', &
+              'num_moist_vars is too large.', source, revision,revdate)
+      endif
       if ( output_state_vector ) then
          write(*,*)'netcdf file in state vector format'
       else
@@ -239,9 +245,11 @@ call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
 wrf%dt = dt
 if(debug) write(6,*) ' dt is ',dt
 
-call netcdf_read_write_var( "P_TOP", ncid, var_id, zero_d,        &
-                            start, kount, stride, map, 'INPUT ', debug, 1  )
-wrf%p_top = zero_d(1)
+!!$call netcdf_read_write_var( "P_TOP", ncid, var_id, zero_d,        &
+!!$                            start, kount, stride, map, 'INPUT ', debug, 1  )
+!!$wrf%p_top = zero_d(1)
+call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%p_top) )
 if(debug) write(6,*) ' p_top is ',wrf%p_top
 
 call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', map_proj) )
@@ -374,6 +382,10 @@ end if
 
 allocate(wrf%mapfac_m(1:wrf%we,1:wrf%sn))
 call netcdf_read_write_var( "MAPFAC_M",ncid, var_id, wrf%mapfac_m,        &
+                            start, kount, stride, map, 'INPUT ', debug, 3  )
+
+allocate(wrf%hgt(1:wrf%we,1:wrf%sn))
+call netcdf_read_write_var( "HGT",ncid, var_id, wrf%hgt,        &
                             start, kount, stride, map, 'INPUT ', debug, 3  )
 
 kount(1)  = wrf%wes
@@ -569,56 +581,6 @@ contains
        trim(nf90_strerror(istatus)), source, revision, revdate)
   end subroutine check
 end subroutine netcdf_read_write_char
-!**********************************************************************
-
-subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
-                                  start, kount, stride, map, in_or_out, debug, ndims )
-
-! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
-! module routine. There used to be TWO routines that did the same thing.
-! 
-! As such 'kount', 'stride','map' all become meaningless because
-! the whole process is slaved to simply replace an existing netcdf
-! variable with a conformable variable -- no possibility for 
-! us to write a subset of the domain.
-
-integer                    :: ncid, var_id, ndims
-real(r8), dimension(ndims) :: var
-character (len=6)          :: in_or_out
-integer, dimension(ndims)  :: start, kount, stride, map
-character (len=*)          :: variable
-logical                    :: debug
-character (len=129)        :: error_string
-
-if(debug) write(6,*) ' var for io is ',variable
-call check(  nf90_inq_varid(ncid, variable, var_id) )
-if(debug) write(6,*) variable, ' id = ',var_id
-
-if( in_or_out(1:5) == "INPUT" ) then
-
-  call check( nf90_get_var(ncid, var_id, var, start=start, count=kount, stride=stride) )
-
-else if( in_or_out(1:6) == "OUTPUT" ) then
-
-  call check( nf90_put_var(ncid, var_id, var, start, kount, stride, map) )
-
-else
-
-  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
-  call error_handler(E_ERR,'netcdf_read_write_var', &
-       error_string, source, revision,revdate)
-
-end if
-
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_var', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-  end subroutine check
-end subroutine netcdf_read_write_var
 
 !#######################################################################
 
@@ -805,15 +767,16 @@ real(r8), dimension (wrf%bt)    :: fld
 real(r8)                        :: p1,p2,p3,p4,a1
 
 if(present(rstatus)) rstatus = 0.0_r8
+if(present(istatus)) istatus = 0
 
 xyz_loc(:) = get_location(location)
 call llxy(xyz_loc(1),xyz_loc(2),xloc,yloc)
-call toGrid(xloc,wrf%we,i,dx,dxm)
-call toGrid(yloc,wrf%sn,j,dy,dym)
+
+call toGrid(xloc,i,dx,dxm)
+call toGrid(yloc,j,dy,dym)
+
 !  get model pressure profile
 call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_p,p1,p2,p3,p4)
-!  get model height profile
-call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_h)
 
 if(nint(query_location(location,'which_vert')) == 1) then
 
@@ -823,11 +786,13 @@ if(nint(query_location(location,'which_vert')) == 1) then
 else if(nint(query_location(location,'which_vert')) == 2) then
    ! get pressure vertical co-ordinate
    call to_zk(xyz_loc(3), v_p, wrf%bt, v_interp_p,zloc)
-   if(debug.and.obs_kind /=3) print*,' obs is by pressure and zloc =',zloc
+   if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
    if(debug) print*,'model pressure profile'
    if(debug) print*,v_p
 else if(nint(query_location(location,'which_vert')) == 3) then
-   ! get height vertical co-ordinate
+!  get model height profile
+   call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%bt,x,v_h)
+!  get height vertical co-ordinate
    call to_zk(xyz_loc(3), v_h, wrf%bt, v_interp_h,zloc)
    if(debug) print*,' obs is by height and zloc =',zloc
 else if(nint(query_location(location,'which_vert')) == -1) then
@@ -839,73 +804,125 @@ else
 
 end if
 ! Get the desired field to be interpolated
-if( obs_kind == 1 ) then                 ! U
-   do k=1,wrf%bt
-      i1 = get_wrf_index(i,j,k,TYPE_U)
-      i2 = get_wrf_index(i,j+1,k,TYPE_U)
+if( obs_kind == KIND_U ) then                 ! U
 
-      fld(k) = dym*(dxm*(x(i1) + x(i1+1))*.5 + dx*(x(i1+1)+x(i1+2))*0.5) + &
-                dy*(dxm*(x(i2) + x(i2+1))*.5 + dx*(x(i2+1)+x(i2+2))*0.5)
-      if(debug) print*,k,' model u profile ',fld(k)
-   end do
-else if( obs_kind == 2) then                 ! V
-   do k=1,wrf%bt
-      i1 = get_wrf_index(i,j,k,TYPE_V)
-      i2 = get_wrf_index(i,j+1,k,TYPE_V) 
-      i3 = get_wrf_index(i,j+2,k,TYPE_V)
+   if(i >= 1 .and. i+2 <= wrf%var_size(1,TYPE_U) .and. &
+      j >= 1 .and. j   <  wrf%var_size(2,TYPE_U)) then
 
-      fld(k) = dym*(dxm*(x(i1) + x(i2))*.5 + dx*(x(i1+1)+x(i2+1))*0.5) + &
-                dy*(dxm*(x(i2) + x(i3))*.5 + dx*(x(i2+1)+x(i3+1))*0.5)
-      if(debug) print*,k,' model v profile ',fld(k)
-   end do
-else if( obs_kind == 4 ) then                ! T
-   do k=1,wrf%bt
-      i1 = get_wrf_index(i,j,k,TYPE_T)
-      i2 = get_wrf_index(i,j+1,k,TYPE_T)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
-      if(debug) print*,k,' model temp profile ',fld(k)
-   end do
-else if( obs_kind == 5) then                ! Q
-   do k=1,wrf%bt
+      do k=1,wrf%bt
+         i1 = get_wrf_index(i,j,k,TYPE_U)
+         i2 = get_wrf_index(i,j+1,k,TYPE_U)
 
-      i1 = get_wrf_index(i,j,k,TYPE_QV)
-      i2 = get_wrf_index(i,j+1,k,TYPE_QV)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      fld(k) = a1 /(1.0 + a1)
-      if(debug) print*,k,' model q profile ',fld(k)
-   end do
+         fld(k) = dym*(dxm*(x(i1) + x(i1+1))*.5 + dx*(x(i1+1)+x(i1+2))*0.5) + &
+                   dy*(dxm*(x(i2) + x(i2+1))*.5 + dx*(x(i2+1)+x(i2+2))*0.5)
+         if(debug) print*,k,' model u profile ',fld(k)
+      end do
+
+   else
+
+      fld(:) =  missing_r8
+
+   endif
+
+else if( obs_kind == KIND_V) then                 ! V
+
+   if(i >= 1 .and. i   <  wrf%var_size(1,TYPE_V) .and. &
+      j >= 1 .and. j+2 <= wrf%var_size(2,TYPE_V)) then
+
+      do k=1,wrf%bt
+         i1 = get_wrf_index(i,j,k,TYPE_V)
+         i2 = get_wrf_index(i,j+1,k,TYPE_V) 
+         i3 = get_wrf_index(i,j+2,k,TYPE_V)
+
+         fld(k) = dym*(dxm*(x(i1) + x(i2))*.5 + dx*(x(i1+1)+x(i2+1))*0.5) + &
+                   dy*(dxm*(x(i2) + x(i3))*.5 + dx*(x(i2+1)+x(i3+1))*0.5)
+         if(debug) print*,k,' model v profile ',fld(k)
+      end do
+
+   else
+
+      fld(:) =  missing_r8
+
+   endif
+
+else if( obs_kind == KIND_T ) then                ! T
+
+   if(i >= 1 .and. i < wrf%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%var_size(2,TYPE_T)) then
+
+      do k=1,wrf%bt
+         i1 = get_wrf_index(i,j,k,TYPE_T)
+         i2 = get_wrf_index(i,j+1,k,TYPE_T)
+         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
+         if(debug) print*,k,' model temp profile ',fld(k)
+      end do
+
+   else
+
+      fld(:) =  missing_r8
+
+   endif
+
+else if( obs_kind == KIND_QV) then                ! Q
+
+   if(i >= 1 .and. i < wrf%var_size(1,TYPE_QV) .and. &
+      j >= 1 .and. j < wrf%var_size(2,TYPE_QV)) then
+
+      do k=1,wrf%bt
+
+         i1 = get_wrf_index(i,j,k,TYPE_QV)
+         i2 = get_wrf_index(i,j+1,k,TYPE_QV)
+         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         fld(k) = a1 /(1.0 + a1)
+         if(debug) print*,k,' model q profile ',fld(k),i1,i2,x(i1),x(i1+1),x(i2),x(i2+1)
+      end do
+
+   else
+
+      fld(:) =  missing_r8
+
+   endif
+
+else if( obs_kind == KIND_P) then                ! Pressure
+
+   fld(:) = v_p(:)
+
 ! Do 1D interpolation
-else if( obs_kind == 3)then
+else if( obs_kind == KIND_PS)then
 !  surface pressure
-   obs_val = wrf%p_top                             +&
-        dym*(dxm*wrf%mub(i,j)+dx*wrf%mub(i+1,j))    +&
-        dy *(dxm*wrf%mub(i,j+1)+dx*wrf%mub(i+1,j+1))+&
-        dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
-   if(debug) print*,' for sfc model val =',obs_val
+
+   if(i >= 1 .and. i < wrf%var_size(1,TYPE_MU) .and. &
+      j >= 1 .and. j < wrf%var_size(2,TYPE_MU) .and. &
+      p1 /= missing_r8 .and. p2 /= missing_r8 .and. &
+      p3 /= missing_r8 .and. p4 /= missing_r8) then
+
+      obs_val = wrf%p_top                              +&
+           dym*(dxm*wrf%mub(i,j)+dx*wrf%mub(i+1,j))    +&
+           dy *(dxm*wrf%mub(i,j+1)+dx*wrf%mub(i+1,j+1))+&
+           dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
+      if(debug) print*,' for sfc model val =',obs_val
+
+   else
+
+      obs_val =  missing_r8
+
+   endif
+
 else
    call error_handler(E_ERR,'model_interpolate', 'wrong obs kind', source, revision, revdate)
 end if
 
-if(obs_kind /= 3) call Interp_lin_1D(fld, wrf%bt, zloc, obs_val)
+if(obs_kind /= KIND_PS) call Interp_lin_1D(fld, wrf%bt, zloc, obs_val)
 
-if(obs_val == missing_r8 .and. present(rstatus)) rstatus = 1.0_r8
+if(obs_val == missing_r8) then
+   if(present(rstatus)) rstatus = 1.0_r8
+   if(present(istatus)) istatus = 1
+endif
 
 if(debug) print*,' interpolated value= ',obs_val
 
 end subroutine model_interpolate
-
-!#######################################################################
-
-function get_val(x, lon_index, lat_index, level, obs_kind)
-
-real(r8) :: get_val
-real(r8), intent(in) :: x(:)
-integer, intent(in) :: lon_index, lat_index, level, obs_kind
-
-get_val = x(get_wrf_index(lon_index,lat_index,level,obs_kind))
-
-end function get_val
 
 !#######################################################################
 
@@ -965,29 +982,35 @@ do k = 1, wrf%bt
             dist(num_total) = close_dist(i)
          end if
       end if
-      if( wrf%n_moist >= 3) then
+      if( wrf%n_moist >= 2) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qc)
             dist(num_total) = close_dist(i)
          end if
+      end if
+      if( wrf%n_moist >= 3) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qr)
             dist(num_total) = close_dist(i)
          end if
       end if
-      if( wrf%n_moist == 6) then
+      if( wrf%n_moist >= 4) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qi)
             dist(num_total) = close_dist(i)
          end if
+      end if
+      if( wrf%n_moist >= 5) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qs)
             dist(num_total) = close_dist(i)
          end if
+      end if
+      if( wrf%n_moist == 6) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qg)
@@ -1080,17 +1103,31 @@ end subroutine model_get_close_states
 function get_wrf_index( i,j,k,var_type )
 
 integer, intent(in) :: i,j,k,var_type
-integer             :: get_wrf_index
 
+integer :: get_wrf_index
 integer :: in, ii
+
+character(len=129) :: errstring
 
 in = 0
 do ii = 1, wrf%number_of_wrf_variables 
    if(var_type == wrf%var_type(ii) ) in = ii
 enddo
 
-get_wrf_index = wrf%var_index(1,in)-1 +   &
-     i + wrf%var_size(1,in)*(j-1) + (wrf%var_size(1,in)*wrf%var_size(2,in))*(k-1)
+if(i >= 1 .and. i <= wrf%var_size(1,in) .and. &
+   j >= 1 .and. j <= wrf%var_size(2,in) .and. &
+   k >= 1 .and. k <= wrf%var_size(3,in)) then
+
+   get_wrf_index = wrf%var_index(1,in)-1 +   &
+        i + wrf%var_size(1,in)*(j-1) + (wrf%var_size(1,in)*wrf%var_size(2,in))*(k-1)
+
+else
+
+  write(errstring,*)'Indices ',i,j,k,' exceed grid dimensions: ',wrf%var_size(1,in), &
+       wrf%var_size(2,in),wrf%var_size(3,in)
+  call error_handler(E_ERR,'get_wrf_index', errstring, source, revision, revdate)
+   
+endif
 
 end function get_wrf_index
 
@@ -1117,13 +1154,13 @@ real(r8)             :: rad, radn, dxr, dyr, sdx, sdy, gdist
 integer              :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 
 integer             :: i, j, n, m
-real(r8), parameter :: r_earth = 6.37e+06 ! earth radius in meters
+
 logical,  parameter :: debug = .false.  
 
 if(debug) write(6,*) ' in grid_close_states '
 
 ! use meaningful units for radius -- convert radians to meters 
-radius = radius_in*r_earth
+radius = radius_in*earth_radius*1000.0_r8
 if(debug) write(6,*) ' radius in grid_close_states is ',radius
 
 ! Get the lat and lon from the loc
@@ -1367,9 +1404,9 @@ integer :: snDimID, snStagDimID
 integer :: btDimID, btStagDimId, MemberDimID
 integer :: DNVarID, ZNUVarID, DNWVarID, phbVarID
 integer :: MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID 
-integer :: MapFacMVarID, MapFacUVarID, MapFacVVarID
+integer :: MapFacMVarID, MapFacUVarID, MapFacVVarID, hgtVarID
 integer :: UVarID, VVarID, WVarID, PHVarID, tVarID, MuVarID
-integer :: QVVarID, QCVarID, QRVarID
+integer :: QVVarID, QCVarID, QRVarID, QIVarID, QSVarID, QGVarID
 integer :: i
 integer :: ncid            ! for wrfinput reading
 
@@ -1379,7 +1416,7 @@ character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1,str2
+character(len=NF90_MAX_NAME) :: str1
 
 !-----------------------------------------------------------------
 
@@ -1549,22 +1586,18 @@ else
    !    float MUB(Time, south_north, west_east) ;
    !            MUB:FieldType = 104 ;
    !            MUB:MemoryOrder = "XY " ;
-   !            MUB:description = "base state dry air mass in column" ;
-   !            MUB:units = "pascals" ;
    !            MUB:stagger = "" ;
    call check(nf90_def_var(ncFileID, name="MUB", xtype=nf90_double, &
                  dimids= (/ weDimID, snDimID/), varid=MubVarID) )
    call check(nf90_put_att(ncFileID, MubVarID, "long_name", "base state dry air mass in column"))
    call check(nf90_put_att(ncFileID, MubVarID, "cartesian_axis", "N"))
-   call check(nf90_put_att(ncFileID, MubVarID, "units", "pascals"))
+   call check(nf90_put_att(ncFileID, MubVarID, "units", "Pa"))
    call check(nf90_put_att(ncFileID, MubVarID, "description", "base state dry air mass in column"))
 
    ! Longitudes
    !      float XLONG(Time, south_north, west_east) ;
    !         XLONG:FieldType = 104 ;
    !         XLONG:MemoryOrder = "XY " ;
-   !         XLONG:description = "LONGITUDE, WEST IS NEGATIVE" ;
-   !         XLONG:units = "degree" ;
    !         XLONG:stagger = "" ;
    call check(nf90_def_var(ncFileID, name="XLON", xtype=nf90_double, &
                  dimids= (/ weDimID, snDimID/), varid=LonVarID) )
@@ -1578,8 +1611,6 @@ else
    !      float XLAT(Time, south_north, west_east) ;
    !         XLAT:FieldType = 104 ;
    !         XLAT:MemoryOrder = "XY " ;
-   !         XLAT:description = "LATITUDE, SOUTH IS NEGATIVE" ;
-   !         XLAT:units = "degree" ;
    !         XLAT:stagger = "" ;
    call check(nf90_def_var(ncFileID, name="XLAT", xtype=nf90_double, &
                  dimids=(/ weDimID, snDimID /), varid=LatVarID) ) 
@@ -1600,7 +1631,6 @@ else
    !    float XLAND(Time, south_north, west_east) ;
    !            XLAND:FieldType = 104 ;
    !            XLAND:MemoryOrder = "XY " ;
-   !            XLAND:description = "LAND MASK (1 FOR LAND, 2 FOR WATER)" ;
    !            XLAND:units = "NA" ;
    !            XLAND:stagger = "" ;
    call check(nf90_def_var(ncFileID, name="XLAND", xtype=nf90_short, &
@@ -1614,8 +1644,6 @@ else
    !    float MAPFAC_M(Time, south_north, west_east) ;
    !            MAPFAC_M:FieldType = 104 ;
    !            MAPFAC_M:MemoryOrder = "XY " ;
-   !            MAPFAC_M:description = "Map scale factor on mass grid" ;
-   !            MAPFAC_M:units = "dimensionless" ;
    !            MAPFAC_M:stagger = "" ;
    call check(nf90_def_var(ncFileID, name="MAPFAC_M", xtype=nf90_real, &
                  dimids= (/ weDimID, snDimID/), varid=MapFacMVarID) )
@@ -1626,8 +1654,6 @@ else
    !    float MAPFAC_U(Time, south_north, west_east_stag) ;
    !            MAPFAC_U:FieldType = 104 ;
    !            MAPFAC_U:MemoryOrder = "XY " ;
-   !            MAPFAC_U:description = "Map scale factor on u-grid" ;
-   !            MAPFAC_U:units = "dimensionless" ;
    !            MAPFAC_U:stagger = "X" ;
    call check(nf90_def_var(ncFileID, name="MAPFAC_U", xtype=nf90_real, &
                  dimids= (/ weStagDimID, snDimID/), varid=MapFacUVarID) )
@@ -1638,11 +1664,9 @@ else
    !    float MAPFAC_V(Time, south_north_stag, west_east) ;
    !            MAPFAC_V:FieldType = 104 ;
    !            MAPFAC_V:MemoryOrder = "XY " ;
-   !            MAPFAC_V:description = "Map scale factor on v-grid" ;
-   !            MAPFAC_V:units = "dimensionless" ;
    !            MAPFAC_V:stagger = "Y" ;
    call check(nf90_def_var(ncFileID, name="MAPFAC_V", xtype=nf90_real, &
-                 dimids= (/ weDimID, snStagDimID/), varid=MapFacVVarID) )
+                 dimids= (/ weDimID, snStagDimID /), varid=MapFacVVarID) )
    call check(nf90_put_att(ncFileID, MapFacVVarID, "long_name", "Map scale factor on v-grid"))
    call check(nf90_put_att(ncFileID, MapFacVVarID, "units", "dimensionless"))
 
@@ -1650,14 +1674,18 @@ else
    !    float PHB(Time, bottom_top_stag, south_north, west_east) ;
    !            PHB:FieldType = 104 ;
    !            PHB:MemoryOrder = "XYZ" ;
-   !            PHB:description = "base-state geopotential" ;
-   !            PHB:units = "m{2} s{-2}" ;
    !            PHB:stagger = "Z" ;
    call check(nf90_def_var(ncFileID, name="PHB", xtype=nf90_real, &
                  dimids= (/ weDimID, snDimID, btStagDimID /), varid=phbVarId) )
    call check(nf90_put_att(ncFileID, phbVarId, "long_name", "base-state geopotential"))
    call check(nf90_put_att(ncFileID, phbVarId, "units", "m^2/s^2"))
    call check(nf90_put_att(ncFileID, phbVarId, "units_long_name", "m{2} s{-2}"))
+
+   call check(nf90_def_var(ncFileID, name="HGT", xtype=nf90_real, &
+                 dimids= (/ weDimID, snDimID /), varid=hgtVarId) )
+   call check(nf90_put_att(ncFileID, hgtVarId, "long_name", "Terrain Height"))
+   call check(nf90_put_att(ncFileID, hgtVarId, "units", "m"))
+   call check(nf90_put_att(ncFileID, hgtVarId, "units_long_name", "meters"))
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and their attributes
@@ -1666,8 +1694,6 @@ else
    !      float U(Time, bottom_top, south_north, west_east_stag) ;
    !         U:FieldType = 104 ;
    !         U:MemoryOrder = "XYZ" ;
-   !         U:description = "x-wind component" ;
-   !         U:units = "m s{-1}" ;
    !         U:stagger = "X" ;
    call check(nf90_def_var(ncid=ncFileID, name="U", xtype=nf90_real, &
          dimids = (/ weStagDimID, snDimId, btDimID, MemberDimID, unlimitedDimID /), &
@@ -1680,8 +1706,6 @@ else
    !      float V(Time, bottom_top, south_north_stag, west_east) ;
    !         V:FieldType = 104 ;
    !         V:MemoryOrder = "XYZ" ;
-   !         V:description = "y-wind component" ;
-   !         V:units = "m s{-1}" ;
    !         V:stagger = "Y" ;
    call check(nf90_def_var(ncid=ncFileID, name="V", xtype=nf90_real, &
          dimids = (/ weDimID, snStagDimID, btDimID, MemberDimID, unlimitedDimID /), &
@@ -1694,8 +1718,6 @@ else
    !      float W(Time, bottom_top_stag, south_north, west_east) ;
    !         W:FieldType = 104 ;
    !         W:MemoryOrder = "XYZ" ;
-   !         W:description = "z-wind component" ;
-   !         W:units = "m s{-1}" ;
    !         W:stagger = "Z" ;
    call check(nf90_def_var(ncid=ncFileID, name="W", xtype=nf90_real, &
          dimids = (/ weDimID, snDimID, btStagDimID, MemberDimID, unlimitedDimID /), &
@@ -1708,8 +1730,6 @@ else
    !      float PH(Time, bottom_top_stag, south_north, west_east) ;               
    !         PH:FieldType = 104 ;
    !         PH:MemoryOrder = "XYZ" ;
-   !         PH:description = "perturbation geopotential" ;
-   !         PH:units = "m{2} s{-2}" ;
    !         PH:stagger = "Z" ;
    call check(nf90_def_var(ncid=ncFileID, name="PH", xtype=nf90_real, &
          dimids = (/ weDimID, snDimID, btStagDimID, MemberDimID, unlimitedDimID /), &
@@ -1722,14 +1742,13 @@ else
    !      float T(Time, bottom_top, south_north, west_east) ;
    !         T:FieldType = 104 ;
    !         T:MemoryOrder = "XYZ" ;
-   !         T:description = "perturbation potential temperature (theta-t0)" ;
    !         T:units = "K" ;
    !         T:stagger = "" ;
    call check(nf90_def_var(ncid=ncFileID, name="T", xtype=nf90_real, &
          dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
          varid  = tVarID))
    call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"))
-   call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"))
+   call check(nf90_put_att(ncFileID, tVarID, "units", "K"))
    call check(nf90_put_att(ncFileId, tVarID, "description", "perturbation potential temperature (theta-t0)"))
 
 
@@ -1750,47 +1769,69 @@ else
    !      float QVAPOR(Time, bottom_top, south_north, west_east) ;
    !         QVAPOR:FieldType = 104 ;
    !         QVAPOR:MemoryOrder = "XYZ" ;
-   !         QVAPOR:description = "-" ;
-   !         QVAPOR:units = "-" ;
    !         QVAPOR:stagger = "" ;
-   call check(nf90_def_var(ncid=ncFileID, name="QVAPOR", xtype=nf90_real, &
-         dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
-         varid  = QVVarID))
-   call check(nf90_put_att(ncFileID, QVVarID, "long_name", "-"))
-   call check(nf90_put_att(ncFileID, QVVarID, "units", "kg/kg"))
-   call check(nf90_put_att(ncFileId, QVVarID, "description", "-"))
+   if( wrf%n_moist >= 1) then
+      call check(nf90_def_var(ncid=ncFileID, name="QVAPOR", xtype=nf90_real, &
+           dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
+           varid  = QVVarID))
+      call check(nf90_put_att(ncFileID, QVVarID, "long_name", "-"))
+      call check(nf90_put_att(ncFileID, QVVarID, "units", "kg/kg"))
+      call check(nf90_put_att(ncFileId, QVVarID, "description", "Water vapor mixing ratio"))
+   endif
 
 
    !      float QCLOUD(Time, bottom_top, south_north, west_east) ;
    !         QCLOUD:FieldType = 104 ;
    !         QCLOUD:MemoryOrder = "XYZ" ;
-   !         QCLOUD:description = "-" ;
-   !         QCLOUD:units = "-" ;
    !         QCLOUD:stagger = "" ;
-   call check(nf90_def_var(ncid=ncFileID, name="QCLOUD", xtype=nf90_real, &
-         dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
-         varid  = QCVarID))
-   call check(nf90_put_att(ncFileID, QCVarID, "long_name", "-"))
-   call check(nf90_put_att(ncFileID, QCVarID, "units", "kg/kg"))
-   call check(nf90_put_att(ncFileId, QCVarID, "description", "-"))
+   if( wrf%n_moist >= 2) then
+      call check(nf90_def_var(ncid=ncFileID, name="QCLOUD", xtype=nf90_real, &
+           dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
+           varid  = QCVarID))
+      call check(nf90_put_att(ncFileID, QCVarID, "long_name", "-"))
+      call check(nf90_put_att(ncFileID, QCVarID, "units", "kg/kg"))
+      call check(nf90_put_att(ncFileID, QCVarID, "description", "Cloud water mixing ratio"))
+   endif
 
 
    !      float QRAIN(Time, bottom_top, south_north, west_east) ;
    !         QRAIN:FieldType = 104 ;
    !         QRAIN:MemoryOrder = "XYZ" ;
-   !         QRAIN:description = "-" ;
-   !         QRAIN:units = "-" ;
    !         QRAIN:stagger = "" ;
-   call check(nf90_def_var(ncid=ncFileID, name="QRAIN", xtype=nf90_real, &
-         dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
-         varid  = QRVarID))
-   call check(nf90_put_att(ncFileID, QRVarID, "long_name", "-"))
-   call check(nf90_put_att(ncFileID, QRVarID, "units", "kg/kg"))
-   call check(nf90_put_att(ncFileId, QRVarID, "description", "-"))
+   if( wrf%n_moist >= 3) then
+      call check(nf90_def_var(ncid=ncFileID, name="QRAIN", xtype=nf90_real, &
+           dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
+           varid  = QRVarID))
+      call check(nf90_put_att(ncFileID, QRVarID, "long_name", "-"))
+      call check(nf90_put_att(ncFileID, QRVarID, "units", "kg/kg"))
+      call check(nf90_put_att(ncFileID, QRVarID, "description", "Rain water mixing ratio"))
+   endif
 
-   if ( wrf%n_moist > 3 ) then
-   call error_handler(E_ERR,'nc_write_model_atts', &
-           'NEED TO INITIALIZE THE SOLID PHASE WATER VARS', source, revision, revdate)
+   if( wrf%n_moist >= 4) then
+      call check(nf90_def_var(ncid=ncFileID, name="QICE", xtype=nf90_real, &
+           dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
+           varid  = QIVarID))
+      call check(nf90_put_att(ncFileID, QIVarID, "long_name", "-"))
+      call check(nf90_put_att(ncFileID, QIVarID, "units", "kg/kg"))
+      call check(nf90_put_att(ncFileID, QIVarID, "description", "Ice mixing ratio"))
+   endif
+
+   if( wrf%n_moist >= 5) then
+      call check(nf90_def_var(ncid=ncFileID, name="QSNOW", xtype=nf90_real, &
+           dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
+           varid  = QSVarID))
+      call check(nf90_put_att(ncFileID, QSVarID, "long_name", "-"))
+      call check(nf90_put_att(ncFileID, QSVarID, "units", "kg/kg"))
+      call check(nf90_put_att(ncFileID, QSVarID, "description", "Snow mixing ratio"))
+   endif
+
+   if( wrf%n_moist == 6) then
+      call check(nf90_def_var(ncid=ncFileID, name="QGRAUP", xtype=nf90_real, &
+           dimids = (/ weDimID, snDimID, btDimID, MemberDimID, unlimitedDimID /), &
+           varid  = QGVarID))
+      call check(nf90_put_att(ncFileID, QGVarID, "long_name", "-"))
+      call check(nf90_put_att(ncFileID, QGVarID, "units", "kg/kg"))
+      call check(nf90_put_att(ncFileID, QGVarID, "description", "Graupel mixing ratio"))
    endif
 
    !-----------------------------------------------------------------
@@ -1811,6 +1852,7 @@ else
    call check(nf90_put_var(ncFileID,  MapFacMVarID, wrf%mapfac_m  )) 
    call check(nf90_put_var(ncFileID,  MapFacUVarID, wrf%mapfac_u  )) 
    call check(nf90_put_var(ncFileID,  MapFacVVarID, wrf%mapfac_v  )) 
+   call check(nf90_put_var(ncFileID,      hgtVarID, wrf%hgt       )) 
    call check(nf90_put_var(ncFileID,      phbVarID, wrf%phb       )) 
 
 endif
@@ -2115,7 +2157,7 @@ subroutine llxy (xloni,xlatj,x,y)
 !   Y:        THE COORDINATE IN Y (J)-DIRECTION.
 !
 !-----------------------------------------------------------------
-   
+
    real(r8), intent(in)  :: xloni, xlatj
    real(r8), intent(out) :: x, y
 
@@ -2126,14 +2168,14 @@ subroutine llxy (xloni,xlatj,x,y)
    real(r8) :: centri, centrj
    real(r8) :: ds       
    real(r8) :: bb,c2
-   
+
 !-----------------------------------------------------------------
    ds = 0.001 *wrf%dx
    xlon = xloni
    xlat = xlatj
    xlat = max (xlat, -89.9999)
    xlat = min (xlat, +89.9999)
-   
+
 !-----------------------------------------------------------------
    c2 = earth_radius * COS(wrf%psi1)
 
@@ -2285,12 +2327,12 @@ subroutine Interp_lin_1D(fi1d, n1, z, fo1d)
   integer   :: k
   real(r8)  :: dz, dzm
 
-  fo1d = missing_r8
-
-     if(z > 0.0_r8) then
-        call toGrid(z,n1, k, dz, dzm)
-        fo1d = dzm*fi1d(k) + dz*fi1d(k+1)
-     endif
+  call toGrid(z, k, dz, dzm)
+  if(k >= 1 .and. k < n1) then
+     fo1d = dzm*fi1d(k) + dz*fi1d(k+1)
+  else
+     fo1d = missing_r8
+  endif
 
 end subroutine Interp_lin_1D
 
@@ -2305,18 +2347,22 @@ subroutine Interp_lin_2D(fi2d,n1,n2, x,y, fo2d)
   integer   :: i, j
   real(r8)  :: dx, dxm, dy, dym
 
-  call toGrid (x,n1,i,dx,dxm)
-  call toGrid (y,n2,j,dy,dym)
+  fo2d = missing_r8
 
-  fo2d   = dym*(dxm*fi2d(i,j  ) + dx*fi2d(i+1,j  )) &
-         + dy *(dxm*fi2d(i,j+1) + dx*fi2d(i+1,j+1))
+  call toGrid (x,i,dx,dxm)
+  call toGrid (y,j,dy,dym)
+
+  if(i >= 1 .and. i < n1 .and. j >= 1 .and. j < n2) then
+     fo2d = dym*(dxm*fi2d(i,j  ) + dx*fi2d(i+1,j  )) &
+          + dy *(dxm*fi2d(i,j+1) + dx*fi2d(i+1,j+1))
+  endif
+
 end subroutine Interp_lin_2D
    
 !**********************************************
 
 subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
 
-! real(r8),dimension(n1,n2,n3), intent(in)  :: fi3d(n1,n2,n3)
   integer,  intent(in)  :: n1,n2,n3
   real(r8), intent(in)  :: fi3d(n1,n2,n3)
   real(r8), intent(in)  :: x, y, z
@@ -2324,38 +2370,33 @@ subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
 
   integer   :: i, j, k
   real(r8)  :: dx, dxm, dy, dym, dz, dzm
-  real(r8)  :: fiz (n3)
-
-  call toGrid (x,n1,i,dx,dxm)
-  call toGrid (y,n2,j,dy,dym)
-
-  fiz(1:n3) = dym*(dxm*fi3d(i, j,   1:n3) + dx *fi3d(i+1 ,j  ,1:n3))&
-            + dy *(dxm*fi3d(i, j+1, 1:n3) + dx *fi3d(i+1, j+1,1:n3))
+  real(r8)  :: fiz(n3)
 
   fo3d = missing_r8
 
-     if(z > 0.0) then
-        call toGrid(z,n3, k, dz, dzm)
-        fo3d = dzm*fiz(k) + dz*fiz(k+1)
-     endif
+  call toGrid (x,i,dx,dxm)
+  call toGrid (y,j,dy,dym)
+  call toGrid (z,k,dz,dzm)
+
+  if(i >= 1 .and. i < n1 .and. j >= 1 .and. j < n2 .and. k >= 1 .and. k < n3) then
+     fiz(1:n3) = dym*(dxm*fi3d(i, j,   1:n3) + dx *fi3d(i+1 ,j  ,1:n3))&
+          + dy *(dxm*fi3d(i, j+1, 1:n3) + dx *fi3d(i+1, j+1,1:n3))
+     fo3d = dzm*fiz(k) + dz*fiz(k+1)
+  endif
 
 end subroutine Interp_lin_3D
 
 !#######################################################################
-subroutine toGrid (x, jx, j, dx, dxm)
-   
+subroutine toGrid (x, j, dx, dxm)
+
 !  Transfer obs. x to grid j and calculate its
 !  distance to grid j and j+1
 
    real(r8), intent(in)  :: x
-   integer,  intent(in)  :: jx
    real(r8), intent(out) :: dx, dxm
    integer,  intent(out) :: j
    
    j = int (x)
-
-   if (j <=  0) j = 1
-   if (j >= jx) j = jx - 1
 
    dx = x - real (j)
 
@@ -2411,54 +2452,70 @@ integer               :: i1,i2,k,q1,q2,q3,q4
 real(r8)              :: qv1,qv2,qv3,qv4
 real(r8), dimension(n):: pp1,pp2,pp3,pp4,pb,pp
 
+if(i >= 1 .and. i < wrf%var_size(1,TYPE_QV) .and. &
+   j >= 1 .and. j < wrf%var_size(2,TYPE_QV)) then
 
-do k=1,n
-   pb(k) = wrf%p_top + wrf%znu(k)*  &
-          (  dym*(dxm*wrf%mub(i,j  ) + dx*wrf%mub(i+1,j  )) + &
-             dy *(dxm*wrf%mub(i,j+1) + dx*wrf%mub(i+1,j+1)) )  
-end do
-  i1 = get_wrf_index(i,j,1,TYPE_MU)
-  i2 = get_wrf_index(i,j+1,1,TYPE_MU)
-  q1 = get_wrf_index(i,j,n,TYPE_QV)
-  q2 = get_wrf_index(i,j+1,n,TYPE_QV)
-  qv1 = x(q1)/(1.0+x(q1))
-  qv2 = x(q1+1)/(1.0+x(q1+1))
-  qv3 = x(q2)/(1.0+x(q2))
-  qv4 = x(q2+1)/(1.0+x(q2+1))
-  pp1(n) = -0.5 *(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dnw(n)*(1.0 + x(q1))
-  pp2(n) = -0.5 *(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dnw(n)*(1.0 + x(q1+1))
-  pp3(n) = -0.5 *(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dnw(n)*(1.0 + x(q2))
-  pp4(n) = -0.5 *(x(i2+1)+qv4*wrf%mub(i+1,j+1))*wrf%dnw(n)*(1.0 + x(q2+1))
-  pp(n)  = dym*(dxm*pp1(n)+dx*pp2(n)) + dy*(dxm*pp3(n)+dx*pp4(n))
-  fld(n) = pp(n) + pb(n)                                            
-do k= n-1,1,-1   
-   q1 = get_wrf_index(i,j,k,TYPE_QV)
-   q2 = get_wrf_index(i,j+1,k,TYPE_QV)
-   q3 = get_wrf_index(i,j,k+1,TYPE_QV)
-   q4 = get_wrf_index(i,j+1,k+1,TYPE_QV)
-   qv1 = 0.5*(x(q1)+x(q3))/(1.0+0.5*(x(q1)+x(q3)))
-   qv2 = 0.5*(x(q1+1)+x(q3+1))/(1.0+0.5*(x(q1+1)+x(q3+1)))
-   qv3 = 0.5*(x(q2)+x(q4))/(1.0+0.5*(x(q2)+x(q4)))
-   qv4 = 0.5*(x(q2+1)+x(q4+1))/(1.0+0.5*(x(q2+1)+x(q4+1)))
+   do k=1,n
+      pb(k) = wrf%p_top + wrf%znu(k)*  &
+           (  dym*(dxm*wrf%mub(i,j  ) + dx*wrf%mub(i+1,j  )) + &
+              dy *(dxm*wrf%mub(i,j+1) + dx*wrf%mub(i+1,j+1)) )
+   end do
+   i1 = get_wrf_index(i,j,1,TYPE_MU)
+   i2 = get_wrf_index(i,j+1,1,TYPE_MU)
+   q1 = get_wrf_index(i,j,n,TYPE_QV)
+   q2 = get_wrf_index(i,j+1,n,TYPE_QV)
+   qv1 = x(q1)/(1.0+x(q1))
+   qv2 = x(q1+1)/(1.0+x(q1+1))
+   qv3 = x(q2)/(1.0+x(q2))
+   qv4 = x(q2+1)/(1.0+x(q2+1))
+   pp1(n) = -0.5 *(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dnw(n)*(1.0 + x(q1))
+   pp2(n) = -0.5 *(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dnw(n)*(1.0 + x(q1+1))
+   pp3(n) = -0.5 *(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dnw(n)*(1.0 + x(q2))
+   pp4(n) = -0.5 *(x(i2+1)+qv4*wrf%mub(i+1,j+1))*wrf%dnw(n)*(1.0 + x(q2+1))
+   pp(n)  = dym*(dxm*pp1(n)+dx*pp2(n)) + dy*(dxm*pp3(n)+dx*pp4(n))
+   fld(n) = pp(n) + pb(n)
+   do k= n-1,1,-1
+      q1 = get_wrf_index(i,j,k,TYPE_QV)
+      q2 = get_wrf_index(i,j+1,k,TYPE_QV)
+      q3 = get_wrf_index(i,j,k+1,TYPE_QV)
+      q4 = get_wrf_index(i,j+1,k+1,TYPE_QV)
+      qv1 = 0.5*(x(q1)+x(q3))/(1.0+0.5*(x(q1)+x(q3)))
+      qv2 = 0.5*(x(q1+1)+x(q3+1))/(1.0+0.5*(x(q1+1)+x(q3+1)))
+      qv3 = 0.5*(x(q2)+x(q4))/(1.0+0.5*(x(q2)+x(q4)))
+      qv4 = 0.5*(x(q2+1)+x(q4+1))/(1.0+0.5*(x(q2+1)+x(q4+1)))
 
-   pp1(k) = pp1(k+1) -(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dn(k+1)* &
-                (1.0 + 0.5*(x(q1) + x(q3)))
-   pp2(k) = pp2(k+1) -(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dn(k+1)* &
-                (1.0 + 0.5*(x(q1+1) + x(q3+1)))
-   pp3(k) = pp3(k+1) -(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dn(k+1)* &
-                (1.0 + 0.5*(x(q2) + x(q4)))
-   pp4(k) = pp4(k+1) -(x(i2+1)  +qv4*wrf%mub(i+1,j+1))*wrf%dn(k+1)* &
-                (1.0 + 0.5*(x(q2+1) + x(q4+1)))
+      pp1(k) = pp1(k+1) -(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dn(k+1)* &
+           (1.0 + 0.5*(x(q1) + x(q3)))
+      pp2(k) = pp2(k+1) -(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dn(k+1)* &
+           (1.0 + 0.5*(x(q1+1) + x(q3+1)))
+      pp3(k) = pp3(k+1) -(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dn(k+1)* &
+           (1.0 + 0.5*(x(q2) + x(q4)))
+      pp4(k) = pp4(k+1) -(x(i2+1)  +qv4*wrf%mub(i+1,j+1))*wrf%dn(k+1)* &
+           (1.0 + 0.5*(x(q2+1) + x(q4+1)))
 
-   pp(k)  = dym*(dxm*pp1(k)+dx*pp2(k)) + dy*(dxm*pp3(k)+dx*pp4(k))
-   fld(k) = pp(k) + pb(k)                                             
-end do
+      pp(k)  = dym*(dxm*pp1(k)+dx*pp2(k)) + dy*(dxm*pp3(k)+dx*pp4(k))
+      fld(k) = pp(k) + pb(k)
+   end do
+
    pp11 = pp1(1)
    pp21 = pp2(1)
    pp31 = pp3(1)
    pp41 = pp4(1)
+
+else
+
+   fld(:) = missing_r8
+   pp11 = missing_r8
+   pp21 = missing_r8
+   pp31 = missing_r8
+   pp41 = missing_r8
+
+endif
+
 end subroutine get_model_pressure_profile
+
 !#######################################################
+
 subroutine get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,fld)
 
 integer,  intent(in)  :: i,j,n
@@ -2466,19 +2523,29 @@ real(r8), intent(in)  :: dx,dy,dxm,dym
 real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: fld(n)
 
-real(r8)  :: fll(n+1) 
-integer   :: i1,i2,k     
-            
-do k = 1, wrf%var_size(3,TYPE_GZ) 
-   i1 = get_wrf_index(i,j,k,TYPE_GZ)
-   i2 = get_wrf_index(i,j+1,k,TYPE_GZ)
-   fll(k) = (dym*( dxm*(wrf%phb(i,j,k)+x(i1))+dx*(wrf%phb(i+1,j,k)+x(i1+1)))+&
-   dy*(dxm*(wrf%phb(i,j+1,k)+x(i2)) + dx*(wrf%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
-end do
+real(r8)  :: fll(n+1)
+integer   :: i1,i2,k
 
-do k=1,n        
-   fld(k) = 0.5*(fll(k) + fll(k+1) )
-end do
+if(i >= 1 .and. i < wrf%var_size(1,TYPE_GZ) .and. &
+   j >= 1 .and. j < wrf%var_size(2,TYPE_GZ)) then
+
+   do k = 1, wrf%var_size(3,TYPE_GZ)
+      i1 = get_wrf_index(i,j,k,TYPE_GZ)
+      i2 = get_wrf_index(i,j+1,k,TYPE_GZ)
+      fll(k) = (dym*( dxm*(wrf%phb(i,j,k)+x(i1))+dx*(wrf%phb(i+1,j,k)+x(i1+1)))+&
+           dy*(dxm*(wrf%phb(i,j+1,k)+x(i2)) + dx*(wrf%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
+   end do
+
+   do k=1,n
+      fld(k) = 0.5*(fll(k) + fll(k+1) )
+   end do
+
+else
+
+   fld(:) =  missing_r8
+
+endif
+
 end subroutine get_model_height_profile
 
 
@@ -2528,47 +2595,8 @@ end subroutine get_wrf_date
 
 !#######################################################
 
-subroutine set_wrf_date (year, month, day, hour, minute, second)
-implicit none
-!--------------------------------------------------------
-! Updates wrf%timestring with new date integers
-! It is assumed that the WRF char array is as YYYY-MM-DD_hh:mm:ss
-
-integer, intent(in) :: year, month, day, hour, minute, second
-
-integer          :: i
-character(len=4) :: ch_year
-character(len=2) :: ch_month, ch_day, ch_hour, ch_minute, ch_second
-
-write(ch_year,'(i4)') year
-write(ch_month,'(i2)') month
-if (ch_month(1:1) == " ") ch_month(1:1) = "0"
-write(ch_day,'(i2)') day
-if (ch_day(1:1) == " ") ch_day(1:1) = "0"
-write(ch_hour,'(i2)') hour
-if (ch_hour(1:1) == " ") ch_hour(1:1) = "0"
-write(ch_minute,'(i2)') minute
-if (ch_minute(1:1) == " ") ch_minute(1:1) = "0"
-write(ch_second,'(i2)') second
-if (ch_second(1:1) == " ") ch_second(1:1) = "0"
-
-do i = 1,4
-  wrf%timestring(i) = ch_year(i:i)
-enddo
-do i = 1,2
-  wrf%timestring(i+5) = ch_month(i:i)
-  wrf%timestring(i+8) = ch_day(i:i)
-  wrf%timestring(i+11) = ch_hour(i:i)
-  wrf%timestring(i+14) = ch_minute(i:i)
-  wrf%timestring(i+17) = ch_second(i:i)
-enddo
-
-end subroutine set_wrf_date
-
-!#######################################################
-
 subroutine output_wrf_time()
-use netcdf
+
 implicit none
 !--------------------------------------------------------
 ! tags file wrfinput with a new time

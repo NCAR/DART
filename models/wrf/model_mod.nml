@@ -1,4 +1,5 @@
 &model_nml
    output_state_vector = .false.,
-   num_moist_vars = 3  /
-
+   num_moist_vars = 3,
+   wrf_dt = 300,
+   wrf_dx = 100000  /

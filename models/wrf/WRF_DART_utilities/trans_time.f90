@@ -15,11 +15,10 @@ program trans_time
 !----------------------------------------------------------------------
 
 
-use time_manager_mod, only : time_type, read_time, write_time, &
-                             get_time, set_time, operator(-), get_date, &
+use time_manager_mod, only : time_type, read_time, &
+                             operator(-), get_date, &
                              print_time, set_date, operator (+), &
-                             set_calendar_type, NO_CALENDAR, NOLEAP, &
-                             GREGORIAN
+                             set_calendar_type, GREGORIAN
 use assim_model_mod,  only : static_init_assim_model, binary_restart_files
 
 use model_mod,        only : get_wrf_date, set_wrf_date, output_wrf_time

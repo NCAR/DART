@@ -1,3 +1,7 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 MODULE module_netcdf_interface
 
 ! <next five lines automatically updated by CVS, do not edit>
@@ -21,7 +25,10 @@ public  get_dims_cdf,        &
         get_var_3d_real_cdf, &
         get_var_2d_real_cdf, &
         put_var_3d_real_cdf, &
-        get_times_cdf
+        put_var_2d_real_cdf, &
+        get_times_cdf,       &
+        put_time_cdf,        &
+        netcdf_read_write_var
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -88,7 +95,7 @@ subroutine get_gl_att_real_cdf( file, att_name, value, debug )
   character (len=80), intent(in) :: file
   character (len=*),  intent(in) :: att_name
   logical,            intent(in) :: debug
-  real(r8),              intent(out) :: value
+  real(r8),          intent(out) :: value
 
   integer :: cdfid
 
@@ -122,12 +129,10 @@ subroutine put_gl_att_real_cdf( file, att_name, value, debug )
 
   implicit none
 
-  include 'netcdf.inc'
-
   character (len=80), intent(in) :: file
-  character (len=*), intent(in) :: att_name
-  logical, intent(in ) :: debug
-  real(r8),    intent(in) :: value
+  character (len=*),  intent(in) :: att_name
+  logical,            intent(in) :: debug
+  real(r8),           intent(in) :: value
 
   integer :: cdfid
 
@@ -203,12 +208,11 @@ subroutine get_var_3d_real_cdf( file, var, data, &
        (i3 /= idims(3)) .or.  &
        (time > idims(4))     )  then
 
-     write(6,*) ' error in 3d_var_real read, dimension problem '
+     write(6,*) ' error in get_var_3d_real read, dimension problem '
      write(6,*) i1, idims(1)
      write(6,*) i2, idims(2)
      write(6,*) i3, idims(3)
      write(6,*) time, idims(4)
-     write(6,*) ' error stop 1'
      stop
 
   end if
@@ -278,11 +282,10 @@ subroutine get_var_2d_real_cdf( file, var, data, &
        (i2 /= idims(2)) .or.  &
        (time > idims(3))     )  then
 
-     write(6,*) ' error in 2d_var_real read, dimension problem '
+     write(6,*) ' error in get_var_2d_real read, dimension problem '
      write(6,*) i1, idims(1)
      write(6,*) i2, idims(2)
      write(6,*) time, idims(4)
-     write(6,*) ' error stop 2'
      stop
 
   end if
@@ -349,12 +352,11 @@ subroutine put_var_3d_real_cdf( file, var, data, &
        (i3 /= idims(3)) .or.  &
        (time > idims(4))     )  then
 
-     write(6,*) ' error in 3d_var_real read, dimension problem '
+     write(6,*) ' error in put_var_3d_real read, dimension problem '
      write(6,*) i1, idims(1)
      write(6,*) i2, idims(2)
      write(6,*) i3, idims(3)
      write(6,*) time, idims(4)
-     write(6,*) ' error stop 3'
      stop
 
   end if
@@ -372,7 +374,7 @@ contains
   subroutine check(istatus)
     integer, intent (in) :: istatus
 
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'get_put_3d_real_cdf', &
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'put_var_3d_real_cdf', &
        trim(nf90_strerror(istatus)), source, revision, revdate)
 
   end subroutine check
@@ -381,17 +383,84 @@ end subroutine put_var_3d_real_cdf
 
 !--------------------------------------------------------------------
 
-subroutine get_times_cdf( file, times, n_times, max_times, debug )
+subroutine put_var_2d_real_cdf( file, var, data, &
+     i1, i2, time, debug )
 
   implicit none
 
-  integer, intent(in)  ::  max_times
-  integer, intent(out) ::  n_times
-  character (len=80), intent(in) :: file
-  character (len=80), intent(out) :: times(max_times)
-  logical, intent(in ) :: debug
+  integer,                    intent(in) :: i1, i2, time
+  character (len=80),         intent(in) :: file
+  logical,                    intent(in) :: debug
+  character (len=*),          intent(in) :: var
+  real(r8), dimension(i1,i2), intent(in) :: data
 
-  integer cdfid, id_time
+  integer            :: cdfid, id_data
+  character (len=80) :: varnam
+  integer            :: ndims, idims(3), dimids(3)
+  integer            :: i, ivtype
+
+  if(debug) write(6,*) ' open netcdf file ', trim(file)
+
+  call check( nf90_open(file, NF90_WRITE, cdfid) )
+
+  call check( nf90_inq_varid(cdfid, var, id_data) )
+
+  call check( nf90_Inquire_Variable(cdfid, id_data, name=varnam, xtype=ivtype, ndims=ndims, dimids=dimids) )
+
+  if(debug) write(6,*) ' number of dims for ',var,' ',ndims
+
+  do i=1,ndims
+     call check( nf90_inquire_dimension(cdfid, dimids(i), len=idims(i)) )
+     if(debug) write(6,*) ' dimension ',i,idims(i)
+  enddo
+
+!  check the dimensions
+
+  if(  (i1 /= idims(1)) .or.  &
+       (i2 /= idims(2)) .or.  &
+       (time > idims(3))     )  then
+
+     write(6,*) ' error in put_var_2d_real read, dimension problem '
+     write(6,*) i1, idims(1)
+     write(6,*) i2, idims(2)
+     write(6,*) time, idims(3)
+     stop
+
+  end if
+
+!  write the data
+  
+  call check( nf90_put_var(cdfid, id_data, data, start = (/ 1, 1, time /)) )
+
+  call check( nf90_close(cdfid) )
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent (in) :: istatus
+
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'put_var_2d_real_cdf', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
+  end subroutine check
+
+end subroutine put_var_2d_real_cdf
+
+!--------------------------------------------------------------------
+
+subroutine get_times_cdf( file, time_name, times, n_times, max_times, debug )
+
+  implicit none
+
+  integer,            intent(in)  :: max_times
+  integer,            intent(out) :: n_times
+  character (len=80), intent(in)  :: file, time_name
+  character (len=19), intent(out) :: times(max_times)
+  logical,            intent(in)  :: debug
+
+  integer            :: cdfid, id_time
   character (len=80) :: varnam, time1
   integer            :: ndims, idims(max_times)
   integer            :: istart(max_times),iend(max_times), dimids(max_times)
@@ -401,7 +470,7 @@ subroutine get_times_cdf( file, times, n_times, max_times, debug )
 
   call check( nf90_open(file, NF90_NOWRITE, cdfid) )
 
-  call check( nf90_inq_varid(cdfid, 'Times', id_time) )
+  call check( nf90_inq_varid(cdfid, time_name, id_time) )
 
   call check( nf90_Inquire_Variable(cdfid, id_time, name=varnam, xtype=ivtype, ndims=ndims, dimids=dimids) )
 
@@ -443,5 +512,94 @@ contains
   end subroutine check
 
 end subroutine get_times_cdf
+
+!--------------------------------------------------------------------
+
+subroutine put_time_cdf( file, time_name, char, itime, debug )
+
+  implicit none
+
+  integer,            intent(in)  :: itime
+  character (len=80), intent(in)  :: file, time_name
+  character (len=19), intent(out) :: char
+  logical,            intent(in)  :: debug
+
+  integer            :: cdfid, id_time
+
+  if(debug) write(6,*) ' open netcdf file ', trim(file)
+
+  call check( nf90_open(file, NF90_WRITE, cdfid) )
+
+  call check( nf90_inq_varid(cdfid, time_name, id_time) )
+
+  call check( nf90_put_var(cdfid, id_time, char, start = (/ 1, itime /)) )
+
+  call check( nf90_close(cdfid) )
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent (in) :: istatus
+
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'put_time_cdf', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
+  end subroutine check
+
+end subroutine put_time_cdf
+
+!**********************************************************************
+
+subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
+                                  start, kount, stride, map, in_or_out, debug, ndims )
+
+! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
+! module routine. There used to be TWO routines that did the same thing.
+! 
+! As such 'kount', 'stride','map' all become meaningless because
+! the whole process is slaved to simply replace an existing netcdf
+! variable with a conformable variable -- no possibility for 
+! us to write a subset of the domain.
+
+integer                    :: ncid, var_id, ndims
+real(r8), dimension(ndims) :: var
+character (len=6)          :: in_or_out
+integer, dimension(ndims)  :: start, kount, stride, map
+character (len=*)          :: variable
+logical                    :: debug
+character (len=129)        :: error_string
+
+if(debug) write(6,*) ' var for io is ',variable
+call check( nf90_inq_varid(ncid, variable, var_id) )
+if(debug) write(6,*) variable, ' id = ',var_id
+
+if( in_or_out(1:5) == "INPUT" ) then
+
+   call check( nf90_get_var(ncid, var_id, var, start=start, count=kount, stride=stride) )
+
+else if( in_or_out(1:6) == "OUTPUT" ) then
+
+   call check( nf90_put_var(ncid, var_id, var, start, kount, stride, map) )
+
+else
+
+  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
+  call error_handler(E_ERR,'netcdf_read_write_var', &
+       error_string, source, revision,revdate)
+
+end if
+
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_var', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+  end subroutine check
+
+end subroutine netcdf_read_write_var
 
 END MODULE module_netcdf_interface

@@ -10,9 +10,12 @@ PROGRAM dart_tf_wrf
 ! $Date$
 
 use        types_mod, only : r8
+use time_manager_mod, only : time_type, write_time, read_time, get_date, operator(-), &
+                             get_time, print_time, set_calendar_type, GREGORIAN, days_per_month
 use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_ERR, E_MSG
-use  wrf_data_module, only : wrf_data
+                             error_handler, E_ERR, E_MSG, initialize_utilities, &
+                             finalize_utilities, register_module, logfileunit
+use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date
 use                          netcdf
 
 implicit none
@@ -24,44 +27,86 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
-! model namelist parameters
+! Namelist parameters with default values
+!-----------------------------------------------------------------------
+
+integer              :: calendar_type         = GREGORIAN
+
+namelist /dart_tf_wrf_nml/ calendar_type
+
+!-----------------------------------------------------------------------
+! Model namelist parameters with default values
 !-----------------------------------------------------------------------
 
 logical :: output_state_vector = .true.  ! output prognostic variables
-integer :: num_moist_vars = 0            ! default value
+integer :: num_moist_vars = 0
+integer :: wrf_dt = 300, wrf_dx = 100000
 
-namelist /model_nml/ output_state_vector, num_moist_vars
+namelist /model_nml/ output_state_vector, num_moist_vars, wrf_dt, wrf_dx
 
-integer :: status, iunit, dart_unit
-logical :: dart_to_wrf
+!-------------------------------------------------------------
+! Namelist with default values
+! binary_restart_files  == .true.  -> use unformatted file format. 
+!                                     Full precision, faster, smaller,
+!                                     but not as portable.
+! binary_restart_files  == .false.  -> use ascii file format. 
+!                                     Portable, but loses precision,
+!                                     slower, and larger.
+
+logical  :: binary_restart_files = .false.
+
+namelist /assim_model_nml/ binary_restart_files
+!-------------------------------------------------------------
+
+integer :: iunit, dart_unit
+logical :: dart_to_wrf, leap
 
 type(wrf_data) :: wrf
 
 real(r8), pointer :: dart(:)
-integer           :: number_dart_values
-integer           :: seconds, days
+type(time_type)   :: dart_time(2), interval_time
+integer           :: number_dart_values, days, seconds, &
+                     year, month, day, hour, minute, second
+integer           :: ndays, m
+
+character(len=19) :: timestring
 
 !----
 !  misc stuff
 
-logical, parameter :: debug = .false.
-integer :: mode, io, ierr
+logical, parameter :: debug = .true.
+integer            :: mode, io, ierr, var_id
 
-!---
-!  begin
+call initialize_utilities
+call register_module(source, revision, revdate)
+write(logfileunit,*)'STARTING dart_tf_wrf ...'
 
-! Begin by reading the namelist input                                           
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
+!!$   read(iunit, nml = dart_tf_wrf_nml, iostat = io )
+!!$   ierr = check_nml_error(io, 'dart_tf_wrf_nml')
+
+!!$   rewind(iunit)
+   read(iunit, nml = assim_model_nml, iostat = io )
+   ierr = check_nml_error(io, 'assim_model_nml')
+
+   rewind(iunit)
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
-   call close_file(iunit)                                                        
+
+   call close_file(iunit)
 
    if ( debug ) then
+      ! namelist validation
+      write(*, *) 'assim_model_nml read; values are'
+      write(*, *) 'binary_restart_files is ', binary_restart_files
       write(*,'(''num_moist_vars = '',i3)')num_moist_vars
    endif
 endif
+
+call set_calendar_type(calendar_type)
 
 read(5,*) dart_to_wrf
 
@@ -75,12 +120,7 @@ else
        source, revision, revdate)
 endif
 
-
-if( (num_moist_vars >= 4).and.(num_moist_vars <= 6) ) then
-   wrf%ice_micro = .true.
-else
-   wrf%ice_micro = .false.
-endif
+wrf%n_moist = num_moist_vars
 
 ! open wrf data netcdf netCDF file 'wrfinput'
 ! we get sizes of the WRF geometry and resolution
@@ -89,7 +129,7 @@ mode = NF90_NOWRITE                   ! read the netcdf file
 if( dart_to_wrf ) mode = NF90_WRITE   ! write to the netcdf file
 
 if(debug) write(6,*) ' wrf_open_and_alloc '
-call wrf_open_and_alloc( wrf, mode, debug )
+call wrf_open_and_alloc( wrf, 'wrfinput', mode, debug )
 if(debug) write(6,*) ' returned from wrf_open_and_alloc '
 
 !---
@@ -98,7 +138,7 @@ if(debug) write(6,*) ' returned from wrf_open_and_alloc '
 if(debug) write(6,*) ' dart_open_and_alloc '
 dart_unit = get_unit()
 call dart_open_and_alloc( wrf, dart, number_dart_values, &
-     dart_unit, dart_to_wrf, debug  )
+     dart_unit, dart_to_wrf, binary_restart_files, debug  )
 if(debug) write(6,*) ' returned from dart_open_and_alloc '
 
 !----------------------------------------------------------------------
@@ -108,12 +148,25 @@ if(debug) write(6,*) ' state input '
 
 if( dart_to_wrf ) then
 
-   call DART_IO( "INPUT ", dart, dart_unit, number_dart_values, &
-        seconds, days, debug )
+   call DART_IO( "INPUT ", dart, dart_unit, dart_time, binary_restart_files, debug )
    iunit = get_unit()
-   open(unit = iunit, file = 'time.dat')
-   write (iunit,*) seconds
-   write (iunit,*) days
+   open(unit = iunit, file = 'wrf.info')
+   call write_time(iunit, dart_time(1))
+   call get_date(dart_time(2), year, month, day, hour, minute, second)
+   write (iunit,*) year, month, day, hour, minute, second
+   call get_date(dart_time(1), year, month, day, hour, minute, second)
+   write (iunit,*) year, month, day, hour, minute, second
+
+   interval_time = dart_time(2) - dart_time(1)
+   call get_time(interval_time, seconds, days)
+
+   write (iunit,*) (days *24) + (seconds)/3600
+
+   write (iunit,*) wrf_dt
+   write (iunit,*) wrf_dx
+   write (iunit,*) wrf%we+1
+   write (iunit,*) wrf%sn+1
+   write (iunit,*) wrf%bt+1
    close(iunit)
 
 else
@@ -134,334 +187,73 @@ call transfer_dart_wrf ( dart_to_wrf, dart, wrf,    &
 if(debug) write(6,*) ' transfer complete '
 
 !---
-!  output 
+!  output
 
 if(debug) write(6,*) ' state output '
 if( dart_to_wrf ) then
+   call get_date(dart_time(2), year, month, day, hour, minute, second)
+   call set_wrf_date(timestring, year, month, day, hour, minute, second)
+   call check( nf90_inq_varid(wrf%ncid, "Times", var_id) )
+   call check( nf90_put_var(wrf%ncid, var_id, timestring) )
+   call check( nf90_put_att(wrf%ncid, nf90_global, "START_DATE", timestring) )
+   call check( nf90_put_att(wrf%ncid, nf90_global, "JULYR", year) )
+   ndays = 0
+   leap = (modulo(year,4) == 0)
+   if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
+      leap=.false.
+   endif
+   do m = 1, month - 1
+      ndays = ndays + days_per_month(m)
+      if(leap .and. m == 2) ndays = ndays + 1
+   enddo
+   ndays = ndays + day
+   call check( nf90_put_att(wrf%ncid, nf90_global, "JULDAY", ndays) )
    call WRF_IO( wrf, "OUTPUT", debug )
 else
    iunit = get_unit()
-   open(unit = iunit, file = 'time.dat')
-   read(iunit,*) seconds
-   read(iunit,*) days
+   open(unit = iunit, file = 'wrf.info')
+   dart_time(1) = read_time(iunit)
    close(iunit)
-   call DART_IO( "OUTPUT", dart, dart_unit, number_dart_values, &
-        seconds, days, debug )
+   call DART_IO( "OUTPUT", dart, dart_unit, dart_time, binary_restart_files, debug )
 end if
 if(debug) write(6,*) ' returned from state output '
 
-status = nf90_sync(wrf%ncid)
-if (status /= nf90_noerr) call error_handler(E_ERR,'main', &
-     trim(nf90_strerror(status)), source, revision, revdate)
+call check ( nf90_sync(wrf%ncid) )
+call check ( nf90_close(wrf%ncid) )
 
-status = nf90_close(wrf%ncid)
-if (status /= nf90_noerr) call error_handler(E_ERR,'main', &
-     trim(nf90_strerror(status)), source, revision, revdate)
+call wrf_dealloc(wrf)
+deallocate(dart)
 
+write(logfileunit,*)'FINISHED dart_tf_wrf.'
+write(logfileunit,*)
+
+call finalize_utilities ! closes the log file.
+ 
 contains
 
-!******************************************************************************
-
-subroutine wrf_io( wrf, in_or_out, debug )
-
-implicit none
-
-type(wrf_data) wrf
-character (len=6) :: in_or_out
-
-integer :: k, ndims, lngth, dimids(5)
-logical :: debug
-
-!----------------------------------------------------------------------
-
-if (in_or_out  == "OUTPUT") then
-   call error_handler(E_MSG,'wrf_io','Writing to the WRF restart netCDF file.',source,revision,revdate)
-else
-   call error_handler(E_MSG,'wrf_io','Reading the WRF restart netCDF file.',source,revision,revdate)
-endif
-
-!----------------------------------------------------------------------
-! Reading or Writing the U variable. ignoring count, stride, map ...
-!----------------------------------------------------------------------
-
-call check( nf90_inquire_variable(wrf%ncid, wrf%u_id, ndims=ndims, dimids=dimids) )
-call check( nf90_inquire_dimension(wrf%ncid, dimids(ndims), len=lngth) )
-
-if(debug) write(6,*) ' calling netcdf read for u '
-
-if (in_or_out  == "OUTPUT") then
-   call check( nf90_put_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, 1 /)))
-else
-   call check( nf90_get_var(wrf%ncid, wrf%u_id, wrf%u, start = (/ 1, 1, 1, lngth /)))
-endif
-
-if(debug) write(6,*) ' returned from netcdf read for u '
-
-!----------------------------------------------------------------------
-! Reading or Writing the V variable. ignoring count, stride, map ...
-!----------------------------------------------------------------------
-
-if (in_or_out  == "OUTPUT") then
-   call check( nf90_put_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, 1 /)))
-else
-   call check( nf90_get_var(wrf%ncid, wrf%v_id, wrf%v, start = (/ 1, 1, 1, lngth /)))
-endif
-
-if(debug) write(6,*) ' returned from netcdf read for v '
-
-!----------------------------------------------------------------------
-! Reading or Writing the W,PH,PHB variables. ignoring count, stride, map ...
-!----------------------------------------------------------------------
-
-if (in_or_out  == "OUTPUT") then
-   call check( nf90_put_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, 1 /)))
-!!$   call check( nf90_put_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, 1 /)))
-else
-   call check( nf90_get_var(wrf%ncid, wrf%w_id,   wrf%w,   start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%ph_id,  wrf%ph,  start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%phb_id, wrf%phb, start = (/ 1, 1, 1, lngth /)))
-endif
-
-!----------------------------------------------------------------------
-! Reading or Writing the .... variables. ignoring count, stride, map ...
-!----------------------------------------------------------------------
-
-if (in_or_out  == "OUTPUT") then
-   call check( nf90_put_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, 1 /)))
-else
-   call check( nf90_get_var(wrf%ncid, wrf%t_id,  wrf%t,  start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%qc_id, wrf%qc, start = (/ 1, 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%qr_id, wrf%qr, start = (/ 1, 1, 1, lngth /)))
-endif
-
-!----------------------------------------------------------------------
-! Reading or Writing the .... variables. ignoring count, stride, map ...
-!----------------------------------------------------------------------
-
-if(wrf%ice_micro) then
-   if (in_or_out  == "OUTPUT") then
-      call check( nf90_put_var(wrf%ncid, wrf%qi_id, wrf%qi, start = (/ 1, 1, 1, 1 /)))
-      call check( nf90_put_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, 1 /)))
-      call check( nf90_put_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, 1 /)))
-   else
-      call check( nf90_get_var(wrf%ncid, wrf%qi_id, wrf%qi, start = (/ 1, 1, 1, lngth /)))
-      call check( nf90_get_var(wrf%ncid, wrf%qs_id, wrf%qs, start = (/ 1, 1, 1, lngth /)))
-      call check( nf90_get_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, lngth /)))
-   endif
-end if
-
-!----------------------------------------------------------------------
-! Reading or Writing the .... variables. ignoring count, stride, map ...
-!----------------------------------------------------------------------
-
-if (in_or_out  == "OUTPUT") then
-   call check( nf90_put_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, 1 /)))
-else
-   call check( nf90_get_var(wrf%ncid, wrf%mu_id, wrf%mu, start = (/ 1, 1, lngth /)))
-endif
-
-!----------------------------------------------------------------------
-! Reading ....  get base state mu. for full state computation
-!----------------------------------------------------------------------
-
-if( in_or_out(1:5) == "INPUT")   then  
-
-   call check( nf90_get_var(wrf%ncid, wrf%mub_id, wrf%mub, start = (/ 1, 1, lngth /)))
-
-   if(debug) then
-      write(6,*) ' returned from mub read '
-      write(6,*) ' corner vals for mub '
-      write(6,*) wrf%mub(1,1),wrf%mub(wrf%we,1),  &
-           wrf%mub(1,wrf%sn),wrf%mub(wrf%we,wrf%sn)
-   endif
-
-end if
-
-
-
-if(debug) then
-   do k=1,wrf%bt
-      write(6,*) ' k, corner vals for u '
-      write(6,*) k, wrf%u(1,1,k),wrf%u(wrf%we+1,1,k),  &
-           wrf%u(1,wrf%sn,k),wrf%u(wrf%we+1,wrf%sn,k)
-   enddo
-
-   write(6,*) ' '
-
-   do k=1,wrf%bt
-      write(6,*) ' k, corner vals for v '
-      write(6,*) k, wrf%v(1,1,k),wrf%v(wrf%we,1,k),  &
-           wrf%v(1,wrf%sn+1,k),wrf%v(wrf%we,wrf%sn+1,k)
-   enddo
-
-   write(6,*) ' '
-
-   write(6,*) ' corner vals for mu '
-   write(6,*) wrf%mu(1,1),wrf%mu(wrf%we,1),  &
-        wrf%mu(1,wrf%sn),wrf%mu(wrf%we,wrf%sn)
-end if
-
-end subroutine wrf_io
-
-!**********************************************************************
-
-subroutine wrf_open_and_alloc( wrf, mode, debug )
-
-implicit none
-
-integer            :: mode
-
-character (len=80) :: name
-logical            :: debug
-
-type(wrf_data)     :: wrf
-
-call check ( nf90_open('wrfinput', mode, wrf%ncid) )
-if(debug) write(6,*) ' wrf%ncid is ',wrf%ncid
-
-! get wrf grid dimensions
-
-call check ( nf90_inq_dimid(wrf%ncid, "bottom_top", wrf%bt_id))
-call check ( nf90_inquire_dimension(wrf%ncid, wrf%bt_id, name, wrf%bt))
-
-call check ( nf90_inq_dimid(wrf%ncid, "south_north", wrf%sn_id))
-call check ( nf90_inquire_dimension(wrf%ncid, wrf%sn_id, name, wrf%sn))
-
-call check ( nf90_inq_dimid(wrf%ncid, "west_east", wrf%we_id))
-call check ( nf90_inquire_dimension(wrf%ncid, wrf%we_id, name, wrf%we))
-
-if(debug) write(6,*) ' dimensions bt, sn, we are ',wrf%bt,wrf%sn,wrf%we
-
-!---
-! get wrf variable ids and allocate space for wrf variables
-
-
-call check ( nf90_inq_varid(wrf%ncid, "P_TOP", wrf%ptop_id))
-if(debug) write(6,*) ' ptop_id = ',wrf%ptop_id
-
-call check ( nf90_inq_varid(wrf%ncid, "U", wrf%u_id))
-
-if(debug) write(6,*) ' u_id = ',wrf%u_id
-allocate(wrf%u(wrf%we+1,wrf%sn,wrf%bt))
-
-call check ( nf90_inq_varid(wrf%ncid, "V", wrf%v_id))
-if(debug) write(6,*) ' v_id = ',wrf%v_id
-allocate(wrf%v(wrf%we,wrf%sn+1,wrf%bt))
-
-call check ( nf90_inq_varid(wrf%ncid, "W", wrf%w_id))
-if(debug) write(6,*) ' w_id = ',wrf%w_id
-allocate(wrf%w(wrf%we,wrf%sn,wrf%bt+1))
-
-call check ( nf90_inq_varid(wrf%ncid, "PH", wrf%ph_id))
-if(debug) write(6,*) ' ph_id = ',wrf%ph_id
-allocate(wrf%ph(wrf%we,wrf%sn,wrf%bt+1))
-
-call check ( nf90_inq_varid(wrf%ncid, "PHB", wrf%phb_id))
-if(debug) write(6,*) ' phb_id = ',wrf%phb_id
-allocate(wrf%phb(wrf%we,wrf%sn,wrf%bt+1))
-
-call check ( nf90_inq_varid(wrf%ncid, "T", wrf%t_id))
-if(debug) write(6,*) ' t_id = ',wrf%t_id
-allocate(wrf%t(wrf%we,wrf%sn,wrf%bt))
-
-call check ( nf90_inq_varid(wrf%ncid, "MU", wrf%mu_id))
-if(debug) write(6,*) ' mu_id = ',wrf%mu_id
-allocate(wrf%mu(wrf%we,wrf%sn))
-
-call check ( nf90_inq_varid(wrf%ncid, "MUB", wrf%mub_id))
-if(debug) write(6,*) ' mub_id = ',wrf%mub_id
-allocate(wrf%mub(wrf%we,wrf%sn))
-
-call check ( nf90_inq_varid(wrf%ncid, "QVAPOR", wrf%qv_id))
-if(debug) write(6,*) ' qv_id = ',wrf%qv_id
-allocate(wrf%qv(wrf%we,wrf%sn,wrf%bt))
-
-call check ( nf90_inq_varid(wrf%ncid, "QCLOUD", wrf%qc_id))
-if(debug) write(6,*) ' qc_id = ',wrf%qc_id
-allocate(wrf%qc(wrf%we,wrf%sn,wrf%bt))
-
-call check ( nf90_inq_varid(wrf%ncid, "QRAIN", wrf%qr_id))
-if(debug) write(6,*) ' qr_id = ',wrf%qr_id
-allocate(wrf%qr(wrf%we,wrf%sn,wrf%bt))
-
-if (wrf%ice_micro) then
-
-   call check ( nf90_inq_varid(wrf%ncid, "QICE", wrf%qi_id))
-   if(debug) write(6,*) ' qi_id = ',wrf%qi_id
-   allocate(wrf%qi(wrf%we,wrf%sn,wrf%bt))
-
-   call check ( nf90_inq_varid(wrf%ncid, "QSNOW", wrf%qs_id))
-   if(debug) write(6,*) ' qs_id = ',wrf%qs_id
-   allocate(wrf%qs(wrf%we,wrf%sn,wrf%bt))
-
-   call check ( nf90_inq_varid(wrf%ncid, "QGRAUPEL", wrf%qg_id))
-   if(debug) write(6,*) ' qg_id = ',wrf%qg_id
-   allocate(wrf%qg(wrf%we,wrf%sn,wrf%bt))
-
-end if
-
-end subroutine wrf_open_and_alloc
-
-
-!*****************************************************************************
-
-subroutine check(istatus)
-     integer, intent ( in) :: istatus 
-     if(istatus /= nf90_noerr) call error_handler(E_ERR,'wrf_open_and_alloc', &
-       trim(nf90_strerror(istatus)), source, revision, revdate) 
-end subroutine check
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus 
+    if(istatus /= nf90_noerr) call error_handler(E_ERR,'dart_tf_wrf', &
+         trim(nf90_strerror(istatus)), source, revision, revdate) 
+  end subroutine check
 
 !*****************************************************************************
 
 subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, &
-     dart_to_wrf, debug )
+     dart_to_wrf, binary_restart_files, debug )
 
 implicit none
 
-logical               :: dart_to_wrf
-integer               :: dart_unit
+integer,           intent(in)  :: dart_unit
 
-logical               :: debug
+logical,           intent(in)  :: dart_to_wrf, binary_restart_files, debug
 
-type(wrf_data)        :: wrf
-real(r8), pointer     :: dart(:)
+type(wrf_data),    intent(in)  :: wrf
+real(r8),          pointer     :: dart(:)
 
-integer               :: n_values 
-
-!-------------------------------------------------------------
-! Namelist with default values
-! binary_restart_files  == .true.  -> use unformatted file format. 
-!                                     Full precision, faster, smaller,
-!                                     but not as portable.
-! binary_restart_files  == .false.  -> use ascii file format. 
-!                                     Portable, but loses precision,
-!                                     slower, and larger.
-
-logical  :: binary_restart_files = .false.
-
-namelist /assim_model_nml/ binary_restart_files
-!-------------------------------------------------------------
-
-! Read the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = assim_model_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'assim_model_nml')
-   enddo
- 11 continue
-   call close_file(iunit)
-endif
-
-! namelist validation
-write(*, *) 'assim_model_nml read; values are'
-write(*, *) 'binary_restart_files is ', binary_restart_files
+integer,           intent(out) :: n_values 
 
 ! compute number of values in 1D vector
 
@@ -478,15 +270,28 @@ n_values = n_values + (       1)*(wrf%sn  )*(wrf%we  )  ! dry surface pressure f
 
 ! moist variables
 
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qv field
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qc field
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qr field
-
-if(wrf%ice_micro) then
+if(wrf%n_moist > 0) then
+   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qv field
+endif
+if(wrf%n_moist > 1) then
+   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qc field
+endif
+if(wrf%n_moist > 2) then
+   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qr field
+endif
+if(wrf%n_moist > 3) then
    n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qi field
+endif
+if(wrf%n_moist > 4) then
    n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qs field
+endif
+if(wrf%n_moist > 5) then
    n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qg field
-end if
+endif
+if(wrf%n_moist > 6) then
+   write(6,*) 'n_moist = ',wrf%n_moist,' is too large.'
+   stop
+endif
 
 if(debug) write(6,*) ' dart vector length is ',n_values
 
@@ -495,7 +300,7 @@ allocate(dart(n_values))
 !  open DART data file
 
 if(dart_to_wrf)  then  !  DART data file should exist, open it
-   if (binary_restart_files ) then
+   if ( binary_restart_files ) then
       open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
            status="old",action="read" )
    else
@@ -503,7 +308,7 @@ if(dart_to_wrf)  then  !  DART data file should exist, open it
            status="old",action="read" )
    endif
 else
-   if (binary_restart_files ) then
+   if ( binary_restart_files ) then
       open( unit=dart_unit,file="dart_wrf_vector",form="unformatted",  &
            status="new",action="write" )
    else
@@ -516,41 +321,40 @@ end subroutine dart_open_and_alloc
 
 !*****************************************************************************
 
-subroutine dart_io( in_or_out, dart, dart_unit, n_values, &
-     seconds, days, debug )
+subroutine dart_io( in_or_out, dart, dart_unit, dart_time, binary_restart_files, debug )
 
 implicit none
 
-integer               :: dart_unit, seconds, days
-integer               :: seconds_end, days_end
+character (len=6), intent(in)    :: in_or_out
+real(r8),          pointer       :: dart(:)
 
-character (len=6)     :: in_or_out
-logical               :: debug
-
-logical, parameter    :: test_input = .false.
-
-real(r8), pointer     :: dart(:)
-
-integer               :: n_values 
+integer,           intent(in)    :: dart_unit
+type(time_type),   intent(inout) :: dart_time(2)
+logical,           intent(in)    :: binary_restart_files, debug
 
 if(debug) then
    write(6,*)' in dart_io '
-   write(6,*)' number of values ', n_values
    write(6,*)' mode ',in_or_out
 end if
 
 if (in_or_out(1:5) == 'INPUT') then
-   read(dart_unit) seconds, days 
-   if(debug) write(6,*) ' seconds and days from dart input ',seconds, days 
-   if(.not. test_input) then
-      read(dart_unit) seconds_end, days_end
-      if(debug) write(6,*) ' seconds_end and days_end from dart input ', &
-           seconds_end, days_end 
-   end if
+   if ( binary_restart_files ) then
+      dart_time(1) = read_time(dart_unit, "unformatted")
+      dart_time(2) = read_time(dart_unit, "unformatted")
+   else
+      dart_time(1) = read_time(dart_unit)
+      dart_time(2) = read_time(dart_unit)
+   endif
+   if(debug) call print_time(dart_time(1), 'Target time:')
+   if(debug) call print_time(dart_time(2), 'Current time:')
    read(dart_unit) dart
 else
    rewind(dart_unit)
-   write(dart_unit) seconds, days 
+   if ( binary_restart_files ) then
+      call write_time(dart_unit, dart_time(1), "unformatted")
+   else
+      call write_time(dart_unit, dart_time(1))
+   endif
    write(dart_unit) dart
 end if
 
@@ -567,7 +371,7 @@ logical :: dart_to_wrf
 type(wrf_data)    :: wrf
 real(r8), pointer :: dart(:)
 
-integer :: n_values_in 
+integer :: n_values_in
 
 !---
 
@@ -604,38 +408,47 @@ n_values = n_values + (       1)*(wrf%sn  )*(wrf%we  )  ! dry surface pressure f
 
 ! moist variables
 
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%qv,wrf%we,wrf%sn,wrf%bt)
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qv field
-
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%qc,wrf%we,wrf%sn,wrf%bt)
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qc field
-
-in = n_values+1
-call trans_3d( dart_to_wrf, dart(in:),wrf%qr,wrf%we,wrf%sn,wrf%bt)
-n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qr field
-
-
-if(wrf%ice_micro) then
-
+if(wrf%n_moist > 0) then
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%qv,wrf%we,wrf%sn,wrf%bt)
+   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qv field
+endif
+if(wrf%n_moist > 1) then
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%qc,wrf%we,wrf%sn,wrf%bt)
+   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qc field
+endif
+if(wrf%n_moist > 2) then
+   in = n_values+1
+   call trans_3d( dart_to_wrf, dart(in:),wrf%qr,wrf%we,wrf%sn,wrf%bt)
+   n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qr field
+endif
+if(wrf%n_moist > 3) then
    in = n_values+1
    call trans_3d( dart_to_wrf, dart(in:),wrf%qi,wrf%we,wrf%sn,wrf%bt)
    n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qi field
-
+endif
+if(wrf%n_moist > 4) then
    in = n_values+1
    call trans_3d( dart_to_wrf, dart(in:),wrf%qs,wrf%we,wrf%sn,wrf%bt)
    n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qs field
-
+endif
+if(wrf%n_moist > 5) then
    in = n_values+1
    call trans_3d( dart_to_wrf, dart(in:),wrf%qg,wrf%we,wrf%sn,wrf%bt)
    n_values = n_values + (wrf%bt  )*(wrf%sn  )*(wrf%we  )  ! qg field
-
-end if
-
-write(stringerror,*)' n_values differ in transfer ',n_values, n_values_in
-if(n_values /= n_values_in ) call error_handler(E_ERR, 'transfer_dart_wrf', &
+endif
+if(wrf%n_moist > 6) then
+   write(stringerror,*) 'n_moist = ',wrf%n_moist,' is too large.'
+   call error_handler(E_ERR, 'transfer_dart_wrf', &
                              stringerror, source, revision, revdate)
+endif
+
+if(n_values /= n_values_in ) then
+   write(stringerror,*)' n_values differ in transfer ',n_values, n_values_in
+   call error_handler(E_ERR, 'transfer_dart_wrf', &
+                             stringerror, source, revision, revdate)
+endif
 
 end subroutine transfer_dart_wrf
 

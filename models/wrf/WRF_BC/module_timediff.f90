@@ -1,55 +1,88 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 MODULE module_timediff
+
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$ 
+
+  use        types_mod, only : r8, i8
+  use time_manager_mod, only : time_type, set_date, get_time
+
+  implicit none
+  private
+
+public time_diff, find_time_index
 
 CONTAINS
 
 SUBROUTINE time_diff(stime,etime,diff)
 !#######################################
 ! computes the difference in seconds between stime and etime, where stime
-! and etime are character*80 as: YYYY-MM-DD_hh:mm:ss
-! NOTE: assumes that the difference is less than a day (should be fine for this)
+! and etime are character*19 as: YYYY-MM-DD_hh:mm:ss
 
   implicit none
 
-  character(len=80), intent(in) :: stime, etime
-  real, intent(out) :: diff
+  character(len=19), intent(in)  :: stime, etime
+  real(r8),          intent(out) :: diff
 
-  integer :: shr,smm,sss, s_secs
-  integer :: ehr,emm,ess, e_secs
+  type(time_type) :: sdate, edate
+  integer         :: syy,smm,sdd,shr,smi,sss
+  integer         :: eyy,emm,edd,ehr,emi,ess
+  integer(i8)     :: s_secs, e_secs
 
+  read(stime(1:4),*) syy
+  read(stime(6:7),*) smm
+  read(stime(9:10),*) sdd
   read(stime(12:13),*) shr
-  read(stime(15:16),*) smm
+  read(stime(15:16),*) smi
   read(stime(18:19),*) sss
+  read(etime(1:4),*) eyy
+  read(etime(6:7),*) emm
+  read(etime(9:10),*) edd
   read(etime(12:13),*) ehr
-  read(etime(15:16),*) emm
+  read(etime(15:16),*) emi
   read(etime(18:19),*) ess
 
-  s_secs = shr*3600 + smm*60 +sss
-  e_secs = ehr*3600 + emm*60 +ess
+  sdate = set_date(syy,smm,sdd,shr,smi,sss)
+  edate = set_date(eyy,emm,edd,ehr,emi,ess)
+
+!!$  s_secs = shr*3600 + smi*60 +sss
+!!$  e_secs = ehr*3600 + emi*60 +ess
+  call get_time(sdate, sss, sdd)
+  call get_time(edate, ess, edd)
+  s_secs = sss + sdd*86400_i8
+  e_secs = ess + edd*86400_i8
 
   diff = e_secs - s_secs
 
   if ( diff < 0 ) then
-    print*, "your time difference is negative - aborting:"
-    stop 'time_diff'
+     print*,sss,ess,sdd,edd,e_secs,s_secs,diff
+     print*, "your time difference is negative - aborting:"
+     stop 'time_diff'
   endif
 
 END SUBROUTINE time_diff
 
 SUBROUTINE find_time_index(timelist, time_to_find, ntimes, itime)
 !################################################
-! finds first index in timelist such that tim_to_find is later than
+! finds first index in timelist such that time_to_find is later than
 ! timelist(itime)
 !##################################################
   implicit none
 
-  character(len=80), dimension(:), intent(in) :: timelist
-  character(len=80), intent(in) :: time_to_find
-  integer, intent(in) :: ntimes
-  integer, intent(out) :: itime
+  character(len=80), dimension(:), intent(in)  :: timelist
+  character(len=80),               intent(in)  :: time_to_find
+  integer,                         intent(in)  :: ntimes
+  integer,                         intent(out) :: itime
 
-  integer :: it
-  integer*8 :: tfyr, tfmo, tfdy, tfhr, tfmm, tfss, tf
-  integer*8 :: lyr, lmo, ldy, lhr, lmm, lss, l
+  integer          :: it
+  integer(kind=i8) :: tfyr, tfmo, tfdy, tfhr, tfmm, tfss, tf
+  integer(kind=i8) :: lyr, lmo, ldy, lhr, lmm, lss, l
   
   read(time_to_find(1:4),*) tfyr
   read(time_to_find(6:7),*) tfmo
@@ -58,7 +91,8 @@ SUBROUTINE find_time_index(timelist, time_to_find, ntimes, itime)
   read(time_to_find(15:16),*) tfmm
   read(time_to_find(18:19),*) tfss
   
-  tf = (tfyr*10000000000)+(tfmo*100000000) + (tfdy*1000000) + (tfhr*10000) + (tfmm*100) + tfss
+  tf = (tfyr*10000000000_i8)+(tfmo*100000000_i8) + (tfdy*1000000_i8) + &
+       (tfhr*10000_i8) + (tfmm*100_i8) + tfss
 
   itime = ntimes
   do it = ntimes,1,-1
@@ -68,7 +102,8 @@ SUBROUTINE find_time_index(timelist, time_to_find, ntimes, itime)
     read(timelist(it)(12:13),*) lhr
     read(timelist(it)(15:16),*) lmm
     read(timelist(it)(18:19),*) lss
-    l = (lyr*10000000000)+(lmo*100000000) + (ldy*1000000) + (lhr*10000) + (lmm*100) + lss
+    l = (lyr*10000000000_i8)+(lmo*100000000_i8) + (ldy*1000000_i8) + &
+         (lhr*10000_i8) + (lmm*100_i8) + lss
     if ( l <= tf ) then
       itime = it 
       exit
