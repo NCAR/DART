@@ -2,7 +2,7 @@
 ! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module real_obs_sequence_mod
+module real_obs_mod
 
 ! <next four lines automatically updated by CVS, do not edit>
 ! $Source$
@@ -32,7 +32,6 @@ implicit none
 private
 
 ! Public interfaces for obs sequences
-!kdr orig; public  real_obs_sequence
 public  real_obs_sequence, obs_model_type
 
 ! CVS Generated file description for error handling, do not edit
@@ -65,13 +64,11 @@ end subroutine initialize_module
   type(obs_sequence_type) :: real_obs_sequence
   type(obs_type) :: obs, prev_obs
   integer :: max_num_obs, num_copies, num_qc, i
-  integer :: days, seconds, obs_num
+  integer :: days, seconds, obs_num,  calender_type, obs_day01
   integer :: obs_year, obs_month, obs_day, obs_hour, obs_min, obs_sec
-  integer :: obs_day01, obs_hour01
-  integer :: calender_type
   type(time_type) :: obs_time
 
-  integer :: obs_unit, obs_prof, obs_kind, basic_type, which_vert, iqc
+  integer :: obs_unit, obs_prof, obs_kind, model_type, which_vert, iqc
   real (r8) :: var, lon, lat, lev, zob, time, type, count, zob2
   real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
 
@@ -81,7 +78,10 @@ end subroutine initialize_module
 
 !-------------------------------------------------------------
 
+!*****************************************************************************
    max_num_obs = 500000    !! for current NCEP daily RA+ACARS+SATWND data only
+!*****************************************************************************
+
    num_copies  = 1
    num_qc      = 1         !! the NCEP data passed NCEP QC procedure by readpb.f
 !
@@ -108,7 +108,7 @@ end subroutine initialize_module
 !   for NCEP real data preparation
 !-------------------------------------
 
-!   initialization for observation time
+!   set observation time type
     calender_type = 3
     call set_calendar_type(calender_type)
 
@@ -137,11 +137,13 @@ end subroutine initialize_module
     obs_unit = get_unit()
     obsfile  = '/home/hliu/ncepobs/new/temp_obs.'//obsdate
     open(unit = obs_unit, file = obsfile, form='formatted', status='old')
+
+     print*, 'file opened= ', obsfile
     rewind (obs_unit)
 
     obs_num = 0
 
-! Loop to initialize each observation
+! Loop to set up each observation
 !
 obsloop:  do i = 1, max_num_obs
    
@@ -163,16 +165,22 @@ obsloop:  do i = 1, max_num_obs
     if(lat01 <= -90.0_r8) lat01 = -90.0_r8
 
     obs_prof = count/1000000
-    obs_kind = obs_prof*10000 + type 
+!   obs_kind = obs_prof*10000 + type 
+!   call obs_model_type(obs_kind, model_type)
+                                                                                       
+    if(obs_prof == 2) obs_kind = 1
+    if(obs_prof == 9) obs_kind = 2
+    if(obs_prof == 3) obs_kind = 3
+    if(obs_prof == 1) obs_kind = 4
+    model_type = obs_kind
 
-    call obs_model_type(obs_kind, basic_type)
 
-    if (basic_type == 1 .or. basic_type ==2 .or. basic_type ==4 ) then      ! for u,v,t
-     vloc = lev*100.0            ! (transfer Pressure coordinate from mb to Pascal)                          
+    if (model_type == 1 .or. model_type ==2 .or. model_type ==4 ) then      ! for u,v,t
+     vloc = lev*100.0            ! (transfer Pressure coordinate from mb to Pascal) 
      which_vert = 2
     endif
 
-    if (basic_type == 3) then      ! for u,v,t
+    if (model_type == 3) then    ! for Ps
      vloc = 0.0                  ! not used for Ps obs
      which_vert = -1
      var = var*100.0             ! convert sqrt(error covariance) to Pascal
@@ -181,17 +189,17 @@ obsloop:  do i = 1, max_num_obs
 
 !   set obs value and error covariance
 
-     if(basic_type .eq. 3) then
-      obs_value = lev*100.0    !!  for Ps variable only in Pascal
+     if(model_type .eq. 3) then
+      obs_value = lev*100.0      !  for Ps variable only in Pascal
      else
-      obs_value = zob    !!  for T, U, V
+      obs_value = zob            !  for T, U, V
      endif
 
     aqc = iqc
-    var2 = var**2        !! error_covariance
+    var2 = var**2                ! error_covariance
 
 
-!   set obs time part
+!   set obs time
 
       if(time == 24) then
        obs_hour = 0
@@ -206,19 +214,19 @@ obsloop:  do i = 1, max_num_obs
       obs_time = set_date(obs_year, obs_month, obs_day01, obs_hour, obs_min, obs_sec)
    
       call get_time(obs_time, seconds, days)
-      write(*,*)  'obs time', seconds, days
+!     write(*,*)  'obs time', seconds, days
 
-!-------------------------------------------------------------
+!-----------------------------------------------------------------------------------
    call real_obs(num_copies, num_qc, obs, &
        lon01, lat01, vloc, obs_value, var2, aqc, obs_kind, which_vert, seconds, days)
-!-------------------------------------------------------------
+!-----------------------------------------------------------------------------------
 
    if(i == 1) then
      call insert_obs_in_seq(real_obs_sequence, obs)
-      call copy_obs(prev_obs, obs)
+     call copy_obs(prev_obs, obs)
    else
      call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-      call copy_obs(prev_obs, obs)
+     call copy_obs(prev_obs, obs)
    endif
 
 end do obsloop
@@ -231,10 +239,10 @@ end do obsloop
 end function real_obs_sequence
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------------------
   subroutine real_obs(num_copies, num_qc, obs, &
        lon01, lat01, vloc, obs_value, var2, aqc, obs_kind, which_vert, seconds, days)
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------------------
 
   integer, intent(in) :: num_copies, num_qc
   type(obs_type), intent(inout) :: obs
@@ -279,11 +287,11 @@ subroutine real_obs_def(obs_def, &
 
   if ( .not. module_initialized ) call initialize_module
 
-! Get the location
+! set the location
     loc0 = set_location(lon01, lat01, vloc, which_vert )
   call set_obs_def_location(obs_def, loc0)
 
-! Get the obsrvation kind
+! set the obsrvation kind
   kind0 = set_obs_kind(obs_kind)
   call set_obs_def_kind(obs_def, kind0)
 
@@ -292,30 +300,27 @@ subroutine real_obs_def(obs_def, &
 
 end subroutine real_obs_def
 
-!----------------------------------------------------------------
-
-subroutine obs_model_type(kind, basic_type)
-!-------------------------------------------------------------------------
+!-----------------------------------------------------
+subroutine obs_model_type(kind, model_type, ncep_type)
+!-----------------------------------------------------
   implicit none
 
   integer, intent(in)  :: kind
-  integer, intent(out) :: basic_type
+  integer, intent(out) :: model_type
+  integer, intent(out), optional :: ncep_type
   integer :: obs_prof
 
   if ( .not. module_initialized ) call initialize_module
 
-    if (kind < 10000) then
-       basic_type = kind
-       return
-    else
-       obs_prof = kind/10000
-       if(obs_prof == 2) basic_type = 1         !! the model obs types
-       if(obs_prof == 9) basic_type = 2
-       if(obs_prof == 3) basic_type = 3
-       if(obs_prof == 1) basic_type = 4
-    endif
+    obs_prof = kind/10000
+    if(obs_prof == 2) model_type = 1         !! the model obs types
+    if(obs_prof == 9) model_type = 2
+    if(obs_prof == 3) model_type = 3
+    if(obs_prof == 1) model_type = 4
+
+    ncep_type = kind - obs_prof * 10000
 
 end subroutine obs_model_type
 
 
-end module real_obs_sequence_mod
+end module real_obs_mod

@@ -1,9 +1,9 @@
-program create_real_obs_sequence
+program create_real_obs
 
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence
 
-use real_obs_sequence_mod, only : real_obs_sequence
+use real_obs_mod, only : real_obs_sequence
 
 type(obs_sequence_type) :: seq
 character(len = 129) :: file_name = 'obs_seq.out'
@@ -20,4 +20,4 @@ character(len = 129) :: file_name = 'obs_seq.out'
 !
   call write_obs_seq(seq, file_name)
 
-end program create_real_obs_sequence
+end program create_real_obs
