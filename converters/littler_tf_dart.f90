@@ -100,7 +100,7 @@ tst_id = 'dart_id'
 tst_name = 'dart_name'
 tst_pltfrm = 'dart_pltfrm'
 tst_src = 'dart_src'
-tst_ter = 0.0
+tst_ter = MISSING_R8
 tst_bogus = .false.
 tst_discard = .false.
 tst_slp = MISSING_R8
@@ -192,12 +192,12 @@ if(.not. littler_to_dart) then
             pvloc = vloc
          enddo
 
-         if (kx > 1) then
+!!$         if (kx > 1) then
             tst_sound = .true.
             tst_pltfrm = 'FM-35 TEMP'
-         else
-            tst_sound = .false.
-         endif
+!!$         else
+!!$            tst_sound = .false.
+!!$         endif
 
          call set_str_date(date_char, stime)
 
@@ -360,6 +360,8 @@ else
            tst_slp, i6, f1,i7, f2,i8, f3,i9, f4,i10, f5,i11, &
            f6,i12, f7,i13, f8,i14, f9,i15, f10,i16, f11,i17, f12,i18
 
+      print*,'kx = ',kx
+
       allocate(p(kx),p_qc(kx), z(kx),zpp_qc(kx), t(kx),tt_qc(kx), td(kx),td_qc(kx), &
            spd(kx),spd_qc(kx), dir(kx),dir_qc(kx), &
            uu(kx),zuu_qc(kx), vv(kx),zvv_qc(kx), cld(kx),cld_qc(kx), &
@@ -510,7 +512,7 @@ else
 
 endif
 
-write(unit=*, fmt='(5x,a,i6,a)') &
+write(unit=*, fmt='(5x,a,i7)') &
      'Total number of observations:  ', num_obs
 
 goto 26
