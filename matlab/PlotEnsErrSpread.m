@@ -103,7 +103,7 @@ switch lower(tmodel)
          end
       end
 
-   case {'lorenz_63','lorenz_84','lorenz_96'}
+   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
 
       % Get the appropriate copies
       truth      = get_state_copy(pinfo.truth_file, truth_index);

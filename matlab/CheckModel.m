@@ -54,7 +54,7 @@ switch lower(model)
               'max_ens_mem',max(copy), ...
               'def_state_vars',def_state_vars);
 
-   case 'lorenz_96'
+   case {'lorenz_96', 'lorenz_04'}
 
       num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
       if (prod(size(num_vars)) > 1 ) 

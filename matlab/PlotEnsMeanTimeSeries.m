@@ -128,7 +128,7 @@ switch lower(t.model)
       ylabel('state variable 2')
       zlabel('state variable 3')
 
-   case 'lorenz_96'
+   case {'lorenz_96', 'lorenz_04'}
       
       % Plot all variables in own subplot ... might get cluttered.
       figure(1); clf; iplot = 0;

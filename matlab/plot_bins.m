@@ -47,7 +47,7 @@ varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
 switch lower(vars.model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
 
       pinfo = struct( 'truth_file'    , truth_file, ...
                       'diagn_file'    , diagn_file, ...

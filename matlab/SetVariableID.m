@@ -15,7 +15,7 @@ switch lower(vars.model)
 
       varid = [1 2 3 4];
 
-   case 'lorenz_96'
+   case {'lorenz_96','lorenz_04'}
 
       % query to see if these are OK, if not ...
 

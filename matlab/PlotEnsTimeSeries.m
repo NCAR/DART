@@ -140,7 +140,7 @@ switch lower(t.model)
       ylabel('state variable 2')
       zlabel('state variable 3')
 
-   case 'lorenz_96'
+   case {'lorenz_96', 'lorenz_04'}
 
       % Use one figure with subplots 
       figure(1); clf; iplot = 0;
