@@ -321,14 +321,14 @@ subroutine write_location(ifile, loc, fform)
 ! rewrite as a function with error control info returned. For initial implementation,
 ! file is just an integer file unit number. Probably want to replace this with file
 ! as a file_type allowing more flexibility for IO at later point. file_type and 
-! associated operations would have to be supported. The mpp_io intefaces are a good
+! associated operations would have to be supported. The mpp_io interfaces are a good
 ! place to head with this, perhaps, when we need to extend to supporting parallel
-! platforms. 
+! platforms.
 
 implicit none
 
-integer,             intent(in) :: ifile
-type(location_type), intent(in) :: loc
+integer,                    intent(in) :: ifile
+type(location_type),        intent(in) :: loc
 character(len=*), intent(in), optional :: fform
 
 character(len=32) :: fileformat
