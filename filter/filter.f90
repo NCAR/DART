@@ -22,7 +22,8 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart, get_state_meta_data
+   write_state_restart, read_state_restart, get_state_meta_data, &
+   binary_restart_files
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
    look_for_bias, obs_increment17, obs_increment18
@@ -213,18 +214,32 @@ else
 endif
 
 !------------------- Read restart if requested ----------------------
+! We need to initialize the assim_model to determine what kind (binary/etc)
+! of restart file we expect.
+
 if(start_from_restart) then
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
    call init_assim_model(x)
+   unit = get_unit()
+   if (binary_restart_files == .true.) then
+      open(unit = unit, file = restart_in_file_name, form = "unformatted")
+   else
+      open(unit = unit, file = restart_in_file_name)
+   endif
+
    x_ptr%state => get_state_vector_ptr(x)
+
    do i = 1, ens_size
       write(*, *) 'trying to read restart ', i
       call init_assim_model(ens(i))
       ens_ptr(i)%state => get_state_vector_ptr(ens(i))
 
-      call read_state_restart(ens(i), unit)
-! If init_time_days an init_time_seconds are not < 0, set time to them
+      if (binary_restart_files == .true.) then
+         call read_state_restart(ens(i), unit, form = "unformatted")
+      else
+         call read_state_restart(ens(i), unit)
+      endif
+
+! If init_time_days and init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) call set_model_time(ens(i) , time1)
    end do
    close(unit)
@@ -237,9 +252,14 @@ else
 
 ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
 ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
-   unit = get_unit()
-   open(unit = unit, file = restart_in_file_name)
    call init_assim_model(x)
+   unit = get_unit()
+   if (binary_restart_files == .true.) then
+      open(unit = unit, file = restart_in_file_name, form = "unformatted")
+   else
+      open(unit = unit, file = restart_in_file_name)
+   endif
+
    x_ptr%state => get_state_vector_ptr(x)
 
    do i = 1, ens_size
@@ -248,7 +268,11 @@ else
    end do
 
 ! Get the initial condition
-   call read_state_restart(x, unit)
+   if (binary_restart_files == .true.) then
+      call read_state_restart(x, unit, form = "unformatted")
+   else
+      call read_state_restart(x, unit)
+   endif
    close(unit)
 
 ! Initialize a repeatable random sequence for perturbations
@@ -514,10 +538,17 @@ ierr = NF90_close(PosteriorStateUnit)
 ! Output a restart file if requested
 if(output_restart) then
    unit = get_unit()
-   open(unit = unit, file = restart_out_file_name)
-   do i = 1, ens_size
-      call write_state_restart(ens(i), unit)
-   end do
+   if (binary_restart_files == .true.) then
+      open(unit = unit, file = restart_out_file_name, form = "unformatted")
+      do i = 1, ens_size
+         call write_state_restart(ens(i), unit, form = "unformatted")
+      end do
+   else
+      open(unit = unit, file = restart_out_file_name)
+      do i = 1, ens_size
+         call write_state_restart(ens(i), unit)
+      end do
+   endif
    close(unit)
 endif
 

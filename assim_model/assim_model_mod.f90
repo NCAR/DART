@@ -15,7 +15,7 @@ use location_mod, only : location_type, get_dist, write_location, read_location,
                          LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod
-use utilities_mod, only : get_unit
+use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
@@ -23,12 +23,12 @@ use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
 
 private
 
-public static_init_assim_model, init_diag_output, get_model_size, get_closest_state_time_to, &
+public :: static_init_assim_model, init_diag_output, get_model_size, get_closest_state_time_to, &
    get_initial_condition, get_state_meta_data, get_close_states, get_num_close_states, &
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr
+   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files
 
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
@@ -56,6 +56,19 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+!-------------------------------------------------------------
+! Namelist with default values
+! binary_restart_files  == .true.  -> use unformatted file format. 
+!                                     Full precision, faster, smaller,
+!                                     but not as portable.
+! binary_restart_files  == .false.  -> use ascii file format. 
+!                                     Portable, but loses precision,
+!                                     slower, and larger.
+
+logical  :: binary_restart_files = .false.
+
+namelist /assim_nml/ binary_restart_files
+!-------------------------------------------------------------
 
 contains
 
@@ -95,12 +108,30 @@ subroutine static_init_assim_model()
 
 implicit none
 
+integer :: i, unit, ierr, io
+
 ! Change output to diagnostic output block ... 
 
 write(*,*)'assim_model attributes:'
 write(*,*)'   ',trim(adjustl(source))
 write(*,*)'   ',trim(adjustl(revision))
 write(*,*)'   ',trim(adjustl(revdate))
+
+! Read the namelist input
+if(file_exist('input.nml')) then
+   unit = open_file(file = 'input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(unit, nml = assim_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'assim_nml')
+   enddo
+ 11 continue
+   call close_file(unit)
+endif
+
+! namelist validation
+write(*, *) 'assim_nml read; values are'
+write(*, *) 'binary_restart_files is ', binary_restart_files
 
 ! Call the underlying model's static initialization
 call static_init_model()
@@ -646,14 +677,22 @@ return
  41   format(a21, i4)
       write(*, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
 
-! Output the destination time followed by assim_model_state 
+      ! Output the destination time followed by assim_model_state 
+      ! Write the time to which to advance
+      ! Write the assim model extended state   
+
       ic_file_unit = get_unit()
-      open(unit = ic_file_unit, file = ic_file_name(i))
-! Write the time to which to advance
-      call write_time(ic_file_unit, target_time)
-! Write the assim model extended state   
-      call write_state_restart(assim_model(i), ic_file_unit)
+      if (binary_restart_files == .true.) then
+            open(unit = ic_file_unit, file = ic_file_name(i),      form = 'unformatted')
+            call write_time(ic_file_unit, target_time,             form = 'unformatted')
+            call write_state_restart(assim_model(i), ic_file_unit, form = 'unformatted')
+      else
+            open(unit = ic_file_unit, file = ic_file_name(i))
+            call write_time(ic_file_unit, target_time)
+            call write_state_restart(assim_model(i), ic_file_unit)
+      endif
       close(ic_file_unit)
+
    endif
 
 !-------------- End of multiple async executables block ---------------
@@ -688,14 +727,18 @@ if(asynch) then
       write(*, *) 'ECHO:', input_string
    end do
 
+   write(*, *) 'got clearance to proceed in advance_state'
 
-write(*, *) 'got clearance to proceed in advance_state'
-
-! All should be done, read in the states and proceed
+   ! All should be done, read in the states and proceed
    do i = 1, num
       ud_file_unit = get_unit()
-      open(unit = ud_file_unit, file = ud_file_name(i))
-      call read_state_restart(assim_model(i), ud_file_unit)
+      if (binary_restart_files == .true.) then
+         open(unit = ud_file_unit, file = ud_file_name(i),     form = 'unformatted')
+         call read_state_restart(assim_model(i), ud_file_unit, form = 'unformatted')
+      else
+         open(unit = ud_file_unit, file = ud_file_name(i))
+         call read_state_restart(assim_model(i), ud_file_unit)
+      endif
       close(ud_file_unit)
    end do
 
@@ -768,7 +811,7 @@ end subroutine set_model_state_vector
 
 
 
-subroutine write_state_restart(assim_model, file)
+subroutine write_state_restart(assim_model, file, form)
 !----------------------------------------------------------------------
 !
 ! Write a restart file given a model extended state and a unit number 
@@ -777,41 +820,68 @@ subroutine write_state_restart(assim_model, file)
 
 implicit none
 
-type (assim_model_type), intent(in) :: assim_model
-integer, intent(in) :: file
+type (assim_model_type), intent(in)           :: assim_model
+integer,                 intent(in)           :: file
+character(len=*),        intent(in), optional :: form
 
-integer :: days, seconds
+integer           :: days, seconds
+character(len=32) :: fileformat
+
+
+fileformat = "ascii"
+if (present(form)) fileformat = trim(adjustl(form))
+
 
 ! This needs to be done more carefully, consider this an extended stub
 ! Write time first
-call write_time(file, assim_model%time)
-
 ! Write the state vector
-write(file, *) assim_model%state_vector
+
+
+SELECT CASE (fileformat)
+   CASE ("unf","UNF","unformatted","UNFORMATTED")
+      call write_time(file, assim_model%time, form="unformatted")
+      write(file) assim_model%state_vector
+   CASE DEFAULT
+      call write_time(file, assim_model%time)
+      write(file, *) assim_model%state_vector
+END SELECT  
 
 end subroutine write_state_restart
 
 
 
-subroutine read_state_restart(assim_model, file)
+subroutine read_state_restart(assim_model, file, form)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
 
 implicit none
 
-type(assim_model_type), intent(out) :: assim_model
-integer, intent(in) :: file
+type(assim_model_type), intent(out)          :: assim_model
+integer,                intent(in)           :: file
+character(len=*),       intent(in), optional :: form
 
-integer :: seconds, days
+integer           :: seconds, days
+character(len=32) :: fileformat
+
 
 print *,'assim_model_mod:read_state_restart ... reading from unit',file
 
-! Read the time
-assim_model%time = read_time(file)
 
+fileformat = "ascii"
+if (present(form)) fileformat = trim(adjustl(form))
+
+! Read the time
 ! Read the state vector
-read(file, *) assim_model%state_vector
+
+SELECT CASE (fileformat)
+   CASE ("unf","UNF","unformatted","UNFORMATTED")
+      assim_model%time = read_time(file, form = "unformatted")
+      read(file) assim_model%state_vector
+   CASE DEFAULT
+      assim_model%time = read_time(file)
+      read(file, *) assim_model%state_vector
+END SELECT  
 
 end subroutine read_state_restart
 

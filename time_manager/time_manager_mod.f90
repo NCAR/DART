@@ -2184,37 +2184,61 @@ end subroutine print_date
 
 
 
-function read_time(file)
+function read_time(file, form)
 !--------------------------------------------------------------------------------
 !
 
 implicit none
 
-integer, intent(in) :: file
-type(time_type)     :: read_time
+integer,          intent(in)           :: file
+character(len=*), intent(in), optional :: form
 
-integer :: secs, days
+type(time_type)   :: read_time
+integer           :: secs, days
+character(len=32) :: fileformat
 
-read(file, *) secs, days
+fileformat = "ascii"   ! supply default
+if (present(form)) fileformat = trim(adjustl(form))
+
+SELECT CASE (fileformat)
+   CASE ("unf","UNF","unformatted","UNFORMATTED")
+      read(file) secs, days
+   CASE DEFAULT
+      read(file, *) secs, days
+END SELECT
+
 read_time = set_time(secs, days)
 
 end function read_time
 
 
 
-subroutine write_time(file, time)
+subroutine write_time(file, time, form)
 !------------------------------------------------------------------------
+! The time is expected to be written as either 
+! an unformatted binary (form == "unformatted")
+! or free-format ascii (form /= "unformatted")
 
 implicit none
 
-integer, intent(in) :: file
+integer,         intent(in)            :: file
+type(time_type), intent(in)            :: time
+character(len=*), intent(in), optional :: form
 
-integer :: secs, days
+integer           :: secs, days
+character(len=32) :: fileformat
 
-type(time_type), intent(in) :: time
+fileformat = "ascii"   ! supply default
+if (present(form)) fileformat = trim(adjustl(form))
 
 call get_time(time, secs, days)
-write(file, *) secs, days
+
+SELECT CASE (fileformat)
+   CASE ("unf","UNF","unformatted","UNFORMATTED")
+      write(file) secs, days
+   CASE DEFAULT
+      write(file, *) secs, days
+END SELECT
 
 end subroutine write_time
 
