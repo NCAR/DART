@@ -230,7 +230,7 @@ switch ( ${Model} )
 
    breaksw
 
-   default:     # lorenz_63
+   default:     # lorenz_63, lorenz_84
 
       echo "set_def.out"                                             > $COSD 
       echo "1           ;# # of unique observation SETS to define"  >> $COSD
