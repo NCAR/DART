@@ -1,8 +1,14 @@
 # Makefile template for Lahey F95
 #
-# --dbl  does the autopromotion  
+# --dbl   does the autopromotion  
 #
-# --ap   preserve arithmetic accuracy in the face of optimization
+# --ap    preserve arithmetic accuracy in the face of optimization
+# --li    use Lahey intrinsic procedures
+# --O0    no optimization
+# --O     classical, memory, and interprocedural optimizations
+# --O2    -O1 + loop and array optimizations
+# --sse2  optimize using SSE2 instructions
+# --trap  trap ndp exceptions
 
 FC = lf95
 LD = lf95

@@ -100,6 +100,7 @@ endif
 
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
 write(logfileunit, nml=assim_tools_nml)
+write(     *     , nml=assim_tools_nml)
 
 ! Look for an error in the do_parallel options
 if(do_parallel /= 0 .and. do_parallel /= 2 .and. do_parallel /= 3) then

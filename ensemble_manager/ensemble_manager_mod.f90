@@ -98,6 +98,10 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
+call error_handler(E_MSG,'init_ensemble_manager','ensemble_manager_nml values are',' ',' ',' ')
+write(logfileunit,nml=ensemble_manager_nml)
+write(     *     ,nml=ensemble_manager_nml)
+
 if(.not. in_core) then
    ! Find out the required record length for real(r8)
    inquire(iolength = req_rec_length) x

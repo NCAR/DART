@@ -62,6 +62,7 @@ endif
 set num_obs = 200
 set ob_day_1 = 0
 set ob_seconds_1 = 43200
+set async = 0
 
 if ( ${?NumObs} ) then     ;# if environment var NumObs exists, use it
    set num_obs = $NumObs
@@ -82,6 +83,10 @@ endif
 if ( ${?Cutoff} ) then
    set cutoff = $Cutoff
 endif
+if ( ${?Async} ) then
+   set async = $Async
+endif
+
 
 #======================================================================
 # This block checks to see if input is viable.
@@ -149,6 +154,11 @@ if !( -e filter ) then
    csh mkmf_filter
    make || exit 4
    \rm -f input.nml.filter_default
+endif
+if !( -e integrate_model ) then
+   csh mkmf_integrate_model
+   make || exit 4
+   \rm -f input.nml.integrate_model_default
 endif
 \rm -f *.o *.d *.mod Makefile
 
@@ -239,7 +249,7 @@ echo " "
 cat << ENDofTask03 > perfect.nml
 
 &perfect_model_obs_nml
-   async = 0,
+   async = $async,
    obs_seq_in_file_name = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
    start_from_restart = .true.,
@@ -297,6 +307,7 @@ set output_obs_ens_spread = .true.
 set num_output_state_members = $NumEns
 set num_output_obs_members = $NumEns
 set output_interval = 1
+set num_groups = 2
 
 
 echo '&utilities_nml'                            > utilities.nml
@@ -328,7 +339,8 @@ echo "   output_obs_ens_mean = $output_obs_ens_mean ,"           >> filter.nml
 echo "   output_obs_ens_spread = $output_obs_ens_spread ,"       >> filter.nml
 echo "   num_output_state_members = $num_output_state_members ," >> filter.nml
 echo "   num_output_obs_members = $num_output_obs_members ,"     >> filter.nml
-echo "   output_interval = $output_interval    /"                >> filter.nml
+echo "   output_interval = $output_interval ,"                   >> filter.nml
+echo "   num_groups = $num_groups    /"                          >> filter.nml
 echo " "                                                         >> filter.nml
 
 cat utilities.nml assim_mod.nml obs_sequence.nml model.nml filter.nml > input.nml

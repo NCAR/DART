@@ -55,7 +55,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
 public file_exist, get_unit, check_nml_error, open_file, timestamp, &
        close_file, register_module, error_handler, logfileunit, &
-       initialize_utilities, finalize_utilities, &
+       initialize_utilities, finalize_utilities, dump_unit_attributes, &
        E_DBG, E_MSG, E_WARN, E_ERR, &
        DEBUG, MESSAGE, WARNING, FATAL
 
@@ -140,7 +140,7 @@ contains
             stop 99
          endif
 
-         write(*,*)'Trying to read from unit ', logfileunit
+         write(*,*)'Trying to log to unit ', logfileunit
          write(*,*)'Trying to open file ', trim(adjustl(logfilename))
 
          open(logfileunit, file=trim(adjustl(logfilename)), form='formatted', &
@@ -369,6 +369,135 @@ contains
              'No available units.', source, revision, revdate)
 
    end function get_unit
+
+!#######################################################################
+
+   subroutine dump_unit_attributes(iunit) 
+!--------------------------------------------------------------------------------
+!  subroutine dump_unit_attributes(iunit) 
+!
+!  Useful for dumping all the attributes for a file 'unit'
+!  A debugging routine, really. TJH Oct 2004
+
+      integer, intent(in) :: iunit
+
+      logical :: exists, connected, named_file
+      character(len=129) :: file_name, srname, str1
+      character(len=32)  :: ynu     ! YES, NO, UNDEFINED ... among others
+      integer :: ios, reclen, nextrecnum
+
+      if ( .not. module_initialized ) call initialize_utilities
+
+      srname = "dump_unit_attributes"
+
+! --- start querying 
+
+      write(str1,*)'for unit ',iunit 
+      call error_handler(E_MSG, srname, str1, source, revision, revdate)
+
+      inquire(iunit, opened = connected, iostat=ios)
+      if ( connected .and. (ios == 0) ) &
+         call error_handler(E_MSG, srname, ' connected', source, revision, revdate)
+
+      inquire(iunit, named = named_file, iostat=ios)
+      if ( named_file .and. (ios == 0) ) &
+         call error_handler(E_MSG, srname, ' file is named.', source, revision, revdate)
+
+      inquire(iunit, name = file_name, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'file name is ' // trim(adjustl(file_name))
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, exist = exists, iostat=ios)
+      if ( exists .and. (ios == 0) ) &
+         call error_handler(E_MSG, srname, ' file exists', source, revision, revdate)
+
+      inquire(iunit, recl = reclen, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'record length is ', reclen
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, nextrec = nextrecnum, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'next record is ', nextrecnum
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, access = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'access_type is ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, sequential = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'is file sequential ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, direct = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'is file direct ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, form = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'file format ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, action = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'action ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, read = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'read ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, write = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'write ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, readwrite = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'readwrite ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, blank = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'blank ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, position = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'position ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, delim = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'delim ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+      inquire(iunit, pad = ynu, iostat=ios)
+      if ( ios == 0 ) then
+         write(str1,*)'pad ', ynu
+         call error_handler(E_MSG, srname, str1, source, revision, revdate)
+      endif
+
+   end subroutine dump_unit_attributes
 
 !#######################################################################
 

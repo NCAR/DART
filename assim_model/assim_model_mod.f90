@@ -14,7 +14,7 @@ module assim_model_mod
 ! add capabilities needed by the standard assimilation methods.
 
 use    types_mod, only : r8
-use location_mod, only : location_type, get_dist, write_location, read_location, &
+use location_mod, only : location_type, get_dist, read_location, &
                          LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod, only : time_type, get_time, read_time, write_time, get_calendar_type, &
@@ -22,11 +22,12 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time, get_cal
                              operator(<), operator(>), operator(+), operator(-), &
                              operator(/), operator(*), operator(==), operator(/=)
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
-                          register_module, error_handler, E_ERR, E_WARN, E_MSG, E_DBG, logfileunit
+                          register_module, error_handler, E_ERR, E_WARN, E_MSG, E_DBG, &
+                          logfileunit, dump_unit_attributes
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
-            get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-            end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-            pert_model_state
+           get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
+           end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
+           pert_model_state
 
 implicit none
 private
@@ -128,7 +129,7 @@ end subroutine init_assim_model
 
 
 
-subroutine static_init_assim_model()
+  subroutine static_init_assim_model()
 !----------------------------------------------------------------------
 ! subroutine static_init_assim_model()
 !
@@ -157,7 +158,9 @@ if(file_exist('input.nml')) then
 endif
 
 ! Record the namelist values used for the run ... 
+call error_handler(E_MSG,'static_init_assim_model','assim_model_nml values are',' ',' ',' ')
 write(logfileunit, nml=assim_model_nml)
+write(     *     , nml=assim_model_nml)
 
 ! Set the read and write formats for restart files
 if(read_binary_restart_files) then
@@ -798,10 +801,10 @@ subroutine awrite_state_restart(model_time, model_state, funit, target_time)
 
 implicit none
 
-type(time_type), intent(in)                   :: model_time
-real(r8), intent(in)                          :: model_state(:)
-integer,                 intent(in)           :: funit
-type(time_type), intent(in), optional         :: target_time
+type(time_type), intent(in)           :: model_time
+real(r8),        intent(in)           :: model_state(:)
+integer,         intent(in)           :: funit
+type(time_type), intent(in), optional :: target_time
 
 ! Write the state vector
 SELECT CASE (write_format)
@@ -809,10 +812,12 @@ SELECT CASE (write_format)
       if(present(target_time)) call write_time(funit, target_time, "unformatted")
       call write_time(funit, model_time, "unformatted")
       write(funit) model_state
+      call error_handler(E_DBG,"awrite_state_restart","unformatted",source,revision,revdate)
    CASE DEFAULT
       if(present(target_time)) call write_time(funit, target_time)
       call write_time(funit, model_time)
       write(funit, *) model_state
+      call error_handler(E_DBG,"awrite_state_restart","formatted",source,revision,revdate)
 END SELECT  
 
 end subroutine awrite_state_restart
@@ -848,12 +853,18 @@ subroutine aread_state_restart(model_time, model_state, funit, target_time)
 
 implicit none
 
-type(time_type), intent(out)                 :: model_time
-real(r8), intent(out)                        :: model_state(:)
-integer,                intent(in)           :: funit
-type(time_type), intent(out), optional       :: target_time
+type(time_type), intent(out)            :: model_time
+real(r8),        intent(out)            :: model_state(:)
+integer,         intent(in)             :: funit
+type(time_type), intent(out), optional  :: target_time
 
-print *,'assim_model_mod:aread_state_restart ... reading from unit',funit
+character(len=129) :: errstring
+
+integer :: ios, int1, int2
+
+ios = 0
+
+! print *,'assim_model_mod:aread_state_restart ... reading from unit',funit
 
 ! Read the time
 ! Read the state vector
@@ -862,12 +873,46 @@ SELECT CASE (read_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
       if(present(target_time)) target_time = read_time(funit, form = "unformatted")
       model_time = read_time(funit, form = "unformatted")
-      read(funit) model_state
+      read(funit,iostat=ios) model_state
    CASE DEFAULT
       if(present(target_time)) target_time = read_time(funit)
       model_time = read_time(funit)
-      read(funit, *) model_state
+      read(funit,*,iostat=ios) model_state
 END SELECT  
+
+! If the read fails ... dump diagnostics.
+
+if ( ios /= 0 ) then
+
+   write(errstring,*)'dimension of model state is ',size(model_state)
+   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+
+   if(present(target_time)) then
+      call get_time(target_time, int1, int2)       ! time -> secs/days
+      write(errstring,*)'target_time (secs/days) : ',int1,int2
+      call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+   endif
+
+   call get_time(model_time, int1, int2)       ! time -> secs/days
+   write(errstring,*)'model_time (secs/days) : ',int1,int2
+   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+
+   write(errstring,'(''modl max/min/first is'',3(1x,E12.6) )') &
+            maxval(model_state), minval(model_state), model_state(1)
+   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+
+   call dump_unit_attributes(funit)
+
+   write(errstring,*)'read error is : ',ios
+   call error_handler(E_ERR,'aread_state_restart',errstring,source,revision,revdate)
+
+else  ! A DEBUG STATEMENT, REALLY
+
+   write(errstring,'(''modl max/min/(1) is'',3(1x,E12.6) )') &
+            maxval(model_state), minval(model_state), model_state(1)
+   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+
+endif
 
 end subroutine aread_state_restart
 
@@ -880,9 +925,13 @@ function open_restart_write(file_name)
 
 character(len = *), intent(in) :: file_name
 integer :: open_restart_write
+character(len=129) :: errstring
+
+write(   *     , *) 'the format for restart output writing is ', write_format
+write(errstring, *) 'The format for restart output writing is ', write_format
+call error_handler(E_MSG,'open_restart_write',errstring,source,revision,revdate)
 
 open_restart_write = get_unit()
-write(*, *) 'the format for ouput writing is ', write_format
 open(unit = open_restart_write, file = file_name, form = write_format)
 
 end function open_restart_write
@@ -896,8 +945,26 @@ function open_restart_read(file_name)
 character(len = *), intent(in) :: file_name
 integer :: open_restart_read
 
+integer :: ios
+character(len=129) :: errstring
+
 open_restart_read = get_unit()
-open(unit = open_restart_read, file = file_name, form = read_format)
+open(unit   = open_restart_read, &
+     file   = file_name,         &
+     form   = read_format,       &
+     action = 'read',            &
+     status = 'old',             &
+     iostat = ios )
+
+if ( ios /= 0 ) then
+   write(errstring, *) 'Problem opening file ',trim(adjustl(file_name))
+   call error_handler(E_MSG,'open_restart_read',errstring,source,revision,revdate)
+   write(errstring, *) 'OPEN status was ',ios
+   call error_handler(E_ERR,'open_restart_read',errstring,source,revision,revdate)
+else
+   write(errstring, *) 'Using restart file ',trim(adjustl(file_name)),' on unit ',open_restart_read
+   call error_handler(E_MSG,'open_restart_read',errstring,source,revision,revdate)
+endif
 
 end function open_restart_read
 
@@ -1005,10 +1072,10 @@ if ( timeindex < 0 ) then
    call error_handler(E_ERR,'aoutput_diagnostics', errstring, source, revision, revdate)
 endif
 
-call get_time(model_time,is1,id1)
-write(errstring,'(''model time (d,s) ('',i5,i5,'') is index '',i6, '' in ncFileID '',i3)') &
-     id1,is1,timeindex,ncFileID%ncid
-call error_handler(E_DBG,'aoutput_diagnostics', errstring, source, revision, revdate)
+   call get_time(model_time,is1,id1)
+   write(errstring,'(''model time (d,s) ('',i5,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+          id1,is1,timeindex,ncFileID%ncid
+   call error_handler(E_DBG,'aoutput_diagnostics', errstring, source, revision, revdate)
 
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
 ! so we must pass the components.

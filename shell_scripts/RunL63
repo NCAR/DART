@@ -318,6 +318,7 @@ set output_obs_ens_spread = .true.
 set num_output_state_members = $NumEns
 set num_output_obs_members = $NumEns
 set output_interval = 1
+set num_groups = 2
 
 
 echo '&utilities_nml'                            > utilities.nml
@@ -344,7 +345,8 @@ echo "   output_obs_ens_mean = $output_obs_ens_mean ,"           >> filter.nml
 echo "   output_obs_ens_spread = $output_obs_ens_spread ,"       >> filter.nml
 echo "   num_output_state_members = $num_output_state_members ," >> filter.nml
 echo "   num_output_obs_members = $num_output_obs_members ,"     >> filter.nml
-echo "   output_interval = $output_interval    /"                >> filter.nml
+echo "   output_interval = $output_interval ,"                   >> filter.nml
+echo "   num_groups = $num_groups    /"                          >> filter.nml
 echo " "                                                         >> filter.nml
 
 cat utilities.nml obs_sequence.nml assim_mod.nml model.nml filter.nml > input.nml

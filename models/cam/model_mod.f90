@@ -175,7 +175,7 @@ integer , dimension(20) :: which_vert_3d = (/( 1,i=1,20)/)
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
 namelist /model_nml/ output_state_vector, model_version, model_config_file, &
-   state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d, &
+   state_num_0d, state_num_1d, state_num_2d, state_num_3d, &
    state_names_0d, state_names_1d, state_names_2d, state_names_3d, &
                    which_vert_1d,  which_vert_2d,  which_vert_3d, &
    highest_obs_pressure_mb, Time_step_seconds, Time_step_days
@@ -763,7 +763,7 @@ integer :: coord_3d(3), coord_2d(2)
 
 ! Read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
- 
+
 ! Figure out coordinate sizes based on CAM version
 call size_coord(coord_3d,coord_2d)
 
@@ -871,8 +871,10 @@ else
    write(logfileunit, '(A)') 'WARNING; input.nml not available for read of model_nml'
 endif
 
-! Record the namelist values 
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
 
 ! Get num lons, lats and levs from netcdf and put in global storage
 call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)
@@ -1238,7 +1240,7 @@ call plevs_cam (1, 1, ps, pfull)
 
 ! Interpolate in vertical to get two bounding levels
 !if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 .and. pressure > 90000.) &
-!   write(*, *)'    pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
+!write(*, *)' pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
 
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
    istatus = 1
@@ -1348,8 +1350,8 @@ else
    istatus = 1
    val = 0.
    return
-end if
-
+endif
+   
 val = x(indx)
 
 

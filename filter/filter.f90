@@ -154,7 +154,11 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(iunit)
 endif
+
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')
 write(logfileunit, nml=filter_nml)
+write(     *     , nml=filter_nml)
 
 call filter_alloc_ens_size_storage()
 

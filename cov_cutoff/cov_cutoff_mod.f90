@@ -94,8 +94,9 @@ if(.not. namelist_initialized) then
       call close_file(iunit)
    endif
 
-   call error_handler(E_MSG,'comp_cov_factor','namelist values are:',' ',' ',' ')
+   call error_handler(E_MSG,'comp_cov_factor','cov_cutoff_nml values are',' ',' ',' ')
    write(logfileunit,nml=cov_cutoff_nml)
+   write(     *     ,nml=cov_cutoff_nml)
 
 endif
 !---------------------------------------------------------

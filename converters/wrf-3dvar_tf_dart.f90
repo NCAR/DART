@@ -72,6 +72,7 @@ namelist /wrf_3dvar_tf_dart_nml/ wrf_3dvar_file, obs_seq_out_file_name, calendar
 call initialize_utilities
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING wrf_3dvar_tf_dart ...'
+call error_handler(E_MSG,'wrf_3dvar_tf_dart','STARTING ...',source,revision,revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -84,6 +85,11 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(iunit)
 endif
+
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'wrf_3dvar_tf_dart_nml','wrf_3dvar_tf_dart_nml values are',' ',' ',' ')
+write(logfileunit, nml=wrf_3dvar_tf_dart_nml)
+write(     *     , nml=wrf_3dvar_tf_dart_nml)
 
 call set_calendar_type(calendar_type)
 

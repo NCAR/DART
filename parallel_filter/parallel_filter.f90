@@ -162,7 +162,11 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(iunit)
 endif
+
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'parallel_filter','filter_nml values are',' ',' ',' ')
 write(logfileunit, nml=filter_nml)
+write(     *     , nml=filter_nml)
 
 call filter_alloc_ens_size_storage()
 
@@ -232,7 +236,7 @@ write(*, *) 'starting advance time loop;'
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
    
-   call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
+      call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
          num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
          obs_sequence_in_name)
    ! Do prior state space diagnostic output as required
@@ -649,7 +653,7 @@ logical, intent(in) :: output_ens_mean, output_ens_spread
 
 integer :: j, k, istatus
 real(r8) :: qc(num_obs_in_set)
-real(r8) :: obs_mean(1), obs_spread(1)
+real(r8) ::  obs_mean(1), obs_spread(1)
 real(r8) :: error, diff_sd, ratio
 type(obs_type) :: observation
 

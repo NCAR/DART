@@ -98,6 +98,7 @@ subroutine initialize_module
 ! subroutine initialize_module
 
 integer :: iunit, ierr, io
+character(len=129) :: str1,str2
 
 call register_module(source, revision, revdate)
 module_initialized = .true.
@@ -119,16 +120,19 @@ endif
 
 ! Write the namelist values to the log file
 
-call error_handler(E_MSG,'initialize_module','location namelist values',' ',' ',' ')
+call error_handler(E_MSG,'initialize_module','location_nml values',' ',' ',' ')
 write(logfileunit, nml=location_nml)
+write(     *     , nml=location_nml)
 
 ! Copy the normalization factors in the vertical into an array
 vert_normalization(1) = vert_normalization_level
 vert_normalization(2) = vert_normalization_pressure
 vert_normalization(3) = vert_normalization_height
 
-write(*, *) 'vert-normalization ', vert_normalization
-write(*, *) 'horizontal only ', horiz_dist_only
+write(str1,*) 'vert-normalization ', vert_normalization
+write(str2,*) 'horizontal only ', horiz_dist_only
+call error_handler(E_MSG,'location_mod:initialize_module',str1,source,revision,revdate)
+call error_handler(E_MSG,'location_mod:initialize_module',str2,source,revision,revdate)
 
 end subroutine initialize_module
 
@@ -419,7 +423,12 @@ SELECT CASE (fileformat)
    CASE DEFAULT
       write(ifile, '(''loc3d'')' ) 
 ! Write out pressure or level along with integer tag
-      write(ifile, *)loc%lon, loc%lat, loc%vloc, loc%which_vert
+!     write(ifile, *)loc%lon, loc%lat, loc%vloc, loc%which_vert
+! TJH -- would like to use a fixed-format write instead.:
+!     the free-format write may/may not "wrap" depending on the precision
+!     you compile with -- makes reading unpredictable ...
+      write(ifile, '( 3(f18.9,1x),i6 )')loc%lon, loc%lat, loc%vloc, loc%which_vert
+
 END SELECT
 
 end subroutine write_location

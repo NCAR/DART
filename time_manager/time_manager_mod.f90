@@ -12,7 +12,7 @@ module time_manager_mod
 
 use     types_mod, only : r8, missing_i
 use utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
-                          register_module
+                          register_module, dump_unit_attributes
 
 implicit none
 private
@@ -2504,8 +2504,10 @@ integer,          intent(in)           :: file_unit
 character(len=*), intent(in), optional :: form
 
 type(time_type)   :: read_time
-integer           :: secs, days
+integer           :: secs, days, ios
 character(len=32) :: fileformat
+
+character(len=128) :: str1
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2514,12 +2516,18 @@ if (present(form)) fileformat = trim(adjustl(form))
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      read(file_unit) secs, days
+      read(file_unit, iostat=ios) secs, days
    CASE DEFAULT
-      read(file_unit, *) secs, days
+      read(file_unit, *, iostat=ios) secs, days
 END SELECT
 
-read_time = set_time(secs, days)
+if ( ios /= 0 ) then
+   call dump_unit_attributes(file_unit)   ! TJH DEBUG statement
+   write(str1,*)'read status is',ios
+   call error_handler(E_ERR,'read_time',str1,source,revision,revdate)
+else
+   read_time = set_time(secs, days)
+endif
 
 end function read_time
 

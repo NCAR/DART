@@ -315,10 +315,12 @@ integer, intent(out) :: key_bounds(2), num_obs_in_set
 character(len = 129), intent(in) :: adv_ens_command
 
 type(time_type) :: next_time, time2, start_time, end_time, delta_time, ens_time
-type(obs_type) :: observation
+type(obs_type)  :: observation
 type(obs_def_type) :: obs_def
 logical :: is_this_last, is_there_one, out_of_range
 integer :: days, secs
+
+
 
 ! Initialize a temporary observation type to use
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
@@ -367,11 +369,8 @@ end_time = time2 + delta_time / 2
 call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
-call get_time(start_time, secs, days)
-write(*, *) 'start time of obs range is '
-call print_time(start_time)
-write(*, *) 'end time of obs range is '
-call print_time(end_time)
+call print_time(start_time,str=' start time of obs range')
+call print_time(end_time,  str='   end time of obs range')
 !write(*, *)'----------------------------------------------------------------------'
 
 ! Advance all ensembles (to the time of the first ensemble)

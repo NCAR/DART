@@ -135,7 +135,9 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
+call error_handler(E_MSG,'static_init_obs_sequence','obs_sequence_nml values are',' ',' ',' ')
 write(logfileunit,nml=obs_sequence_nml)
+write(     *     ,nml=obs_sequence_nml)
 
 end subroutine static_init_obs_sequence
 

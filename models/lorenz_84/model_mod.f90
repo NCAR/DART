@@ -96,8 +96,10 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-! Record the namelist to the logfile
-write(logfileunit,nml=model_nml)
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
 
 ! Define the locations of the model state variables
 do i = 1, model_size

@@ -13,7 +13,7 @@ module reg_factor_mod
 use     types_mod, only : r8
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
                           register_module, close_file, error_handler, E_ERR, &
-                          logfileunit
+                          E_MSG, logfileunit
 
 implicit none
 private
@@ -96,8 +96,10 @@ if(.not. namelist_initialized) then
       call close_file(iunit)
    endif
 
-   ! Record the namelist values in the logfile
-   write(logfileunit,nml=reg_factor_nml)
+   ! Record the namelist values used for the run ...
+   call error_handler(E_MSG,'comp_reg_factor','reg_factor_nml values are',' ',' ',' ')
+   write(logfileunit, nml=reg_factor_nml)
+   write(     *     , nml=reg_factor_nml)
 
 endif
 !---------------------------------------------------------

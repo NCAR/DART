@@ -114,7 +114,11 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(iunit)
 endif
-write(logfileunit,nml=perfect_model_obs_nml)
+
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'perfect_model_obs','perfect_model_obs_nml values are',' ',' ',' ')
+write(logfileunit, nml=perfect_model_obs_nml)
+write(     *     , nml=perfect_model_obs_nml)
 
 ! Initialize the two obs type variables
 call init_obs(obs, 0, 0)
