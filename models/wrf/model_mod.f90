@@ -669,7 +669,7 @@ if(debug) write(6,*) ' Var type: ',var_type
 
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )
 
-lev = float(kp) ! This is the index of the vertical
+lev = real(kp) ! This is the index of the vertical
 
 if(debug) write(6,*) 'lon, lat, lev: ',lon, lat, lev
 
@@ -1617,9 +1617,9 @@ which_vert = nint(query_location(o_loc,'which_vert'))
 if(which_vert == 1 ) then
 
    if( (var_type == type_w ) .or. (var_type == type_gz) ) then
-      vloc = float(k) - 0.5_r8
+      vloc = real(k) - 0.5_r8
    else
-      vloc = float(k)
+      vloc = real(k)
    endif
 
 elseif(which_vert == 2 ) then
@@ -1640,19 +1640,11 @@ elseif(which_vert == 2 ) then
 
 elseif(which_vert == 3 ) then
 
-   if( (var_type == type_w ) .or. (var_type == type_gz) ) then
-      call get_model_height_profile_stag(i,j,0.0_r8,0.0_r8,1.0_r8,1.0_r8, &
-           wrf%dom(id)%bt,x,id,fll)
-      vloc = fll(k)
-   else
-      call get_model_height_profile(i,j,0.0_r8,0.0_r8,1.0_r8,1.0_r8, &
-           wrf%dom(id)%bt,x,id,fld)
-      vloc = fld(k)
-   endif
+   call get_model_height(i,j,k,id,var_type,x,vloc)
 
 elseif(which_vert == -1 ) then
 
-   vloc = 0.0_r8
+   vloc = wrf%dom(id)%hgt(i,j)
 
 else
    write(errstring, *) 'Which_vert = ',which_vert, ' is not allowed.'
@@ -3151,6 +3143,115 @@ else
 endif
 
 end subroutine get_model_height_profile_stag
+
+
+
+!#######################################################
+
+subroutine get_model_height(i,j,k,id,var_type,x,vloc)
+
+integer,  intent(in)  :: i,j,k,id,var_type
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: vloc
+
+integer   :: i1, i2, i3, i4
+
+vloc = missing_r8
+
+if( (var_type == type_w) .or. (var_type == type_gz) ) then
+
+   i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+   vloc = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
+
+elseif( var_type == type_u ) then
+
+   if( i == wrf%dom(id)%var_size(1,TYPE_U) ) then
+
+      i1 = get_wrf_index(i-1,j,k  ,TYPE_GZ,id)
+      i2 = get_wrf_index(i-1,j,k+1,TYPE_GZ,id)
+
+      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
+              +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
+                     -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
+                     -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+
+   elseif( i == 1 ) then
+
+      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+
+      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
+              +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
+                     -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
+                     -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
+
+   else
+
+      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+
+      vloc = ( (wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
+              +(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
+              +(wrf%dom(id)%phb(i-1,j,k  )+x(i1-1)) &
+              +(wrf%dom(id)%phb(i-1,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+
+   endif
+
+elseif( var_type == type_v ) then
+
+   if( j == wrf%dom(id)%var_size(2,TYPE_V) ) then
+
+      i1 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
+      i3 = get_wrf_index(i,j-2,k  ,TYPE_GZ,id)
+      i4 = get_wrf_index(i,j-2,k+1,TYPE_GZ,id)
+
+      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
+              +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
+                     -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
+                     -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+   elseif( j == 1 ) then
+
+      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
+      i3 = get_wrf_index(i,j+1,k  ,TYPE_GZ,id)
+      i4 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
+
+      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+              +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+                     -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
+                     -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+   else
+
+      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
+      i3 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
+      i4 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
+
+      vloc = ( (wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+              +(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+              +(wrf%dom(id)%phb(i,j-1,k  )+x(i3)) &
+              +(wrf%dom(id)%phb(i,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+   endif
+
+elseif( var_type == type_mu ) then
+
+   vloc = wrf%dom(id)%hgt(i,j)
+
+else
+
+   i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
+   i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+
+   vloc = ( (wrf%dom(id)%phb(i,j,k  )+x(i1)) &
+           +(wrf%dom(id)%phb(i,j,k+1)+x(i2)) )/(2.0_r8*gravity)
+
+endif
+
+end subroutine get_model_height
 
 
 
