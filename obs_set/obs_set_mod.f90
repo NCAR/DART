@@ -129,19 +129,25 @@ set_out%time = set_time(seconds, days)
 set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
-! INTEL compiler with full obs checking dies on this for uninitialized
+! INTEL 7.1 compiler with full obs checking dies on this for uninitialized
 ! HOWEVER, memory leaks here without this. Try leaving for now.
 ! TJH Jan 25, 2003 ... tried to fix it, have not checked.
+
+! This is needed for the Intel 7.1 compiler.
+! I am not sure if it hurts with the PG compiler.
+! It does break with the Intel 8.0 compiler.
+
 if( associated(set_out%obs) ) then
    if (size(set_out%obs) > 0 ) deallocate(set_out%obs)
 else
    nullify(set_out%obs)
 endif
-if(associated(set_out%missing)) then
+if( associated(set_out%missing) ) then
    if (size(set_out%missing) > 0) deallocate(set_out%missing)
 else
    nullify(set_out%missing)
 endif
+
 allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
      set_out%missing(set_in%num_obs, set_in%num_copies))
 
