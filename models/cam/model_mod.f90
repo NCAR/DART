@@ -738,7 +738,7 @@ max_size = num_lons * num_lats
 allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 
 ! Look for close grid points on the 
-call grid_close_states(o_loc, lons, lats, num_lons, num_lats, radius, &
+call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
    num, lon_ind, lat_ind, close_dist)
 write(*, *) 'back from grid_close_states num = ', num
 
@@ -764,17 +764,9 @@ end subroutine model_get_close_states
 
 !#######################################################################
 
-subroutine grid_close_states(o_loc, lons, lats, nlon, nlat, radius, &
-   num, close_lon_ind, close_lat_ind, close_dist)
 
-! WARNING: THIS ROUTINE DOES NOT FUNCTION PROPERLY FOR LARGE RADII. It
-! SACRIFICES GETTING ALL THE POINTS AT THE MOST DISTANT NEGATIVE
-! LATITUDE OFFSETS TO AVOID GETTING REDUNDANT POINT (WHICH WOULD BE
-! VERY BAD POTENTIALLY). AT SOME POINT SOME TALENTED PROGRAMMER
-! SHOULD CLEAN THIS UP. THERE IS ALSO A DANGER OF GETTING
-! REDUNDANT POINTS NEAR THE POLES IF THE LONGITUDE DISTRIBUTION
-! HAS AN ODD NUMBER OF POINTS SO THAT THE REV_BLON IS NOT 180
-! DEGREES DIFFERENT. A CHECK IS IN FOR THIS.
+subroutine grid_close_states2(o_loc, lons, lats, nlon, nlat, radius, &
+   num, close_lon_ind, close_lat_ind, close_dist)
 
 ! Finds close state points from a particular grid;
 
@@ -787,13 +779,12 @@ integer, intent(inout) :: num
 integer, intent(inout) :: close_lon_ind(:), close_lat_ind(:)
 real(r8), intent(out) :: close_dist(:)
 
-real(r8) :: rev_lon, glat, glon, loc_array(3), o_lon, o_lat, o_lev
-real(r8) :: gdist, diff
-integer :: blat_ind, blon_ind, i, j, rev_blon_ind, lat_ind, lon_ind
-integer :: final_blon_ind
+real(r8) :: glat, glon, loc_array(3), o_lon, o_lat, o_lev
+real(r8) :: gdist, diff, row_dist(nlon)
+integer :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
+integer :: row_lon_ind(nlon), row_num
 real(r8), parameter :: glev = 1.0
 type(location_type) :: loc
-
 
 ! Get the lat and lon from the loc
 loc_array = get_location(o_loc)
@@ -802,143 +793,124 @@ o_lat = loc_array(2)
 
 ! Get index to closest lat and lon for this observation
 blat_ind = get_closest_lat_index(o_lat, lats, nlat)
-write(*, *) 'closest latitude in grid is ', blat_ind, lats(blat_ind)
-
+!write(*, *) 'closest latitude in grid is ', blat_ind, lats(blat_ind)
 blon_ind = get_closest_lon_index(o_lon, lons, nlon)
-write(*, *) 'closest longitude in grid is ', blon_ind, lons(blon_ind)
-
-! Also may need to work with the longitude on opposite side for pole wrap
-rev_blon_ind = blon_ind + nlon / 2
-if(rev_blon_ind > nlon) rev_blon_ind = rev_blon_ind - nlon
-
-! If the rev_blon and blon are not 180 degrees apart this algorithm
-! could produce redundant close points, don't want that to happen.
-diff = dabs(lons(rev_blon_ind) - lons(blon_ind))
-if(dabs(diff - 180.0) > 0.000001) then
-! Actually, it can fail anyway because of the wraparound longitude search
-   write(*, *) 'ERROR in subroutine grid_close_states in bgrid model_mod'
-   write(*, *) 'Algorithm can fail if grids do not have even number of '
-   write(*, *) 'longitudes'
-   stop
-endif
-write(*, *) 'closest rev long in grid is ', rev_blon_ind, lons(rev_blon_ind)
+!write(*, *) 'closest longitude in grid is ', blon_ind, lons(blon_ind)
 
 ! Begin a search along the latitude axis in the positive direction
-final_blon_ind = blon_ind
-do i = 0, nlat / 2
-   lat_ind = blat_ind + i
-   if(lat_ind > nlat) then
-      lat_ind = nlat - (lat_ind - nlat - 1)
-! This will change once and for ever after wrapping over pole
-      final_blon_ind = rev_blon_ind
-   endif
+do lat_ind = blat_ind, nlat
    glat = lats(lat_ind)
 ! Take care of storage round-off
    if(glat < -90.0) glat = 0.0
    if(glat > 90.0) glat = 90.0
-! Search in positive longitude offset
-   do j = 0, nlon / 2
-      lon_ind = final_blon_ind + j
-      if(lon_ind > nlon) lon_ind = lon_ind - nlon
-      glon = lons(lon_ind)
-      if(glon > 360.0) glon = glon - 360.0
-      if(glon < 0.0) glon = glon + 360.0
-      loc = set_location(glon, glat, glev)
-      gdist = get_dist(loc, o_loc)
-      if(gdist <= radius) then
-         num = num + 1
-         close_lon_ind(num) = lon_ind
-         close_lat_ind(num) = lat_ind
-         close_dist(num) = gdist
-! If radius is too far for closest longitude, no need to search further in lat
-      else if (j == 0) then
-         goto 11
-      else
-! Look in negative longitude offset direction next
-         goto 21
-      endif
-   end do
-! Search in negative longitude offset
-21 do j = 1, (nlon + 1) / 2 - 1
-      lon_ind = final_blon_ind - j
-      if(lon_ind < 1) lon_ind = nlon + lon_ind
-      glon = lons(lon_ind)
-      if(glon > 360.0) glon = glon - 360.0
-      if(glon < 0.0) glon = glon + 360.0
-      loc = set_location(glon, glat, glev)
-      gdist = get_dist(loc, o_loc)
-      if(gdist <= radius) then
-         num = num + 1
-         close_lon_ind(num) = lon_ind
-         close_lat_ind(num) = lat_ind
-         close_dist(num) = gdist
-      else
-         goto 31
-      endif
-   end do
-31 continue
+
+! Search all the contiguous close longitudes around the base longitude
+   call lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
+      row_lon_ind, row_dist, row_num)
+! If none are found, it's time to search in the negative latitude direction
+   if(row_num == 0) goto 11
+! Copy the points found in the row into summary storage
+   close_lon_ind(num+1 : num+row_num) = row_lon_ind(1:row_num)
+   close_lat_ind(num+1 : num+row_num) = lat_ind
+   close_dist(num+1 : num+row_num) = row_dist(1:row_num)
+   num = num + row_num
 end do
+
+! Search in the negative lat direction
 11 continue
-
-
-! Search in the negative lat direction, be sure not to be redundant
-final_blon_ind = blon_ind
-do i = 1, (nlat + 1) / 2 - 1
-   lat_ind = blat_ind - i
-   if(lat_ind < 1) then
-      lat_ind = -1 * lat_ind + 1
-      final_blon_ind = rev_blon_ind
-   endif
+do lat_ind = blat_ind - 1, 1, -1
    glat = lats(lat_ind)
 ! Take care of storage round-off
    if(glat < -90.0) glat = 0.0
    if(glat > 90.0) glat = 90.0
-! Search in positive longitude offset
-   do j = 0, nlon / 2
-      lon_ind = final_blon_ind + j
-      if(lon_ind > nlon) lon_ind = lon_ind - nlon
-      glon = lons(lon_ind)
-      if(glon > 360.0) glon = glon - 360.0
-      if(glon < 0.0) glon = glon + 360.0
-      loc = set_location(glon, glat, glev)
-      gdist = get_dist(loc, o_loc)
-      if(gdist <= radius) then
-         num = num + 1
-         close_lon_ind(num) = lon_ind
-         close_lat_ind(num) = lat_ind
-         close_dist(num) = gdist
-! If radius is too far for closest longitude, no need to search further in lat
-      else if (j == 0) then
-         goto 111
-      else
-! Look in negative longitude offset direction next
-         goto 121
-      endif
-   end do
-! Search in negative longitude offset
-121 do j = 1, (nlon + 1) / 2 - 1
-      lon_ind = final_blon_ind - j
-      if(lon_ind < 1) lon_ind = nlon + lon_ind
-      glon = lons(lon_ind)
-      if(glon > 360.0) glon = glon - 360.0
-      if(glon < 0.0) glon = glon + 360.0
-      loc = set_location(glon, glat, glev)
-      gdist = get_dist(loc, o_loc)
-      if(gdist <= radius) then
-         num = num + 1
-         close_lon_ind(num) = lon_ind
-         close_lat_ind(num) = lat_ind
-         close_dist(num) = gdist
-      else
-         goto 131
-      endif
-   end do
-131 continue
+
+! Search all the contiguous close longitudes around the base longitude
+   call lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
+      row_lon_ind, row_dist, row_num)
+! If none are found, it's time to give up
+   if(row_num == 0) return
+! Copy the points found in the row into summary storage
+   close_lon_ind(num+1 : num+row_num) = row_lon_ind(1:row_num)
+   close_lat_ind(num+1 : num+row_num) = lat_ind
+   close_dist(num+1 : num+row_num) = row_dist(1:row_num)
+   num = num + row_num
 end do
-111 continue
 
-end subroutine grid_close_states
+end subroutine grid_close_states2
 
+!------------------------------------------------------------------------
+
+subroutine lon_search(glat, glev, blon_ind, o_loc, radius, lons, &
+   close_lon_ind, close_dist, num)
+
+! Given an observation location and radius and a latitude row from a grid,
+! searches to find all longitude points in this row that are within radius
+! of the observation location and returns their latitude index, longitude
+! index, and the distance between them and the observation.
+
+real(r8), intent(in) :: glat, glev, radius, lons(:)
+integer, intent(in) :: blon_ind
+type(location_type), intent(in) :: o_loc
+integer, intent(out) :: close_lon_ind(:), num
+real(r8), intent(out) :: close_dist(:)
+
+integer :: nlon, j, max_pos, lon_ind
+type(location_type) :: loc
+real(r8) :: glon, gdist
+
+! Total number found is 0 at start
+num = 0
+nlon = size(lons)
+
+! Search as far as possible in the positive direction
+do j = 0, nlon - 1
+   max_pos = j
+   lon_ind = blon_ind + j
+   if(lon_ind > nlon) lon_ind = lon_ind - nlon
+   glon = lons(lon_ind)
+! Correct for longitude storage round-off
+   if(glon > 360.0) glon = 360.0
+   if(glon < 0.0) glon = 0.0
+   loc = set_location(glon, glat, glev)
+   gdist = get_dist(loc, o_loc)
+   if(gdist <= radius) then
+      num = num + 1
+      close_lon_ind(num) = lon_ind
+      close_dist(num) = gdist
+! If radius is too far for closest longitude, no need to search further or to search other side
+   else if (j == 0) then
+      return
+   else
+! Look in negative longitude offset direction next
+      goto 21
+   endif
+end do
+! Falling off end means the whole longitude circle has been searched; move along
+return
+
+! Search around the other way
+21 continue
+do j = 1, nlon - 1 - max_pos
+   lon_ind = blon_ind - j
+   if(lon_ind < 1) lon_ind = nlon + lon_ind
+   glon = lons(lon_ind)
+! Correct for longitude storage round-off
+   if(glon > 360.0) glon = 360.0
+   if(glon < 0.0) glon = 0.0
+   loc = set_location(glon, glat, glev)
+   gdist = get_dist(loc, o_loc)
+   if(gdist <= radius) then
+      num = num + 1
+      close_lon_ind(num) = lon_ind
+      close_dist(num) = gdist
+   else
+! No more longitudes in negative direction
+      return
+   endif
+end do
+
+end subroutine lon_search
+                                              
 !#######################################################################
 
 function nc_write_model_atts( ncFileID ) result (ierr)
