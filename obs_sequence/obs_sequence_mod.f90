@@ -17,14 +17,20 @@ use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_t
    os_get_obs_values       => get_obs_values, &
    os_set_obs_values       => set_obs_values, &
    os_set_single_obs_value => set_single_obs_value, &
+   os_get_single_obs_value => get_single_obs_value, &
    os_inc_num_obs_copies   => inc_num_obs_copies
 
 use set_def_list_mod, only : set_def_list_type, &
    read_set_def_list, write_set_def_list, set_def_list_copy, &
    sd_get_expected_obs     => get_expected_obs, &
+   sd_get_seq_loc     => get_seq_loc, &
+   sd_get_obs_location2     => get_obs_location2, &
+   sd_get_obs_kind2     => get_obs_kind2, &
    sd_get_diag_obs_err_cov => get_diag_obs_err_cov, &
    sd_get_num_close_states => get_num_close_states, &
    sd_get_close_states     => get_close_states
+
+use location_mod, only: location_type
 
 private
 
@@ -34,6 +40,8 @@ public obs_sequence_type, init_obs_sequence, &
    write_obs_sequence, obs_sequence_copy, get_num_obs_sets, &
    get_obs_sequence_time, get_num_obs_in_set, &
    get_expected_obs, get_diag_obs_err_cov, get_obs_values, &
+   get_seq_loc,  get_obs_location1, get_obs_kind1, &
+   get_single_obs_value, &
    inc_num_obs_copies, set_obs_values, get_num_close_states, &
    get_close_states, read_obs_sequence_def, obs_sequence_def_copy, &
    set_single_obs_value, get_obs_def_index
@@ -190,6 +198,7 @@ endif
 old_num = seq%num_copies
 new_num = old_num + inc
 seq%num_copies = new_num
+
 
 ! Need temporary storage for metadata
 temp_meta_data(1:old_num) = seq%copy_meta_data
@@ -743,6 +752,97 @@ end function read_obs_sequence_def
 
 
 
+subroutine get_seq_loc(sequence, index, obsloc0, num)
+!------------------------------------------------------
+!
+implicit none
+
+type(obs_sequence_type), intent(in)  :: sequence
+integer,                 intent(in)  :: index
+real(r8),                intent(out) :: obsloc0(:)
+integer, optional,       intent(in)  :: num
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+call get_obs_set(obs_set, sequence, index)
+!!!obs_set = get_obs_set(sequence, index)
+def_index = os_get_obs_def_index(obs_set)
+
+if(present(num)) then
+   call sd_get_seq_loc(sequence%def_list, def_index, obsloc0, num)
+endif
+
+end subroutine get_seq_loc
+
+
+subroutine get_single_obs_value(seq, index, num_obs, obs, copy_in)
+!----------------------------------------------------
+!
+! Sets the num_obs obs of the index obs_set in the sequence to the obs input.
+
+implicit none
+
+type(obs_sequence_type), intent(in) :: seq
+integer,                 intent(in)    :: index, num_obs
+real(r8),                intent(out)    :: obs
+integer, optional,       intent(in)    :: copy_in
+
+integer :: copy
+
+! Default value for copy is 1
+copy = 1
+if(present(copy_in)) copy = copy_in
+
+call os_get_single_obs_value(seq%obs_sets(index), num_obs, obs, copy)
+
+end subroutine get_single_obs_value
+
+
+
+subroutine get_obs_location1(sequence, index, obsloc)
+!------------------------------------------------------
+!
+implicit none
+
+type(obs_sequence_type), intent(in)  :: sequence
+integer,                 intent(in)  :: index
+real(r8),                intent(out) :: obsloc(:, :)
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+call get_obs_set(obs_set, sequence, index)
+!!!obs_set = get_obs_set(sequence, index)
+def_index = os_get_obs_def_index(obs_set)
+
+   call sd_get_obs_location2(sequence%def_list, def_index, obsloc)
+
+end subroutine get_obs_location1
+
+
+subroutine get_obs_kind1(sequence, index, obskind)
+!------------------------------------------------------
+!
+implicit none
+
+type(obs_sequence_type), intent(in)  :: sequence
+integer,                 intent(in)  :: index
+real(r8),                intent(out) :: obskind(:)
+
+type(obs_set_type) :: obs_set
+integer :: def_index
+
+! Get the set_def_list index for this obs_set
+call get_obs_set(obs_set, sequence, index)
+!!!obs_set = get_obs_set(sequence, index)
+def_index = os_get_obs_def_index(obs_set)
+
+   call sd_get_obs_kind2(sequence%def_list, def_index, obskind)
+
+end subroutine get_obs_kind1
 
 
 end module obs_sequence_mod

@@ -12,8 +12,11 @@ use obs_def_mod, only : obs_def_type, get_obs_location, read_obs_def, &
    write_obs_def, get_error_variance, &
    od_get_expected_obs => get_expected_obs, &
    od_get_close_states=>get_close_states, &
-   od_get_num_close_states=>get_num_close_states
-use location_mod, only : location_type
+   od_get_num_close_states=>get_num_close_states, &
+   od_get_seq_loc => get_seq_loc, &
+   od_get_obs_location4 => get_obs_location4, &
+   od_get_obs_kind4 => get_obs_kind4
+use location_mod, only: location_type, vert_is_level
 
 private
 
@@ -21,7 +24,8 @@ public obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
    get_expected_obs, get_obs_def, &
    get_num_obs, get_number_obs_subsets, &
    get_obs_locations, get_close_states, get_num_close_states, add_obs, &
-   diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy
+   diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
+   get_seq_loc, get_obs_location3, get_obs_kind3
 
 type obs_set_def_type
    private
@@ -401,6 +405,63 @@ end do
 
 end subroutine write_obs_set_def
 
+
+subroutine get_seq_loc(set, obsloc0, num)
+!--------------------------------------------------------------
+!
+implicit none
+
+type(obs_set_def_type), intent(in) :: set
+real(r8), intent(out) :: obsloc0(:)
+integer, intent(in), optional :: num
+
+integer :: i
+
+if(present(num)) then
+   call od_get_seq_loc(set%obs_defs(num), obsloc0)
+endif
+
+end subroutine get_seq_loc
+
+
+subroutine get_obs_location3(set, obsloc)
+!--------------------------------------------------------------
+!
+implicit none
+
+type(obs_set_def_type), intent(in) :: set
+real(r8), intent(out) :: obsloc(:, :)
+real(r8) :: obsloc0(3)
+
+integer :: i
+
+   do i = 1, set%num_obs_defs
+      call od_get_obs_location4(set%obs_defs(i), obsloc0)
+      obsloc(i,1) = obsloc0(1)
+      obsloc(i,2) = obsloc0(2)
+      obsloc(i,3) = obsloc0(3)
+   end do
+
+end subroutine get_obs_location3
+
+
+subroutine get_obs_kind3(set, obskind)
+!--------------------------------------------------------------
+!
+implicit none
+
+type(obs_set_def_type), intent(in) :: set
+real(r8), intent(out) :: obskind(:)
+real(r8) :: obskind0
+
+integer :: i
+
+   do i = 1, set%num_obs_defs
+      call od_get_obs_kind4(set%obs_defs(i), obskind0)
+      obskind(i) = obskind0
+   end do
+
+end subroutine get_obs_kind3
 
 
 end module obs_set_def_mod
