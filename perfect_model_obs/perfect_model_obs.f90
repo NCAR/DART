@@ -202,9 +202,6 @@ AdvanceTime: do
    write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
    call error_handler(E_DBG,'perfect_model_obs',msgstring,source,revision,revdate)
 
-write(73, 77) ens
-77 format(3(f10.6, 1x))
-
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs_in_set
 ! Compute the observations from the state
