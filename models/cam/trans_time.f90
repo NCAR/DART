@@ -12,23 +12,24 @@ program trans_time
 !----------------------------------------------------------------------
 
 
-use time_manager_mod, only : time_type, GREGORIAN, read_time, write_time, &
-                         get_time, set_time, set_calendar_type, get_date, &
-                         operator(-), NOLEAP
+use time_manager_mod, only : time_type, read_time, write_time, &
+                             get_time, set_time, operator(-), get_date, &
+                             set_calendar_type, GREGORIAN, NOLEAP
+                         
                          
 use utilities_mod, only : get_unit
 
 implicit none
 
 integer               :: ntimes = 2, n, nhtfrq, &
-                         calendar_type = NOLEAP
+                         calendar_type = GREGORIAN
 integer               :: file_unit(2), seconds, days, &
                          year, month, day, hour, minute, second, &
                          cam_date, cam_tod
 type(time_type)       :: dart_time(2), forecast_length
 character (len = 128) :: file_name = 'assim_model_state_ic1', file_out = 'times'
 
-call set_calendar_type(NOLEAP)
+call set_calendar_type(calendar_type)
 
 file_unit(1) = get_unit()
 
@@ -51,8 +52,13 @@ do n=1,ntimes
    dart_time(n) = read_time(file_unit(1))
    call get_date(dart_time(n), year, month, day, hour, minute, second)
    PRINT*,'date = ',year, month, day, hour, minute, second
-   cam_date = (1899 + year)*10000 + month*100 + day
-   cam_tod  = hour*3600 + minute*60 + second
+   if (calendar_type.eq.GREGORIAN) then
+      cam_date = year*10000 + month*100 + day
+      cam_tod  = hour*3600 + minute*60 + second
+   elseif (calendar_type.eq.NOLEAP) then
+      cam_date = (1899 + year)*10000 + month*100 + day
+      cam_tod  = hour*3600 + minute*60 + second
+   endif
    write (file_unit(2),'(2I8)') cam_date, cam_tod
 enddo
 
@@ -61,14 +67,22 @@ close(file_unit(1))
 ! calculate number of hours in forecast, and pass to history tape write frequency
 
 forecast_length = dart_time(1) - dart_time(2)
-call get_date(forecast_length, year, month, day, hour, minute, second)
-PRINT*,'forecast length = ',year, month, day, hour, minute, second
-if (minute.ne.0 .and. second.ne.0) &
+
+! kdr
+!   can't use this for GREG
+! call get_date(forecast_length, year, month, day, hour, minute, second)
+
+call get_time(forecast_length, second, day)
+PRINT*,'forecast length = ', day, second
+hour = second/3600
+minute = mod(second,3600)
+if (minute.ne.0) &
    print*,' not integer number of hours; nhtfrq error in trans_time'
 
 ! convert to hours, and negative to signal units are hours
 
-nhtfrq = -1*((((year-1)*365 + (month-1))*30 + (day-1))*24 + hour)
+! nhtfrq = -1*((((year-1)*365 + (month-1))*30 + (day-1))*24 + hour)
+nhtfrq = -1*(day*24 + hour)
 write (file_unit(2),'(I8)') nhtfrq
 
 close(file_unit(2))
