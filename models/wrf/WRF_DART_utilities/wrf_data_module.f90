@@ -262,12 +262,14 @@ if( wrf%surf_obs ) then
    if(istatus /= nf90_noerr) then
       call error_handler(E_MSG,'PSFC', &
            trim(nf90_strerror(istatus)), source, revision, revdate)
-      call error_handler(E_MSG,'wrf_open_and_alloc', &
-         'creates PSFC', source, revision, revdate)
-      call check(nf90_Redef(wrf%ncid))
-      call check(nf90_def_var(wrf%ncid, name="PSFC", xtype=nf90_real, &
-           dimids= (/ wrf%we_id,  wrf%sn_id/), varid=wrf%ps_id) )
-      call check(nf90_enddef(wrf%ncid))
+      if(mode == NF90_WRITE) then
+         call error_handler(E_MSG,'wrf_open_and_alloc', &
+              'creates PSFC', source, revision, revdate)
+         call check(nf90_Redef(wrf%ncid))
+         call check(nf90_def_var(wrf%ncid, name="PSFC", xtype=nf90_real, &
+              dimids= (/ wrf%we_id,  wrf%sn_id/), varid=wrf%ps_id) )
+         call check(nf90_enddef(wrf%ncid))
+      endif
    endif
    allocate(wrf%ps(wrf%we,wrf%sn))
 
