@@ -112,7 +112,7 @@ if(select_localization == 3) then ! Ramped localization
 
 else if(select_localization == 2) then ! BOXCAR localization
 
-   if(z < 2 * c) then
+   if(z < 2.0_r8 * c) then
       comp_cov_factor = 1.0_r8
    else
       comp_cov_factor = 0.0_r8
