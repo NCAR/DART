@@ -118,9 +118,13 @@ if(select_regression == 1) then
             sum_reg_reg = sum_reg_reg + regress(i) * regress(j)
          end do                                               
       end do
-      comp_reg_factor = 2 * sum_reg_reg / (sum_reg2 * (num_groups - 1))
+      if (sum_reg2 /= 0.0_r8) then
+         comp_reg_factor = 2 * sum_reg_reg / (sum_reg2 * (num_groups - 1))
+      else
+         comp_reg_factor = 0.0_r8
+      endif
 
-      if(comp_reg_factor < 0.0) comp_reg_factor = 0.0_r8
+      if(comp_reg_factor < 0.0_r8) comp_reg_factor = 0.0_r8
 
 !!!      if(obs_index == 14) write(44, *) time_index, obs_index, state_index, &
 !!!         comp_reg_factor
