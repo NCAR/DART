@@ -24,11 +24,17 @@ if size(copy_meta_data, 2) == 1
    copy_meta_data = transpose(copy_meta_data);
 end
 
+nowhitecs = dewhite(copystring);
+
 % Figure out which copy is the matching one
 copy_index = -1;
 for i = 1:num_copies,
-   if strcmp(deblank(copy_meta_data(i, :)) , copystring) == 1
-%      fprintf('copy %3i selected \n', i);
+
+   % for matching -- we want to ignore whitespace -- find it & remove it
+   nowhitemd = dewhite(copy_meta_data(i,:));
+
+   if strcmp(nowhitemd , nowhitecs) == 1
+      fprintf('copy %3i selected \n', i);
       copy_index = i;
    end
 end
@@ -44,3 +50,8 @@ if (copy_index < 0)
    end
    error('please try again')
 end
+
+function str2 = dewhite(str1)
+% internal function to remove whitespace from a character string
+i = find( ~isspace(str1) );
+str2 = str1(i);
