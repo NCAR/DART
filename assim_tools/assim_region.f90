@@ -15,7 +15,7 @@ program assim_region
 ! $Name$ 
 
 use  assim_tools_mod, only : async_assim_region, assim_tools_init
-use    utilities_mod, only : initialize_utilities
+use    utilities_mod, only : initialize_utilities, register_module
 use  assim_model_mod, only : static_init_assim_model
 use obs_sequence_mod, only : static_init_obs_sequence
 
