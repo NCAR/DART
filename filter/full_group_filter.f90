@@ -25,7 +25,7 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    write_state_restart, read_state_restart, get_state_meta_data
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
-   look_for_bias, obs_increment17, obs_increment18
+   look_for_bias, obs_increment17, obs_increment_group
 use cov_cutoff_mod,   only : comp_cov_factor
 use location_mod, only : location_type
 use reg_factor_mod, only : comp_reg_factor
@@ -259,9 +259,9 @@ else
          call get_state_meta_data(j, location, var_type)
          if(var_type < 4) then 
 !!!            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 2.0_r8) 
-            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 0.002_r8) 
+            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 0.000001_r8) 
          else
-            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 0.002_r8) 
+            ens_ptr(i)%state(j) = random_gaussian(random_seq, x_ptr%state(j), 0.000001_r8) 
          endif
          
       end do
@@ -338,9 +338,9 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Temporary work for diagnosing fixed obs set reg_factor
    if(i == 1) then
-!!!      allocate(sum_reg_factor(num_obs_in_set, model_size))
-!!!      allocate(reg_factor_series(num_obs_in_set, model_size, num_obs_sets))
-!!!      sum_reg_factor = 0.0
+      allocate(sum_reg_factor(num_obs_in_set, model_size))
+      allocate(reg_factor_series(num_obs_in_set, model_size, num_obs_sets))
+      sum_reg_factor = 0.0
    endif
 
 
@@ -385,34 +385,26 @@ AdvanceTime : do i = 1, num_obs_sets
 
 
 !!! LOOKING AT TUNING FOR PS ONLY: THIS WORKED FOR FULLY ADAPTIVE!!!
-confidence_slope = 0.01
+!!!confidence_slope = 0.05
 !!!   write(*, *) 'UPDATED SLOPE IS ', confidence_slope
 
 
 
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
-      write(*, *) 'obs ', j
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
       end do
 
-! Divide ensemble into num_groups groups
-      grp_size = ens_size / num_groups
-      Group1: do group = 1, num_groups
-         grp_bot = (group - 1) * grp_size + 1
-         grp_top = grp_bot + grp_size - 1
-
 ! Call fast obs_increment if no confidence correction
       if(confidence_slope == 0.0) then
-         call obs_increment(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
-            obs_err_cov(j), obs_inc(grp_bot:grp_top))
+         call obs_increment_group(ens_obs, ens_size, obs(j), &
+            obs_err_cov(j), obs_inc, num_groups)
       else
-         call obs_increment17(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
-            obs_err_cov(j), obs_inc(grp_bot:grp_top), confidence_slope)
+         call obs_increment17(ens_obs, ens_size, obs(j), &
+            obs_err_cov(j), obs_inc, confidence_slope)
       endif
-      end do Group1
 
 ! Getting close states for each scalar observation for now
 222   call get_close_states(seq, i, 2.0*cutoff, num_close_ptr, close_ptr, dist_ptr, j)
@@ -432,6 +424,7 @@ confidence_slope = 0.01
          swath = get_ens_swath(ens_ptr, ens_size, ind)
 
 ! Loop through the groups
+         grp_size = ens_size / num_groups
          Group2: do group = 1, num_groups
          grp_bot = (group - 1) * grp_size + 1
          grp_top = grp_bot + grp_size - 1
@@ -443,13 +436,9 @@ confidence_slope = 0.01
          end do Group2
 
 ! Compute an information factor for impact of this observation on this state
-         if(num_groups == 1) then
-             reg_factor = 1.0
-         else
-            reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
-!!!         sum_reg_factor(j, k) = sum_reg_factor(j, k) + reg_factor
-!!!         reg_factor_series(j, k, i) = reg_factor
-         endif
+         reg_factor = comp_reg_factor(num_groups, regress, i, j, k)
+         sum_reg_factor(j, k) = sum_reg_factor(j, k) + reg_factor
+         reg_factor_series(j, k, i) = reg_factor
 
 ! Do the final update for this state variable
          call inc_ens_swath(ens_ptr, ens_size, ind, reg_factor * ens_inc)
@@ -522,15 +511,15 @@ endif
 ! Output the regression factor means
 do j = 1, num_obs_in_set
    do i = 1, model_size
-!!!      write(45, *) j, i, sum_reg_factor(j, i) / num_obs_sets
+      write(45, *) j, i, sum_reg_factor(j, i) / num_obs_sets
    end do
 end do
 
 ! Also compute and output median for a test
 do j = 1, num_obs_in_set
    do i = 1, model_size
-!!!      reg_factor_series(j, i, :) = sort(reg_factor_series(j, i, :))
-!!!      write(47, *) j, i, reg_factor_series(j, i, num_obs_sets / 2)
+      reg_factor_series(j, i, :) = sort(reg_factor_series(j, i, :))
+      write(47, *) j, i, reg_factor_series(j, i, num_obs_sets / 2)
    end do
 end do
 
