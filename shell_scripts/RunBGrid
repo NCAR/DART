@@ -469,7 +469,7 @@ else
    echo " "
    \rm -f create_obs_set_def.in create_obs_sequence.in 
    \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
-   \rm -f set_def.out input.nml*default
+   \rm -f set_def.out input.nml*default obs_sequence.nml
 endif
 
 #======================================================================
