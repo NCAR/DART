@@ -90,7 +90,7 @@ real(r8), pointer :: dist_ptr(:, :)
 integer :: ens_size = 20
 real(r8) :: cutoff = 200.0, cov_inflate = 1.0_r8
 integer :: cache_size = 10
-logical :: start_from_restart = .false., output_restart = .false.
+logical :: async = .false., start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer :: init_time_days = -1, init_time_seconds = -1
@@ -102,7 +102,7 @@ character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
                         restart_out_file_name = 'filter_restart_out'
 
-namelist /filter_nml/ens_size, cutoff, cov_inflate, cache_size, &
+namelist /filter_nml/async, ens_size, cutoff, cov_inflate, cache_size, &
    start_from_restart, output_restart, &
    obs_sequence_file_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
@@ -221,14 +221,6 @@ else
 ! Get the initial condition
    call get_initial_condition(x)
 
-! Advance for a long time (5 days) to get things started?
-! This should all be parameterized and controlled
-!   time = set_time(0, 5)
-!   write(*, *) 'calling advance state for x 5 days'
-!   call advance_state(x, time)
-!   write(*, *) 'back from advance state for x 5 days'
-
-
 ! Initialize a repeatable random sequence for perturbations
 ! Where should the magnitude of the perturbations come from here???
    call init_random_seq(random_seq)
@@ -263,11 +255,8 @@ AdvanceTime : do i = 1, num_obs_sets
    time2 = get_closest_state_time_to(ens(1), time)
    write(*, *) 'advancing to time2 '
    call  print_time(time2)
-   do j = 1, ens_size      ! Advance the ensembles to this time
-      write(*, *) 'advancing ensemble member ', j
-! Advancing to same time causes problem with B-grid diag calls
-      if(time2 /= get_model_time(ens(j))) call advance_state(ens(j), time2)
-   end do
+   ! Advance the ensembles to this time
+   if(time2 /= get_model_time(ens(j))) call advance_state(ens, ens_size, time2, async)
 
    ! Do a covariance inflation for now? 
    ! Inflate the ensemble state estimates

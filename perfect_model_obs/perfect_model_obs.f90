@@ -55,7 +55,7 @@ integer :: ierr, state_unit, StateUnit
 ! Need to set up namelists for controlling all of this mess, too!
 integer :: model_size, num_obs_sets
 
-type(assim_model_type) :: x
+type(assim_model_type) :: x(1)
 real(r8), allocatable :: obs_err_cov(:), obs(:), true_obs(:)
 character(len=129) :: copy_meta_data(2), file_name
 
@@ -75,16 +75,12 @@ call static_init_assim_model()
 model_size = get_model_size()
 
 ! Get the initial condition
-call init_assim_model(x)
-call get_initial_condition(x)
+call init_assim_model(x(1))
+call get_initial_condition(x(1))
 
 ! Set up output of truth for state
 StateUnit  = init_diag_output(   'True_State', 'true state from control', 1, (/'true state'/))
 state_unit = init_diag_outputORG('true_state', 'true state from control', 1, (/'true state'/))
-
-! Advance for a long time (5 days) to get things started?
-!time = set_time(0, 5)
-!call advance_state(x, time)
 
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)
@@ -107,16 +103,16 @@ Advance: do i = 1, num_obs_sets
 
 ! For now, set model initial time to time of first obs_set, want to add much more
 ! namelist control for this eventually
-   if(i == 1) call set_model_time(x, time)
+   if(i == 1) call set_model_time(x(1), time)
 
 ! Figure out time to advance to
-   time2 = get_closest_state_time_to(x, time)
+   time2 = get_closest_state_time_to(x(1), time)
 ! Advance the state to this time; zero length advance is problem for B-grid so avoid
-   if(time2 /= get_model_time(x)) call advance_state(x, time2)
+   if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, .false.)
 
 ! Output the true state
-   call output_diagnostics(    StateUnit, x, 1)
-   call output_diagnosticsORG(state_unit, x, 1)
+   call output_diagnostics(    StateUnit, x(1), 1)
+   call output_diagnosticsORG(state_unit, x(1), 1)
 
 ! How many observations in this set
    num_obs_in_set = get_num_obs_in_set(seq, i)
@@ -127,7 +123,7 @@ Advance: do i = 1, num_obs_sets
       true_obs(num_obs_in_set), obs(num_obs_in_set))
 
 ! Compute the observations from the state
-   call get_expected_obs(seq, i, get_model_state_vector(x), true_obs)
+   call get_expected_obs(seq, i, get_model_state_vector(x(1)), true_obs)
 !   write(*, *) 'exact obs ', obs
 
 ! Get the observational error covariance (diagonal at present)

@@ -615,7 +615,7 @@ end subroutine copy_assim_model
 
 
 
-subroutine advance_state(assim_model, target_time)
+subroutine advance_state(assim_model, num, target_time, asynch)
 !-----------------------------------------------------------------------
 !
 ! Advances the model extended state until time is equal (within roundoff?)
@@ -624,43 +624,118 @@ subroutine advance_state(assim_model, target_time)
 
 implicit none
 
-type(assim_model_type), intent(inout) :: assim_model
+integer, intent(in) :: num
+type(assim_model_type), intent(inout) :: assim_model(num)
 type(time_type), intent(in) :: target_time
+logical, intent(in) :: asynch
 
 type(time_type) :: model_time, time_step
 
-integer :: seconds, days
+integer :: seconds, days, i, len, control_unit, ic_file_unit, ud_file_unit
+
+character(len = 26), dimension(num) :: ic_file_name, ud_file_name 
 
 ! NEED TO BE CAREFUL ABOUT FLOATING POINT TESTS: Being sloppy here
 
-model_time = get_model_time(assim_model)
+! If none of these needs advancing just return
+do i = 1, num
+   model_time = get_model_time(assim_model(i))
+   if(model_time /= target_time) goto 10
+end do
+return
+
+! Loop through each model state and advance
+10 do i = 1, num
+   write(*, *) 'advancing model state ', i
+   model_time = get_model_time(assim_model(i))
 
 ! Check for time error; use error handler when available
 ! TJH -- cannot write time_type to stdout -- they have private
 !        components and the compiler balks. time_manager_mod
 !        provides a routine to return the seconds and days
 !        from a time type. 
-if(model_time > target_time) then
-   write(*, *) 'Error in advance_state, target_time before model_time'
-   call get_time(model_time,seconds,days)
-   write(*, *) 'Model_time  (days, seconds) ', days, seconds
-   call get_time(target_time,seconds,days)
-   write(*, *) 'Target time (days, seconds) ', days, seconds
-   stop
-endif
 
+
+
+   if(model_time > target_time) then
+      write(*, *) 'Error in advance_state, target_time before model_time'
+      call get_time(model_time,seconds,days)
+      write(*, *) 'Model_time  (days, seconds) ', days, seconds
+      call get_time(target_time,seconds,days)
+      write(*, *) 'Target time (days, seconds) ', days, seconds
+      stop
+   endif
+
+! Two blocks here for now, one for single executable, one for asynch multiple execs
+
+!------------- Block for single executable ----------------------------
 ! At some point probably need to push the determination of the time back
 ! into the model itself and out of assim_model
-time_step = get_model_time_step()
-call get_time(time_step,seconds,days)
-do while(model_time < target_time)
-   call adv_1step(assim_model%state_vector, model_time)
-   model_time = model_time + time_step
-   call get_time(model_time,seconds,days)
-end do
+   if(.not. asynch) then
+      time_step = get_model_time_step()
+      call get_time(time_step, seconds, days)
+      do while(model_time < target_time)
+         call adv_1step(assim_model(i)%state_vector, model_time)
+         model_time = model_time + time_step
+         call get_time(model_time, seconds, days)
+      end do
 
 ! Set the time to updated value
-assim_model%time = model_time
+      assim_model(i)%time = model_time
+   else
+!-------------- End single executable block ---------------------------
+
+
+!-------------- Block for multiple asynch executables -----------------
+
+! Loop to write out state for each member to separate file, preface with target time
+      write(ic_file_name(i), 11) 'assim_model_state_ic', i / 10000.0
+      write(ud_file_name(i), 11) 'assim_model_state_ud', i / 10000.0
+ 11   format(a21, f5.4)
+      write(*, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
+
+! Output the destination time followed by assim_model_state 
+      ic_file_unit = get_unit()
+      open(unit = ic_file_unit, file = ic_file_name(i))
+! Write the time to which to advance
+      call get_time(assim_model(i)%time, days, seconds)
+      write(ic_file_unit, *) seconds, days
+! Write the assim model extended state   
+      call write_state_restart(assim_model(i), ic_file_unit)
+      close(ic_file_unit)
+   endif
+
+!-------------- End of multiple async executables block ---------------
+
+end do
+
+
+! Also need synchronization block at the end for the asynch
+if(asynch) then
+! Write out the file names to a control file
+   control_unit = get_unit()
+   open(unit = control_unit, file = 'filter_control')
+   write(control_unit, *) num
+   do i = 1, num
+      write(control_unit, 21) ic_file_name(i)
+      write(control_unit, 21) ud_file_name(i)
+ 21   format(a26)
+   end do
+   close(control_unit)
+
+! Suspend on a read from standard in for integer value
+   read(*, *) i
+
+! All should be done, read in the states and proceed
+   do i = 1, num
+      ud_file_unit = get_unit()
+      open(unit = ud_file_unit, file = ud_file_name(i))
+      call read_state_restart(assim_model(i), ud_file_unit)
+      close(ud_file_unit)
+   end do
+
+end if
+
 
 end subroutine advance_state
 
