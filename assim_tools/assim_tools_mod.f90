@@ -19,10 +19,23 @@ use       sort_mod, only : index_sort
 use random_seq_mod, only : random_seq_type, random_gaussian, &
                            init_random_seq, random_uniform
 
+use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
+   init_obs, get_obs_from_key, get_obs_def, get_obs_values, get_qc, set_qc, &
+   set_obs
+   
+use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location
+use cov_cutoff_mod, only   : comp_cov_factor
+use obs_model_mod, only    : get_expected_obs, get_close_states
+use reg_factor_mod, only   : comp_reg_factor
+use location_mod, only     : location_type, get_dist
+use time_manager_mod, only : time_type
+!!!use ensemble_manager_mod, only : get_ensemble_region, put_ensemble_region
+
 implicit none
 private
 
-public :: assim_tools_init, obs_increment, update_from_obs_inc, look_for_bias
+public :: assim_tools_init, obs_increment, update_from_obs_inc, look_for_bias, &
+   filter_assim
 
 type (random_seq_type) :: inc_ran_seq
 logical :: first_inc_ran_call = .true.
@@ -58,8 +71,6 @@ subroutine assim_tools_init()
 ! subroutine assim_tools_init()
 !
 
-implicit none
-
 integer :: iunit, ierr, io
 
 call register_module(source, revision, revdate)
@@ -91,8 +102,6 @@ end subroutine assim_tools_init
 subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc, &
                          slope, a, bias_ratio_out)
 
-implicit none
-
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
@@ -123,8 +132,6 @@ subroutine obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc, &
 !========================================================================
 !
 ! EAKF version of obs increment
-
-implicit none
 
 integer, intent(in)   :: ens_size
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
@@ -213,8 +220,6 @@ subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc, &
 ! A observation space only particle filter implementation for a
 ! two step sequential update filter. Second version, 2 October, 2003.
 
-implicit none
-
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: ens(ens_size), obs, obs_var
 real(r8), intent(out)           :: obs_inc(ens_size)
@@ -301,8 +306,6 @@ subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc, &
 
 ! ENKF version of obs increment
 
-implicit none
-
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: ens(ens_size), obs, obs_var
 real(r8), intent(out)           :: obs_inc(ens_size)
@@ -377,8 +380,6 @@ subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc, &
 !
 
 ! Kernel version of obs increment
-
-implicit none
 
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: ens(ens_size), obs, obs_var
@@ -477,8 +478,6 @@ subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
 ! Does linear regression of a state variable onto an observation and
 ! computes state variable increments from observation increments
 
-implicit none
-
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in)            :: state(ens_size)
@@ -514,7 +513,7 @@ if(present(correl_out) .or. prior_spread_correction) then
 endif
 if(present(correl_out)) correl_out = correl
 
-! The compute the increment as product of reg_coef and observation space increment
+! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
 
 if(.not. prior_spread_correction) return
@@ -558,8 +557,6 @@ end subroutine update_from_obs_inc
 
 subroutine look_for_bias(ens, n, obs, obs_var, var_ratio)
 
-implicit none
-
 integer, intent(in)   :: n
 real(r8), intent(in)  :: ens(n), obs, obs_var
 real(r8), intent(out) :: var_ratio
@@ -579,6 +576,484 @@ tot_var   = obs_var + prior_var
 var_ratio = sq_err / tot_var
 
 end subroutine look_for_bias
+
+!===========================================================================
+
+! DONT USE THIS RIGHT NOW
+subroutine seq_filter_assim(ens, ens_obs, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
+   keys, obs_val_index, confidence_slope, cutoff, save_reg_series, reg_series_unit)
+
+real(r8), intent(inout) :: ens(:, :), ens_obs(ens_size, num_obs_in_set)
+logical, intent(in) :: compute_obs(num_obs_in_set)
+integer, intent(in) :: ens_size, num_groups, keys(num_obs_in_set), num_obs_in_set
+integer, intent(in) :: obs_val_index, reg_series_unit
+type(obs_sequence_type), intent(inout) :: seq
+real(r8), intent(in) :: confidence_slope, cutoff
+logical, intent(in) :: save_reg_series
+
+integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
+integer :: num_close_ptr(1), index
+type(obs_type) :: observation
+type(obs_def_type) :: obs_def
+real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
+real(r8) :: qc(1), obs_inc(ens_size), a_returned(num_groups), obs_dist
+real(r8) :: ens_inc(ens_size)
+integer, parameter :: first_num_close = 100000
+integer :: order(num_obs_in_set)
+integer, allocatable :: close_ptr(:, :)
+real(r8), allocatable :: dist_ptr(:, :)
+real(r8) :: swath(ens_size), reg_factor
+type(location_type) :: obs_loc(num_obs_in_set)
+
+! Set an initial size for the close state pointers
+allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
+
+write(*, *) 'initializing an observation temporary', get_num_copies(seq), get_num_qc(seq)
+! Construnct an observation temporary
+call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
+
+! Get the locations for all of the observations
+do i = 1, num_obs_in_set
+   call get_obs_from_key(seq, keys(i), observation)
+   call get_obs_def(observation, obs_def)
+   obs_loc(i) = get_obs_def_location(obs_def)
+end do
+
+! Reorder the observations to get rid of the ones that can't be recomputed first
+index = 1
+do i = 1, num_obs_in_set
+   if(.not. compute_obs(i)) then
+      order(index) = i
+      index = index + 1
+   endif
+end do
+
+! Then put in all the ones that can be recomputed
+do i = 1, num_obs_in_set
+   if(compute_obs(i)) then
+      order(index) = i
+      index = index + 1
+   endif
+end do
+
+do i = 1, num_obs_in_set
+   write(*, *) 'order ', i, order(i)
+end do
+
+!---------------------- Sequential filter section --------------------------
+! Loop through each observation in the set
+!Observations : do j = 1, num_obs_in_set
+Observations : do jjj = 1, num_obs_in_set
+   j = jjj
+   
+   ! Get this observation in a temporary and get its qc value for possible update
+   call get_obs_from_key(seq, keys(j), observation)
+
+   ! Get the observation value and the error variance
+   call get_obs_def(observation, obs_def)
+   ! Get the value of the observation and the error variance
+   call get_obs_values(observation, obs(j:j), obs_val_index)
+   obs_err_var(j) = get_obs_def_error_variance(obs_def)
+   ! Get the qc value set so far
+   call get_qc(observation, qc, 1)
+   ! Just skip observations that have failed prior qc ( >4 for now)
+   if(qc(1) > 4.01_r8) cycle Observations
+   
+   ! Compute the ensemble prior for this ob
+   if(compute_obs(j)) then
+      do k = 1, ens_size
+         ! Only compute forward operator if allowed
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus)
+         ! Inability to compute forward operator implies skip this observation
+         if (istatus > 0) then
+            qc(1) = qc(1) + 4000.0_r8
+            goto 333
+         endif
+      end do
+   endif
+   ! Divide ensemble into num_groups groups
+   grp_size = ens_size / num_groups
+   Group1: do group = 1, num_groups
+      grp_bot = (group - 1) * grp_size + 1
+      grp_top = grp_bot + grp_size - 1
+
+      ! Call obs_increment to do observation space
+      call obs_increment(ens_obs(grp_bot:grp_top, j), ens_size/num_groups, obs(j), &
+         obs_err_var(j), obs_inc(grp_bot:grp_top), confidence_slope, &
+         a_returned(group))
+   end do Group1
+
+   ! Getting close states for each scalar observation for now
+   ! Need model state for some distance computations in sigma, have
+   ! to pick some state, only current ones are ensemble, just pass 1
+222   call get_close_states(seq, keys(j), 2.0_r8*cutoff, num_close_ptr(1), &
+      close_ptr(1, :), dist_ptr(1, :), ens(1, :))
+   if(num_close_ptr(1) < 0) then
+      deallocate(close_ptr, dist_ptr)
+      allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
+      goto 222
+   endif
+
+   ! Now loop through each close state variable for this observation
+   do k = 1, num_close_ptr(1)
+      ind = close_ptr(1, k)
+      ! Compute distance dependent envelope
+      cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
+      ! WARNING: TEST FOR REPRODUCING with next line
+      if(cov_factor == 0) cycle
+
+      ! Get the ensemble elements for this state variable and do regression
+       swath = ens(:, ind)
+
+      ! Loop through the groups
+      Group2: do group = 1, num_groups
+         grp_bot = (group - 1) * grp_size + 1
+         grp_top = grp_bot + grp_size - 1
+         call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
+            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+            a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
+      end do Group2
+
+      ! Compute an information factor for impact of this observation on this state
+      if(num_groups == 0) then
+          reg_factor = 1.0_r8
+      else
+! PROBLEM WITH TIME INFO ON REGRESSION COEF
+!!!         reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
+         reg_factor = comp_reg_factor(num_groups, regress, 1, j, ind)
+      endif
+      if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
+
+      ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
+      reg_factor = min(reg_factor, cov_factor)
+
+      ! Do the final update for this state variable
+      ens(:, ind) = ens(:, ind) + reg_factor * ens_inc(:)
+   end do
+
+
+   ! Also need to update all obs variable priors that cannot be recomputed
+   ! Obs already used will never be used again, be careful not to do the jth one here!
+   do kkk = jjj + 1, num_obs_in_set
+      k = order(kkk)
+
+      ! Don't need to do this if observation can be recomputed
+      if(compute_obs(k)) cycle
+      ! Get location of the two observations (can be done once for efficiency)
+      obs_dist = get_dist(obs_loc(k), obs_loc(j))
+      ! Compute distance dependent envelope
+      cov_factor = comp_cov_factor(obs_dist, cutoff)
+      if(cov_factor == 0.0) cycle
+      ! Get the ensemble elements for this state variable and do regression
+       swath = ens_obs(:, k)
+
+      ! Loop through the groups
+      Group3: do group = 1, num_groups
+         grp_bot = (group - 1) * grp_size + 1
+         grp_top = grp_bot + grp_size - 1
+         call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
+            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+            a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
+      end do Group3
+
+      ! Compute an information factor for impact of this observation on this state
+      if(num_groups == 0) then
+          reg_factor = 1.0_r8
+      else
+! PROBLEM WITH TIME INFO ON REGRESSION COEF
+!!!         reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
+         reg_factor = comp_reg_factor(num_groups, regress, 1, j, ind)
+      endif
+      if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
+
+      ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
+      reg_factor = min(reg_factor, cov_factor)
+
+      ! Do the final update for this state variable
+      ens_obs(:, k) = ens_obs(:, k) + reg_factor * ens_inc(:)
+
+   end do
+
+!------------------
+
+   ! Write out the updated quality control for this observation
+   333 call set_qc(observation, qc, 1)
+   call set_obs(seq, observation, keys(j))
+
+end do Observations
+
+deallocate(close_ptr, dist_ptr)
+
+end subroutine seq_filter_assim
+
+!===========================================================================
+
+subroutine filter_assim_region(ens_obs_in, compute_obs, ens_size, num_obs_in_set, &
+   num_groups, seq, keys, obs_val_index, confidence_slope, cutoff, &
+   save_reg_series, reg_series_unit, my_state)
+
+real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
+logical, intent(in) :: compute_obs(num_obs_in_set)
+integer, intent(in) :: ens_size, num_groups, keys(num_obs_in_set), num_obs_in_set
+integer, intent(in) :: obs_val_index, reg_series_unit
+type(obs_sequence_type), intent(inout) :: seq
+real(r8), intent(in) :: confidence_slope, cutoff
+logical, intent(in) :: save_reg_series, my_state(:)
+
+integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
+integer :: num_close_ptr(1), index
+type(obs_type) :: observation
+type(obs_def_type) :: obs_def
+real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
+real(r8) :: qc(1), obs_inc(ens_size), a_returned(num_groups), obs_dist
+real(r8) :: ens_inc(ens_size), ens_obs(ens_size, num_obs_in_set)
+integer, parameter :: first_num_close = 100000
+integer :: order(num_obs_in_set)
+integer, allocatable :: close_ptr(:, :)
+real(r8), allocatable :: dist_ptr(:, :)
+real(r8) :: swath(ens_size), reg_factor
+type(location_type) :: obs_loc(num_obs_in_set)
+logical :: close_to_any
+
+real(r8) :: ens(ens_size, size(my_state))
+type(time_type) :: ens_time(ens_size)
+
+! Get the ensemble (whole thing for now) from storage
+!!!call get_ensemble_region(ens, ens_time)
+
+! Need copy of obs to be modified
+ens_obs = ens_obs_in
+
+! Set an initial size for the close state pointers
+allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
+
+write(*, *) 'initializing an observation temporary', get_num_copies(seq), get_num_qc(seq)
+! Construnct an observation temporary
+call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
+
+! Get the locations for all of the observations
+do i = 1, num_obs_in_set
+   call get_obs_from_key(seq, keys(i), observation)
+   call get_obs_def(observation, obs_def)
+   obs_loc(i) = get_obs_def_location(obs_def)
+end do
+
+! Reorder the observations to get rid of the ones that can't be recomputed first
+index = 1
+do i = 1, num_obs_in_set
+   if(.not. compute_obs(i)) then
+      order(index) = i
+      index = index + 1
+   endif
+end do
+
+! Then put in all the ones that can be recomputed
+do i = 1, num_obs_in_set
+   if(compute_obs(i)) then
+      order(index) = i
+      index = index + 1
+   endif
+end do
+
+do i = 1, num_obs_in_set
+   write(*, *) 'order ', i, order(i)
+end do
+
+!---------------------- Sequential filter section --------------------------
+! Loop through each observation in the set
+!Observations : do j = 1, num_obs_in_set
+Observations : do jjj = 1, num_obs_in_set
+   j = jjj
+   
+   ! Get this observation in a temporary and get its qc value for possible update
+   call get_obs_from_key(seq, keys(j), observation)
+
+   ! Get the observation value and the error variance
+   call get_obs_def(observation, obs_def)
+   ! Get the value of the observation and the error variance
+   call get_obs_values(observation, obs(j:j), obs_val_index)
+   obs_err_var(j) = get_obs_def_error_variance(obs_def)
+   ! Get the qc value set so far
+   call get_qc(observation, qc, 1)
+   ! Just skip observations that have failed prior qc ( >4 for now)
+   if(qc(1) > 4.01_r8) cycle Observations
+   
+   ! Compute the ensemble prior for this ob
+   if(compute_obs(j)) then
+      do k = 1, ens_size
+         ! Only compute forward operator if allowed
+         !if(1 == 1) then
+         !   write(*, *) 'OOOPS Computing get_expected_obs'
+         !   stop
+         !endif
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus)
+         ! Inability to compute forward operator implies skip this observation
+         if (istatus > 0) then
+            qc(1) = qc(1) + 4000.0_r8
+            goto 333
+         endif
+      end do
+   endif
+   ! Divide ensemble into num_groups groups
+   grp_size = ens_size / num_groups
+   Group1: do group = 1, num_groups
+      grp_bot = (group - 1) * grp_size + 1
+      grp_top = grp_bot + grp_size - 1
+
+      ! Call obs_increment to do observation space
+      call obs_increment(ens_obs(grp_bot:grp_top, j), ens_size/num_groups, obs(j), &
+         obs_err_var(j), obs_inc(grp_bot:grp_top), confidence_slope, &
+         a_returned(group))
+   end do Group1
+
+   ! Getting close states for each scalar observation for now
+   ! Need model state for some distance computations in sigma, have
+   ! to pick some state, only current ones are ensemble, just pass 1
+222   call get_close_states(seq, keys(j), 2.0_r8*cutoff, num_close_ptr(1), &
+      close_ptr(1, :), dist_ptr(1, :), ens(1, :))
+   if(num_close_ptr(1) < 0) then
+      deallocate(close_ptr, dist_ptr)
+      allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
+      goto 222
+   endif
+
+   ! Determine if this observation is close to ANY state variable for this process
+   close_to_any = .false.
+   ! Now loop through each close state variable for this observation
+   CLOSE_STATE: do k = 1, num_close_ptr(1)
+      ind = close_ptr(1, k)
+
+      ! If this state variable is not in the list to be updated for this PE, skip
+      if(.not. my_state(ind)) cycle CLOSE_STATE
+      close_to_any = .true.
+
+
+      ! Compute distance dependent envelope
+      cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
+      ! WARNING: TEST FOR REPRODUCING with next line
+      if(cov_factor == 0) cycle CLOSE_STATE
+
+      ! Get the ensemble elements for this state variable and do regression
+       swath = ens(:, ind)
+
+      ! Loop through the groups
+      Group2: do group = 1, num_groups
+         grp_bot = (group - 1) * grp_size + 1
+         grp_top = grp_bot + grp_size - 1
+         call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
+            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+            a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
+      end do Group2
+
+      ! Compute an information factor for impact of this observation on this state
+      if(num_groups == 0) then
+          reg_factor = 1.0_r8
+      else
+! PROBLEM WITH TIME INFO ON REGRESSION COEF
+!!!         reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
+         reg_factor = comp_reg_factor(num_groups, regress, 1, j, ind)
+      endif
+      if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
+
+      ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
+      reg_factor = min(reg_factor, cov_factor)
+
+      ! Do the final update for this state variable
+      ens(:, ind) = ens(:, ind) + reg_factor * ens_inc(:)
+   end do CLOSE_STATE
+
+
+   ! If this observation is not close to ANY state variable, can skip obs update
+   ! This will NOT bitwise reproduce. Notion is that we could reorder the use
+   ! of observations so that this one would come after all meaningful ones.
+   if(.not. close_to_any) goto 333
+
+   ! Also need to update all obs variable priors that cannot be recomputed
+   ! Obs already used will never be used again, be careful not to do the jth one here!
+   do kkk = jjj + 1, num_obs_in_set
+      k = order(kkk)
+
+      ! Don't need to do this if observation can be recomputed
+      if(compute_obs(k)) cycle
+      ! Get location of the two observations (can be done once for efficiency)
+      obs_dist = get_dist(obs_loc(k), obs_loc(j))
+      ! Compute distance dependent envelope
+      cov_factor = comp_cov_factor(obs_dist, cutoff)
+      if(cov_factor == 0.0) cycle
+      ! Get the ensemble elements for this state variable and do regression
+       swath = ens_obs(:, k)
+
+      ! Loop through the groups
+      Group3: do group = 1, num_groups
+         grp_bot = (group - 1) * grp_size + 1
+         grp_top = grp_bot + grp_size - 1
+         call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
+            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+            a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
+      end do Group3
+
+      ! Compute an information factor for impact of this observation on this state
+      if(num_groups == 0) then
+          reg_factor = 1.0_r8
+      else
+! PROBLEM WITH TIME INFO ON REGRESSION COEF
+!!!         reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
+         reg_factor = comp_reg_factor(num_groups, regress, 1, j, ind)
+      endif
+      !!!if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
+
+      ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
+      reg_factor = min(reg_factor, cov_factor)
+
+      ! Do the final update for this state variable
+      ens_obs(:, k) = ens_obs(:, k) + reg_factor * ens_inc(:)
+
+   end do
+
+!------------------
+
+   ! Write out the updated quality control for this observation
+   333 call set_qc(observation, qc, 1)
+   call set_obs(seq, observation, keys(j))
+
+end do Observations
+
+deallocate(close_ptr, dist_ptr)
+
+! Put the update ensemble back into storage
+!!!call put_ensemble_region(ens, ens_time)
+
+end subroutine filter_assim_region
+
+
+!---------------------------------------------------------------------------
+
+subroutine filter_assim(ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
+   num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit)
+
+real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
+logical, intent(in) :: compute_obs(num_obs_in_set)
+integer, intent(in) :: ens_size, model_size, num_groups, keys(num_obs_in_set), num_obs_in_set
+integer, intent(in) :: reg_series_unit
+type(obs_sequence_type), intent(inout) :: seq
+real(r8), intent(in) :: confidence_slope, cutoff
+logical, intent(in) :: save_reg_series
+
+integer :: j, num_domains
+logical :: my_state(model_size)
+
+! WARNING: NEED TO AUTOMATE DETERMINATION OF WHICH COPY HAS ACTUAL OBS!!!
+! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL
+! SEQUENTIAL ANSWER
+num_domains = 1
+do j = 1, num_domains
+   my_state = .false.
+   my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
+   call filter_assim_region(ens_obs, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
+      keys, 1, confidence_slope, cutoff, save_reg_series, reg_series_unit, my_state)
+end do
+
+end subroutine filter_assim
 
 !========================================================================
 ! end module assim_tools_mod
