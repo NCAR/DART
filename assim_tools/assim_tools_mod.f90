@@ -788,21 +788,22 @@ end subroutine seq_filter_assim
 
 !===========================================================================
 
-subroutine filter_assim_region(num_domains, my_domain, ens_obs_in, compute_obs, &
+subroutine filter_assim_region(num_domains, my_domain, domain_size, ens, ens_obs_in, compute_obs, &
    ens_size, model_size, num_obs_in_set, num_groups, seq, keys, obs_val_index, confidence_slope, &
-   cutoff, save_reg_series, reg_series_unit)
+   cutoff, save_reg_series, reg_series_unit, my_state)
 
-integer, intent(in) :: num_domains, my_domain
+integer, intent(in) :: num_domains, my_domain, domain_size
 integer, intent(in) :: ens_size, model_size, num_groups, keys(num_obs_in_set), num_obs_in_set
+real(r8), intent(inout) :: ens(ens_size, domain_size)
 real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs(num_obs_in_set)
 integer, intent(in) :: obs_val_index, reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
 real(r8), intent(in) :: confidence_slope, cutoff
-logical, intent(in) :: save_reg_series
+logical, intent(in) :: save_reg_series, my_state(model_size)
 
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
-integer :: num_close_ptr(1), index, domain_size
+integer :: num_close_ptr(1), index
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
 real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
@@ -814,31 +815,29 @@ integer, allocatable :: close_ptr(:, :)
 real(r8), allocatable :: dist_ptr(:, :)
 real(r8) :: swath(ens_size), reg_factor
 type(location_type) :: obs_loc(num_obs_in_set)
-logical :: close_to_any, my_state(model_size)
+logical :: close_to_any
 
-real(r8), allocatable :: ens(:, :)
+integer :: inv_indices(model_size)
 integer, allocatable :: indices(:)
-type(time_type) :: ens_time(ens_size)
-
-! Find out which state variables are in my domain
-!call whats_in_my_domain(num_domains, my_domain, my_state, domain_size)
-! Temporarily just do the domain stuff here
-   domain_size = model_size / num_domains
-   my_state = .false.
-   my_state((my_domain - 1) * model_size / num_domains + 1 : my_domain * model_size / num_domains) = .true.
 
 ! Generate an array with the indices of my state variables
-allocate(ens(ens_size, domain_size), indices(domain_size))
+allocate(indices(domain_size))
+inv_indices = 0
 index = 1
 do i = 1, model_size
    if(my_state(i)) then
       indices(index) = i
+      inv_indices(i) = index
       index = index + 1
    endif
 end do 
 
-! Get the ensemble (whole thing for now) from storage
-!!!call get_ensemble_region(ens, ens_time)
+do i = 1, model_size
+!   write(*, *) 'my_state, inv_index ', i, my_state(i), inv_indices(i)
+end do
+do i = 1, domain_size
+!   write(*, *) 'indices ', i, indices(i)
+end do
 
 ! Need copy of obs to be modified
 ens_obs = ens_obs_in
@@ -875,7 +874,7 @@ do i = 1, num_obs_in_set
 end do
 
 do i = 1, num_obs_in_set
-   write(*, *) 'order ', i, order(i)
+!!!   write(*, *) 'order ', i, order(i)
 end do
 
 !---------------------- Sequential filter section --------------------------
@@ -953,7 +952,7 @@ Observations : do jjj = 1, num_obs_in_set
       if(cov_factor == 0) cycle CLOSE_STATE
 
       ! Get the ensemble elements for this state variable and do regression
-       swath = ens(:, ind)
+       swath = ens(:, inv_indices(ind))
 
       ! Loop through the groups
       Group2: do group = 1, num_groups
@@ -978,7 +977,7 @@ Observations : do jjj = 1, num_obs_in_set
       reg_factor = min(reg_factor, cov_factor)
 
       ! Do the final update for this state variable
-      ens(:, ind) = ens(:, ind) + reg_factor * ens_inc(:)
+      ens(:, inv_indices(ind)) = ens(:, inv_indices(ind)) + reg_factor * ens_inc(:)
    end do CLOSE_STATE
 
 
@@ -1039,9 +1038,6 @@ end do Observations
 
 deallocate(close_ptr, dist_ptr)
 
-! Put the update ensemble back into storage
-!!!call put_ensemble_region(ens, ens_time)
-
 end subroutine filter_assim_region
 
 
@@ -1059,7 +1055,10 @@ real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series
 
 integer :: i, j, num_domains, domain_size, index
-logical :: compute_obs(num_obs_in_set)
+logical :: compute_obs(num_obs_in_set), my_state(model_size)
+real(r8), allocatable :: ens(:, :)
+integer, allocatable :: indices(:)
+type(time_type) :: ens_time(ens_size)
 
 compute_obs = compute_obs_in
 
@@ -1069,15 +1068,42 @@ compute_obs = .false.
 ! WARNING: NEED TO AUTOMATE DETERMINATION OF WHICH COPY HAS ACTUAL OBS!!!
 ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL
 ! SEQUENTIAL ANSWER
-num_domains = 1
+num_domains = 2
+
 do j = 1, num_domains
-!   my_state = .false.
-!   my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
+
+   ! Find out which state variables are in my domain
+   !call whats_in_my_domain(num_domains, j, my_state, domain_size)
+   ! Temporarily just do the domain stuff here
+   domain_size = model_size / num_domains
+   my_state = .false.
+   my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
+
+   ! Generate an array with the indices of my state variables
+   allocate(ens(ens_size, domain_size), indices(domain_size))
+
+   write(*, *) 'domain size is ', domain_size
+   index = 1
+   do i = 1, model_size
+      if(my_state(i)) then
+         indices(index) = i
+         index = index + 1
+      endif
+   end do 
+
+   ! Get the ensemble (whole thing for now) from storage
+!!!   call get_ensemble_region(ens, ens_time, state_vars_in = indices)
 
 ! Do ensemble filter update for this region
-   call filter_assim_region(num_domains, j, ens_obs, compute_obs, ens_size, model_size, &
-      num_obs_in_set, num_groups, seq, keys, 1, confidence_slope, cutoff, &
-      save_reg_series, reg_series_unit)
+   call filter_assim_region(num_domains, j, domain_size, ens, ens_obs, compute_obs, &
+      ens_size, model_size, num_obs_in_set, num_groups, seq, keys, 1, confidence_slope, cutoff, &
+      save_reg_series, reg_series_unit, my_state)
+
+   ! Put this region into storage
+!!!   call put_ensemble_region(ens, ens_time, state_vars_in = indices)
+
+   deallocate(ens, indices)
+
 end do
 
 end subroutine filter_assim
