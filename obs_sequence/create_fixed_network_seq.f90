@@ -20,6 +20,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    assignment(=), static_init_obs_sequence, get_num_copies, get_num_qc, &
    get_copy_meta_data, get_qc_meta_data, set_qc_meta_data
 use time_manager_mod, only : time_type, operator(*), operator(+), set_time, interactive_time
+use        model_mod, only : static_init_model
 
 implicit none
 
@@ -40,6 +41,9 @@ integer                 :: seconds, days, i, j, network_size, option, num_times,
 
 ! Record the current time, date, etc. to the logfile
 call register_module(source,revision,revdate)
+
+! Call the underlying model's static initialization for calendar info
+call static_init_model()
 
 ! Initialize the obs_sequence module
 call static_init_obs_sequence
