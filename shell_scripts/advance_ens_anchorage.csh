@@ -65,10 +65,10 @@ while($batch <= $nbatch)
       @ element++
       if ($element > $nensmbl) goto all_elements_done
 
-      rsh $node "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/local/kdr_dartcam " &
+      rsh $node "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/local/tmp$user$$$element " &
 
       echo rsh $node \
-         "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/local/kdr_dartcam " &
+         "csh $PBS_O_WORKDIR/advance_model.csh $PBS_O_WORKDIR $element /scratch/local/tmp$user$$$element " &
 
    end
 # Another way to monitor progress.  batchflag has other info to start,
