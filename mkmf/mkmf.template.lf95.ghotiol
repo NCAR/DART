@@ -1,0 +1,15 @@
+# Makefile template for Lahey F95
+#
+# --dbl  does the autopromotion  
+#
+# --ap   preserve arithmetic accuracy in the face of optimization
+
+FC = lf95
+LD = lf95
+CPPFLAGS =
+LIST = --list
+NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-lf95.6.20a
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf -L/usr/local/lib -ludunits
+FFLAGS = --ap --dbl --trap --verbose --warn --wide -O0 $(INCS) 
+LDFLAGS = $(LIBS)
