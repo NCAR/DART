@@ -67,7 +67,8 @@ end type model_type
 !----------------------------------------------------------------------
 ! File where basic info about model configuration can be found; should be namelist
 
-character(len = 128) :: model_config_file = 'T5H0-12icl.cam2.i.0001-09-01-43200.nc'
+character(len = 128) :: model_config_file = 'CAM_FILE.nc'
+!character(len = 128) :: model_config_file = 'T5H0-12icl.cam2.i.0001-09-01-43200.nc'
 !----------------------------------------------------------------------
 
 !
@@ -513,27 +514,136 @@ end subroutine get_state_meta_data
 !#######################################################################
 
 function model_interpolate(x, location, type)
-!!!function model_interpolate(x, lon, lat, level, type)
 
 implicit none
-
-!!! EVENTUALLY NEED TO DO SOMETHING WITH TYPE; BUT FOR NOW THIS JUST FINDS
-!!! THE HORIZONTAL PART OF THE INTPERPOLATION??? SHOULD ARGUMENT BE A HYBRID
-!!! LOCATION TYPE VARIABLE HERE???
 
 real :: model_interpolate
 real, intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: type
 
-! No op for now
-if(1 == 1) then
-   write(*, *) 'STOP: CAM Model interpolate is not implemented yet'
-   stop
+integer :: lon_below, lon_above, lat_below, lat_above, i
+real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
+real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
+real :: lon, lat, level, lon_lat_lev(3)
+
+! First version only allows (level specifies verical???)
+lon_lat_lev = get_location(location)
+lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
+
+! Get lon and lat grid specs, num_lons, num_lats are globally defined for cam
+   bot_lon = lons(1)
+   top_lon = lons(num_lons)
+   delta_lon = lons(2) - lons(1)
+   bot_lat = lats(1)
+   top_lat = lats(num_lats)
+
+! Compute bracketing lon indices
+if(lon >= bot_lon .and. lon <= top_lon) then
+   lon_below = int((lon - bot_lon) / delta_lon) + 1
+   lon_above = lon_below + 1
+   lon_fract = (lon - ((lon_below - 1) * delta_lon + bot_lon)) / delta_lon
+else
+! At wraparound point
+   lon_below = num_lons
+   lon_above = 1
+   if(lon < bot_lon) then
+      temp_lon = lon + 360.0
+   else
+      temp_lon = lon
+   endif
+   lon_fract = (temp_lon - top_lon) / delta_lon
 endif
-model_interpolate = 0.0
+
+
+! Next, compute neighboring lat rows
+! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE MAY BE WRONG
+! Inefficient search used for latitudes in Gaussian grid. Might want to speed up.
+if(lat >= bot_lat .and. lat <= top_lat) then
+
+   do i = 2, num_lats
+      if(lat <= lats(i)) then
+         lat_above = i
+         lat_below = i - 1
+         lat_fract = (lat - lats(lat_below)) / (lats(lat_above) - lats(lat_below))
+         goto 20
+      end if 
+   end do
+
+else if(lat <= bot_lat) then
+! South of bottom lat NEED TO DO BETTER: NOT REALLY REGULAR
+   lat_below = 1
+   lat_above = 2
+   lat_fract = 0.0
+else
+! North of top lat NEED TO DO BETTER: NOT REALLY REGULAR
+   lat_below = num_lats - 1
+   lat_above = num_lats
+   lat_fract = 1.0
+endif
+
+! Level is obvious for now
+
+! Now, need to find the values for the four corners
+20 continue
+val(1, 1) =  get_val(x, lon_below, lat_below, int(level), type)
+val(1, 2) =  get_val(x, lon_below, lat_above, int(level), type)
+val(2, 1) =  get_val(x, lon_above, lat_below, int(level), type)
+val(2, 2) =  get_val(x, lon_above, lat_above, int(level), type)
+
+! Do the weighted average for interpolation
+!write(*, *) 'fracts ', lon_fract, lat_fract
+do i = 1, 2
+   a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
+end do
+
+model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 
 end function model_interpolate
+
+!#######################################################################
+
+function get_val(x, lon_index, lat_index, level, type)
+
+implicit none
+
+real :: get_val
+real, intent(in) :: x(:)
+integer, intent(in) :: lon_index, lat_index, level, type
+
+integer :: per_col, index
+
+! Compute size of grid storage in a column; includes tracers
+! Single 2D state vector is pressure
+per_col = 1 + num_levs * n3tflds
+
+! Find the starting index for this column
+index = per_col * (lat_index - 1 + (lon_index - 1) * num_lats)
+
+! Pressure is first 
+if(type == 3) then
+   index = index + 1
+else
+! For interior fields compute the base for their level and add offset
+   index = index + 1 + (level - 1) * n3tflds
+! Temperature
+   if(type == 4) then
+      index = index + 1
+! U wind component
+   else if(type == 1) then
+      index = index + 2
+! V wind component
+   else if(type == 2) then
+      index = index + 3
+! Tracers
+   else if(type > 4) then
+      index = index + type - 1
+   end if
+endif
+   
+get_val = x(index)
+
+end function get_val
 
 !#######################################################################
 
