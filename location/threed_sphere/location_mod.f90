@@ -33,7 +33,7 @@ private
 
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
-       vert_is_pressure, vert_is_level, query_location, &
+       vert_is_pressure, vert_is_level, vert_is_height, query_location, &
        LocationDims, LocationName, LocationLName, &
        read_ncep_obs_location
 
