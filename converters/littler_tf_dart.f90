@@ -106,6 +106,7 @@ tst_discard = .false.
 tst_slp = MISSING_R8
 i1 = 0
 i2 = 0
+iseq_num = 0
 i3 = 0
 tst_sut = MISSING_I
 tst_julian = MISSING_I
@@ -281,6 +282,35 @@ if(.not. littler_to_dart) then
 
          do k = 1 , kx
 
+            if (uu(k) /= missing_r8 .and. vv(k) /= missing_r8) then
+
+               spd(k) = sqrt(uu(k)*uu(k) + vv(k)*vv(k))
+
+               if (spd(k) /= 0.0_r8) then
+
+                  if (vv(k) == 0.0_r8) then
+
+                     if (uu(k) > 0.0_r8) dir(k) = 270.0_r8
+                     if (uu(k) < 0.0_r8) dir(k) = 90.0_r8
+
+                  else
+
+                     dir(k) = atan(uu(k)/vv(k))*RAD2DEG
+
+                     if (uu(k) <= 0.0_r8 .and. vv(k) >= 0.0_r8) dir(k) = dir(k) + 180.0_r8
+                     if (uu(k) >= 0.0_r8 .and. vv(k) >= 0.0_r8) dir(k) = dir(k) + 180.0_r8
+                     if (uu(k) >= 0.0_r8 .and. vv(k) <= 0.0_r8) dir(k) = dir(k) + 360.0_r8
+
+                  endif
+
+               else
+
+                  dir(k) = 0.0_r8
+
+               endif
+
+            endif
+
             WRITE ( UNIT = iunit , ERR = 20 , FMT = meas_format ) &
                  p(k),0, z(k),zpp_qc(k), t(k),tt_qc(k),td(k),td_qc(k), &
                  spd(k),zvv_qc(k), dir(k),zuu_qc(k), &
@@ -394,6 +424,15 @@ else
             endif
 
             prev_obs = obs
+
+         endif
+
+         if (uu(k) == missing_r8 .and. vv(k) == missing_r8 .and. &
+              spd(k) /= missing_r8 .and. dir(k) /= missing_r8) then
+
+            dir(k) = dir(k)*DEG2RAD
+            uu(k) = -spd(k)*SIN(dir(k))
+            vv(k) = -spd(k)*COS(dir(k))
 
          endif
 
