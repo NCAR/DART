@@ -39,8 +39,6 @@ ln -s  ${PBS_O_WORKDIR}/SOILPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
 ln -s  ${PBS_O_WORKDIR}/wrf.exe . 
 
-ln -s  ${PBS_O_WORKDIR}/wrf.exe .
-
 hostname > nfile
 hostname >> nfile
 ###ln -s  ${PBS_O_WORKDIR}/nfile$element nfile
