@@ -20,7 +20,8 @@ interface assignment(=)
    module procedure copy_platform
 end interface
 
-public platform_type, set_platform_location, copy_platform, write_platform, assignment(=)
+public platform_type, set_platform_location, copy_platform, write_platform, assignment(=), &
+       read_platform
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -37,15 +38,14 @@ logical, save :: module_initialized = .false.
 
 contains
 
+!---------------------------------------------------------------------
 
-  subroutine initialize_module
-!----------------------------------------------------------------------------
+subroutine initialize_module
 
-   call register_module(source, revision, revdate)
-   module_initialized = .true.
+call register_module(source, revision, revdate)
+module_initialized = .true.
 
 end subroutine initialize_module
-
 
 !---------------------------------------------------------------------
 
@@ -62,7 +62,7 @@ platform1%location = platform2%location
 
 end subroutine copy_platform
 
-!----------------------------------------------------------------------------
+!---------------------------------------------------------------------
 
 subroutine set_platform_location(platform, location)
 
@@ -77,9 +77,7 @@ platform%location = location
 
 end subroutine set_platform_location
 
-!-------------------------------------------------------
-
-!----------------------------------------------------------------------------
+!---------------------------------------------------------------------
 
 subroutine write_platform(ifile, platform, fform)
 
@@ -105,8 +103,43 @@ SELECT CASE (fileformat)
 11    format('platform')
 END SELECT
 
-call write_location(ifile, platform%location, fform)
+call write_location(ifile, platform%location, fileformat)
 
 end subroutine write_platform
+
+!---------------------------------------------------------------------
+
+subroutine read_platform(ifile, platform, fform)
+
+implicit none
+
+integer,                    intent(in)  :: ifile
+type(platform_type),        intent(out) :: platform
+character(len=*), intent(in), optional  :: fform
+
+character(len=8)  :: header
+character(len=32) :: fileformat
+
+if ( .not. module_initialized ) call initialize_module
+
+fileformat = "ascii"   ! supply default
+if(present(fform)) fileformat = trim(adjustl(fform))
+
+! Read the character identifier for verbose formatted output
+SELECT CASE (fileformat)
+   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
+      continue
+   CASE DEFAULT
+      read(ifile, FMT='(a8)') header
+      if(header /= 'platform') then
+         call error_handler(E_ERR,'read_platform', &
+              'Expected location header "platform" in input file', &
+              source, revision, revdate)
+      endif
+END SELECT
+
+platform%location = read_location(ifile, fileformat)
+
+end subroutine read_platform
 
 end module platform_mod
