@@ -36,10 +36,11 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files, &
+   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, &
    finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
    awrite_state_restart, Aadvance_state, pert_model_state, &
-   netcdf_file_type, nc_append_time, nc_write_calendar_atts, nc_get_tindex, get_model_time_step
+   netcdf_file_type, nc_append_time, nc_write_calendar_atts, nc_get_tindex, &
+   get_model_time_step, open_restart_read, open_restart_write, close_restart
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -78,6 +79,9 @@ end type netcdf_file_type
 ! Permanent class storage for model_size
 integer :: model_size
 
+! Global storage for restart formats
+character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
+
 type(time_type) :: time_step
 
 !-------------------------------------------------------------
@@ -89,9 +93,10 @@ type(time_type) :: time_step
 !                                     Portable, but loses precision,
 !                                     slower, and larger.
 
-logical  :: binary_restart_files = .true.
+logical  :: read_binary_restart_files = .true.
+logical  :: write_binary_restart_files = .true.
 
-namelist /assim_model_nml/ binary_restart_files
+namelist /assim_model_nml/ read_binary_restart_files, write_binary_restart_files
 !-------------------------------------------------------------
 
 contains
@@ -152,6 +157,19 @@ endif
 
 ! Record the namelist values used for the run ... 
 write(logfileunit, nml=assim_model_nml)
+
+! Set the read and write formats for restart files
+if(read_binary_restart_files) then
+   read_format = "unformatted"
+else
+   read_format = "formatted"
+endif
+
+if(write_binary_restart_files) then
+   write_format = "unformatted"
+else
+   write_format = "formatted"
+endif
 
 ! Call the underlying model's static initialization
 call static_init_model()
@@ -824,17 +842,11 @@ return
       ! Write the time to which to advance
       ! Write the assim model extended state   
 
-      ic_file_unit = get_unit()
-      if ( binary_restart_files ) then
-            open(unit = ic_file_unit, file = ic_file_name(i),      form = 'unformatted')
-            call write_time(ic_file_unit, target_time,                    'unformatted')
-            call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit, 'unformatted')
-      else
-            open(unit = ic_file_unit, file = ic_file_name(i))
-            call write_time(ic_file_unit, target_time)
-            call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit)
-      endif
-      close(ic_file_unit)
+      ! Open a restart file and write out with a target time
+      ic_file_unit = open_restart_write(ic_file_name(i))
+      call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit, target_time)
+      call close_restart(ic_file_unit)
+     
 
    endif
 
@@ -914,15 +926,9 @@ if(asynch /= 0) then
 
    ! All should be done, read in the states and proceed
    do i = 1, num
-      ud_file_unit = get_unit()
-      if ( binary_restart_files ) then
-         open(unit = ud_file_unit, file = ud_file_name(i),     form = 'unformatted')
-         call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit, 'unformatted')
-      else
-         open(unit = ud_file_unit, file = ud_file_name(i))
-         call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit)
-      endif
-      close(ud_file_unit)
+      ud_file_unit = open_restart_read(ud_file_name(i))
+      call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit)
+      call close_restart(ud_file_unit)
    end do
 
 end if
@@ -999,7 +1005,7 @@ end subroutine set_model_state_vector
 
 
 
-subroutine write_state_restart(assim_model, funit, fform)
+subroutine write_state_restart(assim_model, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Write a restart file given a model extended state and a unit number 
@@ -1010,10 +1016,10 @@ implicit none
 
 type (assim_model_type), intent(in)           :: assim_model
 integer,                 intent(in)           :: funit
-character(len=*),        intent(in), optional :: fform
+type(time_type), intent(in), optional         :: target_time
 
-if(present(fform)) then
-   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit, fform)
+if(present(target_time)) then
+   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
 else
    call awrite_state_restart(assim_model%time, assim_model%state_vector, funit)
 endif
@@ -1023,7 +1029,7 @@ end subroutine write_state_restart
 
 
 
-subroutine awrite_state_restart(model_time, model_state, funit, fform)
+subroutine awrite_state_restart(model_time, model_state, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Write a restart file given a model extended state and a unit number 
@@ -1035,23 +1041,16 @@ implicit none
 type(time_type), intent(in)                   :: model_time
 real(r8), intent(in)                          :: model_state(:)
 integer,                 intent(in)           :: funit
-character(len=*),        intent(in), optional :: fform
-character(len=32) :: fileformat
+type(time_type), intent(in), optional         :: target_time
 
-fileformat = "ascii"
-if (present(fform)) fileformat = trim(adjustl(fform))
-
-
-! This needs to be done more carefully, consider this an extended stub
-! Write time first
 ! Write the state vector
-
-
-SELECT CASE (fileformat)
+SELECT CASE (write_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
+      if(present(target_time)) call write_time(funit, target_time, "unformatted")
       call write_time(funit, model_time, "unformatted")
       write(funit) model_state
    CASE DEFAULT
+      if(present(target_time)) call write_time(funit, target_time)
       call write_time(funit, model_time)
       write(funit, *) model_state
 END SELECT  
@@ -1060,7 +1059,7 @@ end subroutine awrite_state_restart
 
 
 
-subroutine read_state_restart(assim_model, funit, fform)
+subroutine read_state_restart(assim_model, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
@@ -1069,10 +1068,10 @@ implicit none
 
 type(assim_model_type), intent(out)          :: assim_model
 integer,                intent(in)           :: funit
-character(len=*),       intent(in), optional :: fform
+type(time_type), intent(out), optional       :: target_time
 
-if(present(fform)) then
-   call aread_state_restart(assim_model%time, assim_model%state_vector, funit, fform)
+if(present(target_time)) then
+   call aread_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
 else
    call aread_state_restart(assim_model%time, assim_model%state_vector, funit)
 endif
@@ -1082,7 +1081,7 @@ end subroutine read_state_restart
 
 
 
-subroutine aread_state_restart(model_time, model_state, funit, fform)
+subroutine aread_state_restart(model_time, model_state, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
@@ -1092,30 +1091,70 @@ implicit none
 type(time_type), intent(out)                 :: model_time
 real(r8), intent(out)                        :: model_state(:)
 integer,                intent(in)           :: funit
-character(len=*),       intent(in), optional :: fform
-
-character(len=32) :: fileformat
-
+type(time_type), intent(out), optional       :: target_time
 
 print *,'assim_model_mod:aread_state_restart ... reading from unit',funit
-
-
-fileformat = "ascii"
-if (present(fform)) fileformat = trim(adjustl(fform))
 
 ! Read the time
 ! Read the state vector
 
-SELECT CASE (fileformat)
+SELECT CASE (read_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
+      if(present(target_time)) target_time = read_time(funit, form = "unformatted")
       model_time = read_time(funit, form = "unformatted")
       read(funit) model_state
    CASE DEFAULT
+      if(present(target_time)) target_time = read_time(funit)
       model_time = read_time(funit)
       read(funit, *) model_state
 END SELECT  
 
 end subroutine aread_state_restart
+
+
+
+function open_restart_write(file_name)
+!----------------------------------------------------------------------
+!
+! Opens a restart file for writing
+
+character(len = *), intent(in) :: file_name
+integer :: open_restart_write
+
+open_restart_write = get_unit()
+write(*, *) 'the format for ouput writing is ', write_format
+open(unit = open_restart_write, file = file_name, form = write_format)
+
+end function open_restart_write
+
+
+function open_restart_read(file_name)
+!----------------------------------------------------------------------
+!
+! Opens a restart file for reading
+
+character(len = *), intent(in) :: file_name
+integer :: open_restart_read
+
+open_restart_read = get_unit()
+open(unit = open_restart_read, file = file_name, form = read_format)
+
+end function open_restart_read
+
+
+
+subroutine close_restart(file_unit)
+!----------------------------------------------------------------------
+!
+! Closes a restart file
+integer, intent(in) :: file_unit
+
+call close_file(file_unit)
+
+end subroutine close_restart
+
+
+
 
 
 

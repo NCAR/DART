@@ -27,7 +27,8 @@ use        model_mod, only : model_type, init_model_instance, read_cam_init, &
                              prog_var_to_vector
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
-   binary_restart_files, set_model_time
+   set_model_time, open_restart_read, open_restart_write, close_restart, &
+   aread_state_restart
 ! Guam; move time stripping from advance_model to here
 use time_manager_mod, only : time_type, read_time
 
@@ -43,13 +44,12 @@ revdate  = "$Date$"
 ! Guam; move time stripping from script into here
 character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ud', &
                          file_time = 'temp_ic'
-character (len = 16)  :: file_form
 
 ! Temporary allocatable storage to read in a native format for cam state
 type(assim_model_type) :: x
 type(model_type)       :: var
-type(time_type)        :: adv_to_time
-real(r8), allocatable  :: x_state(:)
+type(time_type)        :: model_time, adv_to_time
+real(r8), allocatable  :: x_state(:), x_temp(:)
 integer                :: file_unit, x_size
 
 ! Static init assim model calls static_init_model
@@ -61,7 +61,7 @@ call init_assim_model(x)
 
 ! Allocate the local state vector
 x_size = get_model_size()
-allocate(x_state(x_size))
+allocate(x_state(x_size), x_temp(x_size))
 
 ! Allocate the instance of the cam model type for storage
 call init_model_instance(var)
@@ -75,29 +75,19 @@ call prog_var_to_vector(var, x_state)
 ! Put this in the structure
 call set_model_state_vector(x, x_state)
 
-! get form of file output from assim_model_mod
-if (binary_restart_files ) then
-   file_form = 'unformatted'
-else
-   file_form = 'formatted'
-endif
-PRINT*,'In trans_pv_sv binary_restart_files, file_form = ',binary_restart_files, file_form
-
 ! Guam; move time stripping from advance_model into here
-file_unit = get_unit()
-open(unit = file_unit, file = file_time, form=file_form)
-adv_to_time = read_time(file_unit, file_form)
+file_unit = open_restart_read(file_time)
+call aread_state_restart(model_time, x_temp, file_unit, adv_to_time)
 call set_model_time (x, adv_to_time)
-close(file_unit)
+call close_restart(file_unit)
 
 ! Get channel for output 
 ! debug file_unit = 13
-file_unit = get_unit()
-open(unit = file_unit, file = file_out, form=file_form)
+file_unit = open_restart_write(file_out)
 PRINT*,'In trans_pv_sv file_out unit = ',file_unit
 PRINT*,' '
 ! write out state vector in "proprietary" format
-call write_state_restart(x, file_unit, file_form)
-close(file_unit)
+call write_state_restart(x, file_unit)
+call close_restart(file_unit)
 
 end program trans_pv_sv

@@ -23,7 +23,8 @@ use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart, binary_restart_files
+   write_state_restart, read_state_restart, open_restart_read, &
+   open_restart_write, close_restart
 
 implicit none
 
@@ -42,8 +43,8 @@ character (len=129)    :: adv_ens_command = ''
 ! Namelist input with default values
 !
 integer :: target_time_days = -1, target_time_seconds = -1
-character(len = 129) :: ic_file_name = " ", &
-                        ud_file_name = ' '
+character(len = 129) :: ic_file_name = "temp_ic", &
+                        ud_file_name = 'temp_ud'
 
 namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
    ic_file_name, ud_file_name
@@ -66,22 +67,11 @@ call static_init_assim_model()
 model_size = get_model_size()
 
 !------------------- Read restart from file ----------------------
-iunit = get_unit()
+iunit = open_restart_read(ic_file_name)
 ! Read in the target time
-if ( binary_restart_files ) then
-!!!open(unit = iunit, file = restart_in_file_name, form = "unformatted")
-   open(unit = iunit, file = 'temp_ic', form = "unformatted")
-   target_time = read_time(iunit, 'unformatted')
-   call init_assim_model(x(1))
-   call read_state_restart(x(1), iunit, 'unformatted')
-else
-!!!open(unit = iunit, file = restart_in_file_name)
-   open(unit = iunit, file = 'temp_ic')
-   target_time = read_time(iunit)
-   call init_assim_model(x(1))
-   call read_state_restart(x(1), iunit)
-endif
-close(iunit)
+call init_assim_model(x(1))
+call read_state_restart(x(1), iunit, target_time)
+call close_restart(iunit)
 !-----------------  Restart read in --------------------------------
 
 ! Advance this state to the target time (which comes from namelist)
@@ -93,16 +83,8 @@ if(get_model_time(x(1)) < target_time) then
 endif
 
 ! Output the restart file if requested
-iunit = get_unit()
-if ( binary_restart_files ) then
-!!!open(unit = iunit, file = ud_file_name, form = "unformatted")
-   open(unit = iunit, file = 'temp_ud', form = "unformatted")
-   call write_state_restart(x(1), iunit, 'unformatted')
-else
-!!!open(unit = iunit, file = ud_file_name)
-   open(unit = iunit, file = 'temp_ud')
-   call write_state_restart(x(1), iunit)
-endif
-close(iunit)
+iunit = open_restart_write(ud_file_name)
+call write_state_restart(x(1), iunit)
+call close_restart(iunit)
 
 end program integrate_model

@@ -28,7 +28,7 @@ use       model_mod, only : model_type, init_model_instance, write_cam_init, &
    vector_to_prog_var
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size, get_model_state_vector, read_state_restart, &
-   binary_restart_files
+   open_restart_read, close_restart
 ! Guam clean out advance_model
 use time_manager_mod, only : time_type, read_time
 
@@ -57,29 +57,18 @@ call init_assim_model(x)
 ! Allocate the instance of the cam model type for storage
 call init_model_instance(var)
 
-! get form of file input from assim_model_mod
-if (binary_restart_files ) then
-   file_form = 'unformatted'
-else
-   file_form = 'formatted'
-endif
-PRINT*,'In trans_sv_pv binary_restart_files, file_form = ',binary_restart_files, file_form
-
 ! Get file for DART vector input
 ! debug file_unit = 17
-file_unit = get_unit()
+file_unit = open_restart_read(file_in)
 PRINT*,'In trans_sv_pv file_in unit  = ',file_unit
 PRINT*,' '
-open(unit = file_unit, file = file_in, form = file_form)
 
 ! Guam clean out advance_model
 ! Read in time to which CAM must advance.  
 ! Neither this, nor time in x is used in this program
-adv_to_time = read_time(file_unit, file_form)
-
 ! read in state vector from DART
-call read_state_restart(x, file_unit, file_form)
-close(file_unit)
+call read_state_restart(x, file_unit, adv_to_time)
+call close_restart(file_unit)
 
 ! Get the state part of the assim_model type x
 x_size = get_model_size()

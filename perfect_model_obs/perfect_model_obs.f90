@@ -34,7 +34,8 @@ use assim_model_mod, only  : assim_model_type, static_init_assim_model, get_mode
    get_initial_condition, get_model_state_vector, set_model_state_vector, &
    set_model_time, get_model_time, &
    netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, &
-   init_assim_model, read_state_restart, write_state_restart, binary_restart_files
+   init_assim_model, read_state_restart, write_state_restart, &
+   open_restart_read, open_restart_write, close_restart
 use random_seq_mod,  only  : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
@@ -232,15 +233,9 @@ call write_obs_seq(seq, obs_seq_out_file_name)
 
 ! Output a restart file if requested
 if(output_restart) then
-   iunit = get_unit()
-   if ( binary_restart_files ) then
-      open(unit = iunit, file = restart_out_file_name, form = "unformatted", status = 'replace')
-      call write_state_restart(x(1), iunit, "unformatted")
-   else
-      open(unit = iunit, file = restart_out_file_name, status = 'replace')
-      call write_state_restart(x(1), iunit)
-   endif
-   close(iunit)
+   iunit = open_restart_write(restart_out_file_name)
+   call write_state_restart(x(1), iunit)
+   call close_restart(iunit)
 endif
 
 call error_handler(E_MSG,'perfect_model_obs','FINISHED',source,revision,revdate)
@@ -309,19 +304,12 @@ subroutine perfect_read_restart()
 ! Read restart if requested
 if(start_from_restart) then
    call init_assim_model(x(1))
-   iunit = get_unit()
-
-   if ( binary_restart_files ) then
-      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
-      call read_state_restart(x(1), iunit, "unformatted")
-   else
-      open(unit = iunit, file = restart_in_file_name)
-      call read_state_restart(x(1), iunit)
-   endif
+   iunit = open_restart_read(restart_in_file_name)
+   call read_state_restart(x(1), iunit)
 
    ! If init_time_days an init_time_seconds are not < 0, set time to them
    if(init_time_days >= 0) call set_model_time(x(1) , time1)
-   close(iunit)
+   call close_restart(iunit)
    ! Restart read in
 
 else

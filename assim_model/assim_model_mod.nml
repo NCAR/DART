@@ -1,3 +1,4 @@
 &assim_model_nml
-   binary_restart_files = .true.  /
+   read_binary_restart_files = .true.,
+   write_binary_restart_files = .true. /
 

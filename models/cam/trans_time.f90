@@ -23,8 +23,10 @@ program trans_time
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time, operator(-), get_date, &
                              set_calendar_type, GREGORIAN, NOLEAP
-use  assim_model_mod, only : static_init_assim_model, binary_restart_files
+use  assim_model_mod, only : static_init_assim_model, init_assim_model, open_restart_read, close_restart, &
+                             get_model_size, get_model_time, read_state_restart, assim_model_type
 use    utilities_mod, only : get_unit
+use        types_mod, only : r8
 
 implicit none
 
@@ -38,34 +40,19 @@ integer :: ntimes = 2, n, nhtfrq, calendar_type = GREGORIAN
 integer :: file_unit(2), seconds, days, year, month, day, hour, minute, second, &
            cam_date, cam_tod
 type(time_type)       :: dart_time(2), forecast_length
-! character (len = 128) :: file_name = 'assim_model_state_ic1', file_out = 'times'
-! move trans_time execution from advance_ens.csh ($PBS_WORKDIR) to
-! advance_model.csh ($tmpdir=/scratch/local/xxxx)
 character (len = 128) :: file_name = 'temp_ic', file_out = 'times'
-character (len = 16)  :: file_form
+type(assim_model_type)  :: x
 
 call set_calendar_type(calendar_type)
 
 ! Static init assim model calls static_init_model
 call static_init_assim_model()
+call init_assim_model(x)
 
-! get form of file output from assim_model_mod
-if ( binary_restart_files ) then
-   file_form = 'unformatted'
-else
-   file_form = 'formatted'
-endif
-file_unit(1) = get_unit()
+file_unit(1) = open_restart_read(file_name)
+call read_state_restart(x, file_unit(1), dart_time(1))
+dart_time(2) = get_model_time(x)
 
-! write out a test file
-!open(unit = file_unit(1), file = file_name, form=file_form)
-!forecast_length = set_time(0, 2)
-!call write_time (file_unit(1),forecast_length)
-!forecast_length = set_time(43200, 1)
-!call write_time (file_unit(1),forecast_length)
-!close(unit = file_unit(1))
-
-open(unit = file_unit(1), file = file_name, form=file_form)
 file_unit(2) = get_unit()
 open(unit = file_unit(2), file = file_out)
 ! end time is first, then beginning time
@@ -73,7 +60,6 @@ open(unit = file_unit(2), file = file_out)
 !                     STOP_YMD=$times[1] STOP_TOD=$times[2] NHTFRQ=$times[5] /" \
 
 do n=1,ntimes
-   dart_time(n) = read_time(file_unit(1), file_form)
    call get_date(dart_time(n), year, month, day, hour, minute, second)
    PRINT*,'date = ',year, month, day, hour, minute, second
    if (calendar_type.eq.GREGORIAN) then
@@ -86,15 +72,11 @@ do n=1,ntimes
    write (file_unit(2),'(2I8)') cam_date, cam_tod
 enddo
 
-close(file_unit(1))
+call close_restart(file_unit(1))
 
 ! calculate number of hours in forecast, and pass to history tape write frequency
 
 forecast_length = dart_time(1) - dart_time(2)
-
-! kdr
-!   can't use this for GREG
-! call get_date(forecast_length, year, month, day, hour, minute, second)
 
 call get_time(forecast_length, second, day)
 PRINT*,'forecast length = ', day, second

@@ -29,8 +29,9 @@ use    utilities_mod, only :  get_unit, open_file, close_file, register_module, 
                               timestamp
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, & 
-   binary_restart_files, aoutput_diagnostics, aread_state_restart, &
-   awrite_state_restart, pert_model_state
+   aoutput_diagnostics, aread_state_restart, &
+   awrite_state_restart, pert_model_state, open_restart_read, open_restart_write, &
+   close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init
 use   cov_cutoff_mod, only : comp_cov_factor
@@ -585,26 +586,17 @@ end subroutine filter_set_initial_time
 subroutine filter_read_restart()
 
 if(start_from_restart) then
-   iunit = get_unit()
-   if (binary_restart_files ) then
-      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
-   else
-      open(unit = iunit, file = restart_in_file_name)
-   endif
+   iunit = open_restart_read(restart_in_file_name)
 
    do i = 1, ens_size
       write(msgstring, *) 'trying to read restart ', i
       call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
-      if (binary_restart_files ) then
-         call aread_state_restart(ens_time(i), ens(i, :), iunit, "unformatted")
-      else
-         call aread_state_restart(ens_time(i), ens(i, :), iunit)
-      endif
+      call aread_state_restart(ens_time(i), ens(i, :), iunit)
 
       ! If init_time_days and init_time_seconds are not < 0, set time to them
       if(init_time_days >= 0) ens_time(i) = time1
    end do
-   close(iunit)
+   call close_restart(iunit)
 
    !-----------------  Restart read in --------------------------------
 else
@@ -613,21 +605,12 @@ else
 
    ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
    ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
-   iunit = get_unit()
-   if (binary_restart_files ) then
-      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
-   else
-      open(unit = iunit, file = restart_in_file_name)
-   endif
+   iunit = open_restart_read(restart_in_file_name)
 
    ! Get the initial condition
-   if (binary_restart_files ) then
    ! Read the basic state into ens_mean to conserve storage
-      call aread_state_restart(ens_mean_time, ens_mean, iunit, "unformatted")
-   else
-      call aread_state_restart(ens_mean_time, ens_mean, iunit)
-   endif
-   close(iunit)
+   call aread_state_restart(ens_mean_time, ens_mean, iunit)
+   call close_restart(iunit)
 
    ! Initialize a repeatable random sequence for perturbations
    call init_random_seq(random_seq)
@@ -840,19 +823,11 @@ subroutine filter_output_restart()
 ! Output a restart file if requested
 
 if(output_restart) then
-   iunit = get_unit()
-   if (binary_restart_files ) then
-      open(unit = iunit, file = restart_out_file_name, form = "unformatted")
-      do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), iunit, "unformatted")
-      end do
-   else
-      open(unit = iunit, file = restart_out_file_name)
-      do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), iunit)
-      end do
-   endif
-   close(iunit)
+   iunit = open_restart_write(restart_out_file_name)
+   do i = 1, ens_size
+      call awrite_state_restart(ens_time(i), ens(i, :), iunit)
+   end do
+   call close_restart(iunit)
 endif
 
 end subroutine filter_output_restart
