@@ -6,7 +6,8 @@ use obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_num_obs, init_obs_sequence, get_first_obs, write_obs_seq, set_copy_meta_data, &
    get_obs_def, set_obs_def, append_obs_to_seq, get_next_obs, insert_obs_in_seq, init_obs, &
-   assignment(=), static_init_obs_sequence
+   assignment(=), static_init_obs_sequence, get_num_copies, get_num_qc, &
+   get_copy_meta_data, get_qc_meta_data, set_qc_meta_data
 use time_manager_mod, only : time_type, operator(*), operator(+), set_time
 
 implicit none
@@ -18,16 +19,11 @@ integer :: unit_num
 character(len = 129) :: file_name
 logical :: is_there_one, is_this_last
 type(time_type) :: ob_time, init_time, this_time, period
-integer :: seconds, days, i, j, network_size, option, num_times
+integer :: seconds, days, i, j, network_size, option, num_times, num_copies, num_qc
 character(len = 129) :: in_string
 
 ! Initialize the obs_sequence module
 call static_init_obs_sequence
-
-! Initialize the obs_type variables
-call init_obs(obs, 0, 0)
-call init_obs(next_obs, 0, 0)
-call init_obs(new_obs, 0, 0)
 
 ! Write the sequence to a file
 write(*, *) 'Input filename for network definition sequence '
@@ -36,6 +32,13 @@ call read_obs_seq(file_name, 0, 0, 0, seq_in)
 
 ! Find out how many obs there are
 network_size = get_num_obs(seq_in)
+
+! Initialize the obs_type variables
+num_copies = get_num_copies(seq_in)
+num_qc = get_num_qc(seq_in)
+call init_obs(obs, num_copies, num_qc)
+call init_obs(next_obs, num_copies, num_qc)
+call init_obs(new_obs, num_copies, num_qc)
 
 ! Get the time information 
 
@@ -60,7 +63,15 @@ if(option == 1) then
    period = set_time(seconds, days)
 
 ! Initialize the output sequence
-   call init_obs_sequence(seq, 0, 0, network_size * num_times)
+   call init_obs_sequence(seq, num_copies, &
+      num_qc, network_size * num_times)
+! Get the metadata (might want a call in obs_sequence to do this)
+   do i = 1, num_copies
+      call set_copy_meta_data(seq, i, get_copy_meta_data(seq_in, i))
+   end do
+   do i = 1, num_qc
+      call set_qc_meta_data(seq, i, get_qc_meta_data(seq_in, i))
+   end do
 
    do j = 1, num_times
       write(*, *) j
@@ -77,8 +88,8 @@ if(option == 1) then
 ! Append it to the sequence 
          call append_obs_to_seq(seq, new_obs)
 ! Find the next observation in the input set
-         call get_next_obs(seq_in, obs, next_obs, is_there_one)
-         obs = next_obs
+         call get_next_obs(seq_in, obs, next_obs, is_this_last)
+         if(.not. is_this_last) obs = next_obs
       end do
 
    enddo

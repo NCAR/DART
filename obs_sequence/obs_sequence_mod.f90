@@ -854,7 +854,7 @@ do i = 1, seq%num_copies
    if(write_binary_obs_sequence) then
       write(file_id) seq%copy_meta_data(i)
    else
-      write(file_id, *) seq%copy_meta_data(i)
+      write(file_id, '(a129)') seq%copy_meta_data(i)
    endif
 end do
 
@@ -862,7 +862,7 @@ do i = 1, seq%num_qc
    if(write_binary_obs_sequence) then
       write(file_id) seq%qc_meta_data(i)
    else
-      write(file_id, *) seq%qc_meta_data(i)
+      write(file_id, '(a129)') seq%qc_meta_data(i)
    endif
 end do
 
@@ -920,7 +920,7 @@ do i = 1, num_copies
    if(read_binary_obs_sequence) then
       read(file_id) seq%copy_meta_data(i)
    else
-      read(file_id, *) seq%copy_meta_data(i)
+      read(file_id, '(a129)') seq%copy_meta_data(i)
    endif
 end do
 
@@ -929,7 +929,7 @@ do i = 1, num_qc
    if(read_binary_obs_sequence) then
       read(file_id) seq%qc_meta_data(i)
    else
-      read(file_id, *) seq%qc_meta_data(i)
+      read(file_id, '(a129)') seq%qc_meta_data(i)
    endif
 end do
 
@@ -993,7 +993,8 @@ call copy_obs_def(obs1%def, obs2%def)
 
 !write(*, *) 'in copy obs'
 !write(*, *) 'size of obs1, obs2 ', size(obs1%values), size(obs2%values)
-if(size(obs1%values) /= size(obs2%values)) then
+if(size(obs1%values) /= size(obs2%values) .or. &
+      size(obs1%qc) /= size(obs2%qc)) then
    deallocate(obs1%values)
    deallocate(obs1%qc)
 !   write(*, *) 'allocating in copy_obs'
