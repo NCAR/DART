@@ -13,8 +13,10 @@ endif
 while(1 == 1)
    ls async_may_go > .async_garb
    if($status == 0) break
+   echo waiting_for_async_may_go_file
    sleep 5
 end
+echo found_async_may_go_file
 
 # First line of filter_control should have number of model states to be integrated
 set num = `head -1 filter_control`
