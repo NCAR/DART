@@ -135,8 +135,8 @@ figure(1); clf;
       s1 = sprintf('%s model ''ps'' Ensemble Mean for %s', model,diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
-      s1 = sprintf('temporally-normalized ensemble error  = %f', mean(     rms(:, ivar, 1)));
-      s2 = sprintf('temporally-normalized ensemble spread = %f', mean(sd_final(:, ivar, 1)));
+      s1 = sprintf('time-mean ensemble mean error  = %f', mean(     rms(:, ivar, 1)));
+      s2 = sprintf('time-mean ensemble spread = %f', mean(sd_final(:, ivar, 1)));
       h = legend(s1,s2); legend(h,'boxoff')
       grid on;
 

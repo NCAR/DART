@@ -8,14 +8,18 @@
 % var1  = 1;                % variable ID to be used as 'X'
 % var2  = 2;                % variable ID to be used as 'Y'
 % var3  = 3;                % variable ID to be used as 'Z'
-% ens_mem_id = 1;           % ensemble member ID 
+% ens_mem = 'true state';   % ensemble member metadata string
 % ltype = 'b-';             % line type ('help plot' for details)
 % plot_phase_space
 %
 % hold on
 % fname      = 'Posterior_Diag.nc';
-% ens_mem_id = 7;           % ensemble member ID 
+% ens_mem    = 'ensemble mean';           % ensemble member ID 
 % ltype      = 'r-';        % line type ('help plot' for details)
+% plot_phase_space
+%
+% ens_mem    = 'ensemble member4';        % ensemble member ID 
+% ltype      = 'c-';        % line type ('help plot' for details)
 % plot_phase_space
 %
 % Because it IS possible to overlay plots, the onus is on YOU to make
@@ -63,12 +67,12 @@ if (exist('var3') ~=1)
 end 
 
 
-if (exist('ens_mem_id') ~=1)
-   inputstring = input('Input ensemble member ID. <cr> for 1  ','s');
+if (exist('ens_mem') ~=1)
+   inputstring = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
    if isempty(inputstring)
-      ens_mem_id = 1;
+      ens_mem = 'true state';
    else
-      ens_mem_id = str2num(deblank(inputstring));
+      ens_mem = inputstring;
    end                                                                          
 end 
 
@@ -82,9 +86,9 @@ if (exist('ltype') ~=1)
    end                                                                          
 end 
 
-disp(sprintf('Using file %s, ensemble member %d.',fname,ens_mem_id))
+disp(sprintf('Using file %s, ensemble member %s.',fname,ens_mem))
 disp(sprintf('Plotting state variables %d %d %d with line type %s.', ...
               var1, var2, var3, ltype))
 
-PlotPhaseSpace(fname, ens_mem_id, var1, var2, var3, ltype);
+PlotPhaseSpace(fname, ens_mem, var1, var2, var3, ltype);
 clear inputstring

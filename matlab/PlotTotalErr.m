@@ -68,8 +68,8 @@ switch lower(t.model)
       err_spread = total_err(zeros(size(spread)), spread);
       errTotal   = sum(err)/d.num_times;
       spreadTotal= sum(err_spread)/d.num_times;
-      string1 = ['temporally-normalized Ensemble Mean Total Error \Sigma = ' num2str(errTotal)];
-      string2 = ['temporally-normalized Ensemble Spread Total Error \Sigma = ' num2str(spreadTotal)];
+      string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+      string2 = ['time-mean Ensemble Spread Total Error = ' num2str(spreadTotal)];
 
       clf;
       plot(times,err, 'b', times,err_spread, 'r');

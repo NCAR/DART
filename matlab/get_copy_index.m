@@ -25,3 +25,15 @@ for i = 1:num_copies,
       copy_index = i;
    end
 end
+
+% Provide modest error support
+
+if (copy_index < 0)
+   disp(sprintf('ERROR: %s is not a valid metadata string for file %s', ...
+                copystring, fname))
+   disp('valid metadata strings are: ')
+   for i = 1:num_copies,
+      disp(sprintf('%s',deblank(copy_meta_data(i,:))))
+   end
+   error('please try again')
+end

@@ -1,12 +1,12 @@
-function PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
+function PlotPhaseSpace(fname,ens_mem,var1,var2,var3,ltype)
 % PlotPhaseSpace: Plots trajectories of 3 variables for any ensemble member
 %
 % PlotPhaseSpace is intended to be called by 'plot_phase_space'
 %
-% USAGE: PlotPhaseSpace(fname, ens_mem_id, var1, var2, var3, ltype)
+% USAGE: PlotPhaseSpace(fname, ens_mem, var1, var2, var3, ltype)
 %
 % fname        name of netCDF DART file
-% ens_mem_id   ensemble member ID (or, if you prefer, copy #)
+% ens_mem      ensemble member metadata string
 % var1         ID of state variable to plot as 'X'
 % var2         ID of state variable to plot as 'Y'
 % var3         ID of state variable to plot as 'Z'
@@ -15,20 +15,20 @@ function PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
 % Example 1   ( 9 variable model )
 %%--------------------------------------------------------
 % fname      = 'True_State.nc';
-% ens_mem_id = 1;    % true state only has 1 ens mem ...
+% ens_mem    = 'true state';    % true state only has 1 ens mem ...
 % var1       = 3;    
 % var2       = 6;
 % var3       = 7;
 % ltype      = 'b-'; % solid blue line
-% PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
+% PlotPhaseSpace(fname,ens_mem,var1,var2,var3,ltype)
 %
 % that worked so well, lets overlay another (using the same state variables)
 %
 % hold on;    
 % fname      = 'Prior_Diag.nc';
-% ens_mem_id = 8;               % why not?
+% ens_mem    = 'ensemble member4';               % why not?
 % ltype      = 'r:';            % plot it in a red 'dotted' line
-% PlotPhaseSpace(fname,ens_mem_id,var1,var2,var3,ltype)
+% PlotPhaseSpace(fname,ens_mem,var1,var2,var3,ltype)
 %
 % note the legend has both lines annotated.
 
@@ -45,12 +45,6 @@ num_times  = ncsize(f{'time'}); % determine # of output times
 close(f);
 
 % rudimentary bulletproofing
-if ( (ens_mem_id > num_copies) | (ens_mem_id < 1) ) 
-   disp(sprintf('\n%s has %d ensemble members',fname,num_copies))
-   disp(sprintf('%d  <= ''ens_mem_id'' <= %d',1,num_copies))
-   error(sprintf('ens_mem_id (%d) out of range',ens_mem_id))
-end
-
 if ( (var1 > num_vars) | (var1 < 1) ) 
    disp(sprintf('\n%s has %d state variables',fname,num_vars))
    disp(sprintf('%d  <= ''var1'' <= %d',1,num_vars))
@@ -68,6 +62,8 @@ if ( (var3 > num_vars) | (var3 < 1) )
    disp(sprintf('%d  <= ''var3'' <= %d',1,num_vars))
    error(sprintf('var3 (%d) out of range',var3))
 end
+
+ens_mem_id = get_copy_index(fname, ens_mem);  % will error out if no such ens_mem 
 
 x = get_var_series(fname, ens_mem_id, var1);
 y = get_var_series(fname, ens_mem_id, var2);
