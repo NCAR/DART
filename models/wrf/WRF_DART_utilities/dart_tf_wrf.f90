@@ -42,7 +42,7 @@ integer :: num_moist_vars       = 0
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 logical :: surf_obs             = .false.
-character(len = 32) :: adv_mod_command = 'wrf.exe'
+character(len = 72) :: adv_mod_command = 'wrf.exe'
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, &
