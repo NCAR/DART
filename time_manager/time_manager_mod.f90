@@ -71,6 +71,8 @@ public :: days_in_year,   days_in_year_thirty,        days_in_year_julian, &
                           days_in_year_gregorian,     days_in_year_no_leap
 public :: month_name
 
+public :: julian_day
+
 ! Subroutines and functions for basic I/O
 public :: time_manager_init, print_time, print_date
 public :: write_time, read_time
@@ -793,13 +795,13 @@ if ( .not. module_initialized ) call time_manager_init
 num_days = time%days
 do iyear = base_year, 10000
 
-! Is this a leap year? Gregorian calandar assigns each year evenly
+! Is this a leap year? Gregorian calendar assigns each year evenly
 ! divisible by 4 that is not a century year unevenly divisible by 400
 ! as a leap-year. (i.e. 1700,1800,1900 are not leap-years, 2000 is)
-  leap=(modulo(iyear,4).eq.0)
-  if((modulo(iyear,100).eq.0).and.(modulo(iyear,400).ne.0))then
-   leap=.false.
-  endif
+   leap=(modulo(iyear,4).eq.0)
+   if((modulo(iyear,100).eq.0).and.(modulo(iyear,400).ne.0))then
+      leap=.false.
+   endif
 
    if(leap) then
       days_this_year = 366
@@ -2369,6 +2371,38 @@ end function month_name
 !==========================================================================
 
 
+function julian_day(year, month, day)
+
+! Given a date, computes the day from the beginning of the year.
+
+implicit none
+
+integer, intent(in) :: day, month, year
+integer             :: julian_day
+
+integer             :: m
+logical             :: leap
+
+if (calendar_type /= GREGORIAN) then
+   call error_handler(E_ERR,'julian_day', &
+        'only implemented for GREGORIAN calendar',source,revision,revdate)
+endif
+
+julian_day = 0
+leap = (modulo(year,4) == 0)
+if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
+   leap=.false.
+endif
+
+do m = 1, month - 1
+   julian_day = julian_day + days_per_month(m)
+   if(leap .and. m == 2) julian_day = julian_day + 1
+enddo
+julian_day = julian_day + day
+
+end function julian_day
+
+
 subroutine time_manager_init ( )
 !------------------------------------------------------------------------
 !
@@ -2385,26 +2419,26 @@ end subroutine time_manager_init
 
 
 
-subroutine print_time (time,str,unit)
+subroutine print_time (time,str,iunit)
 !------------------------------------------------------------------------
 
 type(time_type)  , intent(in)           :: time
 character (len=*), intent(in), optional :: str
-integer          , intent(in), optional :: unit
+integer          , intent(in), optional :: iunit
 
 integer           :: s,d, ns,nd, unit_in
 character(len=13) :: fmt
 
 if ( .not. module_initialized ) call time_manager_init
 
-! prints the time to standard output (or optional unit) as days and seconds
+! prints the time to standard output (or optional iunit) as days and seconds
 ! NOTE: there is no check for PE number
 
 ! NEED TO GET DEFAULT FOR STANDARD OUT< HARD CODED FOR NOW
 !!!  unit_in = stdout()
   unit_in = 6
 
-  if (present(unit)) unit_in = unit
+  if (present(iunit)) unit_in = iunit
 
   call get_time (time,s,d)
 
@@ -2426,24 +2460,24 @@ end subroutine print_time
 
 
 
-subroutine print_date (time,str,unit)
+subroutine print_date (time,str,iunit)
 !------------------------------------------------------------------------
 
 type(time_type)  , intent(in)           :: time
 character (len=*), intent(in), optional :: str
-integer          , intent(in), optional :: unit
+integer          , intent(in), optional :: iunit
 
 integer          :: y,mo,d,h,m,s, unit_in
 character(len=9) :: mon
 
 if ( .not. module_initialized ) call time_manager_init
 
-! prints the time to standard output (or optional unit) as a date
+! prints the time to standard output (or optional iunit) as a date
 ! NOTE: there is no check for PE number
 
 !!!  unit_in = stdout()
 
-  if (present(unit)) unit_in = unit
+  if (present(iunit)) unit_in = iunit
 
   call get_date (time,y,mo,d,h,m,s)
   mon = month_name(mo)
@@ -2458,13 +2492,13 @@ end subroutine print_date
 
 
 
-function read_time(file, form)
+function read_time(file_unit, form)
 !--------------------------------------------------------------------------------
 !
 
 implicit none
 
-integer,          intent(in)           :: file
+integer,          intent(in)           :: file_unit
 character(len=*), intent(in), optional :: form
 
 type(time_type)   :: read_time
@@ -2478,9 +2512,9 @@ if (present(form)) fileformat = trim(adjustl(form))
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      read(file) secs, days
+      read(file_unit) secs, days
    CASE DEFAULT
-      read(file, *) secs, days
+      read(file_unit, *) secs, days
 END SELECT
 
 read_time = set_time(secs, days)
@@ -2489,7 +2523,7 @@ end function read_time
 
 
 
-subroutine write_time(file, time, form)
+subroutine write_time(file_unit, time, form)
 !------------------------------------------------------------------------
 ! The time is expected to be written as either 
 ! an unformatted binary (form == "unformatted")
@@ -2497,8 +2531,8 @@ subroutine write_time(file, time, form)
 
 implicit none
 
-integer,         intent(in)            :: file
-type(time_type), intent(in)            :: time
+integer,          intent(in)           :: file_unit
+type(time_type),  intent(in)           :: time
 character(len=*), intent(in), optional :: form
 
 integer           :: secs, days
@@ -2513,9 +2547,9 @@ call get_time(time, secs, days)
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      write(file) secs, days
+      write(file_unit) secs, days
    CASE DEFAULT
-      write(file, *) secs, days
+      write(file_unit, *) secs, days
 END SELECT
 
 end subroutine write_time
