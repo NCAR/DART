@@ -63,7 +63,6 @@ integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: grp_size, grp_bot, grp_top, group
-
 real(r8), allocatable :: regress(:), a_returned(:)
 
 integer, allocatable :: keys(:)
@@ -80,7 +79,6 @@ type(time_type)              :: ens_mean_time, temp_time
 ! Storage for use with parallelizable efficient filter
 real(r8), allocatable  :: ens_obs(:, :)
 real(r8), allocatable  :: obs_err_var(:), obs(:)
-
 character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
 
 logical :: interf_provided
@@ -159,6 +157,9 @@ endif
 call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')
 write(logfileunit, nml=filter_nml)
 write(     *     , nml=filter_nml)
+! Can't output more ensemble members than exist
+if(num_output_state_members > ens_size) num_output_state_members = ens_size
+if(num_output_obs_members > ens_size) num_output_obs_members = ens_size
 
 call filter_alloc_ens_size_storage()
 
@@ -221,17 +222,16 @@ write(*, *) 'starting advance time loop;'
    endif
    ! Get the observational values, error covariance, and input qc value
    call filter_get_obs_info()
-
+   
    ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(ens_obs, ens_size, model_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .true., 0, &
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
-
+   
    call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
          num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
          obs_sequence_in_name)
-
    ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
@@ -263,12 +263,12 @@ call filter_output_restart()
 ! Close regression time series file if needed
 if(save_reg_series) close(reg_series_unit)
 
+write(logfileunit,*)'FINISHED filter.'
+write(logfileunit,*)
+
 ! Send a message to the asynchronous version 3 that all is done
 ! Must be done always because this also terminates option 3 for assim_tools!
 call system('echo a > go_end_filter')
-
-write(logfileunit,*)'FINISHED filter.'
-write(logfileunit,*)
 
 call timestamp(source,revision,revdate,'end') ! closes the log file.
 
@@ -693,7 +693,7 @@ do j = 1, num_obs_in_set
    if(output_ens_mean) call set_obs_values(observation, obs_mean, ens_mean_index)
    ! If requested output the ensemble spread
    if(output_ens_spread) call set_obs_values(observation, obs_spread, ens_spread_index)
-
+   
    ! Set the qc value, too
    call set_qc(observation, qc(j:j), 1)
 
@@ -709,21 +709,15 @@ end subroutine obs_space_diagnostics
 
 subroutine filter_output_restart()
 
-! Output a restart file if requested
-
+! Output a restart if requested
 if(output_restart) then
-   iunit = open_restart_write(restart_out_file_name)
-   do i = 1, ens_size
-      call get_ensemble_member(ens_handle, i, temp_ens, temp_time)
-      call awrite_state_restart(temp_time, temp_ens, iunit)
-   end do
-   call close_restart(iunit)
-endif
+   call end_ensemble_manager(ens_handle, restart_out_file_name)
+else
+   call end_ensemble_manager(ens_handle)
+end if
 
 end subroutine filter_output_restart
 
-!-------------------------------------------------------------------------
-!-------------------------------------------------------------------------
 !-------------------------------------------------------------------------
 
 end program filter
