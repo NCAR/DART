@@ -49,17 +49,6 @@ endif
 cat "$PBS_NODEFILE"
 echo This job has allocated $NPROCS nodes
 
-#td
-# create 'times' file from DART dates in assim_model_state_ic1
-if (-e $PBS_O_WORKDIR/trans_time) then
-   if (-e assim_model_state_ic1) then
-      $PBS_O_WORKDIR/trans_time
-   else
-      echo 'no ic file available for trans_time'
-      exit 1
-   endif
-endif
-
 # First line of filter_control should have number of model states to be integrated
 set nensmbl = `head -1 filter_control`
 
