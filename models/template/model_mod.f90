@@ -1,8 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+! $Name$ 
 
 ! This is a template showing the interfaces required for a model to be compliant
 ! with the DART data assimilation infrastructure. The public interfaces listed
@@ -10,12 +17,6 @@ module model_mod
 ! are not required for minimal implementation (see the discussion of each
 ! interface and look for NULL INTERFACE). 
 
-! <next four lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-!
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r8

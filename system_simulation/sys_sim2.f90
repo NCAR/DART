@@ -1,15 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program sys_sim2
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
+! $Name$ 
+
 ! This one is described in notes from 14 Dec. or thereabout, 2001. Sample the
 ! uncertainty in the correlation coefficient due to sample size and approximate
 ! the resulting distribution in terms of a Gaussian (mean and variance). Probably

@@ -1,15 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program qc_test
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
+! $Name$ 
+
 ! Think of dividing area around distribution into 9 boxes defined by
 ! the two observations. When the observations have the same sign, boxes
 ! in lower left and upper right summed (2* either one since they are

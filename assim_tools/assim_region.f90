@@ -1,18 +1,35 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program assim_region
 
 ! Main program to do assimilation of a region with filters for
 ! parallel multiple executables
+!
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+! $Name$ 
 
-use assim_tools_mod, only : async_assim_region, assim_tools_init
-use utilities_mod, only : initialize_utilities
-use assim_model_mod, only : static_init_assim_model
+use  assim_tools_mod, only : async_assim_region, assim_tools_init
+use    utilities_mod, only : initialize_utilities
+use  assim_model_mod, only : static_init_assim_model
 use obs_sequence_mod, only : static_init_obs_sequence
 
 implicit none
 
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 ! Need to initialize modules used as appropriate
 call initialize_utilities
-!  call register_module(source, revision, revdate)
+call register_module(source, revision, revdate)
 call assim_tools_init(.true.)
 call static_init_obs_sequence()
 call static_init_assim_model()

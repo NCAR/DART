@@ -13,7 +13,15 @@ function [ mu, dnw, phi, theta, qv ] =  ...
 %          phi   = full geopotential (3d)
 %          theta = full theta (3d)
 %          qv    = water-vapor mixing ratio (3d)
-%
+
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
+% $Source$
+% $Name$
 
  % Retrieve required fields
  if isempty( varargin )

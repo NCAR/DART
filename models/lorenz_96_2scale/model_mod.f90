@@ -1,15 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
+! $Name$ 
 
 ! This is the model module for the Lorenz 96 2-scale model, documented in
 ! Lorenz (1995).  It also has the option of the variant on the model 

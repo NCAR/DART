@@ -1,4 +1,15 @@
 #!/bin/csh -f
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+# <next five lines automatically updated by CVS, do not edit>
+# $Source$
+# $Revision$
+# $Date$
+# $Author$
+# $Name$
 
 set argv = (`getopt Hbehmsf:t: $*`)
 

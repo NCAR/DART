@@ -1,14 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_sequence_mod
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
+! $Name$
 
 ! WARNING OPERATOR OVERLOAD FOR EQUIVALENCE???
 ! FURTHER WARNING: Compiler problems exist with the use of assignment(=) in

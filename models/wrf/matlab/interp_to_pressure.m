@@ -3,6 +3,15 @@ function var_interp = interp_to_pressure( var_in, pressure, p_level)
 % in pressures(:,:,:).  Interpolation is linear in log pressure. 
 % Set var_interp to NaN where p_level is beneath (>) pressure(1,:,:).
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
+% $Source$
+% $Name$
+
  [Nk Nj Ni] = size(pressure) ; 
 
  below = zeros(Nj,Ni) ;  var_below = zeros(Nj,Ni) ;

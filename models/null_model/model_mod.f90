@@ -1,15 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
+! $Name$ 
+
 ! NOTE: This was created on 30 November, 2000 to work on evaluating 
 ! Ensemble Kalman Filter. It is almost identical to the version of the
 ! Lorenz 96 model in existence at this time except that it has extremely

@@ -1,11 +1,18 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program trans_MITgcm_to_dart
 
 ! As the name suggests, this program translates MITgcm restart files
 ! to a file that dart can use.
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date,  &

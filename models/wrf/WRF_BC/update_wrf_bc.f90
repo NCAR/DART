@@ -1,15 +1,19 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program update_wrf_bc
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next six lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
 ! $Id$
-!
+! $Name$
+
 ! program to update BC file from 3dvar or filter output.
 ! current version reads only wrf-netcdf file format.
-!
 
 use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &

@@ -1,17 +1,19 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 program column_rand
 
-! <next four lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-
 ! Allows creation of input file for generating a set of randomly located
 ! observation stations with full column of obs for b-grid model. Should be
 ! nearly identical to similar thing for CAM, etc.
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 use      types_mod, only : r8, PI
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform

@@ -1,14 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program create_obs_sequence
 
-! <next four lines automatically updated by CVS, do not edit>                             
+! <next five lines automatically updated by CVS, do not edit>                             
 ! $Source$         
 ! $Revision$                                                                       
 ! $Date$                                                            
 ! $Author$
+! $Name$
 
 use    utilities_mod, only : timestamp, register_module, open_file, close_file
 use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &

@@ -1,5 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
@@ -11,9 +11,9 @@ module model_mod
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
+! $Author$
 ! $Name$
 ! $Id$
-! $Author$
 !-----------------------------------------------------------------------
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 

@@ -1,13 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 PROGRAM littler_tf_dart
 
-! <next three lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
+! $Author$
+! $Name$
 
 use        types_mod, only : r8, DEG2RAD, RAD2DEG, MISSING_I, MISSING_R8
 use    utilities_mod, only : open_file, check_nml_error, close_file, file_exist, &

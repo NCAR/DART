@@ -1,13 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 PROGRAM dart_tf_wrf
 
-! <next three lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
+! $Author$
+! $Name$
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date, set_date, operator(-), &

@@ -1,7 +1,7 @@
 # template for Intel 7.1 Fortran Compiler on a RedHat 7.3 architecture 
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next two lines are maintained by CVS, please do not edit>

@@ -1,5 +1,14 @@
 #!/usr/bin/perl
-
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id$
+# $Source$
+# $Name$
+#
 # This perl script generates a file that can be redirected into
 # create_obs_seequence.  It requires only two pieces of information 
 # from STDIN.  As it currently stands, it assumes that the output 

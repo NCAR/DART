@@ -1,7 +1,12 @@
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-%
+
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
+% $Source$
+% $Name$
+
 % Select field to plot (U, V, W, GZ, T, MU, QV, QC, QR)
 
 field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');

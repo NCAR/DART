@@ -27,12 +27,13 @@
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
 % $Source$
-% $Revision$
-% $Date$
+% $Name$
 
 if (exist('fname') ~=1)
    fname = input('Input name of netCDF file; <cr> for True_State.nc  ','s');

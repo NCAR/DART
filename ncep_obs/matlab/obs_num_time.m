@@ -9,13 +9,13 @@ function obs_num_time(ddir)
 % obs_num_time('plot')
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-% $Source$
-% $Revision$
-% $Date$
+% <next three lines automatically updated by CVS, do not edit>
 % $Id$
+% $Source$
+% $Name$
 
 % Make sure the directory with the files is available to matlab
 if (nargin > 0 )

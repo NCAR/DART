@@ -7,9 +7,10 @@ function wysiwyg
   %       printed.
   %       Dan(K) Braithwaite, Dept. of Hydrology U.of.A  11/93
 
+  % <next three lines automatically updated by CVS, do not edit>
+  % $Id$
   % $Source$
-  % $Revision$
-  % $Date$
+  % $Name$
 
   unis = get(gcf,'units');
   ppos = get(gcf,'paperposition');

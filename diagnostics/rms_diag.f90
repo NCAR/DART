@@ -1,5 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program rms_diag
@@ -8,12 +8,12 @@ program rms_diag
 ! of time between a truth found in one file, priors found in 
 ! another, and posterior found in a third.
 
-!
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
+! $Name$
 
 
 use       types_mod, only : r8

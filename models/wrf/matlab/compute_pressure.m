@@ -15,6 +15,15 @@ function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 )
 %
 % See wrf subroutine calc_p_rho_phi.
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.htm
+
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
+% $Source$
+% $Name$
+
  % alpha = inverse density of dry air, computed from hydrostatic relation
  % for the dry air:  - dphi/deta = -mu alpha.
 

@@ -1,15 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
-! <next four lines automatically updated by CVS, do not edit>
+! <next five lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-!
+! $Name$ 
 
 use netcdf
 use        types_mod, only : r8
@@ -24,18 +24,18 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 implicit none
 private
 
-public :: get_model_size, 		&
-          adv_1step, 			&
-          get_state_meta_data, 		&
-          model_interpolate, 		&
-          get_model_time_step, 		&
-          end_model, 			&
-          static_init_model, 		&
-          init_time, 			&
-          init_conditions, 		&
-          model_get_close_states, 	&
-          nc_write_model_atts, 		&
-          nc_write_model_vars, 		&
+public :: get_model_size,         &
+          adv_1step,              &
+          get_state_meta_data,    &
+          model_interpolate,      &
+          get_model_time_step,    &
+          end_model,              &
+          static_init_model,      &
+          init_time,              &
+          init_conditions,        &
+          model_get_close_states, &
+          nc_write_model_atts,    &
+          nc_write_model_vars,    &
           pert_model_state
 
 ! CVS Generated file description for error handling, do not edit

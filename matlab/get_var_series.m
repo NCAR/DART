@@ -12,12 +12,13 @@ function var_vec = get_var_series(fname, varname, copynum, state_var)
 % var_vec   = get_var_series(fname, copynum, state_var);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
 % $Source$
-% $Revision$
-% $Date$
+% $Name$
  
 f = netcdf(fname,'nowrite');
 var_atts   = dim(f{varname});       % cell array of dimensions for the var

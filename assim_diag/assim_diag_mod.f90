@@ -1,5 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005 Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module assim_diag_mod
@@ -9,6 +9,7 @@ module assim_diag_mod
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
+! $Name$ 
 !
 ! Does a variety of diagnostics to evaluate the performance of the assimilation
 ! algorithms. A defined type is used to keep track of the RMS errors, bias,

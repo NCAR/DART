@@ -1,15 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program create_fixed_network_seq
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Name$
 ! $Source$
 ! $Revision$
 ! $Date$
 ! $Author$
+! $Name$
 
 use        types_mod, only : r8
 use    utilities_mod, only : timestamp, register_module, open_file, close_file
