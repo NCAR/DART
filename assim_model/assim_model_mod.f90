@@ -29,7 +29,8 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
    get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files, &
-   finalize_diag_output
+   finalize_diag_ouput, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
+   awrite_state_restart, Aadvance_state
 
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
@@ -399,33 +400,46 @@ type(assim_model_type), intent(in) :: assim_model
 type(time_type), intent(in) :: time
 type(time_type) :: get_closest_state_time_to
 
-type(time_type) :: model_time, delta_time, time_step
+type(time_type) :: model_time
+
+model_time = assim_model%time
+
+get_closest_state_time_to = aget_closest_state_time_to(model_time, time)
+
+end function get_closest_state_time_to
+
+
+
+  function aget_closest_state_time_to(model_time, time)
+!----------------------------------------------------------------------
+!
+! Returns the time closest to the given time that the model can reach
+! with its state. Initial implementation just assumes fixed timestep.
+! Need to describe potentially more general time-stepping capabilities
+! from the underlying model in the long run.
+
+implicit none
+
+type(time_type), intent(in) :: model_time, time
+type(time_type) :: aget_closest_state_time_to
+
+type(time_type) :: delta_time, time_step
 
 ! CAREFUL WITH FLOATING POINT DIVISION AND COMPARISONS
 
 ! Get the model time step capabilities
 time_step = get_model_time_step()
 
-model_time = assim_model%time
-
-! kdr bug
-PRINT*,'In assim_model_mod/get_closest_state_time_to time_step = '
-call write_time (6,time_step)
-PRINT*,'In assim_model_mod/get_closest_state_time_to model_time = '
-call write_time (6,model_time)
-PRINT*,'In assim_model_mod/get_closest_state_time_to time = '
-call write_time (6,time)
-
 if(model_time > time) then
-   write(*, *) 'Error in get_closest_state_to_time: model time > time'
+   write(*, *) 'Error in aget_closest_state_to_time: model time > time'
    stop
 endif
 
 delta_time = time - model_time
 
-get_closest_state_time_to = (delta_time / time_step) * time_step + model_time
+aget_closest_state_time_to = (delta_time / time_step) * time_step + model_time
 
-end function get_closest_state_time_to
+end function aget_closest_state_time_to
 
 
 
@@ -443,11 +457,32 @@ implicit none
 
 type(assim_model_type), intent(inout) :: x
 
-call init_conditions(x%state_vector)
-
-call init_time(x%time)
+call aget_initial_condition(x%time, x%state_vector)
 
 end subroutine get_initial_condition
+
+
+
+subroutine aget_initial_condition(time, x)
+!----------------------------------------------------------------------
+! function get_initial_condition()
+!
+! Initial conditions . This returns an initial assim_model_type
+! which includes both a state vector and a time. Design of exactly where this 
+! stuff should come from is still evolving (12 July, 2002) but for now can 
+! start at time offset 0 with the initial state .
+! Need to carefully coordinate this with the times for observations.
+
+implicit none
+
+type(time_type), intent(out) :: time
+real(r8), intent(inout) :: x(:)
+
+call init_conditions(x)
+
+call init_time(time)
+
+end subroutine aget_initial_condition
 
 
 
@@ -611,6 +646,10 @@ subroutine advance_state(assim_model, num, target_time, asynch)
 ! Advances the model extended state until time is equal (within roundoff?)
 ! of the target_time. For L96 this is relatively straightforward with 
 ! fixed time steps, etc.
+! WARNING: Revision for ifc efficiency results in a copy of ensemble storage
+! here if ensembles are advance using assim_model structure. May want to 
+! duplicate code below for efficiency at some point if anyone's going to
+! use this.
 
 implicit none
 
@@ -619,7 +658,45 @@ type(assim_model_type), intent(inout) :: assim_model(num)
 type(time_type), intent(in) :: target_time
 logical, intent(in) :: asynch
 
-type(time_type) :: model_time, time_step
+type(time_type) :: model_time(num)
+real(r8) :: model_state(num, size(assim_model(1)%state_vector))
+integer :: i
+
+! Copy the times and the states to array storage
+do i = 1, num
+   model_time(i) = assim_model(i)%time
+   model_state(i, :) = assim_model(i)%state_vector
+end do
+
+call Aadvance_state(model_time, model_state, num, target_time, asynch)
+
+! Now put the times and states that are updated back into their storage
+do i = 1, num
+   assim_model(i)%time = model_time(i)
+   assim_model(i)%state_vector = model_state(i, :)
+end do
+
+end subroutine advance_state
+
+
+
+
+subroutine Aadvance_state(model_time, model_state, num, target_time, asynch)
+!-----------------------------------------------------------------------
+!
+! Advances the model extended state until time is equal (within roundoff?)
+! of the target_time. For L96 this is relatively straightforward with 
+! fixed time steps, etc.
+
+implicit none
+
+integer, intent(in) :: num
+type(time_type), intent(inout) :: model_time(num)
+real(r8), intent(inout) :: model_state(:, :)
+type(time_type), intent(in) :: target_time
+logical, intent(in) :: asynch
+
+type(time_type) :: time_step
 
 integer :: seconds, days, i, control_unit, ic_file_unit, ud_file_unit
 
@@ -630,15 +707,14 @@ character(len = 128) :: input_string
 
 ! If none of these needs advancing just return
 do i = 1, num
-   model_time = get_model_time(assim_model(i))
-   if(model_time /= target_time) goto 10
+   if(model_time(i) /= target_time) goto 10
 end do
 return
 
+
 ! Loop through each model state and advance
 10 do i = 1, num
-!!!   write(*, *) 'advancing model state ', i
-   model_time = get_model_time(assim_model(i))
+!   write(*, *) 'advancing model state ', i
 
 ! Check for time error; use error handler when available
 ! TJH -- cannot write time_type to stdout -- they have private
@@ -647,10 +723,9 @@ return
 !        from a time type. 
 
 
-
-   if(model_time > target_time) then
-      write(*, *) 'Error in advance_state, target_time before model_time'
-      call get_time(model_time,seconds,days)
+   if(model_time(i) > target_time) then
+      write(*, *) 'Error in Aadvance_state, target_time before model_time'
+      call get_time(model_time(i),seconds,days)
       write(*, *) 'Model_time  (days, seconds) ', days, seconds
       call get_time(target_time,seconds,days)
       write(*, *) 'Target time (days, seconds) ', days, seconds
@@ -665,14 +740,12 @@ return
    if(.not. asynch) then
       time_step = get_model_time_step()
       call get_time(time_step, seconds, days)
-      do while(model_time < target_time)
-         call adv_1step(assim_model(i)%state_vector, model_time)
-         model_time = model_time + time_step
-         call get_time(model_time, seconds, days)
+      do while(model_time(i) < target_time)
+         call adv_1step(model_state(i, :), model_time(i))
+         model_time(i) = model_time(i) + time_step
+         call get_time(model_time(i), seconds, days)
       end do
 
-! Set the time to updated value
-      assim_model(i)%time = model_time
    else
 !-------------- End single executable block ---------------------------
 
@@ -693,7 +766,7 @@ return
          write(ic_file_name(i), 41) 'assim_model_state_ic', i
          write(ud_file_name(i), 41) 'assim_model_state_ud', i
       else 
-         write(*, *) 'advance_state in assim_model_mod needs ensemble size < 10000'
+         write(*, *) 'Aadvance_state in assim_model_mod needs ensemble size < 10000'
          stop
       endif
 
@@ -711,11 +784,11 @@ return
       if ( binary_restart_files ) then
             open(unit = ic_file_unit, file = ic_file_name(i),      form = 'unformatted')
             call write_time(ic_file_unit, target_time,             form = 'unformatted')
-            call write_state_restart(assim_model(i), ic_file_unit, form = 'unformatted')
+            call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit, form = 'unformatted')
       else
             open(unit = ic_file_unit, file = ic_file_name(i))
             call write_time(ic_file_unit, target_time)
-            call write_state_restart(assim_model(i), ic_file_unit)
+            call awrite_state_restart(model_time(i), model_state(i, :), ic_file_unit)
       endif
       close(ic_file_unit)
 
@@ -754,25 +827,24 @@ if(asynch) then
    end do
 
 
-   write(*, *) 'got clearance to proceed in advance_state'
+   write(*, *) 'got clearance to proceed in Aadvance_state'
 
    ! All should be done, read in the states and proceed
    do i = 1, num
       ud_file_unit = get_unit()
       if ( binary_restart_files ) then
          open(unit = ud_file_unit, file = ud_file_name(i),     form = 'unformatted')
-         call read_state_restart(assim_model(i), ud_file_unit, form = 'unformatted')
+         call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit, form = 'unformatted')
       else
          open(unit = ud_file_unit, file = ud_file_name(i))
-         call read_state_restart(assim_model(i), ud_file_unit)
+         call aread_state_restart(model_time(i), model_state(i, :), ud_file_unit)
       endif
       close(ud_file_unit)
    end do
 
 end if
 
-
-end subroutine advance_state
+end subroutine Aadvance_state
 
 
 
@@ -850,6 +922,31 @@ implicit none
 type (assim_model_type), intent(in)           :: assim_model
 integer,                 intent(in)           :: file
 character(len=*),        intent(in), optional :: form
+
+if(present(form)) then
+   call awrite_state_restart(assim_model%time, assim_model%state_vector, file, form)
+else
+   call awrite_state_restart(assim_model%time, assim_model%state_vector, file)
+endif
+
+end subroutine write_state_restart
+
+
+
+
+subroutine awrite_state_restart(model_time, model_state, file, form)
+!----------------------------------------------------------------------
+!
+! Write a restart file given a model extended state and a unit number 
+! opened to the restart file. (Need to reconsider what is passed to 
+! identify file or if file can even be opened within this routine).
+
+implicit none
+
+type(time_type), intent(in)                   :: model_time
+real(r8), intent(in)                          :: model_state(:)
+integer,                 intent(in)           :: file
+character(len=*),        intent(in), optional :: form
 integer           :: days, seconds
 character(len=32) :: fileformat
 
@@ -864,14 +961,14 @@ if (present(form)) fileformat = trim(adjustl(form))
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      call write_time(file, assim_model%time, form="unformatted")
-      write(file) assim_model%state_vector
+      call write_time(file, model_time, form="unformatted")
+      write(file) model_state
    CASE DEFAULT
-      call write_time(file, assim_model%time)
-      write(file, *) assim_model%state_vector
+      call write_time(file, model_time)
+      write(file, *) model_state
 END SELECT  
 
-end subroutine write_state_restart
+end subroutine awrite_state_restart
 
 
 
@@ -886,11 +983,34 @@ type(assim_model_type), intent(out)          :: assim_model
 integer,                intent(in)           :: file
 character(len=*),       intent(in), optional :: form
 
+if(present(form)) then
+   call aread_state_restart(assim_model%time, assim_model%state_vector, file, form)
+else
+   call aread_state_restart(assim_model%time, assim_model%state_vector, file)
+endif
+
+end subroutine read_state_restart
+
+
+
+
+subroutine aread_state_restart(model_time, model_state, file, form)
+!----------------------------------------------------------------------
+!
+! Read a restart file given a unit number (see write_state_restart)
+
+implicit none
+
+type(time_type), intent(out)                 :: model_time
+real(r8), intent(out)                        :: model_state(:)
+integer,                intent(in)           :: file
+character(len=*),       intent(in), optional :: form
+
 integer           :: seconds, days
 character(len=32) :: fileformat
 
 
-print *,'assim_model_mod:read_state_restart ... reading from unit',file
+print *,'assim_model_mod:aread_state_restart ... reading from unit',file
 
 
 fileformat = "ascii"
@@ -901,14 +1021,14 @@ if (present(form)) fileformat = trim(adjustl(form))
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      assim_model%time = read_time(file, form = "unformatted")
-      read(file) assim_model%state_vector
+      model_time = read_time(file, form = "unformatted")
+      read(file) model_state
    CASE DEFAULT
-      assim_model%time = read_time(file)
-      read(file, *) assim_model%state_vector
+      model_time = read_time(file)
+      read(file, *) model_state
 END SELECT  
 
-end subroutine read_state_restart
+end subroutine aread_state_restart
 
 
 
@@ -930,12 +1050,49 @@ subroutine output_diagnostics(ncFileID, state, copy_index)
 !                 Still need an error handler for nc_write_model_vars
 !      
 
+implicit none
+
+integer,                intent(in) :: ncFileID
+type(assim_model_type), intent(in) :: state
+integer, optional,      intent(in) :: copy_index
+
+if(present(copy_index)) then
+   call aoutput_diagnostics(ncFileID, state%time, state%state_vector, copy_index)
+else
+   call aoutput_diagnostics(ncFileID, state%time, state%state_vector)
+endif
+
+end subroutine output_diagnostics
+
+
+
+
+subroutine aoutput_diagnostics(ncFileID, model_time, model_state, copy_index)
+!-------------------------------------------------------------------
+! Outputs the "state" to the supplied netCDF file. 
+!
+! the time, and an optional index saying which
+! copy of the metadata this state is associated with.
+!
+! ncFileID       the netCDF file identifier
+! model_time     the time associated with the state vector
+! model_state    the copy of the state vector
+! copy_index     which copy of the state vector (ensemble member ID)
+!
+! TJH 28 Aug 2002 original netCDF implementation 
+! TJH  7 Feb 2003 [created time_manager_mod:nc_get_tindex] 
+!     substantially modified to handle time in a much better manner
+! TJH 24 Jun 2003 made model_mod do all the netCDF writing.
+!                 Still need an error handler for nc_write_model_vars
+!      
+
 use typeSizes
 use netcdf
 implicit none
 
 integer,                intent(in) :: ncFileID
-type(assim_model_type), intent(in) :: state
+type(time_type),        intent(in) :: model_time
+real(r8),               intent(in) :: model_state(:)
 integer, optional,      intent(in) :: copy_index
 
 integer :: i,ierr, timeindex, copyindex
@@ -946,12 +1103,12 @@ else                                     ! if the optional argument is
    copyindex = copy_index                ! not specified, we'd better
 endif                                    ! have a backup plan
 
-timeindex = nc_get_tindex(ncFileID, state%time)
+timeindex = nc_get_tindex(ncFileID, model_time)
 if ( timeindex < 0 ) then
    write(*,*)'ERROR: ',trim(adjustl(source))
-   write(*,*)'ERROR: output_diagnostics: model%time not in netcdf file'
-   write(*,*)'ERROR: model%time : '
-   call write_time(6,state%time) ! hardwired unit will change with error handler
+   write(*,*)'ERROR: aoutput_diagnostics: model_time not in netcdf file'
+   write(*,*)'ERROR: model_time : '
+   call write_time(6,model_time) ! hardwired unit will change with error handler
    write(*,*)'ERROR: netcdf file ID ',ncFileID
    stop
 endif
@@ -959,9 +1116,10 @@ endif
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
 ! so we must pass the components.
 
-i = nc_write_model_vars(ncFileID, state%state_vector, copyindex, timeindex) 
+i = nc_write_model_vars(ncFileID, model_state, copyindex, timeindex) 
 
-end subroutine output_diagnostics
+end subroutine aoutput_diagnostics
+
 
 
 
@@ -978,17 +1136,36 @@ integer, intent(in) :: file_id
 type(assim_model_type), intent(inout) :: state
 integer, intent(out) :: copy_index
 
+call ainput_diagnostics(file_id, state%time, state%state_vector, copy_index)
+
+end subroutine input_diagnostics
+
+
+
+subroutine ainput_diagnostics(file_id, model_time, model_state, copy_index)
+!------------------------------------------------------------------
+!
+! Reads in diagnostic state output from file_id for copy_index
+! copy. Need to make this all more rigorously enforced.
+
+implicit none
+
+integer, intent(in) :: file_id
+type(time_type), intent(inout) :: model_time
+real(r8), intent(inout) :: model_state(:)
+integer, intent(out) :: copy_index
+
 character(len=5) :: header
 
-print *,'assim_model_mod:input_diagnostics ... reading from unit',file_id
+print *,'assim_model_mod:ainput_diagnostics ... reading from unit',file_id
 
 ! Read in the time
-state%time = read_time(file_id)
+model_time = read_time(file_id)
 
 ! Read in the copy index
 read(file_id, *) header
 if(header /= 'fcopy')  then
-   write(*, *) 'Error: expected "copy" in input_diagnostics'
+   write(*, *) 'Error: expected "copy" in ainput_diagnostics'
    write(*, *) 'header read was: ', header
    stop
 endif
@@ -996,9 +1173,9 @@ endif
 read(file_id, *) copy_index
 
 ! Read in the state vector
-read(file_id, *) state%state_vector
+read(file_id, *) model_state
 
-end subroutine input_diagnostics
+end subroutine ainput_diagnostics
 
 
 
