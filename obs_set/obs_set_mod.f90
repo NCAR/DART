@@ -116,7 +116,8 @@ set_out%def_index = set_in%def_index
 
 ! Allocate storage for obs and missing
 ! INTEL compiler with full obs checking dies on this for uninitialized
-!!!if(associated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
+! HOWEVER, memory leaks here without this. Try leaving for now.
+if(associated(set_out%obs)) deallocate(set_out%obs, set_out%missing)
 allocate(set_out%obs(set_in%num_obs, set_in%num_copies), &
    set_out%missing(set_in%num_obs, set_in%num_copies))
 

@@ -908,7 +908,13 @@ integer :: num_levs
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 
 ! Initialize the static parts of the prog var type
-call prog_var_init(Dynam%Hgrid, num_levels, ntracers, vars)
+! Don't want to initialize prog_var_type vars if already done (memory)
+! Modified on 11 Dec. 2002 to slow B-grid memory leak
+if(.not. associated(vars%ps)) &
+   call prog_var_init(Dynam%Hgrid, num_levels, ntracers, vars)
+
+
+
 ! Havana no longer distinguishes prognostic tracers
 !!!call prog_var_init(Dynam%Hgrid, num_levels, ntracers, nprognostic, vars)
 

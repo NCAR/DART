@@ -62,9 +62,9 @@ type(random_seq_type)   :: random_seq
 integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
-
+integer :: lji
 ! Need to set up namelists for controlling all of this mess, too!
-integer, parameter :: ens_size = 20
+integer, parameter :: ens_size = 40
 integer            :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
@@ -123,16 +123,16 @@ num_obs_sets = get_num_obs_sets(seq)
 
 
 ! Copy just the definitions part of the sequence to the two output obs sequences
-call obs_sequence_def_copy(prior_seq, seq)
-call obs_sequence_def_copy(posterior_seq, seq)
+!!!call obs_sequence_def_copy(prior_seq, seq)
+!!!call obs_sequence_def_copy(posterior_seq, seq)
 ! Set up the metadata for the output ensemble observations
 do i = 1, ens_size
    write(ens_copy_meta_data(i), *) 'ensemble ', i
 end do
 
 ! For now output all ensemble members for prior and posterior; add space
-call inc_num_obs_copies(prior_seq, ens_size, ens_copy_meta_data)
-call inc_num_obs_copies(posterior_seq, ens_size, ens_copy_meta_data)
+!!!call inc_num_obs_copies(prior_seq, ens_size, ens_copy_meta_data)
+!!!call inc_num_obs_copies(posterior_seq, ens_size, ens_copy_meta_data)
 
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
@@ -148,8 +148,8 @@ PriorStateUnit     = init_diag_output('Prior_Diag', &
 PosteriorStateUnit = init_diag_output('Posterior_Diag', &
                         'posterior ensemble state', ens_size, ens_copy_meta_data)
 
-prior_state_unit     = init_diag_outputORG('prior_diag', &
-                        'prior ensemble state', ens_size, ens_copy_meta_data)
+!!!prior_state_unit     = init_diag_outputORG('prior_diag', &
+!!!                        'prior ensemble state', ens_size, ens_copy_meta_data)
 posterior_state_unit = init_diag_outputORG('posterior_diag', &
                         'posterior ensemble state', ens_size, ens_copy_meta_data)
 
@@ -224,7 +224,7 @@ AdvanceTime : do i = 1, num_obs_sets
       write(*, *) 'advancing ensemble member ', j
 ! Advancing to same time causes problem with B-grid diag calls
       if(time2 /= get_model_time(ens(j))) call advance_state(ens(j), time2)
-      call output_diagnosticsORG(prior_state_unit, ens(j), j)
+!!!      call output_diagnosticsORG(prior_state_unit, ens(j), j)
       call output_diagnostics(     PriorStateUnit, ens(j), j)
    end do
    ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
@@ -267,8 +267,8 @@ AdvanceTime : do i = 1, num_obs_sets
 
       ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
-         call set_single_obs_value(prior_seq, i, j, ens_obs(k), k)
-         call set_single_obs_value(posterior_seq, i, j, ens_obs(k) + obs_inc(k), k)
+!!!         call set_single_obs_value(prior_seq, i, j, ens_obs(k), k)
+!!!         call set_single_obs_value(posterior_seq, i, j, ens_obs(k) + obs_inc(k), k)
       end do
 
       ! Now loop through each close state variable for this observation
@@ -289,7 +289,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
    ! Put the ensemble storage back into the ens
    do j = 1, ens_size
-        call output_diagnosticsORG(posterior_state_unit, ens(j), j)
+!!!        call output_diagnosticsORG(posterior_state_unit, ens(j), j)
         call output_diagnostics(     PosteriorStateUnit, ens(j), j)
    end do
    ierr = NF90_sync(PosteriorStateUnit)   ! just for good measure -- TJH 
@@ -308,15 +308,15 @@ ierr = NF90_close(PosteriorStateUnit)
 
 ! Output the observation space diagnostic files
 
-prior_obs_unit = get_unit()
-open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
-call write_obs_sequence(prior_obs_unit, prior_seq)
-close(prior_obs_unit)
+!!!prior_obs_unit = get_unit()
+!!!open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
+!!!call write_obs_sequence(prior_obs_unit, prior_seq)
+!!!close(prior_obs_unit)
 
-posterior_obs_unit = get_unit()
-open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
-call write_obs_sequence(posterior_obs_unit, posterior_seq)
-close(posterior_obs_unit)
+!!!posterior_obs_unit = get_unit()
+!!!open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
+!!!call write_obs_sequence(posterior_obs_unit, posterior_seq)
+!!!close(posterior_obs_unit)
 
 ! Output a restart file if requested
 if(output_restart) then
