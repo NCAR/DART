@@ -1,4 +1,5 @@
 ! changes for reading hybrid coefficients from initial file are marked with 'coef'
+! changes for calculating pressures on cam vertical levels are marked with  'plevs'
 ! 
 ! netCDF filename; where will this come from in DART?
 !                  it's created by CAM, and written out to a file somewhere; read it in?
