@@ -1,0 +1,289 @@
+#!/bin/csh
+#
+# script to create initial conditions for any low-order experiment
+#======================================================================
+# Find the project and build it, if need be. 
+#======================================================================
+
+if ( ${?DART_HOME} ) then
+   echo "dart home is $DART_HOME"
+   if ( -d $DART_HOME ) then
+      setenv DARTHOME $DART_HOME
+   else
+      echo "$DART_HOME does not exist on this platform"
+   endif
+else if ( -d /export/data/gsp/thoar/DART ) then
+   setenv DARTHOME /export/data/gsp/thoar/DART
+else if ( -d /data/gsp/thoar/DART ) then
+   setenv DARTHOME /data/gsp/thoar/DART
+else if ( -d /home/thoar/DART ) then
+   setenv DARTHOME /home/thoar/DART
+else 
+   echo "no DART project"
+   exit
+endif
+   
+if ( ${?MODEL} ) then
+   set Model = $MODEL
+else
+   set Model = lorenz_63
+endif
+
+cd ${DARTHOME}/models/${Model}/work
+
+if !( -e create_obs_set_def ) then
+   csh mkmf_create_obs_set_def
+   make || exit 1
+endif
+if !( -e create_obs_sequence ) then
+   csh mkmf_create_obs_sequence
+   make || exit 1
+endif
+if !( -e perfect_model_obs ) then
+   csh mkmf_perfect_model_obs
+   make || exit 1
+endif
+if !( -e filter ) then
+   csh mkmf_filter
+   make || exit 1
+endif
+\rm -f *.o *.mod Makefile
+
+#======================================================================
+# Save any existing namelist ...
+#======================================================================
+
+set SAVEME = input.nml.$$
+if ( -e input.nml ) then
+   mv input.nml $SAVEME
+endif
+
+#======================================================================
+# Define input files based on model
+#======================================================================
+
+set COSD = create_obs_set_def.in
+set COS = create_obs_sequence.in
+
+switch ( ${Model} )
+
+   case 9var:
+
+      echo "set_def.out"                                             > $COSD 
+      echo "1           ;# # of unique observation SETS to define"  >> $COSD
+      echo "1           ;# # of observations in set 1"              >> $COSD
+      echo "1000000.0   ;# error variance for set 1, observation 1" >> $COSD
+      echo "1           ;# 1 == state variable 1"                   >> $COSD
+
+      echo "set_def.out"  > $COS
+      echo "1"           >> $COS
+      echo "10000"       >> $COS
+      echo "1 0"         >> $COS
+      echo "1 0"         >> $COS
+      echo "obs_seq.in"  >> $COS
+
+      echo "&model_nml"                   > model.nml
+      echo "g = 8.0,"                    >> model.nml
+      echo "deltat = 0.0833333333333333" >> model.nml
+      echo "&end"                        >> model.nml
+
+      set num_ens_members = 1000
+
+   breaksw
+
+   case lorenz_96:
+
+      echo "set_def.out"                                             > $COSD 
+      echo "1           ;# # of unique observation SETS to define"  >> $COSD
+      echo "1           ;# # of observations in set 1"              >> $COSD
+      echo "1000000.0   ;# error variance for set 1, observation 1" >> $COSD
+      echo "1           ;# 1 == state variable 1"                   >> $COSD
+
+      echo "set_def.out"  > $COS
+      echo "1"           >> $COS
+      echo "1000"        >> $COS
+      echo "1 0"         >> $COS
+      echo "1 0"         >> $COS
+      echo "obs_seq.in"  >> $COS
+
+      echo "&model_nml"        > model.nml
+      echo "model_size = 40," >> model.nml
+      echo "forcing = 8.00,"  >> model.nml
+      echo "deltat = 0.005"   >> model.nml
+      echo "&end"             >> model.nml
+
+      set num_ens_members = 200
+
+   breaksw
+
+   default:     # lorenz_63
+
+      echo "set_def.out"                                             > $COSD 
+      echo "1           ;# # of unique observation SETS to define"  >> $COSD
+      echo "1           ;# # of observations in set 1"              >> $COSD
+      echo "1000000.0   ;# error variance for set 1, observation 1" >> $COSD
+      echo "1           ;# 1 == state variable 1"                   >> $COSD
+
+      echo "set_def.out"  > $COS
+      echo "1"           >> $COS
+      echo "1000"        >> $COS
+      echo "1 0"         >> $COS
+      echo "1 0"         >> $COS
+      echo "obs_seq.in"  >> $COS
+
+      echo "&model_nml"     > model.nml
+      echo "deltat = 0.01" >> model.nml
+      echo "&end"          >> model.nml
+
+      set num_ens_members = 1000
+
+   breaksw
+
+endsw
+
+#----------------------------------------------------------------------
+# Step 1: Create SETS of observation definitions
+#----------------------------------------------------------------------
+
+./create_obs_set_def < $COSD
+
+if ( $status > 0 ) then
+   echo "ERROR: running create_obs_set_def bombed ..."
+   exit
+endif
+
+#----------------------------------------------------------------------
+# Step 2: Create SEQUENCES of observation SETS
+#----------------------------------------------------------------------
+
+./create_obs_sequence < $COS
+
+if ( $status > 0 ) then
+   echo "ERROR: create_obs_sequence bombed ..."
+   exit
+else
+   echo " "
+   echo "create_obs_sequence teminated normally"
+   echo " "
+endif
+
+#----------------------------------------------------------------------
+# Step 3: Populate the sequences
+#    creates files True_State.nc, obs_seq.out
+#----------------------------------------------------------------------
+# input.nml is needed by perfect_model_obs and filter
+# Initially, we need to spin up for a while and then we can put
+# out a restart file. First run is start_from_restart FALSE, then
+# second run is start_from_restart TRUE ... 
+# Copy the "perfect_restart"  to "perfect_ics" and "filter_ics"
+# THEN, we can run the filter
+# with restart = FALSE!  "counterintuitive" as they say.
+#----------------------------------------------------------------------
+
+cat << ENDofTask02 > perfect.nml
+&perfect_model_obs_nml
+   async = .false.,
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .false.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1
+&end
+ENDofTask02
+
+cat model.nml perfect.nml > input.nml
+
+./perfect_model_obs
+ 
+if ( $status > 0 ) then
+   mv $SAVEME input.nml
+   echo "ERROR: perfect_model_obs (spinup) bombed ..."
+   exit
+else
+   echo " "
+   echo "perfect_model_obs (spinup) teminated normally"
+   echo " "
+endif
+
+#------------
+# Now for 2) Generate a set of ensemble initial conditions
+#------------
+
+cat << ENDofTask03 > filter.nml
+&perfect_model_obs_nml
+   async = .false.,
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1
+&end
+
+&filter_nml
+   async = .false.,
+   ens_size = xxxxxxxx,
+   cutoff = 0.0,
+   cov_inflate = 1.00,
+   start_from_restart = .false.,
+   output_restart = .true.
+   obs_sequence_file_name = "obs_seq.out",
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "filter_restart",
+   init_time_days = 0,
+   init_time_seconds = 0, 
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   num_output_ens_members = 0,
+   output_interval = 1
+&end
+ENDofTask03
+
+set STRING = "1,$ s#xxxxxxxx#$num_ens_members#"
+sed -e "$STRING" filter.nml > input.nml
+
+cat model.nml >> input.nml
+
+cp -f perfect_restart perfect_ics
+./perfect_model_obs    ;# run again to generate a "useful" True_State
+ 
+if ( $status > 0 ) then
+   mv $SAVEME input.nml
+   echo "ERROR: perfect_model_obs bombed ..."
+   exit
+else
+   echo " "
+   echo "perfect_model_obs teminated normally"
+   echo " "
+endif
+
+#----------------------------------------------------------------------
+# Step 4: filter
+#----------------------------------------------------------------------
+
+./filter                            ;# asks for name of file that is 
+                                    ;# result of "perfect_model_obs"
+if ( $status > 0 ) then
+   mv $SAVEME input.nml
+   echo "ERROR: filter bombed ..."
+   exit
+else
+   echo " "
+   echo "filter teminated normally"
+   echo " "
+endif
+
+cp perfect_restart perfect_ics
+cp filter_restart filter_ics
+
+\rm -f Prior_Diag.nc Posterior_Diag.nc True_State.nc
+
+mv $SAVEME input.nml
+exit
