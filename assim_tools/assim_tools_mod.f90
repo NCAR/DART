@@ -143,8 +143,25 @@ sum_x      = sum(ens)
 prior_mean = sum_x / ens_size
 prior_var  = (sum(ens * ens) - sum_x**2 / ens_size) / (ens_size - 1)
 
-var_ratio  = obs_var / (prior_var + obs_var)
-new_mean   = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+if (obs_var /= 0.0_r8) then
+   var_ratio = obs_var / (prior_var + obs_var)
+   new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+else
+   if (prior_var /= 0.0_r8) then
+      var_ratio = 0.0_r8
+      new_mean  = obs
+   else
+      call error_handler(E_ERR,'obs_increment_eakf', &
+           'Both obs_var and prior_var are zero. This is inconsistent', &
+           source, revision, revdate)
+!!$      if (prior_mean == obs) then
+!!$         var_ratio = 1.0_r8
+!!$         new_mean  = prior_mean
+!!$      else
+!!$         call error_handler(E_ERR,'obs_increment_eakf','Both obs_var and prior_var are zero and prior_mean is different from the obs. This is inconsistent',source, revision, revdate)
+!!$      endif
+   endif
+endif
 
 ! THIS POINT CAN EVALUATE INCONSISTENCY if needed
 if(abs(slope) > 0.0000001_r8 .or. present(bias_ratio_out)) then
