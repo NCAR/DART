@@ -145,7 +145,7 @@ integer :: io, ierr, iunit
 character (len=80) :: name
 logical, parameter :: debug = .true.  
 integer :: var_id, ind, i, map_proj 
-integer, dimension(5) :: count, start, stride, map
+integer, dimension(5) :: kount, start, stride, map
 real(r8)    :: zero_d(1)
 
 real(r8) :: dx, dy, dt
@@ -216,7 +216,7 @@ endif
 
 ! get meta data and static data we need
 
-count  = 1
+kount  = 1
 start  = 1
 stride = 1
 map    = 1
@@ -234,7 +234,7 @@ wrf%dt = dt
 if(debug) write(6,*) ' dt is ',dt
 
 call netcdf_read_write_var( "P_TOP", ncid, var_id, zero_d,        &
-                            start, count, stride, map, 'INPUT ', debug, 1  )
+                            start, kount, stride, map, 'INPUT ', debug, 1  )
 wrf%p_top = zero_d(1)
 if(debug) write(6,*) ' p_top is ',wrf%p_top
 
@@ -306,32 +306,32 @@ ENDIF
 
 !  get 1D (z) static data defining grid levels
 
-count(1)  = wrf%bt
+kount(1)  = wrf%bt
 allocate(wrf%dn(1:wrf%bt))
 call netcdf_read_write_var( "DN",ncid, var_id, wrf%dn,        &
-                            start, count, stride, map, 'INPUT ', debug, 2  )
+                            start, kount, stride, map, 'INPUT ', debug, 2  )
 if(debug) write(6,*) ' dn ',wrf%dn
 
-count(1)  = wrf%bt
+kount(1)  = wrf%bt
 allocate(wrf%znu(1:wrf%bt))
 call netcdf_read_write_var( "ZNU",ncid, var_id, wrf%znu,        &
-                            start, count, stride, map, 'INPUT ', debug, 2  )
+                            start, kount, stride, map, 'INPUT ', debug, 2  )
 if(debug) write(6,*) ' znu is ',wrf%znu
 !
-count(1)  = wrf%bt
+kount(1)  = wrf%bt
 allocate(wrf%dnw(1:wrf%bt))
 call netcdf_read_write_var( "DNW",ncid, var_id, wrf%dnw,        &
-                            start, count, stride, map, 'INPUT ', debug, 2  )
+                            start, kount, stride, map, 'INPUT ', debug, 2  )
 if(debug) write(6,*) ' dnw is ',wrf%dnw
 
 !  get 2D (x,y) base state for mu, latitude, longitude
 
-count(1)  = wrf%we
-count(2)  = wrf%sn
-count(3)  = 1
+kount(1)  = wrf%we
+kount(2)  = wrf%sn
+kount(3)  = 1
 allocate(wrf%mub(1:wrf%we,1:wrf%sn))
 call netcdf_read_write_var( "MUB",ncid, var_id, wrf%mub,        &
-                            start, count, stride, map, 'INPUT ', debug, 3  )
+                            start, kount, stride, map, 'INPUT ', debug, 3  )
 if(debug) then
     write(6,*) ' corners of mub '
     write(6,*) wrf%mub(1,1),wrf%mub(wrf%we,1),  &
@@ -340,13 +340,13 @@ end if
 
 allocate(wrf%longitude(1:wrf%we,1:wrf%sn))
 call netcdf_read_write_var( "XLONG",ncid, var_id, wrf%longitude,        &
-                            start, count, stride, map, 'INPUT ', debug, 3  )
+                            start, kount, stride, map, 'INPUT ', debug, 3  )
 allocate(wrf%latitude(1:wrf%we,1:wrf%sn))
 call netcdf_read_write_var( "XLAT",ncid, var_id, wrf%latitude,        &
-                            start, count, stride, map, 'INPUT ', debug, 3  )
+                            start, kount, stride, map, 'INPUT ', debug, 3  )
 allocate(wrf%land(1:wrf%we,1:wrf%sn), temp(1:wrf%we,1:wrf%sn))
 call netcdf_read_write_var( "XLAND",ncid, var_id, temp,        &
-                            start, count, stride, map, 'INPUT ', debug, 3  )
+                            start, kount, stride, map, 'INPUT ', debug, 3  )
 wrf%land = nint(temp)       ! coerce from float to integer ...
 deallocate(temp)
 
@@ -361,28 +361,28 @@ end if
 
 allocate(wrf%mapfac_m(1:wrf%we,1:wrf%sn))
 call netcdf_read_write_var( "MAPFAC_M",ncid, var_id, wrf%mapfac_m,        &
-                            start, count, stride, map, 'INPUT ', debug, 3  )
+                            start, kount, stride, map, 'INPUT ', debug, 3  )
 
-count(1)  = wrf%wes
-count(2)  = wrf%sn
+kount(1)  = wrf%wes
+kount(2)  = wrf%sn
 allocate(wrf%mapfac_u(1:wrf%wes,1:wrf%sn))
 call netcdf_read_write_var( "MAPFAC_U",ncid, var_id, wrf%mapfac_u,        &
-                            start, count, stride, map, 'INPUT ', debug, 4  )
+                            start, kount, stride, map, 'INPUT ', debug, 4  )
 
-count(1)  = wrf%we
-count(2)  = wrf%sns
+kount(1)  = wrf%we
+kount(2)  = wrf%sns
 allocate(wrf%mapfac_v(1:wrf%we,1:wrf%sns))
 call netcdf_read_write_var( "MAPFAC_V",ncid, var_id, wrf%mapfac_V,        &
-                            start, count, stride, map, 'INPUT ', debug, 4  )
+                            start, kount, stride, map, 'INPUT ', debug, 4  )
 
 ! get 3D base state geopotential
 
-count(1)  = wrf%we
-count(2)  = wrf%sn
-count(3)  = wrf%bts
+kount(1)  = wrf%we
+kount(2)  = wrf%sn
+kount(3)  = wrf%bts
 allocate(wrf%phb(1:wrf%we,1:wrf%sn,1:wrf%bts))
 call netcdf_read_write_var( "PHB",ncid, var_id, wrf%phb,        &
-                            start, count, stride, map, 'INPUT ', debug, 4  )
+                            start, kount, stride, map, 'INPUT ', debug, 4  )
 if(debug) then
     write(6,*) ' corners of phb '
     write(6,*) wrf%phb(1,1,1),wrf%phb(wrf%we,1,1),  &
@@ -509,12 +509,20 @@ end subroutine static_init_model
 !**********************************************************************
 
 subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
-                                  start, count, stride, map, in_or_out, debug, ndims )
+                                  start, kount, stride, map, in_or_out, debug, ndims )
+
+! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
+! module routine. There used to be TWO routines that did the same thing.
+! 
+! As such 'kount', 'stride','map' all become meaningless because
+! the whole process is slaved to simply replace an existing netcdf
+! variable with a conformable variable -- no possibility for 
+! us to write a subset of the domain.
 
 integer :: ncid, var_id, ndims
 real(r8), dimension(ndims) :: var
 character (len=6) :: in_or_out
-integer, dimension(ndims) :: start, count, stride, map
+integer, dimension(ndims) :: start, kount, stride, map
 character (len=*) :: variable
 logical :: debug
 character (len=129) :: error_string
@@ -524,16 +532,19 @@ call check(  nf90_inq_varid(ncid, variable, var_id) )
 if(debug) write(6,*) variable, ' id = ',var_id
 
 if( in_or_out(1:5) == "INPUT" ) then
-  if(debug) write(6,*) ' call netcdf read ', ncid, var_id
-  call check( nf90_get_var(ncid, var_id, var, start, count, stride, map) )
-  if(debug) write(6,*) ' returned netcdf read '
+
+  call check( nf90_get_var(ncid, var_id, var, start=start, count=kount, stride=stride, map=map) )
+
 else if( in_or_out(1:6) == "OUTPUT" ) then
-  if(debug) write(6,*) ' call netcdf write ', ncid, var_id
-  call check( nf90_put_var(ncid, var_id, var, start, count, stride, map) )
+
+  call check( nf90_put_var(ncid, var_id, var, start, kount, stride, map) )
+
 else
+
   write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
   call error_handler(E_ERR,'netcdf_read_write_var', &
        error_string, source, revision,revdate)
+
 end if
 
 contains
