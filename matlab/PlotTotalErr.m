@@ -66,10 +66,10 @@ switch lower(t.model)
       % compute distance from 0
       err        = total_err(truth, ens);
       err_spread = total_err(zeros(size(spread)), spread);
-      errTotal   = sum(err);
-      spreadTotal= sum(err_spread);
-      string1 = ['Ensemble Mean Total Error \Sigma = ' num2str(errTotal)];
-      string2 = ['Ensemble Spread Total Error \Sigma = ' num2str(spreadTotal)];
+      errTotal   = sum(err)/d.num_times;
+      spreadTotal= sum(err_spread)/d.num_times;
+      string1 = ['temporally-normalized Ensemble Mean Total Error \Sigma = ' num2str(errTotal)];
+      string2 = ['temporally-normalized Ensemble Spread Total Error \Sigma = ' num2str(spreadTotal)];
 
       clf;
       plot(times,err, 'b', times,err_spread, 'r');

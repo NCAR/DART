@@ -63,10 +63,10 @@ switch lower(t.model)
             ivar = (i - 1)*3 + j;
 
             err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
-            errTotal    = sum(err);
-            spreadTotal = sum(ens_spread(:,ivar));
-            string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
-            string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
+            errTotal    = sum(err)/d.num_times;
+            spreadTotal = sum(ens_spread(:,ivar))/d.num_times;
+            string1 = ['temporally-normalized Ensemble Total Error \Sigma = ' num2str(errTotal)];
+            string2 = ['temporally-normalized Ensemble Spread \Sigma = ' num2str(spreadTotal)];
 
             disp(sprintf('%s model Variable %d',t.model,ivar))
 
@@ -88,10 +88,10 @@ switch lower(t.model)
       for ivar = state_var_inds,
             iplot = iplot + 1;
             err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
-            errTotal    = sum(err);
-            spreadTotal = sum(ens_spread(:,ivar));
-            string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
-            string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
+            errTotal    = sum(err)/d.num_times;
+            spreadTotal = sum(ens_spread(:,ivar))/d.num_times;
+            string1 = ['temporally-normalized Ensemble Total Error \Sigma = ' num2str(errTotal)];
+            string2 = ['temporally-normalized Ensemble Spread \Sigma = ' num2str(spreadTotal)];
 
             subplot(length(state_var_inds), 1, iplot);
                plot(times,err, 'b', ...
@@ -105,15 +105,15 @@ switch lower(t.model)
       end
 
    case 'lorenz_96'
-      % disp('lorenz_96 not implemented yet.')
+
       clf; iplot = 0;
       for ivar = state_var_inds,
             iplot = iplot + 1;
             err         = total_err(ens_mean(:,ivar) , truth(:,ivar));  
-            errTotal    = sum(err);
-            spreadTotal = sum(ens_spread(:,ivar));
-            string1 = ['Ensemble Total Error \Sigma = ' num2str(errTotal)];
-            string2 = ['Ensemble Spread \Sigma = ' num2str(spreadTotal)];
+            errTotal    = sum(err)/d.num_times;
+            spreadTotal = sum(ens_spread(:,ivar))/d.num_times;
+            string1 = ['temporally-normalized Ensemble Total Error \Sigma = ' num2str(errTotal)];
+            string2 = ['temporally-normalized Ensemble Spread \Sigma = ' num2str(spreadTotal)];
 
             subplot(length(state_var_inds), 1, iplot);
                plot(times,err, 'b', ...
