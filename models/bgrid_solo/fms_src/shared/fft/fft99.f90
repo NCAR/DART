@@ -25,6 +25,7 @@
 
 module fft99_mod
 
+use types_mod, only : r8
 use constants_mod, only: pi
 
 implicit none
@@ -256,8 +257,8 @@ contains
 !-----------------------------------------------------------------------
     integer, intent(in)    :: inc,jump,n,lot,isign
     integer, intent(inout) :: ifax(:)
-    real,    intent(in)    :: trigs(:)
-    real,    intent(inout) :: a(*),work(*)
+    real(r8),    intent(in)    :: trigs(:)
+    real(r8),    intent(inout) :: a(*),work(*)
 
 !     dimension a(n),work(n),trigs(n),ifax(1)
 !
@@ -407,8 +408,8 @@ contains
 
     subroutine fft99a (a,work,trigs,inc,jump,n,lot)
     integer, intent(in)    :: inc,jump,n,lot
-    real,    intent(in)    :: trigs(:)
-    real,    intent(inout) :: a(*),work(*)
+    real(r8),    intent(in)    :: trigs(:)
+    real(r8),    intent(inout) :: a(*),work(*)
 
 !     dimension a(n),work(n),trigs(n)
 !
@@ -417,7 +418,7 @@ contains
 
     integer :: nh, nx, ink, k, L
     integer :: ia, ib, ja, jb, iabase, ibbase, jabase, jbbase
-    real    :: c, s
+    real(r8)    :: c, s
 
       nh=n/2
       nx=n+1
@@ -491,8 +492,8 @@ contains
 
     subroutine fft99b (work,a,trigs,inc,jump,n,lot)
     integer, intent(in)    :: inc,jump,n,lot
-    real,    intent(in)    :: trigs(:)
-    real,    intent(inout) :: a(*),work(*)
+    real(r8),    intent(in)    :: trigs(:)
+    real(r8),    intent(inout) :: a(*),work(*)
 
 !     dimension work(n),a(n),trigs(n)
 !
@@ -501,14 +502,14 @@ contains
 
     integer :: nh, nx, ink, k, L
     integer :: ia, ib, ja, jb, iabase, ibbase, jabase, jbbase
-    real    :: rscale, c, s
+    real(r8)    :: rscale, c, s
 
       nh=n/2
       nx=n+1
       ink=inc+inc
 
 !   a(0) and a(n/2)
-      rscale=1.0/real(n)
+      rscale=1.0/(1.0 * n)
       ia=1
       ib=2
       ja=1
@@ -581,8 +582,8 @@ contains
     subroutine fft991(a,work,trigs,ifax,inc,jump,n,lot,isign)
     integer, intent(in)    :: inc,jump,n,lot,isign
     integer, intent(inout) :: ifax(:)
-    real,    intent(in)    :: trigs(:)
-    real,    intent(inout) :: a(*),work(*)
+    real(r8),    intent(in)    :: trigs(:)
+    real(r8),    intent(inout) :: a(*),work(*)
 
 !     dimension a(n),work(n),trigs(n),ifax(1)
 !
@@ -632,7 +633,6 @@ contains
 
     integer :: nfax, nx, nh, ink, igo, ibase, jbase
     integer :: i, j, k, L, m, ia, la, ib
-
 
       nfax=ifax(1)
       nx=n+1
@@ -734,7 +734,7 @@ contains
     subroutine set99 (trigs, ifax, n)
     integer, intent(in)  :: n
     integer, intent(out) :: ifax(:)
-    real,    intent(out) :: trigs(:)
+    real(r8),    intent(out) :: trigs(:)
 
 !     dimension ifax(13),trigs(1)
 !
@@ -751,7 +751,7 @@ contains
       if (ifax(i+1) .gt. 5 .or. n .le. 4) ifax(1) = -99
       if (ifax(1) .le. 0 ) then 
         write(6,*) ' set99 -- invalid n'
-        stop'set99'
+        stop
       endif
       call fftrig (trigs, n, mode)
 
@@ -827,19 +827,19 @@ contains
 !##########################################################################
 
     subroutine fftrig (trigs,n,mode)
-    real,    intent(out) :: trigs(:)
+    real(r8),    intent(out) :: trigs(:)
     integer, intent(in)  :: n, mode
 
-    real    :: del, angle
+    real(r8)    :: del, angle
     integer :: imode, nn, nh, i, L, la
 
       imode=iabs(mode)
       nn=n
       if (imode.gt.1.and.imode.lt.6) nn=n/2
-      del=(pi+pi)/real(nn)
+      del=(pi+pi)/(1.0 * nn)
       L=nn+nn
       do i=1,L,2
-        angle=0.5*real(i-1)*del
+        angle=0.5*(i-1.0)*del
         trigs(i)=cos(angle)
         trigs(i+1)=sin(angle)
       enddo
@@ -851,7 +851,7 @@ contains
       L=nh+nh
       la=nn+nn
       do i=1,L,2
-        angle=0.5*real(i-1)*del
+        angle=0.5*(i-1.0)*del
         trigs(la+i)=cos(angle)
         trigs(la+i+1)=sin(angle)
       enddo
@@ -861,7 +861,7 @@ contains
       la=la+nn
     if (mode.ne.5) then
       do i=2,nn
-        angle=real(i-1)*del
+        angle=(i-1.0)*del
         trigs(la+i)=2.0*sin(angle)
       enddo
       return
@@ -869,7 +869,7 @@ contains
 
       del=0.5*del
       do i=2,n
-        angle=real(i-1)*del
+        angle=(i-1.0)*del
         trigs(la+i)=sin(angle)
       enddo
 
@@ -879,8 +879,8 @@ contains
 
     subroutine vpassm (a,b,c,d,trigs,inc1,inc2,inc3,inc4,lot,n,ifac,la)
     integer, intent(in)  :: inc1, inc2, inc3, inc4, lot, n, ifac, la
-    real,    intent(in)  :: a(n),b(n),trigs(n)
-    real,    intent(out) :: c(n),d(n)
+    real(r8),    intent(in)  :: a(*),b(*),trigs(*)
+    real(r8),    intent(out) :: c(*),d(*)
 !
 !     subroutine "vpassm" - multiple version of "vpassa"
 !     performs one pass through data
@@ -900,16 +900,15 @@ contains
 !     la is product of previous factors
 !
 
-    real :: sin36=0.587785252292473
-    real :: cos36=0.809016994374947
-    real :: sin72=0.951056516295154
-    real :: cos72=0.309016994374947
-    real :: sin60=0.866025403784437
+    real(r8) :: sin36=0.587785252292473
+    real(r8) :: cos36=0.809016994374947
+    real(r8) :: sin72=0.951056516295154
+    real(r8) :: cos72=0.309016994374947
+    real(r8) :: sin60=0.866025403784437
 
     integer :: i, j, k, L, m, iink, jink, jump, ibase, jbase, igo, ijk, la1
     integer :: ia, ja, ib, jb, kb, ic, jc, kc, id, jd, kd, ie, je, ke
-    real    :: c1, s1, c2, s2, c3, s3, c4, s4
-
+    real(r8)    :: c1, s1, c2, s2, c3, s3, c4, s4
       m=n/ifac
       iink=m*inc1
       jink=la*inc2
@@ -934,6 +933,7 @@ contains
       j=jbase
 !dir$ ivdep
       do 15 ijk=1,lot
+!!!if(ib + 1 > size(a)) goto 15
       c(ja+j)=a(ia+i)+a(ib+i)
       d(ja+j)=b(ia+i)+b(ib+i)
       c(jb+j)=a(ia+i)-a(ib+i)

@@ -96,19 +96,11 @@ module field_manager_mod
 !
 ! </DESCRIPTION>
 
-use    mpp_mod, only : mpp_error,   &
-                       FATAL,       &
-                       NOTE,        &
-                       mpp_pe,      &
-                       mpp_root_pe, &
-                       stdlog
-use mpp_io_mod, only : mpp_io_init, &
-                       mpp_open,    &
-                       MPP_ASCII,   &
-                       MPP_RDONLY
-use    fms_mod, only : lowercase,   &
+use types_mod, only : r8
+use    fms_mod, only : lowercase, stdlog,   &
                        file_exist,  &
-                       write_version_number
+                       write_version_number, NOTE, FATAL, error_mesg
+use utilities_mod, only : open_file
 
 implicit none
 private
@@ -280,7 +272,7 @@ if (module_is_initialized) then
    return
 endif
 
-call mpp_io_init()
+!!!call mpp_io_init()
 
 if (.not.PRESENT(table_name)) then
    tbl_name = 'field_table'
@@ -292,14 +284,14 @@ if (.not. file_exist(trim(tbl_name))) then
 !   <ERROR MSG="No field table available, so no fields are being registered." STATUS="NOTE">
 !      The field table does not exist.
 !   </ERROR>
-if (mpp_pe() == mpp_root_pe()) &
-  call mpp_error(NOTE,'field_manager_init : No field table available, so no fields are being registered.')
+  call error_mesg('field_manager_init', 'No field table available, so no fields are being registered.', NOTE)
 nfields = 0
 return
 endif
 
 
-call mpp_open(iunit,file=trim(tbl_name), form=MPP_ASCII, action=MPP_RDONLY)
+!!!call mpp_open(iunit,file=trim(tbl_name), form=MPP_ASCII, action=MPP_RDONLY)
+iunit = open_file(trim(tbl_name), form = 'formatted', action = 'READ') 
 
 do while (.TRUE.)
    read(iunit,'(a)',end=89,err=99) record
@@ -324,7 +316,7 @@ do while (.TRUE.)
 !     <ERROR MSG="max fields exceeded" STATUS="FATAL">
 !       Maximum number of fields for this module has been exceeded.
 !     </ERROR>
-      if (num_fields > MAX_FIELDS) call mpp_error(FATAL,'field_manager_init :: max fields exceeded')
+      if (num_fields > MAX_FIELDS) call error_mesg('field_manager_init', 'max fields exceeded', FATAL)
       fields(num_fields)%model = model
       fields(num_fields)%field_name = lowercase(trim(text_names%fld_name))
       fields(num_fields)%field_type = lowercase(trim(text_names%fld_type))
@@ -359,7 +351,7 @@ do while (.TRUE.)
 !        and not like<BR/>
 !       "Type","Name","Control1=XXX","Control2=YYY"
 !     </ERROR>
-      if (icount > 6 ) call mpp_error(FATAL,'field_manager_init :: Too many fields in tracer entry.'//trim(record))
+      if (icount > 6 ) call error_mesg('field_manager_init', 'Too many fields in tracer entry.'//trim(record), FATAL)
          if (icount == 6 ) then
          read(record,*,end=99,err=99) text_method
             fields(num_fields)%methods(m)%method_type = lowercase(trim(text_method%method_type))
@@ -377,7 +369,7 @@ do while (.TRUE.)
 !       Maximum number of methods allowed for entries in the field table has been exceeded.
 !     </ERROR>
       if (fields(num_fields)%num_methods > MAX_FIELD_METHODS) &
-         call mpp_error(FATAL,'field_manager_init :: Maximum number of methods for field exceeded')
+         call error_mesg('field_manager_init', 'Maximum number of methods for field exceeded', FATAL)
          m = m + 1
       enddo
    else
@@ -385,8 +377,7 @@ do while (.TRUE.)
 !     <ERROR MSG="field with identical name and model name duplicate found, skipping" STATUS="NOTE">
 !       The name of the field and the model name are identical. Skipping that field.
 !     </ERROR>
-      if (mpp_pe() == 0) &
-         call mpp_error(NOTE,'field_manager_init : field with identical name and model name duplicate found, skipping')
+         call error_mesg('field_manager_init', 'field with identical name and model name duplicate found, skipping', NOTE)
       flag_method = .TRUE.
       do while (flag_method)
          read(iunit,end=99,err=99) record
@@ -409,6 +400,8 @@ nfields = num_fields
 default_method%method_type = 'none'
 default_method%method_name = 'none'
 default_method%method_control = 'none'
+
+close(iunit)
 return
 
 99 continue
@@ -416,7 +409,7 @@ return
 !     <ERROR MSG="error reading field table" STATUS="FATAL">
 !       There is an error in reading the field table.
 !     </ERROR>
-call mpp_error(FATAL,'field_manager_init : error reading field table')
+call error_mesg('field_manager_init', 'error reading field table', FATAL)
 
 end subroutine field_manager_init
 ! </SUBROUTINE>
@@ -437,9 +430,7 @@ subroutine field_manager_end
 integer :: log_unit
 
 log_unit = stdlog()
-if ( mpp_pe() == 0 ) then
    write (log_unit,'(/,(a))') 'Exiting field_manager, have a nice day ...'
-endif
 
 module_is_initialized = .false.
 
@@ -527,7 +518,7 @@ integer, intent(out) :: model, num_methods
 !     The field index is invalid because it is less than 1 or greater than the 
 !     number of fields.
 !   </ERROR>
-if (n < 1 .or. n > num_fields) call mpp_error(FATAL,'invalid field index')
+if (n < 1 .or. n > num_fields) call error_mesg('get_field_info field_manager','invalid field index', FATAL)
 
 fld_type = fields(n)%field_type
 fld_name=fields(n)%field_name
@@ -565,13 +556,13 @@ type(method_type) ,intent(out) :: method
 !     The field index is invalid because it is less than 1 or greater than the 
 !     number of fields.
 !   </ERROR>
-if (n < 1 .or. n > num_fields) call mpp_error(FATAL,'invalid field index')
+if (n < 1 .or. n > num_fields) call error_mesg('get_field_method field_manager','invalid field index', FATAL)
 
 !   <ERROR MSG="invalid method index" STATUS="FATAL">
 !     The method index is invalid because it is less than 1 or greater than 
 !     the number of methods.
 !   </ERROR>
-if (m < 1 .or. m > fields(n)%num_methods) call mpp_error(FATAL,'invalid method index')
+if (m < 1 .or. m > fields(n)%num_methods) call error_mesg('field_manager','invalid method index', FATAL)
 
 method = fields(n)%methods(m)
 
@@ -603,12 +594,12 @@ type(method_type),intent(out) :: methods(:)
 !     The field index is invalid because it is less than 1 or greater than the 
 !     number of fields.
 !   </ERROR>
-if (n < 1 .or. n > num_fields) call mpp_error(FATAL,'invalid field index')
+if (n < 1 .or. n > num_fields) call error_mesg('field_manager','invalid field index', FATAL)
 
 !   <ERROR MSG="method array too small" STATUS="FATAL">
 !     The method array is smaller than the number of methods.
 !   </ERROR>
-if (size(methods) <  fields(n)%num_methods) call mpp_error(FATAL,'method array too small')
+if (size(methods) <  fields(n)%num_methods) call error_mesg('field manager','method array too small', FATAL)
 
 methods(1:fields(n)%num_methods) = fields(n)%methods(1:fields(n)%num_methods)
 
@@ -651,7 +642,7 @@ function parse_reals ( text, label, values ) result (parse)
 !     values from a list. This should be the size of the value array.
 !   </OUT>
 character(len=*), intent(in)  :: text, label
-real,             intent(out) :: values(:)
+real(r8),             intent(out) :: values(:)
 include 'parse.inc'
 end function parse_reals
 ! </FUNCTION>
@@ -672,9 +663,9 @@ end function parse_strings
 
 function parse_real ( text, label, value ) result (parse)
 character(len=*), intent(in)  :: text, label
-real,             intent(out) :: value
+real(r8),             intent(out) :: value
 integer :: parse
-real :: values(1)
+real(r8) :: values(1)
    parse = parse_reals ( text, label, values )
    if (parse > 0) value = values(1)
 end function parse_real
@@ -711,7 +702,7 @@ implicit none
 
 integer :: i, j, nfields, num_methods, model
 character(len=128) :: field_type, field_name, str
-real :: param
+real(r8) :: param
 logical :: flag
 type(method_type), dimension(20) :: methods
 
@@ -721,7 +712,6 @@ call field_manager_init(nfields)
 do i=1,nfields
    call get_field_info(i,field_type, field_name, model, num_methods)
    call get_field_methods(i,methods)
-   if (mpp_pe() == 0) then
       write(*,'(/,a)') '------------------------------------------'
       write(*,'(/,a,a)') 'field_type = ', trim(field_type)
       write(*,'(a,a)') 'field_name = ', trim(field_name)
@@ -743,7 +733,6 @@ do i=1,nfields
              endif             
          endif
       enddo
-   endif
 enddo
 
 call field_manager_end

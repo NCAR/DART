@@ -46,15 +46,13 @@ module atmos_tracer_utilities_mod
 !
 ! </DESCRIPTION>
 
-
+use types_mod, only : r8
 use            fms_mod, only : lowercase, &
                                write_version_number, &
-                               stdlog, &
-                               mpp_pe, &
-                               mpp_root_pe
+                               stdlog
 use   time_manager_mod, only : time_type
-use   diag_manager_mod, only : send_data, &
-                               register_diag_field
+!use   diag_manager_mod, only : send_data, &
+!                               register_diag_field
 use tracer_manager_mod, only : query_method, &
                                get_tracer_names, &
                                get_number_tracers
@@ -96,7 +94,7 @@ character(len=32),  dimension(max_tracers) :: tracer_ddep_names     = ' '
 character(len=32),  dimension(max_tracers) :: tracer_ddep_units     = ' '
 character(len=128), dimension(max_tracers) :: tracer_ddep_longnames = ' '
 
-real, allocatable :: blon_out(:), blat_out(:)
+real(r8), allocatable :: blon_out(:), blat_out(:)
 
 contains
 
@@ -118,10 +116,10 @@ contains
 !<TEMPLATE>
 ! call atmos_tracer_utilities_init(lonb,latb, mass_axes, Time)
 !</TEMPLATE>
-!   <IN NAME="lonb" TYPE="real" DIM="(:)">
+!   <IN NAME="lonb" TYPE="real(r8)" DIM="(:)">
 !     The longitudes for the local domain.
 !   </IN>
-!   <IN NAME="latb" TYPE="real" DIM="(:)">
+!   <IN NAME="latb" TYPE="real(r8)" DIM="(:)">
 !     The latitudes for the local domain.
 !   </IN>
 !   <IN NAME="mass_axes" TYPE="integer" DIM="(3)">
@@ -135,7 +133,7 @@ subroutine atmos_tracer_utilities_init(lonb, latb, mass_axes, Time)
 
 ! Routine to initialize the tracer identification numbers. 
 ! This registers the 2D fields for the wet and dry deposition.
-real, dimension(:),    intent(in) :: lonb, latb
+real(r8), dimension(:),    intent(in) :: lonb, latb
 integer, dimension(3), intent(in) :: mass_axes
 type(time_type),       intent(in) :: Time
 
@@ -178,22 +176,20 @@ call get_tracer_names(MODEL_ATMOS,n,tracer_names(n),tracer_longnames(n),tracer_u
                   trim(tracer_longnames(n)) // ' dry deposition for tracers'
       endif
 
-     id_tracer_ddep(n) = register_diag_field ( mod_name,               &
-                     trim(tracer_ddep_names(n)), mass_axes(1:2), Time, &
-                     trim(tracer_ddep_longnames(n)),                   &
-                     'kg/m2/s', missing_value=-999.     )
-     id_tracer_wdep(n) = register_diag_field ( mod_name,               &
-                     trim(tracer_wdep_names(n)), mass_axes(1:2), Time, &
-                     trim(tracer_wdep_longnames(n)),                   &
-                     'kg/m2/s', missing_value=-999.    )
+!     id_tracer_ddep(n) = register_diag_field ( mod_name,               &
+!                     trim(tracer_ddep_names(n)), mass_axes(1:2), Time, &
+!                     trim(tracer_ddep_longnames(n)),                   &
+!                     'kg/m2/s', missing_value=-999.     )
+!     id_tracer_wdep(n) = register_diag_field ( mod_name,               &
+!                     trim(tracer_wdep_names(n)), mass_axes(1:2), Time, &
+!                     trim(tracer_wdep_longnames(n)),                   &
+!                     'kg/m2/s', missing_value=-999.    )
    enddo
 
  
       call write_version_number (version, tagname)
 
-    if ( mpp_pe() == mpp_root_pe() ) then
          call write_namelist_values (stdlog(),ntrace)
-    endif
 
       module_is_initialized = .TRUE.
 
@@ -277,41 +273,41 @@ subroutine dry_deposition( n, is, js, u, v, T, pwt, pfull, &
 !  <IN NAME="is, js" TYPE="integer">
 !    Start indices for array (computational indices).
 !  </IN>
-!  <IN NAME="u" TYPE="real" DIM="(:,:)">
+!  <IN NAME="u" TYPE="real(r8)" DIM="(:,:)">
 !    U wind field.
 !  </IN>
-!  <IN NAME="v" TYPE="real" DIM="(:,:)">
+!  <IN NAME="v" TYPE="real(r8)" DIM="(:,:)">
 !    V wind field.
 !  </IN>
-!  <IN NAME="T" TYPE="real" DIM="(:,:)">
+!  <IN NAME="T" TYPE="real(r8)" DIM="(:,:)">
 !    Temperature.
 !  </IN>
-!  <IN NAME="pwt" TYPE="real" DIM="(:,:)">
+!  <IN NAME="pwt" TYPE="real(r8)" DIM="(:,:)">
 !     Pressure differential of half levels.
 !  </IN>
-!  <IN NAME="pfull" TYPE="real" DIM="(:,:)">
+!  <IN NAME="pfull" TYPE="real(r8)" DIM="(:,:)">
 !     Full pressure levels.
 !  </IN>
-!  <IN NAME="u_star" TYPE="real" DIM="(:,:)">
+!  <IN NAME="u_star" TYPE="real(r8)" DIM="(:,:)">
 !     Friction velocity.
 !  </IN>
 !  <IN NAME="landmask" TYPE="logical">
 !     Land - sea mask.
 !  </IN>
 !
-!  <OUT NAME="dsinku" TYPE="real" DIM="(:,:)">
+!  <OUT NAME="dsinku" TYPE="real(r8)" DIM="(:,:)">
 !    The amount of tracer in the surface layer which is dry deposited per second.
 !  </OUT>
 !
 integer, intent(in)                 :: n, is, js
-real, intent(in), dimension(:,:)    :: u, v, T, pwt, pfull, u_star, tracer
+real(r8), intent(in), dimension(:,:)    :: u, v, T, pwt, pfull, u_star, tracer
 logical, intent(in), dimension(:,:) :: landmask
 type(time_type), intent(in)         :: Time
-real, intent(out), dimension(:,:)   :: dsinku
+real(r8), intent(out), dimension(:,:)   :: dsinku
 
-real,dimension(size(u,1),size(u,2)) :: hwindv,frictv,resisa,xxfm,dz
+real(r8),dimension(size(u,1),size(u,2)) :: hwindv,frictv,resisa,xxfm,dz
 integer :: i,j, flagsr
-real    :: land_dry_dep_vel, sea_dry_dep_vel, surfr
+real(r8)    :: land_dry_dep_vel, sea_dry_dep_vel, surfr
 logical :: used, flag
 character(len=80) :: name,control,scheme
 
@@ -356,7 +352,7 @@ else if (lowercase(scheme)=='fixed') then
       endwhere
 endif
 
-dsinku(:,:) = MAX(dsinku(:,:), 0.0E+00)
+dsinku(:,:) = MAX(dsinku(:,:), 0.0_r8)
 where(tracer>0)
   dsinku=dsinku*tracer
 elsewhere
@@ -369,8 +365,8 @@ endwhere
 ! tracer(kgtracer/kgair) * dz(m)* rho(kgair/m3) = kgtracer/m2
 ! so rho drops out of the equation
          if (id_tracer_ddep(n) > 0 ) then
-         used = send_data ( id_tracer_ddep(n), dsinku*pwt, Time, &
-         is_in =is,js_in=js)
+!         used = send_data ( id_tracer_ddep(n), dsinku*pwt, Time, &
+!         is_in =is,js_in=js)
 endif
 end subroutine dry_deposition
 !</SUBROUTINE>
@@ -393,25 +389,25 @@ subroutine wet_deposition(n, T, pfull, phalf, rain, snow, qdt, tracer, tracer_dt
 !<IN NAME="is, js" TYPE="integer">
 !   start indices for array (computational indices)
 !</IN>
-!<IN NAME="T" TYPE="real" DIM="(:,:,:)">
+!<IN NAME="T" TYPE="real(r8)" DIM="(:,:,:)">
 !   Temperature
 !</IN>
-!<IN NAME="pfull" TYPE="real" DIM="(:,:,:)">
+!<IN NAME="pfull" TYPE="real(r8)" DIM="(:,:,:)">
 !   Full level pressure field
 !</IN>
-!<IN NAME="phalf" TYPE="real" DIM="(:,:,:)">
+!<IN NAME="phalf" TYPE="real(r8)" DIM="(:,:,:)">
 !   Half level pressure field
 !</IN>
-!<IN NAME="rain" TYPE="real" DIM="(:,:)">
+!<IN NAME="rain" TYPE="real(r8)" DIM="(:,:)">
 !   Precipitation in the form of rain
 !</IN>
-!<IN NAME="snow" TYPE="real" DIM="(:,:)">
+!<IN NAME="snow" TYPE="real(r8)" DIM="(:,:)">
 !   Precipitation in the form of snow
 !</IN>
-!<IN NAME="qdt" TYPE="real" DIM="(:,:,:)">
+!<IN NAME="qdt" TYPE="real(r8)" DIM="(:,:,:)">
 !   The tendency of the specific humidity due to the cloud parametrization
 !</IN>
-!<IN NAME="tracer" TYPE="real" DIM="(:,:,:)">
+!<IN NAME="tracer" TYPE="real(r8)" DIM="(:,:,:)">
 !   The tracer field 
 !</IN>
 !<IN NAME="Time" TYPE="type(time_type)">
@@ -420,7 +416,7 @@ subroutine wet_deposition(n, T, pfull, phalf, rain, snow, qdt, tracer, tracer_dt
 !<IN NAME="cloud_param" TYPE="character">
 !   Is this a convective (convect) or large scale (lscale) cloud parametrization?
 !</IN>
-!  <OUT NAME="tracer_dt" TYPE="real" DIM="(:,:,:)">
+!  <OUT NAME="tracer_dt" TYPE="real(r8)" DIM="(:,:,:)">
 !  The tendency of the tracer field due to wet deposition.
 ! </OUT>
 !<DESCRIPTION>
@@ -453,18 +449,18 @@ subroutine wet_deposition(n, T, pfull, phalf, rain, snow, qdt, tracer, tracer_dt
 !</DESCRIPTION>
 !
 integer, intent(in)                 :: n, is, js
-real, intent(in), dimension(:,:,:)  :: T, pfull,phalf, qdt, tracer
-real, intent(in), dimension(:,:)    :: rain, snow
+real(r8), intent(in), dimension(:,:,:)  :: T, pfull,phalf, qdt, tracer
+real(r8), intent(in), dimension(:,:)    :: rain, snow
 character(len=*),intent(in)         :: cloud_param
 type (time_type)  , intent(in)      :: Time
-real, intent(out), dimension(:,:,:) :: tracer_dt
+real(r8), intent(out), dimension(:,:,:) :: tracer_dt
 !
-real, dimension(size(T,1),size(T,2),size(pfull,3))   :: wsinku
-real, dimension(size(T,1),size(T,2)) :: Htemp, dz, washout,scav_factor, sum_wdep
+real(r8), dimension(size(T,1),size(T,2),size(pfull,3))   :: wsinku
+real(r8), dimension(size(T,1),size(T,2)) :: Htemp, dz, washout,scav_factor, sum_wdep
 integer, dimension(size(T,1),size(T,2)) :: ktopcd, kendcd
 integer :: i,j,k,kd, flaglw
-real    :: Henry_constant, Henry_variable, inv298p15, clwc, wash, premin, prenow, hwtop
-!real, dimension(size(rain,1),size(rain,2)) :: prenow,hwtop
+real(r8)    :: Henry_constant, Henry_variable, inv298p15, clwc, wash, premin, prenow, hwtop
+!real(r8), dimension(size(rain,1),size(rain,2)) :: prenow,hwtop
 logical :: used,flag
 character(len=80) :: name,control,scheme
 tracer_dt = 0.0E+00
@@ -514,7 +510,7 @@ if(lowercase(scheme)=='fraction') then
 tracer_dt = 0.0
 !-----------------------------------------------------------------------
 !
-!     Compute areal fractions experiencing wet deposition:
+!     Compute areal(r8) fractions experiencing wet deposition:
 !
 !     Set minimum precipitation rate below which no wet removal
 !     occurs to 0.01 cm/day ie 1.16e-6 mm/sec (kg/m2/s)
@@ -562,7 +558,7 @@ tracer_dt = 0.0
              hwtop=hwtop+(phalf(i,j,k+1)-phalf(i,j,k))*rdgas*T(i,j,k)/grav/pfull(i,j,k)
             enddo
             do k=ktopcd(i,j),kendcd(i,j)
-!     Areal fraction affected by precip clouds (max = 0.5):
+!     Areal(r8) fraction affected by precip clouds (max = 0.5):
              tracer_dt(i,j,k)=prenow/(clwc*hwtop)
             end do  
             endif
@@ -575,7 +571,7 @@ endif
 
 ! Now multiply by the tracer mixing ratio to get the actual tendency.
 where (tracer_dt(:,:,:) .gt. 0.5) tracer_dt(:,:,:)=0.5
-tracer_dt(:,:,:) = MAX(tracer_dt(:,:,:), 0.0E+00)
+tracer_dt(:,:,:) = MAX(tracer_dt(:,:,:), 0.0_r8)
 where(tracer>0)
 tracer_dt=tracer_dt*tracer
 elsewhere
@@ -592,8 +588,8 @@ sum_wdep=sum_wdep + tracer_dt(:,:,k)*(phalf(:,:,k+1)-phalf(:,:,k))/grav
 enddo
 
          if (id_tracer_wdep(n) > 0 ) then
-         used = send_data ( id_tracer_wdep(n), sum_wdep, Time , &
-         is_in =is,js_in=js)
+!        used = send_data ( id_tracer_wdep(n), sum_wdep, Time , &
+!         is_in =is,js_in=js)
 endif
 end subroutine wet_deposition
 !</SUBROUTINE>
@@ -619,7 +615,7 @@ subroutine get_drydep_param(text_in_scheme,text_in_param,scheme,land_dry_dep_vel
 !
 character(len=*), intent(in)    :: text_in_scheme, text_in_param
 character(len=*), intent(out)   :: scheme
-real, intent(out)               :: land_dry_dep_vel, sea_dry_dep_vel
+real(r8), intent(out)               :: land_dry_dep_vel, sea_dry_dep_vel
 
 integer :: m,m1,n,lentext, flag
 character(len=32) :: dummy
@@ -662,7 +658,7 @@ subroutine get_wetdep_param(text_in_scheme,text_in_param,scheme,henry_constant,h
 !
 character(len=*), intent(in)    :: text_in_scheme, text_in_param
 character(len=*), intent(out)   :: scheme
-real, intent(out)               :: henry_constant, henry_temp
+real(r8), intent(out)               :: henry_constant, henry_temp
 
 integer :: m,m1,n,lentext, flag
 character(len=32) :: dummy
@@ -707,39 +703,39 @@ subroutine interp_emiss(global_source, start_lon, start_lat, &
 !                        lon_resol, lat_resol, data_out)
 !</TEMPLATE>
 ! INTENT IN
-!<IN NAME="global_source" TYPE="real" DIM="(:,:)">
+!<IN NAME="global_source" TYPE="real(r8)" DIM="(:,:)">
 !  Global emission field.
 !</IN>
-!<IN NAME="start_lon" TYPE="real">
+!<IN NAME="start_lon" TYPE="real(r8)">
 !  Longitude of starting point of emission field 
 !  (in radians). This is the westernmost boundary of the 
 !  global field.
 !</IN>
-!<IN NAME="start_lat" TYPE="real">
+!<IN NAME="start_lat" TYPE="real(r8)">
 !  Latitude of starting point of emission field
 !  (in radians). This is the southern boundary of the 
 !  global field.
 !</IN>
-!<IN NAME="lon_resol" TYPE="real">
+!<IN NAME="lon_resol" TYPE="real(r8)">
 !  Longitudinal resolution of the emission data (in radians).
 !</IN>
-!<IN NAME="lat_resol" TYPE="real">
+!<IN NAME="lat_resol" TYPE="real(r8)">
 !  Latitudinal resolution of the emission data (in radians).
 !</IN>
 ! 
 ! INTENT OUT
-!<OUT NAME="data_out" TYPE="real" DIM="(:,:)">
+!<OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:)">
 !  Interpolated emission field on the local PE. 
 !</OUT>
 
-real, intent(in)  :: global_source(:,:)
-real, intent(in)  :: start_lon,start_lat,lon_resol,lat_resol
-real, intent(out) :: data_out(:,:)
+real(r8), intent(in)  :: global_source(:,:)
+real(r8), intent(in)  :: start_lon,start_lat,lon_resol,lat_resol
+real(r8), intent(out) :: data_out(:,:)
 
-real :: modydeg,modxdeg, tpi
+real(r8) :: modydeg,modxdeg, tpi
 integer :: i, j, nlon_in, nlat_in
-real :: blon_in(size(global_source,1)+1)
-real :: blat_in(size(global_source,2)+1)
+real(r8) :: blon_in(size(global_source,1)+1)
+real(r8) :: blat_in(size(global_source,2)+1)
 ! Set up the global surface boundary condition longitude-latitude boundary values
 
    tpi = 2. *PI

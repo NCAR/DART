@@ -64,20 +64,10 @@ module tracer_manager_mod
 
 !----------------------------------------------------------------------
 
-use           mpp_mod, only : mpp_error,          &
-                              mpp_pe,             &
-                              mpp_root_pe,        &
-                              FATAL,              &
-                              WARNING,            &
-                              NOTE,               &
-                              stdlog
-use        mpp_io_mod, only : mpp_open,           &
-                              mpp_close,          &
-                              MPP_ASCII,          &
-                              MPP_APPEND,         &
-                              MPP_RDONLY
+use types_mod, only : r8
 use           fms_mod, only : lowercase,          &
-                              write_version_number
+                              write_version_number, error_mesg, &
+                              FATAL, WARNING, NOTE, stdlog
 use field_manager_mod, only : field_manager_init, &
                               get_field_info,     &
                               get_field_methods,  &
@@ -129,8 +119,8 @@ type, private ::  tracer_type
    integer                  :: num_methods, model
    type(method_type)        :: methods(MAX_TRACER_METHOD)
    logical                  :: is_prognostic, is_family, is_combined
-   real, pointer, dimension(:,:,:,:) :: field_tlevels
-   real, pointer, dimension(:,:,:) :: field, field_tendency, weight
+   real(r8), pointer, dimension(:,:,:,:) :: field_tlevels
+   real(r8), pointer, dimension(:,:,:) :: field, field_tendency, weight
 end type tracer_type
 
 type, private ::  tracer_name_type
@@ -231,7 +221,7 @@ call tracer_manager_init
 !     The index for the model type is invalid.
 !   </ERROR>
 if (model .ne. MODEL_ATMOS .and. model .ne. MODEL_LAND .and. &
-    model .ne. MODEL_OCEAN .and. model .ne. MODEL_ICE) call mpp_error(FATAL,'register_tracers : invalid model type')
+    model .ne. MODEL_OCEAN .and. model .ne. MODEL_ICE) call error_mesg('register_tracers', 'invalid model type', FATAL)
 
 
 !   <ERROR MSG="No tracers are available to be registered." STATUS="NOTE">
@@ -239,8 +229,7 @@ if (model .ne. MODEL_ATMOS .and. model .ne. MODEL_LAND .and. &
 !      table does not exist or is empty.
 !   </ERROR>
 if (nfields == 0 ) then
-if (mpp_pe() == mpp_root_pe()) &
-  call mpp_error(NOTE,'register_tracers : No tracers are available to be registered.')
+  call error_mesg('register_tracers', 'No tracers are available to be registered.', NOTE)
 return
 endif
 
@@ -257,7 +246,7 @@ do n=1,nfields
 !   <ERROR MSG="MAX_TRACER_FIELDS exceeded" STATUS="FATAL">
 !     The maximum number of tracer fields has been exceeded.
 !   </ERROR>
-         if(num_tracer_fields > MAX_TRACER_FIELDS) call mpp_error(FATAL,'register_tracers: MAX_TRACER_FIELDS exceeded')
+         if(num_tracer_fields > MAX_TRACER_FIELDS) call error_mesg('register_tracers', 'MAX_TRACER_FIELDS exceeded', FATAL)
          tracers(num_tracer_fields)%model          = model
          tracers(num_tracer_fields)%tracer_name    = name
          tracers(num_tracer_fields)%tracer_units   = 'none'
@@ -313,7 +302,7 @@ do n=1,ntf
 !   <ERROR MSG="There is only 1 tracer for tracer family X. Making an orphan." STATUS="NOTE">
 !     A tracer has been given a family name but that family has only this member. Therefore it should be an orphan.
 !   </ERROR>
-         if (mpp_pe() == mpp_root_pe()) call mpp_error(NOTE,warnmesg)
+         call error_mesg('tracer_manager', warnmesg, NOTE)
          tracers(n)%tracer_family = 'orphan'
          cycle
       else
@@ -328,8 +317,8 @@ do n=1,ntf
 !     The parameter MAX_TRACER_FIELDS needs to be increased.
 !   </ERROR>
             if (num_tracer_fields .gt. MAX_TRACER_FIELDS) &
-                call mpp_error(FATAL,'register_tracers : MAX_TRACER_FIELDS needs to be increased')
-            if (mpp_pe() == mpp_root_pe()) write(*,*) 'defining new tracer family: ',trim(tracers(n)%tracer_family)
+                call error_mesg('register_tracers', 'MAX_TRACER_FIELDS needs to be increased', FATAL)
+            write(*,*) 'defining new tracer family: ',trim(tracers(n)%tracer_family)
             tracers(num_tracer_fields)%is_family = .true.
             tracers(num_tracer_fields)%tracer_name = trim(tracers(n)%tracer_family)
             tracers(num_tracer_fields)%model = tracers(n)%model
@@ -372,13 +361,12 @@ enddo
 
 
 do n=1, num_tracer_fields
-   if(mpp_pe()==mpp_root_pe() .and. TRACER_ARRAY(model,n)> 0 ) &
+   if(TRACER_ARRAY(model,n)> 0 ) &
       call print_tracer_info(TRACER_ARRAY(model,n))
 enddo
 
 
 log_unit = stdlog()
-if ( mpp_pe() == mpp_root_pe() ) then
 !   write (log_unit,'(/,80("="),/(a))') trim(version), trim(tagname)
     select case (model)
       case (MODEL_ATMOS)
@@ -393,7 +381,6 @@ if ( mpp_pe() == mpp_root_pe() ) then
     end select
 
    write (log_unit,15) trim(model_name),total_tracers(model)
-endif
 
 15 format ('Number of tracers in field table for ',A,' model = ',i4)
 
@@ -440,7 +427,7 @@ integer, intent(out), optional :: num_tracers, num_prog, num_diag, num_family
 !   </ERROR>
 if (model .ne. MODEL_ATMOS .and. model .ne. MODEL_LAND .and. &
     model .ne. MODEL_OCEAN .and. model .ne. MODEL_ICE)  &
-    call mpp_error(FATAL,"get_number_tracers : Model number is invalid.")
+    call error_mesg("get_number_tracers", "Model number is invalid.", FATAL)
 
 if (present(num_tracers)) num_tracers = total_tracers(model)
 if (present(num_prog))    num_prog    = prog_tracers(model)
@@ -506,7 +493,7 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="index array size too small in get_tracer_indices" STATUS="Fatal">
 !     The global index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (n > size(ind)) call mpp_error(FATAL,'get_tracer_indices : index array size too small in get_tracer_indices')
+         if (n > size(ind)) call error_mesg('get_tracer_indices', 'index array size too small in get_tracer_indices', FATAL)
          ind(n) = i
       endif
 
@@ -515,7 +502,7 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="family array size too small in get_tracer_indices" STATUS="FATAL">
 !     The family index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (nf > size(fam_ind)) call mpp_error(FATAL,'get_tracer_indices : family array size too small in get_tracer_indices')
+         if (nf > size(fam_ind)) call error_mesg('get_tracer_indices', 'family array size too small in get_tracer_indices', FATAL)
          fam_ind(nf) = i
          cycle
       endif
@@ -525,7 +512,7 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="prognostic array size too small in get_tracer_indices" STATUS="FATAL">
 !     The prognostic index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (np > size(prog_ind)) call mpp_error(FATAL,'get_tracer_indices : prognostic array size too small in get_tracer_indices')
+         if (np > size(prog_ind)) call error_mesg('get_tracer_indices', 'prognostic array size too small in get_tracer_indices', FATAL)
          prog_ind(np) = i
       else if (.not.tracers(j)%is_prognostic .and. .not. tracers(j)%is_family &
              .and.PRESENT(diag_ind)) then
@@ -533,7 +520,7 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="diagnostic array size too small in get_tracer_indices" STATUS="FATAL">
 !     The diagnostic index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (nd > size(diag_ind)) call mpp_error(FATAL,'get_tracer_indices : diagnostic array size too small in get_tracer_indices')
+         if (nd > size(diag_ind)) call error_mesg('get_tracer_indices', 'diagnostic array size too small in get_tracer_indices', FATAL)
          diag_ind(nd) = i
       endif
    endif
@@ -608,7 +595,7 @@ if (present(verbose)) verbose_local=verbose
 
 if (verbose_local) then
 ! <ERROR MSG="tracer with this name not found: X" STATUS="NOTE">
-  if (get_tracer_index == -1 ) call mpp_error(NOTE,'get_tracer_index : tracer with this name not found: '//trim(name))
+  if (get_tracer_index == -1 ) call error_mesg('get_tracer_index', 'tracer with this name not found: '//trim(name), NOTE)
 ! </ERROR>
 endif
    
@@ -639,30 +626,30 @@ end function get_tracer_index
 !     The tracer number that you wish to assign a tracer
 !                  field for.
 !   </IN>
-!   <IN NAME="data" TYPE="real, target, optional" DIM="(:,:,:)" >
+!   <IN NAME="data" TYPE="real(r8), target, optional" DIM="(:,:,:)" >
 !     The 3D field that is associated with the present time 
 !                  step in the component model.
 !   </IN>
-!   <IN NAME="tendency" TYPE="real, target, optional" DIM="(:,:,:)" >
+!   <IN NAME="tendency" TYPE="real(r8), target, optional" DIM="(:,:,:)" >
 !     The 3D field that is associated with the tendency time
 !                  step in the component model.
 !   </IN>
-!   <IN NAME="data_tlevels" TYPE="real, target, optional" DIM="(:,:,:,:)" >
+!   <IN NAME="data_tlevels" TYPE="real(r8), target, optional" DIM="(:,:,:,:)" >
 !     The 4D field that is associated with the tracer field 
 !                  in the component model.
 !   </IN>
 subroutine assign_tracer_field(model,index, data, data_tlevels, tendency)
 
 integer, intent(in)                        :: model, index
-real, intent(in), dimension(:,:,:), target, optional   :: data, tendency
-real, intent(in), dimension(:,:,:,:), target, optional :: data_tlevels
+real(r8), intent(in), dimension(:,:,:), target, optional   :: data, tendency
+real(r8), intent(in), dimension(:,:,:,:), target, optional :: data_tlevels
 
 integer :: check
 
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
 !   </ERROR>
-if (index < 0 .or. index > num_tracer_fields) call mpp_error(FATAL,'assign_tracer_field : invalid index')
+if (index < 0 .or. index > num_tracer_fields) call error_mesg('assign_tracer_field', 'invalid index', FATAL)
 
 if (PRESENT(data)) tracers(TRACER_ARRAY(model,index))%field => data
 if (PRESENT(data_tlevels)) tracers(TRACER_ARRAY(model,index))%field_tlevels => data_tlevels
@@ -678,7 +665,7 @@ if (PRESENT(tendency)) check = check + 1
 !     At least one of data, data_tlevels or tendency must be passed to assign_tracer_field
 !     Otherwise there is not much point in calling this routine.
 !   </ERROR>
-if (check == 0) call mpp_error(FATAL,'assign_tracer_field : At least one of data, data_tlevels or tendency must be passed in here.')
+if (check == 0) call error_mesg('assign_tracer_field', 'At least one of data, data_tlevels or tendency must be passed in here.', FATAL)
 
 return
 end subroutine assign_tracer_field
@@ -704,9 +691,7 @@ subroutine tracer_manager_end
 integer :: log_unit
 
 log_unit = stdlog()
-if ( mpp_pe() == mpp_root_pe() ) then
    write (log_unit,'(/,(a))') 'Exiting tracer_manager, have a nice day ...'
-endif
 
 module_is_initialized = .FALSE.
 
@@ -808,13 +793,13 @@ end subroutine print_tracer_info
 !   <IN NAME="tracer_index" TYPE="integer">
 !     The tracer number within the component model.
 !   </IN>
-!   <OUT NAME="data"  TYPE="real, pointer" DIM="(:,:,:)">
+!   <OUT NAME="data"  TYPE="real(r8), pointer" DIM="(:,:,:)">
 !     The tracer field is returned in this array.
 !   </OUT>
 function get_tracer_field(model, tracer_index) result (data)
 
 integer              :: model, tracer_index
-real, pointer        :: data(:,:,:)
+real(r8), pointer        :: data(:,:,:)
 
 integer :: n
 
@@ -823,7 +808,7 @@ integer :: n
 !          Check the index that is being passed corresponds to a valid
 !          tracer name.
 !   </ERROR>
-if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call mpp_error(FATAL,'get_tracer_field : invalid index ')
+if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call error_mesg('get_tracer_field', 'invalid index ', FATAL)
 !Convert local model index to tracer_manager index
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
@@ -831,13 +816,13 @@ if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call mpp_error(FATAL
 !          tracer name.
 !   </ERROR>
 if (TRACER_ARRAY(model,tracer_index) < 1 .or. TRACER_ARRAY(model,tracer_index) > num_tracer_fields) &
-    call mpp_error(FATAL,'get_tracer_field : invalid index')
+    call error_mesg('get_tracer_field', 'invalid index', FATAL)
 !   <ERROR MSG="tracer field array not allocated" STATUS="FATAL">
 !      The tracer array has not been allocated. This means that a
 !          call to assign_tracer_field is absent in the code.
 !   </ERROR>
 if (.not. associated(tracers(TRACER_ARRAY(model,tracer_index))%field)) &
-    call mpp_error(FATAL,'get_tracer_field : tracer field array not allocated')
+    call error_mesg('get_tracer_field', 'tracer field array not allocated', FATAL)
 data =>  tracers(TRACER_ARRAY(model,tracer_index))%field
 
 end function get_tracer_field
@@ -862,13 +847,13 @@ end function get_tracer_field
 !   <IN NAME="tracer_index" TYPE="integer">
 !     The tracer number within the component model.
 !   </IN>
-!   <OUT NAME="data"  TYPE="real, pointer" DIM="(:,:,:,:)">
+!   <OUT NAME="data"  TYPE="real(r8), pointer" DIM="(:,:,:,:)">
 !     The tracer field is returned in this array.
 !   </OUT>
 function get_tracer_tlevels(model, tracer_index) result (data)
 
 integer  :: model, tracer_index
-real, pointer        :: data(:,:,:,:)
+real(r8), pointer        :: data(:,:,:,:)
 
 integer :: n
 
@@ -877,7 +862,7 @@ integer :: n
 !          Check the index that is being passed corresponds to a valid
 !          tracer name.
 !   </ERROR>
-if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call mpp_error(FATAL,'get_tracer_tlevels : invalid index')
+if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call error_mesg('get_tracer_tlevels', 'invalid index', FATAL)
 !Convert local model index to tracer_manager index
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
@@ -885,13 +870,13 @@ if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call mpp_error(FATAL
 !          tracer name.
 !   </ERROR>
 if (TRACER_ARRAY(model,tracer_index) < 1 .or. TRACER_ARRAY(model,tracer_index) > num_tracer_fields) &
-    call mpp_error(FATAL,'get_tracer_tlevels : invalid index')
+    call error_mesg('get_tracer_tlevels', 'invalid index', FATAL)
 !   <ERROR MSG="tracer field array not allocated" STATUS="FATAL">
 !      The tracer array has not been allocated. This means that a
 !          call to assign_tracer_field is absent in the code.
 !   </ERROR>
 if (.not. associated(tracers(TRACER_ARRAY(model,tracer_index))%field_tlevels)) &
-    call mpp_error(FATAL,'get_tracer_tlevels : tracer field array not allocated')
+    call error_mesg('get_tracer_tlevels', 'tracer field array not allocated', FATAL)
 data =>  tracers(TRACER_ARRAY(model,tracer_index))%field_tlevels
 
 end function get_tracer_tlevels
@@ -916,14 +901,14 @@ end function get_tracer_tlevels
 !   <IN NAME="tracer_index" TYPE="integer">
 !     The tracer number within the component model.
 !   </IN>
-!   <OUT NAME="data"  TYPE="real, pointer" DIM="(:,:,:)">
+!   <OUT NAME="data"  TYPE="real(r8), pointer" DIM="(:,:,:)">
 !     The tracer tendency field is returned in this array.
 !   </OUT>
 function get_tracer_tendency(model, tracer_index) result (data)
 
 integer, intent(in)  :: model
 integer :: tracer_index
-real, pointer        :: data(:,:,:)
+real(r8), pointer        :: data(:,:,:)
 
 integer :: n
 
@@ -932,7 +917,7 @@ integer :: n
 !          Check the index that is being passed corresponds to a valid
 !          tracer name.
 !   </ERROR>
-if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call mpp_error(FATAL,'get_tracer_tendency : invalid index')
+if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call error_mesg('get_tracer_tendency', 'invalid index', FATAL)
 !Convert local model index to tracer_manager index
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
@@ -940,13 +925,13 @@ if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call mpp_error(FATAL
 !          tracer name.
 !   </ERROR>
 if (TRACER_ARRAY(model,tracer_index) < 1 .or. TRACER_ARRAY(model,tracer_index) > num_tracer_fields) &
-    call mpp_error(FATAL,'get_tracer_tendency : invalid index')
+    call error_mesg('get_tracer_tendency', 'invalid index', FATAL)
 !   <ERROR MSG="tracer tendency field array not allocated" STATUS="FATAL">
 !      The tracer array has not been allocated. This means that a
 !          call to assign_tracer_field is absent in the code.
 !   </ERROR>
 if (.not. associated(tracers(TRACER_ARRAY(model,tracer_index))%field_tendency)) &
-    call mpp_error(FATAL,'get_tracer_tendency : tracer tendency field array not allocated')
+    call error_mesg('get_tracer_tendency', 'tracer tendency field array not allocated', FATAL)
 data =>  tracers(TRACER_ARRAY(model,tracer_index))%field_tendency
 
 end function get_tracer_tendency
@@ -988,10 +973,10 @@ integer,          intent(in)  :: model, n
 character (len=*),intent(out) :: name
 character (len=*), intent(out), optional :: longname, units
 
-if (n < 1 .or. n > num_tracer_fields) call mpp_error(FATAL,'get_tracer_names : invalid local tracer index for '//trim(name))
+if (n < 1 .or. n > num_tracer_fields) call error_mesg('get_tracer_names', 'invalid local tracer index for '//trim(name), FATAL)
 !Convert local model index to tracer_manager index
 if (TRACER_ARRAY(model,n) < 1 .or. TRACER_ARRAY(model,n) > num_tracer_fields) &
-    call mpp_error(FATAL,'get_tracer_names : invalid tracer index for '//trim(name))
+    call error_mesg('get_tracer_names', 'invalid tracer index for '//trim(name), FATAL)
 
 name=tracers(TRACER_ARRAY(model,n))%tracer_name
 if (PRESENT(longname)) longname =tracers(TRACER_ARRAY(model,n))%tracer_longname
@@ -1028,7 +1013,7 @@ subroutine get_family_name(model,n,name)
 integer,          intent(in)  :: model, n
 character (len=*),intent(out) :: name
 
-if (n < 1 .or. n > num_tracer_fields) call mpp_error(FATAL,'get_family_name : invalid tracer index')
+if (n < 1 .or. n > num_tracer_fields) call error_mesg('get_family_name', 'invalid tracer index', FATAL)
 !Convert local model index to tracer_manager index
 name=tracers(TRACER_ARRAY(model,n))%tracer_family
 
@@ -1066,7 +1051,7 @@ function check_if_prognostic(model, n)
 integer, intent(in) :: model, n
 logical             :: check_if_prognostic
 
-if (n < 1 .or. n > num_tracer_fields) call mpp_error(FATAL,'check_if_prognostic : invalid tracer index')
+if (n < 1 .or. n > num_tracer_fields) call error_mesg('check_if_prognostic', 'invalid tracer index', FATAL)
 !Convert local model index to tracer_manager index
 
 check_if_prognostic = tracers(TRACER_ARRAY(model,n))%is_prognostic
@@ -1111,7 +1096,7 @@ integer ::n
 
 is_family_member = .false.
 
-if (size(is_family_member) < num_tracer_fields) call mpp_error(FATAL,'find_family_members : array too short')
+if (size(is_family_member) < num_tracer_fields) call error_mesg('find_family_members', 'array too short', FATAL)
 
 do n=1,num_tracer_fields
    if(trim(tracers(TRACER_ARRAY(model,n))%tracer_family) == trim(family_name) .and. &
@@ -1164,8 +1149,8 @@ if (nfam > 0) then
             if (name .ne. diffushoriz)  flag=.FALSE.
          endif
       endif
-      if(.not. flag) call mpp_error     &
-           (FATAL,'check_family_parameters : Family members do not have the same parameters for advection and diffusion')
+      if(.not. flag) call error_mesg     &
+           ('check_family_parameters', 'Family members do not have the same parameters for advection and diffusion', FATAL)
    enddo
 endif
 
@@ -1241,7 +1226,7 @@ if (nfam > 0) then
        do n=1,num_tracer_fields
           if (is_family_member(n)) then
               if (.not.associated(tracers(n)%field)) &
-                  call mpp_error(FATAL,'add_members_to_family : current tracer field not associated')
+                  call error_mesg('add_members_to_family', 'current tracer field not associated', FATAL)
               siz(n,1) = size(tracers(n)%field,1)
               siz(n,2) = size(tracers(n)%field,2)
               siz(n,3) = size(tracers(n)%field,3)
@@ -1263,7 +1248,7 @@ if (nfam > 0) then
        enddo
     else if (associated(tracers(nfam)%field_tlevels)) then
        if (.not.PRESENT(cur).or..not.PRESENT(prev).or..not.PRESENT(next)) then
-           call mpp_error(FATAL,'add_members_to_family : need to specify time level indices to add family members')
+           call error_mesg('add_members_to_family', 'need to specify time level indices to add family members', FATAL)
        endif
        ! pointer array indices start at 1
        min_indx = min(cur,prev,next)
@@ -1274,7 +1259,7 @@ if (nfam > 0) then
        do n=1,num_tracer_fields
           if (is_family_member(n)) then
              if (.not.associated(tracers(n)%field_tlevels)) &
-                 call mpp_error(FATAL,'add_members_to_family : tracer time levels not associated')
+                 call error_mesg('add_members_to_family', 'tracer time levels not associated', FATAL)
              tracers(nfam)%field_tlevels(:,:,:,t0)=tracers(nfam)%field_tlevels(:,:,:,t0)+&
                   tracers(n)%field_tlevels(:,:,:,t0)
              tracers(nfam)%field_tlevels(:,:,:,tm1)=tracers(nfam)%field_tlevels(:,:,:,tm1)+&
@@ -1299,7 +1284,7 @@ if (nfam > 0) then
           endif
        enddo
     else
-       call mpp_error(FATAL,'add_members_to_family : need to associate tracer pointers to use families')
+       call error_mesg('add_members_to_family', 'need to associate tracer pointers to use families', FATAL)
     endif
  endif
 
@@ -1384,7 +1369,7 @@ nfam = TRACER_ARRAY(model,nfam)
 ! tracer is not a family tracer (It may be a member of a family)
 if (tracers(nfam)%tracer_name .ne. tracers(nfam)%tracer_family) return
 
-if (mpp_pe() ==mpp_root_pe() ) write(*,*) 'split',model, trim(family_name),nfam,TRACER_ARRAY(model,nfam)
+write(*,*) 'split',model, trim(family_name),nfam,TRACER_ARRAY(model,nfam)
 
 if (nfam > 0) then 
    call find_family_members(model,family_name,is_family_member)
@@ -1392,14 +1377,14 @@ if (nfam > 0) then
       do n=1,num_tracer_fields
          if (is_family_member(n)) then           
             if (.not. tracers(n)%is_combined) &
-                call mpp_error(FATAL,'split_family_into_members : call to split family into members when fields are not combined')
+                call error_mesg('split_family_into_members', 'call to split family into members when fields are not combined', FATAL)
             tracers(n)%field = tracers(n)%weight*tracers(nfam)%field 
             tracers(n)%is_combined = .false.
          endif
       enddo
    else if (associated(tracers(nfam)%field_tlevels)) then
       if (.not.PRESENT(cur).or..not.PRESENT(prev).or..not.PRESENT(next)) then
-         call mpp_error(FATAL,'split_family_into_members : need to specify time level indices to split family members')
+         call error_mesg('split_family_into_members', 'need to specify time level indices to split family members', FATAL)
       endif
       ! pointer array indices start at 1
       min_indx = min(cur,prev,next)
@@ -1409,13 +1394,13 @@ if (nfam > 0) then
       do n=1,num_tracer_fields
          if (is_family_member(n)) then
             if (.not. tracers(n)%is_combined) &
-                call mpp_error(FATAL,'split_family_into_members : call to split family into members when fields are not combined')
+                call error_mesg('split_family_into_members', 'call to split family into members when fields are not combined', FATAL)
             tracers(n)%field_tlevels(:,:,:,tp1) = tracers(nfam)%field_tlevels(:,:,:,tp1)*tracers(n)%weight(:,:,:)
             tracers(n)%is_combined = .false.
          endif
       enddo
    else
-      call mpp_error(FATAL,'split_family_into_members : need to associate tracer pointers to use families')
+      call error_mesg('split_family_into_members', 'need to associate tracer pointers to use families', FATAL)
    endif
 endif
 
@@ -1465,20 +1450,20 @@ end subroutine split_family_into_members
 !   <IN NAME="n" TYPE="integer">
 !     Tracer number.
 !   </IN>
-!   <OUT NAME="surf_value" TYPE="real">
+!   <OUT NAME="surf_value" TYPE="real(r8)">
 !     The surface value that will be initialized for the tracer
 !   </OUT>
-!   <OUT NAME="multiplier" TYPE="real">
+!   <OUT NAME="multiplier" TYPE="real(r8)">
 !     The vertical multiplier for the tracer
 !                   Level(k-1) = multiplier * Level(k)
 !   </OUT>
 subroutine set_tracer_profile(model, n, surf_value, multiplier)
 
 integer,  intent(in)  :: model, n
-real,     intent(out) :: surf_value, multiplier
+real(r8),     intent(out) :: surf_value, multiplier
 
 integer :: numlevels,m
-real :: top_value, bottom_value
+real(r8) :: top_value, bottom_value
 character(len=80) :: scheme, control,profile_type
 integer :: flag
 
@@ -1501,18 +1486,18 @@ if ( query_method ( 'profile_type',model,n,scheme,control)) then
   if(lowercase(trim(scheme(1:7))).eq.'profile') then
     profile_type                   = 'Profile'
     flag=parse(control,'surface_value',surf_value)
-    if(mpp_pe() == mpp_root_pe()) write(*,*) 'surf ',surf_value, control,flag
+    write(*,*) 'surf ',surf_value, control,flag
     if (surf_value .eq. 0.0) &
-      call mpp_error(FATAL,'set_tracer_profile : Cannot have a zero surface value for an exponential profile')
+      call error_mesg('set_tracer_profile', 'Cannot have a zero surface value for an exponential profile', FATAL)
     select case (tracers(TRACER_ARRAY(model,n))%model)
       case (MODEL_ATMOS)
         flag=parse(control,'top_value',top_value)
-        if(mpp_pe()==mpp_root_pe() .and. flag == 0) &
-           call mpp_error(NOTE,'set_tracer_profile : Parameter top_value needs to be defined for the tracer profile.')
+        if(flag == 0) &
+           call error_mesg('set_tracer_profile', 'Parameter top_value needs to be defined for the tracer profile.', NOTE)
       case (MODEL_OCEAN)
         flag =parse(control,'bottom_value',bottom_value)
-        if(mpp_pe() == mpp_root_pe() .and. flag == 0) &
-           call mpp_error(NOTE,'set_tracer_profile : Parameter bottom_value needs to be defined for the tracer profile.')
+        if(flag == 0) &
+           call error_mesg('set_tracer_profile', 'Parameter bottom_value needs to be defined for the tracer profile.', NOTE)
       case default
     end select
 
@@ -1534,7 +1519,7 @@ if ( query_method ( 'profile_type',model,n,scheme,control)) then
     end select
   endif !scheme.eq.profile
 
-  if (mpp_pe() == mpp_root_pe() ) write(*,700) 'Tracer ',trim(tracers(TRACER_ARRAY(model,n))%tracer_name),    &
+  write(*,700) 'Tracer ',trim(tracers(TRACER_ARRAY(model,n))%tracer_name),    &
                             ' initialized with surface value of ',surf_value, &
                             ' and vertical multiplier of ',multiplier
   700 FORMAT (3A,E12.6,A,F10.6)
@@ -1675,7 +1660,7 @@ function query_combined (model, index)
 integer,intent(in) :: model, index
 logical :: query_combined
 
-if (index < 0 .or. index > num_tracer_fields) call mpp_error(FATAL,'query_combined : invalid tracer index')
+if (index < 0 .or. index > num_tracer_fields) call error_mesg('query_combined', 'invalid tracer index', FATAL)
 
 query_combined = .false.
 if (tracers(TRACER_ARRAY(model,index))%is_combined) query_combined = .true.
@@ -1739,18 +1724,17 @@ program test
 
 use field_manager_mod, only : MODEL_ATMOS, MODEL_OCEAN, field_manager_init
 use tracer_manager_mod
-use mpp_mod, only : mpp_npes, mpp_pe, mpp_root_pe, FATAL, mpp_error, mpp_exit
+use fms_mod, only : error_mesg, FATAL
 use mpp_domains_mod, only : domain2d, mpp_define_domains, cyclic_global_domain, &
                             mpp_get_data_domain, mpp_get_compute_domain, mpp_update_domains, &
                             mpp_get_global_domain
-use mpp_io_mod, only : mpp_io_init, mpp_io_exit
 use diag_manager_mod, only : register_diag_field, send_data, diag_axis_init, diag_manager_init, diag_manager_end
 use time_manager_mod
 
 implicit none
 
 integer, parameter :: nx = 100, ny = 100, nz = 10, ntsteps = 10, delt = 1, two_delt = 2*delt
-real, parameter :: advect_speed = .23
+real(r8), parameter :: advect_speed = .23
 integer :: num_tracer_prog_atmos, num_tracer_diag_atmos, num_tracer_fam_atmos, num_tracers_atmos
 integer :: num_tracer_prog_ocean, num_tracer_diag_ocean, num_tracer_fam_ocean, num_tracers_ocean
 integer :: i, axes(3)
@@ -1758,13 +1742,13 @@ integer, allocatable, dimension(:) :: atmos_prog_ind, atmos_diag_ind, atmos_fam_
 integer, allocatable, dimension(:) :: atmos_diag_tracer_diagnostic_id
 integer, allocatable, dimension(:) :: ocean_prog_ind, ocean_diag_ind, ocean_fam_ind
 
-real, allocatable, dimension(:,:,:,:,:), target :: atmos_tracers, ocean_tracers, atmos_fam_tracers
-real, allocatable, dimension(:,:,:,:), target :: atmos_diag_tracers, ocean_diag_tracers
-real, allocatable, dimension(:,:,:), target :: atmos_tendency, ocean_tendency  
-real, allocatable, dimension(:,:,:,:) :: atmos_vel, ocean_vel
+real(r8), allocatable, dimension(:,:,:,:,:), target :: atmos_tracers, ocean_tracers, atmos_fam_tracers
+real(r8), allocatable, dimension(:,:,:,:), target :: atmos_diag_tracers, ocean_diag_tracers
+real(r8), allocatable, dimension(:,:,:), target :: atmos_tendency, ocean_tendency  
+real(r8), allocatable, dimension(:,:,:,:) :: atmos_vel, ocean_vel
 
-real ::  missing_value = -1.e10
-real, dimension(max(nx,ny,nz)) :: data
+real(r8) ::  missing_value = -1.e10
+real(r8), dimension(max(nx,ny,nz)) :: data
 logical :: result, flag
 
 type(time_type) :: model_time
@@ -1779,9 +1763,8 @@ type(domain2d) :: domain ! just using a single domain type for all tracers here 
 character(len=128) :: name, longname, units, scheme_name, control, family_name
 integer :: halo, ndivs, isc, iec, jsc, jec, isd, ied, jsd, jed, tau, taum1, taup1, tmp, n, m, order, mm
 integer :: co2_index, color_index, temp_index,k,nfields
-real :: surf_value,multiplier
+real(r8) :: surf_value,multiplier
 
-call mpp_io_init
 call set_calendar_type(JULIAN)
 call diag_manager_init
 
@@ -1804,7 +1787,7 @@ do i=1,max(nx,ny,nz)
    data(i) = float(i)
 enddo
 
-ndivs = mpp_npes()
+ndivs = 1
 
 
 if (num_tracer_prog_atmos > 0) then
@@ -1813,7 +1796,7 @@ if (num_tracer_prog_atmos > 0) then
    call get_tracer_indices(MODEL_ATMOS,prog_ind=atmos_prog_ind)
    co2_index = get_tracer_index(MODEL_ATMOS,'co2',atmos_prog_ind)
    temp_index = get_tracer_index(MODEL_ATMOS,'temp',atmos_prog_ind)
-   if (co2_index /= -1 .and. mpp_pe() == mpp_root_pe()) write(*,'(a)') 'co2 exists in tracer table '
+   if (co2_index /= -1 )) write(*,'(a)') 'co2 exists in tracer table '
    halo=1 ! default halo size for 2nd order advection
    do n=1,num_tracer_prog_atmos
       flag =  query_method ('advection_scheme_horiz',MODEL_ATMOS,atmos_prog_ind(n),name)
@@ -1831,7 +1814,7 @@ if (num_tracer_prog_atmos > 0) then
    allocate(atmos_vel(isd:ied,jsd:jed,nz,2))
    atmos_vel=advect_speed
    do i=1, num_tracer_prog_atmos
-      if (mpp_pe() == mpp_root_pe()) write(*,'(a,i3,a)') 'Assigning tracer index ',atmos_prog_ind(i),' field to target array' 
+      write(*,'(a,i3,a)') 'Assigning tracer index ',atmos_prog_ind(i),' field to target array' 
       call get_tracer_names(MODEL_ATMOS,atmos_prog_ind(i),name,longname,units)
       atmos_prog_tracer_diagnostic_id(i) =  register_diag_field('tracers', trim(name),axes(1:3),model_time,&
                                 trim(longname), trim(units), missing_value)      
@@ -1874,7 +1857,7 @@ do m=1,num_tracer_prog_atmos
 if(query_method ( 'profile_type',MODEL_ATMOS,atmos_prog_ind(m),longname,units)) then
        call get_tracer_names(MODEL_ATMOS,atmos_prog_ind(m),name,longname,units)
        call set_tracer_profile(MODEL_ATMOS,atmos_prog_ind(m),surf_value,multiplier)
-if (mpp_pe()==mpp_root_pe()) write(*,'(2E12.4,i)') surf_value,multiplier,m
+write(*,'(2E12.4,i)') surf_value,multiplier,m
        atmos_tracers(:,:,:,m,tau) = surf_value
 
 !  select case (size(atmos_tracers,5))
@@ -1916,7 +1899,7 @@ do n=1,ntsteps
          case ('4th_order')
             order = 4
          case default
-            call mpp_error(FATAL,'invalid tracer advection scheme')
+            call error_mesg('tracer manager', 'invalid tracer advection scheme', FATAL)
       end select
       endif
       call lateral_advection(order, atmos_tendency(:,:,:),tracer_now = atmos_fam_tracers(:,:,:,m,tau),&
@@ -1944,7 +1927,7 @@ do n=1,ntsteps
          case ('4th_order')
             order = 4
          case default
-            call mpp_error(FATAL,'invalid tracer advection scheme')
+            call error_mesg('tracer_manager', 'invalid tracer advection scheme', FATAL)
          end select
          endif
          call lateral_advection(order, atmos_tendency(:,:,:),tracer_now = atmos_tracers(:,:,:,m,tau),&
@@ -1971,8 +1954,6 @@ do n=1,ntsteps
 enddo
 
 
-call mpp_io_exit
-call mpp_exit
 
 
 contains 
@@ -1980,14 +1961,14 @@ contains
   subroutine lateral_advection(order, tendency, tracer_now, vel_now, tracer_prev, vel_prev, tracer_next, vel_next)
 
     integer, intent(in) :: order
-    real, intent(inout), dimension(:,:,:) :: tendency, tracer_now
-    real, intent(in), dimension(:,:,:,:) :: vel_now
-    real, intent(in), dimension(:,:,:), optional :: tracer_prev, tracer_next
-    real, intent(in), dimension(:,:,:,:), optional :: vel_prev, vel_next
+    real(r8), intent(inout), dimension(:,:,:) :: tendency, tracer_now
+    real(r8), intent(in), dimension(:,:,:,:) :: vel_now
+    real(r8), intent(in), dimension(:,:,:), optional :: tracer_prev, tracer_next
+    real(r8), intent(in), dimension(:,:,:,:), optional :: vel_prev, vel_next
 
     integer :: ni, nj, nk, i, j, k
-    real :: a,b
-    real, allocatable, dimension(:) :: fe, fn, fw, fs
+    real(r8) :: a,b
+    real(r8), allocatable, dimension(:) :: fe, fn, fw, fs
 
     a=7.0/12.0;b=-1.0/12.0
     ni=size(tendency,1);nj=size(tendency,2);nk=size(tendency,3)
@@ -2016,7 +1997,7 @@ contains
           enddo
        enddo
     case default
-       call mpp_error(FATAL,'invalid advection scheme')
+       call error_mesg('Tracer manager','invalid advection scheme', FATAL)
     end select
 
     deallocate(fe, fw, fn, fs)
@@ -2026,12 +2007,12 @@ contains
 
   subroutine init_tracer(tracer, param, domain)
 
-    real, intent(out), dimension(:,:,:) :: tracer
-    real, intent(in)                    :: param
+    real(r8), intent(out), dimension(:,:,:) :: tracer
+    real(r8), intent(in)                    :: param
     type(domain2d), intent(in)          :: domain
 
     integer :: ni, nj, nk, i, j, isg, ieg, jsg, jeg, isc, iec, jsc, jec
-    real :: xscale, yscale
+    real(r8) :: xscale, yscale
     
     call mpp_get_global_domain(domain, xbegin=isg, xend=ieg, ybegin=jsg, yend=jeg, xsize=ni, ysize=nj)
     call mpp_get_compute_domain(domain,isc, iec, jsc, jec)
@@ -2050,8 +2031,8 @@ contains
 
   subroutine calculate_color(temp,color)
 
-    real, dimension(:,:,:), intent(in) :: temp
-    real, dimension(:,:,:), intent(out) :: color
+    real(r8), dimension(:,:,:), intent(in) :: temp
+    real(r8), dimension(:,:,:), intent(out) :: color
 
     color(:,:,:) = 0.5*temp(:,:,:)
 

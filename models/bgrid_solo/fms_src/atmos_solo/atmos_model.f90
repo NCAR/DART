@@ -48,7 +48,7 @@ use          fms_mod, only: file_exist, check_nml_error,                &
 use       mpp_io_mod, only: mpp_open, mpp_close, MPP_ASCII, MPP_OVERWR, &
                             MPP_SEQUENTIAL, MPP_SINGLE, MPP_DELETE
 
-use diag_manager_mod, only: diag_manager_init, diag_manager_end, get_base_date
+!!!use diag_manager_mod, only: diag_manager_init, diag_manager_end, get_base_date
 
 use  field_manager_mod, only: MODEL_ATMOS
 use tracer_manager_mod, only: register_tracers
@@ -196,17 +196,17 @@ contains
 !-----------------------------------------------------------------------
 !------ initialize diagnostics manager ------
 
-    call diag_manager_init
+    !!!call diag_manager_init
 
 !----- always override initial/base date with diag_manager value -----
 
-    call get_base_date ( date_init(1), date_init(2), date_init(3), &
-                         date_init(4), date_init(5), date_init(6)  )
+    !!!call get_base_date ( date_init(1), date_init(2), date_init(3), &
+    !!!                     date_init(4), date_init(5), date_init(6)  )
 
-    if ( date_init(1)+date_init(2) /= 0 ) then
-         call error_mesg ('program atmos_model', 'invalid base base - &
-                          &must have year = month = 0', FATAL)
-    endif
+    !!!if ( date_init(1)+date_init(2) /= 0 ) then
+    !!!     call error_mesg ('program atmos_model', 'invalid base base - &
+    !!!                      &must have year = month = 0', FATAL)
+    !!!endif
 
 !----- set initial and current time types ------
 !----- set run length and compute ending time -----

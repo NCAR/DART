@@ -50,13 +50,13 @@ module bgrid_prog_var_mod
 !
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use      bgrid_horiz_mod, only: horiz_grid_type
 use       bgrid_vert_mod, only: vert_grid_type
 use       bgrid_halo_mod, only: update_halo, TEMP, UWND, VWND
 use bgrid_cold_start_mod, only: cold_start_resol, cold_start
-use              fms_mod, only: file_exist, open_restart_file, mpp_error, &
-                                FATAL, close_file, mpp_pe, mpp_root_pe,   &
-                                set_domain, read_data, write_data,        &
+use              fms_mod, only: file_exist, open_restart_file, error_mesg, &
+                                FATAL, close_file,  &
                                 write_version_number
 use    field_manager_mod, only: MODEL_ATMOS
 use   tracer_manager_mod, only: get_tracer_names, set_tracer_profile
@@ -73,11 +73,11 @@ public :: open_prog_var_file, read_prog_var, write_prog_var
 type prog_var_type
      integer       :: nlon, nlat, nlev, ntrace
      integer       :: ilb, iub, jlb, jub, klb, kub
-     real, pointer :: ps(:,:), pssl(:,:)
-     real, pointer :: u(:,:,:), v(:,:,:), t(:,:,:), r(:,:,:,:)
+     real(r8), pointer :: ps(:,:), pssl(:,:)
+     real(r8), pointer :: u(:,:,:), v(:,:,:), t(:,:,:), r(:,:,:,:)
 end type prog_var_type
 
-! overloaded interface for initializing real model arrays
+! overloaded interface for initializing real(r8) model arrays
 interface var_init
     module procedure var_init_type_4d, var_init_bound_4d, &
                      var_init_type_3d, var_init_bound_3d, &
@@ -152,11 +152,11 @@ contains
  end subroutine prog_var_init
 
 !#######################################################################
-!##### overloaded functions that allocate a single real variable #######
+!##### overloaded functions that allocate a single real(r8) variable #######
 !#######################################################################
 !
 !      variables must be declard as pointers
-!      real, pointer :: field(:,:,:)
+!      real(r8), pointer :: field(:,:,:)
 !      field => var_init (Hgrid,nlev)
 !
 !#######################################################################
@@ -164,7 +164,7 @@ contains
  function var_init_bound_2d (ilb, iub, jlb, jub) result (var)
 
   integer, intent(in)           :: ilb, iub, jlb, jub
-  real, dimension(:,:), pointer :: var
+  real(r8), dimension(:,:), pointer :: var
 
     allocate ( var (ilb:iub, jlb:jub) )
     var = 0.0
@@ -176,7 +176,7 @@ contains
  function var_init_type_2d (Hgrid) result (var)
 
   type(horiz_grid_type), intent(in) :: Hgrid
-  real, dimension(:,:), pointer     :: var
+  real(r8), dimension(:,:), pointer     :: var
 
     var => var_init_bound_2d (Hgrid % ilb, Hgrid % iub, &
                               Hgrid % jlb, Hgrid % jub)
@@ -188,7 +188,7 @@ contains
  function var_init_bound_3d (ilb, iub, jlb, jub, kdim) result (var)
 
   integer, intent(in)             :: ilb, iub, jlb, jub, kdim
-  real, dimension(:,:,:), pointer :: var
+  real(r8), dimension(:,:,:), pointer :: var
 
     allocate ( var (ilb:iub, jlb:jub, 1:kdim) )
     var = 0.0
@@ -201,7 +201,7 @@ contains
 
   type(horiz_grid_type), intent(in) :: Hgrid
   integer, intent(in)               :: kdim
-  real, dimension(:,:,:), pointer   :: var
+  real(r8), dimension(:,:,:), pointer   :: var
 
     var => var_init_bound_3d (Hgrid % ilb, Hgrid % iub, &
                               Hgrid % jlb, Hgrid % jub, kdim)
@@ -213,7 +213,7 @@ contains
  function var_init_bound_4d (ilb, iub, jlb, jub, kdim, ntrace) result (var)
 
   integer, intent(in)               :: ilb, iub, jlb, jub, kdim, ntrace
-  real, dimension(:,:,:,:), pointer :: var
+  real(r8), dimension(:,:,:,:), pointer :: var
 
     allocate ( var (ilb:iub, jlb:jub, 1:kdim, 1:ntrace) )
     var = 0.0
@@ -226,7 +226,7 @@ contains
 
   type(horiz_grid_type), intent(in)   :: Hgrid
   integer, intent(in)                 :: kdim, ntrace
-  real, dimension(:,:,:,:), pointer   :: var
+  real(r8), dimension(:,:,:,:), pointer   :: var
 
     var => var_init_bound_4d (Hgrid % ilb, Hgrid % iub, &
                               Hgrid % jlb, Hgrid % jub, kdim, ntrace)
@@ -240,7 +240,7 @@ contains
  subroutine prog_var_equals_scalar (Var, scalar)
 
   type(prog_var_type), intent(inout) :: Var
-  real               , intent(in)    :: scalar
+  real(r8)               , intent(in)    :: scalar
 
      Var % u    = scalar
      Var % v    = scalar
@@ -257,7 +257,7 @@ contains
  subroutine prog_var_times_scalar (Var, scalar)
 
   type(prog_var_type), intent(inout) :: Var
-  real               , intent(in)    :: scalar
+  real(r8)               , intent(in)    :: scalar
 
      Var % u    = Var % u    * scalar
      Var % v    = Var % v    * scalar
@@ -275,7 +275,7 @@ contains
 
  subroutine prog_var_time_diff (dt, Var_dt, Var, nt)
 
-  real,                intent(in)    :: dt
+  real(r8),                intent(in)    :: dt
   type(prog_var_type), intent(inout) :: Var_dt, Var
   integer, optional,   intent(in)    :: nt
 
@@ -347,7 +347,9 @@ subroutine open_prog_var_file (ix, jx, kx)
 
 ! extract version number
   ic = index(control,'restart format ')
-  if (ic == 0) call mpp_error ('bgrid_prog_var_mod', &
+  !!!if (ic == 0) call mpp_error ('bgrid_prog_var_mod', &
+    !!!           'problem extracting restart version number', FATAL)
+  if (ic == 0) call error_mesg ('bgrid_prog_var_mod', &
                'problem extracting restart version number', FATAL)
   avers = control(ic+15:ic+16)
   read (avers,'(i2.2)') vers
@@ -377,7 +379,9 @@ subroutine open_prog_var_file (ix, jx, kx)
          read  (unit_in) ix, jx, kx
          read_pssl = .true.
     case default
-       call mpp_error ('bgrid_prog_var_mod', &
+       !call mpp_error ('bgrid_prog_var_mod', &
+       !                'cannot not read restart version '//avers, FATAL)
+       call error_mesg ('bgrid_prog_var_mod', &
                        'cannot not read restart version '//avers, FATAL)
   end select
 
@@ -389,13 +393,13 @@ subroutine read_prog_var (Hgrid, Var, eta, peta, fis, res)
 
  type(horiz_grid_type), intent(inout) :: Hgrid
  type  (prog_var_type), intent(inout) :: Var
- real, intent(out), dimension(:)      :: eta, peta
- real, intent(out), dimension(Hgrid%ilb:Hgrid%iub, &
+ real(r8), intent(out), dimension(:)      :: eta, peta
+ real(r8), intent(out), dimension(Hgrid%ilb:Hgrid%iub, &
                               Hgrid%jlb:Hgrid%jub) :: fis, res
  integer :: n, unit
  integer :: isd,ied,vsd,ved
  character(len=64) :: tr_name
- real :: tr_surf, tr_mult
+ real(r8) :: tr_surf, tr_mult
 
   if ( .not.file_exist('INPUT/'//trim(res_file_name)) ) then
 
@@ -420,26 +424,31 @@ subroutine read_prog_var (Hgrid, Var, eta, peta, fis, res)
 
      ! initialize domain for temperature grid 
      ! read surf pres, topog, and more
-       call set_domain ( Hgrid%Tmp%Domain )
+       !!! call set_domain ( Hgrid%Tmp%Domain )
 
-       call read_data ( unit_in, Var%ps  )
+write(*, *) 'in read prog_var'
+write(*, *) 'Read prog_var calls to read_data are not supported in'
+write(*, *) 'this non-mpi version of the bgrid model'
+write(*, *) 'MOdify as appropriate'
+if (1 == 1) stop
+       !!!call read_data ( unit_in, Var%ps  )
        if (read_pssl) &
-       call read_data ( unit_in, Var%pssl)
-       call read_data ( unit_in,     res )
-       call read_data ( unit_in,     fis )
+       !!!call read_data ( unit_in, Var%pssl)
+       !!!call read_data ( unit_in,     res )
+       !!!call read_data ( unit_in,     fis )
      
      ! initialize domain for velocity grid 
      ! read u and v wind components
-       call set_domain ( Hgrid%Vel%Domain )
+       !!!call set_domain ( Hgrid%Vel%Domain )
 
      ! pass velocity fields on data domain
-       call read_data ( unit_in, Var%u(isd:ied,vsd:ved,:) )
-       call read_data ( unit_in, Var%v(isd:ied,vsd:ved,:) )
+       !!!call read_data ( unit_in, Var%u(isd:ied,vsd:ved,:) )
+       !!!call read_data ( unit_in, Var%v(isd:ied,vsd:ved,:) )
 
      ! re-initialize domain for temperature grid 
      ! read temperature and tracers
-       call set_domain ( Hgrid%Tmp%Domain )
-       call read_data ( unit_in, Var%t )
+       !!! call set_domain ( Hgrid%Tmp%Domain )
+       !!!call read_data ( unit_in, Var%t )
 
      ! done reading B-grid dynamics restart
        call close_file (unit_in)
@@ -451,7 +460,7 @@ subroutine read_prog_var (Hgrid, Var, eta, peta, fis, res)
      call get_tracer_names ( MODEL_ATMOS, n, tr_name )
      if (file_exist('INPUT/tracer_'//trim(tr_name)//'.res')) then
          unit = open_restart_file( 'INPUT/tracer_'//trim(tr_name)//'.res', 'read' )
-         call read_data ( unit, Var%r(:,:,:,n) )
+         !!!call read_data ( unit, Var%r(:,:,:,n) )
          call close_file (unit)
      else
        ! initialize new tracers (apply surface value only)
@@ -485,7 +494,7 @@ end subroutine read_prog_var
  type  (prog_var_type), intent(in) :: Var
  type(horiz_grid_type), intent(in) :: Hgrid
  type (vert_grid_type), intent(in) :: Vgrid
-   real, intent(in), dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8), intent(in), dimension(Hgrid%ilb:Hgrid%iub, &
                                Hgrid%jlb:Hgrid%jub) :: fis, res
 
  integer :: n, unit
@@ -495,14 +504,13 @@ end subroutine read_prog_var
 !-----------------------------------------------------------------------
 ! open output restart file
 
+
   unit = open_restart_file ( 'RESTART/'//trim(res_file_name), 'write' )
 
 ! write non-distributed data from root pe
-  if ( mpp_pe() == mpp_root_pe() ) then
        write (unit)  restart_format
        write (unit)  Hgrid%nlon, Hgrid%nlat, Vgrid%nlev
        write (unit)  Vgrid%eta, Vgrid%peta ! vertical coordinate info
-  endif
 
 ! must pass fields to write_data on data domain
 ! mass fields are on data domain
@@ -512,23 +520,29 @@ end subroutine read_prog_var
   vsd = Hgrid%Vel%jsd;  ved = Hgrid%Vel%jed
 
 ! initialize domain for temperature grid (save surf pres, topog)
-  call set_domain ( Hgrid%Tmp%Domain )
+  !!! call set_domain ( Hgrid%Tmp%Domain )
 
-  call write_data ( unit, Var%ps  )
-  call write_data ( unit, Var%pssl)
-  call write_data ( unit,     res )
-  call write_data ( unit,     fis )
+write(*, *) 'write_prog_var in bgrid_prog_var is not supported '
+write(*, *) 'in this non-mpi bgrid version. Need to modify the'
+write(*, *) 'calls to write_data in fms_io'
+if (1 == 1) stop
+
+
+!  call write_data ( unit, Var%ps  )
+!  call write_data ( unit, Var%pssl)
+!  call write_data ( unit,     res )
+!  call write_data ( unit,     fis )
 
 ! initialize domain for velocity grid (save u and v components)
-  call set_domain ( Hgrid%Vel%Domain )
+  !!! call set_domain ( Hgrid%Vel%Domain )
 
 ! pass velocity fields on data domain
-  call write_data ( unit, Var%u(isd:ied,vsd:ved,:) )
-  call write_data ( unit, Var%v(isd:ied,vsd:ved,:) )
+!  call write_data ( unit, Var%u(isd:ied,vsd:ved,:) )
+!  call write_data ( unit, Var%v(isd:ied,vsd:ved,:) )
 
 ! re-initialize domain for temperature grid (save temp and tracers)
-  call set_domain ( Hgrid%Tmp%Domain )
-  call write_data ( unit, Var%t   )
+  !!! call set_domain ( Hgrid%Tmp%Domain )
+!  call write_data ( unit, Var%t   )
 
 ! done writing B-grid dynamics restart
   call close_file (unit)
@@ -537,7 +551,7 @@ end subroutine read_prog_var
   do n = 1, Var%ntrace
      call get_tracer_names ( MODEL_ATMOS, n, rname )
      unit = open_restart_file( 'RESTART/tracer_'//trim(rname)//'.res', 'write' )
-     call write_data ( unit, Var%r(:,:,:,n) )
+!     call write_data ( unit, Var%r(:,:,:,n) )
      call close_file (unit)
   enddo
 

@@ -27,6 +27,7 @@ module vert_advection_mod
 
 !-------------------------------------------------------------------------------
 
+use types_mod, only : r8
 use fms_mod, only: error_mesg, FATAL
 
 implicit none
@@ -47,10 +48,10 @@ contains
 
  subroutine vert_advection_3d ( dt, w, dz, r, rdt, mask, scheme, form )
 
- real, intent(in)                    :: dt
- real, intent(in),  dimension(:,:,:) :: w, dz, r
- real, intent(out), dimension(:,:,:) :: rdt
- real,    intent(in), optional :: mask(:,:,:)
+ real(r8), intent(in)                    :: dt
+ real(r8), intent(in),  dimension(:,:,:) :: w, dz, r
+ real(r8), intent(out), dimension(:,:,:) :: rdt
+ real(r8),    intent(in), optional :: mask(:,:,:)
  integer, intent(in), optional :: scheme, form
 
 ! INPUT
@@ -79,10 +80,10 @@ contains
 ! NOTE
 !   size(w,3) == size(dz,3)+1 == size(r,3)+1 == size(rdt,3)+1 == size(mask,3)+1
 
- real, dimension(size(r,1),size(r,2),size(r,3)) :: slp
- real, dimension(size(w,1),size(w,2),size(w,3)) :: flux, rst
- real    :: c1, c2
- real    :: small = 1.e-6
+ real(r8), dimension(size(r,1),size(r,2),size(r,3)) :: slp
+ real(r8), dimension(size(w,1),size(w,2),size(w,3)) :: flux, rst
+ real(r8)    :: c1, c2
+ real(r8)    :: small = 1.e-6
  integer :: k, ks, ke
  integer :: diff_scheme, eqn_form
 
@@ -174,11 +175,11 @@ contains
 !-------------------------------------------------------------------------------
 
  subroutine slope_z ( r, dz, slope )
- real, intent(in),  dimension(:,:,:) :: r, dz
- real, intent(out), dimension(:,:,:) :: slope
+ real(r8), intent(in),  dimension(:,:,:) :: r, dz
+ real(r8), intent(out), dimension(:,:,:) :: slope
 
- real    :: grad(size(r,1),size(r,2),2:size(r,3))
- real    :: rmin, rmax
+ real(r8)    :: grad(size(r,1),size(r,2),2:size(r,3))
+ real(r8)    :: rmin, rmax
  integer :: i, j, k, n
 
   n = size(r,3)
@@ -207,7 +208,7 @@ contains
       rmin = min(r(i,j,k-1), r(i,j,k))
       rmax = max(r(i,j,k-1), r(i,j,k))
     endif
-    slope(i,j,k) = sign(1.,slope(i,j,k)) *  &
+    slope(i,j,k) = sign(1.0_r8,slope(i,j,k)) *  &
              min( abs(slope(i,j,k)), 2.*(r(i,j,k)-rmin), 2.*(rmax-r(i,j,k)) )
   enddo
   enddo
@@ -220,14 +221,14 @@ contains
 
  subroutine vert_advection_1d ( dt, w, dz, r, rdt, mask, scheme, form )
  
- real, intent(in)                :: dt
- real, intent(in),  dimension(:) :: w, dz, r
- real, intent(out), dimension(:) :: rdt
- real,    intent(in), optional :: mask(:)
+ real(r8), intent(in)                :: dt
+ real(r8), intent(in),  dimension(:) :: w, dz, r
+ real(r8), intent(out), dimension(:) :: rdt
+ real(r8),    intent(in), optional :: mask(:)
  integer, intent(in), optional :: scheme, form
 
- real, dimension(1,1,size(r,1)) :: dz3, r3, rdt3, mask3
- real, dimension(1,1,size(w,1)) :: w3
+ real(r8), dimension(1,1,size(r,1)) :: dz3, r3, rdt3, mask3
+ real(r8), dimension(1,1,size(w,1)) :: w3
 
   ! input
     w3 (1,1,:) = w
@@ -250,14 +251,14 @@ contains
 
  subroutine vert_advection_2d ( dt, w, dz, r, rdt, mask, scheme, form )
 
- real, intent(in)                  :: dt
- real, intent(in),  dimension(:,:) :: w, dz, r
- real, intent(out), dimension(:,:) :: rdt
- real,    intent(in), optional :: mask(:,:)
+ real(r8), intent(in)                  :: dt
+ real(r8), intent(in),  dimension(:,:) :: w, dz, r
+ real(r8), intent(out), dimension(:,:) :: rdt
+ real(r8),    intent(in), optional :: mask(:,:)
  integer, intent(in), optional :: scheme, form
 
- real, dimension(size(r,1),1,size(r,2)) :: dz3, r3, rdt3, mask3
- real, dimension(size(w,1),1,size(w,2)) :: w3
+ real(r8), dimension(size(r,1),1,size(r,2)) :: dz3, r3, rdt3, mask3
+ real(r8), dimension(size(w,1),1,size(w,2)) :: w3
 
   ! input
     w3 (:,1,:) = w

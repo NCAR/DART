@@ -47,15 +47,13 @@ module atmos_radon_mod
 ! </DESCRIPTION>
 
 !-----------------------------------------------------------------------
-
+use types_mod, only : r8
 use              fms_mod, only : file_exist, &
                                  write_version_number, &
-                                 mpp_pe, &
-                                 mpp_root_pe, &
                                  stdlog
 use     time_manager_mod, only : time_type
-use     diag_manager_mod, only : send_data,            &
-                                 register_static_field
+!use     diag_manager_mod, only : send_data,            &
+!                                 register_static_field
 use   tracer_manager_mod, only : get_tracer_index
 use    field_manager_mod, only : MODEL_ATMOS
 use atmos_tracer_utilities_mod, only : wet_deposition,       &
@@ -114,19 +112,19 @@ contains
 !call atmos_radon_sourcesink (lon, lat, land, pwt, radon, radon_dt, 
 !                              Time, kbot)
 !</TEMPLATE>
-!   <IN NAME="lon" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lon" TYPE="real(r8)" DIM="(:,:)">
 !     Longitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="lat" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lat" TYPE="real(r8)" DIM="(:,:)">
 !     Latitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="land" TYPE="real" DIM="(:,:)">
+!   <IN NAME="land" TYPE="real(r8)" DIM="(:,:)">
 !     Land/sea mask.
 !   </IN>
-!   <IN NAME="pwt" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="pwt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The pressure weighting array. = dP/grav
 !   </IN>
-!   <IN NAME="radon" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="radon" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the radon mixing ratio.
 !   </IN>
 !   <IN NAME="Time" TYPE="type(time_type)">
@@ -136,24 +134,24 @@ contains
 !     Integer array describing which model layer intercepts the surface.
 !   </IN>
 
-!   <OUT NAME="radon_dt" TYPE="real" DIM="(:,:,:)">
+!   <OUT NAME="radon_dt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the tendency of the radon mixing ratio.
 !   </OUT>
  subroutine atmos_radon_sourcesink (lon, lat, land, pwt, radon, radon_dt,  &
                               Time, kbot)
 
 !-----------------------------------------------------------------------
-   real, intent(in),  dimension(:,:)   :: lon, lat
-   real, intent(in),  dimension(:,:)   :: land
-   real, intent(in),  dimension(:,:,:) :: pwt, radon
-   real, intent(out), dimension(:,:,:) :: radon_dt
+   real(r8), intent(in),  dimension(:,:)   :: lon, lat
+   real(r8), intent(in),  dimension(:,:)   :: land
+   real(r8), intent(in),  dimension(:,:,:) :: pwt, radon
+   real(r8), intent(out), dimension(:,:,:) :: radon_dt
      type(time_type), intent(in) :: Time     
 integer, intent(in),  dimension(:,:), optional :: kbot
 !-----------------------------------------------------------------------
-   real, dimension(size(radon,1),size(radon,2),size(radon,3)) ::  &
+   real(r8), dimension(size(radon,1),size(radon,2),size(radon,3)) ::  &
          source, sink
 logical, dimension(size(radon,1),size(radon,2)) ::  maskeq,masknh
-   real  radon_flux, dtr, deg60, deg70, deg300, deg336
+   real(r8)  radon_flux, dtr, deg60, deg70, deg300, deg336
 integer  i,j,kb,id,jd,kd,lat1
 !-----------------------------------------------------------------------
 
@@ -235,10 +233,10 @@ integer  i,j,kb,id,jd,kd,lat1
 !<TEMPLATE>
 !call radon_init (r, mask, axes, Time)
 !</TEMPLATE>
-!   <INOUT NAME="r" TYPE="real" DIM="(:,:,:,:)">
+!   <INOUT NAME="r" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     Tracer fields dimensioned as (nlon,nlat,nlev,ntrace). 
 !   </INOUT>
-!   <IN NAME="mask" TYPE="real, optional" DIM="(:,:,:)">
+!   <IN NAME="mask" TYPE="real(r8), optional" DIM="(:,:,:)">
 !      optional mask (0. or 1.) that designates which grid points
 !           are above (=1.) or below (=0.) the ground dimensioned as
 !           (nlon,nlat,nlev).
@@ -260,10 +258,10 @@ integer  i,j,kb,id,jd,kd,lat1
 !          (nlon,nlat,nlev).
 !
 !-----------------------------------------------------------------------
-real,             intent(inout), dimension(:,:,:,:) :: r
+real(r8),             intent(inout), dimension(:,:,:,:) :: r
 type(time_type),  intent(in)                        :: Time
 integer,          intent(in)                        :: axes(4)
-real, intent(in), dimension(:,:,:), optional        :: mask
+real(r8), intent(in), dimension(:,:,:), optional        :: mask
 
 logical :: flag
 integer :: n
@@ -284,8 +282,8 @@ integer :: n
        n = get_tracer_index(MODEL_ATMOS,'radon')
        if (n>0) then
          nradon=n
-         if (nradon > 0 .and. mpp_pe() == mpp_root_pe()) write (*,30) 'Radon',nradon
-         if (nradon > 0 .and. mpp_pe() == mpp_root_pe()) write (stdlog(),30) 'Radon',nradon
+         if (nradon > 0 ) write (*,30) 'Radon',nradon
+         if (nradon > 0 ) write (stdlog(),30) 'Radon',nradon
        endif
 
 
@@ -293,9 +291,9 @@ integer :: n
 !
 
 ! Register a static field for the emissions of your tracer
-     id_emiss = register_static_field ( 'tracers',                    &
-                     'rnemiss', axes(1:2),       &
-                     'rnemiss', 'g/m2/s')
+!     id_emiss = register_static_field ( 'tracers',                    &
+!                    'rnemiss', axes(1:2),       &
+!                     'rnemiss', 'g/m2/s')
 
       module_is_initialized = .TRUE.
 

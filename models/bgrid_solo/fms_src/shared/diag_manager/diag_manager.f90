@@ -88,9 +88,9 @@ use  diag_output_mod, only: diag_fieldtype, diag_output_init, write_axis_meta_da
 implicit none
 private
 
-public  diag_manager_init, send_data, diag_manager_end,  &
-        register_diag_field, register_static_field, &
-        diag_axis_init, get_base_time, get_base_date, need_data
+!public  diag_manager_init, send_data, diag_manager_end,  &
+!        register_diag_field, register_static_field, &
+!        diag_axis_init, get_base_time, get_base_date, need_data
 
 ! Specify storage limits for fixed size tables used for pointers, etc.
 integer, parameter :: max_fields_per_file = 150

@@ -48,7 +48,8 @@ module axis_utils_mod
   !</DESCRIPTION>
   !
 
-  use mpp_io_mod
+  use mpp_io_mod, only : default_axis, default_att, atttype, axistype, mpp_get_atts, &
+     mpp_modify_meta, mpp_get_axis_data
   use mpp_mod, only : mpp_error, FATAL, stdout
   use fms_mod, only : lowercase, string_array_index  
 

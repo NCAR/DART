@@ -37,7 +37,7 @@ module topography_mod
 ! </OVERVIEW>
 
 ! <DESCRIPTION>
-!   This module generates realistic mountains and land-water masks
+!   This module generates real(r8)istic mountains and land-water masks
 !   on a specified latitude-longitude grid by interpolating from the
 !   1/6 degree Navy mean topography and percent water data sets.
 !   The fields that can be generated are mean and standard deviation
@@ -50,12 +50,14 @@ module topography_mod
 !   The interfaces get_gaussian_topog and gaussian_topog_init are documented in <LINK SRC="gaussian_topog.html">gaussian_topog_mod</LINK>.
 ! </DESCRIPTION>
 
+use types_mod, only : r8
 use gaussian_topog_mod, only: gaussian_topog_init, get_gaussian_topog
 use   horiz_interp_mod, only: horiz_interp
 
-use            fms_mod, only: file_exist, check_nml_error,               &
+use utilities_mod, only : check_nml_error
+use            fms_mod, only: file_exist,               &
                               open_namelist_file, close_file, stdlog,    &
-                              mpp_pe, mpp_root_pe, write_version_number, &
+                              write_version_number, &
                               open_ieee32_file, error_mesg, FATAL
 
 implicit none
@@ -103,10 +105,10 @@ public :: topography_init,                 &
 !                  in the horizontal grid.  For the 1/6 degree
 !                  data sets this is 2160 x 1080. [integer]
 !     blon, blat = The longitude and latitude grid box boundaries in degrees.
-!                     [real :: blon(nlon+1), blat(nlat+1)]
+!                     [real(r8) :: blon(nlon+1), blat(nlat+1)]
 !
 !     data       = The topography or percent water data.
-!                    [real :: data(nlon,nlat)]
+!                    [real(r8) :: data(nlon,nlat)]
 ! </PRE>
 ! </DATASET>
   integer :: unit
@@ -143,10 +145,10 @@ public :: topography_init,                 &
 ! <FUNCTION NAME="get_topog_mean">
 
 !   <OVERVIEW>
-!     Returns a "realistic" mean surface height field. 
+!     Returns a "real(r8)istic" mean surface height field. 
 !   </OVERVIEW>
 !   <DESCRIPTION>
-!     Returns realistic mountains on a latitude-longtude grid.
+!     Returns real(r8)istic mountains on a latitude-longtude grid.
 !     The returned field is the mean topography for the given grid boxes.
 !     Computed using a conserving area-weighted interpolation.
 !     The current input data set is the 1/6 degree Navy mean topography.
@@ -155,13 +157,13 @@ public :: topography_init,                 &
 !     flag = <B>get_topog_mean</B> ( blon, blat, zmean )
 !   </TEMPLATE>
 
-!   <IN NAME="blon" TYPE="real" DIM="(:)">
+!   <IN NAME="blon" TYPE="real(r8)" DIM="(:)">
 !     The longitude (in radians) at grid box boundaries.
 !   </IN>
-!   <IN NAME="blat" TYPE="real" DIM="(:)">
+!   <IN NAME="blat" TYPE="real(r8)" DIM="(:)">
 !     The latitude (in radians) at grid box boundaries.
 !   </IN>
-!   <OUT NAME="zmean" UNIT=" meter" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="zmean" UNIT=" meter" TYPE="real(r8)" DIM="(:,:)">
 !     The mean surface height (meters).
 !     The size of this field must be size(blon)-1 by size(blat)-1.
 !   </OUT>
@@ -177,8 +179,8 @@ public :: topography_init,                 &
 
  function get_topog_mean (blon, blat, zmean)
 
-   real, intent(in),  dimension(:)   :: blon, blat
-   real, intent(out), dimension(:,:) :: zmean
+   real(r8), intent(in),  dimension(:)   :: blon, blat
+   real(r8), intent(out), dimension(:,:) :: zmean
    logical :: get_topog_mean
 
 !-----------------------------------------------------------------------
@@ -216,13 +218,13 @@ public :: topography_init,                 &
 !   <TEMPLATE>
 !     flag = <B>get_topog_stdev</B> ( blon, blat, stdev )
 !   </TEMPLATE>
-!   <IN NAME="blon" TYPE="real" DIM="(:)">
+!   <IN NAME="blon" TYPE="real(r8)" DIM="(:)">
 !     The longitude (in radians) at grid box boundaries.
 !   </IN>
-!   <IN NAME="blat" TYPE="real" DIM="(:)">
+!   <IN NAME="blat" TYPE="real(r8)" DIM="(:)">
 !     The latitude (in radians) at grid box boundaries.
 !   </IN>
-!   <OUT NAME="stdev" UNITS="meter" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="stdev" UNITS="meter" TYPE="real(r8)" DIM="(:,:)">
 !     The standard deviation of surface height (in meters) within
 !     given input model grid boxes.
 !     The size of this field must be size(blon)-1 by size(blat)-1.
@@ -235,11 +237,11 @@ public :: topography_init,                 &
 
  function get_topog_stdev (blon, blat, stdev)
 
-   real, intent(in),  dimension(:)   :: blon, blat
-   real, intent(out), dimension(:,:) :: stdev
+   real(r8), intent(in),  dimension(:)   :: blon, blat
+   real(r8), intent(out), dimension(:,:) :: stdev
    logical :: get_topog_stdev
 
-   real :: zsurf (size(stdev,1),size(stdev,2))
+   real(r8) :: zsurf (size(stdev,1),size(stdev,2))
 !-----------------------------------------------------------------------
    if (.not. module_is_initialized) call topography_init()
 
@@ -273,13 +275,13 @@ public :: topography_init,                 &
 !     flag = <B>get_ocean_frac</B> ( blon, blat, ocean_frac )
 !   </TEMPLATE>
 
-!   <IN NAME="blon" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blon" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The longitude (in radians) at grid box boundaries.
 !   </IN>
-!   <IN NAME="blat" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blat" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The latitude (in radians) at grid box boundaries.
 !   </IN>
-!   <OUT NAME="ocean_frac" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="ocean_frac" TYPE="real(r8)" DIM="(:,:)">
 !     The fractional amount (0 to 1) of ocean in a grid box.
 !     The size of this field must be size(blon)-1 by size(blat)-1.
 !   </OUT>
@@ -291,8 +293,8 @@ public :: topography_init,                 &
 
  function get_ocean_frac (blon, blat, ocean_frac)
 
- real, intent(in),  dimension(:)   :: blon, blat
- real, intent(out), dimension(:,:) :: ocean_frac
+ real(r8), intent(in),  dimension(:)   :: blon, blat
+ real(r8), intent(out), dimension(:,:) :: ocean_frac
  logical :: get_ocean_frac
 
 !-----------------------------------------------------------------------
@@ -327,13 +329,13 @@ public :: topography_init,                 &
 !     flag = <B>get_ocean_mask</B> ( blon, blat, ocean_mask )
 !   </TEMPLATE>
 
-!   <IN NAME="blon" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blon" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The longitude (in radians) at grid box boundaries.
 !   </IN>
-!   <IN NAME="blat" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blat" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The latitude (in radians) at grid box boundaries.
 !   </IN>
-!   <OUT NAME="ocean_frac" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="ocean_frac" TYPE="real(r8)" DIM="(:,:)">
 !     The fractional amount (0 to 1) of ocean in a grid box.
 !     The size of this field must be size(blon)-1 by size(blat)-1.
 !   </OUT>
@@ -345,11 +347,11 @@ public :: topography_init,                 &
 
  function get_ocean_mask (blon, blat, ocean_mask)
 
- real   , intent(in),  dimension(:)   :: blon, blat
+ real(r8)   , intent(in),  dimension(:)   :: blon, blat
  logical, intent(out), dimension(:,:) :: ocean_mask
  logical :: get_ocean_mask
 
- real, dimension(size(ocean_mask,1),size(ocean_mask,2)) :: ocean_frac
+ real(r8), dimension(size(ocean_mask,1),size(ocean_mask,2)) :: ocean_frac
 !-----------------------------------------------------------------------
    if (.not. module_is_initialized) call topography_init()
 
@@ -382,13 +384,13 @@ public :: topography_init,                 &
 !     flag = <B>get_water_frac</B> ( blon, blat, water_frac )
 !   </TEMPLATE>
 
-!   <IN NAME="blon" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blon" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The longitude (in radians) at grid box boundaries.
 !   </IN>
-!   <IN NAME="blat" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blat" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The latitude (in radians) at grid box boundaries.
 !   </IN>
-!   <OUT NAME="water_frac" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="water_frac" TYPE="real(r8)" DIM="(:,:)">
 !     The fractional amount (0 to 1) of water in a grid box.
 !     The size of this field must be size(blon)-1 by size(blat)-1.
 !   </OUT>
@@ -403,8 +405,8 @@ public :: topography_init,                 &
 
  function get_water_frac (blon, blat, water_frac)
 
- real, intent(in),  dimension(:)   :: blon, blat
- real, intent(out), dimension(:,:) :: water_frac
+ real(r8), intent(in),  dimension(:)   :: blon, blat
+ real(r8), intent(out), dimension(:,:) :: water_frac
  logical :: get_water_frac
 
 !-----------------------------------------------------------------------
@@ -439,13 +441,13 @@ public :: topography_init,                 &
 !     flag = <B>get_water_mask</B> ( blon, blat, water_mask )
 !   </TEMPLATE>
 
-!   <IN NAME="blon" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blon" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The longitude (in radians) at grid box boundaries.
 !   </IN>
-!   <IN NAME="blat" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="blat" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The latitude (in radians) at grid box boundaries.
 !   </IN>
-!   <OUT NAME="water_mask" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="water_mask" TYPE="real(r8)" DIM="(:,:)">
 !     A binary mask for water (true) or land (false).
 !     The size of this field must be size(blon)-1 by size(blat)-1.
 !   </OUT>
@@ -457,11 +459,11 @@ public :: topography_init,                 &
 
  function get_water_mask (blon, blat, water_mask)
 
- real   , intent(in),  dimension(:)   :: blon, blat
+ real(r8)   , intent(in),  dimension(:)   :: blon, blat
  logical, intent(out), dimension(:,:) :: water_mask
  logical :: get_water_mask
 
- real, dimension(size(water_mask,1),size(water_mask,2)) :: water_frac
+ real(r8), dimension(size(water_mask,1),size(water_mask,2)) :: water_frac
 !-----------------------------------------------------------------------
    if (.not. module_is_initialized) call topography_init()
 
@@ -502,13 +504,13 @@ public :: topography_init,                 &
 !#######################################################################
 
  subroutine interp_topog ( blon, blat, zout, flag )
- real   , intent(in)  :: blon(:), blat(:)
- real   , intent(out) :: zout(:,:)
+ real(r8)   , intent(in)  :: blon(:), blat(:)
+ real(r8)   , intent(out) :: zout(:,:)
  integer, intent(in), optional :: flag
 
- real :: xdat(ipts+1), ydat(jpts+1)
- real :: zdat(ipts,jpts)
- real :: zout2(size(zout,1),size(zout,2))
+ real(r8) :: xdat(ipts+1), ydat(jpts+1)
+ real(r8) :: zdat(ipts,jpts)
+ real(r8) :: zout2(size(zout,1),size(zout,2))
 
 ! note: ipts,jpts,unit are global
 
@@ -537,11 +539,11 @@ public :: topography_init,                 &
 !#######################################################################
 
  subroutine interp_water ( blon, blat, zout, do_ocean )
- real   , intent(in)  :: blon(:), blat(:)
- real   , intent(out) :: zout(:,:)
+ real(r8)   , intent(in)  :: blon(:), blat(:)
+ real(r8)   , intent(out) :: zout(:,:)
  logical, intent(in), optional :: do_ocean
 
- real :: xdat(ipts+1), ydat(jpts+1), zdat(ipts,jpts)
+ real(r8) :: xdat(ipts+1), ydat(jpts+1), zdat(ipts,jpts)
 
 ! note: ipts,jpts,unit are global
 
@@ -562,11 +564,11 @@ public :: topography_init,                 &
 !#######################################################################
 
  subroutine determine_ocean_points ( pctwater )
- real, intent(inout) :: pctwater(:,:)
+ real(r8), intent(inout) :: pctwater(:,:)
  logical :: ocean(size(pctwater,1),size(pctwater,2))
  integer :: i, j, m, n, im, ip, jm, jp, new 
 
- real :: ocean_pct_crit = .500
+ real(r8) :: ocean_pct_crit = .500
 
   ! resolution of the grid
     m = size(pctwater,1)
@@ -620,7 +622,7 @@ public :: topography_init,                 &
 subroutine read_namelist
 
    integer :: unit, ierr, io
-   real    :: dtr, ght
+   real(r8)    :: dtr, ght
 
 !  read namelist
 
@@ -635,7 +637,7 @@ subroutine read_namelist
 
 !  write version and namelist to log file
 
-   if (mpp_pe() == mpp_root_pe()) write (stdlog(), nml=topography_nml)
+    write (stdlog(), nml=topography_nml)
 
 end subroutine read_namelist
 
@@ -665,27 +667,27 @@ end module topography_mod
 !  implicit none
 !  
 !  integer, parameter :: nlon=24, nlat=18
-!  real :: x(nlon), y(nlat), xb(nlon+1), yb(nlat+1), z(nlon,nlat)
-!  real :: hpi, rtd
+!  real(r8) :: x(nlon), y(nlat), xb(nlon+1), yb(nlat+1), z(nlon,nlat)
+!  real(r8) :: hpi, rtd
 !  integer :: i,j
 !  logical :: a
 !  
 !  ! gaussian mountain parameters
-!  real, parameter :: ht=4000.
-!  real, parameter :: x0=90., y0=45. ! origin in degrees
-!  real, parameter :: xw=15., yw=15. ! half-width in degees
-!  real, parameter :: xr=30., yr= 0. ! ridge-width in degrees
+!  real(r8), parameter :: ht=4000.
+!  real(r8), parameter :: x0=90., y0=45. ! origin in degrees
+!  real(r8), parameter :: xw=15., yw=15. ! half-width in degees
+!  real(r8), parameter :: xr=30., yr= 0. ! ridge-width in degrees
 !  
 !  ! create lat/lon grid in radians
 !    hpi = acos(0.0)
 !    rtd = 90./hpi ! rad to deg
 !    do i=1,nlon
-!      xb(i) = 4.*hpi*real(i-1)/real(nlon)
+!      xb(i) = 4.*hpi*real(r8)(i-1)/real(nlon)
 !    enddo
 !      xb(nlon+1) = xb(1)+4.*hpi
 !      yb(1) = -hpi
 !    do j=2,nlat
-!      yb(j) = yb(j-1) + 2.*hpi/real(nlat)
+!      yb(j) = yb(j-1) + 2.*hpi/real(r8)(nlat)
 !    enddo
 !      yb(nlat+1) = hpi
 !  ! mid-point of grid boxes

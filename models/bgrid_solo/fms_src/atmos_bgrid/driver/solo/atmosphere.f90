@@ -31,7 +31,7 @@ module atmosphere_mod
 !
 !-----------------------------------------------------------------------
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
-
+use types_mod, only : r8
 use bgrid_core_driver_mod, only: bgrid_dynam_type,       &
                                  bgrid_core_driver_init, &
                                  bgrid_core_driver,      &
@@ -47,12 +47,12 @@ use      bgrid_horiz_mod, only: get_horiz_grid_size,        &
 
 use     time_manager_mod, only: time_type, get_time, operator(+)
 
+use utilities_mod, only : check_nml_error
 use              fms_mod, only: file_exist, open_namelist_file, &
                                 error_mesg, FATAL,              &
-                                check_nml_error, stdlog,        &
+                                stdlog,        &
                                 write_version_number,           &
-                                mpp_pe, mpp_root_pe,            &
-                                close_file, set_domain
+                                close_file
 
 ! routines used by subroutine bgrid_physics
 use bgrid_change_grid_mod, only: vel_to_mass, mass_to_vel
@@ -99,8 +99,8 @@ type (bgrid_dynam_type) :: Dynam
 type    (prog_var_type) :: Var, Var_dt
 type        (time_type) :: Time_step_atmos
 
-real                               :: dt_atmos
-real,    dimension(:,:,:), pointer :: omega
+real(r8)                               :: dt_atmos
+real(r8),    dimension(:,:,:), pointer :: omega
 integer, dimension(4)              :: atmos_axes
 
 !-----------------------------------------------------------------------
@@ -159,13 +159,13 @@ contains
 !----- write version and namelist to log file -----
 
     call write_version_number ( version, tag )
-    if ( mpp_pe() == mpp_root_pe() ) write (stdlog(), nml=atmosphere_nml)
+    write (stdlog(), nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 
    Time_step_atmos = Time_step
    call get_time (Time_step_atmos, sec)
-   dt_atmos = real(sec)
+   dt_atmos = sec
 
 !----- initialize dynamical core -----
 
@@ -220,7 +220,7 @@ contains
 
  subroutine atmosphere_boundary (blon, blat, global)
 
-    real,    intent(out)          :: blon(:), blat(:)
+    real(r8),    intent(out)          :: blon(:), blat(:)
     logical, intent(in), optional :: global
 
 !----- return the longitudinal and latitudinal grid box edges ----------
@@ -257,7 +257,7 @@ subroutine bgrid_physics ( window, dt_phys, Time, Hgrid, Vgrid, &
 !
 !-----------------------------------------------------------------------
   integer, intent(in)                :: window(2)
-  real,    intent(in)                :: dt_phys
+  real(r8),    intent(in)                :: dt_phys
        type(time_type),intent(in)    :: Time
 type (horiz_grid_type),intent(inout) :: Hgrid
 type  (vert_grid_type),intent(in)    :: Vgrid
@@ -270,15 +270,15 @@ type   (prog_var_type),intent(inout) :: Var_dt
   integer :: ix, jx, idim, jdim
 !-----------------------------------------------------------------------
 
-   real, dimension(window(1),window(2),Vgrid%nlev) :: p_full, u_dt, v_dt
+   real(r8), dimension(window(1),window(2),Vgrid%nlev) :: p_full, u_dt, v_dt
 
-   real, dimension(window(1),window(2),Vgrid%nlev+1) :: p_half
+   real(r8), dimension(window(1),window(2),Vgrid%nlev+1) :: p_half
 
-   real, dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub, &
                    Hgrid%jlb:Hgrid%jub, &
                    Vgrid%nlev) :: uh, vh, uh_dt, vh_dt
 
-   real, dimension(window(1),window(2)) :: pssl_new
+   real(r8), dimension(window(1),window(2)) :: pssl_new
 !-----------------------------------------------------------------------
 !---------------------------- do physics -------------------------------
 

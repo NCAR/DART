@@ -34,6 +34,7 @@ module bgrid_sponge_mod
 !
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
  use bgrid_horiz_mod,       only: horiz_grid_type
  use bgrid_masks_mod,       only: grid_mask_type
  use bgrid_prog_var_mod,    only: prog_var_type
@@ -42,14 +43,14 @@ module bgrid_sponge_mod
                                   TEMP, UWND, VWND, &
                                   NORTH, EAST, NOPOLE
 
- use         fms_mod, only: error_mesg, FATAL, write_version_number, &
-                            mpp_npes
+ use         fms_mod, only: error_mesg, FATAL, write_version_number
+                            
 
- use mpp_domains_mod, only: domain2d, mpp_redistribute, &
-                            mpp_define_domains,         &
-                            mpp_get_global_domain,      &
-                            mpp_get_data_domain,        &
-                            CYCLIC_GLOBAL_DOMAIN
+! use mpp_domains_mod, only: domain2d, mpp_redistribute, &
+!                            mpp_define_domains,         &
+!                            mpp_get_global_domain,      &
+!                            mpp_get_data_domain,        &
+!                            CYCLIC_GLOBAL_DOMAIN
 
  implicit none
  private
@@ -58,27 +59,27 @@ module bgrid_sponge_mod
 
 !-----------------------------------------------------------------------
 
- real, parameter ::  daypsec=1./86400.
+ real(r8), parameter ::  daypsec=1./86400.
  logical :: do_init=.true.
 
  logical :: do_topsponge
  integer :: nlev_sponge
- real    :: dfactr   ! coeff for damping eddies at the top level
+ real(r8)    :: dfactr   ! coeff for damping eddies at the top level
 
 
  character(len=128) :: version='$Id$'
  character(len=128) :: tagname='$Name$'
  logical :: do_log = .true.
 
- real :: small = .000001
+ real(r8) :: small = .000001
 
- real :: coeff_vel, coeff_tmp, coeff_trs
- real :: xaxis_wt
+ real(r8) :: coeff_vel, coeff_tmp, coeff_trs
+ real(r8) :: xaxis_wt
  integer :: numlev
 
 !--- module storage for computing exact/reproducible zonal means ---
   type zsum_type
-     type(domain2d) :: Domain
+     !!!type(domain2d) :: Domain
      integer        :: isize, jsize
   end type
   type(zsum_type) :: Zdomain_tmp, Zdomain_vel
@@ -94,13 +95,13 @@ contains
 !-----------------------------------------------------------------------
  type (horiz_grid_type), intent(inout) :: Hgrid
  integer,                intent(in)    :: nplev
- real,                   intent(in)    :: dt
- real,                   intent(in)    :: dpde(Hgrid%ilb:,Hgrid%jlb:,:)
+ real(r8),                   intent(in)    :: dt
+ real(r8),                   intent(in)    :: dpde(Hgrid%ilb:,Hgrid%jlb:,:)
  type  (prog_var_type),  intent(in)    :: Var
  type  (prog_var_type),  intent(inout) :: Var_dt
 !-----------------------------------------------------------------------
 
- real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,numlev) :: dpxy
+ real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,numlev) :: dpxy
  integer :: n, np, nt
 
 !-----------------------------------------------------------------------
@@ -122,7 +123,11 @@ contains
 !---- temperature and tracers -----
 
    if ( coeff_tmp > small .or. coeff_trs > small ) then
-       if (first) call zsum_init ( Hgrid%Tmp%Domain, Zdomain_tmp )
+       if (first) then
+          Zdomain_tmp%isize = Hgrid%Tmp%ie - Hgrid%Tmp%is + 1
+          Zdomain_tmp%jsize = Hgrid%Tmp%je - Hgrid%Tmp%js + 1
+       endif
+       !!!if (first) call zsum_init ( Hgrid%Tmp%Domain, Zdomain_tmp )
        nt = Var_dt%ntrace
        call local_filter_mass ( Hgrid, np, coeff_tmp, coeff_trs, dt,       &
                 dpde(:,:,1:n), Var   %t(:,:,1:n), Var   %r(:,:,1:n,1:nt),  &
@@ -132,7 +137,11 @@ contains
 !---- momentum components -----
 
    if ( coeff_vel > small ) then
-        if (first) call zsum_init ( Hgrid%Vel%Domain, Zdomain_vel )
+        if (first) then
+          Zdomain_vel%isize = Hgrid%Vel%ie - Hgrid%Vel%is + 1
+          Zdomain_vel%jsize = Hgrid%Vel%je - Hgrid%Vel%js + 1
+        endif
+        !!!if (first) call zsum_init ( Hgrid%Vel%Domain, Zdomain_vel )
       ! compute pressure weights at velocity points
         dpxy(:,:,:) = dpde(:,:,1:n)
         if (np < n) then
@@ -155,14 +164,14 @@ contains
 
  subroutine sponge_init ( damp_vel, damp_tmp, damp_trs, nlev, xwt )
 
-   real,    intent(in), optional :: damp_vel, damp_tmp, damp_trs, xwt
+   real(r8),    intent(in), optional :: damp_vel, damp_tmp, damp_trs, xwt
    integer, intent(in), optional :: nlev
 
 !
 !   damp_vel, damp_tmp, damp_trs =
 !         normalized (0.,1.) damping coefficients for
 !         momentum, temperature, and tracers
-!         [real, default = 0.]
+!         [real(r8), default = 0.]
 !
 !   nlev   = number of levels at the top of the model where
 !            damping is performed
@@ -170,7 +179,7 @@ contains
 !
 !   xwt    = weight (0.,1.) applied to the x-axis
 !            the y-axis will have a weight = 1.-xwt
-!               [real, default = .50]
+!               [real(r8), default = .50]
 !
 
 !-----------------------------------------------------------------------
@@ -182,12 +191,12 @@ contains
 
 ! set values for optional arguments
 
-   coeff_vel = 0.; if (present(damp_vel)) coeff_vel = min(max(damp_vel,0.),1.)
-   coeff_tmp = 0.; if (present(damp_tmp)) coeff_tmp = min(max(damp_tmp,0.),1.)
-   coeff_trs = 0.; if (present(damp_trs)) coeff_trs = min(max(damp_trs,0.),1.)
+   coeff_vel = 0.; if (present(damp_vel)) coeff_vel = min(max(damp_vel,0.0_r8),1.0_r8)
+   coeff_tmp = 0.; if (present(damp_tmp)) coeff_tmp = min(max(damp_tmp,0.0_r8),1.0_r8)
+   coeff_trs = 0.; if (present(damp_trs)) coeff_trs = min(max(damp_trs,0.0_r8),1.0_r8)
 
    numlev   = 0;   if (present(nlev)) numlev   = max(nlev,0)
-   xaxis_wt = .50; if (present(xwt))  xaxis_wt = min(max(xwt,0.),1.)
+   xaxis_wt = .50; if (present(xwt))  xaxis_wt = min(max(xwt,0.0_r8),1.0_r8)
 
 !  do not allow more than one sponge layer
    if (numlev > 1) call error_mesg ('bgrid_sponge_mod',  &
@@ -206,16 +215,16 @@ contains
 
    type (horiz_grid_type), intent(inout) :: Hgrid
    integer, intent(in)                   :: nplev
-   real,    intent(in)                   :: coeff_tmp, coeff_trs, dt
-   real,    intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dp, t
-   real,    intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: tdt
-   real,    intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: tr
-   real,    intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: trdt
+   real(r8),    intent(in)                   :: coeff_tmp, coeff_trs, dt
+   real(r8),    intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dp, t
+   real(r8),    intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: tdt
+   real(r8),    intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: tr
+   real(r8),    intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: trdt
 
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,size(t,3)) :: tmp, akew, akns, akdp, ztmp
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: akew2, akns2, tew, tns
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,size(t,3)) :: tmp, akew, akns, akdp, ztmp
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: akew2, akns2, tew, tns
    integer :: i, j, k, is, ie, js, je, jsd, jed, n
-   real    :: xwt, ywt
+   real(r8)    :: xwt, ywt
 
    is  = Hgrid%Tmp%is;   ie  = Hgrid%Tmp%ie
    js  = Hgrid%Tmp%js;   je  = Hgrid%Tmp%je
@@ -254,8 +263,8 @@ contains
    if ( coeff_tmp > small ) then
       tmp = t + dt*tdt
     !!!!! remove zonal mean !!!!!
-      call zsum (Hgrid%Tmp%Domain, Zdomain_tmp, tmp(:,jsd:jed,:), ztmp(:,jsd:jed,:))
-      tmp(is:ie,js:je,:) = tmp(is:ie,js:je,:) -ztmp(is:ie,js:je,:)/real(Hgrid%nlon)
+      call zsum (Zdomain_tmp, tmp(:,jsd:jed,:), ztmp(:,jsd:jed,:))
+      tmp(is:ie,js:je,:) = tmp(is:ie,js:je,:) -ztmp(is:ie,js:je,:)/(1.0 * Hgrid%nlon)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       call update_halo ( Hgrid, TEMP, tmp )
       do k = 1, size(t,3)
@@ -280,8 +289,8 @@ contains
       do n = 1, size(tr,4)
          tmp = tr(:,:,:,n) + dt*trdt(:,:,:,n)
        !!!!! remove zonal mean !!!!!
-         call zsum (Hgrid%Tmp%Domain, Zdomain_tmp, tmp(:,jsd:jed,:), ztmp(:,jsd:jed,:))
-         tmp(is:ie,js:je,:) = tmp(is:ie,js:je,:) -ztmp(is:ie,js:je,:)/real(Hgrid%nlon)
+         call zsum (Zdomain_tmp, tmp(:,jsd:jed,:), ztmp(:,jsd:jed,:))
+         tmp(is:ie,js:je,:) = tmp(is:ie,js:je,:) -ztmp(is:ie,js:je,:)/(1.0 * Hgrid%nlon)
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          call update_halo ( Hgrid, TEMP, tmp )
          do k = 1, size(tr,3)
@@ -309,14 +318,14 @@ contains
 
    type (horiz_grid_type), intent(inout) :: Hgrid
    integer, intent(in)                   :: nplev
-   real,    intent(in)                   :: coeff, dt
-   real,    intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dp, u, v
-   real,    intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: udt, vdt
+   real(r8),    intent(in)                   :: coeff, dt
+   real(r8),    intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dp, u, v
+   real(r8),    intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: udt, vdt
 
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,size(u,3)) :: akew, akns, akdp, uu, vv, ztmp
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) ::  akew2, akns2, uew, vew, uns, vns
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,size(u,3)) :: akew, akns, akdp, uu, vv, ztmp
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) ::  akew2, akns2, uew, vew, uns, vns
    integer :: i, j, k, is, ie, js, je, jsd, jed
-   real    :: xwt, ywt
+   real(r8)    :: xwt, ywt
 
    is  = Hgrid%Tmp%is;   ie  = Hgrid%Tmp%ie
    js  = Hgrid%Vel%js;   je  = Hgrid%Vel%je
@@ -352,8 +361,8 @@ contains
    uu = u + dt*udt
    vv = v + dt*vdt
  !!!!! remove zonal mean from u comp !!!!!
-   call zsum (Hgrid%Vel%Domain, Zdomain_vel, uu(:,jsd:jed,:), ztmp(:,jsd:jed,:))
-   uu(is:ie,js:je,:) = uu(is:ie,js:je,:) -ztmp(is:ie,js:je,:)/real(Hgrid%nlon)
+   call zsum (Zdomain_vel, uu(:,jsd:jed,:), ztmp(:,jsd:jed,:))
+   uu(is:ie,js:je,:) = uu(is:ie,js:je,:) -ztmp(is:ie,js:je,:)/(1.0 * Hgrid%nlon)
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    call update_halo ( Hgrid, UWND, uu )
    call update_halo ( Hgrid, VWND, vv )
@@ -384,44 +393,46 @@ contains
 !#######################################################################
 ! initializes domain2d type for summation in zonal direction
 
- subroutine zsum_init ( Domain, Zonal )
- type(domain2d),  intent(in)   :: Domain
- type(zsum_type), intent(out)  :: Zonal
- integer :: isg, ieg, jsg, jeg, layout(2)
+! subroutine zsum_init ( Domain, Zonal )
+! type(domain2d),  intent(in)   :: Domain
+! type(zsum_type), intent(out)  :: Zonal
+! integer :: isg, ieg, jsg, jeg, layout(2)
 
 ! create new domian2d type with 1d zonal decomposition
-  call mpp_get_global_domain  ( Domain, isg, ieg, jsg, jeg )
-  layout = (/1,mpp_npes()/)
+!  call mpp_get_global_domain  ( Domain, isg, ieg, jsg, jeg )
+!  layout = (/1,mpp_npes()/)
 
 ! error check
-  if (jeg-jsg+1 < mpp_npes()) call error_mesg ('bgrid_sponge_mod', 'number &
-     &of global latitude rows is less than the number of processors', FATAL)
+!  if (jeg-jsg+1 < mpp_npes()) call error_mesg ('bgrid_sponge_mod', 'number &
+!     &of global latitude rows is less than the number of processors', FATAL)
+!
+!  call mpp_define_domains ( (/isg,ieg,jsg,jeg/), layout, Zonal%Domain, &
+!                            xflags=CYCLIC_GLOBAL_DOMAIN )
+!  call mpp_get_data_domain ( Zonal%Domain, xsize=Zonal%isize, ysize=Zonal%jsize )
 
-  call mpp_define_domains ( (/isg,ieg,jsg,jeg/), layout, Zonal%Domain, &
-                            xflags=CYCLIC_GLOBAL_DOMAIN )
-  call mpp_get_data_domain ( Zonal%Domain, xsize=Zonal%isize, ysize=Zonal%jsize )
-
- end subroutine zsum_init
+! end subroutine zsum_init
 
 !#######################################################################
 
- subroutine zsum ( Domain, Zonal, array, zarray )
- type(domain2d),  intent(in)   :: Domain
+ subroutine zsum (Zonal, array, zarray )
  type(zsum_type), intent(in)   :: Zonal
- real,            intent(in)  ::   array(:,:,:)
- real,            intent(out) ::  zarray(:,:,:)
- real, dimension(Zonal%isize,Zonal%jsize,size(array,3)) :: zdat
- real    :: c    
+ real(r8),            intent(in)  ::   array(:,:,:)
+ real(r8),            intent(out) ::  zarray(:,:,:)
+ real(r8), dimension(Zonal%isize,Zonal%jsize,size(array,3)) :: zdat
+ real(r8)    :: c    
  integer :: j, k
 
-   call mpp_redistribute ( Domain, array, Zonal%Domain, zdat )
+!!!   call mpp_redistribute ( Domain, array, Zonal%Domain, zdat )
+zdat(:, :, :) = array(2:Zonal%isize + 1, 2:Zonal%jsize + 1, :)
+
    do k = 1, size(array,3)
    do j = 1, Zonal%jsize
      c = sum(zdat(:,j,k))
      zdat(:,j,k) = c
    enddo
    enddo
-   call mpp_redistribute ( Zonal%Domain, zdat, Domain, zarray )
+!!!   call mpp_redistribute ( Zonal%Domain, zdat, Domain, zarray )
+zarray(2:Zonal%isize +1, 2:Zonal%jsize +1, :) = zdat(:, :, :)
 
  end subroutine zsum
 

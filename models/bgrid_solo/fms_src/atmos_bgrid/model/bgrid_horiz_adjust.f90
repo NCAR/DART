@@ -27,6 +27,7 @@ module bgrid_horiz_adjust_mod
 
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_horiz_mod      , only: horiz_grid_type
 use bgrid_vert_mod       , only: vert_grid_type, compute_pres_depth, &
                                  compute_geop_height, compute_pres_half
@@ -45,12 +46,12 @@ public :: horiz_adjust_vel, horiz_adjust_mass, press_grad, &
 
 !-----------------------------------------------------------------------
 
-   real, parameter :: fcor = 2.*OMEGA,     &
+   real(r8), parameter :: fcor = 2.*OMEGA,     &
                       curv = 1.0/RADIUS,   &
                       wp   = 0.0625
 
-   real, parameter :: d608 = (RVGAS-RDGAS)/RDGAS
-   real, parameter :: rdgas2 = RDGAS*0.50
+   real(r8), parameter :: d608 = (RVGAS-RDGAS)/RDGAS
+   real(r8), parameter :: rdgas2 = RDGAS*0.50
 !-----------------------------------------------------------------------
 
 contains
@@ -80,26 +81,26 @@ subroutine horiz_adjust_vel ( Hgrid, Masks, dt, &
 !-----------------------------------------------------------------------
 type(horiz_grid_type), intent(in)      :: Hgrid
 type (grid_mask_type), intent(in)      :: Masks
-   real, intent(in)                    :: dt
-   real, intent(in),    dimension(Hgrid%ilb:, Hgrid%jlb:, :) :: &
+   real(r8), intent(in)                    :: dt
+   real(r8), intent(in),    dimension(Hgrid%ilb:, Hgrid%jlb:, :) :: &
                                            pgfew, pgfns, um, vm
-   real, intent(inout), dimension(Hgrid%ilb:, Hgrid%jlb:, :) :: &
+   real(r8), intent(inout), dimension(Hgrid%ilb:, Hgrid%jlb:, :) :: &
                                                         udt, vdt
-real, optional, intent(in)              :: alpha_implicit
+real(r8), optional, intent(in)              :: alpha_implicit
 !-----------------------------------------------------------------------
 
-  real, dimension (Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
+  real(r8), dimension (Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
       pgfu, pgfv, f0, fa, fb, cu, cv, up, vp
 
-  real, dimension (Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
+  real(r8), dimension (Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
          size(pgfew,3)) :: un, vn
 
     integer :: i, j, k
-    real    :: alpha
+    real(r8)    :: alpha
 !-----------------------------------------------------------------------
 
      alpha = 0.5; if (present(alpha_implicit)) alpha = alpha_implicit
-     alpha = min(max(0.0,alpha),1.0)
+     alpha = min(max(0.0_r8,alpha),1.0_r8)
 
 !    --- force explicit for leapfrog (if not implicit) ----
 !    if (nv == 2 .and. alpha <= 0.51) then
@@ -176,16 +177,16 @@ end subroutine horiz_adjust_vel
 integer, intent(in)                   :: nplev
 type(horiz_grid_type), intent(inout)  :: Hgrid
 type (grid_mask_type), intent(in)     :: Masks
-  real, intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u, v, &
+  real(r8), intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u, v, &
                                                         dpde, cew, cns
-  real, intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: flew, flns
-  real, intent(out),   dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: div, omgalf
+  real(r8), intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: flew, flns
+  real(r8), intent(out),   dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: div, omgalf
 !-----------------------------------------------------------------------
 
-    real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) ::   &
+    real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) ::   &
                                   few, fns, udy, vdx, tew, tns
 
-    real, dimension(Hgrid%ilb:Hgrid%iub,                &
+    real(r8), dimension(Hgrid%ilb:Hgrid%iub,                &
                     Hgrid%jlb:Hgrid%jub, size(u,3)) ::  adpdxy
 
     integer :: i, j, k, is, ie, js, je
@@ -302,23 +303,23 @@ subroutine press_grad ( Hgrid, Vgrid, Masks, fssl, tq,         &
 type(horiz_grid_type), intent (inout) :: Hgrid
 type (vert_grid_type), intent (in)  :: Vgrid
 type (grid_mask_type), intent (in)  :: Masks
-   real, intent (in) , dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8), intent (in) , dimension(Hgrid%ilb:Hgrid%iub, &
                                  Hgrid%jlb:Hgrid%jub) :: fssl
-   real, intent (in),  dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8), intent (in),  dimension(Hgrid%ilb:Hgrid%iub, &
                                  Hgrid%jlb:Hgrid%jub,Vgrid%nlev) :: &
                                        tq, dpde, wta, wtb, cew, cns
-   real, intent (out), dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8), intent (out), dimension(Hgrid%ilb:Hgrid%iub, &
                                  Hgrid%jlb:Hgrid%jub,Vgrid%nlev) :: &
                                        pgfew, pgfns
 
 !-----------------------------------------------------------------------
-  real, dimension (Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: &
+  real(r8), dimension (Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: &
                                        pew, pns, tew, tns
 
-  real, dimension (Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,  &
+  real(r8), dimension (Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,  &
                    size(tq,3)) :: fim, ppcew, ppcns
 
-!!real, dimension (Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,  &
+!!real(r8), dimension (Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub,  &
 !!                 size(tq,3)) :: adpdxy, pwt
 
     integer :: i, j, k, is, ie, js, je
@@ -416,13 +417,13 @@ endif
 
    type(horiz_grid_type), intent(in)  :: Hgrid
    integer,               intent(in)  :: nplev
-   real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) ::  &
+   real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) ::  &
                                        phalf, dpde, wta, wtb
-   real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: cew, cns
+   real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: cew, cns
 
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: &
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: &
                                               pewa, pewb, pnsa, pnsb
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub, &
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub, &
                                         size(dpde,3)) :: adpdx, adpdy
    integer :: i, j, k
 
@@ -505,13 +506,13 @@ endif
 type(horiz_grid_type), intent (in)  :: Hgrid
 type (vert_grid_type), intent (in)  :: Vgrid
 type (grid_mask_type), intent (in)  :: Masks
- real, intent (in)                  :: coeff
- real, intent (in) ,   dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: adpdxy, div
- real, intent (inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u_dt, v_dt
+ real(r8), intent (in)                  :: coeff
+ real(r8), intent (in) ,   dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: adpdxy, div
+ real(r8), intent (inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u_dt, v_dt
 
 !-----------------------------------------------------------------------
 
-  real, dimension (lbound(div,1):ubound(div,1),    &
+  real(r8), dimension (lbound(div,1):ubound(div,1),    &
                    lbound(div,2):ubound(div,2)) :: &
                             dcoeff, ddx, ddy, dew, dns
 
@@ -559,17 +560,17 @@ type (grid_mask_type), intent (in)  :: Masks
 
    type(horiz_grid_type), intent(inout) :: Hgrid
    integer, intent(in)                :: nplev
-   real,    intent(in)                :: w
-   real,    intent(in)                :: ps (Hgrid%ilb:,Hgrid%jlb:,:)
-   real,    intent(out)               :: psm(Hgrid%ilb:,Hgrid%jlb:,:)
+   real(r8),    intent(in)                :: w
+   real(r8),    intent(in)                :: ps (Hgrid%ilb:,Hgrid%jlb:,:)
+   real(r8),    intent(out)               :: psm(Hgrid%ilb:,Hgrid%jlb:,:)
 
 !-----------------------------------------------------------------------
 
-    real, dimension(lbound(ps,1):ubound(ps,1),      &
+    real(r8), dimension(lbound(ps,1):ubound(ps,1),      &
                     lbound(ps,2):ubound(ps,2)) ::   &
                           adx, ady, dpdx, dpdy, dpcew, dpcns, pew, pns
 
-    real :: wpdt
+    real(r8) :: wpdt
     integer :: i, j, k, is, ie, js, je
 
 !-----------------------------------------------------------------------
@@ -646,10 +647,10 @@ type (grid_mask_type), intent (in)  :: Masks
  subroutine compute_mass_weights (Hgrid, dpde, adpdx, adpdy, adpdxy)
 
    type(horiz_grid_type), intent(in)     :: Hgrid
-   real, intent(in)            :: dpde  (Hgrid%ilb:,Hgrid%jlb:,:)
-   real, intent(out)           :: adpdx (Hgrid%ilb:,Hgrid%jlb:,:),  &
+   real(r8), intent(in)            :: dpde  (Hgrid%ilb:,Hgrid%jlb:,:)
+   real(r8), intent(out)           :: adpdx (Hgrid%ilb:,Hgrid%jlb:,:),  &
                                   adpdy (Hgrid%ilb:,Hgrid%jlb:,:)
-   real, intent(out), optional :: adpdxy(Hgrid%ilb:,Hgrid%jlb:,:)
+   real(r8), intent(out), optional :: adpdxy(Hgrid%ilb:,Hgrid%jlb:,:)
 
    integer :: i, j, k
 
@@ -694,9 +695,9 @@ type (grid_mask_type), intent (in)  :: Masks
 
  function time_average2 (coeff, dt, um, u, udt) result (ua)
 
-   real, intent(in)  :: coeff, dt, um(:,:), u(:,:), udt(:,:)
-   real :: ua(size(u,1),size(u,2))
-   real :: coeff2
+   real(r8), intent(in)  :: coeff, dt, um(:,:), u(:,:), udt(:,:)
+   real(r8) :: ua(size(u,1),size(u,2))
+   real(r8) :: coeff2
 
 !  time averages tau-1, tau, tau+1 time levels
 !  used for brown-campana (pgf) filter
@@ -710,9 +711,9 @@ type (grid_mask_type), intent (in)  :: Masks
 
  function time_average3 (coeff, dt, um, u, udt) result (ua)
 
-   real, intent(in)  :: coeff, dt, um(:,:,:), u(:,:,:), udt(:,:,:)
-   real :: ua(size(u,1),size(u,2),size(u,3))
-   real :: coeff2
+   real(r8), intent(in)  :: coeff, dt, um(:,:,:), u(:,:,:), udt(:,:,:)
+   real(r8) :: ua(size(u,1),size(u,2),size(u,3))
+   real(r8) :: coeff2
 
 !  time averages tau-1, tau, tau+1 time levels
 !  used for brown-campana (pgf) filter

@@ -25,12 +25,13 @@
 
 module bgrid_cold_start_mod
 
+use types_mod, only : r8
 use  bgrid_horiz_mod, only: horiz_grid_type, get_horiz_grid_bound, TGRID
 use   bgrid_halo_mod, only: update_halo, TEMP
 use   topography_mod, only: gaussian_topog_init, get_topog_mean
+use utilities_mod, only : check_nml_error
 use          fms_mod, only: file_exist, open_namelist_file, open_restart_file, &
-                            open_ieee32_file, check_nml_error, close_file,     &
-                            mpp_pe, mpp_root_pe, set_domain, read_data,        &
+                            open_ieee32_file, close_file,     &
                             stdlog, error_mesg, FATAL, write_version_number
 use    constants_mod, only: GRAV, RDGAS
 
@@ -54,8 +55,8 @@ public cold_start_resol, cold_start
 integer :: nlon = 0
 integer :: nlat = 0
 integer :: nlev = 0
-   real :: pref = 1000.e2
-   real :: tref = 255.
+   real(r8) :: pref = 1000.e2
+   real(r8) :: tref = 255.
 logical :: equal_vert_spacing = .true.
 
 namelist /bgrid_cold_start_nml/ nlon, nlat, nlev, pref, tref, equal_vert_spacing
@@ -91,7 +92,7 @@ subroutine cold_start_resol ( nx, ny, nz )
 !-------- write version and namelist to log file --------
 
    call write_version_number (version,tag)
-   if (mpp_pe() == mpp_root_pe()) write (stdlog(), nml=bgrid_cold_start_nml)
+   write (stdlog(), nml=bgrid_cold_start_nml)
 
 !------- must specify a resolution -----
 
@@ -111,13 +112,13 @@ end subroutine cold_start_resol
 subroutine cold_start ( Hgrid, eta, peta, fis, res, ps, pssl, u, v, t )
 
    type(horiz_grid_type), intent(inout) :: Hgrid
-   real, intent(out), dimension(:)      :: eta, peta
-   real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:)     :: fis, res, &
+   real(r8), intent(out), dimension(:)      :: eta, peta
+   real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:)     :: fis, res, &
                                                               ps, pssl
-   real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: u, v, t
-  !real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: r
+   real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: u, v, t
+  !real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: r
    integer :: m
-   real    :: rt
+   real(r8)    :: rt
 
 !   very simple initial condition
 !   -----------------------------
@@ -152,9 +153,9 @@ end subroutine cold_start
  function compute_topog (Hgrid) result (fis)
 
    type(horiz_grid_type), intent(inout) :: Hgrid
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: fis
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: fis
 
-   real :: hpi, dtr
+   real(r8) :: hpi, dtr
    integer :: unit, ires, jres
 !-----------------------------------------------------------------------
 
@@ -171,8 +172,13 @@ end subroutine cold_start
       if ( ires /= Hgrid%nlon .or. jres /= Hgrid%nlat )  &
                       call error_mesg ('bgrid_cold_start_mod',  &
                   'incorrect resolution in file topography.res', FATAL)
-      call set_domain (Hgrid%Tmp%Domain)
-      call read_data  (unit, fis)
+      !!!call set_domain (Hgrid%Tmp%Domain)
+      !!!call read_data  (unit, fis)
+      write(*, *) 'In compute_topog in bgrid_cold_start'
+      write(*, *) 'Need to read in topogrphy only onto compute domain'
+      write(*, *) 'Should be simple?'
+      if(1 == 1) stop
+      !!!read(unit) fis(:, :)
       call close_file (unit)
 
    else
@@ -203,11 +209,11 @@ end subroutine cold_start
  function compute_real_topog ( Hgrid, fis )
 
    type(horiz_grid_type), intent(in)  :: Hgrid
-   real,                  intent(out) :: fis(Hgrid%ilb:,Hgrid%jlb:)
+   real(r8),                  intent(out) :: fis(Hgrid%ilb:,Hgrid%jlb:)
    logical :: compute_real_topog
 
-   real, dimension(Hgrid%Tmp%is:Hgrid%Tmp%ie+1) :: blon
-   real, dimension(Hgrid%Tmp%js:Hgrid%Tmp%je+1) :: blat
+   real(r8), dimension(Hgrid%Tmp%is:Hgrid%Tmp%ie+1) :: blon
+   real(r8), dimension(Hgrid%Tmp%js:Hgrid%Tmp%je+1) :: blat
 !-----------------------------------------------------------------------
 
    call get_horiz_grid_bound (Hgrid, TGRID, blon, blat, global=.false.)
@@ -227,8 +233,8 @@ end subroutine cold_start
  function compute_sigma (nlev) result (eta)
 
    integer, intent(in) :: nlev
-   real, dimension(nlev+1) :: eta
-   real :: dz, qk
+   real(r8), dimension(nlev+1) :: eta
+   real(r8) :: dz, qk
    integer :: k
 
      eta(1) = 0.0
@@ -244,7 +250,7 @@ end subroutine cold_start
    else
 
        do k = 1, nlev-1
-         qk = real(2*k)/real(2*nlev)
+         qk = (2.0*k)/(2.0*nlev)
          eta(k+1) = qk*qk*(3.-2.*qk)
        enddo
 

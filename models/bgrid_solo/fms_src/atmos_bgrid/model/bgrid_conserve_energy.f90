@@ -25,6 +25,7 @@
 
 module bgrid_conserve_energy_mod
 
+use types_mod, only : r8
 use       bgrid_horiz_mod, only: horiz_grid_type, update_np, VELGRID => VGRID
 use        bgrid_vert_mod, only: vert_grid_type, compute_pres_depth
 use       bgrid_masks_mod, only: grid_mask_type
@@ -32,11 +33,11 @@ use    bgrid_prog_var_mod, only: prog_var_type
 use bgrid_change_grid_mod, only: mass_to_vel
 
 use      time_manager_mod, only: time_type
-use      diag_manager_mod, only: register_diag_field, send_data
+!use      diag_manager_mod, only: register_diag_field, send_data
 use               fms_mod, only: error_mesg, FATAL, &
                                  write_version_number
 use         constants_mod, only: CP, GRAV
-use       mpp_domains_mod, only: mpp_global_sum, BITWISE_EXACT_SUM
+!!!use       mpp_domains_mod, only: mpp_global_sum, BITWISE_EXACT_SUM
 
  implicit none
  private
@@ -73,7 +74,7 @@ contains
 
  subroutine bgrid_conserve_energy ( dt, Time, Hgrid, Vgrid, Masks, &
                                     Var, Var_dt )
- real,                  intent(in)    :: dt
+ real(r8),                  intent(in)    :: dt
  type      (time_type), intent(in)    :: Time
  type(horiz_grid_type), intent(in)    :: Hgrid
  type (vert_grid_type), intent(in)    :: Vgrid
@@ -81,11 +82,11 @@ contains
  type  (prog_var_type), intent(in)    :: Var
  type  (prog_var_type), intent(inout) :: Var_dt
 
- real, dimension(Hgrid%ilb:Hgrid%iub, &
+ real(r8), dimension(Hgrid%ilb:Hgrid%iub, &
                  Hgrid%jlb:Hgrid%jub, Vgrid%nlev) :: tcor, vcor, pwt, dpde, dpde_vel, &
                                                      dpde_old, dpde_old_vel
- real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: diss_heat, pssl_new
- real    :: sum_tcor, sum_vcor, sum_pwt
+ real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: diss_heat, pssl_new
+ real(r8)    :: sum_tcor, sum_vcor, sum_pwt
  integer :: k
  logical :: used
 
@@ -115,13 +116,21 @@ contains
 
     if (update_np(Hgrid,VELGRID)) then
      ! need to drop a row at north pole boundary (need a better way)
-      sum_vcor = mpp_global_sum ( Hgrid%Vel%Domain, vcor(:,:Hgrid%jub-1,:), flags=BITWISE_EXACT_SUM )
+      !!!sum_vcor = mpp_global_sum ( Hgrid%Vel%Domain, vcor(:,:Hgrid%jub-1,:), flags=BITWISE_EXACT_SUM )
+      sum_vcor = sum (vcor(:,:Hgrid%jub-1,:))
     else
-      sum_vcor = mpp_global_sum ( Hgrid%Vel%Domain, vcor, flags=BITWISE_EXACT_SUM )
+      !!!sum_vcor = mpp_global_sum ( Hgrid%Vel%Domain, vcor, flags=BITWISE_EXACT_SUM )
+      sum_vcor = sum (vcor)
     endif
 
-      sum_tcor = mpp_global_sum ( Hgrid%Tmp%Domain, tcor, flags=BITWISE_EXACT_SUM )
-      sum_pwt  = mpp_global_sum ( Hgrid%Tmp%Domain, pwt,  flags=BITWISE_EXACT_SUM )
+      !!!sum_tcor = mpp_global_sum ( Hgrid%Tmp%Domain, tcor, flags=BITWISE_EXACT_SUM )
+      sum_tcor = sum (tcor )
+      !!!sum_pwt  = mpp_global_sum ( Hgrid%Tmp%Domain, pwt,  flags=BITWISE_EXACT_SUM )
+      sum_pwt  = sum (pwt )
+
+write(*, *) 'sums'
+write(*, *) sum_vcor, sum_tcor, sum_pwt
+if(1 == 1) stop
 
   ! global correction
     tcor = -( sum_tcor + sum_vcor/CP ) / sum_pwt
@@ -132,15 +141,15 @@ contains
   !------ diagnostics section ------
 
     if ( id_tdt_diss > 0 ) then
-       used = send_data ( id_tdt_diss, tcor(Hgrid%Tmp%is:Hgrid%Tmp%ie,Hgrid%Tmp%js:Hgrid%Tmp%je,:), &
-        Time, mask=Masks%Tmp%mask(Hgrid%Tmp%is:Hgrid%Tmp%ie,Hgrid%Tmp%js:Hgrid%Tmp%je,:) > 0.5 )
+!       used = send_data ( id_tdt_diss, tcor(Hgrid%Tmp%is:Hgrid%Tmp%ie,Hgrid%Tmp%js:Hgrid%Tmp%je,:), &
+!        Time, mask=Masks%Tmp%mask(Hgrid%Tmp%is:Hgrid%Tmp%ie,Hgrid%Tmp%js:Hgrid%Tmp%je,:) > 0.5 )
     endif
 
     if ( id_diss_heat > 0 ) then
       ! vertical integral of ke dissipation
-        diss_heat = CP/GRAV * sum( tcor*dpde, 3 )
-        used = send_data ( id_diss_heat, &
-                           diss_heat(Hgrid%Tmp%is:Hgrid%Tmp%ie,Hgrid%Tmp%js:Hgrid%Tmp%je), Time )
+!        diss_heat = CP/GRAV * sum( tcor*dpde, 3 )
+!        used = send_data ( id_diss_heat, &
+!                           diss_heat(Hgrid%Tmp%is:Hgrid%Tmp%ie,Hgrid%Tmp%js:Hgrid%Tmp%je), Time )
     endif
 
  end subroutine bgrid_conserve_energy
@@ -156,14 +165,14 @@ contains
 ! the only purpose of this routine is to initialize
 ! diagnostics related to the energy conservation
 
-   id_tdt_diss = register_diag_field ( mod_name, 'tdt_diss_dynam', axes(1:3), Time, &       
-                           'Dissipative heating from dynamical core', & 
-                                 'deg_k/s', missing_value=-1.e10   )
+!   id_tdt_diss = register_diag_field ( mod_name, 'tdt_diss_dynam', axes(1:3), Time, &       
+!                           'Dissipative heating from dynamical core', & 
+!                                 'deg_k/s', missing_value=-1.e10   )
        
-   id_diss_heat = register_diag_field &
-        ( mod_name, 'diss_heat_dynam', axes(1:2), Time,      &
-         'Integrated dissipative heating for dynamical core', & 
-         'W/m2' )
+!   id_diss_heat = register_diag_field &
+!        ( mod_name, 'diss_heat_dynam', axes(1:2), Time,      &
+!         'Integrated dissipative heating for dynamical core', & 
+!         'W/m2' )
 
    do_init = .false.
 

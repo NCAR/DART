@@ -25,12 +25,12 @@
 
 module bgrid_halo_mod
 
+use types_mod, only : r8
 use bgrid_horiz_mod, only: horiz_grid_type, update_np, update_sp, &
                            TGRID, VGRID
-use         fms_mod, only: error_mesg, FATAL, mpp_clock_init, &
-                           mpp_clock_begin, mpp_clock_end, MPP_CLOCK_SYNC
-use mpp_domains_mod, only: mpp_update_domains, SUPDATE, NUPDATE,  &
-                                               WUPDATE, EUPDATE
+use         fms_mod, only: error_mesg, FATAL
+!use mpp_domains_mod, only: mpp_update_domains, SUPDATE, NUPDATE,  &
+!                                               WUPDATE, EUPDATE
 
 implicit none
 private
@@ -73,7 +73,7 @@ contains
 
    type(horiz_grid_type), intent(inout) :: Hgrid
    integer,               intent(in)    :: field
-   real,                  intent(inout) :: data(Hgrid%ilb:,Hgrid%jlb:,:)
+   real(r8),                  intent(inout) :: data(Hgrid%ilb:,Hgrid%jlb:,:)
    integer, optional,     intent(in)    :: flags
 
    integer :: is, ie, iflags, n, xygrid
@@ -81,8 +81,13 @@ contains
    logical :: no_pole_vel, do_pole_only, update_sbnd, update_nbnd
    logical :: decomp_2d
 
-   if (do_clock_init) call clock_init
-   call mpp_clock_begin (id_update3)
+
+
+real(r8) :: data_tmp(size(data, 1), size(data, 2), size(data, 3))
+
+
+!   if (do_clock_init) call clock_init
+!   call mpp_clock_begin (id_update3)
 
 !  ----- check dimensions ------
 
@@ -121,18 +126,18 @@ contains
 
 !  ------ south and north boundary ------
 
-   if ( btest(iflags,0) ) domain_flags = domain_flags + SUPDATE
-   if ( btest(iflags,1) ) domain_flags = domain_flags + NUPDATE
+   !if ( btest(iflags,0) ) domain_flags = domain_flags + SUPDATE
+   !if ( btest(iflags,1) ) domain_flags = domain_flags + NUPDATE
 
 !  ------ west and east boundary ------
 
-   if ( btest(iflags,2) ) then
-      if (Hgrid%decompx) domain_flags = domain_flags + WUPDATE
-   endif
+   !if ( btest(iflags,2) ) then
+   !   if (Hgrid%decompx) domain_flags = domain_flags + WUPDATE
+   !endif
 
-   if ( btest(iflags,3) ) then
-      if (Hgrid%decompx) domain_flags = domain_flags + EUPDATE
-   endif
+   !if ( btest(iflags,3) ) then
+   !   if (Hgrid%decompx) domain_flags = domain_flags + EUPDATE
+   !endif
 
 !  ------ flags related to polar boundary ------
 
@@ -141,16 +146,15 @@ contains
    update_sbnd  = btest(iflags,0)
    update_nbnd  = btest(iflags,1)
 
-
 !  ----- update non-polar boundaries -----
 
    if (.not.do_pole_only) then
-     select case (field)
-       case (TEMP)
-         call mpp_update_domains (data, Hgrid%Tmp%Domain, domain_flags)
-       case (UWND:VWND)
-         call mpp_update_domains (data, Hgrid%Vel%Domain, domain_flags)
-     end select
+     !select case (field)
+     !  case (TEMP)
+     !    call mpp_update_domains (data, Hgrid%Tmp%Domain, domain_flags)
+     !  case (UWND:VWND)
+     !    call mpp_update_domains (data, Hgrid%Vel%Domain, domain_flags)
+     !end select
    endif
 
 !  ----- update east-west cyclic boundaries (for 1-d decomp only) ----
@@ -170,12 +174,13 @@ contains
    endif
 
 !  ------ update north pole ------
-
+ 
    if ( (update_nbnd.or.do_pole_only) .and. update_np (Hgrid,xygrid) ) then
       call north_boundary_3d (Hgrid, field, data(:,:,:), no_pole_vel)
    endif
 
-   call mpp_clock_end (id_update3)
+
+!   call mpp_clock_end (id_update3)
 
  end subroutine update_halo_3d
 
@@ -185,7 +190,7 @@ contains
 
    type(horiz_grid_type), intent(in)    :: Hgrid
    integer,               intent(in)    :: field
-   real,                  intent(inout) :: data(:,Hgrid%jlb:,:)
+   real(r8),                  intent(inout) :: data(:,Hgrid%jlb:,:)
    logical,               intent(in)    :: nopole
 
    integer :: js, je, jeg, halo
@@ -225,7 +230,7 @@ contains
 
    type(horiz_grid_type), intent(in)    :: Hgrid
    integer,               intent(in)    ::  field
-   real,                  intent(inout) :: data(:,Hgrid%jlb:,:)
+   real(r8),                  intent(inout) :: data(:,Hgrid%jlb:,:)
    logical,               intent(in)    :: nopole
       
 
@@ -256,19 +261,26 @@ contains
 
 !#######################################################################
 
- subroutine update_halo_2d (Hgrid, field, data, flags)
+ subroutine update_halo_2d (Hgrid, field, datain, flags)
 
    type(horiz_grid_type), intent(inout) :: Hgrid
    integer,               intent(in)    :: field
-   real,                  intent(inout) :: data(:,:)
+   real(r8),                  intent(inout) :: datain(:,:)
    integer, optional,     intent(in)    :: flags
 
-   real, dimension(size(data,1),size(data,2),1) :: data3
-   integer :: n
+   real(r8), dimension(size(datain,1),size(datain,2),1) :: data3
+   integer :: n, i, j
 
-   data3(:,:,1) = data
+!do i = 1, size(data, 1)
+!   do j = 1, size(data, 2)
+!      data3(i, j, 1) = data(i, j)
+!   end do
+!end do
+
+
+   data3(:,:,1) = datain(:, :)
    call update_halo_3d (Hgrid, field, data3, flags)
-   data = data3(:,:,1)
+   datain = data3(:,:,1)
 
  end subroutine update_halo_2d
 
@@ -278,7 +290,7 @@ contains
 
    type(horiz_grid_type), intent(inout) :: Hgrid
    integer,               intent(in)    :: field
-   real,                  intent(inout) :: data(:,:,:,:)
+   real(r8),                  intent(inout) :: data(:,:,:,:)
    integer, optional,     intent(in)    :: flags
 
    integer :: n
@@ -301,9 +313,11 @@ contains
 
      call update_halo (Hgrid, UWND, Hgrid % Vel % dx, SNWE+NOPOLE)
      call update_halo (Hgrid, TEMP, Hgrid % Tmp % dx)
-
+     !!!call update_halo (Hgrid, TEMP, Hgrid % Tmp % dx, NOPOLE)
      call update_halo (Hgrid, TEMP, Hgrid % Tmp %  area)
+     !!!call update_halo (Hgrid, TEMP, Hgrid % Tmp %  area, NOPOLE)
      call update_halo (Hgrid, TEMP, Hgrid % Tmp % rarea)
+     !!!call update_halo (Hgrid, TEMP, Hgrid % Tmp % rarea, NOPOLE)
 
      call update_halo (Hgrid, UWND, Hgrid % Vel %  area, SNWE+NOPOLE)
      call update_halo (Hgrid, UWND, Hgrid % Vel % rarea, SNWE+NOPOLE)
@@ -315,7 +329,7 @@ contains
  subroutine vel_flux_boundary_2d (Hgrid, data)
 
    type(horiz_grid_type), intent(in)    :: Hgrid
-   real,                  intent(inout) :: data(:,Hgrid%jlb:)
+   real(r8),                  intent(inout) :: data(:,Hgrid%jlb:)
 
       if ( update_sp (Hgrid,VGRID) ) then
                                 data (:, Hgrid%Vel%js  ) = 0.0
@@ -337,7 +351,7 @@ contains
  subroutine vel_flux_boundary_3d (Hgrid, data)
 
    type(horiz_grid_type), intent(in)    :: Hgrid
-   real,                  intent(inout) :: data(:,Hgrid%jlb:,:)
+   real(r8),                  intent(inout) :: data(:,Hgrid%jlb:,:)
 
       if ( update_sp (Hgrid,VGRID) ) then
                                 data (:, Hgrid%Vel%js  , :) = 0.0
@@ -356,11 +370,11 @@ contains
 
 !#######################################################################
 
- subroutine clock_init()
-   id_update3 = mpp_clock_init ('BGRID: update_halo', time_level, &
-                                flags=MPP_CLOCK_SYNC)
-   do_clock_init = .false.
- end subroutine clock_init
+! subroutine clock_init()
+!   id_update3 = mpp_clock_init ('BGRID: update_halo', time_level, &
+!                                flags=MPP_CLOCK_SYNC)
+!   do_clock_init = .false.
+! end subroutine clock_init
 
 !#######################################################################
 

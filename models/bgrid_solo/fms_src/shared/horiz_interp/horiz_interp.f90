@@ -56,8 +56,9 @@ module horiz_interp_mod
 !
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use fms_mod, only:       error_mesg, FATAL,    &
-                         mpp_pe, write_version_number
+                         write_version_number
 use constants_mod, only: pi
 
  implicit none
@@ -100,7 +101,7 @@ use constants_mod, only: pi
 !   </IN>
 !   <IN NAME="mask_in">
 !      Input mask, must be the same size as the input data.
-!               The real value of mask_in must be in the range (0.,1.).
+!               The real(r8) value of mask_in must be in the range (0.,1.).
 !               Set mask_in=0.0 for data points that should not be used
 !               or have missing data.
 !   </IN>
@@ -148,19 +149,19 @@ use constants_mod, only: pi
 !     call horiz_interp_init ( Interp, blon_in, blat_in,
 !                          blon_out, blat_out, verbose )
 !   </TEMPLATE>
-!   <IN NAME="blon_in" TYPE="real" DIM="dimension(:)">
+!   <IN NAME="blon_in" TYPE="real(r8)" DIM="dimension(:)">
 !      The longitude edges (in radians) for input data grid boxes.
 !      The values are for adjacent grid boxes and must increase in
 !      value. If there are M longitude grid boxes there must be
 !      M+1 edge values.
 !   </IN>
-!   <IN NAME="blat_in" TYPE="real" DIM="dimension(:)">
+!   <IN NAME="blat_in" TYPE="real(r8)" DIM="dimension(:)">
 !      The latitude edges (in radians) for input data grid boxes.
 !      The values are for adjacent grid boxes and may increase or
 !      decrease in value. If there are N latitude grid boxes there
 !      must be N+1 edge values.
 !   </IN>
-!   <IN NAME="blon_out" UNITS="" TYPE="real" DIM="dimension(:) or dimension(:,2)">
+!   <IN NAME="blon_out" UNITS="" TYPE="real(r8)" DIM="dimension(:) or dimension(:,2)">
 !      The longitude edges (in radians) for output data grid boxes.
 !      The edge values may be stored as adjacent values or as pairs
 !      for each grid box. The pairs do not have to be adjacent.
@@ -201,28 +202,28 @@ use constants_mod, only: pi
 !    recommended for performance when computing multiple interpolations
 !    between the same grids. The contents of this data type are private.
 ! </DESCRIPTION>
-! <DATA NAME="dlon_in" TYPE="real" DIM="(:,:)">delta long  </DATA>
-! <DATA NAME="dlon_out" TYPE="real" DIM="(:,:)">delta long </DATA>
-! <DATA NAME="dsph_in" TYPE="real" DIM="(:,:)">delta sin(lat)  </DATA>
-! <DATA NAME="dsph_out" TYPE="real" DIM="(:,:)">delta sin(lat) </DATA>
-! <DATA NAME="faci" TYPE="real" DIM="(:,:)"> weights </DATA>
-! <DATA NAME="facj" TYPE="real" DIM="(:,:)"> weights </DATA>
+! <DATA NAME="dlon_in" TYPE="real(r8)" DIM="(:,:)">delta long  </DATA>
+! <DATA NAME="dlon_out" TYPE="real(r8)" DIM="(:,:)">delta long </DATA>
+! <DATA NAME="dsph_in" TYPE="real(r8)" DIM="(:,:)">delta sin(lat)  </DATA>
+! <DATA NAME="dsph_out" TYPE="real(r8)" DIM="(:,:)">delta sin(lat) </DATA>
+! <DATA NAME="faci" TYPE="real(r8)" DIM="(:,:)"> weights </DATA>
+! <DATA NAME="facj" TYPE="real(r8)" DIM="(:,:)"> weights </DATA>
 ! <DATA NAME="ilon" TYPE="integer" DIM="(:,:)"> indices </DATA>
 ! <DATA NAME="jlat" TYPE="integer" DIM="(:,:)"> indices </DATA>
-! <DATA NAME="wti" TYPE="real" DIM="(:,:,:)"> 
+! <DATA NAME="wti" TYPE="real(r8)" DIM="(:,:,:)"> 
 !      weights for global output grids for bilinear interplation </DATA>
-! <DATA NAME="wtj" TYPE="real" DIM="(:,:,:)"> 
+! <DATA NAME="wtj" TYPE="real(r8)" DIM="(:,:,:)"> 
 !      weights for global output grids for bilinear interplation </DATA>
 ! <DATA NAME="i_lon" TYPE="integer" DIM="(:,:,:)"> indices </DATA>
 ! <DATA NAME="j_lat" TYPE="integer" DIM="(:,:,:)"> indices </DATA>
 ! </TYPE>
  type horiz_interp_type
    private
-   real,    dimension(:), pointer :: dlon_in, dlon_out, & ! delta long
+   real(r8),    dimension(:), pointer :: dlon_in, dlon_out, & ! delta long
                                      dsph_in, dsph_out    ! delta sin(lat)
-   real,    dimension(:,:), pointer :: faci, facj   ! weights
+   real(r8),    dimension(:,:), pointer :: faci, facj   ! weights
    integer, dimension(:,:), pointer :: ilon, jlat   ! indices
-   real,    dimension(:,:,:), pointer :: wti,wtj    ! weights for global output grids
+   real(r8),    dimension(:,:,:), pointer :: wti,wtj    ! weights for global output grids
                                                     ! for bilinear interplation
    integer, dimension(:,:,:), pointer :: i_lon, j_lat! !indices for global output grids
                                                        ! for bilinear_interplation
@@ -246,11 +247,11 @@ contains
 
 ! <SUBROUTINE NAME="horiz_interp_base_2d" INTERFACE="horiz_interp">
 !   <IN NAME="Interp" TYPE="Derived-type"> </IN>
-!   <IN NAME="data_in" TYPE="real" DIM="(:,:)"> </IN>
+!   <IN NAME="data_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
 !   <IN NAME="verbose" TYPE="integer"> </IN>
-!   <IN NAME="mask_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <OUT NAME="data_out" TYPE="real" DIM="(:,:)"> </OUT>
-!   <OUT NAME="mask_out" TYPE="real" DIM="(:,:)"> </OUT>
+!   <IN NAME="mask_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
+!   <OUT NAME="mask_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
 ! </SUBROUTINE>
 
  subroutine horiz_interp_base_2d ( Interp, data_in, data_out, &
@@ -270,13 +271,13 @@ contains
 !
 !     data_in    Input data on input grid defined by grid box edges
 !                initialized in variable Interp.
-!                  [real, dimension(:,:)]
+!                  [real(r8), dimension(:,:)]
 !
 !  output:
 !  ------
 !     data_out   Output data on output grid defined by grid box edges
 !                initialized in variable Interp.
-!                  [real, dimension(:,:)]
+!                  [real(r8), dimension(:,:)]
 !
 !  optional
 !  --------
@@ -289,22 +290,22 @@ contains
 !
 !-----------------------------------------------------------------------
    type (horiz_interp_type), intent(in) :: Interp
-      real, intent(in),  dimension(:,:) :: data_in
-      real, intent(out), dimension(:,:) :: data_out
+      real(r8), intent(in),  dimension(:,:) :: data_in
+      real(r8), intent(out), dimension(:,:) :: data_out
    integer, intent(in),                   optional :: verbose
-      real, intent(in),   dimension(:,:), optional :: mask_in
-      real, intent(out),  dimension(:,:), optional :: mask_out
+      real(r8), intent(in),   dimension(:,:), optional :: mask_in
+      real(r8), intent(out),  dimension(:,:), optional :: mask_out
 !-----------------------------------------------------------------------
-      real, dimension(size(Interp%dlon_in),  &
+      real(r8), dimension(size(Interp%dlon_in),  &
                       size(Interp%dsph_in))  :: area_in
-      real, dimension(size(data_out,1), &
+      real(r8), dimension(size(data_out,1), &
                       size(data_out,2)) :: area_out
 
       integer :: i, j, m, n, nlon_in, nlat_in, nlon_out, nlat_out,   &
                  miss_in, miss_out, unit, is, ie, js, je,   &
                  np, npass, iverbose, m2, n2, pe
 
-      real :: cph, dsum, wsum, avg_in, min_in, max_in,   &
+      real(r8) :: cph, dsum, wsum, avg_in, min_in, max_in,   &
               avg_out, min_out, max_out, blon, eps,    &
               dwtsum, wtsum, arsum, hpi, tpi, dtr, dsph, fis, fie, fjs, fje
 
@@ -331,7 +332,7 @@ contains
       return
    endif
 
-   pe = mpp_pe()
+   pe = 1
 
    hpi = 0.5*pi
    tpi = 4.*hpi
@@ -503,10 +504,10 @@ contains
 
 ! <SUBROUTINE NAME="new_horiz_interp_base_2d" INTERFACE="horiz_interp">
 !   <IN NAME="Interp" TYPE="Derived-type"> </IN>
-!   <IN NAME="data_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <IN NAME="mask_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <OUT NAME="data_out" TYPE="real" DIM="(:,:)"> </OUT>
-!   <OUT NAME="mask_out" TYPE="real" DIM="(:,:)"> </OUT>
+!   <IN NAME="data_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <IN NAME="mask_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
+!   <OUT NAME="mask_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
 ! </SUBROUTINE>
 
  subroutine new_horiz_interp_base_2d ( Interp, data_in, data_out, mask_in,mask_out)
@@ -525,13 +526,13 @@ contains
 !
 !     data_in    Input data on input grid defined by grid box edges
 !                initialized in variable Interp.
-!                  [real, dimension(:,:)]
+!                  [real(r8), dimension(:,:)]
 !
 !  output:
 !  ------
 !     data_out   Output data on output grid defined by grid box edges
 !                initialized in variable Interp.
-!                  [real, dimension(:,:)]
+!                  [real(r8), dimension(:,:)]
 !
 !  optional
 !  --------
@@ -544,14 +545,14 @@ contains
 !
 !-----------------------------------------------------------------------
    type (horiz_interp_type), intent(in) :: Interp
-      real, intent(in),  dimension(:,:) :: data_in
-      real, intent(out), dimension(:,:) :: data_out
-      real, intent(in), dimension(:,:), optional :: mask_in
-      real, intent(out), dimension(:,:), optional :: mask_out
+      real(r8), intent(in),  dimension(:,:) :: data_in
+      real(r8), intent(out), dimension(:,:) :: data_out
+      real(r8), intent(in), dimension(:,:), optional :: mask_in
+      real(r8), intent(out), dimension(:,:), optional :: mask_out
 !-----------------------------------------------------------------------
       integer :: nlon_in, nlat_in, nlon_out, nlat_out, n, m, &
                  is, ie, js, je
-      real    :: wtw, wte, wts, wtn
+      real(r8)    :: wtw, wte, wts, wtn
 
 
       nlon_in = size(Interp%dlon_in)
@@ -600,10 +601,10 @@ contains
 !#######################################################################
 
  subroutine stats ( dat, area, dsum, wsum, low, high, miss, mask )
- real,    intent(in)  :: dat(:,:), area(:,:)
- real,    intent(out) :: dsum, wsum, low, high
+ real(r8),    intent(in)  :: dat(:,:), area(:,:)
+ real(r8),    intent(out) :: dsum, wsum, low, high
  integer, intent(out) :: miss
- real,    intent(in), optional :: mask(:,:)
+ real(r8),    intent(in), optional :: mask(:,:)
 
  ! sum data, data*area; and find min,max
 
@@ -625,10 +626,10 @@ contains
 
 !#######################################################################
 !  <SUBROUTINE NAME="horiz_interp_init_2" INTERFACE="horiz_interp_init">
-!  <IN NAME="blon_in" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blat_in" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blon_out" TYPE="real" DIM="(:,:)"></IN>
-!  <IN NAME="blat_out" TYPE="real" DIM="(:,:)"></IN>
+!  <IN NAME="blon_in" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blat_in" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blon_out" TYPE="real(r8)" DIM="(:,:)"></IN>
+!  <IN NAME="blat_out" TYPE="real(r8)" DIM="(:,:)"></IN>
 !  <IN NAME="verbose" TYPE="integer"></IN>
 !  <INOUT NAME="interp" TYPE="horiz_interp_type"></INOUT>
 !  </SUBROUTINE>
@@ -646,19 +647,19 @@ contains
 !   blon_in    The longitude edges (in radians) for input data grid boxes.
 !              The values are for adjacent grid boxes and must increase in
 !              value. If there are M longitude grid boxes there must be 
-!              M+1 edge values.    [real, dimension(:)]
+!              M+1 edge values.    [real(r8), dimension(:)]
 !
 !   blat_in    The latitude edges (in radians) for input data grid boxes.
 !              The values are for adjacent grid boxes and may increase or
 !              decrease in value. If there are N latitude grid boxes there
-!              must be N+1 edge values.    [real, dimension(:)]
+!              must be N+1 edge values.    [real(r8), dimension(:)]
 !
 !   lon_out  when using conservative scheme, 
 !             The longitude edges (in radians) for output data grid boxes.
 !              The edge values are stored as pairs for each grid box.  The
 !              pairs do not have to be adjacent.  If there are M longitude
 !              grid boxes in the output grid, then lon_out is dimensioned (M,2).
-!                 [real, dimension(:,2)]
+!                 [real(r8), dimension(:,2)]
 !            when using bilinear interpolation,
 !              The geographical longitude (in radians) for output data grid boxes.
 !   lat_out  when using conservative scheme, 
@@ -666,7 +667,7 @@ contains
 !              The edge values are stored as pairs for each grid box.  The
 !              pairs do not have to be adjacent.  If there are N latitude
 !              grid boxes in the output grid, then lat_out is dimensioned (N,2).
-!                 [real, dimension(:,2)]
+!                 [real(r8), dimension(:,2)]
 !            when using bilinear interpolation,
 !              The geographical latitude (in radians) for output data grid boxes.
 !  input/output:
@@ -684,17 +685,17 @@ contains
 !                 using bilinear interpolation
 !-----------------------------------------------------------------------
  type(horiz_interp_type), intent(inout) :: Interp
-      real, intent(in),  dimension(:)   :: blon_in , blat_in
-      real, intent(in),  dimension(:,:) :: lon_out, lat_out
+      real(r8), intent(in),  dimension(:)   :: blon_in , blat_in
+      real(r8), intent(in),  dimension(:,:) :: lon_out, lat_out
    integer, intent(in),                   optional :: verbose
       logical, intent(in),                optional :: bilinear_interp
 !-----------------------------------------------------------------------
-      real, dimension(size(lat_out,1),size(lat_out,2)) :: sph
-      real, dimension(size(blat_in)) :: slat_in
+      real(r8), dimension(size(lat_out,1),size(lat_out,2)) :: sph
+      real(r8), dimension(size(blat_in)) :: slat_in
 
 !-----------------------------------------------------------------------
 
-   real    :: blon, fac, hpi, tpi, eps
+   real(r8)    :: blon, fac, hpi, tpi, eps
    integer :: i, j, m, n, nlon_in, nlat_in, nlon_out, nlat_out,   &
               unit, np, npass, iverbose, m2, n2, iter
    logical :: s2n
@@ -816,7 +817,7 @@ contains
      if ( Interp%jlat(n,n2) /= 0 ) exit
    ! did not find this output grid edge in the input grid
    ! increase tolerance for multiple passes
-     eps  = epsilon(sph)*real(10**iter)
+     eps  = epsilon(sph)*(10.0**iter)
  enddo
    ! no match
      if ( Interp%jlat(n,n2) == 0 ) then
@@ -851,7 +852,7 @@ contains
        if ( Interp%ilon(m,m2) /= 0 ) exit
      ! did not find this output grid edge in the input grid
      ! increase tolerance for multiple passes
-       eps  = epsilon(blon)*real(10**iter)
+       eps  = epsilon(blon)*(10.0**iter)
     enddo
      ! no match
        if ( Interp%ilon(m,m2) == 0 ) then
@@ -882,10 +883,10 @@ contains
 !#######################################################################
 
 !  <SUBROUTINE NAME="horiz_interp_init_2_new" INTERFACE="horiz_interp_init">
-!  <IN NAME="blon_in" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blat_in" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blon_out" TYPE="real" DIM="(:,:)"></IN>
-!  <IN NAME="blat_out" TYPE="real" DIM="(:,:)"></IN>
+!  <IN NAME="blon_in" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blat_in" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blon_out" TYPE="real(r8)" DIM="(:,:)"></IN>
+!  <IN NAME="blat_out" TYPE="real(r8)" DIM="(:,:)"></IN>
 !  <IN NAME="vobose" TYPE="integer"></IN>
 !  <INOUT NAME="interp" TYPE="horiz_interp_type"></INOUT>
 !  </SUBROUTINE>
@@ -903,12 +904,12 @@ contains
 !   blon_in    The longitude edges (in radians) for input data grid boxes.
 !              The values are for adjacent grid boxes and must increase in
 !              value. If there are M longitude grid boxes there must be 
-!              M+1 edge values.    [real, dimension(:)]
+!              M+1 edge values.    [real(r8), dimension(:)]
 !
 !   blat_in    The latitude edges (in radians) for input data grid boxes.
 !              The values are for adjacent grid boxes and may increase or
 !              decrease in value. If there are N latitude grid boxes there
-!              must be N+1 edge values.    [real, dimension(:)]
+!              must be N+1 edge values.    [real(r8), dimension(:)]
 !
 !   lon_out   The geographical longitude (in radians) for output data grid boxes.
 !
@@ -926,8 +927,8 @@ contains
 !
 !-----------------------------------------------------------------------
  type(horiz_interp_type), intent(inout) :: Interp
-      real, intent(in),  dimension(:)   :: blon_in , blat_in
-      real, intent(in),  dimension(:,:) :: lon_out, lat_out
+      real(r8), intent(in),  dimension(:)   :: blon_in , blat_in
+      real(r8), intent(in),  dimension(:,:) :: lon_out, lat_out
    integer, intent(in),                   optional :: verbose
 !-----------------------------------------------------------------------
 
@@ -935,10 +936,10 @@ contains
   integer :: nlon_in, nlat_in, nlon_out, nlat_out, n, m,     &
              i, j, ie, is, je, js, istart, jstart, iend, jend, &
              ln_err, lt_err, warns
-  real    :: wtw, wte, wts, wtn, lon, lat, epsln, tpi, hpi,           &
+  real(r8)    :: wtw, wte, wts, wtn, lon, lat, epsln, tpi, hpi,           &
              glt_min, glt_max, gln_min, gln_max
-  real, dimension(size(blon_in)-1)  :: blon_c
-  real, dimension(size(blat_in)-1)  :: blat_c
+  real(r8), dimension(size(blon_in)-1)  :: blon_c
+  real(r8), dimension(size(blat_in)-1)  :: blat_c
 
   hpi = 0.5*pi
   tpi = 4.0*hpi
@@ -1099,10 +1100,10 @@ contains
 
 !  sums up the data and weights for a single output grid box
 !-----------------------------------------------------------------------
-   real, intent(in), dimension(:,:) :: data, area
-   real, intent(in)                 :: facis, facie, facjs, facje
-   real, intent(inout)              :: dwtsum, wtsum, arsum
-   real, intent(in), optional       :: mask(:,:)
+   real(r8), intent(in), dimension(:,:) :: data, area
+   real(r8), intent(in)                 :: facis, facie, facjs, facje
+   real(r8), intent(inout)              :: dwtsum, wtsum, arsum
+   real(r8), intent(in), optional       :: mask(:,:)
 
 !  fac__ = fractional portion of each boundary grid box included
 !          in the integral
@@ -1110,8 +1111,8 @@ contains
 !  wtsum  = sum(area*mask)
 !  arsum  = sum(area)
 !-----------------------------------------------------------------------
-   real, dimension(size(area,1),size(area,2)) :: wt
-   real    :: asum
+   real(r8), dimension(size(area,1),size(area,2)) :: wt
+   real(r8)    :: asum
    integer :: id, jd
 !-----------------------------------------------------------------------
 
@@ -1141,15 +1142,15 @@ contains
 
 !#######################################################################
 ! <SUBROUTINE NAME="horiz_interp_solo_1" INTERFACE="horiz_interp">
-!   <IN NAME="data_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <IN NAME="blon_in" TYPE="real" DIM="(:)"> </IN>
-!   <IN NAME="blat_in" TYPE="real" DIM="(:)"> </IN>
-!   <IN NAME="blon_out" TYPE="real" DIM="(:)"> </IN>
-!   <IN NAME="blat_out" TYPE="real" DIM="(:)"> </IN>
+!   <IN NAME="data_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <IN NAME="blon_in" TYPE="real(r8)" DIM="(:)"> </IN>
+!   <IN NAME="blat_in" TYPE="real(r8)" DIM="(:)"> </IN>
+!   <IN NAME="blon_out" TYPE="real(r8)" DIM="(:)"> </IN>
+!   <IN NAME="blat_out" TYPE="real(r8)" DIM="(:)"> </IN>
 !   <IN NAME="verbose" TYPE="integer"> </IN>
-!   <IN NAME="mask_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <OUT NAME="data_out" TYPE="real" DIM="(:,:)"> </OUT>
-!   <OUT NAME="mask_out" TYPE="real" DIM="(:,:)"> </OUT>
+!   <IN NAME="mask_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
+!   <OUT NAME="mask_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
 ! </SUBROUTINE>
 
  subroutine horiz_interp_solo_1 ( data_in, blon_in, blat_in,    &
@@ -1161,16 +1162,16 @@ contains
 !
 !   uses 1d arrays of adjacent values for blon_out and blat_out
 !-----------------------------------------------------------------------
-      real, intent(in),  dimension(:,:) :: data_in
-      real, intent(in),  dimension(:)   :: blon_in , blat_in
-      real, intent(in),  dimension(:)   :: blon_out, blat_out
-      real, intent(out), dimension(:,:) :: data_out
+      real(r8), intent(in),  dimension(:,:) :: data_in
+      real(r8), intent(in),  dimension(:)   :: blon_in , blat_in
+      real(r8), intent(in),  dimension(:)   :: blon_out, blat_out
+      real(r8), intent(out), dimension(:,:) :: data_out
    integer, intent(in),                   optional :: verbose
-      real, intent(in),   dimension(:,:), optional :: mask_in
-      real, intent(out),  dimension(:,:), optional :: mask_out
+      real(r8), intent(in),   dimension(:,:), optional :: mask_in
+      real(r8), intent(out),  dimension(:,:), optional :: mask_out
 !-----------------------------------------------------------------------
-     real, dimension(size(blon_out)-1,2) :: lonb
-     real, dimension(size(blat_out)-1,2) :: latb
+     real(r8), dimension(size(blon_out)-1,2) :: lonb
+     real(r8), dimension(size(blat_out)-1,2) :: latb
      integer :: i, j
 !-----------------------------------------------------------------------
 !-- create new grid box boundary format ---
@@ -1194,15 +1195,15 @@ contains
 
 !#######################################################################
 ! <SUBROUTINE NAME="horiz_interp_solo_2" INTERFACE="horiz_interp">
-!   <IN NAME="data_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <IN NAME="blon_in" TYPE="real" DIM="(:)"> </IN>
-!   <IN NAME="blat_in" TYPE="real" DIM="(:)"> </IN>
-!   <IN NAME="blon_out" TYPE="real" DIM="(:,:)"> </IN>
-!   <IN NAME="blat_out" TYPE="real" DIM="(:,:)"> </IN>
+!   <IN NAME="data_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <IN NAME="blon_in" TYPE="real(r8)" DIM="(:)"> </IN>
+!   <IN NAME="blat_in" TYPE="real(r8)" DIM="(:)"> </IN>
+!   <IN NAME="blon_out" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <IN NAME="blat_out" TYPE="real(r8)" DIM="(:,:)"> </IN>
 !   <IN NAME="verbose" TYPE="integer"> </IN>
-!   <IN NAME="mask_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <OUT NAME="data_out" TYPE="real" DIM="(:,:)"> </OUT>
-!   <OUT NAME="mask_out" TYPE="real" DIM="(:,:)"> </OUT>
+!   <IN NAME="mask_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
+!   <OUT NAME="mask_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
 ! </SUBROUTINE>
 
  subroutine horiz_interp_solo_2 ( data_in, blon_in, blat_in,    &
@@ -1218,7 +1219,7 @@ contains
 !  input:
 !  -----
 !     data_in   input data on long/lat grid
-!                 [real, dimension(:,:)]
+!                 [real(r8), dimension(:,:)]
 !
 !     blon_in   contiguous longitude boundaries for input data
 !               grid boxes, dimensioned by size(data_in,1)+1
@@ -1226,14 +1227,14 @@ contains
 !               grid boxes, dimensioned by size(data_in,2)+1
 !
 !     blon_out  longitude boundaries for output data grid boxes,
-!                 [real, dimension(size(data_out,1),2)]
+!                 [real(r8), dimension(size(data_out,1),2)]
 !     blat_out  latitude boundaries for output data at grid boxes,
-!                 [real, dimension(size(data_out,2),2)]
+!                 [real(r8), dimension(size(data_out,2),2)]
 !
 !  output:
 !  ------
 !     data_out   output data on long/lat grid
-!                  [real, dimension(:,:)]
+!                  [real(r8), dimension(:,:)]
 !
 !  optional
 !  --------
@@ -1245,13 +1246,13 @@ contains
 !     mask_out  output mask that specifies whether data was computed
 !
 !-----------------------------------------------------------------------
-      real, intent(in),  dimension(:,:) :: data_in
-      real, intent(in),  dimension(:)   :: blon_in , blat_in
-      real, intent(in),  dimension(:,:) :: blon_out, blat_out
-      real, intent(out), dimension(:,:) :: data_out
+      real(r8), intent(in),  dimension(:,:) :: data_in
+      real(r8), intent(in),  dimension(:)   :: blon_in , blat_in
+      real(r8), intent(in),  dimension(:,:) :: blon_out, blat_out
+      real(r8), intent(out), dimension(:,:) :: data_out
    integer, intent(in),                   optional :: verbose
-      real, intent(in),   dimension(:,:), optional :: mask_in
-      real, intent(out),  dimension(:,:), optional :: mask_out
+      real(r8), intent(in),   dimension(:,:), optional :: mask_in
+      real(r8), intent(out),  dimension(:,:), optional :: mask_out
 
     type (horiz_interp_type) :: Interp
 !-----------------------------------------------------------------------
@@ -1270,10 +1271,10 @@ contains
 
 !#######################################################################
 !  <SUBROUTINE NAME="horiz_interp_init_1" INTERFACE="horiz_interp_init">
-!  <IN NAME="blon_in" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blat_in" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blon_out" TYPE="real" DIM="(:)"></IN>
-!  <IN NAME="blat_out" TYPE="real" DIM="(:)"></IN>
+!  <IN NAME="blon_in" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blat_in" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blon_out" TYPE="real(r8)" DIM="(:)"></IN>
+!  <IN NAME="blat_out" TYPE="real(r8)" DIM="(:)"></IN>
 !  <IN NAME="vobose" TYPE="integer"></IN>
 !  <INOUT NAME="interp" TYPE="horiz_interp_type"></INOUT>
 !  </SUBROUTINE>
@@ -1287,12 +1288,12 @@ contains
 !   uses 1d arrays of adjacent values for blon_out and blat_out
 !-----------------------------------------------------------------------
  type(horiz_interp_type), intent(inout) :: Interp
-      real, intent(in),  dimension(:)   :: blon_in , blat_in
-      real, intent(in),  dimension(:)   :: blon_out, blat_out
+      real(r8), intent(in),  dimension(:)   :: blon_in , blat_in
+      real(r8), intent(in),  dimension(:)   :: blon_out, blat_out
    integer, intent(in),                   optional :: verbose
 !-----------------------------------------------------------------------
-     real, dimension(size(blon_out)-1,2) :: lonb
-     real, dimension(size(blat_out)-1,2) :: latb
+     real(r8), dimension(size(blon_out)-1,2) :: lonb
+     real(r8), dimension(size(blat_out)-1,2) :: latb
      integer :: i, j
 !-----------------------------------------------------------------------
 !-- create new grid box boundary format ---
@@ -1315,17 +1316,17 @@ contains
 
 !#######################################################################
 ! <SUBROUTINE NAME="horiz_interp_solo_old" INTERFACE="horiz_interp">
-!   <IN NAME="data_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <IN NAME="wb" TYPE="real"></IN>
-!   <IN NAME="sb" TYPE="real"></IN>
-!   <IN NAME="dx" TYPE="real"></IN>
-!   <IN NAME="dy" TYPE="real"></IN>
-!   <IN NAME="blon_out" TYPE="real" DIM="(:)"> </IN>
-!   <IN NAME="blat_out" TYPE="real" DIM="(:)"> </IN>
+!   <IN NAME="data_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <IN NAME="wb" TYPE="real(r8)"></IN>
+!   <IN NAME="sb" TYPE="real(r8)"></IN>
+!   <IN NAME="dx" TYPE="real(r8)"></IN>
+!   <IN NAME="dy" TYPE="real(r8)"></IN>
+!   <IN NAME="blon_out" TYPE="real(r8)" DIM="(:)"> </IN>
+!   <IN NAME="blat_out" TYPE="real(r8)" DIM="(:)"> </IN>
 !   <IN NAME="verbose" TYPE="integer"> </IN>
-!   <IN NAME="mask_in" TYPE="real" DIM="(:,:)"> </IN>
-!   <OUT NAME="data_out" TYPE="real" DIM="(:,:)"> </OUT>
-!   <OUT NAME="mask_out" TYPE="real" DIM="(:,:)"> </OUT>
+!   <IN NAME="mask_in" TYPE="real(r8)" DIM="(:,:)"> </IN>
+!   <OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
+!   <OUT NAME="mask_out" TYPE="real(r8)" DIM="(:,:)"> </OUT>
 ! </SUBROUTINE>
 
  subroutine horiz_interp_solo_old (data_in, wb, sb, dx, dy,  &
@@ -1338,47 +1339,47 @@ contains
 ! input
 !
 !   data_in     Global input data stored from west to east (first dimension),
-!               south to north (second dimension).  [real, dimension(:,:)]
+!               south to north (second dimension).  [real(r8), dimension(:,:)]
 !
 !   wb          Longitude (in radians) that corresponds to western-most
-!               boundary of grid box i=1 in array data_in.  [real]
+!               boundary of grid box i=1 in array data_in.  [real(r8)]
 !
 !   sb          Latitude (in radians) that corresponds to southern-most
-!               boundary of grid box j=1 in array data_in.  [real]
+!               boundary of grid box j=1 in array data_in.  [real(r8)]
 !
 !   dx          Grid spacing (in radians) for the longitude axis (first
-!               dimension) for the input data.  [real]
+!               dimension) for the input data.  [real(r8)]
 !
 !   dy          Grid spacing (in radians) for the latitude axis (second
-!               dimension) for the input data.  [real]
+!               dimension) for the input data.  [real(r8)]
 !
 !   blon_out    The longitude edges (in radians) for output data grid boxes.
 !               The values are for adjacent grid boxes and must increase in
 !               value. If there are MLON grid boxes there must be MLON+1
-!               edge values.  [real, dimension(:)]
+!               edge values.  [real(r8), dimension(:)]
 !
 !   blat_out    The latitude edges (in radians) for output data grid boxes.
 !               The values are for adjacent grid boxes and may increase or
 !               decrease in value. If there are NLAT grid boxes there must
-!               be NLAT+1 edge values.  [real, dimension(:)]
+!               be NLAT+1 edge values.  [real(r8), dimension(:)]
 !
 ! OUTPUT
 !   data_out    Output data on the output grid defined by grid box
-!               edges: blon_out and blat_out.  [real, dimension(:,:)]
+!               edges: blon_out and blat_out.  [real(r8), dimension(:,:)]
 !
 !-----------------------------------------------------------------------
-      real, intent(in),  dimension(:,:) :: data_in
-      real, intent(in)                  :: wb, sb, dx, dy
-      real, intent(in),  dimension(:)   :: blon_out, blat_out
-      real, intent(out), dimension(:,:) :: data_out
+      real(r8), intent(in),  dimension(:,:) :: data_in
+      real(r8), intent(in)                  :: wb, sb, dx, dy
+      real(r8), intent(in),  dimension(:)   :: blon_out, blat_out
+      real(r8), intent(out), dimension(:,:) :: data_out
    integer, intent(in),                   optional :: verbose
-      real, intent(in),   dimension(:,:), optional :: mask_in
-      real, intent(out),  dimension(:,:), optional :: mask_out
+      real(r8), intent(in),   dimension(:,:), optional :: mask_in
+      real(r8), intent(out),  dimension(:,:), optional :: mask_out
 !-----------------------------------------------------------------------
-     real, dimension(size(data_in,1)+1)  :: blon_in
-     real, dimension(size(data_in,2)+1)  :: blat_in
+     real(r8), dimension(size(data_in,1)+1)  :: blon_in
+     real(r8), dimension(size(data_in,2)+1)  :: blat_in
      integer :: i, j, nlon_in, nlat_in
-     real    :: tpi
+     real(r8)    :: tpi
 !-----------------------------------------------------------------------
  
    tpi = 2.*pi
@@ -1456,11 +1457,11 @@ contains
 !#######################################################################
 ! <SUBROUTINE NAME="horiz_interp_base_3d" INTERFACE="horiz_interp">
 !   <IN NAME="Interp" TYPE="Derived-type"> </IN>
-!   <IN NAME="data_in" TYPE="real" DIM="(:,:,:)"> </IN>
+!   <IN NAME="data_in" TYPE="real(r8)" DIM="(:,:,:)"> </IN>
 !   <IN NAME="verbose" TYPE="integer"> </IN>
-!   <IN NAME="mask_in" TYPE="real" DIM="(:,:,:)"> </IN>
-!   <OUT NAME="data_out" TYPE="real" DIM="(:,:,:)"> </OUT>
-!   <OUT NAME="mask_out" TYPE="real" DIM="(:,:,:)"> </OUT>
+!   <IN NAME="mask_in" TYPE="real(r8)" DIM="(:,:,:)"> </IN>
+!   <OUT NAME="data_out" TYPE="real(r8)" DIM="(:,:,:)"> </OUT>
+!   <OUT NAME="mask_out" TYPE="real(r8)" DIM="(:,:,:)"> </OUT>
 ! </SUBROUTINE>
 
  subroutine horiz_interp_base_3d ( Interp, data_in, data_out, &
@@ -1473,11 +1474,11 @@ contains
 !   this allows for multiple interpolations with one call
 !-----------------------------------------------------------------------
    type (horiz_interp_type), intent(in) :: Interp
-      real, intent(in),  dimension(:,:,:) :: data_in
-      real, intent(out), dimension(:,:,:) :: data_out
+      real(r8), intent(in),  dimension(:,:,:) :: data_in
+      real(r8), intent(out), dimension(:,:,:) :: data_out
    integer, intent(in),                     optional :: verbose
-      real, intent(in),   dimension(:,:,:), optional :: mask_in
-      real, intent(out),  dimension(:,:,:), optional :: mask_out
+      real(r8), intent(in),   dimension(:,:,:), optional :: mask_in
+      real(r8), intent(out),  dimension(:,:,:), optional :: mask_out
 !-----------------------------------------------------------------------
    integer :: n
 
@@ -1510,8 +1511,8 @@ contains
 
 function indp (value, array, ia)
 integer             :: ia, indp
-real, dimension(ia) :: array
-real                :: value
+real(r8), dimension(ia) :: array
+real(r8)                :: value
 !
 !=======================================================================
 !
@@ -1611,9 +1612,9 @@ end module horiz_interp_mod
 !       use horiz_interp_mod
 !       implicit none
 !       integer, parameter :: nxi=177, nyi=91, nxo=133, nyo=77 ! resolution
-!       real :: zi(nxi,nyi), zo(nxo,nyo)                       ! data
-!       real :: xi(nxi+1), yi(nyi+1), xo(nxo+1), yo(nyo+1)     ! grid edges
-!       real :: pi, tpi, hpi, dx, dy
+!       real(r8) :: zi(nxi,nyi), zo(nxo,nyo)                       ! data
+!       real(r8) :: xi(nxi+1), yi(nyi+1), xo(nxo+1), yo(nyo+1)     ! grid edges
+!       real(r8) :: pi, tpi, hpi, dx, dy
 !     
 !       ! constants
 !         hpi = acos(0.0)
@@ -1621,10 +1622,10 @@ end module horiz_interp_mod
 !         tpi = hpi*4.0
 !     
 !       ! grid setup: west to east, south to north
-!         dx = tpi/real(nxi); call setaxis (0.,dx,xi);   xi(nxi+1) = xi(1)+tpi
-!         dx = tpi/real(nxo); call setaxis (0.,dx,xo);   xo(nxo+1) = xo(1)+tpi
-!         dy =  pi/real(nyi); call setaxis (-hpi,dy,yi); yi(nyi+1) = hpi
-!         dy =  pi/real(nyo); call setaxis (-hpi,dy,yo); yo(nyo+1) = hpi
+!         dx = tpi/real(r8)(nxi); call setaxis (0.,dx,xi);   xi(nxi+1) = xi(1)+tpi
+!         dx = tpi/real(r8)(nxo); call setaxis (0.,dx,xo);   xo(nxo+1) = xo(1)+tpi
+!         dy =  pi/real(r8)(nyi); call setaxis (-hpi,dy,yi); yi(nyi+1) = hpi
+!         dy =  pi/real(r8)(nyo); call setaxis (-hpi,dy,yo); yo(nyo+1) = hpi
 !     
 !       ! random data on the input grid
 !         call random_number (zi)
@@ -1638,8 +1639,8 @@ end module horiz_interp_mod
 !       contains
 !     ! set up a sequence of numbers
 !         subroutine setaxis (xo,dx,x)
-!         real, intent(in)  :: xo, dx
-!         real, intent(out) :: x(:)
+!         real(r8), intent(in)  :: xo, dx
+!         real(r8), intent(out) :: x(:)
 !         integer :: i
 !           x(1) = xo
 !           do i=2,size(x)

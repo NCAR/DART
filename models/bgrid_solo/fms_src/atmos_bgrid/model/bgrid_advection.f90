@@ -32,6 +32,7 @@
 !-----------------------------------------------------------------------
 !--------------------------- modules -----------------------------------
 !-----------------------------------------------------------------------
+use types_mod, only : r8
 use bgrid_horiz_mod       , only: horiz_grid_type
 use bgrid_vert_mod        , only: vert_grid_type, compute_pres_depth
 use bgrid_masks_mod       , only: grid_mask_type
@@ -48,10 +49,7 @@ use vert_advection_mod    , only: vert_advection, &
 !!!use horiz_advection_mod   , only: horiz_advection
 
 use fms_mod, only: error_mesg, FATAL, write_version_number, &
-                   mpp_pe, mpp_root_pe, stdlog, uppercase,  &
-                   MPP_CLOCK_SYNC, mpp_clock_init,          &
-                   mpp_clock_begin, mpp_clock_end
-use mpp_mod, only: mpp_max
+                   stdlog, uppercase
 use  field_manager_mod, only: MODEL_ATMOS, parse
 use tracer_manager_mod, only: query_method, get_tracer_names, get_number_tracers
 !-----------------------------------------------------------------------
@@ -64,7 +62,7 @@ private
 
  type advec_control_type
     integer, pointer  :: scheme(:,:)
-    real   , pointer  :: weight(:)
+    real(r8)   , pointer  :: weight(:)
     integer, pointer :: fill_scheme(:), npass_horiz(:), npass_vert(:)
     logical  ::  do_mask4_tmp, do_mask4_vel, do_finite_volume
  end type advec_control_type
@@ -78,7 +76,7 @@ private
 !-----------------------------------------------------------------------
 ! private data
 
- real :: c4  = -1./6.
+ real(r8) :: c4  = -1./6.
 
  character(len=128) :: version='$Id$'
  character(len=128) :: tagname='$Name$'
@@ -107,10 +105,10 @@ type(horiz_grid_type), intent(inout) :: Hgrid
 type (vert_grid_type), intent(in)    :: Vgrid
 type (grid_mask_type), intent(in)    :: Masks
               integer, intent(in)    :: pfilt_opt
-                 real, intent(in)    :: dt
-real, intent(in), dimension(Hgrid%ilb:,Hgrid%jlb:,:) ::  &
+                 real(r8), intent(in)    :: dt
+real(r8), intent(in), dimension(Hgrid%ilb:,Hgrid%jlb:,:) ::  &
                                             dpde_old, dpde, u, v, t
-real, intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: &
+real(r8), intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: &
                                             few, fns, etadot
 type (prog_var_type), intent(in)    :: Var
 type (prog_var_type), intent(inout) :: Var_dt
@@ -128,19 +126,17 @@ type (prog_var_type), intent(inout) :: Var_dt
 !            advective time step, therefore, r = Var%r + dt*Var_dt%r
 !
 !-----------------------------------------------------------------------
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) ::  &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) ::  &
                                  few_2d, fns_2d
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
                   Vgrid%nlev) :: dpdt, dpde_xy, r, uc, vc
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
                   Vgrid%nlev,2) :: mask4
   integer :: i, j, k, n, is, ie, js, je, kx, order
 !-----------------------------------------------------------------------
 
-   call mpp_clock_begin (id_advection)
 
 !  ---- update halos for fluxes ----
-
    call update_halo (Hgrid, TEMP, few)
    call update_halo (Hgrid, VWND, fns)
 
@@ -154,7 +150,6 @@ type (prog_var_type), intent(inout) :: Var_dt
 !-----------------------------------------------------------------------
 !------------------ advection of mass fields ---------------------------
 !-----------------------------------------------------------------------
-
 !------ initialize fourth-order mask ----
 
    if (Control%do_mask4_tmp) &
@@ -167,14 +162,11 @@ type (prog_var_type), intent(inout) :: Var_dt
         uc = 0.
         vc = 0.
    endif
-
 !------ temperature advection ------
-
    call advect_mass (Hgrid, Pfilt, Control % scheme(:,0),   &
                      Control % weight(0), pfilt_opt,        &
                      dt, dpdt, dpde, Masks%Tmp%mask, mask4, &
                      few, fns, etadot, uc, vc, Var%t, t, Var_dt%t   )
-
 !------ tracer advection -----------
 !  (need to pass all tracers to update pressure tendency part)
 
@@ -189,29 +181,30 @@ type (prog_var_type), intent(inout) :: Var_dt
                         Var%r(:,:,:,n), r, Var_dt%r(:,:,:,n)     )
 
    enddo
-
 !------ tracer hole filling -------
 !  (remove negative tracer values with vert/horiz borrowing)
-
-     call vert_borrow ( dt, dpde, Var%r(:,:,:,1:Var_dt%ntrace), &
+     if(Var_dt%ntrace /= 0) then
+        call vert_borrow ( dt, dpde, Var%r(:,:,:,1:Var_dt%ntrace), &
                                Var_dt%r(:,:,:,1:Var_dt%ntrace), &
                                   iters = Control % npass_vert  )
 
-     call horiz_borrow ( Hgrid, dt, dpde, Masks%Tmp%mask,    &
+        call horiz_borrow ( Hgrid, dt, dpde, Masks%Tmp%mask,    &
                                Var%r(:,:,:,1:Var_dt%ntrace), &
                             Var_dt%r(:,:,:,1:Var_dt%ntrace), &
                               iters = Control % npass_horiz  )
+      endif
 
 !-----------------------------------------------------------------------
 !------------------ advection of momentum fields -----------------------
 !-----------------------------------------------------------------------
-
-
 !------------- mass fluxes between velocity points ---------------------
 
    is = Hgrid % Vel % is;  ie = Hgrid % Vel % ie
    js = Hgrid % Vel % js;  je = Hgrid % Vel % je
    kx = size(few,3)
+
+! Need to set unused values of few_2d to zero
+few_2d = 0.0; fns_2d = 0.0
 
    do k = 1, kx
    do j = js, je
@@ -260,7 +253,6 @@ type (prog_var_type), intent(inout) :: Var_dt
 
 !-----------------------------------------------------------------------
 
-   call mpp_clock_end (id_advection)
 
 !-----------------------------------------------------------------------
 
@@ -276,25 +268,24 @@ subroutine advect_mass ( Hgrid, Pfilt, scheme, coeff, fopt, dt, &
   type(pfilt_control_type), intent(in) :: Pfilt
   integer,                  intent(in) :: scheme(2)
   integer,                  intent(in) :: fopt
-  real, intent(in)                     :: coeff, dt
-  real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: dpdt, dpn,&
+  real(r8), intent(in)                     :: coeff, dt
+  real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: dpdt, dpn,&
                                      mask, few, fns, fud, ro, r, uc, vc
-  real, intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: mask4
-  real, intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: r_dt
+  real(r8), intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: mask4
+  real(r8), intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: r_dt
 
 !-----------------------------------------------------------------------
 
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
                   size(r,3)) :: rst, rst_dt, rst_dt_v, rdpdt
-  real, dimension(Hgrid%jlb:Hgrid%jub) :: dx, dy
+  real(r8), dimension(Hgrid%jlb:Hgrid%jub) :: dx, dy
 
-  real    :: rcoef
+  real(r8)    :: rcoef
   integer :: pass, npass, j, k, order
   integer :: vert_scheme, horiz_scheme
   integer, parameter :: FINITE_VOLUME = 1234567 !can not match other numbers?
 
 !-----------------------------------------------------------------------
-
  ! set the vertical and horizontal differencing scheme
     horiz_scheme = scheme(1)
      vert_scheme = scheme(2)
@@ -388,15 +379,15 @@ subroutine advect_vel ( Hgrid, Pfilt, scheme, coeff, fopt, dt,  &
   type(pfilt_control_type), intent(in) :: Pfilt
   integer,                  intent(in) :: scheme(2)
   integer,                  intent(in) :: fopt
-  real, intent(in)                     :: coeff, dt
-  real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: dpdt, dpn,&
+  real(r8), intent(in)                     :: coeff, dt
+  real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: dpdt, dpn,&
                                      mask, few, fns, fud, uo, vo, u, v
-  real, intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: mask4
-  real, intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u_dt, v_dt
+  real(r8), intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: mask4
+  real(r8), intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u_dt, v_dt
 
 !-----------------------------------------------------------------------
 
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
                   size(u,3)) :: ust, ust_dt, ust_dt_v, &
                                 vst, vst_dt, vst_dt_v
   integer :: order, vert_scheme, horiz_scheme
@@ -491,13 +482,13 @@ end subroutine advect_vel
 
   type(horiz_grid_type),    intent(inout) :: Hgrid
   integer,                  intent(in)    :: order
-  real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: few, fns, &
+  real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: few, fns, &
                                                        maskx, masky, rst
-  real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: rst_dt
+  real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: rst_dt
 
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub, &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub, &
                   size(rst,3)) :: rstx, rsty, rew, rns
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
                                x2, x4, y2, y4
   integer :: i, j, k, is, ie, js, je, kx
 
@@ -590,14 +581,14 @@ end subroutine advect_vel
 
   type(horiz_grid_type),    intent(inout) :: Hgrid
   integer,                  intent(in)    :: order
-  real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: few, fns, &
+  real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: few, fns, &
                                                  maskx, masky, ust, vst
-  real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: ust_dt, vst_dt
+  real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: ust_dt, vst_dt
 
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub, &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub, &
                   size(ust,3)) :: ustx, usty, uew, uns, &
                                   vstx, vsty, vew, vns
-  real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
                                x2, x4, y2, y4
   integer :: i, j, k, is, ie, js, je, kx
 
@@ -706,10 +697,10 @@ end subroutine advect_vel
 
  subroutine compute_advecting_wind ( Hgrid, dpo, dpn, few, fns, uc, vc )
  type(horiz_grid_type), intent(inout) :: Hgrid
- real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dpo, dpn, few, fns
- real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: uc, vc
+ real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dpo, dpn, few, fns
+ real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: uc, vc
 
- real :: dp
+ real(r8) :: dp
  integer :: i, j, k
 
    do k = 1, size(uc,3)
@@ -740,11 +731,11 @@ end subroutine advect_vel
 
  subroutine stability_diag ( Hgrid, dt, few, dpo, dpn )
  type(horiz_grid_type), intent(inout) :: Hgrid
- real, intent(in)                     :: dt
- real, intent(in), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: few, dpo, dpn
+ real(r8), intent(in)                     :: dt
+ real(r8), intent(in), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: few, dpo, dpn
 
- real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: uc
- real    :: cflmax, cfl, dpa
+ real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: uc
+ real(r8)    :: cflmax, cfl, dpa
  integer :: i, j, k
 
     cflmax = 0.
@@ -763,12 +754,11 @@ end subroutine advect_vel
        enddo      
        enddo   
     enddo   
-    call mpp_max (cflmax)
-    if (mpp_pe() == mpp_root_pe()) then
+
+! Running on single PE, don't need to find maxes from other pe's
         if (cflmax > 1.0) then
             print *, 'x-axis stability violated, cfl = ', cflmax
         endif       
-    endif       
 
  end subroutine stability_diag
 
@@ -779,9 +769,9 @@ end subroutine advect_vel
  type(horiz_grid_type), intent(inout) :: Hgrid
  integer, intent(in)                                      :: grid
  logical, intent(in)                                      :: sigma
- real, intent(in),   dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: mask
- real, intent(out),  dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: mask4
- real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub, &
+ real(r8), intent(in),   dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: mask
+ real(r8), intent(out),  dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: mask4
+ real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub, &
                  size(mask,3)) :: mew, mns
 
  integer :: i,j,k,is,ie,js,je,n
@@ -887,12 +877,12 @@ end subroutine advect_vel
   type(horiz_grid_type), intent(in) :: Hgrid
   integer, intent(in), optional     ::  order_vel,  order_tmp,  &
                                         order_trs
-  real,    intent(in), optional     :: weight_vel, weight_tmp,  &
+  real(r8),    intent(in), optional     :: weight_vel, weight_tmp,  &
                                        weight_trs
   integer, intent(in), optional     :: horiz_fill, vert_fill
   type(advec_control_type)          :: Control
 
- real    :: wt
+ real(r8)    :: wt
  integer :: n, m, np, ntrace
  character(len=32)  :: advec_methods(2) = (/ 'advec_horiz', 'advec_vert ' /)
  character(len=128) :: scheme, params, name
@@ -983,7 +973,6 @@ end subroutine advect_vel
    enddo
 
  ! print results
-   if (mpp_pe() == mpp_root_pe()) then
       do n = 1, ntrace
            call get_tracer_names (MODEL_ATMOS, n, name)
            write (stdlog(),10) n, trim(name), &
@@ -994,7 +983,6 @@ end subroutine advect_vel
         10 format (i3, a24, ', HORIZ=',a24, ', VERT=',a24, ', wt=',f7.3, &
                    ', hp=',i2, ', vp=',i2)
       enddo
-   endif
 
  ! check if fourth order centered horizontal scheme
    Control%do_mask4_vel = Control%scheme(1,-1) == FOURTH_CENTERED
@@ -1026,12 +1014,6 @@ end subroutine advect_vel
    enddo
 
 ! initialize code sections for performance timing 
-
- if (do_clock_init) then
-   id_advection  = mpp_clock_init ('BGRID: advection (TOTAL)', time_level, &
-                                    flags=MPP_CLOCK_SYNC)
-   do_clock_init = .false. 
- endif
 
 !-----------------------------------------------------------------------
 
@@ -1122,31 +1104,31 @@ subroutine horiz_borrow (Hgrid, dt, dpde, mask, var, var_dt,  &
 !
 !-----------------------------------------------------------------------
    type(horiz_grid_type), intent(inout)                      :: Hgrid
-   real, intent(in)                                          :: dt
-   real, intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: dpde, &
+   real(r8), intent(in)                                          :: dt
+   real(r8), intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:)   :: dpde, &
                                                                 mask
-   real, intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: var
-   real, intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: var_dt
+   real(r8), intent(in),    dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: var
+   real(r8), intent(inout), dimension(Hgrid%ilb:,Hgrid%jlb:,:,:) :: var_dt
 integer, intent(in), optional                                :: iters(:)
-   real, intent(in), optional                                :: eps
+   real(r8), intent(in), optional                                :: eps
 !-----------------------------------------------------------------------
 !  ( note:   0.0 < flt <= 0.125 )
-   real, parameter :: flt  = 0.125
-   real, parameter :: flt4 = flt*0.25
+   real(r8), parameter :: flt  = 0.125
+   real(r8), parameter :: flt4 = flt*0.25
 !-----------------------------------------------------------------------
 
-   real, dimension(lbound(var,1):ubound(var,1),                 &
+   real(r8), dimension(lbound(var,1):ubound(var,1),                 &
                    lbound(var,2):ubound(var,2),size(var,3)) ::  &
                                 hew, hns, rap, few, fns, rcur, rdif
 
-   real, dimension(lbound(var,1):ubound(var,1), &
+   real(r8), dimension(lbound(var,1):ubound(var,1), &
                    lbound(var,2):ubound(var,2)) :: rew, rns,  &
                                                    areax, areay
 
 integer :: i, j, k, n, is, ie, js, je, nlev, ntrace, knt, it, mxknt(size(var,4))
 integer :: is0, ie0, js0, je0, norder
 logical :: last, do_halos
-   real :: rmin, hsign
+   real(r8) :: rmin, hsign
 !-----------------------------------------------------------------------
 
    mxknt = 1;  if (present(iters)) mxknt = iters
@@ -1303,16 +1285,16 @@ end subroutine horiz_borrow
 !  is available to fill the negative then a negative will remain.
 !
 !-----------------------------------------------------------------------
-   real, intent(in)    :: dt, dpde(:,:,:), var(:,:,:,:)
-   real, intent(inout) :: var_dt(:,:,:,:)
-   real, intent(in), optional :: eps
+   real(r8), intent(in)    :: dt, dpde(:,:,:), var(:,:,:,:)
+   real(r8), intent(inout) :: var_dt(:,:,:,:)
+   real(r8), intent(in), optional :: eps
 integer, intent(in), optional :: iters(:)
 !-----------------------------------------------------------------------
-   real, dimension(size(var,1),size(var,2),size(var,3)) ::  &
+   real(r8), dimension(size(var,1),size(var,2),size(var,3)) ::  &
                                 var_new, deficit, surplus, rdpdt, small
-   real, dimension(size(var,1),size(var,2)) :: divid, ratio_dn,  &
+   real(r8), dimension(size(var,1),size(var,2)) :: divid, ratio_dn,  &
                                                ratio_up, var_dp
-   real    :: epsil
+   real(r8)    :: epsil
    integer :: k, n, kdim, iter, num_iters(size(var,4)), num, num_var
 !-----------------------------------------------------------------------
 
@@ -1352,7 +1334,7 @@ integer, intent(in), optional :: iters(:)
 !---- top level ----
 
    where (deficit(:,:,1) < 0.0)
-      divid(:,:) = max(-surplus(:,:,2)/deficit(:,:,1),1.0)
+      divid(:,:) = max(-surplus(:,:,2)/deficit(:,:,1),1.0_r8)
       ratio_dn(:,:) = surplus(:,:,2)/divid(:,:)
       var_dt(:,:,1,n) = var_dt(:,:,1,n) + ratio_dn(:,:)*rdpdt(:,:,1)
       var_dt(:,:,2,n) = var_dt(:,:,2,n) - ratio_dn(:,:)*rdpdt(:,:,2)
@@ -1364,7 +1346,7 @@ integer, intent(in), optional :: iters(:)
    do k = 2, kdim-1
      where (deficit(:,:,k) < 0.0)
        divid(:,:) = max(-(surplus(:,:,k-1)+surplus(:,:,k+1))/  &
-                        deficit(:,:,k),1.0)
+                        deficit(:,:,k),1.0_r8)
        ratio_up(:,:) = surplus(:,:,k-1)/divid(:,:)
        ratio_dn(:,:) = surplus(:,:,k+1)/divid(:,:)
        var_dt(:,:,k,n)  = var_dt(:,:,k,n)+(ratio_up(:,:)+ratio_dn(:,:))*rdpdt(:,:,k)
@@ -1377,7 +1359,7 @@ integer, intent(in), optional :: iters(:)
 !---- bottom level ----
 
    where (deficit(:,:,kdim) < 0.0)
-      divid(:,:) = max(-surplus(:,:,kdim-1)/deficit(:,:,kdim),1.0)
+      divid(:,:) = max(-surplus(:,:,kdim-1)/deficit(:,:,kdim),1.0_r8)
       ratio_up(:,:) = surplus(:,:,kdim-1)/divid(:,:)
       var_dt(:,:,kdim,n)   = var_dt(:,:,kdim,n)+ratio_up(:,:)*rdpdt(:,:,kdim)
       var_dt(:,:,kdim-1,n) = var_dt(:,:,kdim-1,n)-ratio_up(:,:)*rdpdt(:,:,kdim-1)

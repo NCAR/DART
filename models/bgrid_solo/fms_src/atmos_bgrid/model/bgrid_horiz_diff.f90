@@ -27,6 +27,7 @@ module bgrid_horiz_diff_mod
 
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_horiz_mod      , only: horiz_grid_type
 use bgrid_vert_mod       , only: vert_grid_type, compute_pres_full
 use bgrid_masks_mod      , only: grid_mask_type
@@ -37,9 +38,7 @@ use bgrid_halo_mod       , only: update_halo, vel_flux_boundary, &
 use bgrid_change_grid_mod, only: mass_to_vel
 
 use         fms_mod, only:  error_mesg, FATAL, write_version_number, &
-                            MPP_CLOCK_SYNC, mpp_clock_init,          &
-                            mpp_clock_begin, mpp_clock_end,          &
-                            mpp_pe, mpp_root_pe, uppercase, stdlog
+                            uppercase, stdlog
 use   constants_mod, only:  RADIUS
 
 use  field_manager_mod, only: MODEL_ATMOS, parse
@@ -60,12 +59,12 @@ public hdiff_control_type
 type hdiff_control_type
      type(horiz_grid_type), pointer :: Hgrid
      integer, pointer :: order(:)
-     real   , pointer :: coeff(:), slope(:,:)
+     real(r8)   , pointer :: coeff(:), slope(:,:)
      logical       :: do_damping, do_slope_adj_temp, do_slope_adj_wind
      integer       :: nplevs
      integer       :: num_adjust_dt
      integer       :: damping_scheme
-     real, dimension(:,:),   pointer :: areahx, areahy, &
+     real(r8), dimension(:,:),   pointer :: areahx, areahy, &
                                         areavx, areavy, &
                                         wth,  wtv
 end type hdiff_control_type
@@ -81,7 +80,7 @@ public   horiz_diff, horiz_diff_init
    integer  :: nlev
 
 !  ---- slope correction weights ----
-!  real, dimension(3) :: slope_weights = (/ 1.00, 0.75, 0.25 /)
+!  real(r8), dimension(3) :: slope_weights = (/ 1.00, 0.75, 0.25 /)
 !!!!!!!!!!!!!!!!!!!!!   calgary values = (/ 1.00, 0.50, 0.10 /)
 !!!!!!!!!!!!!!!!!!!!!    bombay values = (/ 1.00, 1.00, 0.50 /)
 
@@ -117,35 +116,34 @@ contains
 type(hdiff_control_type), intent(inout) :: Control
 type (grid_mask_type),    intent(in)    :: Masks
 
-  real,                 intent(in)    :: dt
-  real,                 intent(in)    :: dpde(Control%Hgrid%ilb:,Control%Hgrid%jlb:,:),&
+  real(r8),                 intent(in)    :: dt
+  real(r8),                 intent(in)    :: dpde(Control%Hgrid%ilb:,Control%Hgrid%jlb:,:),&
                                          pres(Control%Hgrid%ilb:,Control%Hgrid%jlb:,:)
   type (prog_var_type), intent(in)    :: Var
   type (prog_var_type), intent(inout) :: Var_dt
 
 !-----------------------------------------------------------------------
 
-  real, dimension (Control%Hgrid%ilb:Control%Hgrid%iub,    &
+  real(r8), dimension (Control%Hgrid%ilb:Control%Hgrid%iub,    &
                    Control%Hgrid%jlb:Control%Hgrid%jub) :: &
                                          hkew2, hkns2, coeff
 
-  real, dimension(Control%Hgrid%ilb:Control%Hgrid%iub,       &
+  real(r8), dimension(Control%Hgrid%ilb:Control%Hgrid%iub,       &
                   Control%Hgrid%jlb:Control%Hgrid%jub,       &
                   size(dpde,3)) :: hkew3, hkns3, hkew, hkns, &
                                    hcew, hcns, dat, vdat, hdac
 
-  real, dimension(Control%Hgrid%ilb:Control%Hgrid%iub, &
+  real(r8), dimension(Control%Hgrid%ilb:Control%Hgrid%iub, &
                   Control%Hgrid%jlb:Control%Hgrid%jub, &
                      size(dpde,3),3) :: pterms
 
-  real    :: dt_inv, hsign
+  real(r8)    :: dt_inv, hsign
   integer :: i, j, k, n, is, ie, js, je, nplev, ntp
 
 !=======================================================================
 !  --- should damping be done ??? ----
 
    if ( .not. Control%do_damping ) return
-   call mpp_clock_begin (id_total)
 
 !-----------------------------------------------------------------------
 !       --- check the horizontal dimensions of the input array ---
@@ -236,8 +234,8 @@ type (grid_mask_type),    intent(in)    :: Masks
          hkns2 = Control%coeff(0)*Control%wth
 !        -- stability condition --
          if ( Control%damping_scheme > 1) then
-            hkew2 = min(0.125,hkew2)
-            hkns2 = min(0.125,hkew2)
+            hkew2 = min(0.125_r8,hkew2)
+            hkns2 = min(0.125_r8,hkew2)
          endif
          hkew = hkew3 * spread(hkew2,3,nlev)
          hkns = hkns3 * spread(hkns2,3,nlev)
@@ -267,8 +265,8 @@ type (grid_mask_type),    intent(in)    :: Masks
             hkns2 = Control%coeff(n)*Control%wth
            !-- stability condition --
             if ( Control%damping_scheme > 1) then
-               hkew2 = min(0.125,hkew2)
-               hkns2 = min(0.125,hkns2)
+               hkew2 = min(0.125_r8,hkew2)
+               hkns2 = min(0.125_r8,hkns2)
             endif
             hkew = hkew3 * spread(hkew2,3,nlev)
             hkns = hkns3 * spread(hkns2,3,nlev)
@@ -369,8 +367,8 @@ type (grid_mask_type),    intent(in)    :: Masks
 
 !     -- stability condition --
       if ( Control%damping_scheme > 1) then
-           hkew2 = min(0.125,hkew2)
-           hkns2 = min(0.125,hkns2)
+           hkew2 = min(0.125_r8,hkew2)
+           hkns2 = min(0.125_r8,hkns2)
       endif
       hkew = hkew3 * spread(hkew2,3,nlev)
       hkns = hkns3 * spread(hkns2,3,nlev)
@@ -393,7 +391,6 @@ type (grid_mask_type),    intent(in)    :: Masks
 
    endif
 
-   call mpp_clock_end (id_total)
 
 !-----------------------------------------------------------------------
 
@@ -414,10 +411,10 @@ type (grid_mask_type),    intent(in)    :: Masks
 
    type(horiz_grid_type), intent(inout) :: Hgrid
    integer, intent(in)    :: order
-   real   , intent(inout), dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8)   , intent(inout), dimension(Hgrid%ilb:Hgrid%iub, &
                                      Hgrid%jlb:Hgrid%jub, &
                                      nlev) :: rdat
-   real   , intent(in),    dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8)   , intent(in),    dimension(Hgrid%ilb:Hgrid%iub, &
                                      Hgrid%jlb:Hgrid%jub, &
                                      nlev) :: hcew, hcns, &
                                               hkew, hkns, hdac
@@ -427,7 +424,7 @@ type (grid_mask_type),    intent(in)    :: Masks
 !  sloping sigma surfaces
 !----------------------------------------------------------------------
 
-   real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) :: &
               rew, rns
    integer :: i, j, k, n, is, ie, js, je, nordr
    integer :: is0, ie0, js0, je0
@@ -517,19 +514,19 @@ type (grid_mask_type),    intent(in)    :: Masks
 
    type(horiz_grid_type), intent(inout) :: Hgrid
    integer, intent(in)    :: order
-   real   , intent(inout), dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8)   , intent(inout), dimension(Hgrid%ilb:Hgrid%iub, &
                                      Hgrid%jlb:Hgrid%jub, &
                                      nlev) :: udat, vdat
-   real   , intent(in),    dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8)   , intent(in),    dimension(Hgrid%ilb:Hgrid%iub, &
                                      Hgrid%jlb:Hgrid%jub, &
                                      nlev) :: vkew, vkns, hdac
-   real   , intent(in),    dimension(Hgrid%ilb:Hgrid%iub, &
+   real(r8)   , intent(in),    dimension(Hgrid%ilb:Hgrid%iub, &
                                      Hgrid%jlb:Hgrid%jub, &
                                      nlev, 3), optional :: terms
 
 !----------------------------------------------------------------------
 
-   real, dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) ::  &
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub) ::  &
               uew, uns, vew, vns, dudp, dvdp, ucew, ucns, vcew, vcns
    integer :: i, j, k, n, is, ie, js, je, k1, k2
    integer :: is0, ie0, js0, je0
@@ -643,10 +640,10 @@ type (grid_mask_type),    intent(in)    :: Masks
    type(horiz_grid_type), intent(in), target :: Hgrid
    integer, intent(in)               :: nt_adj, nplevs
    integer, intent(in), optional  :: order_vel, order_tmp, order_trs
-   real,    intent(in), optional  :: coeff_vel, coeff_tmp, coeff_trs
-   real,    intent(in), optional  :: slope_vel(4), slope_tmp(4)
+   real(r8),    intent(in), optional  :: coeff_vel, coeff_tmp, coeff_trs
+   real(r8),    intent(in), optional  :: slope_vel(4), slope_tmp(4)
 
-   real,    intent(in), optional  :: fis ( Hgrid%ilb:Hgrid%iub, &
+   real(r8),    intent(in), optional  :: fis ( Hgrid%ilb:Hgrid%iub, &
                                            Hgrid%jlb:Hgrid%jub  )
    type(vert_grid_type), intent(in), optional :: Vgrid
    integer,              intent(in), optional :: damping_scheme
@@ -655,14 +652,14 @@ type(hdiff_control_type) :: Control
 
 !-----------------------------------------------------------------------
 
-real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: dxh2, dxv2
-real    :: eps = 1.e-6
-real    :: dxdy2eq, dx2eq, dyh2, dyv2
+real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: dxh2, dxv2
+real(r8)    :: eps = 1.e-6
+real(r8)    :: dxdy2eq, dx2eq, dyh2, dyv2
 integer :: i, j
 
  integer            :: n, nv, order, ntrace
- real               :: slope_trs(4)  ! might make this an argument?
- real               :: coeff, slope(4)
+ real(r8)               :: slope_trs(4)  ! might make this an argument?
+ real(r8)               :: coeff, slope(4)
  character(len=128) :: scheme, params, tname
 
 !-----------------------------------------------------------------------
@@ -716,11 +713,9 @@ integer :: i, j
           nv = parse(params,'slope', slope)
           Control%slope (1:nv,n) = slope(1:nv)
       endif
-      if (mpp_pe() == mpp_root_pe()) then
          call get_tracer_names (MODEL_ATMOS, n, tname)
          write (stdlog(),10) n, trim(tname), Control%order(n), Control%coeff(n), Control%slope(:,n)
       10 format (i3, a24, ', Order=',i2, ', Coeff=',f10.5, ', Slope=',4f10.5)
-      endif
    enddo
 
  ! error checking
@@ -829,11 +824,6 @@ integer :: i, j
 
 ! initialize code sections for performance timing 
 
- if (do_clock_init) then
-   id_total = mpp_clock_init ('BGRID: horiz_diff (TOTAL)', time_level, flags=MPP_CLOCK_SYNC)
-   do_clock_init = .false. 
- endif
-
 !-----------------------------------------------------------------------
 
  end function horiz_diff_init
@@ -844,8 +834,8 @@ integer :: i, j
 
   type(horiz_grid_type), intent(in)  :: Hgrid
   integer,               intent(in)  :: nplevs
-  real,                  intent(in)  :: pres (Hgrid%ilb:,Hgrid%jlb:,:)
-  real,                  intent(out) :: terms(Hgrid%ilb:,Hgrid%jlb:,:,:)
+  real(r8),                  intent(in)  :: pres (Hgrid%ilb:,Hgrid%jlb:,:)
+  real(r8),                  intent(out) :: terms(Hgrid%ilb:,Hgrid%jlb:,:,:)
   integer :: i, j, k, k1, k2, nlev
 
 !  initialization of pressure terms for the sigma slope correction
@@ -878,12 +868,12 @@ integer :: i, j
 
   type(horiz_grid_type), intent(in)  :: Hgrid
   integer,               intent(in)  :: nplevs
-  real,                  intent(in)  :: weights(4)
-  real,                  intent(in)  :: pres (Hgrid%ilb:,Hgrid%jlb:,:)
-  real,                  intent(out) :: terms(Hgrid%ilb:,Hgrid%jlb:,:,:)
-  real    :: wt2
+  real(r8),                  intent(in)  :: weights(4)
+  real(r8),                  intent(in)  :: pres (Hgrid%ilb:,Hgrid%jlb:,:)
+  real(r8),                  intent(out) :: terms(Hgrid%ilb:,Hgrid%jlb:,:,:)
+  real(r8)    :: wt2
   integer :: i, j, k, k1, k2, ks, nlev, isd, ied, jsd, jed
-  real :: dp(size(pres,1),size(pres,2))
+  real(r8) :: dp(size(pres,1),size(pres,2))
 
 !  initialization of pressure terms for the sigma slope correction
 !  these pressure terms do not change between mass variables
@@ -928,14 +918,14 @@ integer :: i, j
 
   type(horiz_grid_type), intent(in)  :: Hgrid
   integer,               intent(in)  :: nplevs
-  real,                  intent(in)  :: weights(4)
-  real,                  intent(in)  :: terms(Hgrid%ilb:,Hgrid%jlb:,:,:)
-  real,                  intent(in)  :: temp (Hgrid%ilb:,Hgrid%jlb:,:)
-  real,                  intent(out) :: cew  (Hgrid%ilb:,Hgrid%jlb:,:),&
+  real(r8),                  intent(in)  :: weights(4)
+  real(r8),                  intent(in)  :: terms(Hgrid%ilb:,Hgrid%jlb:,:,:)
+  real(r8),                  intent(in)  :: temp (Hgrid%ilb:,Hgrid%jlb:,:)
+  real(r8),                  intent(out) :: cew  (Hgrid%ilb:,Hgrid%jlb:,:),&
                                         cns  (Hgrid%ilb:,Hgrid%jlb:,:)
   integer :: i, j, k, k1, k2, ks, nlev
-  real :: wt2
-  real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: dtdp
+  real(r8) :: wt2
+  real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: dtdp
 
 !  computes weighted-corrections for the slope of sigma surfaces
 !  to east-west and north-south fluxes of field temp

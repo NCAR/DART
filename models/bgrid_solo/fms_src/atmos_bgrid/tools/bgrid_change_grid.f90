@@ -29,6 +29,7 @@ module bgrid_change_grid_mod
 !   utility programs specific to the b-grid configuration.
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_horiz_mod, only:  horiz_grid_type
 
 implicit none
@@ -68,11 +69,11 @@ subroutine mass_to_vel_3d (fm, fv)
 !    note:  fm and fv CAN NOT be the same array
 !
 
-      real, intent(in),  dimension(:,:,:) :: fm
-      real, intent(out), dimension(:,:,:) :: fv
+      real(r8), intent(in),  dimension(:,:,:) :: fm
+      real(r8), intent(out), dimension(:,:,:) :: fv
 
 !-----------------------------------------------------------------------
-      real, dimension(size(fm,1),size(fm,2)) :: wk
+      real(r8), dimension(size(fm,1),size(fm,2)) :: wk
       integer  ::  i, j, k, ie, je
 !-----------------------------------------------------------------------
 
@@ -110,11 +111,11 @@ subroutine mass_to_vel_2d (fm,fv)
 !                     dimension ix x jx (x nl)
 !
 
-          real, intent(in),  dimension(:,:) :: fm
-          real, intent(out), dimension(:,:) :: fv
+          real(r8), intent(in),  dimension(:,:) :: fm
+          real(r8), intent(out), dimension(:,:) :: fv
 
 !-----------------------------------------------------------------------
-      real, dimension(size(fm,1),size(fm,2),1) :: fm3,fv3
+      real(r8), dimension(size(fm,1),size(fm,2),1) :: fm3,fv3
 !-----------------------------------------------------------------------
 
       fm3(:,:,1) = fm(:,:)
@@ -145,12 +146,12 @@ subroutine vel_to_mass_3d (u,v,um,vm,mask)
 !    note:  u,um and v,vm CAN be the same array
 !
 
-        real, intent(in),  dimension(:,:,:) :: u,v
-        real, intent(out), dimension(:,:,:) :: um,vm
-        real, intent(in),  dimension(:,:,:) :: mask
+        real(r8), intent(in),  dimension(:,:,:) :: u,v
+        real(r8), intent(out), dimension(:,:,:) :: um,vm
+        real(r8), intent(in),  dimension(:,:,:) :: mask
 
 !-----------------------------------------------------------------------
-        real, dimension(size(u,1),size(u,2)) :: u1, v1, wt
+        real(r8), dimension(size(u,1),size(u,2)) :: u1, v1, wt
         integer :: i, j, k, ie, je
 !-----------------------------------------------------------------------
 
@@ -213,12 +214,12 @@ subroutine vel_to_mass_2d (u,v,um,vm,mask)
 !    note:  u,um and v,vm CAN be the same array
 !
 
-        real, intent(in),  dimension(:,:) :: u,v
-        real, intent(out), dimension(:,:) :: um,vm
-        real, intent(in),  dimension(:,:), optional :: mask
+        real(r8), intent(in),  dimension(:,:) :: u,v
+        real(r8), intent(out), dimension(:,:) :: um,vm
+        real(r8), intent(in),  dimension(:,:), optional :: mask
 
 !-----------------------------------------------------------------------
-      real, dimension(size(u,1),size(u,2),1) :: u3,v3,um3,vm3,mask3
+      real(r8), dimension(size(u,1),size(u,2),1) :: u3,v3,um3,vm3,mask3
 !-----------------------------------------------------------------------
 
       u3(:,:,1) = u(:,:);  v3(:,:,1) = v(:,:)
@@ -254,11 +255,11 @@ subroutine mass_to_vel_area_3d (Hgrid, fm, fv)
 !
 
     type(horiz_grid_type), intent(in) :: Hgrid
-    real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: fm
-    real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: fv
+    real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: fm
+    real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: fv
 
 !-----------------------------------------------------------------------
-    real, dimension(Hgrid%ilb:Hgrid%iub, &
+    real(r8), dimension(Hgrid%ilb:Hgrid%iub, &
                     Hgrid%jlb:Hgrid%jub) :: wk
     integer :: i, j, k, ilb, iub, jlb, jub
 !-----------------------------------------------------------------------
@@ -282,9 +283,13 @@ subroutine mass_to_vel_area_3d (Hgrid, fm, fv)
        enddo
        enddo
 
+
+
+
          fv(:,:,k) = wk(:,:)
 
-    enddo
+   end do
+
 
 !-----------------------------------------------------------------------
 
@@ -307,11 +312,11 @@ subroutine mass_to_vel_area_2d (Hgrid, fm, fv)
 !
 
     type(horiz_grid_type), intent(in) :: Hgrid
-    real, intent(in),  dimension(:,:) :: fm
-    real, intent(out), dimension(:,:) :: fv
+    real(r8), intent(in),  dimension(:,:) :: fm
+    real(r8), intent(out), dimension(:,:) :: fv
 
 !-----------------------------------------------------------------------
-    real, dimension(size(fm,1),size(fm,2),1) :: fm3, fv3
+    real(r8), dimension(size(fm,1),size(fm,2),1) :: fm3, fv3
 !-----------------------------------------------------------------------
 
     fm3(:,:,1) = fm(:,:)
@@ -343,12 +348,12 @@ subroutine vel_to_mass_area_3d (Hgrid, u, v, um, vm, mask)
 !
 
     type(horiz_grid_type), intent(in)   :: Hgrid
-    real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u, v
-    real, intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: um, vm
-    real, intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: mask
+    real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: u, v
+    real(r8), intent(out), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: um, vm
+    real(r8), intent(in),  dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: mask
 
 !-----------------------------------------------------------------------
-    real, dimension(Hgrid%ilb:Hgrid%iub, &
+    real(r8), dimension(Hgrid%ilb:Hgrid%iub, &
                     Hgrid%jlb:Hgrid%jub) :: wt, u1, v1
     integer :: i, j, k, ilb, iub, jlb, jub
 !-----------------------------------------------------------------------
@@ -419,12 +424,12 @@ subroutine vel_to_mass_area_2d (Hgrid, u, v, um, vm, mask)
 !
 
     type(horiz_grid_type), intent(in)   :: Hgrid
-    real, intent(in),  dimension(:,:) :: u, v
-    real, intent(out), dimension(:,:) :: um, vm
-    real, intent(in),  dimension(:,:), optional :: mask
+    real(r8), intent(in),  dimension(:,:) :: u, v
+    real(r8), intent(out), dimension(:,:) :: um, vm
+    real(r8), intent(in),  dimension(:,:), optional :: mask
 
 !-----------------------------------------------------------------------
-    real, dimension(size(u,1),size(u,2),1) :: u3, v3, um3, vm3, mask3
+    real(r8), dimension(size(u,1),size(u,2),1) :: u3, v3, um3, vm3, mask3
 !-----------------------------------------------------------------------
 
       u3(:,:,1) = u(:,:);  v3(:,:,1) = v(:,:)

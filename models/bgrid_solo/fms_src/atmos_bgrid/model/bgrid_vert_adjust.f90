@@ -27,6 +27,7 @@ module bgrid_vert_adjust_mod
 
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_vert_mod, only:  vert_grid_type
 use  constants_mod, only:  CP
 
@@ -35,7 +36,7 @@ private
 
 !-----------------------------------------------------------------------
 
-real, parameter :: ef4t = 1./CP
+real(r8), parameter :: ef4t = 1./CP
 
 !-----------------------------------------------------------------------
 !------------- interfaces -------------
@@ -51,15 +52,15 @@ contains
 subroutine vert_adjust (res, div, wta, wtb, mask, Vgrid,  &
                         omgalf, etadot, psdt)
 
-   real, intent(in), dimension(:,:)   :: res
-   real, intent(in), dimension(:,:,:) :: div, wta, wtb, mask
+   real(r8), intent(in), dimension(:,:)   :: res
+   real(r8), intent(in), dimension(:,:,:) :: div, wta, wtb, mask
 type(vert_grid_type), intent(in) :: Vgrid
-   real, intent(inout) :: omgalf(:,:,:)
-   real, intent(inout) :: etadot(:,:,:)
-   real, intent(out)   :: psdt(:,:)
+   real(r8), intent(inout) :: omgalf(:,:,:)
+   real(r8), intent(inout) :: etadot(:,:,:)
+   real(r8), intent(out)   :: psdt(:,:)
 
 !-----------------------------------------------------------------------
-   real, dimension(size(div,1),size(div,2),size(div,3)) ::  sdiv
+   real(r8), dimension(size(div,1),size(div,2),size(div,3)) ::  sdiv
 !-----------------------------------------------------------------------
 
 !------------------ vertical Adjustments -------------------------------
@@ -86,8 +87,8 @@ subroutine ps_tendency (div, psdt, sdiv)
 !
 !-----------------------------------------------------------------------
 
-   real, intent(in)  :: div(:,:,:)
-   real, intent(out) :: psdt(:,:), sdiv(:,:,:)
+   real(r8), intent(in)  :: div(:,:,:)
+   real(r8), intent(out) :: psdt(:,:), sdiv(:,:,:)
 
    integer  k, kdim
 !-----------------------------------------------------------------------
@@ -116,11 +117,11 @@ subroutine vert_velocity (res, sdiv, mask, eta, etadot)
 !
 !-----------------------------------------------------------------------
 
-   real, intent(in)  :: res(:,:), sdiv(:,:,:),  &
+   real(r8), intent(in)  :: res(:,:), sdiv(:,:,:),  &
                         mask(:,:,:), eta(:)
-   real, intent(inout) :: etadot(:,:,:)
+   real(r8), intent(inout) :: etadot(:,:,:)
 
-   real, dimension(size(res,1),size(res,2)) :: pret
+   real(r8), dimension(size(res,1),size(res,2)) :: pret
    integer  k, kdim
 
 !---- computation of etadot (add onto previous value) ----
@@ -149,11 +150,11 @@ subroutine vert_omgalf (Vgrid, res, wta, wtb, sdiv, mask, omgalf)
 !-----------------------------------------------------------------------
 
    type(vert_grid_type), intent(in)       :: Vgrid
-   real, intent(in),    dimension(:,:)    :: res
-   real, intent(in),    dimension(:,:,:)  :: wta, wtb, sdiv, mask
-   real, intent(inout), dimension(:,:,:)  :: omgalf
+   real(r8), intent(in),    dimension(:,:)    :: res
+   real(r8), intent(in),    dimension(:,:,:)  :: wta, wtb, sdiv, mask
+   real(r8), intent(inout), dimension(:,:,:)  :: omgalf
 
-   real, dimension(size(res,1),size(res,2)) :: pret
+   real(r8), dimension(size(res,1),size(res,2)) :: pret
    integer  k, kdim
 
 !-----------------------------------------------------------------------

@@ -32,21 +32,9 @@ module bgrid_horiz_mod
 !
 !-----------------------------------------------------------------------
 
-use mpp_domains_mod, only: mpp_domains_init,           &
-                           mpp_define_domains,         &
-                           domain1D, domain2D,         &
-                           mpp_get_global_domain,      &
-                           mpp_get_data_domain,        &
-                           mpp_get_compute_domain,     &
-                           mpp_get_compute_domains,    &
-                           mpp_get_domain_components,  &
-                           mpp_get_pelist,             &
-                           mpp_get_layout,             &
-                           CYCLIC_GLOBAL_DOMAIN
-
+use types_mod, only : r8
 use  constants_mod, only: RADIUS
-use        fms_mod, only: error_mesg, FATAL, NOTE,  &
-                          mpp_pe, mpp_root_pe, mpp_npes
+use        fms_mod, only: error_mesg, FATAL, NOTE
 
 implicit none
 private
@@ -76,11 +64,11 @@ type bgrid_type
    integer :: is,  ie,  js,  je         ! compute domain indices
    integer :: isd, ied, jsd, jed        ! data    domain indices
    integer :: isg, ieg, jsg, jeg        ! global  domain indices
-   real, pointer, dimension(:)   :: blong, blatg   ! global grid edges
-   real, pointer, dimension(:,:) :: dx, rdx, area, rarea
-   real, pointer, dimension(:,:) :: tph, tlm, aph, alm
-   real                          :: dy, rdy
-   type(domain2D) :: Domain, Domain_nohalo
+   real(r8), pointer, dimension(:)   :: blong, blatg   ! global grid edges
+   real(r8), pointer, dimension(:,:) :: dx, rdx, area, rarea
+   real(r8), pointer, dimension(:,:) :: tph, tlm, aph, alm
+   real(r8)                          :: dy, rdy
+!!!   type(domain2D) :: Domain, Domain_nohalo
 end type
 
 !    is   = first x-axis index in the compute domain
@@ -123,9 +111,9 @@ type horiz_grid_type
    integer :: nlon, nlat, isize, jsize
    integer :: ilb, iub, jlb, jub, ihalo, jhalo
    logical :: channel, decompx
-   real    :: dlmd, dphd, dlm, dph
+   real(r8)    :: dlmd, dphd, dlm, dph
 
-   real, pointer, dimension(:,:) :: sinphv, tanphv
+   real(r8), pointer, dimension(:,:) :: sinphv, tanphv
 end type horiz_grid_type
 
 !    Tmp = grid constants for the temperature/tracer/mass grid
@@ -163,9 +151,9 @@ end type horiz_grid_type
 !-----------------------------------------------------------------------
 !-------- private parameters ------------
 
-   real,    parameter :: eps=0.0001
+   real(r8),    parameter :: eps=0.0001
 
-   real    :: lon_beg = 0.0
+   real(r8)    :: lon_beg = 0.0
 
 !-----------------------------------------------------------------------
 
@@ -196,18 +184,18 @@ function horiz_grid_init (nlon, nlat, ihalo, jhalo, decomp,  &
      integer, intent (in)           :: nlon, nlat
      integer, intent (in), optional :: ihalo, jhalo, decomp(2)
      logical, intent (in), optional :: channel
-     real   , intent (in), optional :: tph0d, tlm0d
+     real(r8)   , intent (in), optional :: tph0d, tlm0d
 
      type(horiz_grid_type), target :: Hgrid
 
 !-----------------------------------------------------------------------
 !------------------- local/private declarations ------------------------
 
-real,    allocatable :: tlmi(:), tphj(:), slat(:), dxj(:)
+real(r8),    allocatable :: tlmi(:), tphj(:), slat(:), dxj(:)
 integer, allocatable :: xrows(:), yrows(:)
 
-real    :: tph0d_local, tlm0d_local
-real    :: hpi, dtr
+real(r8)    :: tph0d_local, tlm0d_local
+real(r8)    :: hpi, dtr
 integer :: i, j, ilb, iub, jlb, jub, isize, jsize, npes, pe
 integer :: is, ie, hs, he, vs, ve
 integer :: isd, ied, hsd, hed, vsd, ved
@@ -231,9 +219,9 @@ integer :: domain_layout(2)
 !------------- parallel interface --------------------------------------
 !        ---- domain decomposition -----
 
-      call mpp_domains_init
+!      call mpp_domains_init
 
-      npes = mpp_npes()
+      npes = 1
 
  
 !---- set-up x- & y-axis decomposition -----
@@ -253,21 +241,24 @@ integer :: domain_layout(2)
 
 !    ---- mass/temperature grid domain with and without halos ----
 
-     call mpp_define_domains ( (/1,nlon,1,nlat/), domain_layout,   &
-                               Hgrid % Tmp % Domain,               &
-                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
-                               xhalo = Hgrid % ihalo,              &
-                               yhalo = Hgrid % jhalo               )
-     call mpp_define_domains ( (/1,nlon,1,nlat/), domain_layout,   &
-                               Hgrid % Tmp % Domain_nohalo,        &
-                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
-                               xhalo = 0, yhalo = 0                )
+!     call mpp_define_domains ( (/1,nlon,1,nlat/), domain_layout,   &
+!                               Hgrid % Tmp % Domain,               &
+!                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
+!                               xhalo = Hgrid % ihalo,              &
+!                               yhalo = Hgrid % jhalo               )
+!     call mpp_define_domains ( (/1,nlon,1,nlat/), domain_layout,   &
+!                               Hgrid % Tmp % Domain_nohalo,        &
+!                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
+!                               xhalo = 0, yhalo = 0                )
 
 !   ---- compute exact decomposition ----
 !   ---- compute 2d layout of PEs ----
 
      allocate ( xrows(domain_layout(1)), yrows(domain_layout(2)) )
-     call compute_xy_extent ( npes, Hgrid%Tmp%Domain, xrows, yrows )
+!     call compute_xy_extent ( npes, Hgrid%Tmp%Domain, xrows, yrows )
+! For single pe
+xrows = nlon
+yrows = nlat
 
 !    ---- velocity grid has one less latitude row ----
 
@@ -275,25 +266,30 @@ integer :: domain_layout(2)
 
 !    ---- velocity grid domain with and without halos ----
 
-     call mpp_define_domains ( (/1,nlon,1,nlat-1/), domain_layout, &
-                               Hgrid % Vel % Domain,               &
-                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
-                               xhalo = Hgrid % ihalo,              &
-                               yhalo = Hgrid % jhalo,              &
-                               xextent = xrows, yextent = yrows    )
-     call mpp_define_domains ( (/1,nlon,1,nlat-1/), domain_layout, &
-                               Hgrid % Vel % Domain_nohalo,        &
-                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
-                               xhalo = 0, yhalo = 0,               &
-                               xextent = xrows, yextent = yrows    )
+!     call mpp_define_domains ( (/1,nlon,1,nlat-1/), domain_layout, &
+!                               Hgrid % Vel % Domain,               &
+!                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
+!                               xhalo = Hgrid % ihalo,              &
+!                               yhalo = Hgrid % jhalo,              &
+!                               xextent = xrows, yextent = yrows    )
+!     call mpp_define_domains ( (/1,nlon,1,nlat-1/), domain_layout, &
+!                               Hgrid % Vel % Domain_nohalo,        &
+!                               xflags = CYCLIC_GLOBAL_DOMAIN,      &
+!                               xhalo = 0, yhalo = 0,               &
+!                               xextent = xrows, yextent = yrows    )
 
      deallocate ( xrows, yrows )
 
 
 !------------- indices for global compute domain -----------------------
 
-     call mpp_get_global_domain ( Hgrid%Tmp%Domain, isg, ieg, hsg, heg )
-     call mpp_get_global_domain ( Hgrid%Vel%Domain, isg, ieg, vsg, veg )
+!!!     call mpp_get_global_domain ( Hgrid%Tmp%Domain, isg, ieg, hsg, heg )
+!!!     call mpp_get_global_domain ( Hgrid%Vel%Domain, isg, ieg, vsg, veg )
+
+! Compute global domain for 1 process
+     isg = 1; ieg = nlon
+     hsg = 1; heg = nlat
+     vsg = 1; veg = nlat - 1
 
      Hgrid % Tmp % isg = isg;   Hgrid % Tmp % ieg = ieg
      Hgrid % Tmp % jsg = hsg;   Hgrid % Tmp % jeg = heg
@@ -302,8 +298,13 @@ integer :: domain_layout(2)
 
 !------------- indices for data domain -----------------------
 
-     call mpp_get_data_domain ( Hgrid%Tmp%Domain, isd, ied, hsd, hed )
-     call mpp_get_data_domain ( Hgrid%Vel%Domain, isd, ied, vsd, ved )
+!!!     call mpp_get_data_domain ( Hgrid%Tmp%Domain, isd, ied, hsd, hed )
+!!!     call mpp_get_data_domain ( Hgrid%Vel%Domain, isd, ied, vsd, ved )
+
+! Compute data domain for 1 process
+isd = isg - Hgrid%ihalo; ied = ieg + Hgrid%ihalo
+hsd = hsg - Hgrid%jhalo; hed = heg + Hgrid%jhalo
+vsd = vsg - Hgrid%jhalo; ved = veg + Hgrid%jhalo
 
      Hgrid % Tmp % isd = isd;   Hgrid % Tmp % ied = ied
      Hgrid % Tmp % jsd = hsd;   Hgrid % Tmp % jed = hed
@@ -312,17 +313,25 @@ integer :: domain_layout(2)
 
 !------------- indices for computational domain ------------------------
 
-     call mpp_get_compute_domain ( Hgrid%Tmp%Domain, is, ie, hs, he )
-     call mpp_get_compute_domain ( Hgrid%Vel%Domain, is, ie, vs, ve )
+!!!     call mpp_get_compute_domain ( Hgrid%Tmp%Domain, is, ie, hs, he )
+!!!     call mpp_get_compute_domain ( Hgrid%Vel%Domain, is, ie, vs, ve )
 
-     Hgrid % Tmp % is = is;   Hgrid % Tmp % ie = ie
-     Hgrid % Tmp % js = hs;   Hgrid % Tmp % je = he
-     Hgrid % Vel % is = is;   Hgrid % Vel % ie = ie
-     Hgrid % Vel % js = vs;   Hgrid % Vel % je = ve
+is = isg; ie = ieg; hs = hsg; he = heg
+vs = vsg; ve = veg
+
+! Compute domain is same as global domain for 1 process
+     Hgrid % Tmp % is = isg;   Hgrid % Tmp % ie = ieg
+     Hgrid % Tmp % js = hsg;   Hgrid % Tmp % je = heg
+     Hgrid % Vel % is = isg;   Hgrid % Vel % ie = ieg
+     Hgrid % Vel % js = vsg;   Hgrid % Vel % je = veg
 
 !------------- indices including halo regions --------------------------
 
-     call mpp_get_data_domain ( Hgrid%Tmp%Domain, ilb, iub, jlb, jub )
+!!!     call mpp_get_data_domain ( Hgrid%Tmp%Domain, ilb, iub, jlb, jub )
+
+! For one pe, just use TMP data domain bounds
+     ilb = isd;   iub = ied
+     jlb = hsd;   jub = hed
 
      Hgrid % ilb = ilb;  Hgrid % iub = iub
      Hgrid % jlb = jlb;  Hgrid % jub = jub
@@ -505,7 +514,7 @@ integer :: domain_layout(2)
 !-----------------------------------------------------------------------
 !----- write (to standard output?) domain decomposition -------
 
-     if (mpp_pe() == mpp_root_pe()) call print_decomp ( Hgrid%Tmp%Domain, npes )
+!      call print_decomp ( Hgrid%Tmp%Domain, npes )
 
 !-----------------------------------------------------------------------
 
@@ -516,14 +525,14 @@ end function horiz_grid_init
 function get_grid (npts, start, space) result (grid)
 
 integer, intent(in) :: npts
-real,    intent(in) :: start, space
-real                :: grid(npts)
+real(r8),    intent(in) :: start, space
+real(r8)                :: grid(npts)
 integer :: j
 
 !---- compute equally spaced grid ----
 
       do j = 1, npts
-         grid(j) = start + real(j-1)*space
+         grid(j) = start + (j-1.0)*space
       enddo
 
 end function get_grid
@@ -532,11 +541,11 @@ end function get_grid
 
    subroutine trans_latlon (tph0d, tlm0d, tlm, tph, alm, aph)
 
-   real, intent(in)  :: tph0d, tlm0d, tlm(:,:), tph(:,:)
-   real, intent(out) :: alm(:,:), aph(:,:)
+   real(r8), intent(in)  :: tph0d, tlm0d, tlm(:,:), tph(:,:)
+   real(r8), intent(out) :: alm(:,:), aph(:,:)
 
-   real :: dtr, pie, tph0, tlm0, stph0, ctph0, ttph0
-   real, dimension(size(tlm,1),size(tlm,2)) :: stph, cc, ee
+   real(r8) :: dtr, pie, tph0, tlm0, stph0, ctph0, ttph0
+   real(r8), dimension(size(tlm,1),size(tlm,2)) :: stph, cc, ee
 
 !-----------------------------------------------------------------------
 
@@ -569,7 +578,7 @@ subroutine get_horiz_grid_bound ( Hgrid, grid, blon, blat, global )
 
    type (horiz_grid_type), intent(in)  :: Hgrid
    integer,                intent(in)  ::  grid
-   real,                   intent(out) :: blon(:), blat(:)
+   real(r8),                   intent(out) :: blon(:), blat(:)
    logical, optional,      intent(in)  :: global
 
 !       returns the grid box boundaries for either
@@ -616,7 +625,7 @@ end subroutine get_horiz_grid_size
 subroutine horiz_grid_bound ( Grid, blon, blat, global )
 
    type (bgrid_type), intent(in)  :: Grid
-   real,              intent(out) :: blon(:), blat(:) 
+   real(r8),              intent(out) :: blon(:), blat(:) 
    logical, optional, intent(in)  :: global
 
 !      private routine that returns the grid box boundaries
@@ -753,46 +762,46 @@ end function update_sp
 
 !#######################################################################
 
- subroutine compute_xy_extent ( npes, Domain, xrows, yrows )
- integer,        intent(in) :: npes
- type(domain2D), intent(in) :: Domain
- integer       , intent(out) :: xrows(:), yrows(:)
- integer, dimension(0:npes-1) :: xbegin, xend, xsize, &
-                                 ybegin, yend, ysize
- integer :: i, j, pe, m, n, isg, ieg, jsg, jeg
-
-   call mpp_get_global_domain   ( Domain, isg, ieg, jsg, jeg )
-   call mpp_get_compute_domains ( Domain, xbegin, xend, xsize, &
-                                          ybegin, yend, ysize  )
-
-!  compute the exact x-axis decomposition
-   i = isg
-   m = 0
-   xrows = 0
-   do pe = 0, npes-1
-     if ( xbegin(pe) == i ) then
-       m = m+1
-       xrows (m) = xsize (pe)
-       i = i + xsize(pe)
-       if ( m == size(xrows) .or. i > ieg ) exit
-     endif
-   enddo
-
-!  compute the exact y-axis decomposition
-   j = jsg 
-   n = 0   
-   yrows = 0
-   do pe = 0, npes-1
-     if ( ybegin(pe) == j ) then
-       n = n+1 
-       yrows (n) = ysize (pe)
-       j = j + ysize(pe)
-       if ( n == size(yrows) .or. j > jeg ) exit
-     endif   
-   enddo   
-
-
- end subroutine compute_xy_extent
+! subroutine compute_xy_extent ( npes, Domain, xrows, yrows )
+! integer,        intent(in) :: npes
+! type(domain2D), intent(in) :: Domain
+! integer       , intent(out) :: xrows(:), yrows(:)
+! integer, dimension(0:npes-1) :: xbegin, xend, xsize, &
+!                                 ybegin, yend, ysize
+! integer :: i, j, pe, m, n, isg, ieg, jsg, jeg
+!
+!   call mpp_get_global_domain   ( Domain, isg, ieg, jsg, jeg )
+!   call mpp_get_compute_domains ( Domain, xbegin, xend, xsize, &
+!                                          ybegin, yend, ysize  )
+!
+!!  compute the exact x-axis decomposition
+!   i = isg
+!   m = 0
+!   xrows = 0
+!   do pe = 0, npes-1
+!     if ( xbegin(pe) == i ) then
+!       m = m+1
+!       xrows (m) = xsize (pe)
+!       i = i + xsize(pe)
+!       if ( m == size(xrows) .or. i > ieg ) exit
+!     endif
+!   enddo
+!
+!!  compute the exact y-axis decomposition
+!   j = jsg 
+!   n = 0   
+!   yrows = 0
+!   do pe = 0, npes-1
+!     if ( ybegin(pe) == j ) then
+!       n = n+1 
+!       yrows (n) = ysize (pe)
+!       j = j + ysize(pe)
+!       if ( n == size(yrows) .or. j > jeg ) exit
+!     endif   
+!   enddo   
+!
+!
+! end subroutine compute_xy_extent
 
 !#######################################################################
 
@@ -833,28 +842,28 @@ end function update_sp
 
 !#######################################################################
 
- subroutine print_decomp ( Domain, npes ) 
- type(domain2D), intent(in) :: Domain
- integer,        intent(in) :: npes
- integer, dimension(0:npes-1) :: xsize, ysize
- integer :: i, j, xlist(npes), ylist(npes), layout(2)
- type (domain1D) :: Xdom, Ydom
-
-   call mpp_get_layout ( Domain, layout )
-   call mpp_get_compute_domains   ( Domain, xsize=xsize, ysize=ysize )
-   call mpp_get_domain_components ( Domain, Xdom, Ydom )
-   call mpp_get_pelist ( Xdom, xlist(1:layout(1)) ) 
-   call mpp_get_pelist ( Ydom, ylist(1:layout(2)) ) 
-
-   write (*,100) 
-   write (*,110) (xsize(xlist(i)),i=1,layout(1))
-   write (*,120) (ysize(ylist(j)),j=1,layout(2))
-
-   100 format ('ATMOSPHERIC (B-GRID) MODEL DOMAIN DECOMPOSITION')
-   110 format ('  X-AXIS = ',24i4,/,(11x,24i4))
-   120 format ('  Y-AXIS = ',24i4,/,(11x,24i4))
-
- end subroutine print_decomp
+! subroutine print_decomp ( Domain, npes ) 
+! type(domain2D), intent(in) :: Domain
+! integer,        intent(in) :: npes
+! integer, dimension(0:npes-1) :: xsize, ysize
+! integer :: i, j, xlist(npes), ylist(npes), layout(2)
+! type (domain1D) :: Xdom, Ydom
+!
+!   call mpp_get_layout ( Domain, layout )
+!   call mpp_get_compute_domains   ( Domain, xsize=xsize, ysize=ysize )
+!   call mpp_get_domain_components ( Domain, Xdom, Ydom )
+!   call mpp_get_pelist ( Xdom, xlist(1:layout(1)) ) 
+!   call mpp_get_pelist ( Ydom, ylist(1:layout(2)) ) 
+!
+!   write (*,100) 
+!   write (*,110) (xsize(xlist(i)),i=1,layout(1))
+!   write (*,120) (ysize(ylist(j)),j=1,layout(2))
+!
+!   100 format ('ATMOSPHERIC (B-GRID) MODEL DOMAIN DECOMPOSITION')
+!   110 format ('  X-AXIS = ',24i4,/,(11x,24i4))
+!   120 format ('  Y-AXIS = ',24i4,/,(11x,24i4))
+!
+! end subroutine print_decomp
 
 !#######################################################################
 

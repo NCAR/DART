@@ -78,16 +78,15 @@ module atmos_carbon_aerosol_mod
 !J. Geophys. Res., 107, accepted, 2002
 ! </REFERENCE>
 ! </INFO>
+use types_mod, only : r8
 use              fms_mod, only : file_exist,           &
-                                 mpp_pe   ,            &
-                                 mpp_root_pe,          &
                                  close_file,           &
                                  stdlog,               &
                                  write_version_number
 use     time_manager_mod, only : time_type
-use     diag_manager_mod, only : send_data,            &
-                                 register_diag_field,  &
-                                 register_static_field
+!use     diag_manager_mod, only : send_data,            &
+!                                 register_diag_field,  &
+!                                 register_static_field
 use   tracer_manager_mod, only : get_tracer_index, &
                                  set_tracer_atts
 use    field_manager_mod, only : MODEL_ATMOS
@@ -130,7 +129,7 @@ integer :: nocphilic=0
 integer :: id_emissoc, id_emissbc 
 
 !--- Arrays to help calculate tracer sources/sinks ---
-real, allocatable, dimension(:,:) :: bcsource,ocsource
+real(r8), allocatable, dimension(:,:) :: bcsource,ocsource
 
 character(len=6), parameter :: module_name = 'tracer'
 
@@ -188,22 +187,22 @@ contains
 !                         black_cphil, black_cphil_dt,  &
 !                         Time, is, ie, js, je, kbot)
 !</TEMPLATE>
-!   <IN NAME="lon" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lon" TYPE="real(r8)" DIM="(:,:)">
 !     Longitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="lat" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lat" TYPE="real(r8)" DIM="(:,:)">
 !     Latitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="land" TYPE="real" DIM="(:,:)">
+!   <IN NAME="land" TYPE="real(r8)" DIM="(:,:)">
 !     Land/sea mask.
 !   </IN>
-!   <IN NAME="pwt" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="pwt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The pressure weighting array. = dP/grav
 !   </IN>
-!   <IN NAME="black_cphob" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="black_cphob" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the hydrophobic black carbon aerosol mixing ratio
 !   </IN>
-!   <IN NAME="black_cphil" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="black_cphil" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the hydrophilic black carbon aerosol mixing ratio
 !   </IN>
 !   <IN NAME="Time" TYPE="type(time_type)">
@@ -216,10 +215,10 @@ contains
 !     Integer array describing which model layer intercepts the surface.
 !   </IN>
 
-!   <OUT NAME="black_cphob_dt" TYPE="real" DIM="(:,:,:)">
+!   <OUT NAME="black_cphob_dt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the tendency of the hydrophobic black carbon aerosol mixing ratio.
 !   </OUT>
-!   <OUT NAME="black_cphil_dt" TYPE="real" DIM="(:,:,:)">
+!   <OUT NAME="black_cphil_dt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the tendency of the hydrophilic black carbon aerosol mixing ratio.
 !   </OUT>
 
@@ -229,17 +228,17 @@ contains
                                Time, is, ie, js, je, kbot)
 
 !-----------------------------------------------------------------------
-   real, intent(in),  dimension(:,:)   :: lon, lat
-   real, intent(in),  dimension(:,:)   :: land
-   real, intent(in),  dimension(:,:,:) :: pwt, black_cphob,black_cphil
-   real, intent(out), dimension(:,:,:) :: black_cphob_dt,black_cphil_dt
+   real(r8), intent(in),  dimension(:,:)   :: lon, lat
+   real(r8), intent(in),  dimension(:,:)   :: land
+   real(r8), intent(in),  dimension(:,:,:) :: pwt, black_cphob,black_cphil
+   real(r8), intent(out), dimension(:,:,:) :: black_cphob_dt,black_cphil_dt
 type(time_type), intent(in)            :: Time
 integer, intent(in)                    :: is, ie, js, je
 integer, intent(in),  dimension(:,:), optional :: kbot
 !-----------------------------------------------------------------------
-   real, dimension(size(black_cphob,1),size(black_cphob,2),size(black_cphob,3)) ::  &
+   real(r8), dimension(size(black_cphob,1),size(black_cphob,2),size(black_cphob,3)) ::  &
          sourcephob, sinkphob, sourcephil, sinkphil
-   real  dtr
+   real(r8)  dtr
 integer  i,j,kb,id,jd,kd,lat1
 !-----------------------------------------------------------------------
 
@@ -326,19 +325,19 @@ integer  i,j,kb,id,jd,kd,lat1
 !call atmos_organic_sourcesink (lon, lat, land, pwt, organic_carbon, organic_carbon_dt,  &
 !                              Time, is, ie, js, je, kbot)
 !</TEMPLATE>
-!   <IN NAME="lon" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lon" TYPE="real(r8)" DIM="(:,:)">
 !     Longitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="lat" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lat" TYPE="real(r8)" DIM="(:,:)">
 !     Latitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="land" TYPE="real" DIM="(:,:)">
+!   <IN NAME="land" TYPE="real(r8)" DIM="(:,:)">
 !     Land/sea mask.
 !   </IN>
-!   <IN NAME="pwt" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="pwt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The pressure weighting array. = dP/grav
 !   </IN>
-!   <IN NAME="organic_carbon" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="organic_carbon" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the organic carbon aerosol mixing ratio
 !   </IN>
 !   <IN NAME="Time" TYPE="type(time_type)">
@@ -351,7 +350,7 @@ integer  i,j,kb,id,jd,kd,lat1
 !     Integer array describing which model layer intercepts the surface.
 !   </IN>
 
-!   <OUT NAME="organic_carbon_dt" TYPE="real" DIM="(:,:,:)">
+!   <OUT NAME="organic_carbon_dt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the tendency of the organic carbon aerosol mixing ratio.
 !   </OUT>
 
@@ -359,17 +358,17 @@ integer  i,j,kb,id,jd,kd,lat1
                               Time, is, ie, js, je, kbot)
 
 !-----------------------------------------------------------------------
-   real, intent(in),  dimension(:,:)   :: lon, lat
-   real, intent(in),  dimension(:,:)   :: land
-   real, intent(in),  dimension(:,:,:) :: pwt, organic_carbon
-   real, intent(out), dimension(:,:,:) :: organic_carbon_dt
+   real(r8), intent(in),  dimension(:,:)   :: lon, lat
+   real(r8), intent(in),  dimension(:,:)   :: land
+   real(r8), intent(in),  dimension(:,:,:) :: pwt, organic_carbon
+   real(r8), intent(out), dimension(:,:,:) :: organic_carbon_dt
      type(time_type), intent(in) :: Time
 integer, intent(in)                    :: is, ie, js, je 
 integer, intent(in),  dimension(:,:), optional :: kbot
 !-----------------------------------------------------------------------
-   real, dimension(size(organic_carbon,1),size(organic_carbon,2),size(organic_carbon,3)) ::  &
+   real(r8), dimension(size(organic_carbon,1),size(organic_carbon,2),size(organic_carbon,3)) ::  &
          source, sink
-   real  dtr
+   real(r8)  dtr
 integer  i,j,kb,id,jd,kd,lat1
 !-----------------------------------------------------------------------
 
@@ -436,16 +435,16 @@ integer  i,j,kb,id,jd,kd,lat1
 !<TEMPLATE>
 !call atmos_carbon_aerosol_init (lonb, latb, r, axes, Time, mask)
 !</TEMPLATE>
-!   <IN NAME="lonb" TYPE="real" DIM="(:)">
+!   <IN NAME="lonb" TYPE="real(r8)" DIM="(:)">
 !     The longitudes for the local domain.
 !   </IN>
-!   <IN NAME="latb" TYPE="real" DIM="(:)">
+!   <IN NAME="latb" TYPE="real(r8)" DIM="(:)">
 !     The latitudes for the local domain.
 !   </IN>
-!   <INOUT NAME="r" TYPE="real" DIM="(:,:,:,:)">
+!   <INOUT NAME="r" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     Tracer fields dimensioned as (nlon,nlat,nlev,ntrace). 
 !   </INOUT>
-!   <IN NAME="mask" TYPE="real, optional" DIM="(:,:,:)">
+!   <IN NAME="mask" TYPE="real(r8), optional" DIM="(:,:,:)">
 !      optional mask (0. or 1.) that designates which grid points
 !           are above (=1.) or below (=0.) the ground dimensioned as
 !           (nlon,nlat,nlev).
@@ -468,11 +467,11 @@ integer  i,j,kb,id,jd,kd,lat1
 !          (nlon,nlat,nlev).
 !
 !-----------------------------------------------------------------------
-real, dimension(:),    intent(in) :: lonb, latb
-real,            intent(inout), dimension(:,:,:,:) :: r
+real(r8), dimension(:),    intent(in) :: lonb, latb
+real(r8),            intent(inout), dimension(:,:,:,:) :: r
 integer        , intent(in)                        :: axes(4)
 type(time_type), intent(in)                        :: Time
-real,            intent(in),    dimension(:,:,:), optional :: mask
+real(r8),            intent(in),    dimension(:,:,:), optional :: mask
 
 integer :: n
 
@@ -484,43 +483,43 @@ integer :: n
    if (n>0) then
       nbcphobic = n
       call set_tracer_atts(MODEL_ATMOS,'bcphob','hphobic_bc','g/g')
-      if (nbcphobic > 0 .and. mpp_pe() == mpp_root_pe()) write (*,30) 'Hydrophobic BC',nbcphobic
-      if (nbcphobic > 0 .and. mpp_pe() == mpp_root_pe()) write (stdlog(),30) 'Hydrophobic BC',nbcphobic
+      if (nbcphobic > 0 ) write (*,30) 'Hydrophobic BC',nbcphobic
+      if (nbcphobic > 0 ) write (stdlog(),30) 'Hydrophobic BC',nbcphobic
    endif
 
    n = get_tracer_index(MODEL_ATMOS,'bcphil')
    if (n>0) then
       nbcphilic=n
       call set_tracer_atts(MODEL_ATMOS,'bcphil','hphilic_bc','g/g')
-      if (nbcphilic > 0 .and. mpp_pe() == mpp_root_pe()) write (*,30) 'Hydrophilic BC',nbcphilic
-      if (nbcphilic > 0 .and. mpp_pe() == mpp_root_pe()) write (stdlog(),30) 'Hydrophilic BC',nbcphilic
+      if (nbcphilic > 0 ) write (*,30) 'Hydrophilic BC',nbcphilic
+      if (nbcphilic > 0 ) write (stdlog(),30) 'Hydrophilic BC',nbcphilic
    endif
 
    n = get_tracer_index(MODEL_ATMOS,'ocphob')
    if (n>0) then
       nocphobic=n
       call set_tracer_atts(MODEL_ATMOS,'ocphob','hphobic_oc','g/g')
-      if (nocphobic > 0 .and. mpp_pe() == mpp_root_pe()) write (*,30) 'Hydrophobic OC',nocphobic
-      if (nocphobic > 0 .and. mpp_pe() == mpp_root_pe()) write (stdlog(),30) 'Hydrophobic OC',nocphobic
+      if (nocphobic > 0 ) write (*,30) 'Hydrophobic OC',nocphobic
+      if (nocphobic > 0 ) write (stdlog(),30) 'Hydrophobic OC',nocphobic
    endif
 
    n = get_tracer_index(MODEL_ATMOS,'ocphil')
    if (n>0) then
       nocphilic=n
       call set_tracer_atts(MODEL_ATMOS,'ocphil','hphilic_oc','g/g')
-      if (nocphilic > 0 .and. mpp_pe() == mpp_root_pe()) write (*,30) 'Hydrophilic OC',nocphilic
-      if (nocphilic > 0 .and. mpp_pe() == mpp_root_pe()) write (stdlog(),30) 'Hydrophilic OC',nocphilic
+      if (nocphilic > 0 ) write (*,30) 'Hydrophilic OC',nocphilic
+      if (nocphilic > 0 ) write (stdlog(),30) 'Hydrophilic OC',nocphilic
    endif
 
   30        format (A,' was initialized as tracer number ',i2)
       !Read in emission files
 !
-   id_emissbc = register_static_field ( 'tracers',                    &
-                     'bcemiss', axes(1:2),       &
-                     'bcemiss', 'g/m2/s')
-   id_emissoc = register_static_field ( 'tracers',                    &
-                     'ocemiss', axes(1:2),       &
-                     'ocemiss', 'g/m2/s')
+!   id_emissbc = register_static_field ( 'tracers',                    &
+!                     'bcemiss', axes(1:2),       &
+!                     'bcemiss', 'g/m2/s')
+!   id_emissoc = register_static_field ( 'tracers',                    &
+!                     'ocemiss', axes(1:2),       &
+!                     'ocemiss', 'g/m2/s')
 !
    allocate (bcsource(size(lonb)-1,size(latb)-1))
    allocate (ocsource(size(lonb)-1,size(latb)-1))
@@ -556,14 +555,14 @@ subroutine atmos_carbon_aerosol_end
 
 !#######################################################################
  subroutine tracer_input(lonb, latb, Time)
-real, dimension(:),    intent(in) :: lonb, latb
+real(r8), dimension(:),    intent(in) :: lonb, latb
 type(time_type),intent(in) :: Time
 
 integer      :: i, j, unit, io
-real         :: emiss
-real         :: dtr, deg_90, deg_180, deg3p6, deg3!, modxdeg, modydeg
-real         :: ZCARBONSEASON(12)
-real         :: bcsource1(100,60)
+real(r8)         :: emiss
+real(r8)         :: dtr, deg_90, deg_180, deg3p6, deg3!, modxdeg, modydeg
+real(r8)         :: ZCARBONSEASON(12)
+real(r8)         :: bcsource1(100,60)
 logical :: opened
 !
 ! This is the Rotty seaonality for fossil fuel emissions of sulfate.
@@ -595,11 +594,11 @@ enddo
 1968  FORMAT(2I3,e11.4)
 1969  FORMAT(2I3,f11.3)
 ! Interpolate the R30 emission field to the resolution of the model.
-        call interp_emiss ( bcsource1, 0.0, deg_90, deg3p6, deg3, &
+        call interp_emiss ( bcsource1, 0.0_r8, deg_90, deg3p6, deg3, &
                      bcsource)
                     
 
-if (mpp_pe()== mpp_root_pe() ) write(*,*) 'Reading OC emissions'
+ write(*,*) 'Reading OC emissions'
 !Now let's do the OC 
 !
          bcsource1 = 0.0E+00
@@ -615,14 +614,14 @@ enddo
   13     call close_file (unit)
 
 ! Interpolate the R30 emission field to the resolution of the model.
-         call interp_emiss ( bcsource1, 0.0, deg_90, deg3p6, deg3, &
+         call interp_emiss ( bcsource1, 0.0_r8, deg_90, deg3p6, deg3, &
                               ocsource)
           
 ! Send the emission data to the diag_manager for output.
-         if (id_emissbc > 0 ) &
-           used = send_data ( id_emissbc, bcsource, Time )
-         if (id_emissoc > 0 ) &
-           used = send_data ( id_emissoc, ocsource, Time )
+!         if (id_emissbc > 0 ) &
+!           used = send_data ( id_emissbc, bcsource, Time )
+!         if (id_emissoc > 0 ) &
+!           used = send_data ( id_emissoc, ocsource, Time )
 
 end subroutine tracer_input
 

@@ -43,13 +43,15 @@ module gaussian_topog_mod
 !   and ridge-width parameters.
 ! </DESCRIPTION>
 
+use types_mod, only : r8
 use  fms_mod, only: file_exist, open_namelist_file,  &
-                    check_nml_error, close_file,     &
+                    close_file,     &
                     stdlog, write_version_number,    &
-                    mpp_pe, mpp_root_pe,             &
                     error_mesg, FATAL
 
 use constants_mod, only: pi
+
+use utilities_mod, only : check_nml_error
 
 implicit none
 private
@@ -58,16 +60,16 @@ public :: gaussian_topog_init, get_gaussian_topog
 
 !-----------------------------------------------------------------------
 ! <NAMELIST NAME="gaussian_topog_nml">
-!   <DATA NAME="height" UNITS="meter" TYPE="real" DIM="(mxmtns)" DEFAULT="0.">
+!   <DATA NAME="height" UNITS="meter" TYPE="real(r8)" DIM="(mxmtns)" DEFAULT="0.">
 !     Height in meters of the Gaussian mountains.
 !    </DATA>
-!   <DATA NAME="olon, olat" UNITS="degree" TYPE="real" DIM="(mxmtns)" DEFAULT="0.">
+!   <DATA NAME="olon, olat" UNITS="degree" TYPE="real(r8)" DIM="(mxmtns)" DEFAULT="0.">
 !     The longitude and latitude of mountain origins (in degrees).
 !    </DATA>
-!   <DATA NAME="wlon, wlat" UNITS="degree" TYPE="real" DIM="(mxmtns)" DEFAULT="0.">
+!   <DATA NAME="wlon, wlat" UNITS="degree" TYPE="real(r8)" DIM="(mxmtns)" DEFAULT="0.">
 !     The longitude and latitude half-width of mountain tails (in degrees).
 !    </DATA>
-!   <DATA NAME="rlon, rlat" UNITS="degree" TYPE="real" DIM="(mxmtns)" DEFAULT="0.">
+!   <DATA NAME="rlon, rlat" UNITS="degree" TYPE="real(r8)" DIM="(mxmtns)" DEFAULT="0.">
 !     The longitude and latitude half-width of mountain ridges (in degrees).  For a
 !     "standard" Gaussian mountain set rlon=rlat=0.
 !    </DATA>
@@ -82,13 +84,13 @@ public :: gaussian_topog_init, get_gaussian_topog
 
    integer, parameter :: maxmts = 10
 
-   real, dimension(maxmts) :: height = 0.
-   real, dimension(maxmts) ::  olon  = 0.
-   real, dimension(maxmts) ::  olat  = 0.
-   real, dimension(maxmts) ::  wlon  = 0.
-   real, dimension(maxmts) ::  wlat  = 0.
-   real, dimension(maxmts) ::  rlon  = 0.
-   real, dimension(maxmts) ::  rlat  = 0.
+   real(r8), dimension(maxmts) :: height = 0.
+   real(r8), dimension(maxmts) ::  olon  = 0.
+   real(r8), dimension(maxmts) ::  olat  = 0.
+   real(r8), dimension(maxmts) ::  wlon  = 0.
+   real(r8), dimension(maxmts) ::  wlat  = 0.
+   real(r8), dimension(maxmts) ::  rlon  = 0.
+   real(r8), dimension(maxmts) ::  rlat  = 0.
 
    namelist /gaussian_topog_nml/ height, olon, olat, wlon, wlat, rlon, rlat
 ! </NAMELIST>
@@ -123,21 +125,21 @@ contains
 !     <B>call gaussian_topog_init</B> ( lon, lat, zsurf )
 !   </TEMPLATE>
 
-!   <IN NAME="lon" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="lon" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The mean grid box longitude in radians.
 !   </IN>
-!   <IN NAME="lat" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="lat" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The mean grid box latitude in radians.
 !   </IN>
-!   <OUT NAME="zsurf" UNITS="meter" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="zsurf" UNITS="meter" TYPE="real(r8)" DIM="(:,:)">
 !     The surface height (in meters).
 !     The size of this field must be size(lon) by size(lat).
 !   </OUT>
 
 subroutine gaussian_topog_init ( lon, lat, zsurf )
 
-real, intent(in)  :: lon(:), lat(:)
-real, intent(out) :: zsurf(:,:)
+real(r8), intent(in)  :: lon(:), lat(:)
+real(r8), intent(out) :: zsurf(:,:)
 
 integer :: n
 
@@ -182,27 +184,27 @@ end subroutine gaussian_topog_init
 !                    [, olond, olatd, wlond, wlatd, rlond, rlatd ] )
 !   </TEMPLATE>
 
-!   <IN NAME="lon" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="lon" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The mean grid box longitude in radians.
 !   </IN>
-!   <IN NAME="lat" UNITS="radians" TYPE="real" DIM="(:)">
+!   <IN NAME="lat" UNITS="radians" TYPE="real(r8)" DIM="(:)">
 !     The mean grid box latitude in radians.
 !   </IN>
-!   <IN NAME="height" UNITS="meter" TYPE="real" DIM="(scalar)">
+!   <IN NAME="height" UNITS="meter" TYPE="real(r8)" DIM="(scalar)">
 !     Maximum surface height in meters.
 !   </IN>
-!   <IN NAME="olond, olatd" UNITS="degrees" TYPE="real" DIM="(scalar)">
+!   <IN NAME="olond, olatd" UNITS="degrees" TYPE="real(r8)" DIM="(scalar)">
 !     Position/origin of mountain in degrees longitude and latitude.
 !     This is the location of the maximum height.
 !   </IN>
-!   <IN NAME="wlond, wlatd" UNITS="degrees" TYPE="real" DIM="(scalar)" DEFAULT="15.">
+!   <IN NAME="wlond, wlatd" UNITS="degrees" TYPE="real(r8)" DIM="(scalar)" DEFAULT="15.">
 !     Gaussian half-width of mountain in degrees longitude and latitude.
 !   </IN>
-!   <IN NAME="rlond, rlatd" UNITS="degrees" TYPE="real" DIM="(scalar)" DEFAULT="0.">
+!   <IN NAME="rlond, rlatd" UNITS="degrees" TYPE="real(r8)" DIM="(scalar)" DEFAULT="0.">
 !     Ridge half-width of mountain in degrees longitude and latitude.
 !                    This is the elongation of the maximum height.
 !   </IN>
-!   <OUT NAME="zsurf" UNITS="meter" TYPE="real" DIM="(:,:)">
+!   <OUT NAME="zsurf" UNITS="meter" TYPE="real(r8)" DIM="(:,:)">
 !     The surface height (in meters).
 !              The size of the returned field is size(lon) by size(lat).
 !   </OUT>
@@ -218,14 +220,14 @@ function get_gaussian_topog ( lon, lat, height,                          &
                               olond, olatd, wlond, wlatd, rlond, rlatd ) &
                      result ( zsurf )
 
-real, intent(in)  :: lon(:), lat(:)
-real, intent(in)  :: height
-real, intent(in), optional :: olond, olatd, wlond, wlatd, rlond, rlatd
-real :: zsurf(size(lon),size(lat))
+real(r8), intent(in)  :: lon(:), lat(:)
+real(r8), intent(in)  :: height
+real(r8), intent(in), optional :: olond, olatd, wlond, wlatd, rlond, rlatd
+real(r8) :: zsurf(size(lon),size(lat))
 
 integer :: i, j
-real    :: olon, olat, wlon, wlat, rlon, rlat
-real    :: tpi, dtr, dx, dy, xx, yy
+real(r8)    :: olon, olat, wlon, wlat, rlon, rlat
+real(r8)    :: tpi, dtr, dx, dy, xx, yy
 
   if (do_nml) call read_namelist
 
@@ -249,11 +251,11 @@ real    :: tpi, dtr, dx, dy, xx, yy
 ! compute gaussian-shaped mountain
     do j=1,size(lat)
       dy = abs(lat(j) - olat)   ! dist from y origin
-      yy = max(0., dy-rlat)/wlat
+      yy = max(0.0_r8, dy-rlat)/wlat
       do i=1,size(lon)
         dx = abs(lon(i) - olon) ! dist from x origin
         dx = min(dx, abs(dx-tpi))  ! To ensure that: -pi <= dx <= pi
-        xx = max(0., dx-rlon)/wlon
+        xx = max(0.0_r8, dx-rlon)/wlon
         zsurf(i,j) = height*exp(-xx**2 - yy**2)
       enddo
     enddo
@@ -266,7 +268,7 @@ end function get_gaussian_topog
 subroutine read_namelist
 
    integer :: unit, ierr, io
-   real    :: dtr
+   real(r8)    :: dtr
 
 !  read namelist
 
@@ -281,7 +283,7 @@ subroutine read_namelist
 
 !  write version and namelist to log file
 
-   if (mpp_pe() == mpp_root_pe()) write (stdlog(), nml=gaussian_topog_nml)
+   write (stdlog(), nml=gaussian_topog_nml)
 
    do_nml = .false.
 

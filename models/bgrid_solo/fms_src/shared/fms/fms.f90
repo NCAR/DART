@@ -119,47 +119,13 @@ module fms_mod
 !                        (similar to mpp_clock_id)
 !
 !-----------------------------------------------------------------------
-!---- published routines from mpp_mod ----
-!
-!   mpp_error, NOTE, WARNING, FATAL
-!   mpp_error_state
-!   mpp_pe, mpp_npes, mpp_root_pe
-!   stdin, stdout, stderr, stdlog
-!   mpp_chksum
-!
-!   mpp_clock_begin , mpp_clock_end
-!   MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED
 !
 !-----------------------------------------------------------------------
 
-use          mpp_mod, only:  mpp_error, NOTE, WARNING, FATAL,    &
-                             mpp_set_warn_level,                 &
-                             mpp_transmit, ALL_PES,              &
-                             mpp_pe, mpp_npes, mpp_root_pe,      &
-                             mpp_sync, mpp_chksum,               &
-                             mpp_clock_begin, mpp_clock_end,     &
-                             mpp_clock_id, mpp_init, mpp_exit,   &
-                             MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED, &
-                             mpp_set_stack_size,                 &
-                             stdin, stdout, stderr, stdlog,      &
-                             mpp_error_state
-
-use  mpp_domains_mod, only:  domain2D, mpp_define_domains, &
-                             mpp_update_domains, GLOBAL_DATA_DOMAIN, &
-                             mpp_domains_init, mpp_domains_exit,     &
-                             mpp_global_field, mpp_domains_set_stack_size,  &
-                             mpp_get_compute_domain, mpp_get_global_domain, &
-                             mpp_get_data_domain
-
-use       mpp_io_mod, only:  mpp_io_init, mpp_open, mpp_close,         &
-                       MPP_ASCII, MPP_NATIVE, MPP_IEEE32, MPP_NETCDF,  &
-                       MPP_RDONLY, MPP_WRONLY, MPP_APPEND, MPP_OVERWR, &
-                       MPP_SEQUENTIAL, MPP_DIRECT,                     &
-                       MPP_SINGLE, MPP_MULTI, MPP_DELETE, mpp_io_exit
-
-use fms_io_mod, only : read_data, write_data, fms_io_init, fms_io_exit, field_size, &
-                       open_namelist_file, open_restart_file, open_ieee32_file, close_file, &
-                       set_domain, get_domain_decomp, nullify_domain
+use types_mod, only : r8
+use fms_io_mod, only : fms_io_init, fms_io_exit, &
+                       open_ieee32_file, open_namelist_file, open_restart_file, close_file
+use utilities_mod, only : get_unit, check_nml_error
 
 implicit none
 private
@@ -169,29 +135,18 @@ public :: fms_init, fms_end
 
 ! routines for opening/closing specific types of file
 public :: open_namelist_file, open_restart_file, &
-          open_ieee32_file, close_file
-
-! routines for reading/writing distributed data
-public :: set_domain, read_data, write_data
-public :: get_domain_decomp, field_size, nullify_domain
+          close_file, open_ieee32_file
 
 ! miscellaneous i/o routines
-public :: file_exist, check_nml_error,      &
+public :: file_exist,      &
           write_version_number, error_mesg
 
 ! miscellaneous utilities (non i/o)
 public :: lowercase, uppercase,                &
-          string_array_index, monotonic_array, &
-          mpp_clock_init
+          string_array_index, monotonic_array
 
 ! public mpp interfaces
-public :: mpp_error, NOTE, WARNING, FATAL, &
-          mpp_error_state,                 &
-          mpp_pe, mpp_npes, mpp_root_pe,   &
-          stdin, stdout, stderr, stdlog,   &
-          mpp_chksum
-public :: mpp_clock_begin, mpp_clock_end
-public :: MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED
+public ::  NOTE, WARNING, FATAL, stdlog
            
 
 !------ namelist interface -------
@@ -203,6 +158,11 @@ public :: MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED
   character(len=64) :: iospec_ieee32 = '-N ieee_32'
   integer           :: stack_size = 0
   integer           :: domains_stack_size = 0
+
+integer, parameter :: NOTE = 0, WARNING = 1, FATAL = 2
+
+  character(len=32) :: configfile='logfile.out'
+integer :: log_unit
 
 !------ namelist interface -------
 
@@ -247,9 +207,9 @@ public :: MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED
 
 !   ---- private data for check_nml_error ----
 
-   integer, private :: num_nml_error_codes, nml_error_codes(20)
-   logical, private :: do_nml_error_init = .true.
-   private  nml_error_init
+!   integer, private :: num_nml_error_codes, nml_error_codes(20)
+!   logical, private :: do_nml_error_init = .true.
+!   private  nml_error_init
 
 
 !  ---- version number -----
@@ -299,13 +259,13 @@ subroutine fms_init ( )
     module_is_initialized = .true.
 !---- initialize mpp routines ----
 
-    call mpp_init
-    call mpp_domains_init
+!!!    call mpp_init
+!!!    call mpp_domains_init
     call fms_io_init
 
 !---- read namelist input ----
 
-    call nml_error_init  ! first initialize namelist iostat error codes
+!    call nml_error_init  ! first initialize namelist iostat error codes
 
     if (file_exist('input.nml')) then
        unit = open_namelist_file ( )
@@ -313,32 +273,30 @@ subroutine fms_init ( )
           read  (unit, nml=fms_nml, iostat=io, end=10)
           ierr = check_nml_error(io,'fms_nml')  ! also initializes nml error codes
        enddo
- 10    call mpp_close (unit)
+ 10    close (unit)
     endif
 
 !---- define mpp stack sizes if non-zero -----
 
-    if (        stack_size > 0) call         mpp_set_stack_size (        stack_size)
-    if (domains_stack_size > 0) call mpp_domains_set_stack_size (domains_stack_size)
+!!!    if (        stack_size > 0) call         mpp_set_stack_size (        stack_size)
+!!!    if (domains_stack_size > 0) call mpp_domains_set_stack_size (domains_stack_size)
 
 !---- set severity level for warnings ----
 
-    if ( lowercase(trim(warning_level)) == 'fatal' ) then
-            call mpp_set_warn_level ( FATAL )
-    else if ( lowercase(trim(warning_level)) == 'warning' ) then
-            call mpp_set_warn_level ( WARNING )
-    else
-            call error_mesg ( 'fms_init',  &
-            'invalid entry for namelist variable warning_level', FATAL )
-    endif
+!    if ( lowercase(trim(warning_level)) == 'fatal' ) then
+!            call mpp_set_warn_level ( FATAL )
+!    else if ( lowercase(trim(warning_level)) == 'warning' ) then
+!            call mpp_set_warn_level ( WARNING )
+!    else
+!            call error_mesg ( 'fms_init',  &
+!            'invalid entry for namelist variable warning_level', FATAL )
+!    endif
 
 !--- write version info and namelist to logfile ---
 
     call write_version_number (version, tagname)
-    if (mpp_pe() == mpp_root_pe()) then
       write (stdlog(), nml=fms_nml)
-      write (stdlog(),*) 'nml_error_codes=', nml_error_codes(1:num_nml_error_codes)
-    endif
+!!!      write (stdlog(),*) 'nml_error_codes=', nml_error_codes(1:num_nml_error_codes)
 
 
 end subroutine fms_init
@@ -368,8 +326,8 @@ subroutine fms_end ( )
 
     if (.not.module_is_initialized) return  ! return silently
     call fms_io_exit
-    call mpp_domains_exit
-    call mpp_exit
+!!!    call mpp_domains_exit
+!!!    call mpp_exit
     module_is_initialized =.FALSE.
 
 end subroutine fms_end
@@ -466,13 +424,35 @@ end subroutine fms_end
   character(len=*), intent(in) :: routine, message
   integer,          intent(in) :: level
 
+character(len=128) :: text
 !  input:
 !      routine   name of the calling routine (character string)
 !      message   message written to output   (character string)
 !      level     set to NOTE, MESSAGE, or FATAL (integer)
 
     if (.not.module_is_initialized) call fms_init ( )
-    call mpp_error ( routine, message, level )
+
+      select case( level)
+      case(NOTE)
+          text = 'NOTE'         !just FYI
+      case(WARNING)
+          text = 'WARNING'      !probable error
+      case(FATAL)
+          text = 'FATAL'        !fatal error
+      case default
+          text = 'WARNING: non-existent level (must be NOTE|WARNING|FATAL)'
+      end select
+      text = trim(text)//': '//trim(routine) //': ' //trim(message)
+
+      select case( level )
+      case(NOTE)
+          write( *,'(a)' )trim(text)
+      case default
+          write( 0,'(/a/)' )trim(text)
+          if( level.EQ.FATAL)then
+              stop
+          end if                                                                            
+      end select                                                                            
 
  end subroutine error_mesg
 ! </SUBROUTINE>
@@ -543,87 +523,78 @@ end subroutine fms_end
 ! returned after reading a namelist
 ! see the online documentation for how this routine might be used
 
- function check_nml_error (iostat, nml_name) result (error_code)
-
-  integer,          intent(in) :: iostat
-  character(len=*), intent(in) :: nml_name
-  integer   error_code, i
-  character(len=128) :: err_str
-
-   if (.not.module_is_initialized) call fms_init ( )
-
-   error_code = iostat
-
-   do i = 1, num_nml_error_codes
-        if (error_code == nml_error_codes(i)) return
-   enddo
-
-!  ------ fatal namelist error -------
-!  ------ only on root pe ----------------
-   if (mpp_pe() == mpp_root_pe()) then
-       write (err_str,*) 'while reading namelist ',  &
-                         trim(nml_name), ', iostat = ',error_code
-       call error_mesg ('check_nml_error in fms_mod', err_str, FATAL)
-       call error_mesg ('check_nml_error in fms_mod', err_str, FATAL)
-       call mpp_sync() ! In principal, this sync should not be necessary
-                       ! as mpp_error's call to MPI_ABORT and ABORT should
-                       ! kill all associated processes. Still...
-   else
-       call mpp_sync()
-   endif
-
-end function check_nml_error
+! function check_nml_error (iostat, nml_name) result (error_code)
+!
+!  integer,          intent(in) :: iostat
+!  character(len=*), intent(in) :: nml_name
+!  integer   error_code, i
+!  character(len=128) :: err_str
+!
+!   if (.not.module_is_initialized) call fms_init ( )
+!
+!   error_code = iostat
+!
+!   do i = 1, num_nml_error_codes
+!        if (error_code == nml_error_codes(i)) return
+!   enddo
+!
+!!  ------ fatal namelist error -------
+!!  ------ only on root pe ----------------
+!       write (err_str,*) 'while reading namelist ',  &
+!                         trim(nml_name), ', iostat = ',error_code
+!       call error_mesg ('check_nml_error in fms_mod', err_str, FATAL)
+!       call error_mesg ('check_nml_error in fms_mod', err_str, FATAL)
+!
+!end function check_nml_error
 ! </FUNCTION>
 
 !-----------------------------------------------------------------------
 !   private routine for initializing allowable error codes
 
-subroutine nml_error_init
-
-! some compilers return non-zero iostat values while
-! reading through files with multiple namelist records
-! this routines "attempts" to identify the iostat values associated
-! with records not belonging to the requested namelist
-
-   integer  unit, io, ir
-   real    ::  a=1.
-   integer ::  b=1
-   logical ::  c=.true.
-   character(len=8) ::  d='testing'
-   namelist /b_nml/  a,b,c,d
-
-      nml_error_codes(1) = 0
-
-!     ---- create dummy namelist file that resembles actual ----
-!     ---- (each pe has own copy) ----
-      call mpp_open (unit, '_read_error.nml', form=MPP_ASCII,  &
-                     action=MPP_OVERWR, access=MPP_SEQUENTIAL, &
-                     threading=MPP_MULTI)
-!     ---- due to namelist bug this will not always work ---
-      write (unit, 10)
-  10  format ('    ', &
-             /' &a_nml  a=1.  /',    &
-             /'#------------------', &
-             /' &b_nml  a=5., b=0, c=.false., d=''test'',  &end')
-      call mpp_close (unit)
-
-!     ---- read namelist files and save error codes ----
-      call mpp_open (unit, '_read_error.nml', form=MPP_ASCII,  &
-                     action=MPP_RDONLY, access=MPP_SEQUENTIAL, &
-                     threading=MPP_MULTI)
-      ir=1; io=1; do
-         read  (unit, nml=b_nml, iostat=io, end=20)
-         if (io == 0) exit
-         ir=ir+1; nml_error_codes(ir)=io
-      enddo
-  20  call mpp_close (unit, action=MPP_DELETE)
-
-      num_nml_error_codes = ir
-!del  if (mpp_pe() == mpp_root_pe()) &
-!del  print *, 'PE,nml_error_codes=',mpp_pe(), nml_error_codes(1:ir)
-      do_nml_error_init = .false.
-
-end subroutine nml_error_init
+!subroutine nml_error_init
+!
+!! some compilers return non-zero iostat values while
+!! reading through files with multiple namelist records
+!! this routines "attempts" to identify the iostat values associated
+!! with records not belonging to the requested namelist
+!
+!   integer  unit, io, ir
+!   real    ::  a=1.
+!   integer ::  b=1
+!   logical ::  c=.true.
+!   character(len=8) ::  d='testing'
+!   namelist /b_nml/  a,b,c,d
+!
+!      nml_error_codes(1) = 0
+!
+!!     ---- create dummy namelist file that resembles actual ----
+!!     ---- (each pe has own copy) ----
+!      call mpp_open (unit, '_read_error.nml', form=MPP_ASCII,  &
+!                     action=MPP_OVERWR, access=MPP_SEQUENTIAL, &
+!                     threading=MPP_MULTI)
+!!     ---- due to namelist bug this will not always work ---
+!      write (unit, 10)
+!  10  format ('    ', &
+!             /' &a_nml  a=1.  /',    &
+!             /'#------------------', &
+!             /' &b_nml  a=5., b=0, c=.false., d=''test'',  &end')
+!      call mpp_close (unit)
+!
+!!     ---- read namelist files and save error codes ----
+!      call mpp_open (unit, '_read_error.nml', form=MPP_ASCII,  &
+!                     action=MPP_RDONLY, access=MPP_SEQUENTIAL, &
+!                     threading=MPP_MULTI)
+!      ir=1; io=1; do
+!         read  (unit, nml=b_nml, iostat=io, end=20)
+!         if (io == 0) exit
+!         ir=ir+1; nml_error_codes(ir)=io
+!      enddo
+!  20  call mpp_close (unit, action=MPP_DELETE)
+!
+!      num_nml_error_codes = ir
+!      do_nml_error_init = .false.
+!
+!end subroutine nml_error_init
 
 !#######################################################################
 ! <SUBROUTINE NAME="write_version_number">
@@ -673,9 +644,6 @@ end subroutine nml_error_init
      logunit = stdlog()
      if (present(unit)) then
          logunit = unit
-     else    
-       ! only allow stdlog messages on root pe
-         if ( mpp_pe() /= mpp_root_pe() ) return
      endif   
 
      if (present(tag)) then
@@ -688,117 +656,6 @@ end subroutine nml_error_init
 ! </SUBROUTINE>
 
 
-
-
-!#######################################################################
-!#######################################################################
-! routines for timing sections of code
-!       mpp_clock_init (wrapper for mpp_clock_id)
-!       mpp_clock_begin
-!       mpp_clock_end
-!#######################################################################
-
-! <FUNCTION NAME="mpp_clock_init">
-
-!   <OVERVIEW>
-!     Returns an identifier for performance timing a section of code (similar to
-!     mpp_clock_id).
-!   </OVERVIEW>
-!   <DESCRIPTION>
-!     Returns an identifier for performance timing sections of code. Should be
-!      used in conjunction with mpp_clock_begin and mpp_clock_end. For more
-!      details see the documentation for the MPP module and look at the
-!      example below.
-!   </DESCRIPTION>
-!   <TEMPLATE>
-!     id = mpp_clock_init ( name, level [, flags] )
-!   </TEMPLATE>
-
-!   <IN NAME="name"  TYPE="character" >
-!     A unique name string given to the code segment to be timed.
-!     The length should not exceed 32 characters.
-!   </IN>
-!   <IN NAME="level"  TYPE="integer" >
-!     Level of timing.  When level &gt; timing_level, which is
-!     set by namelist <LINK SRC="#NAMELIST">&#38;fms_nml</LINK>, an identifier 
-!     of zero is returned.
-!     This will turn off performance timing for the code section.
-!   </IN>
-!   <IN NAME="flags"  TYPE="integer"  DEFAULT="no default">
-!     Use the flags published via the mpp_mod to control whether
-!     synchronization or extra detail is desired. (flags =
-!     MPP_CLOCK_SYNC, MPP_CLOCK_DETAILED)
-!   </IN>
-!   <OUT NAME="id"  TYPE="integer" >
-!     The identification index returned by mpp_clocks_id. A zero value is
-!     returned (turning clocks off) when input argument level > namelist
-!     variable timing_level.
-!   </OUT>
-
-!   <NOTE>
-!    1.The MPP_CLOCK_SYNC flag should be used whenever possible. This
-!      flag causes mpp_sync to be called at the begin of a code segment,
-!      resulting in more accurate performance timings. <B>Do not use the
-!      MPP_CLOCK_SYNC flag for code sections that may not be called
-!      on all processors.</B> <BR/>
-!    2.There is some amount of coordination required throughout an entire
-!      program for consistency of the "timing levels". As a guideline the
-!      following levels may be used, with higher levels added as desired to
-!      specific component models. 
-!      <PRE>     
-!                level 
-!                      example code section
-!                 1 
-!                      main program
-!                 2 
-!                      components models
-!                 3 
-!                      atmosphere dynamics or physics
-!      </PRE>
-!
-!   Examples: 
-!
-!      The mpp_clock_init interface should be used in conjunction with the
-!      mpp_mod interfaces mpp_clock_begin and mpp_clock_end. For
-!      example: 
-!<PRE>
-!          use fms_mod, only: mpp_clock_init, mpp_clock_begin, &
-!                             mpp_clock_end. MPP_CLOCK_SYNC
-!          integer :: id_mycode
-!          integer :: timing_level = 5
-!
-!          id_mycode = mpp_clock_init ('mycode loop', timing_level, &
-!                                      flags=MPP_CLOCK_SYNC)
-!          call mpp_clock_begin (id_mycode)
-!                        :
-!                        :
-!           ~~ this code will be timed ~~ 
-!                        :
-!                        :
-!          call mpp_clock_end (id_mycode)
-! </PRE>
-!   </NOTE>
-
- function mpp_clock_init ( name, level, flags ) result (id)
- character(len=*),  intent(in) :: name
- integer,           intent(in) :: level
- integer, optional, intent(in) :: flags
- integer                       :: id
-
-    if (.not.module_is_initialized) call fms_init ( )
-
-  ! only register this clock when "timing_level"
-  ! is .GE. then this clock's (timing) level
-  ! otherwise return a zero id
-
-    if ( level <= timing_level ) then
-        id = mpp_clock_id (name, flags)
-    else
-        id = 0
-    endif
-
- end function mpp_clock_init
-! </FUNCTION>
 
 !#######################################################################
 !  functions for changing the case of character strings
@@ -984,7 +841,7 @@ end function string_array_index
 ! monotonically increasing or decreasing values
 
 function monotonic_array ( array, direction )
-real,    intent(in)            :: array(:)
+real(r8),    intent(in)            :: array(:)
 integer, intent(out), optional :: direction
 logical :: monotonic_array
 integer :: i
@@ -1017,6 +874,25 @@ integer :: i
 
 end function monotonic_array
 ! </FUNCTION>
+
+
+
+!---------------------------------------------------------------
+    function stdlog()
+      integer :: stdlog
+      logical :: opened
+          inquire( file=trim(configfile), opened=opened )
+          if( opened )then
+              !!!call FLUSH(log_unit)
+          else
+              log_unit=get_unit()
+!!!              open( unit=log_unit, status='OLD', file=trim(configfile), position='APPEND', err=10 )
+              open( unit=log_unit, file=trim(configfile), position='APPEND', err=10 )
+          end if
+          stdlog = log_unit 
+      return
+   10 call error_mesg( 'fms module', 'STDLOG: unable to open '//trim(configfile)//'.' , FATAL)
+    end function stdlog
 
 !#######################################################################
 

@@ -60,7 +60,8 @@ module udunits_mod
 #define utcls utcls_
 #endif
 
-  use mpp_mod, only : mpp_error, FATAL, WARNING
+  !use mpp_mod, only : mpp_error, FATAL, WARNING
+  use fms_mod, only : error_mesg, FATAL, WARNING
 
   implicit none
 
@@ -81,7 +82,7 @@ module udunits_mod
 
       if (udunits_initialized) return
       iret = utopen(c_utname) ! should probably open and close udunits file somewhere else
-      if (iret.ne.0) call mpp_error(FATAL,'cant open udunits package')
+      if (iret.ne.0) call error_mesg('in udunits_mod udunints_init','cant open udunits package', FATAL)
       udunits_initialized = .true.
 
       return

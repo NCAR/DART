@@ -33,10 +33,9 @@ module bgrid_vert_mod
 !
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use constants_mod, only: GRAV, RDGAS, RVGAS
-use       fms_mod, only: error_mesg, FATAL, &
-                         MPP_CLOCK_SYNC, mpp_clock_init,          &
-                         mpp_clock_begin, mpp_clock_end
+use       fms_mod, only: error_mesg, FATAL
 
 implicit none
 private
@@ -86,20 +85,20 @@ public  vert_grid_type
 
 type vert_grid_type
    integer                     :: nlev, nplev
-   real, pointer, dimension(:) :: deta,  aeta,  eta,  dfl,  &
+   real(r8), pointer, dimension(:) :: deta,  aeta,  eta,  dfl,  &
                                   dpeta, apeta, peta, wta, wtb
-   real                        :: pref, tref, gamma, psmin
+   real(r8)                        :: pref, tref, gamma, psmin
    logical                     :: hybrid, pzero
 end type vert_grid_type
 
 !-----------------------------------------------------------------------
 
-  real, parameter :: d608 = (RVGAS-RDGAS)/RDGAS
-  real, parameter :: ginv = 1./GRAV
+  real(r8), parameter :: d608 = (RVGAS-RDGAS)/RDGAS
+  real(r8), parameter :: ginv = 1./GRAV
 
 !------ parameters for eta coordinate reference surface heights --------
 
-  real, parameter :: pref = 101325., tref = 288., gamma = 0.0065
+  real(r8), parameter :: pref = 101325., tref = 288., gamma = 0.0065
 
 !------ parameters for performance timing of code sections -----
 
@@ -131,17 +130,17 @@ function vert_grid_init (eta, peta, verbose) result (Vgrid)
 !    deta_in  =  vertical grid spacing, an array of order one
 !
 
-     real, intent (in)           ::  eta(:)
-     real, intent (in), optional :: peta(:)
+     real(r8), intent (in)           ::  eta(:)
+     real(r8), intent (in), optional :: peta(:)
   integer, intent (in), optional :: verbose
 
      type(vert_grid_type) :: Vgrid
 
 !-----------------------------------------------------------------------
 integer :: k, kx, lverbose
-real    :: rgog
-real, dimension(size(eta))   :: phalf, lphalf, pres
-real, dimension(size(eta)-1) ::        lpfull
+real(r8)    :: rgog
+real(r8), dimension(size(eta))   :: phalf, lphalf, pres
+real(r8), dimension(size(eta)-1) ::        lpfull
 
 !-----------------------------------------------------------------------
 
@@ -261,12 +260,12 @@ real, dimension(size(eta)-1) ::        lpfull
 
 ! initialize code sections for performance timing 
 
- if (do_clock_init) then
-   do k = 1, size(id)
-      id(k) = mpp_clock_init ('BGRID: vert ('//trim(names(k))//')', timlev, flags=MPP_CLOCK_SYNC)
-   enddo
-   do_clock_init = .false. 
- endif
+ !if (do_clock_init) then
+ !  do k = 1, size(id)
+ !     id(k) = mpp_clock_init ('BGRID: vert ('//trim(names(k))//')', timlev, flags=MPP_CLOCK_SYNC)
+ !  enddo
+ !  do_clock_init = .false. 
+ !endif
 
 !-----------------------------------------------------------------------
 
@@ -277,15 +276,15 @@ end function vert_grid_init
 subroutine compute_pres_depth (Vgrid, pssl, pdepth)
 
   type(vert_grid_type), intent(in)  :: Vgrid
-       real           , intent(in)  :: pssl(:,:)
-       real           , intent(out) :: pdepth(:,:,:)
+       real(r8)           , intent(in)  :: pssl(:,:)
+       real(r8)           , intent(out) :: pdepth(:,:,:)
 
        integer :: k, kp, ke
 
 !-----------------------------------------------------------------------
 !   compute the pressure weight (depth) for model layers
 !-----------------------------------------------------------------------
-  call mpp_clock_begin (id(1))
+  !call mpp_clock_begin (id(1))
 
   kp = Vgrid % nplev
   ke = Vgrid % nlev
@@ -312,7 +311,7 @@ subroutine compute_pres_depth (Vgrid, pssl, pdepth)
     pdepth(:,:,k) = Vgrid % dpeta(k) + Vgrid % deta(k) * pssl(:,:)
   enddo
 
-  call mpp_clock_end (id(1))
+  !call mpp_clock_end (id(1))
 
 end subroutine compute_pres_depth
 
@@ -321,17 +320,17 @@ end subroutine compute_pres_depth
 subroutine compute_pres_full (Vgrid, pssl, pfull, phalf, dpde)
 
   type(vert_grid_type), intent(in)  :: Vgrid
-  real                , intent(in)  :: pssl(:,:)
-  real                , intent(out) :: pfull(:,:,:)
-  real, optional      , intent(in)  :: phalf(:,:,:), dpde(:,:,:)
+  real(r8)                , intent(in)  :: pssl(:,:)
+  real(r8)                , intent(out) :: pfull(:,:,:)
+  real(r8), optional      , intent(in)  :: phalf(:,:,:), dpde(:,:,:)
 
-   real, dimension(size(pfull,1),size(pfull,2),size(pfull,3)+1) :: ph
-   real, dimension(size(pfull,1),size(pfull,2),size(pfull,3))   :: dp
+   real(r8), dimension(size(pfull,1),size(pfull,2),size(pfull,3)+1) :: ph
+   real(r8), dimension(size(pfull,1),size(pfull,2),size(pfull,3))   :: dp
    integer :: k, kp, ke
 !-----------------------------------------------------------------------
 !      compute the pressure at full model levels
 !-----------------------------------------------------------------------
-  call mpp_clock_begin (id(2))
+  !call mpp_clock_begin (id(2))
 
   kp = Vgrid % nplev
   ke = Vgrid % nlev
@@ -373,7 +372,7 @@ subroutine compute_pres_full (Vgrid, pssl, pfull, phalf, dpde)
     pfull(:,:,k) = exp( (ph(:,:,k+1)-ph(:,:,k))/dp(:,:,k) - 1.0 )
   enddo
     
-  call mpp_clock_end (id(2))
+  !call mpp_clock_end (id(2))
 
 end subroutine compute_pres_full
 
@@ -382,13 +381,13 @@ end subroutine compute_pres_full
 subroutine compute_pressures (Vgrid, pssl, phalf, pfull, dpde, wta, wtb)
 
   type(vert_grid_type), intent(in)  :: Vgrid
-  real                , intent(in)  :: pssl(:,:)
-  real                , intent(out) :: phalf(:,:,:), pfull(:,:,:)
-  real, optional      , intent(out) :: dpde(:,:,:)
-  real, optional      , intent(out) :: wta(:,:,:), wtb(:,:,:)
+  real(r8)                , intent(in)  :: pssl(:,:)
+  real(r8)                , intent(out) :: phalf(:,:,:), pfull(:,:,:)
+  real(r8), optional      , intent(out) :: dpde(:,:,:)
+  real(r8), optional      , intent(out) :: wta(:,:,:), wtb(:,:,:)
 
-  real, dimension(size(pfull,1),size(pfull,2),size(pfull,3)+1) :: ph,lph
-  real, dimension(size(pfull,1),size(pfull,2),size(pfull,3))   :: dp,lpf
+  real(r8), dimension(size(pfull,1),size(pfull,2),size(pfull,3)+1) :: ph,lph
+  real(r8), dimension(size(pfull,1),size(pfull,2),size(pfull,3))   :: dp,lpf
   integer :: k, kp, ke
 !-----------------------------------------------------------------------
 !      compute the pressure at full model levels
@@ -410,7 +409,7 @@ subroutine compute_pressures (Vgrid, pssl, phalf, pfull, dpde, wta, wtb)
   if (present(dpde))  dpde = dp
 
 ! do not include time for previous calls
-  call mpp_clock_begin (id(3))
+  !call mpp_clock_begin (id(3))
 
 !--- compute p*logp at half levels ---
 
@@ -462,7 +461,7 @@ subroutine compute_pressures (Vgrid, pssl, phalf, pfull, dpde, wta, wtb)
       if (Vgrid % pzero .and. kp == 0) wta(:,:,1) = wtb(:,:,1)
    endif
 
-  call mpp_clock_end (id(3))
+  !call mpp_clock_end (id(3))
 
 end subroutine compute_pressures
 
@@ -471,8 +470,8 @@ end subroutine compute_pressures
 subroutine compute_pres_half (Vgrid, pssl, phalf)
 
   type(vert_grid_type), intent(in)  :: Vgrid
-       real           , intent(in)  :: pssl(:,:)
-       real           , intent(out) :: phalf(:,:,:)
+       real(r8)           , intent(in)  :: pssl(:,:)
+       real(r8)           , intent(out) :: phalf(:,:,:)
 
        integer :: k, kp, ke
 
@@ -480,7 +479,7 @@ subroutine compute_pres_half (Vgrid, pssl, phalf)
 !    compute the pressure at the interface between model layers
 !                      (half model levels)
 !-----------------------------------------------------------------------
-  call mpp_clock_begin (id(4))
+  !call mpp_clock_begin (id(4))
 
   kp = Vgrid % nplev + 1
   ke = Vgrid % nlev + 1
@@ -497,7 +496,7 @@ subroutine compute_pres_half (Vgrid, pssl, phalf)
     phalf(:,:,k) = Vgrid % peta(k) + Vgrid % eta(k) * pssl(:,:)
   enddo
 
-  call mpp_clock_end (id(4))
+  !call mpp_clock_end (id(4))
 
 end subroutine compute_pres_half
 
@@ -506,14 +505,14 @@ end subroutine compute_pres_half
 subroutine compute_pres_weights ( Vgrid, phalf, pfull, wta, wtb )
 
  type(vert_grid_type), intent(in)  :: Vgrid
- real, intent(in)  :: phalf(:,:,:), pfull(:,:,:)
- real, intent(out) :: wta(:,:,:), wtb(:,:,:)
+ real(r8), intent(in)  :: phalf(:,:,:), pfull(:,:,:)
+ real(r8), intent(out) :: wta(:,:,:), wtb(:,:,:)
 
- real, dimension(size(phalf,1),size(phalf,2),size(phalf,3)) :: logph
- real, dimension(size(pfull,1),size(pfull,2),size(pfull,3)) :: logpf
+ real(r8), dimension(size(phalf,1),size(phalf,2),size(phalf,3)) :: logph
+ real(r8), dimension(size(pfull,1),size(pfull,2),size(pfull,3)) :: logpf
  integer :: k, kp, kx, ks
 
-  call mpp_clock_begin (id(5))
+  !call mpp_clock_begin (id(5))
 
    kp = Vgrid % nplev
    kx = size(pfull,3)
@@ -542,7 +541,7 @@ subroutine compute_pres_weights ( Vgrid, phalf, pfull, wta, wtb )
      wta(:,:,k) = logpf(:,:,k) - logph(:,:,k)
    enddo
 
-  call mpp_clock_end (id(5))
+  !call mpp_clock_end (id(5))
 
 end subroutine compute_pres_weights
 
@@ -552,20 +551,20 @@ subroutine compute_geop_height (Vgrid, fssl, vtemp, wta, wtb, &
                                 zfull, zhalf, mask)
 
     type(vert_grid_type), intent(in)   :: Vgrid
-    real, intent(in), dimension(:,:)   :: fssl
-    real, intent(in), dimension(:,:,:) :: vtemp, wta, wtb
-    real, intent(out)                  :: zfull(:,:,:)
-    real, intent(out), optional        :: zhalf(:,:,:)
-    real, intent(in),  optional        :: mask(:,:,:)
+    real(r8), intent(in), dimension(:,:)   :: fssl
+    real(r8), intent(in), dimension(:,:,:) :: vtemp, wta, wtb
+    real(r8), intent(out)                  :: zfull(:,:,:)
+    real(r8), intent(out), optional        :: zhalf(:,:,:)
+    real(r8), intent(in),  optional        :: mask(:,:,:)
 
        integer :: k, klev
-       real, dimension(size(vtemp,1),size(vtemp,2)) :: zb, zt, rt
+       real(r8), dimension(size(vtemp,1),size(vtemp,2)) :: zb, zt, rt
 
 !-----------------------------------------------------------------------
 !    compute the height (in meters) at the interface between
 !              model layers (half model levels)
 !-----------------------------------------------------------------------
-  call mpp_clock_begin (id(6))
+  !call mpp_clock_begin (id(6))
 
   klev = Vgrid % nlev
 
@@ -600,7 +599,7 @@ subroutine compute_geop_height (Vgrid, fssl, vtemp, wta, wtb, &
 
       enddo
 
-  call mpp_clock_end (id(6))
+  !call mpp_clock_end (id(6))
 
 end subroutine compute_geop_height
 
@@ -610,12 +609,12 @@ subroutine compute_height (Vgrid, fssl, temp, sphum, pfull, phalf, &
                            zfull, zhalf, mask)
 
    type(vert_grid_type), intent(in)    :: Vgrid
-   real, intent(in),  dimension(:,:)   :: fssl
-   real, intent(in),  dimension(:,:,:) :: temp, sphum, pfull, phalf
-   real, intent(out), dimension(:,:,:) :: zfull, zhalf
-   real, intent(in),  optional         :: mask(:,:,:)
+   real(r8), intent(in),  dimension(:,:)   :: fssl
+   real(r8), intent(in),  dimension(:,:,:) :: temp, sphum, pfull, phalf
+   real(r8), intent(out), dimension(:,:,:) :: zfull, zhalf
+   real(r8), intent(in),  optional         :: mask(:,:,:)
 
-   real, dimension(size(temp,1),size(temp,2),size(temp,3)) ::  &
+   real(r8), dimension(size(temp,1),size(temp,2),size(temp,3)) ::  &
                                                    wta, wtb, vtemp
 
 !-----------------------------------------------------------------------
@@ -648,17 +647,17 @@ subroutine compute_height_bottom ( Vgrid, pssl, tbot, qbot,  &
                                    zbot, pbot, kbot )
 
    type(vert_grid_type), intent(in)  :: Vgrid
-   real, intent(in),  dimension(:,:) :: pssl, tbot, qbot
-   real, intent(out), dimension(:,:) :: zbot, pbot
+   real(r8), intent(in),  dimension(:,:) :: pssl, tbot, qbot
+   real(r8), intent(out), dimension(:,:) :: zbot, pbot
    integer, intent(in),  optional    :: kbot(:,:)
 
-   real, dimension(size(pssl,1),size(pssl,2)) :: rt, dp, phb, pht, &
+   real(r8), dimension(size(pssl,1),size(pssl,2)) :: rt, dp, phb, pht, &
                                                  lphb, lpht, lpf
    integer :: i, j, kb
 
 !  ----- pressure at top and bottom interface of bottom level -----
 
-   call mpp_clock_begin (id(7))
+   !call mpp_clock_begin (id(7))
 
    if (present(kbot)) then
       do j = 1, size(pssl,2)
@@ -684,7 +683,7 @@ subroutine compute_height_bottom ( Vgrid, pssl, tbot, qbot,  &
    zbot = rt * (lphb-lpf)
    pbot = exp(lpf)
 
-   call mpp_clock_end (id(7))
+   !call mpp_clock_end (id(7))
 
 end subroutine compute_height_bottom
 

@@ -27,17 +27,19 @@ module hs_forcing_mod
 
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use     constants_mod, only: KAPPA, CP, GRAV
 
+use utilities_mod, only : check_nml_error
 use           fms_mod, only: error_mesg, FATAL, file_exist,       &
-                             open_namelist_file, check_nml_error, &
-                             mpp_pe, mpp_root_pe, close_file,     &
+                             open_namelist_file, &
+                             close_file,     &
                              write_version_number, stdlog,        &
                              uppercase
 
 use  time_manager_mod, only: time_type
 
-use  diag_manager_mod, only: register_diag_field, send_data
+!use  diag_manager_mod, only: register_diag_field, send_data
 
 use  field_manager_mod, only: MODEL_ATMOS, parse
 use tracer_manager_mod, only: query_method, get_tracer_index
@@ -53,16 +55,16 @@ private
 !-----------------------------------------------------------------------
 !-------------------- namelist -----------------------------------------
 
-   real :: t_zero=315., t_strat=200., delh=60., delv=10., eps=0., sigma_b=0.7
-   real :: P00 = 1.e5
+   real(r8) :: t_zero=315., t_strat=200., delh=60., delv=10., eps=0., sigma_b=0.7
+   real(r8) :: P00 = 1.e5
 
-   real :: ka = -40. !  negative values are damping time in days
-   real :: ks =  -4., kf = -1.
+   real(r8) :: ka = -40. !  negative values are damping time in days
+   real(r8) :: ks =  -4., kf = -1.
 
    logical :: do_conserve_energy = .true.
 
-   real :: trflux = 1.e-5   !  surface flux for optional tracer
-   real :: trsink = -4.     !  damping time for tracer
+   real(r8) :: trflux = 1.e-5   !  surface flux for optional tracer
+   real(r8) :: trsink = -4.     !  damping time for tracer
 
 !-----------------------------------------------------------------------
 
@@ -75,12 +77,12 @@ private
    character(len=128) :: version='$Id$'
    character(len=128) :: tag='$Name$'
 
-   real :: tka, tks, vkf
-   real :: trdamp
+   real(r8) :: tka, tks, vkf
+   real(r8) :: trdamp
 
    integer :: id_teq, id_tdt, id_udt, id_vdt,  &
               id_tdt_diss, id_diss_heat
-   real    :: missing_value = -1.e10
+   real(r8)    :: missing_value = -1.e10
    character(len=14) :: mod_name = 'hs_forcing'
 
    logical :: do_init = .true.
@@ -97,24 +99,24 @@ contains
 
 !-----------------------------------------------------------------------
    integer, intent(in)                        :: is, ie, js, je
-      real, intent(in)                        :: dt
+      real(r8), intent(in)                        :: dt
  type(time_type), intent(in)                  :: Time
-      real, intent(in),    dimension(:,:)     :: lat
-      real, intent(in),    dimension(:,:,:)   :: p_half, p_full
-      real, intent(in),    dimension(:,:,:)   :: u, v, t, um, vm, tm
-      real, intent(in),    dimension(:,:,:,:) :: r, rm
-      real, intent(inout), dimension(:,:,:)   :: udt, vdt, tdt
-      real, intent(inout), dimension(:,:,:,:) :: rdt
+      real(r8), intent(in),    dimension(:,:)     :: lat
+      real(r8), intent(in),    dimension(:,:,:)   :: p_half, p_full
+      real(r8), intent(in),    dimension(:,:,:)   :: u, v, t, um, vm, tm
+      real(r8), intent(in),    dimension(:,:,:,:) :: r, rm
+      real(r8), intent(inout), dimension(:,:,:)   :: udt, vdt, tdt
+      real(r8), intent(inout), dimension(:,:,:,:) :: rdt
 
-      real, intent(in),    dimension(:,:,:), optional :: mask
+      real(r8), intent(in),    dimension(:,:,:), optional :: mask
    integer, intent(in),    dimension(:,:)  , optional :: kbot
 !-----------------------------------------------------------------------
-   real, dimension(size(t,1),size(t,2))           :: ps, diss_heat
-   real, dimension(size(t,1),size(t,2),size(t,3)) :: ttnd, utnd, vtnd, teq, pmass
-   real, dimension(size(r,1),size(r,2),size(r,3)) :: rst, rtnd
+   real(r8), dimension(size(t,1),size(t,2))           :: ps, diss_heat
+   real(r8), dimension(size(t,1),size(t,2),size(t,3)) :: ttnd, utnd, vtnd, teq, pmass
+   real(r8), dimension(size(r,1),size(r,2),size(r,3)) :: rst, rtnd
    integer :: i, j, k, kb, n
    logical :: used
-   real    :: flux, sink, value
+   real(r8)    :: flux, sink, value
    character(len=128) :: scheme, params
 
 !-----------------------------------------------------------------------
@@ -143,22 +145,22 @@ contains
       if (do_conserve_energy) then
          ttnd = -((um+.5*utnd*dt)*utnd + (vm+.5*vtnd*dt)*vtnd)/CP
          tdt = tdt + ttnd
-         if (id_tdt_diss > 0) used = send_data ( id_tdt_diss, ttnd, Time, is, js)
+!         if (id_tdt_diss > 0) used = send_data ( id_tdt_diss, ttnd, Time, is, js)
        ! vertical integral of ke dissipation
          if ( id_diss_heat > 0 ) then
           do k = 1, size(t,3)
             pmass(:,:,k) = p_half(:,:,k+1)-p_half(:,:,k)
           enddo
           diss_heat = CP/GRAV * sum( ttnd*pmass, 3)
-          used = send_data ( id_diss_heat, diss_heat, Time, is, js)
+!          used = send_data ( id_diss_heat, diss_heat, Time, is, js)
          endif
       endif
 
       udt = udt + utnd
       vdt = vdt + vtnd
 
-      if (id_udt > 0) used = send_data ( id_udt, utnd, Time, is, js)
-      if (id_vdt > 0) used = send_data ( id_vdt, vtnd, Time, is, js)
+!      if (id_udt > 0) used = send_data ( id_udt, utnd, Time, is, js)
+!      if (id_vdt > 0) used = send_data ( id_vdt, vtnd, Time, is, js)
 
 !-----------------------------------------------------------------------
 !     thermal forcing for held & suarez (1994) benchmark calculation
@@ -167,8 +169,8 @@ contains
 
       tdt = tdt + ttnd
 
-      if (id_tdt > 0) used = send_data ( id_tdt, ttnd, Time, is, js)
-      if (id_teq > 0) used = send_data ( id_teq, teq,  Time, is, js)
+!      if (id_tdt > 0) used = send_data ( id_tdt, ttnd, Time, is, js)
+!      if (id_teq > 0) used = send_data ( id_teq, teq,  Time, is, js)
 
 !-----------------------------------------------------------------------
 !     -------- tracers -------
@@ -221,7 +223,7 @@ contains
 !     ----- write version info and namelist to log file -----
 
       call write_version_number (version,tag)
-      if (mpp_pe() == mpp_root_pe()) write (stdlog(),nml=hs_forcing_nml)
+      write (stdlog(),nml=hs_forcing_nml)
 
 
 !     ----- compute coefficients -----
@@ -241,30 +243,30 @@ contains
 
 !     ----- register diagnostic fields -----
 
-      id_teq = register_diag_field ( mod_name, 'teq', axes(1:3), Time, &
-                      'equilibrium temperature', 'deg_K'   , &
-                      missing_value=missing_value, range=(/100.,400./) )
+!      id_teq = register_diag_field ( mod_name, 'teq', axes(1:3), Time, &
+!                      'equilibrium temperature', 'deg_K'   , &
+!                      missing_value=missing_value, range=(/100.,400./) )
 
-      id_tdt = register_diag_field ( mod_name, 'tdt_ndamp', axes(1:3), Time, &
-                      'newtonian damping', 'deg_K/sec' ,    &
-                       missing_value=missing_value     )
+!      id_tdt = register_diag_field ( mod_name, 'tdt_ndamp', axes(1:3), Time, &
+!                      'newtonian damping', 'deg_K/sec' ,    &
+!                       missing_value=missing_value     )
 
-      id_udt = register_diag_field ( mod_name, 'udt_rdamp', axes(1:3), Time, &
-                      'rayleigh damping (zonal wind)', 'm/s2',       &
-                       missing_value=missing_value     )
+!      id_udt = register_diag_field ( mod_name, 'udt_rdamp', axes(1:3), Time, &
+!                      'rayleigh damping (zonal wind)', 'm/s2',       &
+!                       missing_value=missing_value     )
 
-      id_vdt = register_diag_field ( mod_name, 'vdt_rdamp', axes(1:3), Time, &
-                      'rayleigh damping (meridional wind)', 'm/s2',  &
-                       missing_value=missing_value     )
+!      id_vdt = register_diag_field ( mod_name, 'vdt_rdamp', axes(1:3), Time, &
+!                      'rayleigh damping (meridional wind)', 'm/s2',  &
+!                       missing_value=missing_value     )
 
-      if (do_conserve_energy) then
-         id_tdt_diss = register_diag_field ( mod_name, 'tdt_diss_rdamp', axes(1:3), &
-                   Time, 'Dissipative heating from Rayleigh damping', 'deg_K/sec',&
-                   missing_value=missing_value     )
+!      if (do_conserve_energy) then
+!         id_tdt_diss = register_diag_field ( mod_name, 'tdt_diss_rdamp', axes(1:3), &
+!                   Time, 'Dissipative heating from Rayleigh damping', 'deg_K/sec',&
+!                   missing_value=missing_value     )
 
-         id_diss_heat = register_diag_field ( mod_name, 'diss_heat_rdamp', axes(1:2), &
-                   Time, 'Integrated dissipative heating for Rayleigh damping', 'W/m2')
-      endif
+!         id_diss_heat = register_diag_field ( mod_name, 'diss_heat_rdamp', axes(1:2), &
+!                   Time, 'Integrated dissipative heating for Rayleigh damping', 'W/m2')
+!      endif
 
       do_init  = .false.
 
@@ -297,21 +299,21 @@ contains
 !
 !-----------------------------------------------------------------------
 
-real, intent(in),  dimension(:,:)   :: lat, ps
-real, intent(in),  dimension(:,:,:) :: p_full, t
-real, intent(out), dimension(:,:,:) :: tdt, teq
-real, intent(in),  dimension(:,:,:), optional :: mask
+real(r8), intent(in),  dimension(:,:)   :: lat, ps
+real(r8), intent(in),  dimension(:,:,:) :: p_full, t
+real(r8), intent(out), dimension(:,:,:) :: tdt, teq
+real(r8), intent(in),  dimension(:,:,:), optional :: mask
 
 !-----------------------------------------------------------------------
 
-          real, dimension(size(t,1),size(t,2)) :: &
+          real(r8), dimension(size(t,1),size(t,2)) :: &
      sin_lat, sin_lat_2, cos_lat_2, t_star, cos_lat_4, &
      tstr, sigma, the, tfactr, rps, p_norm
 
-       real, dimension(size(t,1),size(t,2),size(t,3)) :: tdamp
+       real(r8), dimension(size(t,1),size(t,2),size(t,3)) :: tdamp
 
        integer :: k
-       real    :: tcoeff, pref
+       real(r8)    :: tcoeff, pref
 
 !-----------------------------------------------------------------------
 !------------latitudinal constants--------------------------------------
@@ -375,17 +377,17 @@ real, intent(in),  dimension(:,:,:), optional :: mask
 !
 !-----------------------------------------------------------------------
 
-real, intent(in),  dimension(:,:)   :: ps
-real, intent(in),  dimension(:,:,:) :: p_full, u, v
-real, intent(out), dimension(:,:,:) :: udt, vdt
-real, intent(in),  dimension(:,:,:), optional :: mask
+real(r8), intent(in),  dimension(:,:)   :: ps
+real(r8), intent(in),  dimension(:,:,:) :: p_full, u, v
+real(r8), intent(out), dimension(:,:,:) :: udt, vdt
+real(r8), intent(in),  dimension(:,:,:), optional :: mask
 
 !-----------------------------------------------------------------------
 
-real, dimension(size(u,1),size(u,2)) :: sigma, vfactr, rps
+real(r8), dimension(size(u,1),size(u,2)) :: sigma, vfactr, rps
 
 integer :: i,j,k
-real    :: vcoeff
+real(r8)    :: vcoeff
 
 !-----------------------------------------------------------------------
 !----------------compute damping----------------------------------------
@@ -421,15 +423,15 @@ real    :: vcoeff
  subroutine tracer_source_sink ( flux, damp, p_half, r, rdt, kbot )
 
 !-----------------------------------------------------------------------
-      real, intent(in)  :: flux, damp, p_half(:,:,:), r(:,:,:)
-      real, intent(out) :: rdt(:,:,:)
+      real(r8), intent(in)  :: flux, damp, p_half(:,:,:), r(:,:,:)
+      real(r8), intent(out) :: rdt(:,:,:)
    integer, intent(in), optional :: kbot(:,:)
 !-----------------------------------------------------------------------
-      real, dimension(size(r,1),size(r,2),size(r,3)) :: source, sink
-      real, dimension(size(r,1),size(r,2))           :: pmass
+      real(r8), dimension(size(r,1),size(r,2),size(r,3)) :: source, sink
+      real(r8), dimension(size(r,1),size(r,2))           :: pmass
 
       integer :: i, j, kb
-      real    :: rdamp
+      real(r8)    :: rdamp
 !-----------------------------------------------------------------------
 
       rdamp = damp

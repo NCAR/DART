@@ -36,7 +36,7 @@ module constants_mod
 ! </OVERVIEW>
 
 ! <DESCRIPTION>
-!   Constants are defined as real parameters.They are accessed through
+!   Constants are defined as real(r8) parameters.They are accessed through
 !   the "use" statement. While the local name of constant may be changed,
 !   their values can not be redefined.
 ! </DESCRIPTION>
@@ -47,6 +47,7 @@ module constants_mod
 !
 !-----------------------------------------------------
 
+use types_mod, only : r8
 use fms_mod, only: write_version_number
 
 implicit none
@@ -59,73 +60,73 @@ logical :: module_is_initialized = .FALSE.
 !-----------------------------------------------------------------------
 
 !------------ physical constants ---------------
-! <DATA NAME="RADIUS" UNITS="meters" TYPE="real" DEFAULT="6376.e3">
+! <DATA NAME="RADIUS" UNITS="meters" TYPE="real(r8)" DEFAULT="6376.e3">
 !   radius of the earth
 ! </DATA>
-! <DATA NAME="OMEGA" UNITS="1/sec" TYPE="real" DEFAULT="7.292e-5">
+! <DATA NAME="OMEGA" UNITS="1/sec" TYPE="real(r8)" DEFAULT="7.292e-5">
 !   rotation rate of the planet (earth)
 ! </DATA>
-! <DATA NAME="GRAV" UNITS="m/s2" TYPE="real" DEFAULT="9.80">
+! <DATA NAME="GRAV" UNITS="m/s2" TYPE="real(r8)" DEFAULT="9.80">
 !   acceleration due to gravity
 ! </DATA>
-! <DATA NAME="RDGAS" UNITS="J/kg/deg" TYPE="real" DEFAULT="287.04">
+! <DATA NAME="RDGAS" UNITS="J/kg/deg" TYPE="real(r8)" DEFAULT="287.04">
 !   gas constant for dry air
 ! </DATA>
-! <DATA NAME=" KAPPA" UNITS="" TYPE="real" DEFAULT="2./7.">
+! <DATA NAME=" KAPPA" UNITS="" TYPE="real(r8)" DEFAULT="2./7.">
 !   RDGAS / CP
 ! </DATA>
-! <DATA NAME="CP" UNITS="J/kg/deg" TYPE="real" DEFAULT="RDGAS/KAPPA">
+! <DATA NAME="CP" UNITS="J/kg/deg" TYPE="real(r8)" DEFAULT="RDGAS/KAPPA">
 !   specific heat capacity of dry air at constant pressure
 ! </DATA>
 
-real, public, parameter :: RADIUS = 6376.e3   
-real, public, parameter :: OMEGA  = 7.292e-5 
-real, public, parameter :: GRAV   = 9.80    
-real, public, parameter :: RDGAS  = 287.04 
-real, public, parameter :: KAPPA  = 2./7.  
-real, public, parameter :: cp     = RDGAS/KAPPA 
+real(r8), public, parameter :: RADIUS = 6376.e3   
+real(r8), public, parameter :: OMEGA  = 7.292e-5 
+real(r8), public, parameter :: GRAV   = 9.80    
+real(r8), public, parameter :: RDGAS  = 287.04 
+real(r8), public, parameter :: KAPPA  = 2./7.  
+real(r8), public, parameter :: cp     = RDGAS/KAPPA 
 
 !------------ water vapor constants ---------------
-! <DATA NAME="RVGAS" UNITS="J/Kg/deg" TYPE="real" DEFAULT="461.50">
+! <DATA NAME="RVGAS" UNITS="J/Kg/deg" TYPE="real(r8)" DEFAULT="461.50">
 !   gas constant for water vapor
 ! </DATA>
-! <DATA NAME="DENS_H2O" UNITS="Kg/m3" TYPE="real" DEFAULT="1000.">
+! <DATA NAME="DENS_H2O" UNITS="Kg/m3" TYPE="real(r8)" DEFAULT="1000.">
 !   density of liquid water
 ! </DATA>
-! <DATA NAME="HLV" UNITS="J/Kg" TYPE="real" DEFAULT="2.500e6">
+! <DATA NAME="HLV" UNITS="J/Kg" TYPE="real(r8)" DEFAULT="2.500e6">
 !   latent heat of evaporation
 ! </DATA>
-! <DATA NAME="HLF" UNITS="J/kg" TYPE="real" DEFAULT="3.34e5">
+! <DATA NAME="HLF" UNITS="J/kg" TYPE="real(r8)" DEFAULT="3.34e5">
 !   latent heat of fusion
 ! </DATA>
-! <DATA NAME="HLS" UNITS="J/Kg" TYPE="real" DEFAULT="2.834e6">
+! <DATA NAME="HLS" UNITS="J/Kg" TYPE="real(r8)" DEFAULT="2.834e6">
 !   latent heat of sublimation
 ! </DATA>
-! <DATA NAME="TFREEZE" UNITS="deg K" TYPE="real" DEFAULT="273.16">
+! <DATA NAME="TFREEZE" UNITS="deg K" TYPE="real(r8)" DEFAULT="273.16">
 !   temp where fresh water freezes
 ! </DATA>
 
-real, public, parameter :: RVGAS = 461.50 
-real, public, parameter :: DENS_H2O = 1000. 
-real, public, parameter :: HLV = 2.500e6   
-real, public, parameter :: HLF = 3.34e5   
-real, public, parameter :: HLS = 2.834e6 
-real, public, parameter :: TFREEZE = 273.16    
+real(r8), public, parameter :: RVGAS = 461.50 
+real(r8), public, parameter :: DENS_H2O = 1000. 
+real(r8), public, parameter :: HLV = 2.500e6   
+real(r8), public, parameter :: HLF = 3.34e5   
+real(r8), public, parameter :: HLS = 2.834e6 
+real(r8), public, parameter :: TFREEZE = 273.16    
 
 !------------ miscellaneous constants ---------------
-! <DATA NAME="STEFAN" UNITS="(W/m2/deg4" TYPE="real" DEFAULT="5.6734e-8">
+! <DATA NAME="STEFAN" UNITS="(W/m2/deg4" TYPE="real(r8)" DEFAULT="5.6734e-8">
 !   Stefan-Boltzmann constant
 ! </DATA>
-! <DATA NAME="VONKARM"  TYPE="real" DEFAULT="0.40">
+! <DATA NAME="VONKARM"  TYPE="real(r8)" DEFAULT="0.40">
 !   Von Karman constant
 ! </DATA>
-! <DATA NAME="PI" TYPE="real" DEFAULT="3.14159265358979323846">
+! <DATA NAME="PI" TYPE="real(r8)" DEFAULT="3.14159265358979323846">
 !   is it enough?
 ! </DATA>
 
-real, public, parameter :: STEFAN  =  5.6734e-8 
-real, public, parameter :: VONKARM =  0.40     
-real, public, parameter :: PI      =  3.14159265358979323846 
+real(r8), public, parameter :: STEFAN  =  5.6734e-8 
+real(r8), public, parameter :: VONKARM =  0.40     
+real(r8), public, parameter :: PI      =  3.14159265358979323846 
 !-----------------------------------------------------------------------
 
 public constants_init
@@ -190,7 +191,7 @@ end module constants_mod
 !<B>EXAMPLES:</B>
 !<PRE>
 !     use constants_mod, only:  TFREEZE, grav_new =&gt; GRAV
-!     real, parameter :: grav_inv = 1.0 / grav_new
+!     real(r8), parameter :: grav_inv = 1.0 / grav_new
 !     tempc(:,:,:) = tempk(:,:,:) - TFREEZE
 !     geopotential(:,:) = height(:,:) * grav_new
 !</PRE>

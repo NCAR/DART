@@ -31,6 +31,7 @@ module bgrid_integrals_mod
 !
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_change_grid_mod, only: mass_to_vel
 use       bgrid_horiz_mod, only: horiz_grid_type
 use        bgrid_vert_mod, only:  vert_grid_type, compute_pres_depth
@@ -41,16 +42,11 @@ use      time_manager_mod, only:  time_type, get_time, set_time,  &
                                   operator(==), operator(>=),     &
                                   operator(/=)
 
+use utilities_mod, only : check_nml_error
 use         fms_mod, only: file_exist, open_namelist_file,        &
-                           check_nml_error, write_version_number, &
-                           stdout, error_mesg, FATAL, NOTE
+                           write_version_number, &
+                           error_mesg, FATAL, NOTE, stdlog
 use   constants_mod, only: CP
-
-use         mpp_mod, only: mpp_pe, mpp_root_pe, mpp_max, mpp_min, &
-                           mpp_sum, stdlog
-use      mpp_io_mod, only: mpp_open, mpp_close, MPP_ASCII,  &
-                           MPP_OVERWR, MPP_SEQUENTIAL, MPP_SINGLE
-use mpp_domains_mod, only: mpp_global_sum, BITWISE_EXACT_SUM
 
 use  field_manager_mod, only: MODEL_ATMOS
 use tracer_manager_mod, only: get_tracer_names, get_number_tracers, &
@@ -87,13 +83,13 @@ public :: bgrid_integrals, bgrid_integrals_init, bgrid_integrals_end
 !                     diagnostics will be generated
 !                   * a negative value tries to use a value from a
 !                     restart file
-!                       [real, default: output_interval = -1.0]
+!                       [real(r8), default: output_interval = -1.0]
 !
 
    integer, parameter :: MXCH = 64
    integer, parameter :: MXTRS = 4
 
-   real             :: output_interval = -1.0
+   real(r8)             :: output_interval = -1.0
    character(len=8) :: time_units = 'hours'
    character(len=MXCH) :: file_name = ' '
    character(len=MXCH) :: chksum_file_name = ' '
@@ -140,8 +136,8 @@ end interface
    integer :: output_option = STANDARD
 
 ! quantities accumulated over the output period
-   real :: windspeed_max
-   real :: temperature_min
+   real(r8) :: windspeed_max
+   real(r8) :: temperature_min
    integer :: num_in_avg
 !-----------------------------------------------------------------------
 
@@ -161,17 +157,17 @@ contains
 
 !-----------------------------------------------------------------------
 
-   real, dimension (Hgrid%ilb:Hgrid%iub,          &
+   real(r8), dimension (Hgrid%ilb:Hgrid%iub,          &
                     Hgrid%jlb:Hgrid%jub, Var%nlev) :: dpde, dpde_xy, avg
-   real, dimension (Hgrid%ilb:Hgrid%iub,          &
+   real(r8), dimension (Hgrid%ilb:Hgrid%iub,          &
                     Hgrid%jlb:Hgrid%jub)           :: pssl_xy, ps_xy
 
-   real :: avgps, avgke, avgzke, avgeke, avgens, avgtemp, avgpsv, avgte
-   real ::  xtime, vmax, tmin
+   real(r8) :: avgps, avgke, avgzke, avgeke, avgens, avgtemp, avgpsv, avgte
+   real(r8) ::  xtime, vmax, tmin
   integer :: i, j, k, n, ntmax, nout, ind
 
-     real, dimension(Var%ntrace) :: avgtrace
-     real, dimension(MXTRS)      :: avgtrout
+     real(r8), dimension(Var%ntrace) :: avgtrace
+     real(r8), dimension(MXTRS)      :: avgtrout
   character(len=21) :: fmt
 
 !-----------------------------------------------------------------------
@@ -190,13 +186,11 @@ contains
                         Var%v(:,:,:)*Var%v(:,:,:))
 
   vmax = maxval (dpde_xy(Hgrid%Vel%is:Hgrid%Vel%ie, Hgrid%Vel%js:Hgrid%Vel%je, :))
-  call mpp_max (vmax)
   windspeed_max = max(windspeed_max,vmax)
 
 ! minimum temperature
 
   tmin = minval (Var%t(Hgrid%Tmp%is:Hgrid%Tmp%ie, Hgrid%Tmp%js:Hgrid%Tmp%je, :))
-  call mpp_min (tmin)
   temperature_min = min(temperature_min,tmin)
 
 ! increment counter
@@ -213,12 +207,10 @@ contains
 ! correct integrals for zonal mean and eddy kinetic energy
 
   if (do_decomp_check) then
-    if (mpp_pe() == mpp_root_pe()) then
       if ( Hgrid%decompx .and. output_option == KENERGY ) then
            call error_mesg ('bgrid_integrals',                    &
              'checksum integrals of zonal and eddy KE will not be &
               &exact with x-axis decomposition', NOTE )
-      endif
     endif
     do_decomp_check = .false.
   endif
@@ -320,8 +312,6 @@ contains
       if (indout(1) > 0) then
          avgtrout(2) = minval(Var%r(:,:,:,indout(1)))
          avgtrout(3) = maxval(Var%r(:,:,:,indout(1)))
-         call mpp_min (avgtrout(2))
-         call mpp_max (avgtrout(3))
          nout = 3
       endif
    endif
@@ -334,7 +324,6 @@ contains
 !-----------------------------------------------------------------------
 ! output on root PE only
 
- if ( mpp_pe() == mpp_root_pe() ) then
 
       xtime = get_axis_time (Time, time_units)
 
@@ -364,24 +353,23 @@ contains
 
 !---- output additional tracers ----
 
-     if (tracer_file_name(1:1) .ne. ' ') then
-!        ---- open file, write header ----
-         if (tracer_unit == 0) then
-             call  mpp_open (tracer_unit, trim(tracer_file_name), &
-                             form=MPP_ASCII, action=MPP_OVERWR,   &
-                             access=MPP_SEQUENTIAL, threading=MPP_SINGLE, &
-                             nohdrs=.true.)
-             write (tracer_unit,8300)
-         endif
-         ! output up to 99 tracers
-         write (fmt,8310) min(Var%ntrace,99)
-         write (tracer_unit,fmt) xtime, (avgtrace(n),n=1,min(Var%ntrace,99))
-     endif
+!     if (tracer_file_name(1:1) .ne. ' ') then
+!!        ---- open file, write header ----
+!         if (tracer_unit == 0) then
+!             call  mpp_open (tracer_unit, trim(tracer_file_name), &
+!                             form=MPP_ASCII, action=MPP_OVERWR,   &
+!                             access=MPP_SEQUENTIAL, threading=MPP_SINGLE, &
+!                             nohdrs=.true.)
+!             write (tracer_unit,8300)
+!         endif
+!         ! output up to 99 tracers
+!         write (fmt,8310) min(Var%ntrace,99)
+!         write (tracer_unit,fmt) xtime, (avgtrace(n),n=1,min(Var%ntrace,99))
+!     endif
 
- 8300 format ('#',6x,'n', 8x, 'tracers --->')
- 8310 format ('(1x,f10.2,2x,',i2.2,'e13.6)')
+! 8300 format ('#',6x,'n', 8x, 'tracers --->')
+! 8310 format ('(1x,f10.2,2x,',i2.2,'e13.6)')
 
- endif
 
 ! reset 
   windspeed_max   = 0.
@@ -410,11 +398,12 @@ contains
             read  (unit, nml=bgrid_integrals_nml, iostat=io, end=10)
             ierr = check_nml_error (io, 'bgrid_integrals_nml')
          enddo
-  10     call mpp_close (unit)
+!  10     call mpp_close (unit)
+   10   close (unit)
       endif
 
       call write_version_number (version,tag)
-      if (mpp_pe() == mpp_root_pe()) write (stdlog(), nml=bgrid_integrals_nml)
+      write (stdlog(), nml=bgrid_integrals_nml)
 
 !----- initialize alarm if not already done -----
 
@@ -445,21 +434,21 @@ contains
 
 !--- initialize diagnostics output unit/file ? ----
 
-      if ( file_name(1:1) /= ' ' ) then
-          call  mpp_open (diag_unit, trim(file_name), form=MPP_ASCII, &
-                          action=MPP_OVERWR, access=MPP_SEQUENTIAL,   &
-                          threading=MPP_SINGLE, nohdrs=.true.)
-      else
-          diag_unit = stdout()
-      endif
-
-      if ( chksum_file_name(1:1) /= ' ' ) then
-          call  mpp_open (chksum_unit, trim(chksum_file_name),  &
-                          form=MPP_ASCII, action=MPP_OVERWR,    &
-                          access=MPP_SEQUENTIAL, threading=MPP_SINGLE, &
-                          nohdrs=.true.)
-        do_chksum = .true.
-      endif
+!      if ( file_name(1:1) /= ' ' ) then
+!          call  mpp_open (diag_unit, trim(file_name), form=MPP_ASCII, &
+!                          action=MPP_OVERWR, access=MPP_SEQUENTIAL,   &
+!                          threading=MPP_SINGLE, nohdrs=.true.)
+!      else
+!          diag_unit = stdout()
+!      endif
+!
+!      if ( chksum_file_name(1:1) /= ' ' ) then
+!          call  mpp_open (chksum_unit, trim(chksum_file_name),  &
+!                          form=MPP_ASCII, action=MPP_OVERWR,    &
+!                          access=MPP_SEQUENTIAL, threading=MPP_SINGLE, &
+!                          nohdrs=.true.)
+!        do_chksum = .true.
+!      endif
 
 
 ! reset quantities accumulated over the output period
@@ -482,15 +471,18 @@ contains
  subroutine bgrid_integrals_end
 
 ! close all open units
-  if (  diag_unit > 0 .and. diag_unit /= stdout()) &
-                       call mpp_close (diag_unit)
-  if (chksum_unit > 0) call mpp_close (chksum_unit)
-  if (tracer_unit > 0) call mpp_close (tracer_unit)
+!  if (  diag_unit > 0 .and. diag_unit /= stdout()) &
+!                      ! call mpp_close (diag_unit)
+!                       close (diag_unit)
+!  if (chksum_unit > 0) call mpp_close (chksum_unit)
+  if (chksum_unit > 0) close (chksum_unit)
+!  if (tracer_unit > 0) call mpp_close (tracer_unit)
+  if (tracer_unit > 0) close (tracer_unit)
 
 ! need to write a restart file if the end of the output period
 ! does not coincide with the end of the model run
 
-  if (num_in_avg > 0 .and. mpp_pe() == mpp_root_pe()) then
+  if (num_in_avg > 0 ) then
    ! print a note for now
      call error_mesg ('bgrid_integrals_mod',  &
           'end of the output period did not coincide &
@@ -585,7 +577,6 @@ contains
      enddo
      if (output_option == TRACER1) title = trim(title)//',''(avg,min,max)'''
      title = trim(title)//')'
-    !if (mpp_pe() == mpp_root_pe()) print *, 'title=',trim(title)
 
 
    ! write the header/labels
@@ -611,15 +602,15 @@ contains
 
  type(horiz_grid_type), intent(in)                     :: Hgrid
  type (grid_mask_type), intent(in)                     :: Masks
- real, intent(in) , dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dpde, u, v
- real, intent(out)                                     :: gke
- real, intent(out), optional                           :: gmke, geke
+ real(r8), intent(in) , dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dpde, u, v
+ real(r8), intent(out)                                     :: gke
+ real(r8), intent(out), optional                           :: gmke, geke
 !-----------------------------------------------------------------------
 
-   real, dimension (Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
+   real(r8), dimension (Hgrid%ilb:Hgrid%iub, Hgrid%jlb:Hgrid%jub,  &
                     size(u,3)) :: ke, mke, eke
-   real, dimension (Hgrid%ilb:Hgrid%iub) :: ustar, vstar
-   real    :: usum, vsum, wsum, uavg, vavg
+   real(r8), dimension (Hgrid%ilb:Hgrid%iub) :: ustar, vstar
+   real(r8)    :: usum, vsum, wsum, uavg, vavg
    integer :: i, j, k, is, ie
 
 !-----------------------------------------------------------------------
@@ -684,21 +675,21 @@ contains
 !-----------------------------------------------------------------------
    type(horiz_grid_type), intent(in)       :: Hgrid
    type (grid_mask_type), intent(in)       :: Masks
-      real, intent(in), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dpde,  &
+      real(r8), intent(in), dimension(Hgrid%ilb:,Hgrid%jlb:,:) :: dpde,  &
                                                           dpde_xy, u, v
-      real, intent(out) :: avgens
+      real(r8), intent(out) :: avgens
 !-----------------------------------------------------------------------
 
-   real, dimension (lbound(u,1):ubound(u,1),  &
+   real(r8), dimension (lbound(u,1):ubound(u,1),  &
                     lbound(u,2):ubound(u,2), size(u,3)) :: ens
 
-   real, dimension (lbound(u,1):ubound(u,1),                &
+   real(r8), dimension (lbound(u,1):ubound(u,1),                &
                     lbound(u,2):ubound(u,2)) :: vdy,  udx,  &
                                                 avdy, audx, &
                                                 fens, vort
 
    integer :: i, j, k, is, ie, js, je
-   real    :: dysq
+   real(r8)    :: dysq
 
 !-----------------------------------------------------------------------
 
@@ -753,11 +744,11 @@ function get_axis_time (Time, units) result (atime)
 
    type(time_type),  intent(in) :: Time
    character(len=*), intent(in) :: units
-   real                         :: atime
+   real(r8)                         :: atime
    integer                      :: sec, day
 
-!---- returns real time in the time axis units ----
-!---- convert time type to appropriate real units ----
+!---- returns real(r8) time in the time axis units ----
+!---- convert time type to appropriate real(r8) units ----
 
       call get_time (Time-Base_time, sec, day)
 
@@ -777,13 +768,13 @@ end function get_axis_time
 
 function set_axis_time (atime, units) result (Time)
 
-   real,             intent(in) :: atime
+   real(r8),             intent(in) :: atime
    character(len=*), intent(in) :: units
    type(time_type)  :: Time
    integer          :: sec, day = 0
 
-!---- returns time type given real time in axis units ----
-!---- convert real time units to time type ----
+!---- returns time type given real(r8) time in axis units ----
+!---- convert real(r8) time units to time type ----
 
       if (units(1:3) == 'sec') then
          sec = int(atime + 0.5)
@@ -810,12 +801,12 @@ function global_integral_2d (Hgrid, grid, data, do_exact)  &
 
    type(horiz_grid_type), intent(in) :: Hgrid
 integer, intent(in)  :: grid
-   real, intent(in)  :: data(Hgrid%ilb:,Hgrid%jlb:)
+   real(r8), intent(in)  :: data(Hgrid%ilb:,Hgrid%jlb:)
 logical, intent(in), optional :: do_exact
-   real :: avg
+   real(r8) :: avg
 
-   real, dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: aa, wt
-   real :: asum, wsum
+   real(r8), dimension(Hgrid%ilb:Hgrid%iub,Hgrid%jlb:Hgrid%jub) :: aa, wt
+   real(r8) :: asum, wsum
 integer :: isd, ied, vsd, ved
 logical :: bitwise_exact
 
@@ -829,13 +820,16 @@ logical :: bitwise_exact
       case(1)
         wt = Hgrid%Tmp%area
         aa = data * wt
-        if ( bitwise_exact ) then
-            asum = mpp_global_sum ( Hgrid%Tmp%Domain, aa, flags=BITWISE_EXACT_SUM )
-            wsum = mpp_global_sum ( Hgrid%Tmp%Domain, wt, flags=BITWISE_EXACT_SUM )
-        else
-            asum = mpp_global_sum ( Hgrid%Tmp%Domain, aa )
-            wsum = mpp_global_sum ( Hgrid%Tmp%Domain, wt )
-        endif
+        !if ( bitwise_exact ) then
+        !    asum = mpp_global_sum ( Hgrid%Tmp%Domain, aa, flags=BITWISE_EXACT_SUM )
+        !    wsum = mpp_global_sum ( Hgrid%Tmp%Domain, wt, flags=BITWISE_EXACT_SUM )
+        !else
+        !    asum = mpp_global_sum ( Hgrid%Tmp%Domain, aa )
+        !    wsum = mpp_global_sum ( Hgrid%Tmp%Domain, wt )
+        !endif
+
+        asum = sum(aa(Hgrid%Tmp%is:Hgrid%Tmp%ie, Hgrid%Tmp%js:Hgrid%Tmp%je))
+        wsum = sum(wt(Hgrid%Tmp%is:Hgrid%Tmp%ie, Hgrid%Tmp%js:Hgrid%Tmp%je))
 
 !  average on velocity grid
       case(2:3)
@@ -844,20 +838,23 @@ logical :: bitwise_exact
       ! must pass data domain to mpp_global_sum
         isd = Hgrid%Vel%isd;  ied = Hgrid%Vel%ied
         vsd = Hgrid%Vel%jsd;  ved = Hgrid%Vel%jed
-        if ( bitwise_exact ) then
-            asum = mpp_global_sum ( Hgrid%Vel%Domain, aa(isd:ied,vsd:ved), &
-                                    flags=BITWISE_EXACT_SUM )
-            wsum = mpp_global_sum ( Hgrid%Vel%Domain, wt(isd:ied,vsd:ved), &
-                                    flags=BITWISE_EXACT_SUM )
-        else
-            asum = mpp_global_sum ( Hgrid%Vel%Domain, aa(isd:ied,vsd:ved) )
-            wsum = mpp_global_sum ( Hgrid%Vel%Domain, wt(isd:ied,vsd:ved) )
-        endif
+        !if ( bitwise_exact ) then
+        !    asum = mpp_global_sum ( Hgrid%Vel%Domain, aa(isd:ied,vsd:ved), &
+        !                            flags=BITWISE_EXACT_SUM )
+        !    wsum = mpp_global_sum ( Hgrid%Vel%Domain, wt(isd:ied,vsd:ved), &
+        !                            flags=BITWISE_EXACT_SUM )
+        !else
+        !    asum = mpp_global_sum ( Hgrid%Vel%Domain, aa(isd:ied,vsd:ved) )
+        !    wsum = mpp_global_sum ( Hgrid%Vel%Domain, wt(isd:ied,vsd:ved) )
+        !endif
+
+        asum = sum(aa(Hgrid%Vel%is:Hgrid%Vel%ie, Hgrid%Vel%js:Hgrid%Vel%je))
+        wsum = sum(wt(Hgrid%Vel%is:Hgrid%Vel%ie, Hgrid%Vel%js:Hgrid%Vel%je))
 
    end select
 
-   if (wsum <= 0.0) call error_mesg ('global_integral_2d in bgrid_integrals_mod', &
-                                     'wsum=0', FATAL)
+!!!   if (wsum <= 0.0) call error_mesg ('global_integral_2d in bgrid_integrals_mod', &
+!!!                                     'wsum=0', FATAL)
 
    avg = asum/wsum
 
@@ -870,11 +867,11 @@ function global_integral_3d (Hgrid, grid, data, Masks, do_exact)  &
 
 type(horiz_grid_type), intent(in) :: Hgrid
 integer,               intent(in) :: grid
-real,                  intent(in) :: data(Hgrid%ilb:,Hgrid%jlb:,:) 
+real(r8),                  intent(in) :: data(Hgrid%ilb:,Hgrid%jlb:,:) 
 type (grid_mask_type), intent(in), optional :: Masks
 logical,               intent(in), optional :: do_exact
-real :: avg
-real, dimension(size(data,1),size(data,2)) :: aa
+real(r8) :: avg
+real(r8), dimension(size(data,1),size(data,2)) :: aa
 
 !-----------------------------------------------------------------------
 

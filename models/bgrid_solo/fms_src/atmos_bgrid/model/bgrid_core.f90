@@ -35,6 +35,7 @@ module bgrid_core_mod
 !--------------------------- modules -----------------------------------
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_prog_var_mod    , only: prog_var_type, var_init,   &
                                   prog_var_times_scalar
 use bgrid_horiz_mod       , only: horiz_grid_type
@@ -85,7 +86,7 @@ public  bgrid_dynam_type
 !  ----- time step terms ----
 !    nt_adv = no. of advection time steps per atmosphere step (integer)
 !    nt_adj = no. of adjustment time steps per advection step (integer)
-!    dt_adj = adjustment time step in seconds (real)
+!    dt_adj = adjustment time step in seconds (real(r8))
 !
 !    verbose   = verbose flag [integer]
 !
@@ -101,28 +102,28 @@ type bgrid_dynam_type
    type (pfilt_control_type)       :: Pfilt
    type (advec_control_type)       :: Advec
    type (hdiff_control_type)       :: Hdiff
-   real, pointer, dimension(:,:)   :: fis, fisl, res
+   real(r8), pointer, dimension(:,:)   :: fis, fisl, res
    integer                         :: nt_adv, nt_adj
-   real                            :: dt_adj
-   real                            :: wcorr
+   real(r8)                            :: dt_adj
+   real(r8)                            :: wcorr
    integer                         :: fopt, verbose
 end type bgrid_dynam_type
 
 !-----------------------------------------------------------------------
 !------- internal options ---------!  alpha_implicit determines how the
                                    !  coriolis and press grad force
-   real  :: alpha_implicit = 0.5   !  terms are solved
+   real(r8)  :: alpha_implicit = 0.5   !  terms are solved
                                    !    = 0.5  trapezoidal implicit
                                    !    = 1.0        fully implicit
 
 !---- un-used leapfrog options ----
 
-   real  :: smooth = 0.2475
-   real  :: robert = 0.0
+   real(r8)  :: smooth = 0.2475
+   real(r8)  :: robert = 0.0
 
 !---- internal parameters ----
 
-   real, parameter :: d608 = (RVGAS-RDGAS)/RDGAS
+   real(r8), parameter :: d608 = (RVGAS-RDGAS)/RDGAS
 
 !---- version number ----
 
@@ -155,8 +156,8 @@ contains
 
    type(horiz_grid_type), intent(in), target :: Hgrid
    type (vert_grid_type), intent(in), target :: Vgrid
-   real, intent(in), dimension(:,:),  target :: fis, res
-   real,            intent(in)               :: dt
+   real(r8), intent(in), dimension(:,:),  target :: fis, res
+   real(r8),            intent(in)               :: dt
    integer,         intent(in)               :: ntadj, ntadv
 
 !          ---- optional arguments ----
@@ -164,7 +165,7 @@ contains
    integer,         intent(in), optional :: damp_order_vel, &
                                             damp_order_tmp, &
                                             damp_order_trs
-   real,            intent(in), optional :: damp_coeff_vel, &
+   real(r8),            intent(in), optional :: damp_coeff_vel, &
                                             damp_coeff_tmp, &
                                             damp_coeff_trs, &
                                             damp_slope_coeff_vel(4), &
@@ -175,7 +176,7 @@ contains
                                             advec_order_vel,&
                                             advec_order_tmp,&
                                             advec_order_trs
-   real,            intent(in), optional :: advec_coeff_vel, &
+   real(r8),            intent(in), optional :: advec_coeff_vel, &
                                             advec_coeff_tmp, &
                                             advec_coeff_trs, &
                                             grid_sep_coeff
@@ -183,7 +184,7 @@ contains
                                             filter_weight,   &
                                             verbose,         &
                                             num_sponge_levels
-   real,            intent(in), optional :: ref_lat_filter,   &
+   real(r8),            intent(in), optional :: ref_lat_filter,   &
                                             sponge_coeff_vel, &
                                             sponge_coeff_tmp, &
                                             sponge_coeff_trs
@@ -357,27 +358,27 @@ contains
    type (prog_var_type), intent(in)    :: Var
    type (prog_var_type), intent(inout) :: Var_dt
    type(bgrid_dynam_type), intent(inout) :: Dynam
-   real, intent(out), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
+   real(r8), intent(out), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                                 Dynam%Hgrid%jlb:Dynam%Hgrid%jub, &
                                 Dynam%Vgrid%nlev) :: omega
 !-----------------------------------------------------------------------
 
-real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
+real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                 Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: psdt
 
-real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
+real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                 Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: pssl
 
-real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
+real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                 Dynam%Hgrid%jlb:Dynam%Hgrid%jub, Dynam%Vgrid%nlev) :: &
                 dpde, few, fns, div, pgfew, pgfns, dpde_old,          &
                 pfull, wta, wtb, cew, cns, u, v, tq, uo, vo, to
 
-real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
+real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                 Dynam%Hgrid%jlb:Dynam%Hgrid%jub, Dynam%Vgrid%nlev+1)  &
                 :: phalf, etadot
 
-   real    :: fadv, tdt_adj, rscale
+   real(r8)    :: fadv, tdt_adj, rscale
    integer :: i, k, n, m, nt
 !-----------------------------------------------------------------------
 !    ---- definition of local variables ----
@@ -428,7 +429,6 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
 
 !-----------------------------------------------------------------------
 !************** start of bgrid_core time step loop *********************
-
  do m = 1, Dynam % nt_adv
 
 !   ------ save this time level for advection ------
@@ -445,7 +445,6 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
     call compute_virt_temp ( tq, Var%r, Var_dt%r, tdt_adj )
     u  = uo
     v  = vo
-
 
 !-----------------------------------------------------------------------
 !*************** start of adjustment time step loop ********************
@@ -474,7 +473,6 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
 
 !-----------------------------------------------------------------------
 !------- compute sfc pres tendency, vert. alpha-omega, & vert vel.------
-
     call vert_adjust ( Dynam%res, div, wta, wtb,          &
                        Dynam%Masks%Tmp%mask, Dynam%Vgrid, &
                        omega, etadot, psdt                )     
@@ -511,7 +509,6 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                       pgfew, pgfns )
 
 !------------------- adjustment of wind components ---------------------
-
     call horiz_adjust_vel ( Dynam%Hgrid, Dynam%Masks,                &
                                         tdt_adj, pgfew, pgfns,       &
                             u, v, Var_dt%u, Var_dt%v, alpha_implicit )
@@ -523,9 +520,7 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
 
 !-----------------------------------------------------------------------
 !----------------------- advection -------------------------------------
-
     if (n ==  Dynam%nt_adj) then
-
          call advection ( Dynam%Advec, Dynam%Pfilt,              &
                           Dynam%Hgrid, Dynam%Vgrid, Dynam%Masks, &
                           Dynam%fopt,  tdt_adj,                  &
@@ -539,7 +534,6 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
     if (Dynam%fopt == 1)  &
     call prog_var_filter_vel ( Dynam%Pfilt, tdt_adj, Dynam%Masks%Vel%mask, &
                                Var%u, Var%v, Var_dt%u, Var_dt%v            )
-
 !   ---- recompute momentum at next time level ----
 
     call update_halo (Dynam%Hgrid, UWND, Var_dt%u )
@@ -564,7 +558,6 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
 
 !-----------------------------------------------------------------------
 !----------------- horizontal diffusion --------------------------------
-
     call horiz_diff ( Dynam%Hdiff, Dynam%Masks, tdt_adj, dpde, pfull, &
                       Var, Var_dt )
 
@@ -618,10 +611,10 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
 
  subroutine compute_virt_temp ( tq, r, rdt, dt )
 
-  real, intent(inout) :: tq(:,:,:)
-  real, intent(in)    :: r (:,:,:,:), rdt(:,:,:,:), dt
+  real(r8), intent(inout) :: tq(:,:,:)
+  real(r8), intent(in)    :: r (:,:,:,:), rdt(:,:,:,:), dt
 
-  real, dimension(size(r,1),size(r,2),size(r,3)) :: q
+  real(r8), dimension(size(r,1),size(r,2),size(r,3)) :: q
   integer :: sphum
 
 !  given the temp and tracers (where tracer 1 is assumed to be
@@ -644,13 +637,13 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                                    t, r, tdt, rdt )
 
  type(pfilt_control_type), intent(in)    :: Pfilt
- real,                     intent(in)    :: dt
- real, dimension(:,:,:),   intent(in)    :: dpde, mask, t
- real, dimension(:,:,:,:), intent(in)    :: r
- real, dimension(:,:,:),   intent(inout) :: tdt
- real, dimension(:,:,:,:), intent(inout) :: rdt
+ real(r8),                     intent(in)    :: dt
+ real(r8), dimension(:,:,:),   intent(in)    :: dpde, mask, t
+ real(r8), dimension(:,:,:,:), intent(in)    :: r
+ real(r8), dimension(:,:,:),   intent(inout) :: tdt
+ real(r8), dimension(:,:,:,:), intent(inout) :: rdt
 
-   real, dimension(size(t,1),size(t,2),size(t,3)) :: work
+   real(r8), dimension(size(t,1),size(t,2),size(t,3)) :: work
    integer :: n
 
 !  ---- temperature ----
@@ -672,12 +665,12 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
  subroutine prog_var_filter_vel ( Pfilt, dt, mask, u, v, udt, vdt )
 
  type(pfilt_control_type), intent(in)    :: Pfilt
- real,                     intent(in)    :: dt
- real, dimension(:,:,:),   intent(in)    :: mask
- real, dimension(:,:,:),   intent(in)    :: u, v
- real, dimension(:,:,:),   intent(inout) :: udt, vdt
+ real(r8),                     intent(in)    :: dt
+ real(r8), dimension(:,:,:),   intent(in)    :: mask
+ real(r8), dimension(:,:,:),   intent(in)    :: u, v
+ real(r8), dimension(:,:,:),   intent(inout) :: udt, vdt
 
-   real, dimension(size(u,1),size(u,2),size(u,3)) :: ut, vt
+   real(r8), dimension(size(u,1),size(u,2),size(u,3)) :: ut, vt
 
 !  ---- momentum ----
      ut = u + dt*udt
@@ -694,14 +687,14 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                                     dpdt, t, r )
 
  type(pfilt_control_type), intent(in)    :: Pfilt
- real, dimension(:,:,:),   intent(in)    :: mask, dpde
- real, dimension(:,:,:),   intent(inout) :: tdt
- real, dimension(:,:,:,:), intent(inout) :: rdt
+ real(r8), dimension(:,:,:),   intent(in)    :: mask, dpde
+ real(r8), dimension(:,:,:),   intent(inout) :: tdt
+ real(r8), dimension(:,:,:,:), intent(inout) :: rdt
 
- real, dimension(:,:,:),   intent(in), optional :: dpdt, t
- real, dimension(:,:,:,:), intent(in), optional :: r
+ real(r8), dimension(:,:,:),   intent(in), optional :: dpdt, t
+ real(r8), dimension(:,:,:,:), intent(in), optional :: r
 
-   real, dimension(size(tdt,1),size(tdt,2),size(tdt,3)) :: work
+   real(r8), dimension(size(tdt,1),size(tdt,2),size(tdt,3)) :: work
    integer :: n
 
 !  ---- temperature ----

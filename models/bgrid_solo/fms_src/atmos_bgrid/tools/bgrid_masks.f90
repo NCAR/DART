@@ -32,11 +32,12 @@ module bgrid_masks_mod
 !
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use bgrid_horiz_mod, only:  horiz_grid_type
 use  bgrid_halo_mod, only:  update_halo, NOPOLE, UWND
 use  bgrid_vert_mod, only:  vert_grid_type
 use         fms_mod, only:  write_version_number
-use         mpp_mod, only:  mpp_pe, mpp_root_pe, mpp_max
+!!!use         mpp_mod, only:  mpp_max
 
 implicit none
 private
@@ -48,7 +49,7 @@ private
    public grid_mask_type
 
    type mask_type
-      real,    pointer, dimension(:,:,:) :: mask
+      real(r8),    pointer, dimension(:,:,:) :: mask
       integer, pointer, dimension(:,:)   :: kbot
       integer                            :: kbotmin
    end type mask_type
@@ -103,7 +104,7 @@ contains
 
    type (horiz_grid_type), intent(inout) :: Hgrid
    type  (vert_grid_type), intent(in)    :: Vgrid
-   real,                   intent(in)    :: res(Hgrid%ilb:,Hgrid%jlb:)
+   real(r8),                   intent(in)    :: res(Hgrid%ilb:,Hgrid%jlb:)
 
    type (grid_mask_type) :: Mask
 
@@ -113,7 +114,7 @@ contains
 
    logical :: sigma
    integer :: kx
-   real    :: maxres
+   real(r8)    :: maxres
 
    if (do_log) then
       call write_version_number (version,tagname)
@@ -132,12 +133,11 @@ contains
 !--------------is this an eta of sigma coordinate mountain? ------------
 
       maxres = maxval(res)
-      call mpp_max (maxres)
+      !!!call mpp_max (maxres)
 
       if (maxres > 1.0001) then
          Mask % sigma=.false.
          sigma=.false.
-         if (mpp_pe() == mpp_root_pe()) then
             if (Vgrid%hybrid) then
                write (*,100) 'eta/hybrid'
             else
@@ -148,17 +148,14 @@ contains
                                    'WARNING: The eta coordinate option has not been tested.', &
                                    '         Proceed with caution.',                          &
                                    '*******************************************************'
-         endif
       else
          Mask % sigma=.true.
          sigma=.true.
-         if (mpp_pe() == mpp_root_pe()) then
             if (Vgrid%hybrid) then
                write (*,100) 'sigma/hybrid'
             else
                write (*,100) 'sigma'
             endif
-         endif
       endif
 
  100  format (/,'B-grid dynamical core has been initialized with the ',a,' vertical coordinate.')
@@ -188,8 +185,8 @@ end function grid_masks_init
 
    function compute_mass_mask (res, aeta) result (mask)
 
-   real, intent(in) :: res(:,:), aeta(:)
-   real, dimension(size(res,1),size(res,2),size(aeta)) :: mask
+   real(r8), intent(in) :: res(:,:), aeta(:)
+   real(r8), dimension(size(res,1),size(res,2),size(aeta)) :: mask
    integer  i, j, k
 
       mask = 1.0
@@ -207,8 +204,8 @@ end function grid_masks_init
 
    function compute_vel_mask (res, aeta) result (mask)
 
-   real, intent(in) :: res(:,:), aeta(:)
-   real, dimension(size(res,1),size(res,2),size(aeta)) :: mask
+   real(r8), intent(in) :: res(:,:), aeta(:)
+   real(r8), dimension(size(res,1),size(res,2),size(aeta)) :: mask
    integer  i, j, k
 
       mask = 1.0
@@ -231,7 +228,7 @@ end function grid_masks_init
 
    function compute_lowest_level (mask) result (kbot)
 
-   real, intent(in) :: mask(:,:,:)
+   real(r8), intent(in) :: mask(:,:,:)
    integer, dimension(size(mask,1),size(mask,2)) :: kbot
    integer   i, j, k, kdim
 

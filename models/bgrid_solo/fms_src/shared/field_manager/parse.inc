@@ -59,5 +59,5 @@ integer :: is, ie, id, k, last
   return
   
 99 continue
-   call mpp_error (FATAL,'in parse, error decoding data') 
+   call error_mesg ('field manager parse.inc','in parse, error decoding data', FATAL) 
 

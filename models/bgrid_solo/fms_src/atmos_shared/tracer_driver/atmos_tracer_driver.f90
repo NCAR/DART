@@ -105,12 +105,11 @@ module atmos_tracer_driver_mod
 
 !-----------------------------------------------------------------------
 
+use types_mod, only : r8
 use              fms_mod, only : file_exist, &
                                  write_version_number, &
                                  error_mesg, &
                                  FATAL, &
-                                 mpp_pe, &
-                                 mpp_root_pe, &
                                  stdlog
 use     time_manager_mod, only : time_type
 use   tracer_manager_mod, only : get_tracer_index,   &
@@ -205,52 +204,52 @@ contains
 !   <IN NAME="Time" TYPE="type(time_type)">
 !     Model time.
 !   </IN>
-!   <IN NAME="lon" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lon" TYPE="real(r8)" DIM="(:,:)">
 !     Longitude of the centre of the model gridcells
 !   </IN>
-!   <IN NAME="lat" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lat" TYPE="real(r8)" DIM="(:,:)">
 !     Latitude of the centre of the model gridcells
 !   </IN>
 !   <IN NAME="land" TYPE="logical" DIM="(:,:)">
 !     Land/sea mask.
 !   </IN>
-!   <IN NAME="phalf" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="phalf" TYPE="real(r8)" DIM="(:,:,:)">
 !     Pressures on the model half levels.
 !   </IN>
-!   <IN NAME="pfull" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="pfull" TYPE="real(r8)" DIM="(:,:,:)">
 !     Pressures on the model full levels.
 !   </IN>
-!   <IN NAME="r" TYPE="real" DIM="(:,:,:,:)">
+!   <IN NAME="r" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     The tracer array in the component model.
 !   </IN>
-!   <IN NAME="u" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="u" TYPE="real(r8)" DIM="(:,:,:)">
 !     Zonal wind speed.
 !   </IN>
-!   <IN NAME="v" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="v" TYPE="real(r8)" DIM="(:,:,:)">
 !     Meridonal wind speed.
 !   </IN>
-!   <IN NAME="t" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="t" TYPE="real(r8)" DIM="(:,:,:)">
 !     Temperature.
 !   </IN>
-!   <IN NAME="q" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="q" TYPE="real(r8)" DIM="(:,:,:)">
 !     Specific humidity. This may also be accessible as a
 !                        portion of the tracer array.
 !   </IN>
-!   <IN NAME="u_star" TYPE="real" DIM="(:,:)">
+!   <IN NAME="u_star" TYPE="real(r8)" DIM="(:,:)">
 !     Friction velocity :: 
 !     The magnitude of the wind stress is density*(ustar**2)
 !     The drag coefficient for momentum is u_star**2/(u**2+v**2)
 !   </IN>
-!   <INOUT NAME="rdt" TYPE="real" DIM="(:,:,:,:)">
+!   <INOUT NAME="rdt" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     The tendency of the tracer array in the compenent
 !     model. The tendency due to sources and sinks computed
 !     in the individual tracer routines should be added to
 !     this array before exiting tracer_driver.
 !   </INOUT>
-!   <IN NAME="rm" TYPE="real" DIM="(:,:,:,:)">
+!   <IN NAME="rm" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     The tracer array in the component model for the previous timestep.
 !   </IN>
-!   <INOUT NAME="rdiag" TYPE="real" DIM="(:,:,:,:)">
+!   <INOUT NAME="rdiag" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     The array of diagnostic tracers. As these may be changed within the
 !     tracer routines for diagnostic purposes, they need to be writable.
 !   </INOUT>
@@ -263,18 +262,18 @@ contains
 !-----------------------------------------------------------------------
 integer, intent(in)                           :: is, ie, js, je
 type(time_type), intent(in)                   :: Time
-real, intent(in),    dimension(:,:)           :: lon, lat, u_star
-real, intent(in),    dimension(:,:)           :: land
-real, intent(in),    dimension(:,:,:)         :: phalf, pfull, u, v, t, q
-real, intent(in),    dimension(:,:,:,:)       :: r
-real, intent(inout), dimension(:,:,:,:)       :: rdt
-real, intent(in),    dimension(:,:,:,:)       :: rm
-real, intent(inout), dimension(:,:,:,:)       :: rdiag
+real(r8), intent(in),    dimension(:,:)           :: lon, lat, u_star
+real(r8), intent(in),    dimension(:,:)           :: land
+real(r8), intent(in),    dimension(:,:,:)         :: phalf, pfull, u, v, t, q
+real(r8), intent(in),    dimension(:,:,:,:)       :: r
+real(r8), intent(inout), dimension(:,:,:,:)       :: rdt
+real(r8), intent(in),    dimension(:,:,:,:)       :: rm
+real(r8), intent(inout), dimension(:,:,:,:)       :: rdiag
 integer, intent(in), dimension(:,:), optional :: kbot
 !-----------------------------------------------------------------------
-real, dimension(size(r,1),size(r,2),size(r,3)) :: rtnd, pwt
-real, dimension(size(r,1),size(r,2),size(r,3)) :: rtndphob, rtndphil
-real, dimension(size(r,1),size(r,2)) :: dsinku
+real(r8), dimension(size(r,1),size(r,2),size(r,3)) :: rtnd, pwt
+real(r8), dimension(size(r,1),size(r,2),size(r,3)) :: rtndphob, rtndphil
+real(r8), dimension(size(r,1),size(r,2)) :: dsinku
 integer :: k, kd, nt
 
 !-----------------------------------------------------------------------
@@ -377,13 +376,13 @@ integer :: k, kd, nt
 !   <TEMPLATE>
 !     call atmos_tracer_driver_init (lonb,latb, r, mask, axes, Time)
 !   </TEMPLATE>
-!   <IN NAME="lonb" TYPE="real" DIM="(:)">
+!   <IN NAME="lonb" TYPE="real(r8)" DIM="(:)">
 !     The longitudes for the local domain.
 !   </IN>
-!   <IN NAME="latb" TYPE="real" DIM="(:)">
+!   <IN NAME="latb" TYPE="real(r8)" DIM="(:)">
 !     The latitudes for the local domain.
 !   </IN>
-!   <IN NAME="mask" TYPE="real, optional" DIM="(:,:,:)">
+!   <IN NAME="mask" TYPE="real(r8), optional" DIM="(:,:,:)">
 !      optional mask (0. or 1.) that designates which grid points
 !           are above (=1.) or below (=0.) the ground dimensioned as
 !           (nlon,nlat,nlev).
@@ -395,17 +394,17 @@ integer :: k, kd, nt
 !     The axes relating to the tracer array dimensioned as
 !      (nlon, nlat, nlev, ntime)
 !   </IN>
-!   <INOUT NAME="r" TYPE="real" DIM="(:,:,:,:)">
+!   <INOUT NAME="r" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     Tracer fields dimensioned as (nlon,nlat,nlev,ntrace). 
 !   </INOUT>
  subroutine atmos_tracer_driver_init (lonb, latb, r, axes, Time, mask)
 
 !-----------------------------------------------------------------------
-           real, intent(in),    dimension(:)               :: lonb, latb
-           real, intent(inout), dimension(:,:,:,:)         :: r
+           real(r8), intent(in),    dimension(:)               :: lonb, latb
+           real(r8), intent(inout), dimension(:,:,:,:)         :: r
 type(time_type), intent(in)                                :: Time
         integer, intent(in)                                :: axes(4)
-           real, intent(in),    dimension(:,:,:), optional :: mask
+           real(r8), intent(in),    dimension(:,:,:), optional :: mask
 
 !-----------------------------------------------------------------------
 !
@@ -470,7 +469,6 @@ type(time_type), intent(in)                                :: Time
 
 !-----------------------------------------------------------------------
 
-      if (mpp_pe() /= mpp_root_pe()) return
 
       write (stdlog(),'(/,(a))') 'Exiting tracer_driver, have a nice day ...'
 

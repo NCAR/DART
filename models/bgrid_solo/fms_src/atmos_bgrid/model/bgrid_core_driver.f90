@@ -35,6 +35,7 @@ module bgrid_core_driver_mod
 !-----------------------------------------------------------------------
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 
+use types_mod, only : r8
 use bgrid_core_mod           , only: bgrid_dynam_type,  &
                                      bgrid_core_init, update_bgrid_core,  &
                                      bgrid_core_end
@@ -56,9 +57,10 @@ use bgrid_conserve_energy_mod, only: bgrid_conserve_energy_init, &
 use  field_manager_mod, only: MODEL_ATMOS
 use tracer_manager_mod, only: get_number_tracers
 use   time_manager_mod, only: time_type, get_time
+use utilities_mod, only : check_nml_error
 use            fms_mod, only: error_mesg, FATAL, file_exist, open_namelist_file,  &
-                              check_nml_error, write_version_number,     &
-                              mpp_pe, mpp_root_pe, close_file, stdlog
+                              write_version_number,     &
+                              close_file, stdlog
 
 !-----------------------------------------------------------------------
 
@@ -160,31 +162,31 @@ character(len=128) :: tag =  '$Name$'
    integer   ::     damp_order_wind   = 4
    integer   ::     damp_order_temp   = 4
    integer   ::     damp_order_tracer = 4
-   real      ::     damp_coeff_wind   = 0.50
-   real      ::     damp_coeff_temp   = 0.50
-   real      ::     damp_coeff_tracer = 0.50
+   real(r8)      ::     damp_coeff_wind   = 0.50
+   real(r8)      ::     damp_coeff_temp   = 0.50
+   real(r8)      ::     damp_coeff_tracer = 0.50
 
    integer   ::     advec_order_wind   = 2
    integer   ::     advec_order_temp   = 2
    integer   ::     advec_order_tracer = 2
-   real      ::     advec_weight_wind   = 0.7
-   real      ::     advec_weight_temp   = 0.7
-   real      ::     advec_weight_tracer = 0.7
+   real(r8)      ::     advec_weight_wind   = 0.7
+   real(r8)      ::     advec_weight_temp   = 0.7
+   real(r8)      ::     advec_weight_tracer = 0.7
 
    integer   ::     num_fill_pass = 1
    integer   ::     filter_option = 2
    integer   ::     filter_weight = 1
-   real      ::     ref_lat_filter = 60.
+   real(r8)      ::     ref_lat_filter = 60.
    integer   ::     verbose = -1
-   real      ::     grid_sep_coeff = 0.00
+   real(r8)      ::     grid_sep_coeff = 0.00
 
    integer   ::     num_sponge_levels = 0
-   real      ::     sponge_coeff_wind   = 0.0
-   real      ::     sponge_coeff_temp   = 0.0
-   real      ::     sponge_coeff_tracer = 0.0
+   real(r8)      ::     sponge_coeff_wind   = 0.0
+   real(r8)      ::     sponge_coeff_temp   = 0.0
+   real(r8)      ::     sponge_coeff_tracer = 0.0
 
-   real, dimension(4) :: slope_corr_wind = (/0.,0.,0.,0./)
-   real, dimension(4) :: slope_corr_temp = (/0.,0.,0.,0./)
+   real(r8), dimension(4) :: slope_corr_wind = (/0.,0.,0.,0./)
+   real(r8), dimension(4) :: slope_corr_temp = (/0.,0.,0.,0./)
 
    logical   :: do_conserve_energy = .false.
    integer   :: num_adjust_dt = 3
@@ -224,18 +226,18 @@ character(len=128) :: tag =  '$Name$'
 !-----------------------------------------------------------------------
 !------ private data ------
 
-real, dimension(:,:),   pointer :: fis, res
-real, dimension(:), allocatable :: eta, peta
+real(r8), dimension(:,:),   pointer :: fis, res
+real(r8), dimension(:), allocatable :: eta, peta
 
 type  (horiz_grid_type), target      :: Hgrid
 type   (vert_grid_type), target      :: Vgrid
 
 integer, dimension(4) :: mass_axes, vel_axes
 
-real :: dt_atmos
+real(r8) :: dt_atmos
 
 logical :: channel_model = .false.
-real    :: tph0d_in = 0.0, tlm0d_in = 0.0
+real(r8)    :: tph0d_in = 0.0, tlm0d_in = 0.0
 
 !-----------------------------------------------------------------------
 
@@ -255,7 +257,6 @@ contains
  integer :: ix, jx, kx
  integer :: sec, ntrace, ntprog, ntdiag
 !-----------------------------------------------------------------------
-
 !  ----- read namelist -----
 
     if (file_exist('input.nml')) then
@@ -269,11 +270,9 @@ contains
 
 !-----------------------------------------------------------------------
 !  ----- read restart header records and set up grid resolution -----
-
    call open_prog_var_file (ix, jx, kx)
 
 !  ---- horizontal grid initialization ----
-
    Hgrid = horiz_grid_init (ix, jx, ihalo=halo, jhalo=halo,       &
                                     decomp=decomp,                &
                                     channel=channel_model,        &
@@ -282,19 +281,15 @@ contains
 
 ! how many tracers have been registered?
    call get_number_tracers ( MODEL_ATMOS, num_tracers=ntrace, num_prog=ntprog, num_diag=ntdiag )
-
 !  ----- write version, namelist and tracer info to log file -----
 
     call write_version_number (version, tag)
-    if (mpp_pe() == mpp_root_pe()) then
         write (stdlog(), nml=bgrid_core_driver_nml)
         write (stdlog(), '(a,i3)') 'Number of tracers =', ntrace
         write (stdlog(), '(a,i3)') 'Number of prognostic tracers =', ntprog
         write (stdlog(), '(a,i3)') 'Number of diagnostic tracers =', ntdiag
-    endif
 
 !  ---- prognostic variable initialization -----
-
    call prog_var_init (Hgrid, kx, ntrace, Var)     ! prognostic+diagnostic tracers
    call prog_var_init (Hgrid, kx, ntprog, Var_dt)
 
@@ -317,11 +312,10 @@ contains
 !---- compute time step in seconds ----
 
    call get_time (Time_step, sec)
-   dt_atmos = real(sec)
+   dt_atmos = sec
 
 !-----------------------------------------------------------------------
 !  ----- initialize dynamical core -----
-
    Dynam = bgrid_core_init (Hgrid, Vgrid, fis, res, dt_atmos,          &
                           num_adjust_dt, num_advec_dt,                 &
                           damp_order_wind, damp_order_temp,            &
@@ -369,21 +363,18 @@ contains
    type   (prog_var_type), intent(in)    :: Var
    type   (prog_var_type), intent(inout) :: Var_dt
    type(bgrid_dynam_type), intent(inout) :: Dynam
-   real,                   intent(out)   :: omega(:,:,:)
+   real(r8),                   intent(out)   :: omega(:,:,:)
 !-----------------------------------------------------------------------
 !  dynamics
-
    call update_bgrid_core (Var, Var_dt, Dynam, omega)
 
 !  energy conservation
-
    if (do_conserve_energy) then
        call bgrid_conserve_energy ( dt_atmos, Time_diag, Hgrid, Vgrid, &
                                     Dynam%Masks, Var, Var_dt )
    endif
 
 !  diagnostics for dynamics tendencies
-
    call bgrid_diagnostics_tend ( Hgrid, Var_dt, Dynam%Masks, Time_diag )
 
 !-----------------------------------------------------------------------
@@ -395,7 +386,7 @@ contains
  subroutine bgrid_core_time_diff ( omega, Time_diag, Dynam, Var, Var_dt )
 
 !-----------------------------------------------------------------------
-   real,                   intent(in)    :: omega(:,:,:)
+   real(r8),                   intent(in)    :: omega(:,:,:)
    type       (time_type), intent(in)    :: Time_diag
    type(bgrid_dynam_type), intent(in)    :: Dynam
    type   (prog_var_type), intent(inout) :: Var
@@ -448,8 +439,8 @@ contains
 
  subroutine get_bottom_data ( a, b, a_bot, b_bot, k_bot ) 
 
-  real   , intent(in) , dimension(:,:,:) :: a    , b
-  real   , intent(out), dimension(:,:)   :: a_bot, b_bot
+  real(r8)   , intent(in) , dimension(:,:,:) :: a    , b
+  real(r8)   , intent(out), dimension(:,:)   :: a_bot, b_bot
   integer, intent(in) , dimension(:,:), optional :: k_bot
 
 ! returns the lowest level data (a_bot,b_bot) from 3d fields (a,b)
@@ -478,8 +469,8 @@ contains
 
  subroutine put_bottom_data ( a_bot, b_bot, a, b, k_bot ) 
 
-  real   , intent(in)   , dimension(:,:)   :: a_bot, b_bot
-  real   , intent(inout), dimension(:,:,:) :: a    , b
+  real(r8)   , intent(in)   , dimension(:,:)   :: a_bot, b_bot
+  real(r8)   , intent(inout), dimension(:,:,:) :: a    , b
   integer, intent(in)   , dimension(:,:), optional :: k_bot
 
 ! inserts the lowest level data (a_bot,b_bot) into 3d fields (a,b)

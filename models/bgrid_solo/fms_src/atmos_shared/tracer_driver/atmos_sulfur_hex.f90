@@ -64,10 +64,9 @@ module atmos_sulfur_hex_mod
 ! </REFERENCE>
 !</INFO>
 
+use types_mod, only : r8
 use              fms_mod, only : file_exist,           &
 !                                 open_file,            &
-                                 mpp_pe,               &
-                                 mpp_root_pe,          &
                                  stdlog,               &
                                  close_file,           &
                                  write_version_number
@@ -76,9 +75,9 @@ use     time_manager_mod, only : time_type,            &
                                  operator( > ),        &
                                  operator( < ),        &
                                  operator( >= )
-use     diag_manager_mod, only : send_data,            &
-                                 register_diag_field,  &
-                                 register_static_field
+!use     diag_manager_mod, only : send_data,            &
+!                                 register_diag_field,  &
+!                                 register_static_field
 use   tracer_manager_mod, only : get_tracer_index
 use    field_manager_mod, only : MODEL_ATMOS
 use atmos_tracer_utilities_mod, only : interp_emiss
@@ -112,12 +111,12 @@ integer :: nsf6     =0
 integer :: id_emiss
 
 !--- Arrays to help calculate tracer sources/sinks ---
-real, allocatable, dimension(:,:) :: sf6_grid
+real(r8), allocatable, dimension(:,:) :: sf6_grid
 
 integer, parameter :: NUM_SF6_RATE = 62 !number of entries in file 'monthly.emissions'
 type sf6_rate_type
   type(time_type) :: Time
-  real :: rate
+  real(r8) :: rate
 end type sf6_rate_type
 type(sf6_rate_type), dimension(NUM_SF6_RATE) :: sf6_rate
 
@@ -146,19 +145,19 @@ contains
 !        Time, is, ie, js, je, kbot)
 !
 !</TEMPLATE>
-!   <IN NAME="lon" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lon" TYPE="real(r8)" DIM="(:,:)">
 !     Longitude of the centre of the model gridcells.
 !   </IN>
-!   <IN NAME="lat" TYPE="real" DIM="(:,:)">
+!   <IN NAME="lat" TYPE="real(r8)" DIM="(:,:)">
 !     Latitude of the centre of the model gridcells.
 !   </IN>
-!   <IN NAME="land" TYPE="real" DIM="(:,:)">
+!   <IN NAME="land" TYPE="real(r8)" DIM="(:,:)">
 !     Land/sea mask.
 !   </IN>
-!   <IN NAME="pwt" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="pwt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The pressure weighting array. = dP/grav
 !   </IN>
-!   <IN NAME="sf6" TYPE="real" DIM="(:,:,:)">
+!   <IN NAME="sf6" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the sulfur hexafluoride mixing ratio.
 !   </IN>
 !   <IN NAME="Time" TYPE="type(time_type)">
@@ -171,26 +170,26 @@ contains
 !     Integer array describing which model layer intercepts the surface.
 !   </IN>
 
-!   <OUT NAME="sf6_dt" TYPE="real" DIM="(:,:,:)">
+!   <OUT NAME="sf6_dt" TYPE="real(r8)" DIM="(:,:,:)">
 !     The array of the tendency of the sulfur hexafluoride mixing ratio.
 !   </OUT>
 !
 subroutine atmos_sf6_sourcesink (lon, lat, land, pwt, sf6, sf6_dt, &
         Time, is, ie, js, je, kbot)
 !-----------------------------------------------------------------------
-   real, intent(in),  dimension(:,:)   :: lon, lat
-   real, intent(in),  dimension(:,:)   :: land
-   real, intent(in),  dimension(:,:,:) :: pwt, sf6
-   real, intent(out), dimension(:,:,:) :: sf6_dt
+   real(r8), intent(in),  dimension(:,:)   :: lon, lat
+   real(r8), intent(in),  dimension(:,:)   :: land
+   real(r8), intent(in),  dimension(:,:,:) :: pwt, sf6
+   real(r8), intent(out), dimension(:,:,:) :: sf6_dt
      type(time_type), intent(in) :: Time     
 integer, intent(in),  dimension(:,:), optional :: kbot
 integer, intent(in)                    :: is, ie, js, je
 !-----------------------------------------------------------------------
-   real, dimension(size(sf6,1),size(sf6,2),size(sf6,3)) ::  &
+   real(r8), dimension(size(sf6,1),size(sf6,2),size(sf6,3)) ::  &
          source, sink
 logical, dimension(size(sf6,1),size(sf6,2)) ::  maskeq,masknh
 integer :: i,j,kb,kd, id,jd
-real :: rate ! sf6 interpolated emission rate
+real(r8) :: rate ! sf6 interpolated emission rate
 !-----------------------------------------------------------------------
 
       id=size(sf6,1); jd=size(sf6,2); kd=size(sf6,3)
@@ -245,16 +244,16 @@ end subroutine atmos_sf6_sourcesink
 !<TEMPLATE>
 !call atmos_sulfur_hex_init (lonb, latb, r, axes, Time, mask)
 !</TEMPLATE>
-!   <IN NAME="lonb" TYPE="real" DIM="(:)">
+!   <IN NAME="lonb" TYPE="real(r8)" DIM="(:)">
 !     The longitudes for the local domain.
 !   </IN>
-!   <IN NAME="latb" TYPE="real" DIM="(:)">
+!   <IN NAME="latb" TYPE="real(r8)" DIM="(:)">
 !     The latitudes for the local domain.
 !   </IN>
-!   <INOUT NAME="r" TYPE="real" DIM="(:,:,:,:)">
+!   <INOUT NAME="r" TYPE="real(r8)" DIM="(:,:,:,:)">
 !     Tracer fields dimensioned as (nlon,nlat,nlev,ntrace). 
 !   </INOUT>
-!   <IN NAME="mask" TYPE="real, optional" DIM="(:,:,:)">
+!   <IN NAME="mask" TYPE="real(r8), optional" DIM="(:,:,:)">
 !      optional mask (0. or 1.) that designates which grid points
 !           are above (=1.) or below (=0.) the ground dimensioned as
 !           (nlon,nlat,nlev).
@@ -277,9 +276,9 @@ end subroutine atmos_sf6_sourcesink
 !          (nlon,nlat,nlev).
 !
 !-----------------------------------------------------------------------
-real,            intent(in),    dimension(:)               :: lonb, latb
-real,            intent(inout), dimension(:,:,:,:)         :: r
-real,            intent(in),    dimension(:,:,:), optional :: mask
+real(r8),            intent(in),    dimension(:)               :: lonb, latb
+real(r8),            intent(inout), dimension(:,:,:,:)         :: r
+real(r8),            intent(in),    dimension(:,:,:), optional :: mask
 type(time_type), intent(in)                                :: Time
 integer        , intent(in)                                :: axes(4)
 
@@ -312,17 +311,17 @@ integer :: n
       n = get_tracer_index(MODEL_ATMOS,'sf6')
       if (n>0) then
         nsf6=n
-        if (nsf6 > 0 .and. mpp_pe() == mpp_root_pe()) write (*,30) 'SF6',nsf6
-        if (nsf6 > 0 .and. mpp_pe() == mpp_root_pe()) write (stdlog(),30) 'SF6',nsf6
+        if (nsf6 > 0 ) write (*,30) 'SF6',nsf6
+        if (nsf6 > 0 ) write (stdlog(),30) 'SF6',nsf6
       endif
 
   30        format (A,' was initialized as tracer number ',i2)
       !Read in emission files
       
 
-     id_emiss = register_static_field ( 'tracers',                    &
-                     'sf6emiss', axes(1:2),       &
-                     'sulfhexemiss', 'g/m2/s')
+!     id_emiss = register_static_field ( 'tracers',                    &
+!                     'sf6emiss', axes(1:2),       &
+!                     'sulfhexemiss', 'g/m2/s')
 
    allocate (sf6_grid(size(lonb)-1,size(latb)-1))
 
@@ -343,15 +342,15 @@ type(time_type), intent(in) :: Time
 !-------------------------------------------------
 !-------------------------------------------------
       integer      :: i,j,unit !,imon,irec,n,io
-      real         :: dtr,deg_90, deg_180, gxdeg, gydeg
-      real         :: GEIA(720, 360)
+      real(r8)         :: dtr,deg_90, deg_180, gxdeg, gydeg
+      real(r8)         :: GEIA(720, 360)
       integer, parameter :: k6=selected_int_kind(6) ! find kind sufficient for 6 digit integer precision
       integer(kind=k6) :: t ! temporary time variable of kind k6
       integer      :: y,m,d ! calendar vars
-      real,pointer         :: data_out1(:,:) ! temporary sf6_grid output
+      real(r8),pointer         :: data_out1(:,:) ! temporary sf6_grid output
 !-------------------------------------------------
-      real :: MW_air=28.9644 ! molecular wt. of air (gm/mole)
-      real :: MW_sf6=86.0 ! molecular wt. of sf6 (gm/mole) PLEASE CHECK!
+      real(r8) :: MW_air=28.9644 ! molecular wt. of air (gm/mole)
+      real(r8) :: MW_sf6=86.0 ! molecular wt. of sf6 (gm/mole) PLEASE CHECK!
       logical :: used, opened
 
       dtr=PI/180.
@@ -432,8 +431,8 @@ enddo
       end do
       call close_file(unit) 
 
-         if (id_emiss > 0 ) &
-         used = send_data ( id_emiss, sf6_grid, Time )
+!         if (id_emiss > 0 ) &
+!         used = send_data ( id_emiss, sf6_grid, Time )
          
       end subroutine sf6_init
 
