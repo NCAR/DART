@@ -46,9 +46,10 @@ real(r8) :: cor_cutoff = 0.0_r8
 
 namelist / assim_tools_nml / cor_cutoff
 
-!---- module name and version number
-character(len = 11), parameter :: module_name = 'assim_tools'
-character(len = 12), parameter :: vers_num = '10/03/2000'
+character(len=128), parameter :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 !============================================================================
 
@@ -90,10 +91,13 @@ endif
 
 ! TJH 14.03.2002 What do we do if the namelist does not exist?
 
-! Write the namelist to a log file
+! Write the namelist and module info to a log file
 
 unit = open_file(file = 'logfile.out', action = 'append')
-!call print_version_number(unit, module_name, vers_num)
+write(unit,*)'assim_tools attributes:'
+write(unit,*)'   ',trim(adjustl(source))
+write(unit,*)'   ',trim(adjustl(revision))
+write(unit,*)'   ',trim(adjustl(revdate))
 write(unit, nml = assim_tools_nml)
 call close_file(unit)
 
