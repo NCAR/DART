@@ -1,2 +1,0 @@
-../../../../mkmf/mkmf -p gswm -t ../../../../mkmf/mkmf.template -c"-Duse_netCDF" \
-path_names_gswm
