@@ -1,106 +1,100 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# This script tests a number of options of the dart software using the
-# Lorenz-96 model.
+# <next three lines automatically updated by CVS, do not edit>
+# $Id$
+# $Source$
+# $Name$
 
-# Assumes that it is started in the top level of a DART repository
-# Tests compilation for a wide range of models with the filter
-# Then does relatively extensive tests of the L96 programs with a variety
-# of options.
+set SNAME = $0
+set clobber
 
-# Start with the 9var model
-cd models/9var/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+switch ( $#argv )
+   case 0:
+      # supplying no arguments -- echo usage not
+      breaksw
+   default:
+      echo " "
+      echo "usage: $SNAME:t"
+      echo " "
+      echo "This script compiles 'filter' for a wide range of models and then does"
+      echo "relatively extensive tests of the L96 programs with a variety of options."
+      echo " "
+      echo "This must be run from the top-level 'DART' directory."
+      echo " "
+      echo "This is a pretty verbose process, so if you are logging the output,"
+      echo "make sure you have plenty of space:"
+      echo " "
+      echo "./$SNAME:t |& tee DART_test.log"
+      echo " "
+      echo "can easily result in a 750 Kb log file"
+      exit 1
+      breaksw
+endsw
 
-# Next is lorenz_04
-cd ../../../models/lorenz_04/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+if ( ! -d models/lorenz_96 ) then
+   echo "models/lorenz_96 does not exist. $SNAME:t must be run from the top-level"
+   echo "DART directory -- please try again."
+   exit 2
+else
+   set DARTHOME = `pwd`
+endif
 
-# bgrid_solo
-cd ../../../models/bgrid_solo/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 
-# lorenz_63
-cd ../../../models/lorenz_63/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+#----------------------------------------------------------------------
+# Compile 'filter' for a wide range of models.
+#----------------------------------------------------------------------
 
-# lorenz_96_2_scale
-cd ../../../models/lorenz_96_2scale/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+@ makenum  = 1
+@ modelnum = 101
+foreach MODEL ( 9var MITgcm_annulus bgrid_solo cam wrf pe2lyr \
+            lorenz_04 lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale )
 
-# lorenz_84
-cd ../../../models/lorenz_84/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+    echo "-------------------------------------------"
+    echo "Compiling $MODEL at "`date`
+    echo ""
 
-# wrf
-cd ../../../models/wrf/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+    cd ${DARTHOME}/models/${MODEL}/work
+    rm -f *.o *.mod filter Makefile input.nml.filter_default 
+    csh mkmf_filter   || exit $makenum
+    make              || exit $modelnum
+    rm -f *.o *.mod filter Makefile input.nml.filter_default
 
-# MITgcm_annulus
-cd ../../../models/MITgcm_annulus/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
+   @ makenum  = $makenum  + 1
+   @ modelnum = $modelnum + 1
+end
 
-# cam
-cd ../../../models/cam/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
-
-# pe2lyr
-cd ../../../models/pe2lyr/work
-rm -rf *.o *.mod filter
-csh mkmf_filter
-make || exit
-rm -rf *.o *.mod filter
-
+#----------------------------------------------------------------------
 # Lots of tests for L96
-cd ../../../models/lorenz_96/work
+#----------------------------------------------------------------------
+
+echo "-------------------------------------------"
+echo "Testing lorenz_96 (L96) at "`date`
+echo ""
+
+cd ${DARTHOME}/models/lorenz_96/work
 
 # Make sure that all .o, .mod and executables are gone
 rm -rf *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
 rm -rf integrate_model perfect_model_obs
+
 # Begin by compiling all programs; need to stop if an error is detected
 csh mkmf_assim_region
-make || exit
+make                              || exit
 csh mkmf_create_fixed_network_seq || exit
-make || exit
-csh mkmf_create_obs_sequence  || exit
-make || exit
-csh mkmf_filter || exit
-make || exit
-csh mkmf_integrate_model || exit
-make || exit
-csh mkmf_perfect_model_obs || exit
-make || exit
+make                              || exit
+csh mkmf_create_obs_sequence      || exit
+make                              || exit
+csh mkmf_filter                   || exit
+make                              || exit
+csh mkmf_integrate_model          || exit
+make                              || exit
+csh mkmf_perfect_model_obs        || exit
+make                              || exit
 
 # Setup appropriate namelists for a 1000-step test run
 # Begin by modifying perfect model namelist and getting rid of all other stuff
@@ -155,12 +149,16 @@ echo 'obs_seq.in'              >> temp_input
 ./filter             || exit
 
 # Need to do visual matlab inspection of this output for now
+# plot_total_err
 matlab -nojvm
 
-
-# Prepare to set up a sequence of 10 hour runs for testing
-# In first case, just do 10 days and output filter restarts in both
-# the single file and multiple file format for later testing
+#-----------------------------------------------------------------------
+echo "-----------------------------------------------------------------"
+echo "Prepare to set up a sequence of 10 hour runs for testing"
+echo "In first case, just do 10 days and output filter restarts in both"
+echo "the single file and multiple file format for later testing"
+echo "-----------------------------------------------------------------"
+#-----------------------------------------------------------------------
 
 # Create an obs_sequence file for 10 hour tests
 rm -rf obs_seq.in obs_seq.out obs_seq.final
@@ -252,10 +250,10 @@ diff obs_seq.out.out_of_core      obs_seq.out.baseline     || exit
 
 # Test the two async options
 # Need to get the scripts (problem here because script names are machine dependent)
-cp ../shell_scripts/*.csh .
-cp ../../../shell_scripts/advance_ens_fisher.csh advance_ens.csh
-cp ../../../shell_scripts/assim_filter_fisher.csh assim_filter.csh
-cp ../../../shell_scripts/filter_server_fisher.csh filter_server.csh
+cp -p ../shell_scripts/*.csh .
+cp -p ${DARTHOME}/shell_scripts/advance_ens_fisher.csh     advance_ens.csh
+cp -p ${DARTHOME}/shell_scripts/assim_filter_fisher.csh   assim_filter.csh
+cp -p ${DARTHOME}/shell_scripts/filter_server_fisher.csh filter_server.csh
 
 # Change to async 2 and go back to in_core for ensemble
 echo ':0'                             > vi_script
@@ -395,5 +393,7 @@ diff assim_tools_restart  assim_tools_restart.baseline  || exit
 #diff Prior_Diag.nc        Prior_Diag.nc.baseline
 #diff Posterior_Diag.nc    Posterior_Diag.nc.baseline
 
-
+echo ""
+echo "Testing complete  at "`date`
+echo "-------------------------------------------"
 
