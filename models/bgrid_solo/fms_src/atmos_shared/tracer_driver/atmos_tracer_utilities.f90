@@ -333,11 +333,11 @@ if(lowercase(scheme)=='wind_driven') then
 !
 !****  Compute dry sinks (loss frequency, need modification when 
 !****    different vdep values are to be used for species)
-	flagsr=parse(control,'surfr',surfr)
+        flagsr=parse(control,'surfr',surfr)
         if(flagsr == 0) surfr=500.
         hwindv=sqrt(u**2+v**2)
         frictv=u_star
-	resisa=hwindv/(u_star*u_star)
+        resisa=hwindv/(u_star*u_star)
         where (frictv .lt. 0.1) frictv=0.1
         dsinku=(1./(surfr/frictv + resisa))/dz
 !

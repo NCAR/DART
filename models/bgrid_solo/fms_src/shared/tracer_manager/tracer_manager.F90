@@ -217,7 +217,7 @@ character(len=80)    :: warnmesg
 
 character(len=32) :: model_name, name_type, type, name
 character(len=128) :: units, longname, family
-integer :: iunit,n,m, ntf, mod, num_tracer_methods, nfields, swop
+integer :: iunit,n,m, ntf, mdl, num_tracer_methods, nfields, swop
 integer :: j, log_unit, num_in_family, num_methods, ns, num_tracer_comp_model
 logical :: flag,is_family_member(MAX_TRACER_FIELDS), flag_type
 type(method_type), dimension(20) :: methods
@@ -248,8 +248,8 @@ endif
 num_tracer_comp_model = 0
 
 do n=1,nfields
-   call get_field_info(n,type,name,mod,num_methods)
-   if (mod == model .and. type == 'tracer') then
+   call get_field_info(n,type,name,mdl,num_methods)
+   if (mdl == model .and. type == 'tracer') then
       if (get_tracer_index(model, name) < 0) then      
          num_tracer_fields = num_tracer_fields + 1
          num_tracer_comp_model = num_tracer_comp_model + 1

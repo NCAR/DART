@@ -216,7 +216,7 @@ source=0.0
 
       if (present(kbot)) then
           do j=1,jd
-	  do i=1,id
+          do i=1,id
              kb=kbot(i,j)
              source(i,j,kb)=sf6_grid(i,j+js-1)*rate/pwt(i,j,kb)
           enddo

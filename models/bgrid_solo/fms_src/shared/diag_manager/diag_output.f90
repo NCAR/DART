@@ -230,7 +230,7 @@ subroutine write_axis_meta_data ( file_unit, axes )
    integer, allocatable    :: axis_extent(:), pelist(:)
 
    integer :: calendar, id_axis, id_time_axis
-   integer :: i, index, num, length, edges_index
+   integer :: i, indx, num, length, edges_index
    integer :: gbegin, gend, gsize, ndivs
    logical :: use_range
 
@@ -259,11 +259,11 @@ subroutine write_axis_meta_data ( file_unit, axes )
 !-----------------------------------------------------------------------
 
    id_axis = axes(i)
-   index = get_axis_index ( id_axis )
+   indx = get_axis_index ( id_axis )
 
 !---- skip axes already written -----
 
-   if ( index > 0 ) cycle
+   if ( indx > 0 ) cycle
 
 !---- create new axistype (then point to) -----
 
@@ -463,8 +463,8 @@ function write_field_meta_data ( file_unit, name, axes, units,      &
 !
 !-----------------------------------------------------------------------
 
-   real    :: scale, add
-   integer :: i, index, num, ipack, np
+   real    :: rscale, add
+   integer :: i, indx, num, ipack, np
    logical :: use_range
 
    integer :: axis_indices(4)
@@ -488,12 +488,12 @@ function write_field_meta_data ( file_unit, name, axes, units,      &
 
  do i = 1, num
 
-   index = get_axis_index ( axes(i) )
+   indx = get_axis_index ( axes(i) )
 
 !---- point to existing axistype -----
 
-   if ( index > 0 ) then
-       axis_indices(i) = index
+   if ( indx > 0 ) then
+       axis_indices(i) = indx
    else
        call error_mesg ('write_field_meta_data',   &
                  'axis data not written for field '//trim(name), FATAL)
@@ -514,7 +514,7 @@ function write_field_meta_data ( file_unit, name, axes, units,      &
 
    use_range = .false.
    add   = 0.0
-   scale = 1.0
+   rscale = 1.0
 
    if ( present(range) ) then
         if ( range(2) > range(1) ) then
@@ -523,7 +523,7 @@ function write_field_meta_data ( file_unit, name, axes, units,      &
              if ( ipack > 2 ) then
                 np = ipack/4
                 add   = 0.5*(range(1)+range(2))
-                scale = (range(2)-range(1))/ &
+                rscale = (range(2)-range(1))/ &
                         real(max_range(2,np)-max_range(1,np))
              endif
         endif
@@ -536,7 +536,7 @@ function write_field_meta_data ( file_unit, name, axes, units,      &
       Field%miss_present = .true.
       if (ipack > 2 ) then
         np = ipack/4
-        Field%miss_pack = real(missval(np))*scale+add
+        Field%miss_pack = real(missval(np))*rscale+add
         Field%miss_pack_present = .true.
       else
         Field%miss_pack = mval
@@ -558,14 +558,14 @@ function write_field_meta_data ( file_unit, name, axes, units,      &
                                name, units, long_name,            &
                                range(1), range(2),                &
                                missing=Field%miss_pack,           &
-                               scale=scale, add=add, pack=ipack   )
+                               scale=rscale, add=add, pack=ipack   )
      else
 
          call mpp_write_meta ( file_unit, Field%Field,            &
                                Axis_types(axis_indices(1:num)),   &
                                name, units,  long_name,           &
                                range(1), range(2),                &
-                               scale=scale, add=add, pack=ipack   )
+                               scale=rscale, add=add, pack=ipack   )
      endif
 
    else
@@ -685,20 +685,20 @@ end subroutine diag_output_end
 
 !#######################################################################
 
-function get_axis_index ( num ) result ( index )
+function get_axis_index ( num ) result ( indx )
 
   integer, intent(in) :: num
-  integer             :: index
+  integer             :: indx
   integer             :: i
 
 !---- get the array index for this axis type ----
 !---- set up pointers to axistypes ----
 !---- write axis meta data for new axes ----
 
-   index = 0
+   indx = 0
    do i = 1, num_axis_in_file
       if ( num == axis_in_file(i) ) then
-          index = i
+          indx = i
           exit
       endif
    enddo

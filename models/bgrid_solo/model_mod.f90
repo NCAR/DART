@@ -142,7 +142,7 @@ revdate  = "$Date$"
 ! More stuff from atmos_solo driver
 ! ----- model time -----
 
-   type (time_type) :: Time, Time_init, Time_end, Time_step_atmos
+   type (time_type) :: mTime, Time_init, Time_end, Time_step_atmos
 
 ! ----- coupled model initial date -----
 
@@ -179,7 +179,7 @@ integer, parameter :: timing_level = 1
 !-----------------------------------------------------------------------
 
 ! Stuff to allow addition of random 'sub-grid scale' noise
-type(random_seq_type) :: random_seed
+type(random_seq_type) :: randseed
 logical :: first_call = .true.
 
 
@@ -188,17 +188,17 @@ contains
 
 !#######################################################################
 
- subroutine atmosphere (Var, Time)
+ subroutine atmosphere (Var, mTime)
 
 
- type (time_type), intent(in) :: Time
+ type (time_type), intent(in) :: mTime
  type (prog_var_type), intent(inout) :: Var
 
   type(time_type) :: Time_prev, Time_next
 !-----------------------------------------------------------------------
 
-   Time_prev = Time                       ! two time-level scheme
-   Time_next = Time + Time_step_atmos
+   Time_prev = mTime                       ! two time-level scheme
+   Time_next = mTime + Time_step_atmos
 
 !---- dynamics -----
 
@@ -220,7 +220,7 @@ contains
 
 !#######################################################################
 
-subroutine adv_1step(x, Time)
+subroutine adv_1step(x, mTime)
 
 ! Does single time-step advance for B-grid model with vector state as
 ! input and output. This is a modified version of subroutine atmosphere
@@ -230,7 +230,7 @@ subroutine adv_1step(x, Time)
 real(r8), intent(inout) :: x(:)
 ! Time is needed for more general models like this; need to add in to 
 ! low-order models
-type(time_type), intent(in) :: Time
+type(time_type), intent(in) :: mTime
 !!!type(prog_var_type), intent(inout) :: Var
 
 type(prog_var_type) :: Var
@@ -243,7 +243,7 @@ real(r8) :: temp_t
 call vector_to_prog_var(x, get_model_size(), Var)
 
 ! Compute the end of the time interval
-Time_next = Time + Time_step_atmos
+Time_next = mTime + Time_step_atmos
 
 ! Do dynamics
 ! Dynam, Var_dt and omega currently in static storage, is that where they should stay?
@@ -261,7 +261,7 @@ call bgrid_physics(physics_window, real(dt_atmos), Time_next, &
 ! Need to initialize random sequence on first call
 if(first_call) then
    write(*, *) 'NOISE_SD is ', noise_sd
-   call init_random_seq(random_seed)
+   call init_random_seq(randseed)
    first_call = .false.
 endif
 
@@ -271,7 +271,7 @@ do i = 1, size(Var_dt%t, 1)
       do k = 1, size(Var_dt%t, 3)
          temp_t = Var_dt%t(i, j, k)
          Var_dt%t(i, j, k) = &
-            (1.0_r8 + random_gaussian(random_seed, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
+            (1.0_r8 + random_gaussian(randseed, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
       end do
    end do
 end do
@@ -363,7 +363,7 @@ end subroutine init_conditions
 
 !-----------------------------------------------------------------------
     integer :: total_days, total_seconds, iunit, ierr, io, id, jd, kd
-    integer :: date(6)
+    integer :: idate(6)
     type (time_type) :: Run_length
     logical :: use_namelist
 
@@ -402,7 +402,7 @@ end subroutine init_conditions
 
    if (file_exist('INPUT/atmos_model.res')) then
        iunit = open_restart_file ('INPUT/atmos_model.res', 'read')
-       read  (iunit) date
+       read  (iunit) idate
        call mpp_close (iunit)
        use_namelist = .false.
    else
@@ -413,14 +413,14 @@ end subroutine init_conditions
 !----- (either no restart or override flag on) ---
 
  if ( use_namelist .or. override ) then
-      date(1:2) = 0
-      date(3:6) = current_time
+      idate(1:2) = 0
+      idate(3:6) = current_time
  endif
 
 !----- write current/initial date actually used to logfile file -----
 
     if ( mpp_pe() == mpp_root_pe() ) then
-      write (stdlog(),16) date(3:6)
+      write (stdlog(),16) idate(3:6)
     endif
 
  16 format ('  current time used = day',i5,' hour',i3,2(':',i2.2))
@@ -444,9 +444,9 @@ end subroutine init_conditions
 !----- set run length and compute ending time -----
 
     Time_init  = set_time_increment (date_init(3), date_init(4), date_init(5), date_init(6))
-    Time       = set_time_increment (date     (3), date     (4), date     (5), date     (6))
+    mTime      = set_time_increment (idate    (3), idate    (4), idate    (5), idate    (6))
     Run_length = set_time_increment (days        , hours       , minutes     , seconds     )
-    Time_end   = Time + Run_length
+    Time_end   = mTime + Run_length
 
 !-----------------------------------------------------------------------
 !----- write time stamps (for start time and end time) ------
@@ -454,12 +454,12 @@ end subroutine init_conditions
       call mpp_open (iunit, 'time_stamp.out', form=MPP_ASCII, action=MPP_OVERWR, &
                      access=MPP_SEQUENTIAL, threading=MPP_SINGLE, nohdrs=.true. )
 
-      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) date
+      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) idate
 
 !     compute ending time in days,hours,minutes,seconds
-      call get_time_increment (Time_end, date(3), date(4), date(5), date(6))
+      call get_time_increment (Time_end, idate(3), idate(4), idate(5), idate(6))
 
-      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) date
+      if ( mpp_pe() == mpp_root_pe() ) write (iunit,20) idate
 
       call mpp_close (iunit)
 
@@ -474,13 +474,13 @@ end subroutine init_conditions
 !-----------------------------------------------------------------------
 !----- initial (base) time must not be greater than current time -----
 
-   if ( Time_init > Time ) call error_mesg ('program atmos_model',  &
+   if ( Time_init > mTime ) call error_mesg ('program atmos_model',  &
                    'initial time is greater than current time', FATAL)
 
 !-----------------------------------------------------------------------
 !------ initialize atmospheric model ------
 
-      call atmosphere_init (Time_init, Time, Time_step_atmos)
+      call atmosphere_init (Time_init, mTime, Time_step_atmos)
 
 !-----------------------------------------------------------------------
 !---- open and close output restart to make sure directory is there ----
@@ -500,9 +500,9 @@ end subroutine init_conditions
 
 !#######################################################################
 
- subroutine atmosphere_init (Time_init, Time, Time_step )
+ subroutine atmosphere_init (Time_init, mTime, Time_step )
 
- type (time_type),     intent(in)    :: Time_init, Time, Time_step
+ type (time_type),     intent(in)    :: Time_init, mTime, Time_step
 
 
 !!! WARNING: This PROG_VAR_TYPE MAY HOG STORAGE FOREVER, NEED TO DEALLOCATE
@@ -543,7 +543,7 @@ integer :: i
 
 !----- initialize dynamical core -----
 
-   call bgrid_core_driver_init ( Time_init, Time, Time_step,    &
+   call bgrid_core_driver_init ( Time_init, mTime, Time_step,    &
                                  Var, Var_dt, Dynam, atmos_axes )
 
 !----- initialize storage needed for vert motion ----
@@ -552,7 +552,7 @@ integer :: i
 
 !----- initialize physics interface -----
 
-    call hs_forcing_init ( atmos_axes, Time )
+    call hs_forcing_init ( atmos_axes, mTime )
 
 !   ----- use entire grid as window ? -----
 
@@ -670,7 +670,7 @@ deallocate(t_lon_bnds, t_lat_bnds, v_lon_bnds, v_lat_bnds)
 
 !#######################################################################
 
-subroutine bgrid_physics ( window, dt_phys, Time, Hgrid, Vgrid, &
+subroutine bgrid_physics ( window, dt_phys, mTime, Hgrid, Vgrid, &
                            Dynam, Var, Var_dt )
 
 !-----------------------------------------------------------------------
@@ -680,7 +680,7 @@ subroutine bgrid_physics ( window, dt_phys, Time, Hgrid, Vgrid, &
 !-----------------------------------------------------------------------
   integer, intent(in)                :: window(2)
   real(r8),    intent(in)                :: dt_phys
-       type(time_type),intent(in)    :: Time
+       type(time_type),intent(in)    :: mTime
 type (horiz_grid_type),intent(inout) :: Hgrid
 type  (vert_grid_type),intent(in)    :: Vgrid
 type(bgrid_dynam_type),intent(in)    :: Dynam
@@ -689,7 +689,7 @@ type   (prog_var_type),intent(inout) :: Var_dt
 
 !-----------------------------------------------------------------------
   integer :: j, k, n, is, ie, js, je, i1, i2, j1, j2, nt
-  integer :: ix, jx, idim, jdim
+  integer :: ix, jx, dimi, jdim
 !-----------------------------------------------------------------------
 
    real(r8), dimension(window(1),window(2),Vgrid%nlev) :: p_full, u_dt, v_dt
@@ -704,7 +704,7 @@ type   (prog_var_type),intent(inout) :: Var_dt
 !-----------------------------------------------------------------------
 !---------------------------- do physics -------------------------------
 
-    idim = window(1)
+    dimi = window(1)
     jdim = window(2)
 
 !   --- momentum and momentum tendency on mass grid ---
@@ -730,7 +730,7 @@ type   (prog_var_type),intent(inout) :: Var_dt
 
     do while ( is <= Hgrid%Tmp%ie )
 
-       ie = min ( is+idim-1, Hgrid%Tmp%ie )
+       ie = min ( is+dimi-1, Hgrid%Tmp%ie )
        ix = ie-is+1
 
 !      ---- pass updated surface pressure ----
@@ -759,7 +759,7 @@ type   (prog_var_type),intent(inout) :: Var_dt
   if (.not.Dynam%Masks%sigma) then
 !------------ eta coordinate -------------------------------------------
 
-      call hs_forcing ( i1, i2, j1, j2, dt_phys, Time ,&
+      call hs_forcing ( i1, i2, j1, j2, dt_phys, mTime ,&
                             Hgrid%Tmp%aph(is:ie,js:je)    ,&
                             p_half   ( 1:ix, 1:jx,:)      ,&
                             p_full   ( 1:ix, 1:jx,:)      ,&
@@ -781,7 +781,7 @@ type   (prog_var_type),intent(inout) :: Var_dt
   else
 !------------- sigma coordinate ----------------------------------------
 
-      call hs_forcing ( i1, i2, j1, j2, dt_phys, Time ,&
+      call hs_forcing ( i1, i2, j1, j2, dt_phys, mTime ,&
                             Hgrid%Tmp%aph(is:ie,js:je)    ,&
                             p_half   ( 1:ix, 1:jx,:)      ,&
                             p_full   ( 1:ix, 1:jx,:)      ,&
@@ -804,7 +804,7 @@ type   (prog_var_type),intent(inout) :: Var_dt
         uh(is:ie,js:je,:) = u_dt(1:ix,1:jx,:) - uh_dt(is:ie,js:je,:)
         vh(is:ie,js:je,:) = v_dt(1:ix,1:jx,:) - vh_dt(is:ie,js:je,:)
 
-        is = is + idim
+        is = is + dimi
 
      enddo
 
@@ -1142,17 +1142,22 @@ end subroutine get_state_meta_data
 
 
 
-RECURSIVE function model_interpolate(x, location, itype)
+subroutine model_interpolate(x, location, itype, obs_val, istatus, rstatus)
 
-real(r8) :: model_interpolate
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: itype
+real(r8),            intent(out):: obs_val
+integer,  optional,  intent(out):: istatus
+real(r8), optional,  intent(out):: rstatus
 
 integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
+
+if (present(rstatus)) rstatus = 0.0_r8
+if (present(istatus)) istatus = 0
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
 ! As opposed to the stripped state vector. YES. This would give time interp.
@@ -1253,10 +1258,15 @@ do i = 1, 2
    a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
 end do
 
-model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
+obs_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 
+! Since there is no possibility of having obs_val == missing_r ...
+! the return codes are always "good" i.e. zero
+!
+! normally set istatus here 
+! normally set rstatus here 
 
-end function model_interpolate
+end subroutine model_interpolate
 
 !#######################################################################
 
@@ -1286,7 +1296,7 @@ real(r8), intent(in) :: x(:), pressure
 integer,  intent(in) :: lon_index, lat_index, itype
 
 type(location_type) :: ps_location
-real(r8) :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), fraction
+real(r8) :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), rfrac
 integer  :: top_lev, bot_lev, i
 real(r8) :: bot_val, top_val, ps_lon
 
@@ -1308,7 +1318,7 @@ else
    ! The vertical is not important for this interpolation -- still --
    ! mark it as missing (-1.0) but give it some type information (2==pressure)
    ps_location = set_location(ps_lon, v_lats(lat_index), -1.0, 2 )
-   ps          = model_interpolate(x, ps_location, 3)
+   call model_interpolate(x, ps_location, 3, ps(1,1) )
 
 endif
 
@@ -1328,12 +1338,12 @@ call compute_pres_full(Dynam%Vgrid, ps, pfull)
 if(pressure < pfull(1, 1, 1)) then
    top_lev = 1
    bot_lev = 2
-   fraction = 1.0_r8
+   rfrac = 1.0_r8
 else if(pressure > pfull(1, 1, Dynam%Vgrid%nlev)) then
 ! Same for bottom
    bot_lev = Dynam%Vgrid%nlev
    top_lev = bot_lev - 1
-   fraction = 0.0_r8
+   rfrac = 0.0_r8
 
 else
 
@@ -1342,7 +1352,7 @@ else
       if(pressure < pfull(1, 1, i)) then
          top_lev = i -1
          bot_lev = i
-         fraction = (pfull(1, 1, i) - pressure) / &
+         rfrac = (pfull(1, 1, i) - pressure) / &
             (pfull(1, 1, i) - pfull(1, 1, i - 1))
          goto 21
       endif
@@ -1352,9 +1362,9 @@ end if
 ! Get the value at these two points
 21 bot_val = get_val(x, lon_index, lat_index, bot_lev, itype)
 top_val = get_val(x, lon_index, lat_index, top_lev, itype)
-!write(*, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
+!write(*, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, rfrac
    
-get_val_pressure = (1.0_r8 - fraction) * bot_val + fraction * top_val
+get_val_pressure = (1.0_r8 - rfrac) * bot_val + rfrac * top_val
 !write(*, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
 
 end function get_val_pressure
@@ -1461,7 +1471,7 @@ subroutine init_time(i_time)
 
 type(time_type), intent(out) :: i_time
 
-i_time = Time
+i_time = mTime
 
 end subroutine init_time
 
@@ -1562,7 +1572,6 @@ real(r8) :: gdist, diff, row_dist(nlon)
 integer :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
 integer :: row_lon_ind(nlon), row_num
 real(r8), parameter :: glev = 1.0_r8
-type(location_type) :: loc
 
 ! Get the lat and lon from the loc
 loc_array = get_location(o_loc)
@@ -1633,7 +1642,7 @@ type(location_type), intent(in)  :: o_loc
 integer,             intent(out) :: close_lon_ind(:), num
 real(r8),            intent(out) :: close_dist(:)
 
-type(location_type) :: loc
+type(location_type) :: lctn
 integer  :: nlon, j, max_pos, lon_ind, which_vert
 real(r8) :: glon, gdist
 
@@ -1654,8 +1663,8 @@ do j = 0, nlon - 1
 
    ! set vertical type to same as input 
    which_vert = nint(query_location(o_loc))
-   loc        = set_location(glon, glat, glev, which_vert)
-   gdist      = get_dist(loc, o_loc)
+   lctn        = set_location(glon, glat, glev, which_vert)
+   gdist      = get_dist(lctn, o_loc)
 
    if(gdist <= radius) then
       num = num + 1
@@ -1686,8 +1695,8 @@ do j = 1, nlon - 1 - max_pos
 
    ! set vertical type to same as input 
    which_vert = nint(query_location(o_loc))
-   loc        = set_location(glon, glat, glev, which_vert)
-   gdist      = get_dist(loc, o_loc)
+   lctn        = set_location(glon, glat, glev, which_vert)
+   gdist      = get_dist(lctn, o_loc)
 
    if(gdist <= radius) then
       num = num + 1
@@ -1822,6 +1831,11 @@ integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
 
 character(len=129) :: errstring
 
+character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=NF90_MAX_NAME) :: str1,str2
 !-----------------------------------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
@@ -1875,6 +1889,11 @@ call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
+call DATE_AND_TIME(crdate,crtime,crzone,values)
+write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+                  values(1), values(2), values(3), values(5), values(6), values(7)
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))

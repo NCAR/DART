@@ -285,7 +285,7 @@ contains
 #  endif   
 #endif   
 
-   real(R4_KIND) :: scale
+   real(R4_KIND) :: rscale
    integer :: j, k, num, len_grid, ifail
 
 !-----------------------------------------------------------------------
@@ -311,12 +311,12 @@ contains
 
 #ifdef SGICRAY
 !  Cray/SGI fft
-      scale = 1./real(leng)
+      rscale = 1./real(leng)
 #  ifdef _CRAY
-      call scfftm (-1,leng,num,scale, grid,leng1, fourier,lenc,  &
+      call scfftm (-1,leng,num,rscale, grid,leng1, fourier,lenc,  &
                    table4, work, 0)
 #  else
-      call scfftm (-1,leng,num,scale, grid,leng1, fourier,lenc,  &
+      call scfftm (-1,leng,num,rscale, grid,leng1, fourier,lenc,  &
                    table4, work, 0)
 #  endif
 #else
@@ -329,8 +329,8 @@ contains
          data(j,1:leng) = grid(1:leng,j)
       enddo
 !!!!! call c06fpe ( num, leng, data, 's', table4, work, ifail )
-      scale = 1./sqrt(float(leng))
-      data = data * scale
+      rscale = 1./sqrt(float(leng))
+      data = data * rscale
       fourier(1,:) = cmplx( data(:,1), 0. )
       do k=2,lenc-1
          fourier(k,:) = cmplx( data(:,k), data(:,leng-k+2) )
@@ -402,7 +402,7 @@ contains
 #  endif   
 #endif   
 
-   real(R4_KIND) :: scale
+   real(R4_KIND) :: rscale
    integer :: j, k, num, len_fourier, ifail
 
 !-----------------------------------------------------------------------
@@ -428,12 +428,12 @@ contains
 
 #ifdef SGICRAY
 !  Cray/SGI fft
-      scale = 1.0
+      rscale = 1.0
 #  ifdef _CRAY
-      call csfftm (+1,leng,num,scale, fourier,len_fourier,  &
+      call csfftm (+1,leng,num,rscale, fourier,len_fourier,  &
                      grid,leng1, table4, work, 0)
 #  else
-      call csfftm (+1,leng,num,scale, fourier,len_fourier,  &
+      call csfftm (+1,leng,num,rscale, fourier,len_fourier,  &
                      grid,leng1, table4, work, 0)
 #  endif
 #else
@@ -455,9 +455,9 @@ contains
 !!!!! call c06fqe ( num, leng, data, 's', table4, work, ifail )
 
   ! scale and transpose data
-      scale = sqrt(real(leng))
+      rscale = sqrt(real(leng))
       do j=1,num
-         grid(1:leng,j) = data(j,1:leng)*scale
+         grid(1:leng,j) = data(j,1:leng)*rscale
       enddo
 #  else
 !  Temperton fft
@@ -525,7 +525,7 @@ contains
 #  endif   
 #endif   
 
-   real(R8_KIND) :: scale
+   real(R8_KIND) :: rscale
    integer :: j, k, num, len_grid, ifail
 
 !-----------------------------------------------------------------------
@@ -550,12 +550,12 @@ contains
       num   = size(grid,2)    ! number of transforms
 #ifdef SGICRAY
 !  Cray/SGI fft
-      scale = 1./float(leng)
+      rscale = 1./float(leng)
 #  ifdef _CRAY
-      call scfftm (-1,leng,num,scale, grid,leng1, fourier,lenc,  &
+      call scfftm (-1,leng,num,rscale, grid,leng1, fourier,lenc,  &
                    table8, work, 0)
 #  else
-      call dzfftm (-1,leng,num,scale, grid,leng1, fourier,lenc,  &
+      call dzfftm (-1,leng,num,rscale, grid,leng1, fourier,lenc,  &
                    table8, work, 0)
 #  endif
 #else
@@ -565,8 +565,8 @@ contains
          data(j,1:leng) = grid(1:leng,j)
       enddo
       call c06fpf ( num, leng, data, 's', table8, work, ifail )
-      scale = 1./sqrt(float(leng))
-      data = data * scale
+      rscale = 1./sqrt(float(leng))
+      data = data * rscale
       fourier(1,:) = cmplx( data(:,1), 0. )
       do k=2,lenc-1
          fourier(k,:) = cmplx( data(:,k), data(:,leng-k+2) )
@@ -638,7 +638,7 @@ contains
 #  endif   
 #endif   
 
-   real(R8_KIND) :: scale
+   real(R8_KIND) :: rscale
    integer :: j, k, num, len_fourier, ifail
 
 !-----------------------------------------------------------------------
@@ -664,12 +664,12 @@ contains
 
 #ifdef SGICRAY
 !  Cray/SGI fft
-      scale = 1.0
+      rscale = 1.0
 #  ifdef _CRAY
-      call csfftm (+1,leng,num,scale, fourier,len_fourier,  &
+      call csfftm (+1,leng,num,rscale, fourier,len_fourier,  &
                      grid,leng1, table8, work, 0)
 #  else
-      call zdfftm (+1,leng,num,scale, fourier,len_fourier,  &
+      call zdfftm (+1,leng,num,rscale, fourier,len_fourier,  &
                      grid,leng1, table8, work, 0)
 #  endif
 #else
@@ -688,9 +688,9 @@ contains
       call c06fqf ( num, leng, data, 's', table8, work, ifail )
 
     ! scale and transpose data
-      scale = sqrt(real(leng))
+      rscale = sqrt(real(leng))
       do j=1,num
-         grid(1:leng,j) = data(j,1:leng)*scale
+         grid(1:leng,j) = data(j,1:leng)*rscale
       enddo
 #  else
 !  Temperton fft

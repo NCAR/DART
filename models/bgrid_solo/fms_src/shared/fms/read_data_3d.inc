@@ -33,10 +33,10 @@
        if (do_read()) read (unit,end=10) gdata
        if (.not.read_all_pe) then
          ! did not read on all PEs need to broadcast data
-           len = size(gdata,1)*size(gdata,2)*size(gdata,3)
-!           call mpp_transmit ( gdata, len, ALL_PES, &
-!                               gdata, len, 0        ) 
-           call mpp_broadcast ( gdata, len, mpp_root_pe() )      
+           lngth = size(gdata,1)*size(gdata,2)*size(gdata,3)
+!           call mpp_transmit ( gdata, lngth, ALL_PES, &
+!                               gdata, lngth, 0        ) 
+           call mpp_broadcast ( gdata, lngth, mpp_root_pe() )      
        endif   
      ! return data for compute domain
        data(is:ie,js:je,:) = gdata(is:ie,js:je,:)

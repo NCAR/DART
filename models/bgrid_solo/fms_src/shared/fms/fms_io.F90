@@ -1005,7 +1005,7 @@ contains
     logical, intent(out), optional             :: end
 
     real, dimension(isg:ieg,jsg:jeg) :: gdata
-    integer :: len
+    integer :: lngth
 
     !------------------------------
     include "read_data_2d.inc"
@@ -1022,7 +1022,7 @@ contains
     logical, intent(out), optional             :: end
 
     logical, dimension(isg:ieg,jsg:jeg) :: gdata
-    integer :: len
+    integer :: lngth
 
     !------------------------------
     include "read_data_2d.inc"
@@ -1039,7 +1039,7 @@ contains
     logical, intent(out), optional             :: end
 
     integer, dimension(isg:ieg,jsg:jeg) :: gdata
-    integer :: len
+    integer :: lngth
 
     !------------------------------
     include "read_data_2d.inc"
@@ -1056,7 +1056,7 @@ contains
     logical, intent(out), optional             :: end
 
     complex, dimension(isg:ieg,jsg:jeg) :: gdata
-    integer :: len
+    integer :: lngth
 
     !------------------------------
     include "read_data_2d.inc"
@@ -1073,7 +1073,7 @@ contains
     logical, intent(out), optional               :: end
 
     real, dimension(isg:ieg,jsg:jeg,size(data,3)) :: gdata
-    integer :: len
+    integer :: lngth
 
     !------------------------------
     include "read_data_3d.inc"
@@ -1090,7 +1090,7 @@ contains
     logical, intent(out), optional               :: end
 
     complex, dimension(isg:ieg,jsg:jeg,size(data,3)) :: gdata
-    integer :: len
+    integer :: lngth
 
     !------------------------------
     include "read_data_3d.inc"
@@ -1107,7 +1107,7 @@ contains
     logical, intent(out), optional                 :: end
 
     real, dimension(isg:ieg,jsg:jeg,size(data,3),size(data,4)) :: gdata
-    integer :: len
+    integer :: lngth
 
     ! WARNING: memory usage with this routine could be costly
     !------------------------------
@@ -1125,7 +1125,7 @@ contains
     logical, intent(out), optional                 :: end
 
     complex, dimension(isg:ieg,jsg:jeg,size(data,3),size(data,4)) :: gdata
-    integer :: len
+    integer :: lngth
 
     ! WARNING: memory usage with this routine could be costly
     !------------------------------

@@ -501,22 +501,22 @@ contains
 
     integer :: nh, nx, ink, k, L
     integer :: ia, ib, ja, jb, iabase, ibbase, jabase, jbbase
-    real    :: scale, c, s
+    real    :: rscale, c, s
 
       nh=n/2
       nx=n+1
       ink=inc+inc
 
 !   a(0) and a(n/2)
-      scale=1.0/real(n)
+      rscale=1.0/real(n)
       ia=1
       ib=2
       ja=1
       jb=n*inc+1
 !dir$ ivdep
     do L=1,lot
-      a(ja)=scale*(work(ia)+work(ib))
-      a(jb)=scale*(work(ia)-work(ib))
+      a(ja)=rscale*(work(ia)+work(ib))
+      a(jb)=rscale*(work(ia)-work(ib))
       a(ja+inc)=0.0
       a(jb+inc)=0.0
       ia=ia+nx
@@ -526,7 +526,7 @@ contains
     enddo
 
 !   remaining wavenumbers
-      scale=0.5*scale
+      rscale=0.5*rscale
       iabase=3
       ibbase=n-1
       jabase=2*inc+1
@@ -541,13 +541,13 @@ contains
       s=trigs(n+k+1)
 !dir$ ivdep
       do L=1,lot
-        a(ja)=scale*((work(ia)+work(ib)) &
+        a(ja)=rscale*((work(ia)+work(ib)) &
            +(c*(work(ia+1)+work(ib+1))+s*(work(ia)-work(ib))))
-        a(jb)=scale*((work(ia)+work(ib)) &
+        a(jb)=rscale*((work(ia)+work(ib)) &
            -(c*(work(ia+1)+work(ib+1))+s*(work(ia)-work(ib))))
-        a(ja+inc)=scale*((c*(work(ia)-work(ib))-s*(work(ia+1)+work(ib+1))) &
+        a(ja+inc)=rscale*((c*(work(ia)-work(ib))-s*(work(ia+1)+work(ib+1))) &
             +(work(ib+1)-work(ia+1)))
-        a(jb+inc)=scale*((c*(work(ia)-work(ib))-s*(work(ia+1)+work(ib+1))) &
+        a(jb+inc)=rscale*((c*(work(ia)-work(ib))-s*(work(ia+1)+work(ib+1))) &
             -(work(ib+1)-work(ia+1)))
         ia=ia+nx
         ib=ib+nx
@@ -564,11 +564,11 @@ contains
     if (iabase.eq.ibbase) then
       ia=iabase
       ja=jabase
-      scale=2.0*scale
+      rscale=2.0*rscale
 !dir$ ivdep
       do L=1,lot
-        a(ja)=scale*work(ia)
-        a(ja+inc)=-scale*work(ia+1)
+        a(ja)=rscale*work(ia)
+        a(ja+inc)=-rscale*work(ia+1)
         ia=ia+nx
         ja=ja+jump
       enddo

@@ -1031,11 +1031,11 @@ module mpp_mod
 !   have <TT>mpp_mod</TT> keep you informed of what it's up to.
 !  </IN>
 ! </SUBROUTINE>
-    subroutine mpp_init( flags )
+      subroutine mpp_init( flags )
       integer, optional, intent(in) :: flags
 !    subroutine mpp_init( flags, in, out, err, log )
 !      integer, optional, intent(in) :: flags, in, out, err, log
-      integer :: my_pe, num_pes, len
+      integer :: my_pe, num_pes, lngth
       integer :: i
       logical :: opened
 #ifdef _CRAYT3E
@@ -1093,14 +1093,14 @@ module mpp_mod
 #ifdef use_libSMA
 #ifdef use_shmalloc
 !we use shpalloc to ensure all these are remotely accessible
-      len=0; ptr_sync = LOC(pe)   !null initialization
-      call mpp_malloc( ptr_sync,        size(TRANSFER(sync,word)),            len )
-      len=0; ptr_status = LOC(pe)  !null initialization
-      call mpp_malloc( ptr_status, npes*size(TRANSFER(status(0),word)),   len )
-      len=0; ptr_remote = LOC(pe) !null initialization
-      call mpp_malloc( ptr_remote, npes*size(TRANSFER(remote_data_loc(0),word)), len )
-      len=0; ptr_from = LOC(pe)   !null initialization
-      call mpp_malloc( ptr_from,        size(TRANSFER(mpp_from_pe,word)),     len )
+      lngth=0; ptr_sync = LOC(pe)   !null initialization
+      call mpp_malloc( ptr_sync,        size(TRANSFER(sync,word)),            lngth )
+      lngth=0; ptr_status = LOC(pe)  !null initialization
+      call mpp_malloc( ptr_status, npes*size(TRANSFER(status(0),word)),   lngth )
+      lngth=0; ptr_remote = LOC(pe) !null initialization
+      call mpp_malloc( ptr_remote, npes*size(TRANSFER(remote_data_loc(0),word)), lngth )
+      lngth=0; ptr_from = LOC(pe)   !null initialization
+      call mpp_malloc( ptr_from,        size(TRANSFER(mpp_from_pe,word)),     lngth )
 #else
       allocate( status(0:npes-1) )
       allocate( remote_data_loc(0:npes-1) )
@@ -1276,7 +1276,7 @@ module mpp_mod
                '       tmin       tmax       tavg       tstd       mmin       mmax       mavg       mstd  mavg/tavg'
           do i = 1,clock_num
 !messages: bytelengths and times
-	     if( .NOT.clocks(i)%detailed )cycle
+             if( .NOT.clocks(i)%detailed )cycle
              do j = 1,MAX_EVENT_TYPES
                 n = clocks(i)%events(j)%calls; nmax = n
                 call mpp_max(nmax)
@@ -2663,7 +2663,7 @@ module mpp_mod
 !                                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    subroutine mpp_error_basic( errortype, errormsg )
+      subroutine mpp_error_basic( errortype, errormsg )
 !a very basic error handler
 !uses ABORT and FLUSH calls, may need to use cpp to rename
       integer, intent(in) :: errortype
@@ -2684,7 +2684,7 @@ module mpp_mod
           text = 'WARNING: non-existent errortype (must be NOTE|WARNING|FATAL)'
       end select
 
-      if( npes.GT.1 )write( text,'(a,i5)' )trim(text)//' from PE', pe	!this is the mpp part
+      if( npes.GT.1 )write( text,'(a,i5)' )trim(text)//' from PE', pe  !this is the mpp part
       if( PRESENT(errormsg) )text = trim(text)//': '//trim(errormsg)
 
       select case( errortype )
@@ -2703,7 +2703,7 @@ module mpp_mod
               call MPI_ABORT( MPI_COMM_WORLD, 1, error )
 #endif
 #endif
-              call ABORT()	!automatically calls traceback on Cray systems
+              call ABORT()      !automatically calls traceback on Cray systems
           end if
       end select
 

@@ -144,7 +144,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
     real, dimension(Index%lenc  ,max_fft) :: ss
  complex, dimension(Index%lenc  ,max_fft) :: c
 
- integer :: is, ie, jss, jes, jsn, jen, i, k, n, kd, len, lenc,  &
+ integer :: is, ie, jss, jes, jsn, jen, i, k, n, kd, lngth, lenc,  &
             nlpf, nlpfs, nlpfn, nfft, n0, n1, n2, len1, leng
  real    :: zm_min
 
@@ -169,7 +169,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !-----------------------------------------------------------------------
 !----------------- setup grid constants --------------------------------
 
-       len  = Index%len;  len1 = Index%len1
+       lngth  = Index%len;  len1 = Index%len1
        leng = Index%leng; lenc = Index%lenc
        is   = Index%is;   ie   = Index%ie
 
@@ -192,12 +192,12 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
      n1 = n0 + nlpfs
      n2 = n1 + nlpfn
 
-     if (nlpfs > 0) g (1:len,n0+1:n1) = data(is:ie,jss:jes:+1,k)
-     if (nlpfn > 0) g (1:len,n1+1:n2) = data(is:ie,jen:jsn:-1,k)
+     if (nlpfs > 0) g (1:lngth,n0+1:n1) = data(is:ie,jss:jes:+1,k)
+     if (nlpfn > 0) g (1:lngth,n1+1:n2) = data(is:ie,jen:jsn:-1,k)
 
      if (.not.Index%sigma .and. present(mask)) then
-        if (nlpfs > 0) gm(1:len,n0+1:n1) = mask(is:ie,jss:jes:+1,k)
-        if (nlpfn > 0) gm(1:len,n1+1:n2) = mask(is:ie,jen:jsn:-1,k)
+        if (nlpfs > 0) gm(1:lngth,n0+1:n1) = mask(is:ie,jss:jes:+1,k)
+        if (nlpfn > 0) gm(1:lngth,n1+1:n2) = mask(is:ie,jen:jsn:-1,k)
      endif
 
   enddo
@@ -205,7 +205,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !=======================================================================
 !----- add cos lat to end of row (needed for filter) -------------------
 
-  if ( nlpf > 0 .and. len1 == len+1) then
+  if ( nlpf > 0 .and. len1 == lngth+1) then
       do k = 1, size(data,3)
          n0 = (k-1)*nlpf
          n2 = n0 + nlpf
@@ -294,8 +294,8 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
      n1 = n0 + nlpfs
      n2 = n1 + nlpfn
 
-     if (nlpfs > 0) data(is:ie,jss:jes:+1,k) = g(1:len,n0+1:n1)
-     if (nlpfn > 0) data(is:ie,jen:jsn:-1,k) = g(1:len,n1+1:n2)
+     if (nlpfs > 0) data(is:ie,jss:jes:+1,k) = g(1:lngth,n0+1:n1)
+     if (nlpfn > 0) data(is:ie,jen:jsn:-1,k) = g(1:lngth,n1+1:n2)
 
   enddo
 
@@ -329,7 +329,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
      real, dimension(Index%lenc  ,max_fft) :: ss
   complex, dimension(Index%lenc  ,max_fft) :: c
 
-  integer :: is, ie, jss, jes, jsn, jen, k, kd, len, leng, lenc, len1, &
+  integer :: is, ie, jss, jes, jsn, jen, k, kd, lngth, leng, lenc, len1, &
              ns, nn, n0, n1, n2, n3, n4
   integer :: nlpfs, nlpfn, nlpf, nfft
   real    :: gm_min
@@ -352,7 +352,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !-----------------------------------------------------------------------
 !----------------- setup grid constants --------------------------------
 
-      len  = Index%len;   len1 = Index%len1
+      lngth  = Index%len;   len1 = Index%len1
       leng = Index%leng;  lenc = Index%lenc
       is   = Index%is;    ie   = Index%ie
 
@@ -382,25 +382,25 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
      n4 = n3 + nlpfn
 
      if (present(slm) .and. present(clm)) then
-        g (1:len,n0+1:n1) = -u(is:ie,jss:jes:+1,k)*slm(:,1:ns) &
+        g (1:lngth,n0+1:n1) = -u(is:ie,jss:jes:+1,k)*slm(:,1:ns) &
                             +v(is:ie,jss:jes:+1,k)*clm(:,1:ns)
-        g (1:len,n1+1:n2) = -u(is:ie,jen:jsn:-1,k)*slm(:,1:nn) &
+        g (1:lngth,n1+1:n2) = -u(is:ie,jen:jsn:-1,k)*slm(:,1:nn) &
                             -v(is:ie,jen:jsn:-1,k)*clm(:,1:nn)
-        g (1:len,n2+1:n3) = +u(is:ie,jss:jes:+1,k)*clm(:,1:ns) &
+        g (1:lngth,n2+1:n3) = +u(is:ie,jss:jes:+1,k)*clm(:,1:ns) &
                             +v(is:ie,jss:jes:+1,k)*slm(:,1:ns)
-        g (1:len,n3+1:n4) = +u(is:ie,jen:jsn:-1,k)*clm(:,1:nn) &
+        g (1:lngth,n3+1:n4) = +u(is:ie,jen:jsn:-1,k)*clm(:,1:nn) &
                             -v(is:ie,jen:jsn:-1,k)*slm(:,1:nn)
      else
-        g (1:len,n0+1:n1) = u(is:ie,jss:jes:+1,k)
-        g (1:len,n1+1:n2) = u(is:ie,jen:jsn:-1,k)
-        g (1:len,n2+1:n3) = v(is:ie,jss:jes:+1,k)
-        g (1:len,n3+1:n4) = v(is:ie,jen:jsn:-1,k)
+        g (1:lngth,n0+1:n1) = u(is:ie,jss:jes:+1,k)
+        g (1:lngth,n1+1:n2) = u(is:ie,jen:jsn:-1,k)
+        g (1:lngth,n2+1:n3) = v(is:ie,jss:jes:+1,k)
+        g (1:lngth,n3+1:n4) = v(is:ie,jen:jsn:-1,k)
      endif
 
      if (.not.Index%sigma .and. present(mask)) then
-         gm(1:len,n0+1:n1) = mask(is:ie,jss:jes:+1,k)
-         gm(1:len,n1+1:n2) = mask(is:ie,jen:jsn:-1,k)
-         gm(1:len,n2+1:n4) = gm(1:len,n0+1:n2)
+         gm(1:lngth,n0+1:n1) = mask(is:ie,jss:jes:+1,k)
+         gm(1:lngth,n1+1:n2) = mask(is:ie,jen:jsn:-1,k)
+         gm(1:lngth,n2+1:n4) = gm(1:lngth,n0+1:n2)
      endif
 
   enddo
@@ -408,7 +408,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !=======================================================================
 !----- add cos lat to end of rows (needed for filter) ------------------
 
-  if ( nlpf > 0 .and. len1 == len+1 ) then
+  if ( nlpf > 0 .and. len1 == lngth+1 ) then
      do k = 1, size(u,3)
         n0 = (k-1)*nlpf*2
         n2 = n0 + nlpf
@@ -502,19 +502,19 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
      n4 = n3 + nlpfn
 
      if (present(slm) .and. present(clm)) then
-        u(is:ie,jss:jes:+1,k) = -g(1:len,n0+1:n1)*slm(:,1:ns) &
-                                +g(1:len,n2+1:n3)*clm(:,1:ns)
-        u(is:ie,jen:jsn:-1,k) = -g(1:len,n1+1:n2)*slm(:,1:nn) &
-                                +g(1:len,n3+1:n4)*clm(:,1:nn)
-        v(is:ie,jss:jes:+1,k) = +g(1:len,n0+1:n1)*clm(:,1:ns) &
-                                +g(1:len,n2+1:n3)*slm(:,1:ns)
-        v(is:ie,jen:jsn:-1,k) = -g(1:len,n1+1:n2)*clm(:,1:nn) &
-                                -g(1:len,n3+1:n4)*slm(:,1:nn)
+        u(is:ie,jss:jes:+1,k) = -g(1:lngth,n0+1:n1)*slm(:,1:ns) &
+                                +g(1:lngth,n2+1:n3)*clm(:,1:ns)
+        u(is:ie,jen:jsn:-1,k) = -g(1:lngth,n1+1:n2)*slm(:,1:nn) &
+                                +g(1:lngth,n3+1:n4)*clm(:,1:nn)
+        v(is:ie,jss:jes:+1,k) = +g(1:lngth,n0+1:n1)*clm(:,1:ns) &
+                                +g(1:lngth,n2+1:n3)*slm(:,1:ns)
+        v(is:ie,jen:jsn:-1,k) = -g(1:lngth,n1+1:n2)*clm(:,1:nn) &
+                                -g(1:lngth,n3+1:n4)*slm(:,1:nn)
      else
-        u(is:ie,jss:jes:+1,k) = g(1:len,n0+1:n1)
-        u(is:ie,jen:jsn:-1,k) = g(1:len,n1+1:n2)
-        v(is:ie,jss:jes:+1,k) = g(1:len,n2+1:n3)
-        v(is:ie,jen:jsn:-1,k) = g(1:len,n3+1:n4)
+        u(is:ie,jss:jes:+1,k) = g(1:lngth,n0+1:n1)
+        u(is:ie,jen:jsn:-1,k) = g(1:lngth,n1+1:n2)
+        v(is:ie,jss:jes:+1,k) = g(1:lngth,n2+1:n3)
+        v(is:ie,jen:jsn:-1,k) = g(1:lngth,n3+1:n4)
      endif
 
  enddo
@@ -896,7 +896,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !-----------------------------------------------------------------------
    integer, dimension(size(a,1)) :: m1,m2,mbas
    real,    dimension(size(a,1)) :: base,slop
-   integer :: len,last,nseg,i,m,n
+   integer :: lngth,last,nseg,i,m,n
 !-----------------------------------------------------------------------
 !  fill in missing values by linear interpolating
 
@@ -906,11 +906,11 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
       base(:)=99999.
       slop(:)=99999.
 
-      len=size(a,1)
+      lngth=size(a,1)
       last=-1
       nseg=1
 
-      do i=1,len
+      do i=1,lngth
           if ( mask(i) < 0.50 ) then
               if (last == 1) then
                  m1(nseg)=i
@@ -932,8 +932,8 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 
       if ( m1(1) == 99999 .and. m2(nseg) == 99999) then
           m1(1)=1
-          m2(nseg)=len
-          mbas(1)=mbas(nseg)-len
+          m2(nseg)=lngth
+          mbas(1)=mbas(nseg)-lngth
           base(1)=base(nseg)
           slop(1)=(a(m2(1)+1)-base(1))/float(m2(1)+1-mbas(1))
           slop(nseg)=slop(1)
@@ -941,12 +941,12 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
       if ( m1(1) == 99999 ) then
           m1(1)=1
           mbas(1)=0
-          base(1)=a(len)
+          base(1)=a(lngth)
           slop(1)=(a(m2(1)+1)-base(1))/float(m2(1)+1-mbas(1))
       endif
       if ( m2(nseg) == 99999 ) then
-          m2(nseg)=len
-          slop(nseg)=(a(1)-base(nseg))/float(len+1-mbas(nseg))
+          m2(nseg)=lngth
+          slop(nseg)=(a(1)-base(nseg))/float(lngth+1-mbas(nseg))
       endif
 
       do n=1,nseg
@@ -977,7 +977,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !           e.g., ss ** weight (default: weight = 1)
 !  sigma  = sigma or eta/step-mtn coordinate (default: sigma = .false.)
 !-----------------------------------------------------------------------
-   integer :: k, n, km, len, len1, lenc, iverbose, nlpf
+   integer :: k, n, km, lngth, len1, lenc, iverbose, nlpf
    real    :: rlat,  dtr, hpi, filter_lats
 
 !  integer :: hsg, heg, hs, he, vsg, veg, vs, ve
@@ -1068,8 +1068,8 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 !     ----- num lon points and max wave number ----
 !     (assume same number of x-points for both Tmp and Vel grids)
 
-      len  = Hgrid%Tmp%ie - Hgrid%Tmp%is + 1
-      len1 = len
+      lngth  = Hgrid%Tmp%ie - Hgrid%Tmp%is + 1
+      len1 = lngth
 !     east-most box in zonal row needs one more point
 !     this is used to store the latitude value
       if (Hgrid%Tmp%ie == Hgrid%Tmp%ieg) len1 = len1 + 1
@@ -1078,11 +1078,11 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
       km   = leng/2
       lenc = km+1
 
-      Control % Tmp % len  = len
+      Control % Tmp % len  = lngth
       Control % Tmp % len1 = len1
       Control % Tmp % leng = leng
       Control % Tmp % lenc = lenc
-      Control % Vel % len  = len
+      Control % Vel % len  = lngth
       Control % Vel % len1 = len1
       Control % Vel % leng = leng
       Control % Vel % lenc = lenc
@@ -1101,7 +1101,7 @@ integer, intent(in),    dimension(:)    :: put_pe, put_len, &
 
    mxfft = max (Control%Vel%nlpf_s, Control%Vel%nlpf_n)
 
-   allocate (Control%slm(len,mxfft), Control%clm(len,mxfft))
+   allocate (Control%slm(lngth,mxfft), Control%clm(lngth,mxfft))
 
    if (mxfft > 0) then
          Control%slm(:,1) = sin(Hgrid%Vel%tlm(Hgrid%Vel%is:Hgrid%Vel%ie,Hgrid%Vel%js))

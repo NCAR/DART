@@ -377,7 +377,7 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
                 Dynam%Hgrid%jlb:Dynam%Hgrid%jub, Dynam%Vgrid%nlev+1)  &
                 :: phalf, etadot
 
-   real    :: fadv, tdt_adj, scale
+   real    :: fadv, tdt_adj, rscale
    integer :: i, k, n, m, nt
 !-----------------------------------------------------------------------
 !    ---- definition of local variables ----
@@ -593,8 +593,8 @@ real, dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
 
 !  ---- scale tendencies before physics for time step difference ----
 
-   scale = 1.0 / float(Dynam%nt_adj*Dynam%nt_adv)
-   call prog_var_times_scalar (Var_dt, scale)
+   rscale = 1.0 / float(Dynam%nt_adj*Dynam%nt_adv)
+   call prog_var_times_scalar (Var_dt, rscale)
 
 !-----------------------------------------------------------------------
 

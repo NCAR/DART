@@ -139,7 +139,7 @@
           call mpp_error( FATAL, 'MPP_TRANSMIT: you cannot transmit to ANY_PE using MPI.' )
 #endif
 
-      else if( to_pe.NE.NULL_PE )then	!no other valid cases except NULL_PE
+      else if( to_pe.NE.NULL_PE )then   !no other valid cases except NULL_PE
           call mpp_error( FATAL, 'MPP_TRANSMIT: invalid to_pe.' )
       end if
 

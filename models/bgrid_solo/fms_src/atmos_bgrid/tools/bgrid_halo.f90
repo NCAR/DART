@@ -54,7 +54,7 @@ integer, parameter, public :: TEMP = 21, UWND = 22, VWND = 23
 
 integer, parameter, public :: SOUTH = 1, NORTH = 2
 integer, parameter, public ::  WEST = 4,  EAST = 8
-integer, parameter         ::  ALL = SOUTH+NORTH+WEST+EAST
+integer, parameter         ::  SNWE = SOUTH+NORTH+WEST+EAST
 
 integer, parameter, public :: NOPOLE   = 16
 integer, parameter, public :: POLEONLY = 32
@@ -96,10 +96,10 @@ contains
 
 !  ----- check/set optional flag arguments ----
 
-   iflags = ALL
+   iflags = SNWE
    if (present(flags)) iflags = flags
 
-   if ( iflags <= 0 .or. iflags > ALL+NOPOLE+POLEONLY ) &
+   if ( iflags <= 0 .or. iflags > SNWE+NOPOLE+POLEONLY ) &
       call error_mesg ('update_halo in bgrid_halo_mod', &
                        'invalid value for flags', FATAL)
 
@@ -299,14 +299,14 @@ contains
 
 !---- updates boundaries for 2d arrays in horiz_grid_type -----
 
-     call update_halo (Hgrid, UWND, Hgrid % Vel % dx, ALL+NOPOLE)
+     call update_halo (Hgrid, UWND, Hgrid % Vel % dx, SNWE+NOPOLE)
      call update_halo (Hgrid, TEMP, Hgrid % Tmp % dx)
 
      call update_halo (Hgrid, TEMP, Hgrid % Tmp %  area)
      call update_halo (Hgrid, TEMP, Hgrid % Tmp % rarea)
 
-     call update_halo (Hgrid, UWND, Hgrid % Vel %  area, ALL+NOPOLE)
-     call update_halo (Hgrid, UWND, Hgrid % Vel % rarea, ALL+NOPOLE)
+     call update_halo (Hgrid, UWND, Hgrid % Vel %  area, SNWE+NOPOLE)
+     call update_halo (Hgrid, UWND, Hgrid % Vel % rarea, SNWE+NOPOLE)
 
  end subroutine horiz_grid_boundary
 
