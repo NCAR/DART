@@ -69,7 +69,7 @@ real(r8), intent(in) :: z_in, c
 real(r8)             :: comp_cov_factor
 
 real(r8) :: z, r
-integer  :: unit, ierr, io
+integer  :: iunit, ierr, io
 
 z = abs(z_in)
 
@@ -80,16 +80,16 @@ if(.not. namelist_initialized) then
    namelist_initialized = .true.
 
    if(file_exist('input.nml')) then
-      unit = open_file('input.nml', action = 'read')
+      iunit = open_file(file = 'input.nml', action = 'read')
       ierr = 1
 
       READBLOCK: do while(ierr /= 0)
-         read(unit, nml = cov_cutoff_nml, iostat = io)
+         read(iunit, nml = cov_cutoff_nml, iostat = io)
          if ( io < 0 ) exit READBLOCK          ! end-of-file
          ierr = check_nml_error(io, 'cov_cutoff_nml')
       enddo READBLOCK
 
-      call close_file(unit)
+      call close_file(iunit)
    endif
 endif
 !---------------------------------------------------------
