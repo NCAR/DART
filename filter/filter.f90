@@ -107,7 +107,7 @@ character(len = 129) :: obs_sequence_file_name = "obs_sequence", &
                         restart_in_file_name = 'filter_restart_in', &
                         restart_out_file_name = 'filter_restart_out'
 
-logical :: output_obs_diagnostics = .true.
+logical :: output_obs_diagnostics = .false.
 
 namelist /filter_nml/async, ens_size, cutoff, cov_inflate, &
    start_from_restart, output_restart, &
