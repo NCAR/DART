@@ -950,8 +950,6 @@ integer :: open_restart_read
 integer :: ios
 character(len=129) :: errstring
 
-integer :: i
-
 open_restart_read = get_unit()
 open(unit   = open_restart_read, &
      file   = trim(file_name),         &
