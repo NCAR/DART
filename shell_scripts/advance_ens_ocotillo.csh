@@ -34,6 +34,11 @@ endif
 echo "Time is "`date`
 echo "Directory is "`pwd`
 echo "This job runs on the following processors:"
+
+# First line of filter_control should have number of model states to be 
+# integrated
+set nensmbl = `head -1 filter_control`
+
 ### Define number of processors; # of lines in PBS_NODEFILE
 if ($?PBS_NODEFILE) then
    setenv NPROCS `wc -l < $PBS_NODEFILE`
@@ -41,11 +46,11 @@ else
    setenv PBS_NODEFILE nodefile
    rm -f $PBS_NODEFILE
    set startnode = 1
-   set endnode = 10
+   set endnode = 14
    set inode = $startnode
-   set NPROCS = 20
+   set NPROCS = 28
    set iproc = 1
-   while($iproc <= $NPROCS)
+   while($iproc <= $NPROCS & $iproc <= $nensmbl)
       echo node$inode >> $PBS_NODEFILE
       if ($inode == $endnode) then
          set inode = $startnode
@@ -56,11 +61,8 @@ else
    end
 endif
 cat "$PBS_NODEFILE"
-echo This_job_has_allocated $NPROCS nodes
-
-# First line of filter_control should have number of model states to be 
-# integrated
-set nensmbl = `head -1 filter_control`
+@ iproc --
+echo This_job_has_allocated $iproc nodes
 
 # figure # batches of runs to do, from # ensemble members and # processors
 @ nbatch = $nensmbl / $NPROCS
