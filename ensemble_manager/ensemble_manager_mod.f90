@@ -78,8 +78,11 @@ character(len = 129) :: msgstring
 
 call register_module(source, revision, revdate)
 
-! Read namelist for run time control
+! Set the global storage bounds
+ens_size = ens_size_in
+model_size = model_size_in
 
+! Read namelist for run time control
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
@@ -110,10 +113,6 @@ if(.not. in_core) then
       end do
    end do
 endif
-
-! Set the global storage bounds
-ens_size = ens_size_in
-model_size = model_size_in
 
 ! Initialize the storage and read in from restart file if needed
 if(in_core) then 
