@@ -1,14 +1,10 @@
 #!/bin/csh
 #
 # script to run an experiment with existing intial conditions
-# Interesting case #1
-# identity obs for all 9 state vars, var = 1.0, obdelta =3600s
-#     state vars 1,2,3  --> filter divergence
-#     rerun with cov_inflate = 1.01, 1.05, 0.99 ...
 #======================================================================
 # Find the project and build it, if need be.
 #======================================================================
-                                                                                
+
 if ( ${?DART_HOME} ) then
    if ( -d $DART_HOME ) then
       setenv DARTHOME $DART_HOME
@@ -28,10 +24,18 @@ endif
 echo "DART project directory is $DARTHOME"
 sleep 2
 
-set Model = 9var
+set Model = bgrid_solo
 
 cd ${DARTHOME}/models/${Model}/work
 
+if !( -e column_rand ) then    ;# interactively builds a set of randomly-
+   csh mkmf_column_rand        ;# located column observations
+   make || exit 1              ;# specify 5 vertical levels
+endif                          ;# create_obs_set_def < column_rand.out
+if !( -e ps_rand_local ) then  ;# randomly-located surface pressure obs
+   csh mkmf_ps_rand_local      ;# can be confined to a lat/lon rectangle
+   make || exit 1              ;# create_obs_set_def < ps_rand.out
+endif
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
    make || exit 1
@@ -51,50 +55,23 @@ endif
 \rm -f *.o *.d *.mod Makefile
 
 set SAVEME = input.nml.$$
+set NICELEVEL = +3
 
 #======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
 #======================================================================
 
-cat << ENDofTask01 > create_obs_set_def.in
-set_def.out
-1           ;# number of unique observation SETS to define
-3           ;# number of observations in set 1 (x,y,z)
-1.0         ;# error variance for set 1, observation 1 (X)
-1           ;# 1 == state variable 1 (X)
-1.0         ;# error variance for set 1, observation 1 (Y)
-2           ;# 1 == state variable 2 (Y)
-1.0         ;# error variance for set 1, observation 1 (Z)
-3           ;# 1 == state variable 3 (Z)
-ENDofTask01
+echo "1800          of observations"                  > ps_rand_local.in
+echo "10000  Pa     obs error variance (10,000=1mb)" >> ps_rand_local.in
+echo "-90           lower latitude [-90,xxx]"        >> ps_rand_local.in
+echo " 90           upper latitude [xxx, 90]"        >> ps_rand_local.in
+echo "  0           west longitude [0,360]"          >> ps_rand_local.in
+echo "360           east longitude [0,360]"          >> ps_rand_local.in
 
-set obs_error_variance = 1.0
-if ( ${?ObsError} ) then
-   set obs_error_variance = $ObsError
-endif
+./ps_rand_local < ps_rand_local.in
 
-# This sequence block is not great. It will NOT handle
-# arbitrary sets of state variables. You can observe
-# the first N, or #N, but not 3,6,9 for example.
-# For that, you must run interactively.
-
-set num_obs_set_1 = 9
-if ( ${?NumObsSet1} ) then
-   set num_obs_set_1 = $NumObsSet1
-endif
-@ loopvar = 1
-
-echo "set_def.out"                  > create_obs_set_def.in
-echo "1"                           >> create_obs_set_def.in
-echo $num_obs_set_1                >> create_obs_set_def.in
-while ($loopvar <= $num_obs_set_1)
-   echo $obs_error_variance        >> create_obs_set_def.in
-   echo $loopvar                   >> create_obs_set_def.in
-   @ loopvar++
-end
-
-./create_obs_set_def < create_obs_set_def.in
+./create_obs_set_def < ps_rand.out
 
 if ( $status > 0 ) then
    echo "ERROR: running create_obs_set_def bombed ..."
@@ -104,19 +81,21 @@ endif
 #======================================================================
 # Simulate a particular observing system:
 # 2) declare sequences of observation sets
+# 21600 -> every  6 hours
+# 43200 -> every 12 hours
 #======================================================================
-set num_obs = 4000
+set num_obs = 20
 set ob_day_1 = 0
-set ob_seconds_1 = 3600
-if ( ${?NumObs} ) then
-   set num_obs = $NumObs
-endif
-if ( ${?ObDay1} ) then
-   set ob_day_1 = $ObDay1
-endif
-if ( ${?ObSec1} ) then
-   set ob_seconds_1 = $ObSec1
-endif
+set ob_seconds_1 = 21600
+#if ( ${?NumObs} ) then
+#   set num_obs = $NumObs
+#endif
+#if ( ${?ObDay1} ) then
+#   set ob_day_1 = $ObDay1
+#endif
+#if ( ${?ObSec1} ) then
+#   set ob_seconds_1 = $ObSec1
+#endif
 
 echo "set_def.out"            > create_obs_sequence.in
 echo "1"                     >> create_obs_sequence.in
@@ -139,11 +118,6 @@ endif
 #======================================================================
 
 cat << ENDofTask03 > input.nml
-&model_nml
-   g = 8.0,
-   deltat = 0.0833333333333333
-&end
-
 &perfect_model_obs_nml
    async = .false.,
    obs_seq_in_file_name = "obs_seq.in",
@@ -156,9 +130,56 @@ cat << ENDofTask03 > input.nml
    init_time_seconds = 0,
    output_interval = 1
 &end
+
+&main_nml
+   days   = 10,
+   dt_atmos = 3600,
+   output_state_vector = .false. /
+
+&fms_nml
+   domains_stack_size = 90000  /
+
+&bgrid_cold_start_nml
+   nlon = 60, nlat = 30, nlev = 5,
+   equal_vert_spacing = .true. /
+
+&hs_forcing_nml
+   delh      =  60.,
+   t_zero    = 315.,
+   t_strat   = 200.,
+   delv      =  10.,
+   eps       =   0.,
+   ka        = -40.,
+   ks        =  -4.,
+   kf        =  -1.,
+   sigma_b   =  .7,
+   do_conserve_energy = .false. /
+
+&bgrid_core_driver_nml
+   damp_coeff_wind   = 0.10,
+   damp_coeff_temp   = 0.10,
+   damp_coeff_tracer = 0.10,
+   advec_order_wind   = 4,
+   advec_order_temp   = 2,
+   advec_order_tracer = 2,
+   num_sponge_levels = 1,
+   sponge_coeff_wind   = 1.00,
+   sponge_coeff_temp   = 1.00,
+   sponge_coeff_tracer = 1.00,
+   num_fill_pass = 2,
+   decomp = 0,0,
+   num_adjust_dt = 3,
+   num_advec_dt  = 3,
+   halo = 1,
+   do_conserve_energy = .false. /
+
+&bgrid_integrals_nml
+   file_name  = 'dynam_integral.out',
+   time_units = 'days',
+   output_interval = 1.00   /
 ENDofTask03
 
-./perfect_model_obs
+nice $NICELEVEL ./perfect_model_obs
  
 if ( $status > 0 ) then
    echo "ERROR: perfect_model_obs (synthetic) bombed ..."
@@ -179,7 +200,7 @@ endif
 
 set async = .false.
 set ens_size = 20
-set cutoff = 22222222.0
+set cutoff = 0.2
 set cov_inflate = 1.00
 set start_from_restart = .true.
 set output_restart = .true.
@@ -190,19 +211,19 @@ set init_time_days = 0
 set init_time_seconds = 0
 set output_state_ens_mean = .true.
 set output_state_ens_spread = .true.
-set num_output_ens_members = 20
+set num_output_ens_members = 10
 set output_interval = 1
 
-if ( ${?NumEns} ) then
-   set ens_size = $NumEns
-   set num_output_ens_members = $NumEns
-endif
-if ( ${?CovInflate} ) then
-   set cov_inflate = $CovInflate
-endif
-if ( ${?Cutoff} ) then
-   set cutoff = $Cutoff
-endif
+#if ( ${?NumEns} ) then
+#   set ens_size = $NumEns
+#   set num_output_ens_members = $NumEns
+#endif
+#if ( ${?CovInflate} ) then
+#   set cov_inflate = $CovInflate
+#endif
+#if ( ${?Cutoff} ) then
+#   set cutoff = $Cutoff
+#endif
 
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
@@ -226,7 +247,7 @@ echo " "                                                       >> filter.nml
 
 cat filter.nml >> input.nml
 
-./filter
+nice $NICELEVEL ./filter
 
 if ( $status > 0 ) then
    mv $SAVEME input.nml

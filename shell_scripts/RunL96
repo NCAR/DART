@@ -8,9 +8,8 @@
 #======================================================================
 # Find the project and build it, if need be.
 #======================================================================
-                                                                                
+
 if ( ${?DART_HOME} ) then
-   echo "dart home is $DART_HOME"
    if ( -d $DART_HOME ) then
       setenv DARTHOME $DART_HOME
    else
@@ -26,6 +25,8 @@ else
    echo "no DART project"
    exit
 endif
+echo "DART project directory is $DARTHOME"
+sleep 2
 
 set Model = lorenz_96
 
@@ -47,7 +48,7 @@ if !( -e filter ) then
    csh mkmf_filter
    make || exit 1
 endif
-\rm -f *.o *.mod Makefile
+\rm -f *.o *.d *.mod Makefile
 
 set SAVEME = input.nml.$$
 
@@ -136,6 +137,8 @@ endif
 # Simulate a particular observing system
 # 4) Filter
 #    creates files Prior_Diag.nc, Posterior_Diag.nc
+#======================================================================
+# Set defaults
 #======================================================================
 
 set async = .false.

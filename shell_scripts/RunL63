@@ -6,7 +6,6 @@
 #======================================================================
 
 if ( ${?DART_HOME} ) then
-   echo "dart home is $DART_HOME"
    if ( -d $DART_HOME ) then
       setenv DARTHOME $DART_HOME
    else
@@ -21,7 +20,9 @@ else if ( -d /home/thoar/DART ) then
 else
    echo "no DART project"
    exit
-endif 
+endif
+echo "DART project directory is $DARTHOME"
+sleep 2
 
 set Model = lorenz_63
 
@@ -43,7 +44,7 @@ if !( -e filter ) then
    csh mkmf_filter
    make || exit 1
 endif
-\rm -f *.o *.mod Makefile
+\rm -f *.o *.d *.mod Makefile
 
 set SAVEME = input.nml.$$
 
@@ -52,32 +53,20 @@ set SAVEME = input.nml.$$
 # 1) declare an observation set definition
 #======================================================================
 
-cat << ENDofTask01 > create_obs_set_def.in
-set_def.out
-1           ;# number of unique observation SETS to define
-3           ;# number of observations in set 1 (x,y,z)
-1.0         ;# error variance for set 1, observation 1 (X)
-1           ;# 1 == state variable 1 (X)
-1.0         ;# error variance for set 1, observation 1 (Y)
-2           ;# 1 == state variable 2 (Y)
-1.0         ;# error variance for set 1, observation 1 (Z)
-3           ;# 1 == state variable 3 (Z)
-ENDofTask01
-
 set obs_error_variance = 1.0
 if ( ${?ObsError} ) then
    set obs_error_variance = $ObsError
 endif
 
 echo "set_def.out"        > create_obs_set_def.in
-echo "1"                 >> create_obs_set_def.in
-echo "3"                 >> create_obs_set_def.in
-echo $obs_error_variance >> create_obs_set_def.in
-echo "1"                 >> create_obs_set_def.in
-echo $obs_error_variance >> create_obs_set_def.in
-echo "2"                 >> create_obs_set_def.in
-echo $obs_error_variance >> create_obs_set_def.in
-echo "3"                 >> create_obs_set_def.in
+echo "1       # of unique observation sets to define" >> create_obs_set_def.in
+echo "3       # of observations in set 1 (x,y,z)"     >> create_obs_set_def.in
+echo $obs_error_variance                              >> create_obs_set_def.in
+echo "1       1 == state variable 1 (X)"              >> create_obs_set_def.in
+echo $obs_error_variance                              >> create_obs_set_def.in
+echo "2       1 == state variable 1 (Y)"              >> create_obs_set_def.in
+echo $obs_error_variance                              >> create_obs_set_def.in
+echo "3       1 == state variable 1 (Z)"              >> create_obs_set_def.in
 
 ./create_obs_set_def < create_obs_set_def.in
 
@@ -163,7 +152,7 @@ endif
 
 set async = .false.
 set ens_size = 20
-set cutoff = 0.0
+set cutoff = 22222222.0
 set cov_inflate = 1.00
 set start_from_restart = .true.
 set output_restart = .true.
