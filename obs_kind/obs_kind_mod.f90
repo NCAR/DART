@@ -178,7 +178,8 @@ if ( .not. module_initialized ) call initialize_module
 ! ADD IN THESE BUFR KINDS ???
 ! Also allow the generic u, v, ps, t, kinds below, but rewrite them to be
 ! consistent with model types???
-write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4, q = 5'
+write(*, *) 'input obs kind: u = 1, v = 2, ps = 3, t = 4, qv = 5, p = 6'
+write(*, *) 'Td = 10, Vr = 100, Ref = 101'
 write(*, *) 'input -1 times the state variable index for an identity observation'
 read(*, *) kind%index
 
