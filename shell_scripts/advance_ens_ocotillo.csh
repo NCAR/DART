@@ -92,5 +92,5 @@ all_elements_done:
 wait
 
 # 
-# signal to async_filter.csh to continue
+# signal to async_filter.csh (if async=1) or to Aadvance_state (if async=2) to continue
 rm -f $PBS_O_WORKDIR/batchflag
