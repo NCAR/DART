@@ -578,15 +578,16 @@ var_ratio = sq_err / tot_var
 
 end subroutine look_for_bias
 
-!===========================================================================
+!========================================================================
 
 ! DONT USE THIS RIGHT NOW
-subroutine seq_filter_assim(ens, ens_obs, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
-   keys, obs_val_index, confidence_slope, cutoff, save_reg_series, reg_series_unit)
+subroutine seq_filter_assim(ens, ens_obs, compute_obs, ens_size, &
+     num_obs_in_set, num_groups, seq, keys, obs_val_index, &
+     confidence_slope, cutoff, save_reg_series, reg_series_unit)
 
+integer, intent(in) :: ens_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
 real(r8), intent(inout) :: ens(:, :), ens_obs(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs(num_obs_in_set)
-integer, intent(in) :: ens_size, num_groups, keys(num_obs_in_set), num_obs_in_set
 integer, intent(in) :: obs_val_index, reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
 real(r8), intent(in) :: confidence_slope, cutoff
@@ -794,7 +795,7 @@ subroutine filter_assim_region(num_domains, my_domain, domain_size, ens_size, mo
    save_reg_series, reg_series_unit, ens, ens_obs_in, compute_obs, seq, keys, my_state)
 
 integer, intent(in) :: num_domains, my_domain, domain_size
-integer, intent(in) :: ens_size, model_size, num_groups, keys(num_obs_in_set), num_obs_in_set
+integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
 real(r8), intent(inout) :: ens(ens_size, domain_size)
 real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs(num_obs_in_set)
@@ -1048,9 +1049,9 @@ subroutine filter_assim(ens_obs, compute_obs_in, ens_size, model_size, num_obs_i
    num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
    obs_sequence_in_name)
 
+integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
 real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs_in(num_obs_in_set)
-integer, intent(in) :: ens_size, model_size, num_groups, keys(num_obs_in_set), num_obs_in_set
 integer, intent(in) :: reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
 real(r8), intent(in) :: confidence_slope, cutoff
