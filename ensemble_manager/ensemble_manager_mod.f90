@@ -30,11 +30,13 @@ public init_ensemble_manager, get_ensemble_member, put_ensemble_member, &
    update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
    get_ensemble_region, put_ensemble_region, get_ensemble_time, Aadvance_state, &
    ensemble_type, get_region_by_number, put_region_by_number, &
-   transpose_ens_to_regions, transpose_regions_to_ens
+   transpose_ens_to_regions, transpose_regions_to_ens, &
+   is_ens_in_core, ens, ens_mean, ens_spread
 
 ! This type gives a handle to an ensemble, not currently playing a role but
 ! allows later implementations to possibly support multiple ensembles open at once
 type ensemble_type
+   private
    logical :: null_variable
 end type ensemble_type
 
@@ -48,7 +50,7 @@ integer :: ens_size, model_size
 
 character(len = 129) :: errstring
 ! File name for the temporary files; has extensions added
-character(len = 21) :: ens_file_name = 'ens_manager_ens_file'
+character(len = 20) :: ens_file_name = 'ens_manager_ens_file'
 character(len = 20) :: reg_file_name = 'ens_manager_reg_file'
 
 !-----------------------------------------------------------------
@@ -77,7 +79,7 @@ subroutine init_ensemble_manager(ens_handle, ens_size_in, &
 
 type(ensemble_type), intent(out)            :: ens_handle
 integer, intent(in)                         :: ens_size_in, model_size_in
-character(len = 129), intent(in), optional :: file_name
+character(len = 129), intent(in), optional  :: file_name
 type(time_type), intent(in), optional       :: init_time
 
 integer :: iunit, i, ierr, io, seq_unit
@@ -148,7 +150,8 @@ if(present(file_name)) then
          !open(unit = seq_unit, file = this_file_name, access = 'direct', &
          !   form = 'unformatted', status = 'replace', recl = req_rec_length)
 
-         write(seq_unit) ens(1, :)
+         !write(seq_unit) ens(1, :)
+         write(seq_unit) ens
          close(seq_unit)
       endif
 
@@ -160,6 +163,9 @@ if(present(file_name)) then
    
    if(single_restart_file_in) call close_restart(iunit)
 endif
+
+! Set something into ensemble handle even though it's not currently used to avoid warnings
+ens_handle%null_variable = .false.
 
 end subroutine init_ensemble_manager
 
@@ -572,37 +578,38 @@ integer :: iunit, i, seq_unit
 character(len = 129) :: this_file_name, command_string
 character(len = 4) :: extension
 
-if(single_restart_file_out) iunit = open_restart_write(file_name)
+if(present(file_name)) then
 
-do i = 1, ens_size
+   if(single_restart_file_out) iunit = open_restart_write(file_name)
+
+   do i = 1, ens_size
    
-   if(.not. single_restart_file_out) then
-      write(extension, 99) i
-      99 format(i4.4)
-      this_file_name = trim(file_name) // '.' // extension
-      iunit = open_restart_write(this_file_name)
-   endif
+      if(.not. single_restart_file_out) then
+         write(extension, 99) i
+99       format(i4.4)
+         this_file_name = trim(file_name) // '.' // extension
+         iunit = open_restart_write(this_file_name)
+      endif
 
-   if(in_core) then
-      call awrite_state_restart(ens_time(i), ens(i, :), iunit)
-   else
-      this_file_name = get_disk_file_name(ens_file_name, i)
-      seq_unit = get_unit()
-      open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
+      if(in_core) then
+         call awrite_state_restart(ens_time(i), ens(i, :), iunit)
+      else
+         this_file_name = get_disk_file_name(ens_file_name, i)
+         seq_unit = get_unit()
+         open(unit = seq_unit, file = this_file_name, access = 'sequential', form = 'unformatted')
 
-      !open(unit = seq_unit, file = this_file_name, access = 'direct', &
-      !      form = 'unformatted', recl = req_rec_length)
+         read(seq_unit) ens
+         close(seq_unit)
+         call awrite_state_restart(ens_time(i), ens(1, :), iunit)
+      endif
 
-      read(seq_unit) ens
-      close(seq_unit)
-      call awrite_state_restart(ens_time(i), ens(1, :), iunit)
-   endif
+      if(.not. single_restart_file_out) call close_restart(iunit)
 
-   if(.not. single_restart_file_out) call close_restart(iunit)
+   end do
 
-end do
+   if(single_restart_file_out) call close_restart(iunit)
 
-if(single_restart_file_out) call close_restart(iunit)
+endif
 
 ! Free up the allocated storage
 deallocate(ens, ens_time)
@@ -613,7 +620,6 @@ if(spread_allocated) deallocate(ens_spread)
 command_string = 'rm -f ' // trim(ens_file_name) // '.*'
 call system(command_string)
 command_string = 'rm -f ' // trim(reg_file_name) // '.*'
-!write(*, *) 'command string is ', command_string
 call system(command_string)
 
 end subroutine end_ensemble_manager
@@ -708,10 +714,10 @@ do i = 1, ens_size
          call error_handler(E_ERR,'Aadvance_state','Use less than 10000 model states.',source,revision,revdate)
       endif
 
- 11   format(a21, i1)
- 21   format(a21, i2)
- 31   format(a21, i3)
- 41   format(a21, i4)
+ 11   format(a20, i1)
+ 21   format(a20, i2)
+ 31   format(a20, i3)
+ 41   format(a20, i4)
       write(*, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
       write(logfileunit, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
 
@@ -1059,6 +1065,19 @@ else if(index == -1) then
 endif
 
 end function get_disk_file_name
+
+!-----------------------------------------------------------------
+
+function is_ens_in_core()
+
+! Possible concerns about direct access to a namelist variable,
+! Use a function to return whether the ensemble is stored in core or not.
+
+logical :: is_ens_in_core
+
+is_ens_in_core = in_core
+
+end function is_ens_in_core
 
 
 end module ensemble_manager_mod
