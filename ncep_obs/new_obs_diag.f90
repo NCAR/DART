@@ -166,7 +166,7 @@ character(len = 6)  day_num(999)          !! total days = 999
 character(len = 129) :: WgesName, WanlName, TgesName, TanlName, msgstring
 character(len = 129) :: QgesName, QanlName, PgesName, PanlName
 integer :: obs_year, obs_month, obs_day, obs_hour, obs_min, obs_sec &
-           ,beg_hour, end_hour, end_hour01, obs_day01
+           ,beg_hour, end_hour, end_hour01, obs_day01, obs_day00
 
 data level_index / 1, 3, 4, 5, 9/
 !   level: 1=1000,2=850,3=700,4=500,5=200
@@ -206,7 +206,7 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
 
   iunit = get_unit()
   open(iunit, file='obs_diag.in', form='formatted')
-  read(iunit,*) obs_year, obs_month, obs_day
+  read(iunit,*) obs_year, obs_month, obs_day00
   read(iunit,*) tot_days, iskip
   read(iunit,*) level
   read(iunit,*) keep_ind
@@ -311,7 +311,7 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
 !-------------------------------
   DayLoop : do iday=1, tot_days
 !-------------------------------
-      obs_day = obs_day + (iday-1)
+      obs_day = obs_day00 + (iday-1)
 
      write(msgstring,*)'opened ', day_num(iday), trim(obs_sequence_out_name)
      call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
