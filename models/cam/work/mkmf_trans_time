@@ -1,2 +1,2 @@
-../../../mkmf/mkmf -p trans_time -t ../../../mkmf/mkmf.template.ifc \
+../../../mkmf/mkmf -p trans_time -t ../../../mkmf/mkmf.template.anchorage \
 -c "-Duse_netCDF" -a "../../.." path_names_trans_time
