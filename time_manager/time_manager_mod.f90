@@ -661,94 +661,67 @@ subroutine get_date_gregorian(time, year, month, day, hour, minute, second)
 
 implicit none
 
+
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
 integer :: m,t,dyear,dmonth,dday,nday,nleapyr,nfh,nhund,nfour
-integer ndiy,nex,ibaseyr
+integer ndiy,nex,ibaseyr, num_days, iyear, days_this_month, days_this_year
 logical :: leap
 
-ibaseyr= 1601
-! set nday initially to 109207 (the # of days from 1/1/1601 to 1/1/1900)
-! 227 years of 365 days + 72 leap years
-nday=109207
+integer, parameter :: base_year= 1601
 
-! time in seconds from base_year
-t = time%seconds
-nday=nday+t/(60*60*24)
 
-! find number of four hundred year periods
-nfh=nday/146097
-nday=modulo(nday,146097)
-
-! find number of hundred year periods
-nhund= nday/36524
-if(nhund.gt.3) then
-  nhund=3
-  nday=36524
-else
-  nday=modulo(nday,36524)
-endif
-
-! find number of four year periods
-nfour=nday/1461
-nday=modulo(nday,1461)
-nex=nday/365
-if(nex.gt.3) then
- nex=3
- nday=365
-else
- nday=modulo(nday,365)
-endif
+! Do this the inefficient inelegant way for now, top is 10000 years
+num_days = time%days
+do iyear = base_year, 10000
 
 ! Is this a leap year? Gregorian calandar assigns each year evenly
 ! divisible by 4 that is not a century year unevenly divisible by 400
 ! as a leap-year. (i.e. 1700,1800,1900 are not leap-years, 2000 is)
-
-leap=(nex.eq.3).and.((nfour.ne.24).or.(nhund.eq.3))
- if (leap) then
-  ndiy=366
- else
-  ndiy=365
- endif
-year=ibaseyr+400*nfh+100*nhund+4*nfour+nex
-nday=nday+1
-! find month 
-month=0
-do m=1,12
- if (leap.and.(m.eq.2)) then
-  if (nday.le. (days_per_month(2)+1)) then
-   month = m
-   go to 10
-  else
-   nday = nday - (days_per_month(2)+1)
-   month = m
-   t = t -  (60*60*24 * (days_per_month(2)+1))
+  leap=(modulo(iyear,4).eq.0)
+  if((modulo(iyear,100).eq.0).and.(modulo(iyear,400).ne.0))then
+   leap=.false.
   endif
- else 
-  if (nday.le. days_per_month(m)) then
-   month = m
-   go to 10
-  else
-   nday = nday - days_per_month(m)
-   month = m
-   t = t -  (60*60*24 * days_per_month(month))
-  endif
- endif
-enddo
-10 continue
 
-! find day, hour,minute and second
+   if(leap) then
+      days_this_year = 366
+   else
+      days_this_year = 365
+   endif
 
-dday   = t / (60*60*24)
-day    = nday
-t      = t - dday * (60*60*24)
+   if(num_days >= days_this_year) then
+      num_days = num_days - days_this_year
+   else
+      year = iyear
+      goto 111
+   endif
+
+end do
+
+111 continue
+
+
+! find month and day
+do m = 1, 12
+   month = m
+   days_this_month = days_per_month(m)
+   if(leap .and. m == 2) days_this_month = 29
+   if(num_days < days_this_month) exit
+   num_days = num_days - days_this_month
+end do
+
+
+day = num_days + 1
+
+
+! Find hour,minute and second
+t      = time%seconds
 hour   = t / (60 * 60)
 t      = t - hour * (60 * 60)
 minute = t / 60
 second = t - 60 * minute
 
-!if(leap) print*,'1:t,s,m,h,d,m,y=',time,second,minute,hour,day,month,year
 
 end subroutine get_date_gregorian
 
@@ -928,8 +901,8 @@ integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_gregorian
 
 integer :: oseconds, ominutes, ohours
-integer :: days, m, nleapyr
-integer :: base_year = 1900
+integer :: ndays, m, nleapyr
+integer :: base_year = 1601
 logical :: leap
 
 ! Missing optionals are set to 0
@@ -943,33 +916,40 @@ ohours   = 0; if(present(hours  ))   ohours = hours
 if(    oseconds > 59 .or. oseconds < 0 .or. &
        ominutes > 59 .or. ominutes < 0 .or. &
        ohours   > 23 .or. ohours   < 0 .or. &
-       day      > 31 .or. day      < 1 .or. &
+                          day      < 1 .or. &
        month    > 12 .or. month    < 1 .or. &
                           year     < base_year) &
       call error_handler('Invalid date in set_date_gregorian')
 
-! QJLA ... above check does not work for Feb 30 ... etc.
+if(month /= 2 .and. day > days_per_month(month)) &
+   call error_handler('Invalid day in set_date_gregorian')
 
 ! Is this a leap year? Gregorian calandar assigns each year evenly
 ! divisible by 4 that is not a century year unevenly divisible by 400
 ! as a leap-year. (i.e. 1700,1800,1900 are not leap-years, 2000 is)
-
   leap=(modulo(year,4).eq.0)
   if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
    leap=.false.
   endif
 
-! compute number of leap years from base_year
+! Finish checking for day specication errors
+if(month == 2 .and. (day > 29 .or. ((.not. leap) .and. day > 28))) &
+   call error_handler('Invalid number of days in month 2 in set_date_gregorian')
 
-nleapyr=((year-1)-base_year)/4-((year-1)-base_year)/100+((year-1)-1600)/400
-days = 0
+
+! compute number of leap years fully past since base_year
+
+nleapyr = (year - base_year) / 4 - (year - base_year) / 100 + (year - base_year) / 400
+
+! Count up days in this year
+ndays = 0
 do m=1,month-1
- days = days + days_per_month(m)
- if(leap.and.m.eq.2)days=days+1
+ ndays = ndays + days_per_month(m)
+ if(leap .and. m == 2) ndays = ndays + 1
 enddo
 
-set_date_gregorian%seconds = oseconds + 60*(ominutes + 60*(ohours + 24*((day - 1) + &
-        (days + 365*(year - base_year-nleapyr)+366*(nleapyr)))))
+set_date_gregorian%seconds = oseconds + 60*(ominutes + 60 * ohours)
+set_date_gregorian%days = day - 1 +  ndays + 365*(year - base_year - nleapyr) + 366*(nleapyr)
 
 end function set_date_gregorian
 
