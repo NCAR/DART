@@ -21,11 +21,11 @@ use      types_mod
 !use  utilities_mod, only : output_err, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
-
 private
 
 public location_type, get_dist, get_location, set_location, &
-       write_location, read_location, interactive_location, nc_write_location
+       write_location, read_location, interactive_location, nc_write_location, &
+       LocationDims, LocationName, LocationLName
 
 type location_type
    private
@@ -35,18 +35,32 @@ end type location_type
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 
-
-! PI and other universal constants should be defined consistently in a 
-! single module:
-real(r8), parameter :: pi = 3.141592654
-
-
 ! CVS Generated file description for error handling, do not edit
 character(len = 129), parameter :: &
    e_src = "$Source$", &
    e_rev = "$Revision$", &
    e_dat = "$Date$", &
    e_aut = "$Author$"
+
+! There needs to be some sort of public metadata for the location module.
+! The number of dimensions, the name of each dimension, that sort of thing.
+! TJH Sept. 16, 2002
+!
+!type location_meta
+!   integer             :: ndims = 3
+!   character (len=129) :: name = "loc3Dsphere"
+!   character (len=129) :: longname = "simple threed sphere locations: lon, lat, lev"
+!   character (len=129) :: rev = "$Revision$"
+!   character (len=129) :: dat = "$Date$"
+!   character (len=129) :: aut = "$Author$"
+!   character (len=129) :: src = &
+!   "$Source$"
+!end type location_meta
+
+integer,              parameter :: LocationDims = 3
+character(len = 129), parameter :: LocationName = "loc3Dsphere"
+character(len = 129), parameter :: LocationLName = &
+                                   "simple threed sphere locations: lon, lat, lev"
 
 
 contains
@@ -86,7 +100,8 @@ end function get_dist
 function get_location(loc)
 !---------------------------------------------------------------------------
 !
-! Given a location type, return the longitude, latitude and level
+! Given a location type (in radians), 
+! return the longitude, latitude (in degrees) and level 
 
 implicit none
 
@@ -202,7 +217,7 @@ type(location_type), intent(in) :: loc
 ! machine precision ???
 
 write(file, 11) 
-11 format('loc2s')
+11 format('loc2s')       ! TJH request
 write(file, *) loc%lon, loc%lat, loc%lev
 
 ! I need to learn how to do formatted IO with the types package
@@ -315,25 +330,27 @@ integer, intent(in)             :: ncFileID, LocationVarID
 type(location_type), intent(in) :: loc
 integer, intent(in)             :: start
 
-integer  :: status
-! double precision :: x
+call check(nf90_put_var(ncFileID, LocationVarID, loc%lon, (/ start, 1 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%lat, (/ start, 2 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%lev, (/ start, 3 /) ))
 
-! x      = loc%x    ! coerce to approved type
+contains
+  
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(status)
+    integer, intent ( in) :: status
 
-
-!!! COMMENT FOR TJH: NEED TO OUTPUT ALL THREE COMPONENTS of LOCATION type
-  status = nf90_put_var(ncFileID, LocationVarID, loc%lon, (/start/) )
-! status = nf_put_vara_double(ncFileID, LocationVarID, start, 1, x)
-
-if(status /= nf90_noerr) then
-   print *, trim(NF90_strerror(status))
-end if
+    if(status /= nf90_noerr) then
+      print *, trim(nf90_strerror(status))
+      print *,'location_mod:nc_write_location'
+      stop
+    end if
+  end subroutine check
 
 end subroutine nc_write_location
 
 
-
-!
 
 !
 !----------------------------------------------------------------------------

@@ -11,15 +11,15 @@ module assim_model_mod
 ! add capabilities needed by the standard assimilation methods.
 
 ! NEED TO ADD ON ONLY CLAUSES
-use location_mod, only : location_type, write_location, set_location, get_dist, &
-   read_location, get_location
+use location_mod, only : location_type, get_dist, write_location, read_location, &
+                         nc_write_location, LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod
 use utilities_mod, only : get_unit
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model, nc_write_locations 
+   end_model
 
 private
 
@@ -37,7 +37,7 @@ type assim_model_type
 !   private
    real(r8), pointer :: state_vector(:)
    type(time_type) :: time
-   integer :: model_size
+   integer :: model_size       ! TJH request
 end type assim_model_type
 
 ! Permanent class storage for model_size
@@ -84,10 +84,7 @@ subroutine static_init_assim_model()
 
 implicit none
 
-
 character(len=128) :: source,revision,revdate
-real(r8) :: x_loc
-integer :: i
 
 ! Change output to diagnostic output block ... 
 
@@ -98,9 +95,9 @@ revdate  = "$Date$"
 ! Change output to diagnostic output block ... 
 
 write(*,*)'assim_model attributes:'
-write(*,*)'   ',source
-write(*,*)'   ',revision
-write(*,*)'   ',revdate
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
 
 ! Call the underlying model's static initialization
 call static_init_model()
@@ -121,6 +118,20 @@ function init_diag_output(FileName, global_meta_data, &
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
+!
+! Time is a funny beast ... 
+! Many packages decode the time:units attribute to convert the offset to a calendar
+! date/time format. Using an offset simplifies many operations, but is not the
+! way we like to see stuff plotted. The "approved" calendars are:
+! gregorian or standard 
+!      Mixed Gregorian/Julian calendar as defined by Udunits. This is the default. 
+!  noleap   Modern calendar without leap years, i.e., all years are 365 days long. 
+!  360_day  All years are 360 days divided into 30 day months. 
+!  julian   Julian calendar. 
+!  none     No calendar. 
+!
+! location is another one ...
+!
 
 use typeSizes
 use netcdf
@@ -136,7 +147,8 @@ type(location_type) :: state_loc
 
 integer :: StateVarDimID, StateVarVarID     ! for each model parameter/State Variable
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
-integer ::     TimeDimID,     TimeVarID     ! duh ...
+integer ::     TimeDimID,     TimeVarID
+integer :: LocationDimID, LocationVarID
 integer :: MetadataDimID, MetadataVarID
 integer ::                   StateVarID     ! for ENTIRE Model State
 
@@ -148,23 +160,30 @@ end if
 model_size      = get_model_size()
 metadata_length = LEN(meta_data_per_copy(1))
 
-
 ! Create the file
 call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid = ncFileID))
 
- write(*,*)'Init_diag_output: ncFileID is ',ncFileID
- 
 ! Define the dimensions
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
-                                       len=model_size,               dimid = StateVarDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="copy",           &
-                                       len=copies_of_field_per_time, dimid = MemberDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="time",           &
-                                       len = nf90_unlimited,         dimid = TimeDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="metadatalength", &
-                                       len = metadata_length,        dimid = metadataDimID))
+call check(nf90_def_dim(ncid=ncFileID, &
+             name="metadatalength", len = metadata_length,        dimid = metadataDimID))
 
+call check(nf90_def_dim(ncid=ncFileID, &
+             name="StateVariable",  len=model_size,               dimid = StateVarDimID))
+
+call check(nf90_def_dim(ncid=ncFileID, &
+             name="locationrank",   len = LocationDims,           dimid = LocationDimID))
+
+call check(nf90_def_dim(ncid=ncFileID, &
+             name="copy",           len=copies_of_field_per_time, dimid = MemberDimID))
+
+call check(nf90_def_dim(ncid=ncFileID, &
+             name="time",           len = nf90_unlimited,         dimid = TimeDimID))
+
+!
 ! Create variables and attributes
+!
+
+!    State ID
 call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
                                      dimids=StateVarDimID, varid=StateVarVarID))
 call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
@@ -172,6 +191,7 @@ call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "nondimensional") 
 call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
 
 
+!    Copy ID
 call check(nf90_def_var(ncid=ncFileID, name="copy", xtype=nf90_int, dimids=MemberDimID, &
                                                                     varid=MemberVarID))
 call check(nf90_put_att(ncFileID, MemberVarID, "long_name", "ensemble member or copy"))
@@ -179,48 +199,68 @@ call check(nf90_put_att(ncFileID, MemberVarID, "units",     "nondimensional") )
 call check(nf90_put_att(ncFileID, MemberVarID, "valid_range", (/ 1, copies_of_field_per_time /)))
 
 
+!    Metadata for each Copy
 call check(nf90_def_var(ncid=ncFileID,name="CopyMetaData", xtype=nf90_char,    &
                         dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID))
 call check(nf90_put_att(ncFileID, metadataVarID, "long_name",       &
                         "Metadata for each copy/member"))
 
-! Time is a funny beast ... 
-! Many packages decode the time:units attribute to convert the offset to a calendar
-! date/time format. Using an offset simplifies many operations, but is not the
-! way we like to see stuff plotted. The "approved" calendars are:
-! gregorian or standard 
-!      Mixed Gregorian/Julian calendar as defined by Udunits. This is the default. 
-!  noleap   Modern calendar without leap years, i.e., all years are 365 days long. 
-!  360_day  All years are 360 days divided into 30 day months. 
-!  julian   Julian calendar. 
-!  none     No calendar. 
 
+!    Time -- the unlimited dimension
 call check(nf90_def_var(ncFileID, name="time", xtype=nf90_double, dimids=TimeDimID, &
                                                                   varid =TimeVarID) )
 call check(nf90_put_att(ncFileID, TimeVarID, "long_name", "time"))
 call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "gregorian"))
 call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
+call check(nf90_put_att(ncFileID, TimeVarID, "axis", "T"))
 call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
 
 
+!    The State 
 call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
                         dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
 call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
+
+!    The Locations  -- need to look at CF standards
+!    http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
+
+if ( LocationDims > 1 ) then
+   call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
+              dimids=(/ StateVarDimID, LocationDimID /), varid=LocationVarID) )
+else
+   call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
+              dimids=   StateVarDimID,                   varid=LocationVarID) )
+endif
+call check(nf90_put_att(ncFileID, LocationVarID, "long_name", LocationLName ))
 
 
 ! Global attributes
 call check(nf90_put_att(ncFileID, nf90_global, "title", global_meta_data))
 
+
 ! Leave define mode
 call check(nf90_enddef(ncfileID))
 
-! Write the dimension variables
+
+! Fill the dimension variables
 call check(nf90_put_var(ncFileID, MemberVarID,   (/ (i,i=1,copies_of_field_per_time) /) ))
 call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
-call nc_write_locations(ncFileID,FileName)    ! Each model_mod must write its own locations.
+write(*,*)'assim_model_mod:init_diag_output ... filling location variable.'
+! Fill the location variable
+do i = 1, model_size
+   call get_state_meta_data(i, state_loc)
+   call nc_write_location(ncFileID, LocationVarID, state_loc, start=i)
+
+   if (mod(i,1000) == 0 ) &
+      write(*,*)'assim_model_mod:init_diag_output writing loc ',i,' of ',model_size
+end do
+
 call check(nf90_sync(ncFileID))               ! sync to disk, but leave open
+
+! The time variable is filled as time progresses.
+! The state variable is filled similarly ...
 
 contains
 
@@ -231,6 +271,7 @@ contains
     
     if(status /= nf90_noerr) then 
       print *, trim(nf90_strerror(status))
+      print *,'assim_model_mod:init_diag_output'
       stop
     end if
   end subroutine check  

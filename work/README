@@ -42,12 +42,15 @@ normalized ratio is  1.0232953
  ../compile_it create_obs_set_def    ;# build the executable
  ./create_obs_set_def                ;# answer the questions -OR- modify &
                                      ;# redirect create_obs_set_def.in
+ ./create_obs_set_def < create_obs_set_def.in
 
 # Step 2: Create SEQUENCES of observation SETS
  rm create_obs_set_def.o                 ;# necessary 
  ../compile_it create_obs_sequence   ;# build the executable
  ./create_obs_sequence               ;# answer the questions -OR- modify &
                                      ;# redirect create_obs_sequence.in
+
+ ./create_obs_sequence < create_obs_sequence.in
 
 # Step 3: Populate the sequences
  rm create_obs_sequence.o

@@ -13,11 +13,12 @@ use      types_mod
 use  utilities_mod, only : output_err, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
-
 private
 
 public location_type, get_dist, get_location, set_location, &
-       write_location, read_location, interactive_location, nc_write_location
+       write_location, read_location, interactive_location, nc_write_location, &
+       LocationDims, LocationName, LocationLName
+
 
 type location_type
    private
@@ -34,6 +35,25 @@ character(len = 129), parameter :: &
    e_dat = "$Date$", &
    e_aut = "$Author$"
 
+! There needs to be some sort of public metadata for the location module.
+! The number of dimensions, the name of each dimension, that sort of thing.
+! TJH Sept. 16, 2002
+!
+!type location_meta
+!   integer,             parameter :: ndims = 1
+!   character (len=129), parameter :: name = "loc1d"
+!   character (len=129), parameter :: longname = "one-dimensional location"
+!   character (len=129), parameter :: &
+!   src = "$Source$", &
+!   rev = "$Revision$", &
+!   dat = "$Date$", &
+!   aut = "$Author$"
+!end type location_meta
+!type(location_meta) :: location_metadata
+
+integer,              parameter :: LocationDims = 1
+character(len = 129), parameter :: LocationName = "loc1d"
+character(len = 129), parameter :: LocationLName = "one-dimensional location"
 
 contains
 
@@ -204,19 +224,24 @@ type(location_type), intent(in) :: loc
 integer, intent(in)             :: start
 
 integer  :: status
-! double precision :: x
 
-! x      = loc%x    ! coerce to approved type
+call check(nf90_put_var(ncFileID, LocationVarID, loc%x, (/ start /) ))
 
-  status = nf90_put_var(ncFileID, LocationVarID, loc%x, (/start/) )
-! status = nf_put_vara_double(ncFileID, LocationVarID, start, 1, x)
+contains
+  
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(status)
+    integer, intent ( in) :: status
 
-if(status /= nf90_noerr) then
-   print *, trim(NF90_strerror(status))
-end if
+    if(status /= nf90_noerr) then
+      print *, trim(nf90_strerror(status))
+      print *,'location_mod:nc_write_location'
+      stop
+    end if
+  end subroutine check
 
 end subroutine nc_write_location
-
 
 
 !

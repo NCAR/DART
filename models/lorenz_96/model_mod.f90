@@ -8,14 +8,15 @@ module model_mod
 !
 
 use types_mod
-use location_mod, only : location_type, get_dist, set_location, get_location, nc_write_location
+use location_mod, only : location_type, get_dist, set_location, get_location, &
+                         nc_write_location
 use time_manager_mod
 
 private
 
 public static_init_model, init_conditions, get_model_size, adv_1step,  &
    init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model, &
-   init_model, nc_write_locations
+   init_model
 
 
  integer,  parameter :: model_size =   40
@@ -54,10 +55,10 @@ revdate  = "$Date$"
 
 ! Ultimately,  change output to diagnostic output block ...
 
-write(*,*)'assim_model attributes:'
-write(*,*)'   ',source
-write(*,*)'   ',revision
-write(*,*)'   ',revdate
+write(*,*)'model attributes:'
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
 
 ! Define the locations of the model state variables
 do i = 1, model_size
@@ -302,7 +303,7 @@ end subroutine end_model
 
 
 
-subroutine nc_write_locations(ncFileID,FileName)
+subroutine nc_write_locations(ncFileID)
 !----------------------------------------------------------------------------
 !
 ! Defines a oned location variable and the attributes in the netCDF file.
@@ -325,19 +326,15 @@ use netcdf
 implicit none
 
 integer, intent(inout)       :: ncFileID
-character(len=*), intent(in) :: FileName
 
 integer :: paramDimID, LocationVarID, Nlocations
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: i,ierr
 
-! does ncFileID refer to an open netCDF file
-ierr = NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID)
+! make sure ncFileID refers to an open netCDF file, and then put into define mode.
 
-if ( ierr /= NF90_noerr ) then
-   call check(NF90_Open(path = trim(FileName)//".nc", mode = nf90_write, ncid = ncFileID))
-endif
-call check(NF90_redef(ncFileID))        ! put into define mode
+call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(NF90_Redef(ncFileID))
 
 ! find the DimensionID(s), create variable and atts
 ! then leave define mode
@@ -377,6 +374,8 @@ contains
 
     if(status /= nf90_noerr) then
       print *, trim(NF90_strerror(status))
+      print *, 'in model_mod:nc_write_locations'
+      stop
     end if
   end subroutine check
 

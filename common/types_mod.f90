@@ -35,7 +35,10 @@ SAVE
 ! Constants ... 
 !----------------------------------------------------------------------------
 
-real(kind=r8), parameter :: conv_to_rad = 2.0_r8 * 3.14159_r8 / 360.0_r8
+real(kind=r8), parameter :: pi = 3.141592654_r8
+! real(kind=r8), parameter :: conv_to_rad = pi / 180.0_r8
+real(kind=r8), parameter :: deg2rad = pi / 180.0_r8
+real(kind=r8), parameter :: rad2deg = 180.0_r8 / pi
 
 
 END MODULE types_mod

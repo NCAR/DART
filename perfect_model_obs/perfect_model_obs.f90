@@ -24,7 +24,7 @@ use obs_sequence_mod, only : init_obs_sequence, obs_sequence_type, &
 use obs_def_mod, only : obs_def_type, init_obs_def
 use obs_set_def_mod, only : obs_set_def_type, init_obs_set_def, add_obs
 use obs_kind_mod, only : set_obs_kind
-use location_mod, only : set_location
+! TJH not used as far as I can tell ....  use location_mod, only : set_location
 use set_def_list_mod, only : set_def_list_type, init_set_def_list, &
    add_to_list, write_set_def_list
 use obs_set_mod, only : init_obs_set, obs_set_type, set_obs_set_time, write_obs_set, &

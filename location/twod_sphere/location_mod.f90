@@ -31,11 +31,6 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 
 
-! PI and other universal constants should be defined consistently in a 
-! single module:
-real(r8), parameter :: pi = 3.141592654
-
-
 ! CVS Generated file description for error handling, do not edit
 character(len = 129), parameter :: &
    e_src = "$Source$", &
