@@ -32,6 +32,15 @@ real(r8)             :: comp_cov_factor
 
 real(r8) :: z, r
 
+! TEMPORARY TEST FOR HIERARCHICAL FILTERS
+!if(z_in < 2 * c) then
+!   comp_cov_factor = 1.0
+!else
+!   comp_cov_factor = 0.0
+!endif
+!if(1 == 1) return
+
+
 z = abs(z_in)
 r = z / c
 
