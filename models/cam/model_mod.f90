@@ -160,12 +160,12 @@ integer :: state_num_2d = 1              ! # of 2d fields to read from file
 integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
 ! make these allocatable?  Where would I define the default values?
-integer :: i
-character (len=8),dimension(20) :: state_names_0d = (/('        ',i=1,20)/)
-character (len=8),dimension(20) :: state_names_1d = (/('        ',i=1,20)/)
-character (len=8),dimension(20) :: state_names_2d = (/'PS      ',('        ',i=1,19)/)
+integer :: iii
+character (len=8),dimension(20) :: state_names_0d = (/('        ',iii=1,20)/)
+character (len=8),dimension(20) :: state_names_1d = (/('        ',iii=1,20)/)
+character (len=8),dimension(20) :: state_names_2d = (/'PS      ',('        ',iii=1,19)/)
 character (len=8),dimension(20) :: state_names_3d =  &
-          (/'T       ','U       ','V       ','Q       ',('        ',i=1,16)/)
+          (/'T       ','U       ','V       ','Q       ',('        ',iii=1,16)/)
 
 ! NOVERT  need (a) namelist parameter(s) to define which_vert for each 2D (xD?) field
 !         There's a danger of having a mismatch with the state_names_Xd; should this
@@ -174,9 +174,9 @@ character (len=8),dimension(20) :: state_names_3d =  &
 
 ! Are these defaults good? or should they all be 0?
 
-integer , dimension(20) :: which_vert_1d = (/(-2,i=1,20)/)
-integer , dimension(20) :: which_vert_2d = (/(-1,i=1,20)/)
-integer , dimension(20) :: which_vert_3d = (/( 1,i=1,20)/)
+integer , dimension(20) :: which_vert_1d = (/(-2,iii=1,20)/)
+integer , dimension(20) :: which_vert_2d = (/(-1,iii=1,20)/)
+integer , dimension(20) :: which_vert_3d = (/( 1,iii=1,20)/)
 
 
 ! Is there a way to exclude stat_nums from namelist and have those filled in 
@@ -185,8 +185,8 @@ integer , dimension(20) :: which_vert_3d = (/( 1,i=1,20)/)
 
 ! list of fields which trans_pv_sv_pert0 needs to perturb because they're
 ! constant valued model parameters and show no spread when start_from_restart = .true.
-character (len=8),dimension(20) :: state_names_pert = (/('        ',i=1,20)/)
-real(r8), dimension(20) :: state_names_sd = (/(0.,i=1,20)/)
+character (len=8),dimension(20) :: state_names_pert = (/('        ',iii=1,20)/)
+real(r8), dimension(20) :: state_names_sd = (/(0.,iii=1,20)/)
 
 
 ! Specify shortest time step that the model will support
@@ -252,7 +252,7 @@ character (len=128), allocatable :: state_units(:)
 ! array for the linking of obs_kinds (KIND_) to model field TYPE_s
 ! It's filled in obs_field_location
 ! The max size of KIND_ should come from obs_kind_mod
-integer, dimension(1000) :: obs_loc_in_sv = (/(0,i=1,1000)/)
+integer, dimension(1000) :: obs_loc_in_sv = (/(0,iii=1,1000)/)
 !
 !---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
@@ -425,8 +425,8 @@ integer, optional, intent(out) :: coord_order
 ! local workspace
 character (len=4)      :: form_version = '(I0)'
 character (len=4)      :: char_version
-integer, dimension(4)  :: int_version = (/(0,i=1,4)/)
 integer                :: part, nchars, tot_chars, i
+integer, dimension(4)  :: int_version = (/(0,i=1,4)/)
 
 
 ! Choose order of coordinates based on CAM version
@@ -804,7 +804,7 @@ end subroutine vector_to_prog_var
 character (len = *), intent(in) :: file_name
 type(model_type), intent(in) :: var
 
-integer k, n, m, ifld, ncfileid, ncfldid
+integer i, k, n, m, ifld, ncfileid, ncfldid
 integer :: coord_3d(3), coord_2d(2), coord_order
 real(r8), allocatable :: temp_3d(:,:,:)
 
@@ -2083,7 +2083,7 @@ type(model_type) :: Var
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, ncfldid
-integer :: ifld
+integer :: ifld, i
 
 ierr = 0     ! assume normal termination
 
