@@ -33,7 +33,8 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    awrite_state_restart, pert_model_state, open_restart_read, open_restart_write, &
    close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, filter_assim
+use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, &
+   filter_assim, seq_filter_assim
 use   cov_cutoff_mod, only : comp_cov_factor
 use   reg_factor_mod, only : comp_reg_factor
 use    obs_model_mod, only : get_close_states, get_expected_obs, move_ahead
@@ -73,9 +74,8 @@ integer :: prior_obs_mean_index, posterior_obs_mean_index
 integer :: prior_obs_spread_index, posterior_obs_spread_index
 
 ! Storage for direct access to ensemble state vectors
-real(r8),        allocatable :: ens(:, :), ens_mean(:), ens_spread(:), temp_ens(:)
-type(time_type), allocatable :: ens_time(:)
-type(time_type)              :: ens_mean_time, ens_spread_time, temp_time
+real(r8),        allocatable ::  ens_mean(:), temp_ens(:)
+type(time_type)              :: ens_mean_time, temp_time
 
 real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:)
 ! Storage for use with parallelizable efficient filter
@@ -164,7 +164,9 @@ call filter_alloc_ens_size_storage()
 
 call filter_setup_obs_sequence()
 
-call filter_alloc_model_size_storage()
+! Allocate model size storage
+model_size = get_model_size()
+allocate(ens_mean(model_size), my_state(model_size), temp_ens(model_size))
 
 ! Initialize the output sequences and state files and set their meta data
 call filter_generate_copy_meta_data()
@@ -202,16 +204,14 @@ AdvanceTime : do
             ens_obs2(ens_size, num_obs_in_set), ens_obs3(ens_size, num_obs_in_set), &
             compute_obs(num_obs_in_set)) 
    ! For starters allow all obs to be computed as before
-   compute_obs = .false.
+!!!   compute_obs = .false.
+   compute_obs = .true.
 !   do j = 1, num_obs_in_set
 !      if(j / 2 * 2 == j) compute_obs(j) = .false.
 !   end do
 
    ! Get all the keys associated with this set of observations
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-
-   ! Tag the ensemble mean and spread with the current time
-   ens_mean_time = ens_time(1); ens_spread_time = ens_time(1)
 
    ! Inflate each of the groups
    call filter_ensemble_inflate()
@@ -245,114 +245,19 @@ AdvanceTime : do
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
    
-! TEMPORARY gET OF FILTER STORAGE
-   call get_ensemble_region(ens, ens_time)
-
-! Try out the subroutine
-! Need to keep an unsullied copy of the ens_obs2 when this isn't being done in parallel
-ens_obs3 = ens_obs2
-num_domains = 1
-do j = 1, num_domains
-   my_state = .false.
-   my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
-! Watch out for hard-coded obs_val_index : 1
-   call filter_assim(ens, ens_obs2, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
-   keys, 1, confidence_slope, cutoff, save_reg_series, reg_series_unit, my_state)
-   ens_obs2 = ens_obs3
-end do
-if(1 == 1) goto 1234
-
-!---------------------- Sequential filter section --------------------------
-   ! Loop through each observation in the set
-   Observations : do j = 1, num_obs_in_set
-      
-      ! Get this observation in a temporary and get its qc value for possible update
-      call get_obs_from_key(seq, keys(j), observation)
-      ! Get the qc value set so far
-      call get_qc(observation, qc, 1)
-      ! Just skip observations that have failed prior qc ( >4 for now)
-      if(qc(1) > 4.01_r8) cycle Observations
-
-      
-      ! Compute the ensemble prior for this ob
-      do k = 1, ens_size
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus)
-         ! Inability to compute forward operator implies skip this observation
-         if (istatus > 0) then
-            qc(1) = qc(1) + 4000.0_r8
-            goto 333
-         endif
-      end do
-      ! Divide ensemble into num_groups groups
-      grp_size = ens_size / num_groups
-      Group1: do group = 1, num_groups
-         grp_bot = (group - 1) * grp_size + 1
-         grp_top = grp_bot + grp_size - 1
-
-         ! Call obs_increment to do observation space
-         call obs_increment(ens_obs(grp_bot:grp_top), ens_size/num_groups, obs(j), &
-            obs_err_var(j), obs_inc(grp_bot:grp_top), confidence_slope, &
-            a_returned(group))
-      end do Group1
-
-      ! Getting close states for each scalar observation for now
-      ! Need model state for some distance computations in sigma, have
-      ! to pick some state, only current ones are ensemble, just pass 1
-222   call get_close_states(seq, keys(j), 2.0_r8*cutoff, num_close_ptr(1), &
-         close_ptr(1, :), dist_ptr(1, :), ens(1, :))
-      if(num_close_ptr(1) < 0) then
-         deallocate(close_ptr, dist_ptr)
-         allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
-         goto 222
-      endif
-
-      ! Now loop through each close state variable for this observation
-  write(*, *) 'num_close ', j, num_close_ptr(1)
-      do k = 1, num_close_ptr(1)
-         ind = close_ptr(1, k)
-         ! Compute distance dependent envelope
-         cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
-         if(cov_factor == 0.0) cycle
-
-         ! Get the ensemble elements for this state variable and do regression
-          swath = ens(:, ind)
-
-         ! Loop through the groups
-         Group2: do group = 1, num_groups
-            grp_bot = (group - 1) * grp_size + 1
-            grp_top = grp_bot + grp_size - 1
-            call update_from_obs_inc(ens_obs(grp_bot:grp_top), &
-               obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
-               a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
-         end do Group2
-
-         ! Compute an information factor for impact of this observation on this state
-         if(num_groups == 0) then
-             reg_factor = 1.0_r8
-         else
-            reg_factor = comp_reg_factor(num_groups, regress, time_step_number, j, ind)
-         endif
-         if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
-
-         ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
-         reg_factor = min(reg_factor, cov_factor)
-
-         ! Do the final update for this state variable
-         ens(:, ind) = ens(:, ind) + reg_factor * ens_inc(:)
-
-      end do
-
-!--------------------- End sequential filter section --------------
-   ! Write out the updated quality control for this observation
-      333 call set_qc(observation, qc, 1)
-      call set_obs(seq, observation, keys(j))
-
-   end do Observations
-
-1234 continue
-
-! TEMPORARY SET OF FILTER STORAGE
-   call put_ensemble_region(ens, ens_time)
+   ! Need to keep an unsullied copy of the ens_obs2 when this isn't being done in parallel
+   ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL 
+   ! SEQUENTIAL ANSWER
+   ens_obs3 = ens_obs2
+   num_domains = 1
+   do j = 1, num_domains
+      my_state = .false.
+      my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
+      ! Watch out for hard-coded obs_val_index : 1
+      call filter_assim(ens_obs2, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
+         keys, 1, confidence_slope, cutoff, save_reg_series, reg_series_unit, my_state)
+      ens_obs2 = ens_obs3
+   end do
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
@@ -395,26 +300,6 @@ contains
 ! WARNING: THERE IS SOME DANGER IN USING THESE SCOPED SUBROUTINES
 !==========================================================================
 !==========================================================================
-
-
-
-function get_ens_spread(ens, ens_mean, ens_size, index)
-!----------------------------------------------------------
-!
-! Computes the ensemble mean of the index element of the
-! state vector.
-
-implicit none
-
-integer,  intent(in) :: ens_size, index
-real(r8), intent(in) :: ens_mean
-real(r8), intent(in) :: ens(:, :)
-real(r8)             :: get_ens_spread
-
-get_ens_spread = sum((ens(:, index) - ens_mean)**2)
-get_ens_spread = sqrt(get_ens_spread / (ens_size - 1))
-
-end function get_ens_spread
 
 
 !-----------------------------------------------------------
@@ -613,19 +498,6 @@ end subroutine filter_setup_obs_sequence
 
 !-------------------------------------------------------------------------
 
-subroutine filter_alloc_model_size_storage()
-
-model_size = get_model_size()
-allocate(ens(ens_size, model_size), ens_time(ens_size), ens_mean(model_size), &
-   my_state(model_size), temp_ens(model_size))
-
-! Allocate storage for ensemble spread if needed
-if(output_state_ens_spread) allocate(ens_spread(model_size))
-
-end subroutine filter_alloc_model_size_storage
-
-!-------------------------------------------------------------------------
-
 subroutine filter_set_initial_time
 
 if(init_time_days >= 0) then
@@ -676,8 +548,6 @@ else
             temp_ens(j) = random_gaussian(random_seq, ens_mean(j), 0.002_r8) 
          end do
       endif
-      ! Set time to 0, 0 if none specified, otherwise to specified
-      ens_time(i) = time1
       ! Set this ensemble member 
       call put_ensemble_member(i, temp_ens, time1)
    end do
@@ -685,7 +555,7 @@ else
 endif
 
 ! Temporary print of initial model time
-call get_time(ens_time(1),secs,days)
+call get_time(time1,secs,days)
 write(msgstring, *) 'initial model time of first ensemble member (days,seconds) ',days,secs
 call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
 
@@ -718,32 +588,6 @@ end subroutine filter_ensemble_inflate
 
 !-------------------------------------------------------------------------
 
-subroutine get_ens_mean_spread(ens, mean, spread, model_size, ens_size, do_spread)
-
-implicit none
-
-integer,  intent(in)  :: model_size, ens_size
-real(r8), intent(in)  :: ens(ens_size, model_size)
-real(r8), intent(out) :: mean(model_size), spread(:)
-logical,  intent(in)  :: do_spread
-
-integer :: k
-
-do k = 1, model_size
-   mean(k) = sum(ens(:, k)) / ens_size
-end do
-
-if(do_spread) then
-   do k = 1, model_size
-      spread(k) = sqrt(sum((ens(:, k) - mean(k))**2) / (ens_size - 1))
-   end do
-endif
-
-
-end subroutine get_ens_mean_spread
-
-!-------------------------------------------------------------------------
-
 subroutine filter_state_space_diagnostics(out_unit)
 
 implicit none
@@ -763,7 +607,6 @@ end do
 if(output_state_ens_mean) then
    call get_ensemble_member(0, temp_ens, temp_time)
    call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_mean_index)
-!   call aoutput_diagnostics(out_unit, ens_mean_time, temp_ens, output_state_mean_index)
 endif
 
 ! Output ensemble spread if requested
@@ -894,9 +737,10 @@ subroutine filter_output_restart()
 
 if(output_restart) then
    iunit = open_restart_write(restart_out_file_name)
-      do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), iunit)
-      end do
+   do i = 1, ens_size
+      call get_ensemble_member(i, temp_ens, temp_time)
+      call awrite_state_restart(temp_time, temp_ens, iunit)
+   end do
    call close_restart(iunit)
 endif
 
