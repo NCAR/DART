@@ -1,10 +1,10 @@
 function obs_num_vertical(ddir)
-% obs_num_vertical    plots the number of observations as a function of height for several different regions.
+% obs_num_vertical    Plots the number of observations as a function of height for several different regions.
 % 
 % ddir     is an optional argument specifying the directory containing
-%               the data files as preprocessed by the support routines.
+%          the data files as preprocessed by the support routines.
 % 
-% USAGE:
+% USAGE: if the preprocessed data files are in a directory called 'plot'
 % 
 % obs_num_vertical('plot')
 
