@@ -751,7 +751,8 @@ if(asynch) then
    do 
       read(*, *) input_string
       if(trim(input_string) == 'All_done:Please_proceed') exit
-      write(*, *) 'ECHO:', input_string
+! Following line can allow diagnostic pass through of output
+!      write(*, *) 'ECHO:', input_string
    end do
 
 

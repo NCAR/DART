@@ -1158,7 +1158,11 @@ else
 ! At wraparound point
    lon_below = num_lons
    lon_above = 1
-   if(lon < 180.0) temp_lon = lon + 360.0
+   if(lon < bot_lon) then 
+      temp_lon = lon + 360.0
+   else
+      temp_lon = lon
+   endif
    lon_fract = (temp_lon - top_lon) / delta_lon
 endif
    
