@@ -32,14 +32,14 @@
 
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC ENTITIES</A> / 
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATES</A>
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
 </DIV>
 
 <!--==================================================================-->
@@ -90,7 +90,7 @@ fms_mod
 <H2>PUBLIC INTERFACE</H2>
 
 <TABLE>
-<TR><TD><em class=code>use xxxxxxx, only : </em></TD>
+<TR><TD><em class=call>use xxxxxxx, only : </em></TD>
                    <TD><A HREF="#yyypubtype1">yyypubtype1</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">yyyroutine1</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">yyyroutine2</A> &</TD></TR>
@@ -100,7 +100,7 @@ fms_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&atmosphere_nml</em> 
+Optional namelist interface <em class=code>&lim_obs_seq_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -112,7 +112,7 @@ may be read from file <em class=file>input.nml</em>.
 
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
-<H2>PUBLIC ENTITIES</H2>
+<H2>PUBLIC COMPONENTS</H2>
 <P>fill in text here
 </P>
 
@@ -121,13 +121,13 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="yyypubtype1"></A>
 <BR><HR><BR>
 <div class=type><pre>
-type location_type
+<em class=call>type location_type</em>
    private
    real(r8) :: x
 end type location_type
 </pre></div>
 
-<H3 class=indent1>Detailed Description</H3>
+<H3 class=indent1>Description</H3>
 
 <P>The location type is essential to the fabric of the universe.
    If we don't know where we are, how do we know which exit to take?
@@ -145,7 +145,7 @@ end type location_type
 <A NAME="yyypubtype2"></A>
 <BR><HR><BR>
 <div class=type><pre>
-type time_type
+<em class=call>type time_type</em>
    private
    integer           :: year
    integer           :: month
@@ -158,7 +158,7 @@ type time_type
 end type time_type
 </pre></div>
 
-<H3 class=indent1>Detailed Description</H3>
+<H3 class=indent1>Description</H3>
 
 <P>The time type is ubiquitous throughout the module. Given the value
 of <em class=code>calendar</em>, everything should be pretty clear. 
@@ -204,7 +204,7 @@ real(r8), dimension(:,:), intent(out)   :: <em class=code> var3 </em>
 real(r8), OPTIONAL,       intent(in)    :: <em class=optionalcode> global </em>
 </pre></div>
 
-<H2 class=indent1>Description</H2>
+<H3 class=indent1>Description</H3>
 
 <P>
    Returns the resolution of compute domain for either the
@@ -256,7 +256,7 @@ real(r8), OPTIONAL,       intent(in)  :: <em class=optionalcode> bob </em>
 integer, dimension(size(var2))        :: <em class=code> var </em>
 </pre></div>
 
-<H2 class=indent1>Description</H2>
+<H3 class=indent1>Description</H3>
 
 <P>
    Returns the resolution of compute domain for either the current 
@@ -295,47 +295,70 @@ integer, dimension(size(var2))        :: <em class=code> var </em>
 </P>
 
 <!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 
 <A NAME="Namelist"></A>
-<P></P><HR><P></P>
+<BR><HR><BR>
 <H2>NAMELIST</H2>
-
-<em class=file>&atmosphere_nml</em><BR>
-
-<TABLE border=1 summary="" width=100% cellpadding=4>
-<TR>
-<TH align=left>Contents</TH>
-<TH align=left>meaning <em class=unit>[units look like this]</em><BR>
-</TH>
-</TR>
-
-<TR>
-<TD valign=top>physics_window</TD>
-<TD valign=top>The number of "i" and "j" rows processed each time the modular 
-    physics is called. To process the entire domain use 
-    physics_window = 0,0 <em class="unit">[integer, default: 0,0 ]</em><BR>
-</TD>
-</TR>
-</TABLE>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand 
+'&' and terminating with a slash '/'.
+<div class=namelist><pre>
+<em class=call>namelist / lim_obs_seq_nml / </em> &
+    ens_size, spin_up_steps, num_steps, output_start, ens_spin_up_steps, &
+    obs_freq, cov_inflate, mean_inflate, restart, add_on, noise_amp
+</pre></div>
 
 <H3 class=indent1>Discussion</H3>
 
-<P>All input variables are not changed. Otherwise, this would be a subroutine.
-   Upon input, this contains the furlongs per weekday. Upon exit, we now 
-   have the number of spotted gobies per square hectare. 
+<P>This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
-<H3 class=indent1>Notes</H3>
-
-<P>would go here
-</P>
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>ens_size             </TD>
+    <!--  type  --><TD valign=top>integer <em class="unit">[default: 0]</em></TD>
+    <!--descript--><TD>The number of "i" and "j" rows processed each time the 
+    modular physics is called. </TD></TR>
+<TR><!--contents--><TD valign=top>spin_up_steps        </TD>
+    <!--  type  --><TD>integer                         </TD>
+    <!--descript--><TD>the month                       </TD></TR>
+<TR><!--contents--><TD valign=top>num_steps            </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD>the day-of-month                </TD></TR>
+<TR><!--contents--><TD valign=top>output_start         </TD>
+    <!--  type  --><TD>real(r4)                        </TD>
+    <!--descript--><TD>the hour-of-day                 </TD></TR>
+<TR><!--contents--><TD valign=top>ens_spin_up_steps    </TD>
+    <!--  type  --><TD>real(r4)                        </TD>
+    <!--descript--><TD>the minute                      </TD></TR>
+<TR><!--contents--><TD valign=top>obs_freq,            </TD>
+    <!--  type  --><TD>real(r4)                        </TD>
+    <!--descript--><TD>the second                      </TD></TR>
+<TR><!--contents--><TD valign=top>cov_inflate          </TD>
+    <!--  type  --><TD>real(r8)                        </TD>
+    <!--descript--><TD>uniformly monotonic time        </TD></TR>
+<TR><!--contents--><TD valign=top>mean_inflate         </TD>
+    <!--  type  --><TD>character(len=80)               </TD>
+    <!--descript--><TD>the type of calendar being used </TD></TR>
+<TR><!--contents--><TD valign=top>restart              </TD>
+    <!--  type  --><TD>integer                         </TD>
+    <!--descript--><TD>the type of calendar being used </TD></TR>
+<TR><!--contents--><TD valign=top>add_on               </TD>
+    <!--  type  --><TD>integer                         </TD>
+    <!--descript--><TD>the type of calendar being used </TD></TR>
+<TR><!--contents--><TD valign=top>noise_amp            </TD>
+    <!--  type  --><TD>integer                         </TD>
+    <!--descript--><TD>the type of calendar being used </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<P></P><HR><P></P>
+<BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>inputfile1
     <LI>namelistfile
@@ -347,7 +370,7 @@ integer, dimension(size(var2))        :: <em class=code> var </em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<P></P><HR><P></P>
+<BR><HR><BR>
 <H2>REFERENCES</H2>
 
 <!--==================================================================-->
@@ -358,24 +381,21 @@ integer, dimension(size(var2))        :: <em class=code> var </em>
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class=color>
-
+<div class="errors">
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Code</TH><TH>Routine</TH><TH>Condition</TH></TR>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!--code here--><TD VALIGN=top>xxxx</TD>
-    <!--routine  --><TD VALIGN=top>yyyyy</TD>
-    <!--condition--><TD VALIGN=top>size of [argument] is incorrect<BR>
-        The size of [argument] must be between 1 and 4.</TD>
+<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
+    <!-- message --><TD VALIGN=top>size of [argument] is incorrect</TD>
+    <!-- comment --><TD VALIGN=top>The size of [argument] must be 1 and 4</TD>
 </TR>
 
-<TR><!--code here--><TD VALIGN=top>xxxx</TD>
-    <!--routine  --><TD VALIGN=top>yyyyy</TD>
-    <!--condition--><TD VALIGN=top>bad judgement<BR>
+<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
+    <!-- message --><TD VALIGN=top>yyyyy</TD>
+    <!-- comment --><TD VALIGN=top>bad judgement<BR>
                         What were you thinking?</TD>
 </TR>
 </TABLE>
-
 </div>
 
 <!--==================================================================-->
@@ -383,7 +403,7 @@ integer, dimension(size(var2))        :: <em class=code> var </em>
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<P></P><HR><P></P>
+<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
 </P>
@@ -393,7 +413,7 @@ integer, dimension(size(var2))        :: <em class=code> var </em>
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<P></P><HR><P></P>
+<BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
 </P>
@@ -403,8 +423,8 @@ integer, dimension(size(var2))        :: <em class=code> var </em>
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<P></P><HR><P></P>
-<H2>PRIVATE Components</H2>
+<BR><HR><BR>
+<H2>PRIVATE COMPONENTS</H2>
 
 <div class=routine>
 <pre>
