@@ -2,7 +2,7 @@
    ens_size = 20, 
    output_obs_ens_mean = .true.,
    output_obs_ens_spread = .true., 
-   num_output_obs_members = 0, /
+   num_output_obs_members = 0  /
 
 &obs_sequence_nml
    read_binary_obs_sequence = .false.,
