@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p rose_test -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+path_names_rose
