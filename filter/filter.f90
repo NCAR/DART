@@ -205,7 +205,7 @@ AdvanceTime : do
       ! Get the qc value set so far
       call get_qc(observation, qc, 1)
       ! Just skip observations that have failed prior qc ( >4 for now)
-      if(qc(1) > 4) cycle Observations
+      if(qc(1) > 4.01_r8) cycle Observations
 
       
       ! Compute the ensemble prior for this ob
