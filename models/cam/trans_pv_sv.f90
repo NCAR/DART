@@ -12,7 +12,8 @@ program trans_pv_sv
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
 !
-! method: Read CAM 'initial' file (netCDF format).
+! method: Read CAM 'initial' file for model state, but not time (netCDF format).
+!         Get target time from assim_model_state_ic (temp_ic).
 !         Reform fields into a state vector.
 !         Write out state vector in "proprietary" format for DART
 !
@@ -53,7 +54,6 @@ real(r8), allocatable  :: x_state(:), x_temp(:)
 integer                :: file_unit, x_size
 
 ! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in trans_pv_sv'
 call static_init_assim_model()
 
 ! Initialize the assim_model instance
@@ -66,7 +66,7 @@ allocate(x_state(x_size), x_temp(x_size))
 ! Allocate the instance of the cam model type for storage
 call init_model_instance(var)
 
-! Read the file cam state fragments into var
+! Read the file cam state fragments into var, but not time
 call read_cam_init(file_name, var)
 
 ! transform fields into state vector for DART
@@ -75,18 +75,17 @@ call prog_var_to_vector(var, x_state)
 ! Put this in the structure
 call set_model_state_vector(x, x_state)
 
-! Guam; move time stripping from advance_model into here
+! Integration of model was controlled by the restart file,
+! so we use the target time of the restart file (from assim_model_state)
+! as the current model state time.
 file_unit = open_restart_read(file_time)
 call aread_state_restart(model_time, x_temp, file_unit, adv_to_time)
 call set_model_time (x, adv_to_time)
 call close_restart(file_unit)
 
-! Get channel for output 
-! debug file_unit = 13
-file_unit = open_restart_write(file_out)
-PRINT*,'In trans_pv_sv file_out unit = ',file_unit
-PRINT*,' '
+! Get channel for output,
 ! write out state vector in "proprietary" format
+file_unit = open_restart_write(file_out)
 call write_state_restart(x, file_unit)
 call close_restart(file_unit)
 
