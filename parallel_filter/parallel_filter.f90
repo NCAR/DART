@@ -29,8 +29,9 @@ use    utilities_mod, only :  get_unit, open_file, close_file, register_module, 
                               timestamp
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, & 
-   binary_restart_files, aoutput_diagnostics, aread_state_restart, &
-   awrite_state_restart, pert_model_state
+   aoutput_diagnostics, aread_state_restart, &
+   awrite_state_restart, pert_model_state, open_restart_read, open_restart_write, &
+   close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, filter_assim
 use   cov_cutoff_mod, only : comp_cov_factor
@@ -250,16 +251,16 @@ AdvanceTime : do
 ! Try out the subroutine
 ! Need to keep an unsullied copy of the ens_obs2 when this isn't being done in parallel
 ens_obs3 = ens_obs2
-num_domains = 2
+num_domains = 1
 do j = 1, num_domains
    my_state = .false.
    my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
 ! Watch out for hard-coded obs_val_index : 1
-!!!   call filter_assim(ens, ens_obs2, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
-!!!   keys, 1, confidence_slope, cutoff, save_reg_series, reg_series_unit, my_state)
-!!!   ens_obs2 = ens_obs3
+   call filter_assim(ens, ens_obs2, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
+   keys, 1, confidence_slope, cutoff, save_reg_series, reg_series_unit, my_state)
+   ens_obs2 = ens_obs3
 end do
-!!!if(1 == 1) goto 1234
+if(1 == 1) goto 1234
 
 !---------------------- Sequential filter section --------------------------
    ! Loop through each observation in the set
@@ -642,10 +643,9 @@ subroutine filter_read_restart()
 if(start_from_restart) then
    if(init_time_days >= 0) then
       call init_ensemble_manager(ens_size, model_size, restart_in_file_name, &
-         binary_restart_files, time1)
+         time1)
    else
-      call init_ensemble_manager(ens_size, model_size, restart_in_file_name, &
-         binary_restart_files)
+      call init_ensemble_manager(ens_size, model_size, restart_in_file_name)
    endif
 
 
@@ -657,21 +657,12 @@ else
    ! WARNING: THIS IS COUNTERINTUITIVE: IF START FROM RESTART IS FALSE,
    ! STILL USE A RESTART FILE TO GET SINGLE CONTROL RUN TO PERTURB AROUND.
    call init_ensemble_manager(ens_size, model_size)
-   iunit = get_unit()
-   if (binary_restart_files ) then
-      open(unit = iunit, file = restart_in_file_name, form = "unformatted")
-   else
-      open(unit = iunit, file = restart_in_file_name)
-   endif
+   iunit = open_restart_read(restart_in_file_name)
 
    ! Get the initial condition
-   if (binary_restart_files ) then
    ! Read the basic state into ens_mean to conserve storage
-      call aread_state_restart(ens_mean_time, ens_mean, iunit, "unformatted")
-   else
-      call aread_state_restart(ens_mean_time, ens_mean, iunit)
-   endif
-   close(iunit)
+   call aread_state_restart(ens_mean_time, ens_mean, iunit)
+   call close_restart(iunit)
 
    ! Initialize a repeatable random sequence for perturbations
    call init_random_seq(random_seq)
@@ -693,13 +684,8 @@ else
    !-------------------- End of cold start ensemble initialization block ------
 endif
 
-
-
-
-
-
 ! Temporary print of initial model time
-call get_time(time1,secs,days)
+call get_time(ens_time(1),secs,days)
 write(msgstring, *) 'initial model time of first ensemble member (days,seconds) ',days,secs
 call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
 
@@ -907,19 +893,11 @@ subroutine filter_output_restart()
 ! Output a restart file if requested
 
 if(output_restart) then
-   iunit = get_unit()
-   if (binary_restart_files ) then
-      open(unit = iunit, file = restart_out_file_name, form = "unformatted")
-      do i = 1, ens_size
-         call awrite_state_restart(ens_time(i), ens(i, :), iunit, "unformatted")
-      end do
-   else
-      open(unit = iunit, file = restart_out_file_name)
+   iunit = open_restart_write(restart_out_file_name)
       do i = 1, ens_size
          call awrite_state_restart(ens_time(i), ens(i, :), iunit)
       end do
-   endif
-   close(iunit)
+   call close_restart(iunit)
 endif
 
 end subroutine filter_output_restart
