@@ -35,24 +35,21 @@ setenv S_AVAIL_DATE 1999122500
 setenv E_AVAIL_DATE 2004060700
 setenv BACK_YEAR       5000000
 
-setenv SRC_DIR     /ocotillo1/${user}         # Location of codes:
-setenv DAT_DIR     ${SRC_DIR}/GEN_ENS         # Scratch data space.
+setenv DAT_DIR     `pwd`                      # Scratch data space.
 
-setenv WRFSI_DIR_SRC  ${SRC_DIR}/WRFV2/wrfsi  # WRF SI.
-setenv WRFSI_DIR   ${WRFSI_DIR_SRC}           # WRF SI.
-
-#setenv WRFSI_DIR /usr/local/wrfsi/wrfsi_20020328 # WRFSI.
-setenv WRF_DIR     ${SRC_DIR}/WRFV2            # WRF
+setenv WRF_DIR        /ocotillo1/${USER}/WRFV2   # WRF
+setenv WRFSI_DIR_SRC  ${WRF_DIR}/wrfsi        # WRF SI.
 
 set startnode = 1
 set endnode = 10
 
 set ES = 80
+set SCALE = 0.5
 
- setenv WEST_EAST_GRIDS	  45
- setenv SOUTH_NORTH_GRIDS 45
- setenv VERTICAL_GRIDS	  28
- setenv GRID_DISTANCE	  200000
+setenv WEST_EAST_GRIDS	  45
+setenv SOUTH_NORTH_GRIDS  45
+setenv VERTICAL_GRIDS	  28
+setenv GRID_DISTANCE	  200000
 
 set seconds = 0
 set days = 146827
@@ -77,7 +74,8 @@ echo $seconds $days > temp
 cat wrf.info >> temp
 mv temp wrf.info
 
-echo "${ES}" > ens_size
+echo "${ES}"     > ens.info
+echo "${SCALE}" >> ens.info
 
 rm ${WRF_DIR}/test/em_real/run_real_*.out
 
@@ -120,9 +118,9 @@ while ( $ICYC <= $NCYCLE )
 	else 
 	    echo "   Retrieving $AVN_FILE to $AVN_DIR"
 #	    msrcp mss:/DSS/DS083.2/data/$AVN_FILE $AVN_DIR/.
-            rsh -n bay "rm -f /mmmtmp/caya/migs/$AVN_FILE"
-            rsh -n bay "msrcp mss:/DSS/DS083.2/data/$AVN_FILE /mmmtmp/caya/migs/. ; rcp /mmmtmp/caya/migs/$AVN_FILE ocotillo:$AVN_DIR/."
-            rsh -n bay "rm -f /mmmtmp/caya/migs/$AVN_FILE"
+            rsh -n bay "rm -f /mmmtmp/${USER}/migs/$AVN_FILE"
+            rsh -n bay "msrcp mss:/DSS/DS083.2/data/$AVN_FILE /mmmtmp/${USER}/migs/. ; rcp /mmmtmp/${USER}/migs/$AVN_FILE ocotillo:$AVN_DIR/."
+            rsh -n bay "rm -f /mmmtmp/${USER}/migs/$AVN_FILE"
 	endif
         rcp ${AVN_DIR}/$AVN_FILE node${inode}:${DAT_DIR_MEM}/AVN/$AVN_FILE
 
@@ -237,7 +235,7 @@ if ( $ICYC == 1 ) then
 endif
 cp ${DAT_DIR}/wrfbdy_1 ${DAT_DIR}/wrfbdy_mean
 
-ensemble_init < ens_size > out.ensemble_init_${days}_${seconds}
+ensemble_init < ens.info > out.ensemble_init_${days}_${seconds}
 
 mv ${DAT_DIR}/wrfbdy_mean ${DAT_DIR}/wrfbdy_mean_${days}_${seconds}
 
