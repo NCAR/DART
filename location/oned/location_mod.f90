@@ -117,7 +117,7 @@ end function set_location
 
 
 
-function set_location_missing
+function set_location_missing()
 !----------------------------------------------------------------------------
 !
 implicit none

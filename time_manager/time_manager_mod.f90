@@ -172,7 +172,7 @@ end function set_time
 
 
 
-function set_time_missing
+function set_time_missing()
 !---------------------------------------------------------------------------
 !
 ! Returns a time interval corresponding to this number of days and seconds.
