@@ -1479,9 +1479,9 @@ type(netcdf_file_type), intent(in) :: ncFileID
 integer,                intent(in) :: TimeVarID
 integer                            :: ierr
 
-integer  :: unlimitedDimID
-integer  :: ncid, length
-character(len=NF90_MAX_NAME) :: varname
+!integer  :: unlimitedDimID, length
+integer  :: ncid
+!character(len=NF90_MAX_NAME) :: varname
 
 ierr = 0
 
