@@ -1,4 +1,11 @@
 program test_random
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
