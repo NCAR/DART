@@ -12,7 +12,7 @@ module assim_model_mod
 
 ! NEED TO ADD ON ONLY CLAUSES
 use location_mod, only : location_type, get_dist, write_location, read_location, &
-                         nc_write_location, LocationDims, LocationName, LocationLName
+                         LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod
 use utilities_mod, only : get_unit
@@ -46,6 +46,14 @@ integer :: model_size
 
 
 type(time_type) :: time_step
+
+! Everybody needs to know about this ... TJH Jan 28, 2003
+
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
 
 contains
 
@@ -84,14 +92,6 @@ subroutine static_init_assim_model()
 ! is initializing the position of the state variables as location types.
 
 implicit none
-
-character(len=128) :: source,revision,revdate
-
-! Change output to diagnostic output block ... 
-
-source   = "$Source$"
-revision = "$Revision$"
-revdate  = "$Date$"
 
 ! Change output to diagnostic output block ... 
 
@@ -180,9 +180,18 @@ call check(nf90_def_dim(ncid=ncFileID, &
 call check(nf90_def_dim(ncid=ncFileID, &
              name="time",           len = nf90_unlimited,         dimid = TimeDimID))
 
-!
+!-------------------------------------------------------------------------------
+! Write Global Attributes 
+!-------------------------------------------------------------------------------
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "title", global_meta_data))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "assim_model_source", source ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "assim_model_revision", revision ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "assim_model_revdate", revdate ))
+
+!-------------------------------------------------------------------------------
 ! Create variables and attributes
-!
+!-------------------------------------------------------------------------------
 
 !    State ID
 call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
@@ -222,53 +231,27 @@ call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
                         dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
 call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
 
-!    The Locations  -- need to look at CF standards
-!    http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
-
-if ( LocationDims > 1 ) then
-   call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
-              dimids=(/ StateVarDimID, LocationDimID /), varid=LocationVarID) )
-else
-   call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
-              dimids=   StateVarDimID,                   varid=LocationVarID) )
-endif
-call check(nf90_put_att(ncFileID, LocationVarID, "long_name", LocationLName ))
-
-
-! Global attributes
-call check(nf90_put_att(ncFileID, nf90_global, "title", global_meta_data))
-
+!    The Locations -- are part of the model (some models have multiple grids).
+!    They are written by model_mod:nc_write_model_atts
 
 ! Leave define mode
 call check(nf90_enddef(ncfileID))
 
-
+!-------------------------------------------------------------------------------
 ! Fill the dimension variables
+! The time variable is filled as time progresses.
+! The state variable is filled similarly ...
+!-------------------------------------------------------------------------------
+
 call check(nf90_put_var(ncFileID, MemberVarID,   (/ (i,i=1,copies_of_field_per_time) /) ))
 call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
 !-------------------------------------------------------------------------------
-! Because the locations are now writen by the nc_write_model_atts, 
-! This section is no longer needed.
-!-------------------------------------------------------------------------------
-! write(*,*)'assim_model_mod:init_diag_output ... filling location variable.'
-! ! Fill the location variable
-! do i = 1, model_size
-!    call get_state_meta_data(i, state_loc)
-!    call nc_write_location(ncFileID, LocationVarID, state_loc, start=i)
-! 
-!    if (mod(i,1000) == 0 ) &
-!       write(*,*)'assim_model_mod:init_diag_output writing loc ',i,' of ',model_size
-! end do
-
 call check(nf90_sync(ncFileID))               ! sync to disk, but leave open
-
-! The time variable is filled as time progresses.
-! The state variable is filled similarly ...
+!-------------------------------------------------------------------------------
 
 i =  nc_write_model_atts(ncFileID)
-
 if ( i < 0 ) then
    print *,'assim_model_mod:nc_write_model_atts  bombed ', i
 else if ( i > 0 ) then
