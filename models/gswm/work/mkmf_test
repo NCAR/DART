@@ -1,0 +1,1 @@
+../../../mkmf/mkmf -p test -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" path_names_test
