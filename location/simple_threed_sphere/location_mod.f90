@@ -28,7 +28,9 @@ private
 
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
-       LocationDims, LocationName, LocationLName
+       vert_is_level, &
+       LocationDims, LocationName, LocationLName, &
+       read_ncep_obs_location
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -38,7 +40,10 @@ revdate  = "$Date$"
 
 type location_type
    private
-   real(r8) :: lon, lat, lev
+   real(r8) :: lon, lat, lev, pressure
+   integer :: which_vert
+! which vert determines if location has a pressure or level location in vertical
+! 1 implies levels for now, 2 implies pressure, could add other options
 end type location_type
 
 type(random_seq_type) :: ran_seq
@@ -95,11 +100,29 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
-get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * PI)
+get_location(1) = loc%lon * 180.0_r8 / PI
 get_location(2) = loc%lat * 180.0_r8 / PI
 get_location(3) = loc%lev
 
 end function get_location
+
+
+
+function vert_is_level(loc)
+!---------------------------------------------------------------------------
+!
+! Given a location, return true if vertical coordinate is pressure, else false
+
+logical :: vert_is_level
+type(location_type), intent(in) :: loc
+
+if(loc%which_vert == 1) then
+   vert_is_level = .true.
+else
+   vert_is_level = .false.
+endif
+
+end function vert_is_level
 
 
 
@@ -113,7 +136,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
-get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * PI)
+get_location_lon = loc%lon * 180.0_r8 / PI
 
 end function get_location_lon
 
@@ -168,7 +191,7 @@ if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
 if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
         'Latitude is out of [-90,90] range', source, revision, revdate)
 
-set_location%lon = lon * 2.0_r8 * PI / 360.0_r8
+set_location%lon = lon * PI / 180.0_r8
 set_location%lat = lat * PI / 180.0_r8
 set_location%lev = lev
 
@@ -321,6 +344,48 @@ end subroutine nc_write_location
 
 
 
+!=============================================================
+  subroutine read_ncep_obs_location(location, obsunit, obsindex, var)
+!=============================================================
+! read location (lon,lat,pressure) from NCEP observation files
+!  Input units are: radians and hPa.
+
+implicit none
+
+type(location_type) :: location
+
+integer :: obs_prof
+integer, intent(in) :: obsunit
+integer, intent(out) :: obsindex
+real (r8), intent(out) :: var
+real (r8) :: lon,lat,lev,zob, dummy,count,time,type
+
+! Read location, kind and error variance of NCEP data
+
+    read(obsunit, 880) var, lon, lat, lev, zob, dummy,count,time,type
+  880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
+
+    location%lon = lon     ! in radian
+    location%lat = lat     ! in radian
+
+!   set up observation kind
+    obs_prof = count/1000000
+
+    if(obs_prof == 2) obsindex = 1
+    if(obs_prof == 9) obsindex = 2
+    if(obs_prof == 3) obsindex = 3
+    if(obs_prof == 1) obsindex = 4
+
+    if (obsindex .ne. 3) then      ! for u,v,t
+    location%pressure = lev*100.0   ! (transfer from mb to Pascal)
+    location%which_vert = 2
+    else
+    location%lev = -1      ! for Ps
+    location%which_vert = 1
+    var = var*100.0     ! convert to Pascal
+    endif
+
+end subroutine read_ncep_obs_location
 
 !----------------------------------------------------------------------------
 ! end of location/simple_threed_sphere/location_mod.f90
