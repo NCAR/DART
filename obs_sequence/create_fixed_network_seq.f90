@@ -1,8 +1,8 @@
 program create_fixed_network_seq
 
-use types_mod, only : r8
-use utilities_mod, only : open_file, close_file
-use obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
+use        types_mod, only : r8
+use    utilities_mod, only : open_file, close_file
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_num_obs, init_obs_sequence, get_first_obs, write_obs_seq, set_copy_meta_data, &
    get_obs_def, set_obs_def, append_obs_to_seq, get_next_obs, insert_obs_in_seq, init_obs, &
@@ -13,14 +13,12 @@ use time_manager_mod, only : time_type, operator(*), operator(+), set_time
 implicit none
 
 type(obs_sequence_type) :: seq, seq_in
-type(obs_type) :: obs, next_obs, new_obs
-type(obs_def_type) :: obs_def
-integer :: unit_num
-character(len = 129) :: file_name
-logical :: is_there_one, is_this_last
-type(time_type) :: ob_time, init_time, this_time, period
-integer :: seconds, days, i, j, network_size, option, num_times, num_copies, num_qc
-character(len = 129) :: in_string
+type(obs_type)          :: obs, next_obs, new_obs
+type(obs_def_type)      :: obs_def
+character(len = 129)    :: file_name
+logical                 :: is_there_one, is_this_last
+type(time_type)         :: ob_time, init_time, this_time, period
+integer                 :: seconds, days, i, j, network_size, option, num_times, num_copies, num_qc
 
 ! Initialize the obs_sequence module
 call static_init_obs_sequence
@@ -78,14 +76,14 @@ if(option == 1) then
       ob_time = init_time + (j - 1) * period
 
       is_there_one = get_first_obs(seq_in, obs)
-      
+
       do i = 1, network_size
          new_obs = obs
 ! Set the time
          call get_obs_def(new_obs, obs_def)
          call set_obs_def_time(obs_def, ob_time) 
          call set_obs_def(new_obs, obs_def)
-! Append it to the sequence 
+! Append it to the sequence
          call append_obs_to_seq(seq, new_obs)
 ! Find the next observation in the input set
          call get_next_obs(seq_in, obs, next_obs, is_this_last)

@@ -148,7 +148,7 @@ subroutine init_obs_sequence(seq, num_copies, num_qc, &
 type(obs_sequence_type), intent(out) :: seq
 integer, intent(in) :: num_copies, num_qc, expected_max_num_obs
 
-integer :: i 
+integer :: i
 
 seq%num_copies = num_copies
 seq%num_qc = num_qc
@@ -393,16 +393,16 @@ end subroutine set_obs
 subroutine get_obs_time_range(seq, time1, time2, key_bounds, num_keys, out_of_range, obs)
 
 ! Add other options for getting the first time to minimize searh
-type(obs_sequence_type), intent(in) :: seq
-type(time_type), intent(in) :: time1, time2
-integer, intent(out) :: key_bounds(2)
-integer, intent(out) :: num_keys
-logical, intent(out) :: out_of_range
+type(obs_sequence_type),  intent(in) :: seq
+type(time_type),          intent(in) :: time1, time2
+integer,                 intent(out) :: key_bounds(2)
+integer,                 intent(out) :: num_keys
+logical,                 intent(out) :: out_of_range
 type(obs_type), intent(in), optional :: obs
 
-type(time_type) :: cur_time
+type(time_type)    :: cur_time
 type(obs_def_type) :: obs_def
-integer :: current, base, last_key
+integer            :: current, last_key
 
 ! Returns the first key and last key of sequence of obs between time1 and
 ! time2 along with the total number.
@@ -696,8 +696,8 @@ end subroutine set_qc_meta_data
 function get_first_obs(seq, obs)
 
 type(obs_sequence_type), intent(in) :: seq
-type(obs_type), intent(out) :: obs
-logical :: get_first_obs
+type(obs_type),         intent(out) :: obs
+logical                             :: get_first_obs
 
 if(seq%num_obs == 0) then
    get_first_obs = .false.
@@ -780,17 +780,17 @@ end subroutine add_copies
 subroutine add_qc(seq, num_to_add)
 
 ! This requires a complete recreation of the entire obs sequence
-! Add additional copyies to an observation sequence. This increases
+! Add additional copies to an observation sequence. This increases
 ! the space for copy meta_data and goes through the whole string of
 ! observations deallocating and allocating (yuck), to add space.
 ! In the long run, may want a smoother way to do this globally.
 
 type(obs_sequence_type), intent(inout) :: seq
-integer, intent(in) :: num_to_add
+integer,                    intent(in) :: num_to_add
 
 character(len = 129) :: qc_temp(seq%num_copies)
-real(r8) :: values_temp(seq%num_copies)
-integer :: i, old_num
+real(r8)             :: values_temp(seq%num_copies)
+integer              :: i, old_num
 
 old_num = seq%num_qc
 seq%num_qc = old_num + num_to_add
@@ -986,8 +986,6 @@ subroutine copy_obs(obs1, obs2)
 type(obs_type), intent(out) :: obs1
 type(obs_type), intent(in) :: obs2
 
-integer :: dealloc_err
-
 obs1%key = obs2%key
 call copy_obs_def(obs1%def, obs2%def)
 
@@ -1079,8 +1077,8 @@ end subroutine set_obs_values
 subroutine get_qc(obs, qc, qc_indx)
 
 
-type(obs_type), intent(in) :: obs
-real(r8), intent(out) :: qc(:)
+type(obs_type),    intent(in) :: obs
+real(r8),         intent(out) :: qc(:)
 integer, optional, intent(in) :: qc_indx
 
 if(present(qc_indx)) then
@@ -1094,8 +1092,8 @@ end subroutine get_qc
 !-------------------------------------------------
 subroutine set_qc(obs, qc, qc_indx)
 
-type(obs_type), intent(out) :: obs
-real(r8), intent(in) :: qc(:)
+type(obs_type),   intent(out) :: obs
+real(r8),          intent(in) :: qc(:)
 integer, optional, intent(in) :: qc_indx
 
 if(present(qc_indx)) then
@@ -1190,7 +1188,7 @@ end subroutine read_obs
 
 subroutine interactive_obs(num_copies, num_qc, obs)
 
-integer, intent(in) :: num_copies, num_qc
+integer,           intent(in) :: num_copies, num_qc
 type(obs_type), intent(inout) :: obs
 
 integer :: i

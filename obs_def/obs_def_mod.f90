@@ -11,11 +11,11 @@ module obs_def_mod
 ! $Author$
 
 use        types_mod, only : r8
-use   utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_kind, get_obs_kind
 use     location_mod, only : location_type, read_location, write_location, interactive_location
 use time_manager_mod, only : time_type, read_time, write_time, set_time
-use assim_model_mod, only : get_state_meta_data
+use  assim_model_mod, only : get_state_meta_data
 
 implicit none
 private
@@ -325,8 +325,6 @@ subroutine interactive_obs_def(obs_def)
 
 type(obs_def_type), intent(inout) :: obs_def
 
-integer :: ind
-real(r8) :: error_variance
 integer :: seconds, days
 
 if ( .not. module_initialized ) call initialize_module

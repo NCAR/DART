@@ -6,7 +6,7 @@ use obs_sequence_mod, only : obs_sequence_type, interactive_obs, &
 use assim_model_mod, only : static_init_assim_model
 
 type(obs_sequence_type) :: seq
-character(len = 129) :: file_name
+character(len = 129)    :: file_name
 
 ! Initialize the assim_model module, need this to get model
 ! state meta data for locations of identity observations
