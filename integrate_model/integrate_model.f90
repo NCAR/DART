@@ -28,7 +28,7 @@ use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    open_restart_write, close_restart, awrite_state_restart, aread_state_restart
 
 use ensemble_manager_mod, only : init_ensemble_manager, put_ensemble_member, &
-   end_ensemble_manager, Aadvance_state, ensemble_type, get_ensemble_member
+   Aadvance_state, ensemble_type, get_ensemble_member
 
 implicit none
 
