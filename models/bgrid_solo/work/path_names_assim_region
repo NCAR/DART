@@ -1,4 +1,4 @@
-parallel_filter/parallel_filter.f90
+assim_tools/assim_region.f90
 assim_tools/assim_tools_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 sort/sort_mod.f90
