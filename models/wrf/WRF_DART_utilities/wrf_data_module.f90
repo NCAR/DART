@@ -10,6 +10,8 @@ MODULE wrf_data_module
 ! $Date$
 ! $Author$ 
 
+use        types_mod, only : r8
+
 implicit none
 private
 
@@ -35,20 +37,20 @@ TYPE wrf_data
 !---
 !  arrays for data
 
-   real, pointer :: u(:,:,:)
-   real, pointer :: v(:,:,:)
-   real, pointer :: w(:,:,:)
-   real, pointer :: ph(:,:,:)
-   real, pointer :: phb(:,:,:)
-   real, pointer :: t(:,:,:)
-   real, pointer :: qv(:,:,:)
-   real, pointer :: qc(:,:,:)
-   real, pointer :: qr(:,:,:)
-   real, pointer :: qi(:,:,:)
-   real, pointer :: qs(:,:,:)
-   real, pointer :: qg(:,:,:)
-   real, pointer :: mu(:,:)
-   real, pointer :: mub(:,:)
+   real(r8), pointer :: u(:,:,:)
+   real(r8), pointer :: v(:,:,:)
+   real(r8), pointer :: w(:,:,:)
+   real(r8), pointer :: ph(:,:,:)
+   real(r8), pointer :: phb(:,:,:)
+   real(r8), pointer :: t(:,:,:)
+   real(r8), pointer :: qv(:,:,:)
+   real(r8), pointer :: qc(:,:,:)
+   real(r8), pointer :: qr(:,:,:)
+   real(r8), pointer :: qi(:,:,:)
+   real(r8), pointer :: qs(:,:,:)
+   real(r8), pointer :: qg(:,:,:)
+   real(r8), pointer :: mu(:,:)
+   real(r8), pointer :: mub(:,:)
 
 end type
 END MODULE wrf_data_module
