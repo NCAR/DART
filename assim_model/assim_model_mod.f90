@@ -471,7 +471,13 @@ endif
 
 delta_time = time - model_time
 
-aget_closest_state_time_to = (delta_time / time_step) * time_step + model_time
+!!! WARNING ON ODD SECOND TIMESTEPS; THE LOGIC BELOW MAY NOT WORK
+if(time_step / 2 * 2 /= time_step) then
+    call error_handler(E_ERR,'aget_closest_state_time_to', &
+   'Computation of model time wont support time steps with odd number of seconds.',source,revision,revdate) 
+endif
+
+aget_closest_state_time_to = ((delta_time + time_step / 2) / time_step) * time_step + model_time
 
 end function aget_closest_state_time_to
 
