@@ -94,8 +94,8 @@ switch lower(model)
          ylabel(sprintf('state variable # %d',pinfo.var2))
          zlabel(sprintf('state variable # %d',pinfo.var3))
       
-         s = sprintf('%d %d %d %s %s %d', pinfo.var1, pinfo.var2, pinfo.var3, ...
-                                              model, pinfo.fname, ens_mem_id);
+         s = sprintf('%d %d %d %s %s %s', pinfo.var1, pinfo.var2, ...
+                     pinfo.var3, pinfo.fname, model, pinfo.ens_mem);
          h = legend(s,0);
          [legh, objh, outh, outm] = legend;
          set(objh(1),'interpreter','none')
@@ -108,7 +108,8 @@ switch lower(model)
          % outm     cell array for the text in the legend
          nlines = length(outm);
          outm{nlines+1} = sprintf('%d %d %d %s %s %s', ...
-              pinfo.var1, pinfo.var2, pinfo.var3, model, pinfo.fname, pinfo.ens_mem);
+              pinfo.var1, pinfo.var2, pinfo.var3, pinfo.fname, ...
+              model, pinfo.ens_mem);
          [legh, objh, outh, outm] = legend([outh; h],outm,0);
       
          set(objh(1),'interpreter','none')

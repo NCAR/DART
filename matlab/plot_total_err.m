@@ -19,8 +19,8 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-pinfo.truth_file = truth_file;
-pinfo.diagn_file = diagn_file;
+pinfo = struct('truth_file', truth_file, ...
+               'diagn_file', diagn_file);
 
 CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 

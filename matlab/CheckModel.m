@@ -10,8 +10,8 @@ end
 % Get some information from the file
 ft         = netcdf(fname);
 model      = ft.model(:);
-num_copies = ncsize(ft{'copy'}); % determine # of ensemble members
-num_times  = ncsize(ft{'time'}); % determine # of output times
+num_copies = ncsize(ft('copy')); % determine # of ensemble members
+num_times  = ncsize(ft('time')); % determine # of output times
 
 if (isempty(model)) 
    error(sprintf('%s has no ''model'' global attribute.',fname))

@@ -1,5 +1,14 @@
-% plot_ens_mean_time_series.m
-% Plots time series of ensemble members, mean and truth for 9 variable
+% plot_ens_mean_time_series    Plots time series of ensemble mean and truth
+%                                                                               
+% plot_ens_mean_time_series    interactively queries for the needed information.
+%              Since different models potentially need different pieces of 
+%              information ... the model types are determined and additional 
+%              user input may be queried.
+%
+% Ultimately, plot_ens_mean_time_series will be replaced by a GUI.
+%
+% All the heavy lifting is done by PlotEnsMeanTimeSeries.
+
 
 if (exist('truth_file') ~= 1)
    truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
@@ -24,9 +33,9 @@ switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_96'}
 
-      pinfo = struct('state_var_inds',varid);
-      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
-      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+      pinfo = struct('truth_file'    , truth_file, ...
+                     'diagn_file'    , diagn_file, ...
+                     'state_var_inds', varid);
 
       disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
       disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)])

@@ -37,8 +37,6 @@ CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 % Get some information from the truth_file 
 ft = netcdf(pinfo.truth_file);
 t.model      = ft.model(:);
-timeunits    = ft{'time'}.units(:);
-varunits     = ft{pinfo.var}.units(:);
 t.num_vars   = ncsize(ft('StateVariable')); % determine # of state variables
 t.num_copies = ncsize(ft('copy')); % determine # of ensemble members
 t.num_times  = ncsize(ft('time')); % determine # of output times
@@ -164,9 +162,15 @@ switch lower(t.model)
       end
 
 
-   case 'fms_bgrid'                                                                            
-                                                                                               
+   case 'fms_bgrid'
+
       clf;
+
+      ft = netcdf(pinfo.truth_file);
+      t.model      = ft.model(:);
+      timeunits    = ft{'time'}.units(:);
+      varunits     = ft{pinfo.var}.units(:);
+      close(ft);
 
       truth       = GetCopy(pinfo.truth_file, truth_index,      pinfo );
       ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );

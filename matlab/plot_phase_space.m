@@ -1,6 +1,10 @@
 % plot_phase_space.m
 % Plots a 3D trajectory of (3 state variables of) a single ensemble member.
 %
+% Because it IS possible to overlay plots, the onus is on YOU to make
+% sure the current figure is "cleared" before you plot the first
+% trajectory.
+%
 % It is possible to overlay subsequent trajectories as follows:
 %
 % clf;                      % clears the current figure  
@@ -22,9 +26,6 @@
 % ltype      = 'c-';        % line type ('help plot' for details)
 % plot_phase_space
 %
-% Because it IS possible to overlay plots, the onus is on YOU to make
-% sure the current figure is "cleared" before you plot the first
-% trajectory.
 
 % TJH Wed Jul  2 10:11:04 MDT 2003
 
@@ -34,41 +35,53 @@ if (exist('fname') ~=1)
    if isempty(fname)
       fname = 'True_State.nc';
    end                                                                          
+else
+   s1 = input(sprintf('Input name of netCDF file. <cr> for  %s',fname),'s');
+   if ~isempty(s1), fname = str2num(deblank(s1)); end
 end 
+
 pinfo.fname = fname;
 
 vars  = CheckModel(fname);   % also gets default values for this model.
-varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_96'}
 
-      if (isfield(pinfo,'var1') ~=1)
-         s1 = input('Input state variable index for ''X'' variable. <cr> for 1  ','s');
-         if isempty(s1), pinfo.var1 = 1; else pinfo.var1 = str2num(deblank(s1)); end
+      str1 = sprintf('[%d %d]',vars.min_state_var, vars.max_state_var);
+
+      if (exist('var1') ~=1)
+         s1 = input(sprintf('Input variable index for ''X'' variable %s. <cr> for 1.  ',str1),'s');
+         if isempty(s1), var1 = 1; else var1 = str2num(deblank(s1)); end
       end 
 
-      if (isfield(pinfo,'var2') ~=1)
-         s1 = input('Input state variable index for ''Y'' variable. <cr> for 2  ','s');
-         if isempty(s1), pinfo.var2 = 2; else pinfo.var2 = str2num(deblank(s1)); end
+      if (exist('var2') ~=1)
+         s1 = input(sprintf('Input variable index for ''Y'' variable %s. <cr> for 2.  ',str1),'s');
+         if isempty(s1), var2 = 2; else var2 = str2num(deblank(s1)); end
       end 
 
-      if (isfield(pinfo,'var3') ~=1)
-         s1 = input('Input state variable index for ''Z'' variable. <cr> for 3  ','s');
-         if isempty(s1), pinfo.var3 = 3; else pinfo.var3 = str2num(deblank(s1)); end
+      if (exist('var3') ~=1)
+         s1 = input(sprintf('Input variable index for ''Z'' variable %s. <cr> for 3.  ',str1),'s');
+         if isempty(s1), var3 = 3; else var3 = str2num(deblank(s1)); end
       end 
 
-      if (isfield(pinfo,'ens_mem') ~=1)
+      if (exist('ens_mem') ~=1)
          s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
-         if isempty(s1), pinfo.ens_mem = 'true state'; else pinfo.ens_mem = s1; end
+         if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
       end 
 
-      if (isfield(pinfo,'ltype') ~=1)
+      if (exist('ltype') ~=1)
          s1 = input('Input line type string. <cr> for ''k-''  ','s');
-         if isempty(fname), pinfo.ltype = 'k-'; else pinfo.ltype = s1; end
+         if isempty(s1), ltype = 'k-'; else ltype = s1; end
       end 
-      
+
+      pinfo = struct('fname'  , fname   , ...
+                     'var1'   , var1    , ...
+                     'var2'   , var2    , ...
+                     'var3'   , var3    , ...
+                     'ens_mem', ens_mem , ...
+                     'ltype'  , ltype   );
+
       disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
       disp(sprintf('Plotting state variables %d %d %d with line type %s.', ...
                     pinfo.var1, pinfo.var2, pinfo.var3, pinfo.ltype))
@@ -76,7 +89,7 @@ switch lower(vars.model)
    case 'fms_bgrid'
 
       pinfo = GetBgridInfo(fname, 'PlotPhaseSpace');
-                                                                                           
+
       pinfo                            % just echo stuff for posterity.
 
    otherwise

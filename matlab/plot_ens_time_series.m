@@ -28,9 +28,9 @@ switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_96'}
 
-      pinfo = struct('state_var_inds',varid);
-      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
-      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+      pinfo = struct('truth_file'    , truth_file, ...
+                     'diagn_file'    , diagn_file, ...
+                     'state_var_inds', varid);
 
       disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
       disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)])

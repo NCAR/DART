@@ -31,8 +31,8 @@ switch lower(deblank(routine))
 
       pgvar           = GetVar(prognostic_vars);  % Determine prognostic variable
       [level, lvlind] = GetLevel(pgvar,levels);   % Determine level and index
-      [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
       [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
+      [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
 
       pinfo = struct('model',model, ...
               'fname',fname, ...
@@ -47,44 +47,65 @@ switch lower(deblank(routine))
        base_var               = GetVar(prognostic_vars);
       [base_tme, base_tmeind] = GetTime(     base_var,times);
       [base_lvl, base_lvlind] = GetLevel(    base_var,levels);
-      [base_lon, base_lonind] = GetLongitude(base_var,TmpI,VelI);
       [base_lat, base_latind] = GetLatitude( base_var,TmpJ,VelJ);
+      [base_lon, base_lonind] = GetLongitude(base_var,TmpI,VelI);
 
       disp('Getting information for the ''comparison'' variable.')
        comp_var               = GetVar(prognostic_vars,          base_var);
       [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvl);
-      [comp_lon, comp_lonind] = GetLongitude(comp_var,TmpI,VelI, base_lon);
-      [comp_lat, comp_latind] = GetLatitude( comp_var,TmpJ,VelJ, base_lat);
 
       pinfo = struct('model',model, 'fname'      , fname,       ...
               'base_var' ,base_var, 'comp_var'   , comp_var,    ...
               'base_tme' ,base_tme, 'base_tmeind', base_tmeind, ...
               'base_lvl' ,base_lvl, 'base_lvlind', base_lvlind, ...
-              'base_lon' ,base_lon, 'base_lonind', base_lonind, ...
               'base_lat' ,base_lat, 'base_latind', base_latind, ...
+              'base_lon' ,base_lon, 'base_lonind', base_lonind, ...
+              'comp_lvl' ,comp_lvl, 'comp_lvlind', comp_lvlind);
+
+   case 'plotvarvarcorrel'
+
+      disp('Getting information for the ''base'' variable.')
+       base_var               = GetVar(prognostic_vars);
+      [base_tme, base_tmeind] = GetTime(     base_var,times);
+      [base_lvl, base_lvlind] = GetLevel(    base_var,levels);
+      [base_lat, base_latind] = GetLatitude( base_var,TmpJ,VelJ);
+      [base_lon, base_lonind] = GetLongitude(base_var,TmpI,VelI);
+
+      disp('Getting information for the ''comparison'' variable.')
+       comp_var               = GetVar(prognostic_vars,          base_var);
+      [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvl);
+      [comp_lat, comp_latind] = GetLatitude( comp_var,TmpJ,VelJ, base_lat);
+      [comp_lon, comp_lonind] = GetLongitude(comp_var,TmpI,VelI, base_lon);
+
+      pinfo = struct('model',model, 'fname'      , fname,       ...
+              'base_var' ,base_var, 'comp_var'   , comp_var,    ...
+              'base_tme' ,base_tme, 'base_tmeind', base_tmeind, ...
+              'base_lvl' ,base_lvl, 'base_lvlind', base_lvlind, ...
+              'base_lat' ,base_lat, 'base_latind', base_latind, ...
+              'base_lon' ,base_lon, 'base_lonind', base_lonind, ...
               'comp_lvl' ,comp_lvl, 'comp_lvlind', comp_lvlind, ...
-              'comp_lon' ,comp_lon, 'comp_lonind', comp_lonind, ...
-              'comp_lat' ,comp_lat, 'comp_latind', comp_latind);
+              'comp_lat' ,comp_lat, 'comp_latind', comp_latind, ...
+              'comp_lon' ,comp_lon, 'comp_lonind', comp_lonind);
 
    case 'plotphasespace'
 
       disp('Getting information for the ''X'' variable.')
        var1                   = GetVar(prognostic_vars);
       [var1_lvl, var1_lvlind] = GetLevel(    var1, levels);
-      [var1_lon, var1_lonind] = GetLongitude(var1, TmpI, VelI);
       [var1_lat, var1_latind] = GetLatitude( var1, TmpJ, VelJ);
+      [var1_lon, var1_lonind] = GetLongitude(var1, TmpI, VelI);
 
       disp('Getting information for the ''Y'' variable.')
        var2                   = GetVar(prognostic_vars,        var1    );
       [var2_lvl, var2_lvlind] = GetLevel(    var2, levels,     var1_lvl);
-      [var2_lon, var2_lonind] = GetLongitude(var2, TmpI, VelI, var1_lon);
       [var2_lat, var2_latind] = GetLatitude( var2, TmpJ, VelJ, var1_lat);
+      [var2_lon, var2_lonind] = GetLongitude(var2, TmpI, VelI, var1_lon);
 
       disp('Getting information for the ''Z'' variable.')
        var3                   = GetVar(prognostic_vars,        var1    );
       [var3_lvl, var3_lvlind] = GetLevel(    var3, levels,     var1_lvl);
-      [var3_lon, var3_lonind] = GetLongitude(var3, TmpI, VelI, var1_lon);
       [var3_lat, var3_latind] = GetLatitude( var3, TmpJ, VelJ, var1_lat);
+      [var3_lon, var3_lonind] = GetLongitude(var3, TmpI, VelI, var1_lon);
 
       % query for ensemble member
       s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
@@ -92,19 +113,19 @@ switch lower(deblank(routine))
 
       % query for line type
       s1 = input('Input line type string. <cr> for ''k-''  ','s');
-      if isempty(fname), ltype = 'k-'; else ltype = s1; end
+      if isempty(s1), ltype = 'k-'; else ltype = s1; end
 
       pinfo = struct('model',model, 'fname' ,fname, ...
               'var1_var' ,var1, 'var2_var' ,var2, 'var3_var' ,var3, ...
               'var1_lvl' , var1_lvl, 'var1_lvlind', var1_lvlind, ...
-              'var1_lon' , var1_lon, 'var1_lonind', var1_lonind, ...
               'var1_lat' , var1_lat, 'var1_latind', var1_latind, ...
+              'var1_lon' , var1_lon, 'var1_lonind', var1_lonind, ...
               'var2_lvl' , var2_lvl, 'var2_lvlind', var2_lvlind, ...
-              'var2_lon' , var2_lon, 'var2_lonind', var2_lonind, ...
               'var2_lat' , var2_lat, 'var2_latind', var2_latind, ...
+              'var2_lon' , var2_lon, 'var2_lonind', var2_lonind, ...
               'var3_lvl' , var3_lvl, 'var3_lvlind', var3_lvlind, ...
-              'var3_lon' , var3_lon, 'var3_lonind', var3_lonind, ...
               'var3_lat' , var3_lat, 'var3_latind', var3_latind, ...
+              'var3_lon' , var3_lon, 'var3_lonind', var3_lonind, ...
               'ens_mem'  , ens_mem , 'ltype',ltype);
 
    otherwise

@@ -1,5 +1,13 @@
-% plot_correl   Plots space-time series of correlation between a given variable at a given
-% time and all other variable at all times in an ensemble time sequence
+% plot_correl   Plots space-time series of correlation between a given variable 
+%               at a given time and other variables at all times in an 
+%               ensemble time sequence.
+%
+% plot_correl  interactively queries for the information needed to create
+%              the desired correlations.
+%              Since different models potentially need different pieces 
+%              of information ... the model types are determined and 
+%              additional user input may be queried.
+
 
 if (exist('diagn_file') ~=1)
    disp('Input name of prior or posterior diagnostics file;')

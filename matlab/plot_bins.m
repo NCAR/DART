@@ -1,6 +1,15 @@
 % Plots ensemble rank histograms 
 %
-% Example 1
+% plot_bins    interactively queries for the information needed to create
+%              ensemble rank histograms. Since different models potentially
+%              need different pieces of information ... the model types are
+%              determined and additional user input may be queried.
+%
+% Ultimately, plot_bins will be replaced by a GUI.
+% In the end, the heavy lifting is done by PlotBins.
+%
+% Example 1 (for low-order models)
+%
 % truth_file = 'True_State.nc';
 % diagn_file = 'Prior_Diag.nc';
 % plot_bins
@@ -32,9 +41,9 @@ switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_96'}
 
-      pinfo = struct('state_var_inds',varid);
-      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
-      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+      pinfo = struct( 'truth_file'    , truth_file, ...
+                      'diagn_file'    , diagn_file, ...
+                      'state_var_inds', varid);
 
       disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
       disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)])

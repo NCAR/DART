@@ -27,10 +27,12 @@ if (exist(pinfo.fname) ~= 2), error(sprintf('%s does not exist.',pinfo.fname)), 
 % Get some file-specific information.
 f = netcdf(pinfo.fname,'nowrite');
 model      = f.model(:);
+timeunits  = f{'time'}.units(:);
 num_vars   = ncsize(f('StateVariable')); % determine # of state variables
 num_times  = ncsize(f('time')); % determine # of output times
 num_copies = ncsize(f('copy')); % determine # of ensemble members
 close(f)
+
 
 switch(lower(model))
 
@@ -86,11 +88,148 @@ switch(lower(model))
 
    case 'fms_bgrid'
 
-      pinfo
-      disp(sprintf('model %s not fully implemented yet', vars.model))
+      % We are going to correlate one var/time/lvl/lat/lon  with
+      % all other lats/lons for a var/time/lvl   
+
+      clf;
+
+      times      = getnc(pinfo.fname,'time');
+      f          = netcdf(pinfo.fname,'nowrite');
+      timeunits  = f{'time'}.units(:);
+      switch lower(pinfo.comp_var)
+         case {'ps','t'}
+            lats = getnc(pinfo.fname,'TmpJ'); ny = length(lats);
+            lons = getnc(pinfo.fname,'TmpI'); nx = length(lons);
+            latunits = f{'TmpJ'}.units(:);
+            lonunits = f{'TmpI'}.units(:);
+         otherwise
+            lats = getnc(pinfo.fname,'VelJ'); ny = length(lats);
+            lons = getnc(pinfo.fname,'VelI'); nx = length(lons);
+            latunits = f{'VelJ'}.units(:);
+            lonunits = f{'VelI'}.units(:);
+      end
+      num_times  = ncsize(f('time')); % determine # of output times
+      num_copies = ncsize(f('copy')); % determine # of ensemble members
+      close(f)
+
+      nxny = nx*ny;
+
+      base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
+                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
+      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
+                              pinfo.base_tmeind, pinfo.comp_lvlind);
+
+      corr = zeros(nxny,1);
+
+      for i = 1:nxny,
+         x = corrcoef(base_mem, comp_ens(:, i));
+         corr(i) = x(1, 2);
+      end 
+
+      corrslice = reshape(corr,[ny nx]);
+
+      contour(lons,lats,corrslice,[-1:0.2:1]); hold on;
+      plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
+                 'MarkerSize',12,'MarkerFaceColor','k');
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
+           model, pinfo.base_var, pinfo.base_lvl, ...
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_tme, pinfo.fname);
+      s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
+               pinfo.comp_var, pinfo.comp_lvl, num_copies-2); 
+      title({s1,s2},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
+      ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
+      worldmap;
+      axis image
+      h = colorbar; 
+      ax = get(h,'Position'); set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
 
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
+
+
+%----------------------------------------------------------------------
+% helper functions
+%----------------------------------------------------------------------
+
+function slice = Get1Ens(fname, var, tmeind, lvlind, latind, lonind);
+% netcdf variable is ordered  [ time copy level lat lon ]
+% Get1Ens retrieves all the ensemble members for a particular 4D 
+% location (time, level, lat, lon).
+% The ensemble members do not include the mean, spread, etc. 
+
+% find which are actual ensemble members
+metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+copyindices = strmatch('ensemble member',metadata);  % find all 'member's
+
+if ( isempty(copyindices) )
+   disp(sprintf('%s has no valid ensemble members',fname))
+   disp('To be a valid ensemble member, the CopyMetaData for the member')
+   disp('must start with the character string ''ensemble member''')
+   disp('None of them in do in your file.')
+   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   error('netcdf file has no ensemble members.')
+end
+ens_num     = length(copyindices);
+
+switch lower(var)
+   case 'ps'
+      corner     = [tmeind, -1,         latind, lonind];
+      endpnt     = [tmeind, -1,         latind, lonind];
+      bob        = getnc(fname,var,corner,endpnt);
+      slice      = bob(copyindices);
+   otherwise
+      corner     = [tmeind, -1, lvlind, latind, lonind];
+      endpnt     = [tmeind, -1, lvlind, latind, lonind];
+      bob        = getnc(fname,var,corner,endpnt);
+      slice      = bob(copyindices);
+end
+
+
+function slice = GetEnsLevel(fname, var, tmeind, lvlind);
+% netcdf variable is ordered  [ time copy level lat lon ]
+% GetEnsLevel retrieves all the ensemble members for a particular time and level. 
+%
+% The ensemble members do not include the mean, spread, etc. 
+% The level is returned as a [Nmem -by- NspatialLocations] matrix;
+% each row is an observation and each column is a (spatial)variable. 
+% should vectorize better.
+
+% find which are actual ensemble members
+metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+copyindices = strmatch('ensemble member',metadata);  % find all 'member's
+
+if ( isempty(copyindices) )
+   disp(sprintf('%s has no valid ensemble members',fname))
+   disp('To be a valid ensemble member, the CopyMetaData for the member')
+   disp('must start with the character string ''ensemble member''')
+   disp('None of them in do in your file.')
+   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   error('netcdf file has no ensemble members.')
+end
+ens_num     = length(copyindices);
+
+switch lower(var)
+   case 'ps'
+      corner     = [tmeind, -1,         -1, -1];
+      endpnt     = [tmeind, -1,         -1, -1];
+
+   otherwise
+      corner     = [tmeind, -1, lvlind, -1, -1];
+      endpnt     = [tmeind, -1, lvlind, -1, -1];
+end
+
+bob        = getnc(fname,var,corner,endpnt);
+ted        = bob(copyindices,:,:);
+[nm,ny,nx] = size(ted);
+slice      = reshape(ted,[nm ny*nx]);
+
+function PlotLocator(pinfo)
+   plot(pinfo.base_lon, pinfo.base_lat,'pg','MarkerSize',12,'MarkerFaceColor','g');
+   axis([0 360 -90 90])
+   worldmap
+   axis image
+   grid on
