@@ -2,10 +2,10 @@
 
 FC = pgf90
 CPPFLAGS =
-FFLAGS = -r8 -Ktrap=fp -pc 64 -silent
+FFLAGS = -r8 -Ktrap=fp -pc 64 -v -I/usr/local/netcdf/include
 LD = pgf90
 LDFLAGS = $(LIBS)
-LIBS = -L/usr/local/lib -lnetcdf_pgi
+LIBS = -L/usr/local/netcdf/lib -lnetcdf
 LIST = -Mlist
 
 # you should never need to change any lines below.
