@@ -45,6 +45,23 @@ subroutine init_model()
 !
 ! Stub for model initialization, not needed for L96
 
+
+character(len=128) :: source,revision,revdate
+
+! let CVS fill strings ... DO NOT EDIT ...
+
+source   = "$Source$"
+revision = "$Revision$"
+revdate  = "$Date$"
+
+! Ultimately,  change output to diagnostic output block ...
+
+write(*,*)'assim_model attributes:'
+write(*,*)'   ',source
+write(*,*)'   ',revision
+write(*,*)'   ',revdate
+
+
 end subroutine init_model
 
 

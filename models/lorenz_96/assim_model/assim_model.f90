@@ -58,10 +58,27 @@ subroutine initialize_assim_model()
 ! is initializing the position of the state variables as location types.
 
 implicit none
+
+
+character(len=128) :: source,revision,revdate
 real(r8) :: x_loc
 integer :: i
 
+! Change output to diagnostic output block ... 
+
+source   = "$Source$"
+revision = "$Revision$"
+revdate  = "$Date$"
+
+! Change output to diagnostic output block ... 
+
+write(*,*)'assim_model attributes:'
+write(*,*)'   ',source
+write(*,*)'   ',revision
+write(*,*)'   ',revdate
+
 ! Define the locations of the state variables;
+
 do i = 1, model_size
    x_loc = (i - 1.0) / model_size
    state_loc(i) =  set_location(x_loc)
@@ -70,6 +87,7 @@ end do
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L96 from
 ! Shree Khare.
+
 
 time_step = set_time(3600, 0)
 
@@ -123,7 +141,8 @@ end function get_model_size
 
 
 
-function get_closest_state_time_to(assim_model, time)
+
+  function get_closest_state_time_to(assim_model, time)
 !----------------------------------------------------------------------
 !
 ! Returns the time closest to the given time that the model can reach
@@ -131,9 +150,9 @@ function get_closest_state_time_to(assim_model, time)
 
 implicit none
 
-type(time_type) :: get_closest_state_time_to
 type(assim_model_type), intent(in) :: assim_model
 type(time_type), intent(in) :: time
+type(time_type) :: get_closest_state_time_to
 
 type(time_type) :: model_time, delta_time
 
@@ -302,6 +321,7 @@ implicit none
 
 type(assim_model_type) :: copy_assim_model
 type(assim_model_type), intent(in) :: assim_model
+
 ! Null stub for now
 
 end function copy_assim_model
