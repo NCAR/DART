@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
@@ -65,8 +66,7 @@ with observed values. An observation definition can become quite complicated
 by using a variety of lower order modules that define metadata associated with
 an observation.
 <P>
-   
-</P>
+<BR>
 
 <!--==================================================================-->
 
@@ -91,9 +91,9 @@ assim_model_mod
 
 <TABLE>
 <TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
-                   <TD><A HREF="#yyypubtype1">obs_def_type</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">init_obs_def</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">get_obs_def_location</A> &</TD></TR>
+                   <TD><A HREF="#yyypubtype1">obs_def_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">init_obs_def</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">get_obs_def_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_obs_def_kind</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_obs_def_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">get_obs_def_error_variance</A></TD></TR>
@@ -110,7 +110,7 @@ assim_model_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine15">assignment(=)</A></TD></TR>
 </TABLE>
 
-</P>
+<BR>
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -121,7 +121,7 @@ assim_model_mod
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-</P>
+<BR>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
@@ -147,17 +147,20 @@ Includes a location, kind, time and error variance.
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Component   </TH>
     <TH align=left>Description </TH></TR>
-<TR><TD valign=top> location</TD>
-    <TD>Location of the observation. </TD></TR>
-<TR><TD valign=top> kind                       </TD>
-    <TD>The kind of the observation. </TD></TR>
-<TR><TD valign=top> time </TD>
-    <TD>Time of the observation. </TD></TR>
-<TR><TD valign=top> error_variance</TD>
+<TR><TD valign=top> location              </TD>
+    <TD>Location of the observation.      </TD></TR>
+<TR><TD valign=top> kind                  </TD>
+    <TD>The kind of the observation.      </TD></TR>
+<TR><TD valign=top> time                  </TD>
+    <TD>Time of the observation.          </TD></TR>
+<TR><TD valign=top> error_variance        </TD>
     <TD>Error variance of the observation.</TD></TR>
 </TABLE>
+
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
 <A NAME="yyyroutine1"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -186,9 +189,9 @@ specified.
  <TR><TD valign=top><em class=code>error_variance&nbsp; &nbsp; </em></TD>
      <TD>Error variance of this observation</TD></TR>
  </TABLE>
- </P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine2"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -207,9 +210,10 @@ Returns the location from an obs_def.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine3"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -228,9 +232,9 @@ Returns the location from an obs_def.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine4"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -249,16 +253,15 @@ Returns time from an obs_def.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine5"></A>
  <P></P><HR><P></P>
  <div class=routine>
  <em class=call> var = get_obs_def_error_variance(obs_def) </em>
  <pre>
- real(r8)                       :: <em class=code>get_obs_def_error_variance</em
- >
+ real(r8)                       :: <em class=code>get_obs_def_error_variance</em>
  type(obs_def_type), intent(in) :: <em class=code>obs_def</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -272,13 +275,13 @@ Returns error variance from an obs_def.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine6"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_obs_def_location(obs_def,location) </em>
+ <em class=call> call set_obs_def_location(obs_def, location) </em>
  <pre>
  type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
  type(location_type), intent(in)   :: <em class=code>location</em>
@@ -293,13 +296,13 @@ Set the location in an obs_def.
  <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
      <TD>A location</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine7"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_obs_def_kind(obs_def,kind) </em>
+ <em class=call> call set_obs_def_kind(obs_def, kind) </em>
  <pre>
  type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
  type(obs_kind_type), intent(in)   :: <em class=code>kind</em>
@@ -314,13 +317,13 @@ Set the kind of observation in an observation definition.
  <TR><TD valign=top><em class=code>kind&nbsp; &nbsp; </em></TD>
      <TD>An obs_kind</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine8"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_obs_def_time(obs_def,time) </em>
+ <em class=call> call set_obs_def_time(obs_def, time) </em>
  <pre>
  type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
  type(time_type), intent(in)       :: <em class=code>time</em>
@@ -335,13 +338,13 @@ Sets time for an obs_def.
  <TR><TD valign=top><em class=code>time&nbsp; &nbsp; </em></TD>
      <TD>Time to set</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine9"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_obs_def_error_variance(obs_def,error_variance) </em>
+ <em class=call> call set_obs_def_error_variance(obs_def, error_variance) </em>
  <pre>
  type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
  real(r8), intent(in)              :: <em class=code>error_variance</em>
@@ -356,9 +359,9 @@ Set error variance for an obs_def.
  <TR><TD valign=top><em class=code>error_variance&nbsp; &nbsp; </em></TD>
      <TD>Error variance</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine10"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -374,17 +377,17 @@ Creates an obs_def via input from standard in.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine11"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_obs_def(ifile,obs_def,fform) </em>
+	 <em class=call> call write_obs_def(ifile, obs_def <em class=optionalcode>[, fform]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>ifile</em>
  type(obs_def_type), intent(in)         :: <em class=code>obs_def</em>
- character(len=*), optional, intent(in) :: <em class=code>fform</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -396,21 +399,21 @@ in fform or FORMATTED if fform is not present.
      <TD>File unit open to output file</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Observation definition to be written</TD></TR>
- <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
      <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
  </TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine12"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call read_obs_def(ifile,obs_def,fform) </em>
+	 <em class=call> call read_obs_def(ifile, obs_def <em class=optionalcode>[, fform]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>ifile</em>
  type(obs_def_type), intent(inout)      :: <em class=code>obs_def</em>
- character(len=*), optional, intent(in) :: <em class=code>fform</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -422,18 +425,17 @@ in fform or FORMATTED if fform is not present.
      <TD>File unit open to output file</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Observation definition to be read</TD></TR>
- <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
      <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
  </TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine13"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_radar_obs_def(rad_loc,rgate,raz,elev_rad,ae,dir,var,ob
- s_def) </em>
+ <em class=call> call set_radar_obs_def(rad_loc, rgate, raz, elev_rad, ae, dir, var, obs_def) </em>
  <pre>
  type(location_type), intent(in)    :: <em class=code>rad_loc</em>
  real(r8), intent(in)               :: <em class=code>rgate</em>
@@ -466,9 +468,9 @@ Creates a radar observation obs_def: currently not fully supported.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Obs_def being created</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine14"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -484,9 +486,9 @@ Releases all storage associated with an obs_def and its subcomponents.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def to be released.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine15"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -505,9 +507,7 @@ Copies obs_def2 to obs_def1, overloaded with assignment (=).
  <TR><TD valign=top><em class=code>obs_def2&nbsp; &nbsp; </em></TD>
      <TD>obs_def to be copied from</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
-
+ <BR>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

@@ -50,9 +50,11 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
+<BR>
 
 <!--==================================================================-->
 
@@ -65,9 +67,7 @@ described in Anderson (2003) along with systematic correction algorithms
 for both mean and spread. In addition, algorithms to do a variety of 
 flavors of filters including the EAKF, ENKF, particle filter, and kernel
 filters are included.
-<P>
-   
-</P>
+<BR>
 
 <!--==================================================================-->
 
@@ -98,16 +98,16 @@ ensemble_manager_mod
 
 <TABLE>
 <TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">assim_tools_init</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">obs_increment</A> &</TD></TR>
+                   <TD><A HREF="#yyyroutine1">assim_tools_init   </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">obs_increment      </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">update_from_obs_inc</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">look_for_bias</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">filter_assim</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">async_assim_region</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">assim_tools_end</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">look_for_bias      </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">filter_assim       </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">async_assim_region </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">assim_tools_end    </A></TD></TR>
 </TABLE>
 
-</P>
+<BR>
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -118,7 +118,7 @@ ensemble_manager_mod
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-</P>
+<BR>
 
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
@@ -135,7 +135,6 @@ ensemble_manager_mod
 <P>
    Initialization routine for assim_tools. This must be called before other 
    public interfaces can be used.   
-</P>
 </P>
 
 
@@ -183,8 +182,6 @@ real(r8), intent(out), dimension(ens_size) :: <em class=code>obs_inc </em>
     <TD>The increments computed for the prior ensemble.</TD></TR>
 
 </TABLE>
-
-</P>
 
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
@@ -244,9 +241,6 @@ real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode> correl_out
 
 </TABLE>
 
-</P>
-
-
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="yyyroutine4"></A>
@@ -256,10 +250,10 @@ real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode> correl_out
 
 <pre>
 real(r8), intent(in), dimension(n)         :: <em class=code>ens </em>
-integer, intent(in)                        :: <em class=code>n </em>
+integer,  intent(in)                       :: <em class=code>n </em>
 real(r8), intent(in),                      :: <em class=code>obs </em>
 real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs_var </em>
-real(r8), intent(out)                       :: <em class=code> var_ratio </em>
+real(r8), intent(out)                      :: <em class=code> var_ratio </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -290,16 +284,14 @@ real(r8), intent(out)                       :: <em class=code> var_ratio </em>
 
 </TABLE>
 
-</P>
-
 <!--==================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine5"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call filter_assim(ens_handle,ens_obs,compute_obs_in,ens_size,
-model_size,num_obs_in_set,num_groups,seq,keys,confidence_slope,cutoff,save_reg_series,
-reg_series_unit,obs_seq_in_name) </em>
+ <em class=call> call filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size,
+	 model_size, num_obs_in_set, num_groups, seq, keys, confidence_slope, cutoff, 
+	 save_reg_series, reg_series_unit, obs_seq_in_name) </em>
  <pre>
  type(ensemble_type), intent(in)                           :: <em class=code>ens_handle</em>
  real(r8), dimension(ens_size, num_obs_in_set), intent(in) :: <em class=code>ens_obs</em>
@@ -333,36 +325,36 @@ assimilation. Support for the reg_series output is very limited with this releas
 and is confined to low-order models.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Identifies ensemble (see ensemble_manager_mod)</TD></TR>
- <TR><TD valign=top><em class=code>ens_obs&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble prior values for observations</TD></TR>
- <TR><TD valign=top><em class=code>compute_obs_in&nbsp; &nbsp; </em></TD>
-     <TD>True if corresponding observation can be recomputed here</TD></TR>
- <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble size</TD></TR>
- <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector length</TD></TR>
- <TR><TD valign=top><em class=code>num_obs_in_set&nbsp; &nbsp; </em></TD>
-     <TD>Number of observations to be assimilated</TD></TR>
- <TR><TD valign=top><em class=code>num_groups&nbsp; &nbsp; </em></TD>
-     <TD>Number of groups for filter</TD></TR>
- <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
-     <TD>Observation sequence</TD></TR>
- <TR><TD valign=top><em class=code>keys&nbsp; &nbsp; </em></TD>
-     <TD>Indices of the current observations in seq</TD></TR>
- <TR><TD valign=top><em class=code>confidence_slope&nbsp; &nbsp; </em></TD>
-     <TD>Adaptive bias correction (see obs_increment)</TD></TR>
- <TR><TD valign=top><em class=code>cutoff&nbsp; &nbsp; </em></TD>
-     <TD>Localization factor (see update_from_obs_inc)</TD></TR>
- <TR><TD valign=top><em class=code>save_reg_series&nbsp; &nbsp; </em></TD>
-     <TD>True to save regression stats (low-order only)</TD></TR>
- <TR><TD valign=top><em class=code>reg_series_unit&nbsp; &nbsp; </em></TD>
-     <TD>Open to regression stats file if needed</TD></TR>
- <TR><TD valign=top><em class=code>obs_seq_in_name&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp;      </em></TD>
+     <TD>Identifies ensemble (see ensemble_manager_mod)              </TD></TR>
+ <TR><TD valign=top><em class=code>ens_obs&nbsp; &nbsp;         </em></TD>
+     <TD>Ensemble prior values for observations                      </TD></TR>
+ <TR><TD valign=top><em class=code>compute_obs_in&nbsp; &nbsp;  </em></TD>
+     <TD>True if corresponding observation can be recomputed here    </TD></TR>
+ <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp;        </em></TD>
+     <TD>Ensemble size                                               </TD></TR>
+ <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp;      </em></TD>
+     <TD>Model state vector length                                   </TD></TR>
+ <TR><TD valign=top><em class=code>num_obs_in_set&nbsp; &nbsp;  </em></TD>
+     <TD>Number of observations to be assimilated                    </TD></TR>
+ <TR><TD valign=top><em class=code>num_groups&nbsp; &nbsp;      </em></TD>
+     <TD>Number of groups for filter                                 </TD></TR>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp;             </em></TD>
+     <TD>Observation sequence                                        </TD></TR>
+ <TR><TD valign=top><em class=code>keys&nbsp; &nbsp;            </em></TD>
+     <TD>Indices of the current observations in seq                  </TD></TR>
+ <TR><TD valign=top><em class=code>confidence_slope&nbsp; &nbsp;</em></TD>
+     <TD>Adaptive bias correction (see obs_increment)                 </TD></TR>
+ <TR><TD valign=top><em class=code>cutoff&nbsp; &nbsp;           </em></TD>
+     <TD>Localization factor (see update_from_obs_inc)                </TD></TR>
+ <TR><TD valign=top><em class=code>save_reg_series&nbsp; &nbsp;  </em></TD>
+     <TD>True to save regression stats (low-order only)               </TD></TR>
+ <TR><TD valign=top><em class=code>reg_series_unit&nbsp; &nbsp;  </em></TD>
+     <TD>Open to regression stats file if needed                      </TD></TR>
+ <TR><TD valign=top><em class=code>obs_seq_in_name&nbsp; &nbsp;  </em></TD>
      <TD>Obs sequence is written here if shell driven multiple domains</TD></TR>
  </TABLE>
- <P>
+
  <!--================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine6"></A>
@@ -391,7 +383,7 @@ to out_file_name.
  <TR><TD valign=top><em class=code>out_file_name&nbsp; &nbsp; </em></TD>
      <TD>File where output from filter_assim_region is to be put</TD></TR>
  </TABLE>
- <P>
+ <BR>
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine7"></A>
  <P></P><HR><P></P>
@@ -406,7 +398,7 @@ restart file. This file contains the observation space covariance
 inflation parameter and the standard deviation of the covariance
 inflation.
  </P>
- <P>
+ <BR>
  <!--================================================================-->
 
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -415,11 +407,11 @@ inflation.
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+'&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
-<em class=call>namelist / assim_tools_nml / </em> &
-filter_kind, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &
-deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &
+<em class=call>namelist / assim_tools_nml / </em> &#38;
+filter_kind, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &#38;
+deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &#38;
 assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 </pre></div>
 
@@ -432,27 +424,27 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>filter_kind        </TD>
-    <!--  type  --><TD>integer                         </TD>
+<TR><!--contents--><TD valign=top>filter_kind  </TD>
+    <!--  type  --><TD valign=top>integer      </TD>
     <!--descript--><TD>Selects the variant of filter to be used. 1=EAKF, 2=ENKF, 3=Kernel filter, 
-                       4 = particle filter.                       </TD></TR>
+                       4=particle filter.</TD></TR>
 <TR><!--contents--><TD valign=top>sort_obs_inc </TD>
-    <!--  type  --><TD>logical                        </TD>
+    <!--  type  --><TD valign=top>logical      </TD>
     <!--descript--><TD> If true, the final increments from obs_increment are
                         sorted so that the mean increment value is as small
                         as possible. This minimizes regression errors when
                         non-deterministic filter or error correction algorithms
-                        are applied. Default is false.                </TD></TR>
+                        are applied. Default is false.</TD></TR>
 <TR><!--contents--><TD valign=top>cov_inflate </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
+    <!--  type  --><TD valign=top>real(r8)    </TD>
     <!--descript--><TD>Initial mean value of the observation space covariance 
                        inflation factor. If start_from_assim_restart is true, this is 
                        overwritten by the value in the file. If the value is 
                        less than 0, no observation space
                        covariance inflation is applied. Defalut value is -1
-                       (no inflation).                </TD></TR>
+                       (no inflation).</TD></TR>
 <TR><!--contents--><TD valign=top>cov_inflate_sd </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
+    <!--  type  --><TD valign=top>real(r8)       </TD>
     <!--descript--><TD> Initial value of the standard deviation of the 
                         observation space covariance inflation factor. If
                         start_from_assim_restart is true, this is overwritten
@@ -462,45 +454,44 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
                         below), an adjustment of this value takes place at
                         each assimilation step. Default value is 0.05.  </TD></TR>
 <TR><!--contents--><TD valign=top>sd_lower_bound </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
+    <!--  type  --><TD valign=top>real(r8)       </TD>
     <!--descript--><TD> Smallest value allowed for cov_inflate_sd during a run (it
                         can be set to values smaller than cov_inflate_sd initially).
                         Once cov_inflate_sd is reduced to this value, the 
                         systematic error correction algorithm will keep the
-                        cov_inflate_sd fixed at this value. Default value is 0.05.        </TD></TR>
+                        cov_inflate_sd fixed at this value. Default value is 0.05.</TD></TR>
 <TR><!--contents--><TD valign=top>deterministic_cov_inflate </TD>
-    <!--  type  --><TD>logical                         </TD>
+    <!--  type  --><TD valign=top>logical                   </TD>
     <!--descript--><TD> Selects manner in which uncertainty is added to prior
                         obs space distribution for obs space covariance inflation.
                         If this is true, ensemble members are just moved out
                         by increasing the distance between each ensemble member
                         and the mean by this factor. If false, a random draw 
                         from a gaussian is added to each ensemble member. Default
-                        is true.                </TD></TR>
+                        is true.</TD></TR>
 <TR><!--contents--><TD valign=top>start_from_assim_restart </TD>
-    <!--  type  --><TD>logical                         </TD>
+    <!--  type  --><TD valign=top>logical                  </TD>
     <!--descript--><TD>If true, values of cov_inflate and cov_inflate_sd are
-                       read from a file. Default is false.         </TD></TR>
+                       read from a file. Default is false.</TD></TR>
 <TR><!--contents--><TD valign=top>assim_restart_in_file_name </TD>
-    <!--  type  --><TD>character(len=129)                        </TD>
+    <!--  type  --><TD valign=top>character(len=129)         </TD>
     <!--descript--><TD>Name of file from which to read in cov_inflate and 
                        cov_inflate_sd override values. Default is
-                       assim_tools_ics.               </TD></TR>
+                       assim_tools_ics.</TD></TR>
 <TR><!--contents--><TD valign=top>assim_restart_out_file_name</TD>
-    <!--  type  --><TD>character(len=129)              </TD>
+    <!--  type  --><TD valign=top>character(len=129)         </TD>
     <!--descript--><TD>Name of file to which to write cov_inflate and 
                        cov_inflate_sd final values for possible restart.
-                       Default is assim_tols_restart.                </TD></TR>
+                       Default is assim_tols_restart.</TD></TR>
  <TR><!--contents--><TD valign=top>do_parallel</TD>
-     <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_comma
- nd; 3 = use filter_server Default: 0</TD></TR>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_command; 
+	     3 = use filter_server Default: 0</TD></TR>
  <TR><!--contents--><TD valign=top>num_domains</TD>
-     <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Use this many subdomains; assimilate each independently Defa
- ult: 1</TD></TR>
+     <!--  type  --><TD valign=top>integer</TD>
+ <!--descript--><TD>Use this many subdomains; assimilate each independently Default: 1</TD></TR>
  <TR><!--contents--><TD valign=top>parallel_command</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
  <!--descript--><TD>Command to be executed for option 2 Default: ./assim_filter.csh</TD></TR>
 </TABLE>
 

@@ -114,6 +114,10 @@ real(r8) :: speed_obs2, speed_ges2, speed_anl2
 
 integer  :: level, iday, tot_days
 real(r8) :: lonlim1(narea), lonlim2(narea), latlim1(narea), latlim2(narea)
+
+!--------------------------------------------------------------------------
+! Each observation kind gets its own mean, spread, for Guess/Analysis
+!--------------------------------------------------------------------------
 real(r8) ::   rms_ges_mean_W(narea),   rms_anl_mean_W(narea), &
             rms_ges_spread_W(narea), rms_anl_spread_W(narea)
 integer  ::   num_in_level_W(narea)
@@ -130,6 +134,9 @@ real(r8) ::   rms_ges_mean_P(narea),   rms_anl_mean_P(narea), &
             rms_ges_spread_P(narea), rms_anl_spread_P(narea)
 integer  ::   num_in_level_P(narea)
 
+!--------------------------------------------------------------------------
+! no idea yet, what the sets are for
+!--------------------------------------------------------------------------
 real(r8) :: rms_ges_mean_W1(max_sets, narea),   rms_anl_mean_W1(max_sets, narea),  &
           rms_ges_spread_W1(max_sets, narea), rms_anl_spread_W1(max_sets, narea)
 integer  :: num_in_level_W1(max_sets, narea)
@@ -146,6 +153,9 @@ real(r8) :: rms_ges_mean_P1(max_sets, narea),   rms_anl_mean_P1(max_sets, narea)
           rms_ges_spread_P1(max_sets, narea), rms_anl_spread_P1(max_sets, narea)
 integer  :: num_in_level_P1(max_sets, narea)
 
+!--------------------------------------------------------------------------
+! Vertical
+!--------------------------------------------------------------------------
 real(r8) ::  rms_ges_ver_W(nlev, narea),  rms_anl_ver_W(nlev, narea)
 real(r8) ::  rms_ges_ver_T(nlev, narea),  rms_anl_ver_T(nlev, narea)
 real(r8) ::  rms_ges_ver_Q(nlev, narea),  rms_anl_ver_Q(nlev, narea)
@@ -204,6 +214,8 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
   if(output_obs_ens_mean) num_obs_copies = num_obs_copies + 2
   if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
 
+
+! This should be a namelist input ... unknown day_num length
   iunit = get_unit()
   open(iunit, file='obs_diag.in', form='formatted')
   read(iunit,*) obs_year, obs_month, obs_day00
@@ -232,6 +244,7 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
      alat(j) = j-1
   enddo
 
+! Initialize all variables to zero.
 
   do i=1, max_sets
    do n=1, narea
@@ -282,72 +295,73 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
      enddo
   enddo
 
-! set up the areas' limits
-  lonlim1(1)= 0.0_r8        ! NH
-  lonlim2(1)= 360.0_r8
-  latlim1(1)= 110.0_r8
-  latlim2(1)= 170.0_r8
+   ! set up the areas' limits
+   lonlim1(1)=   0.0_r8   ! NH = Northern Hemisphere
+   lonlim2(1)= 360.0_r8
+   latlim1(1)= 110.0_r8
+   latlim2(1)= 170.0_r8
 
-  lonlim1(2)= 0.0_r8        ! SH
-  lonlim2(2)= 360.0_r8
-  latlim1(2)= 10.0_r8
-  latlim2(2)= 70.0_r8
+   lonlim1(2)=   0.0_r8   ! SH = Southern Hemisphere
+   lonlim2(2)= 360.0_r8
+   latlim1(2)=  10.0_r8
+   latlim2(2)=  70.0_r8
 
-  lonlim1(3)= 0.0_r8        ! TR
-  lonlim2(3)= 360.0_r8
-  latlim1(3)= 70.0_r8
-  latlim2(3)= 110.0_r8
+   lonlim1(3)=   0.0_r8   ! TR = Tropics
+   lonlim2(3)= 360.0_r8
+   latlim1(3)=  70.0_r8
+   latlim2(3)= 110.0_r8
 
-  lonlim1(4)= 235.0_r8      ! NA
-  lonlim2(4)= 295.0_r8
-  latlim1(4)= 115.0_r8
-  latlim2(4)= 145.0_r8
+   lonlim1(4)= 235.0_r8   ! NA = North America
+   lonlim2(4)= 295.0_r8
+   latlim1(4)= 115.0_r8
+   latlim2(4)= 145.0_r8
 
-!   set observation time type
-    calender_type = 3
-    call set_calendar_type(calender_type)
+   ! set observation time type
+   calender_type = 3
+   call set_calendar_type(calender_type)
 
-  tot_sets = 0
+   tot_sets = 0
+
 !-------------------------------
-  DayLoop : do iday=1, tot_days
+DayLoop : do iday=1, tot_days
 !-------------------------------
-      obs_day = obs_day00 + (iday-1)
+   obs_day = obs_day00 + (iday-1)
 
-     write(msgstring,*)'opened ', day_num(iday), trim(obs_sequence_out_name)
-     call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
+   write(msgstring,*)'opened ', day_num(iday), trim(obs_sequence_out_name)
+   call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
 
-! Read in with enough space for diagnostic output values
-     call read_obs_seq(day_num(iday)//obs_sequence_out_name, 0, 0, 0, seq)
+   ! Read in with enough space for diagnostic output values
+   call read_obs_seq(day_num(iday)//obs_sequence_out_name, 0, 0, 0, seq)
 
-     write(msgstring,*)'get_num_copies = ', get_num_copies(seq)
-     call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
+   write(msgstring,*)'get_num_copies = ', get_num_copies(seq)
+   call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
 
-     if(iday == 1) in_obs_copy = get_num_copies(seq) - num_obs_copies   !! NCEP obs copy =1
+   if(iday == 1) in_obs_copy = get_num_copies(seq) - num_obs_copies   !! NCEP obs copy =1
 
-! Count of number of sets in the sequence
-!   num_obs_sets = get_num_times(seq)
+   ! Count of number of sets in the sequence
+!  num_obs_sets = get_num_times(seq)
 
-    bin_num = nint(24.0/ wide_bin)
+   bin_num = nint(24.0/ wide_bin)
 
-!    write(msgstring,*)'num_obs_sets =',   num_obs_sets 
-     call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
+!  write(msgstring,*)'num_obs_sets =',   num_obs_sets 
+!  call error_handler(E_MSG,'new_obs_diag',msgstring,source,revision,revdate)
 
-! Initialize the output sequences and state files and set their meta data
-     if(iday ==1 ) then
+   ! Initialize the output sequences and state files and set their meta data
+   if(iday ==1 ) then
         call gen_copy_meta_data(output_obs_ens_mean, output_obs_ens_spread, num_output_obs_members,&
              num_obs_copies, prior_mean_obs_index, posterior_mean_obs_index, &
              prior_spread_obs_index, posterior_spread_obs_index, in_obs_copy)
 !  print*, 'index= ', prior_mean_obs_index, posterior_mean_obs_index, &
 !          prior_spread_obs_index, posterior_spread_obs_index
-     endif
+   endif
 
-! Get the time of the first observation in the sequence
-     is_there_one = get_first_obs(seq, observation)
-     call get_obs_def(observation, obs_def)
-     next_time = get_obs_def_time(obs_def)
+   ! Get the time of the first observation in the sequence
+   is_there_one = get_first_obs(seq, observation)
+   call get_obs_def(observation, obs_def)
+   next_time = get_obs_def_time(obs_def)
 
    do kb=1, bin_num 
-   bin(kb) = wide_bin * kb 
+      bin(kb) = wide_bin * kb 
    enddo
 
    print*, 'bin=' , (bin(kb), kb=1, bin_num)
@@ -439,33 +453,33 @@ Advancesets : do i = 1, bin_num
 
       lon0 = obsloc3(1) + 1.01_r8                            ! 0-360
       lat0 = obsloc3(2) + 1.01_r8 + 90.0_r8                  ! 0-180
-      ipressure = 0.01_r8 * obsloc3(3)                       ! mb
+      ipressure = 0.01_r8 * obsloc3(3)                       ! mb TJH ...  rounding?
 
       obs_err_cov(j) = get_obs_def_error_variance(obs_def)
       call get_qc(observation, qc(j:j), 1)
 
-      obs_kind  = get_obs_def_kind(obs_def)
-      kind = get_obs_kind(obs_kind)
+      obs_kind   = get_obs_def_kind(obs_def)
+      kind       = get_obs_kind(obs_kind)
       model_type = kind
 
       call get_obs_values(observation, obs(j:j), 1)
 
-!   get interpolated values of prior and posterior ensembles 
+!     get interpolated values of prior and posterior ensembles 
       do k = 1, num_output_obs_members
          call get_obs_values(observation,     prior_ens_obs(k:k), in_obs_copy + 2*k-1)
          call get_obs_values(observation, posterior_ens_obs(k:k), in_obs_copy + 2*k  )
       end do
 
-!   get interpolated values of prior and posterior ensemble mean
+!     get interpolated values of prior and posterior ensemble mean
       call get_obs_values(observation,     prior_mean,     prior_mean_obs_index)
       call get_obs_values(observation, posterior_mean, posterior_mean_obs_index)
+!     print*, 'prior_mean_obs_index= ', prior_mean_obs_index, posterior_mean_obs_index
 
-!    print*, 'prior_mean_obs_index= ', prior_mean_obs_index, posterior_mean_obs_index
-
-!   get interpolated values of prior and posterior ensemble spread
+!     get interpolated values of prior and posterior ensemble spread
       call get_obs_values(observation,     prior_spread,     prior_spread_obs_index)
       call get_obs_values(observation, posterior_spread, posterior_spread_obs_index)
-!    print*, 'prior_spread_obs_index= ', prior_spread_obs_index, posterior_spread_obs_index
+!     print*, 'prior_spread_obs_index= ', prior_spread_obs_index, posterior_spread_obs_index
+
 !--------------------------------------------------------
 condition1: if( qc(j) .lt. 4.0_r8 ) then
 
@@ -492,10 +506,10 @@ variable: if(model_type == 2 ) then               !! Wind v-component
 
   if(keep_ind == 2) then
 !   temporary keep RA only skip ACARS and SATWND data 
-     if( abs(sqrt( obs_err_cov(j))-2.5_r8) <= 0.1_r8)              go to 250     !!  ACARS wind
-     if( sqrt( obs_err_cov(j)) > 3.3_r8)                        go to 250
-     if( sqrt( obs_err_cov(j)) > 2.5_r8 .and. ipressure .gt. 420 ) go to 250
-     if( sqrt( obs_err_cov(j)) > 1.7_r8 .and. ipressure .gt. 680 ) go to 250 
+     if( abs(sqrt( obs_err_cov(j))-2.5_r8) <= 0.1_r8)                  go to 250     !!  ACARS wind
+     if(     sqrt( obs_err_cov(j)) > 3.3_r8)                           go to 250
+     if(     sqrt( obs_err_cov(j)) > 2.5_r8 .and. ipressure .gt. 420 ) go to 250
+     if(     sqrt( obs_err_cov(j)) > 1.7_r8 .and. ipressure .gt. 680 ) go to 250 
   endif
 
   if(keep_ind == 3) then
@@ -801,14 +815,14 @@ end do Advancesets
 end do Dayloop
 
 !-------------------------------------------------
-    write(WgesName,'(''Wges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(WanlName,'(''Wanl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(TgesName,'(''Tges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(TanlName,'(''Tanl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(QgesName,'(''Qges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(QanlName,'(''Qanl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(PgesName,'(''Pges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
-    write(PanlName,'(''Panl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(WgesName,'(''Wges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(WanlName,'(''Wanl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(TgesName,'(''Tges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(TanlName,'(''Tanl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(QgesName,'(''Qges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(QanlName,'(''Qanl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(PgesName,'(''Pges_times_'',i4.4,''mb.dat'')') plev(level_index(level))
+   write(PanlName,'(''Panl_times_'',i4.4,''mb.dat'')') plev(level_index(level))
 
    WgesUnit = get_unit()
    OPEN(WgesUnit,FILE=trim(adjustl(WgesName)),FORM='formatted')

@@ -26,7 +26,7 @@
 -->
 
 <HTML>
-<TITLE>program integrate model </TITLE>
+<TITLE>program integrate model</TITLE>
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log (cop-out, I know)</TD></TR>
 </TABLE>
@@ -91,7 +92,7 @@ ensemble_manager_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&lim_obs_seq_nml</em> 
+Optional namelist interface <em class=code>&#38;integrate_model_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -101,9 +102,9 @@ may be read from file <em class=file>input.nml</em>.
  <A NAME="Namelist"></A>
  <BR><HR><BR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / integrate_model_nml / </em>
+ <em class=call>namelist / integrate_model_nml / </em> &#38;
  target_time_days,target_time_seconds,ic_file_name,ud_file_name                 
                                                                                 
                                                                                 
@@ -122,23 +123,23 @@ An ability to over-ride the target times set in the input file is also available
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>target_time_days</TD>
-     <!--  type  --><TD>integer</TD>
- <!--descript--><TD>-1 If non-negative, over-ride the target time in the ic file Default: -1</TD></TR>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>-1 If non-negative, over-ride the target time in the ic file. 
+	                Default: -1</TD></TR>
  <TR><!--contents--><TD valign=top>target_time_seconds</TD>
-     <!--  type  --><TD>integer</TD>
- <!--descript--><TD>If non-negative, over-ride the target time in the ic file De
- fault: -1</TD></TR>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If non-negative, over-ride the target time in the ic file. 
+	                Default: -1</TD></TR>
  <TR><!--contents--><TD valign=top>ic_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>Read this file to get target time and initial model time and
-  state Default: temp_ic</TD></TR>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
+     <!--descript--><TD>Read this file to get target time and initial model time 
+	                and state. Default: temp_ic</TD></TR>
  <TR><!--contents--><TD valign=top>ud_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>Write updated time and state to this file Default: temp_ud</
- TD></TR>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
+     <!--descript--><TD>Write updated time and state to this file. 
+	                Default: temp_ud</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

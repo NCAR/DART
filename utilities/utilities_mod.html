@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
@@ -86,10 +87,10 @@ types_mod
 
 <TABLE>
 <TR><TD><em class=call>use utilities, only : </em></TD>
-                   <TD><A HREF="#file_exist">file_exist</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_unit">get_unit</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#check_nml_error">check_nml_error</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#open_file">open_file</A> &</TD></TR>
+                   <TD><A HREF="#file_exist">file_exist</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_unit">get_unit</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#check_nml_error">check_nml_error</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#open_file">open_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#timestamp">timestamp</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#close_file">close_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#register_module">register_module</A></TD></TR>
@@ -107,7 +108,7 @@ types_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&assim_model_nml</em> 
+Optional namelist interface <em class=code>&#38;utilities_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -120,9 +121,9 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-</P>
+<BR>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
  <A NAME="file_exist"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -141,9 +142,9 @@ Returns true if file_name exists in the working directory, else false.
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>Name of file to look for.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
  <A NAME="get_unit"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -159,13 +160,13 @@ Returns an unused unit number for IO.
  <TR><TD valign=top><em class=code>get_unit&nbsp; &nbsp; </em></TD>
      <TD>An unused unit number.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
  <A NAME="check_nml_error"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = check_nml_error(iostat,nml_name) </em>
+ <em class=call> var = check_nml_error(iostat, nml_name) </em>
  <pre>
  integer                      :: <em class=code>check_nml_error</em>
  integer, intent(in)          :: <em class=code>iostat</em>
@@ -185,18 +186,18 @@ generates a call to the error handler.
  <TR><TD valign=top><em class=code>nml_name&nbsp; &nbsp; </em></TD>
      <TD>Name of the namelist that was read.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
  <A NAME="open_file"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = open_file(fname,form,action) </em>
+ <em class=call> var = open_file(fname <em class=optionalcode>[, form, action]</em>) </em>
  <pre>
  integer                                :: <em class=code>open_file</em>
  character(len=*), intent(in)           :: <em class=code>fname</em>
- character(len=*), optional, intent(in) :: <em class=code>form</em>
- character(len=*), optional, intent(in) :: <em class=code>action</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>form</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>action</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -210,24 +211,24 @@ standard action string for Fortran IO (see F90 language description).
      <TD>Unit number opened to file fname.</TD></TR>
  <TR><TD valign=top><em class=code>fname&nbsp; &nbsp; </em></TD>
      <TD>Name of file to be opened.</TD></TR>
- <TR><TD valign=top><em class=code>form&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>form&nbsp; &nbsp; </em></TD>
      <TD>Format: 'formatted' or 'FORMATTED' give formatted, anything else 
         is unformatted. Default is formatted.</TD></TR>
- <TR><TD valign=top><em class=code>action&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>action&nbsp; &nbsp; </em></TD>
      <TD>Standard fortran string description of requested file open action.</TD>
  </TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="timestamp"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call timestamp(string1,string2,string3,pos) </em>
+ <em class=call> call timestamp(<em class=optionalcode>[string1, string2, string3,] &nbsp;</em>pos) </em>
  <pre>
- character(len=*), optional, intent(in) :: <em class=code>string1</em>
- character(len=*), optional, intent(in) :: <em class=code>string2</em>
- character(len=*), optional, intent(in) :: <em class=code>string3</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>string1</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>string2</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>string3</em>
  character(len=*), intent(in)           :: <em class=code>pos</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -238,18 +239,18 @@ along with three optional message strings. If the pos argument is
 and the logfile is closed.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>string1&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>string1&nbsp; &nbsp; </em></TD>
      <TD>An optional message to be printed.</TD></TR>
- <TR><TD valign=top><em class=code>string2&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>string2&nbsp; &nbsp; </em></TD>
      <TD>An optional message to be printed.</TD></TR>
- <TR><TD valign=top><em class=code>string3&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>string3&nbsp; &nbsp; </em></TD>
      <TD>An optional message to be printed.</TD></TR>
  <TR><TD valign=top><em class=code>pos&nbsp; &nbsp; </em></TD>
      <TD>If 'end' terminates log_file output.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="close_file"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -265,9 +266,9 @@ Closes the given unit number. If the unit is not open, nothing happens.
  <TR><TD valign=top><em class=code>iunit&nbsp; &nbsp; </em></TD>
      <TD>File unit to be closed.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="register_module"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -291,13 +292,14 @@ to register when first called.
  <TR><TD valign=top><em class=code>rdate&nbsp; &nbsp; </em></TD>
      <TD>Date of revision.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="error_handler"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call error_handler(level,routine,text,src,rev,rdate,aut) </em>
+ <em class=call> call error_handler(level, routine, text, src, rev, rdate 
+               <em class=optionalcode>[, aut]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>level</em>
  character(len=*), intent(in)           :: <em class=code>routine</em>
@@ -305,7 +307,7 @@ to register when first called.
  character(len=*), intent(in)           :: <em class=code>src</em>
  character(len=*), intent(in)           :: <em class=code>rev</em>
  character(len=*), intent(in)           :: <em class=code>rdate</em>
- character(len=*), optional, intent(in) :: <em class=code>aut</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>aut</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -330,13 +332,13 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
      <TD>Revision number of source file.</TD></TR>
  <TR><TD valign=top><em class=code>rdate&nbsp; &nbsp; </em></TD>
      <TD>Revision date of source file.</TD></TR>
- <TR><TD valign=top><em class=code>aut&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>aut&nbsp; &nbsp; </em></TD>
      <TD>Author of routine.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A CONSTANT ========================-->
+
+<!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
  <P></P><HR><P></P>
  integer :: <em class=code>E_DBG, DEBUG</em>
@@ -353,9 +355,9 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
 message, warning and fatal. The namelist parameter TERMLEVEL can be used
 to control at which level program termination should occur.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A CONSTANT ========================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="logfileunit"></A>
  <P></P><HR><P></P>
  integer :: <em class=code>logfileunit</em>
@@ -367,10 +369,10 @@ to control at which level program termination should occur.</TD></TR>
  <TR><TD valign=top><em class=code>logfileunit&nbsp; &nbsp; </em></TD>
      <TD>Unit opened to file for diagnostic output.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="initialize_utilities"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -382,11 +384,9 @@ to control at which level program termination should occur.</TD></TR>
  Reads the namelist and opens the logfile. Records the values of the
 namelist and registers this module.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="finalize_utilities"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -397,11 +397,9 @@ namelist and registers this module.
  <P>
  Closes the logfile; using utilities after this call is a bad idea.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="dump_unit_attributes"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -418,10 +416,10 @@ handler with error level message.
  <TR><TD valign=top><em class=code>iunit&nbsp; &nbsp; </em></TD>
      <TD>Unit about which information is requested.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A CONSTANT ========================-->
+
+<!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
  <P></P><HR><P></P>
  integer :: <em class=code>E_DBG, DEBUG</em>
@@ -438,21 +436,19 @@ handler with error level message.
 message, warning and fatal. The namelist parameter TERMLEVEL can be used
 to control at which level program termination should occur.</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
 
- <!--============== DESCRIPTION OF A NAMELIST ========================-->
+
+<!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / utilities_nml / </em>
- TERMLEVEL,logfilename                                                          
-                                                                                
-                                                                                
-                                                               
+ <em class=call>namelist / utilities_nml / </em> TERMLEVEL, logfilename
+
+
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
@@ -471,15 +467,12 @@ lead to termination (be careful doing this).
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>TERMLEVEL</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Level at which calls to error manager terminate program. Def
- ault: E_ERR</TD></TR>
+ <!--descript--><TD>Level at which calls to error manager terminate program. Default: E_ERR</TD></TR>
  <TR><!--contents--><TD valign=top>logfilename</TD>
      <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File to which the logfile is written. Default: dart_log.out<
- /TD></TR>
+ <!--descript--><TD>File to which the logfile is written. Default: dart_log.out</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
 
 <!--==================================================================-->

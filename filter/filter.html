@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log </TD></TR>
 </TABLE>
@@ -97,14 +98,14 @@ ensemble_manager
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+'&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
-<em class=call>namelist / filter_nml / </em> &
-      async, adv_ens_command, ens_size, cutoff, cov_inflate, start_from_restart, 
-      output_restart, obs_sequence_in_name, obs_sequence_out_name, 
-      restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, 
-      output_state_ens_mean, output_state_ens_spread, num_output_ens_members, 
-      output_interval,  num_groups, confidence_slope, outlier_threshold, 
+<em class=call>namelist / filter_nml / </em> &#38;
+      async, adv_ens_command, ens_size, cutoff, cov_inflate, start_from_restart, &#38;
+      output_restart, obs_sequence_in_name, obs_sequence_out_name, &#38;
+      restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &#38;
+      output_state_ens_mean, output_state_ens_spread, num_output_ens_members, &#38;
+      output_interval,  num_groups, confidence_slope, outlier_threshold, &#38;
       save_reg_series
 </pre></div>
 
@@ -117,97 +118,97 @@ ensemble_manager
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>async             </TD>
-    <!--  type  --><TD valign=top>integer <em class="unit"></em></TD>
+<TR><!--contents--><TD valign=top>async                        </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Controls whether models are advanced via a subroutine call or
                        by writing initial condition files for ensemble members to 
                        disk and having shellscript advance the model. Option: 0 = advance 
                        by subroutine; 1 = shell advance using shell script piped to
                        filter; 2 = advance by F90 calls to shell to advance model. Default
                        value is 0. </TD></TR>
-<TR><!--contents--><TD valign=top> ens_size       </TD>
-    <!--  type  --><TD>integer                         </TD>
+<TR><!--contents--><TD valign=top> ens_size                    </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Number of ensemble members to be integrated. 
-                       Default is 20.                      </TD></TR>  
-<TR><!--contents--><TD valign=top>cutoff            </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
+                       Default is 20.</TD></TR>  
+<TR><!--contents--><TD valign=top>cutoff                       </TD>
+    <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Cutoff controls a distance dependent weight that modulates
                        the impact of an observation on a state variable. The units depend
                        both on the location module being used and on the covariance cutoff
-                       module options selected. Default is 0.2.                </TD></TR>
-<TR><!--contents--><TD valign=top>cov_inflate         </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
+                       module options selected. Default is 0.2.</TD></TR>
+<TR><!--contents--><TD valign=top>cov_inflate                  </TD>
+    <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Covariance inflation factor applied to prior estimate before each
-                       assimilation step. Default is 1.0 (no inflation).                 </TD></TR> 
-<TR><!--contents--><TD valign=top>start_from_restart    </TD>
-    <!--  type  --><TD>logical                        </TD>
+                       assimilation step. Default is 1.0 (no inflation).</TD></TR> 
+<TR><!--contents--><TD valign=top>start_from_restart           </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Should initial ensemble states come from a restart file. 
-                       Default is .false.                      </TD></TR>
-<TR><!--contents--><TD valign=top>output_restart            </TD>
-    <!--  type  --><TD>logical                        </TD>
+                       Default is .false.</TD></TR>
+<TR><!--contents--><TD valign=top>output_restart               </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Should a restart file be written out for all ensemble 
-                       members? Default is .false.                      </TD></TR>
-<TR><!--contents--><TD valign=top>obs_sequence_file_name          </TD>
-    <!--  type  --><TD>character(len = 129)            </TD>
+                       members? Default is .false.             </TD></TR>
+<TR><!--contents--><TD valign=top>obs_sequence_file_name       </TD>
+    <!--  type  --><TD valign=top>character(len=129)           </TD>
     <!--descript--><TD>File name that contains and observation sequence file.
-                       Default is 'obs_seq.in'.        </TD></TR>
+                       Default is 'obs_seq.in'.</TD></TR>
 <TR><!--contents--><TD valign=top>restart_in_file_name         </TD>
-    <!--  type  --><TD>character(len=129)               </TD>
+    <!--  type  --><TD valign=top>character(len=129)           </TD>
     <!--descript--><TD>File name for a file containing restart state for all 
                        ensemble members. Default is 'filter_ics'. </TD></TR>
-<TR><!--contents--><TD valign=top>restart_out_file_name              </TD>
-    <!--  type  --><TD>character(len = 129)                 </TD>
+<TR><!--contents--><TD valign=top>restart_out_file_name        </TD>
+    <!--  type  --><TD valign=top>character(len=129)           </TD>
     <!--descript--><TD>File name for output restart file. 
-                       Default is 'filter_restart'.             </TD></TR>
+                       Default is 'filter_restart'.</TD></TR>
 <TR><!--contents--><TD valign=top>init_time_days               </TD>
-    <!--  type  --><TD>integer                         </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Initial time of model (time is in days and seconds; see
                        time_manager. If init_time_days and init_time_seconds are 
                        less than 0, the initial time comes from the time in 
                        the restart file. Default value is 0. </TD></TR> 
 <TR><!--contents--><TD valign=top>init_time_seconds            </TD>
-    <!--  type  --><TD>integer                         </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Initial time of model in seconds. Default is 0.  </TD></TR>
-<TR><!--contents--><TD valign=top>output_state_ens_mean            </TD>
-    <!--  type  --><TD>logical                         </TD>
+<TR><!--contents--><TD valign=top>output_state_ens_mean        </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Output ensemble mean in state diagnostic files. </TD></TR>
-<TR><!--contents--><TD valign=top>output_state_ens_spread
-    <!--  type  --><TD>logical                         </TD>
+<TR><!--contents--><TD valign=top>output_state_ens_spread      </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Output ensemble spread in state diagnostic files. </TD></TR>
-<TR><!--contents--><TD valign=top>output_obs_ens_mean            </TD>
-    <!--  type  --><TD>logical                         </TD>
+<TR><!--contents--><TD valign=top>output_obs_ens_mean          </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Output ensemble mean in observation output file. </TD></TR>
-<TR><!--contents--><TD valign=top>output_state_ens_spread
-    <!--  type  --><TD>logical                         </TD>
+<TR><!--contents--><TD valign=top>output_state_ens_spread      </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Output ensemble spread in observation output file. </TD></TR>
-<TR><!--contents--><TD valign=top>num_output_state_members            </TD>
-    <!--  type  --><TD>integer                         </TD>
+<TR><!--contents--><TD valign=top>num_output_state_members     </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>This number of ensemble members is output to the
                        state diagnostics file. If this is less than the total
                        number of ensemble members the first subset is output. 
                        Default is 0.</TD></TR>
-<TR><!--contents--><TD valign=top>num_output_obs_members            </TD>
-    <!--  type  --><TD>integer                         </TD>
+<TR><!--contents--><TD valign=top>num_output_obs_members       </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>This number of ensemble members is output to the
                        observation output file. If this is less than the total
                        number of ensemble members the first subset is output. 
                        Default is 0.</TD></TR>
-<TR><!--contents--><TD valign=top>output_interval            </TD>
-    <!--  type  --><TD>integer                         </TD>
+<TR><!--contents--><TD valign=top>output_interval              </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>The frequency with which output state diagnostics are 
                        in assimilation times written.
                        Default value is 1 meaning output is written at
                        every observation time. </TD></TR>
-<TR><!--contents--><TD valign=top>num_groups            </TD>
-    <!--  type  --><TD>integer                         </TD>
+<TR><!--contents--><TD valign=top>num_groups                   </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Number of groups for hierarchical group filter. Should 
                        be a divisor of the ensemble size. Default is 1. </TD></TR>
-<TR><!--contents--><TD valign=top>confidence_slope            </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
+<TR><!--contents--><TD valign=top>confidence_slope             </TD>
+    <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Controls strength of bias correction algorithm. See
                        assim_tools module. Default is 0 (no correction). </TD></TR>
-<TR><!--contents--><TD valign=top>outlier_threshold
-    <!--  type  --><TD>real(r8)                        </TD>
+<TR><!--contents--><TD valign=top>outlier_threshold            </TD>
+    <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Discard all observations where the prior ensemble mean
                        and the observation value differ by more than this many
                        of the expected standard deviations. A quality control
@@ -215,8 +216,8 @@ ensemble_manager
                        violated for the prior estimate. Negative value 
                        means no quality control of this kind. 
                        Default value is -1.0 </TD></TR>
-<TR><!--contents--><TD valign=top>save_reg_series </TD>
-    <!--  type  --><TD>logical                         </TD>
+<TR><!--contents--><TD valign=top>save_reg_series              </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Save statistics about the regression series for different
                        observation / state variable pairs. Currently only
                        minimally supported for non-parallel low-order models.

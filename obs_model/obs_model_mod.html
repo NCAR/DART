@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
@@ -95,10 +96,10 @@ ensemble_manager_mod
 
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
-                   <TD><A HREF="#take_obs">take_obs</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_def">interactive_def</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_obs">get_expected_obs</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_states">get_close_states</A> &</TD></TR>
+                   <TD><A HREF="#take_obs">take_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_def">interactive_def</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_obs">get_expected_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_states">get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#move_ahead">move_ahead</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#take_vr">take_vr</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#take_td">take_td</A></TD></TR>
@@ -115,14 +116,14 @@ ensemble_manager_mod
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-</P>
+<BR>
 
 
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="take_obs"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call take_obs(state_vector,location,obs_kind,obs_vals,istatus) 
+ <em class=call> call take_obs(state_vector, location, obs_kind, obs_vals, istatus) 
  </em>
  <pre>
  real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
@@ -151,13 +152,13 @@ in the existing model_mod.f90 modules.
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
      <TD>Status value useful for quality control</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="interactive_def"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call interactive_def(location,obs_kind) </em>
+ <em class=call> call interactive_def(location, obs_kind) </em>
  <pre>
  type(location_type), intent(out) :: <em class=code>location</em>
  type(obs_kind_type), intent(out) :: <em class=code>obs_kind</em>
@@ -172,13 +173,13 @@ in the existing model_mod.f90 modules.
  <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
      <TD>Kind of defined observation</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_expected_obs"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_expected_obs(seq,keys,state,obs_vals,istatus) </em>
+ <em class=call> call get_expected_obs(seq, keys, state, obs_vals, istatus) </em>
  <pre>
  type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
  integer, dimension(:), intent(in)   :: <em class=code>keys</em>
@@ -206,13 +207,13 @@ current (H) implementation.
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
      <TD>Integer error code for use in quality control</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_close_states"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_close_states(seq,key,radius,numinds,indices,dist,x) </em>
+ <em class=call> call get_close_states(seq, key, radius, numinds, indices, dist, x) </em>
  <pre>
  type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
  integer, intent(in)                 :: <em class=code>key</em>
@@ -245,17 +246,17 @@ in many complex models.
  <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
      <TD>The distance between each close state and the observation</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>The model state vector, needed to compute distance in some models</TD><
- /TR>
+     <TD>The model state vector, needed to compute distance in 
+		 some models</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="move_ahead"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call move_ahead(ens_handle,ens_size,model_size,seq,last_key_use
- d,key_bounds,num_obs_in_set,async,adv_ens_command) </em>
+ <em class=call> call move_ahead(ens_handle, ens_size, model_size, seq, 
+	 last_key_used, key_bounds, num_obs_in_set, async, adv_ens_command) </em>
  <pre>
  type(ensemble_type), intent(in)     :: <em class=code>ens_handle</em>
  integer, intent(in)                 :: <em class=code>ens_size</em>
@@ -292,11 +293,11 @@ and all observations in this window are added to the set to be assimilated.
  <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
      <TD>An observation sequence</TD></TR>
  <TR><TD valign=top><em class=code>last_key_used&nbsp; &nbsp; </em></TD>
-     <TD>Identifies the last observation from the sequence that has been used</T
- D></TR>
+     <TD>Identifies the last observation from the sequence that has been 
+		 used</TD></TR>
  <TR><TD valign=top><em class=code>key_bounds&nbsp; &nbsp; </em></TD>
-     <TD>Returned lower and upper bound on observations to be used at this time<
- /TD></TR>
+     <TD>Returned lower and upper bound on observations to be 
+		 used at this time</TD></TR>
  <TR><TD valign=top><em class=code>num_obs_in_set&nbsp; &nbsp; </em></TD>
      <TD>Number of observations to be used at this time</TD></TR>
  <TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
@@ -304,13 +305,13 @@ and all observations in this window are added to the set to be assimilated.
  <TR><TD valign=top><em class=code>adv_ens_command&nbsp; &nbsp; </em></TD>
      <TD>Command issued by shell for async option 2 (see filter)</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="take_vr"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call take_vr(state_vector,obs_def,vr,istatus) </em>
+ <em class=call> call take_vr(state_vector, obs_def, vr, istatus) </em>
  <pre>
  real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
  type(obs_def_type), intent(in)     :: <em class=code>obs_def</em>
@@ -329,19 +330,19 @@ value describes problems found in computing forward operator.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Definition of radar observation</TD></TR>
  <TR><TD valign=top><em class=code>vr&nbsp; &nbsp; </em></TD>
-     <TD>Returned expected value (forward operator) for radar observation</TD></
- TR>
+     <TD>Returned expected value (forward operator) for 
+		 radar observation</TD></TR>
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Returned integer describing problems with applying forward operator</TD
- ></TR>
+     <TD>Returned integer describing problems with applying 
+		  forward operator</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="take_td"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call take_td(state_vector,obs_def,td,istatus) </em>
+ <em class=call> call take_td(state_vector, obs_def, td, istatus) </em>
  <pre>
  real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
  type(obs_def_type), intent(in)     :: <em class=code>obs_def</em>
@@ -360,15 +361,13 @@ value describes problems found in computing forward operator.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Definition of radar observation</TD></TR>
  <TR><TD valign=top><em class=code>td&nbsp; &nbsp; </em></TD>
-     <TD>Returned expected value (forward operator) for dew point temperature</TD></
- TR>
+     <TD>Returned expected value (forward operator) for 
+		 dew point temperature</TD></TR>
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Returned integer describing problems with applying forward operator</TD
- ></TR>
+     <TD>Returned integer describing problems with applying 
+		 forward operator</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
-
+ <BR>
 
 
 <!--==================================================================-->
@@ -435,8 +434,6 @@ value describes problems found in computing forward operator.
 
 <!--==================================================================-->
 <!-- Have not fleshed out this part yet ... ha ha ha                  -->
-<!--==================================================================-->
-
 <!--==================================================================-->
 
 <HR>

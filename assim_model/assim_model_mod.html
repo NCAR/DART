@@ -26,7 +26,7 @@
 -->
 
 <HTML>
-<TITLE>module xxxxxxx</TITLE>
+	<TITLE>module assim_model_mod</TITLE>
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
@@ -99,10 +100,10 @@ model_mod
 
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
-                   <TD><A HREF="#yyypubtype1">assim_model_type</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2">netcdf_file_type</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">static_init_assim_model</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">init_diag_output</A> &</TD></TR>
+                   <TD><A HREF="#yyypubtype1">assim_model_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2">netcdf_file_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">static_init_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">init_diag_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_model_size</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_closest_state_time_to</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">aget_initial_condition</A></TD></TR>
@@ -144,7 +145,7 @@ model_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&assim_model_nml</em> 
+Optional namelist interface <em class=code>&#38;assim_model_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -213,24 +214,23 @@ end type netcdf_file_type
 Basically, we want to keep a local mirror of the unlimited dimension
 coordinate variable (i.e. time) because dynamically querying it
 causes unacceptable performance degradation over "long" integrations.
-
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Component   </TH>
-    <TH align=left>Description </TH></TR>
-<TR><TD valign=top> ncid
-    <TD>The netcdf file unit id. </TD></TR>
-<TR><TD valign=top> Ntimes</TD>
+<TR><TH align=left>Component        </TH>
+    <TH align=left>Description      </TH></TR>
+<TR><TD valign=top> ncid            </TD>
+    <TD>The netcdf file unit id.    </TD></TR>
+<TR><TD valign=top> Ntimes          </TD>
     <TD>The current working length. </TD></TR>
-<TR><TD valign=top> NtimesMAX</TD>
-    <TD>Allocated length. </TD></TR>
-<TR><TD valign=top> rtimes</TD>
-    <TD>Times as real (r8).</TD></TR>
-<TR><TD valign=top> times</TD>
-    <TD>Times as time_types.</TD></TR>
-<TR><TD valign=top> fname</TD>
-    <TD>Netcdf file name.</TD></TR>
+<TR><TD valign=top> NtimesMAX       </TD>
+    <TD>Allocated length.           </TD></TR>
+<TR><TD valign=top> rtimes          </TD>
+    <TD>Times as real (r8).         </TD></TR>
+<TR><TD valign=top> times           </TD>
+    <TD>Times as time_types.        </TD></TR>
+<TR><TD valign=top> fname           </TD>
+    <TD>Netcdf file name.           </TD></TR>
 </TABLE>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
@@ -263,7 +263,7 @@ causes unacceptable performance degradation over "long" integrations.
 character (len = *)                                                   :: <em class=code> FileName </em>
 character (len = *)                                                   :: <em class=code> global_meta_data </em>
 integer, intent(in)                                                   :: <em class=code> copies_of_field_per_time </em>
-character (len = *), intent(in), dimension(copies_of_field_per_time)  :: <em class=optionalcode> bob </em>
+character (len = *), intent(in), dimension(copies_of_field_per_time)  :: <em class=code> meta_data_per_copy </em>
 integer                                                               :: <em class=code> ncFileID </em>
 </pre></div>
 

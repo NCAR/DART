@@ -50,6 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log (cop-out, I know)</TD></TR>
 </TABLE>
@@ -93,9 +94,9 @@ random_seq_mod
 
 <TABLE>
 <TR><TD><em class=code>use location_mod, only : </em></TD>
-                   <TD><A HREF="#location_type">location_type</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A> &</TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_location">get_location</A> &</TD></TR>
+                   <TD><A HREF="#location_type">location_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_location">get_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location">set_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_location">write_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_location">read_location</A></TD></TR>
@@ -114,7 +115,7 @@ random_seq_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&atmosphere_nml</em> 
+Optional namelist interface <em class=code>&#38;location_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -127,7 +128,7 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC ENTITIES</H2>
-<P>fill in text here
+<P>
 </P>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
@@ -160,9 +161,9 @@ three-d spherical shell.
 <TR><TD valign=top> which_vert                       </TD>
     <TD>type of vertical location: -1=surface; 1=level; 2=pressure; 3=height</TD></TR>
 </TABLE>
- <!--================================================================-->
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="get_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -182,13 +183,14 @@ location from a location type and returns in a 3 element real array.
  <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
      <TD>A location type</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="set_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = set_location(lon,lat,vert_loc,which_vert) </em>
+ <em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
  <pre>
  type(location_type), intent(in) :: <em class=code>set_location</em>
  real(r8), intent(in)            :: <em class=code>lon</em>
@@ -213,20 +215,19 @@ in degrees) and the vertical location of type specified by which_vert.
  <TR><TD valign=top><em class=code>which_vert&nbsp; &nbsp; </em></TD>
      <TD>The vertical location type</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
-
+<!--=====================================================================-->
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="write_location"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call write_location(file, loc, fform)</em>
+<em class=call>call write_location(file, loc <em class=optionalcode>[, fform]</em>)</em>
 <pre>
 integer,               intent(in)      :: <em class=code> file </em>
 type(location_type),   intent(inout)   :: <em class=code> loc </em>
-character(len=*), optional, intent(in) :: <em class=code> loc </em>
+character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 </pre></div>
 
 <H2 class=indent1>Description</H2>
@@ -246,7 +247,7 @@ character(len=*), optional, intent(in) :: <em class=code> loc </em>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>location type to be written. </TD></TR>
 
-<TR><TD valign=top><em class=code>fform</em></TD>
+<TR><TD valign=top><em class=optionalcode>fform</em></TD>
     <TD>Format specifier (FORMATTED or UNFORMATTED). </TD></TR>
 
 </TABLE>
@@ -257,6 +258,7 @@ character(len=*), optional, intent(in) :: <em class=code> loc </em>
 use of the integer unit number.
 </P>
 
+<!--===================================================================-->
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="get_dist"></A>
@@ -293,18 +295,18 @@ that is equally weighted as a horizontal distance of 1 radian.
 
 </TABLE>
 
-</P>
+<BR>
 
-<!--==================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="read_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = read_location(ifile,fform) </em>
+ <em class=call> var = read_location(ifile <em class=optionalcode>[, fform]</em>) </em>
  <pre>
  type(location_type)                    :: <em class=code>read_location</em>
  integer, intent(in)                    :: <em class=code>ifile</em>
- character(len=*), optional, intent(in) :: <em class=code>fform</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -316,19 +318,20 @@ fform (default is formatted).
      <TD>Returned location type read from file</TD></TR>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
      <TD>Integer channel opened to a file to be read</TD></TR>
- <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
      <TD>Optional format specifier (FORMATTED or UNFORMATTED)</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="interactive_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call interactive_location(location,set_to_default) </em>
+	 <em class=call> call interactive_location(location <em class=optionalcode>[, set_to_default]</em>) </em>
  <pre>
  type(location_type), intent(out) :: <em class=code>location</em>
- logical, optional, intent(in)    :: <em class=code>set_to_default</em>
+ logical, optional, intent(in)    :: <em class=optionalcode>set_to_default</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -338,12 +341,13 @@ get one with all elements set to 0.
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
      <TD>Location created from standard input</TD></TR>
- <TR><TD valign=top><em class=code>set_to_default&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>set_to_default&nbsp; &nbsp; </em></TD>
      <TD>If true, sets all elments of location type to 0</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="set_location_missing"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -360,9 +364,10 @@ types module.
  <TR><TD valign=top><em class=code>set_location_missing&nbsp; &nbsp; </em></TD>
      <TD>A location with all elements set to missing values</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="vert_is_pressure"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -381,8 +386,9 @@ Returns true if which_vert is for pressure, else false.
  <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
      <TD>A location type</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
+
+<!--================================================================-->
 <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="vert_is_level"></A>
  <P></P><HR><P></P>
@@ -402,9 +408,10 @@ Returns true if which_vert is for level, else false.
  <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
      <TD>A location type</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="vert_is_height"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -423,17 +430,18 @@ Returns true if which_vert is for height, else false.
  <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
      <TD>A location type</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="query_location"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = query_location(loc,attr) </em>
+	 <em class=call> var = query_location(loc <em class=optionalcode>[, attr]</em>) </em>
  <pre>
  real(r8), intent(out)                  :: <em class=code>query_location</em>
  type(location_type), intent(in)        :: <em class=code>loc</em>
- character(len=*), optional, intent(in) :: <em class=code>attr</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -449,60 +457,60 @@ and attr='VLOC' returns the vertical location.
  d to real)</TD></TR>
  <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
      <TD>A location type</TD></TR>
- <TR><TD valign=top><em class=code>attr&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=optionalcode>attr&nbsp; &nbsp; </em></TD>
      <TD>Selects 'WHICH_VERT', 'LON', 'LAT' or 'VLOC'</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--================================================================-->
+<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
 <A NAME="LocationDims"></A>
 <P></P><HR><P></P>
  <H3 class=indent1>Global variable: integer :: LocationDims</H3>
 Contains the number of real values in a location type. Useful for 
 output routines that must deal transparently with many different
 location modules.
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--================================================================-->
+<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
 <A NAME="LocationName"></A>
 <P></P><HR><P></P>
  <H3 class=indent1>Global variable: character(len=129) :: LocationName</H3>
 A parameter set to "loc3Dsphere" used to identify this location module
 in netCDF output metadata.
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--================================================================-->
+<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
 <A NAME="LocationLName"></A>
 <P></P><HR><P></P>
  <H3 class=indent1>Global variable: character(len=129) :: LocationLName</H3>
 A parameter set to "threed sphere locations: lon, lat, lev or pressure" used 
 to identify this location module in netCDF output long name metadata.
- <P>
- <!--================================================================-->
+ <BR>
 
- <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--================================================================-->
+<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
 <A NAME="horiz_dist_only"></A>
 <P></P><HR><P></P>
  <H3 class=indent1>Global variable: logical :: horiz_dist_only</H3>
 This is a namelist variable that determines whether distance computation
 is horizontal only or not.
- <P>
- <!--================================================================-->
+ <BR>
 
+<!--================================================================-->
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / location_nml / </em>
- horiz_dist_only,vert_normalization_pressure,vert_normalization_height,
-vert_normalization_level                                                                
-                                                                                
-                                                               
+ <em class=call>namelist / location_nml / </em> &#38;
+ horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &#38;
+ vert_normalization_level
+
+
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
@@ -518,28 +526,23 @@ vertical and horizontal separation.
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>horiz_dist_only</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>Only compute horizontal distance component? Default: true</T
- D></TR>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>Only compute horizontal distance component?
+	                 Default: true</TD></TR>
  <TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>How many hectopascals should be equivalent distance to one r
- adian? Default: 1000000.0</TD></TR>
+     <!--  type  --><TD valign=top>real(r8)</TD>
+     <!--descript--><TD>How many hectopascals should be equivalent distance to 
+	                one radian? Default: 1000000.0</TD></TR>
  <TR><!--contents--><TD valign=top>vert_normalization_height</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>How many geopotential meters should be equal to one radian? 
- Default: 10000.0</TD></TR>
+     <!--  type  --><TD valign=top>real(r8)</TD>
+     <!--descript--><TD>How many geopotential meters should be equal to one radian? 
+                        Default: 10000.0</TD></TR>
  <TR><!--contents--><TD valign=top>vert_normalization_level</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>How many model levels should be equal to one radian? Default
- : 20.0</TD></TR>
+     <!--  type  --><TD valign=top>real(r8)</TD>
+     <!--descript--><TD>How many model levels should be equal to one radian? 
+	                Default: 20.0</TD></TR>
  </TABLE>
- <P>
- <!--================================================================-->
-
-
-
-<em class=file>None</em><BR>
+ <BR>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
