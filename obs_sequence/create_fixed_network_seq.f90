@@ -19,7 +19,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_obs_def, set_obs_def, append_obs_to_seq, get_next_obs, insert_obs_in_seq, init_obs, &
    assignment(=), static_init_obs_sequence, get_num_copies, get_num_qc, &
    get_copy_meta_data, get_qc_meta_data, set_qc_meta_data
-use time_manager_mod, only : time_type, operator(*), operator(+), set_time
+use time_manager_mod, only : time_type, operator(*), operator(+), set_time, interactive_time
 
 implicit none
 
@@ -73,9 +73,8 @@ if(option == 1) then
    write(*, *) 'Input number of observation times in sequence'
    read(*, *) num_times
 
-   write(*, *) 'Input initial time in sequence in days and seconds'
-   read(*, *) days, seconds
-   init_time = set_time(seconds, days)
+   write(*, *) 'Input initial time in sequence'
+   call interactive_time(init_time)
 
    write(*, *) 'Input period of obs in sequence in days and seconds'
    read(*, *) days, seconds
