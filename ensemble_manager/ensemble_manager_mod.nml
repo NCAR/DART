@@ -1,2 +1,4 @@
 &ensemble_manager_nml
-   in_core = .true. /
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
