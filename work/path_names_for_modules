@@ -65,35 +65,12 @@ set TYPES = ../common/types_mod.f90
 #set MODEL = ../models/lorenz_96/imperfect.f90    whatdoIdowiththis?
 
 #----------------------------------------------------------------------
-# Obs for these models
-#----------------------------------------------------------------------
-
-#set OBS = ../models/null_model/obs/obs_mod.f90
-#set OBS = ../models/lorenz_63/obs/obs_mod.f90
-#set OBS = ../models/lorenz_96/obs/linear/obs_mod.f90
-#set OBS = ../models/lorenz_96/obs/nonlinear/obs_mod.f90
-#set OBS = ../models/lorenz_96/obs/imperfect/obs_mod.f90
-#set OBS = ../models/lorenz_96/obs/imperfect_nonlinear/obs_mod.f90
-#set OBS = ../models/9var/obs/obs_mod.f90
-
-#set OBS = ../models/oned_wave/obs/obs.f90     needs types
-#set OBS = ../models/oscillator/obs/obs.f90    needs types
-#set OBS = ../models/forced_barot/obs/obs.f90  needs types
-#set OBS = ../models/lorenz_96/obs/imperfect/obs_mod.f90   see bomb note
-
-#----------------------------------------------------------------------
 # Routines to support assimilation
 #----------------------------------------------------------------------
-
-#set         SEQ_OBS = ../seq_obs/seq_obs.f90
-#set   CLEAN_SEQ_OBS = ../seq_obs/clean_seq_obs.f90
 
 set      COV_CUTOFF = ../cov_cutoff/cov_cutoff_mod.f90
 set     ASSIM_TOOLS = ../assim_tools/assim_tools_mod.f90
 set       OBS_TOOLS = ../obs_tools/obs_tools_mod.f90
-
-#set   LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
-#set   LOC_AND_DIST = ../loc_and_dist/twod/loc_and_dist_mod.f90
 
 set            SORT = ../sort/sort_mod.f90
 set      ASSIM_DIAG = ../assim_diag/assim_diag_mod.f90 
@@ -110,19 +87,6 @@ set RANDOM_SEQ_TEST = ../random_seq/test_random.f90
 set       RANDOM_NR = ../random_nr/random_nr_mod.f90
 set  RANDOM_NR_TEST = ../random_nr/test_random_nr.f90
 set    CORRECT_CORR = ../correct_corr/correct_corr_mod.f90
-
-#----------------------------------------------------------------------
-# Stuff for spectral models follows
-# TJH 1 Apr 2002 ... red_spectral_model  directory does not exist...
-#----------------------------------------------------------------------
-
-set         TRANSFORMS = ../red_spectral_model/transforms.f90
-set GAUSS_AND_LEGENDRE = ../red_spectral_model/gauss_and_legendre.f90
-set       GRID_FOURIER = ../red_spectral_model/grid_fourier.f90
-set          SPHERICAL = ../red_spectral_model/spherical.f90
-set  SPHERICAL_FOURIER = ../red_spectral_model/spherical_fourier.f90
-set            WINDOWS = ../red_spectral_model/windows.f90
-set                FFT = ../red_spectral_model/fft.f90
 
 #----------------------------------------------------------------------
 # Utilities should now be from repository
@@ -160,34 +124,28 @@ set        TIME_MANAGER = ../time_manager/time_manager_mod.f90
  set      LOCATION_TEST = ../location/oned/location_test.f90
 #set      LOCATION_TEST = ../location/twod_sphere/location_test.f90
 
-# set       ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model_mod.f90
-# set       ASSIM_MODEL = ../models/lorenz_63/assim_model/assim_model_mod.f90
-
 #--------------------------------------------------------------------------
 #  Change to generic assim_model approach; testing 15 July, 2002
 #----------------------------------------------------------------------
-#set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model_mod.f90
- set         ASSIM_MODEL = ../assim_model_tools/assim_model.f90
+set         ASSIM_MODEL = ../assim_model/assim_model_mod.f90
 
-set            OBS_KIND = ../obs_kind/obs_kind.f90
-set           OBS_MODEL = ../obs_model/obs_model_mod.f90
-set             OBS_DEF = ../obs_def/obs_def.f90
-set         OBS_SET_DEF = ../obs_set_def/obs_set_def.f90
-set        SET_DEF_LIST = ../set_def_list/set_def_list.f90
-set             OBS_SET = ../obs_set/obs_set.f90
+set            OBS_KIND = ../obs_kind/obs_kind_mod.f90
+set           OBS_MODEL = ../obs_model/oned/obs_model_mod.f90
+set             OBS_DEF = ../obs_def/obs_def_mod.f90
+set         OBS_SET_DEF = ../obs_set_def/obs_set_def_mod.f90
+set        SET_DEF_LIST = ../set_def_list/set_def_list_mod.f90
+set             OBS_SET = ../obs_set/obs_set_mod.f90
 
 set        OBS_SEQUENCE = ../obs_sequence/obs_sequence_mod.f90
 set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
-set CREATE_OBS_DEF      = ../obs_sequence/create_obs_def.f90
-set              FILTER = ../obs_sequence/filter.f90
-set   PERFECT_MODEL_OBS = ../obs_sequence/perfect_model_obs.f90
-set            RMS_DIAG = ../obs_sequence/rms_diag.f90
+set CREATE_OBS_DEF      = ../obs_set_def/create_obs_set_def.f90
+set              FILTER = ../filter/filter.f90
+set   PERFECT_MODEL_OBS = ../perfect_model_obs/perfect_model_obs.f90
+set            RMS_DIAG = ../diagnostics/rms_diag.f90
 set        POINTER_TEST = ../obs_sequence/pointer_test.f90
 
 set      MODEL_ENSEMBLE = ../model_ensemble/model_ensemble.f90
-set   CLOSE_STATE_CACHE = ../close_state_cache/close_state_cache.f90
-
-#set ASSIM_MODEL_TOOLS = ../assim_model_tools/assim_model_tools.f90
+set   CLOSE_STATE_CACHE = ../close_state_cache/close_state_cache_mod.f90
 
 #======================================================================
 # END of      path_names_for_modules
