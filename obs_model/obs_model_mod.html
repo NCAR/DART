@@ -30,6 +30,8 @@
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
+<!--kdr PRIVATE COMPONENTS destination don't exist -->
+
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -78,7 +80,7 @@ observations and the model details are computed here.
 <PRE>
 types_mod
 utilities_mod
-location_mod
+location_mod (depends on model choice)
 assim_model_mod
 obs_kind_mod
 obs_sequence_mod
@@ -192,7 +194,7 @@ in the existing model_mod.f90 modules.
 Used to compute the expected value of a set of observations in an
 observation sequence given a model state vector. Also returns a
 status variable that reports on problems taking forward operators.
-This is normally applied to single observations at a time in the
+This is normally applied to a single observation at a time in the
 current (H) implementation. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
@@ -246,14 +248,14 @@ in many complex models.
  <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
      <TD>The distance between each close state and the observation</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>The model state vector, needed to compute distance in 
-		 some models</TD></TR>
+     <TD>The model state vector, needed to compute distance in some models</TD></TR>
  </TABLE>
  <BR>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="move_ahead"></A>
  <P></P><HR><P></P>
+<!--kdr ens_handle has no intent listed in code -->
  <div class=routine>
  <em class=call> call move_ahead(ens_handle, ens_size, model_size, seq, 
 	 last_key_used, key_bounds, num_obs_in_set, async, adv_ens_command) </em>
@@ -293,11 +295,9 @@ and all observations in this window are added to the set to be assimilated.
  <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
      <TD>An observation sequence</TD></TR>
  <TR><TD valign=top><em class=code>last_key_used&nbsp; &nbsp; </em></TD>
-     <TD>Identifies the last observation from the sequence that has been 
-		 used</TD></TR>
+     <TD>Identifies the last observation from the sequence that has been used</TD></TR>
  <TR><TD valign=top><em class=code>key_bounds&nbsp; &nbsp; </em></TD>
-     <TD>Returned lower and upper bound on observations to be 
-		 used at this time</TD></TR>
+     <TD>Returned lower and upper bound on observations to be used at this time</TD></TR>
  <TR><TD valign=top><em class=code>num_obs_in_set&nbsp; &nbsp; </em></TD>
      <TD>Number of observations to be used at this time</TD></TR>
  <TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
@@ -321,7 +321,7 @@ and all observations in this window are added to the set to be assimilated.
  <H3 class=indent1>Description</H3>
  <P>
 Given a description of a radar observation and model state vector,
-return the expected value of the radar observation. Returned status
+return the expected value of the radar observation. Returned istatus
 value describes problems found in computing forward operator. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
@@ -369,6 +369,38 @@ value describes problems found in computing forward operator.
  </TABLE>
  <BR>
 
+
+<!--==================================================================-   ->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-   ->
+
+NOTE that 'end comment' strings have spaces inserted
+
+<A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand 
+'&#38;' and terminating with a slash '/'.
+<div class=namelist><pre>
+<em class=call>namelist / filter_nml / </em> &
+      async, adv_ens_command, ens_size, cutoff, cov_inflate, 
+</pre></div>
+
+<H3 class=indent1>Discussion</H3>
+
+<P>This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents-   -><TD valign=top>async                        </TD>
+    <!--  type  -   -><TD valign=top>integer                      </TD>
+    <!--descript-   -><TD>Controls whether models are advanced via a subroutine call or
+                       separate from the model advances). </TD></TR>
+</TABLE>
+-->
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

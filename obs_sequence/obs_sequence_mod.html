@@ -41,6 +41,7 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
 </DIV>
+<!--kdr no PRIVATE COMPONENTS destination -->
 
 <!--==================================================================-->
 
@@ -84,7 +85,7 @@ be added.
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
-location_mod
+location_mod (depends on model_choice)
 obs_def_mod
 time_manager_mod
 utilities_mod
@@ -154,7 +155,8 @@ utilities_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;obs_sequence_nml</em> 
+Optional namelist interface 
+<A HREF="#Namelist"><em class=code>&#38;obs_sequence_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -550,7 +552,8 @@ to true.
  <A NAME="insert_obs_in_seq"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call insert_obs_in_seq(seq,obs,prev_obs) </em>
+ <em class=call> call insert_obs_in_seq(seq,obs
+    <em class=optionalcode>[,prev_obs]</em>) </em>
  <pre>
  type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
  type(obs_type), intent(inout)          :: <em class=code>obs</em>
@@ -701,7 +704,7 @@ in the sequence, the function returns false, else true.
  <div class=routine>
  <em class=call> call add_copies(seq,num_to_add) </em>
  <pre>
- type(observation_sequence_type), intent(inout) :: <em class=code>seq</em>
+ type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
  integer, intent(in)                            :: <em class=code>num_to_add</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -723,7 +726,7 @@ num_to_add.
  <div class=routine>
  <em class=call> call add_qc(seq,num_to_add) </em>
  <pre>
- type(observation_sequence_type), intent(inout) :: <em class=code>seq</em>
+ type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
  integer, intent(in)                            :: <em class=code>num_to_add</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -847,7 +850,8 @@ This subroutine returns the observation given an integer key.
  <A NAME="get_obs_time_range"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_obs_time_range(seq,time1,time2,key_bounds,num_keys,out_of_range,obs) </em>
+ <em class=call> call get_obs_time_range(seq,time1,time2,key_bounds,num_keys,out_of_range
+    <em class=optionalcode>[,obs]</em>) </em>
  <pre>
  type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
  type(time_type), intent(in)          :: <em class=code>time1</em>
@@ -892,7 +896,8 @@ are definitely at times before the start of the time range.
  <A NAME="set_obs"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_obs(seq,obs,key_in) </em>
+ <em class=call> call set_obs(seq,obs
+    <em class=optionalcode>[,key_in]</em>) </em>
  <pre>
  type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
  type(obs_type), intent(in)             :: <em class=code>obs</em>
@@ -922,7 +927,7 @@ changed to be key_in).
  <div class=routine>
  <em class=call> call get_time_range_keys(seq,key_bounds,num_keys,keys) </em>
  <pre>
- An, intent(in)                            :: <em class=code>seq</em>
+ type(obs_sequence_type), intent(in)       :: <em class=code>seq</em>
  integer, dimension(2), intent(in)         :: <em class=code>key_bounds</em>
  integer, intent(in)                       :: <em class=code>num_keys</em>
  integer, dimension(num_keys), intent(out) :: <em class=code>keys</em>
@@ -1130,11 +1135,12 @@ definition in the observation structure.
  <A NAME="get_obs_values"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_obs_values(obs,values,copy_index) </em>
+ <em class=call> call get_obs_values(obs,values
+    <em class=optionalcode>[,copy_indx]</em>) </em>
  <pre>
  type(obs_type), intent(in)          :: <em class=code>obs</em>
  real(r8), dimension(:), intent(out) :: <em class=code>values</em>
- integer, optional, intent(in)       :: <em class=code>copy_index</em>
+ integer, optional, intent(in)       :: <em class=code>copy_indx</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -1148,7 +1154,7 @@ value corresponding to the copy_indx is extracted.
      <TD>Observation from which to extract values.</TD></TR>
  <TR><TD valign=top><em class=code>values&nbsp; &nbsp; </em></TD>
      <TD>The values extracted.</TD></TR>
- <TR><TD valign=top><em class=code>copy_index&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>copy_indx&nbsp; &nbsp; </em></TD>
      <TD>If present, extract only this copy.</TD></TR>
  </TABLE>
  <BR>
@@ -1157,7 +1163,8 @@ value corresponding to the copy_indx is extracted.
  <A NAME="get_qc"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_qc(obs,qc,qc_indx) </em>
+ <em class=call> call get_qc(obs,qc
+    <em class=optionalcode>[,qc_indx]</em>) </em>
  <pre>
  type(obs_type), intent(in)          :: <em class=code>obs</em>
  real(r8), dimension(:), intent(out) :: <em class=code>qc</em>
@@ -1184,7 +1191,8 @@ sure there is enough space in qc array.
  <A NAME="set_obs_values"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_obs_values(obs,values,copy_indx) </em>
+ <em class=call> call set_obs_values(obs,values
+    <em class=optionalcode>[,copy_indx]</em>) </em>
  <pre>
  type(obs_type), intent(out)        :: <em class=code>obs</em>
  real(r8), dimension(:), intent(in) :: <em class=code>values</em>
@@ -1212,7 +1220,8 @@ to set the copy corresponding to copy_indx.
  <A NAME="set_qc"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_qc(obs,qc,qc_indx) </em>
+ <em class=call> call set_qc(obs,qc
+    <em class=optionalcode>[,qc_indx]</em>) </em>
  <pre>
  type(obs_type), intent(out)        :: <em class=code>obs</em>
  real(r8), dimension(:), intent(in) :: <em class=code>qc</em>
@@ -1348,7 +1357,7 @@ and qc fields associated with the observation are input.
  <H3 class=indent1>Description</H3>
  <P>
 Preliminary method for interactive definition of radar observations using
-standard in. The I-release will refine the process for adding obsevations
+standard in. The I-release will refine the process for adding observations
 and wil replace this routine.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
@@ -1378,7 +1387,7 @@ and wil replace this routine.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Copies the observation type obs2 to obs1. If the sizes of obs1
+Copies the observation type obs2 to obs1. If the sizes of obs
 fields are not compatible, the space in obs1 is deallocated and
 reallocated with the appropriate size. This is overloaded to 
 assignment(=). 
@@ -1394,6 +1403,7 @@ assignment(=).
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
+<H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
@@ -1409,6 +1419,7 @@ must be the same. Future versions should automate file reading and only
 the write parameter should remain.
  </em>
  </P>
+<!--kdr put previous comment in FUTURE -->
  <P>This namelist is read in a file called <em class=file>input.nml</em>
  </P>
  <TABLE border=0 cellpadding=3 width=100%>
@@ -1431,8 +1442,9 @@ the write parameter should remain.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>input.nml
-    <LI>Files for reading and writing obs_sequences and obs.
+<UL>
+   <LI>obs_sequence_mod.nml in input.nml
+   <LI>Files for reading and writing obs_sequences and obs specified in filter_nml.
 </UL>
 
 <!--==================================================================-->
@@ -1496,6 +1508,8 @@ the write parameter should remain.
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
+Future versions should automate file reading and only the write namelist 
+parameter should remain.
 </P>
 
 <!--==================================================================-->
