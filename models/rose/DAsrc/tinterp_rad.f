@@ -14,10 +14,13 @@ c-------------------------------------------------------------------
       use dynam
       use phys
 
+      use utilities_mod, only : open_file, close_file
+
       implicit none
 
       integer, intent(in) :: dayofyr
 
+      integer :: iunit
       integer :: j, jj, k, kk, ll, m, mm, m1, m2
       integer :: iday, icall, mon, month, nbar
       real :: f1, f2
@@ -36,14 +39,17 @@ c-------------------------------------------------------------------
       if(icall.le.1)then
 
 c  read water data
-         open (unit = 28,
-     $        file = namf28,
-     $        form = 'unformatted',
-     $         status = 'old')
 
-         read(28) rd_dates, rad_g
+         iunit = open_file(namf28,form='unformatted',action='read')
 
-         close (28)
+c        open (unit = 28,
+c    $        file = namf28,
+c    $        form = 'unformatted',
+c    $         status = 'old')
+
+         read(iunit) rd_dates, rad_g
+
+         call close_file(iunit)
 
          print *,rd_dates
 

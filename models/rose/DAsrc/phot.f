@@ -37,12 +37,16 @@ c-----------------------------------------------------------------------
       use chem, only: tj, sc2d, o3t 
       use dynam, only: namf30, pi
 
+      use utilities_mod, only : open_file, close_file
+
       implicit none
 
-      integer :: dayofyr
+      integer, intent(in) :: dayofyr
 
       integer, parameter :: nzen=10         ! number of zenith angles
       integer, parameter :: ncol=15         ! number of ozone columns
+
+      integer :: iunit
 
       real :: v3std(nz)                     ! standard ozone column
       real :: ajl(nphot, nz, nzen, ncol)    ! look-up table
@@ -55,7 +59,7 @@ c-----------------------------------------------------------------------
       real :: g, dist                       ! used to correct for Sun-Earth distance
 
       logical :: entered = .false. 
-      real :: ln10,  sum
+      real :: ln10,  sum_ajl
       integer :: i, j, k, l
       integer :: ll, mm, nn
 
@@ -85,28 +89,28 @@ c--------------------------------------------------------------------
       if( .not. entered ) then
 
          print *, 'reading '//namf30
-         open (unit = 30,
-     $         file = namf30,
-     $         form = 'formatted')
 
-         read (30, 201) v3std               ! read in standard ozone column
+         iunit = open_file(namf30,form='formatted',action='read')         
+  
+c        open (unit = 30,
+c    $         file = namf30,
+c    $         form = 'formatted')
+
+         read (iunit,'(6e13.5)') v3std     ! read in standard ozone column
 
          do i = 1,nphot                     ! read in look-up table 
             do l = 1,ncol
                do k = 1,nzen
-                  read(30,500) (ajl(i, j, k, l), j=1, 8)
-                  read(30,500) (ajl(i, j, k, l), j=9, 16)
-                  read(30,500) (ajl(i, j, k, l), j=17, 24)
-                  read(30,500) (ajl(i, j, k, l), j=25, 32)
-                  read(30,500) (ajl(i, j, k, l), j=33, 38)
+                  read(iunit,'(8e12.4)') (ajl(i, j, k, l), j=1, 8)
+                  read(iunit,'(8e12.4)') (ajl(i, j, k, l), j=9, 16)
+                  read(iunit,'(8e12.4)') (ajl(i, j, k, l), j=17, 24)
+                  read(iunit,'(8e12.4)') (ajl(i, j, k, l), j=25, 32)
+                  read(iunit,'(8e12.4)') (ajl(i, j, k, l), j=33, 38)
                end do
             end do
          end do
 
-         close( 30 )
-
- 201     format(6e13.5)
- 500     format(8e12.4)
+         call close_file(iunit)
 
          ln10 = alog(10.)
          entered = .true.
@@ -131,7 +135,7 @@ c... calculate only selected J's in daytime
  195          format('zenith angle out of bounds',2i3,f10.3)
               stop
             end if
-	   
+   
 c... find zenith angle in table (altitude independent)
 
             do mm = 1,nzen
@@ -182,11 +186,11 @@ c... interpolate J's from table
 
                do  nn = 1,nphot
 	         if (index(nn).eq.1) then
-                   sum = weight(1,1) * ajl(nn, i, is, ll)
-     $                 + weight(1,2) * ajl(nn, i, is, ll+1)
-     $                 + weight(2,1) * ajl(nn, i, is+1, ll)
-     $                 + weight(2,2) * ajl(nn, i, is+1, ll+1)
-                   tj(i,k,j,nn) = exp( ln10*sum )
+                   sum_ajl = weight(1,1) * ajl(nn, i, is, ll)
+     $                     + weight(1,2) * ajl(nn, i, is, ll+1)
+     $                     + weight(2,1) * ajl(nn, i, is+1, ll)
+     $                     + weight(2,2) * ajl(nn, i, is+1, ll+1)
+                   tj(i,k,j,nn) = exp( ln10*sum_ajl )
 		 endif
                end do
             end do

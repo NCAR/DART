@@ -8,6 +8,8 @@
       use params, only : nx, ny, nz, ntime
       use dynam
 
+      use DArose_mod, only : h_tune, z_tune
+
       implicit none
 
       real, intent(in) :: gmt_frac
@@ -16,7 +18,6 @@
       real :: a, zlbc, zubc, thlbc, thubc, amplify, zt, zzt
       real :: xdiv, gmt_rad, drad, dzfctr1
       real :: rad_lt, cct1, sst1, cct2, sst2, zfactr, hfactr, rad_adj
-      real :: h_tune  
       real, dimension(nx) :: cos1, sin1, cos2, sin2, xlamb
 
       save icall,nt0,cos1,sin1,cos2,sin2,xdiv,thlbc,thubc
@@ -33,9 +34,10 @@
          zubc = z(nz) + dz
          thlbc = exp(.28*zlbc/h)
          thubc = exp(.28*zubc/h)
-         zfactr = exp(-(16.218-15.)/7.)       ! amplitude and phase adjustments
+         zfactr = exp(-(16.218-15.)/7.) * z_tune  ! tuning amplitude by an arbitrary factor "z_tune"
+!         zfactr = exp(-(16.218-15.)/7.)       ! amplitude and phase adjustments
          hfactr = (16.218-15.)/25. * 2. * pi  ! ..  for GSWM forcing altitude
-         h_tune = pi    ! tuning to get observed phase at 95 km
+!         h_tune = pi    ! tuning to get observed phase at 95 km
       endif
 
       print *, 'dynamlbcV2: h_tune = ', h_tune

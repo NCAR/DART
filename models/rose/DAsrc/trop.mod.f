@@ -120,7 +120,7 @@ c--------------------------------------------------------------------
       else
         found = .FALSE.
         print *, varname//nf_strerror(ncerr)
-	stop
+        stop
       endif
       
       start(1) = 1

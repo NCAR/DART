@@ -48,6 +48,8 @@
       use output
       use diagnostic 
 
+      use utilities_mod, only : open_file, close_file
+
       implicit none
 
 !-------------------------------------------------------------------
@@ -62,7 +64,7 @@
       real    :: gmt_frac        ! fraction of day since 0Z
       integer :: lengdy          ! length of a day in steps
 
-
+      integer :: iunit, iunit_tidal
       integer :: i, k
       integer :: dummy(3)
       integer :: daynum
@@ -72,8 +74,7 @@
       real, dimension(nz,nx,ny) :: tfull, fxt
       
       real, parameter :: gcp = 9.8e-03
-      logical :: old_restart = .true.
-!      logical :: old_restart = .false.
+!     logical :: old_restart = .true.
 
 !-------------------------------------------------------------------
 !  set variable program parameters including program control
@@ -81,7 +82,6 @@
 !-------------------------------------------------------------------
       print *, 'msetvar'
       call msetvar()
-
       lengdy = ntime*24
 
 !-------------------------------------------------------------------
@@ -94,16 +94,19 @@
 !   read in initial dynamical and chemical fields
 !-------------------------------------------------------------------
       print *, 'startup: ', namf17
-      open (unit   = 17, 
-     $         file   = namf17,
-     $         form   = 'unformatted',
-     $         status = 'old')
+
+      iunit = open_file(namf17,form='unformatted',action='read')
+
+!     open (unit   = 17, 
+!    $         file   = namf17,
+!    $         form   = 'unformatted',
+!    $         status = 'old')
 
       if (old_restart) then
 
-        read(17) dummy, gmt_frac, daynum, tref, treflb,
-     $           trefub, un1, vn1, tn1, un0, vn0, tn0, 
-     $           qn1(:,:,:,1:nbcon-1), q_o2, q_n2
+        read(iunit) dummy, gmt_frac, daynum, tref, treflb,
+     $              trefub, un1, vn1, tn1, un0, vn0, tn0, 
+     $              qn1(:,:,:,1:nbcon-1), q_o2, q_n2
 
         day0 = dummy(3)
         print *, 'day0:', day0, 'gmt_frac:', gmt_frac
@@ -114,20 +117,20 @@
 
       else
 
-        read(17) iyear, doy, utsec, year0, day0, ut0, tref, 
-     $	         treflb, trefub, un1, vn1, tn1, un0, vn0, tn0, 
-     $           qn1, q_o2, q_n2
+        read(iunit) iyear, doy, utsec, year0, day0, ut0, tref, 
+     $              treflb, trefub, un1, vn1, tn1, un0, vn0, tn0, 
+     $              qn1, q_o2, q_n2
 
-	ut0 = utsec
-	gmt_frac = float(utsec)/(3600.0*24.0)
+        ut0 = utsec
+        gmt_frac = float(utsec)/(3600.0*24.0)
         year0 = iyear
-	iyear = 0
+        iyear = 0
         day0 = doy
         print *, iyear, doy, utsec, year0, day0, ut0
 
       endif 
 
-      close (17)
+      call close_file(iunit) 
 !-------------------------------------------------------------------
 !   other initial fields
 !-------------------------------------------------------------------
@@ -188,13 +191,15 @@
       call main_update( vars, iyear, day0, ut0 ) 
 
 !-------------------------------------------------------------------
-!   open file unit 13:  fields needed for tidal analysis 
+!   open file iunit_tidal:  fields needed for tidal analysis 
 !-------------------------------------------------------------------
 
-      open (unit   = 13, 
-     $      file   = namf13,
-     $      form   = 'unformatted',
-     $      status = 'unknown')
+      iunit_tidal = open_file(namf13,form='unformatted',action='write')
+
+!     open (unit   = 13, 
+!    $      file   = namf13,
+!    $      form   = 'unformatted',
+!    $      status = 'unknown')
 
 !==================================================================
 !    time integration loop
@@ -210,9 +215,9 @@
          iyear = (day0 + modday - 1)/365
          doy = mod( day0 + modday, 365)
          if(doy.eq.0) doy = 365
-	 utsec = mod( nstep*3600/ntime + ut0, 3600*24)
-	 gmt_frac = float(utsec)/(3600.0*24.0)
-	  
+         utsec = mod( nstep*3600/ntime + ut0, 3600*24)
+         gmt_frac = float(utsec)/(3600.0*24.0)
+  
          print 101, nstep, iyear, doy, utsec 
  101     format('nstep:', i12, 'year:', i8, 'doy', i6, 'utsec', i8)
 
@@ -233,9 +238,9 @@
             call transport()
          end if
 
-	 where( qn1 < 0) 
+         where( qn1 < 0) 
             qn1 = 0             ! enforce non-negative mixing ratios
-	 endwhere
+         endwhere
 
 !-------------------------------------------------------------------
 !   vertical diffusion of chemical species
@@ -243,9 +248,9 @@
          print *, 'vertdiff_c'
          call vertdiff_c()
 
-	 where( qn1 < 0) 
+         where( qn1 < 0) 
             qn1 = 0             ! enforce non-negative mixing ratios
-	 endwhere
+         endwhere
 
 !-------------------------------------------------------------------
 !  CHEMISTRY
@@ -297,9 +302,9 @@
          print *, 'chem3d'
          call chem3d 
 
-	 where( qn1 < 0) 
+         where( qn1 < 0) 
             qn1 = 0             ! enforce non-negative mixing ratios
-	 endwhere
+         endwhere
 
 !-------------------------------------------------------------------
 !   correction for mass conservation
@@ -392,7 +397,7 @@
              tfull(k,:,:) = tn1(k,:,:) + tref(k)
            end do
 
-	   vars(:,:,:,1) = un1
+           vars(:,:,:,1) = un1
            vars(:,:,:,2) = vn1
            vars(:,:,:,3) = ww 
            vars(:,:,:,4) = tfull
@@ -400,7 +405,7 @@
                
            call main_update( vars, iyear, doy, utsec ) 
 
-	   call diag_update( iyear, doy, utsec )
+           call diag_update( iyear, doy, utsec )
 
          endif
 
@@ -435,15 +440,16 @@
          if((nstep.gt.2.and.mod(nstep,nsave).eq.1).or.nstep.eq.nend)then
   
             print *, 'writing restart file for step:', nstep
-	    
-            open (unit = 14, file = namf14, form = 'unformatted')
+    
+            iunit = open_file(namf14,form='unformatted',action='write')
+!           open (unit = 14, file = namf14, form = 'unformatted')
 
-            write(14) iyear, doy, utsec, year0, day0, ut0, 
-     $                tref, treflb, trefub, 
-     $                un1, vn1, tn1, un0, vn0, tn0, 
-     $                qn1, q_o2, q_n2
+            write(iunit) iyear, doy, utsec, year0, day0, ut0, 
+     $                   tref, treflb, trefub, 
+     $                   un1, vn1, tn1, un0, vn0, tn0, 
+     $                   qn1, q_o2, q_n2
 
-            close (14)
+            call close_file(iunit)
 
        end if
 
@@ -456,7 +462,7 @@
 !-------------------------------------------------------------------
       call main_close
       call diag_close
-      close (13)
+      call close_file(iunit_tidal)
 
       stop
       end

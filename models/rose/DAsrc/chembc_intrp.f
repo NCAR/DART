@@ -6,24 +6,31 @@ c  NOTE: for now, b.c. on O2 taken from initial condidtions
       use chem
       use dynam
 
+      use utilities_mod, only : open_file, close_file
+
       implicit none
 
-      integer :: icall, dayofyr, iday, m1, m2, mm, nfirst(12), i, j
-      real :: gmt_frac, ddays(12), f1, f2, smult, waterlbc(ny)
+      integer, intent(in) :: dayofyr
+      real,    intent(in) :: gmt_frac
+
+      integer, parameter :: nmonths = 12
+      integer :: iunit
+      integer :: icall, iday, m1, m2, mm, nfirst(nmonths), i, j
+      real :: ddays(nmonths), f1, f2, smult, waterlbc(ny)
 
 c  monthly means from SOCRATES
-      real, dimension (ny,12) :: ub_n2o, ub_ch4, ub_h2o, ub_hno3,
-     $                           ub_n2o5, ub_co, ub_hcl, ub_clono2,
-     $                           ub_hocl, ub_h2o2, ub_ho2no2, ub_ch2o, 
-     $                           ub_o1d, ub_oh, ub_cl, ub_o, ub_o3, 
-     $                           ub_ho2, ub_no2, ub_no, ub_n, ub_clo,
-     $                           ub_no3, ub_h
-      real, dimension (ny,12) :: lb_n2o, lb_ch4, lb_h2o, lb_hno3,
-     $                           lb_n2o5, lb_co, lb_hcl, lb_clono2,
-     $                           lb_hocl, lb_h2o2, lb_ho2no2, lb_ch2o, 
-     $                           lb_o1d, lb_oh, lb_cl, lb_o, lb_o3, 
-     $                           lb_ho2, lb_no2, lb_no, lb_n, lb_clo,
-     $                           lb_no3, lb_h
+      real,dimension(ny,nmonths) :: ub_n2o, ub_ch4, ub_h2o, ub_hno3,
+     $                              ub_n2o5, ub_co, ub_hcl, ub_clono2,
+     $                              ub_hocl, ub_h2o2, ub_ho2no2,ub_ch2o,
+     $                              ub_o1d, ub_oh, ub_cl, ub_o, ub_o3, 
+     $                              ub_ho2, ub_no2, ub_no, ub_n, ub_clo,
+     $                              ub_no3, ub_h
+      real,dimension(ny,nmonths) :: lb_n2o, lb_ch4, lb_h2o, lb_hno3,
+     $                              lb_n2o5, lb_co, lb_hcl, lb_clono2,
+     $                              lb_hocl, lb_h2o2, lb_ho2no2,lb_ch2o,
+     $                              lb_o1d, lb_oh, lb_cl, lb_o, lb_o3, 
+     $                              lb_ho2, lb_no2, lb_no, lb_n, lb_clo,
+     $                              lb_no3, lb_h
 c   interpolated daily values
       real, dimension (ny) :: ubc_n2o, ubc_ch4, ubc_h2o, ubc_hno3,
      $                        ubc_n2o5, ubc_co, ubc_hcl, ubc_clono2,
@@ -59,30 +66,41 @@ c-------------------------------------------------------------------
 
 c  read zonal mean boundary data
 c  lower chemical
-         open (unit = 27,
-     $         file = namf27,
-     $         form = 'formatted',
-     $         status = 'old')
-         read(27,120) lb_n2o, lb_ch4, lb_h2o, lb_hno3,
-     $                lb_n2o5, lb_co, lb_hcl, lb_clono2,
-     $                lb_hocl, lb_h2o2, lb_ho2no2, lb_ch2o, 
-     $                lb_o1d, lb_oh, lb_cl, lb_o, lb_o3, 
-     $                lb_ho2, lb_no2, lb_no, lb_n, lb_clo,
-     $                lb_no3, lb_h
- 120     format(1x,6e13.5)
-         close (27)
+
+         iunit = open_file(namf27,form='formatted',action='read')
+
+c        open (unit = 27,
+c    $         file = namf27,
+c    $         form = 'formatted',
+c    $         status = 'old')
+
+         read(iunit,'(1x,6e13.5)') lb_n2o, lb_ch4, lb_h2o, lb_hno3,
+     $                             lb_n2o5, lb_co, lb_hcl, lb_clono2,
+     $                             lb_hocl, lb_h2o2, lb_ho2no2, lb_ch2o,
+     $                             lb_o1d, lb_oh, lb_cl, lb_o, lb_o3, 
+     $                             lb_ho2, lb_no2, lb_no, lb_n, lb_clo,
+     $                             lb_no3, lb_h
+
+         call close_file(iunit)
+
 c  upper chemical
-         open (unit = 26,
-     $         file = namf26,
-     $         form = 'formatted',
-     $         status = 'old')
-         read(26,120) ub_n2o, ub_ch4, ub_h2o, ub_hno3,
-     $                ub_n2o5, ub_co, ub_hcl, ub_clono2,
-     $                ub_hocl, ub_h2o2, ub_ho2no2, ub_ch2o, 
-     $                ub_o1d, ub_oh, ub_cl, ub_o, ub_o3, 
-     $                ub_ho2, ub_no2, ub_no, ub_n, ub_clo,
-     $                ub_no3, ub_h
-         close (26)
+
+         iunit = open_file(namf26,form='formatted',action='read')
+
+c        open (unit = 26,
+c    $         file = namf26,
+c    $         form = 'formatted',
+c    $         status = 'old')
+
+         read(iunit,'(1x,6e13.5)') ub_n2o, ub_ch4, ub_h2o, ub_hno3,
+     $                             ub_n2o5, ub_co, ub_hcl, ub_clono2,
+     $                             ub_hocl, ub_h2o2, ub_ho2no2, ub_ch2o,
+     $                             ub_o1d, ub_oh, ub_cl, ub_o, ub_o3, 
+     $                             ub_ho2, ub_no2, ub_no, ub_n, ub_clo,
+     $                             ub_no3, ub_h
+
+         call close_file(iunit)
+
 c  water bc for dry tropopause
          do j=1,ny
 cc            if(abs(phideg(j)).le.30.) waterlbc(j) = 1.4 e-6
@@ -106,16 +124,16 @@ c______________________________________________________________________
 c  interpolation parameters
          iday = dayofyr
          if(iday.le.nfirst(1))then
-            m1 = 12
+            m1 = nmonths
             m2 = 1
             f1 = float(15-iday)/ddays(1)
          end if
-         if(iday.gt.nfirst(12))then
-            m1 = 12
+         if(iday.gt.nfirst(nmonths))then
+            m1 = nmonths
             m2 = 1
-            f1 = float(380-iday)/ddays(12)
+            f1 = float(380-iday)/ddays(nmonths)
          end if
-         if(iday.gt.nfirst(1).and.iday.le.nfirst(12))then
+         if(iday.gt.nfirst(1).and.iday.le.nfirst(nmonths))then
             do mm=1,11
                if(iday.gt.nfirst(mm).and.iday.le.nfirst(mm+1))then
                   m1 = mm

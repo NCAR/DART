@@ -9,15 +9,19 @@ c-------------------------------------------------------------------
       use dynam
       use phys
 
+      use utilities_mod, only : open_file, close_file
+
       implicit none
 
       integer, intent(in) :: dayofyr
 
+      integer, parameter :: nmonths = 12
+      integer :: iunit
       integer :: j, jj, k, kk, ll, m, mm, m1, m2
-      integer :: iday, nfirst(12), icall, mon, month, nbar
-      real :: ddays(12), f1, f2
-      real, dimension(ny,12) :: tuin, uuin
-      real, dimension(nz,ny,12) :: ubarin
+      integer :: iday, nfirst(nmonths), icall, mon, month, nbar
+      real :: ddays(nmonths), f1, f2
+      real, dimension(ny,nmonths) :: tuin, uuin
+      real, dimension(nz,ny,nmonths) :: ubarin
 
       real :: tinit(nzp1,ny),uinit(nzp1,ny),phbot(ny),tupperbc(ny)
 
@@ -34,48 +38,47 @@ c-------------------------------------------------------------------
       if(icall.le.1)then
 
 c  read zonal mean climatology
-         open (unit = 12,
-     $         file = namf12,
-     $         form = 'formatted',
-     $         status = 'old')
 
-         do mm = 1,12
-            read (12,10) month
- 10         format(i2)
-            read (12,11) uinit
- 11         format(16f5.1)
-            read (12,12) tinit
- 12         format(16f5.0)
-            read (12,13) phbot
- 13         format(10f8.0)
-            read (12,12) tupperbc
+         iunit = open_file(namf12,form='formatted',action='read')     
+ 
+c        open (unit = 12,
+c    $         file = namf12,
+c    $         form = 'formatted',
+c    $         status = 'old')
+
+         do mm = 1,nmonths
+            read (iunit,'(i2)'    ) month
+            read (iunit,'(16f5.1)') uinit
+            read (iunit,'(16f5.0)') tinit
+            read (iunit,'(10f8.0)') phbot
+            read (iunit,'(16f5.0)') tupperbc
             do j=1,ny
                do k=1,nz
                   ubarin(k,j,mm) = uinit(k+1,j)
                end do
             end do
          end do
-         close (12)
+         call close_file(iunit)
 
 c  read zonal mean boundary data
 c  upper dynamical
-         open (unit = 23,
-     $         file = namf23,
-     $         form = 'formatted',
-     $         status = 'old')
-         do mm=1,12
-            read(23,30)mon
- 30         format(i2)
+
+         iunit = open_file(namf23,form='formatted',action='read')     
+
+c        open (unit = 23,
+c    $         file = namf23,
+c    $         form = 'formatted',
+c    $         status = 'old')
+
+         do mm=1,nmonths
+            read(iunit,'(i2)')mon
             if(mon.ne.mm)then
-               print 110,mon,mm
- 110           format(1x,'zonal ubc read error',2i6)
+               print '(1x,"zonal ubc read error",2i6)',mon,mm
             end if
-            read(23,80)(uuin(ll,mm),ll=1,ny)
-            read(23,90)(tuin(ll,mm),ll=1,ny)
- 80         format(16f5.1)
- 90         format(16f5.0)
+            read(iunit,'(16f5.1)')(uuin(ll,mm),ll=1,ny)
+            read(iunit,'(16f5.0)')(tuin(ll,mm),ll=1,ny)
          end do
-         close (23)
+         call close_file(iunit)
       end if
 c______________________________________________________________________
 c______________________________________________________________________
@@ -89,16 +92,16 @@ c______________________________________________________________________
 c  interpolation parameters
       iday = dayofyr
       if(iday.le.nfirst(1))then
-         m1 = 12
+         m1 = nmonths
          m2 = 1
          f1 = float(15-iday)/ddays(1)
       end if
-      if(iday.gt.nfirst(12))then
-         m1 = 12
+      if(iday.gt.nfirst(nmonths))then
+         m1 = nmonths
          m2 = 1
-         f1 = float(380-iday)/ddays(12)
+         f1 = float(380-iday)/ddays(nmonths)
       end if
-      if(iday.gt.nfirst(1).and.iday.le.nfirst(12))then
+      if(iday.gt.nfirst(1).and.iday.le.nfirst(nmonths))then
          do mm=1,11
             if(iday.gt.nfirst(mm).and.iday.le.nfirst(mm+1))then
                m1 = mm

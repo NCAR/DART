@@ -546,9 +546,10 @@ C --- Input the Curtis matrices for cooling rate calculations
 
       use params
       use dynam, only : namf40
+      use utilities_mod, only : open_file, close_file
 
+      integer :: iunit
       PARAMETER (LBTRP=1)      !!! specified by users
-
 
       COMMON /CTXZ23/ Z0(nzz),P0(nzz),T0(nzz),GDP(nzz)
       COMMON /GAMWAT/ R10(nzz),GAMR1(nzz),GAMV1(nzz)
@@ -560,33 +561,36 @@ C --- Input the Curtis matrices for cooling rate calculations
      & ,A10LB(nzz,LBTRP),A01LB(nzz,LBTRP),B01LB(nzz,LBTRP)
 
 
-
   52  FORMAT(8E12.5)
   53  FORMAT(2F12.6,5E12.3)
   55  FORMAT(7E14.5)
 
 !... open radiation file
 
-      open(unit=40, file=namf40, form='formatted', status='old')
+      iunit = open_file(namf40,form='formatted',action='read')     
+
+c     open(unit=40, file=namf40, form='formatted', status='old')
 
       DO K=1,nzz
-         READ(40,52) Z0(K),T0(K),P0(K),GDP(K),
+         READ(iunit,'(8E12.5)') Z0(K),T0(K),P0(K),GDP(K),
      &               R20(K),H200(K),R30(K),H300(K)
-         READ(40,53) GAMR1(K),GAMV1(K),R10(K),
+         READ(iunit,'(2F12.6,5E12.3)') GAMR1(K),GAMV1(K),R10(K),
      &               YAR1(K),YAV1(K),YAR2(K),YAV2(K)
       end do
-      READ(40,55) ((CURT0(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((A10(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((A01(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((A20(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((A02(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((A11(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((ZCURT0(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((ZA10(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((ZA01(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((ZB01(L1,L2),L1=1,nzz),L2=1,nzz)
-      READ(40,55) ((CLB0(L1,L2),A10LB(L1,L2)
+      READ(iunit,'(7E14.5)') ((CURT0(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((A10(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((A01(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((A20(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((A02(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((A11(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((ZCURT0(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((ZA10(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((ZA01(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((ZB01(L1,L2),L1=1,nzz),L2=1,nzz)
+      READ(iunit,'(7E14.5)') ((CLB0(L1,L2),A10LB(L1,L2)
      &             ,A01LB(L1,L2),B01LB(L1,L2),L1=1,nzz),L2=1,LBTRP)
+
+      call close_file(iunit)
 
       RETURN
       END

@@ -4,12 +4,18 @@ c  read tidal lower boundary fields and interpolate in time
       use dynam
       use phys
 
+      use utilities_mod, only : open_file, close_file
+
       implicit none
 
-      integer :: m, m1, m2, mm, j, dayofyr, nfirst(4), montid, mindex
+      integer, intent(in) :: dayofyr
+
+      integer, parameter :: nseasons = 4
+      integer :: iunit
+      integer :: m, m1, m2, mm, j, nfirst(nseasons), montid, mindex
       integer icall, iday
-      real :: f1, f2, g, ddays(4)
-      real, dimension(ny,4) :: dauin, dbuin, davin, dbvin,
+      real :: f1, f2, g, ddays(nseasons)
+      real, dimension(ny,nseasons) :: dauin, dbuin, davin, dbvin,
      $                         datin, dbtin, dazin, dbzin, 
      $                         sauin, sbuin, savin, sbvin,
      $                         satin, sbtin, sazin, sbzin
@@ -24,54 +30,65 @@ c  read tidal lower boundary fields and interpolate in time
       if(icall.le.1)then
 
 c  tropospheric tidal forcing from GSWM
-         open (unit = 52,
-     $         file = namf52,
-     $         form = 'formatted',
-     $         status = 'old')
-         do m=1,4
-            read (52,200)montid
+
+         iunit = open_file(namf52,form='formatted',action='read')
+
+c        open (unit = 52,
+c    $         file = namf52,
+c    $         form = 'formatted',
+c    $         status = 'old')
+
+         do m=1,nseasons
+            read (iunit,'(i2)')montid
             mindex = 1 + (montid-1)/3
             if(m.ne.mindex) then
-               print 100,m,montid,mindex
- 100           format('problems with tidal b.c. input',3i5)
+               print '("problems with tidal b.c. input",3i5)',
+     $               m,montid,mindex
                stop
             end if
- 200        format(i2)
-            read(52,220) (dauin(j,m),j=1,ny),(dbuin(j,m),j=1,ny),
+            read(iunit,'(8e10.3)') 
+     $                   (dauin(j,m),j=1,ny),(dbuin(j,m),j=1,ny),
      $                   (davin(j,m),j=1,ny),(dbvin(j,m),j=1,ny),
      $                   (datin(j,m),j=1,ny),(dbtin(j,m),j=1,ny),
      $                   (dazin(j,m),j=1,ny),(dbzin(j,m),j=1,ny)
- 220        format(8e10.3)
          end do
-         close (52)
-         open (unit = 53,
-     $         file = namf53,
-     $         form = 'formatted',
-     $         status = 'old')
-         do m=1,4
-            read (53,200)montid
+
+         call close_file(iunit)
+
+         iunit = open_file(namf53,form='formatted',action='read')
+
+c        open (unit = 53,
+c    $         file = namf53,
+c    $         form = 'formatted',
+c    $         status = 'old')
+
+         do m=1,nseasons
+            read (iunit,'(i2)')montid
             mindex = 1 + (montid-1)/3
-            read(53,220)
+            read(iunit,'(8e10.3)')
      $              (sauin(j,mindex),j=1,ny),(sbuin(j,mindex),j=1,ny),
      $              (savin(j,mindex),j=1,ny),(sbvin(j,mindex),j=1,ny),
      $              (satin(j,mindex),j=1,ny),(sbtin(j,mindex),j=1,ny),
      $              (sazin(j,mindex),j=1,ny),(sbzin(j,mindex),j=1,ny)
          end do
+
+         call close_file(iunit)
+
       end if
 
 c  interpolate in time
       iday = dayofyr
       if(iday.le.nfirst(1))then
-         m1 = 4
+         m1 = nseasons 
          m2 = 1
          f1 = float(15-iday)/ddays(1)
       end if
-      if(iday.gt.nfirst(4))then
-         m1 = 4
+      if(iday.gt.nfirst(nseasons))then
+         m1 = nseasons
          m2 = 1
-         f1 = float(380-iday)/ddays(4)
+         f1 = float(380-iday)/ddays(nseasons)
       end if
-      if(iday.gt.nfirst(1).and.iday.le.nfirst(4))then
+      if(iday.gt.nfirst(1).and.iday.le.nfirst(nseasons))then
          do mm=1,3
             if(iday.gt.nfirst(mm).and.iday.le.nfirst(mm+1))then
                m1 = mm
