@@ -12,8 +12,7 @@ program update_wrf_bc
 !
 
 use               types_mod, only : r8
-use        time_manager_mod, only : set_calendar_type, GREGORIAN
-use           utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, register_module, &
                                     logfileunit
 use module_netcdf_interface, only : get_dims_cdf, get_gl_att_real_cdf, put_gl_att_real_cdf, &
@@ -34,19 +33,11 @@ revdate  = "$Date$"
 ! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector  = .true.  ! output prognostic variables
-integer :: num_moist_vars       = 0
-integer :: num_domains          = 1
-integer :: calendar_type        = GREGORIAN
-logical :: surf_obs             = .false.
-character(len = 72) :: adv_mod_command = 'wrf.exe'
+integer :: mp_physics = 3
 
-namelist /model_nml/ output_state_vector, num_moist_vars, &
-                     num_domains, calendar_type, surf_obs, &
-                     adv_mod_command
+namelist /physics/ mp_physics
+
 !-----------------------------------------------------------------------
-
-integer :: iunit, io, ierr
 
 integer, parameter :: max_3d_variables = 20, &
                       max_2d_variables = 20, &
@@ -65,7 +56,7 @@ character(len=10), dimension(4) :: bdyname, tenname
 character(len=19), dimension(max_times) :: udtime, bdytime, thisbdytime, nextbdytime
 
 integer           :: ids, ide, jds, jde, kds, kde
-integer           :: num3d, num2d, ndims
+integer           :: num3d, num2d, ndims, nmoist
 integer           :: i,j,k,l,m,n
 integer           :: ntimes_bdy, ntimes_ud, itime
 
@@ -87,29 +78,51 @@ logical, parameter :: debug = .false.
 
 real(r8) :: bdyfrq_old, bdyfrq
 
+integer :: io, iunit
+
+!----------------------------------------------------------------------
+
 call initialize_utilities
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING update_wrf_bc ...'
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
+! Reading the namelist input
+if(file_exist('namelist.input')) then
 
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io )
-   ierr = check_nml_error(io, 'model_nml')
+   iunit = open_file('namelist.input', action = 'read')
+   read(iunit, nml = physics, iostat = io )
    call close_file(iunit)
 
-   if ( debug ) then
-      write(*,'(''num_moist_vars = '',i3)')num_moist_vars
-   endif
 endif
 
-call set_calendar_type(calendar_type)
+write(logfileunit , nml=physics)
+write(     *      , nml=physics)
 
-!---------------------------------------------------------------------
+select case(mp_physics)
+case (0) ;
+   nmoist = 1
+case (1) ;
+   nmoist = 3
+case (2) ;
+   nmoist = 6
+case (3) ;
+   nmoist = 3
+case (4) ;
+   nmoist = 5
+case (5) ;
+   nmoist = 2
+case (6) ;
+   nmoist = 6
+case (98) ;
+   nmoist = 3
+case (99) ;
+   nmoist = 5
+case default ;
+   print *, 'Microphysics package unknown. mp_physics = ', mp_physics
+end select
+
 wrf_3dvar_output_file='wrfinput_d01'
 wrf_bdy_file  ='wrfbdy_d01'
-!---------------------------------------------------------------------
 
 !--boundary variables
 bdyname(1)='_BXS'
@@ -122,10 +135,9 @@ tenname(1)='_BTXS'
 tenname(2)='_BTXE'
 tenname(3)='_BTYS'
 tenname(4)='_BTYE'
-!---------------------------------------------------------------------
 
 !--3D need update
-num3d = 5 + num_moist_vars
+num3d = 5 + nmoist
 var3d(1)='U'
 var3d(2)='V'
 var3d(3)='W'
