@@ -13,7 +13,7 @@ use types_mod
 private
 
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
-   interactive_kind, IDENTITY_OBSERVATION
+   interactive_kind, IDENTITY_OBSERVATION, set_ncep_obs_kind
 
 type obs_kind_type
    private
@@ -117,6 +117,18 @@ read(*, *) kind%index
 
 end subroutine interactive_kind
 
+
+function set_ncep_obs_kind(obsindex)
+
+implicit none
+
+type(obs_kind_type) :: set_ncep_obs_kind
+integer, intent(in) :: obsindex
+
+! Now set the kind index
+ set_ncep_obs_kind%index = obsindex
+
+end function set_ncep_obs_kind
 
 
 end module obs_kind_mod

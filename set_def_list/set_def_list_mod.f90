@@ -14,9 +14,13 @@ use types_mod
 use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
    read_obs_set_def, write_obs_set_def, obs_set_def_copy, &
    os_get_expected_obs => get_expected_obs, &
+   os_get_seq_loc => get_seq_loc, &
+   os_get_obs_location3 => get_obs_location3, &
+   os_get_obs_kind3 => get_obs_kind3, &
    os_get_diag_obs_err_cov => get_diag_obs_err_cov, &
    os_get_num_close_states => get_num_close_states, &
    os_get_close_states => get_close_states
+use location_mod, only: location_type
 
 
 private
@@ -26,6 +30,7 @@ public set_def_list_type, list_element_type, get_number_obs_subsets, &
    write_set_def_list, read_set_def_list, write_list_element, &
    read_list_element, list_element_copy, set_def_list_copy, &
    get_expected_obs, get_diag_obs_err_cov, get_num_close_states, &
+   get_seq_loc, get_obs_location2, get_obs_kind2, &
    get_close_states, get_num_sets_in_list
 
 ! For now set up with fixed size array storage declared at allocation
@@ -487,6 +492,55 @@ call obs_set_def_copy(read_list_element%obs_set, read_obs_set_def(file_id))
 
 
 end function read_list_element
+
+
+subroutine get_seq_loc(list, list_index, obsloc0, num)
+!---------------------------------------------------------------
+!
+implicit none
+
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: list_index
+real(r8), intent(out) :: obsloc0(:)
+integer, intent(in), optional :: num
+
+! For now, just call os_get_seq_loc for the single set in the list_element
+if(present(num)) then
+   call os_get_seq_loc(list%sets(list_index)%obs_set, obsloc0, num)
+endif
+
+end subroutine get_seq_loc
+
+
+   
+subroutine get_obs_location2(list, list_index, obsloc)
+!---------------------------------------------------------------
+!
+implicit none
+
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: list_index
+real(r8), intent(out) :: obsloc(:, :)
+
+! For now, just call os_get_seq_loc for the single set in the list_element
+   call os_get_obs_location3(list%sets(list_index)%obs_set, obsloc)
+
+end subroutine get_obs_location2
+   
+   
+subroutine get_obs_kind2(list, list_index, obskind)
+!---------------------------------------------------------------
+!
+implicit none
+
+type(set_def_list_type), intent(in) :: list
+integer, intent(in) :: list_index
+real(r8), intent(out) :: obskind(:)
+
+! For now, just call os_get_seq_loc for the single set in the list_element
+   call os_get_obs_kind3(list%sets(list_index)%obs_set, obskind)
+
+end subroutine get_obs_kind2
 
 
 

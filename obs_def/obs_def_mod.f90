@@ -8,8 +8,9 @@ module obs_def_mod
 
 use types_mod
 use obs_kind_mod, only : obs_kind_type, read_kind, write_kind, set_obs_kind, &
-   IDENTITY_OBSERVATION
-use location_mod, only : location_type, read_location, write_location
+   IDENTITY_OBSERVATION, set_ncep_obs_kind, get_obs_kind
+use location_mod, only : location_type, read_location, write_location, &
+      get_location, vert_is_level , read_ncep_obs_location
 use obs_model_mod, only : take_obs, interactive_def
 use assim_model_mod, only : am_get_close_states=>get_close_states, &
    am_get_num_close_states=>get_num_close_states, get_state_meta_data
@@ -19,7 +20,8 @@ private
 public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get_obs_def_kind, &
    get_num_close_states, get_close_states, set_obs_def_location, &
    set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type, &
-   interactive_obs_def
+   interactive_obs_def, &
+   read_ncep_obs_def, get_seq_loc, get_obs_location4, get_obs_kind4
 
 ! Need overloaded interface for init_obs_def
 interface init_obs_def
@@ -81,8 +83,6 @@ call get_state_meta_data(ind, init_obs_def2%location)
 
 ! Define kind as identity
 init_obs_def2%kind = set_obs_kind(IDENTITY_OBSERVATION)
-
-!write(*,*)'DEBUG(obs_def_mod:init_obs_def2): leaving.'
 
 end function init_obs_def2
 
@@ -309,8 +309,6 @@ type(obs_def_type), intent(in) :: obs_def
 write(file, 11)
 11 format('obdef')
 
-! write(*,*)'DEBUG(obs_def_mod:write_obs_def) fid/N ',file,obs_def%location
-
 ! Write out the location, kind and error variance
 call write_location(file, obs_def%location)
 call write_kind(file, obs_def%kind)
@@ -349,13 +347,88 @@ else
    interactive_obs_def%model_state_index = -1
 endif
 
-!write(*,*)'DEBUG(obs_def_mod:interactive_obs_def): leaving.'
-
 end function interactive_obs_def
 
 
+!----------------------------------
+function read_ncep_obs_def(obsunit)
+!----------------------------------
+implicit none
 
-!----------------------------------------------------------------------------
+type(obs_def_type) :: read_ncep_obs_def
+
+integer, intent(in) :: obsunit
+integer :: obsindex
+real (r8) :: var
+
+! Read in NCEP observation location, kind and error variance
+   call read_ncep_obs_location(read_ncep_obs_def%location, obsunit, obsindex, var)
+
+   read_ncep_obs_def%kind              = set_ncep_obs_kind(obsindex)
+   read_ncep_obs_def%error_variance    = var**2
+   read_ncep_obs_def%model_state_index = -1
+
+end function read_ncep_obs_def
+
+!======================================
+subroutine get_seq_loc(obs_def, obsloc0)
+!======================================
+implicit none
+
+real(r8), intent(out) :: obsloc0(3)
+type(obs_def_type), intent(in) :: obs_def
+
+type(location_type) :: location                           
+real :: lon, lat, level, lon_lat_lev(3), pressure                     
+
+    lon_lat_lev = get_location(obs_def%location)                                       
+    lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
+                                                    
+     if(vert_is_level(obs_def%location)) then                                           
+        level = lon_lat_lev(3)                    
+     else                      
+        pressure = lon_lat_lev(3)       
+     endif                                                                                        
+    obsloc0(1) = lon    ! degree
+    obsloc0(2) = lat    ! degree
+    obsloc0(3) = pressure  ! Pascal
+!                                                                                                    
+end subroutine get_seq_loc
+
+!======================================
+subroutine get_obs_location4(obs_def, obsloc0)
+
+implicit none
+real(r8), intent(out) :: obsloc0(3)
+type(obs_def_type), intent(in) :: obs_def
+
+type(location_type) :: location                           
+real :: lon, lat, level, lon_lat_lev(3), pressure       
+
+     lon_lat_lev = get_location(obs_def%location)                                       
+     lon = lon_lat_lev(1); lat = lon_lat_lev(2);   
+                                                    
+     if(vert_is_level(obs_def%location)) then                                           
+        level = lon_lat_lev(3)                    
+     else                      
+        pressure = lon_lat_lev(3)       
+     endif                                                                                        
+    obsloc0(1) = lon*pi/180.0    ! degree
+    obsloc0(2) = lat*pi/180.0    ! degree
+    obsloc0(3) = pressure        ! Pascal
+                                       
+end subroutine get_obs_location4
+
+
+subroutine get_obs_kind4(obs_def, obskind0)
+implicit none
+real(r8), intent(out) :: obskind0
+type(obs_def_type), intent(in) :: obs_def
+type(obs_kind_type) :: kind                           
+
+    obskind0 = get_obs_kind(obs_def%kind)                                       
+                                       
+end subroutine get_obs_kind4
+
 
 end module obs_def_mod
-!

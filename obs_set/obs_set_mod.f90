@@ -16,6 +16,9 @@ private
 
 public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    set_obs_values, set_single_obs_value, set_obs_missing, set_obs_set_time, &
+!liu
+   get_single_obs_value, &
+!liu
    contains_data, obs_value_missing, &
    read_obs_set, write_obs_set, obs_set_copy, get_num_obs, &
    get_obs_def_index, inc_num_obs_copies, read_obs_set_time, &
@@ -620,6 +623,40 @@ call write_time(file_id, set%time)
 end subroutine write_obs_set
 
 
+!liu
+subroutine get_single_obs_value(set, num_obs, obs, copy_in)
+!--------------------------------------------------------------------
+!
+! Sets the obs value number num_obs;  copy_in is optional with default 1.
+
+implicit none
+
+type(obs_set_type), intent(in) :: set
+integer, intent(in) :: num_obs
+real(r8), intent(out) :: obs
+integer, optional, intent(in) :: copy_in
+
+integer :: copy
+
+! Get the appropriate copy
+copy = 1
+if(present(copy_in)) copy = copy_in 
+if(copy < 1 .or. copy > set%num_copies) then
+   write(*, *) 'Error: Out of range copy in get_single_obs_value'
+   stop
+endif
+
+! Make sure the obs index is legal
+if(num_obs > set%num_obs .or. num_obs < 1) then
+   write(*, *) 'Error: num_obs wrong size in get_single_obs_value'
+   stop
+endif
+
+! Copy the obs
+   obs=set%obs(num_obs, copy)
+
+end subroutine get_single_obs_value
+!liu
 
 
 end module obs_set_mod
