@@ -1,0 +1,2 @@
+../../../mkmf/mkmf -p trans_sv_pv -t ../../../mkmf/mkmf.template.anchorage \
+-c "-Duse_netCDF" -a "../../.." path_names_trans_sv_pv
