@@ -67,7 +67,7 @@ end subroutine initialize_module
   type(time_type) :: obs_time
 
   integer :: obs_unit, obs_prof, obs_kind, model_type, which_vert, iqc
-  real (r8) :: obs_err, lon, lat, lev, zob, time, type, count, zob2
+  real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, type, count, zob2
   real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
 
   character(len = 8 ) :: obsdate
@@ -247,13 +247,26 @@ obsloop:  do i = 1, max_num_obs
    if(i == 1) then
      call insert_obs_in_seq(real_obs_sequence, obs)
      call copy_obs(prev_obs, obs)
+     pre_time = time
    else
 !    for time ordered observation only.
 !    call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
 !    call copy_obs(prev_obs, obs)
 !
+     if(time == pre_time) then
+      call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
+      call copy_obs(prev_obs, obs)
+      pre_time = time
+     else
+!
+!    for the obs has not the same time as previous one
+      call insert_obs_in_seq(real_obs_sequence, obs)
+      call copy_obs(prev_obs, obs)
+      pre_time = time
+      endif
+
 !    for random time order observation, have to do time sort, CPU costly.
-     call insert_obs_in_seq(real_obs_sequence, obs)
+!     call insert_obs_in_seq(real_obs_sequence, obs)
    endif
 
 end do obsloop
