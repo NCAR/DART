@@ -16,7 +16,7 @@ unit = 21
 open(unit, file = 'location_test_file')
 
 ! Set the first location
-loc1 = set_location(0.4_r8)
+loc1 = set_location(1.4_r8)
 loc2_val = get_location(loc1)
 if(loc2_val /= 0.4_r8) then
    write(*, *) 'Error or rounding error'

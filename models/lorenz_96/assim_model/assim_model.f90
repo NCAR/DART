@@ -22,7 +22,7 @@ public static_init_assim_model, init_diag_output, get_model_size, get_closest_st
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model
+   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr
 
 integer,  parameter :: model_size =   40
 real(r8), parameter ::    forcing = 8.00_r8
@@ -418,6 +418,21 @@ end function get_model_state_vector
 
 
 
+function get_state_vector_ptr(assim_model)
+!------------------------------------------------------------------------
+!
+! Returns a pointer directly into the assim_model state vector storage.
+
+real(r8), pointer :: get_state_vector_ptr(:)
+type(assim_model_type), intent(in) :: assim_model
+
+get_state_vector_ptr => assim_model%state_vector
+
+end function get_state_vector_ptr
+
+
+
+
 
 subroutine copy_assim_model(model_out, model_in)
 !-------------------------------------------------------------------------
@@ -635,7 +650,7 @@ implicit none
 
 integer, intent(in) :: file_id
 ! MAYBE SHOULDN'T use assim model type here, but just state and time ?
-type(assim_model_type), intent(out) :: state
+type(assim_model_type), intent(inout) :: state
 integer, intent(out) :: copy_index
 
 character*5 :: header

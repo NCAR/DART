@@ -40,6 +40,7 @@ implicit none
    logical, private :: do_nml_error_init = .true.
    private  nml_error_init
 
+integer, parameter :: E_MSG = 0, E_WARN = 1, E_ERR = 2
 integer, parameter :: MESSAGE = 0, WARNING = 1, FATAL = 2
 
 
@@ -115,6 +116,36 @@ contains
 !         --------------------------------------------
 
    end subroutine error_mesg
+
+!#######################################################################
+
+subroutine output_err(level, src, rev, date, aut, routine, text)
+
+implicit none
+
+integer, intent(in) :: level
+character(len = *), intent(in) :: src, rev, date, aut, routine, text
+
+select case(level)
+   case (E_MSG)
+      write(*, *) 'MESSAGE FROM:'
+   case (E_WARN)
+      write(*, *) 'WARNING FROM:'
+   case(E_ERR)
+      write(*, *) 'ERROR FROM:'
+end select
+
+write(*, *) trim(src)
+write(*, *) trim(rev)
+write(*, *) trim(date)
+write(*, *) trim(aut)
+write(*, *) 'In routine ', trim(routine)
+write(*, *) trim(text)
+
+! Stop for all but message
+if(level /= E_MSG) stop
+
+end subroutine output_err
 
 !#######################################################################
 

@@ -21,22 +21,23 @@ program filter
 ! for spatial domains with one periodic dimension.
 
 use types_mod
-use obs_sequence_mod, only : obs_sequence_type, &
-   write_obs_sequence, read_obs_sequence, &
-   get_num_obs_sets, get_obs_sequence_time, &
+use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
+   read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &
-   get_obs_values, get_num_close_states, get_close_states, &
-   obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, set_single_obs_value
+   get_obs_values, &
+   obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, &
+   set_single_obs_value, get_obs_def_index
 use time_manager_mod, only : time_type, set_time, print_time
 use utilities_mod, only :  get_unit
-use assim_model_mod, only : assim_model_type, static_init_assim_model, get_model_size, &
-   get_initial_condition, get_model_state_vector, set_model_state_vector, &
-   get_closest_state_time_to, advance_state, set_model_time, &
-   get_model_time, init_diag_output, output_diagnostics, init_assim_model, &
-   copy_assim_model, get_state_vector_ptr
+use assim_model_mod, only : assim_model_type, static_init_assim_model, &
+   get_model_size, get_initial_condition, get_closest_state_time_to, &
+   advance_state, set_model_time, get_model_time, init_diag_output, &
+   output_diagnostics, init_assim_model, get_state_vector_ptr
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use assim_tools_mod, only : obs_increment, update_from_obs_inc
 use cov_cutoff_mod, only : comp_cov_factor
+use close_state_cache_mod, only : close_state_cache_type, cache_init, &
+   get_close_cache
 
 
 implicit none
@@ -53,10 +54,11 @@ type(random_seq_type) :: random_seq
 
 real(r8), parameter :: cutoff = 0.2, radius = 2.0 * cutoff
 real(r8), parameter :: cov_inflate = 1.05_r8
+integer, parameter :: cache_size = 10
 character(len = 129) file_name
 
-integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, num_obs_in_set, lji
-integer :: prior_state_unit, posterior_state_unit
+integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit
+integer :: prior_state_unit, posterior_state_unit, num_obs_in_set
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer, parameter :: ens_size = 20
@@ -68,10 +70,15 @@ type(model_state_ptr_type) :: ens_ptr(ens_size), x_ptr
 type(assim_model_type) :: x, ens(ens_size)
 real(r8) :: obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size)
 real(r8) ::  swath(ens_size), ens_mean
-real(r8), allocatable :: obs_err_cov(:), obs(:), dist(:, :)
-integer, allocatable :: num_close_states(:), close(:, :)
+real(r8), allocatable :: obs_err_cov(:), obs(:)
 real(r8) :: rms, sum_rms = 0.0_r8, cov_factor
 character(len = 129) :: ens_copy_meta_data(ens_size)
+
+! Storage for caching close states
+type(close_state_cache_type) :: cache
+integer, pointer :: num_close_ptr(:), close_ptr(:, :)
+real(r8), pointer :: dist_ptr(:, :)
+
 
 ! Input the obs_sequence
 write(*, *) 'input name of obs sequence file'
@@ -104,6 +111,9 @@ do i = 1, ens_size
    call init_assim_model(ens(i))
    ens_ptr(i)%state => get_state_vector_ptr(ens(i))
 end do
+
+! Initialize a cache for close state information
+call cache_init(cache, cache_size)
 
 ! Get the initial condition
 call get_initial_condition(x)
@@ -165,8 +175,7 @@ do i = 1, num_obs_sets
 !   write(*, *) 'num_obs_in_set is ', num_obs_in_set
 
 ! Allocate storage for the ensemble priors for this number of observations
-   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set), &
-      num_close_states(num_obs_in_set))
+   allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set))
 
 ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)
@@ -174,15 +183,17 @@ do i = 1, num_obs_sets
 ! Get the observations; from copy 1 for now
    call get_obs_values(seq, i, obs, 1)
 
-! THIS IS HORRENDOUSLY SLOW, NEED TO CACHE AT SOME LEVEL
-! Get the number of close states for each of these obs
-   call get_num_close_states(seq, i, radius, num_close_states)
 
-! Get the list of close states for this set (look at storage issues)
-   allocate(close(num_obs_in_set, maxval(num_close_states)), &
-      dist(num_obs_in_set, maxval(num_close_states)))
-   call get_close_states(seq, i, radius, num_close_states, &
-      close, dist)
+
+
+
+
+! Try out the cache
+   call get_close_cache(cache, seq, i, radius, num_obs_in_set, &
+      num_close_ptr, close_ptr, dist_ptr)
+
+
+
 
 ! Loop through each observation in the set
    do j = 1, num_obs_in_set
@@ -203,11 +214,11 @@ do i = 1, num_obs_sets
       end do
 
 ! Now loop through each close state variable for this observation
-      do k = 1, num_close_states(j)
-         ind = close(j, k)
+      do k = 1, num_close_ptr(j)
+         ind = close_ptr(j, k)
 
 ! Compute distance dependent envelope
-         cov_factor = comp_cov_factor(dist(j, k), cutoff)
+         cov_factor = comp_cov_factor(dist_ptr(j, k), cutoff)
 ! Get the ensemble elements for this state variable and do regression
          swath = get_ens_swath(ens_ptr, ens_size, ind)
          call update_from_obs_inc(ens_obs, obs_inc, &
@@ -224,8 +235,7 @@ do i = 1, num_obs_sets
    end do
 
 ! Deallocate the ens_obs storage for this obs set
-   deallocate(close, dist)
-   deallocate(obs_err_cov, obs, num_close_states)
+   deallocate(obs_err_cov, obs)
 
 end do
 

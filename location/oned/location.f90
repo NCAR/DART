@@ -10,8 +10,8 @@ module location_mod
 ! allowing an arbitrary real domain size at some point.
 
 use types_mod
+use utilities_mod, only : output_err, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
-use utilities_mod, only : error_mesg
 
 private
 
@@ -25,6 +25,14 @@ end type location_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
+
+! CVS Generated file description for error handling, do not edit
+character(len = 129), parameter :: &
+   e_src = "$Source$", &
+   e_rev = "$Revision$", &
+   e_dat = "$Date$", &
+   e_aut = "$Author$"
+
 
 contains
 
@@ -74,11 +82,9 @@ implicit none
 type (location_type) :: set_location
 real(r8), intent(in) :: x
 
-if(x < 0.0_r8 .or. x > 1.0_r8) then
-! Need to go through error handler at some point
-   write(*, *) 'Error in set_loc: value of x is out of 0->1 range'
-   stop
-endif
+if(x < 0.0_r8 .or. x > 1.0_r8) call output_err(E_ERR, e_src, e_rev, e_dat, e_aut, &
+   'set_location', 'Value of x is out of 0->1 range')
+
 set_location%x = x
 
 end function set_location

@@ -9,8 +9,9 @@ module obs_sequence_mod
 
 use types_mod
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
-   obs_set_copy, get_num_obs, get_obs_def_index, read_obs_set_time, &
+   obs_set_copy, get_num_obs, read_obs_set_time, &
    obs_set_time_copy, &
+   os_get_obs_def_index => get_obs_def_index, &
    os_get_obs_values => get_obs_values, &
    os_set_obs_values => set_obs_values, &
    os_set_single_obs_value => set_single_obs_value, &
@@ -34,7 +35,7 @@ public obs_sequence_type, init_obs_sequence, &
    get_expected_obs, get_diag_obs_err_cov, get_obs_values, &
    inc_num_obs_copies, set_obs_values, get_num_close_states, &
    get_close_states, read_obs_sequence_def, obs_sequence_def_copy, &
-   set_single_obs_value
+   set_single_obs_value, get_obs_def_index
 	
 
 type obs_sequence_type 
@@ -264,6 +265,24 @@ end subroutine get_obs_values
 
 
 
+function get_obs_def_index(seq, index)
+!----------------------------------------------------
+!
+! Returns the definition index of the index-th observation 
+! set in the sequence.
+
+implicit none
+
+integer :: get_obs_def_index
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: index
+
+get_obs_def_index = os_get_obs_def_index(seq%obs_sets(index))
+
+end function get_obs_def_index
+
+
+
 
 subroutine set_obs_values(seq, index, obs, copy_in)
 !----------------------------------------------------
@@ -374,7 +393,7 @@ integer :: def_index
 
 ! Get the set_def_list index for this obs_set
 obs_set = get_obs_set(seq, index)
-def_index = get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_diag_obs_err_cov(seq%def_list, def_index, cov)
 
@@ -401,7 +420,7 @@ integer :: def_index
 
 ! Get the set_def_list index for this obs_set
 obs_set = get_obs_set(seq, index)
-def_index = get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_num_close_states(seq%def_list, def_index, radius, num)
 
@@ -429,7 +448,7 @@ integer :: def_index
 
 ! Get the set_def_list index for this obs_set
 obs_set = get_obs_set(seq, index)
-def_index = get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_close_states(seq%def_list, def_index, radius, num, &
    indices, dist)
@@ -460,7 +479,7 @@ integer :: def_index
 
 ! Get the set_def_list index for this obs_set
 obs_set = get_obs_set(sequence, index)
-def_index = get_obs_def_index(obs_set)
+def_index = os_get_obs_def_index(obs_set)
 
 if(present(num)) then
    call sd_get_expected_obs(sequence%def_list, def_index, state, obs, num)
