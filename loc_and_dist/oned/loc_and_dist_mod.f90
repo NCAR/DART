@@ -1,11 +1,10 @@
 module loc_and_dist_mod
 
-! CVS $Header$ 
-! CVS $Id$ 
-! CVS $Source$ 
-! CVS $Revision$ 
-! CVS $Date$ 
-! CVS $Author$ 
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! A simple prototype for a state variable location module. For one-d
 ! model cases this is trivial. Assumes that domain runs from 0.0 to 1.0
 ! to avoid the need for a domain setting initialization call. This is a
