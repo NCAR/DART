@@ -142,7 +142,7 @@ write(*, *) trim(aut)
 write(*, *) 'In routine ', trim(routine)
 write(*, *) trim(text)
 
-! Stop for all but message
+! Stop for all but message; 
 if(level /= E_MSG) stop
 
 end subroutine output_err
