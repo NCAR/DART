@@ -16,7 +16,7 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 private
 
 public location_type, get_dist, get_location, set_location, &
-       write_location, read_location, interactive_location, nc_write_location, &
+       write_location, read_location, interactive_location, &
        LocationDims, LocationName, LocationLName
 
 
@@ -207,41 +207,6 @@ end if
 
 end subroutine interactive_location
 
-
-subroutine nc_write_location(ncFileID, LocationVarID, loc, start)
-!----------------------------------------------------------------------------
-!
-! Writes a SINGLE location to the specified netCDF variable and file. 
-!
-
-use typeSizes
-use netcdf
-
-implicit none
-
-integer, intent(in)             :: ncFileID, LocationVarID
-type(location_type), intent(in) :: loc
-integer, intent(in)             :: start
-
-integer  :: status
-
-call check(nf90_put_var(ncFileID, LocationVarID, loc%x, (/ start /) ))
-
-contains
-  
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(status)
-    integer, intent ( in) :: status
-
-    if(status /= nf90_noerr) then
-      print *, trim(nf90_strerror(status))
-      print *,'location_mod:nc_write_location'
-      stop
-    end if
-  end subroutine check
-
-end subroutine nc_write_location
 
 
 !
