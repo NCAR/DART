@@ -221,19 +221,20 @@ contains
 
       if ( .not. module_initialized ) call initialize_utilities
 
+
       write(logfileunit,*)
       write(logfileunit,*)'Registering module :'
-      write(logfileunit,*)trim(adjustl(src))
-      write(logfileunit,*)trim(adjustl(rev))
-      write(logfileunit,*)trim(adjustl(rdate))
+      write(logfileunit,*)trim(src)
+      write(logfileunit,*)trim(rev)
+      write(logfileunit,*)trim(rdate)
       write(logfileunit,*)'Registration complete.'
       write(logfileunit,*)
 
       write(     *     ,*)
       write(     *     ,*)'Registering module :'
-      write(     *     ,*)trim(adjustl(src))
-      write(     *     ,*)trim(adjustl(rev))
-      write(     *     ,*)trim(adjustl(rdate))
+      write(     *     ,*)trim(src)
+      write(     *     ,*)trim(rev)
+      write(     *     ,*)trim(rdate)
       write(     *     ,*)'Registration complete.'
       write(     *     ,*)
 
