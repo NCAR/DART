@@ -59,9 +59,11 @@ if ( ${?ObsError} ) then
    set obs_error_variance = $ObsError
 endif
 
-set num_obs = 200
+set num_obs = 1000
 set ob_day_1 = 0
-set ob_seconds_1 = 43200
+set ob_seconds_1 = 0
+set ob_int_days = 0
+set ob_int_secs = 3600
 set async = 0
 
 if ( ${?NumObs} ) then     ;# if environment var NumObs exists, use it
@@ -74,8 +76,10 @@ if ( ${?ObSec1} ) then
    set ob_seconds_1 = $ObSec1
 endif
 
-set cov_inflate = 1.00
-set cutoff = 1000000.0
+set         cutoff = 1000000.0
+set    cov_inflate = 1.05
+set cov_inflate_sd = 0.05
+set sd_lower_bound = 0.05
 
 if ( ${?CovInflate} ) then
    set cov_inflate = $CovInflate
@@ -87,6 +91,23 @@ if ( ${?Async} ) then
    set async = $Async
 endif
 
+set ens_size = $NumEns
+set start_from_restart = .true.
+set output_restart = .true.
+set obs_sequence_in_name = '"obs_seq.out"'
+set obs_sequence_out_name = '"obs_seq.final"'
+set restart_in_file_name = '"filter_ics"'
+set restart_out_file_name = '"filter_restart"'
+set init_time_days = 0
+set init_time_seconds = 0
+set output_state_ens_mean = .true.
+set output_state_ens_spread = .true.
+set output_obs_ens_mean = .true.
+set output_obs_ens_spread = .true.
+set num_output_state_members = $NumEns
+set num_output_obs_members = $NumEns
+set output_interval = 1
+set num_groups = 4
 
 #======================================================================
 # This block checks to see if input is viable.
@@ -172,11 +193,13 @@ cat << ENDofTask01 > assim_mod.nml
    write_binary_restart_files = .false. /
 ENDofTask01
 
-echo ' '                      > model.nml
-echo '&model_nml'            >> model.nml
-echo '   model_size = 40,'   >> model.nml
-echo '   forcing = 8.0,'     >> model.nml
-echo '   deltat = 0.005   /' >> model.nml
+echo ' '                                > model.nml
+echo '&model_nml'                      >> model.nml
+echo '   model_size = 40,'             >> model.nml
+echo '   forcing = 8.0,'               >> model.nml
+echo '   deltat = 0.05,'               >> model.nml
+echo '   time_step_days = 0,'          >> model.nml
+echo '   time_step_seconds = 3600  /'  >> model.nml
 
 echo ' '                                        > obs_sequence.nml
 echo '&obs_sequence_nml'                       >> obs_sequence.nml
@@ -216,12 +239,12 @@ echo " "
 
 set CFN = create_fixed_network_seq.in
 
-echo "set_def.out"            > $CFN ;# same filename as 'output' above
-echo "1"                     >> $CFN ;# make a "regular" sequence
-echo $num_obs                >> $CFN ;# number of observations in set 1
-echo $ob_day_1 $ob_seconds_1 >> $CFN ;# time of first observation
-echo $ob_day_1 $ob_seconds_1 >> $CFN ;# observation interval
-echo "obs_seq.in"            >> $CFN ;# output file name -- destined for perfect_model_obs
+echo "set_def.out"              > $CFN ;# same filename as 'output' above
+echo "1"                       >> $CFN ;# make a "regular" sequence
+echo $num_obs                  >> $CFN ;# number of observations in set 1
+echo $ob_day_1 $ob_seconds_1   >> $CFN ;# time of first observation
+echo $ob_int_days $ob_int_secs >> $CFN ;# observation interval
+echo "obs_seq.in"              >> $CFN ;# output file name -- destined for perfect_model_obs
  
 echo '&utilities_nml'                                   > utilities.nml
 echo '   logfilename = "create_fixed_network_seq.out"' >> utilities.nml
@@ -250,6 +273,7 @@ cat << ENDofTask03 > perfect.nml
 
 &perfect_model_obs_nml
    async = $async,
+   adv_ens_command = "./advance_ens.csh",
    obs_seq_in_file_name = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
    start_from_restart = .true.,
@@ -261,11 +285,42 @@ cat << ENDofTask03 > perfect.nml
    output_interval = 1  /
 ENDofTask03
 
+echo '&ensemble_manager_nml'                       > ensemble.nml
+echo '   in_core = .true.,'                       >> ensemble.nml
+echo '   single_restart_file_in  = .true.,'       >> ensemble.nml
+echo '   single_restart_file_out = .true.   /'    >> ensemble.nml
+
+echo " "                                                          > assim_tools.nml
+echo "&assim_tools_nml"                                          >> assim_tools.nml
+echo "   filter_kind = 1,"                                       >> assim_tools.nml
+echo "   cutoff = $cutoff ,"                                     >> assim_tools.nml
+echo "   sort_obs_inc = .false."                                 >> assim_tools.nml
+echo "   cov_inflate = $cov_inflate ,"                           >> assim_tools.nml
+echo "   cov_inflate_sd = $cov_inflate_sd ,"                     >> assim_tools.nml
+echo "   sd_lower_bound = $sd_lower_bound ,"                     >> assim_tools.nml
+echo "   deterministic_cov_inflate = .true. ,"                   >> assim_tools.nml
+echo "   start_from_assim_restart = .false. ,"                   >> assim_tools.nml
+echo "   assim_restart_in_file_name = 'assim_tools_ics',"        >> assim_tools.nml
+echo "   assim_restart_out_file_name = 'assim_tools_restart',"   >> assim_tools.nml
+echo "   do_parallel = 0,"                                       >> assim_tools.nml
+echo "   num_domains = 1,"                                       >> assim_tools.nml
+echo "   parallel_command = './assim_filter.csh'    /"           >> assim_tools.nml
+echo " "                                                         >> assim_tools.nml
+
+echo '&cov_cutoff_nml'                             > cov_cutoff.nml
+echo '   select_localization = 1   /'             >> cov_cutoff.nml
+
+echo '&reg_factor_nml'                             > reg_factor.nml
+echo '   select_regression = 1,'                  >> reg_factor.nml
+echo '   input_reg_file = "time_mean_reg"   /'    >> reg_factor.nml
+
 echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
 echo '   TERMLEVEL = 1  /'                        >> utilities.nml
 
-cat utilities.nml assim_mod.nml obs_sequence.nml model.nml perfect.nml > input.nml
+
+cat perfect.nml ensemble.nml assim_tools.nml cov_cutoff.nml reg_factor.nml \
+    obs_sequence.nml assim_mod.nml model.nml utilities.nml > input.nml
 
 ./perfect_model_obs
  
@@ -283,41 +338,14 @@ endif
 # 4) Filter
 #    creates files Prior_Diag.nc, Posterior_Diag.nc
 #======================================================================
-# Set defaults
-#======================================================================
 
 echo " "
 echo "Running filter ..."
 echo " "
 
-set async = 0
-set ens_size = $NumEns
-set start_from_restart = .true.
-set output_restart = .true.
-set obs_sequence_in_name = '"obs_seq.out"'
-set obs_sequence_out_name = '"obs_seq.final"'
-set restart_in_file_name = '"filter_ics"'
-set restart_out_file_name = '"filter_restart"'
-set init_time_days = 0
-set init_time_seconds = 0
-set output_state_ens_mean = .true.
-set output_state_ens_spread = .true.
-set output_obs_ens_mean = .true.
-set output_obs_ens_spread = .true.
-set num_output_state_members = $NumEns
-set num_output_obs_members = $NumEns
-set output_interval = 1
-set num_groups = 2
-
-
 echo '&utilities_nml'                            > utilities.nml
 echo '   logfilename = "filter.out"'            >> utilities.nml
 echo '   TERMLEVEL = 1   /'                     >> utilities.nml
-
-echo ' '                                        > obs_sequence.nml
-echo '&obs_sequence_nml'                       >> obs_sequence.nml
-echo ' read_binary_obs_sequence = .false.,'    >> obs_sequence.nml
-echo 'write_binary_obs_sequence = .false.  /'  >> obs_sequence.nml
 
 echo " "                                                          > filter.nml
 echo "&filter_nml"                                               >> filter.nml
@@ -344,6 +372,9 @@ echo "   num_groups = $num_groups    /"                          >> filter.nml
 echo " "                                                         >> filter.nml
 
 cat utilities.nml assim_mod.nml obs_sequence.nml model.nml filter.nml > input.nml
+
+cat filter.nml ensemble.nml assim_tools.nml cov_cutoff.nml reg_factor.nml \
+    obs_sequence.nml assim_mod.nml model.nml utilities.nml > input.nml
 
 ./filter
 
