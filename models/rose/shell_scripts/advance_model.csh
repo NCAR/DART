@@ -41,25 +41,43 @@ else
    exit 1
 endif
 
-# Create an initial rose_restart file from the DART state vector
-   $PBS_O_WORKDIR/trans_sv_pv
-   echo after trans_sv_pv
-   ls -ltR 
-
 # Create rose namelist
    cp $PBS_O_WORKDIR/rose.nml rose.nml_default
    set NML = namelist.in
+   echo $ROSE_old_restart 
    echo $ROSE_old_restart   > $NML
+   echo $ROSE_nstart      
    echo $ROSE_nstart       >> $NML
+   echo $ROSE_target_time  
    echo $ROSE_target_time  >> $NML
    $PBS_O_WORKDIR/nmlbld_rose < $NML
    echo after nmlbld_rose
    ls -ltR
 
+# Create an initial rose_restart file from the DART state vector
+   $PBS_O_WORKDIR/trans_sv_pv
+   echo after trans_sv_pv
+   ls -ltR 
+
 # advance ROSE "target_time" hours
    $PBS_O_WORKDIR/rose > rose_out_temp
+   echo after executing rose
 
 # Generate the updated DART state vector
+# Needs to change "old_restart" switch in rose.nml
+   cp rose.nml rose.nml_default
+   set ROSE_old_restart = .false.
+   set ROSE_nstart = 1
+   echo $ROSE_old_restart  
+   echo $ROSE_old_restart   > $NML
+   echo $ROSE_nstart       
+   echo $ROSE_nstart       >> $NML
+   echo $ROSE_target_time  
+   echo $ROSE_target_time  >> $NML
+   $PBS_O_WORKDIR/nmlbld_rose < $NML
+   echo after nmlbld_rose
+   ls -ltR
+
    $PBS_O_WORKDIR/trans_pv_sv
    echo after trans_pv_sv
    ls -lRt 
