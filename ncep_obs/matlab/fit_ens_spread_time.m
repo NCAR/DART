@@ -1,87 +1,103 @@
-function fit_ens_spread_time
+function fit_ens_spread_time(ddir)
+% fit_ens_spread_time(ddir)
 %
-p=load('Tanl_times_level.dat');
-level=p(1);
+%
+% USAGE
+%
+% fit_ens_spread_time('plot')
 
-   figure(1); clf
-%  orient landscape
-   orient portrait
-   wysiwyg
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-   ges   = sprintf('Tges_times_%04dmb.dat',level);
-   anl   = sprintf('Tanl_times_%04dmb.dat',level);
+% $Source$
+% $Revision$
+% $Date$
+% $Id$
 
-   region = 'NH';
-   top   = sprintf('T ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,1)
+% This ensures the directory with the datafiles
+% is in Matlab's search path.
+
+if ( nargin > 0 )
+   if ( exist(ddir,'dir') ~= 7)
+      error(sprintf('%s is not a valid directory',ddir))
+   end
+else
+   ddir = [];  % defaults to local directory.
+end
+
+p     = load(fullfile(ddir,'Tanl_times_level.dat'));
+level = p(1);
+
+Tges  = fullfile(ddir,sprintf('Tges_times_%04dmb.dat',level));
+Tanl  = fullfile(ddir,sprintf('Tanl_times_%04dmb.dat',level));
+Wges  = fullfile(ddir,sprintf('Wges_times_%04dmb.dat',level));
+Wanl  = fullfile(ddir,sprintf('Wanl_times_%04dmb.dat',level));
+
+figure(1); clf; orient portrait; wysiwyg
+
+   str1   = sprintf('%4d hPa T  Ens Spread',level);
+   region = 'Northern Hemisphere';
+   topstr = {str1, region};
+   Myplot(Tges,Tanl,topstr,1)
    
-   region = 'SH';
-   top   = sprintf('T ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,2)
+   region = 'Southern Hemisphere';
+   topstr = {str1, region};
+   Myplot(Tges,Tanl,topstr,2)
    
-   region = 'TR';
-   top   = sprintf('T ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,3)
+   region = 'Tropics';
+   topstr = {str1, region};
+   Myplot(Tges,Tanl,topstr,3)
    
-   region = 'NA';
-   top   = sprintf('T ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,4)
+   region = 'North America';
+   topstr = {str1, region};
+   Myplot(Tges,Tanl,topstr,4)
    
-   % Now for the Winds
-   figure(2); clf
-%  orient landscape
-   orient portrait
-   wysiwyg
+% Now for the Winds
+figure(2); clf; orient portrait; wysiwyg
    
-   ges   = sprintf('Wges_times_%04dmb.dat',level);
-   anl   = sprintf('Wanl_times_%04dmb.dat',level);
-
-   region = 'NH';
-   top   = sprintf('Wind ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,1)
+   str1   = sprintf('%4d hPa Wind Ens Spread',level); 
+   region = 'Northern Hemisphere';
+   topstr = {str1, region};
+   Myplot(Wges,Wanl,topstr,1)
    
-   region = 'SH';
-   top   = sprintf('Wind ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,2)
+   region = 'Southern Hemisphere';
+   topstr = {str1, region};
+   Myplot(Wges,Wanl,topstr,2)
    
-   region = 'TR';
-   top   = sprintf('Wind ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,3)
+   region = 'Tropics';
+   topstr = {str1, region};
+   Myplot(Wges,Wanl,topstr,3)
    
-   region = 'NA';
-   top   = sprintf('Wind ens spread %04dmb %s',level,region);
-   Myplot(ges,anl,top,4)
+   region = 'North America';
+   topstr = {str1, region};
+   Myplot(Wges,Wanl,topstr,4)
 
-   str = '-dpsc ';
-
-   print(1,str,'t_ens_spread_time.ps');
-   print(2,str,'w_ens_spread_time.ps');
-
-% end
+   print(1,'-dpsc','t_ens_spread_time.ps');
+   print(2,'-dpsc','w_ens_spread_time.ps');
 
 
 
-function Myplot(file1,file2,top,region)
-
-p=load(file1);
-a=load(file2);
-xp=p(:,1);
-xa=a(:,1);
-count=3+(region-1)*3;
-yp_spread=p(:,count);
-ya_spread=a(:,count);
+function Myplot(file1,file2,topstr,region)
+%
+% After the first column, each set of 3 columns
+% represents a different region.
+% Depends on the format written by new_obs_diag.f90
+%
+p         = load(file1);
+a         = load(file2);
+xp        = p(:,1);
+xa        = a(:,1);
+count     = 3+(region-1)*3;
+yp_spread = p(:,count);
+ya_spread = a(:,count);
 %
 subplot(2,2,region)
-plot(xp,yp_spread,'c+-',xa,ya_spread,'ro:')
+plot(xp, yp_spread, 'k+-', xa, ya_spread, 'ro-', 'LineWidth', 1.5)
 grid
-%if region > 2 
 xlabel('Time interval', 'fontsize', 10) ;
-%end
 ylabel('RMSE ', 'fontsize', 10)
-%title({'Fit to RAOBS, ensemble spread',file1,file2}, ...
-%      'fontsize', 10,'Interpreter','none')
-title({top}, ...
-      'fontsize', 10,'Interpreter','none')
+title(topstr, 'fontsize', 14, 'FontWeight', 'bold')
 legend('guess', 'analysis')
-h=legend;
+h = legend;
 legend(h,'boxoff')
