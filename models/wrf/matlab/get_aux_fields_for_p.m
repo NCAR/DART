@@ -15,24 +15,29 @@ function [ mu, dnw, phi, theta, qv ] =  ...
 %          qv    = water-vapor mixing ratio (3d)
 %
 
- % Read all data
-% nc = netcdf( filename , 'nowrite' ) ;
-
  % Retrieve required fields
  if isempty( varargin )
+ % Read all data
+   nc = netcdf( filename , 'nowrite' ) ;
+
    mu    = nc{'MU'}(:,:) + nc{'MUB'} ;
-   dnw   = nc{'DNW'} ;
+   dnw   = nc{'DNW'}(:) ;
    phi   = nc{'PH'}(:,:,:) + nc{'PHB'} ;
    theta = nc{'T'}(:,:,:) + T0 ;
    qv    = nc{'QVAPOR'}(:,:,:) ;
+   close(nc);
  elseif length( varargin ) == 2
    time_index = varargin{1} ; mem_index = varargin{2} ; 
       % note that DART diagnostic files include multiple times, members
+ % Read all data
+   nc = netcdf( filename , 'nowrite' ) ;
+
    mu    = squeeze(nc{'MU'}(time_index,mem_index,  :,:)) + nc{'MUB'} ;
-   dnw   = nc{'DNW'} ;
+   dnw   = nc{'DNW'}(:) ;
    phi   = squeeze(nc{'PH'}(time_index,mem_index,:,:,:)) + nc{'PHB'} ;
    theta = squeeze(nc{'T'}(time_index,mem_index,:,:,:)) + T0 ;
    qv    = squeeze(nc{'QVAPOR'}(time_index,mem_index,:,:,:)) ;
+   close(nc);
  elseif length( varargin ) == 3
    time_index = varargin{1} ; mem_index = varargin{2} ; id = varargin{3} ;
 % note that DART diagnostic files include multiple times, members, domains
