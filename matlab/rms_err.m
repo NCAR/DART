@@ -1,6 +1,5 @@
-%RMS_ERR: Computes rms error for time series of set of state variables
-
 function err = rms_err(pred, verif)
+%RMS_ERR: Computes rms error for time series of set of state variables
 
 % Pred and verif are time_series_length x number of variables
 num_times = size(pred, 1);

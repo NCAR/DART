@@ -15,6 +15,7 @@ t.model      = ft.model(:);
 t.num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
 t.num_copies = ncsize(ft{'copy'}); % determine # of ensemble members
 t.num_times  = ncsize(ft{'time'}); % determine # of output times
+close(ft);
 
 % Get some information from the diagn_file 
 fd = netcdf(diagn_file);
@@ -22,6 +23,7 @@ d.model      = fd.model(:);
 d.num_vars   = ncsize(fd{'StateVariable'}); % determine # of state variables
 d.num_copies = ncsize(fd{'copy'}); % determine # of ensemble members
 d.num_times  = ncsize(fd{'time'}); % determine # of output times
+close(fd);
 
 % rudimentary bulletproofing
 if (strcmp(t.model,d.model) ~= 1)

@@ -6,6 +6,7 @@ model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
 num_times  = ncsize(f{'time'}); % determine # of output times
+close(f);
 
 % disp(sprintf('get_ens_series: fname is %s',fname))
 % disp(sprintf('get_ens_series: state_var_index is %d',state_var_index))

@@ -6,6 +6,7 @@ function copy_index = get_copy_index(fname, copystring)
 
 f = netcdf(fname);
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
+close(f)
 
 % Need to get the Copy MetaData (strings with the names)
 % We then search the metadata for each copy for the appropriate copies.

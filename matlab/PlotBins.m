@@ -63,6 +63,7 @@ function modelstring = GetAtt(fname,attname)
 
    f = netcdf(fname,'nowrite');   % open with low-level netcdf operators.
    modelstring = f.model(:);   % grab a global attribute
+   close(f)
    if isempty(modelstring)
       error(sprintf('NO model in netCDF file %s',fname))
    else

@@ -14,6 +14,7 @@ model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
 num_times  = ncsize(f{'time'}); % determine # of output times
+close(f);
 
 % Get only the appropriate copy of the state and return
 % Should have an error check for bad indices

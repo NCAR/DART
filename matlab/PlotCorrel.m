@@ -10,6 +10,7 @@ model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
 num_times  = ncsize(f{'time'}); % determine # of output times
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
+close(f)
 
 disp(sprintf('PlotCorrel: fname is %s',fname))
 disp(sprintf('PlotCorrel: base_var_index is %d',base_var_index))

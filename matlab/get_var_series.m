@@ -15,6 +15,7 @@ f = netcdf(fname);
 model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
+close(f);
 
 % disp(sprintf('get_var_series fname is %s',fname))
 % disp(sprintf('get_var_series copynum is %d',copynum))

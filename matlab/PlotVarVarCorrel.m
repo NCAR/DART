@@ -1,5 +1,3 @@
-
-
 function PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
 % Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.
@@ -16,6 +14,7 @@ model      = f.model(:);
 num_vars   = ncsize(f{'StateVariable'}); % determine # of state variables
 num_times  = ncsize(f{'time'}); % determine # of output times
 num_copies = ncsize(f{'copy'}); % determine # of ensemble members
+close(f);
 
 disp(sprintf('PlotVarVarCorrel: num_vars is %d',num_vars))
 
