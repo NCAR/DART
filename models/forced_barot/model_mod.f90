@@ -895,7 +895,7 @@ end subroutine filter
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
+subroutine model_get_close_states(o_loc, radius, number, indices, dist, x)
 !--------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
@@ -906,6 +906,7 @@ type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
 integer, intent(out) :: number, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (number = -1 return)
