@@ -461,7 +461,7 @@ AdvanceTime : do i = 1, num_obs_sets
    end do Observations
 
    ! Free up the storage for this obs set
-   deallocate(obs_err_cov, obs)
+   deallocate(obs_err_cov, obs, qc)
 
    ! Output posterior diagnostics
 
