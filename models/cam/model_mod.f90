@@ -866,15 +866,17 @@ end subroutine get_state_meta_data
 
 
 
-  RECURSIVE function model_interpolate(x, location, type)
+  subroutine model_interpolate(x, location, type, interp_val, istatus, rstatus)
 !=======================================================================
-! RECURSIVE function model_interpolate(x, location, type)
+! subroutine model_interpolate(x, location, type)
 !
 
-real(r8) :: model_interpolate
+real(r8) :: interp_val
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer, intent(in) :: type
+integer, optional, intent(out) :: istatus
+real(r8), optional, intent(out) :: rstatus
 
 integer :: lon_below, lon_above, lat_below, lat_above, i
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
@@ -969,21 +971,21 @@ endif
 !write(*, *) 'fracts ', lon_fract, lat_fract
 if (val(1,1) == -9.999E+30 .or. val(1,2) == -9.999E+30  .or.  &
     val(2,1) == -9.999E+30 .or. val(2,2) == -9.999E+30) then
-   model_interpolate = -9.999E+30
+   interp_val = -9.999E+30
 else
    do i = 1, 2
       a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
    end do
-   model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
+   interp_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 
 ! kdr
-!if (model_interpolate > 500.) then
+!if (interp_val > 500.) then
 !   WRITE(53,'(A,/I3,3F9.2,1p4E12.4)') 'type, lat_lon_lev, a1 a2 fract model_int'  &
 !        ,type,(lon_lat_lev(i),i=1,3) ,a(1),a(2),lat_fract,model_interpolate
 !endif
 endif
 
-end function model_interpolate
+end subroutine model_interpolate
 
 
 
