@@ -86,14 +86,14 @@ type(location_type) :: location
 integer :: slope_index = 0
 
 ! Storage for bgrid mean regression computation
-integer, parameter :: obs_state_max = 2015760
+integer, parameter :: obs_state_max = 20015760
 integer :: obs_state_ind
 real(r8) :: obs_state_reg(obs_state_max)
 
 ! Storage for dynamic covariance inflation exploration
-real(r8), allocatable :: inflate(:), vote(:), bias_mag(:), bias_sum(:), bias_wt(:)
+real(r8), allocatable :: inflate(:), bias_mag(:), bias_sum(:), bias_wt(:), correl(:)
 real(r8) :: mean_bias_mag, my_mean_bias, bias_slope, inflate_inc, bias_intercept
-
+real(r8) :: mean_correl
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
@@ -144,7 +144,8 @@ allocate(obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_size
    ens_copy_meta_data(ens_size + 2), regress(num_groups), bias_mag(num_groups))
 
 ! Set an initial size for the close state pointers
-allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
+allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close), &
+   correl(num_groups))
 
 ! Input the obs_sequence
 unit = get_unit()
@@ -202,7 +203,7 @@ endif
 call static_init_assim_model()
 model_size = get_model_size()
 allocate(ens(ens_size, model_size), ens_time(ens_size), ens_mean(model_size), &
-   inflate(model_size), vote(model_size), bias_wt(model_size), &
+   inflate(model_size), bias_wt(model_size), &
    bias_sum(model_size))
 
 ! Initial value for inflation is from namelist
@@ -311,7 +312,6 @@ call print_time(ens_time(1))
 AdvanceTime : do i = 1, num_obs_sets
 
 ! Reset the bias voting
-   vote = 0.0
    bias_sum = 0.0
    bias_wt = 0.0
 
@@ -377,15 +377,17 @@ AdvanceTime : do i = 1, num_obs_sets
    num_obs_in_set = get_num_obs_in_set(seq, i)
 
    ! Allocate storage for the ensemble priors for this number of observations
+   write(*, *) 'allocating obs_err_cov'
    allocate(obs_err_cov(num_obs_in_set), obs(num_obs_in_set)) 
+   write(*, *) 'done allocating obs_err_cov'
 
 
 ! Temporary work for diagnosing fixed obs set reg_factor
    if(i == 1) then
-      allocate(sum_reg_factor(num_obs_in_set, model_size))
-      allocate(reg_factor_series(num_obs_in_set, model_size, num_obs_sets))
-      sum_reg_factor = 0.0
-      reg_factor_series = 0.0
+!      allocate(sum_reg_factor(num_obs_in_set, model_size))
+!      allocate(reg_factor_series(num_obs_in_set, model_size, num_obs_sets))
+!      sum_reg_factor = 0.0
+!      reg_factor_series = 0.0
    endif
 
 
@@ -431,45 +433,8 @@ AdvanceTime : do i = 1, num_obs_sets
       if(var_ratio > 1.0) num_greater_1 = num_greater_1 + 1
    end do
 
-
-!!!   if(num_greater_1 >  14) then
-!!!      inflate = inflate + 0.001
-!!!   else if(num_greater_1 < 11) then
-!!!      inflate = inflate - 0.001
-!!!      if(inflate(1) < 1.0) inflate = 1.0
-!!!   endif
-!!!   write(*, *) 'nun_greater, inflate is ', num_greater_1, inflate(1)
-!      if(var_ratio_sum / num_obs_in_set > 1.20) then
-!         inflate = inflate + 0.001
-!      else if(var_ratio_sum / num_obs_in_set < 0.78) then
-!         inflate = inflate - 0.001
-!         if(inflate(1) < 1.0) inflate = 1.0
-!      endif
-!      write(*, *) 'var_ratio_sum, inflate', var_ratio_sum / num_obs_in_set, inflate(1)
        write(*, *) 'max ', maxval(inflate), 'mean inflate ', sum(inflate) / model_size
    
-
-
-  
-!   write(*, *) 'mean var_ratio is ', var_ratio_sum / num_obs_in_set
-!   write(73, *) var_ratio_sum / num_obs_in_set
-!   write(*, *) 'num > 1 is ', num_greater_1
-
-!   if(var_ratio_sum / num_obs_in_set > 1.05) then
-!      confidence_slope = confidence_slope - 0.02
-!   else if(var_ratio_sum / num_obs_in_set < 1.05) then
-!      confidence_slope = confidence_slope + 0.02
-!   endif
-!   if(confidence_slope > 1.0) confidence_slope = 1.0
-!   if(confidence_slope < 0.2) confidence_slope = 0.2
-
-!   if(num_greater_1 > num_obs_in_set / 2) then 
-!      confidence_slope = confidence_slope + 0.02
-!   else if(confidence_slope > 0.085) then
-!      confidence_slope = confidence_slope - 0.02
-!   endif   
-!!!   write(*, *) 'confidence slope is ', confidence_slope
-
 ! Add a counter to keep track of observation / state variable pairs for regression history
    obs_state_ind = 0
    ! Loop through each observation in the set
@@ -528,7 +493,7 @@ AdvanceTime : do i = 1, num_obs_sets
          call update_from_obs_inc(ens_obs(grp_bot:grp_top), &
             obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
 ! NO LONGER PASS COV_INFLATE TO UPDATE_FROM_OBS; JLA 11/19/03; bit reproduces for 1 group
-            ens_inc(grp_bot:grp_top), 1.0)
+            ens_inc(grp_bot:grp_top), 1.0, correl(group))
             regress(group) = ens_inc(grp_bot) / obs_inc(grp_bot)
 !!!         write(*, *) 'group ', group, 'reg coeff is ', regress(group)
          end do Group2
@@ -544,8 +509,8 @@ AdvanceTime : do i = 1, num_obs_sets
                stop
             endif
             obs_state_reg(obs_state_ind) = obs_state_reg(obs_state_ind) + reg_factor
-         sum_reg_factor(j, k) = sum_reg_factor(j, k) + reg_factor
-         reg_factor_series(j, k, i) = reg_factor
+!         sum_reg_factor(j, k) = sum_reg_factor(j, k) + reg_factor
+!         reg_factor_series(j, k, i) = reg_factor
          endif
 
 ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
@@ -555,24 +520,14 @@ AdvanceTime : do i = 1, num_obs_sets
          ens(:, ind) = ens(:, ind) + reg_factor * ens_inc(:)
 
 ! Look at local work with inflate
-         if(dist_ptr(1, k) < 100000.0) then
-            bias_wt(ind) = bias_wt(ind) + reg_factor
-            bias_sum(ind) = bias_sum(ind) + reg_factor * mean_bias_mag
-            if(mean_bias_mag > 0.69) then
-               vote(ind) = vote(ind) + 1.0
-!!!               inflate(ind) = inflate(ind) + 0.001
-            else if(mean_bias_mag <= 0.69) then 
-               vote(ind) = vote(ind) - 1.0
-!!!               inflate(ind) = inflate(ind) - 0.001
-!!!             if(inflate(ind) < 1.0) inflate(ind) = 1.0
-            endif
-            
-         end if
+         mean_correl = abs(sum(correl) / num_groups)
+         bias_wt(ind) = bias_wt(ind) + reg_factor * mean_correl
+         bias_sum(ind) = bias_sum(ind) + reg_factor * mean_correl * mean_bias_mag
       end do
 
    end do Observations
 
-! Do the inflation as indicated by vote
+! Do the inflation as indicated by weighted mean
    do j = 1, model_size
      my_mean_bias = bias_sum(j) / bias_wt(j)
      bias_slope = 0.010
@@ -582,20 +537,18 @@ AdvanceTime : do i = 1, num_obs_sets
      if(inflate_inc < -0.05) inflate_inc = -0.05
      inflate(j) = inflate(j) + inflate_inc
      if(inflate(j) < 1.0) inflate(j) = 1.0
-         
-
-     ! if(vote(j) > 0.0) then
-     !    inflate(j) = inflate(j) + 0.005
-     ! else if(vote(j) < 0.0) then
-     !    inflate(j) = inflate(j) - 0.005
-     !    if(inflate(j) < 1.0) inflate(j) = 1.0
-     ! endif
    end do
 ! A background deflation of the growth rate for inflate, also
 !   do j = 1, model_size
 !      inflate(j) = inflate(j) - 0.0010
 !      if(inflate(j) < 1.0) inflate(j) = 1.0
 !   end do
+
+! Output the inflate field
+!   do j = 1, model_size
+!      write(59, 333) inflate(j)
+!   end do
+!333 format(f8.5)
 
 ! Free up the storage for this obs set
    deallocate(obs_err_cov, obs)
