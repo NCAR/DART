@@ -801,7 +801,9 @@ call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable I
 call check(NF90_put_var(ncFileID, StateVarID, state%state_vector, start=(/ 1, copyindex, len /)))
 
 ! DEBUG BLOCK ... just to make sure we're getting what we expect.
+!
 ! call output_diagnosticsORG(ncFileID+30, state, copyindex)
+!
 ! END OF DEBUG BLOCK ... just to make sure we're getting what we expect.
 
 contains
