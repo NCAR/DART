@@ -16,7 +16,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR
 use     location_mod, only : location_type, interactive_location, get_location
 use  assim_model_mod, only : interpolate, aget_closest_state_time_to, &
                              am_get_close_states => get_close_states, &
-                             Aadvance_state, get_model_time_step
+                             get_model_time_step
 use     obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind, &
                              KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
                              KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, &
@@ -30,6 +30,8 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_kin
 !WRF use     platform_mod, only : platform_type, get_platform_orientation
 use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
                              operator(-), operator(/), operator(+), print_time
+
+use ensemble_manager_mod, only : get_ensemble_time, Aadvance_state, ensemble_type
 
 implicit none
 private
@@ -296,7 +298,7 @@ end subroutine take_td
 
 !-------------------------------------------------------------------------
 
-subroutine move_ahead(ens, ens_time, ens_size, model_size, seq, last_key_used, &
+subroutine move_ahead(ens_handle, ens_size, model_size, seq, last_key_used, &
    key_bounds, num_obs_in_set, async, adv_ens_command)
 
 ! First version of this assumes that observations come in discrete chunks that are exactly
@@ -305,15 +307,14 @@ subroutine move_ahead(ens, ens_time, ens_size, model_size, seq, last_key_used, &
 
 implicit none
 
+type(ensemble_type) :: ens_handle
 integer, intent(in) :: ens_size, model_size
-real(r8), intent(inout) :: ens(ens_size, model_size)
-type(time_type), intent(inout) :: ens_time(ens_size)
 type(obs_sequence_type), intent(in) :: seq
 integer, intent(in) :: last_key_used, async
 integer, intent(out) :: key_bounds(2), num_obs_in_set
 character(len = 129), intent(in) :: adv_ens_command
 
-type(time_type) :: next_time, time2, start_time, end_time, delta_time
+type(time_type) :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
 logical :: is_this_last, is_there_one, out_of_range
@@ -342,16 +343,14 @@ endif
 call get_obs_def(observation, obs_def)
 next_time = get_obs_def_time(obs_def)
 
-!write(*, *) 'obs_model model time '
-!call print_time(ens_time(1))
-!write(*, *) 'obs_model next obs time '
+!write(*, *) 'next_time is time of next observation'
 !call print_time(next_time)
 
-! Figure out time to which to advance model 
-time2 = aget_closest_state_time_to(ens_time(1), next_time)
+! Get the time of the ensemble, assume consistent across all
+call get_ensemble_time(ens_handle, 1, ens_time)
 
-!write(*, *) '------ADVANCE TO THE FOLLOWING TIME---------------------------------'
-!call print_time(time2)
+! Figure out time to which to advance model 
+time2 = aget_closest_state_time_to(ens_time, next_time)
 
 ! Compute the model time step and center a window around the closest time
 delta_time = get_model_time_step()
@@ -376,7 +375,7 @@ call print_time(end_time)
 !write(*, *)'----------------------------------------------------------------------'
 
 ! Advance all ensembles (to the time of the first ensemble)
-if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async, adv_ens_command)
+if(time2 /= ens_time) call Aadvance_state(ens_handle, time2, async, adv_ens_command)
 
 ! Release the storage associated with the observation temp varialbe
 call destroy_obs(observation)

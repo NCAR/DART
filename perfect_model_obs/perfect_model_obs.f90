@@ -30,13 +30,15 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_v
 
 use obs_model_mod,    only : get_expected_obs, move_ahead
 
-use assim_model_mod, only  : assim_model_type, static_init_assim_model, get_model_size, &
-   get_initial_condition, get_model_state_vector, set_model_state_vector, &
+use assim_model_mod, only  : static_init_assim_model, get_model_size, &
+   aget_initial_condition, get_model_state_vector, set_model_state_vector, &
    set_model_time, get_model_time, &
-   netcdf_file_type, init_diag_output, output_diagnostics, finalize_diag_output, &
-   init_assim_model, read_state_restart, write_state_restart, &
+   netcdf_file_type, init_diag_output, aoutput_diagnostics, finalize_diag_output, &
+   init_assim_model, read_state_restart, awrite_state_restart, &
    open_restart_read, open_restart_write, close_restart
 use random_seq_mod,  only  : random_seq_type, init_random_seq, random_gaussian
+use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
+   put_ensemble_member, end_ensemble_manager, ensemble_type
 
 implicit none
 
@@ -49,8 +51,9 @@ revdate  = "$Date$"
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs
 type(obs_def_type)      :: obs_def
-type(time_type)         :: time1, ens_time(1)
+type(time_type)         :: time1, ens_time
 type(random_seq_type)   :: random_seq
+type(ensemble_type)     :: ens_handle
 
 integer                 :: i, j, iunit
 
@@ -60,8 +63,7 @@ integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 integer, allocatable    :: keys(:)
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
-type(assim_model_type)  :: x(1)
-real(r8), allocatable   :: ens(:, :)
+real(r8), allocatable   :: ens(:)
 character(len=129)      :: copy_meta_data(2), msgstring
 
 !-----------------------------------------------------------------------------
@@ -93,6 +95,9 @@ namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
    output_interval
 
 !------------------------------------------------------------------------------
+
+! Delete the semaphore files that are used for parallel version 3
+call system('rm -f go_advance_model go_end_filter go_assim_regions')
 
 call perfect_initialize_modules_used()
 
@@ -135,7 +140,7 @@ call filter_set_initial_time()
 ! Initialize the model now that obs_sequence is all set up
 model_size = get_model_size()
 ! Allocate storage for doing advance with ensemble based tools
-allocate(ens(1, model_size))
+allocate(ens(model_size))
 
 write(msgstring,*)'Model size = ',model_size
 call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
@@ -164,15 +169,9 @@ last_key_used = -99
 AdvanceTime: do
 
    ! Get the model to a good time to use a next set of observations
-   ens(1, :) = get_model_state_vector(x(1))
-   ens_time(1) = get_model_time(x(1))
-   call move_ahead(ens, ens_time, 1, model_size, seq, last_key_used, &
+   call move_ahead(ens_handle, 1, model_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
    if(key_bounds(1) < 0) exit AdvanceTime
-
-   ! Copy the advanced state back into assim_model structure
-   call set_model_time(x(1), ens_time(1))
-   call set_model_state_vector(x(1), ens(1, :))
 
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set))
@@ -181,8 +180,10 @@ AdvanceTime: do
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
 ! Output the true state
-   if(i / output_interval * output_interval == i) &
-      call output_diagnostics( StateUnit, x(1), 1)
+   if(i / output_interval * output_interval == i) then
+      call get_ensemble_member(ens_handle, 1, ens, time1)
+      call aoutput_diagnostics(StateUnit, time1, ens, 1)
+   endif
 
 ! How many observations in this set
    write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
@@ -191,7 +192,8 @@ AdvanceTime: do
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs_in_set
 ! Compute the observations from the state
-      call get_expected_obs(seq, keys(j:j), get_model_state_vector(x(1)), true_obs(1:1), istatus)
+      call get_ensemble_member(ens_handle, 1, ens, time1)
+      call get_expected_obs(seq, keys(j:j), ens, true_obs(1:1), istatus)
       if(istatus /= 0) qc(1) = 1000.
 
 ! Get the observational error covariance (diagonal at present)
@@ -224,6 +226,10 @@ AdvanceTime: do
 
 end do AdvanceTime
 
+! Send a message to the asynchronous version 3 that all is done
+! Must be done always because this also terminates option 3 for assim_tools!
+call system('echo a > go_end_filter')
+
 ! properly dispose of the diagnostics files
 
 ierr = finalize_diag_output(StateUnit)
@@ -234,7 +240,8 @@ call write_obs_seq(seq, obs_seq_out_file_name)
 ! Output a restart file if requested
 if(output_restart) then
    iunit = open_restart_write(restart_out_file_name)
-   call write_state_restart(x(1), iunit)
+   call get_ensemble_member(ens_handle, 1, ens, time1)
+   call awrite_state_restart(time1, ens, iunit)
    call close_restart(iunit)
 endif
 
@@ -303,24 +310,20 @@ subroutine perfect_read_restart()
 
 ! Read restart if requested
 if(start_from_restart) then
-   call init_assim_model(x(1))
-   iunit = open_restart_read(restart_in_file_name)
-   call read_state_restart(x(1), iunit)
-
-   ! If init_time_days an init_time_seconds are not < 0, set time to them
-   if(init_time_days >= 0) call set_model_time(x(1) , time1)
-   call close_restart(iunit)
-   ! Restart read in
+   if(init_time_days >= 0) then
+      call init_ensemble_manager(ens_handle, 1, model_size, restart_in_file_name, time1)
+   else
+      call init_ensemble_manager(ens_handle, 1, model_size, restart_in_file_name)
+   endif
 
 else
 
+   ! Initialize manager but nothing to read in
+   call init_ensemble_manager(ens_handle, 1, model_size)
    ! Block to do cold start initialization
-   ! Initialize the control run
-   call init_assim_model(x(1))
-   call get_initial_condition(x(1))
+   call aget_initial_condition(time1, ens)
 
-   ! Set time to 0, 0 if none specified, otherwise to specified
-   call set_model_time(x(1), time1)
+   call put_ensemble_member(ens_handle, 1, ens, time1)
    ! End of cold start ensemble initialization block
 endif
 

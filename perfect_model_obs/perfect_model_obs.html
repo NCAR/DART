@@ -81,12 +81,10 @@ utilities_mod
 time_manager_mod
 obs_sequence_mod
 obs_def_mod
-obs_set_def_mod
-obs_kind_mod
-set_def_list_mod
-obs_set_mod
+obs_model_mod
 assim_model_mod
 random_seq_mod
+ensemble_manager_mod
 </PRE>
 
 
@@ -100,7 +98,7 @@ random_seq_mod
 '&' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / perfect_model_obs_nml / </em> &
-      async, obs_seq_in_file_name, &
+      async, adv_ens_command, obs_seq_in_file_name, &
       obs_seq_out_file_name, start_from_restart, output_restart, &
       restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &
       output_interval
@@ -119,10 +117,17 @@ random_seq_mod
     <!--  type  --><TD valign=top>integer <em class="unit"></em></TD>
     <!--descript--><TD>Controls whether models are advanced via a subroutine call or
                        by writing initial condition files for ensemble members to 
-                       disk and having shellscript advance the model. Option: 0 = advance 
+                       disk and having shellscripts advance the model. Option: 0 = advance 
                        by subroutine; 1 = shell advance using shell script piped to
-                       filter; 2 = advance by F90 calls to shell to advance model. Default
-                       value is 0. </TD></TR>
+                       filter; 2 = advance by F90 calls to shell to advance model, command to 
+                       be executed is found in adv_ens_command; 
+                       3 = advance by using an already running server process from
+                       filter_server.csh.
+                       Default value is 0. </TD></TR>
+<TR><!--contents--><TD valign=top>adv_ens_command </TD>
+    <!--  type  --><TD>character(len = 129)            </TD>
+    <!--descript--><TD>Character string containing command to be executed in order to
+                       advance the model. Default is './advance_ens.csh'.        </TD></TR>
 <TR><!--contents--><TD valign=top>obs_sequence_in_file_name          </TD>
     <!--  type  --><TD>character(len = 129)            </TD>
     <!--descript--><TD>File name that contains an observation sequence definition
@@ -150,7 +155,7 @@ random_seq_mod
 <TR><!--contents--><TD valign=top>init_time_days               </TD>
     <!--  type  --><TD>integer                         </TD>
     <!--descript--><TD>Initial time of model (time is in days and seconds; see
-                       time_manager. If init_time_days and init_time_seconds are 
+                       time_manager). If init_time_days and init_time_seconds are 
                        less than 0, the initial time comes from the time in 
                        the restart file. Default value is 0. </TD></TR> 
 <TR><!--contents--><TD valign=top>init_time_seconds            </TD>
@@ -169,8 +174,10 @@ random_seq_mod
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>observation sequence input file
-   <LI>observation sequence output file
+<UL><LI>observation sequence input file; name comes from obs_seq_in_file_name
+   <LI>observation sequence output file; name comes from obs_seq_out_file_name
+   <LI>input state vector file; name comes from restart_in_file_name
+   <LI>output state vector file; name comes from restart_out_file_name
 </UL>
 
 <!--==================================================================-->
@@ -186,10 +193,22 @@ random_seq_mod
 <!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
+
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class="errors">
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>perfect_model_obs</TD>
+    <!-- message --><TD VALIGN=top>Input obs_sequence file should not have any copies
+                                    of data associated with it</TD>
+    <!-- comment --><TD VALIGN=top>Perfect_model_obs just requires an observation 
+                                   definition, not any values.</TD>
+</TR>
+
+</TABLE>
 </div>
 
 <!--==================================================================-->
@@ -210,9 +229,6 @@ random_seq_mod
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
-   A new observation sequence
-   module is also under development to support this and clean up the
-   use of observations.
 </P>
 
 <!--==================================================================-->
