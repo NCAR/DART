@@ -30,7 +30,8 @@ private
 public read_restart, write_restart, assim_tools_init, &
    obs_increment, obs_increment2, obs_increment3, obs_increment4, &
    update_from_obs_inc, local_update_from_obs_inc, robust_update_from_obs_inc, &
-   obs_inc_index, obs_inc4_index
+   obs_inc_index, obs_inc4_index, &
+   linear_obs_increment, linear_update_from_obs_inc
 
 !============================================================================
 
@@ -813,6 +814,115 @@ do i = 1, ens_size
 end do
 
 end subroutine local_update_from_obs_inc
+
+
+!========================================================================
+
+subroutine linear_obs_increment(ens, ens_size, obs, obs_var, var_inc, mean_inc, sd_ratio)
+
+! EAKF version of obs increment, obs_update_inflate inflates the variance after
+! computation of the mean. (See notes from 17-19 Sept. 2002)
+! Uses additional linear corrections from notes in early Dec. 2002 plus modified
+! mean versus variance delta's from that analysis.
+
+implicit none
+
+integer, intent(in) :: ens_size
+double precision, intent(in) :: ens(ens_size), obs, obs_var
+double precision, intent(out) :: var_inc(ens_size), mean_inc, sd_ratio
+
+double precision :: a, prior_mean, prior_var, new_mean, new_var, sx, s_x2
+
+! Compute prior variance and mean from sample
+sx = sum(ens)
+s_x2 = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_var = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+
+!!!write(*, *) 'in obs_inc prior, obs_var ', real(prior_var), real(obs_var)
+
+! Compute updated variance and mean
+new_var = 1.0 / (1.0 / prior_var + 1.0 / obs_var)
+new_mean = new_var * (prior_mean / prior_var + obs / obs_var)
+
+a = sqrt(new_var / prior_var)
+
+!!!write(*, *) 'a in obs_increment is ', a
+
+! Compute the increments for each ensemble member
+var_inc = a * (ens - prior_mean) + prior_mean - ens
+mean_inc = new_mean - prior_mean
+
+! Return a as sd_ratio
+sd_ratio = a
+
+end subroutine linear_obs_increment
+
+!========================================================================
+
+
+!========================================================================
+
+subroutine linear_update_from_obs_inc(obs, var_inc, mean_inc, state, &
+   ens_size, state_inc, cov_factor, sd_ratio)
+
+! Does linear regression of a state variable onto an observation and
+! computes state variable increments from observation increments
+
+implicit none
+
+integer, intent(in) :: ens_size
+double precision, intent(in) :: obs(ens_size), var_inc(ens_size), mean_inc
+double precision, intent(in) :: state(ens_size), cov_factor, sd_ratio
+double precision, intent(out) :: state_inc(ens_size)
+
+double precision :: sum_x, sum_y, sum_xy, sum_x2, reg_coef
+double precision :: sum_y2, correl, linear_factor
+
+double precision :: new_reg, ybar, yvar, xbar, xyvar
+
+
+
+! For efficiency, just compute regression coefficient here
+sum_x = sum(obs)
+sum_y = sum(state)
+sum_xy = sum(obs * state)
+sum_x2 = sum(obs * obs)
+
+
+!------------------------------------------------
+! Temporary computation of correlation
+!sum_y2 = sum(state * state)
+
+!correl = (ens_size * sum_xy - sum_x * sum_y) / &
+!   sqrt((ens_size * sum_x2 - sum_x**2) * (ens_size * sum_y2 - sum_y**2))
+!write(*, *) 'correl/factor in update_from is ', real(correl)
+!----------------------------------------------------
+
+reg_coef = (ens_size * sum_xy - sum_x * sum_y) / (ens_size * sum_x2 - sum_x**2)
+
+!!!write(*, *) 'update_from_obs_inc reg_coef is ', reg_coef
+
+! Use the full ratio expression from 3 Dec. '02 Notes
+if(cov_factor > 0.99999) then
+   linear_factor = cov_factor
+else
+   linear_factor = (sqrt(cov_factor * sd_ratio**2 - cov_factor + 1.0) - 1.0) / &
+      (sd_ratio - 1.0)
+endif
+
+!!!write(*, *) 'sd ratio ', sd_ratio
+!!!write(*, *) 'cov_factor, linear_factor ', cov_factor, linear_factor
+!!!write(*, *) 'ratio ', cov_factor / linear_factor
+
+state_inc = linear_factor * reg_coef * var_inc + cov_factor * reg_coef * mean_inc
+
+
+end subroutine linear_update_from_obs_inc
+
+!========================================================================
+
+
 
 !========================================================================
 ! end module assim_tools_mod

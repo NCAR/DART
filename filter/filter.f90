@@ -38,7 +38,8 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    init_diag_outputORG, output_diagnosticsORG
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod,  only : obs_increment, update_from_obs_inc
+use assim_tools_mod,  only : obs_increment, update_from_obs_inc, &
+   linear_obs_increment, linear_update_from_obs_inc
 use cov_cutoff_mod,   only : comp_cov_factor
 
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
@@ -64,7 +65,7 @@ integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 integer :: PriorStateUnit, PosteriorStateUnit
 integer :: lji
 ! Need to set up namelists for controlling all of this mess, too!
-integer, parameter :: ens_size = 40
+integer, parameter :: ens_size = 20
 integer            :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
@@ -74,7 +75,7 @@ type(assim_model_type) :: x, ens(ens_size)
 real(r8)               :: obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size)
 real(r8)               :: swath(ens_size), ens_mean
 real(r8), allocatable  :: obs_err_cov(:), obs(:)
-real(r8)               :: cov_factor
+real(r8)               :: cov_factor, mean_inc, sd_ratio
 character(len = 129)   :: ens_copy_meta_data(ens_size)
 
 ! Storage for caching close states
@@ -157,12 +158,17 @@ posterior_state_unit = init_diag_outputORG('posterior_diag', &
 if(start_from_restart) then
    unit = get_unit()
    open(unit = unit, file = restart_in_file_name)
+   call init_assim_model(x)
+   x_ptr%state => get_state_vector_ptr(x)
    do i = 1, ens_size
       write(*, *) 'trying to read restart ', i
-      call read_state_restart(ens(i), unit)
+      call init_assim_model(ens(i))
+      ens_ptr(i)%state => get_state_vector_ptr(ens(i))
+
+      call read_state_restart(x, unit)
+      ens_ptr(i)%state = x_ptr%state
    end do
    close(unit)
-   write(*, *) 'successfully read state restart'
 !-----------------  Restart read in --------------------------------
 
 else
@@ -228,7 +234,6 @@ AdvanceTime : do i = 1, num_obs_sets
       call output_diagnostics(     PriorStateUnit, ens(j), j)
    end do
    ierr = NF90_sync(PriorStateUnit)   ! just for good measure -- TJH 
-
    ! Do a covariance inflation for now? 
    ! Inflate the ensemble state estimates
    do k = 1, model_size
@@ -263,7 +268,10 @@ AdvanceTime : do i = 1, num_obs_sets
          call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
       end do
 
-      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
+!!!      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
+! Test of modified linear variance delta update for localization, 13 Dec. 2002
+         call linear_obs_increment(ens_obs, ens_size, obs(j), &
+            obs_err_cov(j), obs_inc, mean_inc, sd_ratio)
 
       ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
@@ -280,13 +288,18 @@ AdvanceTime : do i = 1, num_obs_sets
          ! Get the ensemble elements for this state variable and do regression
          swath = get_ens_swath(ens_ptr, ens_size, ind)
 
-         call update_from_obs_inc(ens_obs, obs_inc, &
-                                  swath, ens_size, ens_inc, cov_factor)
+!!!         call update_from_obs_inc(ens_obs, obs_inc, &
+!!!                                  swath, ens_size, ens_inc, cov_factor)
+! Test of modified linear variance delta update for localization
+         call linear_update_from_obs_inc(ens_obs, obs_inc, mean_inc, &
+            swath, ens_size, ens_inc, cov_factor, sd_ratio)
+
+
+
          call inc_ens_swath(ens_ptr, ens_size, ind, ens_inc)
       end do
 
    end do Observations
-
    ! Put the ensemble storage back into the ens
    do j = 1, ens_size
 !!!        call output_diagnosticsORG(posterior_state_unit, ens(j), j)
