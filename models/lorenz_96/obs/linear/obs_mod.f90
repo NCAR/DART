@@ -16,39 +16,39 @@ public num_obs, obs_var, take_obs, ens_ics, init_obs, take_single_obs, &
        get_close_state
 
 
-! TEMPORARY ADDITION TO ALLOW RAMPED IMPACT
+!  TEMPORARY ADDITION TO ALLOW RAMPED IMPACT
 
 public obs_loc
 
-integer :: num_obs = 0
+   integer :: num_obs = 0
 
-! Following is to allow initialization of obs_def_type
+!  Following is to allow initialization of obs_def_type
 
-logical :: obs_init = .false.
+   logical :: obs_init = .false.
 
-! Following is for repeatable random numbers
+!  Following is for repeatable random numbers
 
-logical :: first_ens_seq = .true.
-type (random_seq_type) :: ens_seq
+   logical :: first_ens_seq = .true.
+   type (random_seq_type) :: ens_seq
 
-! The obs_def structure defines a linear M operator from state vars to obs
+!  The obs_def structure defines a linear M operator from state vars to obs
 
-type (obs_def_type), allocatable :: obs_def(:)
+   type (obs_def_type), allocatable :: obs_def(:)
 
-! Array of structure for observation locations; static with time in this version
+!  Array of structure for observation locations; static w/time in this version
 
-type(loc_type), allocatable :: obs_loc(:)
+   type(loc_type), allocatable :: obs_loc(:)
 
-! Storage for the observational variance
+!  Storage for the observational variance
 
-real(r8), allocatable :: obs_variance(:)
+   real(r8), allocatable :: obs_variance(:)
 
-! Set a cut-off for distance on which obs can be used
+!  Set a cut-off for distance on which obs can be used
 
-!real(r8), parameter :: max_close_distance = 1.0_r8
- real(r8), parameter :: max_close_distance = 0.175_r8
-!real(r8), parameter :: max_close_distance = 1.00_r8
-!real(r8), parameter :: max_close_distance = 0.00011_r8
+!  real(r8), parameter :: max_close_distance =     1.0_r8
+   real(r8), parameter :: max_close_distance =   0.175_r8
+!  real(r8), parameter :: max_close_distance =    1.00_r8
+!  real(r8), parameter :: max_close_distance = 0.00011_r8
 
 contains
 
@@ -56,7 +56,7 @@ contains
 
 
 
-subroutine init_obs
+  subroutine init_obs
 !=======================================================================
 ! subroutine init_obs
 !
@@ -111,17 +111,16 @@ end subroutine init_obs
 
 
 
-function obs_var()
+  function obs_var()
 !=======================================================================
 ! function obs_var()
 !
+! Defines the observational error variance. Eventually may need to be 
+! generalized to covariance.
 
 implicit none
 
 real(r8) :: obs_var(num_obs)
-
-! Defines the observational error variance. Eventually may need to be 
-! generalized to covariance.
 
 obs_var = obs_variance
 
@@ -129,22 +128,21 @@ end function obs_var
 
 
 
-function take_obs(x)
+  function take_obs(x)
 !=======================================================================
 ! function take_obs(x)
 !
+! Given a model state, x, returns observations for assimilation.
+! For perfect model, take_obs is just state_to_obs
 
 implicit none
 
-real(r8) :: take_obs(num_obs)
 real(r8), intent(in) :: x(:)
+real(r8)             :: take_obs(num_obs)
 
 ! Important to initialize obs structure before taking obs
 
 if(.not. obs_init) call init_obs
-
-! Given a model state, x, returns observations for assimilation.
-! For perfect model, take_obs is just state_to_obs
 
 take_obs = conv_state_to_obs(x, obs_def, num_obs)
 
@@ -152,10 +150,12 @@ end function take_obs
 
 
 
-function take_single_obs(x, index)
+  function take_single_obs(x, index)
 !========================================================================
 ! function take_single_obs(x, index)
 !
+! Given a model state, x, returns observations for assimilation.
+! For perfect model, take_obs is just state_to_obs
 
 implicit none
 
@@ -169,9 +169,6 @@ real(r8) :: take(1)
 
 if(.not. obs_init) call init_obs
 
-! Given a model state, x, returns observations for assimilation.
-! For perfect model, take_obs is just state_to_obs
-
 take = conv_state_to_obs(x, obs_def(index:index), 1)
 take_single_obs = take(1)
 
@@ -179,7 +176,7 @@ end function take_single_obs
 
 
 
-function state_to_obs(x)
+  function state_to_obs(x)
 !========================================================================
 ! function state_to_obs(x)
 !
@@ -201,7 +198,7 @@ end function state_to_obs
 
 
 
-subroutine ens_ics(x, as)
+  subroutine ens_ics(x, as)
 !========================================================================
 ! subroutine ens_ics(x, as)
 !
@@ -236,7 +233,7 @@ end subroutine ens_ics
 
 
 
-subroutine get_close_state(obs_num, list, max_list, num)
+  subroutine get_close_state(obs_num, list, max_list, num)
 !=======================================================================
 ! subroutine get_close_state(obs_num, list, max_list, num)
 !
@@ -305,7 +302,7 @@ list(1:num) = list_temp(1:num)
 end subroutine get_close_state
 
 !==========================================================================
-! end module obs_mod
+! end module lorenz_96/obs/linear/obs_mod.f90
 !==========================================================================
 
 end module obs_mod
