@@ -282,6 +282,9 @@ write(*, *) 'done with obs space diag'
 
 end do AdvanceTime
 
+! Send a message to the asynchronous version 3 that all is done
+call system('echo a > go_end_filter')
+
 ! properly dispose of the diagnostics files
 ierr = finalize_diag_output(PriorStateUnit)
 ierr = finalize_diag_output(PosteriorStateUnit)
@@ -691,7 +694,9 @@ do k = 1, ens_size
       call get_expected_obs(seq, keys(j:j), temp_ens, obs_vals(j, k:k), istatus)
       if(istatus > 0) then 
          qc(j) = qc(j) + 2**prior_post * 1000
-         exit
+! TEST LINE for doing quality control pass through
+         call set_qc(observation, qc(j:j), 1)         
+         !!! exit
       endif
    end do
 end do
