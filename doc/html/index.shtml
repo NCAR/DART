@@ -27,6 +27,7 @@ this to be a problem any time soon.
     <LI><A HREF="#AssimilationSequence">The Assimilation Sequence</A>
     <LI><A HREF="http://www.cgd.ucar.edu/~thoar/cvs_primer.html">my cheat-sheet of CVS commands</A>
     <LI><A HREF="#acronyms">acronyms</A>
+    <LI><A HREF="TimTasks.shtml#status">Tim's tasks</A>
 </OL>
 
 <P><b>Hmnnnnn</b> how does the group enter into play?   
@@ -178,21 +179,53 @@ mkmf.<I>platform</I><FONT COLOR="#0000ff">[.prod]</FONT>
 <PRE>
 newgrp cgddart
 cd DART/work
-vi mkmf_targets                 <FONT COLOR="#ff0000">;# uncomment items</FONT>
+vi mkmf_targets                 <FONT COLOR="#ff0000">;# create list</FONT>
 mkmf <FONT COLOR="#0000FF">-t mkmf.sun.devel</FONT> <FONT COLOR="#338833">mkmf_targets</FONT>
 make
 ./a.out | tee seq_obs.log
 </PRE>
 
  
-<P><H2>The Eaton Files</H2>
+<P><H2>The CAM method</H2>
 
-<P>I am exploring Brian Eaton's perl scripts to facilitate the build.<BR>
-/fs/cgd/home0/eaton/bin/mkSrcfiles<BR>
-/fs/cgd/home0/eaton/bin/mkDepends<BR> 
-ingest a file that contains F90 pathnames and generates a makefile with
-the proper dependencies, as long as the module names are consistent with
-the filenames containing the module.
+<P>I am exploring Brian Eaton's perl scripts (
+<A HREF="file:/fs/cgd/home0/eaton/bin/mkSrcfiles">mkSrcfiles</A>, and 
+<A HREF="file:/fs/cgd/home0/eaton/bin/mkDepends">mkDepends</A>) 
+to facilitate the build. A (Gnu) makefile contains the logic on how to
+build for specific platforms and runs both scripts to build the targets and
+dependencies. One of the caveats is that the modules and the files containing
+the modules are necessarily named the same.
+<P> 
+The <TT>mkSrcfiles</TT> utility assumes the existence of an input file
+<TT>./Filepath</TT>, and writes an output file <TT>./Srcfiles</TT> that 
+contains the names of all the files that match the patterns *.F90, *.F, 
+and *.c in all the directories from ./Filepath plus ./.  The files are 
+listed one per line. <FONT COLOR="#ff0000">At this point, I need to modify
+the scripts to recognize .f or I need to rename all files to .F</FONT>
+
+<PRE>mkDepends [-t dir] [-w] Filepath Srcfiles</PRE>
+<TABLE>
+<TR><TH>option</TH><TH>value</TH><TH>meaning</TH></TR>
+<TR><TD>-t</TD><TD>dir</TD><TD>Target directory.  If this option is 
+                set the .o files that are targets in the dependency rules 
+                have the form dir/file.o.</TD></TR>
+<TR><TD>-w</TD><TD> &nbsp </TD><TD>Print warnings to STDERR about files or 
+                dependencies not found.</TD></TR>
+<TR><TH colspan=3 align = left>arguments</TH></TR>
+<TR><TD colspan=2>Filepath</TD><TD>the name of a file containing the 
+         directories (one per line) to be searched for dependencies.</TD></TR>
+<TR><TD colspan=2>Srcfiles</TD><TD>the name of a file containing the names 
+         of files (one per line) for which dependencies will be generated.
+         Usually the result of running <TT>mkSrcfiles</TT>.</TD></TR>
+</TABLE>
+
+<PRE>
+newgrp cgddart
+cd DART/work
+vi Filepath                   <FONT COLOR="#ff0000">;# create list</FONT>
+gmake -f Makefile.CAM
+./a.out | tee seq_obs.log
+</PRE>
 
 <!--------------------------------------------------------------------->
 <!-- The Overall Assimilation Sequence -------------------------------->
