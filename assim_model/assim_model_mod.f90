@@ -39,7 +39,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files, &
    finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
    awrite_state_restart, Aadvance_state, pert_model_state, &
-   netcdf_file_type, nc_append_time, nc_write_calendar_atts, nc_get_tindex
+   netcdf_file_type, nc_append_time, nc_write_calendar_atts, nc_get_tindex, get_model_time_step
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -197,7 +197,7 @@ character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 type(netcdf_file_type)       :: ncFileID
 
 character(len=129)   :: msgstring
-integer             :: i, metadata_length, ncid
+integer             :: i, metadata_length
 
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID
@@ -521,7 +521,7 @@ end subroutine aget_initial_condition
 
 
 
-subroutine get_close_states(location, radius, numinds, indices, dist)
+subroutine get_close_states(location, radius, numinds, indices, dist, x)
 !---------------------------------------------------------------------
 ! subroutine get_close_states(location, radius, numinds, indices)
 !
@@ -540,6 +540,7 @@ type(location_type), intent(in)  :: location
 real(r8),            intent(in)  :: radius
 integer,             intent(out) :: numinds, indices(:)
 real(r8),            intent(out) :: dist(:)
+real(r8),            intent(in)  :: x(:)
 
 type(location_type) :: state_loc
 integer :: indx, i
@@ -547,7 +548,7 @@ real(r8) :: this_dist
 
 ! If model provides a working get_close_states, use it; otherwise search
 ! Direct use of model dependent stuff, needs to be automated (F90 can't do this
-call model_get_close_states(location, radius, numinds, indices, dist)
+call model_get_close_states(location, radius, numinds, indices, dist, x)
 
 ! If numinds returns as -1, not implemented
 if(numinds == -1) then
@@ -574,7 +575,7 @@ end subroutine get_close_states
 
 
 
-function get_num_close_states(location, radius)
+function get_num_close_states(location, radius, x)
 !-----------------------------------------------------------------------
 !
 ! Returns number of state vector points located within distance radius
@@ -585,6 +586,7 @@ implicit none
 integer :: get_num_close_states
 type(location_type), intent(in) :: location
 real(r8),            intent(in) :: radius
+real(r8),            intent(in) :: x(:)
 
 type(location_type) :: state_loc
 integer             :: i, indices(1)
@@ -594,7 +596,7 @@ real(r8)            :: dist(1)
 ! call direct model get close with storage that is too 
 ! small and get size from this
 ! model_get_close_states returns -1 if it is not implemented
-call model_get_close_states(location, radius, get_num_close_states, indices, dist)
+call model_get_close_states(location, radius, get_num_close_states, indices, dist, x)
 
 if(get_num_close_states == -1) then
    ! Do exhaustive search
@@ -848,7 +850,7 @@ if(asynch /= 0) then
       write(control_unit, '(a26)' ) ic_file_name(i)
       write(control_unit, '(a26)' ) ud_file_name(i)
    end do
-   call write_time(control_unit, target_time)
+!!!   call write_time(control_unit, target_time)
    close(control_unit)
 
    if(asynch == 1) then
@@ -923,7 +925,7 @@ end subroutine Aadvance_state
 
 
 
-subroutine interpolate(x, location, loctype, obs_vals, istatus, rstatus)
+subroutine interpolate(x, location, loctype, obs_vals, istatus)
 !---------------------------------------------------------------------
 !
 ! Interpolates from the state vector in an assim_model_type to the
@@ -940,28 +942,11 @@ real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: loctype
 real(r8),           intent(out) :: obs_vals
-integer,  optional, intent(out) :: istatus 
-real(r8), optional, intent(out) :: rstatus 
-real(r8)                        :: rstat
-integer                         :: istat
+integer,            intent(out) :: istatus 
 
-! FOR GUAM; istatus and rstatus are not optional; they must be defined
-!           rather than defining in each model, define them here, and
-!           allow model_interpolate to overwrite them
-!
-istat=0
-rstat=0.0_r8
+istatus = 0
 
-if(present(rstatus)) then
-   call model_interpolate(x, location, loctype, obs_vals, istat, rstat)
-   istatus = istat
-   rstatus = rstat
-elseif(present(istatus)) then
-   call model_interpolate(x, location, loctype, obs_vals, istat)
-   istatus = istat
-else
-   call model_interpolate(x, location, loctype, obs_vals)
-endif
+call model_interpolate(x, location, loctype, obs_vals, istatus)
 
 end subroutine interpolate
 
