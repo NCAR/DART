@@ -1,6 +1,3 @@
-!  program to update BC file from 3dvar output.
-!  current version reads only wrf-netcdf file format
-
 program update_wrf_bc
 
 ! <next four lines automatically updated by CVS, do not edit>

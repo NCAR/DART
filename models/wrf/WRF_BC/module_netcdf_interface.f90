@@ -393,7 +393,7 @@ subroutine get_times_cdf( file, times, n_times, max_times, debug )
 
   integer cdfid, id_time
   character (len=80) :: varnam, time1
-  integer            :: ndims, natts, idims(max_times)
+  integer            :: ndims, idims(max_times)
   integer            :: istart(max_times),iend(max_times), dimids(max_times)
   integer            :: i, ivtype
 
