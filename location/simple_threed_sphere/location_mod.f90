@@ -301,7 +301,7 @@ end function read_location
 
 
 
-subroutine interactive_location(location)
+subroutine interactive_location(location, set_to_default)
 !--------------------------------------------------------------------------
 !
 ! Allows for interactive input of a location. Also gives option of selecting
@@ -310,10 +310,23 @@ subroutine interactive_location(location)
 implicit none
 
 type(location_type), intent(out) :: location
+logical, intent(in), optional :: set_to_default
 
 real(r8) :: lon, lat, lev
 
 if ( .not. module_initialized ) call initialize_module
+
+! If set_to_default is true, then just zero out and return
+if(present(set_to_default)) then
+   if(set_to_default) then
+      location%lon = 0.0
+      location%lat = 0.0
+      location%lev = 0.0
+      location%pressure = 0.0
+      location%which_vert = 0
+      return
+   endif
+endif
 
 write(*, *) 'Input level for this observation: -1 for surface '
 read(*, *) lev

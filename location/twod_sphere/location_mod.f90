@@ -241,7 +241,7 @@ end function read_location
 
 
 
-subroutine interactive_location(location)
+subroutine interactive_location(location, set_to_default)
 !--------------------------------------------------------------------------
 !
 ! Allows for interactive input of a location. Also gives option of selecting
@@ -250,10 +250,20 @@ subroutine interactive_location(location)
 implicit none
 
 type(location_type), intent(out) :: location
+logical, intent(in), optional :: set_to_default
 
 real(r8) :: lon, lat
 
 if ( .not. module_initialized ) call initialize_module
+
+! If set_to_default is true, then just zero out and return
+if(present(set_to_default)) then
+   if(set_to_default) then
+      location%lon = 0.0
+      location%lat = 0.0
+      return
+   endif
+endif
 
 write(*, *) 'Input longitude for this obs: value 0 to 360.0 or a negative number for '
 write(*, *) 'Uniformly distributed random location'
