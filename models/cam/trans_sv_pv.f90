@@ -29,6 +29,8 @@ use       model_mod, only : model_type, init_model_instance, write_cam_init, &
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size, get_model_state_vector, read_state_restart, &
    binary_restart_files
+! Guam clean out advance_model
+use time_manager_mod, only : time_type, read_time
 
 implicit none
 
@@ -40,6 +42,8 @@ revdate  = "$Date$"
 
 type(assim_model_type) :: x
 type(model_type)       :: var
+! Guam clean out advance_model
+type(time_type)        :: adv_to_time
 real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
 character (len = 128)  :: file_name = 'caminput.nc', file_in = 'temp_ic'
@@ -62,11 +66,16 @@ endif
 PRINT*,'In trans_sv_pv binary_restart_files, file_form = ',binary_restart_files, file_form
 
 ! Get file for DART vector input
-! debug file_unit = get_unit()
-file_unit = 17
+! debug file_unit = 17
+file_unit = get_unit()
 PRINT*,'In trans_sv_pv file_in unit  = ',file_unit
 PRINT*,' '
 open(unit = file_unit, file = file_in, form = file_form)
+
+! Guam clean out advance_model
+! Read in time to which CAM must advance.  
+! Neither this, nor time in x is used in this program
+adv_to_time = read_time(file_unit, file_form)
 
 ! read in state vector from DART
 call read_state_restart(x, file_unit, file_form)

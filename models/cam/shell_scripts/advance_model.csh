@@ -23,6 +23,7 @@ echo $case $model
 mkdir $temp_dir
 cd $temp_dir
 cp $PBS_O_WORKDIR/assim_model_state_ic$element temp_ic
+
 cp $PBS_O_WORKDIR/input.nml input.nml
 echo ls $temp_dir for element $element
 echo junk > element$element
@@ -38,41 +39,25 @@ else
 endif
 cp $PBS_O_WORKDIR/input.nml input.nml
 
-
-# Copy the initial condition file to the temp directory
-# Need to strip out the current time (second line) and 
-# leave advance to time (first line); Should all be 
-# automated with more generalized model time handling
-
-
-# Do we do this in the script instead of trans_sv_pv because of the form
-# of temp_ic; the 2 times at the beginning are hard to read?
-# Try moving this stuff into trans_sv_pv
-
-
-set filetype = `file temp_ic`
-echo temp_ic has file type $filetype[2]
-if ($filetype[2] == ASCII) then
-   head -1 temp_ic > temp2
-   tail +3 temp_ic >> temp2
-   mv temp2 temp_ic
-else if ($filetype[2] == data) then
-# binary version
-   dd if=temp_ic of=time1.bin bs=4 count=4
-   dd if=temp_ic of=data1.bin bs=4 skip=8
-   cat time1.bin data1.bin >! temp_ic
+# create 'times' file from DART dates in assim_model_state_ic1
+if (-e temp_ic && -e $PBS_O_WORKDIR/trans_time) then
+   echo 'advance_model; exectuting trans_time'
+   $PBS_O_WORKDIR/trans_time
+   ls -lt 
+   cp times $PBS_O_WORKDIR
 else
-   echo filetype of initial temp_ic not recognized
+   echo 'no ic file or trans_time available for trans_time'
    exit 1
 endif
 
 # Create an initial CAM.nc file from the DART state vector
-   $PBS_O_WORKDIR/trans_sv_pv
-   ls -ltR 
+# Times are handled separately in trans_time
+$PBS_O_WORKDIR/trans_sv_pv
+ls -ltR 
 
 # advance cam 
-   $PBS_O_WORKDIR/$model/models/atm/cam/bld/run-pc.csh $case $model $PBS_O_WORKDIR \
-      > cam_out_temp
+$PBS_O_WORKDIR/$model/models/atm/cam/bld/run-pc.csh $case $model $PBS_O_WORKDIR \
+   > cam_out_temp
 echo $element >> $PBS_O_WORKDIR/dump
 tail cam_out_temp >> $PBS_O_WORKDIR/dump
 cp cam_out_temp $PBS_O_WORKDIR/cam_out_temp$element
@@ -80,30 +65,8 @@ cp cam_out_temp $PBS_O_WORKDIR/cam_out_temp$element
 # Time not currently being advanced by model; need the target time 
 # (first of 2 time lines in _ic# ) as first line of updated state vector file
 
-# Do we do this in the script instead of trans_sv_pv because of the form
-# of temp_ic; the 2 times at the beginning are hard to read?
-# Try moving this stuff into trans_sv_pv
-
-if ($filetype[2] == ASCII) then
-   head -1 temp_ic > temp_ud
-else if ($filetype[2] == data) then
-   dd if=temp_ic of=time2.bin bs=4 count=4
-else
-   echo filetype of temp_ic not recognized
-   exit 1
-endif
-
 # Generate the updated DART state vector and put it in temp_ic (time followed by state)
    $PBS_O_WORKDIR/trans_pv_sv
-
-# For now, time is not being handled in model; just put state on
-if ($filetype[2] == ASCII) then
-   tail +2 temp_ic >> temp_ud
-else if ($filetype[2] == data) then
-   dd if=temp_ic of=data2.bin bs=4 skip=4
-   cat time2.bin data2.bin >! temp_ud
-endif
-ls -lRt 
 
 mv temp_ud $PBS_O_WORKDIR/assim_model_state_ud$element; \
 mv clminput.nc $PBS_O_WORKDIR/clminput_$element.nc

@@ -38,7 +38,10 @@ integer :: ntimes = 2, n, nhtfrq, calendar_type = GREGORIAN
 integer :: file_unit(2), seconds, days, year, month, day, hour, minute, second, &
            cam_date, cam_tod
 type(time_type)       :: dart_time(2), forecast_length
-character (len = 128) :: file_name = 'assim_model_state_ic1', file_out = 'times'
+! character (len = 128) :: file_name = 'assim_model_state_ic1', file_out = 'times'
+! move trans_time execution from advance_ens.csh ($PBS_WORKDIR) to
+! advance_model.csh ($tmpdir=/scratch/local/xxxx)
+character (len = 128) :: file_name = 'temp_ic', file_out = 'times'
 character (len = 16)  :: file_form
 
 call set_calendar_type(calendar_type)
