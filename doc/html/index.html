@@ -67,7 +67,8 @@ newgrp cgddart             <FONT color="blue">;# change default group</font>
 cd DART                    <FONT color="blue">;# get to DART sandbox</font>
 cd ..                      <FONT color="blue">;# want to be above sandbox</font>
 chgrp -R cgddart DART      <FONT color="blue">;# recursively change group for entire sandbox</font>
-chmod -R g+s DART          <FONT color="blue">;# recursively set group sticky bit</font></PRE>
+cd DART                    <FONT color="blue">;# get to DART sandbox</font>
+chmod g+s `find . -type d`          <FONT color="blue">;# recursively set group sticky bit for all directories</font></PRE>
 
 <P>I set the group sticky bit on the repository, so everything added to
 the repository will inherit the repository group attributes (including
