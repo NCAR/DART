@@ -70,7 +70,7 @@ use          location_mod, only: location_type, get_location, set_location, &
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
-use         utilities_mod, only: error_handler, E_ERR, logfileunit
+use         utilities_mod, only: error_handler, E_ERR, logfileunit, register_module
 
 !-----------------------------------------------------------------------
 
@@ -1856,7 +1856,7 @@ call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
 call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
 
 if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',ulimitedDimID
+   write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',unlimitedDimID
    call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
 endif
 
@@ -2187,9 +2187,9 @@ endif
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 
-write (*,*)'Finished filling variables ...'
+! write (*,*)'Finished filling variables ...'
 call check(nf90_sync(ncFileID))
-write (*,*)'netCDF file is synched ...'
+! write (*,*)'netCDF file is synched ...'
 
 contains
 
