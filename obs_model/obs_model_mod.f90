@@ -10,26 +10,33 @@ module obs_model_mod
 ! $Date$
 ! $Author$
 
-use       types_mod,  only : r8
-use   utilities_mod,  only : register_module
-use    location_mod,  only : location_type, interactive_location
-use assim_model_mod,  only : interpolate, aget_closest_state_time_to, &
+use        types_mod, only : r8, t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, &
+                             gas_constant, L_over_Rv, missing_r8, ps0
+use    utilities_mod, only : register_module, error_handler, E_ERR
+use     location_mod, only : location_type, interactive_location, get_location
+use  assim_model_mod, only : interpolate, aget_closest_state_time_to, &
                              am_get_close_states => get_close_states, &
-                             aadvance_state
-use    obs_kind_mod,  only : obs_kind_type, interactive_kind, get_obs_kind
+                             Aadvance_state, get_model_time_step
+use     obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind, &
+                             KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
+                             KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, &
+                             KIND_REF
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
                              get_obs_def, init_obs, destroy_obs, get_num_copies, &
                              get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
-use obs_def_mod,      only : obs_def_type, get_obs_def_location, get_obs_def_kind, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_kind, &
                              get_obs_def_time
+!WRF use      obs_def_mod, only : get_obs_def_platform
+!WRF use     platform_mod, only : platform_type, get_platform_location
 use utilities_mod,    only : error_handler, E_ERR
-use time_manager_mod, only : time_type, operator(/=), operator(>), get_time
+use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
+                             operator(-), operator(/), operator(+)
 
 
 implicit none
 private
 
-public take_obs, interactive_def, get_expected_obs, get_close_states, move_ahead
+public take_obs, interactive_def, get_expected_obs, get_close_states, move_ahead, take_vr, take_td
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -55,7 +62,7 @@ end subroutine initialize_module
 
 
 
-subroutine take_obs(state_vector, location, obs_kind, obs_vals, istatus, rstatus)
+subroutine take_obs(state_vector, location, obs_kind, obs_vals, istatus)
 !--------------------------------------------------------------------
 !
 
@@ -65,21 +72,13 @@ real(r8),            intent(in) :: state_vector(:)
 type(location_type), intent(in) :: location
 type(obs_kind_type), intent(in) :: obs_kind
 real(r8),           intent(out) :: obs_vals
-integer,  optional, intent(out) :: istatus
-real(r8), optional, intent(out) :: rstatus
+integer,            intent(out) :: istatus
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
-
-if(present(rstatus)) then
-   call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus, rstatus)
-elseif(present(istatus)) then
    call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals, istatus)
-else
-   call interpolate(state_vector, location, get_obs_kind(obs_kind), obs_vals)
-endif
 
 end subroutine take_obs
 
@@ -106,16 +105,15 @@ call interactive_kind(obs_kind)
 end subroutine interactive_def
 
 
-subroutine get_expected_obs(seq, keys, state, obs_vals, istatus, rstatus)
+subroutine get_expected_obs(seq, keys, state, obs_vals, istatus)
 !---------------------------------------------------------------------------
 ! Compute forward operator for set of obs in sequence
 
-type(obs_sequence_type), intent(in) :: seq
-integer,                 intent(in) :: keys(:)
-real(r8),                intent(in) :: state(:)
-real(r8),               intent(out) :: obs_vals(:)
-integer,  optional,     intent(out) :: istatus
-real(r8), optional,     intent(out) :: rstatus(:,:)
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: keys(:)
+real(r8),                intent(in)  :: state(:)
+real(r8),                intent(out) :: obs_vals(:)
+integer,                intent(out) :: istatus
 
 integer             :: num_obs, i
 type(location_type) :: location
@@ -127,6 +125,9 @@ integer             :: obs_kind_ind
 if ( .not. module_initialized ) call initialize_module
 
 num_obs = size(keys)
+
+! NEED to initialize istatus  to okay value
+istatus = 0
 
 ! Initialize the observation type
 !!! Can actually init with the correct size here if wanted
@@ -145,16 +146,13 @@ do i = 1, num_obs
          'identity obs is outside of state vector ', &
          source, revision, revdate)
       obs_vals(i) = state(-1 * obs_kind_ind)
-      if(present(rstatus)) rstatus(i,1) = 0.0_r8
-   else
 ! Otherwise do forward operator
-      if(present(rstatus)) then
-         call take_obs(state, location, obs_kind, obs_vals(i), istatus, rstatus(i,1))
-      elseif(present(istatus)) then
-         call take_obs(state, location, obs_kind, obs_vals(i), istatus)
-      else
-         call take_obs(state, location, obs_kind, obs_vals(i))
-      endif
+   elseif(obs_kind_ind == KIND_TD) then ! Dew-point temperature
+      call take_td(state, obs_def, obs_vals(i), istatus)
+   elseif(obs_kind_ind == KIND_VR) then ! Radial velocity
+      call take_vr(state, obs_def, obs_vals(i), istatus)
+   else
+      call take_obs(state, location, obs_kind, obs_vals(i), istatus)
    endif
 end do
 
@@ -165,7 +163,7 @@ end subroutine get_expected_obs
 
 
 
-subroutine get_close_states(seq, key, radius, numinds, indices, dist)
+subroutine get_close_states(seq, key, radius, numinds, indices, dist, x)
 !------------------------------------------------------------------------
 !
 
@@ -174,6 +172,7 @@ integer, intent(in) :: key
 real(r8), intent(in) :: radius
 integer, intent(out) :: numinds, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in)  :: x(:)
 
 type(obs_type) :: obs
 type(obs_def_type) :: obs_def
@@ -190,12 +189,115 @@ call get_obs_from_key(seq, key, obs)
 call get_obs_def(obs, obs_def)
 location = get_obs_def_location(obs_def)
 
-call am_get_close_states(location, radius, numinds, indices, dist)
+call am_get_close_states(location, radius, numinds, indices, dist, x)
 
 !Need to destroy this obs to free up allocated space
 call destroy_obs(obs)
 
 end subroutine get_close_states
+
+
+subroutine take_vr(state_vector, obs_def, vr, istatus)
+!--------------------------------------------------------------------
+!
+
+implicit none
+
+real(r8),            intent(in) :: state_vector(:)
+type(obs_def_type),  intent(in) :: obs_def
+real(r8),           intent(out) :: vr
+integer,            intent(out) :: istatus
+
+type(location_type) :: location, platform_location
+
+real(r8) :: u, v, w, p, qr, alpha, wt, direction(3)
+
+if ( .not. module_initialized ) call initialize_module
+
+location = get_obs_def_location(obs_def)
+!WRF direction = get_location(get_platform_location(get_obs_def_platform(obs_def)))
+
+call interpolate(state_vector, location, KIND_U, u, istatus)
+call interpolate(state_vector, location, KIND_V, v, istatus)
+call interpolate(state_vector, location, KIND_W, w, istatus)
+call interpolate(state_vector, location, KIND_P, p, istatus)
+call interpolate(state_vector, location, KIND_QR, qr, istatus)
+
+alpha=(ps0/p)**0.4_r8
+if(qr <= 0.0_r8) then
+   wt=0.0_r8
+else
+   wt=5.4_r8*alpha*qr**0.125_r8
+endif
+
+print*,'Terminal velocity = ',wt
+
+! direction(1) = sin(az)cos(elev)
+! direction(2) = cos(az)cos(elev)
+! direction(3) = sin(elev)
+! az and elev are angles at the observation location.
+
+vr = direction(1)*u + direction(2)*v + direction(3)*(w+wt)
+
+end subroutine take_vr
+
+
+subroutine take_td(state_vector, obs_def, td, istatus)
+!--------------------------------------------------------------------
+!
+
+implicit none
+
+real(r8),           intent(in)  :: state_vector(:)
+type(obs_def_type), intent(in)  :: obs_def
+real(r8),           intent(out) :: td
+integer,            intent(out) :: istatus
+
+type(location_type) :: location
+
+real(r8) :: t, qv, t_c, es, qvs, p, INVTD, rd_over_rv, rd_over_rv1
+
+if ( .not. module_initialized ) call initialize_module
+
+location = get_obs_def_location(obs_def)
+
+call interpolate(state_vector, location, KIND_P, p, istatus)
+call interpolate(state_vector, location, KIND_QV, qv, istatus)
+call interpolate(state_vector, location, KIND_T, t, istatus)
+
+if( p /= missing_r8 .and. qv /= missing_r8 .and. t /= missing_r8 ) then
+
+   rd_over_rv = gas_constant / gas_constant_v
+   rd_over_rv1 = 1.0_r8 - rd_over_rv
+
+   t_c = t - t_kelvin
+
+!------------------------------------------------------------------------------
+!  Calculate saturation vapour pressure:
+!------------------------------------------------------------------------------
+
+   es = es_alpha * exp( es_beta * t_c / ( t_c + es_gamma ) )
+
+!------------------------------------------------------------------------------
+!  Calculate saturation specific humidity:
+!------------------------------------------------------------------------------
+
+   qvs = rd_over_rv * es / ( p - rd_over_rv1 * es )
+
+   INVTD = 1.0_r8/t  - LOG (qv / qvs) / L_over_Rv
+
+   td = 1.0_r8 / INVTD
+
+else
+
+   td = missing_r8
+
+endif
+
+print*,INVTD, t, qv, qvs, es, p
+
+end subroutine take_td
+
 
 !-------------------------------------------------------------------------
 
@@ -216,7 +318,7 @@ integer, intent(in) :: last_key_used, async
 integer, intent(out) :: key_bounds(2), num_obs_in_set
 character(len = 129), intent(in) :: adv_ens_command
 
-type(time_type) :: next_time, time2
+type(time_type) :: next_time, time2, start_time, end_time, delta_time
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
 logical :: is_this_last, is_there_one, out_of_range
@@ -245,20 +347,23 @@ endif
 call get_obs_def(observation, obs_def)
 next_time = get_obs_def_time(obs_def)
 
-! Get all the obsevations at exactly this time
-call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs_in_set, out_of_range, observation)
-
-call get_time(next_time, secs, days)
-write(*, *) 'time of obs set  is (d, s) = ', days, secs
-
-! If the model time is past the obs set time, should be an error
-if(ens_time(1) > next_time) then
-   write(*, *) 'model time is already past time of obs_set in move_ahead in filter'
-   stop
-endif
-
 ! Figure out time to which to advance model 
 time2 = aget_closest_state_time_to(ens_time(1), next_time)
+
+! Compute the model time step and center a window around the closest time
+delta_time = get_model_time_step()
+! WATCH OUT FOR USING BOUNDARY TIME OBS TWICE; add one second to bottom time
+start_time = time2 - delta_time / 2 + set_time(1, 0)
+end_time = time2 + delta_time / 2
+
+! Get all the obsevations at exactly this time
+call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
+   out_of_range, observation)
+
+call get_time(start_time, secs, days)
+write(*, *) 'start time of obs range is (d, s) = ', days, secs
+call get_time(end_time, secs, days)
+write(*, *) 'end time of obs range   is (d, s) = ', days, secs
 
 ! Advance all ensembles (to the time of the first ensemble)
 if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async, adv_ens_command)
