@@ -13,7 +13,7 @@ module assim_tools_mod
 ! A variety of operations required by assimilation.
 
 use      types_mod, only : r8
-use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, &
+use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, get_unit, &
                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 use       sort_mod, only : index_sort 
 use random_seq_mod, only : random_seq_type, random_gaussian, &
@@ -21,7 +21,8 @@ use random_seq_mod, only : random_seq_type, random_gaussian, &
 
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
    init_obs, get_obs_from_key, get_obs_def, get_obs_values, get_qc, set_qc, &
-   set_obs, get_copy_meta_data
+   set_obs, get_copy_meta_data, read_obs_seq, destroy_obs_sequence, get_num_obs, &
+   write_obs_seq
    
 use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location
 use cov_cutoff_mod, only   : comp_cov_factor
@@ -789,8 +790,8 @@ end subroutine seq_filter_assim
 !===========================================================================
 
 subroutine filter_assim_region(num_domains, my_domain, domain_size, ens_size, model_size, &
-   num_groups, num_obs_in_set, compute_obs, obs_val_index, confidence_slope, cutoff, &
-   save_reg_series, reg_series_unit, ens, ens_obs_in, seq, keys, my_state)
+   num_groups, num_obs_in_set, obs_val_index, confidence_slope, cutoff, &
+   save_reg_series, reg_series_unit, ens, ens_obs_in, compute_obs, seq, keys, my_state)
 
 integer, intent(in) :: num_domains, my_domain, domain_size
 integer, intent(in) :: ens_size, model_size, num_groups, keys(num_obs_in_set), num_obs_in_set
@@ -900,10 +901,10 @@ Observations : do jjj = 1, num_obs_in_set
    if(compute_obs(j)) then
       do k = 1, ens_size
          ! Only compute forward operator if allowed
-         !if(1 == 1) then
-         !   write(*, *) 'OOOPS Computing get_expected_obs'
-         !   stop
-         !endif
+         if(1 == 1) then
+            write(*, *) 'OOOPS Computing get_expected_obs'
+            stop
+         endif
          call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus)
          ! Inability to compute forward operator implies skip this observation
          if (istatus > 0) then
@@ -1044,7 +1045,8 @@ end subroutine filter_assim_region
 !---------------------------------------------------------------------------
 
 subroutine filter_assim(ens_obs, compute_obs_in, ens_size, model_size, num_obs_in_set, &
-   num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit)
+   num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
+   obs_sequence_in_name)
 
 real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs_in(num_obs_in_set)
@@ -1053,12 +1055,14 @@ integer, intent(in) :: reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
 real(r8), intent(in) :: confidence_slope, cutoff
 logical, intent(in) :: save_reg_series
+character(len=*), intent(in) :: obs_sequence_in_name
 
-integer :: i, j, num_domains, domain_size, indx, obs_val_index
+integer :: i, j, num_domains, domain_size, indx, obs_val_index, iunit
 logical :: compute_obs(num_obs_in_set), my_state(model_size)
 real(r8), allocatable :: ens(:, :)
 integer, allocatable :: indices(:)
 type(time_type) :: ens_time(ens_size)
+character(len=129) :: temp_obs_seq_file
 
 compute_obs = compute_obs_in
 
@@ -1075,6 +1079,7 @@ end do
 call error_handler(E_ERR,'filter_assim', &
         'Did not find observation copy with metadata "observation"', &
          source, revision, revdate)
+
 
 
 ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL
@@ -1106,9 +1111,31 @@ do j = 1, num_domains
 !!!   call get_ensemble_region(ens, ens_time, state_vars_in = indices)
 
 ! Do ensemble filter update for this region
-   call filter_assim_region(num_domains, j, domain_size, ens_size, model_size, num_groups, &
-      num_obs_in_set, compute_obs, 1, confidence_slope, cutoff, save_reg_series, &
-      reg_series_unit, ens, ens_obs, seq, keys, my_state)
+!   call filter_assim_region(num_domains, j, domain_size, ens_size, model_size, num_groups, &
+!      num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+!      reg_series_unit, ens, ens_obs, compute_obs, seq, keys, my_state)
+
+! Development test of passing this interface by file in preparation for separate executables
+   iunit = get_unit()
+   open(unit = iunit, file = 'filter_assim_region_in', action = 'write', form = 'formatted', &
+      status = 'replace')
+   write(iunit, *) num_domains, j, domain_size, ens_size, model_size, num_groups, &
+      num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+      reg_series_unit, obs_sequence_in_name
+   write(iunit, *) ens, ens_obs, compute_obs, keys, my_state
+   close(iunit)
+
+   ! Write out the most up-to-date obs_sequence file, too, which includes qc
+   temp_obs_seq_file = 'filter_assim_obs_seq'
+   call write_obs_seq(seq, temp_obs_seq_file)
+
+   call async_assim_region()
+
+! Read in the update ensemble region (also need the qc eventually)
+   iunit = get_unit()
+   open(unit = iunit, file = 'filter_assim_region_out', action = 'read', form = 'formatted')
+   read(iunit, *) ens
+   close(iunit)
 
    ! Put this region into storage
 !!!   call put_ensemble_region(ens, ens_time, state_vars_in = indices)
@@ -1118,6 +1145,74 @@ do j = 1, num_domains
 end do
 
 end subroutine filter_assim
+
+
+!-----------------------------------------------------------------------
+
+subroutine async_assim_region()
+
+! DONT FORGET THE QC!!!
+! AND IN GENERAL NEED TO WORK ON REGSERIES STUFF!!!
+
+integer :: num_domains, my_domain, domain_size, ens_size, model_size, num_groups
+integer :: num_obs_in_set, obs_val_index, reg_series_unit
+real(r8) :: confidence_slope, cutoff
+character(len = 129) :: obs_sequence_in_name
+logical :: save_reg_series
+real(r8), allocatable :: ens(:, :), ens_obs(:, :)
+integer, allocatable :: keys(:)
+logical, allocatable :: my_state(:), compute_obs(:)
+
+type(obs_sequence_type) :: seq2
+integer :: iunit
+type(obs_type) :: obs1, obs2
+real(r8) :: val1(10), val2(10)
+
+! Read in all the arguments from the file
+iunit = get_unit()
+open(unit = iunit, file = 'filter_assim_region_in', action = 'read', form = 'formatted')
+read(iunit, *) num_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
+   num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+   reg_series_unit, obs_sequence_in_name
+
+! Allocate storage
+allocate(ens(ens_size, domain_size), ens_obs(ens_size, num_obs_in_set), &
+   compute_obs(num_obs_in_set), keys(num_obs_in_set), my_state(model_size))
+read(iunit, *) ens, ens_obs, compute_obs, keys, my_state
+
+close(iunit)
+
+! Now need to open the obs sequence file to proceed with call to region assim
+!val1 = 0.0; val2 = 0.0
+obs_sequence_in_name = 'filter_assim_obs_seq'
+call read_obs_seq(obs_sequence_in_name, 0, 0, 0, seq2)
+!write(*, *) 'seq 1 num_obs ', get_num_copies(seq)
+!write(*, *) 'seq 1 num_obs ', get_num_copies(seq2) 
+!call init_obs(obs1, 10, 10)
+!call get_obs_from_key(seq, keys(11), obs1)
+!call get_obs_values(obs1, val1)
+!write(*, *) 'seq 1 vals ', val1
+!call init_obs(obs2, 10, 10)
+!call get_obs_from_key(seq, keys(11), obs2)
+!call get_obs_values(obs2, val2)
+!write(*, *) 'seq 2 vals ', val2
+
+
+! Do ensemble filter update for this region
+call filter_assim_region(num_domains, my_domain, domain_size, ens_size, model_size, num_groups, &
+   num_obs_in_set, obs_val_index, confidence_slope, cutoff, save_reg_series, &
+   reg_series_unit, ens, ens_obs, compute_obs, seq2, keys, my_state)
+
+! Write out the updated ensemble region, need to do QC also
+iunit = get_unit()
+open(unit = iunit, file = 'filter_assim_region_out', action = 'write', form = 'formatted', &
+   status = 'replace')
+write(iunit, *) ens
+close(iunit)
+
+call destroy_obs_sequence(seq2)
+
+end subroutine async_assim_region
 
 !========================================================================
 ! end module assim_tools_mod
