@@ -10,25 +10,17 @@ character(len = 299), allocatable :: arg_name(:), arg_type(:)
 write(22, *) '<!--============= DESCRIPTION OF A SUBROUTINE =======================-->'
 
 spaces = '                                                                      '
-write(*, *) 'what is the number for this routines link'
-read(*, *) num
-
-if(num < 10) then
-   write(22, 11) num
-else
-   write(22, 21) num
-endif
-11 format('<A NAME="yyyroutine', i1 ,'"></A>')
-21 format('<A NAME="yyyroutine', i2 ,'"></A>')
-
-write(22, *) '<P></P><HR><P></P>'
-write(22, *) '<div class=routine>'
 
 write(*, *) 'input the number of arguments'
 read(*, *) num_args
 allocate(arg_name(0:num_args), arg_type(0:num_args))
+
 write(*, *) 'input the subroutine name'
 read(*, *) arg_name(0)
+write(22, *) '<A NAME="' // trim(arg_name(0)) // '"></A>'
+
+write(22, *) '<P></P><HR><P></P>'
+write(22, *) '<div class=routine>'
 
 ! Loop to read in the argument names
 do i = 1, num_args
