@@ -1,3 +1,11 @@
 &model_nml
-   output_state_vector      = .false.,
-   highest_obs_pressure_mb  = 30.0 /
+   output_state_vector      = .false.
+   model_config_file        = 'caminput.nc',
+   highest_obs_pressure_mb  = 30.0,
+   state_num_2d             = 1,
+   state_num_3d             = 6,
+   state_names_2d = 'PS      ',19*'        ',
+   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE   ',14*'        ',
+   Time_step_seconds = 21600,
+   Time_step_days = 0
+/

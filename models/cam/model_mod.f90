@@ -34,6 +34,13 @@ module model_mod
 ! modified: Tim Hoar 02 Sep 03 
 !         nc_write_model_atts, nc_write_model_vars now write out "prognostic"
 !         files instead of a nondescript state variable vector glom
+!
+! augmented; Kevin Raeder 7/1/04 for CAM3.0 and to use namelist input for
+!         lists of fields to include in state vector.
+!         'CAM3' marks changes
+!         Later;?
+!         Also; read field attributes from netcdf file and write them out 
+!         from nc_write_model_atts, instead of hard-coded there.
 !----------------------------------------------------------------------
 
 use netcdf
@@ -71,6 +78,8 @@ revdate  = "$Date$"
 ! Public definition of variable types
 integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 4, TYPE_TRACER = 5
 
+! CAM3; additional types, or can TRACER handle the new ones?
+
 !----------------------------------------------------------------------
 
 ! A type for cam model, very simple for now for conversion only
@@ -78,41 +87,54 @@ type model_type
     private
    real(r8), pointer :: vars_2d(:, :, :)
    real(r8), pointer :: vars_3d(:, :, :, :)
-   real(r8), pointer :: tracers(:, :, :, :)
 end type model_type
 
-!-----------------------------------------------------------------------                       
-! need a model namelist
-! output_state_vector = .true.     results in a "state-vector" netCDF file
-! output_state_vector = .false.    results in a "prognostic-var" netCDF file
-                                                                                               
-logical :: output_state_vector = .false.
-real(r8) :: highest_obs_pressure_mb = 30.0
-                                                                                               
-namelist /model_nml/ output_state_vector, highest_obs_pressure_mb
-
 !----------------------------------------------------------------------
-! File where basic info about model configuration can be found; should be namelist
-
-character(len = 128) :: model_config_file = 'caminput.nc'
-!character(len = 128) :: model_config_file = 'T5H0-12icl.cam2.i.0001-09-01-43200.nc'
-!----------------------------------------------------------------------
-
-!
 ! Global storage for describing cam model class
 integer :: model_size, num_lons, num_lats, num_levs
 
 type(time_type) :: Time_step_atmos
 
-integer, parameter :: n3dflds=4     ! # of 3d fields to read from file
-!                                   including Q, but not tracers
-integer, parameter :: pcnst  =0     ! advected tracers (don't include Q in this)
-integer, parameter :: pnats  =0     ! nonadvected tracers
-integer, parameter :: num_tracers = pcnst + pnats
-integer, parameter :: n2dflds=1     ! # of 2d fields to read from file
+!----------------------------------------------------------------------
+! Nameslist variables with default values follow
+
+! output_state_vector = .true.     results in a "state-vector" netCDF file
+! output_state_vector = .false.    results in a "prognostic-var" netCDF file
+logical :: output_state_vector = .false.
+
+! File where basic info about model configuration can be found
+character(len = 128) :: model_config_file = 'caminput.nc'
+
+! Define highest pressure for which obserations are used in mb
+real(r8) :: highest_obs_pressure_mb = 30.0
+
+! Namelist variables for defining state vector, and default values
+! Better names than CAM code
+integer :: state_num_2d = 1              ! # of 2d fields to read from file
+integer :: state_num_3d = 4              ! # of 3d fields to read from file
+
+! make these allocatable?  Where would I define the default values?
+integer :: i
+character (len=8),dimension(20) :: state_names_2d = (/'PS      ',('        ',i=1,19)/)
+character (len=8),dimension(20) :: state_names_3d =  &
+          (/'T       ','U       ','V       ','Q       ',('        ',i=1,16)/)
+
+! Is there a way to exclude stat_nums from namelist and have those filled in 
+! the  subroutine which sorts state_names?
+! Yes, use two namelists model_nml_1 and model_nml_2 at future date
+
+! Specify shortest time step that the model will support
+! This is limited below by CAMs fixed time step but is also impacted
+! by numerical stability concerns for repeated restarting in leapfrog.
+integer :: Time_step_seconds = 21600, Time_step_days = 0
+
+namelist /model_nml/ output_state_vector, model_config_file, highest_obs_pressure_mb, &
+   state_num_2d  , state_num_3d  , state_names_2d, state_names_3d, &
+   Time_step_seconds, Time_step_days
+
+!----------------------------------------------------------------------
 ! derived parameters
-integer, parameter :: n3tflds  = n3dflds+pcnst+pnats   ! # fields to read
-integer, parameter :: nflds  = n3tflds+n2dflds         ! # fields to read
+integer :: nflds         ! # fields to read
 
 ! Arrays to store lats, lons, and gaussian weights
 real(r8), allocatable :: lons(:), lats(:), gw(:)
@@ -124,19 +146,35 @@ real(r8), allocatable :: hyai(:), hybi(:), hyam(:), hybm(:)
 ! should be read from same file as hybrid coeffs?
 real(r8):: P0               ! reference pressure
 
-! list variables according to the category to which they belong, 
-! in the order the categories appear above (n3dflds,pcnst,pnats,n2dflds).
 ! from ncdump of CAM standard configuration initial file:
-!   lat = 64 ; lon = 128 ; lev = 26 ;
+!   P0 ; lat = 64 ; lon = 128 ; lev = 26 ; time
 !   hyai, hybi, hyam, hybm, gw
 !   U, V, T, Q, PS, 
 !   (names of advected and nonadv constituents)
-!   PHIS, SGH, LANDM, 
-!   TS, TSICE, TS1, TS2, TS3, TS4
-!   SNOWHICE, LANDFRAC, CWAT
-character (len=8),dimension(nflds) :: cflds = &
-          (/'PS      ','T       ','U       ','V       ','Q       ' /)
-!          (/'U       ','V       ','T       ','Q       ','PS      ' /)
+!   PHIS, SGH, PBLH, LANDM, 
+!   TPERT, QPERT, CLOUD, QCWAT, TCWAT, LCWAT,
+!   TSICERAD, TS, TSICE, TS1, TS2, TS3, TS4,
+!   SNOWHICE, LANDFRAC,
+!   TBOT, ICEFRAC, SICTHK, TSOCN, CLDLIQ, CLDICE,
+! list of variables to be included in the state vector,
+! according to the category to which they belong, 
+! in the order of 
+!   (state_num_2d, state_num_3d, state_num_adv_tracers, state_num_notadv_tracers).
+
+! CAM3 array 'cflds' is filled with simple loops over state_names_xxx, 
+! which requires that the field names be provided in the right order.
+! Later I should replace that with code which orders namelist input field names
+! into cflds, regardless of their original order, and tallies how many of each.
+! Is there a way to exclude state_nums from namelist and have those filled in 
+! the same subroutine?
+
+character (len=8), allocatable :: cflds(:)
+
+! Attribute values for the fields which comprise the state vector
+! These are filled by nc_read_model_atts
+character (len=128), allocatable :: state_long_names(:)
+character (len=128), allocatable :: state_units(:)
+! character (len=128), allocatable :: state_units_long_names(:)
 
 !---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
@@ -212,26 +250,29 @@ integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
 ! read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
-!2d fields; hard coded for only 1 2d field here (generalize???)
-do ifld= 1, 1
+! read CAM 'initial' file fields desired
+
+ifld = 0
+!2d fields
+do i= 1, state_num_2d
+   ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 3D; lon, lat, TIME(=1)
-   call check(nf90_get_var(ncfileid, ncfldid, var%vars_2d(:, :, 1) &
+   call check(nf90_get_var(ncfileid, ncfldid, var%vars_2d(:, :, i) &
              ,start=(/1,1,1/) ,count=(/num_lons, num_lats, 1/) ))
 end do
 
-! 3d fields; hard coded for only 4 here now (generalize???)
-do ifld=2, 5
+! 3d fields
+do i=1, state_num_3d
+   ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
    PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 4D; lon, lev, lat, TIME(=1) 
-   call check(nf90_get_var(ncfileid, ncfldid, var%vars_3d(:, :, :, ifld - 1) &
+   call check(nf90_get_var(ncfileid, ncfldid, var%vars_3d(:, :, :, i) &
              ,start=(/1,1,1,1/) ,count=(/num_lons, num_levs, num_lats,1/) ))
-
-!!! ?? WARNING: DOES THE NUMBER OF VERTICAL LEVELS PER 3D FIELD VARY
-! AS KEVIN"S CODE SUGGESTED. IF SO NEED TO FIX
 end do
+
 
 contains 
 
@@ -244,6 +285,60 @@ contains
    end subroutine check
 
 end subroutine read_cam_init
+
+
+  subroutine nc_read_model_atts(att, att_vals, nflds)
+!=======================================================================
+! subroutine nc_read_model_atts(att, att_vals, nflds)
+!
+! reads the value of an attribute for each of the fields in cflds.
+!
+! should be called with att = one of the attributes from the program variable
+! input file, which will be written to the Posterior and Prior.nc files
+
+!----------------------------------------------------------------------
+! Local workspace
+integer :: i, nchars, ierr
+integer :: ncfileid, ncfldid, ncattid
+
+!----------------------------------------------------------------------
+integer  :: att_type
+integer, intent(in)  :: nflds
+character (len=*), intent(in)  :: att 
+character (len=128), dimension(nflds), intent(out)  :: att_vals 
+
+! open CAM 'initial' file 
+! DONE ALREADY?
+call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
+          ncid = ncfileid))
+
+! read CAM 'initial' file attribute desired
+PRINT*,'reading ',att
+do i = 1,nflds
+   call check(nf90_inq_varid(ncfileid, trim(cflds(i)), ncfldid))
+! could be inquire_attribute
+! 
+   ierr = nf90_inquire_attribute(ncfileid, ncfldid, trim(att), att_type, nchars, ncattid) 
+
+   if (ierr == nf90_noerr) then
+      call check(nf90_get_att(ncfileid, ncfldid, trim(att) ,att_vals(i) ))
+      WRITE(*,*) ncfldid, cflds(i), trim(att_vals(i))
+   else
+      WRITE(*,*) ncfldid, cflds(i), 'NOT AVAILABLE'
+   end if
+enddo
+
+contains 
+
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus) 
+   integer, intent ( in) :: istatus 
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_read_model_atts', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
+end subroutine nc_read_model_atts
 
 
 
@@ -397,20 +492,15 @@ indx = 0
 do i = 1, num_lons
    do j = 1, num_lats
 !  Surface pressure and other 2d flds are first
-      do nf = 1, n2dflds
+      do nf = 1, state_num_2d
          indx = indx + 1
          x(indx) = var%vars_2d(i, j, nf)
       end do
 !     u,v,t,q, and tracers at successively lower levels
       do k = 1, num_levs
-         do nf= 1, n3dflds
+         do nf= 1, state_num_3d
             indx = indx + 1
             x(indx) = var%vars_3d(i, k, j, nf)
-         end do
-         do nt = 1, num_tracers
-            IF (i==1 .and. j==1) PRINT*,'filling tracers'
-            indx = indx + 1
-            x(indx) = var%tracers(i, k, j, nt)
          end do
       end do
    end do
@@ -443,20 +533,16 @@ indx = 0
 do i = 1, num_lons
    do j = 1, num_lats
 ! Surface pressure and other 2d fields are first
-      do nf = 1, n2dflds
+      do nf = 1, state_num_2d
          indx = indx + 1
          var%vars_2d(i, j, nf) = x(indx)
       end do
 !     u,v,t,q  and tracers at successive levels
       do k = 1, num_levs
-         do nf = 1, n3dflds
+         do nf = 1, state_num_3d
             indx = indx + 1
             var%vars_3d(i, k, j, nf) = x(indx)
          end do 
-         do nt = 1, num_tracers
-            indx = indx + 1
-            var%tracers(i, k, j, nt) = x(indx)
-         end do
       end do
    end do
 end do
@@ -476,6 +562,7 @@ end subroutine vector_to_prog_var
 !=======================================================================
 ! subroutine write_cam_init(file_name, var)
 
+! write CAM 'initial' file fields that have been updated
 
 character (len = *), intent(in) :: file_name
 type(model_type), intent(in) :: var
@@ -485,21 +572,20 @@ integer ifld, ncfileid, ncfldid
 ! Read CAM 'initial' file domain info
 call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
 
-! Try doing this in revised order
+ifld = 0
 ! 2d fields are first
-do ifld = 1, 1
+do i = 1, state_num_2d
+   ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(:, :, ifld), &
+   call check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(:, :, i), &
       start=(/1, 1, 1/), count = (/num_lons, num_lats, 1/)))
 end do 
 
-! write CAM 'initial' file fields that have been updated
-! ????? WARNING: PROBLEMS WITH TRACERS HERE
-! ??? THIS WHOLE MODULE NEEDS FURTHER REVISION WITH KEVIN"S HELP
-! Now do 3d fields, ignoring tracers for now
-do ifld= 2, 5
+! 3d fields
+do i = 1, state_num_3d
+   ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, var%vars_3d(:,:,:,ifld - 1) &
+   call check(nf90_put_var(ncfileid, ncfldid, var%vars_3d(:,:,:,i) &
              ,start=(/1,1,1,1/) ,count=(/num_lons, num_levs, num_lats,1/) ))
 end do
 
@@ -562,9 +648,12 @@ if(file_exist('input.nml')) then
    do while(ierr /= 0)
       read(iunit, nml = model_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'model_nml')
-   enddo
+   end do
  11 continue
    call close_file(iunit)
+! kdr
+else
+   write(logfileunit, '(A)') 'WARNING; input.nml not available for read of model_nml'
 endif
 
 ! Record the namelist values 
@@ -573,16 +662,13 @@ write(logfileunit, nml=model_nml)
 ! Get num lons, lats and levs from netcdf and put in global storage
 call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)
 
-! Time step reflects that CAM will be unstable? if we move only an hour
-! Use 6 hours to do assim every 6 hours, 3 hours for every 3 hours, etc.
-Time_step_atmos = set_time(21600, 0)
-!Time_step_atmos = set_time(3600, 0)
+! Set the model minimum time step from the namelist seconds and days input
+Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
 ! kdr debug
 call print_time(Time_step_atmos)
 
 ! Compute overall model size and put in global storage
-model_size = num_lons * num_lats * (n2dflds + num_levs * &
-   (n3dflds + pcnst + pnats))
+model_size = num_lons * num_lats * (state_num_2d + num_levs * state_num_3d) 
 
 ! Allocate space for longitude and latitude global arrays
 ! and Allocate space for hybrid vertical coord coef arrays
@@ -603,6 +689,17 @@ call read_cam_scalar(P0, 'P0      ')    ! thats a p-zero
 
 write(*, *) 'CAM size initialized as ', model_size
 
+! CAM3 subroutine to order the state vector parts into cflds 
+nflds   = state_num_3d + state_num_2d      ! # fields to read
+allocate (cflds(nflds))
+call order_state_fields (cflds, nflds)
+
+! CAM3 get field attributes needed by nc_write_model_atts from caminput.nc
+allocate (state_long_names(nflds), state_units(nflds))    ! , state_units_long_names(nflds))
+call nc_read_model_atts('long_name', state_long_names, nflds)
+call nc_read_model_atts('units', state_units, nflds)
+! call nc_read_model_atts('units_long_name', state_units_long_names, nflds)
+
 end subroutine static_init_model
 
 
@@ -617,9 +714,8 @@ type(model_type), intent(out) :: var
 
 ! Initialize the storage space and return
 
-allocate(var%vars_2d(num_lons, num_lats, n2dflds), &
-   var%vars_3d(num_lons, num_levs, num_lats, n3dflds), &
-   var%tracers(num_lons, num_levs, num_lats, num_tracers))
+allocate(var%vars_2d(num_lons, num_lats, state_num_2d), &
+   var%vars_3d(num_lons, num_levs, num_lats, state_num_3d))
 
 end subroutine init_model_instance
 
@@ -634,7 +730,7 @@ end subroutine init_model_instance
 
 type(model_type), intent(inout) :: var
 
-deallocate(var%vars_2d, var%vars_3d, var%tracers)
+deallocate(var%vars_2d, var%vars_3d)
 
 end subroutine end_model_instance
 
@@ -670,6 +766,7 @@ end subroutine adv_1step
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 ! Types for this CAM model are, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
+! TYPE_TRACER
 
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
@@ -683,7 +780,7 @@ integer  :: local_var_type, var_type_temp
 indx = index_in - 1
 
 ! Compute number of items per column
-num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
+num_per_col = num_levs * state_num_3d + state_num_2d
 
 ! What column is this index in
 col_num  = indx / num_per_col 
@@ -697,23 +794,29 @@ lat_index = col_num - lon_index * num_lats
 lon = lons(lon_index + 1)
 lat = lats(lat_index + 1)
 
+! CAM3 
+
 ! Now figure out which beast in column this is
 ! Surface pressure is the first element
-lev = (col_elem - 1) / (n3dflds + pcnst + pnats) + 1
+lev = (col_elem - 1) / state_num_3d  + 1
 if(col_elem == 0) then
    local_var_type = TYPE_PS
    lev = -1
 else
-   var_type_temp = mod(col_elem - 1, n3dflds + pcnst + pnats)
+   var_type_temp = mod(col_elem - 1, state_num_3d )
    if(var_type_temp == 0) then
       local_var_type = TYPE_T
    else if(var_type_temp == 1) then
       local_var_type = TYPE_U
    else if(var_type_temp == 2) then
       local_var_type = TYPE_V
-   else
+! CAM3
+   else if(var_type_temp == 3) then
       local_var_type = TYPE_Q
+   else
+      local_var_type = TYPE_TRACER
    endif
+! end CAM3
 endif
 
 !write(*, '(1x,3(f6.2,1x),i3)') lon, lat, lev, local_var_type
@@ -939,7 +1042,7 @@ istatus = 0
 
 ! Compute size of grid storage in a column; includes tracers
 ! Single 2D state vector is pressure
-per_col = 1 + num_levs * n3tflds
+per_col = 1 + num_levs * state_num_3d
 
 ! Find the starting index for this column
 indx = per_col * (lat_index - 1 + (lon_index - 1) * num_lats)
@@ -949,7 +1052,7 @@ if(type == 3) then
    indx = indx + 1
 else
 ! For interior fields compute the base for their level and add offset
-   indx = indx + 1 + (level - 1) * n3tflds
+   indx = indx + 1 + (level - 1) * state_num_3d
 ! Temperature
    if(type == 4) then
       indx = indx + 1
@@ -1069,7 +1172,7 @@ call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
 
 ! Compute size of grid storage for full levels
 hsize = num_lons * num_lats
-num_per_col = num_levs * (n3dflds + pcnst + pnats) + n2dflds
+num_per_col = num_levs * state_num_3d + state_num_2d
 
 ! For vertical localization need the vertical pressure structure for this column
 do i = 1, num
@@ -1308,12 +1411,11 @@ integer              :: ierr          ! return value of function
 !-----------------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: lonDimID, latDimID, ilevDimID, ScalarDimID, TracerDimID
+integer :: lonDimID, latDimID, ilevDimID, ScalarDimID
 integer :: MemberDimID, StateVarDimID, TimeDimID
 integer :: lonVarID, latVarID, ilevVarID, hyaiVarID, hybiVarID, P0VarID, gwVarID
-integer :: psVarID, TVarID, UVarID, VVarID, QVarID, ifld
-integer :: TracerVarID, StateVarID, StateVarVarID
-integer :: i
+integer :: xVarID,StateVarID, StateVarVarID 
+integer :: i, ifld
 character(len=129)    :: errstring 
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
@@ -1372,9 +1474,6 @@ call check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = Scala
 call check(nf90_def_dim(ncid=ncFileID, name="lat",  len = num_lats,   dimid = latDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="lon",  len = num_lons,   dimid = lonDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="ilev", len = num_levs+1, dimid = ilevDimID))
-if ( num_tracers > 0 ) then
-call check(nf90_def_dim(ncid=ncFileID, name="tracers",len = num_tracers, dimid = TracerDimID))
-endif
 
 !-------------------------------------------------------------------------------
 ! Create the (empty) Coordinate Variables and their attributes
@@ -1421,14 +1520,12 @@ call check(nf90_def_var(ncFileID, name="gw", xtype=nf90_double, &
                                                 dimids=latDimID, varid=gwVarID) )
 call check(nf90_put_att(ncFileID, gwVarID, "long_name", "gauss weights"))
 
-! Number of Tracers
-if ( num_tracers > 0 ) then
-   call check(nf90_def_var(ncFileID, name="tracer", xtype=nf90_int, &
-                                                  dimids=TracerDimID, varid=tracerVarID) )
-   call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"))
-endif
 
 if ( output_state_vector ) then
+
+! CAM3; need to adapt this to state_long_names, state_units, etc?
+
+
    !----------------------------------------------------------------------------
    ! Create attributes for the state vector
    !----------------------------------------------------------------------------
@@ -1460,12 +1557,14 @@ else
 !  stop
 
    !----------------------------------------------------------------------------
+   ! TJH;
    ! We need to process the prognostic variables.
    ! I like the CAM philosophy of using nflds to declare the number of prognostic
    ! variables and an array of characters to specify them. This is clearly
    ! the way it must be for models with "lots"/variable numbers of params. 
    ! 
    ! I'd like to see the metadata handled the same way.
+   !
    !----------------------------------------------------------------------------
    ! repeated for reference
    !
@@ -1482,47 +1581,28 @@ else
    ! Create the (empty) Variables and the Attributes
    !----------------------------------------------------------------------------
 
-   ! PS ... ifld == 1 of nflds
-   ifld = 1
-   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-              dimids = (/ lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
-              varid  = psVarID))
-   call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"))
-   call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"))
-   call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"))
+   ! 2-d fields
+   ifld = 0
+   do i = 1,state_num_2d
+      ifld = ifld + 1
+      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+                 dimids = (/ lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
+                 varid  = xVarID))
+      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
+      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
+!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+   enddo
 
-   ! T ... ifld == 2 of nflds
-   ifld = 2
-   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
-         varid  = TVarID))
-   call check(nf90_put_att(ncFileID, TVarID, "long_name", "Temperature"))
-   call check(nf90_put_att(ncFileID, TVarID, "units", "K"))
-
-! kdr these ilevDimIDs were levDimIDs in TJH code
-   ! U ... ifld == 3 of nflds
-   ifld = 3
-   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
-         varid  = UVarID))
-   call check(nf90_put_att(ncFileID, UVarID, "long_name", "Zonal Wind"))
-   call check(nf90_put_att(ncFileID, UVarID, "units", "m/s"))
-
-   ! V ... ifld == 4 of nflds
-   ifld = 4
-   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
-         varid  = VVarID))
-   call check(nf90_put_att(ncFileID, VVarID, "long_name", "Meridional Wind"))
-   call check(nf90_put_att(ncFileID, VVarID, "units", "m/s"))
-
-   ! Q ... ifld == 5 of nflds
-   ifld = 5
-   call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-         dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
-         varid  = QVarID))
-   call check(nf90_put_att(ncFileID, QVarID, "long_name", "Specific Humidity"))
-   call check(nf90_put_att(ncFileID, QVarID, "units", "kg/kg"))
+   ! 3-d fields
+   do i = 1,state_num_3d
+      ifld = ifld + 1
+      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+            dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
+            varid  = xVarID))
+      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
+      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
+!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+   enddo
 
    ! Leave define mode so we can fill 
    call check(nf90_enddef(ncfileID))
@@ -1540,9 +1620,6 @@ call check(nf90_put_var(ncFileID,  hyaiVarID, hyai ))
 call check(nf90_put_var(ncFileID,  hybiVarID, hybi ))
 call check(nf90_put_var(ncFileID,    gwVarID,   gw ))
 call check(nf90_put_var(ncFileID,    P0VarID,   P0 ))
-if ( num_tracers > 0 ) then
-   call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,num_tracers) /) ))
-endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -1632,26 +1709,23 @@ else
 
    call vector_to_prog_var(statevec,  Var)
    
-   TwoDVars : do ifld = 1, 1    ! PS always first? of one?
-   
-!   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var( ncFileID, ncfldid, Var%vars_2d(:,:,1), &
-             start=(/ 1, 1, copyindex, timeindex /), count=(/num_lons, num_lats, 1, 1/) ))
-   enddo TwoDVars
+   ifld = 0
+   TwoDVars : do i = 1, state_num_2d    
+      ifld = ifld + 1
+      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+      call check(nf90_put_var( ncFileID, ncfldid, Var%vars_2d(:,:,i), &
+                 start=(/ 1, 1, copyindex, timeindex /), &
+                 count=(/num_lons, num_lats, 1, 1/) ))
+   end do TwoDVars
 
-   ThreeDVars : do ifld = 2,5
-   call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var( ncFileID, ncfldid, Var%vars_3d(:,:,:,ifld-1), &
-        start=(/ 1,1,1,copyindex,timeindex /), count=(/num_lons,num_levs,num_lats,1,1/) ))
-   enddo ThreeDVars
+   ThreeDVars : do i = 1,state_num_3d
+      ifld = ifld + 1
+      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
+      call check(nf90_put_var( ncFileID, ncfldid, Var%vars_3d(:,:,:,i), &
+                 start=(/ 1,1,1,copyindex,timeindex /), &
+                 count=(/num_lons,num_levs,num_lats,1,1/) ))
+   end do ThreeDVars
 
-   if ( num_tracers > 0 ) then
-      call check(NF90_inq_varid(ncFileID,  "tracers",  ncfldid))
-      call check(nf90_put_var( ncFileID,  ncfldid, Var%tracers(:,:,:,:), & 
-           start=(/ 1,1,1,1,copyindex,timeindex /), &
-           count=(/ num_lons, num_levs, num_lats, num_tracers,1,1/) ))
-   endif
 endif
 
 !-------------------------------------------------------------------------------
@@ -1773,6 +1847,48 @@ interf_provided = .false.
 
 end subroutine pert_model_state
 
+
+
+  subroutine order_state_fields(cflds,nflds)
+!=======================================================================
+! subroutine order_state_fields(cflds,nflds)
+! 
+! fills cflds with state_names for use in I/O of caminput.nc
+! Could eventually tally the number of each kind of field; 2D,3D
+! and compare each entry against a master list.
+! Sort by class of variable too? So user could provide one unordered list?
+
+integer :: i, nfld
+integer, intent(in) :: nflds
+character (len = *), dimension(nflds), intent(out) :: cflds 
+character (len = 129) :: errstring
+
+nfld = 0
+
+! 2D fields
+do i=1,state_num_2d
+   nfld = nfld + 1
+   cflds(nfld)(:) = state_names_2d(i)
+end do
+
+! 3D fields (including q)
+do i=1,state_num_3d
+   nfld = nfld + 1
+   cflds(nfld)(:) = state_names_3d(i)
+end do
+
+if (nfld .ne. nflds) then
+   write(errstring, *) 'nfld = ',nfld,', nflds = ',nflds,' must be equal '
+   call error_handler(E_ERR, 'order_state_fields', errstring, source, revision, revdate)
+else
+!   write(logfileunit,'(/A/(10(A8,1X)))') 'State vector is composed of ',(cflds(i),i=1,nflds)
+   write(logfileunit,'(/A/)') 'State vector is composed of '
+   write(logfileunit,'((8(A8,1X)))') (cflds(i),i=1,nflds)
+endif
+
+return
+
+end subroutine order_state_fields
 
 !#######################################################################
 ! end of cam model_mod
