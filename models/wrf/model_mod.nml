@@ -2,4 +2,5 @@
    output_state_vector = .false.,
    num_moist_vars = 3,
    wrf_dt = 300,
-   wrf_dx = 100000  /
+   wrf_dx = 100000,
+   calendar_type = GREGORIAN  /

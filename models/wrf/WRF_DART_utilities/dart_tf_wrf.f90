@@ -27,20 +27,13 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
-! Namelist parameters with default values
-!-----------------------------------------------------------------------
-
-integer              :: calendar_type         = GREGORIAN
-
-namelist /dart_tf_wrf_nml/ calendar_type
-
-!-----------------------------------------------------------------------
 ! Model namelist parameters with default values
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector = .true.  ! output prognostic variables
-integer :: num_moist_vars = 0
+logical :: output_state_vector  = .true.  ! output prognostic variables
+integer :: num_moist_vars       = 0
 integer :: wrf_dt = 300, wrf_dx = 100000
+integer :: calendar_type        = GREGORIAN
 
 namelist /model_nml/ output_state_vector, num_moist_vars, wrf_dt, wrf_dx
 
@@ -85,10 +78,6 @@ write(logfileunit,*)'STARTING dart_tf_wrf ...'
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
-!!$   read(iunit, nml = dart_tf_wrf_nml, iostat = io )
-!!$   ierr = check_nml_error(io, 'dart_tf_wrf_nml')
-
-!!$   rewind(iunit)
    read(iunit, nml = assim_model_nml, iostat = io )
    ierr = check_nml_error(io, 'assim_model_nml')
 

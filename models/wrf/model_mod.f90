@@ -22,7 +22,7 @@ module model_mod
 !-----------------------------------------------------------------------
 
 use               types_mod, only : r8, deg2rad, rad2deg, missing_r8
-use        time_manager_mod, only : time_type, set_time
+use        time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use            location_mod, only : location_type, get_location, set_location, &
                                     get_dist, &
                                     LocationDims, LocationName, LocationLName, &
@@ -77,10 +77,13 @@ revdate  = "$Date$"
 ! model namelist parameters
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector = .true.  ! output prognostic variables
-integer :: num_moist_vars = 0            ! default value
+logical :: output_state_vector  = .true.  ! output prognostic variables
+integer :: num_moist_vars       = 0            ! default value
+integer :: wrf_dt = 300, wrf_dx = 100000
+integer :: calendar_type        = GREGORIAN
 
-namelist /model_nml/ output_state_vector, num_moist_vars
+namelist /model_nml/ output_state_vector, num_moist_vars, wrf_dt, wrf_dx, &
+                     calendar_type
 
 
 ! Public definition of variable types
@@ -193,6 +196,8 @@ endif
 
 ! Record the namelist values in the logfile
 write(logfileunit, nml=model_nml)
+
+call set_calendar_type(calendar_type)
 
 call check( nf90_open('wrfinput', NF90_NOWRITE, ncid) )
 if(debug) write(6,*) ' ncid is ',ncid
