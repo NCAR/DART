@@ -85,11 +85,11 @@ real(r8) :: slope       = 0.0_r8
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer  :: ens_size    = 20
+integer  :: async       = 0, ens_size = 20
 real(r8) :: cutoff      = 200.0_r8
 real(r8) :: cov_inflate = 1.0_r8
 integer  :: cache_size  = 10
-logical  :: async = .false., start_from_restart = .false., output_restart = .false.
+logical  :: start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days    = -1
