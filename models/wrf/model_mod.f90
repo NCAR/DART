@@ -1,7 +1,7 @@
 ! Data Assimilation Research Testbed -- DART
 ! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
- 
+
 module model_mod
 
 ! <next three lines automatically updated by CVS, do not edit>
@@ -31,7 +31,6 @@ use           utilities_mod, only : file_exist, open_file, check_nml_error, &
                                     close_file, &
                                     register_module, error_handler, E_ERR, &
                                     E_MSG, logfileunit
-use module_netcdf_interface, only : netcdf_read_write_var
 use            obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
                                     KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, &
                                     KIND_REF
@@ -50,20 +49,19 @@ public     get_model_size,                    &
            get_model_time_step,               &
            static_init_model,                 &
            model_get_close_states,            &
-           output_wrf_time,                   &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
            TYPE_QV, TYPE_QC, TYPE_QR,         &
-           pert_model_state
+           pert_model_state,                  &
+           nc_write_model_atts,               &
+           nc_write_model_vars
 
 !  public stubs 
 
 public     adv_1step,           &
            end_model,           &
            init_time,           &
-           init_conditions,     &
-           nc_write_model_atts, &
-           nc_write_model_vars
+           init_conditions
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -115,7 +113,8 @@ TYPE wrf_static_data_for_dart
    integer  :: bt, bts, sn, sns, we, wes
    real(r8) :: p_top, dx, dy, dt
    integer  :: map_proj
-   real(r8) :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1
+   real(r8) :: cen_lat,cen_lon,truelat1,truelat2,stand_lon
+   real(r8) :: cone_factor,ycntr,psi1
 
    integer  :: n_moist
    real(r8), dimension(:),     pointer :: znu, dn, dnw
@@ -130,9 +129,6 @@ TYPE wrf_static_data_for_dart
    integer, dimension(:,:), pointer :: land
    character(len=8), dimension(:), pointer :: var_name
 
-   integer :: date_len
-   character(len=1), dimension(:), pointer :: timestring
-
 end type
 
 type(wrf_static_data_for_dart) :: wrf
@@ -146,20 +142,12 @@ subroutine static_init_model()
 
 ! INitializes class data for WRF???
 
-integer :: ncid, bt_id, we_id, sn_id
+integer :: ncid
 integer :: io, ierr, iunit
 
 character (len=80)    :: name
 logical, parameter    :: debug = .false.
-integer               :: var_id, ind, i, map_proj
-
-integer, dimension(5) :: kount, start, stride, map
-real(r8)              :: zero_d(1)
-
-real(r8) :: dx, dy, dt
-
-real(r8)                              :: cen_lat, cen_lon, truelat1, truelat2
-real(r8), allocatable, dimension(:,:) :: temp
+integer               :: var_id, ind, i
 
 real(r8) :: theta1,theta2,cell,cell2,psx
 
@@ -168,13 +156,13 @@ real(r8) :: theta1,theta2,cell,cell2,psx
 ! Register the module
 call register_module(source, revision, revdate)
 
-! Reading the namelist input                                           
+! Reading the namelist input
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io )
    ierr = check_nml_error(io, 'model_nml')
-   call close_file(iunit)                                                        
+   call close_file(iunit)
 
    wrf%n_moist = num_moist_vars
 
@@ -202,158 +190,119 @@ if(debug) write(6,*) ' ncid is ',ncid
 
 ! get wrf grid dimensions
 
-call check( nf90_inq_dimid(ncid, "bottom_top", bt_id) )
-call check( nf90_inquire_dimension(ncid, bt_id, name, wrf%bt) )
+call check( nf90_inq_dimid(ncid, "bottom_top", var_id) )
+call check( nf90_inquire_dimension(ncid, var_id, name, wrf%bt) )
 
-call check( nf90_inq_dimid(ncid, "bottom_top_stag", bt_id) ) ! reuse bt_id, no harm
-call check( nf90_inquire_dimension(ncid, bt_id, name, wrf%bts) )
+call check( nf90_inq_dimid(ncid, "bottom_top_stag", var_id) ) ! reuse var_id, no harm
+call check( nf90_inquire_dimension(ncid, var_id, name, wrf%bts) )
 
-call check( nf90_inq_dimid(ncid, "south_north", sn_id) )
-call check( nf90_inquire_dimension(ncid, sn_id, name, wrf%sn) )
+call check( nf90_inq_dimid(ncid, "south_north", var_id) )
+call check( nf90_inquire_dimension(ncid, var_id, name, wrf%sn) )
 
-call check( nf90_inq_dimid(ncid, "south_north_stag", sn_id)) ! reuse sn_id, no harm
-call check( nf90_inquire_dimension(ncid, sn_id, name, wrf%sns) )
+call check( nf90_inq_dimid(ncid, "south_north_stag", var_id)) ! reuse var_id, no harm
+call check( nf90_inquire_dimension(ncid, var_id, name, wrf%sns) )
 
-call check( nf90_inq_dimid(ncid, "west_east", we_id) )
-call check( nf90_inquire_dimension(ncid, we_id, name, wrf%we) )
+call check( nf90_inq_dimid(ncid, "west_east", var_id) )
+call check( nf90_inquire_dimension(ncid, var_id, name, wrf%we) )
 
-call check( nf90_inq_dimid(ncid, "west_east_stag", we_id) )  ! reuse we_id, no harm
-call check( nf90_inquire_dimension(ncid, we_id, name, wrf%wes) )
+call check( nf90_inq_dimid(ncid, "west_east_stag", var_id) )  ! reuse var_id, no harm
+call check( nf90_inquire_dimension(ncid, var_id, name, wrf%wes) )
 
 if(debug) then
    write(6,*) ' dimensions bt, sn, we are ',wrf%bt, wrf%sn, wrf%we
    write(6,*) ' staggered  bt, sn, we are ',wrf%bts,wrf%sns,wrf%wes
 endif
 
-! data char length
-call check(nf90_inq_dimid(ncid, "DateStrLen", we_id))    ! reuse we_id, no harm
-call check(nf90_inquire_dimension(ncid, we_id, name, wrf%date_len))
-
 ! get meta data and static data we need
 
-kount  = 1
-start  = 1
-stride = 1
-map    = 1
+call check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dx) )
+call check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dy) )
+call check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dt) )
+if(debug) write(6,*) ' dx, dy, dt are ',wrf%dx, wrf%dy, wrf%dt
 
-call check( nf90_get_att(ncid, nf90_global, 'DX', dx) )
-wrf%dx = dx
-if(debug) write(6,*) ' dx is ',dx
-
-call check( nf90_get_att(ncid, nf90_global, 'DY', dy) )
-wrf%dy = dy
-if(debug) write(6,*) ' dy is ',dy
-
-call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
-wrf%dt = dt
-if(debug) write(6,*) ' dt is ',dt
-
-!!$call netcdf_read_write_var( "P_TOP", ncid, var_id, zero_d,        &
-!!$                            start, kount, stride, map, 'INPUT ', debug, 1  )
-!!$wrf%p_top = zero_d(1)
 call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
 call check( nf90_get_var(ncid, var_id, wrf%p_top) )
 if(debug) write(6,*) ' p_top is ',wrf%p_top
 
-call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', map_proj) )
+call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', wrf%map_proj) )
+if(debug) write(6,*) ' map_proj is ',wrf%map_proj
 
-
-wrf%map_proj = map_proj
-
-if(debug) write(6,*) ' map_proj is ',map_proj
-call check( nf90_get_att(ncid, nf90_global, 'CEN_LAT', cen_lat) )
-
-wrf%cen_lat = cen_lat
+call check( nf90_get_att(ncid, nf90_global, 'CEN_LAT', wrf%cen_lat) )
 if(debug) write(6,*) ' cen_lat is ',wrf%cen_lat
 
-call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', cen_lon) )
+call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', wrf%cen_lon) )
 
-wrf%cen_lon = cen_lon
-call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1) )
+call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', wrf%truelat1) )
+if(debug) write(6,*) ' truelat1 is ',wrf%truelat1
 
-wrf%truelat1 = truelat1
-call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2) )
-
-wrf%truelat2 = truelat2
-
+call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', wrf%truelat2) )
 if(debug) write(6,*) ' truelat2 is ',wrf%truelat2
 
-if ( abs(truelat1-truelat2) .gt. 1.e-1 ) then
-   theta1 = (90.0 - wrf%truelat1)*deg2rad
-   theta2 = (90.0 - wrf%truelat2)*deg2rad
+call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', wrf%stand_lon) )
+
+if ( abs(wrf%truelat1-wrf%truelat2) .gt. 0.1_r8 ) then
+   theta1 = (90.0_r8 - wrf%truelat1)*deg2rad
+   theta2 = (90.0_r8 - wrf%truelat2)*deg2rad
    wrf%cone_factor = (log(sin(theta1)) - log(sin(theta2))) &
-        / (log(tan(theta1*0.5)) - log(tan(theta2*0.5)))
+        / (log(tan(theta1*0.5_r8)) - log(tan(theta2*0.5_r8)))
 else
-   wrf%cone_factor = sign(1.0,truelat1)*sin(truelat1 * deg2rad)
+   wrf%cone_factor = sign(1.0_r8,wrf%truelat1)*sin(wrf%truelat1 * deg2rad)
 end if
 
-if(debug) write(unit=*, fmt='(a, f16.13)')'cone factor = ', wrf%cone_factor  
+if(debug) write(6,*) 'cone factor = ', wrf%cone_factor
 
 IF (wrf%map_proj.EQ.1 .OR. wrf%map_proj.EQ.2) THEN
-   IF(wrf%cen_lat.LT.0)THEN 
-      wrf%psi1 = -(90.+wrf%truelat1)
+   IF(wrf%cen_lat.LT.0.0_r8)THEN 
+      wrf%psi1 = -(90.0_r8+wrf%truelat1)
    ELSE
-      wrf%psi1 = 90.-wrf%truelat1            
+      wrf%psi1 = 90.0_r8-wrf%truelat1
    ENDIF
 ELSE
-   wrf%psi1 = 0.            
+   wrf%psi1 = 0.0_r8
 ENDIF
 
-wrf%psi1 = deg2rad * wrf%psi1             
+wrf%psi1 = deg2rad * wrf%psi1
 
 IF (wrf%map_proj.NE.3) THEN
-   psx = (90.0 - wrf%cen_lat)*deg2rad    
+   psx = (90.0_r8 - wrf%cen_lat)*deg2rad
    IF (wrf%map_proj.EQ.1) THEN
       cell  = earth_radius*SIN(wrf%psi1)/wrf%cone_factor
-      cell2 = (TAN(psx/2.))/(TAN(wrf%psi1/2.))
+      cell2 = (TAN(psx/2.0_r8))/(TAN(wrf%psi1/2.0_r8))
    ENDIF
    IF (wrf%map_proj.EQ.2) THEN
       cell  = earth_radius*SIN(psx)/wrf%cone_factor
-      cell2 = (1. + COS(wrf%psi1))/(1. + COS(psx))
+      cell2 = (1.0_r8 + COS(wrf%psi1))/(1.0_r8 + COS(psx))
    ENDIF
    wrf%ycntr = - cell*(cell2)**wrf%cone_factor
 ENDIF
 ! -----FOR MERCATOR PROJECTION, THE PROJECTION IS TRUE AT LAT AT PHI1
 IF (wrf%map_proj.EQ.3) THEN
-   cell      = COS(wrf%cen_lat*deg2rad)/(1.0+SIN(wrf%cen_lat*deg2rad))
+   cell      = COS(wrf%cen_lat*deg2rad)/(1.0_r8+SIN(wrf%cen_lat*deg2rad))
    wrf%ycntr = - earth_radius*COS(wrf%psi1)* log(cell)
 ENDIF
 
 !  get 1D (z) static data defining grid levels
 
-kount(1)  = wrf%date_len
-allocate(wrf%timestring(1:wrf%date_len))
-call netcdf_read_write_char( "Times",ncid, var_id, wrf%timestring,        &
-                            start, kount, stride, map, 'INPUT ', debug, 2  )
-
-if(debug) write(6,*) ' Time ',wrf%timestring
-
-kount(1)  = wrf%bt
 allocate(wrf%dn(1:wrf%bt))
-call netcdf_read_write_var( "DN",ncid, var_id, wrf%dn,        &
-                            start, kount, stride, map, 'INPUT ', debug, 2  )
+call check( nf90_inq_varid(ncid, "DN", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%dn) )
 if(debug) write(6,*) ' dn ',wrf%dn
 
-kount(1)  = wrf%bt
 allocate(wrf%znu(1:wrf%bt))
-call netcdf_read_write_var( "ZNU",ncid, var_id, wrf%znu,        &
-                            start, kount, stride, map, 'INPUT ', debug, 2  )
+call check( nf90_inq_varid(ncid, "ZNU", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%znu) )
 if(debug) write(6,*) ' znu is ',wrf%znu
-!
-kount(1)  = wrf%bt
+
 allocate(wrf%dnw(1:wrf%bt))
-call netcdf_read_write_var( "DNW",ncid, var_id, wrf%dnw,        &
-                            start, kount, stride, map, 'INPUT ', debug, 2  )
+call check( nf90_inq_varid(ncid, "DNW", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%dnw) )
 if(debug) write(6,*) ' dnw is ',wrf%dnw
 
 !  get 2D (x,y) base state for mu, latitude, longitude
 
-kount(1)  = wrf%we
-kount(2)  = wrf%sn
-kount(3)  = 1
 allocate(wrf%mub(1:wrf%we,1:wrf%sn))
-call netcdf_read_write_var( "MUB",ncid, var_id, wrf%mub,        &
-                            start, kount, stride, map, 'INPUT ', debug, 3  )
+call check( nf90_inq_varid(ncid, "MUB", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%mub) )
 if(debug) then
     write(6,*) ' corners of mub '
     write(6,*) wrf%mub(1,1),wrf%mub(wrf%we,1),  &
@@ -361,16 +310,21 @@ if(debug) then
 end if
 
 allocate(wrf%longitude(1:wrf%we,1:wrf%sn))
-call netcdf_read_write_var( "XLONG",ncid, var_id, wrf%longitude,        &
-                            start, kount, stride, map, 'INPUT ', debug, 3  )
+call check( nf90_inq_varid(ncid, "XLONG", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%longitude) )
+
 allocate(wrf%latitude(1:wrf%we,1:wrf%sn))
-call netcdf_read_write_var( "XLAT",ncid, var_id, wrf%latitude,        &
-                            start, kount, stride, map, 'INPUT ', debug, 3  )
-allocate(wrf%land(1:wrf%we,1:wrf%sn), temp(1:wrf%we,1:wrf%sn))
-call netcdf_read_write_var( "XLAND",ncid, var_id, temp,        &
-                            start, kount, stride, map, 'INPUT ', debug, 3  )
-wrf%land = nint(temp)       ! coerce from float to integer ...
-deallocate(temp)
+call check( nf90_inq_varid(ncid, "XLAT", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%latitude) )
+
+allocate(wrf%land(1:wrf%we,1:wrf%sn))
+call check( nf90_inq_varid(ncid, "XLAND", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%land) )
+if(debug) then
+    write(6,*) ' corners of land '
+    write(6,*) wrf%land(1,1),wrf%land(wrf%we,1),  &
+               wrf%land(1,wrf%sn),wrf%land(wrf%we,wrf%sn)
+end if
 
 if(debug) then
     write(6,*) ' corners of lat '
@@ -382,33 +336,26 @@ if(debug) then
 end if
 
 allocate(wrf%mapfac_m(1:wrf%we,1:wrf%sn))
-call netcdf_read_write_var( "MAPFAC_M",ncid, var_id, wrf%mapfac_m,        &
-                            start, kount, stride, map, 'INPUT ', debug, 3  )
+call check( nf90_inq_varid(ncid, "MAPFAC_M", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%mapfac_m) )
 
 allocate(wrf%hgt(1:wrf%we,1:wrf%sn))
-call netcdf_read_write_var( "HGT",ncid, var_id, wrf%hgt,        &
-                            start, kount, stride, map, 'INPUT ', debug, 3  )
+call check( nf90_inq_varid(ncid, "HGT", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%hgt) )
 
-kount(1)  = wrf%wes
-kount(2)  = wrf%sn
 allocate(wrf%mapfac_u(1:wrf%wes,1:wrf%sn))
-call netcdf_read_write_var( "MAPFAC_U",ncid, var_id, wrf%mapfac_u,        &
-                            start, kount, stride, map, 'INPUT ', debug, 4  )
+call check( nf90_inq_varid(ncid, "MAPFAC_U", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%mapfac_u) )
 
-kount(1)  = wrf%we
-kount(2)  = wrf%sns
 allocate(wrf%mapfac_v(1:wrf%we,1:wrf%sns))
-call netcdf_read_write_var( "MAPFAC_V",ncid, var_id, wrf%mapfac_V,        &
-                            start, kount, stride, map, 'INPUT ', debug, 4  )
+call check( nf90_inq_varid(ncid, "MAPFAC_V", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%mapfac_v) )
 
 ! get 3D base state geopotential
 
-kount(1)  = wrf%we
-kount(2)  = wrf%sn
-kount(3)  = wrf%bts
 allocate(wrf%phb(1:wrf%we,1:wrf%sn,1:wrf%bts))
-call netcdf_read_write_var( "PHB",ncid, var_id, wrf%phb,        &
-                            start, kount, stride, map, 'INPUT ', debug, 4  )
+call check( nf90_inq_varid(ncid, "PHB", var_id) )
+call check( nf90_get_var(ncid, var_id, wrf%phb) )
 if(debug) then
     write(6,*) ' corners of phb '
     write(6,*) wrf%phb(1,1,1),wrf%phb(wrf%we,1,1),  &
@@ -519,8 +466,8 @@ call check( nf90_close(ncid) )
 
 contains
 
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
   subroutine check(istatus)
     integer, intent (in) :: istatus
 
@@ -531,57 +478,6 @@ contains
 
 end subroutine static_init_model
 
-
-!**********************************************************************
-
-subroutine netcdf_read_write_char( variable, ncid, var_id, var,          &
-                                  start, kount, stride, map, in_or_out, debug, ndims )
-
-! Rewritten to use some F90 interface and totally replace the dart_to_wrf 
-! module routine. There used to be TWO routines that did the same thing.
-! 
-! As such 'kount', 'stride','map' all become meaningless because
-! the whole process is slaved to simply replace an existing netcdf
-! variable with a conformable variable -- no possibility for 
-! us to write a subset of the domain.
-
-integer                            :: ncid, var_id, ndims
-character(len=1), dimension(ndims) :: var
-character (len=6)                  :: in_or_out
-integer, dimension(ndims)          :: start, kount, stride, map
-character (len=*)                  :: variable
-logical                            :: debug
-character (len=129) :: error_string
-
-if(debug) write(6,*) ' var for io is ',variable
-call check(  nf90_inq_varid(ncid, variable, var_id) )
-if(debug) write(6,*) variable, ' id = ',var_id
-
-if( in_or_out(1:5) == "INPUT" ) then
-
-  call check( nf90_get_var(ncid, var_id, var(1:kount(1)), start=start, count=kount, stride=stride) )
-
-else if( in_or_out(1:6) == "OUTPUT" ) then
-
-  call check( nf90_put_var(ncid, var_id, var(1:kount(1)), start, kount, stride, map) )
-
-else
-
-  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
-  call error_handler(E_ERR,'netcdf_read_write_char', &
-       error_string, source, revision,revdate)
-
-end if
-
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_char', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-  end subroutine check
-end subroutine netcdf_read_write_char
 
 !#######################################################################
 
@@ -635,7 +531,7 @@ logical  :: var_found
 real(r8) :: lon, lat, lev
 
 integer :: i
-logical, parameter :: debug = .false.  
+logical, parameter :: debug = .false.
 character(len=129) :: errstring
 
 if(debug) then
@@ -673,7 +569,7 @@ var_found = .false.
    end do
 
 !  now find i,j,k location.
-!  index has been normalized such that it is relative to 
+!  index has been normalized such that it is relative to
 !  array starting at (1,1,1)
 
    nx = wrf%var_size(1,i)
@@ -694,38 +590,38 @@ var_found = .false.
 
      if(ip == 1) then
 
-        lon = wrf%longitude(1,jp) - 0.5*(wrf%longitude(2,jp)-wrf%longitude(1,jp))
+        lon = wrf%longitude(1,jp) - 0.5_r8*(wrf%longitude(2,jp)-wrf%longitude(1,jp))
         if (wrf%longitude(2,jp) < wrf%longitude(1,jp)) lon = lon - 180.0_r8
-        lat = wrf%latitude(1,jp)  - 0.5*(wrf%latitude(2,jp)-wrf%latitude(1,jp))
+        lat = wrf%latitude(1,jp)  - 0.5_r8*(wrf%latitude(2,jp)-wrf%latitude(1,jp))
 
      else if(ip == nx) then
 
-        lon = wrf%longitude(nx-1,jp) + 0.5*(wrf%longitude(nx-1,jp)-wrf%longitude(nx-2,jp))
+        lon = wrf%longitude(nx-1,jp) + 0.5_r8*(wrf%longitude(nx-1,jp)-wrf%longitude(nx-2,jp))
         if (wrf%longitude(nx-1,jp) < wrf%longitude(nx-2,jp)) lon = lon + 540.0_r8
-        lat = wrf%latitude(nx-1,jp)  + 0.5*(wrf%latitude(nx-1,jp)-wrf%latitude(nx-2,jp))
+        lat = wrf%latitude(nx-1,jp)  + 0.5_r8*(wrf%latitude(nx-1,jp)-wrf%latitude(nx-2,jp))
 
      else
 
-        lon = 0.5*(wrf%longitude(ip,jp)+wrf%longitude(ip-1,jp))
+        lon = 0.5_r8*(wrf%longitude(ip,jp)+wrf%longitude(ip-1,jp))
         if (wrf%longitude(ip,jp) < wrf%longitude(ip-1,jp)) lon = lon + 180.0_r8
-        lat = 0.5*(wrf%latitude(ip,jp) +wrf%latitude(ip-1,jp))
+        lat = 0.5_r8*(wrf%latitude(ip,jp) +wrf%latitude(ip-1,jp))
 
      end if
 
    else if (var_type_out == TYPE_V) then
 
      if(jp == 1)  then
-       lon = wrf%longitude(ip,1) - 0.5*(wrf%longitude(ip,2)-wrf%longitude(ip,1))
+       lon = wrf%longitude(ip,1) - 0.5_r8*(wrf%longitude(ip,2)-wrf%longitude(ip,1))
        if (wrf%longitude(ip,2) < wrf%longitude(ip,1)) lon = lon - 180.0_r8
-       lat = wrf%latitude(ip,1)  - 0.5*(wrf%latitude(ip,2)-wrf%latitude(ip,1))
+       lat = wrf%latitude(ip,1)  - 0.5_r8*(wrf%latitude(ip,2)-wrf%latitude(ip,1))
      else if(jp == ny) then
-       lon = wrf%longitude(ip,ny-1) + 0.5*(wrf%longitude(ip,ny-1)-wrf%longitude(ip,ny-2))
+       lon = wrf%longitude(ip,ny-1) + 0.5_r8*(wrf%longitude(ip,ny-1)-wrf%longitude(ip,ny-2))
        if (wrf%longitude(ip,ny-1) < wrf%longitude(ip,ny-2)) lon = lon + 540.0_r8
-       lat = wrf%latitude(ip,ny-1)  + 0.5*(wrf%latitude(ip,ny-1)-wrf%latitude(ip,ny-2))
+       lat = wrf%latitude(ip,ny-1)  + 0.5_r8*(wrf%latitude(ip,ny-1)-wrf%latitude(ip,ny-2))
      else 
-       lon = 0.5*(wrf%longitude(ip,jp)+wrf%longitude(ip,jp-1))
+       lon = 0.5_r8*(wrf%longitude(ip,jp)+wrf%longitude(ip,jp-1))
        if (wrf%longitude(ip,jp) < wrf%longitude(ip,jp-1)) lon = lon + 180.0_r8
-       lat = 0.5*(wrf%latitude(ip,jp) +wrf%latitude(ip,jp-1))
+       lat = 0.5_r8*(wrf%latitude(ip,jp) +wrf%latitude(ip,jp-1))
      end if
 
    else  ! regularily staggered variable
@@ -738,10 +634,10 @@ var_found = .false.
    if (lon <   0.0_r8) lon = lon + 360.0_r8
    if (lon > 360.0_r8) lon = lon - 360.0_r8
 
-   lev = float(kp) ! This is the index of the vertical  
+   lev = float(kp) ! This is the index of the vertical
 
    if(debug) write(6,*) 'lon, lat, lev: ',lon, lat, lev
-          
+
    ! lev is an index here, so which_vert is OK to be hardwired to a 1
    location = set_location(lon, lat, lev, 1) 
 
@@ -753,7 +649,7 @@ end subroutine get_state_meta_data
 
 subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 
-logical, parameter              :: debug = .false.  
+logical, parameter              :: debug = .false.
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
@@ -763,9 +659,9 @@ real(r8)                        :: xloc, yloc, zloc, xyz_loc(3)
 integer                         :: i, j, k, i1,i2,i3
 real(r8)                        :: dx,dy,dxm,dym
 real(r8), dimension (wrf%bt)    :: v_h, v_p
-real(r8), dimension (wrf%bt)    :: fld
+real(r8), dimension (wrf%bt)    :: fld, fldu, fldv
 real(r8), dimension (wrf%bt+1)  :: fll
-real(r8)                        :: p1,p2,p3,p4,a1
+real(r8)                        :: p1,p2,p3,p4,a1,alpha
 
 istatus = 0
 
@@ -804,7 +700,7 @@ else
 
 end if
 ! Get the desired field to be interpolated
-if( obs_kind == KIND_U ) then                 ! U
+if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
 
    if(i >= 1 .and. i+2 <= wrf%var_size(1,TYPE_U) .and. &
       j >= 1 .and. j   <  wrf%var_size(2,TYPE_U)) then
@@ -813,18 +709,16 @@ if( obs_kind == KIND_U ) then                 ! U
          i1 = get_wrf_index(i,j,k,TYPE_U)
          i2 = get_wrf_index(i,j+1,k,TYPE_U)
 
-         fld(k) = dym*(dxm*(x(i1) + x(i1+1))*.5 + dx*(x(i1+1)+x(i1+2))*0.5) + &
-                   dy*(dxm*(x(i2) + x(i2+1))*.5 + dx*(x(i2+1)+x(i2+2))*0.5)
-         if(debug) print*,k,' model u profile ',fld(k)
+         fldu(k) = dym*(dxm*(x(i1) + x(i1+1))*0.5_r8 + dx*(x(i1+1)+x(i1+2))*0.5_r8) + &
+                   dy*(dxm*(x(i2) + x(i2+1))*0.5_r8 + dx*(x(i2+1)+x(i2+2))*0.5_r8)
+         if(debug) print*,k,' model u profile ',fldu(k)
       end do
 
    else
 
-      fld(:) =  missing_r8
+      fldu(:) = missing_r8
 
    endif
-
-else if( obs_kind == KIND_V) then                 ! V
 
    if(i >= 1 .and. i   <  wrf%var_size(1,TYPE_V) .and. &
       j >= 1 .and. j+2 <= wrf%var_size(2,TYPE_V)) then
@@ -834,14 +728,26 @@ else if( obs_kind == KIND_V) then                 ! V
          i2 = get_wrf_index(i,j+1,k,TYPE_V) 
          i3 = get_wrf_index(i,j+2,k,TYPE_V)
 
-         fld(k) = dym*(dxm*(x(i1) + x(i2))*.5 + dx*(x(i1+1)+x(i2+1))*0.5) + &
-                   dy*(dxm*(x(i2) + x(i3))*.5 + dx*(x(i2+1)+x(i3+1))*0.5)
-         if(debug) print*,k,' model v profile ',fld(k)
+         fldv(k) = dym*(dxm*(x(i1) + x(i2))*0.5_r8 + dx*(x(i1+1)+x(i2+1))*0.5_r8) + &
+                   dy*(dxm*(x(i2) + x(i3))*0.5_r8 + dx*(x(i2+1)+x(i3+1))*0.5_r8)
+         if(debug) print*,k,' model v profile ',fldv(k)
       end do
 
    else
 
-      fld(:) =  missing_r8
+      fldv(:) = missing_r8
+
+   endif
+
+   alpha = map_to_sphere( xyz_loc(1), xyz_loc(2) )
+
+   if( obs_kind == KIND_U) then
+
+      fld(:) = fldv(:)*sin(alpha) + fldu(:)*cos(alpha)
+
+   else   ! must want v
+
+      fld(:) = fldv(:)*cos(alpha) - fldu(:)*sin(alpha)
 
    endif
 
@@ -860,7 +766,7 @@ else if( obs_kind == KIND_T ) then                ! T
 
    else
 
-      fld(:) =  missing_r8
+      fld(:) = missing_r8
 
    endif
 
@@ -876,13 +782,13 @@ else if( obs_kind == KIND_W ) then                ! W
       end do
 
       do k=1,wrf%bt
-         fld(k) = 0.5*(fll(k) + fll(k+1) )
+         fld(k) = 0.5_r8*(fll(k) + fll(k+1) )
          if(debug) print*,k,' model w profile ',fld(k)
       end do
 
    else
 
-      fld(:) =  missing_r8
+      fld(:) = missing_r8
 
    endif
 
@@ -896,13 +802,13 @@ else if( obs_kind == KIND_QV) then                ! QV
          i1 = get_wrf_index(i,j,k,TYPE_QV)
          i2 = get_wrf_index(i,j+1,k,TYPE_QV)
          a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         fld(k) = a1 /(1.0 + a1)
+         fld(k) = a1 /(1.0_r8 + a1)
          if(debug) print*,k,' model qv profile ',fld(k),i1,i2,x(i1),x(i1+1),x(i2),x(i2+1)
       end do
 
    else
 
-      fld(:) =  missing_r8
+      fld(:) = missing_r8
 
    endif
 
@@ -921,7 +827,7 @@ else if( obs_kind == KIND_QR) then                ! QR
 
    else
 
-      fld(:) =  missing_r8
+      fld(:) = missing_r8
 
    endif
 
@@ -946,7 +852,7 @@ else if( obs_kind == KIND_PS)then
 
    else
 
-      obs_val =  missing_r8
+      obs_val = missing_r8
 
    endif
 
@@ -1165,7 +1071,7 @@ else
   write(errstring,*)'Indices ',i,j,k,' exceed grid dimensions: ',wrf%var_size(1,in), &
        wrf%var_size(2,in),wrf%var_size(3,in)
   call error_handler(E_ERR,'get_wrf_index', errstring, source, revision, revdate)
-   
+
 endif
 
 end function get_wrf_index
@@ -1243,36 +1149,36 @@ if(debug) write(6,*) ' dxr, dyr in grid_close_states ',dxr,dyr
 
 j = j_closest
 ixmin = max(1,i_closest - 1)
-sdx   = 1./wrf%mapfac_u(i_closest, j)
+sdx   = 1.0_r8/wrf%mapfac_u(i_closest, j)
 do while( sdx .lt. dxr )
    ixmin = max(1,ixmin - 1)
-   sdx = sdx + 1./wrf%mapfac_u(ixmin + 1, j)
-   if(ixmin <= 1) sdx = 1.1*dxr
+   sdx = sdx + 1.0_r8/wrf%mapfac_u(ixmin + 1, j)
+   if(ixmin <= 1) sdx = 1.1_r8*dxr
 enddo
 
 ixmax = min(wrf%we,i_closest + 1)
-sdx   = 1./wrf%mapfac_u(ixmax, j)
+sdx   = 1.0_r8/wrf%mapfac_u(ixmax, j)
 do while( sdx .lt. dxr )
    ixmax = min(wrf%we,ixmax + 1)
-   sdx = sdx + 1./wrf%mapfac_u(ixmax, j)
-   if(ixmax >= wrf%we) sdx = 1.1*dxr
+   sdx = sdx + 1.0_r8/wrf%mapfac_u(ixmax, j)
+   if(ixmax >= wrf%we) sdx = 1.1_r8*dxr
 enddo
 
 i = i_closest
 jymin = max(1,j_closest - 1)
-sdy   = 1./wrf%mapfac_u(i_closest, jymin)
+sdy   = 1.0_r8/wrf%mapfac_u(i_closest, jymin)
 do while( sdy .lt. dyr )
    jymin = max(1,jymin - 1)
-   sdy = sdy + 1./wrf%mapfac_u(i, jymin + 1)
-   if(jymin <= 1) sdy = 1.1*dyr
+   sdy = sdy + 1.0_r8/wrf%mapfac_u(i, jymin + 1)
+   if(jymin <= 1) sdy = 1.1_r8*dyr
 enddo
 
 jymax = min(wrf%sn,j_closest + 1)
-sdy   = 1./wrf%mapfac_u(i, jymax)
+sdy   = 1.0_r8/wrf%mapfac_u(i, jymax)
 do while( sdy .lt. dyr )
    jymax = min(wrf%sn,jymax + 1)
-   sdy = sdy + 1./wrf%mapfac_u(i, jymax)
-   if(jymax >= wrf%sn) sdy = 1.1*dyr
+   sdy = sdy + 1.0_r8/wrf%mapfac_u(i, jymax)
+   if(jymax >= wrf%sn) sdy = 1.1_r8*dyr
 enddo
 
 if(debug) then
@@ -1303,7 +1209,7 @@ enddo
 
 p_pts = num
 
-! check distance for u points, expand box so that 
+! check distance for u points, expand box so that
 ! we don't leave possible points out of check
 
 do j = jymin, jymax
@@ -1358,33 +1264,33 @@ integer             :: which_vert
 if(var_type == type_u) then
 
    if (i == 1) then
-      long = wrf%longitude(1,j) - 0.5*(wrf%longitude(2,j)-wrf%longitude(1,j))
+      long = wrf%longitude(1,j) - 0.5_r8*(wrf%longitude(2,j)-wrf%longitude(1,j))
       if ( abs(wrf%longitude(2,j) - wrf%longitude(1,j)) > 180.0_r8 ) long = long - 180.0_r8
-      lat  = wrf%latitude(1,j)  - 0.5*(wrf%latitude(2,j)-wrf%latitude(1,j))
+      lat  = wrf%latitude(1,j)  - 0.5_r8*(wrf%latitude(2,j)-wrf%latitude(1,j))
    else if (i == wrf%wes) then
-      long = wrf%longitude(i-1,j) + 0.5*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
+      long = wrf%longitude(i-1,j) + 0.5_r8*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
       if ( abs(wrf%longitude(i-1,j) - wrf%longitude(i-2,j)) > 180.0_r8 ) long = long - 180.0_r8
-      lat  = wrf%latitude(i-1,j)  + 0.5*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
+      lat  = wrf%latitude(i-1,j)  + 0.5_r8*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
    else
-      long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i-1,j))
+      long = 0.5_r8*(wrf%longitude(i,j)+wrf%longitude(i-1,j))
       if ( abs(wrf%longitude(i,j) - wrf%longitude(i-1,j)) > 180.0_r8 ) long = long - 180.0_r8
-      lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i-1,j))
+      lat  = 0.5_r8*(wrf%latitude(i,j) +wrf%latitude(i-1,j))
    end if
 
 else if( var_type == type_v) then
 
    if (j == 1) then
-      long = wrf%longitude(i,1) - 0.5*(wrf%longitude(i,2)-wrf%longitude(i,1))
+      long = wrf%longitude(i,1) - 0.5_r8*(wrf%longitude(i,2)-wrf%longitude(i,1))
       if ( abs(wrf%longitude(i,2) - wrf%longitude(i,1)) > 180.0_r8 ) long = long - 180.0_r8
-      lat  = wrf%latitude(i,1)  - 0.5*(wrf%latitude(i,2)-wrf%latitude(i,1))
+      lat  = wrf%latitude(i,1)  - 0.5_r8*(wrf%latitude(i,2)-wrf%latitude(i,1))
    else if (j == wrf%sns) then
-      long = wrf%longitude(i,j-1) + 0.5*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
+      long = wrf%longitude(i,j-1) + 0.5_r8*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
       if ( abs(wrf%longitude(i,j-1) - wrf%longitude(i,j-2)) > 180.0_r8 ) long = long - 180.0_r8
-      lat  = wrf%latitude(i,j-1)  + 0.5*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
+      lat  = wrf%latitude(i,j-1)  + 0.5_r8*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
    else
-      long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i,j-1))
+      long = 0.5_r8*(wrf%longitude(i,j)+wrf%longitude(i,j-1))
       if ( abs(wrf%longitude(i,j) - wrf%longitude(i,j-1)) > 180.0_r8 ) long = long - 180.0_r8
-      lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i,j-1))
+      lat  = 0.5_r8*(wrf%latitude(i,j) +wrf%latitude(i,j-1))
 
    end if
 
@@ -1414,7 +1320,7 @@ do while (long > 360.0_r8)
 end do
 
 ! We will set which_vert based on the incoming location type
-! This will ensure compatibility for measuring 'horizontal' 
+! This will ensure compatibility for measuring 'horizontal'
 ! and cannot think of anything better for vertical.
 
 which_vert   = nint(query_location(o_loc,'which_vert'))
@@ -1500,6 +1406,11 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "DX", wrf%dx))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "DY", wrf%dy))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "TRUELAT1", wrf%truelat1))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "TRUELAT2", wrf%truelat2))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "CEN_LAT", wrf%cen_lat))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "CEN_LON", wrf%cen_lon))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "MAP_PROJ", wrf%map_proj))
 
 ! how about namelist input? might be nice to save ...
 
@@ -1766,7 +1677,7 @@ else
    call check(nf90_put_att(ncFileID, WVarID, "units_long_name", "m s{-1}"))
 
 
-   !      float PH(Time, bottom_top_stag, south_north, west_east) ;               
+   !      float PH(Time, bottom_top_stag, south_north, west_east) ;
    !         PH:FieldType = 104 ;
    !         PH:MemoryOrder = "XYZ" ;
    !         PH:stagger = "Z" ;
@@ -1883,16 +1794,16 @@ else
    call check(nf90_put_var(ncFileID,      ZNUVarID, wrf%znu       ))
    call check(nf90_put_var(ncFileID,      DNWVarID, wrf%dnw       ))
    ! defining horizontal
-   call check(nf90_put_var(ncFileID,      mubVarID, wrf%mub       )) 
+   call check(nf90_put_var(ncFileID,      mubVarID, wrf%mub       ))
    call check(nf90_put_var(ncFileID,      LonVarID, wrf%longitude ))
-   call check(nf90_put_var(ncFileID,      LatVarID, wrf%latitude  )) 
-   call check(nf90_put_var(ncFileID,     ilevVarID, (/ (i,i=1,wrf%bt) /) )) 
-   call check(nf90_put_var(ncFileID,    XlandVarID, wrf%land      )) 
-   call check(nf90_put_var(ncFileID,  MapFacMVarID, wrf%mapfac_m  )) 
-   call check(nf90_put_var(ncFileID,  MapFacUVarID, wrf%mapfac_u  )) 
-   call check(nf90_put_var(ncFileID,  MapFacVVarID, wrf%mapfac_v  )) 
-   call check(nf90_put_var(ncFileID,      hgtVarID, wrf%hgt       )) 
-   call check(nf90_put_var(ncFileID,      phbVarID, wrf%phb       )) 
+   call check(nf90_put_var(ncFileID,      LatVarID, wrf%latitude  ))
+   call check(nf90_put_var(ncFileID,     ilevVarID, (/ (i,i=1,wrf%bt) /) ))
+   call check(nf90_put_var(ncFileID,    XlandVarID, wrf%land      ))
+   call check(nf90_put_var(ncFileID,  MapFacMVarID, wrf%mapfac_m  ))
+   call check(nf90_put_var(ncFileID,  MapFacUVarID, wrf%mapfac_u  ))
+   call check(nf90_put_var(ncFileID,  MapFacVVarID, wrf%mapfac_v  ))
+   call check(nf90_put_var(ncFileID,      hgtVarID, wrf%hgt       ))
+   call check(nf90_put_var(ncFileID,      phbVarID, wrf%phb       ))
 
 endif
 
@@ -1906,8 +1817,8 @@ write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
 
 contains
 
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
@@ -1958,7 +1869,7 @@ if ( output_state_vector ) then
 
    call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
    call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)))                               
+                start=(/ 1, copyindex, timeindex /)))
 
 else
 
@@ -2113,8 +2024,8 @@ write (*,*)'netCDF file is synched ...'
 
 contains
 
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
@@ -2205,55 +2116,55 @@ subroutine llxy (xloni,xlatj,x,y)
    real(r8) :: xx, yy, xc, yc
    real(r8) :: cell, psi0, psx, r, flp
    real(r8) :: centri, centrj
-   real(r8) :: ds       
+   real(r8) :: ds
    real(r8) :: bb,c2
 
 !-----------------------------------------------------------------
-   ds = 0.001 *wrf%dx
+   ds = 0.001_r8 *wrf%dx
    xlon = xloni
    xlat = xlatj
-   xlat = max (xlat, -89.9999)
-   xlat = min (xlat, +89.9999)
+   xlat = max (xlat, -89.9999_r8)
+   xlat = min (xlat, +89.9999_r8)
 
 !-----------------------------------------------------------------
    c2 = earth_radius * COS(wrf%psi1)
 
    if (wrf%map_proj == 3) then
-      xc = 0.0
+      xc = 0.0_r8
       yc = wrf%ycntr 
 
-      cell = cos(xlat*deg2rad)/(1.0+sin(xlat*deg2rad))
+      cell = cos(xlat*deg2rad)/(1.0_r8+sin(xlat*deg2rad))
       yy = -c2*log(cell)
       xx = c2*(xlon-wrf%cen_lon)*deg2rad
 
    else
 
-      psi0 = ( 90.0 - wrf%cen_lat)*deg2rad
-      xc = 0.0
+      psi0 = ( 90.0_r8 - wrf%cen_lat)*deg2rad
+      xc = 0.0_r8
 
 !-----CALCULATE X,Y COORDS. RELATIVE TO POLE
 
       dxlon = xlon - wrf%cen_lon
-      if (dxlon >  180) dxlon = dxlon - 360.
-      if (dxlon < -180) dxlon = dxlon + 360.
+      if (dxlon >  180.0_r8) dxlon = dxlon - 360.0_r8
+      if (dxlon < -180.0_r8) dxlon = dxlon + 360.0_r8
 
       flp = wrf%cone_factor*dxlon*deg2rad
 
-      psx = ( 90.0 - xlat )*deg2rad
+      psx = ( 90.0_r8 - xlat )*deg2rad
 
       if (wrf%map_proj == 2) then
 ! ...... Polar stereographics:
-         bb = 2.0*(cos(wrf%psi1/2.0)**2)
-         yc = -earth_radius*bb*tan(psi0/2.0)
-          r = -earth_radius*bb*tan(psx/2.0)
+         bb = 2.0_r8*(cos(wrf%psi1/2.0_r8)**2)
+         yc = -earth_radius*bb*tan(psi0/2.0_r8)
+          r = -earth_radius*bb*tan(psx/2.0_r8)
       else
 ! ...... Lambert conformal:
          bb = -earth_radius/wrf%cone_factor*sin(wrf%psi1)
-         yc = bb*(tan(psi0/2.0)/tan(wrf%psi1/2.0))**wrf%cone_factor
-          r = bb*(tan(psx /2.0)/tan(wrf%psi1/2.0))**wrf%cone_factor
+         yc = bb*(tan(psi0/2.0_r8)/tan(wrf%psi1/2.0_r8))**wrf%cone_factor
+          r = bb*(tan(psx /2.0_r8)/tan(wrf%psi1/2.0_r8))**wrf%cone_factor
       endif
 
-      if (wrf%cen_lat < 0.0) then
+      if (wrf%cen_lat < 0.0_r8) then
          xx = r*sin(flp)
          yy = r*cos(flp)
       else
@@ -2266,37 +2177,37 @@ subroutine llxy (xloni,xlatj,x,y)
 ! TRANSFORM (1,1) TO THE ORIGIN
 ! the location of the center in the coarse domain
 
-   centri = real (wrf%we)/2.0  
-   centrj = real (wrf%sn)/2.0  
+   centri = real (wrf%we)/2.0_r8
+   centrj = real (wrf%sn)/2.0_r8
 ! the (X,Y) coordinates in the coarse domain
-   x = ( xx - xc )/ds + centri  
-   y = ( yy - yc )/ds + centrj  
-             
+   x = ( xx - xc )/ds + centri
+   y = ( yy - yc )/ds + centrj
+
 
 !--only add 0.5 so that x/y is relative to first cross points (MM5 input):
 
-   x = (x - 1.0) + 0.5
-   y = (y - 1.0) + 0.5
+   x = (x - 1.0_r8) + 0.5_r8
+   y = (y - 1.0_r8) + 0.5_r8
 
 end subroutine llxy
-   
+
 !**********************************************
 SUBROUTINE XYLL(XX,YY,XLAT,XLON)
-!               
+!
 !   PURPOSE      : CALCULATES THE LATITUDES AND LONGITUDES FROM THE
 !                  (X,Y) LOCATION (DOT) IN THE MESOSCALE GRIDS.
-!   ON ENTRY     :   
+!   ON ENTRY     :
 !   X            : THE COORDINATE IN X (J)-DIRECTION.
 !   Y            : THE COORDINATE IN Y (I)-DIRECTION.
 !
-!   ON EXIT      :                      
-!   XLAT         : LATITUDES 
-!   XLON         : LONGITUDES 
+!   ON EXIT      :
+!   XLAT         : LATITUDES
+!   XLON         : LONGITUDES
 !
 
    REAL(R8), INTENT(IN)  :: XX, YY
    REAL(R8), INTENT(OUT) :: XLAT,XLON
-        
+
    REAL(R8) :: flp, flpp, r, cell, cel1, cel2, c2
    REAL(R8) :: psx,Rcone_factor
    REAL(R8) :: centri, centrj, x, y, xcntr
@@ -2304,59 +2215,59 @@ SUBROUTINE XYLL(XX,YY,XLAT,XLON)
    c2 = earth_radius * COS(wrf%psi1)
    centri = wrf%we / 2.0_r8
    centrj = wrf%sn / 2.0_r8
-!   CNTRI = float(coarse_iy+1)/2.
-!   CNTRJ = float(coarse_jx+1)/2. 
-   
+!   CNTRI = float(coarse_iy+1)/2.0_r8
+!   CNTRJ = float(coarse_jx+1)/2.0_r8
+
    xcntr = 0.0_r8
 
 !-----CALCULATE X AND Y POSITIONS OF GRID
-   X = ( XCNTR+(XX-1.0) +(1.0 - CENTRI) ) * wrf%dx*0.001 
-   Y = ( wrf%YCNTR+(YY-1.0) +(1.0 - CENTRJ) ) * wrf%dx*0.001
+   X = ( XCNTR+(XX-1.0_r8) +(1.0_r8 - CENTRI) ) * wrf%dx*0.001_r8
+   Y = ( wrf%YCNTR+(YY-1.0_r8) +(1.0_r8 - CENTRJ) ) * wrf%dx*0.001_r8
 !-----NOW CALCULATE LAT AND LON OF THIS POINT
 
    IF (wrf%map_proj.NE.3) THEN
-      IF(Y.EQ.0.) THEN      
-        IF(X.GE.0.0) FLP =  90.0*deg2rad 
-        IF(X.LT.0.0) FLP = -90.0*deg2rad
+      IF(Y.EQ.0.0_r8) THEN
+        IF(X.GE.0.0_r8) FLP =  90.0_r8*deg2rad
+        IF(X.LT.0.0_r8) FLP = -90.0_r8*deg2rad
       ELSE
-        IF (wrf%cen_lat.LT.0.0)THEN
-            FLP = ATAN2(X,Y)   
+        IF (wrf%cen_lat.LT.0.0_r8)THEN
+            FLP = ATAN2(X,Y)
         ELSE
-            FLP = ATAN2(X,-Y) 
+            FLP = ATAN2(X,-Y)
         ENDIF
-      ENDIF 
+      ENDIF
       FLPP = (FLP/wrf%cone_factor)*rad2deg+wrf%cen_lon
-      IF (FLPP.LT.-180.) FLPP = FLPP + 360    
-      IF (FLPP.GT.180.)  FLPP = FLPP - 360.  
-      XLON = FLPP 
+      IF (FLPP.LT.-180.0_r8) FLPP = FLPP + 360.0_r8
+      IF (FLPP.GT.180.0_r8)  FLPP = FLPP - 360.0_r8
+      XLON = FLPP
 !--------NOW SOLVE FOR LATITUDE
-      R = SQRT(X*X+Y*Y)  
-      IF (wrf%cen_lat.LT.0.0) R = -R  
-      IF (wrf%map_proj.EQ.1) THEN   
-         CELL = (R*wrf%cone_factor)/(earth_radius*SIN(wrf%PSI1))    
-         Rcone_factor  = 1.0/wrf%cone_factor   
-         CEL1 = TAN(wrf%PSI1/2.)*(CELL)**Rcone_factor    
-      ENDIF 
+      R = SQRT(X*X+Y*Y)
+      IF (wrf%cen_lat.LT.0.0_r8) R = -R
+      IF (wrf%map_proj.EQ.1) THEN
+         CELL = (R*wrf%cone_factor)/(earth_radius*SIN(wrf%PSI1))
+         Rcone_factor  = 1.0_r8/wrf%cone_factor
+         CEL1 = TAN(wrf%PSI1/2.0_r8)*(CELL)**Rcone_factor
+      ENDIF
       IF (wrf%map_proj.EQ.2) THEN
-         CELL = R/earth_radius        
-         CEL1 = CELL/(1.0+COS(wrf%PSI1))  
-      ENDIF 
-      CEL2 = ATAN(CEL1)    
-      PSX  = 2.*CEL2*rad2deg 
-      XLAT = 90.0-PSX 
-   ENDIF   
-!-----CALCULATIONS FOR MERCATOR LAT,LON    
-   IF (wrf%map_proj.EQ.3) THEN   
+         CELL = R/earth_radius
+         CEL1 = CELL/(1.0_r8+COS(wrf%PSI1))
+      ENDIF
+      CEL2 = ATAN(CEL1)
+      PSX  = 2.0_r8*CEL2*rad2deg
+      XLAT = 90.0_r8-PSX
+   ENDIF
+!-----CALCULATIONS FOR MERCATOR LAT,LON
+   IF (wrf%map_proj.EQ.3) THEN
       XLON = wrf%cen_lon + ((X-XCNTR)/C2)*rad2deg
-      IF (XLON.LT.-180.) XLON = XLON + 360
-      IF (XLON.GT.180.)  XLON = XLON - 360.
-      CELL = EXP(Y/C2)  
-      XLAT = 2.*(rad2deg*ATAN(CELL))-90.0 
+      IF (XLON.LT.-180.0_r8) XLON = XLON + 360.0_r8
+      IF (XLON.GT.180.0_r8)  XLON = XLON - 360.0_r8
+      CELL = EXP(Y/C2)
+      XLAT = 2.0_r8*(rad2deg*ATAN(CELL))-90.0_r8
    ENDIF
 end subroutine xyll
-   
+
 !**********************************************
-subroutine Interp_lin_1D(fi1d, n1, z, fo1d)                        
+subroutine Interp_lin_1D(fi1d, n1, z, fo1d)
 
   integer,  intent(in)  :: n1
   real(r8), intent(in)  :: fi1d(n1)
@@ -2439,7 +2350,7 @@ subroutine toGrid (x, j, dx, dxm)
 
    dx = x - real (j)
 
-   dxm= 1.0 - dx
+   dxm= 1.0_r8 - dx
 
 end subroutine toGrid
 !#######################################################################
@@ -2484,7 +2395,7 @@ subroutine get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,fld,&
 integer,  intent(in)  :: i,j,n
 real(r8), intent(in)  :: dx,dy,dxm,dym
 real(r8), intent(in)  :: x(:)
-real(r8), intent(out) :: fld(n)      
+real(r8), intent(out) :: fld(n)
 real(r8), intent(out) :: pp11,pp21,pp31,pp41
  
 integer               :: i1,i2,k,q1,q2,q3,q4
@@ -2503,14 +2414,14 @@ if(i >= 1 .and. i < wrf%var_size(1,TYPE_QV) .and. &
    i2 = get_wrf_index(i,j+1,1,TYPE_MU)
    q1 = get_wrf_index(i,j,n,TYPE_QV)
    q2 = get_wrf_index(i,j+1,n,TYPE_QV)
-   qv1 = x(q1)/(1.0+x(q1))
-   qv2 = x(q1+1)/(1.0+x(q1+1))
-   qv3 = x(q2)/(1.0+x(q2))
-   qv4 = x(q2+1)/(1.0+x(q2+1))
-   pp1(n) = -0.5 *(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dnw(n)*(1.0 + x(q1))
-   pp2(n) = -0.5 *(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dnw(n)*(1.0 + x(q1+1))
-   pp3(n) = -0.5 *(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dnw(n)*(1.0 + x(q2))
-   pp4(n) = -0.5 *(x(i2+1)+qv4*wrf%mub(i+1,j+1))*wrf%dnw(n)*(1.0 + x(q2+1))
+   qv1 = x(q1)/(1.0_r8+x(q1))
+   qv2 = x(q1+1)/(1.0_r8+x(q1+1))
+   qv3 = x(q2)/(1.0_r8+x(q2))
+   qv4 = x(q2+1)/(1.0_r8+x(q2+1))
+   pp1(n) = -0.5_r8 *(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dnw(n)*(1.0_r8 + x(q1))
+   pp2(n) = -0.5_r8 *(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dnw(n)*(1.0_r8 + x(q1+1))
+   pp3(n) = -0.5_r8 *(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dnw(n)*(1.0_r8 + x(q2))
+   pp4(n) = -0.5_r8 *(x(i2+1)+qv4*wrf%mub(i+1,j+1))*wrf%dnw(n)*(1.0_r8 + x(q2+1))
    pp(n)  = dym*(dxm*pp1(n)+dx*pp2(n)) + dy*(dxm*pp3(n)+dx*pp4(n))
    fld(n) = pp(n) + pb(n)
    do k= n-1,1,-1
@@ -2518,19 +2429,19 @@ if(i >= 1 .and. i < wrf%var_size(1,TYPE_QV) .and. &
       q2 = get_wrf_index(i,j+1,k,TYPE_QV)
       q3 = get_wrf_index(i,j,k+1,TYPE_QV)
       q4 = get_wrf_index(i,j+1,k+1,TYPE_QV)
-      qv1 = 0.5*(x(q1)+x(q3))/(1.0+0.5*(x(q1)+x(q3)))
-      qv2 = 0.5*(x(q1+1)+x(q3+1))/(1.0+0.5*(x(q1+1)+x(q3+1)))
-      qv3 = 0.5*(x(q2)+x(q4))/(1.0+0.5*(x(q2)+x(q4)))
-      qv4 = 0.5*(x(q2+1)+x(q4+1))/(1.0+0.5*(x(q2+1)+x(q4+1)))
+      qv1 = 0.5_r8*(x(q1)+x(q3))/(1.0_r8+0.5_r8*(x(q1)+x(q3)))
+      qv2 = 0.5_r8*(x(q1+1)+x(q3+1))/(1.0_r8+0.5_r8*(x(q1+1)+x(q3+1)))
+      qv3 = 0.5_r8*(x(q2)+x(q4))/(1.0_r8+0.5_r8*(x(q2)+x(q4)))
+      qv4 = 0.5_r8*(x(q2+1)+x(q4+1))/(1.0_r8+0.5_r8*(x(q2+1)+x(q4+1)))
 
       pp1(k) = pp1(k+1) -(x(i1)  +qv1*wrf%mub(i  ,j  ))*wrf%dn(k+1)* &
-           (1.0 + 0.5*(x(q1) + x(q3)))
+           (1.0_r8 + 0.5_r8*(x(q1) + x(q3)))
       pp2(k) = pp2(k+1) -(x(i1+1)+qv2*wrf%mub(i+1,j  ))*wrf%dn(k+1)* &
-           (1.0 + 0.5*(x(q1+1) + x(q3+1)))
+           (1.0_r8 + 0.5_r8*(x(q1+1) + x(q3+1)))
       pp3(k) = pp3(k+1) -(x(i2)  +qv3*wrf%mub(i  ,j+1))*wrf%dn(k+1)* &
-           (1.0 + 0.5*(x(q2) + x(q4)))
+           (1.0_r8 + 0.5_r8*(x(q2) + x(q4)))
       pp4(k) = pp4(k+1) -(x(i2+1)  +qv4*wrf%mub(i+1,j+1))*wrf%dn(k+1)* &
-           (1.0 + 0.5*(x(q2+1) + x(q4+1)))
+           (1.0_r8 + 0.5_r8*(x(q2+1) + x(q4+1)))
 
       pp(k)  = dym*(dxm*pp1(k)+dx*pp2(k)) + dy*(dxm*pp3(k)+dx*pp4(k))
       fld(k) = pp(k) + pb(k)
@@ -2576,7 +2487,7 @@ if(i >= 1 .and. i < wrf%var_size(1,TYPE_GZ) .and. &
    end do
 
    do k=1,n
-      fld(k) = 0.5*(fll(k) + fll(k+1) )
+      fld(k) = 0.5_r8*(fll(k) + fll(k+1) )
    end do
 
 else
@@ -2607,42 +2518,67 @@ end subroutine pert_model_state
 
 !#######################################################
 
-subroutine output_wrf_time()
+function map_to_sphere( longitude, latitude )
+!
+!   INPUT      : longitude, latitude (degrees)
+!  OUTPUT      : map_to_sphere (radians), the angle by which to rotate
+!              : the wrf wind vector to obtain the meridional and zonal winds.
 
-implicit none
-!--------------------------------------------------------
-! tags file wrfinput with a new time
+real(r8), intent(in) :: longitude, latitude
+real(r8)             :: map_to_sphere
 
+real(r8) :: cen_long, diff
 
-integer               :: mode, ncid, var_id
-integer, dimension(5) :: kount, start, stride, map
+if(wrf%map_proj .eq. 0) then  ! no projection
+   map_to_sphere = 0.0_r8
+end if
 
-logical :: debug = .false.
+cen_long = wrf%stand_lon      ! Default
+!!$cen_long = wrf%cen_lon     ! if stand_lon doesn't exist.
 
-mode = NF90_WRITE
-call check(nf90_open('wrfinput', mode, ncid) )
+!!$cone = 1.0_r8
+!!$if( wrf%map_proj .eq. 1) then    ; Lambert Conformal mapping
+!!$   if( (fabs(wrf%truelat1 - wrf%truelat2) .gt. 0.1_r8) .and.  \
+!!$      (fabs(wrf%truelat2 - 90.0_r8 )      .gt. 0.1_r8)       ) then
+!!$      cone = 10^(cos(wrf%truelat1*deg2rad)) \
+!!$      -10^(cos(wrf%truelat2*deg2rad))
+!!$      cone = cone/(10^(tan(45.0_r8 -fabs(wrf%truelat1/2.0_r8)*deg2rad)) - \
+!!$      10^(tan(45.0_r8 -fabs(wrf%truelat2/2.0_r8)*deg2rad))   )
+!!$   else
+!!$      cone = sin(fabs(wrf%truelat1)*deg2rad)
+!!$   end if
+!!$end if
+!!$if(wrf%map_proj .eq. 2) then      ; polar stereographic
+!!$   cone = 1.0_r8
+!!$end if
+!!$if(wrf%map_proj .eq. 3) then      ; Mercator
+!!$   cone = 0.0_r8
+!!$end if
 
-kount  = 1
-start  = 1
-stride = 1
-map    = 1
+diff = longitude - cen_long
 
-kount(1)  = wrf%date_len
-call netcdf_read_write_char( "Times",ncid, var_id, &
-                            wrf%timestring(1:wrf%date_len),        &
-                            start, kount, stride, map, 'OUTPUT ', debug, 2  )
+if(diff .gt. 180.0_r8) then
+   diff = diff - 360.0_r8
+end if
+if(diff .lt. -180.0_r8) then
+   diff = diff + 360.0_r8
+end if
 
-call check(nf90_close(ncid))
+!      map_to_sphere = diff * cone * deg2rad *sign(1.0_r8,latitude)
+!!$map_to_sphere = diff
 
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'output_wrf_time', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-  end subroutine check
+if(latitude .lt. 0.0_r8) then
+   map_to_sphere = - diff * wrf%cone_factor * deg2rad
+else
+   map_to_sphere = diff * wrf%cone_factor * deg2rad
+end if
 
-end subroutine output_wrf_time
+!!$if(variable .eq. "umet") then
+!!$   var = v*sin(map_to_sphere) + u*cos(map_to_sphere)
+!!$else  ; must want vmet
+!!$   var = v*cos(map_to_sphere) - u*sin(map_to_sphere)
+!!$end if
+
+end function map_to_sphere
 
 end module model_mod
