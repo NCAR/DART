@@ -66,7 +66,8 @@ use        hs_forcing_mod, only: hs_forcing_init, hs_forcing
 ! DART routines 
 use          location_mod, only: location_type, get_location, set_location, &
                                  get_dist, vert_is_level, query_location, &
-                                 LocationDims, LocationName, LocationLName
+                                 LocationDims, LocationName, LocationLName, &
+                                 vert_is_pressure
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
@@ -1162,10 +1163,14 @@ lon_lat_lev = get_location(location)
 lon = lon_lat_lev(1); lat = lon_lat_lev(2); 
 if(vert_is_level(location)) then 
    level = lon_lat_lev(3)
-else
+else if(vert_is_pressure(location)) then
    pressure = lon_lat_lev(3)
+else
+   call error_handler(E_ERR,'model_interpolate', &
+      'Bgrid can only handle pressure or model level for obs vertical coordinate', &
+      source, revision, revdate)
 endif
-
+   
 ! Depending on itype, get appropriate lon and lat grid specs
 ! Types temporarily defined as 1=u, 2=v, 3=ps, 4=t, n=tracer number n-4
 if(itype == 1 .or. itype == 2) then

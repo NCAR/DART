@@ -33,27 +33,36 @@ open(unit = iunit, file = 'id_set_def_stdin.out')
 call static_init_model()
 model_size = get_model_size()
 
-! Set the output file name and a single set
-write(iunit, *) 'set_def.out'
-write(iunit, *) 1
-
 ! Set the number of state variables, all observed
 write(iunit, *) model_size
 
+! No values or qc
+write(iunit, *) 0
+write(iunit, *) 0
+
 ! Loop through all the state variables, set the obs variance accordingly
 do i = 1, model_size
+   ! There are more obs
+   write(iunit, *) 0
+
+   ! Identity obs
+   write(iunit, *) -1 * i
+
+   ! Time is 0 days 0 seconds for create obs sequence
+   write(iunit, *) 0, 0
 
    call get_state_meta_data(i, location, var_type)
 
    ! Output the appropriate observational error variance
    if(var_type == TYPE_PS) then
-   write(iunit, *)  0.01
+   write(iunit, *)  10000.0
    else
-      write(iunit, *) 0.00001
+      write(iunit, *) 1.0
    endif
 
-   ! Output the variable index
-   write(iunit, *) i
 end do
+
+! Output the default set_def.out file name
+write(iunit, *) 'set_def.out'
 
 end program id_set_def_stdin

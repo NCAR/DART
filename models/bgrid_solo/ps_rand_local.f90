@@ -36,12 +36,9 @@ obs_kind =  3
 ! Open an output file and write header info
 iunit = get_unit()
 open(unit = iunit, file = 'ps_rand.out')
-write(iunit, *) 'set_def.out'
-write(iunit, *) num_sets
 
 write(*, *) 'input the number of observations'
 read(*, *) num
-write(iunit, *) num
 
 write(*, *) 'input the obs error variance'
 read(*, *) err_var
@@ -60,33 +57,44 @@ if(top_lat <= bot_lat .or. top_lon <= bot_lon) then
    call error_handler(E_ERR,'ps_rand_local', 'lat lon range error', source, revision, revdate)
 endif
 
+! Input number of obs
+write(iunit, *) num
+! No obs values or qc
+write(iunit, *) 0
+write(iunit, *) 0
+
 num_done = 0
 do while(num_done < num)
-   ! Find a lat/lon pair in the box
+   ! There are more obs
+   write(iunit, *) 0
 
-   ! Longitude is random from 0 to 360
-   lon = random_uniform(r) * 360.0_r8
+   ! Kind is ps
+   write(iunit, *) obs_kind
 
-   ! Latitude must be area weighted
-   lat = asin(random_uniform(r) * 2.0_r8 - 1.0_r8)
-   ! Now convert from radians to degrees latitude
-   lat = lat * 360.0_r8 / (2.0_r8 * PI)
+   ! Put this on model level -1
+   write(iunit, *) 1
+   write(iunit, *) level
 
-   ! Now see if this is in the box
-   if(lat >= bot_lat .and. lat <= top_lat .and. &
-      lon >  bot_lon .and. lon <= top_lon ) then
-      write(*, *) lat, lon
+   ! Want randomly located in horizontal
+   write(iunit, *) -1
 
-      ! Found one, output it
-      num_done = num_done + 1
-      write(iunit, *) err_var
-      write(iunit, *) -1
-      write(iunit, *) level
-      write(iunit, *) lon
-      write(iunit, *) lat
-      write(iunit, *) obs_kind
-   endif
+   ! Input longitude and latitude bounds
+   write(iunit, *) bot_lon
+   write(iunit, *) top_lon
+   write(iunit, *) bot_lat
+   write(iunit, *) top_lat
+
+   ! Time is 0 days and 0 seconds for create_obs_sequence base
+   write(iunit, *) 0, 0
+
+   ! Error variance
+   write(iunit, *) err_var
+
+   num_done = num_done + 1
 
 end do
+
+! File name default is set_def.out
+write(iunit, *) 'set_def.out'
 
 end program ps_rand_local

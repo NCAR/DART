@@ -35,7 +35,7 @@ real(r8) :: pressure(num_levs)
 
 ! Can't remember array constructor syntax
 do i = 1, num_levs
-   pressure(i) = 100000.0_r8 - 20000.0_r8 * i
+   pressure(i) = 1000.0_r8 - 200.0_r8 * i
 end do
 
 ! Initialize the random sequence
@@ -44,11 +44,9 @@ call init_random_seq(r)
 ! Set up constants
 num_sets = 1
 
-! Open an output file and write header info
+! Open an output file
 iunit = get_unit()
 open(unit = iunit, file = 'pressure_col_rand.out')
-write(iunit, *) 'set_def.out'
-write(iunit, *) num_sets
 
 write(*, *) 'input the number of columns'
 read(*, *) num_cols
@@ -67,8 +65,14 @@ read(*, *) t_err_var
 write(*, *) 'Input error VARIANCE for U and V obs'
 read(*, *) uv_err_var
 
+! No values of qc
+write(iunit, *) 0
+write(iunit, *) 0
+
 ! Loop through each column
 do i = 1, num_cols
+   ! More obs coming 
+   write(iunit, *) 0
 
    ! Get a random lon lat location for this column
 
@@ -90,54 +94,55 @@ do i = 1, num_cols
    if(lat >  90.0_r8) lat =  90.0_r8
 
    ! Do ps ob
-   write(iunit, *) ps_err_var
-   write(iunit, *) -1
-
-   ! Level is -1 for ps
+   write(iunit, *) 3
+   ! MOdel level of -1 for ps
+   write(iunit, *) 1
    write(iunit, *) -1
    write(iunit, *) lon
    write(iunit, *) lat
-
-   ! Kind for surface pressure is 3
-   write(iunit, *) 3
+   write(iunit, *) 0, 0
+   write(iunit, *) ps_err_var
 
    ! Loop through each observation in the column
    do level = 1, num_levs
 
-      ! Write out the t observation
-      write(iunit, *) t_err_var
-      write(iunit, *) -1
-      write(iunit, *) -99
+      write(iunit, *) 0
+      ! Kind for t is 4
+      write(iunit, *) 4
+      ! On pressure level
+      write(iunit, *) 2
       write(iunit, *) pressure(level) 
       write(iunit, *) lon
       write(iunit, *) lat
+      write(iunit, *) 0, 0
+      write(iunit, *) t_err_var
 
-      ! Kind for t is 4
-      write(iunit, *) 4
-
+      write(iunit, *) 0
       ! Write out the u observation
-      write(iunit, *) uv_err_var
-      write(iunit, *) -1
-      write(iunit, *) -99
-      write(iunit, *) pressure(level)
-      write(iunit, *) lon
-      write(iunit, *) lat
-
       ! Kind for u is 1
       write(iunit, *) 1
-
-      ! Write out the t observation
-      write(iunit, *) uv_err_var
-      write(iunit, *) -1
-      write(iunit, *) -99
+      write(iunit, *) 2
       write(iunit, *) pressure(level)
       write(iunit, *) lon
       write(iunit, *) lat
+      write(iunit, *) 0, 0
+      write(iunit, *) uv_err_var
 
+      write(iunit, *) 0
+      ! Write out the v observation
       ! Kind for v is 2
       write(iunit, *) 2
+      write(iunit, *) 2
+      write(iunit, *) pressure(level)
+      write(iunit, *) lon
+      write(iunit, *) lat
+      write(iunit, *) 0, 0
+      write(iunit, *) uv_err_var
+
    end do
 end do
+
+write(iunit, *) 'set_def.out'
 
 close(iunit)
 

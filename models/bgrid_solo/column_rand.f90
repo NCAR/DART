@@ -25,21 +25,16 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-integer  :: num_sets, level, num_cols, num_levs, i, iunit
+integer  :: level, num_cols, num_levs, i, iunit
 real(r8) :: lat, lon, t_err_var, uv_err_var, ps_err_var
 type(random_seq_type) :: r
 
 ! Initialize the random sequence
 call init_random_seq(r)
 
-! Set up constants
-num_sets = 1
-
 ! Open an output file and write header info
 iunit = get_unit()
 open(unit = iunit, file = 'column_rand.out')
-write(iunit, *) 'set_def.out'
-write(iunit, *) num_sets
 
 write(*, *) 'input the number of columns'
 read(*, *) num_cols
@@ -61,6 +56,9 @@ read(*, *) t_err_var
 write(*, *) 'Input error VARIANCE for U and V obs'
 read(*, *) uv_err_var
 
+! No values or qc
+write(iunit, *) 0
+write(iunit, *) 0
 
 ! Loop through each column
 do i = 1, num_cols
@@ -75,50 +73,55 @@ do i = 1, num_cols
    lat = lat * 360.0 / (2.0 * pi)
 
    ! Do ps ob
-   write(iunit, *) ps_err_var
-   write(iunit, *) -1
-
+   write(iunit, *) 0
+   ! Kind for surface pressure is 3
+   write(iunit, *) 3
+   write(iunit, *) 1
    ! Level is -1 for ps
    write(iunit, *) -1
    write(iunit, *) lon
    write(iunit, *) lat
-
-   ! Kind for surface pressure is 3
-   write(iunit, *) 3
+   write(iunit, *) 0, 0
+   write(iunit, *) ps_err_var
 
    ! Loop through each observation in the column
    do level = 1, num_levs
 
+      write(iunit, *) 0
       ! Write out the t observation
-      write(iunit, *) t_err_var
-      write(iunit, *) -1
-      write(iunit, *) level
-      write(iunit, *) lon
-      write(iunit, *) lat
-
       ! Kind for t is 4
       write(iunit, *) 4
-
-      ! Write out the u observation
-      write(iunit, *) uv_err_var
-      write(iunit, *) -1
+      write(iunit, *) 1
       write(iunit, *) level
       write(iunit, *) lon
       write(iunit, *) lat
+      write(iunit, *) 0, 0
+      write(iunit, *) t_err_var
 
+      write(iunit, *) 0
+      ! Write out the u observation
       ! Kind for u is 1
       write(iunit, *) 1
-
-      ! Write out the t observation
-      write(iunit, *) uv_err_var
-      write(iunit, *) -1
+      write(iunit, *) 1
       write(iunit, *) level
       write(iunit, *) lon
       write(iunit, *) lat
+      write(iunit, *) 0, 0
+      write(iunit, *) uv_err_var
 
+      write(iunit, *) 0
+      ! Write out the v observation
       ! Kind for v is 2
       write(iunit, *) 2
+      write(iunit, *) 1
+      write(iunit, *) level
+      write(iunit, *) lon
+      write(iunit, *) lat
+      write(iunit, *) 0, 0
+      write(iunit, *) uv_err_var
    end do
 end do
+
+write(iunit, *) 'set_def.out'
 
 end program column_rand
