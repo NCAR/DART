@@ -15,6 +15,7 @@ use   utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_kind, get_obs_kind
 use     location_mod, only : location_type, read_location, write_location, interactive_location
 use time_manager_mod, only : time_type, read_time, write_time, set_time
+use assim_model_mod, only : get_state_meta_data
 
 implicit none
 private
@@ -336,7 +337,8 @@ call interactive_kind(obs_def%kind)
 ! If the kind is an identity observation, don't need to call location
 ! Just set location to default
 if(get_obs_kind(obs_def%kind) < 0) then
-   call interactive_location(obs_def%location, .true.)  
+! Get the location of this from model
+   call get_state_meta_data(-1 * get_obs_kind(obs_def%kind), obs_def%location)
 else! Get the location
    call interactive_location(obs_def%location)
 endif
