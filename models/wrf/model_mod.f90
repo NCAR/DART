@@ -47,11 +47,6 @@ public     adv_1step,           &
 !-----------------------------------------------------------------------
 
 ! let CVS fill strings ... DO NOT EDIT ...
-character(len=128) :: &
-   source   = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-
 character(len=128) :: version = "$Id$"
 character(len=128) :: tag = "$Name$"
 character(len=128) :: &
