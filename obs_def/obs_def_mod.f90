@@ -17,7 +17,8 @@ use     obs_kind_mod, only : obs_kind_type, read_kind, write_kind, interactive_k
 use     location_mod, only : location_type, read_location, write_location, set_location, &
                              interactive_location, set_location_missing
 !WRF use     location_mod, only : query_location
-use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing
+use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
+                             interactive_time
 use  assim_model_mod, only : get_state_meta_data
 !WRF use     platform_mod, only : platform_type, write_platform, read_platform, &
 !WRF                              set_platform_location, set_platform_orientation
@@ -364,15 +365,13 @@ subroutine interactive_obs_def(obs_def)
 
 type(obs_def_type), intent(inout) :: obs_def
 
-integer :: seconds, days
-
 if ( .not. module_initialized ) call initialize_module
 
 ! Get the observation kind
 call interactive_kind(obs_def%kind)
 
 ! If the kind is an identity observation, don't need to call location
-! Just set location to default
+! Get location from state meta_data
 if(get_obs_kind(obs_def%kind) < 0) then
 ! Get the location of this from model
    call get_state_meta_data(-1 * get_obs_kind(obs_def%kind), obs_def%location)
@@ -381,12 +380,7 @@ else! Get the location
 endif
 
 ! Get the time
-!!!call interactive_time(obs_def%time)
-! Eventually this should be done in time manager to allow for calendar type use
-! but this could be done after ESMF adoption?
-write(*, *) 'input time in days and seconds'
-read(*, *) days, seconds
-obs_def%time = set_time(seconds, days)
+call interactive_time(obs_def%time)
 
 write(*, *) 'Input error variance for this observation definition '
 read(*, *) obs_def%error_variance
