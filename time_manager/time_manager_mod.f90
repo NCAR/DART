@@ -4,9 +4,11 @@
 
 module time_manager_mod
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$
 
 ! The use of fms utilities below have all been temporarily commented out.
 ! Should be re-examined.
@@ -2441,11 +2443,11 @@ if (nTlen < 1) then              ! First attempt at writing a state ...
 else ! must try to find the time index ...
 
    if (statetime < times(1) ) then
-      write(*,*)'ERROR:time_manager_mod:nc_get_index: dagnabbit ...' 
+      write(*,*)'ERROR:time_manager_mod:nc_get_tindex: dagnabbit ...' 
       write(*,*)'ERROR: model time preceeds earliest netCDF time.'
-      write(*,*)'ERROR:           model time (days, seconds) ',days,secs
+      write(*,*)'ERROR:           model time (seconds, days) ',secs,days
       call get_time(times(1),secs,days)
-      write(*,*)'ERROR: earliest netCDF time (days, seconds) ',days,secs
+      write(*,*)'ERROR: earliest netCDF time (seconds, days) ',secs,days
       timeindex = -1                       ! set error flag
       stop
    endif
@@ -2464,14 +2466,14 @@ else ! must try to find the time index ...
 
       elseif ( statetime < times(i) ) then  ! we have overshot without a match ... Bad
 
-         write(*,*)'ERROR:time_manager_mod:nc_get_index: dagnabbit ...' 
+         write(*,*)'ERROR:time_manager_mod:nc_get_tindex: dagnabbit ...' 
          write(*,*)'ERROR:  model time does not match any netCDF time.'
          call get_time(times(max(1,i-1)),secs,days)
-         write(*,*)'ERROR: preceeding netCDF time (days, seconds) ',days,secs
+         write(*,*)'ERROR: preceeding netCDF time (seconds, days) ',secs,days
          call get_time(statetime,secs,days)
-         write(*,*)'ERROR:             model time (days, seconds) ',days,secs
+         write(*,*)'ERROR:             model time (seconds, days) ',secs,days
          call get_time(times(i),secs,days)
-         write(*,*)'ERROR: following  netCDF time (days, seconds) ',days,secs
+         write(*,*)'ERROR: following  netCDF time (seconds, days) ',secs,days
          timeindex = -1
          exit TimeLoop
 
