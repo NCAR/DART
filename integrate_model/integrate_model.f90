@@ -67,14 +67,16 @@ model_size = get_model_size()
 
 !------------------- Read restart from file ----------------------
 iunit = get_unit()
-!!!open(unit = iunit, file = restart_in_file_name)
-open(unit = iunit, file = 'temp_ic')
 ! Read in the target time
 if ( binary_restart_files ) then
+!!!open(unit = iunit, file = restart_in_file_name, form = "unformatted")
+   open(unit = iunit, file = 'temp_ic', form = "unformatted")
    target_time = read_time(iunit, 'unformatted')
    call init_assim_model(x(1))
    call read_state_restart(x(1), iunit, 'unformatted')
 else
+!!!open(unit = iunit, file = restart_in_file_name)
+   open(unit = iunit, file = 'temp_ic')
    target_time = read_time(iunit)
    call init_assim_model(x(1))
    call read_state_restart(x(1), iunit)
@@ -92,9 +94,15 @@ endif
 
 ! Output the restart file if requested
 iunit = get_unit()
+if ( binary_restart_files ) then
+!!!open(unit = iunit, file = ud_file_name, form = "unformatted")
+   open(unit = iunit, file = 'temp_ud', form = "unformatted")
+   call write_state_restart(x(1), iunit, 'unformatted')
+else
 !!!open(unit = iunit, file = ud_file_name)
-open(unit = iunit, file = 'temp_ud')
-call write_state_restart(x(1), iunit)
+   open(unit = iunit, file = 'temp_ud')
+   call write_state_restart(x(1), iunit)
+endif
 close(iunit)
 
 end program integrate_model
