@@ -768,8 +768,9 @@ return
          write(ic_file_name(i), 41) 'assim_model_state_ic', i
          write(ud_file_name(i), 41) 'assim_model_state_ud', i
       else 
-         write(ic_file_name(i), '(a21,i6.6)') 'assim_model_state_ic', i
-         write(ud_file_name(i), '(a21,i6.6)') 'assim_model_state_ud', i
+         write(errstring,*)'Trying to use ',num,' model states -- too many.'
+         call error_handler(E_MSG,'Aadvance_state',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'Aadvance_state','Use less than 10000 model states.',source,revision,revdate)
       endif
 
  11   format(a21, i1)
@@ -777,6 +778,7 @@ return
  31   format(a21, i3)
  41   format(a21, i4)
       write(*, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
+      write(logfileunit, *) 'ic and ud files ', i, ic_file_name(i), ud_file_name(i)
 
       ! Output the destination time followed by assim_model_state 
       ! Write the time to which to advance
