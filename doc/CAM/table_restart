@@ -8,17 +8,25 @@ Secondary (nrg2) only written if timestep after restart is not a abs/emis calc t
 i.e. if the primary history file write frequency, NHTFRQ(1), 
 is not a multiple of the absorptivity/emissivity calculation frequency, IRADAE 
 
-I count 49 variables here
+I count 58 variables here
 
-------------
+I did not include global integrals printed out, since I can't 
+imagine that they are prognostic variables.  However, they are
+read in for restarting the model, so we'll need to include
+them in some form other than the state vector.
+
+Table entry definition:
+====================================================
 restart variable   definition
 masterlist name    definition
                    progn(ostic)/diag(nostic)/stat(ic)), confidence (sure/hi/med/low)
                    basic restart or expanded (when restart is not a physics update time)
                    comments 
 ====================================================
+
 from write_restart_dynamics (nrg) calls  dynamics/eul/restart_dynamics.F90
 
+====================================================
 u3(t-1)		
 u3(t-2)		
 U		Zonal wind component
@@ -72,6 +80,11 @@ XXX		NONE
 		prog low
 		basic
 ------------
+dps 		pressure gradient
+XXX		NONE
+		prog low
+		basic
+------------
 phis		surface geopotential
 XXX		NONE
 		stat low
@@ -109,10 +122,11 @@ qfcst		slt moisture forecast
 XXX
 		prog med
 		basic low
+------------
 ====================================================
 from write_restart_physics (nrg) calls  physics/cam1/restart_physics.F90
 
-------------
+====================================================
 pblht		PBL height
 PBLH		Height of planetary boundary layer
 		prog med
@@ -194,7 +208,8 @@ FLNS		Net upward longwave flux at surface
 These (non-"ice") are components of srfflx_state_2d, 
 written to nrg
 ------------
-a[sl]di[rf]{ice}albedo: short/long wave, diffuse/direct {for ice}
+a[sl]di[rf]{ice}
+                albedo: short/long wave, diffuse/direct, {for ice}
 XXX		no 'albedo' anywhere!
                 prog low
                 basic low
@@ -316,6 +331,4 @@ emstot_3d	Total emissivity
 XXX		
 		prog low
 		expanded high
-------------
-------------
 ------------
