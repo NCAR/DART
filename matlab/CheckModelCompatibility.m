@@ -5,6 +5,7 @@ function CheckModelCompatibility(truth_file,diagn_file);
 % $Source$
 % $Revision$
 % $Date$
+% $Author$
 
 if ( exist(truth_file) ~= 2 )
    error(sprintf('(truth_file) %s does not exist.',truth_file))
