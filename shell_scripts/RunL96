@@ -167,6 +167,11 @@ echo '   model_size = 40,'   >> model.nml
 echo '   forcing = 8.0,'     >> model.nml
 echo '   deltat = 0.005   /' >> model.nml
 
+echo ' '                                        > obs_sequence.nml
+echo '&obs_sequence_nml'                       >> obs_sequence.nml
+echo ' read_binary_obs_sequence = .false.,'    >> obs_sequence.nml
+echo 'write_binary_obs_sequence = .false.  /'  >> obs_sequence.nml
+
 #======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
@@ -180,7 +185,7 @@ echo '&utilities_nml'                                   > utilities.nml
 echo '   logfilename = "create_obs_sequence.out"'      >> utilities.nml
 echo '   TERMLEVEL = 1   /'                            >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml > input.nml
+cat utilities.nml assim_mod.nml obs_sequence.nml model.nml > input.nml
 
 ./create_obs_sequence < ../random_obs.input
 
@@ -211,7 +216,7 @@ echo '&utilities_nml'                                   > utilities.nml
 echo '   logfilename = "create_fixed_network_seq.out"' >> utilities.nml
 echo '   TERMLEVEL = 1   /'                            >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml > input.nml
+cat utilities.nml assim_mod.nml obs_sequence.nml model.nml > input.nml
 
 ./create_fixed_network_seq < $CFN
 
@@ -249,7 +254,7 @@ echo '&utilities_nml'                              > utilities.nml
 echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
 echo '   TERMLEVEL = 1  /'                        >> utilities.nml
 
-cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
+cat utilities.nml assim_mod.nml obs_sequence.nml model.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -297,6 +302,11 @@ echo '&utilities_nml'                            > utilities.nml
 echo '   logfilename = "filter.out"'            >> utilities.nml
 echo '   TERMLEVEL = 1   /'                     >> utilities.nml
 
+echo ' '                                        > obs_sequence.nml
+echo '&obs_sequence_nml'                       >> obs_sequence.nml
+echo ' read_binary_obs_sequence = .false.,'    >> obs_sequence.nml
+echo 'write_binary_obs_sequence = .false.  /'  >> obs_sequence.nml
+
 echo " "                                                          > filter.nml
 echo "&filter_nml"                                               >> filter.nml
 echo "   async = $async ,"                                       >> filter.nml
@@ -320,7 +330,7 @@ echo "   num_output_obs_members = $num_output_obs_members ,"     >> filter.nml
 echo "   output_interval = $output_interval    /"                >> filter.nml
 echo " "                                                         >> filter.nml
 
-cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
+cat utilities.nml assim_mod.nml obs_sequence.nml model.nml filter.nml > input.nml
 
 ./filter
 
@@ -330,7 +340,7 @@ else
    echo " "
    echo "filter terminated normally"
    echo " "
-   \rm -f $CFN set_def.out
+   \rm -f $CFN obs_sequence.nml set_def.out
    \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
 endif
 
