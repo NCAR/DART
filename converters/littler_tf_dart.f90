@@ -193,6 +193,7 @@ if(.not. littler_to_dart) then
 
          if (kx > 1) then
             tst_sound = .true.
+            tst_pltfrm = 'FM-35 TEMP'
          else
             tst_sound = .false.
          endif
