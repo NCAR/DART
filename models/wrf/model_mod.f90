@@ -32,9 +32,9 @@ use     utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, 
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit
 use      obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                              KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, &
-                              KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, &
-                              KIND_TD2
+                              KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
+                              KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, &
+                              KIND_Q2, KIND_TD2
 
 use netcdf
 use typesizes
@@ -693,12 +693,17 @@ real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 real(r8)                        :: xloc, yloc, zloc, xyz_loc(3)
 integer                         :: which_vert
-integer                         :: i, j, k, i1,i2,i3
+integer                         :: i, j, k, i1,i2,i3, i1up,i2up
 real(r8)                        :: dx,dy,dxm,dym
 real(r8)                        :: p1,p2,p3,p4,a1,alpha
 integer                         :: in, ii, id
 
 real(r8), allocatable, dimension(:) :: v_h, v_p, fld, fldu, fldv, fll
+
+! local vars, used in calculating density 
+real(r8)                        :: ph_e1,ph_e1p1, ph_e2,ph_e2p1, ph_e3,ph_e4, &
+                                   mu1, mu2, mu3, mu4,                        &
+                                   rho1 , rho1p1 , rho2 , rho2p1, rho3, rho4
 
 istatus = 0
 
@@ -744,6 +749,9 @@ end if
 
 ! Get the desired field to be interpolated
 if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
+
+! CS: interps for U,V involve averaging to mass points before interpolation.
+!     This is unnecessary and should be changed.
 
    if(i >= 1 .and. i+2 <= wrf%dom(id)%var_size(1,TYPE_U) .and. &
       j >= 1 .and. j   <  wrf%dom(id)%var_size(2,TYPE_U)) then
@@ -805,6 +813,64 @@ else if( obs_kind == KIND_T ) then                ! T
          a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
          fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
          if(debug) print*,k,' model temp profile ',fld(k)
+      end do
+
+   else
+
+      fld(:) = missing_r8
+
+   endif
+
+else if( obs_kind == KIND_RHO ) then ! Calculate density, using hydrost. reln.
+                                     ! as in WRF (calc_p_rho_phi):
+                                     !     rho = mu / dphi/deta  
+
+   ! Rho calculated at mass points, and so is like "TYPE_GZ" 
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. & 
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then  
+
+      ! calculate full mu at corners of interp box
+      i1   = get_wrf_index(i,j  ,1  ,TYPE_MU, id)
+      i2   = get_wrf_index(i,j+1,1  ,TYPE_MU, id)
+
+      mu1 = x(i1  ) + wrf%dom(id)%mub(i  ,j  )
+      mu2 = x(i2  ) + wrf%dom(id)%mub(i  ,j+1)
+      mu3 = x(i1+1) + wrf%dom(id)%mub(i+1,j  )
+      mu4 = x(i2+1) + wrf%dom(id)%mub(i+1,j+1)
+
+      do k=1,wrf%dom(id)%bt
+         ! computes rho, then interpolates horizontally.  Not consistent
+         ! with theta, where temp. is interpolated 1st then theta calculated.
+
+         ! 1st, calculate dphi/deta at mass pts
+         i1   = get_wrf_index(i,j  ,k  ,TYPE_GZ, id)
+         i1up = get_wrf_index(i,j  ,k+1,TYPE_GZ, id)
+         i2   = get_wrf_index(i,j+1,k  ,TYPE_GZ, id)
+         i2up = get_wrf_index(i,j+1,k+1,TYPE_GZ, id)
+
+         ph_e1 = (  (x(i1up  ) - x(i1  ))                         &
+                  + (wrf%dom(id)%phb(i  ,j  ,k+1) - wrf%dom(id)%phb(i  ,j  ,k)) ) &
+                 / wrf%dom(id)%dnw(k) 
+         ph_e2 = (  (x(i2up  ) - x(i2  ))                         &
+                  + (wrf%dom(id)%phb(i  ,j+1,k+1) - wrf%dom(id)%phb(i  ,j+1,k)) ) &
+                 / wrf%dom(id)%dnw(k) 
+         ph_e3 = (  (x(i1up+1) - x(i1+1))                         &
+                  + (wrf%dom(id)%phb(i+1,j  ,k+1) - wrf%dom(id)%phb(i+1,j  ,k)) ) &
+                 / wrf%dom(id)%dnw(k) 
+         ph_e4 = (  (x(i2up+1) - x(i2+1))                         &
+                  + (wrf%dom(id)%phb(i+1,j+1,k+1) - wrf%dom(id)%phb(i+1,j+1,k)) ) &
+                 / wrf%dom(id)%dnw(k) 
+
+         ! now calculate rho = - mu / dphi/deta 
+         rho1 = - mu1 / ph_e1
+         rho2 = - mu2 / ph_e2
+         rho3 = - mu3 / ph_e3
+         rho2 = - mu4 / ph_e4
+
+         ! interpolate rho to desired horizontal location
+         fld(k) = dym*( dxm*rho1 + dx*rho3 ) + dy*( dxm*rho2 + dx*rho4 )
+         if(debug) print*,k,' model rho profile ',fld(k)
+
       end do
 
    else
@@ -2913,6 +2979,9 @@ end subroutine to_zk
 
 subroutine get_model_pressure_profile(i_in,j_in,dx,dy,dxm,dym,n,x,id,fld, &
                                       pp11,pp21,pp31,pp41)
+
+! CS: What are outputs pp11, ..., pp41 ?? Moist corrections to hydrostatic
+!     surface pressure ??
 
 integer,  intent(in)  :: i_in,j_in,n,id
 real(r8), intent(in)  :: dx,dy,dxm,dym
