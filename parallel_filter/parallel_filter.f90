@@ -664,7 +664,7 @@ do k = 1, ens_size
       call get_obs_from_key(seq, keys(j), observation)
       ! Get the qc value set so far
       if(k == 1) call get_qc(observation, qc(j:j), 1)
-      call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k:k, j), istatus)
+      call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k, j:j), istatus)
       if(istatus > 0) then 
          qc(j) = qc(j) + 2**prior_post * 1000
 ! TEST LINE for doing quality control pass through
