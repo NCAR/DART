@@ -38,7 +38,7 @@ implicit none
 private
 
 public :: assim_tools_init, obs_increment, update_from_obs_inc, look_for_bias, &
-   filter_assim, async_assim_region
+   filter_assim, async_assim_region, assim_tools_end
 
 type (random_seq_type) :: inc_ran_seq
 logical :: first_inc_ran_call = .true.
@@ -66,8 +66,8 @@ real(r8) :: cov_inflate_sd = 0.05
 real(r8) :: sd_lower_bound = 0.05
 logical  :: deterministic_cov_inflate = .true.
 logical  :: start_from_assim_restart = .false.
-character(len = 129) :: assim_restart_in_file_name = 'assim_ics'
-character(len = 129) :: assim_restart_out_file_name = 'assim_restart'
+character(len = 129) :: assim_restart_in_file_name = 'assim_tools_ics'
+character(len = 129) :: assim_restart_out_file_name = 'assim_tools_restart'
 integer :: do_parallel = 0
 integer :: num_domains = 1
 character(len=129) :: parallel_command = './assim_filter.csh'
@@ -86,7 +86,7 @@ subroutine assim_tools_init()
 ! subroutine assim_tools_init()
 !
 
-integer :: iunit, ierr, io
+integer :: iunit, ierr, io, restart_unit
 
 call register_module(source, revision, revdate)
 
@@ -110,14 +110,17 @@ endif
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
 write(logfileunit, nml=assim_tools_nml)
 write(     *     , nml=assim_tools_nml)
-! If requested, read cov_inflate and cov_inflate_sd from a restart file
-!if(start_from_assim_restart) then
-!   restart_unit = get_unit()
-!   open(unit = restart_unit, file = assim_restart_in_file_name)
-!   read(unit, *) cov_inflate, cov_inflate_sd
-!   close(unit)
-!endif
 
+! If requested, read cov_inflate and cov_inflate_sd from a restart file
+! Otherwise use namelist values
+if(start_from_assim_restart) then
+   restart_unit = get_unit()
+   open(unit = restart_unit, file = assim_restart_in_file_name)
+   read(restart_unit, *) cov_inflate, cov_inflate_sd
+   close(restart_unit)
+endif
+
+write(logfileunit, *) 'sd controls are ', cov_inflate, cov_inflate_sd, sd_lower_bound
 write(*, *) 'sd controls are ', cov_inflate, cov_inflate_sd, sd_lower_bound
 
 !!! PROBLEMS WITH REGIONS AND STATE!!!
@@ -1091,6 +1094,7 @@ call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size
 
 
 write(*, *) 'done with subroutine filter_assim cov_inflate is ', cov_inflate
+write(logfileunit, *) 'done with subroutine filter_assim cov_inflate is ', cov_inflate
 
 end subroutine filter_assim
 
@@ -1290,6 +1294,21 @@ prob = 1.0 / (sqrt(2.0 * 3.14159) * sd) * exp(exponent)
 compute_new_density = l_prob * prob
 
 end function compute_new_density
+
+
+!---------------------------------------------------------------------
+
+subroutine assim_tools_end()
+
+integer :: restart_unit
+
+! Write out cov_inflate and cov_inflate_sd to restart file
+restart_unit = get_unit()
+open(unit = restart_unit, file = assim_restart_out_file_name)
+write(restart_unit, *) cov_inflate, cov_inflate_sd
+close(restart_unit)
+
+end subroutine assim_tools_end
 
 !========================================================================
 ! end module assim_tools_mod
