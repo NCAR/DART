@@ -1,0 +1,2 @@
+&ensemble_manager_nml
+   in_core = .true. /
