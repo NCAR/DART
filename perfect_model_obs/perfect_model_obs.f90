@@ -187,7 +187,7 @@ Advance: do i = 1, num_obs_sets
 
 ! Compute the observations from the state
    call get_expected_obs(seq, i, get_model_state_vector(x(1)), true_obs)
-!   write(*, *) 'exact obs ', obs
+!   write(*, *) 'exact obs ', true_obs
 
 ! Get the observational error covariance (diagonal at present)
    call get_diag_obs_err_cov(seq, i, obs_err_cov)

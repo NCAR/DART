@@ -268,7 +268,7 @@ AdvanceTime : do i = 1, num_obs_sets
    time2 = get_closest_state_time_to(ens(1), time)
    write(*, *) 'advancing to time2 '
    call  print_time(time2)
-   ! Advance all the ensembles (to the time of the first ensemble)
+! Advance all the ensembles (to the time of the first ensemble)
    if(time2 /= get_model_time(ens(1))) call advance_state(ens, ens_size, time2, async)
 
    ! Tag the ensemble mean and spread with the current time
@@ -347,10 +347,10 @@ AdvanceTime : do i = 1, num_obs_sets
          call get_expected_obs(seq, i, ens_ptr(k)%state, ens_obs(k:k), j)
       end do
 
-!!!      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
+      call obs_increment(ens_obs, ens_size, obs(j), obs_err_cov(j), obs_inc)
 ! Test of modified linear variance delta update for localization, 13 Dec. 2002
-         call linear_obs_increment(ens_obs, ens_size, obs(j), &
-            obs_err_cov(j), obs_inc, mean_inc, sd_ratio)
+!!!         call linear_obs_increment(ens_obs, ens_size, obs(j), &
+!!!            obs_err_cov(j), obs_inc, mean_inc, sd_ratio)
 
       ! Output the ensemble prior and posterior to diagnostic files
       do k = 1, ens_size
@@ -367,11 +367,11 @@ AdvanceTime : do i = 1, num_obs_sets
          ! Get the ensemble elements for this state variable and do regression
          swath = get_ens_swath(ens_ptr, ens_size, ind)
 
-!!!         call update_from_obs_inc(ens_obs, obs_inc, &
-!!!                   swath, ens_size, ens_inc, cov_factor)
+         call update_from_obs_inc(ens_obs, obs_inc, &
+                   swath, ens_size, ens_inc, cov_factor)
 ! Test of modified linear variance delta update for localization
-         call linear_update_from_obs_inc(ens_obs, obs_inc, mean_inc, &
-            swath, ens_size, ens_inc, cov_factor, sd_ratio)
+!!!         call linear_update_from_obs_inc(ens_obs, obs_inc, mean_inc, &
+!!!            swath, ens_size, ens_inc, cov_factor, sd_ratio)
 
 
 
