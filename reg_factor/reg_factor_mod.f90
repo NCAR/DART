@@ -29,7 +29,7 @@ function comp_reg_factor(num_groups, regress, time_index, &
 implicit none
 
 integer, intent(in) :: num_groups, time_index, obs_index, state_index
-integer, intent(in) :: obs_state_ind, obs_state_max
+integer, intent(in), optional :: obs_state_ind, obs_state_max
 real(r8), intent(in) :: regress(num_groups)
 real(r8) :: comp_reg_factor
 
