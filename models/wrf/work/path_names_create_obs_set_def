@@ -13,7 +13,7 @@ obs_set_def/obs_set_def_mod.f90
 set_def_list/set_def_list_mod.f90
 models/wrf/model_mod.f90
 common/types_mod.f90
-location/simple_threed_sphere/location_mod.f90
+location/threed_sphere/location_mod.f90
 common/types_mod.f90
 random_seq/random_seq_mod.f90
 random_nr/random_nr_mod.f90

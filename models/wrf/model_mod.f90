@@ -1,8 +1,9 @@
 module model_mod
 
-!  $Source$
-!  $Revision$
-!  $Date$
+! <next three lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
 
 ! Assimilation interface for WRF model
 
@@ -12,13 +13,17 @@ module model_mod
 !
 !-----------------------------------------------------------------------
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
-
 !-----------------------------------------------------------------------
+
+use        types_mod, only : r8, deg2rad, rad2deg, missing_r
 use time_manager_mod, only : time_type, set_time
-use location_mod    , only : location_type, get_location, set_location, get_dist, &
+use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              LocationDims, LocationName, LocationLName, query_location
-use types_mod
-use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+                             error_handler, E_ERR
+
+use netcdf
+use typesizes
 
 implicit none
 private
@@ -33,7 +38,8 @@ public     get_model_size,                    &
            model_get_close_states,            &
            TYPE_U, TYPE_V, TYPE_W, TYPE_GZ,   &
            TYPE_T, TYPE_MU,                   &
-           TYPE_QV, TYPE_QC, TYPE_QR
+           TYPE_QV, TYPE_QC, TYPE_QR,         &
+           pert_model_state
 
 !  public stubs 
 
@@ -45,14 +51,11 @@ public     adv_1step,           &
            nc_write_model_vars
 
 !-----------------------------------------------------------------------
-
-! let CVS fill strings ... DO NOT EDIT ...
-character(len=128) :: version = "$Id$"
-character(len=128) :: tag = "$Name$"
+! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-   source = "$Source$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! model namelist parameters
@@ -96,26 +99,23 @@ real (kind=r8), PARAMETER    :: ps0 = 100000.0_r8
 
 TYPE wrf_static_data_for_dart
 
-   integer :: bt, bts, sn, sns, we, wes
+   integer  :: bt, bts, sn, sns, we, wes 
+   real(r8) :: p_top, dx, dy, dt 
+   integer  :: map_proj 
+   real(r8) :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1 
 
-   real(r8) :: p_top, dx, dy, dt
-
-   integer :: map_proj
-
-   real(r8)    :: cen_lat,cen_lon,truelat1,truelat2,cone_factor,ycntr,psi1
-
-   real(r8), dimension(:), pointer :: znu, dn, dnw
-   integer :: n_moist
-   real(r8), dimension(:,:), pointer :: mub, latitude, longitude
-   real(r8), dimension(:,:), pointer :: mapfac_m, mapfac_u, mapfac_v
+   integer  :: n_moist
+   real(r8), dimension(:),     pointer :: znu, dn, dnw
+   real(r8), dimension(:,:),   pointer :: mub, latitude, longitude
+   real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
    real(r8), dimension(:,:,:), pointer :: phb
 
    integer :: model_size, number_of_wrf_variables
    integer, dimension(:,:), pointer :: var_index
    integer, dimension(:,:), pointer :: var_size
-   integer,          dimension(:), pointer :: var_type
+   integer, dimension(:),   pointer :: var_type
+   integer, dimension(:,:), pointer :: land
    character(len=8), dimension(:), pointer :: var_name
-   integer, dimension(:,:), pointer :: land         ! TJH added land mask
 
 end type
 
@@ -132,10 +132,6 @@ contains
 subroutine static_init_model()
 
 ! INitializes class data for WRF???
-
-use netcdf
-
-implicit none
 
 character (len = 80)      :: path
      integer              :: mode
@@ -183,41 +179,28 @@ endif
 
 
 mode = 0
-status = nf90_open('wrfinput', mode, ncid) 
-if (status /= nf90_noerr) call handle_err(1,status)
+call check( nf90_open('wrfinput', mode, ncid) )
 if(debug) write(6,*) ' ncid is ',ncid
 
 ! get wrf grid dimensions
 
-status = nf90_inq_dimid(ncid, "bottom_top", bt_id)
-if (status /= nf90_noerr) call handle_err(2,status)
-status = nf90_inquire_dimension(ncid, bt_id, name, wrf%bt)
-if (status /= nf90_noerr) call handle_err(3,status)
+call check( nf90_inq_dimid(ncid, "bottom_top", bt_id) )
+call check( nf90_inquire_dimension(ncid, bt_id, name, wrf%bt) )
 
-status = nf90_inq_dimid(ncid, "bottom_top_stag", bt_id)   ! reuse bt_id, no harm
-if (status /= nf90_noerr) call handle_err(2,status)
-status = nf90_inquire_dimension(ncid, bt_id, name, wrf%bts)
-if (status /= nf90_noerr) call handle_err(3,status)
+call check( nf90_inq_dimid(ncid, "bottom_top_stag", bt_id) ) ! reuse bt_id, no harm
+call check( nf90_inquire_dimension(ncid, bt_id, name, wrf%bts) )
 
-status = nf90_inq_dimid(ncid, "south_north", sn_id)
-if (status /= nf90_noerr) call handle_err(2,status)
-status = nf90_inquire_dimension(ncid, sn_id, name, wrf%sn)
-if (status /= nf90_noerr) call handle_err(3,status)
+call check( nf90_inq_dimid(ncid, "south_north", sn_id) )
+call check( nf90_inquire_dimension(ncid, sn_id, name, wrf%sn) )
 
-status = nf90_inq_dimid(ncid, "south_north_stag", sn_id)  ! reuse sn_id, no harm
-if (status /= nf90_noerr) call handle_err(2,status)
-status = nf90_inquire_dimension(ncid, sn_id, name, wrf%sns)
-if (status /= nf90_noerr) call handle_err(3,status)
+call check( nf90_inq_dimid(ncid, "south_north_stag", sn_id)) ! reuse sn_id, no harm
+call check( nf90_inquire_dimension(ncid, sn_id, name, wrf%sns) )
 
-status = nf90_inq_dimid(ncid, "west_east", we_id)
-if (status /= nf90_noerr) call handle_err(2,status)
-status = nf90_inquire_dimension(ncid, we_id, name, wrf%we)
-if (status /= nf90_noerr) call handle_err(3,status)
+call check( nf90_inq_dimid(ncid, "west_east", we_id) )
+call check( nf90_inquire_dimension(ncid, we_id, name, wrf%we) )
 
-status = nf90_inq_dimid(ncid, "west_east_stag", we_id)    ! reuse we_id, no harm
-if (status /= nf90_noerr) call handle_err(2,status)
-status = nf90_inquire_dimension(ncid, we_id, name, wrf%wes)
-if (status /= nf90_noerr) call handle_err(3,status)
+call check( nf90_inq_dimid(ncid, "west_east_stag", we_id) )  ! reuse we_id, no harm
+call check( nf90_inquire_dimension(ncid, we_id, name, wrf%wes) )
 
 if(debug) then
    write(6,*) ' dimensions bt, sn, we are ',wrf%bt, wrf%sn, wrf%we
@@ -231,18 +214,15 @@ start  = 1
 stride = 1
 map    = 1
 
-status = nf90_get_att(ncid, nf90_global, 'DX', dx)
-if (status /= nf90_noerr) call handle_err(4,status)
+call check( nf90_get_att(ncid, nf90_global, 'DX', dx) )
 wrf%dx = dx
 if(debug) write(6,*) ' dx is ',dx
 
-status = nf90_get_att(ncid, nf90_global, 'DY', dy)
-if (status /= nf90_noerr) call handle_err(4,status)
+call check( nf90_get_att(ncid, nf90_global, 'DY', dy) )
 wrf%dy = dy
 if(debug) write(6,*) ' dy is ',dy
 
-status = nf90_get_att(ncid, nf90_global, 'DT', dt)
-if (status /= nf90_noerr) call handle_err(4,status)
+call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
 wrf%dt = dt
 if(debug) write(6,*) ' dt is ',dt
 
@@ -251,25 +231,24 @@ call netcdf_read_write_var( "P_TOP", ncid, var_id, zero_d,        &
 wrf%p_top = zero_d(1)
 if(debug) write(6,*) ' p_top is ',wrf%p_top
 
-status = nf90_get_att(ncid, nf90_global, 'MAP_PROJ', map_proj)
+call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', map_proj) )
 
-if (status /= nf90_noerr) call handle_err(4,status)
 
 wrf%map_proj = map_proj
 
 if(debug) write(6,*) ' map_proj is ',map_proj
-status = nf90_get_att(ncid, nf90_global, 'CEN_LAT', cen_lat)
+call check( nf90_get_att(ncid, nf90_global, 'CEN_LAT', cen_lat) )
 
 wrf%cen_lat = cen_lat
 if(debug) write(6,*) ' cen_lat is ',wrf%cen_lat
 
-status = nf90_get_att(ncid, nf90_global, 'CEN_LON', cen_lon)
+call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', cen_lon) )
 
 wrf%cen_lon = cen_lon
-status = nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1)
+call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1) )
 
 wrf%truelat1 = truelat1
-status = nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2)
+call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2) )
 
 wrf%truelat2 = truelat2
 
@@ -407,8 +386,7 @@ end if
 
 ! close data file, we have all we need
 
-status = nf90_close(ncid)
-if (status /= nf90_noerr) call handle_err(4,status)
+call check( nf90_close(ncid) )
 
 !  build the map into the 1D DART vector for WRF data
 
@@ -506,30 +484,26 @@ if (status /= nf90_noerr) call handle_err(4,status)
   wrf%model_size = wrf%var_index(2,wrf%number_of_wrf_variables)
   write(6,*) ' wrf model size is ',wrf%model_size
 
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'static_init_model', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
+  end subroutine check
+
 end subroutine static_init_model
 
-!**********************************************************************
-
-subroutine handle_err(ifn,status)
-use netcdf
-implicit none
-integer :: ifn, status
-
-write(6,*) ' error for netcdf function ',ifn
-write(6,*) ' status code = ',status
-write(6,'(a80)') nf90_strerror(status)
-
-stop
-
-end subroutine handle_err
 
 !**********************************************************************
 
 subroutine netcdf_read_write_var( variable, ncid, var_id, var,          &
                                   start, count, stride, map, in_or_out, debug, ndims )
 
-use netcdf
-implicit none
 integer :: ncid, var_id, ndims
 real(r8), dimension(ndims) :: var
 character (len=6) :: in_or_out
@@ -537,32 +511,37 @@ integer, dimension(ndims) :: start, count, stride, map
 integer :: status
 character (len=*) :: variable
 logical :: debug
+character (len=129) :: error_string
 
 if(debug) write(6,*) ' var for io is ',variable
-status = nf90_inq_varid(ncid, variable, var_id)
+call check(  nf90_inq_varid(ncid, variable, var_id) )
 if(debug) write(6,*) variable, ' id = ',var_id
-if (status /= nf90_noerr) call handle_err(4,status)
 
 if( in_or_out(1:5) == "INPUT" ) then
   if(debug) write(6,*) ' call netcdf read ', ncid, var_id
-  status = nf90_get_var(ncid, var_id, var, start, count, stride )
+  call check( nf90_get_var(ncid, var_id, var, start, count, stride ) )
   if(debug) write(6,*) ' returned netcdf read '
 else if( in_or_out(1:6) == "OUTPUT" ) then
-  status = nf90_put_var(ncid, var_id, var, start, count, stride, map)
+  call check( nf90_put_var(ncid, var_id, var, start, count, stride, map) )
 else
-  write(6,*) ' unknown IO function for var_id ',var_id, in_or_out
-  write(6,*) ' error stop in netcdf_read_write_var in wrf model_mod '
-  stop
+  write(error_string,*)' unknown IO function for var_id ',var_id, in_or_out
+  call error_handler(E_ERR,'netcdf_read_write_var', &
+       error_string, source, revision,revdate)
 end if
-if (status /= nf90_noerr) call handle_err(100,status)
 
+contains
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'netcdf_read_write_var', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+  end subroutine check
 end subroutine netcdf_read_write_var
 
 !#######################################################################
 
 function get_model_size()
-
-implicit none
 
 integer :: get_model_size
 
@@ -602,8 +581,6 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! Maybe a functional form should be added?
 !  SHOULD THIS ALSO RETURN THE TYPE OF THIS VARIABLE???
 ! YES NEED TO RETURN VARIABLE TYPE HERE
-
-implicit none
 
 integer, intent(in) :: index_in
 ! Temporary kluge of location type
@@ -735,8 +712,6 @@ end subroutine get_state_meta_data
 function model_interpolate(x, location, obs_kind)
 !!!function model_interpolate(x, lon, lat, level, type)
 
-implicit none
-
 logical, parameter :: debug = .false.  
 real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
@@ -839,8 +814,6 @@ end function model_interpolate
 
 function get_val(x, lon_index, lat_index, level, obs_kind)
 
-implicit none
-
 real(r8) :: get_val
 real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, obs_kind
@@ -852,8 +825,6 @@ end function get_val
 !#######################################################################
 
 subroutine model_get_close_states(o_loc, radius, number, indices, dist)
-
-implicit none
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
@@ -1055,7 +1026,6 @@ end subroutine model_get_close_states
 
 function get_wrf_index( i,j,k,var_type )
 
-implicit none
 integer, intent(in) :: i,j,k,var_type
 integer :: get_wrf_index
 integer :: in
@@ -1079,8 +1049,6 @@ subroutine grid_close_states( o_loc, lat, lon, radius_in, num,  &
                               close_dist, u_pts, v_pts, p_pts     )
 
 ! Finds close state points from a particular grid for the WRF model
-
-implicit none
 
 type(location_type), intent(in) :: o_loc
 integer, intent(inout) :: num
@@ -1254,7 +1222,6 @@ end subroutine grid_close_states
 
 function get_dist_wrf( i,j,k,var_type,o_loc )
 
-implicit none
 type(location_type), intent(in) :: o_loc
 integer, intent(in) :: i,j,k,var_type
 
@@ -1332,10 +1299,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! Writes the model-specific attributes to a netCDF file
 ! A. Caya May 7 2003
 ! T. Hoar Mar 8 2004 writes prognostic flavor
-
-use typeSizes
-use netcdf
-implicit none
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -1804,14 +1767,10 @@ contains
   !                       text message each time an error code is returned. 
   subroutine check(istatus)
     integer, intent ( in) :: istatus
-    integer :: ierr
 
-    if(istatus /= nf90_noerr) then
-       print *,'model_mod:nc_write_model_atts'
-       print *, trim(nf90_strerror(istatus))
-       ierr = istatus
-       stop
-    end if
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
   end subroutine check
 
 end function nc_write_model_atts
@@ -1826,10 +1785,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 ! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
 ! return code is always '0 == normal', since the fatal errors stop execution.
 
-
-use typeSizes
-use netcdf
-implicit none
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
@@ -2024,11 +1979,9 @@ contains
   subroutine check(istatus)
     integer, intent ( in) :: istatus
 
-    if(istatus /= nf90_noerr) then
-      print *,'model_mod:nc_write_model_vars'
-      print *, trim(nf90_strerror(istatus))
-      stop
-    end if
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_vars', &
+         trim(nf90_strerror(istatus)), source, revision, revdate)
+
   end subroutine check
 
 end function nc_write_model_vars
@@ -2044,9 +1997,8 @@ subroutine adv_1step(x, Time)
 ! Does single time-step advance with vector state as
 ! input and output.
 
-implicit none
-
 real(r8), intent(inout) :: x(:)
+
 ! Time is needed for more general models like this; need to add in to 
 ! low-order models
 type(time_type), intent(in) :: Time
@@ -2063,8 +2015,6 @@ end subroutine end_model
 subroutine init_time(i_time)
 ! For now returns value of Time_init which is set in initialization routines.
 
-implicit none
-
 type(time_type), intent(out) :: i_time
 
 !Where should initial time come from here?
@@ -2077,8 +2027,6 @@ end subroutine init_time
 
 subroutine init_conditions(x)
 ! Reads in restart initial conditions and converts to vector
-
-implicit none
 
 ! Following changed to intent(inout) for ifc compiler;should be like this
 real(r8), intent(inout) :: x(:)
@@ -2110,18 +2058,16 @@ subroutine llxy (xloni,xlatj,x,y)
 !
 !-----------------------------------------------------------------
    
-   implicit none
-   
    real(r8), intent(in)  :: xloni, xlatj
    real(r8), intent(out) :: x, y
 
-   real(r8)              :: dxlon
-   real(r8)              :: xlat, xlon
-   real(r8)              :: xx, yy, xc, yc
-   real(r8)              :: cell, psi0, psx, r, flp
-   real(r8)              :: centri, centrj
-   real(r8)              :: ds       
-   real(r8)              :: bb,c2
+   real(r8) :: dxlon
+   real(r8) :: xlat, xlon
+   real(r8) :: xx, yy, xc, yc
+   real(r8) :: cell, psi0, psx, r, flp
+   real(r8) :: centri, centrj
+   real(r8) :: ds       
+   real(r8) :: bb,c2
    
 !-----------------------------------------------------------------
    ds = 0.001 *wrf%dx
@@ -2209,22 +2155,20 @@ SUBROUTINE XYLL(XX,YY,XLAT,XLON)
 !   XLON         : LONGITUDES 
 !
 
-   IMPLICIT NONE
-
    REAL(R8), INTENT(IN)  :: XX, YY
    REAL(R8), INTENT(OUT) :: XLAT,XLON
         
-   REAL(R8)              :: flp, flpp, r, cell, cel1, cel2, c2
-   REAL(R8)              :: psx,Rcone_factor
-   REAL(R8)              :: centri, centrj, x, y, xcntr
+   REAL(R8) :: flp, flpp, r, cell, cel1, cel2, c2
+   REAL(R8) :: psx,Rcone_factor
+   REAL(R8) :: centri, centrj, x, y, xcntr
 
    c2 = earth_radius * COS(wrf%psi1)
-   centri = real (wrf%we)/2.0  
-   centrj = real (wrf%sn)/2.0  
+   centri = wrf%we / 2.0_r8
+   centrj = wrf%sn / 2.0_r8
 !   CNTRI = float(coarse_iy+1)/2.
 !   CNTRJ = float(coarse_jx+1)/2. 
    
-   xcntr = 0.0
+   xcntr = 0.0_r8
 
 !-----CALCULATE X AND Y POSITIONS OF GRID
    X = ( XCNTR+(XX-1.0) +(1.0 - CENTRI) ) * wrf%dx*0.001 
@@ -2273,18 +2217,19 @@ SUBROUTINE XYLL(XX,YY,XLAT,XLON)
 end subroutine xyll
    
 !**********************************************
- subroutine Interp_lin_1D(fi1d, n1, z, fo1d)                        
-  integer,     intent(in)  :: n1          
-  real(r8)   ,     intent(in)  :: fi1d(n1)       ! Input variable
-  real(r8)   ,     intent(in)  :: z        
-  real(r8)   ,     intent(out) :: fo1d              ! Output variable 
-!
-  integer                  :: k
-  real(r8)                     :: dz, dzm
+subroutine Interp_lin_1D(fi1d, n1, z, fo1d)                        
+
+  integer,  intent(in)  :: n1
+  real(r8), intent(in)  :: fi1d(n1)
+  real(r8), intent(in)  :: z
+  real(r8), intent(out) :: fo1d
+
+  integer   :: k
+  real(r8)  :: dz, dzm
 
   fo1d = missing_r
 
-     if(z > 0.0) then
+     if(z > 0.0_r8) then
         call toGrid(z,n1, k, dz, dzm)
         fo1d = dzm*fi1d(k) + dz*fi1d(k+1)
      endif
@@ -2293,15 +2238,14 @@ end subroutine Interp_lin_1D
 
 !**********************************************
 subroutine Interp_lin_2D(fi2d,n1,n2, x,y, fo2d)
-  implicit none
 
-  integer,     intent(in)  :: n1, n2          
-  real(r8)   ,     intent(in)  :: fi2d(n1,n2)       ! Input variable
-  real(r8)   ,     intent(in)  :: x, y
-  real(r8)   ,     intent(out) :: fo2d              ! Output variable 
-!
-  integer                  :: i, j
-  real(r8)                     :: dx, dxm, dy, dym
+  integer,  intent(in)  :: n1, n2
+  real(r8), intent(in)  :: fi2d(n1,n2)
+  real(r8), intent(in)  :: x, y
+  real(r8), intent(out) :: fo2d
+
+  integer   :: i, j
+  real(r8)  :: dx, dxm, dy, dym
 
   call toGrid (x,n1,i,dx,dxm)
   call toGrid (y,n2,j,dy,dym)
@@ -2314,16 +2258,15 @@ end subroutine Interp_lin_2D
 
 subroutine Interp_lin_3D(fi3d,n1,n2,n3, x,y,z,fo3d)
 
-  implicit none
+! real(r8),dimension(n1,n2,n3), intent(in)  :: fi3d(n1,n2,n3)
+  integer,  intent(in)  :: n1,n2,n3
+  real(r8), intent(in)  :: fi3d(n1,n2,n3)
+  real(r8), intent(in)  :: x, y, z
+  real(r8), intent(out) :: fo3d
 
-  integer,                  intent(in)  :: n1,n2,n3                        
-  real(r8),dimension(n1,n2,n3), intent(in)  :: fi3d      ! Input variable
-  real(r8),                     intent(in)  :: x, y, z 
-  real(r8),                     intent(out) :: fo3d      ! Output variable 
-!
-  integer                  :: i, j, k, kk
-  real(r8)                     :: dx, dxm, dy, dym, dz, dzm
-  real(r8)                     :: fiz (n3)
+  integer   :: i, j, k, kk
+  real(r8)  :: dx, dxm, dy, dym, dz, dzm
+  real(r8)  :: fiz (n3)
 
   call toGrid (x,n1,i,dx,dxm)
   call toGrid (y,n2,j,dy,dym)
@@ -2346,12 +2289,10 @@ subroutine toGrid (x, jx, j, dx, dxm)
 !  Transfer obs. x to grid j and calculate its
 !  distance to grid j and j+1
 
-   implicit none
-
-   real(r8),                     intent(in)  :: x
-   integer,                  intent(in)  :: jx
-   real(r8),                     intent(out) :: dx, dxm
-   integer,                  intent(out) :: j
+   real(r8), intent(in)  :: x
+   integer,  intent(in)  :: jx
+   real(r8), intent(out) :: dx, dxm
+   integer,  intent(out) :: j
    
    j = int (x)
 
@@ -2367,14 +2308,12 @@ end subroutine toGrid
 
 subroutine to_zk(obs_v, mdl_v, n3, v_interp_optn, zk)
 
-   implicit none
+   real(r8), intent(in)  :: obs_v
+   integer,  intent(in)  :: n3, v_interp_optn
+   real(r8), intent(in)  :: mdl_v(n3)
+   real(r8), intent(out) :: zk
 
-   real(r8),      intent(in)  :: obs_v
-   integer,   intent(in)  :: n3, v_interp_optn
-   real(r8),      intent(in)  :: mdl_v(n3)
-   real(r8),      intent(out) :: zk
-
-   integer                :: k
+   integer   :: k
 
    zk = missing_r
 
@@ -2404,17 +2343,15 @@ end subroutine to_zk
 subroutine get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,fld,&
                                       pp11,pp21,pp31,pp41)
 
-   implicit none
-
-integer,           intent(in)  :: i,j,n
-real(r8),              intent(in)  :: dx,dy,dxm,dym
-real(r8), intent(in)               :: x(:)
-real(r8),dimension(n), intent(out) :: fld      
-real(r8),          intent(out) :: pp11,pp21,pp31,pp41
+integer,  intent(in)  :: i,j,n
+real(r8), intent(in)  :: dx,dy,dxm,dym
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: fld(n)      
+real(r8), intent(out) :: pp11,pp21,pp31,pp41
  
-integer                        :: i1,i2,k,q1,q2,q3,q4
-real(r8)                       :: qv1,qv2,qv3,qv4
-real(r8), dimension(n)         :: pp1,pp2,pp3,pp4,pb,pp
+integer               :: i1,i2,k,q1,q2,q3,q4
+real(r8)              :: qv1,qv2,qv3,qv4
+real(r8), dimension(n):: pp1,pp2,pp3,pp4,pb,pp
 
 
 do k=1,n
@@ -2466,15 +2403,13 @@ end subroutine get_model_pressure_profile
 !#######################################################
 subroutine get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,fld)
 
-   implicit none
+integer,  intent(in)  :: i,j,n
+real(r8), intent(in)  :: dx,dy,dxm,dym
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: fld(n)
 
-integer,           intent(in)  :: i,j,n
-real(r8),              intent(in)  :: dx,dy,dxm,dym
-real(r8), intent(in)               :: x(:)
-real(r8),dimension(n), intent(out) :: fld      
-real(r8)                           :: fll(n+1)
- 
-integer                        :: i1,i2,k     
+real(r8)  :: fll(n+1) 
+integer   :: i1,i2,k     
             
 do k = 1, wrf%var_size(3,TYPE_GZ) 
    i1 = get_wrf_index(i,j,k,TYPE_GZ)
@@ -2487,5 +2422,25 @@ do k=1,n
    fld(k) = 0.5*(fll(k) + fll(k+1) )
 end do
 end subroutine get_model_height_profile
-!#######################################################
+
+
+
+  subroutine pert_model_state(state, pert_state, interf_provided)
+!----------------------------------------------------------------------
+! subroutine pert_model_state(state, pert_state, interf_provided)
+!
+! Perturbs a model state for generating initial ensembles
+! Returning interf_provided means go ahead and do this with uniform
+! small independent perturbations.
+
+real(r8), intent(in)  :: state(:)
+real(r8), intent(out) :: pert_state(:)
+logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_state
+
+
+
 end module model_mod
