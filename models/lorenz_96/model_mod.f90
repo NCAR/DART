@@ -3,6 +3,7 @@ module model_mod
 !use ncd_file_mod, only : init_ncd_file, def_axis, def_time_axis, &
 !   init_diag_field, output_diag, sum_diag
 
+use types_mod
 use loc_and_dist_mod, only : loc_type, get_dist, set_loc
 
 private
@@ -11,40 +12,48 @@ public init_model, get_model_size, init_conditions, adv_1step, advance, &
    adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
    model_output
 
-integer, parameter :: model_size = 40
-double precision, parameter :: forcing = 8.0
-double precision, parameter :: delta_t = 0.05
+integer(i4), parameter :: model_size =   40_i4
+real(r8),    parameter ::    forcing = 8.00_r8
+real(r8),    parameter ::    delta_t = 0.05_r8
 
 logical :: output_init = .FALSE.
 
 ! Define output indices for diagnostics
-integer :: diag_output_index(9)
+
+integer(i4) :: diag_output_index(9)
 
 ! Define the location of the state variables in module storage
+
 type(loc_type) :: state_loc(model_size)
 
 contains
 
-!==================================================================
+!======================================================================
+
+
 
 subroutine init_model()
-
+!----------------------------------------------------------------------
+! subroutine init_model()
+!
 ! Stub for model initialization, not needed for L96
 
 end subroutine init_model
 
-!==================================================================
+
 
 subroutine comp_dt(x, dt)
+!----------------------------------------------------------------------
+! subroutine comp_dt(x, dt)
+! 
+! Computes the time tendency of the lorenz 1996 model given current state
 
 implicit none
 
-! Computes the time tendency of the lorenz 1996 model given current state
+real(r8), intent( in) :: x(:)
+real(r8), intent(out) :: dt(:)
 
-double precision, intent(in) :: x(:)
-double precision, intent(out) :: dt(:)
-
-integer :: j, jp1, jm1, jm2
+integer(i4) :: j, jp1, jm1, jm2
 
 do j = 1, model_size
    jp1 = j + 1
@@ -59,77 +68,89 @@ end do
 
 end subroutine comp_dt
 
-!
-!===================================================================
-!
-!
-!  Does single time step advance for lorenz 96 model
-!  using four step rk time step
+
 
 subroutine adv_1step(x)
+!----------------------------------------------------------------------
+! subroutine adv_1step(x)
+!
+! Does single time step advance for lorenz 96 model
+! using four-step rk time step
 
 implicit none
 
-double precision, intent(inout) :: x(:)
-double precision, dimension(size(x)) :: x1, x2, x3, x4, dx, inter
-integer i
+real(r8), intent(inout) :: x(:)
+real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
+integer(i4) :: i
 
 !  Compute the first intermediate step
+
 call comp_dt(x, dx)
-x1 = delta_t * dx
-inter = x + x1 / 2.0
+x1    = delta_t * dx
+inter = x + x1 / 2.0_r8
+
 !  Compute the second intermediate step
+
 call comp_dt(inter, dx)
-x2 = delta_t * dx
-inter = x + x2 / 2.0
+x2    = delta_t * dx
+inter = x + x2 / 2.0_r8
+
 !  Compute the third intermediate step
+
 call comp_dt(inter, dx)
-x3 = delta_t * dx
+x3    = delta_t * dx
 inter = x + x3
+
 !  Compute fourth intermediate step
+
 call comp_dt(inter, dx)
 x4 = delta_t * dx
 
 !  Compute new value for x
-x = x + x1/6.0 + x2/3.0 + x3/3.0 + x4/6.0
+
+x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
 
 end subroutine adv_1step
 
-!
-!----------------------------------------------------------------------
-!
+
 
 subroutine adv_true_state(x)
+!----------------------------------------------------------------------
+! subroutine adv_true_state(x)
+!
 
 implicit none
 
-double precision, intent(inout) :: x(:)
+real(r8), intent(inout) :: x(:)
 
 call adv_1step(x)
 
 end subroutine adv_true_state
 
-!
-!=====================================================================
-!
+
 
 subroutine init_conditions(x)
-
-!  Initial conditions for lorenz 96
+!----------------------------------------------------------------------
+! subroutine init_conditions(x)
+!
+! Initial conditions for lorenz 96
 ! It is assumed that this is called before any other routines in this
 ! module. Should probably make that more formal and perhaps enforce for
 ! more comprehensive models.
 
 implicit none
 
-double precision, intent(out) :: x(:)
-integer :: i
-double precision :: x_loc
+real(r8), intent(out) :: x(:)
+
+integer(i4) :: i
+real(r8)    :: x_loc
 
 ! Define the interesting indexes for variables to do diag output; span lats
+
 do i = 1, size(diag_output_index)
    diag_output_index(i) = i
 end do
+
 !do i = 1, 9
 !   diag_output_index(i) = model_size * (i - 1) / 9.0 + 1.0
 !   write(*, *) 'output index ', i, diag_output_index(i)
@@ -143,30 +164,29 @@ do i = 1, model_size
    call set_loc(state_loc(i), x_loc)
 end do
 
-x = forcing
-x(1) = 1.001 * forcing
+x    = forcing
+x(1) = 1.001_r8 * forcing
 
 end subroutine init_conditions
 
-!
-!====================================================================
-!
 
-!  Advances the lorenz-96 model by a given number of steps
-!  Current state in x, new state in xnew, num time steps advanced
 
 subroutine advance(x, num, xnew)
+!----------------------------------------------------------------------
+! subroutine advance(x, num, xnew)
+!
+! Advances the lorenz-96 model by a given number of steps
+! Current state in x, new state in xnew, num time steps advanced
 
 implicit none
 
-double precision, intent(in) :: x(:)
-double precision, intent(out) :: xnew(:)
-integer, intent(in) :: num
+real(r8),  intent( in) :: x(:)
+real(r8),  intent(out) :: xnew(:)
+integer(i4),intent( in) :: num
 
-integer :: i
+integer(i4) :: i
 
-!  Copy initial conditions to avoid overwrite
-xnew = x
+xnew = x      ! Copy initial conditions to avoid overwrite
 
 !  Advance the appropriate number of steps
 do i = 1, num
@@ -175,18 +195,19 @@ end do
 
 end subroutine advance
 
-!
-!---------------------------------------------------------------------
-!
+
 
 !subroutine model_output(x, time)
+!---------------------------------------------------------------------
+! subroutine model_output(x, time)
+!
 
 !implicit none
 
 !real, intent(in) :: x(model_size)
 !real, intent(in) :: time
 !real :: points(model_size)
-!integer :: i
+!integer(i4) :: i
 
 !if(.NOT. output_init) then
 !   output_init = .TRUE.
@@ -207,18 +228,19 @@ end subroutine advance
 
 !end subroutine model_output
 
-!
-!=======================================================================
-!
+
 
 subroutine get_close_pts(list, num)
+!---------------------------------------------------------------------
+! subroutine get_close_pts(list, num)
+!
 
 implicit none
 
-integer, intent(in) :: num
-integer, intent(inout) :: list(model_size, num)
+integer(i4), intent(   in) :: num
+integer(i4), intent(inout) :: list(model_size, num)
 
-integer :: i, j, offset, index, temp
+integer(i4) :: i, j, offset, index, temp
 
 !do i = 1, model_size
 !   do offset = -num/2, -num/2 + num - 1
@@ -235,6 +257,7 @@ integer :: i, j, offset, index, temp
 
 ! Change in ordering of close points needed for debug in new basis_prod
 ! Change made 27 March, '00
+
 do i = 1, model_size
    list(i, 1) = i
    do j = 2, num
@@ -252,21 +275,23 @@ end do
 
 end subroutine get_close_pts
 
-!
-!===================================================================
-!
+
 
 function get_model_size()
-
+!---------------------------------------------------------------------
+! function get_model_size()
+!
 ! Returns size of model
 
-integer :: get_model_size
+integer(i4) :: get_model_size
 
 get_model_size = model_size
 
 end function get_model_size
 
 !
+!===================================================================
+! End of model_mod
 !===================================================================
 !
 end module model_mod
