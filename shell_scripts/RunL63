@@ -66,24 +66,20 @@ foreach NAMELIST ( *.nml )
 end
 
 #======================================================================
-# Save any existing namelist ...
+# Create common namelists -- lots of ways to do it.
 #======================================================================
 
-#set SAVEME = input.nml.$$
-#if ( -e input.nml ) then
-#   mv input.nml $SAVEME
-#endif
-
-#======================================================================
-# Create common namelists
-#======================================================================
-
-cat << ENDofTask01 > assim_model.nml
-
-&assim_nml
+cat << ENDofTask00 > utilities.nml
+&utilities_nml
+   logfilename = "create_obs_set_def.out",
+   TERMLEVEL = 1
+&end
+ENDofTask00
+   
+cat << ENDofTask01 > assim_mod.nml
+&assim_model_nml
    binary_restart_files = .true.
 &end
-
 ENDofTask01
 
 cat << ENDofTask02 > model.nml
@@ -126,7 +122,7 @@ echo '   logfilename = "create_obs_set_def.out"'      >> utilities.nml
 echo '   TERMLEVEL = 1'                               >> utilities.nml
 echo '&end'                                           >> utilities.nml
 
-cat utilities.nml assim_model.nml model.nml > input.nml
+cat utilities.nml assim_mod.nml model.nml > input.nml
 
 ./create_obs_set_def < create_obs_set_def.in
 
@@ -169,7 +165,7 @@ echo '   logfilename = "create_obs_sequence.out"' >> utilities.nml
 echo '   TERMLEVEL = 1'                           >> utilities.nml
 echo '&end'                                       >> utilities.nml
 
-cat utilities.nml assim_model.nml model.nml > input.nml
+cat utilities.nml assim_mod.nml model.nml > input.nml
 
 ./create_obs_sequence < create_obs_sequence.in
 
@@ -209,7 +205,7 @@ echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
 echo '   TERMLEVEL = 1'                           >> utilities.nml
 echo '&end'                                       >> utilities.nml
 
-cat utilities.nml assim_model.nml model.nml perfect.nml > input.nml
+cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -261,6 +257,11 @@ if ( ${?Cutoff} ) then
    set cutoff = $Cutoff
 endif
 
+echo '&utilities_nml'                            > utilities.nml
+echo '   logfilename = "filter.out"'            >> utilities.nml
+echo '   TERMLEVEL = 1'                         >> utilities.nml
+echo '&end'                                     >> utilities.nml
+
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
 echo "   async = $async ,"                                     >> filter.nml
@@ -281,14 +282,9 @@ echo "   output_interval = $output_interval "                  >> filter.nml
 echo "&end"                                                    >> filter.nml
 echo " "                                                       >> filter.nml
 
-echo '&utilities_nml'                              > utilities.nml
-echo '   logfilename = "filter.out"'              >> utilities.nml
-echo '   TERMLEVEL = 1'                           >> utilities.nml
-echo '&end'                                       >> utilities.nml
+cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
 
-cat utilities.nml assim_model.nml model.nml perfect.nml filter.nml > input.nml
-
-time ./filter
+./filter
 
 if ( $status > 0 ) then
    echo "ERROR: filter bombed ..."
@@ -298,7 +294,7 @@ else
    echo "filter terminated normally"
    echo " "
    \rm -f create_obs_set_def.in create_obs_sequence.in 
-   \rm -f utilities.nml assim_model.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
 endif
 
 #======================================================================
@@ -309,9 +305,5 @@ foreach NAMELIST ( ${SAVEME}/*.nml )
    mv ${NAMELIST} .
 end
 \rmdir ${SAVEME}
-
-#if ( -e ${SAVEME} ) then
-#   mv $SAVEME input.nml
-#endif
 
 exit
