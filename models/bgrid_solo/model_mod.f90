@@ -1142,22 +1142,21 @@ end subroutine get_state_meta_data
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus, rstatus)
+subroutine model_interpolate(x, location, itype, obs_val, istatus)
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: itype
 real(r8),            intent(out):: obs_val
-integer,  optional,  intent(out):: istatus
-real(r8), optional,  intent(out):: rstatus
+integer,             intent(out):: istatus
 
 integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
 
-if (present(rstatus)) rstatus = 0.0_r8
-if (present(istatus)) istatus = 0
+! All interps okay for now
+istatus = 0
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
 ! As opposed to the stripped state vector. YES. This would give time interp.
@@ -1264,7 +1263,6 @@ obs_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 ! the return codes are always "good" i.e. zero
 !
 ! normally set istatus here 
-! normally set rstatus here 
 
 end subroutine model_interpolate
 
@@ -1297,7 +1295,7 @@ integer,  intent(in) :: lon_index, lat_index, itype
 
 type(location_type) :: ps_location
 real(r8) :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), rfrac
-integer  :: top_lev, bot_lev, i
+integer  :: top_lev, bot_lev, i, istatus
 real(r8) :: bot_val, top_val, ps_lon
 
 ! Need to get the surface pressure at this point.
@@ -1318,7 +1316,7 @@ else
    ! The vertical is not important for this interpolation -- still --
    ! mark it as missing (-1.0) but give it some type information (2==pressure)
    ps_location = set_location(ps_lon, v_lats(lat_index), -1.0, 2 )
-   call model_interpolate(x, ps_location, 3, ps(1,1) )
+   call model_interpolate(x, ps_location, 3, ps(1,1), istatus)
 
 endif
 
@@ -1479,13 +1477,14 @@ end subroutine init_time
 
 !--------------------------------------------------------------------
 
-subroutine model_get_close_states(o_loc, radius, nfound, indices, dist)
+subroutine model_get_close_states(o_loc, radius, nfound, indices, dist, x)
 
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
 integer, intent(out) :: nfound, indices(:)
 real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
 
 real(r8) :: loc_array(3), o_lon, o_lat
 integer :: tnlon, tnlat, vnlon, vnlat, num, max_size, i, j, num1
