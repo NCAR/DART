@@ -54,6 +54,7 @@ PRIVATE
    real(r8), parameter :: fillvalue = 1.e36     ! fill value for reduced grid
 
    type field_info
+      private
       character*8 :: name                       ! field name
       character*(max_chars) :: long_name        ! long name
       character*(max_chars) :: units            ! units
@@ -78,6 +79,7 @@ revdate  = "$Date$"
 ! master_entry: elements of an entry in the master field list
 !
    type master_entry
+      private
       type (field_info)     :: field            ! field information
       character*1           :: avgflag(ptapes)  ! averaging flag
       character*(max_chars) :: time_op(ptapes)  ! time operator (e.g. max, min, avg)
@@ -90,11 +92,13 @@ revdate  = "$Date$"
 !     Select either r4 or r8 kind buffer depending on hbuf_prec.
 !
    type hbuffer_2d
+      private
       real(r8), pointer :: buf8(:,:)            ! 2-D history buffer for r8
       real(r4), pointer :: buf4(:,:)            ! 2-D history buffer for r4
    end type hbuffer_2d
 
    type hbuffer_3d
+      private
       real(r8), pointer :: buf8(:,:,:)          ! 3-D history buffer for r8
       real(r4), pointer :: buf4(:,:,:)          ! 3-D history buffer for r4
    end type hbuffer_3d
@@ -108,6 +112,7 @@ revdate  = "$Date$"
 ! hentry: elements of an entry in the list of active fields on a single history file
 !
    type hentry
+      private
       type (field_info)     :: field            ! field information
       character*1           :: avgflag          ! averaging flag
       character*(max_chars) :: time_op          ! time operator (e.g. max, min, avg)
@@ -122,6 +127,7 @@ revdate  = "$Date$"
 ! active_entry: vehicle for producing a ragged array
 !
    type active_entry
+      private
       type (hentry) :: hlist(pflds)             ! array of history tape entries
    end type active_entry
 
@@ -130,11 +136,13 @@ revdate  = "$Date$"
 ! dim_index_2d, dim_index_3d: 2-D & 3-D dimension index lower & upper bounds
 !
    type dim_index_2d                   ! 2-D dimension index
+      private
       integer :: beg1, end1            ! lower & upper bounds of 1st dimension
       integer :: beg2, end2            ! lower & upper bounds of 2nd dimension
    end type dim_index_2d
 
    type dim_index_3d                   ! 3-D dimension index
+      private
       integer :: beg1, end1            ! lower & upper bounds of 1st dimension
       integer :: beg2, end2            ! lower & upper bounds of 2nd dimension
       integer :: beg3, end3            ! lower & upper bounds of 3rd dimension

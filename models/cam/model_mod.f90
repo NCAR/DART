@@ -72,7 +72,7 @@ integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 
 
 ! A type for cam model, very simple for now for conversion only
 type model_type
-!   private
+    private
    real(r8), pointer :: vars_2d(:, :, :)
    real(r8), pointer :: vars_3d(:, :, :, :)
    real(r8), pointer :: tracers(:, :, :, :)

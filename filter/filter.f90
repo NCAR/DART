@@ -8,7 +8,7 @@ program filter
 ! $Author$
 !
 
-use        types_mod, only : r8
+use        types_mod, only : r8, missing_r
 use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    read_obs_sequence, get_num_obs_sets, get_obs_sequence_time, &
    get_num_obs_in_set, get_expected_obs, get_diag_obs_err_cov, &

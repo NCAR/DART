@@ -31,6 +31,7 @@ type close_state_cache_type
 end type close_state_cache_type
 
 type cache_element_type
+   private
    integer, pointer :: num_close(:), close(:, :)
    real(r8), pointer :: dist(:, :)
 end type cache_element_type

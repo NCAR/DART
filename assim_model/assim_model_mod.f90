@@ -44,7 +44,7 @@ revdate  = "$Date$"
 ! Eventually need to be very careful to implement this to avoid state vector copies which
 ! will be excruciatingly costly (storage at least) in big models. 
 type assim_model_type
-!   private
+   private
    real(r8), pointer :: state_vector(:)
    type(time_type) :: time
    integer :: model_size       ! TJH request

@@ -11,7 +11,7 @@ program perfect_model_obs
 ! Program to build a simple obs_sequence file for use in testing filters
 ! for spatial domains with one periodic dimension.
 
-use types_mod, only : r8
+use types_mod,        only : r8, missing_r
 use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
 

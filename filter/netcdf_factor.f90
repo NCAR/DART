@@ -31,6 +31,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 type model_state_ptr_type
+   private
    real(r8), pointer :: state(:)
 end type model_state_ptr_type
 

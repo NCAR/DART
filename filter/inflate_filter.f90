@@ -43,6 +43,7 @@ revdate  = "$Date$"
 
 ! Define a type for doing direct access to ensemble state vectors
 type model_state_ptr_type
+   private
    real(r8), pointer :: state(:)
 end type model_state_ptr_type
 

@@ -43,14 +43,14 @@ revdate  = "$Date$"
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
 type set_def_list_type
-!   private
+    private
    integer :: max_sets
    integer :: num_sets
    type(list_element_type), pointer :: sets(:)
 end type set_def_list_type
 
 type list_element_type
-!   private
+    private
    type(obs_set_def_type) :: obs_set
    integer :: index
    integer :: total_num_obs

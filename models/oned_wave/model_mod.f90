@@ -16,6 +16,7 @@ implicit none
 private
 
 type location_type
+   private
    real(r8) :: x
 end type location_type
 

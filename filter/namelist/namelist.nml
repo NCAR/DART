@@ -1,5 +1,5 @@
 &filter_nml
-   async = .true.
+   async = 1,
    ens_size = 20,
    cutoff = 0.20,
    cov_inflate = 1.00,
