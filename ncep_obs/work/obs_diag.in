@@ -1,0 +1,19 @@
+2,0             ! total days, iskip of the first a few days
+4               ! level(1=1000,2=850,3=700,4=500,5=200mb)
+2               ! obs type selection: 1=all, 2 =RAonly, 3=noRA
+5.0             ! QC ratio
+ 01_1/    
+ 01_2/    
+ 01_3/    
+ 01_4/    
+ 01_5/    
+ 01_6/    
+ 01_7/    
+ 01_8/    
+ 01_9/    
+01_10/    
+01_11/    
+01_12/    
+01_13/    
+01_14/    
+

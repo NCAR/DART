@@ -1,0 +1,2 @@
+../../mkmf/mkmf -p new_obs_diag -t ../../mkmf/mkmf.template.anchorage -c"-Duse_netCDF" \
+ -a "../.." path_names_new_obs_diag
