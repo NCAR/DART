@@ -30,7 +30,9 @@ use obs_model_mod, only    : get_expected_obs, get_close_states
 use reg_factor_mod, only   : comp_reg_factor
 use location_mod, only     : location_type, get_dist
 use time_manager_mod, only : time_type
-use ensemble_manager_mod, only : get_ensemble_region, put_ensemble_region, ensemble_type
+use ensemble_manager_mod, only : get_ensemble_region, put_ensemble_region, ensemble_type, &
+                                 transpose_ens_to_regions, transpose_regions_to_ens, &
+                                 get_ensemble_member, put_region_by_number, get_region_by_number
 
 implicit none
 private
@@ -52,25 +54,32 @@ revdate  = "$Date$"
 
 !---- namelist with default values
 
-logical :: prior_spread_correction = .false.
 ! Filter kind selects type of observation space filter
 !      1 = EAKF filter
 !      2 = ENKF
 !      3 = Kernel filter
 !      4 = particle filter
 integer  :: filter_kind     = 1
-real(r8) :: slope_threshold = 1.0_r8
+logical  :: sort_obs_inc = .false.
+real(r8) :: cov_inflate = -1.0
+real(r8) :: cov_inflate_sd = 0.05
+real(r8) :: sd_lower_bound = 0.05
+logical  :: deterministic_cov_inflate = .true.
+logical  :: start_from_assim_restart = .false.
+character(len = 129) :: assim_restart_in_file_name = 'assim_ics'
+character(len = 129) :: assim_restart_out_file_name = 'assim_restart'
 integer :: do_parallel = 0
 integer :: num_domains = 1
 character(len=129) :: parallel_command = './assim_filter.csh'
 
-namelist / assim_tools_nml / prior_spread_correction, filter_kind, slope_threshold, &
-   do_parallel, num_domains, parallel_command
+namelist / assim_tools_nml / filter_kind, sort_obs_inc, cov_inflate, &
+   cov_inflate_sd, sd_lower_bound, deterministic_cov_inflate, &
+   start_from_assim_restart, assim_restart_in_file_name, &
+   assim_restart_out_file_name, do_parallel, num_domains, parallel_command
 
 !============================================================================
 
 contains
-
 
 subroutine assim_tools_init()
 !============================================================================
@@ -101,6 +110,17 @@ endif
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
 write(logfileunit, nml=assim_tools_nml)
 write(     *     , nml=assim_tools_nml)
+! If requested, read cov_inflate and cov_inflate_sd from a restart file
+!if(start_from_assim_restart) then
+!   restart_unit = get_unit()
+!   open(unit = restart_unit, file = assim_restart_in_file_name)
+!   read(unit, *) cov_inflate, cov_inflate_sd
+!   close(unit)
+!endif
+
+write(*, *) 'sd controls are ', cov_inflate, cov_inflate_sd, sd_lower_bound
+
+!!! PROBLEMS WITH REGIONS AND STATE!!!
 
 ! Look for an error in the do_parallel options
 if(do_parallel /= 0 .and. do_parallel /= 2 .and. do_parallel /= 3) then
@@ -112,36 +132,131 @@ end subroutine assim_tools_init
 
 !-------------------------------------------------------------
 
-subroutine obs_increment(ens, ens_size, obs, obs_var, obs_inc, &
-                         slope, a, bias_ratio_out)
+subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc)
+                         
 
 integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(in)  :: ens_in(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
-real(r8), intent(in)  :: slope
-real(r8), intent(out) :: a
-real(r8), intent(out), optional :: bias_ratio_out
 
+real(r8) :: ens(ens_size), inflate_inc(ens_size)
+real(r8) :: sum_x, prior_mean, prior_var, new_cov_inflate, new_cov_inflate_sd
+real(r8) :: rand_sd, new_val(ens_size), enhanced_inflate
+integer :: i, ens_index(ens_size), new_index(ens_size)
+
+! If observation space inflation is being done, compute the initial 
+! increments and update the inflation factor and its standard deviation
+! as needed. cov_inflate < 0 means don't do any of this.
+if(cov_inflate > 0.0) then
+   ! Compute prior variance and mean from sample
+   sum_x      = sum(ens_in)
+   prior_mean = sum_x / ens_size
+   prior_var  = (sum(ens_in * ens_in) - sum_x**2 / ens_size) / (ens_size - 1)
+
+   ! If cov_inflate_sd is <= 0, just retain current cov_inflate setting
+   if(cov_inflate_sd > 0.0) then
+      call bayes_cov_inflate(prior_mean, sqrt(prior_var), obs, sqrt(obs_var), &
+         cov_inflate, cov_inflate_sd, new_cov_inflate, new_cov_inflate_sd)
+
+      ! Keep the covariance inflation > 1.0 for most model situations
+      if(new_cov_inflate < 1.0) new_cov_inflate = 1.0
+      !write(*, *) 'old, new cov_inflate', cov_inflate, new_cov_inflate
+
+      cov_inflate = new_cov_inflate
+
+      !!!if(new_cov_inflate_sd < cov_inflate_sd) cov_inflate_sd = new_cov_inflate_sd
+      cov_inflate_sd = new_cov_inflate_sd
+      if(cov_inflate_sd < sd_lower_bound) cov_inflate_sd = sd_lower_bound
+
+      ! Ad hoc mechanism for reducing cov_inflate_sd
+      !!!cov_inflate_sd = cov_inflate_sd - (cov_inflate_sd - sd_lower_bound) / 10000.0
+   endif
+
+   ! Now inflate the ensemble and compute a preliminary inflation increment
+   if(deterministic_cov_inflate) then
+      ens = (ens_in - prior_mean) * sqrt(cov_inflate) + prior_mean
+      inflate_inc = ens - ens_in
+
+   else
+      ! Another option at this point would be to add in random noise designed
+      ! To increase the variance of the prior ensemble to the appropriate level
+      ! Would probably want to keep the mean fixed by shifting AND do a sort
+      ! on the final prior/posterior increment pairs to avoid large regression
+      ! error as per stocahstic filter algorithms. This might help to avoid 
+      ! problems with generating gravity waves in the Bgrid model, for instance.
+      ! If this is first time through, need to initialize the random sequence
+      if(first_inc_ran_call) then
+         call init_random_seq(inc_ran_seq)
+         first_inc_ran_call = .false.
+      endif
+
+      ! Figure out required sd for random noise being added
+      if(cov_inflate > 1.0) then
+         ! Don't allow covariance deflation in this version
+         rand_sd = sqrt(cov_inflate*prior_var - prior_var)
+         !write(*, *) 'rand_sd increment needed is ', sqrt(prior_var), rand_sd
+         ! Add random sample from this noise into the ensemble
+         do i = 1, ens_size
+            ens(i) = random_gaussian(inc_ran_seq, ens_in(i), rand_sd)
+         end do
+         ! Adjust the mean
+         ens = ens - (sum(ens) / ens_size - prior_mean)
+      else
+         ens = ens_in
+      endif
+      inflate_inc = ens - ens_in
+
+   endif
+
+else
+   ! No covariance inflation is being done, just copy initial ensemble
+   ens = ens_in
+endif
+
+! Call the appropriate filter option to compute increments for ensemble
 if(filter_kind == 1) then
-   call     obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc, slope, a, bias_ratio_out)
+   call     obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc)
 else if(filter_kind == 2) then
-   call     obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc, slope, a, bias_ratio_out)
+   call     obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc)
 else if(filter_kind == 3) then
-   call   obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc, slope, a, bias_ratio_out)
+   call   obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
 else if(filter_kind == 4) then
-   call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc, slope, a, bias_ratio_out)
+   call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
 else 
    call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind in assim_tools namelist [1-4 OK]', &
               source, revision, revdate)
 endif
 
+! Add in the extra increments if doing observation space covariance inflation
+if(cov_inflate > 0.0) then
+   obs_inc = obs_inc + inflate_inc
+endif
+
+
+! For random algorithm, may need to sort to have minimum increments
+! To minimize regression errors, may want to sort to minimize increments
+! This makes sense for any of the non-deterministic algorithms
+! By doing it here, can take care of both standard non-deterministic updates
+! plus non-deterministic obs space covariance inflation. This is expensive, so
+! don't use it if it's not needed.
+if(sort_obs_inc) then
+   new_val = ens_in + obs_inc
+   ! Sorting to make increments as small as possible
+   call index_sort(ens_in, ens_index, ens_size)
+   call index_sort(new_val, new_index, ens_size)
+   do i = 1, ens_size
+      obs_inc(ens_index(i)) = new_val(new_index(i)) - ens_in(ens_index(i))
+! The following erroneous line can provide improved results; understand why
+      !!!obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
+   end do
+end if
+
 end subroutine obs_increment
 
 
 
-subroutine obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc, &
-                              slope, a, bias_ratio_out)
+subroutine obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc)
 !========================================================================
 !
 ! EAKF version of obs increment
@@ -149,14 +264,8 @@ subroutine obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc, &
 integer, intent(in)   :: ens_size
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
-real(r8), intent(in)  :: slope
-real(r8), intent(out) :: a
-real(r8), intent(out), optional :: bias_ratio_out
 
-real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
-real(r8) :: error, diff_sd, ratio, factor, b, c, inf_obs_var
-real(r8) :: inf_obs_var_inv, inf_prior_var, inf_prior_var_inv
-real(r8) :: new_var, inf_ens(ens_size)
+real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
 
 ! Compute prior variance and mean from sample
 sum_x      = sum(ens)
@@ -183,51 +292,15 @@ else
    endif
 endif
 
-! THIS POINT CAN EVALUATE INCONSISTENCY if needed
-if(abs(slope) > 0.0000001_r8 .or. present(bias_ratio_out)) then
-   error = prior_mean - obs
-   diff_sd = sqrt(obs_var + prior_var)
-   ratio   = abs(error / diff_sd)
-endif
-if(present(bias_ratio_out)) bias_ratio_out = ratio
+a = sqrt(var_ratio)
 
-if(abs(slope) < 0.0000001_r8) then
-   a = sqrt(var_ratio)
    obs_inc = a * (ens - prior_mean) + new_mean - ens
-else
-
-   ! Do confidence slope systematic error adjustment if requested
-   ! Only modify if the ratio exceeds the threshold value
-   if(ratio > slope_threshold) then
-      b = (1.0_r8 / slope) ** (1.0_r8 / (slope - 1.0_r8))
-      c = -1.0_r8 * b**slope
-      factor = ratio / ((ratio - slope_threshold + b)**slope + c + slope_threshold)
-   else
-      factor = 1.0_r8
-   endif
-
-   ! Can now inflate by this ratio and then do adjustment
-   inf_obs_var     = factor**2 * obs_var
-   inf_obs_var_inv = 1.0_r8 / inf_obs_var
-
-   ! Form inflated ensemble
-   inf_ens       = prior_mean + factor * (ens - prior_mean)
-   inf_prior_var = factor**2 * prior_var
-
-   inf_prior_var_inv = 1.0_r8 / inf_prior_var
-   new_var           = 1.0_r8 / (inf_prior_var_inv + inf_obs_var_inv)
-
-   a       = sqrt(new_var * inf_prior_var_inv)
-   obs_inc = a * (inf_ens - prior_mean) + new_mean - ens
-
-endif
 
 end subroutine obs_increment_eakf
 
 
 
-subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc, &
-                    slope, a, bias_ratio_out)
+subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
 !
 ! A observation space only particle filter implementation for a
@@ -236,21 +309,13 @@ subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc, &
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: ens(ens_size), obs, obs_var
 real(r8), intent(out)           :: obs_inc(ens_size)
-real(r8), intent(in)            :: slope
-real(r8), intent(out)           :: a
-real(r8), intent(out), optional :: bias_ratio_out
 
-real(r8) :: weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
+real(r8) :: a, weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
 real(r8) :: base, frac, new_val(ens_size), weight_sum
 integer  :: i, j, indx(ens_size), ens_index(ens_size), new_index(ens_size)
 
 ! The factor a is not defined for particle filters
 a = -1.0_r8
-
-! Slope correction not currently implemented with particle filter
-if( abs(slope) > 0.0000001_r8 ) call error_handler(E_ERR,'obs_increment_particle', &
-                'Confidence slope bias correction is not implemented.', &
-                 source, revision, revdate)
 
 ! Begin by computing a weight for each of the prior ensemble members
 do i = 1, ens_size
@@ -300,19 +365,11 @@ do i = 1, ens_size
 !   write(*, *) 'new_val ', i, new_val(i)
 end do
 
-! Try sorting to make increments as small as possible
-call index_sort(ens, ens_index, ens_size)
-call index_sort(new_val, new_index, ens_size)
-do i = 1, ens_size
-   obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
-end do
-
 end subroutine obs_increment_particle
 
 
 
-subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc, &
-                              slope, a, bias_ratio_out)
+subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc)
 !========================================================================
 ! subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc)
 !
@@ -322,11 +379,8 @@ subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc, &
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: ens(ens_size), obs, obs_var
 real(r8), intent(out)           :: obs_inc(ens_size)
-real(r8), intent(in)            :: slope
-real(r8), intent(out)           :: a
-real(r8), intent(out), optional :: bias_ratio_out
 
-real(r8) :: obs_var_inv
+real(r8) :: a, obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
 real(r8) :: sx, s_x2, prior_cov
 real(r8) :: temp_mean, temp_obs(ens_size)
@@ -336,11 +390,6 @@ integer  :: i
 
 ! The factor a is not defined for kernel filters
 a = -1.0_r8
-
-! Slope correction not currently implemented
-if(abs(slope) > 0.0000001_r8) call error_handler(E_ERR,'obs_increment_enkf', &
-          'Confidence slope bias correction is not implemented.', &
-          source, revision, revdate)
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0_r8 / obs_var
@@ -375,19 +424,11 @@ do i = 1, ens_size
    obs_inc(i)  = new_mean(i) - ens(i)
 end do
 
-! Try sorting to make increments as small as possible
-call index_sort(ens, ens_index, ens_size)
-call index_sort(new_mean, new_index, ens_size)
-do i = 1, ens_size
-   obs_inc(ens_index(i)) = new_mean(new_index(i)) - ens(ens_index(i))
-end do
-
 end subroutine obs_increment_enkf
 
 
 
-subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc, &
-                                slope, a, bias_ratio_out)
+subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
 !========================================================================
 ! subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
 !
@@ -397,9 +438,6 @@ subroutine obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc, &
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: ens(ens_size), obs, obs_var
 real(r8), intent(out)           :: obs_inc(ens_size)
-real(r8), intent(in)            :: slope
-real(r8), intent(out)           :: a
-real(r8), intent(out), optional :: bias_ratio_out
 
 real(r8) :: obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, prior_cov
@@ -409,14 +447,6 @@ real(r8) :: cum_weight, total_weight, cum_frac(ens_size)
 real(r8) :: unif, norm, new_member(ens_size)
 
 integer :: i, j, kernel, ens_index(ens_size), new_index(ens_size)
-
-! The factor a is not defined for kernel filters
-a = -1.0_r8
-
-! Slope correction not currently implemented with kernel filter
-if( abs(slope) > 0.0000001_r8 ) call error_handler(E_ERR,'obs_increment_kernel', &
-              'Confidence slope bias correction is not implemented.', &
-               source, revision, revdate)
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0_r8 / obs_var
@@ -472,20 +502,12 @@ do i = 1, ens_size
    new_member(i) = new_mean(kernel) + norm
 end do
 
-! Try sorting to make increments as small as possible
-call index_sort(ens, ens_index, ens_size)
-call index_sort(new_member, new_index, ens_size)
-
-do i = 1, ens_size
-   obs_inc(ens_index(i)) = new_member(new_index(i)) - ens(ens_index(i))
-end do
-
 end subroutine obs_increment_kernel
 
 
 
 subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
-               a, state_inc, reg_coef, correl_out)
+               state_inc, reg_coef, correl_out)
 !========================================================================
 
 ! Does linear regression of a state variable onto an observation and
@@ -494,16 +516,11 @@ subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
 integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in)            :: state(ens_size)
-real(r8), intent(inout)         :: a
 real(r8), intent(out)           :: state_inc(ens_size), reg_coef
 real(r8), intent(out), optional :: correl_out
 
-real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty
-real(r8) :: inf_state(ens_size), correl
-
-real(r8) :: sum_y, sum_y2
-real(r8) :: factor, state_var_norm
-
+real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty, correl
+real(r8) :: sum_y, sum_y2, state_var_norm
 
 ! For efficiency, just compute regression coefficient here
 sum_x  = sum(obs)
@@ -518,7 +535,7 @@ else
 endif
 
 ! Compute the sample correlation
-if(present(correl_out) .or. prior_spread_correction) then
+if(present(correl_out)) then
    sum_y          = sum(state)
    sum_y2         = sum(state*state)
    state_var_norm = sum_y2 - sum_y**2 / ens_size
@@ -529,41 +546,7 @@ if(present(correl_out)) correl_out = correl
 ! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
 
-if(.not. prior_spread_correction) return
-
-! Won't work with non-EAKF filters
-if( a < 0.0_r8 ) call error_handler(E_ERR,'update_from_obs_inc', & 
-   'The prior_spread_correction algorithm only works with EAKF filters. Do not select prior_spread_correction = .true. with other filters.', &
-              source, revision, revdate)
-
-! Add in a slope factor for continuity
-! Following flat triad works fairly well for base L96 cases; Use it for ens_size >= 20
-if(ens_size >= 20) then
-   if(abs(correl) < 0.3_r8) then
-      factor = 1.0_r8 / (1.0_r8 - 1.0_r8 * (1.0_r8 - a) / 30.0_r8) 
-   else if(abs(correl) < 0.6_r8) then
-      factor = 1.0_r8 / (1.0_r8 - 1.0_r8 * (1.0_r8 - a) / 35.0_r8) 
-   else
-      factor = 1.0_r8
-   endif
-else
-   !FOLLOWING ONE WORKS PRETTY WELL FOR 10 MEMBER ENSEMBLES IN L96!
-   if(abs(correl) < 0.40_r8) then
-      factor = 1.0_r8 / (1.0_r8 - 1.0_r8 * (1.0_r8 - a) / 9.0_r8)
-   else if(abs(correl) < 0.7_r8) then
-      factor = 1.0_r8 / (1.0_r8 - 1.0_r8 * (1.0_r8 - a) / 35.0_r8)
-   else
-      factor = 1.0_r8
-   endif
-endif
-
-! Inflate the state estimate as required
-inf_state = factor * (state - sum_y / ens_size) + (sum_y / ens_size)
-state_inc = state_inc + inf_state - state
-
 end subroutine update_from_obs_inc
-
-
 
 !========================================================================
 
@@ -673,7 +656,6 @@ Locations: do i = 1, num_obs_in_set
          allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
          goto 555
       endif
-
       do j = 1, num_close_ptr(1)
          if(my_state(close_ptr(1, j))) then
             local_close_state(i) = .true.
@@ -737,8 +719,7 @@ Observations : do jjj = 1, num_obs_in_set
 
       ! Call obs_increment to do observation space
       call obs_increment(ens_obs(grp_bot:grp_top, j), ens_size/num_groups, obs(j), &
-         obs_err_var(j), obs_inc(grp_bot:grp_top), confidence_slope, &
-         a_returned(group))
+         obs_err_var(j), obs_inc(grp_bot:grp_top))
    end do Group1
 
    ! Getting close states for each scalar observation for now
@@ -777,7 +758,7 @@ Observations : do jjj = 1, num_obs_in_set
          grp_top = grp_bot + grp_size - 1
          call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
             obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
-            a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
+            ens_inc(grp_bot:grp_top), regress(group))
       end do Group2
 
       ! Compute an information factor for impact of this observation on this state
@@ -830,7 +811,7 @@ Observations : do jjj = 1, num_obs_in_set
          grp_top = grp_bot + grp_size - 1
          call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
             obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
-            a_returned(group), ens_inc(grp_bot:grp_top), regress(group))
+            ens_inc(grp_bot:grp_top), regress(group))
       end do Group3
 
       ! Compute an information factor for impact of this observation on this state
@@ -891,6 +872,11 @@ type(time_type) :: ens_time(ens_size)
 character(len=28) :: in_file_name(num_domains), out_file_name(num_domains)
 character(len=129) :: temp_obs_seq_file, errstring
 
+integer :: which_domain(model_size), region_size(num_domains)
+real(r8) :: new_ens_member(ens_size, model_size), old_ens_member(ens_size, model_size)
+type(time_type) :: temp_time
+
+write(*, *) 'STARTING filter_assim'
 compute_obs = compute_obs_in
 
 ! Set compute obs to false for more than one region (can be modified later)
@@ -922,6 +908,25 @@ call error_handler(E_ERR,'filter_assim', &
          source, revision, revdate)
 endif
 
+
+base_size = model_size / num_domains
+remainder = model_size - base_size * num_domains
+domain_top = 0
+! TEMPORARY TEST OF ENSEMBLE TRANSPOSING
+do j = 1, num_domains
+   domain_bottom = domain_top + 1
+   domain_size = base_size
+   if(j <= remainder) domain_size = domain_size + 1
+   region_size(j) = domain_size
+   domain_top = domain_bottom + domain_size - 1
+   which_domain(domain_bottom : domain_top) = j
+end do
+
+! TRANSPOSE TO REGIONS
+call transpose_ens_to_regions(ens_handle, num_domains, which_domain, region_size)
+
+
+
 base_size = model_size / num_domains
 remainder = model_size - base_size * num_domains
 domain_top = 0
@@ -949,7 +954,8 @@ do j = 1, num_domains
    end do
 
    ! Get the ensemble (whole thing for now) from storage
-   call get_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
+   !!!call get_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
+   call get_region_by_number(ens_handle, j, domain_size, ens, indices)
 
 ! Do ensemble filter update for this region
    if(do_parallel == 0) then
@@ -973,7 +979,7 @@ do j = 1, num_domains
       else
          write(errstring,*)'Trying to use ',ens_size,' model states -- too many.'
          call error_handler(E_MSG,'filter_assim',errstring,source,revision,revdate)
-         call error_handler(E_ERR,'filter_assim','Use less than 10000 model states.',source,revision,revdate)
+         call error_handler(E_ERR,'filter_assim','Use less than 10000 domains.',source,revision,revdate)
       endif
 
  11   format(a23, i1)
@@ -992,14 +998,11 @@ do j = 1, num_domains
       !write(iunit, *) ens, ens_obs, compute_obs, keys, my_state
       write(iunit) ens, ens_obs, compute_obs, keys, my_state
       close(iunit)
-
-! Following line allows single processor test of communications
-!!!!      call async_assim_region(in_file_name(j), out_file_name(j))
-
    endif
 
    ! Put this region into storage for single executable which is now finished
-   if(do_parallel == 0) call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
+   !!!if(do_parallel == 0) call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
+   if(do_parallel == 0) call put_region_by_number(ens_handle, j, domain_size, ens, indices)
 
    deallocate(ens, indices)
 
@@ -1075,16 +1078,22 @@ if(do_parallel == 2 .or. do_parallel == 3) then
       !read(iunit, *) ens
       read(iunit) ens
       close(iunit)
-      call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
-write(*, *) 'preparing to deallocate ens and indices', j
+      !!!call put_ensemble_region(ens_handle, ens, ens_time, state_vars_in = indices)
+      call put_region_by_number(ens_handle, j, domain_size, ens, indices)
       deallocate(ens, indices)
-write(*, *) 'finished with deallocate ens and indices', j
    end do
 
 endif
-write(*, *) 'done with subroutine filter_assim'
+
+
+! UNTRANSPOSE TO REGIONS
+call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
+
+
+write(*, *) 'done with subroutine filter_assim cov_inflate is ', cov_inflate
 
 end subroutine filter_assim
+
 
 
 !-----------------------------------------------------------------------
@@ -1142,8 +1151,149 @@ call destroy_obs_sequence(seq2)
 
 end subroutine async_assim_region
 
+
+
+
+!-----------------------------------------------------------------------
+
+subroutine bayes_cov_inflate(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, &
+   new_cov_inflate, new_cov_inflate_sd)
+
+real(r8), intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd
+real(r8), intent(out) :: new_cov_inflate, new_cov_inflate_sd
+
+integer, parameter :: max_num_iters = 100
+integer, parameter :: sd_range = 4
+integer, parameter :: sd_intervals = 4
+real(r8), parameter :: tol = 0.00000001
+integer :: i, j
+
+real(r8) :: d(3), lam(3), d_new, lam_new, new_max, e_minus_half, ratio, x_dist
+real(r8) :: cov_sd_sum, cov_sd_sample(-sd_intervals:sd_intervals)
+
+! Compute the maximum value of the updated probability
+lam(1) = l_mean - 2.0 * l_sd
+! Can't go below zero, would get negative undefined inflation
+if(lam(1) <= 0.0) lam(1) = 0.0
+lam(2) = l_mean
+lam(3) = l_mean + 2.0 * l_sd
+do i = 1, 3
+   d(i) = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam(i))
+end do
+
+if(d(2) < d(1) .or. d(2) < d(3)) then
+   write(*, *)'mid-point is not greater than endpoints in bayes_cov_inflate'
+   write(*, *) 'need to broaden the search range'
+   do i = 1, 3
+      write(*, *) 'd ', i, lam(i), d(i)
+   end do
+new_cov_inflate = l_mean
+   !!!stop
+endif
+
+! Do a simple 1D optimization by bracketing
+do i = 1, max_num_iters
+   ! Bring in the right side
+   lam_new = lam(1) + (lam(2) - lam(1)) / 2.0
+   d_new = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam_new)
+   if(d_new > d(2)) then
+      d(3) = d(2); lam(3) = lam(2)
+      d(2) = d_new; lam(2) = lam_new
+   else
+      d(1) = d_new; lam(1) = lam_new
+   endif
+
+   ! Now bring in the left side (this can be coded more glamorously, but I'm rushed)
+   lam_new = lam(2) + (lam(3) - lam(2)) / 2.0
+   d_new = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam_new)
+   if(d_new > d(2)) then
+      d(1) = d(2); lam(1) = lam(2)
+      d(2) = d_new; lam(2) = lam_new
+   else
+      d(3) = d_new; lam(3) = lam_new
+   endif
+
+   ! Exit if tolerance gets down to 0.000001
+   if(abs(lam(1) - lam(2)) < tol) then
+      !write(*, *) 'needed ', i, 'iterations'
+      exit
+   endif
+end do
+
+new_cov_inflate = lam(2)
+!write(*, *) 'New maximum value is at lambda = ', lam(2)
+
+
+! Temporarily bail out to save cost when lower bound is reached'
+if(l_sd <= sd_lower_bound) then
+   new_cov_inflate_sd = l_sd
+   return
+endif
+
+! Try at a more economical method for computing updated SD
+! First compute the new_max value for normalization purposes
+new_max = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, new_cov_inflate)
+
+! Look at a series of points to deal with skewness???
+cov_sd_sum = 0.0
+do i = -sd_intervals, sd_intervals
+   x_dist = i * sd_range * l_sd / sd_intervals
+   ! Next compute the value one old sd out
+   lam(1) = new_cov_inflate + x_dist
+   if(lam(1) < 0.0) then
+      lam(1) = 0.0
+      x_dist = new_cov_inflate
+   endif
+   d(1) = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam(1))
+   ! Compute the ratio of this value to the value at the mean (the max value)
+   ratio = d(1) / new_max 
+   
+   ! Can now compute the standard deviation consistent with this as
+   ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
+   new_cov_inflate_sd = sqrt( -1.0 * x_dist**2 / (2.0 * log(ratio)))
+   write(*, *) 'at x new_sd ', lam(1), new_cov_inflate_sd
+   if(i /= 0) cov_sd_sum = cov_sd_sum + new_cov_inflate_sd
+   cov_sd_sample(i) = new_cov_inflate_sd
+   if(i == 0) cov_sd_sample(i) = 1e10
+end do
+
+new_cov_inflate_sd = minval(cov_sd_sample)
+write(*, *) 'old, new min sd      ', l_sd, new_cov_inflate_sd
+
+
+end subroutine bayes_cov_inflate
+
+!------------------------------------------------------------------
+
+function compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda)
+
+real :: compute_new_density
+real, intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda
+
+real :: dist, exponent, l_prob, var, sd, prob
+
+! Compute distance between prior mean and observed value
+dist = abs(x_p - y_o)
+
+! Compute probability of this lambda being correct
+exponent = (-1.0 * (lambda - l_mean)**2) / (2.0 * l_sd**2)
+l_prob = 1.0 / (sqrt(2.0 * 3.14159) * l_sd) * exp(exponent)
+
+! Compute probability that observation would have been observed given this lambda
+var = (sigma_p * sqrt(lambda))**2 + sigma_o**2
+sd = sqrt(var)
+
+exponent = (-1.0 * dist**2) / (2.0 * var)
+prob = 1.0 / (sqrt(2.0 * 3.14159) * sd) * exp(exponent)
+
+! Compute the updated probability density for lambda
+compute_new_density = l_prob * prob
+
+end function compute_new_density
+
 !========================================================================
 ! end module assim_tools_mod
 !========================================================================
 
 end module assim_tools_mod
+
