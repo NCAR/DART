@@ -250,10 +250,6 @@ write(*, *) 'starting advance time loop;'
 
 end do AdvanceTime
 
-! Send a message to the asynchronous version 3 that all is done
-! Must be done always because this also terminates option 3 for assim_tools!
-call system('echo a > go_end_filter')
-
 ! properly dispose of the diagnostics files
 ierr = finalize_diag_output(PriorStateUnit)
 ierr = finalize_diag_output(PosteriorStateUnit)
@@ -266,6 +262,10 @@ call filter_output_restart()
 
 ! Close regression time series file if needed
 if(save_reg_series) close(reg_series_unit)
+
+! Send a message to the asynchronous version 3 that all is done
+! Must be done always because this also terminates option 3 for assim_tools!
+call system('echo a > go_end_filter')
 
 write(logfileunit,*)'FINISHED filter.'
 write(logfileunit,*)
