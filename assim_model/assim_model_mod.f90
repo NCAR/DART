@@ -28,7 +28,8 @@ public :: static_init_assim_model, init_diag_output, get_model_size, get_closest
    get_model_time, get_model_state_vector, copy_assim_model, advance_state, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
    output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files
+   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, binary_restart_files, &
+   finalize_diag_output
 
 
 ! Eventually need to be very careful to implement this to avoid state vector copies which
@@ -296,6 +297,22 @@ contains
   end subroutine check  
 
 end function init_diag_output
+
+
+
+function finalize_diag_output(ncFileID) result(ierr)
+!--------------------------------------------------------------------------------
+!
+
+use netcdf
+implicit none
+
+integer, intent(in) :: ncFileID
+integer             :: ierr
+
+ierr = NF90_close(ncFileID)
+
+end function finalize_diag_output
 
 
 
@@ -691,7 +708,7 @@ return
       ! Write the assim model extended state   
 
       ic_file_unit = get_unit()
-      if (binary_restart_files == .true.) then
+      if ( binary_restart_files ) then
             open(unit = ic_file_unit, file = ic_file_name(i),      form = 'unformatted')
             call write_time(ic_file_unit, target_time,             form = 'unformatted')
             call write_state_restart(assim_model(i), ic_file_unit, form = 'unformatted')
@@ -742,7 +759,7 @@ if(asynch) then
    ! All should be done, read in the states and proceed
    do i = 1, num
       ud_file_unit = get_unit()
-      if (binary_restart_files == .true.) then
+      if ( binary_restart_files ) then
          open(unit = ud_file_unit, file = ud_file_name(i),     form = 'unformatted')
          call read_state_restart(assim_model(i), ud_file_unit, form = 'unformatted')
       else
