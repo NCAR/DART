@@ -178,7 +178,7 @@ call pack(dx, dy, dz, dxxx)     !  pack the results into 9 vector
 
 ! OPTIONAL ADDItion OF NOISE
 ! ADDITION OF SOME NOISE AT 1/10 the amplitude of DT
-! Do we need to initialize the repeatable random gen
+! We need to initialize the repeatable random gen
 !!!if(first_ran_call) then
 !!!   first_ran_call = .false.
 !!!   call init_random_seq(ran_seq)
