@@ -90,10 +90,10 @@ integer :: slope_index = 0
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer  :: ens_size    = 20
+integer  :: async = 0, ens_size = 20
 real(r8) :: cutoff      = 200.0_r8
 real(r8) :: cov_inflate = 1.0_r8
-logical  :: async = .false., start_from_restart = .false., output_restart = .false.
+logical  :: start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days    = -1
@@ -399,6 +399,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
    ! Loop through each observation in the set
    Observations : do j = 1, num_obs_in_set
+      write(*, *) 'obs ', j
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, i, ens(k, :), ens_obs(k:k), j)
@@ -422,7 +423,14 @@ AdvanceTime : do i = 1, num_obs_sets
          allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
          goto 222
       endif
-      
+
+      do k = 1, ens_size
+         if (ens_obs(k) == missing_r) num_close_ptr(1) = 0
+      end do
+      if (obs(j) == missing_r) num_close_ptr(1) = 0
+
+      write(*, *) 'Variables updated: ', num_close_ptr(1)
+
       ! Now loop through each close state variable for this observation
       do k = 1, num_close_ptr(1)
          ind = close_ptr(1, k)
