@@ -161,6 +161,7 @@ set SET_DEF_LIST = ../set_def_list/set_def_list.f90
 set OBS_SET = ../obs_set/obs_set.f90
 set OBS_SEQUENCE = ../obs_sequence/obs_sequence.f90
 set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
+set CREATE_OBS_DEF = ../obs_sequence/create_obs_def.f90
 set FILTER = ../obs_sequence/filter.f90
 set PERFECT_MODEL_OBS = ../obs_sequence/perfect_model_obs.f90
 

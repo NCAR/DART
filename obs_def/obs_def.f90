@@ -9,7 +9,7 @@ module obs_def_mod
 use types_mod
 use obs_kind_mod, only : obs_kind_type, read_kind, write_kind
 use location_mod, only : location_type, read_location, write_location
-use obs_model_mod, only : take_obs
+use obs_model_mod, only : take_obs, interactive_def
 use assim_model_mod, only : am_get_close_states=>get_close_states, &
    am_get_num_close_states=>get_num_close_states
 
@@ -17,7 +17,8 @@ private
 
 public init_obs_def, get_expected_obs, get_error_variance, get_obs_location, get_obs_def_kind, &
    get_num_close_states, get_close_states, set_obs_def_location, &
-   set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type
+   set_err_var, set_obs_def_kind, read_obs_def, write_obs_def, obs_def_type, &
+   interactive_obs_def
 
 type obs_def_type
    private
@@ -267,6 +268,27 @@ call write_kind(file, obs_def%kind)
 write(file, *) obs_def%error_variance
 
 end subroutine write_obs_def
+
+
+
+function interactive_obs_def()
+!---------------------------------------------------------------------------
+!
+! Allows interactive creation of an observation
+
+implicit none
+
+type(obs_def_type) :: interactive_obs_def
+
+write(*, *) 'Input error variance for this observation definition '
+read(*, *) interactive_obs_def%error_variance
+
+! Call obs_model interfaces to set up kind and location
+call interactive_def(interactive_obs_def%location, interactive_obs_def%kind)
+
+end function interactive_obs_def
+
+
 
 !----------------------------------------------------------------------------
 

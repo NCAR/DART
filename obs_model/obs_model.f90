@@ -7,19 +7,21 @@ module obs_model_mod
 ! $Author$
 
 use types_mod
-use location_mod, only : location_type
+use location_mod, only : location_type, interactive_location
 use assim_model_mod, only : interpolate
-use obs_kind_mod, only : obs_kind_type
+use obs_kind_mod, only : obs_kind_type, interactive_kind
 
 private
 
-public take_obs
+public take_obs, interactive_def
 
 contains
 
 !======================================================================
 
 function take_obs(state_vector, location, obs_kind)
+!--------------------------------------------------------------------
+!
 
 implicit none
 
@@ -34,6 +36,26 @@ type(obs_kind_type), intent(in) :: obs_kind
 take_obs = interpolate(state_vector, location)
 
 end function take_obs
+
+
+
+subroutine interactive_def(location, obs_kind)
+!---------------------------------------------------------------------
+!
+! Used for interactive creation of an obs_def. For now, an observation
+! is uniquely defined by a location and a kind. The obs_model level
+! knows how kinds and locations need to be combined if there are any
+! intricacies (although for models to date there are none, 17 April, 2002).
+
+implicit none
+
+type(location_type), intent(out) :: location
+type(obs_kind_type), intent(out) :: obs_kind
+
+call interactive_location(location)
+call interactive_kind(obs_kind)
+
+end subroutine interactive_def
 
 
 end module obs_model_mod

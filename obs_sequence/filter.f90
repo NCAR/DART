@@ -33,7 +33,8 @@ type(obs_sequence_type) :: seq
 type(time_type) :: time, time2
 type(random_seq_type) :: random_seq
 
-real(r8), parameter :: error_variance = 4.0, cutoff_radius = 0.2
+real(r8), parameter :: cutoff_radius = 0.2
+character(len = 129) file_name
 
 integer :: i, j, k, ind, unit, num_obs_in_set
 
@@ -51,7 +52,9 @@ integer, allocatable :: num_close_states(:), close(:, :)
 real(r8) :: rms, sum_rms = 0.0_r8
 
 ! Input the obs_sequence
-unit = open_file('seq_in')
+write(*, *) 'input name of obs sequence file'
+read(*, *) file_name
+unit = open_file(file_name)
 seq = read_obs_sequence(unit)
 close(unit)
 
@@ -116,7 +119,7 @@ do i = 1, num_obs_sets
 
 ! Do a covariance inflation for now?
    do j = 1, ens_size
-      ens_state(:, j) = ens_mean + (ens_state(:, j) - ens_mean) * 1.10
+      ens_state(:, j) = ens_mean + (ens_state(:, j) - ens_mean) * 1.06
    end do
 
 ! How many observations in this set

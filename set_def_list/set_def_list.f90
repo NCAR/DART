@@ -26,7 +26,7 @@ public set_def_list_type, list_element_type, get_number_obs_subsets, &
    write_set_def_list, read_set_def_list, write_list_element, &
    read_list_element, list_element_copy, set_def_list_copy, &
    get_expected_obs, get_diag_obs_err_cov, get_num_close_states, &
-   get_close_states
+   get_close_states, get_num_sets_in_list
 
 ! For now set up with fixed size array storage declared at allocation
 ! time. Eventually want a linked list or linked arrays .
@@ -224,6 +224,22 @@ call obs_set_def_copy(get_def_from_list, list%sets(index)%obs_set)
 !!!get_def_from_list = list%sets(index)%obs_set
 
 end function get_def_from_list
+
+
+
+function get_num_sets_in_list(list)
+!---------------------------------------------------------------
+!
+! Returns the number of total elements in this list.
+
+implicit none
+
+integer :: get_num_sets_in_list
+type(set_def_list_type), intent(in) :: list
+
+get_num_sets_in_list = list%num_sets
+
+end function get_num_sets_in_list
 
 
 

@@ -10,15 +10,20 @@ module location_mod
 ! allowing an arbitrary real domain size at some point.
 
 use types_mod
+use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 private
 
-public location_type, get_dist, get_location, set_location, write_location, read_location
+public location_type, get_dist, get_location, set_location, write_location, read_location, &
+   interactive_location
 
 type location_type
    private
    real(r8) :: x
 end type location_type
+
+type(random_seq_type) :: ran_seq
+logical :: ran_seq_init = .false.
 
 contains
 
@@ -128,6 +133,45 @@ endif
 read(file, *) read_location%x
 
 end function read_location
+
+
+
+subroutine interactive_location(location)
+!--------------------------------------------------------------------------
+!
+! Allows for interactive input of a location. Also gives option of selecting
+! a uniformly distributed random location (what the heck).
+
+implicit none
+
+type(location_type), intent(out) :: location
+
+real(r8) :: x
+
+write(*, *) 'Input location for this obs: value 0 to 1 or a negative number for '
+write(*, *) 'Uniformly distributed random location'
+read(*, *) x
+
+do while(x > 1.0) 
+   write(*, *) 'Input value greater than 1.0 is illegal, please try again'
+   read(*, *) x
+end do
+
+if(x < 0.0) then
+! Need to make sure random sequence is initialized
+   if(.not. ran_seq_init) then
+      call init_random_seq(ran_seq)
+      ran_seq_init = .TRUE.
+   endif
+! Uniform location from 0 to 1 for this location type
+   location%x = random_uniform(ran_seq)
+   write(*, *) 'random location is ', location%x
+else
+   location%x = x
+end if
+
+end subroutine interactive_location
+   
 
 !----------------------------------------------------------------------------
 

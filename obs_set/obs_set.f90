@@ -442,7 +442,7 @@ implicit none
 type(obs_set_type), intent(in) :: set
 integer, intent(in) :: file_id
 
-integer :: i
+integer :: i, j
 
 ! First write ascii header saying set is coming
 write(file_id, *) 'obset'

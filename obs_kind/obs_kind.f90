@@ -12,7 +12,8 @@ use types_mod
 
 private
 
-public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type
+public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
+   interactive_kind
 
 type obs_kind_type
    private
@@ -93,6 +94,21 @@ read(file, *) read_kind%index
 
 end function read_kind
 
-!----------------------------------------------------------------------------
+
+subroutine interactive_kind(kind)
+!-------------------------------------------------------------------------
+!
+! Allows interactive input of kind. For now, this module only allows
+! a single kind so there is no need to do anything except set to 1
+
+implicit none
+
+type(obs_kind_type), intent(out) :: kind
+
+kind%index = 1
+
+end subroutine interactive_kind
+
+
 
 end module obs_kind_mod

@@ -44,55 +44,21 @@ type(obs_set_type) :: obs_set
 type(time_type) :: time, time2
 type(random_seq_type) :: random_seq
 
-integer, parameter :: num_steps = 1000
-integer, parameter :: max_sets = 5
-integer, parameter :: num_obs = 40
-real(r8), parameter :: error_variance = 4.0
-integer :: i, j, obs_set_def_index, unit, test_unit, obs_set_unit, num_obs_in_set
+integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set
 
 ! Need to set up namelists for controlling all of this mess, too!
-integer, parameter :: ens_size = 20
 integer :: model_size, num_obs_sets
 
-type(assim_model_type) :: x, ens(ens_size)
-real(r8), allocatable :: ens_temp(:), ens_obs(:, :), obs_err_cov(:)
-real(r8), allocatable :: obs(:)
-character(len=129) :: copy_meta_data(1)
+type(assim_model_type) :: x
+real(r8), allocatable :: obs_err_cov(:), obs(:)
+character(len=129) :: copy_meta_data(1), file_name
 
-! Initialize the obs_set_def
-obs_set_def = init_obs_set_def(num_obs)
-
-! Build a set of obs_defs and put them into an obs_set_def
-do i = 1, num_obs
-! Create an obs_def with specificed location, kind and error variance
-   obs_def = init_obs_def(set_location(i * 1.0_r8 / num_obs), set_obs_kind(1), error_variance)
-! Insert this obs_def into an obs_set
-   call add_obs(obs_set_def, obs_def)
-end do
-
-! Insert this obs_set_def into the list
-set_def_list = init_set_def_list(max_sets)
-obs_set_def_index = add_to_list(set_def_list, obs_set_def)
-
-! Initialize a sequence
-seq = init_obs_sequence(num_steps, 0)
-
-! Put the obs_set_def into the sequence
-call associate_def_list(seq, set_def_list)
-
-! Now generate a long obs_sequence with regular occurences of the obs_set_def
-do i = 1, num_steps
-   obs_set = init_obs_set(set_def_list, obs_set_def_index, 0)
-   call set_obs_set_time(obs_set, set_time(i * 3600, 0))
-! Put this obs_set into the sequence
-   call add_obs_set(seq, obs_set)
-end do
-
-! Output the obs_sequence to a file
-!unit = open_file('seq_out')
-!call write_obs_sequence(unit, seq)
-!close(unit)
-
+! Read in an observation sequence, only definitions part will be used (no data used)
+write(*, *) 'input file name for obs sequence definition '
+read(*, *) file_name
+unit = 10
+open(file = file_name, unit = 10)
+seq = read_obs_sequence(unit)
 
 ! Initialize the model now that obs_sequence is all set up
 call initialize_assim_model()
@@ -114,12 +80,10 @@ call init_random_seq(random_seq)
 
 num_obs_sets = get_num_obs_sets(seq)
 
-
 ! Need space to put in the obs_values in the sequence;
 copy_meta_data(1) = 'observations'
+
 if(get_num_obs_copies(seq) < 1) call inc_num_obs_copies(seq, 1, copy_meta_data)
-
-
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
@@ -154,15 +118,18 @@ do i = 1, num_obs_sets
 ! Insert the observations into the sequence first copy
    call set_obs_values(seq, i, obs)
 
-! Deallocate the ens_obs storage
+! Deallocate the obs size storage
    deallocate(obs_err_cov, obs)
 
 end do
 
+10 continue
 ! Write out the sequence
-unit = open_file('seq_out')
-call write_obs_sequence(unit, seq)
-close(unit)
-
+write(*, *) 'What is file name for output obs sequence?'
+read(*, *) file_name
+!unit_out = open_file(file_name, action = 'write')
+unit_out = 11
+open(file = file_name, unit = 11)
+call write_obs_sequence(unit_out, seq)
 
 end program perfect_model_obs

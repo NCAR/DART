@@ -539,7 +539,6 @@ read(file_id, *) num_copies
 
 ! Read the number of observations in set
 read(file_id, *) num_obs_sets
-write(*, *) 'in read_obs_sequence number of obs_sets ', num_obs_sets
 
 ! Initialize the sequence
 read_obs_sequence = init_obs_sequence(num_obs_sets, num_copies)
