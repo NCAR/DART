@@ -132,7 +132,7 @@ else if(select_localization == 1) then ! Standard Gaspari Cohn localization
                         r**4 / 2.0_r8   +  &
                         r**3 * 5.0_r8 / 8.0_r8 + &
                         r**2 * 5.0_r8 / 3.0_r8 - &
-                        5.0_r8*r + 4.0_r8 - (c * 2.0_r8) / (3.0_r8 * z) 
+                        5.0_r8*r + 4.0_r8 - 2.0_r8 / (3.0_r8 * r) 
    else
       r = z / c
       comp_cov_factor = r**5 * (-0.25_r8 ) + &
