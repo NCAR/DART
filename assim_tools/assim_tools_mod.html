@@ -26,7 +26,7 @@
 -->
 
 <HTML>
-<TITLE>module xxxxxxx</TITLE>
+<TITLE>module assim_tools_mod</TITLE>
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
@@ -79,6 +79,14 @@ types_mod
 utilities_mod
 sort_mod
 random_seq_mod
+obs_sequence_mod
+obs_def_mod
+cov_cutoff_mod
+obs_model_mod
+reg_factor_mod
+location_mod
+time_manager_mod
+ensemble_manager_mod
 </PRE>
 
 <!--==================================================================-->
@@ -94,6 +102,8 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">obs_increment</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">update_from_obs_inc</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">look_for_bias</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">filter_assim</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">async_assim_region</A></TD></TR>
 </TABLE>
 
 </P>
@@ -303,6 +313,107 @@ real(r8), intent(out)                       :: <em class=code> var_ratio </em>
 </P>
 
 <!--==================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine5"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call filter_assim(ens_handle,ens_obs,compute_obs_in,ens_size,
+model_size,num_obs_in_set,num_groups,seq,keys,confidence_slope,cutoff,save_reg_series,
+reg_series_unit,obs_seq_in_name) </em>
+ <pre>
+ type(ensemble_type), intent(in)                           :: <em class=code>ens_handle</em>
+ real(r8), dimension(ens_size, num_obs_in_set), intent(in) :: <em class=code>ens_obs</em>
+ logical, dimension(num_obs_in_set), intent(in)            :: <em class=code>compute_obs_in</em>
+ integer, intent(in)                                       :: <em class=code>ens_size</em>
+ integer, intent(in)                                       :: <em class=code>model_size</em>
+ integer, intent(in)                                       :: <em class=code>num_obs_in_set</em>
+ integer, intent(in)                                       :: <em class=code>num_groups</em>
+ type(obs_sequence_type), intent(inout)                    :: <em class=code>seq </em>
+ integer, dimension(num_obs_in_set), intent(in)            :: <em class=code>keys</em>
+ real(r8), intent(in)                                      :: <em class=code>confidence_slope</em>
+ real(r8), intent(in)                                      :: <em class=code>cutoff</em>
+ logical, intent(in)                                       :: <em class=code>save_reg_series</em>
+ integer, intent(in)                                       :: <em class=code>reg_series_unit</em>
+ character(len=*), intent(in)                              :: <em class=code>obs_seq_in_name</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Entry subroutine to do an assimilation for a given observation set. 
+Calls are made to internal subroutine 
+filter_assim_region to do actual assimilation for each domain
+as requested by the num_domains namelist parameter. This public
+subroutine can either call filer_assim_region directly or create appropriate
+files for each domain and use the shell to execute programs to do the regions
+(controlled by do_parallel option in namelist). The current parallel assimilation
+algorithm does not recompute any observations but simply updates the prior
+distribution each time another observation is assimilated. For single
+domain use, the compute_obs_in logical array indicates if there are state 
+variables that cannot (or should not) be recomputed during the sequential
+assimilation. Support for the reg_series output is very limited with this release
+and is confined to low-order models.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
+     <TD>Identifies ensemble (see ensemble_manager_mod)</TD></TR>
+ <TR><TD valign=top><em class=code>ens_obs&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble prior values for observations</TD></TR>
+ <TR><TD valign=top><em class=code>compute_obs_in&nbsp; &nbsp; </em></TD>
+     <TD>True if corresponding observation can be recomputed here</TD></TR>
+ <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble size</TD></TR>
+ <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
+     <TD>Model state vector length</TD></TR>
+ <TR><TD valign=top><em class=code>num_obs_in_set&nbsp; &nbsp; </em></TD>
+     <TD>Number of observations to be assimilated</TD></TR>
+ <TR><TD valign=top><em class=code>num_groups&nbsp; &nbsp; </em></TD>
+     <TD>Number of groups for filter</TD></TR>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>Observation sequence</TD></TR>
+ <TR><TD valign=top><em class=code>keys&nbsp; &nbsp; </em></TD>
+     <TD>Indices of the current observations in seq</TD></TR>
+ <TR><TD valign=top><em class=code>confidence_slope&nbsp; &nbsp; </em></TD>
+     <TD>Adaptive bias correction (see obs_increment)</TD></TR>
+ <TR><TD valign=top><em class=code>cutoff&nbsp; &nbsp; </em></TD>
+     <TD>Localization factor (see update_from_obs_inc)</TD></TR>
+ <TR><TD valign=top><em class=code>save_reg_series&nbsp; &nbsp; </em></TD>
+     <TD>True to save regression stats (low-order only)</TD></TR>
+ <TR><TD valign=top><em class=code>reg_series_unit&nbsp; &nbsp; </em></TD>
+     <TD>Open to regression stats file if needed</TD></TR>
+ <TR><TD valign=top><em class=code>obs_seq_in_name&nbsp; &nbsp; </em></TD>
+     <TD>Obs sequence is written here if shell driven multiple domains</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine6"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call async_assim_region(in_file_name,out_file_name) </em>
+ <pre>
+ character(len=*), intent(in) :: <em class=code>in_file_name</em>
+ character(len=*), intent(in) :: <em class=code>out_file_name</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+This is a subroutine designed to allow calls to filter_assim_region to
+be handled by separate processes through the shell. Instead of having 
+a direct call from filter_assim, filter_assim writes out all the arguments
+for filter_assim_region for a given region to a file. The shell then
+starts a program, assim_region, which calls async_assim_region with 
+the appropriate file names. The arguments are obtained by the file
+by async_assim_region and then a call is made to subroutine 
+filter_assim_region. At completion, the output arguments are written
+to out_file_name.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>in_file_name&nbsp; &nbsp; </em></TD>
+     <TD>File where input required for filter_assim_region is found</TD></TR>
+ <TR><TD valign=top><em class=code>out_file_name&nbsp; &nbsp; </em></TD>
+     <TD>File where output from filter_assim_region is to be put</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 
 <A NAME="Namelist"></A>
@@ -312,7 +423,8 @@ real(r8), intent(out)                       :: <em class=code> var_ratio </em>
 '&' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / assim_tools_nml / </em> &
-    prior_spread_correction, filter_kind, slope_threshold
+    prior_spread_correction, filter_kind, slope_threshold, do_parallel, 
+num_domains, parallel_command
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -336,6 +448,17 @@ real(r8), intent(out)                       :: <em class=code> var_ratio </em>
     <!--  type  --><TD>real(r8)                        </TD>
     <!--descript--><TD>Threshold value of variance ratio at which systematic error correction begins
                        to be applied if slope is not 0.                </TD></TR>
+ <TR><!--contents--><TD valign=top>do_parallel</TD>
+     <!--  type  --><TD>integer</TD>
+ <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_comma
+ nd; 3 = use filter_server Default: 0</TD></TR>
+ <TR><!--contents--><TD valign=top>num_domains</TD>
+     <!--  type  --><TD>integer</TD>
+ <!--descript--><TD>Use this many subdomains; assimilate each independently Defa
+ ult: 1</TD></TR>
+ <TR><!--contents--><TD valign=top>parallel_command</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+ <!--descript--><TD>Command to be executed for option 2 Default: ./assim_filter.csh</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -345,7 +468,12 @@ real(r8), intent(out)                       :: <em class=code> var_ratio </em>
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>NONE.
+<UL><LI>input.nml
+<LI>filter_assim_region__in####:  Contains ensemble state for region.
+<LI>filter_assim_region_out####:  Contains updated state for region.
+<LI>assim_region_control:  Used to provide number of regions to shell execution.
+<LI>in_file_name, out_file_name: arguments to async_assim_region.
+<LI>filter_assim_obs_seq: Stores obs sequence on disk for async assimilation.
 </UL>
 
 <!--==================================================================-->
@@ -368,11 +496,31 @@ real(r8), intent(out)                       :: <em class=code> var_ratio </em>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
+<TR><!-- routine --><TD VALIGN=top>assim_tools_init</TD>
+    <!-- message --><TD VALIGN=top>do parallel option # not supported</TD>
+    <!-- comment --><TD VALIGN=top>Only 0, 2, 3 currently supported.</TD>
+</TR>
 <TR><!-- routine --><TD VALIGN=top>obs_increment</TD>
     <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-4 OK]</TD>
-    <!-- comment --><TD VALIGN=top>Only 4 variants currently supported.</TD>
+    <!-- comment --><TD VALIGN=top>Only 1-4 currently supported.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>obs_increment_eakf</TD>
+    <!-- message --><TD VALIGN=top>Both obs_var and prior_var are zero. This is inconsistent</TD>
+    <!-- comment --><TD VALIGN=top>Product of two delta functions doesn't work.</TD>
 </TR>
 
+<TR><!-- routine --><TD VALIGN=top>filter_assim</TD>
+    <!-- message --><TD VALIGN=top>Use less than 10000 domains.</TD>
+    <!-- comment --><TD VALIGN=top> Need to modify code for more than 10000 domains.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>filter_assim</TD>
+    <!-- message --><TD VALIGN=top>Did not find observation copy with metadata "observation"</TD>
+    <!-- comment --><TD VALIGN=top> In obs_sequence file, need to find copy that is observations.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>filter_assim</TD>
+    <!-- message --><TD VALIGN=top>Having more domains than state variables does not make sense</TD>
+    <!-- comment --><TD VALIGN=top> It doesn't.</TD>
+</TR>
 <TR><!-- routine --><TD VALIGN=top>obs_increment_particle</TD>
     <!-- message --><TD VALIGN=top>Confidence slope bias correction is not implemented</TD>
     <!-- comment --><TD VALIGN=top> Can't use bias correction with particle filter at present.</TD>
