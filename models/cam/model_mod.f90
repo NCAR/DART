@@ -1106,11 +1106,11 @@ lat = lats(lat_index + 1)
 ! NOVERT
 if (col_elem_3dm1 < 0) then
    lev = -1
-   which_vert = which_vert_2d(TYPE_2D(col_elem))
+   which_vert = which_vert_2d(col_elem)
 else
    lev = col_elem_3dm1 / state_num_3d  + 1
    var_type_temp = mod(col_elem_3dm1, state_num_3d ) + 1
-   which_vert = which_vert_3d(TYPE_3D(var_type_temp))
+   which_vert = which_vert_3d(var_type_temp)
 endif
 
 location = set_location(lon, lat, lev, which_vert)  
