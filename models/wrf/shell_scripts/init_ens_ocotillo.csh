@@ -18,24 +18,25 @@
 # 0) Set up various environment variables:
 #--------------------------------------------
 
+setenv RUN_GRIDGEN 0
 setenv RPC_UNSUPPORTED_NETIFS eth0
 
-setenv CASE_NAME	     RADAR
-setenv START_DATE_ASSIM 2003072112            # Start time of period.
-setenv NCYCLE 1                               # Number of assimilation cycles.
-setenv FCST_RANGE 12                           # Forecast range (hours).
-setenv INTERVAL 12                             # Interval between analyses (hours)
+setenv CASE_NAME	     conus
+setenv START_DATE_ASSIM 2003010100            # Start time of period.
+setenv NCYCLE 40                              # Number of assimilation cycles.
+setenv FCST_RANGE 6                           # Forecast range (hours).
+setenv INTERVAL 6                             # Interval between analyses (hours)
 
-setenv GRIB_DATA ETA                        # AVN = (NCEP/FNL - 1deg res.)
+setenv GRIB_DATA AVN                          # AVN = (NCEP/FNL - 1deg res.)
                                               # ETA = (GCIP NCEP Eta - ~40 km res.)
 
-setenv DATASOURCE AWIP
+setenv DATASOURCE AVN
 
 setenv DATA_DIR     /ocotillo1/wrfdev/${GRIB_DATA}      # Global analysis directory
 
-setenv S_AVAIL_DATE 1996072112
-setenv E_AVAIL_DATE 2004072512
-setenv BACK_YEAR       8000000
+setenv S_AVAIL_DATE 1999122500
+setenv E_AVAIL_DATE 2004060700
+setenv BACK_YEAR       5000000
 
 setenv DAT_DIR     `pwd`                      # Scratch data space.
 
@@ -47,20 +48,20 @@ setenv VARTMP         /var/tmp                # Remote work directory
 set startnode = 1
 set endnode = 10
 
-set ES = 40
+set ES = 41
 set SCALE = 0.2
 
-setenv WRF_DT 75                               # Model timestep (seconds)
-setenv WEST_EAST_GRIDS	 117
-setenv SOUTH_NORTH_GRIDS 108
-setenv VERTICAL_GRIDS	 28
-setenv GRID_DISTANCE     15000
-setenv MY_MOAD_KNOWN_LAT	"40.5"
-setenv MY_MOAD_KNOWN_LON	"-86.0"
-setenv MY_MOAD_STAND_LONS	"-86.0"
-setenv MY_NUM_DOMAINS    2
+setenv WRF_DT 600                             # Model timestep (seconds)
+setenv WEST_EAST_GRIDS	  45
+setenv SOUTH_NORTH_GRIDS  45
+setenv VERTICAL_GRIDS	  28
+setenv GRID_DISTANCE	  200000
+setenv MY_MOAD_KNOWN_LAT	"40.0"
+setenv MY_MOAD_KNOWN_LON	"-98.0"
+setenv MY_MOAD_STAND_LONS	"-98.0"
+setenv MY_NUM_DOMAINS     1
 
-setenv SF_SURFACE_PHYSICS 2
+setenv SF_SURFACE_PHYSICS 1
 
 if ( $SF_SURFACE_PHYSICS == 1 ) then
    setenv NUM_SOIL_LAYERS 5
@@ -70,16 +71,16 @@ endif
 
 set LLI = (   1 39 39 )
 set LLJ = (   1 36 36 )
-set URI = ( 117 78 78 )
-set URJ = ( 108 72 72 )
+set URI = (  45 78 78 )
+set URJ = (  45 72 72 )
 
 set grid_ratio = ( 1 3 3 )
 set time_step_ratio = ( 1 3 3 )
 
-set seconds = 43200
-set days = 147028
+set seconds = 0
+set days = 146827
 
-set nextmem = 24                # Advance this many hours for the next member.
+set nextmem = 72                # Advance this many hours for the next member.
 
 # End of user modifications.
 
@@ -152,7 +153,6 @@ while ( $ICYC <= $NCYCLE )
 
     set DATE = $START_DATE
     (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir ${DAT_DIR_MEM} ; mkdir ${DAT_DIR_MEM}/${GRIB_DATA}" )
-
     while ( $DATE <= $END_DATE )
 
 	set MM = `echo $DATE | cut -c5-6`
@@ -181,8 +181,6 @@ while ( $ICYC <= $NCYCLE )
             exit
 	endif
 	endif
-        rcp ${DATA_DIR}/$GRIB_FILE node${inode}:${DAT_DIR_MEM}/${GRIB_DATA}/$GRIB_FILE
-
 	set DATE=`advance_cymdh ${DATE} ${INTERVAL}`
 
     end 
@@ -198,13 +196,9 @@ while ( $ICYC <= $NCYCLE )
    rm ${WRFSI_DIR_SRC}/data/siprd/real_input_em* >& /dev/null 
 
    rm -f preprocess_${NC} >& /dev/null
-   set WRFSI_DIR = ${VARTMP}/${user}_wrfsi_${NC}
-   (rsh -n node$inode "rm -rf ${WRFSI_DIR} >& /dev/null" )
-   rcp -r $WRFSI_DIR_SRC node${inode}:${WRFSI_DIR}
-   set INSTALLROOT = $WRFSI_DIR
 
    set workdir = `pwd`
-   (rsh -n node$inode "cd $workdir; ./run_wrfsi.csh $START_DATE $FCST_RANGE $INTERVAL $DAT_DIR_MEM $INSTALLROOT $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE $MY_MOAD_KNOWN_LAT $MY_MOAD_KNOWN_LON $MY_MOAD_STAND_LONS $MY_NUM_DOMAINS $LLI[2] $LLJ[2] $URI[2] $URJ[2] $DATASOURCE $CASE_NAME $GRIB_DATA >& preprocess_${NC}" ) &
+   (rsh -n node$inode "cd $workdir; ./run_wrfsi.csh $START_DATE $FCST_RANGE $INTERVAL $DAT_DIR_MEM $INSTALLROOT $WEST_EAST_GRIDS $SOUTH_NORTH_GRIDS $VERTICAL_GRIDS $GRID_DISTANCE $MY_MOAD_KNOWN_LAT $MY_MOAD_KNOWN_LON $MY_MOAD_STAND_LONS $MY_NUM_DOMAINS $LLI[2] $LLJ[2] $URI[2] $URJ[2] $DATASOURCE $CASE_NAME $GRIB_DATA $RUN_GRIDGEN $DATA_DIR >& preprocess_${NC}" ) &
 
     if (`expr ${START_DATE} \+ 1000000` <= $E_AVAIL_DATE) then
        set START_DATE = `expr ${START_DATE} \+ 1000000`           # Go to next year
@@ -236,7 +230,6 @@ end
 
 echo "Waiting for all processes to finish up..."
 wait
-
 sleep 10
 
 set START_DATE = $START_DATE_ASSIM

@@ -19,8 +19,12 @@ setenv WRF_DIR            $2
 
 cd ${WRF_DIR}/test/em_real
 
-echo "   Running real.exe" 
+echo "   Running real.exe"
 real.exe >>& ./run_real_${NC}.out
+
+mv namelist.input namelist.input_${NC}
+mv rsl.out.0000 rsl.out.0000_${NC}
+mv rsl.error.0000 rsl.error.0000_${NC}
 
 echo ""
 

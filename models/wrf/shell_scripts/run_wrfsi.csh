@@ -2,7 +2,7 @@
 #----------------------------------------------------------------------
 # Purpose: Run wrfsi
 #-----------------------------------------------------------------------
- set echo
+# set echo
 
 #Install wrfsi.
 
@@ -26,6 +26,8 @@
  setenv DATASOURCE        $18
  setenv CASE_NAME         $19
  setenv GRIB_DATA         $20
+ setenv RUN_GRID_GEN      $21
+ setenv GRIB_DATA_DIR     $22
 
  set MY_NUM_ACTIVE_SUBNESTS = `expr ${MY_NUM_DOMAINS} \- 1`
 
@@ -108,7 +110,7 @@
 
 install_wrfsi:
 
- set need_install = yes 
+ set need_install = no 
 
 #If any of the following executable is missing, we need to install.
 
@@ -120,7 +122,7 @@ install_wrfsi:
 	vinterp.exe		\
 	)
 
-    if(! -f bin/$f ) then
+    if(! -f $INSTALLROOT/bin/$f ) then
        set need_install = yes
     endif
  end
@@ -131,7 +133,7 @@ install_wrfsi:
     ${PATH_TO_PERL}/perl install_wrfsi.pl
     cd ${cwd}
  endif
- 
+
 #--------------------------------------------------------------------
 
 #get_avn_data:
@@ -143,8 +145,11 @@ install_wrfsi:
  if ( ! -d ${DATAROOT} ) mkdir -p ${DATAROOT}
  cd ${DATAROOT}
 
- if(! -d ${TEMPLATES} ) mkdir -p ${TEMPLATES}
- cd ${TEMPLATES}
+ if(! -d templates ) mkdir -p templates
+ cd templates
+
+# if(! -d ${TEMPLATES} ) mkdir -p ${TEMPLATES}
+# cd ${TEMPLATES}
 
  rm -f script.sed
 
@@ -170,6 +175,7 @@ cat > script.sed << EOF
  s/LLJ2/${LLJ2}/g
  s/URI2/${URI2}/g
  s/URJ2/${URJ2}/g
+ s/MY_INIT_DATA/${DATASOURCE}/g
  s/MY_MOAD_KNOWN_LAT/${MY_MOAD_KNOWN_LAT}/g
  s/MY_MOAD_KNOWN_LON/${MY_MOAD_KNOWN_LON}/g
  s/MY_MOAD_STAND_LATS/${MY_MOAD_STAND_LATS}/g
@@ -189,37 +195,21 @@ EOF
     sample > wrfsi.nl
 
  cp wrfsi.nl ${DATAROOT}/wrfsi.nl
- 
+
 #--------------------------------------------------------------------
 
 grid_gen:
 
- set need_grid_gen = yes
-
  if(! -d ${DATAROOT}/data/cdl ) mkdir -p ${MOAD_DATAROOT}/cdl
  if(! -d ${DATAROOT}/static ) mkdir -p ${MOAD_DATAROOT}/static
+ if ( ! -d ${MOAD_DATAROOT}/extprd ) mkdir -p ${MOAD_DATAROOT}/extprd
+ if ( ! -d ${MOAD_DATAROOT}/log    ) mkdir -p ${MOAD_DATAROOT}/log
+ if ( ! -d ${MOAD_DATAROOT}/siprd  ) mkdir -p ${MOAD_DATAROOT}/siprd
 
- cp ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/cdl/wrfsi.cdl
- cp ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/static/.
+ if ( $RUN_GRID_GEN ) then
+    cp ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/cdl/wrfsi.cdl
+    cp ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/static/.
 
- if ( ! -f ${MOAD_DATAROOT}/static/static.wrfsi ) then
-    touch ${MOAD_DATAROOT}/static/static.wrfsi
-
-    set need_grid_gen = yes
- else
-    set lsbuf = `ls -l ${MOAD_DATAROOT}/static/static.wrfsi`
-    if ( $lsbuf[5] < 1 ) then
-       set stbuf = `ls -l ${MOAD_DATAROOT}/static/static.wrfsi.d01`
-       if ( $stbuf[5] < 1 ) then
-          set need_grid_gen = yes
-       else
-          cp ${MOAD_DATAROOT}/static/static.wrfsi.d01 \
-	     ${MOAD_DATAROOT}/static/static.wrfsi
-       endif
-    endif
- endif
-
- if ( ${need_grid_gen} == "yes" ) then
     $INSTALLROOT/etc/window_domain_rt.pl -w wrfsi \
            -t ${TEMPLATES} -c \
            -s ${SOURCE_ROOT}
@@ -227,12 +217,48 @@ grid_gen:
     $SOURCE_ROOT/bin/gridgen_model.exe ${MOAD_DATAROOT}
     cp ${MOAD_DATAROOT}/static/static.wrfsi.d01 \
        ${MOAD_DATAROOT}/static/static.wrfsi
+    cp -r ${MOAD_DATAROOT}/static ${INSTALLROOT}/domains/${CASE_NAME}
+ else
+    cp -rf ${INSTALLROOT}/domains/${CASE_NAME}/static ${MOAD_DATAROOT}
+    cp -f ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/cdl/wrfsi.cdl
+    cp -f ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/static/.
  endif
-
  
 #--------------------------------------------------------------------
 
 grip_prep:
+
+# link to appropriate GRIB DATA
+ set END_DATE = `advance_cymdh $START_DATE $FORECAST_LENGTH`  # End time of forecast
+ if ( ! -e $GRIB_DATADIR ) mkdir $GRIB_DATADIR
+ cd $GRIB_DATADIR
+
+ set DATE = $START_DATE
+
+ while ( $DATE <= $END_DATE )
+
+     set MM = `echo $DATE | cut -c5-6`
+     set DD = `echo $DATE | cut -c7-8`
+     set HH = `echo $DATE | cut -c9-10`
+
+   if ($GRIB_DATA == AVN) then
+     set YY = `echo $DATE | cut -c3-4`
+     set GRIB_FILE = fnl_${YY}${MM}${DD}_${HH}_00
+   else
+     set YY = `echo $DATE | cut -c1-4`
+     set GRIB_FILE = ${YY}${MM}${DD}${HH}.AWIP3D00.tm00
+   endif
+ 
+   if ( -e $GRIB_DATA_DIR/$GRIB_FILE ) then
+     ln -s $GRIB_DATA_DIR/$GRIB_FILE $GRIB_FILE
+   else
+     echo FAILED TO FIND $GRIB_DATA_DIR/$GRIB_FILE
+     exit 1
+   endif
+
+   set DATE=`advance_cymdh ${DATE} ${INTERVAL_IN_HOUR}`
+
+   end
 
  cd ${MOAD_DATAROOT}/static
 
@@ -275,8 +301,6 @@ EOF
                                   ${DATASOURCE}
 
  cd ${MOAD_DATAROOT}
- if ( ! -d extprd ) mkdir extprd
- if ( ! -d log    ) mkdir log
 
  setenv EXT_DATAROOT ${MOAD_DATAROOT}
 
