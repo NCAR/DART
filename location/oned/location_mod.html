@@ -26,8 +26,8 @@
 -->
 
 <HTML>
-<TITLE>module xxxxxxx</TITLE>
-<link rel=stylesheet type=text/css href=doc.css>
+<TITLE>module location_mod</TITLE>
+<link rel=stylesheet type=text/css href=../../doc/html/doc.css>
 <BODY>
 
 <DIV ALIGN=CENTER>
@@ -44,7 +44,7 @@
 
 <!--==================================================================-->
 
-<H1>MODULE xxxxxxx</H1>
+<H1>MODULE location_mod  (oned)</H1>
 <A NAME="HEADER"></A>
 <TABLE summary="">
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
@@ -65,12 +65,12 @@
    brackets <em class=optionalcode>[like this]</em>.
 </P>
 <P>
-   Provides a representation of a physical location on a one dimensional
-   periodic domain. A type that abstracts the location is provided along
+   Provides a representation of a physical location on 1-D periodic
+   domain. A type that abstracts the location is provided along
    with operators to compute the distance between two locations. This is
    a member of a class of similar location modules that provide the same 
    abstraction for different represenations of physical space (for instance
-   a three dimensional shell on a sphere).
+   a three-dimensional spherical shell).
 </P>
 
 <!--==================================================================-->
@@ -92,7 +92,7 @@ random_seq_mod
 <H2>PUBLIC INTERFACE</H2>
 
 <TABLE>
-<TR><TD><em class=code>use xxxxxxx, only : </em></TD>
+<TR><TD><em class=code>use location_mod, only : </em></TD>
                    <TD><A HREF="#location_type">location_type</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A> &</TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_location">get_location</A> &</TD></TR>
@@ -100,6 +100,11 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_location">write_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_location">read_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_location">interactive_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_location_missing">set_location_missing</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#query_location">query_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#LocationDims">LocationDims</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#LocationName">LocationName</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#LocationLName">LocationLName</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -142,25 +147,72 @@ one dimensional periodic domain.
 <TR><TH align=left>Component   </TH>
     <TH align=left>Description </TH></TR>
 <TR><TD valign=top> x                       </TD>
-    <TD>the nondimensional distance [0,1]</TD></TR>
+    <TD>Location has range 0 to 1</TD></TR>
 </TABLE>
+ <!--================================================================-->
+
+ <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="get_location"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = get_location(loc) </em>
+ <pre>
+ real(r8),            intent(inout) :: <em class=code>get_location</em>
+ type(location_type), intent(in)    :: <em class=code>loc</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Extracts the real location value, range 0 to 1, from a location type.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>get_location&nbsp; &nbsp; </em></TD>
+     <TD>The real location</TD></TR>
+ <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
+     <TD>A location type</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="set_location"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = set_location(x) </em>
+ <pre>
+ type(location_type), intent(in) :: <em class=code>set_location</em>
+ real(r8), intent(in)            :: <em class=code>x</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns a location type with the location x.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>set_location&nbsp; &nbsp; </em></TD>
+     <TD>A location type</TD></TR>
+ <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
+     <TD>Location range 0 to 1</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="write_location"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call write_location(file, loc)</em>
+<em class=call>call write_location(file, loc, fform)</em>
 <pre>
-integer,               intent(in)    :: <em class=code> file </em>
-type(location_type),   intent(inout) :: <em class=code> loc </em>
+integer,               intent(in)      :: <em class=code> file </em>
+type(location_type),   intent(inout)   :: <em class=code> loc </em>
+character(len=*), optional, intent(in) :: <em class=code> loc </em>
 </pre></div>
 
 <H2 class=indent1>Description</H2>
 
 <P>
    Given an integer IO channel of an open file and a location, writes the
-   location to this file.
+   location to this file. The fform argument controls whether write is "FORMATTED"
+   or "UNFORMATTED" with default being formatted.
 </P>
 <P>
 
@@ -171,6 +223,9 @@ type(location_type),   intent(inout) :: <em class=code> loc </em>
 
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>location type to be written. </TD></TR>
+
+<TR><TD valign=top><em class=code>fform</em></TD>
+    <TD>Format specifier (FORMATTED or UNFORMATTED). </TD></TR>
 
 </TABLE>
 
@@ -213,10 +268,127 @@ real(r8)                             :: <em class=code> var </em>
 </P>
 
 <!--==================================================================-->
+ <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="read_location"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = read_location(ifile,fform) </em>
+ <pre>
+ type(location_type)                    :: <em class=code>read_location</em>
+ integer, intent(in)                    :: <em class=code>ifile</em>
+ character(len=*), optional, intent(in) :: <em class=code>fform</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Reads a location_type from a file open on channel ifile using format
+fform (default is formatted).
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>read_location&nbsp; &nbsp; </em></TD>
+     <TD>Returned location type read from file</TD></TR>
+ <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
+     <TD>Integer channel opened to a file to be read</TD></TR>
+ <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
+     <TD>Optional format specifier (FORMATTED or UNFORMATTED)</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="interactive_location"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call interactive_location(location,set_to_default) </em>
+ <pre>
+ type(location_type), intent(out) :: <em class=code>location</em>
+ logical, optional, intent(in)    :: <em class=code>set_to_default</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Use standard input to define a location type. With set_to_default true 
+get one with all elements set to 0.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
+     <TD>Location created from standard input</TD></TR>
+ <TR><TD valign=top><em class=code>set_to_default&nbsp; &nbsp; </em></TD>
+     <TD>If true, sets all elments of location type to 0</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="set_location_missing"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = set_location_missing() </em>
+ <pre>
+ type(location_type), intent(in) :: <em class=code>set_location_missing</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns a location with location set to missing value from types_mod.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>set_location_missing&nbsp; &nbsp; </em></TD>
+     <TD>A location set to missing value</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="query_location"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = query_location(loc,attr) </em>
+ <pre>
+ real(r8), intent(out)                  :: <em class=code>query_location</em>
+ type(location_type), intent(in)        :: <em class=code>loc</em>
+ character(len=*), optional, intent(in) :: <em class=code>attr</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns the value of x if attr = 'X' or if attr is not passed.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>query_location&nbsp; &nbsp; </em></TD>
+     <TD>Returns value of x.</TD></TR>
+ <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
+     <TD>A location type</TD></TR>
+ <TR><TD valign=top><em class=code>attr&nbsp; &nbsp; </em></TD>
+     <TD>Selects 'X'</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
 
-<A NAME="Namelist"></A>
+ <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<A NAME="LocationDims"></A>
 <P></P><HR><P></P>
-<H2>NAMELIST</H2>
+ <H3 class=indent1>Global variable: integer :: LocationDims</H3>
+Contains the number of real values in a location type. Useful for 
+output routines that must deal transparently with many different
+location modules.
+ <P>
+ <!--================================================================-->
+
+ <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<A NAME="LocationName"></A>
+<P></P><HR><P></P>
+ <H3 class=indent1>Global variable: character(len=129) :: LocationName</H3>
+A parameter set to "loc1D" used to identify this location module
+in netCDF output metadata.
+ <P>
+ <!--================================================================-->
+
+ <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<A NAME="LocationLName"></A>
+<P></P><HR><P></P>
+ <H3 class=indent1>Global variable: character(len=129) :: LocationLName</H3>
+A parameter set to "one-dimensional location" used 
+to identify this location module in netCDF output long name metadata.
+ <P>
+ <!--================================================================-->
+
+ <!--================================================================-->
+
+
 
 <em class=file>None</em><BR>
 
@@ -249,19 +421,23 @@ real(r8)                             :: <em class=code> var </em>
 <div class=color>
 
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Code</TH><TH>Routine</TH><TH>Condition</TH></TR>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!--code here--><TD VALIGN=top>xxxx</TD>
-    <!--routine  --><TD VALIGN=top>yyyyy</TD>
-    <!--condition--><TD VALIGN=top>size of [argument] is incorrect<BR>
-        The size of [argument] must be between 1 and 4.</TD>
+<TR><!-- routine --><TD VALIGN=top>set_location_missing</TD>
+    <!-- message --><TD VALIGN=top>Value of x is out of 0->1 range</TD>
+    <!-- comment --><TD VALIGN=top>x cannot be less than 0 or greater than 1</TD>
 </TR>
 
-<TR><!--code here--><TD VALIGN=top>xxxx</TD>
-    <!--routine  --><TD VALIGN=top>yyyyy</TD>
-    <!--condition--><TD VALIGN=top>bad judgement<BR>
-                        What were you thinking?</TD>
+<TR><!-- routine --><TD VALIGN=top>query_location</TD>
+    <!-- message --><TD VALIGN=top>Only x is legal attribute to request from location</TD>
+    <!-- comment --><TD VALIGN=top>attr must be 'x' or 'X'</TD>
 </TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_location</TD>
+    <!-- message --><TD VALIGN=top>Expected location header "loc1d" in input file</TD>
+    <!-- comment --><TD VALIGN=top>Can only read one-dimensional location files</TD>
+</TR>
+
 </TABLE>
 
 </div>
@@ -286,24 +462,6 @@ None.
 <H2>FUTURE PLANS</H2>
 <P>
 </P>
-
-<!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<P></P><HR><P></P>
-<H2>PRIVATE Components</H2>
-
-<div class=routine>
-<pre>
-type location_type
-   private
-   real(r8) :: x
-end type location_type</pre>
-</div>
-
-<H3 class=indent1>Discussion</H3>
 
 <!--==================================================================-->
 
