@@ -1,4 +1,11 @@
 module sort_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 private
 public sort, index_sort
