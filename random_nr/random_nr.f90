@@ -1,4 +1,5 @@
-module random_numerical_recipes_mod
+! module random_numerical_recipes_mod
+module random_nr_mod
 
 implicit none
 
@@ -106,4 +107,5 @@ end function gasdev
 
 !------------------------------------------------------------------------
 
-end module random_numerical_recipes_mod
+end module random_nr_mod
+! end module random_numerical_recipes_mod
