@@ -19,8 +19,7 @@ use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart, &
-   init_diag_outputORG, output_diagnosticsORG
+   write_state_restart, read_state_restart
 
 implicit none
 
