@@ -51,7 +51,7 @@ revdate  = "$Date$"
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs
 type(obs_def_type)      :: obs_def
-type(time_type)         :: time1, ens_time
+type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle
 
