@@ -35,6 +35,7 @@ while(1 == 1)
    ls go_end_filter > .option3_garb
    if($status == 0) then
       echo "terminating normally at " `date` >> filter_server.log
+      rm -f go_end_filter
       exit
    endif
  
