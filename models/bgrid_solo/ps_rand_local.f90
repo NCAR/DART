@@ -64,7 +64,7 @@ write(iunit, *) 0
 write(iunit, *) 0
 
 ! The radar question percolates through, want no radars
-write(iunit, *) 0
+!!!write(iunit, *) 0
 
 num_done = 0
 do while(num_done < num)
