@@ -31,7 +31,14 @@ revdate  = "$Date$"
 
 public init_ensemble_manager, get_ensemble_member, put_ensemble_member, &
    update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
-   get_ensemble_region, put_ensemble_region, get_ensemble_time, Aadvance_state
+   get_ensemble_region, put_ensemble_region, get_ensemble_time, Aadvance_state, &
+   ensemble_type
+
+! This type gives a handle to an ensemble, not currently playing a role but
+! allows later implementations to possibly support multiple ensembles open at once
+type ensemble_type
+   logical :: null_variable
+end type ensemble_type
    
 ! Global in core storage for the ensemble
 real(r8), allocatable :: ens(:, :)
@@ -57,9 +64,10 @@ contains
 
 !-----------------------------------------------------------------
 
-subroutine init_ensemble_manager(ens_size_in, model_size_in, file_name, &
-   init_time)
+subroutine init_ensemble_manager(ens_handle, ens_size_in, &
+   model_size_in, file_name, init_time)
 
+type(ensemble_type), intent(out) :: ens_handle
 integer, intent(in) :: ens_size_in, model_size_in
 character(len = 129), intent(out), optional :: file_name
 type(time_type), intent(in), optional :: init_time
@@ -142,8 +150,9 @@ end subroutine init_ensemble_manager
 
 !-----------------------------------------------------------------
 
-subroutine get_ensemble_member(index, member, mtime)
+subroutine get_ensemble_member(ens_handle, index, member, mtime)
 
+type(ensemble_type), intent(in) :: ens_handle
 integer, intent(in) :: index
 real(r8), intent(out) :: member(:)
 type(time_type), intent(out) :: mtime
@@ -170,8 +179,9 @@ end subroutine get_ensemble_member
 
 !-----------------------------------------------------------------
 
-subroutine put_ensemble_member(index, member, mtime)
+subroutine put_ensemble_member(ens_handle, index, member, mtime)
 
+type(ensemble_type), intent(in) :: ens_handle
 integer, intent(in) :: index
 real(r8), intent(in) :: member(:)
 type(time_type), intent(in) :: mtime
@@ -199,8 +209,9 @@ end subroutine put_ensemble_member
 
 !-----------------------------------------------------------------
 
-subroutine get_ensemble_time(index, mtime)
+subroutine get_ensemble_time(ens_handle, index, mtime)
 
+type(ensemble_type), intent(in) :: ens_handle
 integer, intent(in) :: index
 type(time_type), intent(out) :: mtime
 
@@ -215,8 +226,9 @@ end subroutine get_ensemble_time
 
 !-----------------------------------------------------------------
 
-subroutine update_ens_mean()
+subroutine update_ens_mean(ens_handle)
 
+type(ensemble_type), intent(in) :: ens_handle
 integer :: i, j, rnum
 real(r8) :: val
 
@@ -249,13 +261,14 @@ end subroutine update_ens_mean
 
 !-----------------------------------------------------------------
 
-subroutine update_ens_mean_spread()
+subroutine update_ens_mean_spread(ens_handle)
 
+type(ensemble_type), intent(in) :: ens_handle
 integer :: i, rnum, j
 real(r8) :: temp, ens_spread, ens_mean, ens_element
 
 ! Update both the mean and spread (copy -1) from ensemble members
-call update_ens_mean()
+call update_ens_mean(ens_handle)
 
 if(in_core) then
    do i = 1, model_size
@@ -284,8 +297,9 @@ end subroutine update_ens_mean_spread
 
 !-----------------------------------------------------------------
 
-subroutine get_ensemble_region(region, rtime, state_vars_in, ens_members_in)
+subroutine get_ensemble_region(ens_handle, region, rtime, state_vars_in, ens_members_in)
 
+type(ensemble_type), intent(in) :: ens_handle
 real(r8), intent(out) :: region(:, :)
 type(time_type), intent(out) :: rtime(:)
 integer, intent(in), optional :: state_vars_in(:), ens_members_in(:)
@@ -335,8 +349,9 @@ end subroutine get_ensemble_region
 
 !-----------------------------------------------------------------
 
-subroutine put_ensemble_region(region, rtime, state_vars_in, ens_members_in)
+subroutine put_ensemble_region(ens_handle, region, rtime, state_vars_in, ens_members_in)
 
+type(ensemble_type), intent(in) :: ens_handle
 real(r8), intent(in) :: region(:, :)
 type(time_type), intent(in) :: rtime(:)
 integer, intent(in), optional :: state_vars_in(:), ens_members_in(:)
@@ -383,8 +398,9 @@ end subroutine put_ensemble_region
 
 !-----------------------------------------------------------------
 
-subroutine end_ensemble_manager(file_name)
+subroutine end_ensemble_manager(ens_handle, file_name)
 
+type(ensemble_type), intent(in) :: ens_handle
 character(len = 129), intent(in), optional :: file_name
 
 integer :: iunit, i, j, rnum
@@ -396,7 +412,7 @@ do i = 1, ens_size
       call awrite_state_restart(ens_time(i), ens(i, :), iunit)
    else
       do j = 1, model_size
-         rnum = (i + 1) * ens_size + j
+         rnum = (i + 1) * model_size + j
          read(direct_unit, rec = rnum) ens(1, j)
       end do
       call awrite_state_restart(ens_time(i), ens(1, :), iunit)
@@ -417,7 +433,7 @@ end subroutine end_ensemble_manager
 
 
 
-subroutine Aadvance_state(ens_size, model_size, target_time, asynch, adv_ens_command)
+subroutine Aadvance_state(ens_handle, target_time, asynch, adv_ens_command)
 !-----------------------------------------------------------------------
 !
 ! Advances the model extended state until time is equal (within roundoff?)
@@ -426,7 +442,7 @@ subroutine Aadvance_state(ens_size, model_size, target_time, asynch, adv_ens_com
 
 implicit none
 
-integer,            intent(in)    :: ens_size, model_size
+type(ensemble_type),intent(in)    :: ens_handle
 type(time_type),    intent(in)    :: target_time
 integer,            intent(in)    :: asynch
 character(len=129), intent(in)    :: adv_ens_command                                                      
@@ -446,7 +462,7 @@ real(r8) :: smodel_state(model_size)
 do i = 1, ens_size
 
    ! Get the state and time for this ensemble member
-   call get_ensemble_member(i, smodel_state, smodel_time)
+   call get_ensemble_member(ens_handle, i, smodel_state, smodel_time)
 
    ! On first one, make sure that there is a need to advance, else return
    if(smodel_time == target_time) return
@@ -476,7 +492,7 @@ do i = 1, ens_size
       end do
 
       ! Put the updated ensemble member back into storage
-      call put_ensemble_member(i, smodel_state, smodel_time)
+      call put_ensemble_member(ens_handle, i, smodel_state, smodel_time)
 
    !-------------- End single executable block ------------------------
    else 
@@ -600,7 +616,7 @@ if(asynch /= 0) then
       call aread_state_restart(smodel_time, smodel_state, ud_file_unit)
       call close_restart(ud_file_unit)
       ! Put the updated state in the ensemble storage
-      call put_ensemble_member(i, smodel_state, smodel_time)
+      call put_ensemble_member(ens_handle, i, smodel_state, smodel_time)
    end do
 
 end if
