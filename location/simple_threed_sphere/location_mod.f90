@@ -24,7 +24,7 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 private
 
 public location_type, get_dist, get_location, set_location, &
-       write_location, read_location, interactive_location, nc_write_location, &
+       write_location, read_location, interactive_location, &
        LocationDims, LocationName, LocationLName
 
 type location_type
