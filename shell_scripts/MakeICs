@@ -8,8 +8,6 @@
 #
 # script to create initial conditions for any low-order experiment
 #======================================================================
-# Find the project and build it, if need be. 
-#======================================================================
 
 set SNAME = $0
 
@@ -24,7 +22,7 @@ switch ( $#argv )
    case 2:
       # supplying two arguments
       set MODEL = $1
-      set DARTHOME = $2
+      set DART_HOME = $2
       breaksw
    default:
       echo " "
@@ -119,30 +117,31 @@ echo 'Will restore and remove the directory at the end.'
 
 if !( -e create_obs_set_def ) then
    csh mkmf_create_obs_set_def
-   mv input.nml.mkmf create_obs_set_def.nml
+   mv input.nml.mkmf input.nml.create_obs_set_def
    make || exit 1
 endif
 if !( -e create_obs_sequence ) then
    csh mkmf_create_obs_sequence
-   mv input.nml.mkmf create_obs_sequence.nml
+   mv input.nml.mkmf input.nml.create_obs_sequence
    make || exit 1
 endif
 if !( -e perfect_model_obs ) then
    csh mkmf_perfect_model_obs
-   mv input.nml.mkmf perfect_model_obs.nml
+   mv input.nml.mkmf input.nml.perfect_model_obs
    make || exit 1
 endif
 if !( -e filter ) then
    csh mkmf_filter
-   mv input.nml.mkmf filter.nml
+   mv input.nml.mkmf input.nml.filter
    make || exit 1
 endif
 \rm -f *.o *.mod Makefile
 
-
 #======================================================================
 # Define input files based on model
 #======================================================================
+
+set BINARY_RESTART_FILES = .false.
 
 set COSD = create_obs_set_def.in
 set COS = create_obs_sequence.in
@@ -150,8 +149,6 @@ set COS = create_obs_sequence.in
 switch ( ${Model} )
 
    case 9var:
-
-      set BINARY_RESTART_FILES = .false.
 
       echo "set_def.out"   > $COSD ;# output file name
       echo "1"            >> $COSD ;# # of unique observation SETS to define
@@ -175,8 +172,6 @@ switch ( ${Model} )
    breaksw
 
    case lorenz_96:
-
-      set BINARY_RESTART_FILES = .false.
 
       echo "set_def.out"   > $COSD ;# output file name
       echo "1"            >> $COSD ;# # of unique observation SETS to define
@@ -209,11 +204,6 @@ switch ( ${Model} )
       echo "1"            >> $COSD ;# # of observations in set 1
       echo "1000000.0"    >> $COSD ;# error variance for set 1, observation 1
       echo "1"            >> $COSD ;# observe state variable #1
-#     echo "-1"           >> $COSD ;# not a state variable
-#     echo "-1"           >> $COSD ;# surface observation
-#     echo "30"           >> $COSD ;# longitude [0,360]
-#     echo "40"           >> $COSD ;# latitude [-90,90]
-#     echo "3"            >> $COSD ;# obs kind: u = 1, v = 2, ps = 3, t = 4 q = 5
 
       echo "set_def.out"   > $COS
       echo "1"            >> $COS  ;# make a "regular" sequence
@@ -222,13 +212,13 @@ switch ( ${Model} )
       echo "1 0"          >> $COS  ;# observation interval (d, s)
       echo "obs_seq.in"   >> $COS  ;# output file name
 
+      echo " " > model.nml
+
       set num_ens_members = 50
 
    breaksw
 
    default:     # lorenz_63, lorenz_84
-
-      set BINARY_RESTART_FILES = .false.
 
       echo "set_def.out"                                             > $COSD 
       echo "1           ;# # of unique observation SETS to define"  >> $COSD
@@ -260,7 +250,7 @@ echo "&assim_model_nml"                                   > assim_mod.nml
 echo "   binary_restart_files = $BINARY_RESTART_FILES /" >> assim_mod.nml
 
 echo "#----------------------------------------------------------------------"
-echo "Step 1: Create SETS of observation definitions"
+echo "Step 1.1: Create an observation SET definition."
 echo "#----------------------------------------------------------------------"
 
 echo '&utilities_nml'                                 > utilities.nml
@@ -281,7 +271,7 @@ else
 endif
 
 echo "#----------------------------------------------------------------------"
-echo "# Step 2: Create SEQUENCES of observation SETS (with nothing in them)"
+echo "# Step 1.2: Create an observation SEQUENCE definition (with nothing in them)"
 echo "#----------------------------------------------------------------------"
 
 echo '&utilities_nml'                                  > utilities.nml
@@ -302,7 +292,7 @@ else
 endif
 
 echo "#----------------------------------------------------------------------"
-echo "# Step 3: Populate the observation sequences (with perfect_model_obs)"
+echo "# Step 1.3: Initialize the model"
 echo "#    creates files True_State.nc, obs_seq.out"
 echo "#----------------------------------------------------------------------"
 
@@ -318,8 +308,7 @@ echo "#----------------------------------------------------------------------"
 
 echo '&utilities_nml'                                > utilities.nml
 echo '   logfilename = "perfect_model_obs.out",'    >> utilities.nml
-echo '   TERMLEVEL = 1'                             >> utilities.nml
-echo '&end'                                         >> utilities.nml
+echo '   TERMLEVEL = 1   /'                         >> utilities.nml
 
 cat << ENDofTask02 > perfect.nml
 &perfect_model_obs_nml
@@ -332,8 +321,7 @@ cat << ENDofTask02 > perfect.nml
    restart_out_file_name = "perfect_restart",
    init_time_days = 0,
    init_time_seconds = 0,
-   output_interval = 1
-&end
+   output_interval = 1  /
 ENDofTask02
 
 cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
@@ -350,15 +338,22 @@ else
 endif
 
 echo "#----------------------------------------------------------------------"
-echo "# Finally --  Generate a set of ensemble initial conditions"
+echo "# Step 2: Generate a set of ensemble initial conditions"
+echo "#         This is a multi-step procedure."
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                      > utilities.nml
-echo '   logfilename = "logfile.out",'    >> utilities.nml
-echo '   TERMLEVEL = 1'                   >> utilities.nml
-echo '&end'                               >> utilities.nml
+cp -f perfect_restart perfect_ics
 
-cat << ENDofTask03 > filter.nml
+echo "#----------------------------------------------------------------------"
+echo "# Step 2.1: Generate a 'perfect' observation sequence for the filter"
+echo "#----------------------------------------------------------------------"
+
+echo '&utilities_nml'                                > utilities.nml
+echo '   logfilename = "perfect_model_obs.out",'    >> utilities.nml
+echo '   TERMLEVEL = 1'                             >> utilities.nml
+echo '&end'                                         >> utilities.nml
+
+cat << ENDofTask02 > perfect.nml
 &perfect_model_obs_nml
    async = 0,
    obs_seq_in_file_name = "obs_seq.in",
@@ -369,9 +364,32 @@ cat << ENDofTask03 > filter.nml
    restart_out_file_name = "perfect_restart",
    init_time_days = 0,
    init_time_seconds = 0,
-   output_interval = 1
-&end
+   output_interval = 1  /
+ENDofTask02
 
+cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
+
+./perfect_model_obs
+ 
+if ( $status > 0 ) then
+   echo "ERROR: perfect_model_obs (ensemble) bombed ..."
+   exit
+else
+   echo " "
+   echo "perfect_model_obs (ensemble) terminated normally"
+   echo " "
+endif
+
+echo "#----------------------------------------------------------------------"
+echo "# Step 2.2: Generate a set of ensemble initial conditions"
+echo "#----------------------------------------------------------------------"
+
+echo '&utilities_nml'                      > utilities.nml
+echo '   logfilename = "logfile.out",'    >> utilities.nml
+echo '   TERMLEVEL = 1'                   >> utilities.nml
+echo '&end'                               >> utilities.nml
+
+cat << ENDofTask03 > filter.nml
 &filter_nml
    async = 0,
    ens_size = xxxxxxxx,
@@ -387,8 +405,7 @@ cat << ENDofTask03 > filter.nml
    output_state_ens_mean = .true.,
    output_state_ens_spread = .true.,
    num_output_ens_members = 0,
-   output_interval = 1
-&end
+   output_interval = 1       /
 ENDofTask03
 
 # use some unix trickery to replace the string
@@ -396,19 +413,7 @@ ENDofTask03
 set STRING = "1,$ s#xxxxxxxx#$num_ens_members#"
 sed -e "$STRING" filter.nml > input.nml
 
-cat utilities.nml model.nml assim_mod.nml >> input.nml
-
-cp -f perfect_restart perfect_ics
-./perfect_model_obs    ;# run again to generate a "useful" True_State
- 
-if ( $status > 0 ) then
-   echo "ERROR: perfect_model_obs bombed ..."
-   exit
-else
-   echo " "
-   echo "perfect_model_obs terminated normally"
-   echo " "
-endif
+cat utilities.nml assim_mod.nml model.nml >> input.nml
 
 #----------------------------------------------------------------------
 # Step 4: filter
@@ -429,8 +434,6 @@ endif
 
 cp perfect_restart perfect_ics
 cp filter_restart filter_ics
-
-\rm -f Prior_Diag.nc Posterior_Diag.nc True_State.nc
 
 #======================================================================
 # Restore the existing namelists ...
