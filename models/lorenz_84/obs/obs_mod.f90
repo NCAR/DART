@@ -1,4 +1,11 @@
 module obs_mod
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 
 use new_random_mod, only: gasdev, ran1
 use sort_mod
