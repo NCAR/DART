@@ -18,12 +18,11 @@
 # Run parameters to change
 
 # Directory where output will be kept
-# UPDATE from bangkok:.../T21x80/job.csh for new assim_ic file management
-set exp = T5_Doc
+set exp = EFG_new_deflts
 
 # 'day'/obs_seq.out numbers to assimilate during this job
 set obs_seq_1 = 1
-set obs_seq_n = 2
+set obs_seq_n = 7
 
 # The "day" of the first obs_seq.out file of the experiment
 set obs_seq_first = 1
@@ -32,11 +31,10 @@ set obs_seq_first = 1
 # Note that you may want to change it for obs_seq_ > 9.
 # Obs_diag restricts these subdirectory names to be 5 characters.
 set output_dir = 01_0
-set num_ens = 20
-# Spinup; set obs_seq_1_ic = /scratch/cluster/raeder/T21x80/filter_12-1-02_ic
-set obs_seq_1_ic  = /scratch/cluster/raeder/New_state/T5_GWD/DART/filter_EFG_ic
-set obs_seq_1_cam = /scratch/cluster/raeder/New_state/T5_GWD/CAM/caminput_
-set obs_seq_1_clm = /scratch/cluster/raeder/New_state/T5_GWD/CLM/clminput_
+set num_ens = 80
+set obs_seq_1_ic  = /scratch/cluster/raeder/New_state/T21x80/03-01-01/DART
+set obs_seq_1_cam = /scratch/cluster/raeder/New_state/T21x80/03-01-01/CAM/caminput_
+set obs_seq_1_clm = /scratch/cluster/raeder/New_state/T21x80/03-01-01/CLM/clminput_
 set input = input_
 
 # Not currently used; gzip all previous days initial files at specified interval
@@ -77,9 +75,9 @@ while($i <= $obs_seq_n)
    # get rid of previous link
    rm obs_seq.out
    if ($i < 10) then
-      ln -s obs_seq_jan0${i}_unformatted.out obs_seq.out
+      ln -s /scratch/cluster/raeder/T21x80/obs_seq_jan0${i}_unformatted.out obs_seq.out
    else
-      ln -s obs_seq_jan${i}_unformatted.out obs_seq.out
+      ln -s /scratch/cluster/raeder/T21x80/obs_seq_jan${i}_unformatted.out obs_seq.out
    endif
    echo job- obs_seq used is >> run_job.log
    ls -lt obs_seq.out >> run_job.log
@@ -92,7 +90,7 @@ while($i <= $obs_seq_n)
       set cam_init = $obs_seq_1_cam
       set clm_init = $obs_seq_1_clm
    else
-      set from_root = `pwd`/$exp/${output_dir}${j}/DART/filter_ic
+      set from_root = `pwd`/$exp/${output_dir}${j}/DART
       set cam_init =  `pwd`/$exp/${output_dir}${j}/CAM/caminput_
       set clm_init =  `pwd`/$exp/${output_dir}${j}/CLM/clminput_
    endif
@@ -101,18 +99,20 @@ while($i <= $obs_seq_n)
    # The second item echoed must be the subdirectory where CAM is kept, in the Central directory
    echo $exp cam3.0.7 $cam_init $clm_init >! casemodel
 
+   rm assim_ic_old
+   ln -s $from_root/assim_tools_ics assim_ic_old
    # link to filter_ic file(s), so that filter.csh can copy them to a compute node
-   if (-e ${from_root}.0001) then
+   if (-e ${from_root}/filter_ic.0001) then
       set n = 1
       while($n <= ${num_ens})
-           set from = ${from_root}*[.0]$n
+           set from = ${from_root}/filter_ic*[.0]$n
            rm filter_ic_old.$from:e
            ln -s $from filter_ic_old.$from:e
            @ n++ 
       end
    else
       rm filter_ic_old
-      ln -s $from_root filter_ic_old
+      ln -s $from_root/filter_ic filter_ic_old
    endif
    echo ' ' >> run_job.log
    echo job- filter_ic_old is/are >> run_job.log
@@ -130,13 +130,13 @@ while($i <= $obs_seq_n)
    #    semaphor files must (dis)appear there, 
    #    I/O between filter and advance_model and assim_region goes through there.
    #    Final output is put there
-   # It's PBS_O_WORKDIR  in filter.csh and filter_server.csh
-
-   # runs filter, which integrates the results of model advances and region assims
-   qsub filter.csh  
+   # It is PBS_O_WORKDIR  in filter.csh and filter_server.csh
 
    # advances model and assims regions
    qsub filter_server.csh 
+
+   # runs filter, which integrates the results of model advances and region assims
+   qsub filter.csh  
 #-----------------
 
    # Hang around forever for now and wait for filter.csh to finish
@@ -190,6 +190,9 @@ while($i <= $obs_seq_n)
       echo moving filter_ic_newS to ${exp}/${output_dir}$i/DART/filter_icS >> run_job.log
    else
       echo NO filter_ic_new FOUND >> run_job.log
+   endif
+   if (-e assim_ic_new) then
+      mv assim_ic_new ${exp}/${output_dir}$i/DART/assim_tools_ics
    endif
 
    # test whether it's safe to end this obs_seq_ by signalling filter.csh to end
