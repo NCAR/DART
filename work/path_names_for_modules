@@ -46,9 +46,9 @@ else if( `hostname` == "elm" ) then
 
 else
 
-   set DEFAULT_COMPILE = 'f90 -c -module /usr/local/netcdf-pgi/include -I/usr/local/include'
-   set LINK_OPTS       = "-L/usr/local/lib -L/usr/local/netcdf-pgi/lib -lnag -lnetcdf -F77"
-   set FINAL_COMMAND   = 'f90 -bd,$1 -o $1 $LINK_OPTS'
+   set DEFAULT_COMPILE = 'pgf90 -c -I/usr/local/netcdf-pgi/include -I/usr/local/include'
+   set LINK_OPTS     = "-L/usr/local/lib -L/usr/local/netcdf-pgi/lib -lnetcdf"
+   set FINAL_COMMAND = 'pgf90 -o $1 *.o ${LINK_OPTS}'
 
 endif
 
