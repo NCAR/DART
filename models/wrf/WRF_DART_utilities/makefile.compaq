@@ -1,0 +1,5 @@
+.F.o:
+	f90 -free -I/usr/local/netcdf/include -c $*.F
+dart_tf_wrf.o : wrf_data_module.o
+dart_tf_wrf: dart_tf_wrf.o 
+	f90 -o dart_tf_wrf dart_tf_wrf.o /usr/local/netcdf/lib/libnetcdf.a
