@@ -1,3 +1,5 @@
+! changes for reading hybrid coefficients from initial file are marked with 'coef'
+! 
 ! netCDF filename; where will this come from in DART?
 !                  it's created by CAM, and written out to a file somewhere; read it in?
 
@@ -15,8 +17,9 @@ module model_mod
 !         Reform state vector back into CAM fields.
 !         Replace those fields on the CAM initial file with the new values,
 !         preserving all other information on the file.
+!         Also read hybrid coordinate coefficients from CAM input file (for plevs_dart)
 !
-! author: Kevin Raeder 2/14/03
+! author: Kevin Raeder 2/14/03  and 8/1/03
 !         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
 !
 !----------------------------------------------------------------------
@@ -24,8 +27,10 @@ module model_mod
 use netcdf
 use types_mod
 use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
-use time_manager_mod, only : time_type, set_time
-use location_mod         , only: location_type, get_location, set_location, get_dist, &
+! kdr orig; use time_manager_mod, only : time_type, set_time
+use time_manager_mod, only : time_type, set_time, print_time
+use location_mod         , only: location_type, get_location, set_location, &
+                                 get_dist, vert_is_level, &
                                  LocationDims, LocationName, LocationLName
 
 
@@ -57,6 +62,7 @@ character(len=128) :: &
 integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_Q = 4, TYPE_TRACER = 5
 
 !----------------------------------------------------------------------
+
 ! A type for cam model, very simple for now for conversion only
 type model_type
 !   private
@@ -85,6 +91,7 @@ character(len = 128) :: model_config_file = 'caminput.nc'
 !
 ! Global storage for describing cam model class
 integer :: model_size, num_lons, num_lats, num_levs
+
 type(time_type) :: Time_step_atmos
 
 integer, parameter :: n3dflds=4     ! # of 3d fields to read from file
@@ -99,6 +106,9 @@ integer, parameter :: nflds  = n3tflds+n2dflds         ! # fields to read
 
 ! Arrays to store lat and lon indices
 real(r8), allocatable :: lons(:), lats(:)
+
+!coef hybrid coeffs at interfaces and mid-levels
+real(r8), allocatable :: hyai(:), hybi(:), hyam(:), hybm(:)
 
 ! list variables according to the category to which they belong, 
 ! in the order the categories appear above (n3dflds,pcnst,pnats,n2dflds).
@@ -220,6 +230,113 @@ end do
 
 end subroutine read_cam_init
 
+!#######################################################################
+subroutine read_cam_coef(var, levs, cfield)
+
+! should be called with cfield = one of :
+!          (/'hyai    ','hybi    ','hyam    ','hybm    '/)
+
+implicit none
+
+!----------------------------------------------------------------------
+! Local workspace
+integer :: i,j,ifld             ! grid indices
+integer :: ncfileid, ncfldid, levs
+
+!----------------------------------------------------------------------
+real(r8), dimension(levs), intent(out) :: var
+character (len=8), intent(in)  :: cfield 
+
+! read CAM 'initial' file domain info
+call check(nf90_open(path = trim(model_config_file), mode = nf90_write, &
+           ncid = ncfileid))
+
+! read CAM 'initial' file field desired
+
+call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid))
+PRINT*,'reading ',cfield,' using id ',ncfldid
+call check(nf90_get_var(ncfileid, ncfldid, var ,start=(/1/) ,count=(/levs/) ))
+WRITE(*,*) (var(i),i=1,levs)
+
+end subroutine read_cam_coef
+
+!#######################################################################
+! #include <misc.h>
+! #include <params.h>
+
+subroutine plevs_cam (ncol    , ncold   ,ps      ,pint    )
+
+! ,nver    , & pmid    ,pdel)
+
+!-----------------------------------------------------------------------
+!
+! Purpose:
+! Define the pressures of the interfaces and midpoints from the
+! coordinate definitions and the surface pressure.
+!
+! Method:
+!
+! Author: B. Boville (plevs0), 
+!         Kevin Raeder modified  8/1/03 to use hy[ab][im] from within module
+!         rather than in a common block, for use in DART,
+!
+!-----------------------------------------------------------------------
+!
+! $Id$
+! $Author$
+!
+!-----------------------------------------------------------------------
+
+! coef; commented these out
+!  use shr_kind_mod, only: r8 => shr_kind_r8
+!  use pmgrid
+
+implicit none
+
+! coef; commented these out
+! #include <comhyb.h>
+
+!-----------------------------------------------------------------------
+integer , intent(in)  :: ncol               ! Longitude dimension
+integer , intent(in)  :: ncold              ! Declared longitude dimension
+!integer , intent(in)  :: nver               ! vertical dimension
+! coef
+!real(r8), intent(in) :: hyai(nver+1)        ! hybrid As at interface levels
+!real(r8), intent(in) :: hybi(nver+1)        ! hybrid Bs at interface levels
+!real(r8), intent(in) :: hyam(nver)          ! hybrid As at layer mid points
+!real(r8), intent(in) :: hybm(nver)          ! hybrid Bs at layer mid points
+real(r8), parameter  :: ps0 = 1.0E+05       ! reference pressure
+! end coef
+real(r8), intent(in)  :: ps(ncold)          ! Surface pressure (pascals)
+real(r8), intent(out) :: pint(ncold,num_levs+1) ! Pressure at model interfaces
+!real(r8), intent(out) :: pmid(ncold,num_levs)   ! Pressure at model levels
+!real(r8), intent(out) :: pdel(ncold,num_levs)   ! Layer thickness (pint(k+1) - pint(k))
+!-----------------------------------------------------------------------
+
+!---------------------------Local workspace-----------------------------
+  integer i,k             ! Longitude, level indices
+!-----------------------------------------------------------------------
+!
+! Set interface pressures
+!
+do k=1,num_levs+1
+   do i=1,ncol
+      pint(i,k) = hyai(k)*ps0 + hybi(k)*ps(i)
+   end do
+end do
+!
+! Set midpoint pressures and layer thicknesses
+!
+! coef
+!do k=1,num_levs
+!   do i=1,ncol
+!      pmid(i,k) = hyam(k)*ps0 + hybm(k)*ps(i)
+!      pdel(i,k) = pint(i,k+1) - pint(i,k)
+!   end do
+!end do
+
+return
+end subroutine plevs_cam
 !#######################################################################
 subroutine prog_var_to_vector(var, x)
 
@@ -408,7 +525,12 @@ call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)
 ! and if they themselves need to be initialized here)
 
 ! Need to set Time_step_atmos here to 1 hour for now 
-Time_step_atmos = set_time(43200, 0)
+! kdr automate this? (setting model time"step")
+! Time_step_atmos = set_time(43200, 0)
+Time_step_atmos = set_time(3600, 0)
+! kdr debug
+call print_time(Time_step_atmos)
+
 
 ! Compute overall model size and put in global storage
 model_size = num_lons * num_lats * (n2dflds + num_levs * &
@@ -416,6 +538,8 @@ model_size = num_lons * num_lats * (n2dflds + num_levs * &
 
 ! Allocate space for longitude and latitude global arrays
 allocate(lons(num_lons), lats(num_lats))
+! Allocate space for hybrid vertical coord coef arrays
+allocate(hyai(num_levs+1), hybi(num_levs+1), hyam(num_levs), hybm(num_levs))
 
 ! Need values for lons and lats, too; should come from netcdf file in read_cam_init_size
 do i = 1, num_lons
@@ -425,6 +549,12 @@ end do
 do i = 1, num_lats
    lats(i) = -90.0 + 180.0 * (i - 0.5) / num_lats
 end do
+
+! read hybrid vert coord coefs
+call read_cam_coef(hyai, num_levs+1, 'hyai    ')
+call read_cam_coef(hybi, num_levs+1, 'hybi    ')
+call read_cam_coef(hyam, num_levs  , 'hyam    ')
+call read_cam_coef(hybm, num_levs  , 'hybm    ')
 
 write(*, *) 'CAM size initialized as ', model_size
 
@@ -441,6 +571,7 @@ implicit none
 type(model_type), intent(out) :: var
 
 ! Initialize the storage space and return
+
 allocate(var%vars_2d(num_lons, num_lats, n2dflds), &
    var%vars_3d(num_lons, num_levs, num_lats, n3dflds), &
    var%tracers(num_lons, num_levs, num_lats, num_tracers))
@@ -545,7 +676,96 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-function model_interpolate(x, location, type)
+!function model_interpolate(x, location, type)
+!
+!implicit none
+!
+!real :: model_interpolate
+!real, intent(in) :: x(:)
+!type(location_type), intent(in) :: location
+!integer, intent(in) :: type
+!
+!integer :: lon_below, lon_above, lat_below, lat_above, i
+!real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
+!real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
+!real :: lon, lat, level, lon_lat_lev(3)
+!
+!! First version only allows (level specifies vertical???)
+!lon_lat_lev = get_location(location)
+!lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
+!
+!! Get lon and lat grid specs, num_lons, num_lats are globally defined for cam
+!   bot_lon = lons(1)
+!   top_lon = lons(num_lons)
+!   delta_lon = lons(2) - lons(1)
+!   bot_lat = lats(1)
+!   top_lat = lats(num_lats)
+!
+!! Compute bracketing lon indices
+!if(lon >= bot_lon .and. lon <= top_lon) then
+!   lon_below = int((lon - bot_lon) / delta_lon) + 1
+!   lon_above = lon_below + 1
+!   lon_fract = (lon - ((lon_below - 1) * delta_lon + bot_lon)) / delta_lon
+!else
+!! At wraparound point
+!   lon_below = num_lons
+!   lon_above = 1
+!   if(lon < bot_lon) then
+!      temp_lon = lon + 360.0
+!   else
+!      temp_lon = lon
+!   endif
+!   lon_fract = (temp_lon - top_lon) / delta_lon
+!endif
+!
+!
+!! Next, compute neighboring lat rows
+!! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE MAY BE WRONG
+!! Inefficient search used for latitudes in Gaussian grid. Might want to speed up.
+!if(lat >= bot_lat .and. lat <= top_lat) then
+!
+!   do i = 2, num_lats
+!      if(lat <= lats(i)) then
+!         lat_above = i
+!         lat_below = i - 1
+!         lat_fract = (lat - lats(lat_below)) / (lats(lat_above) - lats(lat_below))
+!         goto 20
+!      end if 
+!   end do
+!
+!else if(lat <= bot_lat) then
+!! South of bottom lat NEED TO DO BETTER: NOT REALLY REGULAR
+!   lat_below = 1
+!   lat_above = 2
+!   lat_fract = 0.0
+!else
+!! North of top lat NEED TO DO BETTER: NOT REALLY REGULAR
+!   lat_below = num_lats - 1
+!   lat_above = num_lats
+!   lat_fract = 1.0
+!endif
+!
+!! Level is obvious for now
+!
+!! Now, need to find the values for the four corners
+!20 continue
+!val(1, 1) =  get_val(x, lon_below, lat_below, int(level), type)
+!val(1, 2) =  get_val(x, lon_below, lat_above, int(level), type)
+!val(2, 1) =  get_val(x, lon_above, lat_below, int(level), type)
+!val(2, 2) =  get_val(x, lon_above, lat_above, int(level), type)
+!
+!! Do the weighted average for interpolation
+!!write(*, *) 'fracts ', lon_fract, lat_fract
+!do i = 1, 2
+!   a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
+!end do
+!
+!model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
+!
+!end function model_interpolate
+!
+!#######################################################################
+RECURSIVE function model_interpolate(x, location, type)
 
 implicit none
 
@@ -557,11 +777,20 @@ integer, intent(in) :: type
 integer :: lon_below, lon_above, lat_below, lat_above, i
 real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
-real :: lon, lat, level, lon_lat_lev(3)
+real :: lon, lat, level, lon_lat_lev(3), pressure
 
-! First version only allows (level specifies verical???)
+! Would it be better to pass state as prog_var_type (model state type) to here?
+! As opposed to the stripped state vector. YES. This would give time interp.
+! capability here; do we really want this or should it be pushed up?
+
+! Get the position, determine if it is model level or pressure in vertical
 lon_lat_lev = get_location(location)
-lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
+lon = lon_lat_lev(1); lat = lon_lat_lev(2);
+if(vert_is_level(location)) then
+   level = lon_lat_lev(3)
+else
+   pressure = lon_lat_lev(3)
+endif
 
 ! Get lon and lat grid specs, num_lons, num_lats are globally defined for cam
    bot_lon = lons(1)
@@ -614,14 +843,23 @@ else
    lat_fract = 1.0
 endif
 
-! Level is obvious for now
-
-! Now, need to find the values for the four corners
 20 continue
-val(1, 1) =  get_val(x, lon_below, lat_below, int(level), type)
-val(1, 2) =  get_val(x, lon_below, lat_above, int(level), type)
-val(2, 1) =  get_val(x, lon_above, lat_below, int(level), type)
-val(2, 2) =  get_val(x, lon_above, lat_above, int(level), type)
+
+! Case 1: model level specified in vertical
+if(vert_is_level(location)) then
+! Now, need to find the values for the four corners
+   val(1, 1) =  get_val(x, lon_below, lat_below, nint(level), type)
+   val(1, 2) =  get_val(x, lon_below, lat_above, nint(level), type)
+   val(2, 1) =  get_val(x, lon_above, lat_below, nint(level), type)
+   val(2, 2) =  get_val(x, lon_above, lat_above, nint(level), type)
+
+else
+! Case of pressure specified in vertical
+   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, type)
+   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, type)
+   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, type)
+   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, type)
+endif
 
 ! Do the weighted average for interpolation
 !write(*, *) 'fracts ', lon_fract, lat_fract
@@ -632,6 +870,74 @@ end do
 model_interpolate = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 
 end function model_interpolate
+
+!#######################################################################
+!
+function get_val_pressure(x, lon_index, lat_index, pressure, type)
+
+implicit none
+
+real :: get_val_pressure
+real, intent(in) :: x(:), pressure
+integer, intent(in) :: lon_index, lat_index, type
+
+real :: ps(1), pfull(1, num_levs+1), fraction
+type(location_type) :: ps_location
+integer :: top_lev, bot_lev, i
+real :: bot_val, top_val, ps_lon
+
+! Gets the vertically interpolated value on pressure for variable type
+! at lon_index, lat_index horizontal grid point
+
+! Need to get the surface pressure at this point. Easy for A-grid.
+ps = get_val(x, lon_index, lat_index, -1, 3)
+
+! Next, get the values on the levels for this ps
+! Kevin, you need to insert the appropriate call for you routine here
+! ps and pfull are currently 2 and 3D arrays to support Bgrid interface
+! I assume that you might want to change to a scalar and a 1D array?
+! call compute_pres_full(Dynam%Vgrid, ps, pfull)
+call plevs_cam (1, 1, ps, pfull)
+
+! Interpolate in vertical to get two bounding levels
+! What to do about pressures above top??? Just use the top for now.
+! Could extrapolate, but that would be very tricky. Might need to
+! reject somehow.
+if(pressure < pfull(1, 1)) then
+   top_lev = 1
+   bot_lev = 2
+   fraction = 1.0
+! Kevin, Dynam%Vgrid%nlev is the number of full model levels, you'll
+! have your own value for this
+
+else if(pressure > pfull(1, num_levs+1)) then
+! Same for bottom
+   bot_lev = num_levs + 1
+   top_lev = bot_lev - 1
+   fraction = 0.0
+
+else
+! Search down through pressures
+   do i = 2, num_levs + 1
+      if(pressure < pfull(1, i)) then
+         top_lev = i -1
+         bot_lev = i
+         fraction = (pfull(1, i) - pressure) / &
+            (pfull(1, i) - pfull(1, i - 1))
+         goto 21
+      endif
+   end do
+end if
+
+! Get the value at these two points
+21 bot_val = get_val(x, lon_index, lat_index, bot_lev, type)
+top_val = get_val(x, lon_index, lat_index, top_lev, type)
+!write(*, *) 'bot_lev, top_lev, fraction', bot_lev, top_lev, fraction
+
+get_val_pressure = (1.0 - fraction) * bot_val + fraction * top_val
+!write(*, *) 'bot_val, top_val, val', bot_val, top_val, get_val_pressure
+
+end function get_val_pressure
 
 !#######################################################################
 
@@ -679,11 +985,8 @@ end function get_val
 
 !#######################################################################
 
-
 function get_model_time_step()
-!------------------------------------------------------------------------
-! function get_model_time_step()
-!
+
 ! Returns the the time step of the model. In the long run should be repalced
 ! by a more general routine that returns details of a general time-stepping
 ! capability.
