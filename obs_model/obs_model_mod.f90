@@ -13,19 +13,23 @@ module obs_model_mod
 use       types_mod,  only : r8
 use   utilities_mod,  only : register_module
 use    location_mod,  only : location_type, interactive_location
-use assim_model_mod,  only : interpolate, &
-                             am_get_close_states => get_close_states
+use assim_model_mod,  only : interpolate, aget_closest_state_time_to, &
+                             am_get_close_states => get_close_states, &
+                             aadvance_state
 use    obs_kind_mod,  only : obs_kind_type, interactive_kind, get_obs_kind
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
-                             get_obs_def, init_obs, destroy_obs
-use obs_def_mod,      only : obs_def_type, get_obs_def_location, get_obs_def_kind
+                             get_obs_def, init_obs, destroy_obs, get_num_copies, &
+                             get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
+use obs_def_mod,      only : obs_def_type, get_obs_def_location, get_obs_def_kind, &
+                             get_obs_def_time
 use utilities_mod,    only : error_handler, E_ERR
+use time_manager_mod, only : time_type, operator(/=), operator(>), get_time
 
 
 implicit none
 private
 
-public take_obs, interactive_def, get_expected_obs, get_close_states
+public take_obs, interactive_def, get_expected_obs, get_close_states, move_ahead
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -192,5 +196,76 @@ call am_get_close_states(location, radius, numinds, indices, dist)
 call destroy_obs(obs)
 
 end subroutine get_close_states
+
+!-------------------------------------------------------------------------
+
+subroutine move_ahead(ens, ens_time, ens_size, model_size, seq, last_key_used, &
+   key_bounds, num_obs_in_set, async, adv_ens_command)
+
+! First version of this assumes that observations come in discrete chunks that are exactly
+! at times to which the model can advance as per historical filters. Variants should be
+! added and routine should be moved to a separate module, probably obs_model_mod.
+
+implicit none
+
+integer, intent(in) :: ens_size, model_size
+real(r8), intent(inout) :: ens(ens_size, model_size)
+type(time_type), intent(inout) :: ens_time(ens_size)
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: last_key_used, async
+integer, intent(out) :: key_bounds(2), num_obs_in_set
+character(len = 129), intent(in) :: adv_ens_command
+
+type(time_type) :: next_time, time2
+type(obs_type) :: observation
+type(obs_def_type) :: obs_def
+logical :: is_this_last, is_there_one, out_of_range
+integer :: days, secs
+
+! Initialize a temporary observation type to use
+call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
+
+! Get the next observation in the sequence that hasn't already been assimilated
+if(last_key_used > 0) then
+   call get_obs_from_key(seq, last_key_used, observation)
+   call get_next_obs(seq, observation, observation, is_this_last)
+   if(is_this_last) then
+      key_bounds(1:2) = -99
+      return
+   endif
+else
+   is_there_one = get_first_obs(seq, observation)
+   if(.not. is_there_one) then
+      key_bounds(1:2) = -99
+      return
+   endif
+endif
+
+! Get the time of this observation
+call get_obs_def(observation, obs_def)
+next_time = get_obs_def_time(obs_def)
+
+! Get all the obsevations at exactly this time
+call get_obs_time_range(seq, next_time, next_time, key_bounds, num_obs_in_set, out_of_range, observation)
+
+call get_time(next_time, secs, days)
+write(*, *) 'time of obs set  is (d, s) = ', days, secs
+
+! If the model time is past the obs set time, should be an error
+if(ens_time(1) > next_time) then
+   write(*, *) 'model time is already past time of obs_set in move_ahead in filter'
+   stop
+endif
+
+! Figure out time to which to advance model 
+time2 = aget_closest_state_time_to(ens_time(1), next_time)
+
+! Advance all ensembles (to the time of the first ensemble)
+if(time2 /= ens_time(1)) call Aadvance_state(ens_time, ens, ens_size, time2, async, adv_ens_command)
+
+! Release the storage associated with the observation temp varialbe
+call destroy_obs(observation)
+
+end subroutine move_ahead
 
 end module obs_model_mod
