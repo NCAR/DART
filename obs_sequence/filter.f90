@@ -28,19 +28,20 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_sequence, &
    obs_sequence_def_copy, inc_num_obs_copies, set_obs_values, &
    set_single_obs_value, get_obs_def_index
 use time_manager_mod, only : time_type, set_time, print_time
-use utilities_mod, only :  get_unit, open_file, close_file, check_nml_error, &
+use utilities_mod,    only :  get_unit, open_file, close_file, check_nml_error, &
    file_exist
-use assim_model_mod, only : assim_model_type, static_init_assim_model, &
+use assim_model_mod,  only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    advance_state, set_model_time, get_model_time, init_diag_output, &
    output_diagnostics, init_assim_model, get_state_vector_ptr, &
    write_state_restart, read_state_restart
-use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use assim_tools_mod, only : obs_increment, update_from_obs_inc
-use cov_cutoff_mod, only : comp_cov_factor
+
+use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
+use assim_tools_mod,  only : obs_increment, update_from_obs_inc
+use cov_cutoff_mod,   only : comp_cov_factor
+
 use close_state_cache_mod, only : close_state_cache_type, cache_init, &
    get_close_cache
-
 
 implicit none
 
@@ -50,30 +51,30 @@ type model_state_ptr_type
 end type model_state_ptr_type
 
 type(obs_sequence_type) :: seq, prior_seq, posterior_seq
-type(time_type) :: time, time2
-type(random_seq_type) :: random_seq
+type(time_type)         :: time, time2
+type(random_seq_type)   :: random_seq
+
 
 integer :: i, j, k, ind, unit, prior_obs_unit, posterior_obs_unit, io
 integer :: prior_state_unit, posterior_state_unit, num_obs_in_set, ierr
 
 ! Need to set up namelists for controlling all of this mess, too!
 integer, parameter :: ens_size = 20
-
-integer :: model_size, num_obs_sets
+integer            :: model_size, num_obs_sets
 
 ! Storage for direct access to ensemble state vectors
 type(model_state_ptr_type) :: ens_ptr(ens_size), x_ptr
 
 type(assim_model_type) :: x, ens(ens_size)
-real(r8) :: obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size)
-real(r8) ::  swath(ens_size), ens_mean
-real(r8), allocatable :: obs_err_cov(:), obs(:)
-real(r8) :: cov_factor
-character(len = 129) :: ens_copy_meta_data(ens_size)
+real(r8)               :: obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size)
+real(r8)               :: swath(ens_size), ens_mean
+real(r8), allocatable  :: obs_err_cov(:), obs(:)
+real(r8)               :: cov_factor
+character(len = 129)   :: ens_copy_meta_data(ens_size)
 
 ! Storage for caching close states
 type(close_state_cache_type) :: cache
-integer, pointer :: num_close_ptr(:), close_ptr(:, :)
+integer,  pointer :: num_close_ptr(:), close_ptr(:, :)
 real(r8), pointer :: dist_ptr(:, :)
 
 !----------------------------------------------------------------
@@ -137,6 +138,7 @@ model_size = get_model_size()
 call cache_init(cache, cache_size)
 
 ! Set up diagnostic output for model state
+
 prior_state_unit = init_diag_output('prior_diag', &
    'prior ensemble state', ens_size, ens_copy_meta_data)
 posterior_state_unit = init_diag_output('posterior_diag', &
@@ -194,6 +196,7 @@ endif
 
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
+
 AdvanceTime : do i = 1, num_obs_sets
 
    time = get_obs_sequence_time(seq, i)
@@ -201,16 +204,9 @@ AdvanceTime : do i = 1, num_obs_sets
    call print_time(time)
 
    time2 = get_closest_state_time_to(ens(1), time)
-   ! Advance the ensembles to this time
-   do j = 1, ens_size
+   do j = 1, ens_size      ! Advance the ensembles to this time
       call advance_state(ens(j), time2)
-!<<<<<<< filter.f90
-! Output the prior ensemble state
-!      call output_diagnostics(prior_state_unit, ens(j), j)
-!=======
-      ! Output the prior ensemble state
       call output_diagnostics(prior_state_unit, ens(j), j)
-!>>>>>>> 1.11
    end do
 
    ! Do a covariance inflation for now? 
@@ -278,13 +274,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
    ! Put the ensemble storage back into the ens
    do j = 1, ens_size
-!<<<<<<< filter.f90
-! Output the posterior ensemble state
-!      call output_diagnostics(posterior_state_unit, ens(j), j)
-!=======
-      ! Output the posterior ensemble state
-      call output_diagnostics(posterior_state_unit, ens(j), j)
-!>>>>>>> 1.11
+        call output_diagnostics(posterior_state_unit, ens(j), j)
    end do
 
    ! Deallocate the ens_obs storage for this obs set
@@ -391,8 +381,3 @@ get_ens_mean = get_ens_mean / ens_size
 end function get_ens_mean
 
 end program filter
-
-
-
-
-

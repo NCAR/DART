@@ -35,3 +35,65 @@ new rms of ensemble mean  2.992207
 new ensemble mean of rms  4.0356273
 normalized ratio is  1.0232953
 
+# Step 0: Observation Definitions are "implied" at this point
+
+# Step 1: Create SETS of observation definitions
+ rm *.mod *.o                        ;# necessary ... create_obs_def.o ...
+ ../compile_it create_obs_def        ;# build the executable
+ ./create_obs_def                    ;# answer the questions -OR- modify &
+                                     ;# redirect create_obs_def.in
+
+# Step 2: Create SEQUENCES of observation SETS
+ rm create_obs_def.o                 ;# necessary 
+ ../compile_it create_obs_sequence   ;# build the executable
+ ./create_obs_sequence               ;# answer the questions -OR- modify &
+                                     ;# redirect create_obs_sequence.in
+
+# Step 3: Populate the sequences
+ rm create_obs_sequence.o
+ ../compile_it perfect_model_obs     ;# build the executable
+ ./perfect_model_obs                 ;# you get the drift by now ...
+                                     ;# perfect_model_obs.f90 creates file "true_state"
+ 
+# Step 4: filter
+ rm perfect_model_obs.o
+ ../compile_it filter
+ ./filter                            ;# asks for name of file that is 
+                                     ;# result of "perfect_model_obs"
+
+filter: creates four files. These are to be replaced by netCDF files.  
+
+   prior_obs_diagnostics	[prior_obs_unit]
+                                obs_sequence_mod:write_obs_sequence()
+
+   prior_diag			[prior_state_unit]
+				assim_model_mod:init_diag_output(),
+				assim_model_mod:output_diagnostics()
+
+   posterior_obs_diagnostics    obs_sequence_mod:write_obs_sequence()
+
+   posterior_diag               
+
+
+
+
+./obs_sequence/filter.f90:
+   init_diag_output(*)
+
+   prior_state_unit = init_diag_output('prior_diag', 'prior ensemble state', &
+                                       ens_size, ens_copy_meta_data)
+   ! Initializes a diagnostic output file. Should be NetCDF shortly but
+   ! for now just opens file and dumps stuff. A file_id is returned which
+   ! is simply implemented as an integer unit number for now.
+
+   do j = 1, ens_size      ! Advance the ensembles to this time
+      call output_diagnostics(prior_state_unit, ens(j), j)
+   enddo
+
+
+
+
+./obs_sequence/filter.f90:open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
+
+
+

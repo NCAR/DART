@@ -8,12 +8,13 @@ module assim_model_mod
 !
 
 ! NEED TO ADD ON ONLY CLAUSES
-use location_mod, only : location_type, write_location, set_location, get_dist, &
-   read_location, get_location
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
+
+use types_mod
 use time_manager_mod
 use utilities_mod, only : get_unit
-use types_mod
+use location_mod,  only : location_type, write_location, set_location, get_dist, &
+                          read_location, get_location
 
 private
 
@@ -115,7 +116,7 @@ end subroutine init_assim_model
 
 
 function init_diag_output(file_name, global_meta_data, &
-   copies_of_field_per_time, meta_data_per_copy)
+   copies_of_field_per_time, meta_data_per_copy) result(ncFileID)
 !---------------------------------------------------------------------
 !
 ! Initializes a diagnostic output file. Should be NetCDF shortly but
@@ -126,19 +127,77 @@ function init_diag_output(file_name, global_meta_data, &
 ! general model independent tool kit to avoid the burden of creating
 ! assim_model stuff.
 
+use typeSizes
+use netcdf
+
 implicit none
 
-integer :: init_diag_output
 character(len = *), intent(in) :: file_name, global_meta_data
-integer, intent(in) :: copies_of_field_per_time
+integer,            intent(in) :: copies_of_field_per_time
 character(len = *), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
+integer                        :: ncFileID
 
 integer :: i
 
-init_diag_output = get_unit()
-open(unit = init_diag_output, file = file_name)
-!!!init_diag_output = open_file(file_name)
-write(init_diag_output, *) global_meta_data
+integer :: MemberDimID        ! netCDF dimension ID for number of ensemble members
+integer :: ParamDimID         ! netCDF dimension ID for model parameters
+integer :: LocationDimID      ! netCDF dimension ID for location of each model parameter
+
+! -------------------------------------------------------------------
+! Associate unit number and netCDF filename, write global metadata
+! -------------------------------------------------------------------
+
+if( .not. byteSizesOK() ) then
+   print *, "Compiler does not appear to support required kinds of variables."
+   stop
+end if
+ncFileID = get_unit()
+
+! Create the File
+call check( nf90_create(path = trim(file_name), cmode = nf90_clobber, ncid = ncFileID) )
+
+! -------------------------------------------------------------------
+! Define dimensions
+! -------------------------------------------------------------------
+call check(nf90_def_dim(ncid=ncFileID, name="member",    len=copies_of_field_per_time, &
+                        dimid=MemberDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="parameter", len=model_size, &
+                        dimid=ParamDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="location",  len=model_size, &
+                        dimid=LocationDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="time",      len=nf90_unlimited, &
+                        dimid=TimeDimID))
+
+! -------------------------------------------------------------------
+! Create Variables and Attributes
+! -------------------------------------------------------------------
+call check(nf90_def_var(ncFileID, "member", nf90_int4, MemberDimID, MemVarID) )
+call check(nf90_put_att(ncFileID, MemVarID, "long_name", "ensemble member/replicate"))
+call check(nf90_put_att(ncFileID, MemVarID, "units",     "nondimensional"))
+call check(nf90_put_att(ncFileID, MemVarID, "valid_range", (/ 1, copies_of_field_per_time /)))
+
+call check(nf90_def_var(ncFileID, "parameter", nf90_int4, ParamDimID, ParamVarID) )
+call check(nf90_put_att(ncFileID, ParamVarID, "long_name", "parameter ID number"))
+call check(nf90_put_att(ncFileID, ParamVarID, "units",     "nondimensional"))
+call check(nf90_put_att(ncFileID, ParamVarID, "valid_range", (/ 1, model_size /)))
+
+call check(nf90_def_var(ncFileID, "time", nf90_real8, TimeDimID, TimeVarID) )
+call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "relative"         ))
+call check(nf90_put_att(ncFileID, TimeVarID, "long_name", "time"         ))
+call check(nf90_put_att(ncFileID, TimeVarID, "units",     "days since 0000-00-00 00:00:00"))
+
+call check(nf90_def_var(ncFileID, "location", nf90_real8, LocationDimID, locVarID) )
+call check(nf90_put_att(ncFileID, locVarID, "long_name", "loc1d"         ))
+call check(nf90_put_att(ncFileID, locVarID, "units",     "nondimensional"))
+call check(nf90_put_att(ncFileID, locVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
+
+! Global Attributes
+call check( nf90_put_att(ncFileID, nf90_global, "history", global_meta_data ))
+
+call check(nf90_enddef(ncFileID))
+! -------------------------------------------------------------------
+! Leave Define Mode -- actually write some values!
+! -------------------------------------------------------------------
 
 ! Write the model size
 write(init_diag_output, *) model_size
@@ -155,6 +214,22 @@ do i = 1, model_size
    call write_location(init_diag_output, state_loc(i))
 end do
 
+   call WriteLocation(ncFileID, locVarID, state_loc)
+
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, 
+  ! prints out text message each time an error code is returned. 
+
+  subroutine check(status)
+    integer, intent ( in) :: status
+    
+    if(status /= nf90_noerr) then 
+      print *, trim(nf90_strerror(status))
+    end if
+  end subroutine check  
+
 end function init_diag_output
 
 
@@ -167,10 +242,10 @@ function init_diag_input(file_name, global_meta_data, model_size, copies_of_fiel
 
 implicit none
 
-integer :: init_diag_input
-character(len = *), intent(in) :: file_name
-character(len = *), intent(out) ::  global_meta_data
-integer, intent(out) :: model_size, copies_of_field_per_time
+integer                         :: init_diag_input
+character(len = *), intent(in)  :: file_name
+character(len = *), intent(out) :: global_meta_data
+integer,            intent(out) :: model_size, copies_of_field_per_time
 
 integer :: i
 
@@ -198,12 +273,12 @@ subroutine get_diag_input_copy_meta_data(file_id, model_size_out, num_copies, &
 
 implicit none
 
-integer, intent(in) :: file_id, model_size_out, num_copies
+integer, intent(in)              :: file_id, model_size_out, num_copies
 type(location_type), intent(out) :: location(model_size_out)
-character(len = *) :: meta_data_per_copy(num_copies)
+character(len = *)               :: meta_data_per_copy(num_copies)
 
 character(len=129) :: header
-integer :: i, j
+integer            :: i, j
 
 ! Should have space checks, etc here
 ! Read the meta data associated with each copy
@@ -211,7 +286,7 @@ do i = 1, num_copies
    read(file_id, *) j, meta_data_per_copy(i)
 end do
 
-! Will need other metadata, too; Could be as simple as writing locations
+! Will need other metadata, too; Could be as simple as reading locations
 read(file_id, *) header
 if(header /= 'locat') then
    write(*, *) 'Error: get_diag_input_copy_meta_data expected to read "locat"'
@@ -255,8 +330,8 @@ end function get_model_size
 implicit none
 
 type(assim_model_type), intent(in) :: assim_model
-type(time_type), intent(in) :: time
-type(time_type) :: get_closest_state_time_to
+type(time_type),        intent(in) :: time
+type(time_type)                    :: get_closest_state_time_to
 
 type(time_type) :: model_time, delta_time
 
@@ -770,6 +845,135 @@ call set_model_state_vector(state, x)
 end subroutine adv_1step
 
 
+function netcdfTest()
+!----------------------------------------------------------------------
+! TJH Mon Jun 17 13:04:02 MDT 2002
+!
+! provides an elementary check of some of the parts of the 
+!   Fortran 90 interface to netCDF 3.5. It is a Fortran 90 implementation
+!   of the nctst.cpp program provided with the C++ interface to netcdf
+!   (in the src/cxx directory of the netcdf distribution). 
+!
+! Tim's preferred netCDF types in the Fortran-90 interface.
+! NF90_BYTE             (synonym  NF90_INT1), 
+! NF90_CHAR             (synonyms NF90_INT2 and NF90_SHORT), 
+! NF90_INT4             (synonym  NF90_INT), 
+! NF90_REAL4            (synonyms NF90_REAL and NF90_FLOAT), 
+! NF90_REAL8            (synonym  NF90_DOUBLE) 
+!
+  use typeSizes
+  use netcdf
+  implicit none
+
+  integer :: netcdfTest
+  
+  ! netcdf related variables
+
+  integer :: ncFileID, &
+             latDimID, LatVarID, &
+             lonDimID, 
+             TimeDimID, &
+             pressVarID, latVarID, lonVarID, frTimeVarID, &
+             refTimeVarID, scalarVarID
+             
+  ! Local variables
+
+  integer, parameter :: numLats = 4, numLons = 3, &
+                        numTimes = 2
+  character (len = *), parameter :: fileName = "example.nc"
+  integer :: counter                      
+  real, dimension(numLons, numLats, numFrTimes) :: pressure
+  
+  ! -------------------------------------------------------------------
+  ! Code begins
+  ! -------------------------------------------------------------------
+
+  if(.not. byteSizesOK()) then
+    print *, "Compiler does not appear to support required kinds of variables."
+    stop
+  end if
+    
+  ! Create the file
+
+  call check(nf90_create(path = trim(fileName),cmode = nf90_clobber,ncid = ncFileID))
+  
+  ! Define the dimensions
+
+  call check(nf90_def_dim(ncid=ncFileID,name="lat",  len=numLats,       dimid=latDimID))
+  call check(nf90_def_dim(ncid=ncFileID,name="lon",  len=numLons,       dimid=lonDimID))
+  call check(nf90_def_dim(ncid=ncFileID,name="time", len=nf90_unlimited,dimid=TimeDimID))
+
+  ! Create variables and attributes
+  ! [definition] ncstat = nf90_def_var(ncid, name, xtype, dimids, varID)
+
+  call check(nf90_def_var(ncid=ncFileID, name="P", xtype=nf90_real4,      &
+                          dimids = (/ lonDimID, latDimID, frTimeDimID /), &
+                          varID = pressVarID) )
+  call check(nf90_put_att(ncFileID, pressVarID, "long_name",   "pressure at maximum wind"))
+  call check(nf90_put_att(ncFileID, pressVarID, "units",       "hectopascals") )
+  call check(nf90_put_att(ncFileID, pressVarID, "valid_range", (/ 0., 1500. /)))
+  call check(nf90_put_att(ncFileID, pressVarID, "_FillValue",  -9999.0 ) )
+                      
+  call check(nf90_def_var(ncFileID, "lat", nf90_real4, latDimID, latVarID) )
+  call check(nf90_put_att(ncFileID, latVarID, "long_name", "latitude"))
+  call check(nf90_put_att(ncFileID, latVarID, "units",     "degrees_north"))
+
+  call check(nf90_def_var(ncFileID, "lon", nf90_real4, lonDimID, lonVarID) )
+  call check(nf90_put_att(ncFileID, lonVarID, "long_name", "longitude"))
+  call check(nf90_put_att(ncFileID, lonVarID, "units",     "degrees_east"))
+
+  call check(nf90_def_var(ncFileID, "frtime", nf90_int4, frTimeDimID, frTimeVarID) )
+  call check(nf90_put_att(ncFileID, frTimeVarID, "long_name", "forecast time"))
+  call check(nf90_put_att(ncFileID, frTimeVarID, "units",     "hours"))
+
+  call check(nf90_def_var(ncFileID, "reftime", nf90_char, timeDimID, refTimeVarID) )
+  call check(nf90_put_att(ncFileID, refTimeVarID, "long_name", "reference time"))
+  call check(nf90_put_att(ncFileID, refTimeVarID, "units",     "text_time"))
+                     
+  call check(nf90_def_var(ncFileID, "ScalarVariable", nf90_real4, scalarVarID))
+  
+  ! Global attributes
+
+  call check(nf90_put_att(ncFileID, nf90_global, "history", &
+                     "created by Unidata LDM from NPS broadcast"))
+  call check(nf90_put_att(ncFileID, nf90_global, "title", &
+                     "NMC Global Product Set: Pressure at Maximum Wind"))
+  
+  ! Leave define mode
+
+  call check(nf90_enddef(ncfileID))
+  
+  ! Write the dimension variables
+
+  call check(nf90_put_var(ncFileID, latVarId,     (/ -90., -87.5, -85., -82.5 /)) )
+  call check(nf90_put_var(ncFileID, lonVarId,     (/ -180, -175, -170 /)      ) )
+  call check(nf90_put_var(ncFileID, frTimeVarId,  (/ 12, 18 /)                ) )
+  call check(nf90_put_var(ncFileID, reftimeVarID, "1992-3-21 12:00"           ) )
+  
+  ! Write the pressure variable. Write a slab at a time to check incrementing.
+  pressure = 949. + &
+           real(reshape( (/ (counter, counter = 1, numLats * numLons * numFrTimes) /),  &
+                         (/ numLons, numLats, numFrTimes /) ) )
+  call check(nf90_put_var(ncFileID, pressVarID, pressure(:, :, 1)) )
+  call check(nf90_put_var(ncFileID, pressVarID, pressure(:, :, 2), start = (/ 1, 1, 2 /)) )
+  
+  call check(nf90_put_var(ncFileID, scalarVarID, 10))
+  call check(nf90_close(ncFileID))
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, 
+  ! prints out text message each time an error code is returned. 
+
+  subroutine check(status)
+    integer, intent ( in) :: status
+    
+    if(status /= nf90_noerr) then 
+      print *, trim(nf90_strerror(status))
+    end if
+  end subroutine check  
+
+end function netcdfTest
 
 !
 !===================================================================

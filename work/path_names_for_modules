@@ -12,10 +12,11 @@
 
 if ( $OSTYPE == "solaris") then
 
-   set DEFAULT_COMPILE = 'f90 -g -c'
-   set FINAL_COMMAND = 'f90 -o $1 $LINK_OPTS *.o'
-#  set LINK_OPTS    = "-L/usr/local/lib -F77"
-   set LINK_OPTS    = " "
+   set NETCDFLOC       = "/opt/local/netcdf-3.5.0"
+   set MOD_INCS        = "-M${NETCDFLOC}/include -I${NETCDFLOC}/include"
+   set DEFAULT_COMPILE = "f90 -g -c ${MOD_INCS}"
+   set LINK_OPTS       = "-L${NETCDFLOC}/lib -lnetcdf"
+   set FINAL_COMMAND   = 'f90 -o $1 *.o ${LINK_OPTS}'
 
 else if( `hostname` == "longs" ) then
 
@@ -32,7 +33,7 @@ else
 
    set DEFAULT_COMPILE = 'pgf90 -c '
    set FINAL_COMMAND = 'pgf90 -o $1 *.o'
-#   set FINAL_COMMAND = 'f90 -bd,$1 -o $1 $LINK_OPTS'
+#  set FINAL_COMMAND = 'f90 -bd,$1 -o $1 $LINK_OPTS'
    set LINK_OPTS    = "-L/usr/local/lib -lnag -lnetcdf -F77"
 
 endif
@@ -54,7 +55,7 @@ set TYPES = ../common/types_mod.f90
 #set MODEL = ../models/null_model/model_mod.f90
 #set MODEL = ../models/lorenz_63/model_mod.f90
  set MODEL = ../models/lorenz_96/new_model_mod.f90
- set MODEL = ../models/lorenz_63/new_model_mod.f90
+#set MODEL = ../models/lorenz_63/new_model_mod.f90
 #set MODEL = ../models/9var/model_mod.f90
 
 #set MODEL = ../models/9var/noisy_9var.f90        existence?
@@ -69,7 +70,7 @@ set TYPES = ../common/types_mod.f90
 
 #set OBS = ../models/null_model/obs/obs_mod.f90
 #set OBS = ../models/lorenz_63/obs/obs_mod.f90
-## set OBS = ../models/lorenz_96/obs/linear/obs_mod.f90
+#set OBS = ../models/lorenz_96/obs/linear/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/nonlinear/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/imperfect/obs_mod.f90
 #set OBS = ../models/lorenz_96/obs/imperfect_nonlinear/obs_mod.f90
@@ -91,7 +92,7 @@ set      COV_CUTOFF = ../cov_cutoff/cov_cutoff_mod.f90
 set     ASSIM_TOOLS = ../assim_tools/assim_tools_mod.f90
 set       OBS_TOOLS = ../obs_tools/obs_tools_mod.f90
 
-#set    LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
+#set   LOC_AND_DIST = ../loc_and_dist/oned/loc_and_dist_mod.f90
 #set   LOC_AND_DIST = ../loc_and_dist/twod/loc_and_dist_mod.f90
 
 set            SORT = ../sort/sort_mod.f90
@@ -154,16 +155,19 @@ set            SYS_SIM5 = ../system_simulation/sys_sim5.f90
 
 set   TEST_CORRECT_CORR = ../correct_corr/test_correct_corr.f90
 set        TIME_MANAGER = ../time_manager/time_manager_mod.f90
-set            LOCATION = ../location/oned/location_mod.f90
-#set            LOCATION = ../location/twod_sphere/location_mod.f90
-set       LOCATION_TEST = ../location/oned/location_test.f90
-#set       LOCATION_TEST = ../location/twod_sphere/location_test.f90
+ set           LOCATION = ../location/oned/location_mod.f90
+#set           LOCATION = ../location/twod_sphere/location_mod.f90
+ set      LOCATION_TEST = ../location/oned/location_test.f90
+#set      LOCATION_TEST = ../location/twod_sphere/location_test.f90
+
+# set       ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model_mod.f90
+# set       ASSIM_MODEL = ../models/lorenz_63/assim_model/assim_model_mod.f90
 
 #--------------------------------------------------------------------------
 #  Change to generic assim_model approach; testing 15 July, 2002
 #----------------------------------------------------------------------
-#set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model.f90
-set         ASSIM_MODEL = ../assim_model_tools/assim_model.f90
+#set         ASSIM_MODEL = ../models/lorenz_96/assim_model/assim_model_mod.f90
+ set         ASSIM_MODEL = ../assim_model_tools/assim_model.f90
 
 set            OBS_KIND = ../obs_kind/obs_kind.f90
 set           OBS_MODEL = ../obs_model/obs_model_mod.f90

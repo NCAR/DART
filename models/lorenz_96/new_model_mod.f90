@@ -16,17 +16,14 @@ private
 public static_init_model, init_conditions, get_model_size, adv_1step,  &
    init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model
 
-integer,  parameter :: model_size =   40
-real(r8), parameter ::    forcing = 8.00_r8
-! Original time step follows
-real(r8), parameter ::    delta_t = 0.05_r8
-
-! Modified timestep for assimilation experiments
-!real(r8), parameter ::    delta_t = 0.005_r8
+ integer,  parameter :: model_size =   40
+ real(r8), parameter ::    forcing = 8.00_r8
+ real(r8), parameter ::    delta_t = 0.05_r8   ! Original timestep 
+!real(r8), parameter ::    delta_t = 0.005_r8  ! timestep for assim experiments
 
 ! Define the location of the state variables in module storage
 type(location_type) :: state_loc(model_size)
-type(time_type) :: time_step
+type(time_type)     :: time_step
 
 contains
 
