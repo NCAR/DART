@@ -1,9 +1,36 @@
 <HTML>
 <HEAD>
-<TITLE>DART start</TITLE>
+<TITLE>Data Assimilation Research Testbed</TITLE>
 <BODY BGCOLOR="#EEEEEE">
 
-<H1>Things the DART need to know.</H1>
+<H1>Table of Contents</H1>
+<OL>
+    <LI><A HREF="#overview">Background/Overview</A>
+    <LI><A HREF="#sandbox">Creating a local copy of the project</A>
+    <LI><A HREF="#CodingStandards">Coding Standards</A>
+    <LI><A HREF="#build">Building an executable</A>
+    <LI><A HREF="#AssimilationSequence">The Assimilation Sequence</A>
+    <LI><A HREF="http://www.cgd.ucar.edu/~thoar/cvs_primer.html">my cheat-sheet of CVS commands</A>
+    <LI><A HREF="#acronyms">acronyms</A>
+    <LI><A HREF="TimTasks.shtml#status">Tim's tasks</A>
+</OL>
+
+<!-- Overview --------------------------------------------------------->
+
+<P><HR><P>
+<A NAME="overview">
+<H1>Overview/General.</H1>
+
+The <A HREF="obs_set_specification.pdf">rough specifications for the
+observation set</A>.<BR>
+The <A HREF="task_schedule.pdf">draft version</A> of the task schedule.
+
+
+<!-- Sandbox ---------------------------------------------------------->
+
+<P><HR><P>
+<A NAME="sandbox">
+<H1>To create a local version of the project ... a "sandbox"</H1>
 
 For the purpose of simplicity, I am assuming you will be creating your
 <TT>DART</TT> sandbox on a machine that need not be in CGD. It the 
@@ -20,26 +47,11 @@ such as object or data files. At this time, I have about 300MB of space
 and the current project is about 3+MB; so I don't really envision
 this to be a problem any time soon.
 
-<H1>Table of Contents</H1>
-<OL><LI><A HREF="#sandbox">Creating a local copy of the project</A>
-    <LI><A HREF="#CodingStandards">Coding Standards</A>
-    <LI><A HREF="#build">Building an executable</A>
-    <LI><A HREF="#AssimilationSequence">The Assimilation Sequence</A>
-    <LI><A HREF="http://www.cgd.ucar.edu/~thoar/cvs_primer.html">my cheat-sheet of CVS commands</A>
-    <LI><A HREF="#acronyms">acronyms</A>
-    <LI><A HREF="TimTasks.shtml#status">Tim's tasks</A>
-</OL>
-
 <P><b>Hmnnnnn</b> how does the group enter into play?   
 <PRE>newgrp cgddart</PRE>
 
 I predict this will be useful ...
 <PRE>chgrp -R cgddart DART</PRE>
-
-
-<P><HR><P>
-<A NAME="sandbox">
-<H1>To create a local version of the project ... a "sandbox"</H1>
 
 <P>The current "tag" of the project is <TT>rel-0-0</TT>&nbsp. 
 We need to come up with a policy regarding when to "commit" a 
