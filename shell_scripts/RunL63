@@ -4,6 +4,8 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
+# $Id$
+#
 # script to run an experiment with existing intial conditions
 #======================================================================
 # Find the project and build it, if need be.

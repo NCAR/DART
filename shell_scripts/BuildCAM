@@ -1,0 +1,66 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# $Id$
+#
+# script to run an experiment with existing intial conditions
+#======================================================================
+# Find the project and build it, if need be.
+#======================================================================
+
+if ( ${?DART_HOME} ) then
+   if ( -d $DART_HOME ) then
+      setenv DARTHOME $DART_HOME
+   else
+      echo "$DART_HOME does not exist on this platform"
+   endif
+else
+   echo "no DART project"
+   exit
+endif
+
+echo "DART project directory is $DARTHOME"
+sleep 2
+
+set Model = cam
+
+cd ${DARTHOME}/models/${Model}/work
+
+if !( -e column_rand ) then
+   csh mkmf_column_rand
+   make || exit 1
+endif
+if !( -e trans_date_to_dart ) then
+   csh mkmf_trans_date_to_dart
+   make || exit 2
+endif
+if !( -e trans_time ) then
+   csh mkmf_trans_time
+   make || exit 3
+endif
+if !( -e model_mod ) then
+   csh mkmf_model_mod
+   make || exit 4
+endif
+if !( -e create_obs_set_def ) then
+   csh mkmf_create_obs_set_def
+   make || exit 5
+endif
+if !( -e create_obs_sequence ) then
+   csh mkmf_create_obs_sequence
+   make || exit 6
+endif
+if !( -e perfect_model_obs ) then
+   csh mkmf_perfect_model_obs
+   make || exit 7
+endif
+if !( -e filter ) then
+   csh mkmf_filter
+   make || exit 8
+endif
+\rm -f *.o *.d *.mod Makefile
+
+exit

@@ -4,6 +4,8 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
+# $Id$
+
 From chriss@ucar.edu Fri Dec 20 15:11:17 2002
 Date: Thu, 19 Dec 2002 17:05:58 -0700 (MST)
 From: Chris Snyder <chriss@ucar.edu>

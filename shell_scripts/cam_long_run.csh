@@ -5,6 +5,8 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # Shell script to do repeated segment integrations
+#
+# $Id$
 
 set output_dir = out_
 

@@ -7,6 +7,8 @@
 # Shell script to work with asynchronous filter integration
 # This script needs to be piped to the filter program with the
 # filter namelist async variable set to .true.
+#
+# $Id$
 
 
 #--------------------------------------------------------------------

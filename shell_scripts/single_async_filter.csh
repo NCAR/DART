@@ -4,6 +4,8 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
+# $Id$
+#
 # Shell script to work with asynchronous filter integration
 # This script needs to be piped to the filter program with the
 # filter namelist async variable set to .true.

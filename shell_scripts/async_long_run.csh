@@ -6,6 +6,8 @@
 #
 # Shell script to do repeated segment integrations
 # BUT, don't know how to do MATLAB from script yet
+#
+# $Id$
 
 set output_dir = out_
 
