@@ -20,11 +20,9 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-
 CheckModelCompatibility(truth_file, diagn_file)
 vars  = CheckModel(truth_file);   % also gets default values for this model.
 varid = SetVariableID(vars);      % queries for variable IDs if needed.
-
 
 switch lower(vars.model)
 

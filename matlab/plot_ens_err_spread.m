@@ -29,14 +29,21 @@ switch lower(vars.model)
 
       disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
       disp(['Using State Variable IDs ', num2str(pinfo.state_var_inds)]) 
+
       PlotEnsErrSpread( pinfo )
 
    case 'fms_bgrid'
 
+      % either ...
+      % pinfo.truth_file = truth_file;
+      % pinfo.diagn_file = diagn_file;
+      % PlotCEnsErrSpread( pinfo )
+      % or ...
+
+      pinfo = GetBgridInfo(truth_file, 'PlotEnsErrSpread');
       pinfo.truth_file = truth_file;
       pinfo.diagn_file = diagn_file;
-
-      PlotCEnsErrSpread( pinfo )
+      PlotEnsErrSpread( pinfo )
 
    otherwise
 

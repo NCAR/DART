@@ -35,60 +35,55 @@ if (exist('fname') ~=1)
       fname = 'True_State.nc';
    end                                                                          
 end 
+pinfo.fname = fname;
 
+vars  = CheckModel(fname);   % also gets default values for this model.
+varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
-if (exist('var1') ~=1)
-   inputstring = input('Input state variable index for ''X'' variable. <cr> for 1  ','s');
-   if isempty(inputstring)
-      var1 = 1;
-   else
-      var1 = str2num(deblank(inputstring));
-   end                                                                          
-end 
+switch lower(vars.model)
 
+   case {'9var','lorenz_63','lorenz_96'}
 
-if (exist('var2') ~=1)
-   inputstring = input('Input state variable index for ''Y'' variable. <cr> for 2  ','s');
-   if isempty(inputstring)
-      var2 = 2;
-   else
-      var2 = str2num(deblank(inputstring));
-   end                                                                          
-end 
+      if (isfield(pinfo,'var1') ~=1)
+         s1 = input('Input state variable index for ''X'' variable. <cr> for 1  ','s');
+         if isempty(s1), pinfo.var1 = 1; else pinfo.var1 = str2num(deblank(s1)); end
+      end 
 
+      if (isfield(pinfo,'var2') ~=1)
+         s1 = input('Input state variable index for ''Y'' variable. <cr> for 2  ','s');
+         if isempty(s1), pinfo.var2 = 2; else pinfo.var2 = str2num(deblank(s1)); end
+      end 
 
-if (exist('var3') ~=1)
-   inputstring = input('Input state variable index for ''Z'' variable. <cr> for 3  ','s');
-   if isempty(inputstring)
-      var3 = 3;
-   else
-      var3 = str2num(deblank(inputstring));
-   end                                                                          
-end 
+      if (isfield(pinfo,'var3') ~=1)
+         s1 = input('Input state variable index for ''Z'' variable. <cr> for 3  ','s');
+         if isempty(s1), pinfo.var3 = 3; else pinfo.var3 = str2num(deblank(s1)); end
+      end 
 
+      if (isfield(pinfo,'ens_mem') ~=1)
+         s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
+         if isempty(s1), pinfo.ens_mem = 'true state'; else pinfo.ens_mem = s1; end
+      end 
 
-if (exist('ens_mem') ~=1)
-   inputstring = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
-   if isempty(inputstring)
-      ens_mem = 'true state';
-   else
-      ens_mem = inputstring;
-   end                                                                          
-end 
+      if (isfield(pinfo,'ltype') ~=1)
+         s1 = input('Input line type string. <cr> for ''k-''  ','s');
+         if isempty(fname), pinfo.ltype = 'k-'; else pinfo.ltype = s1; end
+      end 
+      
+      disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
+      disp(sprintf('Plotting state variables %d %d %d with line type %s.', ...
+                    pinfo.var1, pinfo.var2, pinfo.var3, pinfo.ltype))
 
+   case 'fms_bgrid'
 
-if (exist('ltype') ~=1)
-   inputstring = input('Input line type string. <cr> for ''k-''  ','s');
-   if isempty(fname)
-      ltype = 'k-';
-   else
-      ltype = inputstring;
-   end                                                                          
-end 
+      pinfo = GetBgridInfo(fname, 'PlotPhaseSpace');
+                                                                                           
+      pinfo                            % just echo stuff for posterity.
 
-disp(sprintf('Using file %s, ensemble member %s.',fname,ens_mem))
-disp(sprintf('Plotting state variables %d %d %d with line type %s.', ...
-              var1, var2, var3, ltype))
+   otherwise
 
-PlotPhaseSpace(fname, ens_mem, var1, var2, var3, ltype);
-clear inputstring
+      error(sprintf('model %s not implemented yet', vars.model))
+
+end
+
+PlotPhaseSpace( pinfo );
+clear s1

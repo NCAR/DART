@@ -136,16 +136,17 @@ function var = GetEns(fname, pinfo)
 % is the hard part.
 
 % find which are actual ensemble members
-metadata    = getnc(fname,'CopyMetaData');           % get all the metadata                     
-copyindices = strmatch('ensemble member',metadata);  % find all 'member's                       
-if ( isempty(copyindices) )                                                                     
-   disp(sprintf('%s has no valid ensemble members',fname))                                      
-   disp('To be a valid ensemble member, the CopyMetaData for the member')                       
-   disp('must start with the character string ''ensemble member''')                             
-   disp('None of them in do in your file.')                                                     
-   disp(sprintf('%s claims to have %d copies',fname, num_copies))                               
-   error('netcdf file has no ensemble members.')                                                
-end                                                                                             
+metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+copyindices = strmatch('ensemble member',metadata);  % find all 'member's
+
+if ( isempty(copyindices) )
+   disp(sprintf('%s has no valid ensemble members',fname))
+   disp('To be a valid ensemble member, the CopyMetaData for the member')
+   disp('must start with the character string ''ensemble member''')
+   disp('None of them in do in your file.')
+   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   error('netcdf file has no ensemble members.')
+end
 ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.

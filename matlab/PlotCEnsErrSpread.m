@@ -5,8 +5,9 @@ function PlotCEnsErrSpread( pinfo )
 
 CheckModelCompatibility(pinfo.truth_file,pinfo.diagn_file)
 
-ft     = netcdf(pinfo.truth_file);
-model  = ft.model(:); 
+ft        = netcdf(pinfo.truth_file);
+model     = ft.model(:); 
+timeunits = ft{'time'}.units(:);
 close(ft);
 
 nvars = 4;
@@ -20,6 +21,7 @@ vlats    = getnc(pinfo.truth_file,  'VelJ'); num_vlats  = length(vlats );
 levels   = getnc(pinfo.truth_file, 'level'); num_levels = length(levels);
 times    = getnc(pinfo.truth_file,  'time'); num_times  = length(times );
 ens_mems = getnc(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
+
 
 % Try to coordinate "time" ... a poor attempt, needs refining
 ens_times     = getnc(pinfo.diagn_file, 'time'); 
@@ -139,6 +141,8 @@ figure(1); clf;
       s2 = sprintf('time-mean ensemble spread = %f', mean(sd_final(:, ivar, 1)));
       h = legend(s1,s2); legend(h,'boxoff')
       grid on;
+      xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
+      ylabel('distance')
 
 %----------------------------------------------------------------------
 % Temperature
@@ -158,6 +162,8 @@ figure(2); clf;
       end
       h = legend([h1 h2],s); legend(h,'boxoff')
       grid on;
+      xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
+      ylabel('distance')
 
 %----------------------------------------------------------------------
 % U wind
@@ -177,6 +183,8 @@ figure(3); clf;
       end
       h = legend([h1 h2],s); legend(h,'boxoff')
       grid on;
+      xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
+      ylabel('distance')
 
 %----------------------------------------------------------------------
 % V wind
@@ -196,6 +204,8 @@ figure(4); clf;
       end
       h = legend([h1 h2],s); legend(h,'boxoff')
       grid on;
+      xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
+      ylabel('distance')
 
 %----------------------------------------------------------------------
 % helper functions

@@ -27,7 +27,7 @@ prognostic_vars  = {'ps','t','u','v'};
 
 switch lower(deblank(routine))
 
-   case 'plotbins'
+   case {'plotbins','plotenserrspread','plotensmeantimeseries','plotenstimeseries'}
 
       pgvar           = GetVar(prognostic_vars);  % Determine prognostic variable
       [level, lvlind] = GetLevel(pgvar,levels);   % Determine level and index
@@ -43,66 +43,134 @@ switch lower(deblank(routine))
 
    case 'plotcorrel'
 
-      pgvar           = GetVar(prognostic_vars);  % Determine prognostic variable
-      [level, lvlind] = GetLevel(pgvar,levels);   % Determine level and index
-      [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
-      [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
+      % "base" variable 
+      base_pgvar            = GetVar(prognostic_vars);
+      [base_tme, base_tmeind] = GetTime(     base_pgvar,times);
+      [base_lvl, base_lvlind] = GetLevel(    base_pgvar,levels);
+      [base_lon, base_lonind] = GetLongitude(base_pgvar,TmpI,VelI);
+      [base_lat, base_latind] = GetLatitude( base_pgvar,TmpJ,VelJ);
 
-      pinfo = struct('model',model, ...
-              'fname',fname, ...
-              'var',pgvar, ...
-              'level'    ,level, 'levelindex',lvlind, ...
-              'longitude',lon  ,   'lonindex',lonind, ...
-              'latitude' ,lat  ,   'latindex',latind);
+      % "comparison" variable 
+      comp_pgvar            = GetVar(prognostic_vars);
+      [comp_lvl, comp_lvlind] = GetLevel(    comp_pgvar,levels);
+      [comp_lon, comp_lonind] = GetLongitude(comp_pgvar,TmpI,VelI);
+      [comp_lat, comp_latind] = GetLatitude( comp_pgvar,TmpJ,VelJ);
+
+      pinfo = struct('model',model, 'fname' ,fname, ...
+              'base_var'      ,base_pgvar, ...
+              'base_time'     ,base_time  , 'base_tmeind',base_tmeind, ...
+              'base_level'    ,base_level , 'base_lvlind',base_lvlind, ...
+              'base_longitude',base_lon   , 'base_lonind',base_lonind, ...
+              'base_latitude' ,base_lat   , 'base_latind',base_latind, ...
+              'comp_var'      ,comp_pgvar, ...
+              'comp_level'    ,comp_level , 'comp_lvlind',comp_lvlind, ...
+              'comp_longitude',comp_lon   , 'comp_lonind',comp_lonind, ...
+              'comp_latitude' ,comp_lat   , 'comp_latind',comp_latind);
+
+   case 'plotphasespace'
+
+      disp('Getting information for the ''X'' variable.')
+       var1                   = GetVar(prognostic_vars);
+      [var1_lvl, var1_lvlind] = GetLevel(    var1, levels);
+      [var1_lon, var1_lonind] = GetLongitude(var1, TmpI, VelI);
+      [var1_lat, var1_latind] = GetLatitude( var1, TmpJ, VelJ);
+
+      disp('Getting information for the ''Y'' variable.')
+       var2                   = GetVar(prognostic_vars,        var1    );
+      [var2_lvl, var2_lvlind] = GetLevel(    var2, levels,     var1_lvl);
+      [var2_lon, var2_lonind] = GetLongitude(var2, TmpI, VelI, var1_lon);
+      [var2_lat, var2_latind] = GetLatitude( var2, TmpJ, VelJ, var1_lat);
+
+      disp('Getting information for the ''Z'' variable.')
+       var3                   = GetVar(prognostic_vars,        var1    );
+      [var3_lvl, var3_lvlind] = GetLevel(    var3, levels,     var1_lvl);
+      [var3_lon, var3_lonind] = GetLongitude(var3, TmpI, VelI, var1_lon);
+      [var3_lat, var3_latind] = GetLatitude( var3, TmpJ, VelJ, var1_lat);
+
+      % query for ensemble member
+      s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
+      if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
+
+      % query for line type
+      s1 = input('Input line type string. <cr> for ''k-''  ','s');
+      if isempty(fname), ltype = 'k-'; else ltype = s1; end
+
+      pinfo = struct('model',model, 'fname' ,fname, ...
+              'var1_var' ,var1, 'var2_var' ,var2, 'var3_var' ,var3, ...
+              'var1_lvl' , var1_lvl, 'var1_lvlind', var1_lvlind, ...
+              'var1_lon' , var1_lon, 'var1_lonind', var1_lonind, ...
+              'var1_lat' , var1_lat, 'var1_latind', var1_latind, ...
+              'var2_lvl' , var2_lvl, 'var2_lvlind', var2_lvlind, ...
+              'var2_lon' , var2_lon, 'var2_lonind', var2_lonind, ...
+              'var2_lat' , var2_lat, 'var2_latind', var2_latind, ...
+              'var3_lvl' , var3_lvl, 'var3_lvlind', var3_lvlind, ...
+              'var3_lon' , var3_lon, 'var3_lonind', var3_lonind, ...
+              'var3_lat' , var3_lat, 'var3_latind', var3_latind, ...
+              'ens_mem'  , ens_mem , 'ltype',ltype);
 
    otherwise
 
 end
 
-function pgvar = GetVar(prognostic_vars)
+function pgvar = GetVar(prognostic_vars, defvar)
 %----------------------------------------------------------------------
-disp('Default variable is ''ps'', if this is OK, <cr>;')  
+if (nargin == 2), pgvar = defvar; else pgvar = 'ps'; end
+
+disp(sprintf('Default variable is ''%s'', if this is OK, <cr>;',pgvar))  
 disp('If not, please enter one of following possible ')
 prognostic_vars
 varstring = input('(no syntax required)\n','s');
-if isempty(varstring)
-   pgvar = 'ps';
-else
-   pgvar = deblank(varstring);
-end 
+
+if ~isempty(varstring), pgvar = deblank(varstring); end 
 
 
-function [level, lvlind] = GetLevel(pgvar,levels)
+
+function [time, timeind] = GetTime(pgvar, times, deftime)
+%----------------------------------------------------------------------
+if (nargin == 3), time = deftime; else time = mean(times); end
+
+disp(sprintf('Default time is %f, if this is OK, <cr>;',time))
+disp(sprintf('If not, enter a time between %.4f and %.4f, we use the closest.', ...
+                         min(times),max(times)))
+varstring = input('(no syntax required)\n','s');
+
+if ~isempty(varstring), time  = str2num(varstring); end 
+
+d       = abs(time - times);    % crude distance
+ind     = find(min(d) == d);  % multiple minima possible 
+timeind = ind(1);             % use the first one
+time    = times(timeind);
+
+
+function [level, lvlind] = GetLevel(pgvar, levels, deflevel)
 %----------------------------------------------------------------------
 % level and lvlind will not be equal for all models, (and probably
 % shouldn't for the bgrid ... but for future expansion ...
-level = NaN;
+if (nargin == 3), level = deflevel; else level = 1; end
 
 if strcmp(pgvar,'ps') ==1 
    disp('''ps'' only has one level, using it.')
    level  = 1;
    lvlind = 1;
 else
-   while all(level ~= levels)   % if you don't match any of the levels, try again
-      disp('Default level is  1  , if this is OK, <cr>;')  
-      disp(sprintf('If not, enter a level between %d and %d, inclusive.', ...
+   disp(sprintf('Default level is  %d, if this is OK, <cr>;',level))
+   disp(sprintf('If not, enter a level between %d and %d, inclusive ...', ...
                          min(levels),max(levels)))
-      varstring = input('(no syntax required)\n','s');
-      if isempty(varstring)
-         level = 1.0;
-         lvlind = level;
-      else
-         level = str2num(varstring);
-         lvlind = level;
-      end 
-   end % of the while loop.
+   varstring = input('we''ll use the closest (no syntax required)\n','s');
+
+   if ~isempty(varstring), level = str2num(varstring); end 
+
+   d      = abs(level - levels);  % crude distance
+   ind    = find(min(d) == d);    % multiple minima possible 
+   lvlind = ind(1);               % use the first one
+   level  = levels(lvlind);
 end
 
 
 
-function [lon, lonind] = GetLongitude(pgvar,TmpI,VelI)
+function [lon, lonind] = GetLongitude(pgvar, TmpI, VelI, deflon)
 %----------------------------------------------------------------------
-lon = NaN;
+if (nargin == 4), lon = deflon; else lon = 255.0; end
 
 switch lower(pgvar)
    case {'ps','t'}
@@ -111,15 +179,13 @@ switch lower(pgvar)
      lons = VelI;
 end
 
-disp('Default longitude is 255 E (Boulder,CO) if this is OK, <cr>;')  
+disp(sprintf('Default longitude is %f, if this is OK, <cr>;',lon))  
 disp(sprintf('If not, enter a longitude between %.2f and %.2f, we use the closest.', ...
                          min(lons),max(lons)))
 varstring = input('(no syntax required)\n','s');
-if isempty(varstring)
-   lon = 255.0;
-else
-   lon  = str2num(varstring);
-end 
+
+if ~isempty(varstring), lon  = str2num(varstring); end 
+
 d      = abs(lon - lons);    % crude distance
 ind    = find(min(d) == d);  % multiple minima possible 
 lonind = ind(1);             % use the first one
@@ -127,9 +193,9 @@ lon    = lons(lonind);
 
 
 
-function [lat, latind] = GetLatitude(pgvar,TmpJ,VelJ)
+function [lat, latind] = GetLatitude(pgvar, TmpJ, VelJ, deflat)
 %----------------------------------------------------------------------
-lat = NaN;
+if (nargin == 4), lat = deflat; else lat = 40.0; end
 
 switch lower(pgvar)
    case {'ps','t'}
@@ -138,15 +204,13 @@ switch lower(pgvar)
      lats = VelJ;
 end
 
-disp('Default latitude is 40 N (Boulder,CO) if this is OK, <cr>;')  
+disp(sprintf('Default latitude is %f, if this is OK, <cr>;',lat))
 disp(sprintf('If not, enter a latitude between %.2f and %.2f, we use the closest.', ...
                          min(lats),max(lats)))
 varstring = input('(no syntax required)\n','s');
-if isempty(varstring)
-   lat = 40.0;
-else
-   lat = str2num(varstring);
-end 
+
+if ~isempty(varstring), lat = str2num(varstring); end 
+
 d      = abs(lat - lats);    % crude distance
 ind    = find(min(d) == d);  % multiple minima possible 
 latind = ind(1);             % use the first one

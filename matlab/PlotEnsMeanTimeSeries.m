@@ -2,9 +2,12 @@ function PlotEnsMeanTimeSeries( pinfo )
 % PlotEnsMeanTimeSeries : plots time series of ensemble members, mean and truth 
 %
 % PlotEnsMeanTimeSeries is intended to be called by 'plot_ens_mean_time_series'
+% The only input argument is a structure with model-dependent
+% components.
 %
-% USAGE:    PlotEnsMeanTimeSeries(truth_file, diagn_file, state_var_inds)
+% USAGE:    PlotEnsMeanTimeSeries( pinfo )
 %
+% STRUCTURE COMPONENTS FOR low-order models 
 % truth_file      name of netCDF DART file with copy tagged 'true state'
 % diagn_file      name of netCDF DART file with copies tagged 'ensemble mean'
 %                 and 'ensemble spread'
@@ -17,6 +20,16 @@ function PlotEnsMeanTimeSeries( pinfo )
 % pinfo.diagn_file     = 'Prior_Diag.nc';
 % pinfo.state_var_inds = [ 4 5 6 ];
 % PlotEnsMeanTimeSeries( pinfo )
+%
+% Example 2 (FMS BGrid model)
+%%--------------------------------------------------------
+% pinfo.truth_file = 'True_State.nc';
+% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.var        = 'u';
+% pinfo.level      = 3;
+% pinfo.latitude   = 23.5;
+% pinfo.longitude  = 45.67;
+% PlotEnsMeanTimeSeries( pinfo )
 
 % TJH Wed Jul  2 09:56:40 MDT 2003
 
@@ -25,6 +38,8 @@ CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 % Get some information from the truth_file 
 ft = netcdf(pinfo.truth_file);
 t.model      = ft.model(:);
+timeunits    = ft{'time'}.units(:);
+varunits     = ft{pinfo.var}.units(:);
 t.num_vars   = ncsize(ft{'StateVariable'}); % determine # of state variables
 t.num_copies = ncsize(ft{'copy'}); % determine # of ensemble members
 t.num_times  = ncsize(ft{'time'}); % determine # of output times
@@ -71,8 +86,7 @@ switch lower(t.model)
             title(sprintf('%s Variable %d of %s',t.model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',t.num_times))
-            s = 'Ensemble Mean';
-            legend('True State',s,0)
+            legend('True State','Ensemble Mean',0)
             legend boxoff
          end
       end
@@ -91,8 +105,7 @@ switch lower(t.model)
             title(sprintf('%s Variable %d of %s',t.model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',t.num_times))
-            s = 'Ensemble Mean';
-            legend('True State',s,0)
+            legend('True State','Ensemble Mean',0)
             legend boxoff
       end
       % as a bonus, plot the mean attractors.
@@ -124,12 +137,62 @@ switch lower(t.model)
             title(sprintf('%s Variable %d of %s',t.model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',t.num_times))
-            s = 'Ensemble Mean';
-            legend('True State',s,0)
+            legend('True State','Ensemble Mean',0)
             legend boxoff
       end
+
+   case 'fms_bgrid'
+                                                                                           
+      clf;
+
+      truth      = GetCopy(pinfo.truth_file, truth_index,      pinfo );
+      ens_mean   = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
+
+      subplot(2,1,1)
+         PlotLocator(pinfo)
+
+      subplot(2,1,2)
+         plot(times,truth, 'b', times,ens_mean, 'r');
+
+         s1 = sprintf('%s model Var %s Truth and %s Ensemble Mean', ...
+                            t.model, pinfo.var, pinfo.diagn_file);
+         s2 = sprintf('level %d lat %.2f lon %.2f', ...
+                    pinfo.level, pinfo.latitude, pinfo.longitude);
+         title({s1,s2},'interpreter','none','fontweight','bold')
+
+         legend('True State','Ensemble Mean',0)
+         legend boxoff
+         xlabel(sprintf('time (%s) %d timesteps',timeunits, t.num_times))
+         ylabel(varunits)
 
    otherwise
       error(sprintf('model %s unknown.',t.model))
 
 end
+
+
+%======================================================================
+% Subfunctions
+%======================================================================
+
+function var = GetCopy(fname, copyindex, pinfo)
+% Gets a time-series of a single specified copy of a prognostic variable
+% at a particular 3D location (level, lat, lon)
+if strcmp(pinfo.var,'ps')
+   corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+   endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+else
+   corner = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   endpnt = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+end
+var = getnc(fname, pinfo.var, corner, endpnt);
+
+
+function PlotLocator(pinfo)
+   plot(pinfo.longitude,pinfo.latitude,'pg','MarkerSize',12,'MarkerFaceColor','g');
+   axis([0 360 -90 90])
+   worldmap
+   axis image
+   grid on
+
+

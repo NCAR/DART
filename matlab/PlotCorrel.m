@@ -86,6 +86,11 @@ switch(lower(model))
 
    case 'fms_bgrid'
 
+      pinfo
+      disp(sprintf('model %s not fully implemented yet', vars.model))
+
    otherwise
+
+      error(sprintf('model %s not implemented yet', vars.model))
 
 end
