@@ -36,8 +36,7 @@ I predict this will be useful ...
 <PRE>chgrp -R cgddart DART</PRE>
 
 
-<P><HR>
-<P>
+<P><HR><P>
 <A NAME="sandbox">
 <H1>To create a local version of the project ... a "sandbox"</H1>
 
@@ -49,8 +48,9 @@ sandbox to the repository. (i.e. does it need to pass a test suite...)
     <LI><A HREF="#sandboxSSH">on a remote filesystem using SSH</A>
 </OL>
 
-<P>
 <!-- CGD sandbox ------------------------------------------------------>
+
+<P>
 <A NAME="sandboxCGD">
 <H2>On a CGD filesystem</H2>
 This example presumes csh or tcsh syntax ...
@@ -73,8 +73,10 @@ cvs commit <font color="#0000FF">[-m "your message goes here"]</font></PRE>
 cvs release -d DART</PRE>
 </UL>
 
-<P>
+
 <!-- remote sandbox --------------------------------------------------->
+
+<P>
 <A NAME="sandboxSSH">
 <H2>On a remote filesystem</H2>
 This presumes you have a valid account on goldhill and are running csh,tcsh
@@ -110,7 +112,7 @@ cvs command when using ssh.
 <!-- Coding Standards ------------------------------------------------->
 <!--------------------------------------------------------------------->
 
-<P>
+<P><HR><P>
 <A NAME="CodingStandards">
 <H1>Coding Standards <FONT size=-1>all of which are worth beer</FONT></H1>
 I can think of no reason why the 
@@ -129,10 +131,20 @@ Additionally, I prefer to
 <!-- Building an Executable ------------------------------------------->
 <!--------------------------------------------------------------------->
 
-<P>
+<P><HR><P>
 <A NAME="build">
 <H1>Build</H1>
-Right now, there is a script <TT>compile_it</TT> that does the heavy lifting.
+There are three methods being explored at the moment. They all require a
+list of source code as input. Creating the custom list of source code for
+each particular build is "left as an exercise for the interested reader" ... 
+
+<P>Really want to explore/use
+<A HREF="http://www.gnu.org/software/autoconf/">autoconf</A> 
+to generate the makefile and such ... after I understand the 
+status quo "build" procedure. All in good time ...
+
+<H2>compile_it</H2>
+There is a script <TT>compile_it</TT> that does the heavy lifting.
 It is currently configured to be run from the <TT>work</TT> directory.
 <TT>../compile_it</TT> ingests <TT>path_names_for_modules</TT> which has
 (in addition to a bunch of PATHS) the compile directives for the project.
@@ -148,28 +160,45 @@ vi path_names_for_modules       <FONT COLOR="#ff0000">;# uncomment items</FONT>
 Jeff claims you can use any of the (case-insensitive) versions of any of the shell
 variables in <TT>path_names_for_modules</TT> as the argument to <TT>compile_it</TT>.
 
-<P>I am exploring Brian Eaton's perl scripts to facilitate the build.
+<P><H2><A HREF="http://www.gfdl.gov/~vb/mkmf.html">mkmf</A> 
+<FONT SIZE=-0>"make makefile"</FONT></H2>
+Given a file containing a list of source code filenames 
+(<B><FONT COLOR="#338833">mkmf_targets</FONT></B>
+in the example below) and a file containing platform-specific environment 
+customizations (e.g. <B><FONT COLOR="#0000FF">mkmf.sun.devel</FONT></B>), 
+<TT>mkmf</TT> makes a makefile.
+I have <TT>mkmf</TT> installed in my <TT>/home/thoar/scripts</TT> directory,
+so if you add that to your CGD PATH ...
+<P>As I build on more NCAR platforms, I'll generate more platform-specific 
+files <font color="#0000FF">(the BLUE argument below)</FONT>. At this point, I
+am using the following naming convention: 
+mkmf.<I>platform</I><FONT COLOR="#0000ff">[.prod]</FONT>
+ (to differentiate between <FONT COLOR="#0000ff">prod</FONT>uction and <FONT COLOR="#0000ff">devel</FONT>opment compiler settings)
+
+<PRE>
+newgrp cgddart
+cd DART/work
+vi mkmf_targets                 <FONT COLOR="#ff0000">;# uncomment items</FONT>
+mkmf <FONT COLOR="#0000FF">-t mkmf.sun.devel</FONT> <FONT COLOR="#338833">mkmf_targets</FONT>
+make
+./a.out | tee seq_obs.log
+</PRE>
+
+ 
+<P><H2>The Eaton Files</H2>
+
+<P>I am exploring Brian Eaton's perl scripts to facilitate the build.<BR>
 /fs/cgd/home0/eaton/bin/mkSrcfiles<BR>
 /fs/cgd/home0/eaton/bin/mkDepends<BR> 
 ingest a file that contains F90 pathnames and generates a makefile with
 the proper dependencies, as long as the module names are consistent with
 the filenames containing the module.
 
-<A HREF="http://www.gnu.org/software/autoconf/">autoconf</A> 
-to generate the makefile. Will explore ... after I understand the 
-staus quo "build" procedure.
-
-<P>Really want to use 
-<A HREF="http://www.gnu.org/software/autoconf/">autoconf</A> 
-to generate the makefile. Will explore ... after I understand the 
-staus quo "build" procedure.
-
-
 <!--------------------------------------------------------------------->
 <!-- The Overall Assimilation Sequence -------------------------------->
 <!--------------------------------------------------------------------->
 
-<P>
+<P><HR><P>
 <A NAME="AssimilationSequence">
 <H1>Assimilation sequence</H1>
 <OL><LI>model_mod
@@ -199,10 +228,10 @@ staus quo "build" procedure.
 <TR><TD>DA    </TD><TD> Data Assimilation</TD></TR>
 <TR><TD>DAI   </TD><TD> Data Assimilation Initiative</TD></TR>
 <TR><TD>DART  </TD><TD> Data Assimilation Research Testbed</TD></TR>
-<TR><TD>DODS  </TD><TD> Distributed Oceanographic Data Server</TD></TR>
+<TR><TD><A HREF="http://www.unidata.ucar.edu/packages/dods/">DODS</A></TD><TD> Distributed Oceanographic Data System</TD></TR>
 <TR><TD>EAKF  </TD><TD> Ensemble Adjustment Kalman Filter</TD></TR>
 <TR><TD>EnKF  </TD><TD> Ensemble Kalman Filter</TD></TR>
-<TR><TD>ESMF  </TD><TD>Earth System Modeling Framework</TD></TR>
+<TR><TD><A HREF="http://www.esmf.ucar.edu/">ESMF</A></TD><TD>Earth System Modeling Framework</TD></TR>
 <TR><TD>L96   </TD><TD>the Lorenz 96 model</TD></TR>
 <TR><TD>NetCDF</TD><TD>Network Common Data Format</TD></TR>
 <TR><TD>OSSE  </TD><TD>Observing System Simulation Experiment</TD></TR>
