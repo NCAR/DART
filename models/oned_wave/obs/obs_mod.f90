@@ -7,9 +7,9 @@ module obs_mod
 ! $Author$ 
 !
 
+use types_mod
 use nag_wrap_mod, only : g05ddf_wrap
-use model_mod, only : model_size, location_type, model_state_location
-   
+use model_mod,    only : model_size, location_type, model_state_location
 
 private
 public num_obs, obs_var, take_obs, ens_ics
@@ -23,9 +23,12 @@ type (location_type) :: location(num_obs)
 
 contains
 
-!=======================================================================
 
-subroutine init_obs
+
+  subroutine init_obs
+!----------------------------------------------------------------------
+! subroutine init_obs
+!
 
 implicit none
 
@@ -33,15 +36,14 @@ type (location_type) :: model_loc(model_size)
 
 integer :: i
 
-! First get model grid locations
-model_loc = model_state_location()
+model_loc = model_state_location()      ! get model grid locations
 
 do i = 1, model_size - 1
-   location(i)%x = (model_loc(i)%x + model_loc(i + 1)%x) / 2.0
+   location(i)%x = (model_loc(i)%x + model_loc(i + 1)%x) / 2.0_r8
 end do
 
 location(model_size)%x = model_loc(model_size)%x + &
-   0.5 * (model_loc(model_size - 1)%x - model_loc(model_size - 2)%x) 
+               0.5_r8 * (model_loc(model_size - 1)%x - model_loc(model_size - 2)%x) 
 
 do i = 1, model_size
    write(*, *) 'in init obs ', i, real(model_loc(i)%x)
@@ -49,9 +51,11 @@ end do
 
 end subroutine init_obs
 
-!=======================================================================
 
-function obs_location()
+
+  function obs_location()
+!----------------------------------------------------------------------
+! function obs_location()
 
 implicit none
 
@@ -65,26 +69,31 @@ obs_location = location
 
 end function obs_location
 
-!=======================================================================
 
-function obs_var()
+
+  function obs_var()
+!----------------------------------------------------------------------
+! function obs_var()
 
 implicit none
 
-double precision :: obs_var(num_obs)
+real(r8) :: obs_var(num_obs)
 
-obs_var = 0.1**2
+obs_var = 0.1_r8**2
 
 end function obs_var
 
-!=======================================================================
 
-function take_obs(x)
+
+  function take_obs(x)
+!----------------------------------------------------------------------
+! function take_obs(x)
 
 implicit none
 
-double precision :: take_obs(num_obs)
-double precision, intent(in) :: x(:)
+real(r8), intent(in) :: x(:)
+real(r8)             :: take_obs(num_obs)
+
 integer :: i
 
 !=====================
@@ -114,56 +123,70 @@ take_obs(num_obs) = (x(1) + x(num_obs))
 
 end function take_obs
 
-!========================================================================
 
-subroutine ens_ics(x, as)
+
+  subroutine ens_ics(x, as)
+!----------------------------------------------------------------------
+! subroutine ens_ics(x, as)
+!
+! Get initial state for ensemble assimilation
 
 implicit none
 
-!  Get initial state for ensemble assimilation
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: as(:, :)
 
-double precision, intent(in) :: x(:)
-double precision, intent(out) :: as(:, :)
 integer :: i, j
 
 do i = 1, size(x)
    do j = 1, size(as, 2)
-! May want the constant to always be the same as the obs_var.
+
+      ! May want the constant to always be the same as the obs_var.
+
       as(i, j) = x(i) + 0.1 * g05ddf_wrap(dble(0.0), dble(1.0))
    end do
 end do
 
 end subroutine ens_ics
 
-!=======================================================================
 
-function obs_var_int()
+
+  function obs_var_int()
+!----------------------------------------------------------------------
+! function obs_var_int()
+!
 
 implicit none
 
-double precision :: obs_var_int(num_obs_int)
+real(r8) :: obs_var_int(num_obs_int)
 
-!obs_var_int = (2.0)**2
-obs_var_int = (10.0)**2
+!obs_var_int = (2.0_r8)**2
+obs_var_int = (10.0_r8)**2
 
 end function obs_var_int
 
-!========================================================================
 
-function take_obs_int(x)
+
+  function take_obs_int(x)
+!----------------------------------------------------------------------
+! function take_obs_int(x)
 
 implicit none
 
-double precision take_obs_int(num_obs_int)
-double precision, intent(in) :: x(:)
-
+real(r8), intent(in) :: x(:)
+real(r8)             :: take_obs_int(num_obs_int)
 
 ! This is function h for intermediate non-convolution time obs
+
 take_obs_int(1) = x(1) * x(2) + x(2) * x(3)
+
 !take_obs_int = x
 
 end function take_obs_int
 
+
+!========================================================================
+! End of module obs_mod.f90
 !========================================================================
 
 end module obs_mod

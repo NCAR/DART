@@ -7,9 +7,10 @@ program driver
 ! $Author$ 
 !
 
+use types_mod
 use model_mod
 
-double precision :: x(model_size)
+real(r8) :: x(model_size)
 
 integer :: i, j
 

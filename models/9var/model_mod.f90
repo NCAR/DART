@@ -20,21 +20,20 @@ public init_model, get_model_size, init_conditions, adv_1step, advance, &
 
 integer, parameter :: model_size = 9
 
-
 !  define model parameters
 ! c is sqrt(0.75)
 
-real(r8), private, parameter :: a(3) = (/1., 1., 3./), &
-                                b(3) = (/ -1.5, -1.5, 0.5 /), &
-                                f(3) = (/0.10, 0.0, 0.0/), &
-                                h(3) = (/-1.0, 0.0, 0.0 /), &
-                                nu = 1.0 / 48.0, kappa = nu, c = 0.8660254
+real(r8), private, parameter :: a(3) = (/  1.0_r8,  1.0_r8, 3.0_r8 /), &
+                                b(3) = (/ -1.5_r8, -1.5_r8, 0.5_r8 /), &
+                                f(3) = (/ 0.10_r8,  0.0_r8, 0.0_r8 /), &
+                                h(3) = (/ -1.0_r8,  0.0_r8, 0.0_r8 /), &
+                                nu = 1.0_r8 / 48.0_r8, kappa = nu, c = 0.8660254_r8
 
 
- real(r8), parameter :: g = 8.0     !  lorenz default
-!real(r8), parameter :: g = 9.90    ! higher dimension attractor
+ real(r8), parameter :: g = 8.0_r8     ! lorenz default
+!real(r8), parameter :: g = 9.90_r8    ! higher dimension attractor
 
-real(r8), parameter :: deltat = 1.0 / 12.0     ! model time step
+real(r8), parameter :: deltat = 1.0_r8 / 12.0_r8     ! model time step
 
 integer :: diag_output_index(9)     ! output indices for diagnostics
 
