@@ -111,7 +111,10 @@ integer            :: num_tracer_fields = 0
 integer, parameter :: MAX_TRACER_FIELDS = 30
 integer, parameter :: MAX_TRACER_METHOD = 20
 
-integer :: total_tracers(NUM_MODELS), prog_tracers(NUM_MODELS), diag_tracers(NUM_MODELS), family_tracers(NUM_MODELS)
+integer ::  total_tracers(NUM_MODELS)
+integer ::   prog_tracers(NUM_MODELS)
+integer ::   diag_tracers(NUM_MODELS)
+integer :: family_tracers(NUM_MODELS)
 
 type, private ::  tracer_type
    character(len=32)        :: tracer_name, tracer_units
@@ -221,7 +224,8 @@ call tracer_manager_init
 !     The index for the model type is invalid.
 !   </ERROR>
 if (model .ne. MODEL_ATMOS .and. model .ne. MODEL_LAND .and. &
-    model .ne. MODEL_OCEAN .and. model .ne. MODEL_ICE) call error_mesg('register_tracers', 'invalid model type', FATAL)
+    model .ne. MODEL_OCEAN .and. model .ne. MODEL_ICE) &
+    call error_mesg('register_tracers', 'invalid model type', FATAL)
 
 
 !   <ERROR MSG="No tracers are available to be registered." STATUS="NOTE">
@@ -246,7 +250,8 @@ do n=1,nfields
 !   <ERROR MSG="MAX_TRACER_FIELDS exceeded" STATUS="FATAL">
 !     The maximum number of tracer fields has been exceeded.
 !   </ERROR>
-         if(num_tracer_fields > MAX_TRACER_FIELDS) call error_mesg('register_tracers', 'MAX_TRACER_FIELDS exceeded', FATAL)
+         if(num_tracer_fields > MAX_TRACER_FIELDS) &
+            call error_mesg('register_tracers', 'MAX_TRACER_FIELDS exceeded', FATAL)
          tracers(num_tracer_fields)%model          = model
          tracers(num_tracer_fields)%tracer_name    = name
          tracers(num_tracer_fields)%tracer_units   = 'none'
@@ -493,7 +498,8 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="index array size too small in get_tracer_indices" STATUS="Fatal">
 !     The global index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (n > size(ind)) call error_mesg('get_tracer_indices', 'index array size too small in get_tracer_indices', FATAL)
+         if (n > size(ind)) &
+         call error_mesg('get_tracer_indices', 'index array size too small in get_tracer_indices', FATAL)
          ind(n) = i
       endif
 
@@ -502,7 +508,8 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="family array size too small in get_tracer_indices" STATUS="FATAL">
 !     The family index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (nf > size(fam_ind)) call error_mesg('get_tracer_indices', 'family array size too small in get_tracer_indices', FATAL)
+         if (nf > size(fam_ind)) &
+         call error_mesg('get_tracer_indices', 'family array size too small in get_tracer_indices', FATAL)
          fam_ind(nf) = i
          cycle
       endif
@@ -512,7 +519,8 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="prognostic array size too small in get_tracer_indices" STATUS="FATAL">
 !     The prognostic index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (np > size(prog_ind)) call error_mesg('get_tracer_indices', 'prognostic array size too small in get_tracer_indices', FATAL)
+         if (np > size(prog_ind)) &
+         call error_mesg('get_tracer_indices', 'prognostic array size too small in get_tracer_indices', FATAL)
          prog_ind(np) = i
       else if (.not.tracers(j)%is_prognostic .and. .not. tracers(j)%is_family &
              .and.PRESENT(diag_ind)) then
@@ -520,7 +528,8 @@ j = TRACER_ARRAY(model,i)
 !   <ERROR MSG="diagnostic array size too small in get_tracer_indices" STATUS="FATAL">
 !     The diagnostic index array is too small and cannot contain all the tracer numbers.
 !   </ERROR>
-         if (nd > size(diag_ind)) call error_mesg('get_tracer_indices', 'diagnostic array size too small in get_tracer_indices', FATAL)
+         if (nd > size(diag_ind)) &
+         call error_mesg('get_tracer_indices', 'diagnostic array size too small in get_tracer_indices', FATAL)
          diag_ind(nd) = i
       endif
    endif
@@ -665,7 +674,8 @@ if (PRESENT(tendency)) check = check + 1
 !     At least one of data, data_tlevels or tendency must be passed to assign_tracer_field
 !     Otherwise there is not much point in calling this routine.
 !   </ERROR>
-if (check == 0) call error_mesg('assign_tracer_field', 'At least one of data, data_tlevels or tendency must be passed in here.', FATAL)
+if (check == 0) call error_mesg('assign_tracer_field', &
+    'At least one of data, data_tlevels or tendency must be passed in here.', FATAL)
 
 return
 end subroutine assign_tracer_field
@@ -733,22 +743,26 @@ write(log_unit, *) 'Tracer is_family     : ', tracers(i)%is_family
 write(log_unit, *) 'Tracer is_combined   : ', tracers(i)%is_combined
 
 if (associated(tracers(i)%field)) then
-   write(log_unit, '(a,3i5)') 'Size of tracer field : ', size(tracers(i)%field,1), size(tracers(i)%field,2),&
+   write(log_unit, '(a,3i5)') 'Size of tracer field : ', size(tracers(i)%field,1), &
+                                                         size(tracers(i)%field,2), &
                                                          size(tracers(i)%field,3)
 else
    write(log_unit,*) 'Tracer field         : not associated'
 endif
 
 if (associated(tracers(i)%field_tendency)) then
-   write(log_unit, '(a,3i5)') 'Size of tracer tendency: ', size(tracers(i)%field_tendency,1), size(tracers(i)%field_tendency,2),&
+   write(log_unit, '(a,3i5)') 'Size of tracer tendency: ', size(tracers(i)%field_tendency,1), &
+                                                           size(tracers(i)%field_tendency,2), &
                                                            size(tracers(i)%field_tendency,3)
 else
    write(log_unit,*) 'Tracer tendency      : not associated'
 endif
 
 if (associated(tracers(i)%field_tlevels)) then
-   write(log_unit, '(a,3i5)') 'Size of tracer tlevels : ', size(tracers(i)%field_tlevels,1), size(tracers(i)%field_tlevels,2),&
-                                                           size(tracers(i)%field_tlevels,3), size(tracers(i)%field_tlevels,4)
+   write(log_unit, '(a,3i5)') 'Size of tracer tlevels : ', size(tracers(i)%field_tlevels,1), &
+                                                           size(tracers(i)%field_tlevels,2), &
+                                                           size(tracers(i)%field_tlevels,3), &
+                                                           size(tracers(i)%field_tlevels,4)
 else
    write(log_unit,*) 'Tracer tlevels       : not associated'
 endif
@@ -758,7 +772,7 @@ endif
 do j=1,tracers(i)%num_methods
    write(log_unit, '(a,i4,a,a)') ' Method ',j,' type     : ',trim(tracers(i)%methods(j)%method_type)
    write(log_unit, '(a,i4,a,a)') ' Method ',j,' name     : ',trim(tracers(i)%methods(j)%method_name)
-   write(log_unit, '(a,i4,a,a)') ' Method ',j,' control  : ', trim(tracers(i)%methods(j)%method_control)
+   write(log_unit, '(a,i4,a,a)') ' Method ',j,' control  : ',trim(tracers(i)%methods(j)%method_control)
 enddo
 
 
@@ -808,7 +822,8 @@ integer :: n
 !          Check the index that is being passed corresponds to a valid
 !          tracer name.
 !   </ERROR>
-if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call error_mesg('get_tracer_field', 'invalid index ', FATAL)
+if (tracer_index < 1 .or. tracer_index > num_tracer_fields) &
+    call error_mesg('get_tracer_field', 'invalid index ', FATAL)
 !Convert local model index to tracer_manager index
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
@@ -862,7 +877,8 @@ integer :: n
 !          Check the index that is being passed corresponds to a valid
 !          tracer name.
 !   </ERROR>
-if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call error_mesg('get_tracer_tlevels', 'invalid index', FATAL)
+if (tracer_index < 1 .or. tracer_index > num_tracer_fields) &
+    call error_mesg('get_tracer_tlevels', 'invalid index', FATAL)
 !Convert local model index to tracer_manager index
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
@@ -917,7 +933,8 @@ integer :: n
 !          Check the index that is being passed corresponds to a valid
 !          tracer name.
 !   </ERROR>
-if (tracer_index < 1 .or. tracer_index > num_tracer_fields) call error_mesg('get_tracer_tendency', 'invalid index', FATAL)
+if (tracer_index < 1 .or. tracer_index > num_tracer_fields) &
+    call error_mesg('get_tracer_tendency', 'invalid index', FATAL)
 !Convert local model index to tracer_manager index
 !   <ERROR MSG="invalid index" STATUS="FATAL">
 !     The index that has been passed to this routine is invalid.
@@ -973,7 +990,8 @@ integer,          intent(in)  :: model, n
 character (len=*),intent(out) :: name
 character (len=*), intent(out), optional :: longname, units
 
-if (n < 1 .or. n > num_tracer_fields) call error_mesg('get_tracer_names', 'invalid local tracer index for '//trim(name), FATAL)
+if (n < 1 .or. n > num_tracer_fields) &
+    call error_mesg('get_tracer_names', 'invalid local tracer index for '//trim(name), FATAL)
 !Convert local model index to tracer_manager index
 if (TRACER_ARRAY(model,n) < 1 .or. TRACER_ARRAY(model,n) > num_tracer_fields) &
     call error_mesg('get_tracer_names', 'invalid tracer index for '//trim(name), FATAL)
@@ -1096,7 +1114,8 @@ integer ::n
 
 is_family_member = .false.
 
-if (size(is_family_member) < num_tracer_fields) call error_mesg('find_family_members', 'array too short', FATAL)
+if (size(is_family_member) < num_tracer_fields) &
+    call error_mesg('find_family_members', 'array too short', FATAL)
 
 do n=1,num_tracer_fields
    if(trim(tracers(TRACER_ARRAY(model,n))%tracer_family) == trim(family_name) .and. &
@@ -1149,8 +1168,8 @@ if (nfam > 0) then
             if (name .ne. diffushoriz)  flag=.FALSE.
          endif
       endif
-      if(.not. flag) call error_mesg     &
-           ('check_family_parameters', 'Family members do not have the same parameters for advection and diffusion', FATAL)
+      if(.not. flag) call error_mesg('check_family_parameters', &
+           'Family members do not have the same parameters for advection and diffusion', FATAL)
    enddo
 endif
 
@@ -1248,7 +1267,8 @@ if (nfam > 0) then
        enddo
     else if (associated(tracers(nfam)%field_tlevels)) then
        if (.not.PRESENT(cur).or..not.PRESENT(prev).or..not.PRESENT(next)) then
-           call error_mesg('add_members_to_family', 'need to specify time level indices to add family members', FATAL)
+           call error_mesg('add_members_to_family', &
+               'need to specify time level indices to add family members', FATAL)
        endif
        ! pointer array indices start at 1
        min_indx = min(cur,prev,next)
@@ -1377,14 +1397,16 @@ if (nfam > 0) then
       do n=1,num_tracer_fields
          if (is_family_member(n)) then           
             if (.not. tracers(n)%is_combined) &
-                call error_mesg('split_family_into_members', 'call to split family into members when fields are not combined', FATAL)
+                call error_mesg('split_family_into_members', &
+                   'call to split family into members when fields are not combined', FATAL)
             tracers(n)%field = tracers(n)%weight*tracers(nfam)%field 
             tracers(n)%is_combined = .false.
          endif
       enddo
    else if (associated(tracers(nfam)%field_tlevels)) then
       if (.not.PRESENT(cur).or..not.PRESENT(prev).or..not.PRESENT(next)) then
-         call error_mesg('split_family_into_members', 'need to specify time level indices to split family members', FATAL)
+         call error_mesg('split_family_into_members', &
+                         'need to specify time level indices to split family members', FATAL)
       endif
       ! pointer array indices start at 1
       min_indx = min(cur,prev,next)
@@ -1393,8 +1415,8 @@ if (nfam > 0) then
       tp1 = next-min_indx+1
       do n=1,num_tracer_fields
          if (is_family_member(n)) then
-            if (.not. tracers(n)%is_combined) &
-                call error_mesg('split_family_into_members', 'call to split family into members when fields are not combined', FATAL)
+            if (.not. tracers(n)%is_combined) call error_mesg('split_family_into_members', &
+                         'call to split family into members when fields are not combined', FATAL)
             tracers(n)%field_tlevels(:,:,:,tp1) = tracers(nfam)%field_tlevels(:,:,:,tp1)*tracers(n)%weight(:,:,:)
             tracers(n)%is_combined = .false.
          endif
@@ -1509,7 +1531,8 @@ if ( query_method ( 'profile_type',model,n,scheme,control)) then
 !  => multiplier = exp [ ln(Ctop/Csurf)/number_of_levels]
 !
     if (associated(tracers(TRACER_ARRAY(model,n))%field)) numlevels = size(tracers(TRACER_ARRAY(model,n))%field,3) -1
-    if (associated(tracers(TRACER_ARRAY(model,n))%field_tlevels)) numlevels = size(tracers(TRACER_ARRAY(model,n))%field_tlevels,3)-1
+    if (associated(tracers(TRACER_ARRAY(model,n))%field_tlevels)) &
+                 numlevels = size(tracers(TRACER_ARRAY(model,n))%field_tlevels,3)-1
     select case (tracers(TRACER_ARRAY(model,n))%model)
       case (MODEL_ATMOS)
         multiplier = exp( log (top_value/surf_value) /numlevels)
