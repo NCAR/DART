@@ -34,7 +34,7 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, &
-   filter_assim, seq_filter_assim
+   filter_assim
 use   cov_cutoff_mod, only : comp_cov_factor
 use   reg_factor_mod, only : comp_reg_factor
 use    obs_model_mod, only : get_close_states, get_expected_obs, move_ahead
@@ -77,9 +77,8 @@ integer :: prior_obs_spread_index, posterior_obs_spread_index
 real(r8),        allocatable ::  ens_mean(:), temp_ens(:)
 type(time_type)              :: ens_mean_time, temp_time
 
-real(r8), allocatable  :: obs_inc(:), ens_inc(:), ens_obs(:), swath(:)
 ! Storage for use with parallelizable efficient filter
-real(r8), allocatable  :: ens_obs2(:, :), ens_obs3(:, :)
+real(r8), allocatable  :: ens_obs(:, :)
 real(r8), allocatable  :: obs_err_var(:), obs(:)
 real(r8)               :: cov_factor, obs_mean(1), obs_spread(1), qc(1)
 character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
@@ -201,8 +200,7 @@ AdvanceTime : do
 
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), obs(num_obs_in_set), &
-            ens_obs2(ens_size, num_obs_in_set), ens_obs3(ens_size, num_obs_in_set), &
-            compute_obs(num_obs_in_set)) 
+            ens_obs(ens_size, num_obs_in_set), compute_obs(num_obs_in_set)) 
    ! For starters allow all obs to be computed as before
 !!!   compute_obs = .false.
    compute_obs = .true.
@@ -229,7 +227,7 @@ AdvanceTime : do
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_ensemble_member(k, temp_ens, temp_time)
-         call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs2(k:k, j), istatus)
+         call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k:k, j), istatus)
          ! Inability to compute forward operator implies skip this observation
          !!!if (istatus > 0) then
          !!!   qc(1) = qc(1) + 4000.0_r8
@@ -245,19 +243,20 @@ AdvanceTime : do
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
    
-   ! Need to keep an unsullied copy of the ens_obs2 when this isn't being done in parallel
    ! DOING A SINGLE DOMAIN AND ALLOWING RECOMPUTATION OF ALL OBS GIVES TRADITIONAL 
    ! SEQUENTIAL ANSWER
-   ens_obs3 = ens_obs2
-   num_domains = 1
-   do j = 1, num_domains
-      my_state = .false.
-      my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
+!   num_domains = 1
+!   do j = 1, num_domains
+!      my_state = .false.
+!      my_state((j - 1) * model_size / num_domains + 1 : j * model_size / num_domains) = .true.
       ! Watch out for hard-coded obs_val_index : 1
-      call filter_assim(ens_obs2, compute_obs, ens_size, num_obs_in_set, num_groups, seq, &
-         keys, 1, confidence_slope, cutoff, save_reg_series, reg_series_unit, my_state)
-      ens_obs2 = ens_obs3
-   end do
+!      call filter_assim_region(ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
+!         num_groups, seq, keys, 1, confidence_slope, cutoff, save_reg_series, &
+!         reg_series_unit, my_state)
+!   end do
+
+      call filter_assim(ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
+         num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit)
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
@@ -270,7 +269,7 @@ AdvanceTime : do
       posterior_obs_mean_index, output_obs_ens_spread, posterior_obs_spread_index)
 
 ! Deallocate storage used for each set
-   deallocate(keys, obs_err_var, obs, ens_obs2, ens_obs3, compute_obs)
+   deallocate(keys, obs_err_var, obs, ens_obs, compute_obs)
 
 ! The last key used is updated to move forward in the observation sequence
    last_key_used = key_bounds(2)
@@ -436,9 +435,7 @@ subroutine filter_alloc_ens_size_storage()
 ! Now know the ensemble size; allocate all the storage
 write(msgstring, *) 'the ensemble size is ', ens_size
 call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
-allocate(obs_inc(ens_size), ens_inc(ens_size), ens_obs(ens_size), swath(ens_size), &
-   prior_copy_meta_data(ens_size + 2), &
-   posterior_copy_meta_data(ens_size + 1), &
+allocate( prior_copy_meta_data(ens_size + 2), posterior_copy_meta_data(ens_size + 1), &
    regress(num_groups), a_returned(num_groups))
 
 ! Set an initial size for the close state pointers
