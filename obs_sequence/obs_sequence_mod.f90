@@ -1311,17 +1311,17 @@ type(obs_type),          intent(inout) :: obs
 type(obs_sequence_type), intent(inout) :: obs_sequence
 
 type(location_type)    :: rad_loc
-integer                :: n_elev
+
 real(r8)               :: elev_clear(9)  = (/0.5_r8, 1.5_r8, 2.4_r8, 3.4_r8, &
                                              4.3_r8, 6.0_r8, 9.9_r8, 14.6_r8, 19.5_r8/)
 real(r8)               :: elev_storm(14) = (/0.5_r8, 1.5_r8, 2.4_r8, 3.4_r8, &
                                              4.3_r8, 5.3_r8, 6.2_r8, 7.5_r8, 8.7_r8, &
                                              10.0_r8, 12.0_r8, 14.0_r8, 16.7_r8, 19.5_r8/)
-real(r8)               :: elev(14)
+real(r8), allocatable  :: elev(:), azim(:), gate(:)
 real(r8)               :: faz, laz, daz, raz, fgate, lgate, dgate, rgate, ae, var, elev_rad
 real(r8)               :: dir(3)
 
-integer :: i, ilev
+integer :: i, ilev, n_elev, iaz, n_az, igate, n_gate
 
 character(len=129) :: msgstring
 
@@ -1340,18 +1340,19 @@ do while(n_elev /= 9 .and. n_elev /= 14 .and. n_elev /= -1)
 end do
 
 if(n_elev == -1) then
-   do while(n_elev < 1 .or. n_elev > 14)
-      write(*, *)'Input number of elevations (1 - 14)'
+   do while(n_elev < 1)
+      write(*, *)'Input number of elevations'
       read(*, *) n_elev
    end do
+   allocate(elev(n_elev))
    do i = 1, n_elev
       write(*, FMT='(a,i2)') 'Input elevation angle # ',i
       read(*, *) elev(i)
    end do
-elseif(n_elev == 9) then
-   elev(1:9) = elev_clear(:)
-elseif(n_elev == 14) then
-   elev(1:14) = elev_storm(:)
+else
+   allocate(elev(n_elev))
+   if(n_elev == 9) elev(:) = elev_clear(:)
+   if(n_elev == 14) elev(:) = elev_storm(:)
 endif
 
 write(*, *)'Input first azimuth angle (degree)'
@@ -1366,6 +1367,13 @@ write(*, *)'Input azimuth angle increment (degree)'
 read(*, *) daz
 daz = DEG2RAD*daz
 
+n_az = int((laz - faz)/daz) + 1
+
+allocate(azim(n_az))
+do iaz = 1, n_az
+   azim(iaz) = faz + (iaz-1)*daz
+enddo
+
 write(*, *)'Input closest gate (m)'
 read(*, *) fgate
 
@@ -1374,6 +1382,13 @@ read(*, *) lgate
 
 write(*, *)'Input gate length (m)'
 read(*, *) dgate
+
+n_gate = int((lgate - fgate)/dgate) + 1
+
+allocate(gate(n_gate))
+do igate = 1, n_gate
+   gate(igate) = fgate + (igate-1)*dgate
+enddo
 
 write(*, *)'Input error variance for Doppler velocity'
 read(*, *) var
@@ -1384,13 +1399,17 @@ do ilev = 1, n_elev
 
    elev_rad = DEG2RAD*elev(ilev)
 
-   do raz = faz,laz,daz
+   do iaz = 1, n_az
+
+      raz = azim(iaz)
 
       dir(1) = sin(raz)*cos(elev_rad)
       dir(2) = cos(raz)*cos(elev_rad)
       dir(3) = sin(elev_rad)
 
-      do rgate = fgate,lgate,dgate
+      do igate = 1, n_gate
+
+         rgate = gate(igate)
 
          if (obs_num <= max_num_obs) then
 
@@ -1428,6 +1447,8 @@ do ilev = 1, n_elev
       end do
    end do
 end do
+
+deallocate(gate, azim, elev)
 
 end subroutine simul_radar
 
