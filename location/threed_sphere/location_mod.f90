@@ -27,7 +27,8 @@ private
 public location_type, get_dist, get_location, set_location, &
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, &
-       LocationDims, LocationName, LocationLName
+       LocationDims, LocationName, LocationLName, &
+       read_ncep_obs_location
 
 type location_type
    private
@@ -54,7 +55,7 @@ character(len = 129), parameter :: &
 !type location_meta
 !   integer             :: ndims = 3
 !   character (len=129) :: name = "loc3Dsphere"
-!   character (len=129) :: longname = "simple threed sphere locations: lon, lat, lev"
+!   character (len=129) :: longname = "threed sphere locations: lon, lat, lev"
 !   character (len=129) :: rev = "$Revision$"
 !   character (len=129) :: dat = "$Date$"
 !   character (len=129) :: aut = "$Author$"
@@ -211,7 +212,6 @@ real(r8), intent(in), optional :: lev, pressure
 !   'set_location', 'Longitude is out of 0->360 range')
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    write(*, *) 'set location: Longitude is out of 0->360 range'
-   write(*, *) 'longitude given as ', lon
    stop
 endif
 
@@ -379,8 +379,8 @@ else
       write(*, *) 'Input value < -90.0 or > 90.0 is illegal, please try again'
       read(*, *) lat
    end do
-   location%lon = lon * PI / 180.0
-   location%lat = lat * PI / 180.0
+   location%lon = lon
+   location%lat = lat
 end if
 
 
@@ -425,10 +425,51 @@ contains
 end subroutine nc_write_location
 
 
+!=============================================================
+  subroutine read_ncep_obs_location(location, obsunit, obsindex, var)                            
+!=============================================================
+! read location (lon,lat,pressure) from NCEP observation files                              
+!  Input units are: radians and hPa.                                                        
+                                                                                            
+implicit none                                                                               
+                                                                                            
+type(location_type) :: location                                                             
+                                                                                            
+integer :: obs_prof
+integer, intent(in) :: obsunit                                                              
+integer, intent(out) :: obsindex                   
+real (r8), intent(out) :: var                                                               
+real (r8) :: lon,lat,lev,zob, dummy,count,time,type                                         
+                                                                                            
+! Read location, kind and error variance of NCEP data 
 
+    read(obsunit, 880) var, lon, lat, lev, zob, dummy,count,time,type               
+  880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
+
+    location%lon = lon     ! in radian
+    location%lat = lat     ! in radian
+                                                                                            
+!   set up observation kind
+    obs_prof = count/1000000
+
+    if(obs_prof == 2) obsindex = 1
+    if(obs_prof == 9) obsindex = 2
+    if(obs_prof == 3) obsindex = 3
+    if(obs_prof == 1) obsindex = 4
+
+    if (obsindex .ne. 3) then      ! for u,v,t
+    location%pressure = lev*100.0   ! (transfer from mb to Pascal)                          
+    location%which_vert = 2                                                                 
+    else                                                                                    
+    location%lev = -1      ! for Ps
+    location%which_vert = 1                                                                 
+    var = var*100.0     ! convert to Pascal
+    endif                                                                                   
+                                                                                            
+end subroutine read_ncep_obs_location
 !
 !----------------------------------------------------------------------------
-! end of location/simple_threed_sphere/location_mod.f90
+! end of location/threed_sphere/location_mod.f90
 !----------------------------------------------------------------------------
 !
 end module location_mod
