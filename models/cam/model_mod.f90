@@ -78,6 +78,7 @@ use     location_mod, only : location_type, get_location, set_location, &
 use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P
 !    and maybe KIND_W, KIND_QR, KIND_TD, KIND_VR, KIND_REF, KIND_U10, KIND_V10, 
 !              KIND_T2, KIND_Q2, KIND_TD2
+use    random_nr_mod, only : init_ran1
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 
@@ -185,6 +186,7 @@ integer , dimension(20) :: which_vert_3d = (/( 1,i=1,20)/)
 ! list of fields which trans_pv_sv_pert0 needs to perturb because they're
 ! constant valued model parameters and show no spread when start_from_restart = .true.
 character (len=8),dimension(20) :: state_names_pert = (/('        ',i=1,20)/)
+real(r8), dimension(20) :: state_names_sd = (/(0.,i=1,20)/)
 
 
 ! Specify shortest time step that the model will support
@@ -192,11 +194,12 @@ character (len=8),dimension(20) :: state_names_pert = (/('        ',i=1,20)/)
 ! by numerical stability concerns for repeated restarting in leapfrog.
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
-namelist /model_nml/ output_state_vector, model_version, model_config_file, &
-   state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d, &
-   state_names_0d, state_names_1d, state_names_2d, state_names_3d, &
-                   which_vert_1d,  which_vert_2d,  which_vert_3d, state_names_pert, &
-   highest_obs_pressure_mb, Time_step_seconds, Time_step_days
+namelist /model_nml/ output_state_vector , model_version , model_config_file & 
+                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d &
+                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d &
+                     ,                which_vert_1d  ,which_vert_2d  ,which_vert_3d &
+                     ,state_names_pert ,state_names_sd &
+                     ,highest_obs_pressure_mb ,Time_step_seconds ,Time_step_days
 
 !----------------------------------------------------------------------
 ! derived parameters
@@ -415,7 +418,7 @@ end subroutine read_cam_init
 !
 
 ! Figure out which coordinates are lon, lat, lev, based on CAM version
-! from the namelist, and has form #.#[.#[.#]]
+! from the namelist, which has form #.#[.#[.#]]
 integer,           intent(out) :: coord_3d(3), coord_2d(2)
 integer, optional, intent(out) :: coord_order
 
@@ -536,7 +539,7 @@ end subroutine nc_read_model_atts
 ! subroutine read_cam_coord(var, idim, cfield)
 !
 ! should be called with cfield = one of :
-!          (/'lat     ','lon     ','gw      ','P0      '
+!          (/'lat     ','lon     ','gw      '
 !           ,'hyai    ','hybi    ','hyam    ','hybm    '/)
 
 !----------------------------------------------------------------------
@@ -903,8 +906,7 @@ end function get_model_size
 !
 ! Initializes class data for CAM model (all the stuff that needs to
 ! be done once. For now, does this by reading info from a fixed
-! name netcdf file. Need to make this file a namelist parameter
-! at some point.
+! name netcdf file. 
 
 integer :: i, j, iunit, ierr, io
 ! calendar types listed in time_manager_mod.f90
@@ -1446,17 +1448,17 @@ end subroutine end_model
 
 
 
-  subroutine init_time(i_time)
+  subroutine init_time(time)
 !=======================================================================
-! subroutine init_time(i_time)
+! subroutine init_time(time)
 !
 ! For now returns value of Time_init which is set in initialization routines.
 
-type(time_type), intent(out) :: i_time
+type(time_type), intent(out) :: time
 
 ! Where should initial time come from here?
 ! WARNING: CURRENTLY SET TO 0
-i_time = set_time(0, 0)
+time = set_time(0, 0)
 
 end subroutine init_time
 
@@ -2266,33 +2268,78 @@ real(r8), intent(in)    :: state(:)
 real(r8), intent(out)   :: pert_state(:)
 logical,  intent(out)   :: interf_provided
 
-integer                 :: i, variable_type
-type(location_type)     :: temp_loc
+type(random_seq_type)   :: random_seq
+type(model_type)        :: var_temp
+integer                 :: i, ipert, j, k, m, field_num, ens_member, iunit
+real(r8)                :: pert_val
 
-! An interface is provided
+! FIX for 1D 0D  fields?
+
+! trans_pv_sv_pert0.f90 needs to perturb model parameters for the filter_ics.
+! Use the (single) state value as the "ens_mean" here.
+
 interf_provided = .true.
 
-! If first call initialize random sequence
+call init_model_instance(var_temp)
+call vector_to_prog_var(state,var_temp)
+
+! If first call initialize random sequence for perturbations.
 if(first_pert_call) then 
    call init_random_seq(random_seq)
    first_pert_call = .false.
 endif
 
-! UPGRADE; there's a namelist variable, state_names_pert, which can be used to 
-!          select fields for initial perturbation, instead of hard-coding
-!          Using this in sv space would require a loop over state_names_pert entries
-!          for each sv element, with a query inside about whether it matched variable_type.
-!          This eliminates need to recompile codes when different fields will be perturbed.
-!          See also model_mod_gwd.f90 for doing this in model space.
+! init_random_seq calls init_ran1, but I need to call init_ran1 with a different seed/temp 
+! for each ens_member.  init_random_seq only needed for documentation; initializing 
+! the module
+if(file_exist('ens_member')) then
+   iunit = open_file('ens_member', action = 'read')
+   read(iunit, *) ens_member
+   call init_ran1(random_seq,-1*ens_member)
+   call close_file(iunit)
+else
+   WRITE(*,*) 'no ens_member file available; perturbing next ensemble member (in filter) '
+endif
 
-do i = 1, get_model_size()
-   call get_state_meta_data(i, temp_loc, variable_type)
-   if(variable_type == TYPE_U .or. variable_type == TYPE_V .or. variable_type == TYPE_T) then
-      pert_state(i) = random_gaussian(random_seq, state(i), 0.5_r8) 
-   else
-      pert_state(i) = state(i)
-   endif
+ipert = 1
+do while (state_names_pert(ipert) /= '        ')
+   WRITE(*,*) 'Perturbing ',state_names_pert(ipert)
+   do m=1,nflds
+      if (state_names_pert(ipert) == cflds(m)) then
+         WRITE(*,*) '   Found match  ',cflds(m)
+           
+         if (m <= state_num_2d + state_num_1d + state_num_0d) then
+            field_num = m - state_num_1d - state_num_0d
+            WRITE(*,'(A,1p2E12.4)') '    first and last state = ', &
+                   var_temp%vars_2d(1,1,field_num),var_temp%vars_2d(num_lons,num_lats,field_num)
+            do j = 1, num_lats
+            do i = 1, num_lons
+               pert_val = random_gaussian(random_seq, var_temp%vars_2d(i,j,field_num), &
+                                          state_names_sd(ipert)) 
+               var_temp%vars_2d(i,j,field_num) = pert_val
+            end do
+            end do
+            WRITE(*,'(A,1p2E12.4)') ' new first and last state = ', &
+                   var_temp%vars_2d(1,1,field_num),var_temp%vars_2d(num_lons,num_lats,field_num)
+         else  
+            field_num = m - state_num_2d - state_num_1d - state_num_0d
+            do j = 1, num_lats
+            do k = 1, num_levs
+            do i = 1, num_lons
+!              pert_val = rand#(O(0-1)) * standard dev  + mean
+               pert_val = random_gaussian(random_seq, var_temp%vars_3d(i,k,j,field_num), &
+                                          state_names_sd(ipert)) 
+               var_temp%vars_3d(i,k,j,field_num) = pert_val
+            end do
+            end do
+            end do
+         endif
+      end if
+   end do
+   ipert = ipert + 1
 end do
+call prog_var_to_vector(var_temp,pert_state)
+call end_model_instance(var_temp)
 
 end subroutine pert_model_state
 
@@ -2382,8 +2429,8 @@ end subroutine order_state_fields
 
 ! Makes an array of 'locations w/i the state vector'
 ! of  all the available obs kinds that come from obs_kind_mod. 
-! The obs kind that's passed in will be the index into this array,
-! the corresponding value will be the position of that field (not variable) 
+! The obs kind that's needed will be the index into this array,
+! the corresponding value will be the position of that field (not individual variable) 
 ! within the state vector according to state_name_Xd.  
 ! There will be lots of empty array elements, since KIND_x has a lot of "missing" values.
 ! This subroutine will be called from static_init_model, so it will not have to be 
