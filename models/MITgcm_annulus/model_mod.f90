@@ -79,21 +79,22 @@ type(random_seq_type)   :: random_seq
 !			time step
 
 integer  :: model_size        = 539400
-integer  :: naz		      = 120 
-integer  :: nrad	      = 31
-integer  :: nzed	      = 29
+integer  :: naz               = 120 
+integer  :: nrad              = 31
+integer  :: nzed              = 29
 integer  :: ntype             = 5
-real(r8) :: daz		      = 3.00_r8
-real(r8) :: drad	      = 0.01_r8
-real(r8) :: dzed	      = 0.005_r8
+real(r8) :: daz               = 3.00_r8
+real(r8) :: drad              = 0.01_r8
+real(r8) :: dzed              = 0.005_r8
 real(r8) :: inner_rad         = 0.08_r8
-real(r8) :: outer_rad	      = 0.3_r8
+real(r8) :: outer_rad         = 0.3_r8
 real(r8) :: depth             = 0.14_r8
 real(r8) :: delta_t           = 0.1_r8
 integer  :: time_step_days    = 0
 integer  :: time_step_seconds = 2160
 
-namelist /model_nml/ model_size, naz, nrad, nzed, ntype, daz, drad, dzed, inner_rad, outer_rad, depth, delta_t, time_step_days, time_step_seconds
+namelist /model_nml/ model_size, naz, nrad, nzed, ntype, daz, drad, dzed, &
+    inner_rad, outer_rad, depth, delta_t, time_step_days, time_step_seconds
 !----------------------------------------------------------------
 
 
@@ -249,7 +250,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00d0
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-	 state_kind(icount) = kind_u 
+         state_kind(icount) = kind_u 
       end do
    end do
 end do
@@ -263,7 +264,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00d0
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-	 state_kind(icount) = kind_v
+         state_kind(icount) = kind_v
       end do
    end do
 end do
@@ -277,7 +278,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed 
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-	 state_kind(icount) = kind_w
+         state_kind(icount) = kind_w
       end do
    end do
 end do
@@ -291,7 +292,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00d0
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-	 state_kind(icount) = kind_t
+         state_kind(icount) = kind_t
       end do
    end do
 end do
@@ -303,7 +304,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00d0
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-	 state_kind(icount) = kind_p
+         state_kind(icount) = kind_p
       end do
    end do
 end do
