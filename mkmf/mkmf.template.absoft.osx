@@ -42,6 +42,9 @@
 #
 # LDFLAGS
 #     -unixlib                 resolves 'system' call ... and more.
+#
+# Compiler Information (f90 -v):
+#   Pro Fortran 9.0     (pretty minimalist, if you ask me)
 
 FC = f90
 LD = f90
