@@ -2,7 +2,7 @@
 ! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
-MODULE module_couple_uvw
+MODULE module_couple_uv
 
 ! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
@@ -10,6 +10,8 @@ MODULE module_couple_uvw
 ! $Date$
 ! $Author$
 ! $Id$
+
+  use         types_mod, only : r8
 
 CONTAINS
 
@@ -24,17 +26,17 @@ CONTAINS
 
     INTEGER, INTENT(IN) :: ids, ide, jds, jde, kds, kde
 
-    REAL, DIMENSION(ids:ide+1, jds:jde  , kds:kde),   INTENT(INOUT) :: u
-    REAL, DIMENSION(ids:ide  , jds:jde+1, kds:kde),   INTENT(INOUT) :: v
-    REAL, DIMENSION(ids:ide  , jds:jde,   kds:kde+1), INTENT(INOUT) :: w
+    REAL(r8), DIMENSION(ids:ide+1, jds:jde  , kds:kde),   INTENT(INOUT) :: u
+    REAL(r8), DIMENSION(ids:ide  , jds:jde+1, kds:kde),   INTENT(INOUT) :: v
+    REAL(r8), DIMENSION(ids:ide  , jds:jde,   kds:kde+1), INTENT(INOUT) :: w
 
-    REAL, DIMENSION(ids:ide+1, jds:jde  ),          INTENT(IN) :: msfu
-    REAL, DIMENSION(ids:ide  , jds:jde+1),          INTENT(IN) :: msfv
-    REAL, DIMENSION(ids:ide  , jds:jde  ),          INTENT(IN) :: msfm
+    REAL(r8), DIMENSION(ids:ide+1, jds:jde  ),          INTENT(IN) :: msfu
+    REAL(r8), DIMENSION(ids:ide  , jds:jde+1),          INTENT(IN) :: msfv
+    REAL(r8), DIMENSION(ids:ide  , jds:jde  ),          INTENT(IN) :: msfm
 
-    REAL, DIMENSION(ids:ide  , jds:jde  ),          INTENT(IN) :: mu, mub
+    REAL(r8), DIMENSION(ids:ide  , jds:jde  ),          INTENT(IN) :: mu, mub
 
-    REAL, ALLOCATABLE, DIMENSION(:, :) :: muu, muv, muw
+    REAL(r8), ALLOCATABLE, DIMENSION(:, :) :: muu, muv, muw
 
     allocate(muu(ids:ide+1, jds:jde  ))
     allocate(muv(ids:ide  , jds:jde+1))
@@ -71,13 +73,13 @@ CONTAINS
 
     INTEGER, INTENT(IN) :: ids, ide, jds, jde
 
-    REAL, DIMENSION(ids:ide, jds:jde),     INTENT(IN)  :: mu,  mub
+    REAL(r8), DIMENSION(ids:ide, jds:jde),     INTENT(IN)  :: mu,  mub
 
-    REAL, DIMENSION(ids:ide+1, jds:jde  ), INTENT(OUT) :: muu
-    REAL, DIMENSION(ids:ide  , jds:jde+1), INTENT(OUT) :: muv
-    REAL, DIMENSION(ids:ide  , jds:jde  ), INTENT(OUT) :: muw
+    REAL(r8), DIMENSION(ids:ide+1, jds:jde  ), INTENT(OUT) :: muu
+    REAL(r8), DIMENSION(ids:ide  , jds:jde+1), INTENT(OUT) :: muv
+    REAL(r8), DIMENSION(ids:ide  , jds:jde  ), INTENT(OUT) :: muw
 
-    REAL, DIMENSION(ids-1:ide+1, jds-1:jde+1) :: mut
+    REAL(r8), DIMENSION(ids-1:ide+1, jds-1:jde+1) :: mut
 
     INTEGER :: i, j
 
@@ -97,13 +99,13 @@ CONTAINS
 
     DO j=jds,jde
        DO i=ids,ide+1
-          muu(i,j) = 0.5*(mut(i,j)+mut(i-1,j))
+          muu(i,j) = 0.5_r8*(mut(i,j)+mut(i-1,j))
        ENDDO
     ENDDO
 
     DO j=jds,jde+1
        DO i=ids,ide
-          muv(i,j) = 0.5*(mut(i,j)+mut(i,j-1))
+          muv(i,j) = 0.5_r8*(mut(i,j)+mut(i,j-1))
        ENDDO
     ENDDO
 
@@ -126,9 +128,9 @@ CONTAINS
 
     INTEGER, INTENT(IN) :: ids, ide, jds, jde, kds, kde
 
-    REAL, DIMENSION(ids:ide, jds:jde),          INTENT(IN   ) :: mut, msf
+    REAL(r8), DIMENSION(ids:ide, jds:jde),          INTENT(IN   ) :: mut, msf
   
-    REAL, DIMENSION(ids:ide, jds:jde, kds:kde), INTENT(INOUT) :: field
+    REAL(r8), DIMENSION(ids:ide, jds:jde, kds:kde), INTENT(INOUT) :: field
   
 !--Local data
   
@@ -144,4 +146,4 @@ CONTAINS
 
   END SUBROUTINE couple
 
-END MODULE module_couple_uvw
+END MODULE module_couple_uv

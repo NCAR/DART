@@ -14,11 +14,11 @@ program update_wrf_bc
 use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, register_module, &
-                                    logfileunit
+                                    error_handler, E_ERR, logfileunit
 use module_netcdf_interface, only : get_dims_cdf, get_gl_att_real_cdf, put_gl_att_real_cdf, &
                                     get_var_3d_real_cdf, get_var_2d_real_cdf, put_var_3d_real_cdf, &
                                     put_var_2d_real_cdf, get_times_cdf, put_time_cdf
-use       module_couple_uvw
+use       module_couple_uv
 use         module_timediff, only : time_diff, find_time_index
 
 implicit none
@@ -43,7 +43,7 @@ integer, parameter :: max_3d_variables = 20, &
                       max_2d_variables = 20, &
                       max_times        = 100
 
-character(len=80) :: wrf_3dvar_output_file, &
+character(len=80) :: wrf_output_file, wrf_mean_output_file, &
                      wrf_bdy_file
 
 character(len=20) :: var_pref, var_name
@@ -54,6 +54,8 @@ character(len=20) :: var3d(max_3d_variables), &
 character(len=10), dimension(4) :: bdyname, tenname
 
 character(len=19), dimension(max_times) :: udtime, bdytime, thisbdytime, nextbdytime
+
+character(len=129) :: msgstring
 
 integer           :: ids, ide, jds, jde, kds, kde
 integer           :: num3d, num2d, ndims, nmoist
@@ -66,17 +68,18 @@ integer, external :: iargc
 
 real(r8), allocatable, dimension(:,:) :: tend2d, scnd2d, frst2d
 
-real(r8), allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d
+real(r8), allocatable, dimension(:,:,:) :: tend3d, scnd3d, frst3d, full3d, full3d_mean
 
 real(r8), allocatable, dimension(:,:,:) :: u, v, w
+real(r8), allocatable, dimension(:,:,:) :: u_mean, v_mean, w_mean
 
-real(r8), allocatable, dimension(:,  :) :: mu, mub, msfu, msfv, msfm
+real(r8), allocatable, dimension(:,  :) :: mu, mu_mean, mub, msfu, msfv, msfm
 
 integer :: east_end, north_end
 
 logical, parameter :: debug = .false.
 
-real(r8) :: bdyfrq_old, bdyfrq
+real(r8) :: bdyfrq_old, bdyfrq, infl
 
 integer :: io, iunit
 
@@ -121,8 +124,27 @@ case default ;
    print *, 'Microphysics package unknown. mp_physics = ', mp_physics
 end select
 
-wrf_3dvar_output_file='wrfinput_d01'
+wrf_output_file='wrfinput_d01'
 wrf_bdy_file  ='wrfbdy_d01'
+
+if((.not. file_exist(wrf_output_file)) .or. (.not. file_exist(wrf_bdy_file))) then
+   write(msgstring, *)'wrfinput_d01 or wrfbdy_d01 is absent.'
+   call error_handler(E_ERR,'update_wrf_bc',msgstring,source,revision,revdate)
+endif
+
+! If the file 'wrfinput_mean' exists,
+! input the ensemble mean to calculate deviations from the mean.
+! These perturbations are then added to the fields at the end of the interval.
+
+if(file_exist('wrfinput_mean')) then
+   wrf_mean_output_file='wrfinput_mean'
+   write(6,*) 'Input real coefficient multiplying (wrfinput_d01 - wrfinput_mean):'
+   write(6,*) 'Result will be added to the fields at the end of the interval.'
+   read(5,*) infl
+else
+   wrf_mean_output_file='wrfinput_d01'
+   infl = 0.0_r8
+endif
 
 !--boundary variables
 bdyname(1)='_BXS'
@@ -165,7 +187,7 @@ north_end=0
 
 !---------------------------------------------------------------------
 !-- Current time in file
-call get_times_cdf( wrf_3dvar_output_file, 'Times', udtime, ntimes_ud, max_times, debug )
+call get_times_cdf( wrf_output_file, 'Times', udtime, ntimes_ud, max_times, debug )
 
 if(debug) print*, 'udtime = ',udtime(1)
 
@@ -204,13 +226,18 @@ call put_time_cdf( wrf_bdy_file, 'md___thisbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data
 !--Get mu, mub, msfu, msfv, and msfm
 
 do n=1,num2d
-   call get_dims_cdf( wrf_3dvar_output_file, trim(var2d(n)), dims, ndims, debug )
+   call get_dims_cdf( wrf_output_file, trim(var2d(n)), dims, ndims, debug )
 
    select case(trim(var2d(n)))
    case ('MU') ;
       allocate(mu(dims(1), dims(2)))
 
-      call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), mu, &
+      call get_var_2d_real_cdf( wrf_output_file, trim(var2d(n)), mu, &
+           dims(1), dims(2), 1, debug )
+
+      allocate(mu_mean(dims(1), dims(2)))
+
+      call get_var_2d_real_cdf( wrf_mean_output_file, trim(var2d(n)), mu_mean, &
            dims(1), dims(2), 1, debug )
 
       east_end=dims(1)+1
@@ -218,12 +245,12 @@ do n=1,num2d
    case ('MUB') ;
       allocate(mub(dims(1), dims(2)))
 
-      call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), mub, &
+      call get_var_2d_real_cdf( wrf_output_file, trim(var2d(n)), mub, &
            dims(1), dims(2), 1, debug )
    case ('MAPFAC_U') ;
       allocate(msfu(dims(1), dims(2)))
 
-      call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), msfu, &
+      call get_var_2d_real_cdf( wrf_output_file, trim(var2d(n)), msfu, &
            dims(1), dims(2), 1, debug )
 
       if(debug) then
@@ -236,7 +263,7 @@ do n=1,num2d
    case ('MAPFAC_V') ;
       allocate(msfv(dims(1), dims(2)))
 
-      call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), msfv, &
+      call get_var_2d_real_cdf( wrf_output_file, trim(var2d(n)), msfv, &
            dims(1), dims(2), 1, debug )
 
       if(debug) then
@@ -249,7 +276,7 @@ do n=1,num2d
    case ('MAPFAC_M') ;
       allocate(msfm(dims(1), dims(2)))
 
-      call get_var_2d_real_cdf( wrf_3dvar_output_file, trim(var2d(n)), msfm, &
+      call get_var_2d_real_cdf( wrf_output_file, trim(var2d(n)), msfm, &
            dims(1), dims(2), 1, debug )
 
       if(debug) then
@@ -306,29 +333,34 @@ endif
 
 
 !-----calculate variable at first time level
+!-----Add BC perturbation at second time level
       select case(m)
          case (1) ;		! West boundary
             do l=1,dims(2)
             do j=1,dims(1)
                frst2d(j,l)=mu(l,j)
+               scnd2d(j,l) = scnd2d(j,l) + infl*(mu(l,j)-mu_mean(l,j))
             enddo
             enddo
          case (2) ;		! East boundary
             do l=1,dims(2)
             do j=1,dims(1)
                frst2d(j,l)=mu(east_end-l,j)
+               scnd2d(j,l) = scnd2d(j,l) + infl*(mu(east_end-l,j)-mu_mean(east_end-l,j))
             enddo
             enddo
          case (3) ;		! South boundary
             do l=1,dims(2)
             do i=1,dims(1)
                frst2d(i,l)=mu(i,l)
+               scnd2d(i,l) = scnd2d(i,l) + infl*(mu(i,l)-mu_mean(i,l))
             enddo
             enddo
          case (4) ;		! North boundary
             do l=1,dims(2)
             do i=1,dims(1)
                frst2d(i,l)=mu(i,north_end-l)
+               scnd2d(i,l) = scnd2d(i,l) + infl*(mu(i,north_end-l)-mu_mean(i,north_end-l))
             enddo
             enddo
          case default ;
@@ -366,7 +398,7 @@ endif
 !--For 3D variables
 
 !--Get U
-   call get_dims_cdf( wrf_3dvar_output_file, 'U', dims, ndims, debug )
+   call get_dims_cdf( wrf_output_file, 'U', dims, ndims, debug )
 
    allocate(u(dims(1), dims(2), dims(3)))
 
@@ -377,7 +409,12 @@ endif
    kds=1
    kde=dims(3)
 
-   call get_var_3d_real_cdf( wrf_3dvar_output_file, 'U', u, &
+   call get_var_3d_real_cdf( wrf_output_file, 'U', u, &
+                             dims(1), dims(2), dims(3), 1, debug )
+
+   allocate(u_mean(dims(1), dims(2), dims(3)))
+
+   call get_var_3d_real_cdf( wrf_mean_output_file, 'U', u_mean, &
                              dims(1), dims(2), dims(3), 1, debug )
 
    if(debug) then
@@ -388,11 +425,16 @@ endif
    endif
 
 !--Get V
-   call get_dims_cdf( wrf_3dvar_output_file, 'V', dims, ndims, debug )
+   call get_dims_cdf( wrf_output_file, 'V', dims, ndims, debug )
 
    allocate(v(dims(1), dims(2), dims(3)))
 
-   call get_var_3d_real_cdf( wrf_3dvar_output_file, 'V', v, &
+   call get_var_3d_real_cdf( wrf_output_file, 'V', v, &
+                             dims(1), dims(2), dims(3), 1, debug )
+
+   allocate(v_mean(dims(1), dims(2), dims(3)))
+
+   call get_var_3d_real_cdf( wrf_mean_output_file, 'V', v_mean, &
                              dims(1), dims(2), dims(3), 1, debug )
 
    if(debug) then
@@ -403,11 +445,16 @@ endif
    endif
 
 !--Get W
-   call get_dims_cdf( wrf_3dvar_output_file, 'W', dims, ndims, debug )
+   call get_dims_cdf( wrf_output_file, 'W', dims, ndims, debug )
 
    allocate(w(dims(1), dims(2), dims(3)))
 
-   call get_var_3d_real_cdf( wrf_3dvar_output_file, 'W', w, &
+   call get_var_3d_real_cdf( wrf_output_file, 'W', w, &
+                             dims(1), dims(2), dims(3), 1, debug )
+
+   allocate(w_mean(dims(1), dims(2), dims(3)))
+
+   call get_var_3d_real_cdf( wrf_mean_output_file, 'W', w_mean, &
                              dims(1), dims(2), dims(3), 1, debug )
 
    if(debug) then
@@ -428,6 +475,8 @@ endif
 !--Couple u, v, w.
    call couple_uvw ( u, v, w, mu, mub, msfu, msfv, msfm, ids, ide, jds, jde, kds, kde )
 
+   call couple_uvw ( u_mean, v_mean, w_mean, mu_mean, mub, msfu, msfv, msfm, ids, ide, jds, jde, kds, kde )
+
    if(debug) then
       write(unit=*, fmt='(a,e20.12,4x)') &
            'After  couple Sampe u=', u(dims(1)/2,dims(2)/2,dims(3)/2), &
@@ -438,9 +487,11 @@ endif
 !--For 3D variables
 
    do n=1,num3d
-      call get_dims_cdf( wrf_3dvar_output_file, trim(var3d(n)), dims, ndims, debug )
+      call get_dims_cdf( wrf_output_file, trim(var3d(n)), dims, ndims, debug )
 
       allocate(full3d(dims(1), dims(2), dims(3)))
+
+      allocate(full3d_mean(dims(1), dims(2), dims(3)))
 
       east_end=dims(1)+1
       north_end=dims(2)+1
@@ -449,16 +500,22 @@ endif
          case ('U') ;		! U
             var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=u(:,:,:)
+            full3d_mean(:,:,:)=u_mean(:,:,:)
          case ('V') ;		! V
             var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=v(:,:,:)
+            full3d_mean(:,:,:)=v_mean(:,:,:)
          case ('W') ;		! W
             var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=w(:,:,:)
+            full3d_mean(:,:,:)=w_mean(:,:,:)
          case ('T', 'PH') ;
             var_pref=trim(var3d(n))
 
-            call get_var_3d_real_cdf( wrf_3dvar_output_file, trim(var3d(n)), full3d, &
+            call get_var_3d_real_cdf( wrf_output_file, trim(var3d(n)), full3d, &
+                                      dims(1), dims(2), dims(3), 1, debug )
+
+            call get_var_3d_real_cdf( wrf_mean_output_file, trim(var3d(n)), full3d_mean, &
                                       dims(1), dims(2), dims(3), 1, debug )
 
             if(debug) then
@@ -467,10 +524,11 @@ endif
                     '=', full3d(dims(1)/2,dims(2)/2,dims(3)/2)
             endif
 
-            do j=1,dims(2)
             do k=1,dims(3)
+            do j=1,dims(2)
             do i=1,dims(1)
                full3d(i,j,k)=full3d(i,j,k)*(mu(i,j)+mub(i,j))
+               full3d_mean(i,j,k)=full3d_mean(i,j,k)*(mu_mean(i,j)+mub(i,j))
             enddo
             enddo
             enddo
@@ -483,7 +541,10 @@ endif
          case ('QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUPEL') ;
             var_pref='R' // var3d(n)(1:2)
 
-            call get_var_3d_real_cdf( wrf_3dvar_output_file, trim(var3d(n)), full3d, &
+            call get_var_3d_real_cdf( wrf_output_file, trim(var3d(n)), full3d, &
+                                      dims(1), dims(2), dims(3), 1, debug )
+
+            call get_var_3d_real_cdf( wrf_mean_output_file, trim(var3d(n)), full3d_mean, &
                                       dims(1), dims(2), dims(3), 1, debug )
 
             if(debug) then
@@ -492,10 +553,11 @@ endif
                     '=', full3d(dims(1)/2,dims(2)/2,dims(3)/2)
             endif
 
-            do j=1,dims(2)
             do k=1,dims(3)
+            do j=1,dims(2)
             do i=1,dims(1)
                full3d(i,j,k)=full3d(i,j,k)*(mu(i,j)+mub(i,j))
+               full3d_mean(i,j,k)=full3d_mean(i,j,k)*(mu_mean(i,j)+mub(i,j))
             enddo
             enddo
             enddo
@@ -540,6 +602,7 @@ endif
                do k=1,dims(2)
                do j=1,dims(1)
                   frst3d(j,k,l)=full3d(l,j,k)
+                  scnd3d(j,k,l) = scnd3d(j,k,l) + infl*(full3d(l,j,k)-full3d_mean(l,j,k))
                enddo
                enddo
                enddo
@@ -548,6 +611,7 @@ endif
                do k=1,dims(2)
                do j=1,dims(1)
                   frst3d(j,k,l)=full3d(east_end-l,j,k)
+                  scnd3d(j,k,l) = scnd3d(j,k,l) + infl*(full3d(east_end-l,j,k)-full3d_mean(east_end-l,j,k))
                enddo
                enddo
                enddo
@@ -556,6 +620,7 @@ endif
                do k=1,dims(2)
                do i=1,dims(1)
                   frst3d(i,k,l)=full3d(i,l,k)
+                  scnd3d(i,k,l) = scnd3d(i,k,l) + infl*(full3d(i,l,k) - full3d_mean(i,l,k))
                enddo
                enddo
                enddo
@@ -564,6 +629,7 @@ endif
                do k=1,dims(2)
                do i=1,dims(1)
                   frst3d(i,k,l)=full3d(i,north_end-l,k)
+                  scnd3d(i,k,l) = scnd3d(i,k,l) + infl*(full3d(i,north_end-l,k)-full3d_mean(i,north_end-l,k))
                enddo
                enddo
                enddo
@@ -572,6 +638,12 @@ endif
                print *, 'bdyname(', m, ')=', trim(bdyname(m))
                stop
          end select
+
+!--------Make sure that microphysics variables at the end of the interval are not negatives.
+
+         if(n >= 6) then
+            scnd3d(:,:,:) = max(0.0_r8,scnd3d(:,:,:))
+         endif
 
 !--------calculate new tendancy
 
@@ -586,6 +658,12 @@ endif
                  'ndims=', ndims, 'dims=', (dims(i), i=1,ndims)
          endif
 
+!-----output new variable at first time level
+         var_name=trim(var_pref) // trim(bdyname(m))
+         call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
+                                   dims(1), dims(2), dims(3), itime, debug )
+
+!-----output new tendancy 
          var_name=trim(var_pref) // trim(tenname(m))
          call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                    dims(1), dims(2), dims(3), itime, debug )
@@ -596,9 +674,11 @@ endif
       enddo
 
       deallocate(full3d)
+      deallocate(full3d_mean)
    enddo
 
    deallocate(mu)
+   deallocate(mu_mean)
    deallocate(mub)
    deallocate(msfu)
    deallocate(msfv)
@@ -606,6 +686,9 @@ endif
    deallocate(u)
    deallocate(v)
    deallocate(w)
+   deallocate(u_mean)
+   deallocate(v_mean)
+   deallocate(w_mean)
 
    write(logfileunit,*)'FINISHED update_wrf_bc.'
    write(logfileunit,*)
@@ -615,4 +698,3 @@ endif
    write(*,*) 'update_wrf_bc terminated normally.'
 
 end program update_wrf_bc
-

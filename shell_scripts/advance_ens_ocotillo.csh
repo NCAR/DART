@@ -19,6 +19,7 @@
 # #PBS -l nodes=5
 # perfect_model_obs:
 #PBS -l nodes=1
+
 ### This job's working directory; must cd to it, or it will run in /home...
 if ($?PBS_O_WORKDIR) then
    cd $PBS_O_WORKDIR
@@ -91,6 +92,5 @@ all_elements_done:
 # Wait for all *background* processes to finish up
 wait
 
-# 
 # signal to async_filter.csh (if async=1) or to Aadvance_state (if async=2) to continue
 rm -f $PBS_O_WORKDIR/batchflag

@@ -336,7 +336,7 @@ integer,          intent(in) :: n_values_in
 
 !---
 
-integer           :: in, n_values,id
+integer           :: in, n_values,id, end_moist
 character(len=80) :: stringerror
 
 !---
@@ -381,6 +381,12 @@ do id=1,num_domains
 
    if(wrf%dom(id)%n_moist >= 1) then
       in = n_values+1
+
+!--------Make sure that microphysics variables are not negatives.
+      
+      end_moist = n_values + (wrf%dom(id)%n_moist)*(wrf%dom(id)%bt)*(wrf%dom(id)%sn)*(wrf%dom(id)%we)
+      dart(in:end_moist) = max(0.0_r8,dart(in:end_moist))
+
       call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qv,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
       n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qv
    endif
