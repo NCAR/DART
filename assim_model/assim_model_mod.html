@@ -26,7 +26,7 @@
 -->
 
 <HTML>
-	<TITLE>module assim_model_mod</TITLE>
+<TITLE>module assim_model_mod</TITLE>
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
@@ -63,8 +63,8 @@
 
 <P>
    This module acts as an intermediary between DART compliant models
-   and the filter. At one time, the assim_model_type which combines a
-   state vector and a time_type was envisioned as being fundamental to 
+   and the filter. At one time the assim_model_type, which combines a
+   state vector and a time_type, was envisioned as being fundamental to 
    how DART views model states. This paradigm is gradually being abandoned
    so that model state vectors and times are handled as separate
    data types. It is important to call static_init_assim_model before 
@@ -75,6 +75,7 @@
    to the model_mod which is documented in detail in the DART views 
    document.
 </P>
+<!--kdr link to the DART views document? -->
 <P>
 </P>
 
@@ -94,17 +95,22 @@ model_mod
 <!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
 
+<!--kdr I removed & from end of first 4 lines -->
+<!--kdr Should these be alphabetical? -->
+<!--kdr get_model_size is in model_mod, and doesn't appear to be a passthrough -->
+<! so I'll comment it out.
+<!<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_model_size</A></TD></TR>
+
 <A NAME="Interface"></A>
 <BR><HR><BR>
 <H2>PUBLIC INTERFACE</H2>
 
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
-                   <TD><A HREF="#yyypubtype1">assim_model_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2">netcdf_file_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">static_init_assim_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">init_diag_output</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_model_size</A></TD></TR>
+                   <TD><A HREF="#yyypubtype1">assim_model_type</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2">netcdf_file_type</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">static_init_assim_model</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">init_diag_output</A> </TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_closest_state_time_to</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">aget_initial_condition</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">get_state_meta_data</A></TD></TR>
@@ -148,6 +154,7 @@ model_mod
 Optional namelist interface <em class=code>&#38;assim_model_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
+<!--kdr link to namelist here? -->
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -266,6 +273,7 @@ integer, intent(in)                                                   :: <em cla
 character (len = *), intent(in), dimension(copies_of_field_per_time)  :: <em class=code> meta_data_per_copy </em>
 integer                                                               :: <em class=code> ncFileID </em>
 </pre></div>
+<!--kdr Should result of a function call be first in this list, instead of at end? -->
 
 <H3 class=indent1>Description</H3>
 
@@ -299,7 +307,7 @@ integer                                                               :: <em cla
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
-<A NAME="yyyroutine3"></A>
+<!-- <A NAME="yyyroutine3"></A>
 <P></P><HR><P></P>
 <div class=routine>
 <em class=call> var = get_model_size() </em>
@@ -313,6 +321,7 @@ integer                               :: <em class=code>var </em>
   Returns the size of the model state vector. This is a direct pass 
    through to the model_mod.   
 </P>
+-->
 
 </P>
 
@@ -353,21 +362,29 @@ type(time_type)                                   :: <em class=code> get_closest
 
 <!--==================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<!--kdr this was misnamed get_initial condition,and was missing the time variable -->
+<!--    Also note that description in code is wrong; it's the same as get_initial_condition! -->
+<!--    And I think that x should not be inout, but out only -->
+
  <A NAME="yyyroutine5"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_initial_condition(x) </em>
+ <em class=call> call aget_initial_condition(time,x) </em>
  <pre>
- type(assim_model_type), intent(inout) :: <em class=code>x</em>
+ type(time_type), intent(out) :: <em class=code>time</em>
+ type(r8), intent(inout) :: <em class=code>x</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
  Reads an initial time and state vector from a restart format file
- into an assim_model_type.
+ into a real time and real array, which are put into an assim_model_type.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>time&nbsp; &nbsp; </em></TD>
+     <TD>Contains time of input state vector on return</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>Contains time/state of input state vector on return</TD></TR>
+     <TD>Contains state of input state vector on return</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -390,8 +407,7 @@ SEE model_mod for arguments and description.
 <A NAME="yyyroutine7"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_close_states(location,radius,numinds,indices,dist,x) <
- /em>
+ <em class=call> call get_close_states(location,radius,numinds,indices,dist,x) </em>
  <pre>
  type(location_type), intent(in)     :: <em class=code>location</em>
  real(r8), intent(in)                :: <em class=code>radius</em>
@@ -412,22 +428,19 @@ cases, sigma models for instance, and is passed along.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>A location around which close model state variables are to be found</TD
- ></TR>
+     <TD>A location around which close model state variables are to be found</TD></TR>
  <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>Radius within which a model state is said to be close to location</TD><
- /TR>
+     <TD>Radius within which a model state is said to be close to location</TD></TR>
  <TR><TD valign=top><em class=code>numinds&nbsp; &nbsp; </em></TD>
-     <TD>Returns number of close states; number is multiplied by -1 if indices w
- as too small</TD></TR>
+     <TD>Returns number of close states; number is multiplied by -1 if indices
+ was too small</TD></TR>
  <TR><TD valign=top><em class=code>indices&nbsp; &nbsp; </em></TD>
      <TD>Indices for the close states, not set if it is not big enough</TD></TR>
  <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
-     <TD>Distance to each close state from location, not set if it is not big en
- ough</TD></TR>
+     <TD>Distance to each close state from location, not set if it is not big 
+ enough</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector; needed to determine location in some cases</TD></TR
- >
+     <TD>Model state vector; needed to determine location in some cases</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -464,8 +477,8 @@ cases, sigma models for instance, and is passed along.
  <div class=routine>
  <em class=call> var = get_model_time(assim_model) </em>
  <pre>
- type(assim_model_type), intent(in) :: <em class=code>get_model_time</em>
- type(time_type)                    :: <em class=code>assim_model</em>
+ type(time_type)                    :: <em class=code>get_model_time</em>
+ type(assim_model_type), intent(in) :: <em class=code>assim_model</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -601,7 +614,7 @@ model_mod.  See model_mod for the error return values in istatus.
 <A NAME="yyyroutine17"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_state_restart(assim_model,funit,target_time) </em>
+ <em class=call> call write_state_restart(assim_model,funit<em class=optionalcode>[,target_time]</em>) </em>
  <pre>
  type(assim_model_type), intent(in)    :: <em class=code>assim_model</em>
  integer, intent(in)                   :: <em class=code>funit</em>
@@ -625,7 +638,7 @@ Writes a restart from an assim_model_type with an optional target_time.
 <A NAME="yyyroutine18"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call read_state_restart(assim_model,funit,target_time) </em>
+ <em class=call> call read_state_restart(assim_model,funit<em class=optionalcode>[,target_time]</em>) </em>
  <pre>
  type(assim_model_type), intent(out)    :: <em class=code>assim_model</em>
  integer, intent(in)                    :: <em class=code>funit</em>
@@ -735,7 +748,7 @@ number of data copies.
  <TR><TD valign=top><em class=code>init_diag_input&nbsp; &nbsp; </em></TD>
      <TD>Returns the unit number on which the file is open.</TD></TR>
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>file_name of state diagnostic file.</TD></TR>
+     <TD>File name of state diagnostic file.</TD></TR>
  <TR><TD valign=top><em class=code>global_meta_data&nbsp; &nbsp; </em></TD>
      <TD>Global metadata string from file.</TD></TR>
  <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
@@ -768,19 +781,14 @@ number of data copies.
 <A NAME="yyyroutine24"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_diag_input_copy_meta_data(file_id,model_size_out,num_c
- opies,location,meta_data_per_copy) </em>
+ <em class=call> call get_diag_input_copy_meta_data(file_id,model_size_out,
+ num_copies,location,meta_data_per_copy) </em>
  <pre>
- integer, intent(in)                                         :: <em class=code>f
- ile_id</em>
- integer, intent(in)                                         :: <em class=code>m
- odel_size_out</em>
- integer, intent(in)                                         :: <em class=code>n
- um_copies</em>
- type(location_type), dimension(model_size_out), intent(out) :: <em class=code>l
- ocation</em>
- character(len = *), dimension(num_copies)                   :: <em class=code>m
- eta_data_per_copy</em>
+ integer, intent(in)                                         :: <em class=code>file_id</em>
+ integer, intent(in)                                         :: <em class=code>model_size_out</em>
+ integer, intent(in)                                         :: <em class=code>num_copies</em>
+ type(location_type), dimension(model_size_out), intent(out) :: <em class=code>location</em>
+ character(len = *), dimension(num_copies)                   :: <em class=code>meta_data_per_copy</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -791,7 +799,7 @@ locations of each state variable and the text description of each copy.
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>file_id&nbsp; &nbsp; </em></TD>
      <TD>Integer channel open to state diagostic file being read</TD></TR>
- <TR><TD valign=top><em class=code>model_size_out&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>Model_size_out&nbsp; &nbsp; </em></TD>
      <TD>model size</TD></TR>
  <TR><TD valign=top><em class=code>num_copies&nbsp; &nbsp; </em></TD>
      <TD>Number of copies of state in file</TD></TR>
@@ -850,8 +858,8 @@ for passing to the netcdf error handling routines.
 <A NAME="yyyroutine30"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call aread_state_restart(model_time,model_state,funit,target_ti
- me) </em>
+ <em class=call> call aread_state_restart(model_time,model_state,funit
+     <em class=optionalcode>[target_time]</em>)
  <pre>
  type(time_type), intent(out)           :: <em class=code>model_time</em>
  real(r8), dimension(:), intent(out)    :: <em class=code>model_state</em>
@@ -905,8 +913,7 @@ the current model time and a target time.
 <A NAME="yyyroutine29"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call aoutput_diagnostics(ncFileID,model_time,model_state,copy_i
- ndex) </em>
+ <em class=call> call aoutput_diagnostics(ncFileID,model_time,model_state,copy_index) </em>
  <pre>
  type(netcdf_file_type), intent(inout) :: <em class=code>ncFileID</em>
  type(time_type), intent(in)           :: <em class=code>model_time</em>
@@ -921,7 +928,7 @@ the current model time and a target time.
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
      <TD>Unit for a state vector netcdf file open for output.</TD></TR>
  <TR><TD valign=top><em class=code>model_time&nbsp; &nbsp; </em></TD>
-     <TD>What's the time</TD></TR>
+     <TD>The time of the state to be output</TD></TR>
  <TR><TD valign=top><em class=code>model_state&nbsp; &nbsp; </em></TD>
      <TD>A model state vector to be output.</TD></TR>
  <TR><TD valign=top><em class=code>copy_index&nbsp; &nbsp; </em></TD>
@@ -934,8 +941,8 @@ the current model time and a target time.
 <A NAME="yyyroutine32"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call awrite_state_restart(model_time,model_state,funit,target_t
- ime) </em>
+ <em class=call> call awrite_state_restart(model_time,model_state,funit
+     <em class=optionalcode>[,target_time]</em>) </em>
  <pre>
  type(time_type), intent(in)           :: <em class=code>model_time</em>
  real(r8), dimension(:), intent(in)    :: <em class=code>model_state</em>
@@ -1150,6 +1157,7 @@ documentation for arguments and details.
  <P>
  <!--================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<!--kdr Should this really be inout in code?  I think it's only intent(out) -->
 <A NAME="yyyroutine43"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -1207,12 +1215,14 @@ documentation for arguments and details.
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
+<!--kdr; Should these files be listed as "used by this module"? -->
+<!--     What about diagnostics files? -->
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>inputfile1
-    <LI>namelistfile
-    <LI>outputfile
+<UL><LI>filter_restart specified in DART/filter/filter.nml: restart_in_filename
+    <LI>assim_model_mod.nml
+    <LI>filter_restart specified in DART/filter/filter.nml: restart_out_filename
 </UL>
 
 <!--==================================================================-->
@@ -1228,6 +1238,7 @@ documentation for arguments and details.
 <!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
+<!--kdr Error codes section not completed -->
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
