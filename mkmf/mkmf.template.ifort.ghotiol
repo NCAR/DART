@@ -1,0 +1,13 @@
+# template for the Intel Fortran Compiler Version 8.x on machine "ghotiol"
+# typical use with mkmf
+# mkmf -t template.ifc -c"-Duse_libMPI -Duse_netCDF" path_names /usr/local/include
+#
+# LIBS needs to be customized for your site
+#
+FC = ifort
+LD = ifort
+NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
+INCS = -I$(NETCDF)/include
+FFLAGS = -i4 -r8 -fpp -O0 $(INCS)
+LIBS = -L$(NETCDF)/lib -lnetcdf -L/usr/local/lib -ludunits
+LDFLAGS = $(NETCDF)/include/typeSizes.o $(NETCDF)/include/netcdf.o $(INCS) $(LIBS)
