@@ -31,7 +31,7 @@ public location_type, get_dist, get_location, set_location, &
 character(len=128) :: &
 source   = "$Source$", &
 revision = "$Revision$", &
-revdate  = "$Date$", &
+revdate  = "$Date$"
 
 type location_type
    private
@@ -51,7 +51,7 @@ contains
 ! subroutine initialize_module
 
    call register_module(source, revision, revdate)
-   module_intialized = .true.
+   module_initialized = .true.
 
 end subroutine initialize_module
 
@@ -168,7 +168,7 @@ end function set_location
 
 
 
-subroutine write_location(ifile, loc)
+subroutine write_location(ifile, loc, fform)
 !----------------------------------------------------------------------------
 !
 ! Writes a 2D location to the file. Implemented as a subroutine but  could
@@ -183,19 +183,30 @@ implicit none
 
 integer, intent(in) :: ifile
 type(location_type), intent(in) :: loc
+character(len=*), intent(in), optional :: fform
+
+character(len=32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
+fileformat = "ascii"   ! supply default
+if(present(fform)) fileformat = trim(adjustl(fform))
+
 ! For now, output a character tag followed by the r8 value.
 
-write(ifile, '(''loc2s'')' ) 
-write(ifile, *) loc%lon, loc%lat
+SELECT CASE (fileformat)
+   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
+      write(ifile) loc%lon, loc%lat
+   CASE DEFAULT
+      write(ifile, '(''loc2s'')' ) 
+      write(ifile, *) loc%lon, loc%lat
+END SELECT
 
 end subroutine write_location
 
 
 
-function read_location(ifile)
+function read_location(ifile, fform)
 !----------------------------------------------------------------------------
 !
 ! Reads a 2D location from ifile that was written by write_location. 
@@ -205,18 +216,26 @@ implicit none
 
 integer, intent(in) :: ifile
 type(location_type) :: read_location
+character(len=*), intent(in), optional :: fform
 
 character(len=5) :: header
+character(len=32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
-! Will want to add additional error checks on the read
-read(ifile, '(a5)' ) header
-if(header /= 'loc2s') call error_handler(E_ERR, 'read_location', &
-    'Expected location header "loc1d" in input file', source, revision, revdate)
+fileformat = "ascii"   ! supply default
+if(present(fform)) fileformat = trim(adjustl(fform))
 
+SELECT CASE (fileformat)
+   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
+      read(ifile) read_location%lon, read_location%lat
+   CASE DEFAULT
+      read(ifile, '(a5)' ) header
+      if(header /= 'loc2s') call error_handler(E_ERR, 'read_location', &
+          'Expected location header "loc1d" in input file', source, revision, revdate)
 ! Now read the location data value
-read(ifile, *) read_location%lon, read_location%lat
+      read(ifile, *) read_location%lon, read_location%lat
+END SELECT
 
 end function read_location
 
