@@ -8,22 +8,23 @@ module obs_sequence_mod
 !
 
 use types_mod
+use utilities_mod,    only : open_file
+use time_manager_mod, only : time_type, set_time, operator(<=)
+
 use obs_set_mod, only : obs_set_type, read_obs_set, write_obs_set, get_obs_set_time, &
-   obs_set_copy, get_num_obs, read_obs_set_time, &
-   obs_set_time_copy, &
-   os_get_obs_def_index => get_obs_def_index, &
-   os_get_obs_values => get_obs_values, &
-   os_set_obs_values => set_obs_values, &
+   obs_set_copy, get_num_obs, read_obs_set_time, obs_set_time_copy, &
+   os_get_obs_def_index    => get_obs_def_index, &
+   os_get_obs_values       => get_obs_values, &
+   os_set_obs_values       => set_obs_values, &
    os_set_single_obs_value => set_single_obs_value, &
-   os_inc_num_obs_copies => inc_num_obs_copies
+   os_inc_num_obs_copies   => inc_num_obs_copies
+
 use set_def_list_mod, only : set_def_list_type, &
    read_set_def_list, write_set_def_list, set_def_list_copy, &
-   sd_get_expected_obs => get_expected_obs, &
+   sd_get_expected_obs     => get_expected_obs, &
    sd_get_diag_obs_err_cov => get_diag_obs_err_cov, &
    sd_get_num_close_states => get_num_close_states, &
-   sd_get_close_states => get_close_states
-use utilities_mod, only : open_file
-use time_manager_mod, only : time_type, set_time, operator(<=)
+   sd_get_close_states     => get_close_states
 
 private
 
@@ -40,11 +41,11 @@ public obs_sequence_type, init_obs_sequence, &
 
 type obs_sequence_type 
    private
-   integer :: num_copies
+   integer                       :: num_copies
    character(len = 129), pointer :: copy_meta_data(:)
-   integer :: max_obs_sets, num_obs_sets
-   type(set_def_list_type) :: def_list
-   type(obs_set_type), pointer :: obs_sets(:)
+   integer                       :: max_obs_sets, num_obs_sets
+   type(set_def_list_type)       :: def_list
+   type(obs_set_type),   pointer :: obs_sets(:)
 end type obs_sequence_type
 
 contains
@@ -62,9 +63,9 @@ function init_obs_sequence(max_obs_sets, num_copies_in, copy_meta_data)
 
 implicit none
 
-type(obs_sequence_type) :: init_obs_sequence
-integer, intent(in) :: max_obs_sets
-integer, optional, intent(in) :: num_copies_in
+type(obs_sequence_type)        :: init_obs_sequence
+integer,            intent(in) :: max_obs_sets
+integer, optional,  intent(in) :: num_copies_in
 character(len = *), intent(in), optional :: copy_meta_data(:)
 
 integer :: file_id, num_copies, i
@@ -105,17 +106,18 @@ subroutine obs_sequence_copy(seq_out, seq_in)
 implicit none
 
 type(obs_sequence_type), intent(out) :: seq_out
-type(obs_sequence_type), intent(in) :: seq_in
+type(obs_sequence_type), intent(in)  :: seq_in
 
 integer :: i
 
-seq_out%num_copies = seq_in%num_copies
+seq_out%num_copies   = seq_in%num_copies
 seq_out%max_obs_sets = seq_in%max_obs_sets
 seq_out%num_obs_sets = seq_in%num_obs_sets
 
 ! Allocate and copy the meta_data
+
 allocate(seq_out%copy_meta_data(seq_in%num_copies), &
-   seq_out%obs_sets(seq_in%max_obs_sets))
+         seq_out%obs_sets(seq_in%max_obs_sets))
 seq_out%copy_meta_data = seq_in%copy_meta_data
 
 ! Copy the set_def_list
@@ -138,12 +140,12 @@ subroutine obs_sequence_def_copy(seq_out, seq_in)
 implicit none
 
 type(obs_sequence_type), intent(out) :: seq_out
-type(obs_sequence_type), intent(in) :: seq_in
+type(obs_sequence_type), intent(in)  :: seq_in
 
 integer :: i
 
 ! Copy just the definition part of the sequence setting copies to 0
-seq_out%num_copies = 0
+seq_out%num_copies   = 0
 seq_out%max_obs_sets = seq_in%max_obs_sets
 seq_out%num_obs_sets = seq_in%num_obs_sets
 
@@ -172,8 +174,8 @@ subroutine inc_num_obs_copies(seq, inc, copy_meta_data)
 ! fixed storage version.
 
 type(obs_sequence_type), intent(inout) :: seq
-integer, intent(in) :: inc
-character(len=129), intent(in) :: copy_meta_data(inc)
+integer,                 intent(in)    :: inc
+character(len=129),      intent(in)    :: copy_meta_data(inc)
 
 character(len=129) :: temp_meta_data(inc + seq%num_copies)
 integer :: old_num, new_num, i
@@ -249,10 +251,10 @@ subroutine get_obs_values(seq, index, obs, copy_in)
 
 implicit none
 
-type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: index
-real(r8), intent(out) :: obs(:)
-integer, optional, intent(in) :: copy_in
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: index
+real(r8),                intent(out) :: obs(:)
+integer, optional,       intent(in)  :: copy_in
 
 integer :: copy
 
@@ -273,9 +275,9 @@ function get_obs_def_index(seq, index)
 
 implicit none
 
-integer :: get_obs_def_index
+integer                             :: get_obs_def_index
 type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: index
+integer,                 intent(in) :: index
 
 get_obs_def_index = os_get_obs_def_index(seq%obs_sets(index))
 
@@ -292,9 +294,9 @@ subroutine set_obs_values(seq, index, obs, copy_in)
 implicit none
 
 type(obs_sequence_type), intent(inout) :: seq
-integer, intent(in) :: index
-real(r8), intent(in) :: obs(:)
-integer, intent(in), optional :: copy_in
+integer,                 intent(in)    :: index
+real(r8),                intent(in)    :: obs(:)
+integer, optional,       intent(in)    :: copy_in
 
 integer :: copy
 
@@ -317,9 +319,9 @@ subroutine set_single_obs_value(seq, index, num_obs, obs, copy_in)
 implicit none
 
 type(obs_sequence_type), intent(inout) :: seq
-integer, intent(in) :: index, num_obs
-real(r8), intent(in) :: obs
-integer, intent(in), optional :: copy_in
+integer,                 intent(in)    :: index, num_obs
+real(r8),                intent(in)    :: obs
+integer, optional,       intent(in)    :: copy_in
 
 integer :: copy
 
@@ -365,9 +367,9 @@ function get_obs_set(sequence, index)
 
 implicit none
 
-type(obs_set_type) :: get_obs_set
+type(obs_set_type)                  :: get_obs_set
 type(obs_sequence_type), intent(in) :: sequence
-integer, intent(in) :: index
+integer,                 intent(in) :: index
 
 call obs_set_copy(get_obs_set, sequence%obs_sets(index))
 !!!get_obs_set = sequence%obs_sets(index)
@@ -384,9 +386,9 @@ subroutine get_diag_obs_err_cov(seq, index, cov)
 
 implicit none
 
-type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: index
-real(r8), intent(out) :: cov(:)
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: index
+real(r8),                intent(out) :: cov(:)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
@@ -410,10 +412,10 @@ subroutine get_num_close_states(seq, index, radius, num)
 
 implicit none
 
-type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: index
-real(r8), intent(in) :: radius
-integer, intent(out) :: num(:)
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: index
+real(r8),                intent(in)  :: radius
+integer,                 intent(out) :: num(:)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
@@ -437,11 +439,11 @@ subroutine get_close_states(seq, index, radius, num, indices, dist)
 
 implicit none
 
-type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: index
-real(r8), intent(in) :: radius
-integer, intent(out) :: num(:), indices(:, :)
-real(r8), intent(out) :: dist(:, :)
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: index
+real(r8),                intent(in)  :: radius
+integer,                 intent(out) :: num(:), indices(:, :)
+real(r8),                intent(out) :: dist(:, :)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
@@ -468,11 +470,11 @@ subroutine get_expected_obs(sequence, index, state, obs, num)
 
 implicit none
 
-type(obs_sequence_type), intent(in) :: sequence
-integer, intent(in) :: index
-real(r8), intent(in) :: state(:)
-real(r8), intent(out) :: obs(:)
-integer, intent(in), optional :: num
+type(obs_sequence_type), intent(in)  :: sequence
+integer,                 intent(in)  :: index
+real(r8),                intent(in)  :: state(:)
+real(r8),                intent(out) :: obs(:)
+integer, optional,       intent(in)  :: num
 
 type(obs_set_type) :: obs_set
 integer :: def_index
@@ -498,9 +500,9 @@ function get_obs_sequence_time(sequence, index)
 
 implicit none
 
-type(time_type) :: get_obs_sequence_time
+type(time_type)                     :: get_obs_sequence_time
 type(obs_sequence_type), intent(in) :: sequence
-integer, intent(in) :: index
+integer,                 intent(in) :: index
 
 type(obs_set_type) :: obs_set
 
@@ -518,9 +520,9 @@ function get_num_obs_in_set(sequence, index)
 
 implicit none
 
-integer :: get_num_obs_in_set
+integer                             :: get_num_obs_in_set
 type(obs_sequence_type), intent(in) :: sequence
-integer, intent(in) :: index
+integer,                 intent(in) :: index
 
 type(obs_set_type) :: obs_set
 
@@ -538,7 +540,7 @@ subroutine add_obs_set(sequence, obs_set)
 implicit none
 
 type(obs_sequence_type), intent(inout) :: sequence
-type(obs_set_type), intent(in) :: obs_set
+type(obs_set_type),      intent(in)    :: obs_set
 
 type(time_type) :: time
 
@@ -576,7 +578,7 @@ subroutine associate_def_list(sequence, def_list)
 implicit none
 
 type(obs_sequence_type), intent(inout) :: sequence
-type(set_def_list_type), intent(in) :: def_list
+type(set_def_list_type), intent(in)    :: def_list
 
 ! Is default copy sufficient?
 call set_def_list_copy(sequence%def_list, def_list)
@@ -592,7 +594,7 @@ subroutine write_obs_sequence(file_id, sequence)
 
 implicit none
 
-integer, intent(in) :: file_id
+integer,                 intent(in) :: file_id
 type(obs_sequence_type), intent(in) :: sequence
 
 integer :: i
@@ -627,7 +629,7 @@ function read_obs_sequence(file_id)
 implicit none
 
 type(obs_sequence_type) :: read_obs_sequence 
-integer, intent(in) :: file_id
+integer,     intent(in) :: file_id
 
 integer :: i, num_copies, num_obs_sets
 
@@ -667,7 +669,7 @@ function read_obs_sequence_def(file_id)
 implicit none
 
 type(obs_sequence_type) :: read_obs_sequence_def 
-integer, intent(in) :: file_id
+integer,     intent(in) :: file_id
 
 integer :: i, num_copies, num_obs_sets
 
