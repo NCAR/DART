@@ -12,7 +12,7 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use      types_mod, only : r8, missing_r8
+use      types_mod, only : r8, missing_r8, PI
 use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, get_unit, &
                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 use       sort_mod, only : index_sort 
@@ -368,6 +368,9 @@ do i = 1, ens_size
 !   write(*, *) 'new_val ', i, new_val(i)
 end do
 
+! Generate increments
+obs_inc = new_val - ens
+
 end subroutine obs_increment_particle
 
 
@@ -504,6 +507,9 @@ do i = 1, ens_size
    ! Now generate the new ensemble member
    new_member(i) = new_mean(kernel) + norm
 end do
+
+! Generate the increments
+obs_inc = new_member - ens
 
 end subroutine obs_increment_kernel
 
@@ -1176,11 +1182,11 @@ real(r8) :: d(3), lam(3), d_new, lam_new, new_max, e_minus_half, ratio, x_dist
 real(r8) :: cov_sd_sum, cov_sd_sample(-sd_intervals:sd_intervals)
 
 ! Compute the maximum value of the updated probability
-lam(1) = l_mean - 2.0 * l_sd
+lam(1) = l_mean - 2.0_r8 * l_sd
 ! Can't go below zero, would get negative undefined inflation
-if(lam(1) <= 0.0) lam(1) = 0.0
+if(lam(1) <= 0.0_r8) lam(1) = 0.0_r8
 lam(2) = l_mean
-lam(3) = l_mean + 2.0 * l_sd
+lam(3) = l_mean + 2.0_r8 * l_sd
 do i = 1, 3
    d(i) = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam(i))
 end do
@@ -1198,7 +1204,7 @@ endif
 ! Do a simple 1D optimization by bracketing
 do i = 1, max_num_iters
    ! Bring in the right side
-   lam_new = lam(1) + (lam(2) - lam(1)) / 2.0
+   lam_new = lam(1) + (lam(2) - lam(1)) / 2.0_r8
    d_new = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam_new)
    if(d_new > d(2)) then
       d(3) = d(2); lam(3) = lam(2)
@@ -1208,7 +1214,7 @@ do i = 1, max_num_iters
    endif
 
    ! Now bring in the left side (this can be coded more glamorously, but I'm rushed)
-   lam_new = lam(2) + (lam(3) - lam(2)) / 2.0
+   lam_new = lam(2) + (lam(3) - lam(2)) / 2.0_r8
    d_new = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam_new)
    if(d_new > d(2)) then
       d(1) = d(2); lam(1) = lam(2)
@@ -1239,13 +1245,13 @@ endif
 new_max = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, new_cov_inflate)
 
 ! Look at a series of points to deal with skewness???
-cov_sd_sum = 0.0
+cov_sd_sum = 0.0_r8
 do i = -sd_intervals, sd_intervals
    x_dist = i * sd_range * l_sd / sd_intervals
    ! Next compute the value one old sd out
    lam(1) = new_cov_inflate + x_dist
-   if(lam(1) < 0.0) then
-      lam(1) = 0.0
+   if(lam(1) < 0.0_r8) then
+      lam(1) = 0.0_r8
       x_dist = new_cov_inflate
    endif
    d(1) = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam(1))
@@ -1254,11 +1260,11 @@ do i = -sd_intervals, sd_intervals
    
    ! Can now compute the standard deviation consistent with this as
    ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
-   new_cov_inflate_sd = sqrt( -1.0 * x_dist**2 / (2.0 * log(ratio)))
+   new_cov_inflate_sd = sqrt( -1.0_r8 * x_dist**2 / (2.0_r8 * log(ratio)))
    write(*, *) 'at x new_sd ', lam(1), new_cov_inflate_sd
    if(i /= 0) cov_sd_sum = cov_sd_sum + new_cov_inflate_sd
    cov_sd_sample(i) = new_cov_inflate_sd
-   if(i == 0) cov_sd_sample(i) = 1e10
+   if(i == 0) cov_sd_sample(i) = 1e10_r8
 end do
 
 new_cov_inflate_sd = minval(cov_sd_sample)
@@ -1271,24 +1277,24 @@ end subroutine bayes_cov_inflate
 
 function compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda)
 
-real :: compute_new_density
-real, intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda
+real(r8) :: compute_new_density
+real(r8), intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda
 
-real :: dist, exponent, l_prob, var, sd, prob
+real(r8) :: dist, exponent, l_prob, var, sd, prob
 
 ! Compute distance between prior mean and observed value
 dist = abs(x_p - y_o)
 
 ! Compute probability of this lambda being correct
-exponent = (-1.0 * (lambda - l_mean)**2) / (2.0 * l_sd**2)
-l_prob = 1.0 / (sqrt(2.0 * 3.14159) * l_sd) * exp(exponent)
+exponent = (-1.0_r8 * (lambda - l_mean)**2) / (2.0_r8 * l_sd**2)
+l_prob = 1.0_r8 / (sqrt(2.0_r8 * PI) * l_sd) * exp(exponent)
 
 ! Compute probability that observation would have been observed given this lambda
 var = (sigma_p * sqrt(lambda))**2 + sigma_o**2
 sd = sqrt(var)
 
-exponent = (-1.0 * dist**2) / (2.0 * var)
-prob = 1.0 / (sqrt(2.0 * 3.14159) * sd) * exp(exponent)
+exponent = (-1.0_r8 * dist**2) / (2.0_r8 * var)
+prob = 1.0_r8 / (sqrt(2.0_r8 * PI) * sd) * exp(exponent)
 
 ! Compute the updated probability density for lambda
 compute_new_density = l_prob * prob
