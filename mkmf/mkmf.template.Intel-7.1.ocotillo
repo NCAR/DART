@@ -9,5 +9,4 @@ FC = ifc
 LD = ifc
 FFLAGS = -i4 -r8 -fpp -O2 -I/opt/Intel/include
 LDFLAGS = -static -KPIC $(LIBS) 
-# machine called DART .... LIBS = -L/usr/local/lib -lnetcdf -L/opt/intel/lib -ludunits -lPEPCF90 -L/usr/mpi/lib -lmpich
 LIBS = -L/ocotillo/users/jla/netcdf/lib -lnetcdf -ludunits -lPEPCF90 -L/usr/local/mpich-1.2.1..7b.sav/lib -lmpich
