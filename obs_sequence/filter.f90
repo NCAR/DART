@@ -119,6 +119,7 @@ call cache_init(cache, cache_size)
 call get_initial_condition(x)
 
 ! Set up diagnostic output for model state
+
 prior_state_unit = init_diag_output('prior_diag', &
    'prior ensemble state', ens_size, ens_copy_meta_data)
 posterior_state_unit = init_diag_output('posterior_diag', &
@@ -240,10 +241,12 @@ end do AdvanceTime
 ! Initialize the model state space diagnostic output files
 
 ! Output the observation space diagnostic files
+
 prior_obs_unit = get_unit()
 open(unit = prior_obs_unit, file = 'prior_obs_diagnostics')
 call write_obs_sequence(prior_obs_unit, prior_seq)
 close(prior_obs_unit)
+
 posterior_obs_unit = get_unit()
 open(unit = posterior_obs_unit, file = 'posterior_obs_diagnostics')
 call write_obs_sequence(posterior_obs_unit, posterior_seq)
