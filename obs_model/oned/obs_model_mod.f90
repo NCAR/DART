@@ -9,7 +9,7 @@ module obs_model_mod
 use types_mod
 use location_mod, only : location_type, interactive_location
 use assim_model_mod, only : interpolate
-use obs_kind_mod, only : obs_kind_type, interactive_kind
+use obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
 
 private
 
@@ -33,7 +33,7 @@ type(obs_kind_type), intent(in) :: obs_kind
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
 
-take_obs = interpolate(state_vector, location)
+take_obs = interpolate(state_vector, location, get_obs_kind(obs_kind))
 
 end function take_obs
 

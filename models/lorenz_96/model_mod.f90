@@ -15,7 +15,7 @@ private
 
 public static_init_model, init_conditions, get_model_size, adv_1step,  &
    init_time, model_interpolate, get_model_time_step, get_state_meta_data, end_model, &
-    nc_write_locations
+   init_model, nc_write_locations
 
 
  integer,  parameter :: model_size =   40
@@ -76,6 +76,17 @@ end subroutine static_init_model
 
 
 
+subroutine init_model_instance()
+!---------------------------------------------------------------------
+! subroutine init_model_instance
+!
+! Initializes instance dependent state for model. Null for L96.
+
+end subroutine init_model_instance
+
+
+
+
 subroutine comp_dt(x, dt)
 !----------------------------------------------------------------------
 ! subroutine comp_dt(x, dt)
@@ -104,16 +115,22 @@ end subroutine comp_dt
 
 
 
-subroutine adv_1step(x)
+subroutine adv_1step(x, time)
 !----------------------------------------------------------------------
-! subroutine adv_1step(x)
+! subroutine adv_1step(x, time)
 !
 ! Does single time step advance for lorenz 96 model
 ! using four-step rk time step
+! The Time argument is needed for compatibility with more complex models
+! that need to know the time to compute their time tendency and is not
+! used in L96. Is there a better way to do this in F90 than to just hang
+! this argument out everywhere?
 
 implicit none
 
 real(r8), intent(inout) :: x(:)
+type(time_type), intent(in) :: time
+
 real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
 integer :: i
 
@@ -186,7 +203,7 @@ end subroutine init_time
 
 
 
-function model_interpolate(x, location)
+function model_interpolate(x, location, type)
 !---------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -195,11 +212,15 @@ function model_interpolate(x, location)
 ! be more general. May want to wait on external infrastructure projects
 ! for this?
 
+! Argument type is not used here because there is only one type of variable.
+! Type is needed to allow swap consistency with more complex models.
+
 implicit none
 
 real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
+integer, intent(in) :: type
 
 integer :: lower_index, upper_index
 real(r8) :: loc, fraction
@@ -209,10 +230,10 @@ loc = get_location(location)
 ! Multiply by model size assuming domain is [0, 1] cyclic
 loc = model_size * loc
 
-lower_index = int(loc)
+lower_index = int(loc) + 1
 upper_index = lower_index + 1
-if(upper_index > model_size) upper_index = 1
-if(lower_index == 0) lower_index = model_size
+if(lower_index > model_size) lower_index = lower_index - model_size
+if(upper_index > model_size) upper_index = upper_index - model_size
 
 fraction = loc - int(loc)
 model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)

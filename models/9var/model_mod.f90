@@ -8,15 +8,17 @@ module model_mod
 !
 
 use types_mod
-use loc_and_dist_mod, only : loc_type, get_dist, set_loc
+use location_mod, only : location_type, get_dist, set_location, get_location
+use time_manager_mod
+
 use random_seq_mod,   only : random_gaussian, random_seq_type, &
                             init_random_seq, several_random_gaussians
 
 private
 
 public init_model, get_model_size, init_conditions, adv_1step, advance, &
-   adv_true_state, output, diag_output_index, state_loc, &
-   model_output, balance_init 
+   model_output, balance_init , static_init_model, init_time, &
+   get_state_meta_data, get_model_time_step, end_model, model_interpolate
 
 integer, parameter :: model_size = 9
 
@@ -35,13 +37,12 @@ real(r8), private, parameter :: a(3) = (/  1.0_r8,  1.0_r8, 3.0_r8 /), &
 
 real(r8), parameter :: deltat = 1.0_r8 / 12.0_r8     ! model time step
 
-integer :: diag_output_index(9)     ! output indices for diagnostics
-
 ! Define the location of the state variables in module storage
 ! This is used for distance dependence stuff in more general models but is 
 ! currently just set to give 0 separation distance for all 9 vars here.
 
-type(loc_type) :: state_loc(model_size)
+type(location_type) :: state_loc(model_size)
+type(time_type)     :: time_step
 
 ! Need reproducible sequence of noise added so that different runs
 ! can be cleanly compared
@@ -53,6 +54,50 @@ type(random_seq_type) :: ran_seq
 contains
 
 !======================================================================
+
+
+subroutine static_init_model()
+!----------------------------------------------------------------------
+! subroutine static_init_model()
+!
+! Initializes class data for this model. For now, simply outputs the
+! identity info, sets the location of the state variables, and initializes
+! the time type for the time stepping (is this general enough for time???)
+
+implicit none
+real(r8) :: x_loc
+integer :: i
+character(len=128) :: source,revision,revdate
+
+! let CVS fill strings ... DO NOT EDIT ...
+
+source   = "$Source$"
+revision = "$Revision$"
+revdate  = "$Date$"
+
+! Ultimately,  change output to diagnostic output block ...
+
+write(*,*)'model attributes:'
+write(*,*)'   ',source
+write(*,*)'   ',revision
+write(*,*)'   ',revdate
+
+! Define the locations of the model state variables
+do i = 1, model_size
+   x_loc = (i - 1.0) / model_size
+   state_loc(i) =  set_location(x_loc)
+end do
+
+
+! The time_step in terms of a time type must also be initialized. Need
+! to determine appropriate non-dimensionalization conversion for L96 from
+! Shree Khare.
+time_step = set_time(3600, 0)
+
+
+end subroutine static_init_model
+
+
 
 
   subroutine comp_dt(xxx, dxxx)
@@ -161,9 +206,9 @@ end subroutine unpack
 
 
 
-  subroutine advance(x, num, xnew)
+  subroutine advance(x, num, xnew, time)
 !-----------------------------------------------------------------------
-! subroutine advance(x, num, xnew)
+! subroutine advance(x, num, xnew, time)
 !
 ! advance advances the 9 variable model by a given number of steps
 
@@ -172,68 +217,43 @@ implicit none
 real(r8), intent(in)  :: x(9)
 integer,  intent(in)  :: num
 real(r8), intent(out) :: xnew(9)
+type(time_type), intent(in) :: time
 
 integer :: i
 
 xnew = x                 !  copy initial conditions to avoid overwrite
 
 do i = 1, num            !  advance the appropriate number of steps
-   call adv_1step(xnew)
+   call adv_1step(xnew, time)
 end do
 
 end subroutine advance
 
 
 
-  subroutine output(x, time)
-!---------------------------------------------------------------------
-! subroutine output(x, time)
-!
-! Here output does nothing
-
-implicit none
-
-real(r8), intent(in) :: x(model_size)
-real(r8), intent(in) :: time
-
-end subroutine output
 
 
-
-  subroutine adv_1step(x)
+  subroutine adv_1step(x, time)
 !-------------------------------------------------------------------------
-! subroutine adv_1step(x)
+! subroutine adv_1step(x, time)
 !
-! does one time step advance for 9 variable model using two-step rk
+! does one time step advance for 9 variable model using two-step rk.
+! The Time argument is needed for compatibility with more complex models
+! that need to know the time to compute their time tendency and is not
+! used in L96. Is there a better way to do this in F90 than to just hang
+! this argument out everywhere?
 
 implicit none
 
 real(r8), intent(inout) :: x(:)
+type(time_type), intent(in) :: time
 
 real(r8) :: fract = 1.0_r8
-
-fract = 1.0_r8
 
 call adv_single(x, fract)
 
 end subroutine adv_1step
 
-
-
-  subroutine adv_true_state(x)
-!-------------------------------------------------------------------------
-! subroutine adv_true_state(x)
-!
-! does one time step true state advance for 9 variable model using 
-! two-step rk 
-
-implicit none
-
-real(r8), intent(inout) :: x(:)
-
-call adv_1step(x)
-
-end subroutine adv_true_state
 
 
 
@@ -282,20 +302,7 @@ real(r8), intent(out) ::  x(:)     ! TJH ... guessed at intent ...
 integer  :: i
 real(r8) :: x_loc
 
-! Define the interesting indexes for variables to do diag output; span lats
-
-do i = 1, 9
-   diag_output_index(i) = i
-end do
-
 x = 0.10_r8
-
-! Define the locations of the state variables;
-
-do i = 1, model_size
-   x_loc = 0.0_r8
-   call set_loc(state_loc(i), x_loc)
-end do
 
 end subroutine init_conditions
 
@@ -426,6 +433,84 @@ end function get_model_size
 
 
 
+
+function get_model_time_step()
+!------------------------------------------------------------------------
+! function get_model_time_step()
+!
+! Returns the the time step of the model. In the long run should be repalced
+! by a more general routine that returns details of a general time-stepping
+! capability.
+
+type(time_type) :: get_model_time_step
+
+get_model_time_step = time_step
+
+end function get_model_time_step
+
+
+
+function model_interpolate(x, location, type)
+!---------------------------------------------------------------------
+!
+! Interpolates from state vector x to the location. It's not particularly
+! happy dumping all of this straight into the model. Eventually some
+! concept of a grid underlying models but above locations is going to
+! be more general. May want to wait on external infrastructure projects
+! for this?
+
+! Argument type is not used here because there is only one type of variable.
+! Type is needed to allow swap consistency with more complex models.
+
+implicit none
+
+real(r8) :: model_interpolate
+real(r8), intent(in) :: x(:)
+type(location_type), intent(in) :: location
+integer, intent(in) :: type
+
+integer :: lower_index, upper_index
+real(r8) :: loc, fraction
+
+! Convert location to real
+loc = get_location(location)
+! Multiply by model size assuming domain is [0, 1] cyclic
+loc = model_size * loc
+
+lower_index = int(loc) + 1
+upper_index = lower_index + 1
+if(lower_index > model_size) lower_index = lower_index - model_size
+if(upper_index > model_size) upper_index = upper_index - model_size
+
+fraction = loc - int(loc)
+model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
+
+end function model_interpolate
+
+
+
+
+subroutine get_state_meta_data(index, location)
+!---------------------------------------------------------------------
+!
+! Given an integer index into the state vector structure, returns the
+! associated location. This is not a function because the more general
+! form of the call has a second intent(out) optional argument kind.
+! Maybe a functional form should be added?
+
+implicit none
+
+integer, intent(in) :: index
+type(location_type), intent(out) :: location
+
+location = state_loc(index)
+
+end subroutine get_state_meta_data
+
+
+
+
+
   subroutine init_model()
 !-------------------------------------------------------------------------
 ! subroutine init_model()
@@ -436,17 +521,36 @@ end subroutine init_model
 
 
 
-  subroutine model_output(x, time)
-!-------------------------------------------------------------------------
-! subroutine model_output(x, time)
+
+subroutine init_time(time)
+!----------------------------------------------------------------------
 !
+! Gets the initial time for a state from the model. Where should this info
+! come from in the most general case?
 
 implicit none
 
-real, intent(in) :: x(model_size)
-real, intent(in) :: time
+type(time_type), intent(out) :: time
 
-end subroutine model_output
+! For now, just set to 0
+time = set_time(0, 0)
+
+end subroutine init_time
+
+
+
+subroutine end_model()
+!------------------------------------------------------------------------
+!
+! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
+
+
+end subroutine end_model
+
+
+
+
+
 
 !===================================================================
 ! End of 9var model_mod 

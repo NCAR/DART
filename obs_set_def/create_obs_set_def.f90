@@ -1,4 +1,4 @@
-program create_obs_defs
+program create_obs_set_def
 
 !
 ! <next four lines automatically updated by CVS, do not edit>
@@ -61,17 +61,17 @@ do i = 1, max_sets
 end do
 
 ! Output the set_def_list
-unit = open_file(file_name)
+unit = open_file(file_name, action = 'write')
 call write_set_def_list(unit, set_def_list)
 close(unit)
 
 ! Read and rewrite as test
-unit = open_file(file_name)
-set_def_list = read_set_def_list(unit)
-close(unit)
+!unit = open_file(file_name)
+!set_def_list = read_set_def_list(unit)
+!close(unit)
 
-unit = open_file(file_name)
-call write_set_def_list(unit, set_def_list)
-close(unit)
+!unit = open_file(file_name)
+!call write_set_def_list(unit, set_def_list)
+!close(unit)
 
-end program create_obs_defs
+end program create_obs_set_def

@@ -106,7 +106,7 @@ call static_init_model()
 end subroutine static_init_assim_model
 
 
-    
+
 function init_diag_output(FileName, global_meta_data, &
                   copies_of_field_per_time, meta_data_per_copy) result(ncFileID)
 !--------------------------------------------------------------------------------
@@ -554,15 +554,19 @@ model_time = get_model_time(assim_model)
 ! Check for time error; use error handler when available
 if(model_time > target_time) then
    write(*, *) 'Error in advance_state, target_time before model_time'
+   write(*, *) 'Model_time ', model_time
+   write(*, *) 'Target time ', target_time
    stop
 endif
 
 ! At some point probably need to push the determination of the time back
 ! into the model itself and out of assim_model
 time_step = get_model_time_step()
+write(*, *) 'in advance state, time step ', time_step
 do while(model_time < target_time)
-   call adv_1step(assim_model%state_vector)
+   call adv_1step(assim_model%state_vector, model_time)
    model_time = model_time + time_step
+   write(*, *) 'model time in advance_state ', model_time
 end do
 
 ! Set the time to updated value
@@ -572,7 +576,7 @@ end subroutine advance_state
 
 
 
-function interpolate(x, location)
+function interpolate(x, location, type)
 !---------------------------------------------------------------------
 !
 ! Interpolates from the state vector in an assim_model_type to the
@@ -580,15 +584,17 @@ function interpolate(x, location)
 ! types. It might be better to be passing an assim_model_type with
 ! the associated time through here, but that requires changing the
 ! entire observation side of the class tree. Reconsider this at a 
-! later date (JLA, 15 July, 2002).
+! later date (JLA, 15 July, 2002). Type for now is an integer that
+! specifies what sort of variable from the model should be interpolated.
 
 implicit none
 
 real(r8) :: interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
+integer, intent(in) :: type
 
-interpolate = model_interpolate(x, location)
+interpolate = model_interpolate(x, location, type)
 
 end function interpolate
 

@@ -11,7 +11,8 @@ module assim_tools_mod
 use types_mod
 !!!use obs_mod,        only : num_obs, obs_var
 use utilities_mod,  only : file_exist, open_file, check_nml_error, &
-                           print_version_number, close_file
+                           close_file
+!                           print_version_number, close_file
 use sort_mod,       only : index_sort
 
 ! Added 22 January, 2001 to duplicate observations no matter what else is
@@ -86,7 +87,7 @@ endif
 ! Write the namelist to a log file
 
 unit = open_file(file = 'logfile.out', action = 'append')
-call print_version_number(unit, module_name, vers_num)
+!call print_version_number(unit, module_name, vers_num)
 write(unit, nml = assim_tools_nml)
 call close_file(unit)
 

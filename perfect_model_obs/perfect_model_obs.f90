@@ -12,7 +12,7 @@ program perfect_model_obs
 
 use types_mod
 use utilities_mod,    only : open_file
-use time_manager_mod, only : time_type, set_time, print_time
+use time_manager_mod, only : time_type, set_time, print_time, operator(/=)
 
 use obs_sequence_mod, only : init_obs_sequence, obs_sequence_type, &
    add_obs_set, write_obs_sequence, read_obs_sequence, associate_def_list, &
@@ -76,12 +76,8 @@ call get_initial_condition(x)
 state_unit = init_diag_output('true_state', 'true state from control', 1, (/'true state'/))
 
 ! Advance for a long time (5 days) to get things started?
-time = set_time(0, 5)
-call advance_state(x, time)
-
-! Reset the control model time to 0
-time = set_time(0, 0)
-call set_model_time(x, time)
+!time = set_time(0, 5)
+!call advance_state(x, time)
 
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)
@@ -101,9 +97,15 @@ do i = 1, num_obs_sets
    time = get_obs_sequence_time(seq, i)
    write(*, *) 'time of obs set ', i
    call print_time(time)
+
+! For now, set model initial time to time of first obs_set, want to add much more
+! namelist control for this eventually
+   if(i == 1) call set_model_time(x, time)
+
+! Figure out time to advance to
    time2 = get_closest_state_time_to(x, time)
-! Advance the state to this time
-   call advance_state(x, time2)
+! Advance the state to this time; zero length advance is problem for B-grid so avoid
+   if(time2 /= get_model_time(x)) call advance_state(x, time2)
 
 ! Output the true state
    call output_diagnostics(state_unit, x, 1)

@@ -46,7 +46,7 @@ character(len = 129) :: file_name
 ! Get file name for input set_def_list
 write(*, *) 'What is name of set_def_list?'
 read(*, *) file_name
-in_unit = open_file(file_name)
+in_unit = open_file(file_name, action = 'read')
 
 set_def_list = read_set_def_list(in_unit)     ! Read in the set_def_list
 
@@ -147,7 +147,7 @@ enddo
 
 write(*, *) 'Input file name for output of obs_sequence'
 read( *, *) file_name
-out_unit = open_file(file_name)
+out_unit = open_file(file_name, action = 'write')
 call write_obs_sequence(out_unit, seq)
 
 ! Temporary read and write test

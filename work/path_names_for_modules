@@ -63,9 +63,9 @@ set TYPES = ../common/types_mod.f90
 
 #set MODEL = ../models/null_model/model_mod.f90
 #set MODEL = ../models/lorenz_63/model_mod.f90
- set MODEL = ../models/lorenz_96/model_mod.f90
+#set MODEL = ../models/lorenz_96/model_mod.f90
 #set MODEL = ../models/lorenz_63/new_model_mod.f90
-#set MODEL = ../models/9var/model_mod.f90
+set MODEL = ../models/9var/model_mod.f90
 
 #set MODEL = ../models/9var/noisy_9var.f90        existence?
 #set MODEL = ../models/oned_wave/model_mod.f90    needs types
@@ -149,6 +149,7 @@ set        OBS_SEQUENCE = ../obs_sequence/obs_sequence_mod.f90
 set CREATE_OBS_SEQUENCE = ../obs_sequence/create_obs_sequence.f90
 set CREATE_OBS_SET_DEF  = ../obs_set_def/create_obs_set_def.f90
 set              FILTER = ../filter/filter.f90
+set LEEUWEN_PARTICLE_FILTER = ../leeuwen_particle_filter/leeuwen_particle_filter.f90
 set   PERFECT_MODEL_OBS = ../perfect_model_obs/perfect_model_obs.f90
 set            RMS_DIAG = ../diagnostics/rms_diag.f90
 set        POINTER_TEST = ../obs_sequence/pointer_test.f90

@@ -98,9 +98,9 @@ end subroutine comp_dt
 
 
 
-subroutine advance(x, num, xnew)
+subroutine advance(x, num, xnew, time)
 !===================================================================
-! subroutine advance(x, num, xnew)
+! subroutine advance(x, num, xnew, time)
 !
 ! advances the 3 variable lorenz-63 model by a given number of steps
 ! current state in x, new state in xnew, num time steps advanced
@@ -110,13 +110,14 @@ implicit none
 real(r8), intent(in)  :: x(:)
 integer,  intent(in)  :: num
 real(r8), intent(out) :: xnew(:)
+type(time_type), intent(in) :: time
 
 integer :: i
 
 xnew = x                  !  copy initial conditions to avoid overwrite
    
 do i = 1, num             !  advance the appropriate number of steps
-   call adv_1step(xnew)
+   call adv_1step(xnew, time)
 end do
 
 return
@@ -163,9 +164,9 @@ end subroutine linear_dt
 
 
 
-subroutine adv_1step(x)
+subroutine adv_1step(x, time)
 !====================================================================
-! subroutine adv_1step(x)
+! subroutine adv_1step(x, time)
 !
 ! does single time step advance for lorenz convective 3 variable model
 ! using two step rk time step
@@ -173,6 +174,8 @@ subroutine adv_1step(x)
 implicit none
 
 real(r8), intent(inout) :: x(:)
+type(time_type), intent(in) :: time
+
 real(r8) :: fract
 
 fract = 1.0_r8
@@ -247,7 +250,7 @@ end subroutine init_time
 
 
 
-function model_interpolate(x, location)
+function model_interpolate(x, location, type)
 !---------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -256,11 +259,15 @@ function model_interpolate(x, location)
 ! be more general. May want to wait on external infrastructure projects
 ! for this?
 
+! Argument type is not used here because there is only one type of variable.
+! Type is needed to allow swap consistency with more complex models.
+
 implicit none
 
 real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
+integer, intent(in) :: type
 
 integer :: lower_index, upper_index
 real(r8) :: loc, fraction
