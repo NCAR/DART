@@ -213,13 +213,13 @@ ierr = NF90_close(StateUnit)
 
 ! Write out the sequence
 unit_out = 11
-open(file = obs_seq_out_file_name, unit = 11)
+open(file = obs_seq_out_file_name, unit = 11, status = 'replace')
 call write_obs_sequence(unit_out, seq)
 
 ! Output a restart file if requested
 if(output_restart) then
    unit = get_unit()
-   open(unit = unit, file = restart_out_file_name)
+   open(unit = unit, file = restart_out_file_name, status = 'replace')
    call write_state_restart(x(1), unit)
    close(unit)
 endif
