@@ -135,7 +135,20 @@ namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
 
 call filter_initialize_modules_used()
 
-call filter_read_namelist()
+! call filter_read_namelist()
+! Begin by reading the namelist input 
+! Intel 8.0 quirk that the subroutine does not compile.  
+if(file_exist('input.nml')) then
+   iunit = open_file('input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(iunit, nml = filter_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'filter_nml')
+   enddo
+ 11 continue
+   call close_file(iunit)
+endif
+write(logfileunit, nml=filter_nml)
 
 call filter_alloc_ens_size_storage()
 
@@ -451,19 +464,22 @@ end subroutine filter_initialize_modules_used
 !-------------------------------------------------------------------------
 
 subroutine filter_read_namelist()
-
-! Begin by reading the namelist input
+!
+! Intel 8.0 compiler chokes on any I/O in this subroutine.
+! Consequently, the code block has been duplicated in the main program.
+! There is an error report (28Jun2004) to fix this.
+!
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
    do while(ierr /= 0)
-      read(iunit, nml = filter_nml, iostat = io, end = 11)
+!      read(iunit, nml = filter_nml, iostat = io, end = 11)
       ierr = check_nml_error(io, 'filter_nml')
    enddo
  11 continue
    call close_file(iunit)
 endif
-write(logfileunit, nml=filter_nml)
+!write(logfileunit, nml=filter_nml)
 
 end subroutine filter_read_namelist
 
@@ -658,10 +674,10 @@ subroutine get_ens_mean_spread(ens, mean, spread, model_size, ens_size, do_sprea
 
 implicit none
 
-real(r8), intent(in) :: ens(ens_size, model_size)
+integer,  intent(in)  :: model_size, ens_size
+real(r8), intent(in)  :: ens(ens_size, model_size)
 real(r8), intent(out) :: mean(model_size), spread(:)
-integer, intent(in) :: model_size, ens_size
-logical, intent(in) :: do_spread
+logical,  intent(in)  :: do_spread
 
 integer :: k
 
@@ -747,13 +763,13 @@ subroutine obs_space_diagnostics(ens, ens_size, model_size, seq, keys, &
 
 implicit none
 
+integer,  intent(in) :: ens_size, model_size
+integer,  intent(in) :: num_obs_in_set, keys(num_obs_in_set), prior_post
+integer,  intent(in) :: num_output_members, members_index, ens_mean_index, ens_spread_index
 real(r8), intent(in) :: ens(ens_size, model_size), outlier_threshold
 real(r8), intent(in) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set)
 type(obs_sequence_type), intent(inout) :: seq
-integer, intent(in) :: ens_size, model_size
 logical, intent(in) :: do_qc
-integer, intent(in) :: num_obs_in_set, keys(num_obs_in_set), prior_post
-integer, intent(in) :: num_output_members, members_index, ens_mean_index, ens_spread_index
 logical, intent(in) :: output_ens_mean, output_ens_spread
 
 integer :: j, k, istatus

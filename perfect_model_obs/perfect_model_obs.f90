@@ -95,7 +95,20 @@ namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
 
 call perfect_initialize_modules_used()
 
-call perfect_read_namelist()
+! call perfect_read_namelist()
+! Begin by reading the namelist input
+! Intel 8.0 quirk that the subroutine does not compile.
+if(file_exist('input.nml')) then
+   iunit = open_file('input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(iunit, nml = perfect_model_obs_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'perfect_model_obs_nml')
+   enddo
+ 11 continue
+   call close_file(iunit)
+endif
+write(logfileunit,nml=perfect_model_obs_nml)
 
 ! Initialize the two obs type variables
 call init_obs(obs, 0, 0)
@@ -258,23 +271,27 @@ end subroutine perfect_initialize_modules_used
 !---------------------------------------------------------------------
 
 subroutine perfect_read_namelist()
-
-! Begin by reading the namelist input
+!
+! Intel 8.0 compiler chokes on any I/O in this subroutine.
+! Consequently, the code block has been duplicated in the main program.
+! There is an error report (28Jun2004) to fix this.
+!
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = perfect_model_obs_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'perfect_model_obs_nml')
-   enddo
+    do while(ierr /= 0)
+!      read(iunit, nml = perfect_model_obs_nml, iostat = io, end = 11)
+       ierr = check_nml_error(io, 'perfect_model_obs_nml')
+    enddo
  11 continue
    call close_file(iunit)
 endif
-write(logfileunit,nml=perfect_model_obs_nml)
+!write(logfileunit,nml=perfect_model_obs_nml)
 
 end subroutine perfect_read_namelist
 
 !---------------------------------------------------------------------
+
 subroutine filter_set_initial_time()
 
 if(init_time_days >= 0) then
