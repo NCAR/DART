@@ -89,9 +89,20 @@ if(file_exist('input.nml')) then
       ! namelist validation
       write(*,'(''num_moist_vars = '',i3)')num_moist_vars
    endif
+
+else
+
+   write(6,*) 'input.nml does not exist here. Using default values.'
+
 endif
 
+call error_handler(E_MSG,'dart_tf_wrf','model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
+
 call set_calendar_type(calendar_type)
+
+write(6,*) 'DART to WRF (.true./T) or WRF to DART (.false./F)?'
 
 read(5,*) dart_to_wrf
 
@@ -207,9 +218,12 @@ else
    write(6,*) 'Time from wrfinput_d0x'
    call print_time(dart_time(1))
 
-   open(unit = iunit, file = 'wrf.info')
-   dart_time(1) = read_time(iunit)
-   close(iunit)
+   if(file_exist('wrf.info')) then
+      open(unit = iunit, file = 'wrf.info')
+      dart_time(1) = read_time(iunit)
+      close(iunit)
+   endif
+
    write(6,*) 'Time written to dart vector file:'
    call print_time(dart_time(1))
 
