@@ -161,17 +161,17 @@ integer, intent(in) :: ens_size
 real(r8), intent(in) :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: a, prior_mean, new_mean, prior_var, new_var, sum_x
+real(r8) :: a, prior_mean, new_mean, prior_var, var_ratio, sum_x
 
 ! Compute prior variance and mean from sample
 sum_x = sum(ens)
 prior_mean = sum_x / ens_size
 prior_var = (sum(ens * ens) - sum_x**2 / ens_size) / (ens_size - 1)
 
-new_var = 1.0 / (1.0 / prior_var + 1.0 / obs_var)
-new_mean = new_var * (prior_mean / prior_var + obs / obs_var)
+var_ratio = obs_var / (prior_var + obs_var)
+new_mean = var_ratio * (prior_mean  + prior_var*obs / obs_var)
 
-a = sqrt(new_var / prior_var)
+a = sqrt(var_ratio)
 
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
