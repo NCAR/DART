@@ -46,7 +46,7 @@ contains
 !=======================================================
 
 
-function init_obs_set(set_def_list, index, num_copies_in)
+function init_obs_set(set_def_list, ind, num_copies_in)
 !--------------------------------------------------------------------
 !
 ! Creates and initializes storage for an obs_set associated
@@ -55,7 +55,7 @@ function init_obs_set(set_def_list, index, num_copies_in)
 
 type(obs_set_type) :: init_obs_set
 type(set_def_list_type), intent(in) :: set_def_list
-integer, intent(in) :: index
+integer, intent(in) :: ind
 integer, optional, intent(in) :: num_copies_in
 
 integer :: num_copies, num_obs
@@ -72,10 +72,10 @@ endif
 init_obs_set%num_copies = num_copies
 
 ! Assign the set definition
-init_obs_set%def_index = index
+init_obs_set%def_index = ind
 
 ! Get the total number of obs in the set
-num_obs = get_total_num_obs(set_def_list, index)
+num_obs = get_total_num_obs(set_def_list, ind)
 init_obs_set%num_obs = num_obs
 
 ! Allocate storage for obs; need to verify that the 0 size allocation
@@ -274,12 +274,12 @@ type(obs_set_type), intent(in) :: set
 real(r8), intent(out) :: obs(:)
 integer, optional, intent(in) :: index_in
 
-integer :: index
+integer :: ind
 
 ! Get the appropriate index
-index = 1
-if(present(index_in)) index = index_in
-if(index < 1 .or. index > set%num_copies) then
+ind = 1
+if(present(index_in)) ind = index_in
+if((ind < 1) .or. (ind > set%num_copies)) then
    write(*, *) 'Error: Out of range index in get_obs_values'
    stop
 endif
@@ -291,7 +291,7 @@ if(size(obs) < set%num_obs) then
 endif
 
 !Copy the obs
-obs = set%obs(:, index)
+obs = set%obs(:, ind)
 
 end subroutine get_obs_values
 
@@ -350,13 +350,15 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in 
 if(copy < 1 .or. copy > set%num_copies) then
-   write(*, *) 'Error: Out of range copy in set_single_obs_value'
+   write(*, *) 'Error(set_single_obs_value): Out of range "copy"'
+   write(*, *) 'range is [1,',set%num_copies,'], "copy" is ',copy
    stop
 endif
 
 ! Make sure the obs index is legal
 if(num_obs > set%num_obs .or. num_obs < 1) then
-   write(*, *) 'Error: num_obs wrong size in set_single_obs_value'
+   write(*, *) 'Error(set_single_obs_value): "num_obs" wrong size'
+   write(*, *) 'num_obs is ',num_obs,' must be between [1,',set%num_obs,']'
    stop
 endif
 
@@ -379,12 +381,12 @@ type(obs_set_type), intent(inout) :: set
 logical, intent(in) :: missing(:)
 integer, optional, intent(in) :: index_in
 
-integer :: index
+integer :: ind
 
 ! Get the appropriate index
-index = 1
-if(present(index_in)) index = index_in
-if(index < 1 .or. index > set%num_copies) then
+ind = 1
+if(present(index_in)) ind = index_in
+if((ind < 1) .or. (ind > set%num_copies)) then
    write(*, *) 'Error: Out of range index in init_obs_set'
    stop
 endif
@@ -396,7 +398,7 @@ if(size(missing) /= set%num_obs) then
 endif
 
 ! Set the data missing
-set%missing(:, index) = missing
+set%missing(:, ind) = missing
 
 end subroutine set_obs_set_missing
 
@@ -449,12 +451,12 @@ type(obs_set_type), intent(in) :: set
 logical, intent(out) :: missing(:)
 integer, optional, intent(in) :: index_in
 
-integer :: index
+integer :: ind
 
 ! Get the appropriate index
-index = 1
-if(present(index_in)) index = index_in
-if(index < 1 .or. index > set%num_copies) then
+ind = 1
+if(present(index_in)) ind = index_in
+if(ind < 1 .or. ind > set%num_copies) then
    write(*, *) 'Error: Out of range index in init_obs_set'
    stop
 endif
@@ -466,7 +468,7 @@ if(size(missing) /= set%num_obs) then
 endif
 
 ! Copy the missing data
-missing = set%missing(:, index)
+missing = set%missing(:, ind)
 
 end subroutine obs_value_missing
 

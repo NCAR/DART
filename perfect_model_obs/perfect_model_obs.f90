@@ -52,7 +52,7 @@ type(obs_def_type)      :: obs_def
 type(set_def_list_type) :: set_def_list
 type(obs_set_def_type)  :: obs_set_def
 type(obs_set_type)      :: obs_set
-type(time_type)         :: time, time2
+type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
 integer :: i, j, obs_set_def_index, unit, unit_out, num_obs_in_set
@@ -113,9 +113,9 @@ seq = read_obs_sequence_def(unit)
 
 ! Set a time type for initial time if namelist inputs are not negative
 if(init_time_days >= 0) then
-   time = set_time(init_time_seconds, init_time_days)
+   time1 = set_time(init_time_seconds, init_time_days)
 else
-   time = set_time(0, 0)
+   time1 = set_time(0, 0)
 endif
 
 ! Initialize the model now that obs_sequence is all set up
@@ -129,7 +129,7 @@ if(start_from_restart) then
    call init_assim_model(x(1))
    call read_state_restart(x(1), unit)
 ! If init_time_days an init_time_seconds are not < 0, set time to them
-   if(init_time_days >= 0) call set_model_time(x(1) , time)
+   if(init_time_days >= 0) call set_model_time(x(1) , time1)
    close(unit)
 !-----------------  Restart read in --------------------------------
 
@@ -141,7 +141,7 @@ else
    call get_initial_condition(x(1))
 
 ! Set time to 0, 0 if none specified, otherwise to specified
-   call set_model_time(x(1), time)
+   call set_model_time(x(1), time1)
 !-------------------- End of cold start ensemble initialization block ------
 endif
 
@@ -163,13 +163,13 @@ call inc_num_obs_copies(seq, 2, copy_meta_data)
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
 Advance: do i = 1, num_obs_sets
-   call get_obs_sequence_time(seq, i, time)
+   call get_obs_sequence_time(seq, i, time1)
    write(*, *) ' '
    write(*, *) 'time of obs set ', i
-   call print_time(time)
+   call print_time(time1)
 
 ! Figure out time to advance to
-   time2 = get_closest_state_time_to(x(1), time)
+   time2 = get_closest_state_time_to(x(1), time1)
 ! Advance the state to this time; zero length advance is problem for B-grid so avoid
    if(time2 /= get_model_time(x(1))) call advance_state(x, 1, time2, async)
 

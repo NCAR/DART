@@ -43,13 +43,13 @@ type(obs_set_type)      :: obs_set
 ! Fixed storage leads to use of parameter for array, fix this
 integer, parameter :: max_obs = 10000
 integer            :: set_index(max_obs), sort_ind(max_obs)
-type(time_type)    :: time(max_obs), init_time, period, this_time
+type(time_type)    :: ob_time(max_obs), init_time, period, this_time
 
 ! Kluge for sorting time types
 real(r8) :: time_secs(max_obs)
 
 integer :: in_unit, out_unit, in_unit2, out_unit2
-integer :: i, j, obs_set_def_index, index = 0, days, seconds, option
+integer :: i, j, obs_set_def_index, indx = 0, days, seconds, option
 integer :: num_obs_set_defs, num_obs
 character(len = 129) :: file_name
 
@@ -108,13 +108,13 @@ do i = 1, num_obs_set_defs
       ! Loop to put these obs in the list
 
       do j = 1, num_obs
-         index = index + 1
-         if(index > max_obs) then
+         indx = indx + 1
+         if(indx > max_obs) then
             write(*, *) 'Number of observations exceeds max_obs'
             stop
          endif
-         set_index(index) = i
-         time(index) = init_time + (j - 1) * period
+         set_index(indx) = i
+         ob_time(indx) = init_time + (j - 1) * period
       enddo
 
    else if(option == 2) then
@@ -134,13 +134,13 @@ do i = 1, num_obs_set_defs
          ! Input this on a long list for later sorting 
          ! (fixed storage for now should be changed)
 
-         index = index + 1
-         set_index(index) = i
-         if(index > max_obs) then
+         indx = indx + 1
+         set_index(indx) = i
+         if(indx > max_obs) then
             write(*, *) 'Number of observations exceeds max_obs'
             stop
          endif
-         time(index) = this_time 
+         ob_time(indx) = this_time 
 
       enddo IRREGULAR
 
@@ -153,19 +153,19 @@ enddo
 ! Next would have to sort the list;  This is a quick fix ; should have
 ! time sorting routines
 ! May be that this is okay with most floating point precisions???
-do i = 1, index
-   call get_time(time(i), seconds, days)
+do i = 1, indx
+   call get_time(ob_time(i), seconds, days)
    time_secs(i) = days * 86400 + seconds
 end do
-call index_sort(time_secs, sort_ind, index) 
+call index_sort(time_secs, sort_ind, indx) 
 
 ! Now generate a long obs_sequence with regular occurences of the obs_set_def
 
-do i = 1, index
+do i = 1, indx
    obs_set = init_obs_set(set_def_list, set_index(sort_ind(i)), 0)
-   call get_time(time(sort_ind(i)), seconds, days)
+   call get_time(ob_time(sort_ind(i)), seconds, days)
    write(*, *) 'time ', i, ' is ', seconds, days
-   call set_obs_set_time(obs_set, time(sort_ind(i)))
+   call set_obs_set_time(obs_set, ob_time(sort_ind(i)))
    call add_obs_set(seq, obs_set)       ! Put this obs_set into the sequence
 enddo
 

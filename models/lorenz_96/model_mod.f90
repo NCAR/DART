@@ -266,20 +266,20 @@ type(location_type), intent(in) :: location
 integer, intent(in) :: type
 
 integer :: lower_index, upper_index
-real(r8) :: loc, fraction
+real(r8) :: lctn, lctnfrac
 
 ! Convert location to real
-loc = get_location(location)
+lctn = get_location(location)
 ! Multiply by model size assuming domain is [0, 1] cyclic
-loc = model_size * loc
+lctn = model_size * lctn
 
-lower_index = int(loc) + 1
+lower_index = int(lctn) + 1
 upper_index = lower_index + 1
 if(lower_index > model_size) lower_index = lower_index - model_size
 if(upper_index > model_size) upper_index = upper_index - model_size
 
-fraction = loc - int(loc)
-model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
+lctnfrac = lctn - int(lctn)
+model_interpolate = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
 
 end function model_interpolate
 
@@ -419,7 +419,7 @@ integer :: StateVarID, MemberDimID, TimeDimID
 !-----------------------------------------------------------------------------------------
 
 integer             :: i, Nlocations
-type(location_type) :: loc 
+type(location_type) :: lctn 
 ierr = 0                      ! assume normal termination
 
 !-------------------------------------------------------------------------------
@@ -505,8 +505,8 @@ endif
 !-------------------------------------------------------------------------------
    
 do i = 1,model_size
-   call get_state_meta_data(i,loc)
-   call check(nf90_put_var(ncFileID, LocationVarID, get_location(loc), (/ i /) ))
+   call get_state_meta_data(i,lctn)
+   call check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ))
 enddo
 
 !-------------------------------------------------------------------------------

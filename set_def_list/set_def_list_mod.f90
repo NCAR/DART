@@ -169,7 +169,7 @@ type(set_def_list_type), intent(inout) :: list
 type(obs_set_def_type), intent(in) :: set
 integer, intent(in), optional :: max_subsets_in
 
-integer :: max_subsets, ind
+integer :: max_subsets, indx
 
 ! Default for max_subsets is 0
 max_subsets = 0
@@ -182,26 +182,26 @@ endif
 
 ! Increment the number of sets in the list
 list%num_sets = list%num_sets + 1
-ind = list%num_sets
+indx = list%num_sets
 
 ! Create the list_element
-list%sets(ind)%index = ind
-list%sets(ind)%total_num_obs = get_num_obs(set)
-list%sets(ind)%num_subsets = 0
-list%sets(ind)%max_subsets = max_subsets
-allocate(list%sets(ind)%subset(max_subsets))
+list%sets(indx)%index = indx
+list%sets(indx)%total_num_obs = get_num_obs(set)
+list%sets(indx)%num_subsets = 0
+list%sets(indx)%max_subsets = max_subsets
+allocate(list%sets(indx)%subset(max_subsets))
 
 ! Copy in the obs_set_def
-call obs_set_def_copy(list%sets(ind)%obs_set, set)
+call obs_set_def_copy(list%sets(indx)%obs_set, set)
 
 ! Return the index
-add_to_list = ind
+add_to_list = indx
 
 end function add_to_list
 
 
 
-function get_def_from_list(list, index)
+function get_def_from_list(list, indx)
 !--------------------------------------------------------------
 !
 ! Returns an obs_set_def that is the index-th element in the list.
@@ -213,14 +213,14 @@ implicit none
  
 type(obs_set_def_type) :: get_def_from_list
 type(set_def_list_type), intent(in) :: list
-integer, intent(in) :: index
+integer, intent(in) :: indx
 
-if(index > list%num_sets .or. index < 1) then
+if(indx > list%num_sets .or. indx < 1) then
    write(*, *) 'Error: bad index in get_def_from_list'
    stop
 endif
 
-call obs_set_def_copy(get_def_from_list, list%sets(index)%obs_set)
+call obs_set_def_copy(get_def_from_list, list%sets(indx)%obs_set)
 !!!get_def_from_list = list%sets(index)%obs_set
 
 end function get_def_from_list
@@ -244,7 +244,7 @@ end function get_num_sets_in_list
 
 
 
-function get_total_num_obs(list, index)
+function get_total_num_obs(list, indx)
 !------------------------------------------------------------
 !
 ! Returns the total number of observations in the index set
@@ -254,20 +254,20 @@ implicit none
 
 integer :: get_total_num_obs
 type(set_def_list_type), intent(in) :: list
-integer, intent(in) :: index
+integer, intent(in) :: indx
 
-if(index > list%num_sets .or. index < 1) then
+if(indx > list%num_sets .or. indx < 1) then
    write(*, *) 'Error: bad index in get_def_from_list'
    stop
 endif
 
-get_total_num_obs = list%sets(index)%total_num_obs
+get_total_num_obs = list%sets(indx)%total_num_obs
 
 end function get_total_num_obs
 
 
 
-subroutine get_diag_obs_err_cov(list, index, cov)
+subroutine get_diag_obs_err_cov(list, indx, cov)
 !----------------------------------------------------
 !
 ! Returns the diagonal part of the observational error
@@ -277,16 +277,16 @@ subroutine get_diag_obs_err_cov(list, index, cov)
 implicit none
 
 type(set_def_list_type), intent(in) :: list
-integer, intent(in) :: index
+integer, intent(in) :: indx
 real(r8), intent(out) :: cov(:)
 
-call os_get_diag_obs_err_cov(list%sets(index)%obs_set, cov)
+call os_get_diag_obs_err_cov(list%sets(indx)%obs_set, cov)
 
 end subroutine get_diag_obs_err_cov
 
 
 
-subroutine get_num_close_states(list, index, radius, num)
+subroutine get_num_close_states(list, indx, radius, num)
 !-------------------------------------------------------
 !
 ! Returns the number of close states for the index list_element
@@ -296,17 +296,17 @@ subroutine get_num_close_states(list, index, radius, num)
 implicit none
 
 type(set_def_list_type), intent(in) :: list
-integer, intent(in) :: index
+integer, intent(in) :: indx
 real(r8), intent(in) :: radius
 integer, intent(out) :: num(:)
 
-call os_get_num_close_states(list%sets(index)%obs_set, radius, num)
+call os_get_num_close_states(list%sets(indx)%obs_set, radius, num)
 
 end subroutine get_num_close_states
 
 
 
-subroutine get_close_states(list, index, radius, num, indices, dist, obs_num)
+subroutine get_close_states(list, indx, radius, num, indices, dist, obs_num)
 !-------------------------------------------------------
 !
 ! Returns the list of indices of the close states for this
@@ -315,17 +315,17 @@ subroutine get_close_states(list, index, radius, num, indices, dist, obs_num)
 implicit none
 
 type(set_def_list_type), intent(in) :: list
-integer, intent(in) :: index
+integer, intent(in) :: indx
 real(r8), intent(in) :: radius
 integer, intent(out) :: num(:), indices(:, :)
 real(r8), intent(out) :: dist(:, :)
 integer, optional, intent(in) :: obs_num
 
 if(present(obs_num)) then
-   call os_get_close_states(list%sets(index)%obs_set, radius, num, &
+   call os_get_close_states(list%sets(indx)%obs_set, radius, num, &
    indices, dist, obs_num)
 else
-   call os_get_close_states(list%sets(index)%obs_set, radius, num, &
+   call os_get_close_states(list%sets(indx)%obs_set, radius, num, &
    indices, dist)
 endif
 
@@ -334,7 +334,7 @@ end subroutine get_close_states
 
 
 
-function get_number_obs_subsets(list, index)
+function get_number_obs_subsets(list, indx)
 !-----------------------------------------------------------
 !
 ! Returns the number of obs subsets included in this set.
@@ -343,7 +343,7 @@ implicit none
 
 integer :: get_number_obs_subsets
 type(set_def_list_type), intent(in) :: list
-integer, intent(in) :: index
+integer, intent(in) :: indx
 
 ! Return 0 for limited implementation
 ! Eventually need to do recursive pass (or forbid adding
@@ -367,6 +367,8 @@ type(set_def_list_type), intent(in) :: list
 
 integer :: i
 
+! write(*,*)'DEBUG(set_def_list_mod:write_set_def_list) file id is ',file_id
+
 ! Write a header
 write(file_id, *) 'defls'
 
@@ -377,6 +379,8 @@ write(file_id, *) list%num_sets
 do i = 1, list%num_sets
    call write_list_element(file_id, list%sets(i))
 end do
+
+! write(*,*)'DEBUG(set_def_list_mod:write_set_def_list) completed.',file_id
 
 end subroutine write_set_def_list
 
@@ -436,6 +440,8 @@ type(list_element_type), intent(in) :: element
 
 integer :: i
 
+! write(*,*)'DEBUG(set_def_list_mod:write_list_element): file_id is ',file_id
+
 ! Write out a sequence of integer arguments
 write(file_id, *) element%index
 write(file_id, *) element%total_num_obs
@@ -444,6 +450,7 @@ do i = 1, element%num_subsets
    write(file_id, *) element%subset(i)
 end do
 
+! write(*,*)'DEBUG(set_def_list_mod:write_list_element): before write_obs_set_def ',file_id
 ! Write out the obs_set_def for this set
 call write_obs_set_def(file_id, element%obs_set)
 

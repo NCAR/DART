@@ -62,25 +62,27 @@ end function init_obs_def1
 
 !----------------------------------------------------------------------------
 
-function init_obs_def2(index, error_variance)
+function init_obs_def2(ind, error_variance)
 
 ! Constructor for an obs_def that is an identity observation.
 
 implicit none
 
 type(obs_def_type) :: init_obs_def2
-integer, intent(in) :: index
+integer, intent(in) :: ind
 real(r8), intent(in) :: error_variance
 
 ! Having a non-zero index indicates this is an identity observation
-init_obs_def2%model_state_index = index
+init_obs_def2%model_state_index = ind
 init_obs_def2%error_variance = error_variance
 
 ! Location comes from model
-call get_state_meta_data(index, init_obs_def2%location)
+call get_state_meta_data(ind, init_obs_def2%location)
 
 ! Define kind as identity
 init_obs_def2%kind = set_obs_kind(IDENTITY_OBSERVATION)
+
+!write(*,*)'DEBUG(obs_def_mod:init_obs_def2): leaving.'
 
 end function init_obs_def2
 
@@ -307,6 +309,8 @@ type(obs_def_type), intent(in) :: obs_def
 write(file, 11)
 11 format('obdef')
 
+! write(*,*)'DEBUG(obs_def_mod:write_obs_def) fid/N ',file,obs_def%location
+
 ! Write out the location, kind and error variance
 call write_location(file, obs_def%location)
 call write_kind(file, obs_def%kind)
@@ -326,18 +330,17 @@ implicit none
 
 type(obs_def_type) :: interactive_obs_def
 
-integer :: index
+integer :: ind
 real(r8) :: error_variance
 
 write(*, *) 'Input error variance for this observation definition '
 read(*, *) error_variance
 
 write(*, *) 'Input an integer index if this is identity observation, else -1'
-read(*, *) index
+read(*, *) ind
 
-if(index > 0) then
-   interactive_obs_def = init_obs_def2(index, error_variance)
-
+if(ind > 0) then
+   interactive_obs_def = init_obs_def2(ind, error_variance) 
 else
 
 ! Call obs_model interfaces to set up kind and location
@@ -345,6 +348,8 @@ else
    interactive_obs_def%error_variance = error_variance
    interactive_obs_def%model_state_index = -1
 endif
+
+!write(*,*)'DEBUG(obs_def_mod:interactive_obs_def): leaving.'
 
 end function interactive_obs_def
 

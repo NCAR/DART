@@ -99,24 +99,22 @@ if(file_exist('input.nml')) then
    call close_file(unit)
 endif
 
+write(*,*)'model_mod attributes:'
+write(*,*)'   ',trim(adjustl(source))
+write(*,*)'   ',trim(adjustl(revision))
+write(*,*)'   ',trim(adjustl(revdate))
+
 ! Temporary namelist validation
-write(*, *) 'namelist read: values are'
-write(*, *) 'g is ', g
-write(*, *) 'deltat is ', deltat
-write(*, *) 'output_state_vector is ', output_state_vector
-
-
-write(*,*)'model attributes:'
-write(*,*)'   ',source
-write(*,*)'   ',revision
-write(*,*)'   ',revdate
+write(*,*)'   namelist read: values are'
+write(*,*)'   g is ', g
+write(*,*)'   deltat is ', deltat
+write(*,*)'   output_state_vector is ', output_state_vector
 
 ! Define the locations of the model state variables
 do i = 1, model_size
    x_loc = (i - 1.0) / model_size
    state_loc(i) =  set_location(x_loc)
 end do
-
 
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L96 from
@@ -425,15 +423,15 @@ implicit none
 integer, intent(in)    :: num
 integer, intent(inout) :: list(model_size, num)
 
-integer :: i, offset, index, temp
+integer :: i, offset, indx, temp
 
 do i = 1, model_size
 
    do offset = -num/2, -num/2 + num - 1
-      index = i + offset
-      if(index > model_size) index = index - model_size
-      if(index < 1         ) index = model_size + index
-      list(i, offset + num/2 + 1) = index
+      indx = i + offset
+      if(indx > model_size) indx = indx - model_size
+      if(indx < 1         ) indx = model_size + indx
+      list(i, offset + num/2 + 1) = indx
    end do
 
    ! Always need the actual point first in list
@@ -499,20 +497,20 @@ type(location_type), intent(in) :: location
 integer, intent(in) :: type
 
 integer :: lower_index, upper_index
-real(r8) :: loc, fraction
+real(r8) :: lctn, lctnfrac
 
 ! Convert location to real
-loc = get_location(location)
+lctn = get_location(location)
 ! Multiply by model size assuming domain is [0, 1] cyclic
-loc = model_size * loc
+lctn = model_size * lctn
 
-lower_index = int(loc) + 1
+lower_index = int(lctn) + 1
 upper_index = lower_index + 1
 if(lower_index > model_size) lower_index = lower_index - model_size
 if(upper_index > model_size) upper_index = upper_index - model_size
 
-fraction = loc - int(loc)
-model_interpolate = (1.0_r8 - fraction) * x(lower_index) + fraction * x(upper_index)
+lctnfrac = lctn - int(lctn)
+model_interpolate = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
 
 end function model_interpolate
 
@@ -605,6 +603,9 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Jan 24 2003; added by JLA 18 June, 2003
 !
+! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
+! return code is always '0 == normal', since the fatal errors stop execution.
+!
 ! For the 9var model, each state variable is at a separate location.
 ! that's all the model-specific attributes I can think of ...
 ! In addition, there are technically three kinds of variables; this
@@ -651,7 +652,7 @@ integer :: StateVarID, MemberDimID, TimeDimID
 !-----------------------------------------------------------------------------------------
 
 integer             :: i, Nlocations
-type(location_type) :: loc
+type(location_type) :: lctn
 ierr = 0                      ! assume normal termination
 
 !-------------------------------------------------------------------------------
@@ -744,8 +745,8 @@ endif
 !-------------------------------------------------------------------------------
 
 do i = 1,model_size
-   call get_state_meta_data(i,loc)
-   call check(nf90_put_var(ncFileID, LocationVarID, get_location(loc), (/ i /) ))
+   call get_state_meta_data(i,lctn)
+   call check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ))
 enddo
 
 !-------------------------------------------------------------------------------
@@ -765,7 +766,6 @@ contains
     if(istatus /= nf90_noerr) then
       print *,'model_mod:nc_write_model_atts'
       print *, trim(nf90_strerror(istatus))
-      ierr = istatus
       stop
     end if
   end subroutine check
@@ -778,6 +778,9 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 !-----------------------------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH 25 June 2003
+!
+! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
+! return code is always '0 == normal', since the fatal errors stop execution.
 !
 ! For the 9var model, there are actually 3 triplets of variables, 
 ! which generate a state vector of 9 variables. Completing the "prognostic"
@@ -847,7 +850,6 @@ contains
     if(istatus /= nf90_noerr) then
       print *,'model_mod:nc_write_model_vars'
       print *, trim(nf90_strerror(istatus))
-      ierr = istatus
       stop
     end if
   end subroutine check

@@ -39,7 +39,7 @@ type model_state_ptr_type
 end type model_state_ptr_type
 
 type(obs_sequence_type) :: seq, prior_seq, posterior_seq
-type(time_type)         :: time, time2
+type(time_type)         :: time1, time2
 type(random_seq_type)   :: random_seq
 
 
@@ -114,6 +114,8 @@ if(file_exist('input.nml')) then
  11 continue
    call close_file(unit)
 endif
+
+write(*,*)'start_from_restart = ',start_from_restart
 
 ! Now know the ensemble size; allocate all the storage
 write(*, *) 'the ensemble size is ', ens_size
@@ -197,9 +199,9 @@ endif
 
 ! Set a time type for initial time if namelist inputs are not negative
 if(init_time_days >= 0) then
-   time = set_time(init_time_seconds, init_time_days)
+   time1 = set_time(init_time_seconds, init_time_days)
 else
-   time = set_time(0, 0)
+   time1 = set_time(0, 0)
 endif
 
 !------------------- Read restart if requested ----------------------
@@ -215,7 +217,7 @@ if(start_from_restart) then
 
       call read_state_restart(ens(i), unit)
 ! If init_time_days an init_time_seconds are not < 0, set time to them
-      if(init_time_days >= 0) call set_model_time(ens(i) , time)
+      if(init_time_days >= 0) call set_model_time(ens(i) , time1)
    end do
    close(unit)
 !-----------------  Restart read in --------------------------------
@@ -258,7 +260,7 @@ else
          
       end do
 ! Set time to 0, 0 if none specified, otherwise to specified
-      call set_model_time(ens(i), time)
+      call set_model_time(ens(i), time1)
    end do
 !-------------------- End of cold start ensemble initialization block ------
 endif
@@ -273,15 +275,15 @@ call print_time(get_model_time(ens(1)))
 
 AdvanceTime : do i = 1, num_obs_sets
 
-   call get_obs_sequence_time(seq, i, time)
+   call get_obs_sequence_time(seq, i, time1)
    write(*, *) ' '
    write(*, *) 'time of obs set ', i
-   call print_time(time)
+   call print_time(time1)
 
 ! If the model time is past the obs set time, just need to skip???
-   if(get_model_time(ens(1)) > time) cycle AdvanceTime
+   if(get_model_time(ens(1)) > time1) cycle AdvanceTime
 
-   time2 = get_closest_state_time_to(ens(1), time)
+   time2 = get_closest_state_time_to(ens(1), time1)
 !   write(*, *) 'advancing to time2 '
 !   call  print_time(time2)
 ! Advance all the ensembles (to the time of the first ensemble)

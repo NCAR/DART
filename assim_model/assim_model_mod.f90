@@ -416,7 +416,7 @@ integer, intent(out) :: number, indices(:)
 real(r8), intent(out) :: dist(:)
 
 type(location_type) :: state_loc
-integer :: index, i
+integer :: indx, i
 real(r8) :: this_dist
 
 ! If model provides a working get_close_states, use it; otherwise search
@@ -425,18 +425,18 @@ call model_get_close_states(location, radius, number, indices, dist)
 
 ! If number returns as -1, not implemented
 if(number == -1) then
-   index = 0
+   indx = 0
    model_size = get_model_size()
    do i = 1, model_size
       call get_state_meta_data(i, state_loc)
       this_dist = get_dist(location, state_loc)
       if(this_dist < radius) then
-         index = index + 1
-         if(index <= size(indices)) indices(index) = i
-         if(index <= size(dist)) dist(index) = this_dist
+         indx = indx + 1
+         if(indx <= size(indices)) indices(indx) = i
+         if(indx <= size(dist)) dist(indx) = this_dist
       end if
    end do
-   number = index
+   number = indx
 endif
 
 ! If size has overflowed, indicate this with negative size return
@@ -564,7 +564,7 @@ logical, intent(in) :: asynch
 
 type(time_type) :: model_time, time_step
 
-integer :: seconds, days, i, len, control_unit, ic_file_unit, ud_file_unit
+integer :: seconds, days, i, control_unit, ic_file_unit, ud_file_unit
 
 character(len = 26), dimension(num) :: ic_file_name, ud_file_name 
 character(len = 128) :: input_string
@@ -805,6 +805,8 @@ integer, intent(in) :: file
 
 integer :: seconds, days
 
+print *,'assim_model_mod:read_state_restart ... reading from unit',file
+
 ! Read the time
 assim_model%time = read_time(file)
 
@@ -882,6 +884,8 @@ type(assim_model_type), intent(inout) :: state
 integer, intent(out) :: copy_index
 
 character(len=5) :: header
+
+print *,'assim_model_mod:input_diagnostics ... reading from unit',file_id
 
 ! Read in the time
 state%time = read_time(file_id)

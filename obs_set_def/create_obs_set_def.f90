@@ -79,8 +79,12 @@ do i = 1, max_sets
 
 end do
 
+! write(*,*)'DEBUG(obs_set_def:create_obs_set_def): finished definition for each set'
+! write(*,*)'DEBUG(obs_set_def:create_obs_set_def): opening file ',trim(adjustl(file_name))
+
 ! Output the set_def_list
 unit = open_file(file_name, action = 'write')
+! write(*,*)'DEBUG(obs_set_def:create_obs_set_def): as unit ',unit
 call write_set_def_list(unit, set_def_list)
 close(unit)
 

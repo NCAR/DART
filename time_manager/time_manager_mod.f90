@@ -2329,7 +2329,7 @@ type(time_type), intent(in) :: statetime
 integer                     :: timeindex
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeVarID
-integer  :: xtype, ndims, nAtts, len
+integer  :: xtype, ndims, nAtts, length
 character(len=NF90_MAX_NAME)          :: varname
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
 
@@ -2377,20 +2377,20 @@ r8time = days + secs/(60*60*24.0_r8)
 !        if the statetime > last netcdf time ... append a time ... 
 
 call check(NF90_Sync(ncFileID))    
-call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, len))
+call check(NF90_Inquire_Dimension(ncFileID, unlimitedDimID, varname, length))
 
-if (len < 1) then   ! First attempt at writing a state ...
+if (length < 1) then   ! First attempt at writing a state ...
 
    timeindex = 1
    call check(nf90_put_var(ncFileID, TimeVarID, r8time, start=(/ timeindex /) ))
    ! DEBUG
 !   write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
-!      ncFileID,trim(adjustl(varname)),len,r8time
+!      ncFileID,trim(adjustl(varname)),length,r8time
 
 else
    ! must try to find the time index ...
 
-   allocate( times(len) )
+   allocate( times(length) )
    call check(NF90_Get_Var(ncFileID, TimeVarID, times))   ! get current netCDF times
    call ConvertTime(times(1),secs,days)   ! converts from "days since" to seconds, days
    nctime = set_time(secs, days)           ! and finally to time_type
@@ -2405,7 +2405,7 @@ else
       stop
    endif
    
-   TimeLoop : do i = 1,len
+   TimeLoop : do i = 1,length
 
       call ConvertTime(times(i),secs,days)
       nctime = set_time(secs, days)
@@ -2430,7 +2430,7 @@ else
 
    ! If we haven't found a match or an error by now, just append ... 
    if (statetime > nctime) then
-      timeindex = len + 1
+      timeindex = length + 1
 
       ! DEBUG block
       ! I need to be able to test the error checking ... so I will manually
@@ -2441,7 +2441,7 @@ else
       call check(NF90_Sync(ncFileID))    
       ! DEBUG
 !      write(*,'('' ncFileID ('',i3,'') : '',(a),'' has length '',i6,'' appending t= '',f14.8)') &
-!         ncFileID,trim(adjustl(varname)),len,r8time
+!         ncFileID,trim(adjustl(varname)),length,r8time
    endif
    
    deallocate( times )

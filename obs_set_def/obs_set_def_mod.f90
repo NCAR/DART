@@ -380,6 +380,9 @@ type(obs_set_def_type), intent(in) :: set
 
 integer :: i
 
+!write(*,*)'DEBUG(obs_set_def_mod:write_obs_set_def), fid/N is ', &
+!          file_id, set%num_obs_defs
+
 ! Write a header starting the obs_set_def
 write(file_id, *) 'obset'
 
@@ -390,8 +393,11 @@ write(file_id, *) set%num_obs_defs
 
 ! Loop to write out each observation
 do i = 1, set%num_obs_defs
+!   write(*,*)'DEBUG(obs_set_def_mod:write_obs_set_def), i is ',i
    call write_obs_def(file_id, set%obs_defs(i))
 end do
+
+! write(*,*)'DEBUG(obs_set_def_mod:write_obs_set_def), leaving ...'
 
 end subroutine write_obs_set_def
 

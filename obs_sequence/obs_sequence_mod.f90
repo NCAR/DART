@@ -243,7 +243,7 @@ end function get_num_obs_sets
 
 
 
-subroutine get_obs_values(seq, index, obs, copy_in)
+subroutine get_obs_values(seq, indx, obs, copy_in)
 !---------------------------------------------------
 !
 ! Returns the observed values associated with the index set
@@ -252,7 +252,7 @@ subroutine get_obs_values(seq, index, obs, copy_in)
 implicit none
 
 type(obs_sequence_type), intent(in)  :: seq
-integer,                 intent(in)  :: index
+integer,                 intent(in)  :: indx
 real(r8),                intent(out) :: obs(:)
 integer, optional,       intent(in)  :: copy_in
 
@@ -261,13 +261,13 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in
 
-call os_get_obs_values(seq%obs_sets(index), obs, copy)
+call os_get_obs_values(seq%obs_sets(indx), obs, copy)
 
 end subroutine get_obs_values
 
 
 
-function get_obs_def_index(seq, index)
+function get_obs_def_index(seq, indx)
 !----------------------------------------------------
 !
 ! Returns the definition index of the index-th observation 
@@ -277,16 +277,16 @@ implicit none
 
 integer                             :: get_obs_def_index
 type(obs_sequence_type), intent(in) :: seq
-integer,                 intent(in) :: index
+integer,                 intent(in) :: indx
 
-get_obs_def_index = os_get_obs_def_index(seq%obs_sets(index))
+get_obs_def_index = os_get_obs_def_index(seq%obs_sets(indx))
 
 end function get_obs_def_index
 
 
 
 
-subroutine set_obs_values(seq, index, obs, copy_in)
+subroutine set_obs_values(seq, indx, obs, copy_in)
 !----------------------------------------------------
 !
 ! Sets the index obs_set in the sequence to the obs input.
@@ -294,7 +294,7 @@ subroutine set_obs_values(seq, index, obs, copy_in)
 implicit none
 
 type(obs_sequence_type), intent(inout) :: seq
-integer,                 intent(in)    :: index
+integer,                 intent(in)    :: indx
 real(r8),                intent(in)    :: obs(:)
 integer, optional,       intent(in)    :: copy_in
 
@@ -304,14 +304,14 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in
 
-call os_set_obs_values(seq%obs_sets(index), obs, copy)
+call os_set_obs_values(seq%obs_sets(indx), obs, copy)
 
 end subroutine set_obs_values
 
 
 
 
-subroutine set_single_obs_value(seq, index, num_obs, obs, copy_in)
+subroutine set_single_obs_value(seq, indx, num_obs, obs, copy_in)
 !----------------------------------------------------
 !
 ! Sets the num_obs obs of the index obs_set in the sequence to the obs input.
@@ -319,7 +319,7 @@ subroutine set_single_obs_value(seq, index, num_obs, obs, copy_in)
 implicit none
 
 type(obs_sequence_type), intent(inout) :: seq
-integer,                 intent(in)    :: index, num_obs
+integer,                 intent(in)    :: indx, num_obs
 real(r8),                intent(in)    :: obs
 integer, optional,       intent(in)    :: copy_in
 
@@ -329,7 +329,7 @@ integer :: copy
 copy = 1
 if(present(copy_in)) copy = copy_in
 
-call os_set_single_obs_value(seq%obs_sets(index), num_obs, obs, copy)
+call os_set_single_obs_value(seq%obs_sets(indx), num_obs, obs, copy)
 
 end subroutine set_single_obs_value
 
@@ -346,21 +346,21 @@ character(len = 129) :: get_copy_meta_data
 type(obs_sequence_type) :: sequence
 integer, optional, intent(in) :: index_in
 
-integer :: index
+integer :: indx
 
 ! Get the proper index
-index = 1
-if(present(index_in)) index = index_in
+indx = 1
+if(present(index_in)) indx = index_in
 ! Should do some error checks on index
 
-get_copy_meta_data = sequence%copy_meta_data(index)
+get_copy_meta_data = sequence%copy_meta_data(indx)
 
 end function get_copy_meta_data
 
 
 
 
-subroutine get_obs_set(obs_set, sequence, index)
+subroutine get_obs_set(obs_set, sequence, indx)
 !----------------------------------------------------------------------------------
 !
 ! Returns the index obs_set in this sequence. Many additonal embelishments to this
@@ -370,15 +370,15 @@ implicit none
 
 type(obs_set_type), intent(out)     :: obs_set
 type(obs_sequence_type), intent(in) :: sequence
-integer,                 intent(in) :: index
+integer,                 intent(in) :: indx
 
-call obs_set_copy(obs_set, sequence%obs_sets(index))
+call obs_set_copy(obs_set, sequence%obs_sets(indx))
 
 end subroutine get_obs_set
 
 
 
-function old_get_obs_set(sequence, index)
+function old_get_obs_set(sequence, indx)
 !----------------------------------------------------------------------------------
 !
 ! Returns the index obs_set in this sequence. Many additonal embelishments to this 
@@ -388,20 +388,20 @@ implicit none
 
 type(obs_set_type)                  :: old_get_obs_set
 type(obs_sequence_type), intent(in) :: sequence
-integer,                 intent(in) :: index
+integer,                 intent(in) :: indx
 
-call obs_set_copy(old_get_obs_set, sequence%obs_sets(index))
+call obs_set_copy(old_get_obs_set, sequence%obs_sets(indx))
 
 
 
 ! Next line has been permanently repaclace pre_Sept 2002
-!!!get_obs_set = sequence%obs_sets(index)
+!!!get_obs_set = sequence%obs_sets(indx)
 
 end function old_get_obs_set
 
 
 
-subroutine get_diag_obs_err_cov(seq, index, cov)
+subroutine get_diag_obs_err_cov(seq, indx, cov)
 !-------------------------------------------------------------
 !
 ! Returns the diagonal part of observational error covariance
@@ -410,15 +410,15 @@ subroutine get_diag_obs_err_cov(seq, index, cov)
 implicit none
 
 type(obs_sequence_type), intent(in)  :: seq
-integer,                 intent(in)  :: index
+integer,                 intent(in)  :: indx
 real(r8),                intent(out) :: cov(:)
 
 type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, seq, index)
-!!!obs_set = get_obs_set(seq, index)
+call get_obs_set(obs_set, seq, indx)
+!!!obs_set = get_obs_set(seq, indx)
 def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_diag_obs_err_cov(seq%def_list, def_index, cov)
@@ -428,7 +428,7 @@ end subroutine get_diag_obs_err_cov
 
 
 
-subroutine get_num_close_states(seq, index, radius, num)
+subroutine get_num_close_states(seq, indx, radius, num)
 !------------------------------------------------------
 ! 
 ! Gets the number of state variables within distance radius
@@ -437,7 +437,7 @@ subroutine get_num_close_states(seq, index, radius, num)
 implicit none
 
 type(obs_sequence_type), intent(in)  :: seq
-integer,                 intent(in)  :: index
+integer,                 intent(in)  :: indx
 real(r8),                intent(in)  :: radius
 integer,                 intent(out) :: num(:)
 
@@ -445,8 +445,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, seq, index)
-!!!obs_set = get_obs_set(seq, index)
+call get_obs_set(obs_set, seq, indx)
+!!!obs_set = get_obs_set(seq, indx)
 def_index = os_get_obs_def_index(obs_set)
 
 call sd_get_num_close_states(seq%def_list, def_index, radius, num)
@@ -456,7 +456,7 @@ end subroutine get_num_close_states
 
 
 
-subroutine get_close_states(seq, index, radius, num, indices, dist, obs_num)
+subroutine get_close_states(seq, indx, radius, num, indices, dist, obs_num)
 !------------------------------------------------------
 !
 ! Gets the number and index of state variables within distance radius
@@ -465,7 +465,7 @@ subroutine get_close_states(seq, index, radius, num, indices, dist, obs_num)
 implicit none
 
 type(obs_sequence_type), intent(in)  :: seq
-integer,                 intent(in)  :: index
+integer,                 intent(in)  :: indx
 real(r8),                intent(in)  :: radius
 integer,                 intent(out) :: num(:), indices(:, :)
 real(r8),                intent(out) :: dist(:, :)
@@ -475,8 +475,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, seq, index)
-!!!obs_set = get_obs_set(seq, index)
+call get_obs_set(obs_set, seq, indx)
+!!!obs_set = get_obs_set(seq, indx)
 def_index = os_get_obs_def_index(obs_set)
 
 if(present(obs_num)) then
@@ -492,7 +492,7 @@ end subroutine get_close_states
 
 
 
-subroutine get_expected_obs(sequence, index, state, obs, num)
+subroutine get_expected_obs(sequence, indx, state, obs, num)
 !------------------------------------------------------
 !
 ! Gets the expected value of observations for the obs_set_def
@@ -503,7 +503,7 @@ subroutine get_expected_obs(sequence, index, state, obs, num)
 implicit none
 
 type(obs_sequence_type), intent(in)  :: sequence
-integer,                 intent(in)  :: index
+integer,                 intent(in)  :: indx
 real(r8),                intent(in)  :: state(:)
 real(r8),                intent(out) :: obs(:)
 integer, optional,       intent(in)  :: num
@@ -512,8 +512,8 @@ type(obs_set_type) :: obs_set
 integer :: def_index
 
 ! Get the set_def_list index for this obs_set
-call get_obs_set(obs_set, sequence, index)
-!!!obs_set = get_obs_set(sequence, index)
+call get_obs_set(obs_set, sequence, indx)
+!!!obs_set = get_obs_set(sequence, indx)
 def_index = os_get_obs_def_index(obs_set)
 
 if(present(num)) then
@@ -527,7 +527,7 @@ end subroutine get_expected_obs
 
 
 
-subroutine get_obs_sequence_time(sequence, index, time)
+subroutine get_obs_sequence_time(sequence, indx, time)
 !-----------------------------------------------------
 !
 ! Returns the time of the index-th obs_set in the sequence.
@@ -536,19 +536,19 @@ implicit none
 
 type(time_type), intent(out)        :: time
 type(obs_sequence_type), intent(in) :: sequence
-integer,                 intent(in) :: index
+integer,                 intent(in) :: indx
 
 type(obs_set_type) :: obs_set
 
-call get_obs_set(obs_set, sequence, index)
-!!!obs_set = get_obs_set(sequence, index)
+call get_obs_set(obs_set, sequence, indx)
+!!!obs_set = get_obs_set(sequence, indx)
 time = get_obs_set_time(obs_set)
 
 end subroutine get_obs_sequence_time
 
 
 
-function get_num_obs_in_set(sequence, index)
+function get_num_obs_in_set(sequence, indx)
 !-------------------------------------------------
 !
 ! Gets the number of obs in the index obs_set in the sequence
@@ -557,12 +557,12 @@ implicit none
 
 integer                             :: get_num_obs_in_set
 type(obs_sequence_type), intent(in) :: sequence
-integer,                 intent(in) :: index
+integer,                 intent(in) :: indx
 
 type(obs_set_type) :: obs_set
 
-call get_obs_set(obs_set, sequence, index)
-!!!obs_set = get_obs_set(sequence, index)
+call get_obs_set(obs_set, sequence, indx)
+!!!obs_set = get_obs_set(sequence, indx)
 get_num_obs_in_set = get_num_obs(obs_set)
 
 end function get_num_obs_in_set
@@ -578,13 +578,13 @@ implicit none
 type(obs_sequence_type), intent(inout) :: sequence
 type(obs_set_type),      intent(in)    :: obs_set
 
-type(time_type) :: time
+type(time_type) :: t
 
 ! Make sure the times are ascending
 ! If there are no other obs in sequence, nothing to check
 if(sequence%num_obs_sets /= 0) then
-   time = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
-   if(get_obs_set_time(obs_set) < time .and. sequence%num_obs_sets > 0) then
+   t = get_obs_set_time(sequence%obs_sets(sequence%num_obs_sets))
+   if(get_obs_set_time(obs_set) < t .and. sequence%num_obs_sets > 0) then
       write(*, *) 'Error: obs_set being added to sequence is not in time order: add_obs_set'
       stop
    endif

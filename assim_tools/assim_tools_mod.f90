@@ -1588,11 +1588,11 @@ real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
 real(r8) :: prior_cov, sx, s_x2
 
 integer, parameter :: num = 10000
-integer :: i, index, cur_index, j , ind_sort(ens_size)
-real(r8) :: tot_dense, loc(ens_size), target
+integer :: i, indx, cur_index, j , ind_sort(ens_size)
+real(r8) :: tot_dense, lctn(ens_size), target
 real(r8) :: obs_dense(num), state_dense(num), dense(num)
 real(r8) :: cum_dense(0:num) 
-real(r8) :: kernel_var, max, min, range, x(num)
+real(r8) :: kernel_var, mxmum, mnmum, rnge, x(num)
 real(r8) :: min_ens, min_obs, max_ens, max_obs
 
 
@@ -1630,34 +1630,34 @@ kernel_var = prior_cov / 5.0
 
 ! Dumbest possible way, just partition and search
 ! For now, do 1 sd past max and min
-max = maxval(ens) + sqrt(prior_cov)
-min = minval(ens) - sqrt(prior_cov)
+mxmum = maxval(ens) + sqrt(prior_cov)
+mnmum = minval(ens) - sqrt(prior_cov)
 
 !!!max_ens = maxval(ens) + sqrt(prior_cov)
 !!!max_obs = obs + 2.0 * sqrt(obs_var)
 !!!if(max_ens > max_obs) then
-!!!   max = max_ens
+!!!   mxmum = max_ens
 !!!else
-!!!   max = max_obs
+!!!   mxmum = max_obs
 !!!endif
 
 !!!min_ens = minval(ens) - sqrt(prior_cov)
 !!!min_obs = obs - 2.0 * sqrt(obs_var)
 !!!if(min_ens < min_obs) then
-!!!   min = min_ens
+!!!   mnmum = min_ens
 !!!else
-!!!   min = min_obs
+!!!   mnmum = min_obs
 !!!endif
 
-range = max - min
+rnge = mxmum - mnmum
 
-!write(*, *) 'min, max, range ', real(min), real(max), real(range)
+!write(*, *) 'min, max, range ', real(mnmum), real(mxmum), real(rnge)
 !write(*, *) 'obs . var ', obs, obs_var
 
 cum_dense(0) = 0
 
 do i = 1, num
-   x(i) = min + (i - 1.0) * range / (num - 1.0)
+   x(i) = mnmum + (i - 1.0) * rnge / (num - 1.0)
    obs_dense(i) = exp((x(i) - obs)**2 / (-2. * obs_var))
    state_dense(i) = 0.0
    do j = 1, ens_size
@@ -1681,21 +1681,21 @@ if(target > cum_dense(num)) then
    write(*, *) 'ERROR: last target outside of box in increment_obs'
 endif
 
-index = 1
+indx = 1
 do i = 2, num
 ! At what cumulative density should next point go
-   cur_index = index
+   cur_index = indx
    do j = cur_index, ens_size
-      target = index * (tot_dense / (ens_size + 1))
+      target = indx * (tot_dense / (ens_size + 1))
 ! Search to see if some should go between next indices
       if(target > cum_dense(i)) goto 10
 ! Otherwise, in this bin, linearly interpolate
-      loc(index) = x(i - 1) + (target - cum_dense(i - 1)) / &
+      lctn(indx) = x(i - 1) + (target - cum_dense(i - 1)) / &
          (cum_dense(i) - cum_dense(i - 1)) * (x(i) - x(i - 1))
-!      write(*, *) 'loc ', index, target, loc(index)
+!      write(*, *) 'lctn ', indx, target, lctn(indx)
 ! Increment index for position being sought, if all found exit outer loop
-      index = index + 1
-      if(index > ens_size) goto 20
+      indx = indx + 1
+      if(indx > ens_size) goto 20
    end do
 10 continue
 end do
@@ -1705,11 +1705,11 @@ end do
 ! Sort the ensemble
 call index_sort(ens, ind_sort, ens_size)
 do i = 1, ens_size
-!   write(*, *) i, ens(ind_sort(i)), loc(i)
+!   write(*, *) i, ens(ind_sort(i)), lctn(i)
 end do
 
 do i = 1, ens_size
-   obs_inc(ind_sort(i)) = loc(i) - ens(ind_sort(i))
+   obs_inc(ind_sort(i)) = lctn(i) - ens(ind_sort(i))
 end do
 
 do i = 1, ens_size
@@ -1776,21 +1776,21 @@ real(r8), intent(out) :: state_inc(ens_size)
 
 real(r8) :: ens(2, ens_size), cov(2, 2), reg
 real(r8) :: y_lo, y_hi, x_lo, x_hi
-integer :: index(ens_size), i
+integer :: index_lo(ens_size), i
 integer :: lo_start, lo_end, hi_start, hi_end, lo_size, hi_size
 
 ! Need to sort the observations to be able to find local structure
 ! For efficiency, would like to sort this only once in main program
 if(present(index_in)) then
-   index = index_in
+   index_lo = index_in
 else
-   call index_sort(obs, index, ens_size)
+   call index_sort(obs, index_lo, ens_size)
 endif
 
 ! Create combined matrix for covariance
 do i = 1, ens_size
-   ens(1, i) = state(index(i))
-   ens(2, i) = obs(index(i))
+   ens(1, i) = state(index_lo(i))
+   ens(2, i) =   obs(index_lo(i))
 end do
 
 ! Get mean values of lower and upper half of data sorted by index
@@ -1847,7 +1847,7 @@ real(r8), intent(out) :: state_inc(ens_size)
 
 real(r8) :: ens(2, ens_size), cov(2, 2), y2(ens_size), xy(ens_size)
 real(r8) :: sx, sy, s_y2, sxy, reg
-integer :: index(ens_size), i, lower, upper, num_neighbors
+integer :: index_lo(ens_size), i, lower, upper, num_neighbors
 
 ! Make sure num_neighbors isn't too big to make sense
 num_neighbors = 2 * half_num_neighbors
@@ -1859,23 +1859,23 @@ endif
 ! Need to sort the observations to be able to find local structure
 ! For efficiency, would like to sort this only once in main program
 if(present(index_in)) then
-   index = index_in
+   index_lo = index_in
 else
-   call index_sort(obs, index, ens_size)
+   call index_sort(obs, index_lo, ens_size)
 endif
 
 
 ! Temporary look at sorting on data, not obs
 ! Seems to work much better for original L96 cases
-call index_sort(state, index, ens_size)
+call index_sort(state, index_lo, ens_size)
 
 
 
 
 ! Load up the ensemble array to have state and obs sorted by obs
 do i = 1, ens_size
-   ens(1, i) = state(index(i))
-   ens(2, i) = obs(index(i))
+   ens(1, i) = state(index_lo(i))
+   ens(2, i) =   obs(index_lo(i))
 !   write(*, *) 'state obs ', i, real(ens(1, i)), real(ens(2, i))
 end do
 
@@ -1901,7 +1901,7 @@ do i = 1, ens_size
              (s_y2 - sy**2 / (num_neighbors + 1))
 !      write(*, *) 'reg ', i, real(reg)
    endif
-   state_inc(index(i)) = (cov_factor * reg) * obs_inc(index(i))
+   state_inc(index_lo(i)) = (cov_factor * reg) * obs_inc(index_lo(i))
 
 end do
 
