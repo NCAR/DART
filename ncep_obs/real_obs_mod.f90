@@ -23,8 +23,8 @@ use location_mod,  only : location_type, set_location
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, copy_obs, &
-                             set_copy_meta_data, set_qc_meta_data, copy_obs, set_obs_def
-use time_manager_mod, only : time_type, read_time, set_time
+                             set_copy_meta_data, set_qc_meta_data, set_obs_def
+use time_manager_mod, only : read_time, set_time
 use obs_kind_mod
 
 implicit none
@@ -155,7 +155,7 @@ obsloop:  do i = 1, max_num_obs
 !------------------------------------------------------------------------
 !  added 01/04/2005 to skip the few observation at exact 00Z of each day
 !  to avoid a problem of timing in filter.
-     if(time == 3.0) then
+     if(time == 3.0_r8) then
      iskip = iskip + 1
      cycle obsloop 
      endif 
@@ -186,28 +186,28 @@ obsloop:  do i = 1, max_num_obs
     model_type = obs_kind
 
     if (model_type == 1 .or. model_type ==2 .or. model_type ==4 .or. model_type==5) then
-     vloc = lev*100.0            ! (transfer Pressure coordinate from mb to Pascal) 
+     vloc = lev*100.0_r8            ! (transfer Pressure coordinate from mb to Pascal) 
      which_vert = 2
     endif
 
     if (model_type == 3) then    ! for Ps
      vloc = lev                  ! station height, not used now for Ps obs
      which_vert = -1
-     obs_err = obs_err*100.0     ! convert obs_err to Pa
+     obs_err = obs_err*100.0_r8     ! convert obs_err to Pa
     endif
 
     if (model_type == 5) then    ! for Q
-     obs_err = obs_err*1.0e-3    ! convert obs_err to kg/kg
+     obs_err = obs_err*1.0e-3_r8    ! convert obs_err to kg/kg
     endif
 
 !   set obs value and error covariance
 
      if(model_type == 3) then
-      obs_value = zob*100.0      !  for Ps variable only in Pascal
+      obs_value = zob*100.0_r8      !  for Ps variable only in Pascal
      else if(model_type == 5) then
-      obs_value = zob*1.0e-3     !  for Q variable to kg/kg
+      obs_value = zob*1.0e-3_r8     !  for Q variable to kg/kg
      else
-      obs_value = zob            !  for T, U, V
+      obs_value = zob               !  for T, U, V
      endif
 
     aqc = iqc
