@@ -20,16 +20,16 @@ module obs_sequence_mod
 ! copy subruoutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use types_mod, only : r8
-use obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
-   write_obs_def, destroy_obs_def, interactive_obs_def, copy_obs_def
+use        types_mod, only : r8
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
+                             write_obs_def, destroy_obs_def, interactive_obs_def, &
+                             copy_obs_def
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
-   operator(/=)
-use utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
-   register_module, error_handler, E_ERR, E_MSG
+                             operator(/=)
+use    utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 
-implicit none
-
+implicit none 
 private
 
 interface assignment(=)
@@ -113,7 +113,7 @@ contains
 subroutine static_init_obs_sequence
 
 ! reads namelist and registers module
-! Read the namelist input                                                                                             
+! Read the namelist input
 
 integer :: iunit, ierr, io
 
@@ -130,8 +130,7 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif             
 
-write(*, *) 'in static_init_obs_sequence'
-write(*, *) 'read write', read_binary_obs_sequence, write_binary_obs_sequence
+write(logfileunit,nml=obs_sequence_nml)
 
 end subroutine static_init_obs_sequence
 
@@ -525,21 +524,22 @@ type(obs_type), intent(in), optional :: prev_obs
 type(time_type) :: obs_time, current_time
 integer :: prev, next, current
 
+character(len=129) :: msgstring
 ! Inserts an observation into a sequence, optional argument
 ! prev_obs says that this was the predecessor in time.
 ! This avoids time search in cases where one is building
 ! a sequence from scratch.
 
-
 ! Make sure there is room, fail for now if not
 if(seq%num_obs == seq%max_num_obs) then
-! Later do an increase of space and copy
-   write(*, *) 'ran out of room in obs_sequence'
-   stop
+   ! Later do an increase of space and copy
+   write(msgstring,*) 'ran out of room, num_obs (',seq%num_obs, &
+                               ') > max_num_obs (',seq%max_num_obs,')'
+   call error_handler(E_ERR,'insert_obs_in_seq',msgstring,source,revision,revdate)
 endif
 
 ! Set the key for the observation
-obs%key = seq%num_obs + 1
+obs%key     = seq%num_obs + 1
 seq%num_obs = seq%num_obs + 1
 
 ! Get the time for the observation
@@ -615,6 +615,7 @@ type(obs_type), intent(inout) :: obs
 
 type(obs_type) :: last_obs
 type(time_type) :: obs_time, last_time
+character(len=129) :: msgstring
 
 ! Initialize obs_type before using
 call init_obs(last_obs, 0, 0)
@@ -631,8 +632,8 @@ else
    obs_time = get_obs_def_time(obs%def)
    last_time = get_obs_def_time(last_obs%def)
    if(obs_time < last_time) then
-      write(*, *) 'Error: tried to append an obs to sequence with bad time'
-      stop
+      write(msgstring, *) 'tried to append an obs to sequence with bad time'
+      call error_handler(E_ERR,'append_obs_to_seq',msgstring,source,revision,revdate)
    endif
 
 !!!   call insert_obs_in_seq(seq, obs)
@@ -641,8 +642,8 @@ else
 ! Make sure there is room, fail for now if not
    if(seq%num_obs == seq%max_num_obs) then
 ! Later do an increase of space and copy
-      write(*, *) 'ran out of room in obs_sequence'
-      stop
+      write(msgstring,*) 'ran out of room, max_num_obs = ',seq%max_num_obs
+      call error_handler(E_ERR,'append_obs_to_seq',msgstring,source,revision,revdate)
    endif
 
 ! Set the key for the observation
@@ -870,14 +871,17 @@ type(obs_sequence_type), intent(in) :: seq
 character(len = 129), intent(in) :: file_name
 
 integer :: i, file_id
+character(len=129) :: msgstring,myfilename
 
 ! Open the file
 file_id = get_unit()
 if(write_binary_obs_sequence) then
-   write(*, *) 'opening file in write_obs-seq unformatted'
+   write(msgstring, *) 'opening unformatted file ',trim(file_name)
+   call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
    open(unit = file_id, file = file_name, form = "unformatted")
 else
-   write(*, *) 'opening file in write_obs-seq regular'
+   write(msgstring, *) 'opening formatted file ',trim(file_name)
+   call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
    open(unit = file_id, file = file_name)
 endif
 
@@ -916,7 +920,11 @@ do i = 1, seq%num_obs
 end do
 
 ! Close up the file
+inquire(unit=file_id,name=myfilename)
 call close_file(file_id)
+
+write(msgstring, *) 'closed file ',trim(myfilename)
+call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
 
 end subroutine write_obs_seq
 

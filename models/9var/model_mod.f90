@@ -118,7 +118,6 @@ if(file_exist('input.nml')) then
 endif
 
 ! Record namelist in logfile
-call error_handler(E_MSG,'static_init_model','namelist read, values are:',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 
 ! Define the locations of the model state variables

@@ -136,7 +136,6 @@ if(file_exist('input.nml')) then
 endif
 
 ! Record the namelist values used for the run ... 
-call error_handler(E_MSG,'static_init_assim_model','assim_model namelist values: ',' ',' ',' ')
 write(logfileunit, nml=assim_model_nml)
 
 ! Call the underlying model's static initialization

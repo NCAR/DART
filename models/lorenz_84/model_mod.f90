@@ -95,8 +95,6 @@ if(file_exist('input.nml')) then
 endif
 
 ! Record the namelist to the logfile
-call error_handler(E_MSG,'static_init_model', &
-     'model_mod namelist values follow', source, revision, revdate)
 write(logfileunit,nml=model_nml)
 
 ! Define the locations of the model state variables

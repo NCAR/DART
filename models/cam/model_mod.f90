@@ -607,7 +607,6 @@ if(file_exist('input.nml')) then
 endif
 
 ! Record the namelist values 
-call error_handler(E_MSG,'static_init_model','namelist model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 
 ! Get num lons, lats and levs from netcdf and put in global storage

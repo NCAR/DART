@@ -186,7 +186,6 @@ if(file_exist('input.nml')) then
 endif
 
 ! Record the namelist values in the logfile
-call error_handler(E_MSG,'static_init_model','namelist model_nml values are:',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 
 call check( nf90_open('wrfinput', NF90_NOWRITE, ncid) )
