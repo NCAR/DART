@@ -2146,16 +2146,20 @@ real(r8), intent(in) :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in) :: state(ens_size), cov_factor
 real(r8), intent(out) :: state_inc(ens_size)
 
-real(r8) :: sum_x, sum_y, sum_xy, sum_x2, reg_coef
+real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty, reg_coef
 
 ! For efficiency, just compute regression coefficient here
 
 sum_x  = sum(obs)
-sum_y  = sum(state)
-sum_xy = sum(obs * state)
-sum_x2 = sum(obs * obs)
+t      = obs - sum_x/ens_size
+sum_t2 = sum(t * t)
+sum_ty = sum(t * state)
 
-reg_coef = (ens_size * sum_xy - sum_x * sum_y) / (ens_size * sum_x2 - sum_x**2)
+if (sum_t2 /= 0.0_r8) then
+   reg_coef = sum_ty/sum_t2
+else
+   reg_coef = 0.0_r8
+endif
 
 state_inc = cov_factor * reg_coef * obs_inc
 
