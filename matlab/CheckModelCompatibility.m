@@ -2,9 +2,9 @@ function CheckModelCompatibility(truth_file,diagn_file);
 % CheckModelCompatibility   tries to ensure that two netcdf files can be compared.
 %
 %
-% source: /home/thoar/CVS.REPOS/DART/filter/filter.f90,v $
-% revision:  1.40 $
-% revdate: 2004/04/19 19:11:56 $
+% $Source$
+% $Revision$
+% $Date$
 
 if ( exist(truth_file) ~= 2 )
    error(sprintf('(truth_file) %s does not exist.',truth_file))
