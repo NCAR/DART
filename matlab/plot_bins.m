@@ -17,6 +17,10 @@
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% $Source$
+% $Revision$
+% $Date$
  
 % error_checking ... 
 % exist('bob') == 1   means the variable exists. 

@@ -1,11 +1,14 @@
 function vars = CheckModel(fname);
 % CheckModel   tries to ensure that a netcdf file has what we expect. 
-%
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
+% $Source$
+% $Revision$
+% $Date$
+
 if ( exist(fname) ~= 2 )
    error(sprintf('%s does not exist.',fname))
 end

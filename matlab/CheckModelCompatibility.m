@@ -1,16 +1,15 @@
 function CheckModelCompatibility(truth_file,diagn_file);
 % CheckModelCompatibility   tries to ensure that two netcdf files can be compared.
 %
-%
-% $Source$
-% $Revision$
-% $Date$
-% $Author$
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
+% $Source$
+% $Revision$
+% $Date$
+
 if ( exist(truth_file) ~= 2 )
    error(sprintf('(truth_file) %s does not exist.',truth_file))
 end

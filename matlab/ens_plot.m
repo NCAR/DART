@@ -1,8 +1,12 @@
+% Do some demo plots
+
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-% Do some demo plots
+% $Source$
+% $Revision$
+% $Date$
 
 % Do ensemble scatter as function of time for a given variable
 figure(1);

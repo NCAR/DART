@@ -1,11 +1,13 @@
 function PlotCEnsErrSpread( pinfo )
 %
-%
-%
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% $Source$
+% $Revision$
+% $Date$
 
 CheckModelCompatibility(pinfo.truth_file,pinfo.diagn_file)
 

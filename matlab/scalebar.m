@@ -1,5 +1,4 @@
    function ax=scalebar(xmin,ymin,wid,height,zmin,zmax)
-%
 %  h = scalebar(xmin,ymin,wid,height,[zmin],[zmax])
 %
 %  Makes a scale of the size and positions specified. The values 
@@ -9,13 +8,17 @@
 %  If zmin,zmax are not supplied, the UserData attribute of the
 %  current axis is used.
 %
-% returns a handle ...
+%  returns a handle ...
 %
 %  scalebar ONLY uses the first 64 colors in a colormap ...
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% $Source$
+% $Revision$
+% $Date$
 
    if nargin <= 4,
       zmin = get(gca,'UserData');

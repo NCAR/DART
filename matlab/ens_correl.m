@@ -6,7 +6,12 @@ function corr = ens_correl(base_var, base_time, state_var)
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html 
 
+% $Source$
+% $Revision$
+% $Date$
+
 % Extract sample of base at base time
+
 base_ens = base_var(base_time, :);
 
 % size(base_var)

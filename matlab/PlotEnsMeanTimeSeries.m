@@ -14,6 +14,7 @@ function PlotEnsMeanTimeSeries( pinfo )
 % state_var_inds  indices of state variables of interest. Each variable gets
 %                 plotted on its own axis.
 %
+%
 % Example 1  (9variable model)
 %%-------------------------------------------------------------
 % pinfo.truth_file     = 'True_State.nc';
@@ -34,7 +35,10 @@ function PlotEnsMeanTimeSeries( pinfo )
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-% TJH Wed Jul  2 09:56:40 MDT 2003
+
+% $Source$
+% $Revision$
+% $Date$
 
 CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 

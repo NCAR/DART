@@ -1,6 +1,7 @@
 function PlotEnsTimeSeries( pinfo )
 % PlotEnsTimeSeries: Plots time series of ensemble members, mean and truth.
 %
+%
 % PlotEnsTimeSeries is intended to be called by 'plot_ens_time_series'
 % The only input argument is a structure with model-dependent
 % components.
@@ -33,7 +34,10 @@ function PlotEnsTimeSeries( pinfo )
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html 
-% TJH Wed Jul  2 09:56:40 MDT 2003
+
+% $Source$
+% $Revision$
+% $Date$
 
 CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 

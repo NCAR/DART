@@ -5,6 +5,10 @@ function err = total_err(pred, verif, w)
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
+% $Source$
+% $Revision$
+% $Date$
+
 % Pred and verif are time_series_length x number of variables
 num_times = size(pred, 1);
 num_vars  = size(pred, 2);

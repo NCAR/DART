@@ -5,6 +5,10 @@ function bins = rank_hist(ens, verif)
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
+% $Source$
+% $Revision$
+% $Date$
+
 % Determine how long the time series is
 num_times = size(ens, 1);
 ens_size = size(ens, 2);

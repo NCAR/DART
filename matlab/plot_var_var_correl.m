@@ -6,6 +6,10 @@
 % Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
+% $Source$
+% $Revision$
+% $Date$
+
 if (exist('fname') ~=1)
    disp('Input name of file;')
    fname = input('<cr> for Prior_Diag.nc\n','s');
