@@ -81,15 +81,17 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
 
    if ( key    ~= i ) 
       error(sprintf('key %d is not %d -- and it should be ...',i,key))
+   % else
+   %    disp(sprintf('reading observation %d',i))
    end
  
    for j = 1:num_copies,
-      aline    = cvrtline(fgetl(fid)); 
+      aline    = cvrtline(fgetl(fid));
       obs(j,i) = sscanf(aline,'%e');
    end
 
    for j = 1:num_qc,
-      aline    = cvrtline(fgetl(fid)); 
+      aline    = cvrtline(fgetl(fid));
       qc(j,i)  = sscanf(aline,'%e');
    end
     
@@ -174,7 +176,7 @@ function kind = read_kind(fid,i)
    aline   = fgetl(fid);
    kindstr = sscanf(aline,'%s');
    if ( ~ strcmp(kindstr,'kind') )  
-      error(sprintf(' read %s instead of ''kind'' at obs %d',obdefstr,i))
+      error(sprintf(' read %s instead of ''kind'' at obs %d',kindstr,i))
    end
    aline   = fgetl(fid);
    kind    = sscanf(aline,'%d');
@@ -195,31 +197,34 @@ locstr   = sscanf(aline,'%s');
 
 switch lower(locstr)
       case 'loc1d'       % location/oned/location_mod.f90:write_location
-         aline    = fgetl(fid);
+         aline    = cvrtline(fgetl(fid));
          values   = sscanf(aline,'%e');
          locs(1)  = values(1);
       case 'loc2s'       % location/twod_sphere/location_mod.f90:write_location
-         aline    = fgetl(fid);
+         aline    = cvrtline(fgetl(fid));
          values   = sscanf(aline,'%e');
 	 %lon      = values(1);
 	 %lat      = values(2);
 	 %lev      = values(3);
          locs(1:2) = values(1:2);
       case 'loc3s'       % location/simple_threed_sphere/location_mod.f90:write_location
-         aline    = fgetl(fid);
+         aline    = cvrtline(fgetl(fid));
          values   = sscanf(aline,'%e');
 	 %lon      = values(1);
 	 %lat      = values(2);
 	 %lev      = values(3);
          locs(1:3) = values(1:3);
       case 'loc3d'       % location/threed_sphere/location_mod.f90:write_location
-         aline    = fgetl(fid);
+         aline    = cvrtline(fgetl(fid));
          values   = sscanf(aline,'%e');
          locs(1:3) = values(1:3);
 	 %lon        = values(1);
 	 %lat        = values(2);
 	 %lev        = values(3);
-	 which_vert = values(4);  % which kind of vertical coord system being used.
+	 %which_vert = values(4);  % which kind of vertical coord system being used.
+         aline      = cvrtline(fgetl(fid));
+         which_vert = sscanf(aline,'%d');
+
       otherwise
          error(sprintf('unrecognized location type ... read %s',locstr))
 end
