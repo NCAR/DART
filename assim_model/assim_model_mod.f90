@@ -106,10 +106,126 @@ call static_init_model()
 end subroutine static_init_assim_model
 
 
+    
+function init_diag_output(FileName, global_meta_data, &
+                  copies_of_field_per_time, meta_data_per_copy) result(ncFileID)
+!--------------------------------------------------------------------------------
+!
+!
+use typeSizes
+use netcdf
+implicit none
+
+character(len=*), intent(in) :: FileName, global_meta_data
+integer,          intent(in) :: copies_of_field_per_time
+character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
+integer                      :: ncFileID
+
+integer             :: i, model_size, metadata_length
+type(location_type) :: state_loc
+
+integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
+integer ::    ParamDimID,    ParamVarID     ! for each model parameter
+integer ::     TimeDimID,     TimeVarID     ! duh ...
+integer :: MetadataDimID, MetadataVarID
+
+if(.not. byteSizesOK()) then
+   print *, "Compiler does not appear to support required kinds of variables."
+   stop
+end if
+
+model_size = get_model_size()
+metadata_length = LEN(meta_data_per_copy(1))
+
+! Create the file
+call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid = ncFileID))
+  
+! Define the dimensions
+call check(nf90_def_dim(ncid=ncFileID, name="parameter",      &
+                                       len=model_size,               dimid=ParamDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="copy",           &
+                                       len=copies_of_field_per_time, dimid=MemberDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="time",           &
+                                       len = nf90_unlimited,         dimid = TimeDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="metadatalength", &
+                                       len = metadata_length,        dimid = metadataDimID))
+
+! Create variables and attributes
+call check(nf90_def_var(ncid=ncFileID,name="parameter", xtype=nf90_int, dimids=ParamDimID, varid=ParamVarID))
+call check(nf90_put_att(ncFileID, ParamVarID, "long_name", "model parameter number"))
+call check(nf90_put_att(ncFileID, ParamVarID, "units",     "nondimensional") )
+call check(nf90_put_att(ncFileID, ParamVarID, "valid_range", (/ 1, model_size /)))
+
+call check(nf90_def_var(ncid=ncFileID,name="copy", xtype=nf90_int, dimids=MemberDimID, varid=MemberVarID))
+call check(nf90_put_att(ncFileID, MemberVarID, "long_name", "ensemble member or copy"))
+call check(nf90_put_att(ncFileID, MemberVarID, "units",     "nondimensional") )
+call check(nf90_put_att(ncFileID, MemberVarID, "valid_range", (/ 1, copies_of_field_per_time /)))
+
+call check(nf90_def_var(ncid=ncFileID,name="CopyMetaData", xtype=nf90_char,    &
+        dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID))
+call check(nf90_put_att(ncFileID, metadataVarID, "long_name",       &
+       "Metadata for each copy/member"))
+
+! Time is a funny beast ... 
+! Many packages decode the time:units attribute to convert the offset to a calendar
+! date/time format. Using an offset simplifies many operations, but is not the
+! way we like to see stuff plotted. The "approved" calendars are:
+! gregorian or standard 
+!      Mixed Gregorian/Julian calendar as defined by Udunits. This is the default. 
+!  noleap   Modern calendar without leap years, i.e., all years are 365 days long. 
+!  360_day  All years are 360 days divided into 30 day months. 
+!  julian   Julian calendar. 
+!  none     No calendar. 
+
+call check(nf90_def_var(ncFileID, name="time", xtype=nf90_double, dimids=TimeDimID, varid=TimeVarID) )
+call check(nf90_put_att(ncFileID, TimeVarID, "long_name", "time"))
+call check(nf90_put_att(ncFileID, TimeVarID, "calendar", "gregorian"))
+call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
+call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
+
+! Global attributes
+call check(nf90_put_att(ncFileID, nf90_global, "title", global_meta_data))
+  
+! Leave define mode
+call check(nf90_enddef(ncfileID))
+  
+! Write the dimension variables
+call check(nf90_put_var(ncFileID, MemberVarID,  (/ (i,i=1,copies_of_field_per_time) /) ))
+call check(nf90_put_var(ncFileID, ParamVarID,   (/ (i,i=1,model_size) /) ))
+call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
+
+! FOR NOW -- LETS BE HAPPY WITH THIS!
+call check(nf90_close(ncFileID))
+
+! BUT NOT BREAK ANYTHING FARTHER ON ...
+
+ncFileID = get_unit()
+open(unit = ncFileID, file = FileName)
+
+! Will need other metadata, too; Could be as simple as writing locations
+write(ncFileID, *) 'locat'
+do i = 1, model_size
+   call get_state_meta_data(i, state_loc)
+   call write_location(ncFileID, state_loc)
+enddo
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(status)
+    integer, intent ( in) :: status
+    
+    if(status /= nf90_noerr) then 
+      print *, trim(nf90_strerror(status))
+    end if
+  end subroutine check  
+
+end function init_diag_output
 
 
-function init_diag_output(file_name, global_meta_data, &
-   copies_of_field_per_time, meta_data_per_copy)
+function init_diag_outputORG(file_name, global_meta_data, &
+   copies_of_field_per_time, meta_data_per_copy) result(init_diag_output)
 !---------------------------------------------------------------------
 !
 ! Initializes a diagnostic output file. Should be NetCDF shortly but
@@ -148,7 +264,7 @@ do i = 1, model_size
    call write_location(init_diag_output, state_loc)
 end do
 
-end function init_diag_output
+end function init_diag_outputORG
 
 
 
