@@ -501,20 +501,20 @@ integer,  intent(in)  :: obsunit
 integer,  intent(out) :: obsindex
 real(r8), intent(out) :: var
 
-real(r8) :: lon, lat, lev, zob, dummy, count, time, type
+real(r8) :: lon, lat, lev, zob, dummy, cnt, rtime, rtype
 integer  :: obs_prof
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Read location, kind and error variance of NCEP data
-read(obsunit, 880) var, lon, lat, lev, zob, dummy, count, time, type
+read(obsunit, 880) var, lon, lat, lev, zob, dummy, cnt, rtime, rtype
 880 format(f4.2, 2f7.3, f7.1, f7.2, f7.2, f9.0, f7.3, f5.0)
 
 location%lon = lon     ! in radian
 location%lat = lat     ! in radian
 
 !   set up observation kind
-obs_prof = count/1000000
+obs_prof = cnt/1000000
 
 if(obs_prof == 2) obsindex = 1
 if(obs_prof == 9) obsindex = 2
