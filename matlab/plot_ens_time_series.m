@@ -49,7 +49,6 @@ switch lower(vars.model)
       pinfo = GetBgridInfo(diagn_file, 'PlotEnsTimeSeries');
       pinfo.truth_file = truth_file;   % known to be compatible.
       pinfo.diagn_file = diagn_file;   % known to be compatible.
-      pinfo                            % echo for posterity.
 
    otherwise
 
@@ -57,7 +56,7 @@ switch lower(vars.model)
 
 end
 
-pinfo
+pinfo % echo for posterity.
 
 PlotEnsTimeSeries( pinfo )
 clear vars varid
