@@ -4,7 +4,7 @@
  
 fname = 'Prior_Diag';
 tlon = getnc(fname, 'XLON');
-we = size(tlon, 1);
+we = size(tlon, 2);
 tlat = getnc(fname, 'XLAT');
 sn = size(tlat, 1);
 level = getnc(fname, 'level');
