@@ -16,13 +16,13 @@ use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             error_handler, E_MSG, E_WARN, E_ERR, register_module, logfileunit
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 implicit none
 private
 
 public :: get_model_size, &
-          adv_1step,  &
+          adv_1step, &
           get_state_meta_data, &
           model_interpolate, &
           get_model_time_step, &
@@ -31,7 +31,7 @@ public :: get_model_size, &
           init_time, &
           init_conditions, &
           model_get_close_states, &
-          nc_write_model_atts, & 
+          nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state
 
@@ -60,14 +60,12 @@ type(time_type) :: time_step
 
 contains
 
-!======================================================================
+!==================================================================
 
 
 
 subroutine static_init_model()
-!----------------------------------------------------------------------
-! subroutine static_init_model()
-!
+!------------------------------------------------------------------
 ! Initializes class data for this model. For now, simply outputs the
 ! identity info, sets the location of the state variables, and initializes
 ! the time type for the time stepping (is this general enough for time???)
@@ -105,19 +103,17 @@ do i = 1, model_size
    state_loc(i) =  set_location(x_loc)
 end do
 
-
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L96 from
 ! Shree Khare.
 time_step = set_time(3600, 0)
-
 
 end subroutine static_init_model
 
 
 
 subroutine init_model_instance()
-!---------------------------------------------------------------------
+!------------------------------------------------------------------
 ! subroutine init_model_instance
 !
 ! Initializes instance dependent state for model. Null for L96.
@@ -126,15 +122,13 @@ end subroutine init_model_instance
 
 
 
-
 subroutine comp_dt(x, dt)
-!----------------------------------------------------------------------
+!------------------------------------------------------------------
 ! subroutine comp_dt(x, dt)
 ! 
 ! Computes the time tendency of the lorenz 1996 model given current state
 
-
-real(r8), intent( in) :: x(:)
+real(r8), intent( in) ::  x(:)
 real(r8), intent(out) :: dt(:)
 
 integer :: j, jp1, jm1, jm2
@@ -154,58 +148,8 @@ end subroutine comp_dt
 
 
 
-subroutine adv_1step(x, time)
-!----------------------------------------------------------------------
-! subroutine adv_1step(x, time)
-!
-! Does single time step advance for lorenz 96 model
-! using four-step rk time step
-! The Time argument is needed for compatibility with more complex models
-! that need to know the time to compute their time tendency and is not
-! used in L96. Is there a better way to do this in F90 than to just hang
-! this argument out everywhere?
-
-
-real(r8), intent(inout) :: x(:)
-type(time_type), intent(in) :: time
-
-real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
-integer :: i
-
-!  Compute the first intermediate step
-
-call comp_dt(x, dx)
-x1    = delta_t * dx
-inter = x + x1 / 2.0_r8
-
-!  Compute the second intermediate step
-
-call comp_dt(inter, dx)
-x2    = delta_t * dx
-inter = x + x2 / 2.0_r8
-
-!  Compute the third intermediate step
-
-call comp_dt(inter, dx)
-x3    = delta_t * dx
-inter = x + x3
-
-!  Compute fourth intermediate step
-
-call comp_dt(inter, dx)
-x4 = delta_t * dx
-
-!  Compute new value for x
-
-x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
-
-end subroutine adv_1step
-
-
-
-
 subroutine init_conditions(x)
-!----------------------------------------------------------------------
+!------------------------------------------------------------------
 ! subroutine init_conditions(x)
 !
 ! Initial conditions for lorenz 96
@@ -223,12 +167,66 @@ end subroutine init_conditions
 
 
 
+subroutine adv_1step(x, time)
+!------------------------------------------------------------------
+! subroutine adv_1step(x, time)
+!
+! Does single time step advance for lorenz 96 model
+! using four-step rk time step
+! The Time argument is needed for compatibility with more complex models
+! that need to know the time to compute their time tendency and is not
+! used in L96. Is there a better way to do this in F90 than to just hang
+! this argument out everywhere?
+
+
+real(r8), intent(inout) :: x(:)
+type(time_type), intent(in) :: time
+
+real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
+integer :: i
+
+call comp_dt(x, dx)        !  Compute the first intermediate step
+x1    = delta_t * dx
+inter = x + x1 / 2.0_r8
+
+call comp_dt(inter, dx)    !  Compute the second intermediate step
+x2    = delta_t * dx
+inter = x + x2 / 2.0_r8
+
+call comp_dt(inter, dx)    !  Compute the third intermediate step
+x3    = delta_t * dx
+inter = x + x3
+
+call comp_dt(inter, dx)    !  Compute fourth intermediate step
+x4 = delta_t * dx
+
+!  Compute new value for x
+
+x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
+
+end subroutine adv_1step
+
+
+
+function get_model_size()
+!------------------------------------------------------------------
+! function get_model_size()
+!
+! Returns size of model
+
+integer :: get_model_size
+
+get_model_size = model_size
+
+end function get_model_size
+
+
+
 subroutine init_time(time)
-!----------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Gets the initial time for a state from the model. Where should this info
 ! come from in the most general case?
-
 
 type(time_type), intent(out) :: time
 
@@ -239,8 +237,8 @@ end subroutine init_time
 
 
 
-function model_interpolate(x, location, type)
-!---------------------------------------------------------------------
+function model_interpolate(x, location, itype)
+!------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
 ! happy dumping all of this straight into the model. Eventually some
@@ -248,14 +246,14 @@ function model_interpolate(x, location, type)
 ! be more general. May want to wait on external infrastructure projects
 ! for this?
 
-! Argument type is not used here because there is only one type of variable.
+! Argument itype is not used here because there is only one type of variable.
 ! Type is needed to allow swap consistency with more complex models.
 
 
-real(r8) :: model_interpolate
-real(r8), intent(in) :: x(:)
+real(r8)                        :: model_interpolate
+real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer, intent(in) :: type
+integer,             intent(in) :: itype
 
 integer :: lower_index, upper_index, i
 real(r8) :: lctn, lctnfrac
@@ -308,23 +306,8 @@ end function model_interpolate
 
 
 
-
-function get_model_size()
-!---------------------------------------------------------------------
-! function get_model_size()
-!
-! Returns size of model
-
-integer :: get_model_size
-
-get_model_size = model_size
-
-end function get_model_size
-
-
-
 function get_model_time_step()
-!------------------------------------------------------------------------
+!------------------------------------------------------------------
 ! function get_model_time_step()
 !
 ! Returns the the time step of the model. In the long run should be repalced
@@ -340,7 +323,7 @@ end function get_model_time_step
 
 
 subroutine get_state_meta_data(index_in, location, var_type)
-!---------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
 ! associated location. This is not a function because the more general
@@ -348,19 +331,19 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! Maybe a functional form should be added?
 
 
-integer, intent(in) :: index_in
+integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer, intent(out), optional :: var_type                                      
+integer,             intent(out), optional :: var_type                                      
 
 location = state_loc(index_in)
-if (present(var_type)) var_type = 1    ! use default variable type
+if (present(var_type)) var_type = 1    ! default variable type
 
 end subroutine get_state_meta_data
 
 
 
 subroutine end_model()
-!------------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
 
@@ -369,27 +352,26 @@ end subroutine end_model
 
 
 
-subroutine model_get_close_states(o_loc, radius, number, indices, dist)
-!--------------------------------------------------------------------
+subroutine model_get_close_states(o_loc, radius, inum, indices, dist)
+!------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
 
-
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
+integer, intent(out) :: inum, indices(:)
 real(r8), intent(out) :: dist(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-number = -1
+! to do exhaustive search (inum = -1 return)
+inum = -1
 
 end subroutine model_get_close_states
 
 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
-!-----------------------------------------------------------------------------------------
+!------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Jan 24 2003
 !
@@ -412,7 +394,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-!
 
 use typeSizes
 use netcdf
@@ -427,7 +408,7 @@ integer              :: ierr          ! return value of function
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
 !-----------------------------------------------------------------------------------------
-! netCDF variables
+! netCDF variables for Location
 !-----------------------------------------------------------------------------------------
 
 integer :: LocationDimID, LocationVarID
@@ -473,8 +454,9 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
 !-------------------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
 !-------------------------------------------------------------------------------
+
 call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size, dimid = StateVarDimID))
+                        len=model_size, dimid = StateVarDimID)) 
 
 !-------------------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
@@ -482,7 +464,7 @@ call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
 ! CF standards for Locations:
 ! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
 !-------------------------------------------------------------------------------
-   
+
 call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
               dimids = StateVarDimID, varid=LocationVarID) )
 call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
@@ -496,7 +478,7 @@ call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r
 
 ! Define the state vector coordinate variable
 call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-           dimids=StateVarDimID, varid=StateVarVarID))                     
+           dimids=StateVarDimID, varid=StateVarVarID))
 call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
 call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
 call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
@@ -504,7 +486,7 @@ call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size
 ! Define the actual state vector
 call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
            dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
-call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy")) 
+call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
 
 ! Leave define mode so we can fill
 call check(nf90_enddef(ncfileID))
@@ -515,7 +497,7 @@ call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 !-------------------------------------------------------------------------------
 ! Fill the location variable
 !-------------------------------------------------------------------------------
-   
+
 do i = 1,model_size
    call get_state_meta_data(i,lctn)
    call check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ))
@@ -529,23 +511,19 @@ call check(nf90_sync(ncFileID))
 write (*,*)'Model attributes written, netCDF file synched ...'
 
 contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-
-  end subroutine check
-
+   ! Internal subroutine - checks error status after each netcdf, prints 
+   !                       text message each time an error code is returned. 
+   subroutine check(istatus)
+      integer, intent ( in) :: istatus
+      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts',&
+         trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
 end function nc_write_model_atts
 
 
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-!-----------------------------------------------------------------------------------------
+function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+!------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH 23 May 2003
 !
@@ -561,14 +539,13 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 !
 ! Typical sequence for adding new dimensions,variables,attributes:
 ! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
+!    NF90_redef         ! put into define mode
 !    NF90_def_dim       ! define additional dimensions (if any)
 !    NF90_def_var       ! define variables: from name, type, and dims
 !    NF90_put_att       ! assign attribute values
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-!
 
 use typeSizes
 use netcdf
@@ -579,20 +556,21 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! General netCDF variables
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! local variables
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
+
 ierr = 0                      ! assume normal termination
 
 !-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file 
+! make sure ncFileID refers to an open netCDF file
 !-------------------------------------------------------------------------------
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
@@ -601,31 +579,28 @@ call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimite
 
 call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
 call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-             start=(/ 1, copyindex, timeindex /)))  
+             start=(/ 1, copyindex, timeindex /)))
 
 ! write (*,*)'Finished filling variables ...'
 call check(nf90_sync(ncFileID))
 ! write (*,*)'netCDF file is synched ...'
 
 contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-
-  end subroutine check
-
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+   integer, intent ( in) :: istatus
+      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars',&
+         trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
 end function nc_write_model_vars
 
 
 
 subroutine pert_model_state(state, pert_state, interf_provided)
-
-
+!------------------------------------------------------------------
+! subroutine pert_model_state(state, pert_state, interf_provided)
+!
 ! Perturbs a model state for generating initial ensembles
 ! Returning interf_provided means go ahead and do this with uniform
 ! small independent perturbations.

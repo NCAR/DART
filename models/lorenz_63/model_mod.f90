@@ -22,19 +22,19 @@ use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file,
 implicit none
 private
 
-public   get_model_size, &
-         adv_1step, &
-         get_state_meta_data, &
-         model_interpolate, &
-         get_model_time_step, &
-         end_model, &
-         static_init_model, &
-         init_time,  &
-         init_conditions, &
-         model_get_close_states, &
-         nc_write_model_atts, &
-         nc_write_model_vars, &
-         pert_model_state
+public :: get_model_size, &
+          adv_1step, &
+          get_state_meta_data, &
+          model_interpolate, &
+          get_model_time_step, &
+          end_model, &
+          static_init_model, &
+          init_time, &
+          init_conditions, &
+          model_get_close_states, &
+          nc_write_model_atts, &
+          nc_write_model_vars, &
+          pert_model_state
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -45,7 +45,7 @@ revdate  = "$Date$"
 !  define model parameters
 
 ! Model size is fixed for Lorenz-63
-integer,  parameter :: model_size = 3
+integer, parameter :: model_size = 3
 
 !-------------------------------------------------------------
 ! Namelist with default values
@@ -77,6 +77,7 @@ subroutine static_init_model()
 real(r8) :: x_loc
 integer  :: i, iunit, ierr, io
 
+! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
@@ -91,8 +92,9 @@ if(file_exist('input.nml')) then
    call close_file(iunit)
 endif
 
-! record namelist values
-call error_handler(E_MSG,'static_init_model','namelist read, values are:',' ',' ',' ')
+! Record the namelist to the logfile
+call error_handler(E_MSG,'static_init_model', &
+     'model_mod namelist values follow', source, revision, revdate)
 write(logfileunit,nml=model_nml)
 
 ! Define the locations of the model state variables
@@ -109,15 +111,24 @@ end subroutine static_init_model
 
 
 
+subroutine init_model_instance()
+!------------------------------------------------------------------
+! subroutine init_model_instance
+!
+! Initializes instance dependent state for model. Null for L63.
+
+end subroutine init_model_instance
+
+
+
 subroutine comp_dt(x, dt)
-!==================================================================
+!------------------------------------------------------------------
 ! subroutine comp_dt(x, dt)
 !
 ! Computes time tendency of the lorenz 1963 3-variable model given 
 ! current state
 
-
-real(r8), intent(in) :: x(:)
+real(r8), intent( in) ::  x(:)
 real(r8), intent(out) :: dt(:)
 
 ! compute the lorenz model dt from standard equations
@@ -126,42 +137,12 @@ dt(1) = sigma * (x(2) - x(1))
 dt(2) = -1.0_r8*x(1)*x(3) + r*x(1) - x(2)
 dt(3) = x(1)*x(2) - b*x(3)
 
-return
 end subroutine comp_dt
 
 
 
-subroutine advance(x, num, xnew, time)
-!===================================================================
-! subroutine advance(x, num, xnew, time)
-!
-! advances the 3 variable lorenz-63 model by a given number of steps
-! current state in x, new state in xnew, num time steps advanced
-!
-! TJH -- 06 Feb 2003 -- this routine seems to be deprecated -- 
-! not called, not public ...
-
-
-real(r8), intent(in)  :: x(:)
-integer,  intent(in)  :: num
-real(r8), intent(out) :: xnew(:)
-type(time_type), intent(in) :: time
-
-integer :: i
-
-xnew = x                  !  copy initial conditions to avoid overwrite
-   
-do i = 1, num             !  advance the appropriate number of steps
-   call adv_1step(xnew, time)
-end do
-
-return
-end subroutine advance
-
-
-
 subroutine init_conditions(x)
-!===================================================================
+!------------------------------------------------------------------
 ! subroutine init_conditions(x)
 !
 !  off-attractor initial conditions for lorenz 63
@@ -176,29 +157,8 @@ end subroutine init_conditions
 
 
 
-subroutine linear_dt(x, dx, dt)
-!====================================================================
-! subroutine linear_dt(x, dx, dt)
-!
-! old version of linearized lorenz 63 model time tendency computation
-   
-   
-real(r8), intent(in)  :: x(:), dx(:)
-real(r8), intent(out) :: dt(:)
-
-!  compute linear model lorenz time tendency
-
-dt(1) = -1.0_r8 * sigma * dx(1) + sigma*dx(2)
-dt(2) = (r - x(3))*dx(1) - dx(2) - x(1)*dx(3)
-dt(3) = x(2)*dx(1) + x(1)*dx(2) - b*dx(3)
-
-end subroutine linear_dt
-
-
-
-
 subroutine adv_1step(x, time)
-!====================================================================
+!------------------------------------------------------------------
 ! subroutine adv_1step(x, time)
 !
 ! does single time step advance for lorenz convective 3 variable model
@@ -219,7 +179,7 @@ end  subroutine adv_1step
 
 
 subroutine adv_single(x, fract)
-!====================================================================
+!------------------------------------------------------------------
 ! subroutine adv_single(x, fract)
 !
 ! does single time step advance for lorenz convective 3 variable model
@@ -230,8 +190,7 @@ real(r8), intent(inout) :: x(:)
 real(r8), intent(in)    :: fract
 
 real(r8) :: x1(3), x2(3), dx(3)
-
-integer i
+integer  :: i
 
 call comp_dt(x, dx)            !  compute the first intermediate step
 x1 = x + fract * deltat * dx
@@ -249,7 +208,7 @@ end subroutine adv_single
 
 
 function get_model_size()
-!=====================================================================
+!------------------------------------------------------------------
 ! function get_model_size()
 !
 ! Returns size of model
@@ -262,13 +221,11 @@ end function get_model_size
 
 
 
-
 subroutine init_time(time)
-!----------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Gets the initial time for a state from the model. Where should this info
 ! come from in the most general case?
-
 
 type(time_type), intent(out) :: time
 
@@ -279,9 +236,8 @@ end subroutine init_time
 
 
 
-
 function model_interpolate(x, location, itype)
-!---------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
 ! happy dumping all of this straight into the model. Eventually some
@@ -319,7 +275,7 @@ end function model_interpolate
 
 
 function get_model_time_step()
-!------------------------------------------------------------------------
+!------------------------------------------------------------------
 ! function get_model_time_step()
 !
 ! Returns the the time step of the model. In the long run should be repalced
@@ -334,9 +290,8 @@ end function get_model_time_step
 
 
 
-
 subroutine get_state_meta_data(index_in, location, var_type)
-!---------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
 ! associated location. This is not a function because the more general
@@ -355,9 +310,8 @@ end subroutine get_state_meta_data
 
 
 
-
 subroutine end_model()
-!------------------------------------------------------------------------
+!------------------------------------------------------------------
 !
 ! Does any shutdown and clean-up needed for model. Nothing for L63 for now.
 
@@ -366,132 +320,10 @@ end subroutine end_model
 
 
 
-subroutine adv_single_rk4(x, fract)
-!=====================================================================
-! subroutine adv_single_rk4(x, fract)
-!
-! does single time step advance for lorenz convective 3 variable model
-! using four step rk time step
-
-
-real(r8), intent(inout) :: x(:)
-real(r8), intent(in)    :: fract
-
-real(r8) :: x1(3), x2(3), x3(3), x4(3), dx(3), inter(3)
-
-integer i
-
-call comp_dt(x, dx)         !  compute the first intermediate step
-x1    = fract * deltat * dx
-inter = x + x1 / 2.0_r8
-
-call comp_dt(inter, dx)     !  compute the second intermediate step
-x2    = fract * deltat * dx
-inter = x + x2 / 2.0_r8
-
-call comp_dt(inter, dx)     !  compute the third intermediate step
-x3    = fract * deltat * dx
-inter = x + x3
-
-call comp_dt(inter, dx)     !  compute fourth intermediate step
-x4 = fract * deltat * dx
-
-!  compute new value for x
-
-x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
-
-return
-end subroutine adv_single_rk4
-
-
-subroutine inv_linear_dt(x, dx, px)
-!=====================================================================
-!  subroutine inv_linear_dt(x, dx, px)
-!
-!  compute inv linear model lorenz time tendency (see notes 13mar94)
-!  for now assumes stupid leap frog, will this be sufficient?
-
-
-real(r8), intent(in)  :: x(:), dx(:)
-real(r8), intent(out) :: px(3)
-
-real(r8) a(3, 3), fact, tdx(3)
-integer i
-
-a(1, 1) = -sigma * deltat + 1.0_r8
-a(1, 2) =  sigma * deltat
-a(1, 3) = 0.0_r8
-
-a(2, 1) = (r - x(3)) * deltat
-a(2, 2) = -1.0_r8 * deltat + 1.0_r8
-a(2, 3) = -x(1) * deltat
-
-a(3, 1) =  x(2) * deltat
-a(3, 2) =  x(1) * deltat
-a(3, 3) =    -b * deltat + 1.0_r8
-   
-!  initialize copy of dx
-
-  call error_handler(E_ERR,'inv_linear_dt', 'this routine is not up to date', source, revision, revdate)
-
-!      tdx(i) = dx(i)
-   tdx = dx
-
-!  get rid of a(2, 3)
-
-fact = a(2, 3) / a(3, 3)
-   a(2, :) = a(2, :) - fact * a(3, :)
-tdx(2) = tdx(2) - fact * tdx(3)
-
-!  get rid of a(1, 2)
-
-fact = a(1, 2) / a(2, 2)
-   a(1, :) = a(1, :) - fact * a(2, :)
-tdx(1) = tdx(1) - fact * tdx(2)
-
-!  solve for the previous step linear perturbation
-
-px(1) = tdx(1) / a(1, 1)
-px(2) = (tdx(2) - a(2, 1) * px(1)) / a(2, 2)
-px(3) = (tdx(3) - a(3, 1) * px(1) - a(3, 2) * px(2)) / a(3, 3)
-
-end subroutine inv_linear_dt
-
-
-
-subroutine linearize(nl, l)
-!========================================================================
-! subroutine linearize(nl, l)
-!
-! compute linear operator around state nl
-
-
-real(r8), intent(in)  :: nl(3)
-real(r8), intent(out) :: l(3, 3)
-
-l(1, 1) = -1.0_r8 * sigma * deltat + 1.0_r8
-l(1, 2) =           sigma * deltat
-l(1, 3) =          0.0_r8 * deltat
-
-l(2, 1) = (r - nl(3)) * deltat
-l(2, 2) = -1.0_r8 * deltat + 1.0_r8
-l(2, 3) = -1.0_r8 * nl(1) * deltat
-
-l(3, 1) =       nl(2) * deltat
-l(3, 2) =       nl(1) * deltat
-l(3, 3) = -1.0_r8 * b * deltat + 1.0_r8
-
-return
-end subroutine linearize
-
-
-
-
 subroutine model_get_close_states(o_loc, radius, inum, indices, dist)
-!--------------------------------------------------------------------
+!------------------------------------------------------------------
 ! 
 ! Stub for computation of get close states
-
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
@@ -507,7 +339,7 @@ end subroutine model_get_close_states
 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
-!-----------------------------------------------------------------------------------------
+!------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Jan 24 2003
 !
@@ -530,7 +362,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-!
 
 use typeSizes
 use netcdf
@@ -584,10 +415,10 @@ call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_sigma", sigma ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Lorenz_63"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_r", r ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_b", b ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_sigma", sigma ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_deltat", deltat ))
 
 !-------------------------------------------------------------------------------
@@ -654,17 +485,15 @@ contains
    !                       text message each time an error code is returned. 
    subroutine check(istatus)
       integer, intent ( in) :: istatus
-
       if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts',&
          trim(nf90_strerror(istatus)), source, revision, revdate)
-
    end subroutine check
 end function nc_write_model_atts
 
 
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
-!-----------------------------------------------------------------------------------------
+!------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH 24 June 2003
 !
@@ -688,14 +517,14 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
-use typeSizes                                                                                  
-use netcdf                                                                                     
-                                                                                               
-integer,                intent(in) :: ncFileID      ! netCDF file identifier                   
-real(r8), dimension(:), intent(in) :: statevec                                                 
-integer,                intent(in) :: copyindex                                                
-integer,                intent(in) :: timeindex                                                
-integer                            :: ierr          ! return value of function      
+use typeSizes
+use netcdf
+
+integer,                intent(in) :: ncFileID      ! netCDF file identifier
+real(r8), dimension(:), intent(in) :: statevec
+integer,                intent(in) :: copyindex
+integer,                intent(in) :: timeindex
+integer                            :: ierr          ! return value of function
 
 !-------------------------------------------------------------------------------
 ! General netCDF variables
@@ -731,23 +560,20 @@ contains
    !                       text message each time an error code is returned.
    subroutine check(istatus)
    integer, intent ( in) :: istatus
-
       if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars',&
          trim(nf90_strerror(istatus)), source, revision, revdate)
-
    end subroutine check
 end function nc_write_model_vars
 
 
 
 subroutine pert_model_state(state, pert_state, interf_provided)
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------
 ! subroutine pert_model_state(state, pert_state, interf_provided)
 !
 ! Perturbs a model state for generating initial ensembles
 ! Returning interf_provided means go ahead and do this with uniform
 ! small independent perturbations.
-!
 
 real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
@@ -758,9 +584,147 @@ interf_provided = .false.
 end subroutine pert_model_state
 
 
+subroutine linear_dt(x, dx, dt)
+!------------------------------------------------------------------
+! subroutine linear_dt(x, dx, dt)
 !
+! old version of linearized lorenz 63 model time tendency computation
+   
+   
+real(r8), intent(in)  :: x(:), dx(:)
+real(r8), intent(out) :: dt(:)
+
+!  compute linear model lorenz time tendency
+
+dt(1) = -1.0_r8 * sigma * dx(1) + sigma*dx(2)
+dt(2) = (r - x(3))*dx(1) - dx(2) - x(1)*dx(3)
+dt(3) = x(2)*dx(1) + x(1)*dx(2) - b*dx(3)
+
+end subroutine linear_dt
+
+
+
+subroutine adv_single_rk4(x, fract)
+!------------------------------------------------------------------
+! subroutine adv_single_rk4(x, fract)
+!
+! does single time step advance for lorenz convective 3 variable model
+! using four step rk time step
+
+
+real(r8), intent(inout) :: x(:)
+real(r8), intent(in)    :: fract
+
+real(r8) :: x1(3), x2(3), x3(3), x4(3), dx(3), inter(3)
+
+integer i
+
+call comp_dt(x, dx)         !  compute the first intermediate step
+x1    = fract * deltat * dx
+inter = x + x1 / 2.0_r8
+
+call comp_dt(inter, dx)     !  compute the second intermediate step
+x2    = fract * deltat * dx
+inter = x + x2 / 2.0_r8
+
+call comp_dt(inter, dx)     !  compute the third intermediate step
+x3    = fract * deltat * dx
+inter = x + x3
+
+call comp_dt(inter, dx)     !  compute fourth intermediate step
+x4 = fract * deltat * dx
+
+!  compute new value for x
+
+x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
+
+return
+end subroutine adv_single_rk4
+
+
+subroutine inv_linear_dt(x, dx, px)
+!------------------------------------------------------------------
+!  subroutine inv_linear_dt(x, dx, px)
+!
+!  compute inv linear model lorenz time tendency (see notes 13mar94)
+!  for now assumes stupid leap frog, will this be sufficient?
+
+
+real(r8), intent(in)  :: x(:), dx(:)
+real(r8), intent(out) :: px(3)
+
+real(r8) a(3, 3), fact, tdx(3)
+integer i
+
+a(1, 1) = -sigma * deltat + 1.0_r8
+a(1, 2) =  sigma * deltat
+a(1, 3) = 0.0_r8
+
+a(2, 1) = (r - x(3)) * deltat
+a(2, 2) = -1.0_r8 * deltat + 1.0_r8
+a(2, 3) = -x(1) * deltat
+
+a(3, 1) =  x(2) * deltat
+a(3, 2) =  x(1) * deltat
+a(3, 3) =    -b * deltat + 1.0_r8
+   
+!  initialize copy of dx
+
+  call error_handler(E_ERR,'inv_linear_dt', 'this routine is not up to date', source, revision, revdate)
+
+!      tdx(i) = dx(i)
+   tdx = dx
+
+!  get rid of a(2, 3)
+
+fact = a(2, 3) / a(3, 3)
+   a(2, :) = a(2, :) - fact * a(3, :)
+tdx(2) = tdx(2) - fact * tdx(3)
+
+!  get rid of a(1, 2)
+
+fact = a(1, 2) / a(2, 2)
+   a(1, :) = a(1, :) - fact * a(2, :)
+tdx(1) = tdx(1) - fact * tdx(2)
+
+!  solve for the previous step linear perturbation
+
+px(1) = tdx(1) / a(1, 1)
+px(2) = (tdx(2) - a(2, 1) * px(1)) / a(2, 2)
+px(3) = (tdx(3) - a(3, 1) * px(1) - a(3, 2) * px(2)) / a(3, 3)
+
+end subroutine inv_linear_dt
+
+
+
+subroutine linearize(nl, l)
+!------------------------------------------------------------------
+! subroutine linearize(nl, l)
+!
+! compute linear operator around state nl
+
+
+real(r8), intent(in)  :: nl(3)
+real(r8), intent(out) :: l(3, 3)
+
+l(1, 1) = -1.0_r8 * sigma * deltat + 1.0_r8
+l(1, 2) =           sigma * deltat
+l(1, 3) =          0.0_r8 * deltat
+
+l(2, 1) = (r - nl(3)) * deltat
+l(2, 2) = -1.0_r8 * deltat + 1.0_r8
+l(2, 3) = -1.0_r8 * nl(1) * deltat
+
+l(3, 1) =       nl(2) * deltat
+l(3, 2) =       nl(1) * deltat
+l(3, 3) = -1.0_r8 * b * deltat + 1.0_r8
+
+return
+end subroutine linearize
+
+
+
 !===================================================================
 ! End of model_mod
 !===================================================================
-!
 end module model_mod
