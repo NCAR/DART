@@ -21,7 +21,8 @@ module model_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 !-----------------------------------------------------------------------
 
-use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius
+use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
+                              gas_constant, gas_constant_v
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use      location_mod, only : location_type, get_location, set_location, &
                               get_dist, horiz_dist_only, &
@@ -83,8 +84,6 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, &
                      adv_mod_command
 
-integer :: seed1 = 0
-
 ! Private definition of model variable types
 
 integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
@@ -92,22 +91,17 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_QV  = 7,   TYPE_QC  = 8,  TYPE_QR = 9,  &
                       TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
                       TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
-                      TYPE_Q2  = 16
+                      TYPE_Q2  = 16,  TYPE_PS  = 17
 
 
 !-----------------------------------------------------------------------
 
-real (kind=r8), PARAMETER    :: gas_constant = 287.04_r8
-real (kind=r8), PARAMETER    :: gas_constant_v = 461.51_r8
-real (kind=r8), PARAMETER    :: cp = 1004.0_r8
-
+real (kind=r8), PARAMETER    :: cp = 7.0_r8*gas_constant/2.0_r8
+real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: kappa = gas_constant / cp
+real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
 
-!  Earth constants:
 real (kind=r8), PARAMETER    :: gravity = 9.81_r8
-INTEGER, PARAMETER           :: v_interp_p = 1, v_interp_h = 2
-real (kind=r8), PARAMETER    :: ts0 = 300.0_r8
-!
 
 !---- private data ----
 
@@ -404,7 +398,7 @@ do id=1,num_domains
 
    wrf%dom(id)%number_of_wrf_variables = 6 + wrf%dom(id)%n_moist
    if( wrf%dom(id)%surf_obs ) then
-      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 4
+      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 5
    endif
    allocate(wrf%dom(id)%var_type(wrf%dom(id)%number_of_wrf_variables))
    wrf%dom(id)%var_type(1)  = TYPE_U
@@ -443,6 +437,7 @@ do id=1,num_domains
       wrf%dom(id)%var_type(ind + 2) = TYPE_V10
       wrf%dom(id)%var_type(ind + 3) = TYPE_T2
       wrf%dom(id)%var_type(ind + 4) = TYPE_Q2
+      wrf%dom(id)%var_type(ind + 5) = TYPE_PS
    end if
 
 ! indices into 1D array
@@ -669,7 +664,11 @@ if(debug) write(6,*) ' Var type: ',var_type
 
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )
 
-lev = real(kp) ! This is the index of the vertical
+if( (var_type == type_w ) .or. (var_type == type_gz) ) then
+   lev = real(kp) - 0.5_r8 ! This is the index of the vertical
+else
+   lev = real(kp) ! This is the index of the vertical
+endif
 
 if(debug) write(6,*) 'lon, lat, lev: ',lon, lat, lev
 
@@ -685,25 +684,26 @@ end subroutine get_state_meta_data
 
 subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 
-logical, parameter              :: debug = .false.
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
-real(r8)                        :: xloc, yloc, zloc, xyz_loc(3)
-integer                         :: which_vert
-integer                         :: i, j, k, i1,i2,i3, i1up,i2up
-real(r8)                        :: dx,dy,dxm,dym
-real(r8)                        :: p1,p2,p3,p4,a1,alpha
-integer                         :: in, ii, id
 
-real(r8), allocatable, dimension(:) :: v_h, v_p, fld, fldu, fldv, fll
+logical, parameter  :: debug = .false.
+real(r8)            :: xloc, yloc, zloc, xloc_u, yloc_v, xyz_loc(3)
+integer             :: which_vert
+integer             :: i, i_u, j, j_v, k, i1,i2
+real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
+real(r8)            :: a1,alpha
+integer             :: in, ii, id
 
-! local vars, used in calculating density 
-real(r8)                        :: ph_e1,ph_e1p1, ph_e2,ph_e2p1, ph_e3,ph_e4, &
-                                   mu1, mu2, mu3, mu4,                        &
-                                   rho1 , rho1p1 , rho2 , rho2p1, rho3, rho4
+real(r8), dimension(2) :: fld, fldu, fldv
+real(r8), allocatable, dimension(:) :: v_h, v_p
+
+! local vars, used in calculating density, pressure
+real(r8)            :: rho1 , rho2 , rho3, rho4
+real(r8)            :: pres1, pres2, pres3, pres4, pres
 
 istatus = 0
 
@@ -711,32 +711,29 @@ xyz_loc(:) = get_location(location)
 which_vert = nint(query_location(location,'which_vert'))
 call llxy(xyz_loc(1),xyz_loc(2),xloc,yloc,id)
 
-allocate(v_h(wrf%dom(id)%bt), v_p(wrf%dom(id)%bt), fld(wrf%dom(id)%bt), &
-     fldu(wrf%dom(id)%bt), fldv(wrf%dom(id)%bt), fll(wrf%dom(id)%bts))
+allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
 
 call toGrid(xloc,i,dx,dxm)
 call toGrid(yloc,j,dy,dym)
 
-!  get model pressure profile
-call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p, &
-                                p1,p2,p3,p4)
-
 if(which_vert == 1) then
 
-!  If obs is by level
+   ! If obs is by model level
    zloc = xyz_loc(3)
-   if(debug) print*,' obs is by location and zloc =',zloc
+   if(debug) print*,' obs is by model level and zloc =',zloc
 else if(which_vert == 2) then
+   ! get model pressure profile
+   call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
    ! get pressure vertical co-ordinate
-   call to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt, v_interp_p,zloc)
+   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
    if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
    if(debug) print*,'model pressure profile'
    if(debug) print*,v_p
 else if(which_vert == 3) then
-!  get model height profile
+   ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
-!  get height vertical co-ordinate
-   call to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt, v_interp_h,zloc)
+   ! get height vertical co-ordinate
+   call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
    if(debug) print*,' obs is by height and zloc =',zloc
 else if(which_vert == -1) then
    ! get height vertical co-ordinate
@@ -747,58 +744,58 @@ else
         source, revision, revdate)
 end if
 
+if(zloc /= missing_r8) then
+
+k = max(1,int(zloc))
+
 ! Get the desired field to be interpolated
 if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
 
-! CS: interps for U,V involve averaging to mass points before interpolation.
-!     This is unnecessary and should be changed.
+   xloc_u = xloc + 0.5
+   yloc_v = yloc + 0.5
+   call toGrid(xloc_u,i_u,dx_u,dxm_u)
+   call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-   if(i >= 1 .and. i+2 <= wrf%dom(id)%var_size(1,TYPE_U) .and. &
-      j >= 1 .and. j   <  wrf%dom(id)%var_size(2,TYPE_U)) then
+   if(i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
+      j   >= 1 .and. j   < wrf%dom(id)%var_size(2,TYPE_U) .and. &
+      i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
+      j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
 
-      do k=1,wrf%dom(id)%bt
-         i1 = get_wrf_index(i,j,k,TYPE_U,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_U,id)
+      i1 = get_wrf_index(i_u,j  ,k,TYPE_U,id)
+      i2 = get_wrf_index(i_u,j+1,k,TYPE_U,id)
 
-         fldu(k) = dym*(dxm*(x(i1) + x(i1+1))*0.5_r8 + dx*(x(i1+1)+x(i1+2))*0.5_r8) + &
-                   dy*(dxm*(x(i2) + x(i2+1))*0.5_r8 + dx*(x(i2+1)+x(i2+2))*0.5_r8)
-         if(debug) print*,k,' model u profile ',fldu(k)
-      end do
+      fldu(1) = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
+
+      i1 = get_wrf_index(i_u,j  ,k+1,TYPE_U,id)
+      i2 = get_wrf_index(i_u,j+1,k+1,TYPE_U,id)
+
+      fldu(2) = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
+
+      i1 = get_wrf_index(i,j_v  ,k,TYPE_V,id)
+      i2 = get_wrf_index(i,j_v+1,k,TYPE_V,id) 
+
+      fldv(1) = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
+
+      i1 = get_wrf_index(i,j_v  ,k+1,TYPE_V,id)
+      i2 = get_wrf_index(i,j_v+1,k+1,TYPE_V,id) 
+
+      fldv(2) = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
+
+      alpha = map_to_sphere( xyz_loc(1), xyz_loc(2), id )
+
+      if( obs_kind == KIND_U) then
+
+         fld(:) = fldv(:)*sin(alpha) + fldu(:)*cos(alpha)
+
+      else   ! must want v
+
+         fld(:) = fldv(:)*cos(alpha) - fldu(:)*sin(alpha)
+
+      endif
 
    else
 
-      fldu(:) = missing_r8
-
-   endif
-
-   if(i >= 1 .and. i   <  wrf%dom(id)%var_size(1,TYPE_V) .and. &
-      j >= 1 .and. j+2 <= wrf%dom(id)%var_size(2,TYPE_V)) then
-
-      do k=1,wrf%dom(id)%bt
-         i1 = get_wrf_index(i,j,k,TYPE_V,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_V,id) 
-         i3 = get_wrf_index(i,j+2,k,TYPE_V,id)
-
-         fldv(k) = dym*(dxm*(x(i1) + x(i2))*0.5_r8 + dx*(x(i1+1)+x(i2+1))*0.5_r8) + &
-                   dy*(dxm*(x(i2) + x(i3))*0.5_r8 + dx*(x(i2+1)+x(i3+1))*0.5_r8)
-         if(debug) print*,k,' model v profile ',fldv(k)
-      end do
-
-   else
-
-      fldv(:) = missing_r8
-
-   endif
-
-   alpha = map_to_sphere( xyz_loc(1), xyz_loc(2), id )
-
-   if( obs_kind == KIND_U) then
-
-      fld(:) = fldv(:)*sin(alpha) + fldu(:)*cos(alpha)
-
-   else   ! must want v
-
-      fld(:) = fldv(:)*cos(alpha) - fldu(:)*sin(alpha)
+      fld(:) = missing_r8
 
    endif
 
@@ -807,13 +804,25 @@ else if( obs_kind == KIND_T ) then                ! T
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-      do k=1,wrf%dom(id)%bt
-         i1 = get_wrf_index(i,j,k,TYPE_T,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         fld(k) = (ts0 + a1)*(v_p(k)/ps0)**kappa
-         if(debug) print*,k,' model temp profile ',fld(k)
-      end do
+      i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      pres1 = model_pressure_t(i  ,j  ,k,id,x)
+      pres2 = model_pressure_t(i+1,j  ,k,id,x)
+      pres3 = model_pressure_t(i  ,j+1,k,id,x)
+      pres4 = model_pressure_t(i+1,j+1,k,id,x)
+      pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+      fld(1) = (ts0 + a1)*(pres/ps0)**kappa
+
+      i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
+      i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
+      pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
+      pres3 = model_pressure_t(i  ,j+1,k+1,id,x)
+      pres4 = model_pressure_t(i+1,j+1,k+1,id,x)
+      pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+      fld(2) = (ts0 + a1)*(pres/ps0)**kappa
 
    else
 
@@ -821,57 +830,26 @@ else if( obs_kind == KIND_T ) then                ! T
 
    endif
 
-else if( obs_kind == KIND_RHO ) then ! Calculate density, using hydrost. reln.
-                                     ! as in WRF (calc_p_rho_phi):
-                                     !     rho = mu / dphi/deta  
+else if( obs_kind == KIND_RHO ) then
 
-   ! Rho calculated at mass points, and so is like "TYPE_GZ" 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. & 
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then  
+   ! Rho calculated at mass points, and so is like "TYPE_T" 
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-      ! calculate full mu at corners of interp box
-      i1   = get_wrf_index(i,j  ,1  ,TYPE_MU, id)
-      i2   = get_wrf_index(i,j+1,1  ,TYPE_MU, id)
+      ! calculate full rho at corners of interp box
+      ! and interpolate to desired horizontal location
 
-      mu1 = x(i1  ) + wrf%dom(id)%mub(i  ,j  )
-      mu2 = x(i2  ) + wrf%dom(id)%mub(i  ,j+1)
-      mu3 = x(i1+1) + wrf%dom(id)%mub(i+1,j  )
-      mu4 = x(i2+1) + wrf%dom(id)%mub(i+1,j+1)
+      rho1 = model_rho_t(i  ,j  ,k,id,x)
+      rho2 = model_rho_t(i+1,j  ,k,id,x)
+      rho3 = model_rho_t(i  ,j+1,k,id,x)
+      rho4 = model_rho_t(i+1,j+1,k,id,x)
+      fld(1) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
 
-      do k=1,wrf%dom(id)%bt
-         ! computes rho, then interpolates horizontally.  Not consistent
-         ! with theta, where temp. is interpolated 1st then theta calculated.
-
-         ! 1st, calculate dphi/deta at mass pts
-         i1   = get_wrf_index(i,j  ,k  ,TYPE_GZ, id)
-         i1up = get_wrf_index(i,j  ,k+1,TYPE_GZ, id)
-         i2   = get_wrf_index(i,j+1,k  ,TYPE_GZ, id)
-         i2up = get_wrf_index(i,j+1,k+1,TYPE_GZ, id)
-
-         ph_e1 = (  (x(i1up  ) - x(i1  ))                         &
-                  + (wrf%dom(id)%phb(i  ,j  ,k+1) - wrf%dom(id)%phb(i  ,j  ,k)) ) &
-                 / wrf%dom(id)%dnw(k) 
-         ph_e2 = (  (x(i2up  ) - x(i2  ))                         &
-                  + (wrf%dom(id)%phb(i  ,j+1,k+1) - wrf%dom(id)%phb(i  ,j+1,k)) ) &
-                 / wrf%dom(id)%dnw(k) 
-         ph_e3 = (  (x(i1up+1) - x(i1+1))                         &
-                  + (wrf%dom(id)%phb(i+1,j  ,k+1) - wrf%dom(id)%phb(i+1,j  ,k)) ) &
-                 / wrf%dom(id)%dnw(k) 
-         ph_e4 = (  (x(i2up+1) - x(i2+1))                         &
-                  + (wrf%dom(id)%phb(i+1,j+1,k+1) - wrf%dom(id)%phb(i+1,j+1,k)) ) &
-                 / wrf%dom(id)%dnw(k) 
-
-         ! now calculate rho = - mu / dphi/deta 
-         rho1 = - mu1 / ph_e1
-         rho2 = - mu2 / ph_e2
-         rho3 = - mu3 / ph_e3
-         rho2 = - mu4 / ph_e4
-
-         ! interpolate rho to desired horizontal location
-         fld(k) = dym*( dxm*rho1 + dx*rho3 ) + dy*( dxm*rho2 + dx*rho4 )
-         if(debug) print*,k,' model rho profile ',fld(k)
-
-      end do
+      rho1 = model_rho_t(i  ,j  ,k+1,id,x)
+      rho2 = model_rho_t(i+1,j  ,k+1,id,x)
+      rho3 = model_rho_t(i  ,j+1,k+1,id,x)
+      rho4 = model_rho_t(i+1,j+1,k+1,id,x)
+      fld(2) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
 
    else
 
@@ -881,19 +859,19 @@ else if( obs_kind == KIND_RHO ) then ! Calculate density, using hydrost. reln.
 
 else if( obs_kind == KIND_W ) then                ! W
 
+   zloc = zloc + 0.5_r8
+   k = max(1,int(zloc))
+
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_W) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_W)) then
 
-      do k=1,wrf%dom(id)%var_size(3,TYPE_W)
-         i1 = get_wrf_index(i,j,k,TYPE_W,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
-         fll(k) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      end do
+      i1 = get_wrf_index(i,j  ,k,TYPE_W,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
+      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
-      do k=1,wrf%dom(id)%bt
-         fld(k) = 0.5_r8*(fll(k) + fll(k+1) )
-         if(debug) print*,k,' model w profile ',fld(k)
-      end do
+      i1 = get_wrf_index(i,j  ,k+1,TYPE_W,id)
+      i2 = get_wrf_index(i,j+1,k+1,TYPE_W,id)
+      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
 
@@ -901,7 +879,7 @@ else if( obs_kind == KIND_W ) then                ! W
 
    endif
 
-else if( obs_kind == KIND_QV) then                ! QV
+else if( obs_kind == KIND_QV ) then                ! QV
 
    in = 0
    do ii = 1, wrf%dom(id)%number_of_wrf_variables 
@@ -911,15 +889,15 @@ else if( obs_kind == KIND_QV) then                ! QV
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
 
-      do k=1,wrf%dom(id)%bt
+      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      fld(1) = a1 /(1.0_r8 + a1)
 
-         i1 = get_wrf_index(i,j,k,TYPE_QV,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         fld(k) = a1 /(1.0_r8 + a1)
-         if(debug) print*,k,' model qv profile ',fld(k),i1,i2, &
-              x(i1),x(i1+1),x(i2),x(i2+1)
-      end do
+      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
+      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      fld(2) = a1 /(1.0_r8 + a1)
 
    else
 
@@ -937,14 +915,13 @@ else if( obs_kind == KIND_QR) then                ! QR
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
 
-      do k=1,wrf%dom(id)%bt
+      i1 = get_wrf_index(i,j  ,k,TYPE_QR,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
+      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
-         i1 = get_wrf_index(i,j,k,TYPE_QR,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
-         fld(k) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         if(debug) print*,k,' model qr profile ',fld(k),i1,i2, &
-              x(i1),x(i1+1),x(i2),x(i2+1)
-      end do
+      i1 = get_wrf_index(i,j  ,k+1,TYPE_QR,id)
+      i2 = get_wrf_index(i,j+1,k+1,TYPE_QR,id)
+      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
 
@@ -954,19 +931,41 @@ else if( obs_kind == KIND_QR) then                ! QR
 
 else if( obs_kind == KIND_P) then                 ! Pressure
 
-   fld(:) = v_p(:)
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+      pres1 = model_pressure_t(i  ,j  ,k,id,x)
+      pres2 = model_pressure_t(i+1,j  ,k,id,x)
+      pres3 = model_pressure_t(i  ,j+1,k,id,x)
+      pres4 = model_pressure_t(i+1,j+1,k,id,x)
+      fld(1) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+      pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
+      pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
+      pres3 = model_pressure_t(i  ,j+1,k+1,id,x)
+      pres4 = model_pressure_t(i+1,j+1,k+1,id,x)
+      fld(2) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+   else
+
+      fld(:) = missing_r8
+
+   endif
 
 else if( obs_kind == KIND_PS) then                ! Surface pressure
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_MU) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_MU) .and. &
-      p1 /= missing_r8 .and. p2 /= missing_r8 .and. &
-      p3 /= missing_r8 .and. p4 /= missing_r8) then
+   in = 0
+   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
+      if(TYPE_PS == wrf%dom(id)%var_type(ii) ) in = ii
+   enddo
 
-      obs_val = wrf%dom(id)%p_top                              +&
-           dym*(dxm*wrf%dom(id)%mub(i,j)+dx*wrf%dom(id)%mub(i+1,j))    +&
-           dy *(dxm*wrf%dom(id)%mub(i,j+1)+dx*wrf%dom(id)%mub(i+1,j+1))+&
-           dym*(dxm*p1 + dx*p2) + dy*(dxm*p3 + dx*p4)
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
+
+      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
+      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
+      obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
       if(debug) print*,' for sfc model val =',obs_val
 
    else
@@ -1060,17 +1059,33 @@ else
         source, revision, revdate)
 end if
 
-! Do 1D interpolation
+else
+
+   obs_val = missing_r8
+   fld(:) = missing_r8
+
+endif
+
+! Do vertical interpolation
 if(obs_kind /= KIND_PS .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
      .and. obs_kind /= KIND_T2 .and. obs_kind /= KIND_Q2) then
-   call Interp_lin_1D(fld, wrf%dom(id)%bt, zloc, obs_val)
+
+   call toGrid(zloc, k, dz, dzm)
+
+   if( k >= 1 ) then
+      obs_val = dzm*fld(1) + dz*fld(2)
+   elseif( k == 0 ) then
+      obs_val = fld(1) - (fld(2)-fld(1))*dzm
+   else
+      obs_val = missing_r8
+   endif
 endif
 
 if(obs_val == missing_r8) istatus = 1
 
 if(debug) print*,' interpolated value= ',obs_val
 
-deallocate(v_h, v_p, fld, fldu, fldv, fll)
+deallocate(v_h, v_p)
 
 end subroutine model_interpolate
 
@@ -1193,6 +1208,12 @@ do id=1,num_domains
             num_total = num_total + 1
             if(num_total <= indmax) then
                indices(num_total) = get_wrf_index(ii,jj,k,type_q2,id)
+               dist(num_total) = close_dist(i)
+            end if
+
+            num_total = num_total + 1
+            if(num_total <= indmax) then
+               indices(num_total) = get_wrf_index(ii,jj,k,type_ps,id)
                dist(num_total) = close_dist(i)
             end if
 
@@ -1663,12 +1684,7 @@ type(location_type) :: loc
 real(r8)            :: long, lat, vloc
 integer             :: which_vert
 
-real(r8)                            :: p1,p2,p3,p4
-real(r8), allocatable, dimension(:) :: fld, fll
-
 character(len=129) :: errstring
-
-allocate(fld(wrf%dom(id)%bt), fll(wrf%dom(id)%bts))
 
 ! get distance for input var_type
 
@@ -1690,23 +1706,11 @@ if(which_vert == 1 ) then
 
 elseif(which_vert == 2 ) then
 
-   call get_model_pressure_profile(i,j,0.0_r8,0.0_r8,1.0_r8,1.0_r8, &
-        wrf%dom(id)%bt,x,id,fld, p1,p2,p3,p4)
-   if( (var_type == type_w ) .or. (var_type == type_gz) ) then
-      if (k == 1 ) then
-         vloc = (3.0_r8*fld(1) - fld(2))/2.0_r8
-      elseif (k == wrf%dom(id)%bts) then
-         vloc = (3.0_r8*fld(wrf%dom(id)%bt) - fld(wrf%dom(id)%bt-1))/2.0_r8
-      else
-         vloc = 0.5_r8*(fld(k)+fld(k-1))
-      endif
-   else
-      vloc = fld(k)
-   endif
+   vloc = model_pressure(i,j,k,id,var_type,x)
 
 elseif(which_vert == 3 ) then
 
-   call get_model_height(i,j,k,id,var_type,x,vloc)
+   vloc = model_height(i,j,k,id,var_type,x)
 
 elseif(which_vert == -1 ) then
 
@@ -1718,16 +1722,13 @@ else
 endif
 
 if (vloc == missing_r8 ) then
-   print*,i,j,k, id, p1,var_type,which_vert
-   print*,fld
+   print*,i,j,k, id, var_type,which_vert
    write(errstring, *) 'Unable to define vloc.'
    call error_handler(E_ERR,'get_dist_wrf', errstring, source, revision, revdate)
 endif
 
 loc          = set_location(long, lat, vloc, which_vert)
 get_dist_wrf = get_dist(loc,o_loc)
-
-deallocate(fld, fll)
 
 end function get_dist_wrf
 
@@ -2163,6 +2164,7 @@ if ( output_state_vector ) then
       call check(nf90_put_att(ncFileID, StateVarId, "V10_units","m/s"))
       call check(nf90_put_att(ncFileID, StateVarId, "T2_units","K"))
       call check(nf90_put_att(ncFileID, StateVarId, "Q2_units","kg/kg"))
+      call check(nf90_put_att(ncFileID, StateVarId, "PS_units","Pa"))
    endif
 
    ! Leave define mode so we can actually fill the variables.
@@ -2352,6 +2354,12 @@ do id=1,num_domains
            varid  = var_id))
       call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
       call check(nf90_put_att(ncFileID, var_id, "description", "QV at 2 m"))
+
+      call check(nf90_def_var(ncid=ncFileID, name="PS_d0"//idom, xtype=nf90_real, &
+           dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+           varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "units", "Pa"))
+      call check(nf90_put_att(ncFileID, var_id, "description", "Total surface pressure"))
 
    end if
 
@@ -2700,6 +2708,18 @@ do id=1,num_domains
       call check(nf90_put_var( ncFileID, VarID, temp2d, &
            start=(/ 1, 1, copyindex, timeindex /) ))
 
+      !----------------------------------------------------------------------------
+      varname = 'PS_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+      temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ))
+
    endif
 
    deallocate(temp2d)
@@ -2789,6 +2809,7 @@ subroutine llxy (xloni,xlatj,x,y,id)
 ! PURPOSE:  CALCULATES THE (X,Y) LOCATION (DOT) IN THE MESOSCALE GRIDS
 ! -------   FROM LATITUDES AND LONGITUDES
 !
+! THE GRID IS WHERE T IS DEFINED (MASS POINTS, HALF LEVELS).
 !
 !  INPUT:
 !  -----
@@ -2865,11 +2886,10 @@ subroutine llxy (xloni,xlatj,x,y,id)
 
         if (wrf%dom(id)%cen_lat < 0.0_r8) then
            xx = r*sin(flp)
-           yy = r*cos(flp)
         else
            xx = -r*sin(flp)
-           yy =  r*cos(flp)
         endif
+        yy = r*cos(flp)
 
      endif
 
@@ -2902,27 +2922,8 @@ subroutine llxy (xloni,xlatj,x,y,id)
 
 end subroutine llxy
 
-!**********************************************
-subroutine Interp_lin_1D(fi1d, n1, z, fo1d)
-
-  integer,  intent(in)  :: n1
-  real(r8), intent(in)  :: fi1d(n1)
-  real(r8), intent(in)  :: z
-  real(r8), intent(out) :: fo1d
-
-  integer   :: k
-  real(r8)  :: dz, dzm
-
-  call toGrid(z, k, dz, dzm)
-  if(k >= 1 .and. k < n1) then
-     fo1d = dzm*fi1d(k) + dz*fi1d(k+1)
-  else
-     fo1d = missing_r8
-  endif
-
-end subroutine Interp_lin_1D
-
 !#######################################################################
+
 subroutine toGrid (x, j, dx, dxm)
 
 !  Transfer obs. x to grid j and calculate its
@@ -2939,176 +2940,121 @@ subroutine toGrid (x, j, dx, dxm)
   dxm= 1.0_r8 - dx
 
 end subroutine toGrid
+
 !#######################################################################
 
-subroutine to_zk(obs_v, mdl_v, n3, v_interp_optn, zk)
+subroutine pres_to_zk(pres, mdl_v, n3, zk)
 
-   real(r8), intent(in)  :: obs_v
-   integer,  intent(in)  :: n3, v_interp_optn
-   real(r8), intent(in)  :: mdl_v(n3)
-   real(r8), intent(out) :: zk
+! Calculate the model level "zk" on half (mass) levels,
+! corresponding to pressure "pres".
 
-   integer   :: k
+  integer,  intent(in)  :: n3
+  real(r8), intent(in)  :: pres
+  real(r8), intent(in)  :: mdl_v(0:n3)
+  real(r8), intent(out) :: zk
 
-   zk = missing_r8
+  integer  :: k
 
-   if(v_interp_optn == v_interp_p) then
+  zk = missing_r8
 
-      if (obs_v > mdl_v(1) .or. obs_v < mdl_v(n3)) return
+  if (pres > mdl_v(0) .or. pres < mdl_v(n3)) return
 
-      do k = 1,n3-1
-         if(obs_v <= mdl_v(k) .and. obs_v >= mdl_v(k+1)) then
-            zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
-            exit
-         endif
-      enddo
-   else if(v_interp_optn == v_interp_h) then
-      if (obs_v < mdl_v(1) .or. obs_v > mdl_v(n3)) return
+  do k = 0,n3-1
+     if(pres <= mdl_v(k) .and. pres >= mdl_v(k+1)) then
+        zk = real(k) + (mdl_v(k) - pres)/(mdl_v(k) - mdl_v(k+1))
+        exit
+     endif
+  enddo
 
-      do k = 1,n3-1
-         if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
-            zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
-            exit
-         endif
-      enddo
-   endif
+end subroutine pres_to_zk
 
-end subroutine to_zk
+!#######################################################################
+
+subroutine height_to_zk(obs_v, mdl_v, n3, zk)
+
+! Calculate the model level "zk" on half (mass) levels,
+! corresponding to height "obs_v".
+
+  real(r8), intent(in)  :: obs_v
+  integer,  intent(in)  :: n3
+  real(r8), intent(in)  :: mdl_v(0:n3)
+  real(r8), intent(out) :: zk
+
+  integer   :: k
+
+  zk = missing_r8
+
+  if (obs_v < mdl_v(0) .or. obs_v > mdl_v(n3)) return
+
+  do k = 0,n3-1
+     if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
+        zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
+        exit
+     endif
+  enddo
+
+end subroutine height_to_zk
 
 !#######################################################
 
-subroutine get_model_pressure_profile(i_in,j_in,dx,dy,dxm,dym,n,x,id,fld, &
-                                      pp11,pp21,pp31,pp41)
+subroutine get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,id,v_p)
 
-! CS: What are outputs pp11, ..., pp41 ?? Moist corrections to hydrostatic
-!     surface pressure ??
+! Calculate the full model pressure profile on half (mass) levels,
+! horizontally interpolated at the observation location.
 
-integer,  intent(in)  :: i_in,j_in,n,id
+integer,  intent(in)  :: i,j,n,id
 real(r8), intent(in)  :: dx,dy,dxm,dym
 real(r8), intent(in)  :: x(:)
-real(r8), intent(out) :: fld(n)
-real(r8), intent(out) :: pp11,pp21,pp31,pp41
+real(r8), intent(out) :: v_p(0:n)
 
-integer               :: i1,i2,k,q1,q2,q3,q4
-real(r8)              :: qv1,qv2,qv3,qv4
-real(r8), dimension(n):: pp1,pp2,pp3,pp4,pb,pp
-integer               :: in, ii, i, j
+integer  :: i1,i2,k
+real(r8) :: pres1, pres2, pres3, pres4
 
-i = i_in
-j = j_in
-
-in = 0
-do ii = 1, wrf%dom(id)%number_of_wrf_variables
-   if(TYPE_QV == wrf%dom(id)%var_type(ii) ) in = ii
-enddo
-
-if((dx /= 0.0_r8) .or. (dy /= 0.0_r8)) then
-
-if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-   j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
+if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+   j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
    do k=1,n
-      pb(k) = wrf%dom(id)%p_top + wrf%dom(id)%znu(k)*  &
-           (  dym*(dxm*wrf%dom(id)%mub(i,j  ) + dx*wrf%dom(id)%mub(i+1,j  )) + &
-              dy *(dxm*wrf%dom(id)%mub(i,j+1) + dx*wrf%dom(id)%mub(i+1,j+1)) )
-   end do
-   i1 = get_wrf_index(i,j,1,TYPE_MU,id)
-   i2 = get_wrf_index(i,j+1,1,TYPE_MU,id)
-   q1 = get_wrf_index(i,j,n,TYPE_QV,id)
-   q2 = get_wrf_index(i,j+1,n,TYPE_QV,id)
-   qv1 = x(q1)/(1.0_r8+x(q1))
-   qv2 = x(q1+1)/(1.0_r8+x(q1+1))
-   qv3 = x(q2)/(1.0_r8+x(q2))
-   qv4 = x(q2+1)/(1.0_r8+x(q2+1))
-   pp1(n) = -0.5_r8 *(x(i1)  +qv1*wrf%dom(id)%mub(i  ,j  ))*wrf%dom(id)%dnw(n)*(1.0_r8 + x(q1))
-   pp2(n) = -0.5_r8 *(x(i1+1)+qv2*wrf%dom(id)%mub(i+1,j  ))*wrf%dom(id)%dnw(n)*(1.0_r8 + x(q1+1))
-   pp3(n) = -0.5_r8 *(x(i2)  +qv3*wrf%dom(id)%mub(i  ,j+1))*wrf%dom(id)%dnw(n)*(1.0_r8 + x(q2))
-   pp4(n) = -0.5_r8 *(x(i2+1)+qv4*wrf%dom(id)%mub(i+1,j+1))*wrf%dom(id)%dnw(n)*(1.0_r8 + x(q2+1))
-   pp(n)  = dym*(dxm*pp1(n)+dx*pp2(n)) + dy*(dxm*pp3(n)+dx*pp4(n))
-   fld(n) = pp(n) + pb(n)
-   do k= n-1,1,-1
-      q1 = get_wrf_index(i,j,k,TYPE_QV,id)
-      q2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-      q3 = get_wrf_index(i,j,k+1,TYPE_QV,id)
-      q4 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-      qv1 = 0.5_r8*(x(q1)+x(q3))/(1.0_r8+0.5_r8*(x(q1)+x(q3)))
-      qv2 = 0.5_r8*(x(q1+1)+x(q3+1))/(1.0_r8+0.5_r8*(x(q1+1)+x(q3+1)))
-      qv3 = 0.5_r8*(x(q2)+x(q4))/(1.0_r8+0.5_r8*(x(q2)+x(q4)))
-      qv4 = 0.5_r8*(x(q2+1)+x(q4+1))/(1.0_r8+0.5_r8*(x(q2+1)+x(q4+1)))
-
-      pp1(k) = pp1(k+1) -(x(i1)  +qv1*wrf%dom(id)%mub(i  ,j  ))*wrf%dom(id)%dn(k+1)* &
-           (1.0_r8 + 0.5_r8*(x(q1) + x(q3)))
-      pp2(k) = pp2(k+1) -(x(i1+1)+qv2*wrf%dom(id)%mub(i+1,j  ))*wrf%dom(id)%dn(k+1)* &
-           (1.0_r8 + 0.5_r8*(x(q1+1) + x(q3+1)))
-      pp3(k) = pp3(k+1) -(x(i2)  +qv3*wrf%dom(id)%mub(i  ,j+1))*wrf%dom(id)%dn(k+1)* &
-           (1.0_r8 + 0.5_r8*(x(q2) + x(q4)))
-      pp4(k) = pp4(k+1) -(x(i2+1)  +qv4*wrf%dom(id)%mub(i+1,j+1))*wrf%dom(id)%dn(k+1)* &
-           (1.0_r8 + 0.5_r8*(x(q2+1) + x(q4+1)))
-
-      pp(k)  = dym*(dxm*pp1(k)+dx*pp2(k)) + dy*(dxm*pp3(k)+dx*pp4(k))
-      fld(k) = pp(k) + pb(k)
+      pres1 = model_pressure_t(i  ,j  ,k,id,x)
+      pres2 = model_pressure_t(i+1,j  ,k,id,x)
+      pres3 = model_pressure_t(i  ,j+1,k,id,x)
+      pres4 = model_pressure_t(i+1,j+1,k,id,x)
+      v_p(k) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
    end do
 
-   pp11 = pp1(1)
-   pp21 = pp2(1)
-   pp31 = pp3(1)
-   pp41 = pp4(1)
+   if(wrf%dom(id)%surf_obs ) then
+
+      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
+      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
+      if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
+         x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
+
+         v_p(0) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         pres1 = model_pressure_t(i  ,j  ,2,id,x)
+         pres2 = model_pressure_t(i+1,j  ,2,id,x)
+         pres3 = model_pressure_t(i  ,j+1,2,id,x)
+         pres4 = model_pressure_t(i+1,j+1,2,id,x)
+         v_p(0) = (3.0_r8*v_p(1) - &
+              dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
+
+      endif
+
+   else
+
+      pres1 = model_pressure_t(i  ,j  ,2,id,x)
+      pres2 = model_pressure_t(i+1,j  ,2,id,x)
+      pres3 = model_pressure_t(i  ,j+1,2,id,x)
+      pres4 = model_pressure_t(i+1,j+1,2,id,x)
+      v_p(0) = (3.0_r8*v_p(1) - &
+           dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
+
+   endif
 
 else
 
-   fld(:) = missing_r8
-   pp11 = missing_r8
-   pp21 = missing_r8
-   pp31 = missing_r8
-   pp41 = missing_r8
-
-endif
-
-else
-
-! Cheating to include the last grid point of U or V.
-
-if(i == wrf%dom(id)%var_size(1,in)+1) i = wrf%dom(id)%var_size(1,in)
-if(j == wrf%dom(id)%var_size(2,in)+1) j = wrf%dom(id)%var_size(2,in)
-
-if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,in) .and. &
-   j >= 1 .and. j <= wrf%dom(id)%var_size(2,in)) then
-
-   do k=1,n
-      pb(k) = wrf%dom(id)%p_top + wrf%dom(id)%znu(k)*wrf%dom(id)%mub(i,j)
-   end do
-   i1 = get_wrf_index(i,j,1,TYPE_MU,id)
-   q1 = get_wrf_index(i,j,n,TYPE_QV,id)
-   qv1 = x(q1)/(1.0_r8+x(q1))
-   pp1(n) = -0.5_r8 *(x(i1)  +qv1*wrf%dom(id)%mub(i,j))*wrf%dom(id)%dnw(n)*(1.0_r8 + x(q1))
-   pp(n)  = pp1(n)
-   fld(n) = pp(n) + pb(n)
-   do k= n-1,1,-1
-      q1 = get_wrf_index(i,j,k,TYPE_QV,id)
-      q3 = get_wrf_index(i,j,k+1,TYPE_QV,id)
-      qv1 = 0.5_r8*(x(q1)+x(q3))/(1.0_r8+0.5_r8*(x(q1)+x(q3)))
-
-      pp1(k) = pp1(k+1) -(x(i1)  +qv1*wrf%dom(id)%mub(i,j))*wrf%dom(id)%dn(k+1)* &
-           (1.0_r8 + 0.5_r8*(x(q1) + x(q3)))
-
-      pp(k)  = pp1(k)
-      fld(k) = pp(k) + pb(k)
-   end do
-
-   pp11 = pp1(1)
-   pp21 = missing_r8
-   pp31 = missing_r8
-   pp41 = missing_r8
-
-else
-
-   fld(:) = missing_r8
-   pp11 = missing_r8
-   pp21 = missing_r8
-   pp31 = missing_r8
-   pp41 = missing_r8
-
-endif
+   v_p(:) = missing_r8
 
 endif
 
@@ -3116,34 +3062,205 @@ end subroutine get_model_pressure_profile
 
 !#######################################################
 
-subroutine get_model_height_profile(i_in,j_in,dx,dy,dxm,dym,n,x,id,fld)
+function model_pressure(i,j,k,id,var_type,x)
 
-integer,  intent(in)  :: i_in,j_in,n,id
-real(r8), intent(in)  :: dx,dy,dxm,dym
+integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
-real(r8), intent(out) :: fld(n)
+real(r8)              :: model_pressure
 
-real(r8)  :: fll(n+1)
-integer   :: i, j, k
+integer  :: ips, imu
+real(r8) :: pres1, pres2
 
-i = i_in
-j = j_in
+model_pressure = missing_r8
 
-! Cheating to include the last grid point of U or V.
+if( (var_type == type_w) .or. (var_type == type_gz) ) then
 
-if((dx == 0.0_r8) .and. (dy == 0.0_r8)) then
-   if(i == wrf%dom(id)%var_size(1,TYPE_GZ)+1) i = wrf%dom(id)%var_size(1,TYPE_GZ)
-   if(j == wrf%dom(id)%var_size(2,TYPE_GZ)+1) j = wrf%dom(id)%var_size(2,TYPE_GZ)
+   if( k == 1 ) then
+
+      pres1 = model_pressure_t(i,j,k,id,x)
+      pres2 = model_pressure_t(i,j,k+1,id,x)
+      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+   elseif( k == wrf%dom(id)%var_size(3,TYPE_W) ) then
+
+      pres1 = model_pressure_t(i,j,k-1,id,x)
+      pres2 = model_pressure_t(i,j,k-2,id,x)
+      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+   else
+
+      pres1 = model_pressure_t(i,j,k,id,x)
+      pres2 = model_pressure_t(i,j,k-1,id,x)
+      model_pressure = (pres1 + pres2)/2.0_r8
+
+   endif
+
+elseif( var_type == type_u ) then
+
+   if( i == wrf%dom(id)%var_size(1,TYPE_U) ) then
+
+      pres1 = model_pressure_t(i-1,j,k,id,x)
+      pres2 = model_pressure_t(i-2,j,k,id,x)
+      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+   elseif( i == 1 ) then
+
+      pres1 = model_pressure_t(i,j,k,id,x)
+      pres2 = model_pressure_t(i+1,j,k,id,x)
+      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+   else
+
+      pres1 = model_pressure_t(i,j,k,id,x)
+      pres2 = model_pressure_t(i-1,j,k,id,x)
+      model_pressure = (pres1 + pres2)/2.0_r8
+
+   endif
+
+elseif( var_type == type_v ) then
+
+   if( j == wrf%dom(id)%var_size(2,TYPE_V) ) then
+
+      pres1 = model_pressure_t(i,j-1,k,id,x)
+      pres2 = model_pressure_t(i,j-2,k,id,x)
+      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+   elseif( j == 1 ) then
+
+      pres1 = model_pressure_t(i,j,k,id,x)
+      pres2 = model_pressure_t(i,j+1,k,id,x)
+      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+   else
+
+      pres1 = model_pressure_t(i,j,k,id,x)
+      pres2 = model_pressure_t(i,j-1,k,id,x)
+      model_pressure = (pres1 + pres2)/2.0_r8
+
+   endif
+
+elseif( var_type == type_mu ) then
+
+   imu = get_wrf_index(i,j,1,TYPE_MU,id)
+   model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
+
+elseif( var_type == type_ps .or. var_type == type_u10 .or. &
+        var_type == type_v10 .or. var_type == type_t2 .or. var_type == type_q2 ) then
+
+   ips = get_wrf_index(i,j,1,TYPE_PS,id)
+   model_pressure = x(ips)
+
+else
+
+   model_pressure = model_pressure_t(i,j,k,id,x)
+
 endif
 
-if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-     j >= 1 .and. j <= wrf%dom(id)%var_size(2,TYPE_GZ)) then
+end function model_pressure
 
-   call get_model_height_profile_stag(i,j,dx,dy,dxm,dym,n,x,id,fll)
+!#######################################################
+
+function model_pressure_t(i,j,k,id,x)
+
+! Calculate total pressure on mass point (half (mass) levels, T-point).
+
+integer,  intent(in)  :: i,j,k,id
+real(r8), intent(in)  :: x(:)
+real(r8)              :: model_pressure_t
+
+integer  :: iqv,it
+real(r8) :: cpovcv,qvf1,rho
+
+model_pressure_t = missing_r8
+
+! Adapted the code from WRF module_big_step_utilities_em.F ----
+!         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
+
+! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
+
+cpovcv = cp / (cp - gas_constant)
+
+iqv = get_wrf_index(i,j,k,TYPE_QV,id)
+it  = get_wrf_index(i,j,k,TYPE_T,id)
+
+qvf1 = 1.0_r8 + x(iqv) / rd_over_rv
+
+rho = model_rho_t(i,j,k,id,x)
+
+! .. total pressure:
+model_pressure_t = ps0 * ( (gas_constant*(ts0+x(it))*qvf1) / &
+     (ps0/rho) )**cpovcv
+
+end function model_pressure_t
+
+!#######################################################
+
+function model_rho_t(i,j,k,id,x)
+
+! Calculate the total density on mass point (half (mass) levels, T-point).
+
+integer,  intent(in)  :: i,j,k,id
+real(r8), intent(in)  :: x(:)
+real(r8)              :: model_rho_t
+
+integer  :: imu,iph,iphp1
+real(r8) :: ph_e
+
+model_rho_t = missing_r8
+
+! Adapted the code from WRF module_big_step_utilities_em.F ----
+!         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
+
+! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
+
+imu = get_wrf_index(i,j,1,TYPE_MU,id)
+iph = get_wrf_index(i,j,k,TYPE_GZ,id)
+iphp1 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+
+ph_e = ( (x(iphp1) + wrf%dom(id)%phb(i,j,k+1)) - (x(iph) + wrf%dom(id)%phb(i,j,k)) ) &
+     /wrf%dom(id)%dnw(k)
+
+! now calculate rho = - mu / dphi/deta
+
+model_rho_t = - (wrf%dom(id)%mub(i,j)+x(imu)) / ph_e
+
+end function model_rho_t
+
+!#######################################################
+
+subroutine get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,id,v_h)
+
+! Calculate the model height profile on half (mass) levels,
+! horizontally interpolated at the observation location.
+
+integer,  intent(in)  :: i,j,n,id
+real(r8), intent(in)  :: dx,dy,dxm,dym
+real(r8), intent(in)  :: x(:)
+real(r8), intent(out) :: v_h(0:n)
+
+real(r8)  :: fll(n+1)
+integer   :: i1,i2,k
+
+if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
+   j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
+
+   do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
+      i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+      i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
+      fll(k) = (dym*( dxm*(wrf%dom(id)%phb(i,j,k)+x(i1)) + &
+           dx*(wrf%dom(id)%phb(i+1,j,k)+x(i1+1))) + &
+           dy*(dxm*(wrf%dom(id)%phb(i,j+1,k)+x(i2)) + &
+           dx*(wrf%dom(id)%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
+   end do
 
    do k=1,n
-      fld(k) = 0.5_r8*(fll(k) + fll(k+1) )
+      v_h(k) = 0.5_r8*(fll(k) + fll(k+1) )
    end do
+
+   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
+                   dx*wrf%dom(id)%hgt(i+1,j) ) + &
+             dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
+                   dx*wrf%dom(id)%hgt(i+1,j+1) )
 
 else
 
@@ -3151,86 +3268,28 @@ else
    print*,i,j,dx,dy,dxm,dym,n,id,wrf%dom(id)%var_size(1,TYPE_GZ), &
         wrf%dom(id)%var_size(2,TYPE_GZ)
 
-   fld(:) =  missing_r8
+   v_h(:) =  missing_r8
 
 endif
 
 end subroutine get_model_height_profile
 
-
-
 !#######################################################
 
-subroutine get_model_height_profile_stag(i_in,j_in,dx,dy,dxm,dym,n,x,id,fll)
-
-integer,  intent(in)  :: i_in,j_in,n,id
-real(r8), intent(in)  :: dx,dy,dxm,dym
-real(r8), intent(in)  :: x(:)
-real(r8), intent(out) :: fll(n+1)
-
-integer   :: i1,i2,i,j,k
-
-i = i_in
-j = j_in
-
-if((dx /= 0.0_r8) .or. (dy /= 0.0_r8)) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-        j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
-
-      do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
-         i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
-         i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
-         fll(k) = (dym*( dxm*(wrf%dom(id)%phb(i,j,k)+x(i1)) + &
-              dx*(wrf%dom(id)%phb(i+1,j,k)+x(i1+1))) + &
-              dy*(dxm*(wrf%dom(id)%phb(i,j+1,k)+x(i2)) + &
-              dx*(wrf%dom(id)%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
-      end do
-
-   else
-
-      fll(:) =  missing_r8
-
-   endif
-
-else
-
-   if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-        j >= 1 .and. j <= wrf%dom(id)%var_size(2,TYPE_GZ)) then
-
-      do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
-         i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
-         fll(k) = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
-      end do
-
-   else
-
-      fll(:) =  missing_r8
-
-   endif
-
-endif
-
-end subroutine get_model_height_profile_stag
-
-
-
-!#######################################################
-
-subroutine get_model_height(i,j,k,id,var_type,x,vloc)
+function model_height(i,j,k,id,var_type,x)
 
 integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
-real(r8), intent(out) :: vloc
+real(r8)              :: model_height
 
 integer   :: i1, i2, i3, i4
 
-vloc = missing_r8
+model_height = missing_r8
 
 if( (var_type == type_w) .or. (var_type == type_gz) ) then
 
    i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
-   vloc = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
+   model_height = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
 
 elseif( var_type == type_u ) then
 
@@ -3239,30 +3298,30 @@ elseif( var_type == type_u ) then
       i1 = get_wrf_index(i-1,j,k  ,TYPE_GZ,id)
       i2 = get_wrf_index(i-1,j,k+1,TYPE_GZ,id)
 
-      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
-              +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
-                     -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
-                     -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
+                      +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
+                             -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
+                             -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
 
    elseif( i == 1 ) then
 
       i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
       i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
 
-      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
-              +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
-                     -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
-                     -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
+      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
+                      +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
+                             -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
+                             -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
 
    else
 
       i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
       i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
 
-      vloc = ( (wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
-              +(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
-              +(wrf%dom(id)%phb(i-1,j,k  )+x(i1-1)) &
-              +(wrf%dom(id)%phb(i-1,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+      model_height = ( (wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
+                      +(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
+                      +(wrf%dom(id)%phb(i-1,j,k  )+x(i1-1)) &
+                      +(wrf%dom(id)%phb(i-1,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
 
    endif
 
@@ -3275,10 +3334,10 @@ elseif( var_type == type_v ) then
       i3 = get_wrf_index(i,j-2,k  ,TYPE_GZ,id)
       i4 = get_wrf_index(i,j-2,k+1,TYPE_GZ,id)
 
-      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
-              +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
-                     -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
-                     -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
+      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
+                      +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
+                             -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
+                             -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
 
    elseif( j == 1 ) then
 
@@ -3287,10 +3346,10 @@ elseif( var_type == type_v ) then
       i3 = get_wrf_index(i,j+1,k  ,TYPE_GZ,id)
       i4 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
 
-      vloc = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
-              +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
-                     -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
-                     -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
+      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+                      +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+                             -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
+                             -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
 
    else
 
@@ -3299,28 +3358,36 @@ elseif( var_type == type_v ) then
       i3 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
       i4 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
 
-      vloc = ( (wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
-              +(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
-              +(wrf%dom(id)%phb(i,j-1,k  )+x(i3)) &
-              +(wrf%dom(id)%phb(i,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
+      model_height = ( (wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+                      +(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+                      +(wrf%dom(id)%phb(i,j-1,k  )+x(i3)) &
+                      +(wrf%dom(id)%phb(i,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
 
    endif
 
-elseif( var_type == type_mu ) then
+elseif( var_type == type_mu .or. var_type == type_ps) then
 
-   vloc = wrf%dom(id)%hgt(i,j)
+   model_height = wrf%dom(id)%hgt(i,j)
+
+elseif( var_type == type_u10 .or. var_type == type_v10 ) then
+
+   model_height = wrf%dom(id)%hgt(i,j) + 10.0_r8
+
+elseif( var_type == type_t2 .or. var_type == type_q2 ) then
+
+   model_height = wrf%dom(id)%hgt(i,j) + 2.0_r8
 
 else
 
    i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
    i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
 
-   vloc = ( (wrf%dom(id)%phb(i,j,k  )+x(i1)) &
-           +(wrf%dom(id)%phb(i,j,k+1)+x(i2)) )/(2.0_r8*gravity)
+   model_height = ( (wrf%dom(id)%phb(i,j,k  )+x(i1)) &
+                   +(wrf%dom(id)%phb(i,j,k+1)+x(i2)) )/(2.0_r8*gravity)
 
 endif
 
-end subroutine get_model_height
+end function model_height
 
 
 
