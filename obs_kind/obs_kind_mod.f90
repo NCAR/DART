@@ -34,8 +34,8 @@ private
 public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
        interactive_kind
 
-public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_TD, KIND_VR, &
-       KIND_REF
+public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
+       KIND_VR, KIND_REF
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -50,8 +50,8 @@ end type obs_kind_type
 
 ! ADD A LONG TABLE OF DEFINED BUFR INDICES, ETC.
 
-integer, parameter :: KIND_U = 1, KIND_V = 2, KIND_PS = 3, KIND_T = 4, &
-                      KIND_QV = 5, KIND_P = 6, KIND_TD = 10,           &
+integer, parameter :: KIND_U = 1, KIND_V = 2, KIND_PS = 3, KIND_T = 4,   &
+                      KIND_QV = 5, KIND_P = 6, KIND_W = 7, KIND_QR = 8, KIND_TD = 10, &
                       KIND_VR = 100, KIND_REF = 101
 
 logical, save :: module_initialized = .false.
