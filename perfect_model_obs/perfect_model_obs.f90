@@ -128,7 +128,7 @@ if(start_from_restart) then
    call init_assim_model(x(1))
    unit = get_unit()
 
-   if (binary_restart_files == .true.) then
+   if ( binary_restart_files ) then
       open(unit = unit, file = restart_in_file_name, form = "unformatted")
       call read_state_restart(x(1), unit,            form = "unformatted")
    else
@@ -227,7 +227,7 @@ call write_obs_sequence(unit_out, seq)
 ! Output a restart file if requested
 if(output_restart) then
    unit = get_unit()
-   if (binary_restart_files == .true.) then
+   if ( binary_restart_files ) then
       open(unit = unit, file = restart_out_file_name, form = "unformatted", status = 'replace')
       call write_state_restart(x(1), unit,            form = "unformatted")
    else
