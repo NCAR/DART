@@ -345,8 +345,8 @@ endif
 !!!call interactive_time(obs_def%time)
 ! Eventually this should be done in time manager to allow for calendar type use
 ! but this could be done after ESMF adoption?
-write(*, *) 'input time in seconds and days '
-read(*, *) seconds, days
+write(*, *) 'input time in days and seconds'
+read(*, *) days, seconds
 obs_def%time = set_time(seconds, days)
 
 write(*, *) 'Input error variance for this observation definition '
