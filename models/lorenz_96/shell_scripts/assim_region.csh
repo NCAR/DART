@@ -23,13 +23,13 @@ cd     $temp_dir
 
 # Copy the initial condition file to the temp directory
 
-#cp ${PBS_O_WORKDIR}/filter_assim_region__in$element filter_assim_region_in
-ln ${PBS_O_WORKDIR}/filter_assim_region__in$element filter_assim_region_in
-#cp ${PBS_O_WORKDIR}/input.nml .
-ln ${PBS_O_WORKDIR}/input.nml
-#cp ${PBS_O_WORKDIR}/assim_region .
-#cp ${PBS_O_WORKDIR}/filter_assim_obs_seq .
-ln ${PBS_O_WORKDIR}/filter_assim_obs_seq
+cp ${PBS_O_WORKDIR}/filter_assim_region__in$element filter_assim_region_in
+#ln ${PBS_O_WORKDIR}/filter_assim_region__in$element filter_assim_region_in
+cp ${PBS_O_WORKDIR}/input.nml .
+#ln ${PBS_O_WORKDIR}/input.nml
+cp ${PBS_O_WORKDIR}/assim_region .
+cp ${PBS_O_WORKDIR}/filter_assim_obs_seq .
+#ln ${PBS_O_WORKDIR}/filter_assim_obs_seq
 
 #./assim_region > lorenz_96_out_temp
 ${PBS_O_WORKDIR}/assim_region > lorenz_96_out_temp
