@@ -1,9 +1,5 @@
 #!/bin/tcsh
 
-
-#UPDATE from bangkok:.../T21x80/filter.csh for new assim_ic file management
-
-
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
@@ -24,9 +20,9 @@
 #PBS -r n
 ### Output files
 #PBS -e run_filter.err
-#PBS -o run_filter.log
+#PBS -o run_filter.out
 ### Queue name (small, medium, long, verylong)
-#PBS -q medium
+#PBS -q long
 #PBS -l nodes=1:ppn=1
 
 ### This job's working directory; must cd to it, or it will run in /home...
@@ -34,6 +30,7 @@ set tempdir = /scratch/local/tmp$$$user
 rm $tempdir
 mkdir $tempdir
 echo filter- cd to $tempdir >> $PBS_O_WORKDIR/run_job.log
+echo cd to $tempdir > $PBS_O_WORKDIR/run_filter.stout
 cd $tempdir
 
 if ($?PBS_O_WORKDIR) then
@@ -51,10 +48,11 @@ cp $PBS_O_WORKDIR/caminput.nc .
 cp $PBS_O_WORKDIR/obs_seq.out .
 cp $PBS_O_WORKDIR/filter .
 cp $PBS_O_WORKDIR/filter_ic_old* .
+cp $PBS_O_WORKDIR/assim_ic_old .
 
 #-----------------------
 # Run the filter
-./filter >! run_filter.log &
+./filter >> $PBS_O_WORKDIR/run_filter.stout &
 
 #-----------------
 # Hang around forever for now and wait for go_xxx to appear here (tempdir),
@@ -137,20 +135,21 @@ while($again == true)
    # When filter writes out go_end_filter... 
    if(-e go_end_filter) then
       #wait for new filter_ics to appear,
-      set nsec = 1
+      set msec = 1
       set go = no
       while ($go == no)
          ls filter_ic_new* >! .garb_ic
          if ($status == 0) then
             set go = yes
          else
-            sleep $nsec
-            if ($nsec < 8) @ nsec = 2 * $nsec
+            sleep $msec
+            if ($msec < 8) @ msec = 2 * $msec
          endif
       end
 
       # move output to central directory for analysis and storage
       cp filter_ic_new*                     $PBS_O_WORKDIR
+      cp assim_ic_new                       $PBS_O_WORKDIR
       echo filter- copied filter_ic_new to PBS >> $PBS_O_WORKDIR/run_job.log
       ls -lt $PBS_O_WORKDIR/filter_ic*         >> $PBS_O_WORKDIR/run_job.log
       cp Prior_Diag.nc Posterior_Diag.nc    $PBS_O_WORKDIR
