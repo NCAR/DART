@@ -14,7 +14,7 @@
 #======================================================================
 # Find the project and build it, if need be.
 #======================================================================
-                                                                                
+
 if ( ${?DART_HOME} ) then
    if ( -d $DART_HOME ) then
       setenv DARTHOME $DART_HOME
@@ -64,33 +64,46 @@ set SAVEME = input.nml.$$
 if ( -e input.nml ) then
    mv input.nml $SAVEME
 endif
+foreach NAMELIST ( *.nml )
+   mv ${NAMELIST} ${SAVEME}
+end
+
+#======================================================================
+# Create common namelists -- lots of ways to do it.
+#======================================================================
+
+cat << ENDofTask00 > utilities.nml
+&utilities_nml
+   logfilename = "create_obs_set_def.out",
+   TERMLEVEL = 1
+&end
+ENDofTask00
+   
+cat << ENDofTask01 > assim_mod.nml
+&assim_model_nml
+   binary_restart_files = .false.
+&end
+ENDofTask01
+
+echo '&model_nml'                       > model.nml
+echo '   g = 8.0,'                     >> model.nml
+echo '   deltat = 0.0833333333333333'  >> model.nml
+echo '&end'                            >> model.nml
 
 #======================================================================
 # Simulate a particular observing system:
 # 1) declare an observation set definition
 #======================================================================
 
-cat << ENDofTask01 > create_obs_set_def.in
-set_def.out
-1           ;# number of unique observation SETS to define
-3           ;# number of observations in set 1 (x,y,z)
-1.0         ;# error variance for set 1, observation 1 (X)
-1           ;# 1 == state variable 1 (X)
-1.0         ;# error variance for set 1, observation 1 (Y)
-2           ;# 1 == state variable 2 (Y)
-1.0         ;# error variance for set 1, observation 1 (Z)
-3           ;# 1 == state variable 3 (Z)
-ENDofTask01
+# This sequence block is not great. It will NOT handle
+# arbitrary sets of state variables. You can observe
+# the first N, or #N, but not 3,6,9 for example.
+# For that, you must run interactively.
 
 set obs_error_variance = 1.0
 if ( ${?ObsError} ) then
    set obs_error_variance = $ObsError
 endif
-
-# This sequence block is not great. It will NOT handle
-# arbitrary sets of state variables. You can observe
-# the first N, or #N, but not 3,6,9 for example.
-# For that, you must run interactively.
 
 set num_obs_set_1 = 9
 if ( ${?NumObsSet1} ) then
@@ -98,14 +111,21 @@ if ( ${?NumObsSet1} ) then
 endif
 @ loopvar = 1
 
-echo "set_def.out"                  > create_obs_set_def.in
+echo "set_def.out"        > create_obs_set_def.in
 echo "1"                           >> create_obs_set_def.in
 echo $num_obs_set_1                >> create_obs_set_def.in
 while ($loopvar <= $num_obs_set_1)
-   echo $obs_error_variance        >> create_obs_set_def.in
+echo $obs_error_variance                              >> create_obs_set_def.in
    echo $loopvar                   >> create_obs_set_def.in
    @ loopvar++
 end
+
+echo '&utilities_nml'                                  > utilities.nml
+echo '   logfilename = "create_obs_set_def.out"'      >> utilities.nml
+echo '   TERMLEVEL = 1'                               >> utilities.nml
+echo '&end'                                           >> utilities.nml
+
+cat utilities.nml assim_mod.nml model.nml > input.nml
 
 ./create_obs_set_def < create_obs_set_def.in
 
@@ -118,6 +138,11 @@ endif
 # Simulate a particular observing system:
 # 2) declare sequences of observation sets
 #======================================================================
+
+echo " "
+echo "Running create_obs_sequence ..."
+echo " "
+
 set num_obs = 4000
 set ob_day_1 = 0
 set ob_seconds_1 = 3600
@@ -137,6 +162,13 @@ echo $num_obs                >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo $ob_day_1 $ob_seconds_1 >> create_obs_sequence.in
 echo "obs_seq.in"            >> create_obs_sequence.in
+ 
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "create_obs_sequence.out"' >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
+
+cat utilities.nml assim_mod.nml model.nml > input.nml
 
 ./create_obs_sequence < create_obs_sequence.in
 
@@ -151,11 +183,11 @@ endif
 #    creates files True_State.nc, obs_seq.out
 #======================================================================
 
-cat << ENDofTask03 > input.nml
-&model_nml
-   g = 8.0,
-   deltat = 0.0833333333333333
-&end
+echo " "
+echo "Running perfect_model_obs ..."
+echo " "
+
+cat << ENDofTask03 > perfect.nml
 
 &perfect_model_obs_nml
    async = 0,
@@ -171,6 +203,13 @@ cat << ENDofTask03 > input.nml
 &end
 ENDofTask03
 
+echo '&utilities_nml'                              > utilities.nml
+echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
+echo '   TERMLEVEL = 1'                           >> utilities.nml
+echo '&end'                                       >> utilities.nml
+
+cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
+
 ./perfect_model_obs
  
 if ( $status > 0 ) then
@@ -178,7 +217,7 @@ if ( $status > 0 ) then
    exit
 else
    echo " "
-   echo "perfect_model_obs (synthetic) teminated normally"
+   echo "perfect_model_obs (synthetic) terminated normally"
    echo " "
 endif
 
@@ -189,6 +228,10 @@ endif
 #======================================================================
 # Set defaults
 #======================================================================
+
+echo " "
+echo "Running filter ..."
+echo " "
 
 set async = 0
 set ens_size = 20
@@ -217,6 +260,11 @@ if ( ${?Cutoff} ) then
    set cutoff = $Cutoff
 endif
 
+echo '&utilities_nml'                            > utilities.nml
+echo '   logfilename = "filter.out"'            >> utilities.nml
+echo '   TERMLEVEL = 1'                         >> utilities.nml
+echo '&end'                                     >> utilities.nml
+
 echo " "                                                        > filter.nml
 echo "&filter_nml"                                             >> filter.nml
 echo "   async = $async ,"                                     >> filter.nml
@@ -237,27 +285,27 @@ echo "   output_interval = $output_interval "                  >> filter.nml
 echo "&end"                                                    >> filter.nml
 echo " "                                                       >> filter.nml
 
-cat filter.nml >> input.nml
+cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
 
 ./filter
 
 if ( $status > 0 ) then
-   mv $SAVEME input.nml
    echo "ERROR: filter bombed ..."
-   exit
 else
    echo " "
-   echo "filter teminated normally"
+   echo "filter terminated normally"
    echo " "
-   \rm -f create_obs_set_def.in create_obs_sequence.in input.nml filter.nml
+   \rm -f create_obs_set_def.in create_obs_sequence.in 
+   \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
 endif
 
 #======================================================================
-# Restore the existing namelist ...
+# Restore the existing namelists ...
 #======================================================================
 
-if ( -e ${SAVEME} ) then
-   mv $SAVEME input.nml
-endif
+foreach NAMELIST ( ${SAVEME}/*.nml )
+   mv ${NAMELIST} .
+end
+\rmdir ${SAVEME}
 
 exit

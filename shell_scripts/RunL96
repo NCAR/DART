@@ -82,7 +82,7 @@ ENDofTask00
    
 cat << ENDofTask01 > assim_mod.nml
 &assim_model_nml
-   binary_restart_files = .true.
+   binary_restart_files = .false.
 &end
 ENDofTask01
 
@@ -98,7 +98,12 @@ echo '&end'                  >> model.nml
 # 1) declare an observation set definition
 #======================================================================
 
+echo " "
+echo "Running create_obs_set_def ..."
+echo " "
+
 cat utilities.nml assim_mod.nml model.nml > input.nml
+
 ./create_obs_set_def < ../random_obs.input
 
 if ( $status > 0 ) then
@@ -111,6 +116,9 @@ endif
 # 2) declare sequences of observation sets
 #======================================================================
 
+echo " "
+echo "Running create_obs_sequence ..."
+echo " "
 
 set num_obs = 200
 set ob_day_1 = 0
@@ -152,6 +160,10 @@ endif
 #    creates files True_State.nc, obs_seq.out
 #======================================================================
 
+echo " "
+echo "Running perfect_model_obs ..."
+echo " "
+
 cat << ENDofTask03 > perfect.nml
 
 &perfect_model_obs_nml
@@ -169,7 +181,7 @@ cat << ENDofTask03 > perfect.nml
 ENDofTask03
 
 echo '&utilities_nml'                            > utilities.nml
-echo '   logfilename = "perfect_model_obs.out"' >> utilities.nml
+echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
 echo '   TERMLEVEL = 1'                         >> utilities.nml
 echo '&end'                                     >> utilities.nml
 
@@ -182,7 +194,7 @@ if ( $status > 0 ) then
    exit
 else
    echo " "
-   echo "perfect_model_obs (synthetic) teminated normally"
+   echo "perfect_model_obs (synthetic) terminated normally"
    echo " "
 endif
 
@@ -193,6 +205,10 @@ endif
 #======================================================================
 # Set defaults
 #======================================================================
+
+echo " "
+echo "Running filter ..."
+echo " "
 
 set async = 0
 set ens_size = 20
@@ -251,15 +267,13 @@ cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
 ./filter
 
 if ( $status > 0 ) then
-   mv $SAVEME input.nml
    echo "ERROR: filter bombed ..."
-#   exit
 else
    echo " "
-   echo "filter teminated normally"
+   echo "filter terminated normally"
    echo " "
    \rm -f create_obs_set_def.in create_obs_sequence.in 
-   \rm -f utilities.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
 endif
 
 #======================================================================

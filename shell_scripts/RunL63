@@ -78,7 +78,7 @@ ENDofTask00
    
 cat << ENDofTask01 > assim_mod.nml
 &assim_model_nml
-   binary_restart_files = .true.
+   binary_restart_files = .false.
 &end
 ENDofTask01
 
@@ -288,7 +288,6 @@ cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
 
 if ( $status > 0 ) then
    echo "ERROR: filter bombed ..."
-#   exit
 else
    echo " "
    echo "filter terminated normally"
