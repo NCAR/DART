@@ -513,7 +513,7 @@ subroutine get_initial_condition(x)
 
 implicit none
 
-type(assim_model_type), intent(inout) :: x
+type(assim_model_type), intent(out) :: x
 
 call aget_initial_condition(x%time, x%state_vector)
 
@@ -525,8 +525,8 @@ subroutine aget_initial_condition(time, x)
 !----------------------------------------------------------------------
 ! function get_initial_condition()
 !
-! Initial conditions. This returns an initial assim_model_type
-! which includes both a state vector and a time. Design of exactly where this 
+! Initial conditions. This returns an initial state vector and a time
+! for use in an assim_model_type.  Design of exactly where this 
 ! stuff should come from is still evolving (12 July, 2002) but for now can 
 ! start at time offset 0 with the initial state.
 ! Need to carefully coordinate this with the times for observations.
@@ -534,7 +534,7 @@ subroutine aget_initial_condition(time, x)
 implicit none
 
 type(time_type), intent(out) :: time
-real(r8), intent(inout) :: x(:)
+real(r8), intent(out) :: x(:)
 
 call init_conditions(x)
 
@@ -806,6 +806,8 @@ real(r8),        intent(in)           :: model_state(:)
 integer,         intent(in)           :: funit
 type(time_type), intent(in), optional :: target_time
 
+integer :: i
+
 ! Write the state vector
 SELECT CASE (write_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
@@ -815,7 +817,9 @@ SELECT CASE (write_format)
    CASE DEFAULT
       if(present(target_time)) call write_time(funit, target_time)
       call write_time(funit, model_time)
-      write(funit, *) model_state
+      do i = 1, size(model_state)
+         write(funit, *) model_state(i)
+      end do
 END SELECT  
 
 end subroutine awrite_state_restart
@@ -946,13 +950,15 @@ integer :: open_restart_read
 integer :: ios
 character(len=129) :: errstring
 
+integer :: i
+
 open_restart_read = get_unit()
 open(unit   = open_restart_read, &
-     file   = file_name,         &
+     file   = trim(file_name),         &
      form   = read_format,       &
      action = 'read',            &
      status = 'old',             &
-     iostat = ios )
+     iostat = ios)
 
 if ( ios /= 0 ) then
    write(errstring, *) 'Problem opening file ',trim(adjustl(file_name))
@@ -1389,14 +1395,14 @@ enddo TimeLoop
 
 
 if ( timeindex <= 0 ) then   ! There was no match. Either the model
-                             ! time preceeds the earliest file time - or - 
+                             ! time precedes the earliest file time - or - 
                              ! model time is somewhere in the middle  - or - 
                              ! model time needs to be appended.
 
    if (statetime < ncFileID%times(1) ) then
 
       call error_handler(E_MSG,'nc_get_tindex', &
-              'Model time preceeds earliest netCDF time.', source,revision,revdate)
+              'Model time precedes earliest netCDF time.', source,revision,revdate)
 
       write(msgstring,*)'          model time (days, seconds) ',days,secs
       call error_handler(E_MSG,'nc_get_tindex',msgstring,source,revision,revdate)
@@ -1406,7 +1412,7 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
       call error_handler(E_MSG,'nc_get_tindex',msgstring,source,revision,revdate)
 
       call error_handler(E_ERR,'nc_get_tindex', &
-              'Model time preceeds earliest netCDF time.', source,revision,revdate)
+              'Model time precedes earliest netCDF time.', source,revision,revdate)
       timeindex = -2
 
    else if ( statetime < ncFileID%times(ncFileID%Ntimes) ) then  
@@ -1423,7 +1429,7 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
 
          if ( ncFileId%times(i) > statetime ) then
             call get_time(ncFileID%times(i-1),secs,days)
-            write(msgstring,*)'preceeding netCDF time (days, seconds) ',days,secs
+            write(msgstring,*)'preceding netCDF time (days, seconds) ',days,secs
             call error_handler(E_MSG,'nc_get_tindex',msgstring,source,revision,revdate)
 
             call get_time(ncFileID%times(i),secs,days)
