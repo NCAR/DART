@@ -1,5 +1,11 @@
 module model_mod
-
+!
+! <next four lines automatically updated by CVS, do not edit>
+! $Source$ 
+! $Revision$ 
+! $Date$ 
+! $Author$ 
+!
 ! Implements Lorenz 84 3 variable model with intermediate level
 ! attractor.
 
