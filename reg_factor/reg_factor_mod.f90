@@ -1,6 +1,7 @@
 module reg_factor_mod
 
 use types_mod
+use utilities_mod, only : get_unit
 
 private
 
@@ -31,7 +32,7 @@ real(r8) :: comp_reg_factor
 real(r8) :: sum_reg, sum_reg2, mean_reg, var_reg, sd_reg, ratio
 real(r8) :: table(200), garb
 
-integer :: i, j, ii, jj, index
+integer :: i, j, ii, jj, index, unit
 
 
 ! Different flavors selected manually here for now
@@ -103,10 +104,24 @@ if(1 == 1) return
 ! At start, need to read in table data
 if(first_call) then
    first_call = .false.
-   open(unit = 46, file = "stats_file")
+   unit = get_unit()
+   if(num_groups == 2) then
+      open(unit = unit, file = "stats_2_mean10000_1000000")
+   else if(num_groups == 4) then
+      open(unit = unit, file = "stats_4_mean10000_1000000")
+   else if(num_groups == 8) then
+      open(unit = unit, file = "stats_8_mean10000_1000000")
+   else if(num_groups == 16) then
+      open(unit = unit, file = "stats_16_mean10000_1000000")
+   else
+      write(*, *) 'a stats file is not available for regression '
+      write(*, *) 'with ', num_groups, ' groups: see reg_factor_mod'
+      stop
+   endif
    do j = 1, 200
-      read(46, *) garb, table(j)
+      read(unit, *) garb, table(j)
    end do
+   close(unit)
 endif
 
 ! If only one group, don't know what else to do
