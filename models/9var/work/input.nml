@@ -2,7 +2,7 @@
    async = .false.
    ens_size = 20,
    cutoff = 22222222.0
-   cov_inflate = 1.05,
+   cov_inflate = 1.0,
    start_from_restart = .true.,
    output_restart = .true.
    obs_sequence_file_name = "obs_seq.out",
@@ -12,7 +12,7 @@
    init_time_seconds = 0, 
    output_state_ens_mean = .true.
    output_state_ens_spread = .true.
-   num_output_ens_members = 10 
+   num_output_ens_members = 20 
    output_interval = 1
 &end
 
@@ -28,4 +28,8 @@
    init_time_days = 0,
    init_time_seconds = 0,
    output_interval = 1
+&end
+&model_nml
+   g = 8.0,
+   deltat = 0.0833333333333333,
 &end
