@@ -606,15 +606,12 @@ real(r8), intent(in) :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 real(r8), intent(in) :: slope
 
-real(r8) :: ens2(1, ens_size), a, obs_var_inv, cov(1, 1)
-real(r8) :: mean(1), prior_mean, prior_cov_inv, new_cov, new_mean
+real(r8) :: a, obs_var_inv
+real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean
 real(r8):: prior_cov, sx, s_x2
 real(r8) :: error, diff_sd, ratio, inf_obs_var, inf_ens(ens_size)
 real(r8) :: factor
 real(r8) :: inf_obs_var_inv, inf_prior_cov, inf_prior_cov_inv
-real(r8), parameter :: ratio_threshold = 2.0
-
-integer :: i
 
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0 / obs_var
@@ -630,8 +627,7 @@ prior_cov_inv = 1.0 / prior_cov
 new_cov = 1.0 / (prior_cov_inv + obs_var_inv)
 new_mean = new_cov * (prior_cov_inv * prior_mean + obs / obs_var)
 
-! AT THIS POINT CAN EVALUATE INCONSISTENCY
-! CHECK ALL THIS
+! THIS POINT CAN EVALUATE INCONSISTENCY
 error = prior_mean - obs
 diff_sd = sqrt(obs_var + prior_cov)
 ratio = abs(error / diff_sd)
@@ -643,16 +639,12 @@ else
    factor = 1.0
 endif
 
-
-!!!write(*, *) 'slope and factor ', slope, factor
-
 ! Can now inflate by this ratio and then do adjustment
 inf_obs_var = factor**2 * obs_var
 inf_obs_var_inv = 1.0 / inf_obs_var
 ! Form inflated ensemble
 inf_ens = prior_mean + factor * (ens - prior_mean)
 inf_prior_cov = factor**2 * prior_cov
-
 
 inf_prior_cov_inv = 1.0 / inf_prior_cov
 new_cov = 1.0 / (inf_prior_cov_inv + inf_obs_var_inv)
