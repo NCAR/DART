@@ -29,7 +29,7 @@ TYPE wrf_data
    integer :: bt_id, bt, sn_id, sn, we_id, we
    integer :: u_id, v_id, w_id, ph_id, phb_id, t_id,   &
                         mu_id, mub_id,                           &
-                        qv_id, qc_id, qr_id, qi_id, qs_id, qg_id 
+                        qv_id, qc_id, qr_id, qi_id, qs_id, qg_id
    integer :: ptop_id
    logical :: ice_micro
 

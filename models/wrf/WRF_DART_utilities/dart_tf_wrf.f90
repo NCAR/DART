@@ -12,8 +12,8 @@ PROGRAM dart_tf_wrf
 use        types_mod, only : r8
 use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
                              error_handler, E_ERR
+use netcdf
 use        model_mod, only : netcdf_read_write_var
-use  assim_model_mod, only : binary_restart_files
 use wrf_data_module
 
 implicit none
@@ -47,7 +47,7 @@ integer       :: seconds, days
 !  misc stuff
 
 include 'netcdf.inc'
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 integer :: mode, io, ierr
 
 !---
@@ -154,32 +154,33 @@ character (len=6) :: in_or_out
 integer, dimension(5) :: map, count, start, stride
 integer :: k
 logical :: debug
+character (len=129) :: error_string
 
 map = 1
 start = 1
 stride = 1
 
-count(1) = 1
-count(2) = wrf%bt
-count(3) = wrf%sn
-count(4) = wrf%we+1
+count(4) = 1
+count(3) = wrf%bt
+count(2) = wrf%sn
+count(1) = wrf%we+1
 if(debug) write(6,*) ' calling netcdf read for u ', &
      count(1), count(2), count(3), count(4)
 call netcdf_read_write_var( "U", wrf%ncid, wrf%u_id, wrf%u,    &
      start, count, stride, map, in_or_out, debug, 4 )
-
 if(debug) write(6,*) ' returned from netcdf read for u '
-count(3) = wrf%sn+1
-count(4) = wrf%we
+
+count(2) = wrf%sn+1
+count(1) = wrf%we
 if(debug) write(6,*) ' calling netcdf read for v '
 call netcdf_read_write_var( "V", wrf%ncid, wrf%v_id, wrf%v,    &
      start, count, stride, map, in_or_out, debug, 4 )
 if(debug) write(6,*) ' returned from netcdf read for v '
 
 
-count(2) = wrf%bt+1
-count(3) = wrf%sn
-count(4) = wrf%we
+count(3) = wrf%bt+1
+count(2) = wrf%sn
+count(1) = wrf%we
 if(debug) write(6,*) ' calling netcdf read for w '
 call netcdf_read_write_var( "W", wrf%ncid, wrf%w_id, wrf%w,    &
      start, count, stride, map, in_or_out, debug, 4 )
@@ -190,9 +191,9 @@ if( in_or_out == "INPUT ")   &  ! get base state goepot. for full state computat
      call netcdf_read_write_var( "PHB", wrf%ncid, wrf%phb_id, wrf%phb,    &
      start, count, stride, map, in_or_out, debug, 4 )
 
-count(2) = wrf%bt
-count(3) = wrf%sn
-count(4) = wrf%we
+count(3) = wrf%bt
+count(2) = wrf%sn
+count(1) = wrf%we
 call netcdf_read_write_var( "T", wrf%ncid, wrf%t_id, wrf%t,    &
      start, count, stride, map, in_or_out, debug, 4 )
 call netcdf_read_write_var( "QVAPOR", wrf%ncid, wrf%qv_id, wrf%qv,    &
@@ -213,9 +214,9 @@ if(wrf%ice_micro) then
         start, count, stride, map, in_or_out, debug, 4 )
 end if
 
+count(3) = 1
 count(2) = wrf%sn
-count(3) = wrf%we
-count(4) = 1
+count(1) = wrf%we
 call netcdf_read_write_var( "MU", wrf%ncid, wrf%mu_id, wrf%mu,    &
      start, count, stride, map, in_or_out, debug, 3 )
 
@@ -390,6 +391,36 @@ type(wrf_data)        :: wrf
 real(r8), pointer     :: dart(:)
 
 integer               :: n_values 
+
+!-------------------------------------------------------------
+! Namelist with default values
+! binary_restart_files  == .true.  -> use unformatted file format. 
+!                                     Full precision, faster, smaller,
+!                                     but not as portable.
+! binary_restart_files  == .false.  -> use ascii file format. 
+!                                     Portable, but loses precision,
+!                                     slower, and larger.
+
+logical  :: binary_restart_files = .false.
+
+namelist /assim_nml/ binary_restart_files
+!-------------------------------------------------------------
+
+! Read the namelist input
+if(file_exist('input.nml')) then
+   iunit = open_file('input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(iunit, nml = assim_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'assim_nml')
+   enddo
+ 11 continue
+   call close_file(iunit)
+endif
+
+! namelist validation
+write(*, *) 'assim_nml read; values are'
+write(*, *) 'binary_restart_files is ', binary_restart_files
 
 ! compute number of values in 1D vector
 
