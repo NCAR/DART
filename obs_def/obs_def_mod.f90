@@ -272,7 +272,7 @@ implicit none
 type(obs_def_type) :: read_obs_def
 integer, intent(in) :: file
 
-character*5 :: header
+character(len=5) :: header
 
 ! Begin by reading five character ascii header, then location, kind, error variance, index
 

@@ -269,8 +269,8 @@ end subroutine nml_error_init
          if (present(action)) then
              nc = min(6,len(action))
              location(1:nc) = action(1:nc)
-	     if(location /= 'append' .and. location /= 'APPEND') &
-		location = 'rewind'
+             if(location /= 'append' .and. location /= 'APPEND') &
+                location = 'rewind'
          endif
 
          unit = get_unit()

@@ -326,7 +326,7 @@ implicit none
 type(obs_set_def_type) :: read_obs_set_def
 integer, intent(in) :: file_id
 
-character*5 :: header
+character(len=5) :: header
 integer :: num, i
 
 ! Read the header for a set_def

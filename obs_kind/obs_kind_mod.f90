@@ -81,7 +81,7 @@ function read_kind(file)
 type(obs_kind_type) :: read_kind
 integer, intent(in) :: file
 
-character*5 :: header
+character(len=5) :: header
 
 ! Need additional error checks
 read(file, 11) header

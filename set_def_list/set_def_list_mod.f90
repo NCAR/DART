@@ -386,7 +386,7 @@ implicit none
 type(set_def_list_type):: read_set_def_list
 integer, intent(in) :: file_id
 
-character*5 :: header
+character(len=5) :: header
 integer :: i, num_sets
 type(list_element_type) :: list_element
 

@@ -151,7 +151,7 @@ implicit none
 integer, intent(in) :: file
 type(location_type) :: read_location
 
-character*5 :: header
+character(len=5) :: header
 
 ! Will want to add additional error checks on the read
 read(file, 11) header

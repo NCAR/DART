@@ -893,7 +893,7 @@ integer, intent(in) :: file_id
 type(assim_model_type), intent(inout) :: state
 integer, intent(out) :: copy_index
 
-character*5 :: header
+character(len=5) :: header
 
 ! Read in the time
 state%time = read_time(file_id)
