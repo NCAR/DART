@@ -143,7 +143,7 @@ integer :: ncid, bt_id, we_id, sn_id
 integer :: io, ierr, iunit
 
 character (len=80) :: name
-logical, parameter :: debug = .false.  
+logical, parameter :: debug = .true.  
 integer :: var_id, ind, i, map_proj 
 integer, dimension(5) :: kount, start, stride, map
 real(r8)    :: zero_d(1)
@@ -429,7 +429,7 @@ call check( nf90_close(ncid) )
 
   allocate(wrf%var_index(2,6 + wrf%n_moist)) ! indices into 1D array
   allocate(wrf%var_size(3,6 + wrf%n_moist)) ! dimension of variables
-  
+
   ind = 1                         ! *** u field ***
   wrf%var_size(1,ind) = wrf%wes
   wrf%var_size(2,ind) = wrf%sn
@@ -609,7 +609,7 @@ logical  :: var_found
 real(r8) :: lon, lat, lev
 
 integer :: i
-logical, parameter :: debug = .false.  
+logical, parameter :: debug = .true.  
 character(len=129) :: errstring
 
 if(debug) then
@@ -728,7 +728,7 @@ end subroutine get_state_meta_data
 function model_interpolate(x, location, obs_kind)
 !!!function model_interpolate(x, lon, lat, level, type)
 
-logical, parameter :: debug = .false.  
+logical, parameter :: debug = .true.  
 real(r8) :: model_interpolate
 real(r8), intent(in) :: x(:)
 type(location_type), intent(in) :: location
@@ -842,16 +842,15 @@ end function get_val
 subroutine model_get_close_states(o_loc, radius, number, indices, dist)
 
 type(location_type), intent(in) :: o_loc
-real(r8), intent(in)            :: radius
-integer, intent(out)            :: number, indices(:)
-real(r8), intent(out)           :: dist(:)
-
-integer                         :: num, max_size
-integer, allocatable            :: lon_ind(:), lat_ind(:)
-real(r8), allocatable           :: close_dist(:)
+real(r8),            intent(in) :: radius
+integer,            intent(out) :: number, indices(:)
+real(r8),           intent(out) :: dist(:)
 
 integer                         :: u_pts, v_pts, p_pts
 integer                         :: i,k,indmax, num_total, ii, jj
+integer                         :: num, max_size
+integer,            allocatable :: lon_ind(:), lat_ind(:)
+real(r8),           allocatable :: close_dist(:)
 
 ! Number found starts at 0
 number = 0
@@ -874,18 +873,6 @@ allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 call grid_close_states( o_loc, wrf%latitude, wrf%longitude, radius,  &
                         num, lon_ind, lat_ind, close_dist, u_pts, v_pts, p_pts )
 
-! next check vertical spacing, find out how many points
-! we have in 3D
-
-   ! w+gz + t + moist + mu
-max_size = p_pts*( 2*(wrf%bts) + (1 + wrf%n_moist)*wrf%bts)
-
-   ! u and v
-max_size = max_size + (u_pts+v_pts)*wrf%bt
-!allocate( dist_3d(max_size), lat_3d(max_size),   &
-!          long_3d(max_size), h_3d(max_size)     )
-
-
 num_total = 0
 
 ! start with p_pts (t + wrf%n_moist variables)
@@ -901,18 +888,14 @@ do k = 1, wrf%bt
          indices(num_total) = get_wrf_index(ii,jj,k,type_t)
          dist(num_total) = close_dist(i)
       end if
-      if( wrf%n_moist == 1) then
+      if( wrf%n_moist >= 1) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qv)
             dist(num_total) = close_dist(i)
          end if
-      else if( wrf%n_moist == 3) then
-         num_total = num_total + 1
-         if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qv)
-            dist(num_total) = close_dist(i)
-         end if
+      end if
+      if( wrf%n_moist >= 3) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qc)
@@ -923,22 +906,8 @@ do k = 1, wrf%bt
             indices(num_total) = get_wrf_index(ii,jj,k,type_qr)
             dist(num_total) = close_dist(i)
          end if
-      else if( wrf%n_moist == 6) then
-         num_total = num_total + 1
-         if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qv)
-            dist(num_total) = close_dist(i)
-         end if
-         num_total = num_total + 1
-         if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qc)
-            dist(num_total) = close_dist(i)
-         end if
-         num_total = num_total + 1
-         if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qr)
-            dist(num_total) = close_dist(i)
-         end if
+      end if
+      if( wrf%n_moist == 6) then
          num_total = num_total + 1
          if(num_total <= indmax) then
             indices(num_total) = get_wrf_index(ii,jj,k,type_qi)
@@ -996,7 +965,7 @@ do i = 1, p_pts
    end if
 enddo
 
-! now u_pts 
+! now u_pts
 
 do k = 1, wrf%bt
    do i = p_pts+1, p_pts+u_pts
@@ -1013,7 +982,7 @@ do k = 1, wrf%bt
    enddo
 enddo
 
-! last -> v_pts 
+! last -> v_pts
 
 do k = 1, wrf%bt
    do i = p_pts+u_pts+1, num
@@ -1041,18 +1010,17 @@ end subroutine model_get_close_states
 function get_wrf_index( i,j,k,var_type )
 
 integer, intent(in) :: i,j,k,var_type
-integer :: get_wrf_index
-integer :: in
+integer             :: get_wrf_index
 
-integer :: ii
+integer :: in, ii
 
-  in = 0
-  do ii = 1, wrf%number_of_wrf_variables 
-    if(var_type == wrf%var_type(ii) ) in = ii
-  enddo
+in = 0
+do ii = 1, wrf%number_of_wrf_variables 
+   if(var_type == wrf%var_type(ii) ) in = ii
+enddo
 
-  get_wrf_index = wrf%var_index(1,in)-1 +   &
-    i + wrf%var_size(1,in)*(j-1) + (wrf%var_size(1,in)*wrf%var_size(2,in))*(k-1)
+get_wrf_index = wrf%var_index(1,in)-1 +   &
+     i + wrf%var_size(1,in)*(j-1) + (wrf%var_size(1,in)*wrf%var_size(2,in))*(k-1)
 
 end function get_wrf_index
 
@@ -1065,22 +1033,22 @@ subroutine grid_close_states( o_loc, lat, lon, radius_in, num,  &
 ! Finds close state points from a particular grid for the WRF model
 
 type(location_type), intent(in) :: o_loc
-integer, intent(inout) :: num
-integer, intent(out) :: close_lon_ind(:), close_lat_ind(:)
-integer, intent(out) :: u_pts, v_pts, p_pts
-real(r8), intent(in) :: radius_in
-real(r8), intent(out) :: close_dist(:)
-real(r8), dimension(3) :: loc_array
-real(r8) :: o_lon, o_lat
+integer,          intent(inout) :: num
+integer,            intent(out) :: close_lon_ind(:), close_lat_ind(:)
+integer,            intent(out) :: u_pts, v_pts, p_pts
+real(r8),            intent(in) :: radius_in
+real(r8),           intent(out) :: close_dist(:)
+real(r8),          dimension(3) :: loc_array
+real(r8)                        :: o_lon, o_lat
 
-real(r8) :: radius
+real(r8)             :: radius
 real(r8), intent(in) :: lat(:,:), lon(:,:)
-real(r8) :: rad, radn, dxr, dyr, sdx, sdy, gdist
-integer :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
+real(r8)             :: rad, radn, dxr, dyr, sdx, sdy, gdist
+integer              :: i_closest, j_closest, ixmin, jymin, ixmax, jymax
 
-integer :: i, j, n, m
+integer             :: i, j, n, m
 real(r8), parameter :: r_earth = 6.37e+06 ! earth radius in meters
-logical, parameter :: debug= .false.  
+logical,  parameter :: debug= .true.  
 
 if(debug) write(6,*) ' in grid_close_states '
 
@@ -1127,101 +1095,103 @@ dyr = 1 + radius/wrf%dy  !  radius in multiples of dy
 if(debug) write(6,*) ' dxr, dyr in grid_close_states ',dxr,dyr
 
 
-  j = j_closest
-  ixmin = max(1,i_closest - 1)
-  sdx   = 1./wrf%mapfac_u(i_closest, j)
-  do while( sdx .lt. dxr )
-    ixmin = max(1,ixmin - 1)
-    sdx = sdx + 1./wrf%mapfac_u(ixmin + 1, j)
-    if(ixmin <= 1) sdx = 1.1*dxr
-  enddo
+j = j_closest
+ixmin = max(1,i_closest - 1)
+sdx   = 1./wrf%mapfac_u(i_closest, j)
+do while( sdx .lt. dxr )
+   ixmin = max(1,ixmin - 1)
+   sdx = sdx + 1./wrf%mapfac_u(ixmin + 1, j)
+   if(ixmin <= 1) sdx = 1.1*dxr
+enddo
 
-  ixmax = min(wrf%we,i_closest + 1)
-  sdx   = 1./wrf%mapfac_u(ixmax, j)
-  do while( sdx .lt. dxr )
-    ixmax = min(wrf%we,ixmax + 1)
-    sdx = sdx + 1./wrf%mapfac_u(ixmax, j)
-    if(ixmax >= wrf%we) sdx = 1.1*dxr
-  enddo
+ixmax = min(wrf%we,i_closest + 1)
+sdx   = 1./wrf%mapfac_u(ixmax, j)
+do while( sdx .lt. dxr )
+   ixmax = min(wrf%we,ixmax + 1)
+   sdx = sdx + 1./wrf%mapfac_u(ixmax, j)
+   if(ixmax >= wrf%we) sdx = 1.1*dxr
+enddo
 
-  i = i_closest
-  jymin = max(1,j_closest - 1)
-  sdy   = 1./wrf%mapfac_u(i_closest, jymin)
-  do while( sdy .lt. dyr )
-    jymin = max(1,jymin - 1)
-    sdy = sdy + 1./wrf%mapfac_u(i, jymin + 1)
-    if(jymin <= 1) sdy = 1.1*dyr
-  enddo
+i = i_closest
+jymin = max(1,j_closest - 1)
+sdy   = 1./wrf%mapfac_u(i_closest, jymin)
+do while( sdy .lt. dyr )
+   jymin = max(1,jymin - 1)
+   sdy = sdy + 1./wrf%mapfac_u(i, jymin + 1)
+   if(jymin <= 1) sdy = 1.1*dyr
+enddo
 
-  jymax = min(wrf%sn,j_closest + 1)
-  sdy   = 1./wrf%mapfac_u(i, jymax)
-  do while( sdy .lt. dyr )
-    jymax = min(wrf%sn,jymax + 1)
-    sdy = sdy + 1./wrf%mapfac_u(i, jymax)
-    if(jymax >= wrf%sn) sdy = 1.1*dyr
-  enddo
+jymax = min(wrf%sn,j_closest + 1)
+sdy   = 1./wrf%mapfac_u(i, jymax)
+do while( sdy .lt. dyr )
+   jymax = min(wrf%sn,jymax + 1)
+   sdy = sdy + 1./wrf%mapfac_u(i, jymax)
+   if(jymax >= wrf%sn) sdy = 1.1*dyr
+enddo
 
-  if(debug) then
-    write(6,*) ' ixmin, ixmax, jymin, jymax are '
-    write(6,*) ixmin, ixmax, jymin, jymax
-  endif
+if(debug) then
+   write(6,*) ' ixmin, ixmax, jymin, jymax are '
+   write(6,*) ixmin, ixmax, jymin, jymax
+endif
 
 !  we have bounding box, get and check distances.
 !  first, convert radius back to radians
 
-  radius = radius_in
-  num = 0
+radius = radius_in
+num = 0
 
-  do j = jymin, jymax
-  do i = ixmin, ixmax
-    gdist = get_dist_wrf(i,j,0, type_t, o_loc)
-    if ( gdist <= radius ) then
-      num = num + 1
-      close_lon_ind(num) = i
-      close_lat_ind(num) = j
-      close_dist(num) = gdist
-      if(debug) write(6,*) ' p pt ',num,i,j,gdist
-    end if
-  enddo
-  enddo
+if(debug) write(6,*) 'radius (rad) ',radius
 
-  p_pts = num
+do j = jymin, jymax
+   do i = ixmin, ixmax
+      gdist = get_dist_wrf(i,j,0, type_t, o_loc)
+      if ( gdist <= radius ) then
+         num = num + 1
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_dist(num) = gdist
+         if(debug) write(6,*) ' p pt ',num,i,j,gdist
+      end if
+   enddo
+enddo
+
+p_pts = num
 
 ! check distance for u points, expand box so that 
 ! we don't leave possible points out of check
 
-  do j = jymin, jymax
-  do i = max(1,ixmin-1), ixmax+1
+do j = jymin, jymax
+   do i = max(1,ixmin-1), ixmax+1
 
-     gdist = get_dist_wrf(i,j,0, type_u, o_loc)
-     if ( gdist <= radius ) then
-       num = num + 1
-       close_lon_ind(num) = i
-       close_lat_ind(num) = j
-       close_dist(num) = gdist
-      if(debug) write(6,*) ' u pt ',num,i,j,gdist
-     end if
+      gdist = get_dist_wrf(i,j,0, type_u, o_loc)
+      if ( gdist <= radius ) then
+         num = num + 1
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_dist(num) = gdist
+         if(debug) write(6,*) ' u pt ',num,i,j,gdist
+      end if
    enddo
-   enddo
+enddo
 
-    u_pts = num - p_pts
+u_pts = num - p_pts
 
-   do j = max(1,jymin-1), jymax+1
+do j = max(1,jymin-1), jymax+1
    do i = ixmin, ixmax
 
       gdist = get_dist_wrf(i,j,0, type_v, o_loc)
       if ( gdist <= radius ) then
-        num = num + 1
-        close_lon_ind(num) = i
-        close_lat_ind(num) = j
-        close_dist(num) = gdist
-      if(debug) write(6,*) ' v pt ',num,i,j,gdist
+         num = num + 1
+         close_lon_ind(num) = i
+         close_lat_ind(num) = j
+         close_dist(num) = gdist
+         if(debug) write(6,*) ' v pt ',num,i,j,gdist
       end if
 
    enddo
-   enddo
+enddo
 
-     v_pts = num - u_pts - p_pts
+v_pts = num - u_pts - p_pts
 
 end subroutine grid_close_states
 
@@ -1239,66 +1209,71 @@ integer             :: which_vert
 
 
 !  get distance for input var_type
-   if(var_type == type_u) then
+if(var_type == type_u) then
 
-     if (i == 1) then
-       long = wrf%longitude(1,j) - 0.5*(wrf%longitude(2,j)-wrf%longitude(1,j))
-       if (wrf%longitude(2,j) < wrf%longitude(1,j)) long = long - 180.0_r8
-       lat  = wrf%latitude(1,j)  - 0.5*(wrf%latitude(2,j)-wrf%latitude(1,j))
-     else if (i == wrf%wes) then
-       long = wrf%longitude(i-1,j) + 0.5*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
-       if (wrf%longitude(i-1,j) < wrf%longitude(i-2,j)) long = long + 540.0_r8
-       lat  = wrf%latitude(i-1,j)  + 0.5*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
-     else
-       long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i-1,j))
-       if (wrf%longitude(i,j) < wrf%longitude(i-1,j)) long = long + 180.0_r8
-       lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i-1,j))
-     end if
-
-   else if( var_type == type_v) then
-
-     if (j == 1) then
-       long = wrf%longitude(i,1) - 0.5*(wrf%longitude(i,2)-wrf%longitude(i,1))
-       if (wrf%longitude(i,2) < wrf%longitude(i,1)) long = long - 180.0_r8
-       lat  = wrf%latitude(i,1)  - 0.5*(wrf%latitude(i,2)-wrf%latitude(i,1))
-     else if (j == wrf%sns) then
-       long = wrf%longitude(i,j-1) + 0.5*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
-       if (wrf%longitude(i,j-1) < wrf%longitude(i,j-2)) long = long + 540.0_r8
-       lat  = wrf%latitude(i,j-1)  + 0.5*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
-     else
-       long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i,j-1))
-       if (wrf%longitude(i,j) < wrf%longitude(i,j-1)) long = long + 180.0_r8
-       lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i,j-1))
-     end if
-
+   if (i == 1) then
+      long = wrf%longitude(1,j) - 0.5*(wrf%longitude(2,j)-wrf%longitude(1,j))
+      if ( abs(wrf%longitude(2,j) - wrf%longitude(1,j)) > 180.0_r8 ) long = long - 180.0_r8
+      lat  = wrf%latitude(1,j)  - 0.5*(wrf%latitude(2,j)-wrf%latitude(1,j))
+   else if (i == wrf%wes) then
+      long = wrf%longitude(i-1,j) + 0.5*(wrf%longitude(i-1,j)-wrf%longitude(i-2,j))
+      if ( abs(wrf%longitude(i-1,j) - wrf%longitude(i-2,j)) > 180.0_r8 ) long = long - 180.0_r8
+      lat  = wrf%latitude(i-1,j)  + 0.5*(wrf%latitude(i-1,j)-wrf%latitude(i-2,j))
    else
+      long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i-1,j))
+      if ( abs(wrf%longitude(i,j) - wrf%longitude(i-1,j)) > 180.0_r8 ) long = long - 180.0_r8
+      lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i-1,j))
+   end if
 
-      long = wrf%longitude(i,j)
-      lat  = wrf%latitude(i,j)
+else if( var_type == type_v) then
+
+   if (j == 1) then
+      long = wrf%longitude(i,1) - 0.5*(wrf%longitude(i,2)-wrf%longitude(i,1))
+      if ( abs(wrf%longitude(i,2) - wrf%longitude(i,1)) > 180.0_r8 ) long = long - 180.0_r8
+      lat  = wrf%latitude(i,1)  - 0.5*(wrf%latitude(i,2)-wrf%latitude(i,1))
+   else if (j == wrf%sns) then
+      long = wrf%longitude(i,j-1) + 0.5*(wrf%longitude(i,j-1)-wrf%longitude(i,j-2))
+      if ( abs(wrf%longitude(i,j-1) - wrf%longitude(i,j-2)) > 180.0_r8 ) long = long - 180.0_r8
+      lat  = wrf%latitude(i,j-1)  + 0.5*(wrf%latitude(i,j-1)-wrf%latitude(i,j-2))
+   else
+      long = 0.5*(wrf%longitude(i,j)+wrf%longitude(i,j-1))
+      if ( abs(wrf%longitude(i,j) - wrf%longitude(i,j-1)) > 180.0_r8 ) long = long - 180.0_r8
+      lat  = 0.5*(wrf%latitude(i,j) +wrf%latitude(i,j-1))
 
    end if
-   if( (var_type == type_w ) .or. &
-       (var_type == type_gz) .or. &
-       (var_type == type_mu)     ) then
 
-      lev = float(k)-1.0_r8
+else
 
-   else
+   long = wrf%longitude(i,j)
+   lat  = wrf%latitude(i,j)
 
-      lev = float(k)-0.5_r8
+end if
+if( (var_type == type_w ) .or. &
+     (var_type == type_gz) .or. &
+     (var_type == type_mu)     ) then
 
-   endif
+   lev = float(k)-1.0_r8
 
-   if (long <   0.0_r8) long = long + 360.0_r8
-   if (long > 360.0_r8) long = long - 360.0_r8
+else
 
-   ! We will set which_vert based on the incoming location type
-   ! This will ensure compatibility for measuring 'horizontal' 
-   ! and cannot think of anything better for vertical.
+   lev = float(k)-0.5_r8
 
-   which_vert   = nint(query_location(o_loc,'which_vert'))
-   loc          = set_location(long, lat, lev, which_vert)
-   get_dist_wrf = get_dist(loc,o_loc)
+endif
+
+do while (long <   0.0_r8)
+   long = long + 360.0_r8
+end do
+do while (long > 360.0_r8)
+   long = long - 360.0_r8
+end do
+
+! We will set which_vert based on the incoming location type
+! This will ensure compatibility for measuring 'horizontal' 
+! and cannot think of anything better for vertical.
+
+which_vert   = nint(query_location(o_loc,'which_vert'))
+loc          = set_location(long, lat, lev, which_vert)
+get_dist_wrf = get_dist(loc,o_loc)
 
 end function get_dist_wrf
 
@@ -1800,7 +1775,7 @@ integer                            :: ierr          ! return value of function
 
 !-----------------------------------------------------------------
 
-logical, parameter :: debug = .false.  
+logical, parameter :: debug = .true.  
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, VarID
 integer :: i,j
