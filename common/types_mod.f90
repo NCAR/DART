@@ -13,8 +13,9 @@ MODULE types_mod
 implicit none
 private 
 
-public :: r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
+public :: i8, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
 public :: MISSING_I, MISSING_DATA
+public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant, L_over_Rv
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -57,5 +58,13 @@ integer,       PARAMETER ::  MISSING_I    = -888888
 integer,       PARAMETER ::  MISSING_DATA = -88
 real(kind=r4), PARAMETER ::  MISSING_R4   = -888888.0_r4
 real(kind=r8), PARAMETER ::  MISSING_R8   = -888888.0_r8
+
+real(r8), PARAMETER :: t_kelvin       = 273.15_r8
+real(r8), PARAMETER :: es_alpha       = 611.2_r8
+real(r8), PARAMETER :: es_beta        = 17.67_r8
+real(r8), PARAMETER :: es_gamma       = 243.5_r8
+real(r8), PARAMETER :: gas_constant_v = 461.6_r8
+real(r8), PARAMETER :: gas_constant   = 287._r8
+real(r8), PARAMETER :: L_over_Rv      = 5418.12_r8
 
 END MODULE types_mod
