@@ -19,7 +19,7 @@ else
 endif
 
 while(1 == 1)
-   rm -f .async_may_go
+   rm -f .async_garb
    ls async_may_go > .async_garb
    if($status == 0) break
    echo waiting_for_async_may_go_file
