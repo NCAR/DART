@@ -1,0 +1,141 @@
+~/DAI/cam2.0.1/models/atm/cam/src/control/restart.F90
+
+  -> write_restart  (in restart.F90)
+     -> timemgr_write_restart
+        write (nrg, iostat=ioerr) eps, caseid, hyai, hybi, hyam,  &
+                                   hybm, aeres
+     ->  write_restart_dynamics (nrg)
+         dynamics/eul/restart_dynamics.F90  chosen for Eulerian core somewhere
+            contains subroutine write_restart_dynamics
+         -> wrtoutr8  (in cam2.0.1/models/atm/cam/src/control/binary_io.F90)
+            call wrtout_r8 (nrg,vort(1,1,beglat,n3m1), plndlv)
+            call wrtout_r8 (nrg,vort(1,1,beglat,n3m2), plndlv)
+
+            call wrtout_r8 (nrg,div(1,1,beglat,n3m1) , plndlv)
+            call wrtout_r8 (nrg,div(1,1,beglat,n3m2) , plndlv)
+
+            call wrtout_r8 (nrg,dpsl  ,plond )
+            call wrtout_r8 (nrg,dpsm  ,plond )
+            call wrtout_r8 (nrg,dps   ,plond )
+            call wrtout_r8 (nrg,phis  ,plond )
+            call wrtout_r8 (nrg,omga  ,plndlv)
+           !
+           ! Write fields u3,v3,t3,q3,ps at time indices n3 and n3m1
+           !
+            begj = beglatex + numbnd
+
+            call wrtout_r8 (nrg,u3(1,1,begj,n3m1)  ,plndlv)
+            call wrtout_r8 (nrg,v3(1,1,begj,n3m1)  ,plndlv)
+            call wrtout_r8 (nrg,t3(1,1,begj,n3m1)  ,plndlv)
+            call wrtout_r8 (nrg,ps(1,beglat,n3m1)  ,plond)
+
+            call wrtout_r8 (nrg,u3(1,1,begj,n3m2)  ,plndlv)
+            call wrtout_r8 (nrg,v3(1,1,begj,n3m2)  ,plndlv)
+            call wrtout_r8 (nrg,t3(1,1,begj,n3m2)  ,plndlv)
+            call wrtout_r8 (nrg,ps(1,beglat,n3m2)  ,plond)
+
+            call wrtout_r8 (nrg,q3(1,1,1,begj,n3m1),plndlv*(pcnst+pnats))
+            call wrtout_r8 (nrg,q3(1,1,1,begj,n3m2),plndlv*(pcnst+pnats))
+           !
+           ! Write slt arrays (trajectory mid-point coordinates and
+           ! slt forcast of moisture and constituents
+           !
+            call wrtout_r8 (nrg,lammp,plnlv)
+            call wrtout_r8 (nrg,phimp,plnlv)
+            call wrtout_r8 (nrg,sigmp,plnlv)
+            call wrtout_r8 (nrg,qfcst,plndlv*pcnst)
+
+
+     ->  write_restart_physics (nrg, nrg2)
+         in physics/cam1/restart_physics.F90
+         -> write_field_from_chunk
+         !
+         ! Buffer module variables
+         !
+               call write_field_from_chunk(nrg,1,1,1,pblht)
+               call write_field_from_chunk(nrg,1,1,1,tpert)
+               call write_field_from_chunk(nrg,1,pver,1,qrs)
+               call write_field_from_chunk(nrg,1,pver,1,qrl)
+               call write_field_from_chunk(nrg,1,pcnst+pnats,1,qpert)
+loops over ptimelevels around the following
+         call write_field_from_chunk(nrg,1,pver,1,cld(1,1,begchunk,n3tmp))
+         call write_field_from_chunk(nrg,1,pver,1,qcwat(1,1,begchunk,n3tmp))
+         call write_field_from_chunk (nrg,1,pver,1,tcwat(1,1,begchunk,n3tmp))
+         call write_field_from_chunk (nrg,1,pver,1,lcwat(1,1,begchunk,n3tmp))
+         !
+         ! Comsrf module variables
+         !
+         #if (! defined COUP_CSM)
+               call write_field_from_chunk(nrg,1,1,1,fsnt)
+         #endif
+               call write_field_from_chunk(nrg,1,1,1,fsns)
+         #if (! defined COUP_CSM)
+               call write_field_from_chunk(nrg,1,1,1,flnt)
+               call write_field_from_chunk(nrg,1,1,1,flns)
+         #endif
+         loops over i=begchunk,endchunk
+                 tmpfield(:,i) = srfflx_state2d(i)%asdir(:)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                 tmpfield(:,i) = srfflx_state2d(i)%asdif(:)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                 tmpfield(:,i) = srfflx_state2d(i)%aldir(:)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                 tmpfield(:,i) = srfflx_state2d(i)%aldif(:)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+
+         #if (! defined COUP_CSM)
+               call write_field_from_chunk(nrg,1,1,1,asdirice)
+               call write_field_from_chunk(nrg,1,1,1,asdifice)
+               call write_field_from_chunk(nrg,1,1,1,aldirice)
+               call write_field_from_chunk(nrg,1,1,1,aldifice)
+               call write_field_from_chunk(nrg,1,1,1,tsice)
+         #endif
+
+               do i=begchunk,endchunk
+                 tmpfield(:,i) = srfflx_state2d(i)%lwup(:)
+               end do
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+               call write_field_from_chunk(nrg,1,1,1,landfrac)
+               call write_field_from_chunk(nrg,1,1,1,landm)
+               call write_field_from_chunk(nrg,1,1,1,sgh)
+                 tmpfield(:,i) = srfflx_state2d(i)%ts(:)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                 tmpfield3d(:,:,i) = surface_state2d(i)%tssub(:,:)
+               call write_field_from_chunk(nrg,1,plevmx,1,tmpfield3d)
+               call write_field_from_chunk(nrg,1,1,1,sicthk)
+               call write_field_from_chunk(nrg,1,1,1,snowhland)
+         #if (! defined COUP_CSM)
+               call write_field_from_chunk(nrg,1,1,1,snowhice)
+         #else
+               snowhice = 0.
+         #endif
+loops around indented lines
+                ncol = get_ncols_p(i)
+loops around indented lines
+                ncol = get_ncols_p(i)
+                 tmpfield(:ncol,i) = surface_state2d(i)%flwds(:ncol)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                ncol = get_ncols_p(i)
+                 tmpfield(:ncol,i) = surface_state2d(i)%sols(:ncol)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                ncol = get_ncols_p(i)
+                 tmpfield(:ncol,i) = surface_state2d(i)%soll(:ncol)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                ncol = get_ncols_p(i)
+                 tmpfield(:ncol,i) = surface_state2d(i)%solsd(:ncol)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+                ncol = get_ncols_p(i)
+                 tmpfield(:ncol,i) = surface_state2d(i)%solld(:ncol)
+               call write_field_from_chunk(nrg,1,1,1,tmpfield)
+               call write_field_from_chunk(nrg,1,1,1,trefmxav)
+               call write_field_from_chunk(nrg,1,1,1,trefmnav)
+               call write_field_from_chunk(nrg,1,1,1,icefrac)
+
+         #if ( defined COUP_CSM )
+               call write_restart_ccsm ()
+         #endif
+
+
+
+     ->  write_restart_history (nrg, luhrest)
+
