@@ -23,6 +23,7 @@ module model_mod
 
 use netcdf
 use types_mod
+use utilities_mod, only : file_exist, open_file, check_nml_error, close_file
 use time_manager_mod, only : time_type, set_time
 use location_mod         , only: location_type, get_location, set_location, get_dist, &
                                  LocationDims, LocationName, LocationLName
@@ -36,7 +37,7 @@ public model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
    write_cam_init, get_model_size, static_init_model, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
    init_conditions, init_time, adv_1step, end_model, &
-   model_get_close_states, nc_write_model_atts, &
+   model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
    TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_TRACER
 
 !-----------------------------------------------------------------------
@@ -63,6 +64,16 @@ type model_type
    real(r8), pointer :: vars_3d(:, :, :, :)
    real(r8), pointer ::  tracers(:, :, :, :)
 end type model_type
+
+!-----------------------------------------------------------------------                       
+! need a model namelist
+! output_state_vector = .true.     results in a "state-vector" netCDF file
+! output_state_vector = .false.    results in a "prognostic-var" netCDF file
+                                                                                               
+logical :: output_state_vector = .true.  ! output state-vector 
+                                                                                               
+namelist /model_nml/ output_state_vector
+
 
 !----------------------------------------------------------------------
 ! File where basic info about model configuration can be found; should be namelist
@@ -367,7 +378,28 @@ subroutine static_init_model()
 
 implicit none
 
-integer :: i, j
+integer :: i, j, unit, ierr, io
+
+! Begin by reading the namelist input
+if(file_exist('input.nml')) then
+   unit = open_file(file = 'input.nml', action = 'read')
+   ierr = 1
+   do while(ierr /= 0)
+      read(unit, nml = model_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'model_nml')
+   enddo
+ 11 continue
+   call close_file(unit)
+endif
+
+! Temporary namelist validation
+write(*, *)'namelist read: values are'
+write(*, *)'output_state_vector is ', output_state_vector
+
+write(*,*)'model attributes:'
+write(*,*)'   ',source
+write(*,*)'   ',revision
+write(*,*)'   ',revdate
 
 ! Get num lons, lats and levs from netcdf and put in global storage
 call read_cam_init_size(model_config_file, num_lons, num_lats, num_levs)
@@ -925,22 +957,9 @@ integer              :: ierr          ! return value of function
 !-----------------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: IDimID, JDimID, levDimID, tracerDimID
-integer :: IVarID, JVarID, levVarID, tracerVarID, StateVarID
+integer :: IDimID, JDimID, levDimID, MemberDimID, StateVarDimID, TimeDimID
+integer :: IVarID, JVarID, levVarID, StateVarID, StateVarVarID
 integer :: i
-
-
-integer :: LocationDimID, LocationVarID, LocationXType, LocationNDims
-integer :: LocationNAtts, LocationLen
-integer, dimension(NF90_MAX_VAR_DIMS) :: LocationDimIDs
-character (len=NF90_MAX_NAME) :: LocationVarName
-
-integer :: StateVarDimID, StateVarVarID, StateVarXType, StateVarNDims
-integer :: StateVarNAtts, StateVarLen
-integer, dimension(NF90_MAX_VAR_DIMS) :: StateVarDimIDs
-character (len=NF90_MAX_NAME) :: StateVarVarName
-
-
 
 ierr = 0     ! assume normal termination
 
@@ -953,6 +972,26 @@ call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimite
 call check(nf90_Redef(ncFileID))
 
 !-------------------------------------------------------------------------------
+! We need the dimension ID for the number of copies
+!-------------------------------------------------------------------------------
+
+call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
+call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
+
+if ( TimeDimID /= unlimitedDimId ) then
+  write(*,*)'ERROR: nc_write_model_atts: Time      dimension is ',TimeDimID
+  write(*,*)'ERROR: nc_write_model_atts: unlimited dimension is ',unlimitedDimId
+  write(*,*)'ERROR: they must be the same.'
+  stop
+endif
+
+!-------------------------------------------------------------------------------
+! Define the model size, state variable dimension ... whatever ...
+!-------------------------------------------------------------------------------
+call check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
+                        len=model_size, dimid = StateVarDimID))
+
+!-------------------------------------------------------------------------------
 ! Write Global Attributes
 !-------------------------------------------------------------------------------
 
@@ -963,42 +1002,16 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
 ! how about namelist input? might be nice to save ...
 
 !-------------------------------------------------------------------------------
-! Find the StateVariable info and [NOT YET perform some sanity checks]
-!-------------------------------------------------------------------------------
-call check(NF90_inq_dimid(ncid=ncFileID, name="StateVariable", dimid = StateVarDimID ))
-call check(NF90_inquire_dimension(ncid=ncFileID, dimid=StateVarDimID, len=StateVarLen))
-
-call check(nf90_inq_varid(ncid=ncFileID, name="StateVariable", varid = StateVarVarID))
-call check(nf90_inquire_variable(ncid   = ncFileID, &
-                                 varid  = StateVarVarID, &
-                                 name   = StateVarVarName, &
-                                 xtype  = StateVarXType, &
-                                 ndims  = StateVarNDims, &
-                                 dimids = StateVarDimIDs, &
-                                 nAtts  = StateVarNAtts) )
-! sanity checks go here
-
-!-------------------------------------------------------------------------------
-! Define the dimensions IDs
+! Define the new dimensions IDs
 !-------------------------------------------------------------------------------
 
 call check(nf90_def_dim(ncid=ncFileID, name="I",   len = num_lons,   dimid =   IDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="J",   len = num_lats,   dimid =   JDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="lev",    len = num_levs,    dimid =    levDimID))
-! call check(nf90_def_dim(ncid=ncFileID, name="tracer", len = num_tracers, dimid = tracerDimID))
-! write (*,*)'tracerDimID determined', tracerDimID
-
-! should implement "trajectory-like" coordinate defn ... a'la section 5.4, 5.5 of CF standard
-! call check(nf90_def_dim(ncid=ncFileID, name="locationrank", &
-!   len = LocationDims, dimid = LocationDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lev", len = num_levs,   dimid = levDimID))
 
 !-------------------------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
 !-------------------------------------------------------------------------------
-
-! (array) StateVariable Locations ... before being parsed back into prognostic vars
-!call check(NF90_def_var(ncFileID, name=LocationName, xtype=nf90_double, &
-!            dimids=(/ StateVarDimID, LocationDimID /), varid=LocationVarID) )
 
 ! Temperature Grid Longitudes
 call check(nf90_def_var(ncFileID, name="I", xtype=nf90_double, &
@@ -1007,8 +1020,6 @@ call check(nf90_put_att(ncFileID, IVarID, "long_name", "longitude"))
 call check(nf90_put_att(ncFileID, IVarID, "units", "degrees_east"))
 call check(nf90_put_att(ncFileID, IVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
 
-write (*,*)'IVarID determined'
-
 ! Temperature Grid Latitudes
 call check(nf90_def_var(ncFileID, name="J", xtype=nf90_double, &
                                                dimids=JDimID, varid=JVarID) )
@@ -1016,14 +1027,10 @@ call check(nf90_put_att(ncFileID, JVarID, "long_name", "latitude"))
 call check(nf90_put_att(ncFileID, JVarID, "units", "degrees_north"))
 call check(nf90_put_att(ncFileID, JVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
 
-write (*,*)'JVarID determined'
-
 ! (Common) grid levels
 call check(nf90_def_var(ncFileID, name="level", xtype=nf90_int, &
                                                 dimids=levDimID, varid=levVarID) )
 call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"))
-
-write (*,*)'levVarID determined'
 
 ! Number of Tracers
 ! call check(nf90_def_var(ncFileID, name="tracer", xtype=nf90_int, &
@@ -1031,43 +1038,54 @@ write (*,*)'levVarID determined'
 ! call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"))
 ! write (*,*)'tracerVarID determined'
 
-! append the attribute information needed for to recover
-! the prognostic variables from the state vector ... vector_to_prog_var
+if ( output_state_vector ) then
+   !----------------------------------------------------------------------------
+   ! Create attributes for the state vector
+   !----------------------------------------------------------------------------
+                                                                                               
+  ! Define the state vector coordinate variable
+   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+              dimids=StateVarDimID, varid=StateVarVarID))
+   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
+   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
+   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
+                                                                                               
+   ! Define the actual state vector
+   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
+              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID))
+   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
+   call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","CAM"))
 
-call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable ID
-call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","FMS-Bgrid"))
-call check(nf90_put_att(ncFileID, StateVarId, "temperature_units","degrees Kelvin"))
-call check(nf90_put_att(ncFileID, StateVarId, "pressure_units","Pa"))
-call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"))
-call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"))
-call check(nf90_put_att(ncFileID, StateVarId, "Q_units", "g/kg"))
+   ! Leave define mode so we can fill                                                          
+   call check(nf90_enddef(ncfileID))                                                           
+                                                                                               
+   ! Fill the state variable coordinate variable                                               
+   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))                
+                                                                                               
+else
 
-!-------------------------------------------------------------------------------
-! Leave define mode so we can actually fill the variables.
-!-------------------------------------------------------------------------------
+   write(*,*)'ERROR:CAM:model_mod:    trying to output the prognostic variables.'
+   write(*,*)'      That is not implemented yet.'
+   write(*,*)'      TJH 27 June 2003'
+   stop
 
-call check(nf90_enddef(ncfileID))
-
-write (*,*)'leaving define mode ...'
+endif
 
 !-------------------------------------------------------------------------------
 ! Fill the variables
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID, IVarID, lons ))
-call check(nf90_put_var(ncFileID, JVarID, lats ))
-
+call check(nf90_put_var(ncFileID,      IVarID, lons ))
+call check(nf90_put_var(ncFileID,      JVarID, lats ))
 call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   num_levs) /) ))
 ! call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ))
-
-write (*,*)'Finished filling variables ...'
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 call check(nf90_sync(ncFileID))
 
-write (*,*)'netCDF file is synched ...'
+write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...' 
 
 contains
   ! Internal subroutine - checks error status after each netcdf, prints
@@ -1084,6 +1102,153 @@ contains
   end subroutine check
 
 end function nc_write_model_atts
+
+
+
+function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
+!-----------------------------------------------------------------------------------------
+! Writes the model-specific variables to a netCDF file
+! TJH 25 June 2003
+!
+! There are two different (staggered) 3D grids being used simultaneously here. 
+! The routines "prog_var_to_vector" and "vector_to_prog_var", 
+! packs the prognostic variables into
+! the requisite array for the data assimilation routines. That routine
+! is the basis for the information stored in the netCDF files.
+!
+! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
+!                 : temperature       vars%t (tis:tie, tjs:tje, klb:kup)
+!                 : tracers           vars%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
+! VelocityGrid    : u                 vars%u (vis:vie, vjs:vje, klb:kub) 
+!                 : v                 vars%v (vis:vie, vjs:tje, klb:kup)
+!
+! So there are six different dimensions and five different variables as long as
+! simply lump "tracers" into one. 
+
+use typeSizes
+use netcdf
+implicit none
+
+integer,                intent(in) :: ncFileID      ! netCDF file identifier
+real(r8), dimension(:), intent(in) :: statevec
+integer,                intent(in) :: copyindex
+integer,                intent(in) :: timeindex
+integer                            :: ierr          ! return value of function
+
+!-----------------------------------------------------------------------------------------
+real, dimension(SIZE(statevec)) :: x
+! type(prog_var_type) :: Var
+
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: StateVarID, psVarID, tVarID, rVarID, uVarID, vVarID
+integer :: tis, tie, tjs, tje       ! temperature grid start/stop
+integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
+integer :: kub, klb
+integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
+
+ierr = 0     ! assume normal termination
+
+
+!-------------------------------------------------------------------------------
+! Get the bounds for storage on Temp and Velocity grids
+! Everything in here is from the bgrid ... don't have a clue for CAM ... yet.
+!-------------------------------------------------------------------------------
+
+! tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
+! tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
+! vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
+! vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
+! kub = Var_dt%kub
+! klb = Var_dt%klb
+
+nTmpI   = tie - tis + 1
+nTmpJ   = tje - tjs + 1
+! nlev    = Var_dt%kub - Var_dt%klb + 1
+! ntracer = Var_dt%ntrace 
+nVelI   = vie - vis + 1
+nVelJ   = vje - vjs + 1
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file, 
+! then get all the Variable ID's we need.
+!-------------------------------------------------------------------------------
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+
+if ( output_state_vector ) then
+
+   call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
+   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
+                start=(/ 1, copyindex, timeindex /)))                               
+
+else
+
+   write(*,*)'FATAL ERROR: CAM:nc_write_model_vars  is not operational.'
+   write(*,*)'   you should not be here ...'
+   write(*,*)'model_nml: output_state_vector  MUST be .true.    for now.'
+   write(*,*)'TJH ... 27 June 2003'
+   stop
+   
+   !----------------------------------------------------------------------------
+   ! Fill the variables
+   !----------------------------------------------------------------------------
+
+ ! x = statevec ! Unfortunately, have to explicity cast it ...
+                ! the filter uses a type=double,
+                ! the vector_to_prog_var function expects a single.
+ !  call vector_to_prog_var(x, get_model_size(), Var)
+   
+   
+ ! call check(NF90_inq_varid(ncFileID, "ps", psVarID))
+ ! call check(nf90_put_var( ncFileID, psVarID, Var%ps(tis:tie, tjs:tje), &
+ !                          start=(/ 1, 1, copyindex, timeindex /) ))
+
+ ! call check(NF90_inq_varid(ncFileID,  "t",  tVarID))
+ ! call check(nf90_put_var( ncFileID,  tVarID, Var%t( tis:tie, tjs:tje, klb:kub ), &
+ !                          start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+ ! call check(NF90_inq_varid(ncFileID,  "u",  uVarID))
+ ! call check(nf90_put_var( ncFileID,  uVarId, Var%u( vis:vie, vjs:vje, klb:kub ), &
+ !                          start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+ ! call check(NF90_inq_varid(ncFileID,  "v",  vVarID))
+ ! call check(nf90_put_var( ncFileID,  vVarId, Var%v( vis:vie, vjs:vje, klb:kub ), &
+ !                          start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+ ! if ( ntracer > 0 ) then
+ !    call check(NF90_inq_varid(ncFileID,  "r",  rVarID))
+ !    call check(nf90_put_var( ncFileID,  rVarID, &
+ !                  Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
+ !                 start=(/   1,       1,       1,     1,    copyindex, timeindex /) ))
+ ! endif
+endif
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+
+write (*,*)'Finished filling variables ...'
+call check(nf90_sync(ncFileID))
+write (*,*)'netCDF file is synched ...'
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+
+    if(istatus /= nf90_noerr) then
+      print *,'model_mod:nc_write_model_vars'
+      print *, trim(nf90_strerror(istatus))
+      ierr = istatus
+      stop
+    end if
+  end subroutine check
+
+end function nc_write_model_vars
+
+
 
 !#######################################################################
 

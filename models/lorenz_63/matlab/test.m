@@ -1,12 +1,27 @@
+
+function test(dir_name,true_name,ens_name,dir_name)
 % Assumes two copies are ensemble mean followed by ensemble spread
 % Should be automated and checked at some point
+
+if (nargin == 2)     % files must be in MATLABPATH ...
+
+   if (exist(true_name) ~=2 ) 
+      error(sprintf('%s is not a file in our MATLABPATH',true_name))
+   end 
+   if (exist(ens_name) ~=2 ) 
+      error(sprintf('%s is not a file in our MATLABPATH',ens_name))
+   end 
+
+
+end
 
 % Input the working directory
 dir_name = input('Input directory; . for current directory')
 
 % Load the ensemble file
 tname = input('Input file name for True state');
-fname = [dir_name '/' tname];
+
+TrueFname = fullfile(dir_name, tname);
 loc = getnc(fname, 'loc1d');
 num_loc = size(loc, 1);
 true_times = getnc(fname, 'time');

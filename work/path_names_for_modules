@@ -58,8 +58,8 @@ else
 #   -static prevents linking with shared libraries (relocatable)
 #
 #   set DEFAULT_COMPILE = 'ifc -c -C -auto -zero -Zp8 -align -Kpic -I/usr/local/include '
-   set DEFAULT_COMPILE = 'ifc -c -C -e90 -zero -Zp8 -I/usr/local/include '
-   set LINK_OPTS     = "-L/usr/local/lib -lnetcdf -lPEPCF90"
+   set DEFAULT_COMPILE = 'ifc -c -C -e90 -zero -Zp8 -I/opt/Intel/include '
+   set LINK_OPTS     = "-L/usr/local/lib -lPEPCF90 -L/opt/Intel/lib -lnetcdf"
    set FFLAGS = "-O -mp"
    set FINAL_COMMAND = 'ifc -o $1 *.o ${LINK_OPTS}'
 

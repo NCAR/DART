@@ -26,7 +26,8 @@ public   get_model_size, &
          init_time, &
          init_conditions, &
          model_get_close_states, &
-         nc_write_model_atts 
+         nc_write_model_atts, & 
+         nc_write_model_vars
 
 
 ! let CVS fill strings ... DO NOT EDIT ...
@@ -42,8 +43,10 @@ character(len=128) :: &
 !
 integer :: model_size = 40
 real(r8) :: forcing = 8.00_r8, delta_t = 0.05_r8
+logical :: output_state_vector = .true.  ! output state vector                  
 
-namelist /model_nml/ model_size, forcing, delta_t 
+
+namelist /model_nml/ model_size, forcing, delta_t, output_state_vector
 !----------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
@@ -86,6 +89,7 @@ write(*, *) 'namelist read; values are'
 write(*, *) 'model size is ', model_size
 write(*, *) 'forcing is ', forcing
 write(*, *) 'delta_t is ', delta_t
+write(*, *) 'output_state_vector is ', output_state_vector
 
 ! Create storage for locations
 allocate(state_loc(model_size))
@@ -400,18 +404,12 @@ integer              :: ierr          ! return value of function
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
 !-----------------------------------------------------------------------------------------
-! netCDF variables for Location
+! netCDF variables
 !-----------------------------------------------------------------------------------------
 
-integer :: LocationDimID, LocationVarID, LocationXType, LocationNDims
-integer :: LocationNAtts, LocationLen
-integer, dimension(NF90_MAX_VAR_DIMS) :: LocationDimIDs
-character (len=NF90_MAX_NAME) :: LocationVarName
-
-integer :: StateVarDimID, StateVarVarID, StateVarXType, StateVarNDims
-integer :: StateVarNAtts, StateVarLen
-integer, dimension(NF90_MAX_VAR_DIMS) :: StateVarDimIDs
-character (len=NF90_MAX_NAME) :: StateVarVarName
+integer :: LocationDimID, LocationVarID
+integer :: StateVarDimID, StateVarVarID
+integer :: StateVarID, MemberDimID, TimeDimID
 
 !-----------------------------------------------------------------------------------------
 ! local variables
@@ -430,6 +428,15 @@ call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
 call check(nf90_Redef(ncFileID))
 
 !-------------------------------------------------------------------------------
+! Determine ID's from stuff already in the netCDF file
+!-------------------------------------------------------------------------------
+
+! make sure time is unlimited dimid
+
+call check(nf90_inq_dimid(ncFileID,"copy",dimid=MemberDimID))
+call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
+
+!-------------------------------------------------------------------------------
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
@@ -440,38 +447,10 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_forcing", forcing ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
 
 !-------------------------------------------------------------------------------
-! Find the StateVariable Variable ID, get current info and perform some sanity checks
-! In the one-d case, the statevariable dimension must match the model_size.
-! Since StateVariable is a coordinate variable, it makes sense to use it.
+! Define the model size, state variable dimension ... whatever ...
 !-------------------------------------------------------------------------------
-
-call check(nf90_inq_varid(ncid=ncFileID, name="StateVariable", varid = StateVarVarID)) 
-call check(nf90_inquire_variable(ncid   = ncFileID, &
-                                 varid  = StateVarVarID, &
-                                 name   = StateVarVarName, &
-                                 xtype  = StateVarXType, &
-                                 ndims  = StateVarNDims, &
-                                 dimids = StateVarDimIDs, &
-                                 nAtts  = StateVarNAtts) ) 
-
-if ( StateVarNDims /= LocationDims ) then
-   write(*,*)'Error:nc_write_model_atts: State Variable higher dimension than expected.'
-   ierr = 1;
-endif
-
-! perhaps should check all variables for one with proper attribute ...
-
-call check(NF90_inq_dimid(ncid=ncFileID, name="StateVariable", dimid = StateVarDimID ))
-call check(NF90_inquire_dimension(ncid=ncFileID, dimid=StateVarDimID, len=StateVarLen))
-
-Nlocations = get_model_size()
-
-if ( Nlocations /= StateVarLen ) then
-   write(*,*)'Error:nc_write_model_atts: model size does not match size of State Variable.'
-   write(*,*)'Error:nc_write_model_atts: model size  = ', Nlocations
-   write(*,*)'Error:nc_write_model_atts: StateVarLen = ', StateVarLen
-   ierr = 1;
-endif
+call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
+                        len=model_size, dimid = StateVarDimID))
 
 !-------------------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
@@ -479,7 +458,7 @@ endif
 ! CF standards for Locations:
 ! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
 !-------------------------------------------------------------------------------
-
+   
 call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
               dimids = StateVarDimID, varid=LocationVarID) )
 call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
@@ -488,21 +467,40 @@ call check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
 call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
 
 !-------------------------------------------------------------------------------
-! Leave define mode so we can actually fill the variables.
+! Define either the "state vector" variables -OR- the "prognostic" variables.
 !-------------------------------------------------------------------------------
 
-call check(nf90_enddef(ncfileID))
+if ( output_state_vector ) then
+
+   ! Define the state vector coordinate variable
+   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+              dimids=StateVarDimID, varid=StateVarVarID))                     
+   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
+   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
+   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
+
+   ! Define the actual state vector
+   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
+              dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
+   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy")) 
+
+   ! Leave define mode so we can fill
+   call check(nf90_enddef(ncfileID))
+
+   ! Fill the state variable coordinate variable
+   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
+
+else
+
+   write(*,*)'Nothing to write -- want "prognostic" variables.'
+
+endif
 
 !-------------------------------------------------------------------------------
-! Fill the variable(s)
+! Fill the location variable
 !-------------------------------------------------------------------------------
-! JEFF -- do we want to use get_location, I'm not particularly fond of using
-! get_stat_meta_data() to return a location type with a private attribute -- 
-! is "location" the only metadata ever needed by 1D models ...  would prefer ...
-!
-!  call check(nf90_put_var(ncFileID, LocationVarID, state_loc%x ))
-
-do i = 1,Nlocations
+   
+do i = 1,model_size
    call get_state_meta_data(i,loc)
    call check(nf90_put_var(ncFileID, LocationVarID, get_location(loc), (/ i /) ))
 enddo
@@ -533,8 +531,86 @@ end function nc_write_model_atts
 
 
 
-
+function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
+!-----------------------------------------------------------------------------------------
+! Writes the model-specific attributes to a netCDF file
+! TJH 23 May 2003
 !
+! For the lorenz_96 model, each state variable is at a separate location.
+! that's all the model-specific attributes I can think of ...
+!
+! assim_model_mod:init_diag_output uses information from the location_mod
+!     to define the location dimension and variable ID. All we need to do
+!     is query, verify, and fill ...
+!
+! Typical sequence for adding new dimensions,variables,attributes:
+! NF90_OPEN             ! open existing netCDF dataset
+!    NF90_redef         ! put into define mode 
+!    NF90_def_dim       ! define additional dimensions (if any)
+!    NF90_def_var       ! define variables: from name, type, and dims
+!    NF90_put_att       ! assign attribute values
+! NF90_ENDDEF           ! end definitions: leave define mode
+!    NF90_put_var       ! provide values for variable
+! NF90_CLOSE            ! close: save updated netCDF dataset
+!
+
+use typeSizes
+use netcdf
+implicit none
+
+integer,                intent(in) :: ncFileID      ! netCDF file identifier
+real(r8), dimension(:), intent(in) :: statevec
+integer,                intent(in) :: copyindex
+integer,                intent(in) :: timeindex
+integer                            :: ierr          ! return value of function
+
+!-----------------------------------------------------------------------------------------
+! General netCDF variables
+!-----------------------------------------------------------------------------------------
+
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: StateVarID
+
+!-----------------------------------------------------------------------------------------
+! local variables
+!-----------------------------------------------------------------------------------------
+
+ierr = 0                      ! assume normal termination
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file 
+!-------------------------------------------------------------------------------
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+
+! no matter the value of "output_state_vector", we only do one thing.
+
+call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
+call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
+             start=(/ 1, copyindex, timeindex /)))  
+
+! write (*,*)'Finished filling variables ...'
+call check(nf90_sync(ncFileID))
+! write (*,*)'netCDF file is synched ...'
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus)
+    integer, intent ( in) :: istatus
+
+    if(istatus /= nf90_noerr) then
+      print *,'model_mod:nc_write_model_vars'
+      print *, trim(nf90_strerror(istatus))
+      ierr = istatus
+      stop
+    end if
+  end subroutine check
+
+end function nc_write_model_vars
+
+
 !===================================================================
 ! End of model_mod
 !===================================================================

@@ -1,11 +1,18 @@
-% Plots ensemble rank histograms for 9 variable Lorenz model
+function plot_bin(truth_file,ens_file)
 
-truth_file = input('Input name of True State file; <cr> for True_State.nc');
+% Plots ensemble rank histograms for 9 variable Lorenz model
+%
+% 
+% true_name = '../work/True_State.nc';
+% diag_name = '../work/Prior_Diag.nc';
+% plot_bins(true_name,diag_name);
+
+% truth_file = input('Input name of True State file; <cr> for True_State.nc');
 if sum(size(truth_file)) == 0 
    truth_file = 'True_State.nc';
 end
 
-ens_file = input('Input name of prior or posterior diagnostics file; <cr> for Prior_Diag.nc');
+% ens_file = input('Input name of prior or posterior diagnostics file; <cr> for Prior_Diag.nc');
 if sum(size(ens_file)) == 0
    ens_file = 'Prior_Diag.nc';
 end

@@ -19,7 +19,7 @@ use utilities_mod, only : get_unit
 use types_mod
 use model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
    get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-   end_model, model_get_close_states, nc_write_model_atts
+   end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars
 
 private
 
@@ -145,22 +145,19 @@ integer,          intent(in) :: copies_of_field_per_time
 character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 integer                      :: ncFileID
 
-integer             :: i, model_size, metadata_length
+integer             :: i, metadata_length
 type(location_type) :: state_loc
 
-integer :: StateVarDimID, StateVarVarID     ! for each model parameter/State Variable
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID
 integer :: LocationDimID, LocationVarID
 integer :: MetadataDimID, MetadataVarID
-integer ::                   StateVarID     ! for ENTIRE Model State
 
 if(.not. byteSizesOK()) then
    print *, "Compiler does not appear to support required kinds of variables."
    stop
 end if
 
-model_size      = get_model_size()
 metadata_length = LEN(meta_data_per_copy(1))
 
 ! Create the file
@@ -169,9 +166,6 @@ call check(nf90_create(path = trim(FileName)//".nc", cmode = nf90_clobber, ncid 
 ! Define the dimensions
 call check(nf90_def_dim(ncid=ncFileID, &
              name="metadatalength", len = metadata_length,        dimid = metadataDimID))
-
-call check(nf90_def_dim(ncid=ncFileID, &
-             name="StateVariable",  len=model_size,               dimid = StateVarDimID))
 
 call check(nf90_def_dim(ncid=ncFileID, &
              name="locationrank",   len = LocationDims,           dimid = LocationDimID))
@@ -192,16 +186,10 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "assim_model_revision", revision 
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "assim_model_revdate", revdate ))
 
 !-------------------------------------------------------------------------------
-! Create variables and attributes
+! Create variables and attributes.
+! The locations are part of the model (some models have multiple grids).
+! They are written by model_mod:nc_write_model_atts
 !-------------------------------------------------------------------------------
-
-!    State ID
-call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-                                     dimids=StateVarDimID, varid=StateVarVarID))
-call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "nondimensional") )
-call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
-
 
 !    Copy ID
 call check(nf90_def_var(ncid=ncFileID, name="copy", xtype=nf90_int, dimids=MemberDimID, &
@@ -227,29 +215,30 @@ call check(nf90_put_att(ncFileID, TimeVarID, "cartesian_axis", "T"))
 call check(nf90_put_att(ncFileID, TimeVarID, "axis", "T"))
 call check(nf90_put_att(ncFileID, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
 
-
-!    The State 
-call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-                        dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
-call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
-
-!    The Locations -- are part of the model (some models have multiple grids).
-!    They are written by model_mod:nc_write_model_atts
-
-! Leave define mode
+!-------------------------------------------------------------------------------
+! Leave define mode so we can fill
+!-------------------------------------------------------------------------------
 call check(nf90_enddef(ncfileID))
 
 !-------------------------------------------------------------------------------
-! Fill the dimension variables
+! Fill the coordinate variables.
 ! The time variable is filled as time progresses.
-! The state variable is filled similarly ...
 !-------------------------------------------------------------------------------
 
 call check(nf90_put_var(ncFileID, MemberVarID,   (/ (i,i=1,copies_of_field_per_time) /) ))
-call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
 call check(nf90_put_var(ncFileID, metadataVarID, meta_data_per_copy ))
 
-i =  nc_write_model_atts(ncFileID)
+!-------------------------------------------------------------------------------
+! sync to disk, but leave open
+!-------------------------------------------------------------------------------
+
+call check(nf90_sync(ncFileID))
+
+!-------------------------------------------------------------------------------
+! Define the model-specific components
+!-------------------------------------------------------------------------------
+
+i =  nc_write_model_atts( ncFileID )
 if ( i < 0 ) then
    print *,'assim_model_mod:nc_write_model_atts  bombed ', i
 else if ( i > 0 ) then
@@ -839,6 +828,8 @@ subroutine output_diagnostics(ncFileID, state, copy_index)
 ! TJH 28 Aug 2002 original netCDF implementation 
 ! TJH  7 Feb 2003 [created time_manager_mod:nc_get_tindex] 
 !     substantially modified to handle time in a much better manner
+! TJH 24 Jun 2003 made model_mod do all the netCDF writing.
+!                 Still need an error handler for nc_write_model_vars
 !      
 
 use typeSizes
@@ -849,7 +840,6 @@ integer,                intent(in) :: ncFileID
 type(assim_model_type), intent(in) :: state
 integer, optional,      intent(in) :: copy_index
 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, StateVarID
 integer :: i,ierr, timeindex, copyindex
 
 if (.not. present(copy_index) ) then     ! we are dependent on the fact
@@ -868,23 +858,10 @@ if ( timeindex < 0 ) then
    stop
 endif
 
-call check(NF90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(NF90_inq_varid(ncFileID, "state", StateVarID)) ! Get state Variable ID
-call check(NF90_put_var(ncFileID, StateVarID, state%state_vector, start=(/ 1, copyindex, timeindex /)))
+! model_mod:nc_write_model_vars knows nothing about assim_model_types,
+! so we must pass the components.
 
-call check(NF90_sync(ncFileID))
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(status)
-    integer, intent ( in) :: status
-    
-    if(status /= nf90_noerr) then 
-      print *, trim(nf90_strerror(status))
-    end if
-  end subroutine check  
+i = nc_write_model_vars(ncFileID, state%state_vector, copyindex, timeindex) 
 
 end subroutine output_diagnostics
 
