@@ -51,8 +51,19 @@
    <TR><!-- due date --><TD> &nbsp - &nbsp </TD>
        <!-- com date --><TD> &nbsp - &nbsp</TD>
        <!-- task     --><TD> more efficient sort_mod ... with interface ops </TD></TR>
-
 </TABLE>
+
+
+<PRE>
+use lib "/contrib/R-1.4.1/lib/R/share/perl/R";   # List of where to look for
+                                                 # the Perl modules
+                                  
+/contrib/R-1.4.1/bin/[Rdconv,Rd2dvi,Rd2txt]
+/contrib/R-1.4.1/share/perl      has perl pieces
+/contrib/R-1.4.1/share/perl/R    has more perl pieces
+</PRE>
+
+
 
 
 

@@ -63,6 +63,15 @@ this to be a problem any time soon.
 I predict this will be useful ...
 <PRE>chgrp -R cgddart DART</PRE>
 
+<P>I set the group sticky bit on the repository, so everything added to
+the repository will inherit the repository group attributes (including
+... group), so we may not need to use the chgrp command.  To set the sticky
+bit (assuming the project already has the right attributes): 
+<PRE>cd $CVSROOT
+chgrp g+s DART</PRE>
+
+<P>setting the sticky bit for your personal sandbox is a good thing.
+
 <P>The current "tag" of the project is <TT>rel-0-0</TT>&nbsp. 
 We need to come up with a policy regarding when to "commit" a 
 sandbox to the repository. (i.e. does it need to pass a test suite...)
