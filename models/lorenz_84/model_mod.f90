@@ -52,8 +52,8 @@ integer, parameter :: model_size = 3
 ! Namelist with default values
 !
 real(r8) ::      a = 0.25_r8
-real(r8) ::      b =  4.0_r8
-real(r8) ::      f =  8.0_r8 
+real(r8) ::      b = 4.00_r8
+real(r8) ::      f = 8.00_r8 
 real(r8) ::      g = 1.25_r8
 real(r8) :: deltat = 0.01_r8
 
