@@ -144,6 +144,9 @@ namelist /filter_nml/async, adv_ens_command, ens_size, cutoff, cov_inflate, &
 ! Start of the routine
 !----------------------------------------------------------------
 
+! Delete the semaphore files that are used for parallel version 3
+call system('rm -f go_advance_model go_end_filter go_assim_regions')
+
 call filter_initialize_modules_used()
 
 ! call filter_read_namelist()
