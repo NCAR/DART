@@ -378,10 +378,10 @@ c
 C Output for idenpress alone:
 
            if(idecomp.eq.0)then
-              do 2001 j=1,ij
+              do j=1,ij
                  VLAT = XLAT(j)*RADEG
                  write (7,201) VLAT,geopot(j),delrho(j),delpress(j)
- 2001	      continue
+              enddo
            endif
 
          endif   !idenpress=1
@@ -389,10 +389,10 @@ C Output for idenpress alone:
 C Output for both calls
 
          if(idenpress.eq.1.and.idecomp.eq.1)then
-           do 2003 j=1,ij
+           do j=1,ij
               VLAT = XLAT(j)*RADEG
               write (7,203) VLAT,geopot(j),GPT(j),delrho(j),delpress(j)
- 2003      continue
+           enddo
          endif
 
 C Take out the GOTO6 statements
@@ -406,5 +406,5 @@ C Take out the GOTO6 statements
       print 908, period,xmod,xmodsqr
       write (7,909) xmod,xmodsqr
 
-	return
-	end
+      return
+      end
