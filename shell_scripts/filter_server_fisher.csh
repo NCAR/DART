@@ -6,10 +6,21 @@
 #
 # $Id$
 #
+# Filter server waits for requests from DART clients to either advance an
+# ensemble of model states or to assimilate a set of observations for a group
+# of regions. Filter_server waits for one of three files to be created
+# and takes the following actions:
+# 1. go_end_filter: terminate filter_server.
+# 2. go_advance_model: advance ensemble of model states.
+# 3. go_assim_region: assimilate a set of regions.
+
+# The number of processors to be used is set by NPROCS in the following line
+set NPROCS = 3
 
 ### This job's working directory; must cd to it, or it will run in /home...
 setenv PBS_O_WORKDIR `pwd`
 
+# Initialize a log of filter_server's actions
 rm -f filter_server.log
 
 ### Output to confirm job characteristics
@@ -20,7 +31,7 @@ echo "This job runs on the following processors:" >> filter_server.log
 ### Define number of processors; # of lines in PBS_NODEFILE
 setenv PBS_NODEFILE nodefile
 rm -f $PBS_NODEFILE
-set NPROCS = 3
+### Deprecated set NPROCS = 3
 set iproc = 1
 while($iproc <= $NPROCS)
    echo proc$iproc >> $PBS_NODEFILE
