@@ -381,7 +381,8 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Each ensemble member
       do k = 1, ens_size
-         call get_expected_obs(seq, keys(j:j),  ens(k, :), obs_vals(k:k))
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
+         if(istatus == 1 ) qc(j) = 99.0
       enddo
 
 ! Compute observation prior ensemble mean
@@ -400,6 +401,8 @@ AdvanceTime : do i = 1, num_obs_sets
       if(output_obs_ens_spread) &
          call set_obs_values(observation, obs_spread, prior_obs_spread_index)
 
+         if(qc(j) == 99.0 ) call set_qc(observation, qc(j:j), 1)
+
 ! Finally store the prior observation space stuff for this observation into sequence
       call set_obs(seq, observation, keys(j))
    end do
@@ -411,6 +414,8 @@ AdvanceTime : do i = 1, num_obs_sets
       ! Compute the ensemble prior for this ob
       do k = 1, ens_size
          call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
+
+         if(istatus == 1) cycle Observations
       end do
 
       ! Divide ensemble into num_groups groups
@@ -503,7 +508,7 @@ AdvanceTime : do i = 1, num_obs_sets
 
 ! Each ensemble member
       do k = 1, ens_size
-         call get_expected_obs(seq, keys(j:j),  ens(k, :), obs_vals(k:k))
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k), istatus, rstatus(k:k,1:1))
       enddo
 
 ! Compute observation posterior ensemble mean
