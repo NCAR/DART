@@ -80,7 +80,8 @@ contains
 
 !#######################################################################
 
-   subroutine initialize_utilities
+   subroutine initialize_utilities(progname)
+   character(len=*), intent(in), optional :: progname
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
    logical :: lfile
@@ -104,6 +105,10 @@ contains
          ! The routines that normally write to the logfile cannot
          ! be used just yet. If we cannot open a logfile, we
          ! always abort execution at this step.
+
+         if ( present(progname) ) then
+            write(*,*)'Starting program ',trim(adjustl(progname))
+         endif
 
          write(*,*)'Initializing the utilities module.'
 
@@ -163,7 +168,12 @@ contains
 
          write(logfileunit,*)
          write(logfileunit,*)'--------------------------------------'
-         write(logfileunit,*)'Running  ... at YYYY MM DD HH MM SS = '
+         if ( present(progname) ) then
+            write(logfileunit,*)'Starting program ',trim(adjustl(progname)),&
+                                         '... at YYYY MM DD HH MM SS = '
+         else
+            write(logfileunit,*)'Running  ... at YYYY MM DD HH MM SS = '
+         endif 
          write(logfileunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
                            values(3),  values(5), values(6), values(7)
          if ( values(4) /= -HUGE(0) ) &
