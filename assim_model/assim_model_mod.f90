@@ -486,10 +486,15 @@ integer :: is1,is2,id1,id2
 time_step = get_model_time_step()
 
 if(model_time > time) then
-   call get_time(model_time,is1,id1)
-   call get_time(time,is2,id2)
-   write(errstring, *)'model time (',is1,id1,') > time (',is2,id2,')'
-   call error_handler(E_ERR,'aget_closest_state_time_to', errstring, source, revision, revdate)
+   !!! Used to be an error to have obs before model time; now let obs window handle this
+   !!!call get_time(model_time,is1,id1)
+   !!!call get_time(time,is2,id2)
+   !!!write(errstring, *)'model time (',is1,id1,') > time (',is2,id2,')'
+   !!!call error_handler(E_ERR,'aget_closest_state_time_to', errstring, source, revision, revdate)
+
+   ! If model_time is past start of obs window, don't advnce it
+   aget_closest_state_time_to = model_time
+   return
 endif
 
 aget_closest_state_time_to = model_time
