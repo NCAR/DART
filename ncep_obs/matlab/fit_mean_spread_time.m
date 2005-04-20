@@ -36,7 +36,7 @@ else
 end
 
 %----------------------------------------------------------------------
-figure(1); clf; orient landscape; wysiwyg;  % Temperature
+figure(1); clf; % Temperature
 %----------------------------------------------------------------------
 
    % Set up a structure with all the plotting components
@@ -57,7 +57,7 @@ figure(1); clf; orient landscape; wysiwyg;  % Temperature
    plotdat.region = 4; myplot(plotdat);
 
 %----------------------------------------------------------------------
-figure(2); clf; orient landscape; wysiwyg;  % Winds
+figure(2); clf; % Winds
 %----------------------------------------------------------------------
 
    plotdat.ges     = fullfile(ddir,sprintf('Wges_times_%04dmb.dat',level));
@@ -99,7 +99,7 @@ for itime = 1:size(p,1)
 end
 
 subplot(2,2,plotdat.region)
-   plot(x,ens_mean,'c+-',x,ens_spread,'ro-','LineWidth',1.5)
+   plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
    xlabel(plotdat.xlabel, 'fontsize', 10);
    ylabel(plotdat.ylabel, 'fontsize', 10);

@@ -34,7 +34,9 @@ Tanl  = fullfile(ddir,sprintf('Tanl_times_%04dmb.dat',level));
 Wges  = fullfile(ddir,sprintf('Wges_times_%04dmb.dat',level));
 Wanl  = fullfile(ddir,sprintf('Wanl_times_%04dmb.dat',level));
 
-figure(1); clf; orient portrait; wysiwyg
+%----------------------------------------------------------------------
+figure(1); clf; % Temperature
+%----------------------------------------------------------------------
 
    str1   = sprintf('%4d hPa T  Ens Spread',level);
    region = 'Northern Hemisphere';
@@ -53,8 +55,9 @@ figure(1); clf; orient portrait; wysiwyg
    topstr = {str1, region};
    Myplot(Tges,Tanl,topstr,4)
    
-% Now for the Winds
-figure(2); clf; orient portrait; wysiwyg
+%----------------------------------------------------------------------
+figure(2); clf; % Now for the Winds
+%----------------------------------------------------------------------
    
    str1   = sprintf('%4d hPa Wind Ens Spread',level); 
    region = 'Northern Hemisphere';
@@ -72,6 +75,10 @@ figure(2); clf; orient portrait; wysiwyg
    region = 'North America';
    topstr = {str1, region};
    Myplot(Wges,Wanl,topstr,4)
+
+%----------------------------------------------------------------------
+% common
+%----------------------------------------------------------------------
 
    print(1,'-dpsc','t_ens_spread_time.ps');
    print(2,'-dpsc','w_ens_spread_time.ps');

@@ -52,7 +52,7 @@ end
 % subplot('position', [0.6,0.1,0.35,0.35])  ==? subplot(2,2,4)
 
 %----------------------------------------------------------------------
-figure(1); clf; orient tall;   % Temperature
+figure(1); clf; % Temperature
 %----------------------------------------------------------------------
 
 p_v  = load(TGuessFname);
@@ -81,7 +81,7 @@ region = 'North America';
 myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, top, axlims)
 
 %----------------------------------------------------------------------
-figure(2); clf; orient tall;  % Windspeed
+figure(2); clf; % Windspeed
 %----------------------------------------------------------------------
 
 p_v  = load(WGuessFname);
@@ -112,10 +112,12 @@ myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, top, axlims)
 print -f1 -dpsc t_vertical.ps 
 print -f2 -dpsc w_vertical.ps
 
+
+
 function myplot(figpos,gx,gy,ax,ay,xlab,ylab,region,top,axlims)
 
 subplot(2,2,figpos)
-plot(gx,gy,'c+-',ax,ay,'ro-','LineWidth',1.5)
+plot(gx,gy,'k+-',ax,ay,'ro-','LineWidth',1.5)
 axis(axlims)
 grid
 set(gca,'YDir', 'reverse')

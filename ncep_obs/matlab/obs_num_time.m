@@ -46,7 +46,7 @@ end
    % Plot Number of Temperature Observations
    %------------------------------------------------------------
 
-   figure(1); clf; orient tall
+   figure(1); clf;
 
    ylab   = '# of Temp observations';
 
@@ -65,6 +65,8 @@ end
    region      = 'North America';
    top         = sprintf('%s  %4d hPa',region,level);
    [nT_NA,xax] = Myplot(Tfname,top,ylab,4,'k+-');
+
+   print -dpsc         t_obs_num_time.ps
   
    % All regions on one figure
 
@@ -85,11 +87,13 @@ end
 	  'Tropics', ...
 	  'North America')
 
+   print -dpsc -append t_obs_num_time.ps
+
    %------------------------------------------------------------
    % Now for the Winds
    %------------------------------------------------------------
 
-   figure(3); clf; orient tall
+   figure(3); clf;
    
    ylab   = '# of Wind observations';
 
@@ -109,7 +113,7 @@ end
    top         = sprintf('%s  %4d hPa',region,level);
    [nW_NA,xax] = Myplot(Wfname,top,ylab,4,'k+-');
 
-   str = '-dpsc';
+   print -dpsc         w_obs_num_time.ps
 
    % All regions on one figure
 
@@ -130,9 +134,8 @@ end
 	  'Tropics', ...
 	  'North America')
 
-   print(1,str,'t_obs_num_time.ps');
-   print(3,str,'w_obs_num_time.ps');
-% end
+   print -dpsc -append w_obs_num_time.ps
+
 
 function [yp_num,xp] = Myplot(file1,top,ylab,region,ptype)
 

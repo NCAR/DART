@@ -97,6 +97,8 @@ xlabel('# of Observations','fontsize',10)
 
 legend('Northern Hemisphere','Southern Hemisphere','Tropics','North America')
 
+print -dpsc -append t_num_vert.ps
+
 %----------------------------------------------------------------------
 % Wind Observations ... Individual regions 
 %----------------------------------------------------------------------
@@ -163,3 +165,4 @@ xlabel('# of Observations','fontsize',10)
 
 legend('Northern Hemisphere','Southern Hemisphere','Tropics','North America')
 
+print -dpsc -append w_num_vert.ps

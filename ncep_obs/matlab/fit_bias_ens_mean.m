@@ -45,7 +45,7 @@ if ( exist(WAnalyFname,'file') ~= 2 )
 end
 
 %----------------------------------------------------------------------
-figure(1); clf; orient tall; % Temperatures first, then
+figure(1); clf; % Temperatures first, then
 %----------------------------------------------------------------------
 
 p_v  = load(TGuessFname);
@@ -74,7 +74,7 @@ region = 'North America';
 myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, top, axlims)
 
 %----------------------------------------------------------------------
-figure(2); clf; orient tall; % Winds
+figure(2); clf; % Winds
 %----------------------------------------------------------------------
 
 p_v  = load(WGuessFname);
@@ -110,7 +110,7 @@ print -f2 -dpsc w_bias.ps
 function myplot(figpos,gx,gy,ax,ay,xlab,ylab,region,top,axlims)
 
 subplot(2,2,figpos)
-   plot(gx,gy,'b+-',ax,ay,'ro:','LineWidth',2.0)
+   plot(gx,gy,'k+-',ax,ay,'ro-','LineWidth',2.0)
    axis(axlims)
    grid
    set(gca,'YDir', 'reverse')
