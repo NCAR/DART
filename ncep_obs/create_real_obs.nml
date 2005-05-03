@@ -1,0 +1,18 @@
+&ncepobs_nml
+   year = 2003,
+   month = 1,
+   day = 1,
+   tot_days = 1,
+   select_obs  = 0,
+   ADDUPA = .true., 
+   AIRCAR = .false., 
+   AIRCFT = .false., 
+   SATWND = .false.,
+   obs_U  = .true., 
+   obs_V  = .false., 
+   obs_T  = .false.,
+   obs_PS = .false.,
+   obs_QV = .false.,
+   max_num = 700000,
+   ObsBase = '/project/dart/home/hliu/ncepobs/April05/temp_obs.'  /
+
