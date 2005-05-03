@@ -124,5 +124,9 @@ set(gca,'YDir', 'reverse')
 title({top,region}, 'FontSize', 14, 'FontWeight', 'bold' )
 ylabel(ylab, 'fontsize', 10)
 xlabel(xlab, 'fontsize', 10)
-h = legend('guess', 'analysis','Location','Best');
-legend(h,'boxoff')
+if   isempty(strfind(lower(xlab),'wind')) 
+   h = legend('guess', 'analysis','Location','Best');
+else
+   h = legend('guess', 'analysis','Location','West');
+end
+legend(h,'boxoff');

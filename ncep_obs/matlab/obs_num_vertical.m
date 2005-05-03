@@ -95,7 +95,8 @@ title('# of Temperature Observations by Region','FontSize',14,'FontWeight','bold
 ylabel('Pressure(hPa)', 'fontsize', 10)
 xlabel('# of Observations','fontsize',10)
 
-legend('Northern Hemisphere','Southern Hemisphere','Tropics','North America')
+legend('Northern Hemisphere','Southern Hemisphere', ...
+       'Tropics','North America','Location','SouthEast');
 
 print -dpsc -append t_num_vert.ps
 
@@ -163,6 +164,7 @@ title('# of Wind Observations by Region','FontSize',14,'FontWeight','bold')
 ylabel('Pressure(hPa)', 'fontsize', 10)
 xlabel('# of Observations','fontsize',10)
 
-legend('Northern Hemisphere','Southern Hemisphere','Tropics','North America')
+legend('Northern Hemisphere','Southern Hemisphere', ...
+       'Tropics','North America','Location','SouthEast');
 
 print -dpsc -append w_num_vert.ps
