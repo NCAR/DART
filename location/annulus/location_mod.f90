@@ -32,7 +32,7 @@ private
 public location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-       LocationDims, LocationName, LocationLName
+       LocationDims, LocationName, LocationLName, get_close_obs, alloc_get_close_obs
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -526,6 +526,59 @@ contains
   end subroutine check
 
 end subroutine nc_write_location
+
+
+
+!----------------------------------------------------------------------------
+
+subroutine alloc_get_close_obs(num, obs, cutoff, obs_box)
+
+implicit none
+
+integer, intent(in) :: num
+type(location_type), intent(in) :: obs(num)
+real(r8), intent(in) :: cutoff
+integer, intent(out) :: obs_box(num)
+
+! This does pre-computing for close obs; no function needed in one dimension
+
+return
+
+end subroutine alloc_get_close_obs
+
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
+
+! Default version with no smarts; no need to be smart in 1D
+
+implicit none
+
+integer, intent(in) :: base_ob, num
+type(location_type), intent(in) :: obs(num)
+real(r8), intent(in) :: cutoff
+integer, intent(in) :: obs_box(num)
+integer, intent(out) :: num_close, close_ind(num)
+real(r8), intent(out) :: dist(num)
+
+integer :: i
+real(r8) :: this_dist
+
+! Return list of obs that are within cutoff and their distances
+num_close = 0
+do i = 1, num
+   this_dist = get_dist(obs(base_ob), obs(i))
+   if(this_dist <= cutoff) then
+      ! Add this ob to the list
+      num_close = num_close + 1
+      close_ind(num_close) = i
+      dist(num_close) = this_dist 
+   endif
+end do
+
+end subroutine get_close_obs
+
 
 
 !----------------------------------------------------------------------------
