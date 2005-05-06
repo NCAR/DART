@@ -43,8 +43,8 @@
 #BSUB -J filter_server
 #BSUB -o filter_server.%J.log
 #BSUB -P 86850054
-#BSUB -q special
-#BSUB -n 8
+#BSUB -q economy
+#BSUB -n 16
 
 if ($?LSB_MCPU_HOSTS) then 
    echo "LSB_MCPU_HOSTS is $LSB_MCPU_HOSTS"
@@ -314,6 +314,7 @@ while (1 == 1)
       echo "server- terminating normally at " `date`  >> $MASTERLOG
       echo "server- terminating normally at " `date`
       \rm -f go_end_filter_server
+      rmdir -v $SCRATCHDIR
       exit
    else
       # No files found, wait and check again
