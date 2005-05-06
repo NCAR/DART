@@ -52,16 +52,16 @@ interface operator(/=); module procedure loc_ne; end interface
 
 contains
 
-  subroutine initialize_location
+  subroutine initialize_module
 !----------------------------------------------------------------------------
-! subroutine initialize_location
+! subroutine initialize_module
 !
 ! pretty simple for this module.
 
    call register_module(source, revision, revdate)
    module_initialized = .true.
 
-end subroutine initialize_location
+end subroutine initialize_module
 
 
 
@@ -73,7 +73,7 @@ implicit none
 type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 ! Reentrant domain, if distance is greater than half wraparound the other way.
 get_dist = abs(loc1%x - loc2%x)
@@ -136,7 +136,7 @@ implicit none
 type(location_type), intent(in) :: loc
 real(r8) :: get_location
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 get_location = loc%x
 
@@ -155,7 +155,7 @@ implicit none
 type (location_type) :: set_location
 real(r8), intent(in) :: x
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 if(x < 0.0_r8 .or. x > 1.0_r8) call error_handler(E_ERR, 'set_location', &
          'Value of x is out of 0->1 range', source, revision, revdate)
@@ -173,7 +173,7 @@ implicit none
 
 type (location_type) :: set_location_missing
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 set_location_missing%x = MISSING_R8
 
@@ -195,7 +195,7 @@ real(r8)                               :: fval
 
 character(len=16) :: attribute
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 attribute = 'x'
 if (present(attr)) attribute = attr
@@ -230,7 +230,7 @@ character(len = *), intent(in), optional :: fform
 
 character(len = 32) :: fileformat
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
@@ -264,7 +264,7 @@ character(len = *), intent(in), optional :: fform
 character(len=5) :: header
 character(len = 32) :: fileformat
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
@@ -297,7 +297,7 @@ logical, intent(in), optional :: set_to_default
 
 real(r8) :: x
 
-if ( .not. module_initialized ) call initialize_location
+if ( .not. module_initialized ) call initialize_module
 
 ! If set_to_default is true, then just zero out and return
 if(present(set_to_default)) then
