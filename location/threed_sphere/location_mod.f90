@@ -33,10 +33,11 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, set_location_missing, &
+public :: location_type, get_dist, get_location, set_location, set_location_missing, &
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-       LocationDims, LocationName, LocationLName, horiz_dist_only
+       LocationDims, LocationName, LocationLName, horiz_dist_only, &
+       operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -90,6 +91,9 @@ real(r8) :: vert_normalization_level    = 20.0_r8
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level
 !-----------------------------------------------------------------
+
+interface operator(==); module procedure loc_eq; end interface
+interface operator(/=); module procedure loc_ne; end interface
 
 contains
 
@@ -195,7 +199,6 @@ end function get_dist
 
 
 
-
 function get_location(loc)
 !---------------------------------------------------------------------------
 !
@@ -235,6 +238,8 @@ endif
 
 end function vert_is_pressure
 
+
+
 function vert_is_height(loc)
 !---------------------------------------------------------------------------
 !
@@ -252,6 +257,8 @@ else
 endif
 
 end function vert_is_height
+
+
 
 function vert_is_level(loc)
 !---------------------------------------------------------------------------
@@ -271,6 +278,53 @@ endif
 
 end function vert_is_level
 
+
+
+function loc_eq(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true only if all components are 'the same' to within machine
+! precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_eq
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_eq = .false.
+
+if ( abs(loc1%lon  - loc2%lon ) > epsilon(loc1%lon ) ) return
+if ( abs(loc1%lat  - loc2%lat ) > epsilon(loc1%lat ) ) return
+if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
+
+loc_eq = .true.
+
+end function loc_eq
+
+
+
+function loc_ne(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true if locations are not identical to machine precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_ne
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_ne = (.not. loc_eq(loc1,loc2))
+
+end function loc_ne
+
+
+
 function get_location_lon(loc)
 !---------------------------------------------------------------------------
 !
@@ -286,6 +340,8 @@ if ( .not. module_initialized ) call initialize_module
 get_location_lon = loc%lon * RAD2DEG    
 
 end function get_location_lon
+
+
 
 function get_location_lat(loc)
 !---------------------------------------------------------------------------

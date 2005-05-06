@@ -22,10 +22,11 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, set_location_missing, &
-       write_location, read_location, interactive_location, &
-       LocationDims, LocationName, LocationLName, query_location, &
-       alloc_get_close_obs, get_close_obs
+public :: location_type, get_dist, get_location, set_location, set_location_missing, &
+          write_location, read_location, interactive_location, query_location, &
+          LocationDims, LocationName, LocationLName, &
+          alloc_get_close_obs, get_close_obs, &
+          operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -46,6 +47,8 @@ integer,              parameter :: LocationDims = 1
 character(len = 129), parameter :: LocationName = "loc1d"
 character(len = 129), parameter :: LocationLName = "one-dimensional location"
 
+interface operator(==); module procedure loc_eq; end interface
+interface operator(/=); module procedure loc_ne; end interface
 
 contains
 
@@ -77,6 +80,49 @@ get_dist = abs(loc1%x - loc2%x)
 if(get_dist > 0.5_r8) get_dist = 1.0_r8 - get_dist
 
 end function get_dist
+
+
+
+function loc_eq(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true only if all components are 'the same' to within machine
+! precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_eq
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_eq = .false.
+
+if ( abs(loc1%x  - loc2%x ) > epsilon(loc1%x ) ) return
+
+loc_eq = .true.
+
+end function loc_eq
+
+
+
+function loc_ne(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true if locations are not identical to machine precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_ne
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_ne = (.not. loc_eq(loc1,loc2))
+
+end function loc_ne
 
 
 

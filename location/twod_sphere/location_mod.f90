@@ -18,16 +18,17 @@ module location_mod
 ! representation is longitude in degrees from 0 to 360 and latitude 
 ! from -90 to 90 for consistency with most applications in the field.
 
-use      types_mod, only : r8, DEG2RAD, PI, MISSING_R8
+use      types_mod, only : r8, DEG2RAD, RAD2DEG, PI, MISSING_R8
 use  utilities_mod, only : register_module, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, set_location_missing, &
-       write_location, read_location, interactive_location, &
-       get_close_obs, alloc_get_close_obs
+public :: location_type, get_dist, get_location, set_location, set_location_missing, &
+          write_location, read_location, interactive_location, &
+          get_close_obs, alloc_get_close_obs, &
+          operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -44,6 +45,8 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 
+interface operator(==); module procedure loc_eq; end interface
+interface operator(/=); module procedure loc_ne; end interface
 
 contains
 
@@ -88,7 +91,6 @@ end function get_dist
 
 
 
-
 function get_location(loc)
 !---------------------------------------------------------------------------
 !
@@ -101,10 +103,54 @@ real(r8), dimension(2) :: get_location
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location(1) = loc%lon * 360.0_r8 / (2.0_r8 * PI)
-get_location(2) = loc%lat * 180.0_r8 / PI
+get_location(1) = loc%lon * RAD2DEG
+get_location(2) = loc%lat * RAD2DEG
 
 end function get_location
+
+
+
+function loc_eq(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true only if all components are 'the same' to within machine
+! precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_eq
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_eq = .false.
+
+if ( abs(loc1%lon  - loc2%lon ) > epsilon(loc1%lon ) ) return
+if ( abs(loc1%lat  - loc2%lat ) > epsilon(loc1%lat ) ) return
+
+loc_eq = .true.
+
+end function loc_eq
+
+
+
+function loc_ne(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true if locations are not identical to machine precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_ne
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_ne = (.not. loc_eq(loc1,loc2))
+
+end function loc_ne
 
 
 
@@ -120,7 +166,7 @@ real(r8) :: get_location_lon
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lon = loc%lon * 360.0_r8 / (2.0_r8 * PI)
+get_location_lon = loc%lon * RAD2DEG    
 
 end function get_location_lon
 
@@ -138,7 +184,7 @@ real(r8) :: get_location_lat
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lat = loc%lat * 180.0_r8 / PI
+get_location_lat = loc%lat * RAD2DEG      
 
 end function get_location_lat
 
@@ -157,11 +203,15 @@ real(r8), intent(in) :: lon, lat
 
 if ( .not. module_initialized ) call initialize_module
 
-if(lon < 0.0_r8 .or. lon > 360.0_r8) call error_handler(E_ERR, 'set_location', &
-       'Longitude is out of [0,360] range', source, revision, revdate) 
+if(lon < 0.0_r8 .or. lon > 360.0_r8) then
+   write(errstring,*)'longitude (',lon,') is not within range [0,360]'
+   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+endif
 
-if(lat < -90.0_r8 .or. lat > 90.0_r8) call error_handler(E_ERR, 'set_location', &
-       'Latitude is out of [-90,90] range', source, revision, revdate)
+if(lat < -90.0_r8 .or. lat > 90.0_r8) then
+   write(errstring,*)'latitude (',lat,') is not within range [-90,90]'
+   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+endif
 
 set_location%lon = lon * DEG2RAD
 set_location%lat = lat * DEG2RAD
@@ -202,8 +252,8 @@ subroutine write_location(ifile, loc, fform)
 
 implicit none
 
-integer, intent(in) :: ifile
-type(location_type), intent(in) :: loc
+integer,                    intent(in) :: ifile
+type(location_type),        intent(in) :: loc
 character(len=*), intent(in), optional :: fform
 
 character(len=32) :: fileformat
@@ -239,12 +289,13 @@ integer, intent(in) :: ifile
 type(location_type) :: read_location
 character(len=*), intent(in), optional :: fform
 
-character(len=5) :: header
-character(len=32) :: fileformat
+character(len=5)   :: header
+character(len=129) :: errstring
+character(len=32)  :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
+fileformat = "ascii"    ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
 
 SELECT CASE (fileformat)
@@ -252,8 +303,10 @@ SELECT CASE (fileformat)
       read(ifile) read_location%lon, read_location%lat
    CASE DEFAULT
       read(ifile, '(a5)' ) header
-      if(header /= 'loc2s') call error_handler(E_ERR, 'read_location', &
-          'Expected location header "loc1d" in input file', source, revision, revdate)
+      if(header /= 'loc2s') then
+         write(errstring,*)'Expected location header "loc2s" in input file, got ', header 
+         call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+      endif
 ! Now read the location data value
       read(ifile, *) read_location%lon, read_location%lat
 END SELECT

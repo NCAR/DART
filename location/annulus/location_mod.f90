@@ -29,10 +29,11 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public location_type, get_dist, get_location, set_location, set_location_missing, &
-       write_location, read_location, interactive_location, &
-       vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-       LocationDims, LocationName, LocationLName, get_close_obs, alloc_get_close_obs
+public :: location_type, get_dist, get_location, set_location, set_location_missing, &
+          write_location, read_location, interactive_location, &
+          vert_is_pressure, vert_is_level, vert_is_height, query_location, &
+          LocationDims, LocationName, LocationLName, get_close_obs, alloc_get_close_obs, &
+          operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -59,6 +60,8 @@ character(len = 129), parameter :: LocationName = "loc_annulus"
 character(len = 129), parameter :: LocationLName = &
                                    "Annulus location: azimuthal angle, radius, and level"
 
+interface operator(==); module procedure loc_eq; end interface
+interface operator(/=); module procedure loc_ne; end interface
 
 contains
 
@@ -182,6 +185,51 @@ else
 endif
 
 end function vert_is_level
+
+
+
+function loc_eq(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true only if all components are 'the same' to within machine
+! precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_eq
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_eq = .false.
+
+if ( abs(loc1%lon  - loc2%lon ) > epsilon(loc1%lon ) ) return
+if ( abs(loc1%lat  - loc2%lat ) > epsilon(loc1%lat ) ) return
+if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
+
+loc_eq = .true.
+
+end function loc_eq
+
+
+
+function loc_ne(loc1,loc2)
+!---------------------------------------------------------------------------
+!
+! interface operator used to compare two locations.
+! Returns true if locations are not identical to machine precision.
+
+implicit none
+
+type(location_type), intent(in) :: loc1, loc2
+logical :: loc_ne
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_ne = (.not. loc_eq(loc1,loc2))
+
+end function loc_ne
 
 
 
