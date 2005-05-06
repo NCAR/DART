@@ -32,7 +32,7 @@
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -P 86850054
-#BSUB -q special
+#BSUB -q economy 
 #BSUB -n 1
 #xxxx -x
 #xxxx -R "span[ptile=1]"
@@ -183,8 +183,10 @@ while($again == true)
       \rm -f               assim_model_state_ic*
 
       mv -v  ${CENTRALDIR}/assim_model_state_ud* .
-      set go_advance_exist = false  ;# removing local go_advance_model AND 'false'
-      \rm -f go_advance_model       ;# signals 'filter.f90' to prep for assimilation.
+
+      # signal 'filter.f90' to prep for assimilation.
+      set go_advance_exist = false
+      \rm -f go_advance_model
    endif
       
    # When filter creates 'go_assim_regions', copy to central directory to 
@@ -222,7 +224,7 @@ while($again == true)
       set go = no
       while ($go == no)
          echo "filter- waiting for new filter_ics to appear."
-         if ( -s filter_ic_new* ) then
+         if ( -s filter_ic_new || -s filter_ic_new.0001 ) then
             set go = yes
          else
             sleep $msec
@@ -264,7 +266,7 @@ while($again == true)
    else
       sleep $nsec
       if ($nsec < 8) @ nsec = 2 * $nsec
-      echo "filter- waiting for go_end_filter "`date`
+      # echo "filter- waiting for go_end_filter "`date`
    endif
 
 end
