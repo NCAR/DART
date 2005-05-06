@@ -292,7 +292,8 @@ figure(2); clf;
          s{i           } = sprintf('level %d error  %.3f', i,mean(         rms(:, ivar, i)));
          s{i+num_levels} = sprintf('level %d spread %.3f', i,mean(spread_final(:, ivar, i)));
       end
-      h = legend([h1 h2],s); legend(h,'boxoff')
+      %h = legend([h1 h2],s); legend(h,'boxoff')
+      h = legend(s); legend(h,'boxoff')
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
@@ -315,7 +316,8 @@ figure(3); clf;
          s{i           } = sprintf('level %d error  %.3f', i,mean(         rms(:, ivar, i)));
          s{i+num_levels} = sprintf('level %d spread %.3f', i,mean(spread_final(:, ivar, i)));
       end
-      h = legend([h1 h2],s); legend(h,'boxoff')
+      %h = legend([h1 h2],s); legend(h,'boxoff')
+      h = legend(s); legend(h,'boxoff')
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
@@ -338,7 +340,8 @@ figure(4); clf;
          s{i           } = sprintf('level %d error  %.3f', i,mean(         rms(:, ivar, i)));
          s{i+num_levels} = sprintf('level %d spread %.3f', i,mean(spread_final(:, ivar, i)));
       end
-      h = legend([h1 h2],s); legend(h,'boxoff')
+      %h = legend([h1 h2],s); legend(h,'boxoff')
+      h = legend(s); legend(h,'boxoff')
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
