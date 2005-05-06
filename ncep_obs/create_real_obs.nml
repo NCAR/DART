@@ -4,7 +4,7 @@
    day = 1,
    tot_days = 1,
    select_obs  = 0,
-   ADDUPA = .true., 
+   ADPUPA = .true., 
    AIRCAR = .false., 
    AIRCFT = .false., 
    SATWND = .false.,

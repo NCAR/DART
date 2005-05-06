@@ -39,12 +39,12 @@ integer :: iunit, ierr, io, ii, day1
 integer :: year = 2003, month =1, day =1, tot_days = 31
 integer :: max_num = 800000, select_obs = 0
 character(len = 129) :: ObsBase = '/project/dart/home/hliu/ncepobs/April05/temp_obs.'
-logical :: ADDUPA = .false., AIRCAR = .false., AIRCFT = .false., SATWND = .false.
+logical :: ADPUPA = .false., AIRCAR = .false., AIRCFT = .false., SATWND = .false.
 logical :: obs_U  = .false., obs_V  = .false., obs_T  = .false. , &
            obs_PS = .false., obs_QV = .false.
 
 namelist /ncepobs_nml/year, month, day, tot_days, max_num, select_obs, ObsBase, &
-        ADDUPA, AIRCAR, AIRCFT, SATWND, obs_U, obs_V, obs_T, obs_PS, obs_QV
+        ADPUPA, AIRCAR, AIRCFT, SATWND, obs_U, obs_V, obs_T, obs_PS, obs_QV
 
 ! ----------------------------------------------------------------------
 ! Select observation types using NCEP categories (when select_obs \= 0).
@@ -94,7 +94,7 @@ do ii = 1, tot_days
    ! set the obs sequence of the day
 
    seq = real_obs_sequence(year, month, day1, max_num, select_obs, ObsBase, &
-        ADDUPA, AIRCAR, AIRCFT, SATWND, obs_U, obs_V, obs_T, obs_PS, obs_QV)
+        ADPUPA, AIRCAR, AIRCFT, SATWND, obs_U, obs_V, obs_T, obs_PS, obs_QV)
 
    ! output the daily sequence to a file
 
