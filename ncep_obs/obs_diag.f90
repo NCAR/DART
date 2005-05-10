@@ -696,12 +696,12 @@ DayLoop : do iday=1, tot_days
             ! differences between this method and the 'GetClosestLevel' method
             ! which defines bins relative to the strict midpoint of the plev
             ! array. 
-            PressureLoop: do kkk=1, nlev
-               if(ipressure .le. pint(kkk) .and. ipressure .gt. pint(kkk+1) ) then
-               k0 = kkk
-               exit PressureLoop
-               endif
-            enddo PressureLoop
+            !PressureLoop: do kkk=1, nlev
+            !   if(ipressure .le. pint(kkk) .and. ipressure .gt. pint(kkk+1) ) then
+            !   k0 = kkk
+            !   exit PressureLoop
+            !   endif
+            !enddo PressureLoop
 
             k0 = GetClosestLevel(ipressure)
             if ( k0 < 1 .or. k0 > nlev)   then
