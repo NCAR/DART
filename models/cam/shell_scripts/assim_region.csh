@@ -15,7 +15,7 @@
 # This script copies the necessary files into the temporary directory
 # and then executes the fortran program assim_region.
 
-set WORKDIR = $1
+set CENTRALDIR = $1
 set element = $2
 set temp_dir = $3
 
@@ -23,25 +23,65 @@ set temp_dir = $3
 mkdir -p $temp_dir
 cd       $temp_dir
 
-# Copy the executable, initial condition file, and other inputs to the temp directory
+echo "starting assim_region.csh for region $element at"`date` > assim_region.stout
+echo "CENTRALDIR is $CENTRALDIR"                             >> assim_region.stout
+echo "temp_dir is $temp_dir"                                 >> assim_region.stout
 
-cp ${WORKDIR}/assim_region .
-cp ${WORKDIR}/filter_assim_region__in$element filter_assim_region_in
-cp ${WORKDIR}/input.nml .
-cp ${WORKDIR}/filter_assim_obs_seq .
-cp ${WORKDIR}/caminput.nc .
-cp ${WORKDIR}/clminput.nc .
+# Copy or link the initial conditions files and other inputs to the this
+# UNIQUE temp directory -- one for each region.
 
+if ( -s  ${CENTRALDIR}/input.nml ) then
+   cp -p ${CENTRALDIR}/input.nml .
+else
+   # using defaults, i suppose.
+endif
+
+if ( -s  ${CENTRALDIR}/filter_assim_obs_seq ) then
+   cp -p ${CENTRALDIR}/filter_assim_obs_seq .
+else
+   echo "FATAL ERROR assim_region.csh ... unable to copy ${CENTRALDIR}/filter_assim_obs_seq" >> assim_region.stout
+   exit 100
+endif
+
+if ( -s  ${CENTRALDIR}/caminput.nc ) then
+   ln -s ${CENTRALDIR}/caminput.nc .
+else
+   echo "FATAL ERROR assim_region.csh ... unable to link ${CENTRALDIR}/caminput.nc" >> assim_region.stout
+   exit 101
+endif
+
+if ( -s  ${CENTRALDIR}/clminput.nc ) then
+   ln -s ${CENTRALDIR}/clminput.nc .
+else
+   echo "FATAL ERROR assim_region.csh ... unable to link ${CENTRALDIR}/clminput.nc" >> assim_region.stout
+   exit 102
+endif
+
+set FILE = ${CENTRALDIR}/filter_assim_region__in$element 
+if ( -s $FILE ) then
+   ln -s $FILE filter_assim_region_in
+else
+   echo "FATAL ERROR assim_region.csh ... MISSING $FILE" >> assim_region.stout
+   echo "FATAL ERROR assim_region.csh ... MISSING $FILE" >> assim_region.stout
+   echo "FATAL ERROR assim_region.csh ... MISSING $FILE" >> assim_region.stout
+   exit 101
+endif
+
+echo "starting assim_region at "`date` >> assim_region.stout
 
 # assim_region writes out filter_assim_region_out
 # assim_tools_mod:filter_assim() reads in 
 # filter_assim_region_outXXX where the XXX is a region number
-./assim_region           > assim_region.stout
-echo "element $element" >> assim_region.stout
-ls -lt                  >> assim_region.stout
-cat assim_region.stout  >> $WORKDIR/cam_reg_temp$element
+${CENTRALDIR}/assim_region            >> assim_region.stout
+echo "element $element"               >> assim_region.stout
+ls -lt                                >> assim_region.stout
+echo "dart_log.out contents follows:" >> assim_region.stout
+cat dart_log.out                      >> assim_region.stout
+cat assim_region.stout                >> $CENTRALDIR/cam_reg_temp$element
 
-mv filter_assim_region_out $WORKDIR/filter_assim_region_out$element
+# This is the piece we have been waiting for -- save it.
+mv filter_assim_region_out $CENTRALDIR/filter_assim_region_out$element
 
-cd $WORKDIR          ;# simply get out of this directory
+cd $CENTRALDIR       ;# simply get out of this directory
 \rm -rf $temp_dir    ;# clean out 'this' directory
+echo "finished assim_region.csh for region $element at "`date` >> $CENTRALDIR/cam_reg_temp$element
