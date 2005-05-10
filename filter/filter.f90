@@ -384,10 +384,8 @@ subroutine filter_initialize_modules_used()
 
 ! Initialize modules used that require it
 
-call initialize_utilities
+call initialize_utilities('Filter')
 call register_module(source,revision,revdate)
-call error_handler(E_MSG,'filter','STARTING',source,revision,revdate)
-
 call assim_tools_init()
 
 ! Initialize the obs sequence module
