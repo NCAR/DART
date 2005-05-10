@@ -20,15 +20,18 @@
 # latest revision;  Kevin Raeder 11/11/04
 #--------------------------
 
-set PBS_O_WORKDIR = $1
+set CENTRALDIR = $1
 set element = $2
 set temp_dir = $3
 if ($#argv == 4) set machine_file = $4
-# THIS IS NOT USED by run-pc.csh on anchorage; see altered call below
+# 'machine_file' IS NOT USED by run-pc.csh by single-threaded executions; see alternate call below
+
+mkdir -p $temp_dir
+cd $temp_dir
 
 # Get information about this experiment from file "casemodel", created by the
 # main controlling script (job.csh)
-set caseinfo = `cat $PBS_O_WORKDIR/casemodel`
+set caseinfo = `cat $CENTRALDIR/casemodel`
 # set $case = the case and 
 # $model = the directory name (in the Central directory) where CAM will be found. 
 set case = $caseinfo[1]
@@ -38,19 +41,17 @@ set cam_init = $caseinfo[3]
 set clm_init = $caseinfo[4]
 
 # output diagnostic information to the same file as the CAM list-directed output
-echo $case $model > cam_out_temp
-echo $cam_init  >> cam_out_temp
-echo $clm_init >> cam_out_temp
-
-mkdir $temp_dir
-cd $temp_dir
+echo "starting advance_model.csh for ens member $element at "`date` > cam_out_temp
+echo "case $case model $model"    >> cam_out_temp
+echo "cam init is $cam_init"      >> cam_out_temp
+echo "clm init is $clm_init"      >> cam_out_temp
 
 # get model state initial conditions for this ensemble member
-cp $PBS_O_WORKDIR/assim_model_state_ic$element temp_ic
+ln -s $CENTRALDIR/assim_model_state_ic$element temp_ic
 # get filter namelists for use by 
-cp $PBS_O_WORKDIR/input.nml input.nml
+cp $CENTRALDIR/input.nml input.nml
 
-echo ls $temp_dir for element $element
+echo "ls $temp_dir for element $element"
 echo junk > element$element
 ls -lRt >> cam_out_temp
  
@@ -58,39 +59,39 @@ ls -lRt >> cam_out_temp
 # c[al]minput_$element also carry along CAM/CLM fields which are not updated
 #      by the filter (not part of the filter model state).
 # First look for c[al]minput.nc resulting from the previous advance of this ensemble
-#      member from within the same day/obs_seq.out time span (in PBS_O_WORKDIR)
+#      member from within the same day/obs_seq.out time span (in CENTRALDIR)
 # Failing that, look for the results of the last advance of this ensemble member
-#      of the previous obs_seq.out (i.e. in PBS_O_WORKDIR/exp_name/day/CAM)
+#      of the previous obs_seq.out (i.e. in CENTRALDIR/exp_name/day/CAM)
 # Failing that (when starting an experiment which has no spun up set of members)
 #      get a copy of a single CAM initial file (usually from somewhere independent
 #      of this experiment, i.e. /scratch/.../New_state/T42_GWD/CAM/caminput_0.nc)
 
-if (-e ${PBS_O_WORKDIR}/caminput_$element.nc) then
-    cp ${PBS_O_WORKDIR}/caminput_$element.nc caminput.nc
-    echo caminput comes from ${PBS_O_WORKDIR}/caminput_num >> cam_out_temp
+if (-e     ${CENTRALDIR}/caminput_$element.nc) then
+   cp -p   ${CENTRALDIR}/caminput_$element.nc caminput.nc
+   echo "CENTRALDIR caminput comes from ${CENTRALDIR}/caminput_num" >> cam_out_temp
 else if (-e ${cam_init}$element.nc) then
-         cp ${cam_init}$element.nc caminput.nc
-         echo caminput comes from ${cam_init}num >> cam_out_temp
+   cp -p    ${cam_init}$element.nc caminput.nc
+   echo "cam_init caminput comes from ${cam_init}num" >> cam_out_temp
 else
-   cp ${cam_init}0.nc caminput.nc
-   echo caminput comes from ${cam_init}0.nc >> cam_out_temp
+   cp -p   ${cam_init}0.nc caminput.nc
+   echo "DEFAULT caminput comes from ${cam_init}0.nc" >> cam_out_temp
 endif
 
-if (-e ${PBS_O_WORKDIR}/clminput_$element.nc) then
-    cp ${PBS_O_WORKDIR}/clminput_$element.nc clminput.nc
+if (-e    ${CENTRALDIR}/clminput_$element.nc) then
+    cp -p ${CENTRALDIR}/clminput_$element.nc clminput.nc
 else if (-e ${clm_init}$element.nc) then
-         cp ${clm_init}$element.nc clminput.nc
+    cp -p   ${clm_init}$element.nc clminput.nc
 else
-   cp ${clm_init}0.nc clminput.nc
+    cp -p   ${clm_init}0.nc clminput.nc
 endif
 
 # create 'times' file for CAM from DART times in assim_model_state_ic#
 # This info is passed to CAM through the creation of its namelist
-if (-e temp_ic && -e $PBS_O_WORKDIR/trans_time) then
-   echo 'advance_model; executing trans_time' >> cam_out_temp
-   $PBS_O_WORKDIR/trans_time
+if (-e temp_ic && -e $CENTRALDIR/trans_time) then
+   echo 'advance_model; executing trans_time '`date` >> cam_out_temp
+   $CENTRALDIR/trans_time
    ls -lt 
-   cp times $PBS_O_WORKDIR
+   cp times $CENTRALDIR
 else
    echo 'either no ic file or trans_time available for trans_time'
    exit 1
@@ -98,30 +99,31 @@ endif
 
 # Create an initial CAM.nc file from the DART state vector
 # Times are handled separately in trans_time
-$PBS_O_WORKDIR/trans_sv_pv
+$CENTRALDIR/trans_sv_pv
 ls -ltR 
 
 # advance cam 
 if ($#argv == 4) then
-   $PBS_O_WORKDIR/$model/models/atm/cam/bld/run-pc.csh $case$element \
-      $model $PBS_O_WORKDIR $machine_file > cam_out_temp
+   $CENTRALDIR/$model/models/atm/cam/bld/run-pc.csh $case$element \
+      $model $CENTRALDIR $machine_file >> cam_out_temp
 else
-   $PBS_O_WORKDIR/$model/models/atm/cam/bld/run-pc.csh $case$element \
-      $model $PBS_O_WORKDIR > cam_out_temp
+   $CENTRALDIR/$model/models/atm/cam/bld/run-pc.csh $case$element \
+      $model $CENTRALDIR >> cam_out_temp
 endif
-mv cam_out_temp $PBS_O_WORKDIR/cam_out_temp$element
+mv cam_out_temp $CENTRALDIR/cam_out_temp$element
 
 # Extract the new state vector information from the new caminput.nc and
 # put it in temp_ud (time followed by state)
-$PBS_O_WORKDIR/trans_pv_sv
+$CENTRALDIR/trans_pv_sv
 
 # Move updated state vector and new CAM/CLM initial files back to experiment
 # directory for use by filter and the next advance.
-mv temp_ud $PBS_O_WORKDIR/assim_model_state_ud$element
-mv clminput.nc $PBS_O_WORKDIR/clminput_$element.nc
-mv caminput.nc $PBS_O_WORKDIR/caminput_$element.nc
+mv temp_ud     $CENTRALDIR/assim_model_state_ud$element
+mv clminput.nc $CENTRALDIR/clminput_$element.nc
+mv caminput.nc $CENTRALDIR/caminput_$element.nc
 
-mv namelist $PBS_O_WORKDIR
-cd $PBS_O_WORKDIR
+mv namelist $CENTRALDIR
+cd $CENTRALDIR
 grep 'END OF MODEL RUN' cam_out_temp$element > /dev/null
 if ($status == 0) rm -rf $temp_dir
+echo "finished advance_model.csh for ens member $element at "`date` >> $CENTRALDIR/cam_out_temp$element
