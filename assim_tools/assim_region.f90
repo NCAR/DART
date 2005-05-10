@@ -15,7 +15,7 @@ program assim_region
 ! $Name$ 
 
 use  assim_tools_mod, only : async_assim_region, assim_tools_init
-use    utilities_mod, only : initialize_utilities, register_module
+use    utilities_mod, only : initialize_utilities, register_module, timestamp
 use  assim_model_mod, only : static_init_assim_model
 use obs_sequence_mod, only : static_init_obs_sequence
 
@@ -28,7 +28,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 ! Need to initialize modules used as appropriate
-call initialize_utilities
+call initialize_utilities('assim_region')
 call register_module(source, revision, revdate)
 call assim_tools_init(.true.)
 call static_init_obs_sequence()
@@ -37,5 +37,7 @@ call static_init_assim_model()
 write(*, *) 'program assim region calling async_assim_region'
 call async_assim_region('filter_assim_region_in', 'filter_assim_region_out')
 write(*, *) 'program assim region back from async_assim_region'
+
+call timestamp(source,revision,revdate,'end') ! closes the log file.
 
 end program assim_region
