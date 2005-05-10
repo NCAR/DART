@@ -913,8 +913,8 @@ OPEN(PanlUnit,FILE=trim(adjustl(PanlName)),FORM='formatted')
 do i=1, Nepochs
 
    call get_time(bincenter(i),seconds,days)
-   call print_time(bincenter(i),'bin center ')
-   write(*,*)'bin center (',i,') is ',days, seconds
+!  call print_time(bincenter(i),'bin center ')
+!  write(*,*)'bin center (',i,') is ',days, seconds
 
    write(WgesUnit,91) days, seconds, &
        (rms_ges_mean_W(i,j),rms_ges_spread_W(i,j),num_in_level_W(i,j),j=1,Nregions)
@@ -1093,7 +1093,7 @@ close(TanlUnit)
 close(QgesUnit)
 close(QanlUnit)
 
-
+write(*,*)''
 write(*,*)'Rejected Observations summary.'
 write(*,'('' For each region, '',i4,'' hPa only: NH / SH / TR / NA'')')plev(level_index)
 write(*,*)'# Wind pairs   tossed: ',NWrejected
@@ -1104,6 +1104,18 @@ write(*,*)'# NbadP              : ',NbadP
 write(*,*)'# NbadW              : ',NbadW
 write(*,*)'All levels, select days: '
 write(*,*)'# NbadWvert          : ',NbadWvert
+write(*,*)''
+
+write(logfileunit,*)'Rejected Observations summary.'
+write(logfileunit,'('' For each region, '',i4,'' hPa only: NH / SH / TR / NA'')')plev(level_index)
+write(logfileunit,*)'# Wind pairs   tossed: ',NWrejected
+write(logfileunit,*)'# Temperatures tossed: ',NTrejected
+write(logfileunit,*)'# Moisture obs tossed: ',NQrejected
+write(logfileunit,*)'# Pressure obs tossed: ',NPrejected
+write(logfileunit,*)'# NbadP              : ',NbadP     
+write(logfileunit,*)'# NbadW              : ',NbadW
+write(logfileunit,*)'All levels, select days: '
+write(logfileunit,*)'# NbadWvert          : ',NbadWvert
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
