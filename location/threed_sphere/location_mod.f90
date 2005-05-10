@@ -37,7 +37,7 @@ public :: location_type, get_dist, get_location, set_location, set_location_miss
        write_location, read_location, interactive_location, &
        vert_is_pressure, vert_is_level, vert_is_height, query_location, &
        LocationDims, LocationName, LocationLName, horiz_dist_only, &
-       operator(==), operator(/=)
+       alloc_get_close_obs, get_close_obs, operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -70,6 +70,22 @@ character(len = 129), parameter :: LocationName = "loc3Dsphere"
 character(len = 129), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, lev or pressure"
 
+! Global storage for fast approximate sin and cosine lookups
+real(r8) :: my_sin(-315:315), my_cos(-315:315), my_acos(-1000:1000)
+
+! Global storage for efficient get_close_obs search
+! WARNING: NLON MUST BE ODD
+integer, parameter :: nlon = 71, nlat = 36
+!integer, parameter :: nlon = 9, nlat = 10
+
+! Permanent global storage for efficient get_close_obs
+integer :: count(nlon, nlat), lon_offset(nlat, nlat)
+integer :: cum_start, start(nlon, nlat)
+
+! If cutoff stays the same, don't need to do box distance calculations
+integer :: last_cutoff = -1.0
+
+
 !-----------------------------------------------------------------
 ! Namelist with default values
 ! horiz_dist_only == .true.  ->  Only the great circle horizontal distance is
@@ -83,13 +99,14 @@ character(len = 129), parameter :: LocationLName = &
 ! vert_normalization_level ->    Number of levels that give a distance equivalent
 !                                to one radian in horizontal
 
-logical  :: horiz_dist_only = .true.
+logical  :: horiz_dist_only             = .true.
 real(r8) :: vert_normalization_pressure = 100000.0_r8
 real(r8) :: vert_normalization_height   = 10000.0_r8
 real(r8) :: vert_normalization_level    = 20.0_r8 
+logical  :: approximate_distance        = .false.
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
-   vert_normalization_height, vert_normalization_level
+   vert_normalization_height, vert_normalization_level, approximate_distance
 !-----------------------------------------------------------------
 
 interface operator(==); module procedure loc_eq; end interface
@@ -103,7 +120,7 @@ subroutine initialize_module
 !----------------------------------------------------------------------------
 ! subroutine initialize_module
 
-integer :: iunit, ierr, io
+integer :: iunit, ierr, io, i
 character(len=129) :: str1,str2
 
 call register_module(source, revision, revdate)
@@ -140,11 +157,24 @@ write(str2,*) 'horizontal only ', horiz_dist_only
 call error_handler(E_MSG,'location_mod:initialize_module',str1,source,revision,revdate)
 call error_handler(E_MSG,'location_mod:initialize_module',str2,source,revision,revdate)
 
+! Set up a lookup table for cos and sin for approximate but fast distances
+! Don't worry about rounding errors as long as one gives more weight
+! Really only need tables half this size, too (sin from -pi/2 to pi/2, cos only +)
+if(approximate_distance) then
+   do i = -315, 315
+      my_cos(i) = cos(i / 100.0_r8)
+      my_sin(i) = sin(i / 100.0_r8)
+   end do
+   do i = -1000, 1000
+      my_acos(i) = acos(i / 1000.0_r8)
+   end do
+endif
+
 end subroutine initialize_module
 
 
 
-function get_dist(loc1, loc2)
+function get_dist(loc1, loc2, no_vert)
 !----------------------------------------------------------------------------
 
 implicit none
@@ -153,35 +183,70 @@ implicit none
 ! The choice is determined by horiz_dist_only and the which_vert of loc1.
 ! May want to allow return of some joint distance in the long run? 
 ! Or just a distance that is a function of all 3 things.
+! The namelist controls whether default computations use just horizontal distance.
+! However, this behavior can be over-ridden by the no_vert optional argument.
+! If set to true, this will always do full 3d distance if possible. If set to
+! false it will never do the full 3d distance. At present asking to do a vertical
+! distance computation for incompatible vertical location types results in a fatal
+! error.
 
 type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
+logical, optional :: no_vert
 
-real(r8) :: lon_dif, horiz_dist, vert_dist
+real(r8) :: lon_dif, horiz_dist, vert_dist, lat1_ind, lat2_ind
+real(r8) :: horiz_dist_orig, temp
+logical :: comp_h_only
+character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
-! Returns horizontal distance in radians (independent of diameter of sphere)
-
 ! Begin with the horizontal distance
 ! Compute great circle path shortest route between two points
-lon_dif = abs(loc1%lon - loc2%lon)
-if(lon_dif > PI) lon_dif = 2.0_r8 * PI - lon_dif
+lon_dif = loc1%lon - loc2%lon
 
-if(cos(loc1%lat) == 0.0_r8 .or. cos(loc2%lat) == 0.0_r8 .or. lon_dif == 0.0_r8) then
-   horiz_dist = abs(loc2%lat - loc1%lat)
+
+if(approximate_distance) then
+   ! Option 1: Use table lookup; faster but less accurate
+   lat1_ind = int(loc1%lat*100.0_r8)
+   lat2_ind = int(loc2%lat*100.0_r8)
+   temp = int(1000.0_r8 * (my_sin(lat2_ind) * my_sin(lat1_ind) + &
+      my_cos(lat2_ind) * my_cos(lat1_ind) * my_cos(int(lon_dif*100.0_r8))))
+   get_dist = my_acos(temp)
 else
-   horiz_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
-      cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif))
+   ! Option 2: Use pre-defined trig functions: accurate but slow
+   ! First 2 ifs avoids round-off error that can kill acos;
+   if(abs(loc1%lat) >= PI/2.0_r8 .or. abs(loc2%lat) >= PI/2.0_r8 .or. &
+      lon_dif == 0.0_r8) then
+      get_dist = abs(loc2%lat - loc1%lat)
+   else
+      get_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
+         cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif))
+   endif
 endif
 
 ! Now compute a vertical distance if requested, 
-! NOVERT; add ' .or. which_vert = -2 ' for no vert location variables
-if(horiz_dist_only .or. loc1%which_vert == -2 ) then
-   get_dist = horiz_dist
-else
+! Highest priority is optional no_vert argument, test it first
+if(present(no_vert)) then
+   comp_h_only = no_vert
+! Namelist horizontal only has second highest priority
+else 
+   comp_h_only = horiz_dist_only
+endif
+! Finally, if which_vert is -2 for either location do only horizontal
+if(loc1%which_vert == -2 .or. loc2%which_vert == -2) comp_h_only = .true.
+
+! Add in vertical component if required
+if(.not. comp_h_only) then
    ! Vert distance can only be done for like vertical locations types
    if(loc1%which_vert /= loc2%which_vert) then
+      write(errstring,*)'loc1%which_vert (',loc1%which_vert,') /= &
+         loc2%which_vert (',loc2%which_vert,')'
+      call error_handler(E_MSG, 'get_dist', errstring, source, revision, revdate)
+      call write_location(logfileunit,loc1)
+      call write_location(logfileunit,loc2)
+      call write_location(0,loc1)
+      call write_location(0,loc2)
       call error_handler(E_ERR, 'get_dist', &
          'Dont know how to compute vertical distance for unlike vertical coordinates', &
          source, revision, revdate)
@@ -192,10 +257,11 @@ else
    vert_dist = abs(loc1%vloc - loc2%vloc) / vert_normalization(loc1%which_vert)
 
    ! Spherical distance shape is computed here, other flavors can be computed
-   get_dist = sqrt(horiz_dist**2 + vert_dist**2)
+   get_dist = sqrt(get_dist**2 + vert_dist**2)
 endif
 
 end function get_dist
+
 
 
 
@@ -238,8 +304,6 @@ endif
 
 end function vert_is_pressure
 
-
-
 function vert_is_height(loc)
 !---------------------------------------------------------------------------
 !
@@ -257,8 +321,6 @@ else
 endif
 
 end function vert_is_height
-
-
 
 function vert_is_level(loc)
 !---------------------------------------------------------------------------
@@ -340,8 +402,6 @@ if ( .not. module_initialized ) call initialize_module
 get_location_lon = loc%lon * RAD2DEG    
 
 end function get_location_lon
-
-
 
 function get_location_lat(loc)
 !---------------------------------------------------------------------------
@@ -681,6 +741,162 @@ contains
   end subroutine check
 
 end subroutine nc_write_location
+
+
+!----------------------------------------------------------------------------
+
+subroutine alloc_get_close_obs(num, obs, cutoff, obs_box)
+
+implicit none
+
+integer, intent(in) :: num
+type(location_type), intent(in) :: obs(num)
+real(r8), intent(in) :: cutoff
+integer, intent(out) :: obs_box(num)
+
+integer :: i, j, blat_ind, tlat_ind
+integer :: lon_box(num), lat_box(num), tstart(nlon, nlat)
+integer :: bot_tlat_ind, top_tlat_ind
+real(r8) :: base_lon, base_lat, target_lat, del_lon, cos_del_lon
+
+! Begin by computing the number of observations in each box in lat/lon
+count = 0
+do i = 1, num
+   lon_box(i) = int(nlon * obs(i)%lon / (2.0_r8 * PI)) + 1
+   if(lon_box(i) > nlon) lon_box(i) = 1
+   lat_box(i) = int(nlat * (obs(i)%lat + PI / 2.0_r8) / PI) + 1
+   if(lat_box(i) > nlat) lat_box(i) = nlat
+   if(lat_box(i) < 1) lat_box(i) = 1
+   count(lon_box(i), lat_box(i)) = count(lon_box(i), lat_box(i)) + 1
+end do
+
+! Figure out where storage for each boxes members should begin
+cum_start = 1
+do i = 1, nlon
+   do j = 1, nlat
+      start(i, j) = cum_start
+      cum_start = cum_start + count(i, j)
+   end do
+end do
+
+tstart = start
+! Now we know how many are in each box, get a list of which are in each box
+do i = 1, num
+   obs_box(tstart(lon_box(i), lat_box(i))) = i
+   tstart(lon_box(i), lat_box(i)) = tstart(lon_box(i), lat_box(i)) + 1
+end do
+
+! Don't need to do the close box computation again if cutoff hasn't changed
+if(cutoff == last_cutoff) then
+   return
+else
+   last_cutoff = cutoff
+endif
+
+! Figure out which boxes are close to a box on a given latitude circle
+do blat_ind = 1, nlat
+   ! Search from east side of base block
+   base_lon = 360.0_r8 /nlon
+   ! Start searching out, have to look for closest point in box being checked
+   ! Only have to search latitude boxes that are within cutoff distance
+   bot_tlat_ind = blat_ind - int(cutoff * nlat / PI) - 1
+   if(bot_tlat_ind < 1) bot_tlat_ind = 1
+   top_tlat_ind = blat_ind + int(cutoff * nlat / PI) + 1
+   if(top_tlat_ind > nlat) top_tlat_ind = nlat
+   do tlat_ind = bot_tlat_ind, top_tlat_ind
+      ! For lats north of me, search from NE corner as base to SW corner as target
+      if(tlat_ind > blat_ind) then
+         base_lat = -90.0_r8 + blat_ind * 180.0_r8 / nlat
+         target_lat = -90.0_r8 + (tlat_ind - 1) * 180.0_r8 / nlat
+      else if(tlat_ind < blat_ind) then
+         ! Otherwise, want to search from SE corner to NW corner
+         base_lat = -90.0_r8 + (blat_ind - 1) * 180.0_r8 / nlat
+         target_lat = -90.0_r8 + tlat_ind * 180.0_r8 / nlat
+      else
+         ! When same latitude, do both from southern corner
+         base_lat = -90.0_r8 + (blat_ind - 1) * 180.0_r8 / nlat
+         target_lat = base_lat
+      endif
+
+      ! Compute the lon offset directly by inverting distance
+      cos_del_lon = (cos(cutoff) - sin(base_lat*DEG2RAD) * sin(target_lat*DEG2RAD)) / &
+         (cos(base_lat*DEG2RAD) * cos(target_lat*DEG2RAD))
+      if(cos_del_lon < -1) then
+         del_lon = PI
+      else if(cos_del_lon > 1) then
+         del_lon = 0
+      else
+         del_lon = acos(cos_del_lon)
+      endif
+      lon_offset(blat_ind, tlat_ind) = int(del_lon * nlon / (2.0 * PI)) + 1
+
+   end do
+end do
+
+end subroutine alloc_get_close_obs
+
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
+
+!!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
+
+implicit none
+
+integer, intent(in) :: base_ob, num
+type(location_type), intent(in) :: obs(num)
+real(r8), intent(in) :: cutoff
+integer, intent(in) :: obs_box(num)
+integer, intent(out) :: num_close, close_ind(num)
+real(r8), intent(out) :: dist(num)
+
+integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind
+real(r8) :: this_dist
+
+! Begin by figuring out which box the base_ob is in
+lon_box = int(nlon * obs(base_ob)%lon / (2.0_r8 * PI)) + 1
+if(lon_box > nlon) lon_box = 1
+lat_box = int(nlat * (obs(base_ob)%lat + PI / 2.0_r8) / PI) + 1
+if(lat_box > nlat) lat_box = nlat
+
+num_close = 0
+
+! Next, loop through to find each box that is close to this box
+do j = 1, nlat
+   n_lon = lon_offset(lat_box, j)
+   if(n_lon > 0) then
+      do i = -1 * (n_lon -1), n_lon - 1
+         ! Search a box at this latitude j offset in longitude by i
+         lon_ind = lon_box + i
+         if(lon_ind > nlon) lon_ind = lon_ind - nlon
+         if(lon_ind < 1) lon_ind = lon_ind + nlon
+         ! Box to search is lon_ind, j
+         n_in_box = count(lon_ind, j)
+         st = start(lon_ind, j)
+         ! Loop to check how close all obs in the box are; add those that are close
+         do k = 1, n_in_box
+            ! Could avoid adding any that have nums lower than base_ob???
+            t_ind = obs_box(st - 1 + k)
+            ! Can compute total distance here if verts are the same
+            if(obs(base_ob)%which_vert == obs(t_ind)%which_vert) then
+               this_dist = get_dist(obs(base_ob), obs(t_ind))
+            else
+            ! Otherwise can just get horizontal distance
+               this_dist = get_dist(obs(base_ob), obs(t_ind), no_vert = .true.)
+            endif
+            if(this_dist <= cutoff) then
+               ! Add this ob to the list
+               num_close = num_close + 1
+               close_ind(num_close) = t_ind
+               dist(num_close) = this_dist
+            endif
+         end do
+      end do
+   endif
+end do
+
+end subroutine get_close_obs
 
 
 !----------------------------------------------------------------------------
