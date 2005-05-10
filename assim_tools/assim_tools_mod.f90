@@ -227,7 +227,7 @@ if(my_cov_inflate > 0.0_r8) then
             internal_outlier_threshold) then
             !!!write(*, *) 'QZ BOUND EXCEEDED: returning'
             obs_inc = 0.0_r8
-            net_a = 1.0
+            net_a = 1.0_r8
             return
          endif
       endif
