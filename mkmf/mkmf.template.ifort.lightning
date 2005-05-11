@@ -1,0 +1,23 @@
+# template for ifort 8.1 Compiler on lightning
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next two lines automatically updated by CVS, do not edit>
+# $Id$
+# $Name$
+#
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# NETCDF and LIBS needs to be customized for your site
+#
+
+FC = /contrib/intel/8.1-32/bin/ifort
+LD = /contrib/intel/8.1-32/bin/ifort
+NETCDF = /contrib/netcdf/3.5.1-intel-8.1-32
+INCS = -I$(NETCDF)/include
+FFLAGS = -fpp -O2 $(INCS)
+LIBS = -L$(NETCDF)/lib -lnetcdf
+LDFLAGS = $(INCS) $(LIBS)
