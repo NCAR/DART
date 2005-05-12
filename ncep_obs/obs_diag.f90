@@ -241,11 +241,6 @@ NBinsPerDay  = nint( 24.0_r8 / bin_separation )
     binwidth = set_time(nint(bin_width * 3600.0_r8), 0)    ! full bin width 
 halfbinwidth = set_time(nint(bin_width * 1800.0_r8), 0)    ! half bin width 
 
-! Echo to a resource file to facilitate plotting
-
-iunit = open_file('Tanl_times_level.dat',form='formatted',action='rewind')
-write(iunit,*) plev(level_index), tot_days, iskip
-close(iunit)
 
 ! Initialize.
 
@@ -962,8 +957,6 @@ deallocate(num_in_level_W, &
            num_in_level_Q, &
            num_in_level_P)
 
-deallocate(epoch_center, bincenter)
-
 !-----------------------------------------------------------------------
 ! All-day average of the vertical statistics
 !-----------------------------------------------------------------------
@@ -1117,7 +1110,36 @@ write(logfileunit,*)'# NbadW              : ',NbadW
 write(logfileunit,*)'All levels, select days: '
 write(logfileunit,*)'# NbadWvert          : ',NbadWvert
 
+!-----------------------------------------------------------------------
+! Echo attributes to a file to facilitate plotting.
+! This file is also a matlab function ... the variables are
+! loaded by just typing the name at the matlab prompt.
+!-----------------------------------------------------------------------
+
+iunit = open_file('Tanl_times_level.m',form='formatted',action='rewind')
+write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
+write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
+write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
+write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
+write(iunit,'(''iskip          = '',i6,'';'')')iskip
+write(iunit,'(''level          = '',i6,'';'')')plev(level_index)
+write(iunit,'(''obs_select     = '',i3,'';'')')obs_select
+write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
+write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
+write(iunit,'(''bin_width      = '',f9.2,'';'')')bin_width
+write(iunit,'(''bin_separation = '',f9.2,'';'')')bin_separation 
+write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
+write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
+write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
+write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
+write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
+write(iunit,'(''latlim2 = ['',4(1x,f9.2),''];'')')latlim2
+close(iunit)
+
+
+deallocate(epoch_center, bincenter)
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+
 
 contains
 
