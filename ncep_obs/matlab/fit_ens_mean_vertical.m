@@ -23,15 +23,20 @@ function fit_ens_mean_vertical(ddir)
 
 % Ensures the datafiles exist.
 if ( nargin > 0 )
+   AttribFname = fullfile(ddir,'Tanl_times_level.m');
    TGuessFname = fullfile(ddir,'Tges_ver_ave.dat');
    TAnalyFname = fullfile(ddir,'Tanl_ver_ave.dat');
    WGuessFname = fullfile(ddir,'Wges_ver_ave.dat');
    WAnalyFname = fullfile(ddir,'Wanl_ver_ave.dat');
 else
+   AttribFname = 'Tanl_times_level.m';
    TGuessFname = 'Tges_ver_ave.dat';
    TAnalyFname = 'Tanl_ver_ave.dat';
    WGuessFname = 'Wges_ver_ave.dat';
    WAnalyFname = 'Wanl_ver_ave.dat';
+end
+if ( exist(AttribFname,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.', AttribFname))
 end
 if ( exist(TGuessFname,'file') ~= 2 )
    error(sprintf('%s does not seem to exist.', TGuessFname))
@@ -52,81 +57,114 @@ end
 % subplot('position', [0.6,0.1,0.35,0.35])  ==? subplot(2,2,4)
 
 %----------------------------------------------------------------------
+% Get attributes from obs_diag run.
+%----------------------------------------------------------------------
+   
+Tanl_times_level
+
+temp = datenum(obs_year,obs_month,obs_day); 
+toff = temp - round(t1); % determine temporal offset (calendar base)
+day1 = datestr(t1+toff,'yyyy-mmm-dd HH');
+dayN = datestr(tN+toff,'yyyy-mmm-dd HH');
+
+main = sprintf('Ensemble Mean %s - %s',day1,dayN);
+
+%----------------------------------------------------------------------
 figure(1); clf; % Temperature
 %----------------------------------------------------------------------
 
-p_v  = load(TGuessFname);
-a_v  = load(TAnalyFname);
-yp_v = p_v(:,1);
-ya_v = a_v(:,1);
+pv = load(TGuessFname); p_v = SqueezeMissing(pv); yp_v = p_v(:,1);
+av = load(TAnalyFname); a_v = SqueezeMissing(av); ya_v = a_v(:,1);
 
 ylab   = 'Pressure (hPa)';
 xlab   = 'Temperature RMSE';
-top    = 'Ensemble Mean';
 
 % Try to figure out intelligent axis limits
 xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];      % concatenate all data
-xlims   = [min(xdatarr(:)) max(xdatarr(:))]; % limits of all data
+xlims   = [0.0 max(xdatarr(:))]; % limits of all data
 ydatarr = [p_v(:,1) a_v(:,1)];               % concatenate all data
 ylims   = [min(ydatarr(:)) max(ydatarr(:))]; % limits of all data
 axlims  = [floor(xlims(1)) ceil(xlims(2)) round(ylims)];
 
 region = 'Northern Hemisphere';
-myplot(1, p_v(:,2), yp_v, a_v(:,2), ya_v, xlab, ylab, region, top, axlims)
+myplot(1, p_v(:,2), yp_v, a_v(:,2), ya_v, xlab, ylab, region, axlims)
 region = 'Southern Hemisphere';
-myplot(2, p_v(:,4), yp_v, a_v(:,4), ya_v, xlab, ylab, region, top, axlims)
+myplot(2, p_v(:,4), yp_v, a_v(:,4), ya_v, xlab, ylab, region, axlims)
 region = 'Tropics';
-myplot(3, p_v(:,6), yp_v, a_v(:,6), ya_v, xlab, ylab, region, top, axlims)
+myplot(3, p_v(:,6), yp_v, a_v(:,6), ya_v, xlab, ylab, region, axlims)
 region = 'North America';
-myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, top, axlims)
+myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, axlims)
+
+CenterAnnotation(main)
 
 %----------------------------------------------------------------------
 figure(2); clf; % Windspeed
 %----------------------------------------------------------------------
 
-p_v  = load(WGuessFname);
-a_v  = load(WAnalyFname);
-yp_v = p_v(:,1);
-ya_v = a_v(:,1);
+pv = load(WGuessFname); p_v = SqueezeMissing(pv); yp_v = p_v(:,1);
+av = load(WAnalyFname); a_v = SqueezeMissing(av); ya_v = a_v(:,1);
+
+ylab   = 'Pressure (hPa)';
+xlab   = 'Windspeed RMSE';
 
 % Try to figure out intelligent axis limits
 xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];      % concatenate all data
-xlims   = [min(xdatarr(:)) max(xdatarr(:))]; % limits of all data
+xlims   = [0.0 max(xdatarr(:))]; % limits of all data
 ydatarr = [p_v(:,1) a_v(:,1)];               % concatenate all data
 ylims   = [min(ydatarr(:)) max(ydatarr(:))]; % limits of all data
 axlims  = [floor(xlims(1)) ceil(xlims(2)) round(ylims)];
 
-ylab   = 'Pressure (hPa)';
-xlab   = 'Windspeed RMSE';
-top    = 'Ensemble Mean';
-
 region = 'Northern Hemisphere';
-myplot(1, p_v(:,2), yp_v, a_v(:,2), ya_v, xlab, ylab, region, top, axlims)
+myplot(1, p_v(:,2), yp_v, a_v(:,2), ya_v, xlab, ylab, region, axlims)
 region = 'Southern Hemisphere';
-myplot(2, p_v(:,4), yp_v, a_v(:,4), ya_v, xlab, ylab, region, top, axlims) 
+myplot(2, p_v(:,4), yp_v, a_v(:,4), ya_v, xlab, ylab, region, axlims) 
 region = 'Tropics';
-myplot(3, p_v(:,6), yp_v, a_v(:,6), ya_v, xlab, ylab, region, top, axlims) 
+myplot(3, p_v(:,6), yp_v, a_v(:,6), ya_v, xlab, ylab, region, axlims) 
 region = 'North America';
-myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, top, axlims)
+myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, axlims)
+
+CenterAnnotation(main)
 
 print -f1 -dpsc t_vertical.ps 
 print -f2 -dpsc w_vertical.ps
 
 
 
-function myplot(figpos,gx,gy,ax,ay,xlab,ylab,region,top,axlims)
+function myplot(figpos,gx,gy,ax,ay,xlab,ylab,region,axlims)
 
 subplot(2,2,figpos)
 plot(gx,gy,'k+-',ax,ay,'ro-','LineWidth',1.5)
 axis(axlims)
 grid
 set(gca,'YDir', 'reverse')
-title({top,region}, 'FontSize', 14, 'FontWeight', 'bold' )
+title({region}, 'FontSize', 14, 'FontWeight', 'bold' )
 ylabel(ylab, 'fontsize', 10)
 xlabel(xlab, 'fontsize', 10)
 if   isempty(strfind(lower(xlab),'wind')) 
-   h = legend('guess', 'analysis','Location','Best');
+   h = legend('guess', 'analysis','Location','East');
 else
-   h = legend('guess', 'analysis','Location','West');
+   h = legend('guess', 'analysis','Location','SouthEast');
 end
 legend(h,'boxoff');
+
+
+function y = SqueezeMissing(x)
+
+missing = find(x < -98); % 'missing' is coded as -99
+
+if isempty(missing)
+  y = x;
+else
+  y = x;
+  y(missing) = NaN;
+end
+
+
+
+function CenterAnnotation(top)
+subplot('position',[0.48 0.48 0.04 0.04])
+axis off
+h = text(0.5,0.5,top);
+set(h,'HorizontalAlignment','center','VerticalAlignment','bottom',...
+   'FontSize',12,'FontWeight','bold')
+
