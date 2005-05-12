@@ -23,20 +23,17 @@ function fit_ens_mean_vertical(ddir)
 
 % Ensures the datafiles exist.
 if ( nargin > 0 )
-   AttribFname = fullfile(ddir,'Tanl_times_level.m');
+   datafile = fullfile(ddir,'ObsDiagAtts');
    TGuessFname = fullfile(ddir,'Tges_ver_ave.dat');
    TAnalyFname = fullfile(ddir,'Tanl_ver_ave.dat');
    WGuessFname = fullfile(ddir,'Wges_ver_ave.dat');
    WAnalyFname = fullfile(ddir,'Wanl_ver_ave.dat');
 else
-   AttribFname = 'Tanl_times_level.m';
+   datafile = 'ObsDiagAtts';
    TGuessFname = 'Tges_ver_ave.dat';
    TAnalyFname = 'Tanl_ver_ave.dat';
    WGuessFname = 'Wges_ver_ave.dat';
    WAnalyFname = 'Wanl_ver_ave.dat';
-end
-if ( exist(AttribFname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.', AttribFname))
 end
 if ( exist(TGuessFname,'file') ~= 2 )
    error(sprintf('%s does not seem to exist.', TGuessFname))
@@ -59,13 +56,19 @@ end
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
 %----------------------------------------------------------------------
-   
-Tanl_times_level
+  
+if ( exist(datafile) == 2 )
 
-temp = datenum(obs_year,obs_month,obs_day); 
-toff = temp - round(t1); % determine temporal offset (calendar base)
-day1 = datestr(t1+toff,'yyyy-mmm-dd HH');
-dayN = datestr(tN+toff,'yyyy-mmm-dd HH');
+   eval(datafile)
+
+   temp = datenum(obs_year,obs_month,obs_day);
+   toff = temp - round(t1); % determine temporal offset (calendar base)
+   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
+   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
+
+else
+   error(sprintf('%s cannot be found.', datafile))
+end
 
 main = sprintf('Ensemble Mean %s - %s',day1,dayN);
 

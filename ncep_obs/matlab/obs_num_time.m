@@ -19,9 +19,9 @@ function obs_num_time(ddir)
 
 % Make sure the directory with the files is available to matlab
 if (nargin > 0 )
-   datafile = fullfile(ddir,'Tanl_times_level');
+   datafile = fullfile(ddir,'ObsDiagAtts');
 else
-   datafile = 'Tanl_times_level';
+   datafile = 'ObsDiagAtts';
    ddir = [];
 end
 

@@ -22,9 +22,9 @@ function fit_ens_mean_time(ddir)
 % is in Matlab's search path.
 
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'Tanl_times_level');
+   datafile = fullfile(ddir,'ObsDiagAtts');
 else
-   datafile = 'Tanl_times_level';
+   datafile = 'ObsDiagAtts';
    ddir = [];
 end	
 
@@ -36,7 +36,7 @@ if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp   = datenum(obs_year,obs_month,obs_day);
+   temp = datenum(obs_year,obs_month,obs_day);
    toff = temp - round(t1); % determine temporal offset (calendar base)
    day1 = datestr(t1+toff,'yyyy-mm-dd HH');
    dayN = datestr(tN+toff,'yyyy-mm-dd HH');

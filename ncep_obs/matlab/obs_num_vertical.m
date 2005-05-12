@@ -19,11 +19,11 @@ function obs_num_vertical(ddir)
 
 % This ensures the datafiles exist. 
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'Tanl_times_level');
+   datafile = fullfile(ddir,'ObsDiagAtts');
    Tfname = fullfile(ddir,'Tges_ver_ave.dat');
    Wfname = fullfile(ddir,'Wges_ver_ave.dat');
 else
-   datafile = 'Tanl_times_level';
+   datafile = 'ObsDiagAtts';
    Tfname = 'Tges_ver_ave.dat';
    Wfname = 'Wges_ver_ave.dat'; 
 end

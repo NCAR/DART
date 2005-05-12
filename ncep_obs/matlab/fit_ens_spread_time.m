@@ -22,9 +22,9 @@ function fit_ens_spread_time(ddir)
 % is in Matlab's search path.
 
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'Tanl_times_level');
+   datafile = fullfile(ddir,'ObsDiagAtts');
 else
-   datafile = 'Tanl_times_level';
+   datafile = 'ObsDiagAtts';
    ddir = [];
 end
 

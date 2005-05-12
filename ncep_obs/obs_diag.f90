@@ -187,7 +187,7 @@ integer  :: QgesUnit, QanlUnit, PgesUnit, PanlUnit
 real(r8) :: numer, denom, ratio, ratioU
 
 type(time_type) :: beg_time, end_time
-type(time_type) :: binwidth, halfbinwidth 
+type(time_type) :: binsep, binwidth, halfbinwidth 
 
 character(len =   6) :: day_num 
 character(len = 129) :: WgesName, WanlName, TgesName, TanlName, msgstring
@@ -238,6 +238,7 @@ calendar_type = 3
 call set_calendar_type(calendar_type)
 
 NBinsPerDay  = nint( 24.0_r8 / bin_separation )
+    binsep   = set_time(nint(bin_separation * 3600.0_r8), 0)
     binwidth = set_time(nint(bin_width * 3600.0_r8), 0)    ! full bin width 
 halfbinwidth = set_time(nint(bin_width * 1800.0_r8), 0)    ! half bin width 
 
@@ -439,7 +440,7 @@ DayLoop : do iday=1, tot_days
 
       ! set bin begin and end time 
 
-      bincenter(iepoch) = set_time(0,DayOne) + ibintoday * binwidth
+      bincenter(iepoch) = set_time(0,DayOne) + ibintoday * binsep
       beg_time          = bincenter(iepoch) - halfbinwidth
       end_time          = bincenter(iepoch) + halfbinwidth
 
@@ -1116,7 +1117,7 @@ write(logfileunit,*)'# NbadWvert          : ',NbadWvert
 ! loaded by just typing the name at the matlab prompt.
 !-----------------------------------------------------------------------
 
-iunit = open_file('Tanl_times_level.m',form='formatted',action='rewind')
+iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
 write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
 write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
 write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
