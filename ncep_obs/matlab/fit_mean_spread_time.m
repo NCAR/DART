@@ -22,90 +22,144 @@ function fit_mean_spread_time(ddir)
 % is in Matlab's search path.
 
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'Tanl_times_level.dat');
+   datafile = fullfile(ddir,'Tanl_times_level');
 else
-   datafile = 'Tanl_times_level.dat';
+   datafile = 'Tanl_times_level';
    ddir = [];
 end	
 
-if ( exist(datafile,'file') == 2 )
-   p     = load(datafile);
-   level = p(1);
+%----------------------------------------------------------------------
+% Get attributes from obs_diag run.
+%----------------------------------------------------------------------
+   
+if ( exist(datafile) == 2 )
+
+   eval(datafile)
+
+   temp = datenum(obs_year,obs_month,obs_day); 
+   toff = temp - round(t1); % determine temporal offset (calendar base)
+   day1 = datestr(t1+toff,'yyyy-mmm-dd HH');
+   dayN = datestr(tN+toff,'yyyy-mmm-dd HH');
+
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
 %----------------------------------------------------------------------
-figure(1); clf; % Temperature
+% Loop around observation types
 %----------------------------------------------------------------------
+
+varnames = {'T','W','Q','P'};
+Regions = {'Northern Hemisphere', ...
+           'Southern Hemisphere', ...
+           'Tropics', 'North America'};
+
+for ivar = 1:length(varnames),
 
    % Set up a structure with all the plotting components
-   plotdat.Regions = {'Northern Hemisphere', ...
-                      'Southern Hemisphere', ...
-                      'Tropics', 'North America'};
+
    plotdat.level   = level;
-   plotdat.flavor  = 'ens mean';
-   plotdat.xlabel  = 'Time interval';
    plotdat.ylabel  = 'RMSE';
-   plotdat.ges     = fullfile(ddir,sprintf('Tges_times_%04dmb.dat',level));
-   plotdat.anl     = fullfile(ddir,sprintf('Tanl_times_%04dmb.dat',level));
-   plotdat.varname = 'T';
+   plotdat.varname = varnames{ivar};
+   plotdat.toff    = toff;
 
-   plotdat.region = 1; myplot(plotdat);
-   plotdat.region = 2; myplot(plotdat);
-   plotdat.region = 3; myplot(plotdat);
-   plotdat.region = 4; myplot(plotdat);
+   switch obs_select
+      case 1,
+         string1 = sprintf('%s (all data)',     plotdat.varname);
+      case 2,
+         string1 = sprintf('%s (RaObs)',        plotdat.varname);
+      otherwise,
+         string1 = sprintf('%s (ACARS,SATWND)', plotdat.varname);
+   end
+
+   switch varnames{ivar}
+      case{'P'}
+         ges = fullfile(ddir,sprintf('%sges_times.dat',varnames{ivar}));
+         anl = fullfile(ddir,sprintf('%sanl_times.dat',varnames{ivar}));
+         main = sprintf('%s',string1);
+      otherwise
+         ges = fullfile(ddir,sprintf('%sges_times_%04dmb.dat',varnames{ivar},level));
+         anl = fullfile(ddir,sprintf('%sanl_times_%04dmb.dat',varnames{ivar},level));
+         main = sprintf('%s %d hPa',string1,plotdat.level);
+   end
+
+   plotdat.ges     = ges;
+   plotdat.anl     = anl;
+
+   % plot each region
+
+   figure(1); clf;
+
+   for iregion = 1:4,
+      plotdat.title  = Regions{iregion};
+      plotdat.region = iregion;
+      myplot(plotdat);
+   end
+
+   CenterAnnotation(main)
+
+   % create a postscript file
+
+   psfname = sprintf('%s_mean_spread_time.ps',plotdat.varname);
+   print(ivar,'-dpsc',psfname);
+
+end
 
 %----------------------------------------------------------------------
-figure(2); clf; % Winds
+% 'Helper' functions
 %----------------------------------------------------------------------
-
-   plotdat.ges     = fullfile(ddir,sprintf('Wges_times_%04dmb.dat',level));
-   plotdat.anl     = fullfile(ddir,sprintf('Wanl_times_%04dmb.dat',level));
-   plotdat.varname = 'Wind';
-
-   plotdat.region = 1; myplot(plotdat);
-   plotdat.region = 2; myplot(plotdat);
-   plotdat.region = 3; myplot(plotdat);
-   plotdat.region = 4; myplot(plotdat);
-
-%----------------------------------------------------------------------
-% common
-%----------------------------------------------------------------------
-
-print(1,'-dpsc','t_mean_spread_time.ps');
-print(2,'-dpsc','w_mean_spread_time.ps');
-
-
 
 function myplot(plotdat)
-p  = load(plotdat.ges);
-a  = load(plotdat.anl);
+p1 = load(plotdat.ges); p = SqueezeMissing(p1);
+a1 = load(plotdat.anl); a = SqueezeMissing(a1);
 
-x = [1:2*size(p,1)];
-ens_mean = x;
+x = [1:2*size(p,1)]; % Each time has a guess and analysis 
+ens_mean   = x;
 ens_spread = x;
 
-countm = 2+(plotdat.region-1)*3;
-counts = 3+(plotdat.region-1)*3;
+countm = 3+(plotdat.region-1)*3; % pick off region mean
+counts = 4+(plotdat.region-1)*3; % pick off region spread
 
 for itime = 1:size(p,1)
-   x(2*itime-1) = p(itime,1);
-   ens_mean(2*itime-1) = p(itime,countm);
+
+   obsT1 = p(itime,1) + p(itime,2)/86400 + plotdat.toff;
+   obsT2 = a(itime,1) + a(itime,2)/86400 + plotdat.toff;
+   x(2*itime-1) = obsT1;
+   x(2*itime  ) = obsT2;
+
+   ens_mean(  2*itime-1) = p(itime,countm);
    ens_spread(2*itime-1) = p(itime,counts);
-   x(2*itime) = p(itime,1);
-   ens_mean(2*itime) = a(itime,countm);
-   ens_spread(2*itime) = a(itime,counts);
+
+   ens_mean(  2*itime  ) = a(itime,countm);
+   ens_spread(2*itime  ) = a(itime,counts);
 end
 
 subplot(2,2,plotdat.region)
    plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
-   xlabel(plotdat.xlabel, 'fontsize', 10);
    ylabel(plotdat.ylabel, 'fontsize', 10);
-   string0 = sprintf('%s',plotdat.Regions{plotdat.region});
-   string1 = sprintf('%s fit to RAobs', plotdat.varname);
-   string2 = sprintf('%s %d hPa',plotdat.flavor,plotdat.level);
-   title({string0,string1,string2}, 'fontsize', 12,'FontWeight','bold')
+   datetick('x',1)
+   title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
    h = legend('Ens. mean', 'Ens. spread');
    legend(h,'boxoff')
+
+
+
+function y = SqueezeMissing(x)
+
+missing = find(x < -98); % 'missing' is coded as -99
+
+if isempty(missing)
+  y = x;
+else
+  y = x;
+  y(missing) = NaN;
+end
+
+
+function CenterAnnotation(main)
+subplot('position',[0.48 0.48 0.04 0.04])
+axis off
+h = text(0.5,0.5,main);
+set(h,'HorizontalAlignment','center','VerticalAlignment','bottom',...
+   'FontSize',12,'FontWeight','bold')

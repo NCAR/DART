@@ -19,135 +19,151 @@ function obs_num_time(ddir)
 
 % Make sure the directory with the files is available to matlab
 if (nargin > 0 )
-   datafile = fullfile(ddir,'Tanl_times_level.dat');
+   datafile = fullfile(ddir,'Tanl_times_level');
 else
-   datafile = 'Tanl_times_level.dat';
+   datafile = 'Tanl_times_level';
    ddir = [];
 end
 
-if ( exist(datafile,'file') == 2 ) 
-   p     = load(datafile);
-   level = p(1);
+%----------------------------------------------------------------------
+% Get attributes from obs_diag run.
+%----------------------------------------------------------------------
+
+if ( exist(datafile) == 2 )
+
+   eval(datafile)
+
+   temp   = datenum(obs_year,obs_month,obs_day);
+   toff = temp - round(t1); % determine temporal offset (calendar base)
+   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
+   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
+
 else
-   error('%s cannot be found.',datafile)
+   error(sprintf('%s cannot be found.', datafile))
 end
 
-Tfname = fullfile(ddir,sprintf('Tges_times_%04dmb.dat',level));
-Wfname = fullfile(ddir,sprintf('Wges_times_%04dmb.dat',level));
+%----------------------------------------------------------------------
+% Loop around observation types
+%----------------------------------------------------------------------
 
-if ( exist(Tfname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.',Tfname))
-end
-if ( exist(Wfname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.',Wfname))
-end
+varnames = {'T','W','Q','P'};
+Regions = {'Northern Hemisphere', ...
+           'Southern Hemisphere', ...
+           'Tropics', 'North America'};
+ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
-   %------------------------------------------------------------
-   % Plot Number of Temperature Observations
-   %------------------------------------------------------------
+for ivar = 1:length(varnames),
 
-   figure(1); clf;
+   % Set up a structure with all the plotting components
 
-   ylab   = '# of Temp observations';
+   plotdat.level   = level;
+   plotdat.ylabel  = 'observation count';
+   plotdat.varname = varnames{ivar};
+   plotdat.toff    = toff;
 
-   region      = 'Northern Hemisphere';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nT_NH,xax] = Myplot(Tfname,top,ylab,1,'gs-');
-   
-   region      = 'Southern Hemisphere';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nT_SH,xax] = Myplot(Tfname,top,ylab,2,'bd-');
-   
-   region      = 'Tropics';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nT_TR,xax] = Myplot(Tfname,top,ylab,3,'ro-');
-   
-   region      = 'North America';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nT_NA,xax] = Myplot(Tfname,top,ylab,4,'k+-');
+   switch obs_select
+      case 1,
+         string1 = sprintf('%s (all data)',     plotdat.varname);
+      case 2,
+         string1 = sprintf('%s (RaObs)',        plotdat.varname);
+      otherwise,
+         string1 = sprintf('%s (ACARS,SATWND)', plotdat.varname);
+   end
 
-   print -dpsc         t_obs_num_time.ps
+   switch varnames{ivar}
+      case{'P'}
+         fname = fullfile(ddir,sprintf('%sges_times.dat',varnames{ivar}));
+         main = sprintf('%s',string1);
+      otherwise
+         fname = fullfile(ddir,sprintf('%sges_times_%04dmb.dat',varnames{ivar},level));
+         main = sprintf('%s %d hPa',string1,plotdat.level);
+   end
+
+   plotdat.fname = fname;
+
+   % plot by region
+
+   page1 = 2*(ivar-1)+1;
+   page2 = 2*(ivar-1)+2;
+   figure(page1); clf;
+
+%  NbyRegion = zeros(xxx,iregion)
+   for iregion = 1:length(Regions),
+      plotdat.title  = Regions{iregion}; 
+      plotdat.region = iregion;
+      plotdat.ptype  = ptypes{iregion};
+      [nT,xax]       = myplot(plotdat);
+      NbyRegion(:,iregion) = nT;
+   end
+
+   %[nT_SH,xax]    = myplot(plotdat);
+   %[nT_TR,xax]    = myplot(plotdat);
+   %[nT_NA,xax]    = myplot(plotdat);
+
+   CenterAnnotation(main)
+
+   psfname = sprintf('%s_obs_num_time.ps',plotdat.varname);
+   print(page1,'-dpsc',psfname);
   
    % All regions on one figure
 
-   figure(2); clf
+   figure(page2); clf;
 
-   h = plot(xax, nT_NH, 'gs-', ...
-            xax, nT_SH, 'bd-', ...
-	    xax, nT_TR, 'ro-', ...
-	    xax, nT_NA, 'k+-', 'LineWidth', 2.0);
+   h = plot(xax, NbyRegion(:,1), ptypes{1}, ...
+            xax, NbyRegion(:,2), ptypes{2}, ...
+	    xax, NbyRegion(:,3), ptypes{3}, ...
+	    xax, NbyRegion(:,4), ptypes{4}, 'LineWidth', 2.0);
    grid
-   %set(gca,'YDir', 'reverse')
-   title(sprintf('# of Temperature Observations at %d hPa',level), ...
-                'FontSize', 14, 'FontWeight', 'bold')
-   ylabel('# of Observations', 'fontsize', 10)
-   xlabel('Time Interval','fontsize',10)
-   h = legend('Northern Hemisphere', ...
-              'Southern Hemisphere', ...
-	      'Tropics', ...
-	      'North America','Location','NorthWest');
+   title(main, 'FontSize', 12, 'FontWeight', 'bold')
+   ylabel(plotdat.ylabel, 'fontsize', 10)
+   datetick('x',1)
+   h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, ...
+	      'Location','NorthWest');
    legend(h,'boxoff');
 
-   print -dpsc -append t_obs_num_time.ps
+   str = sprintf('print -f%d -dpsc -append %s',page2,psfname);
+   eval(str)
 
-   %------------------------------------------------------------
-   % Now for the Winds
-   %------------------------------------------------------------
+end
 
-   figure(3); clf;
-   
-   ylab   = '# of Wind observations';
+%----------------------------------------------------------------------
+% 'Helper' functions
+%----------------------------------------------------------------------
 
-   region      = 'Northern Hemisphere';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nW_NH,xax] = Myplot(Wfname,top,ylab,1,'gs-');
-   
-   region      = 'Southern Hemisphere';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nW_SH,xax] = Myplot(Wfname,top,ylab,2,'bd-');
-   
-   region      = 'Tropics';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nW_TR,xax] = Myplot(Wfname,top,ylab,3,'ro-');
-   
-   region      = 'North America';
-   top         = sprintf('%s  %4d hPa',region,level);
-   [nW_NA,xax] = Myplot(Wfname,top,ylab,4,'k+-');
+function [yp_num,xp] = myplot(plotdat)
 
-   print -dpsc         w_obs_num_time.ps
+p1 = load(plotdat.fname); p = SqueezeMissing(p1);
+xp = p(:,1) + p(:,2)/86400 + plotdat.toff;
 
-   % All regions on one figure
+offset = 5;  % columns 1,2 are time, 3=mean, 4=spread, 5=numobs
 
-   figure(4); clf;
-
-   h = plot(xax, nW_NH, 'gs-', ...
-            xax, nW_SH, 'bd-', ...
-	    xax, nW_TR, 'ro-', ...
-	    xax, nW_NA, 'k+-', 'LineWidth', 2.0);
-   grid
-   % set(gca,'YDir', 'reverse')
-   title(sprintf('# of Wind Observations at %d hPa',level), ...
-                'FontSize', 14, 'FontWeight', 'bold')
-   ylabel('# of Observations', 'fontsize', 10)
-   xlabel('Time Interval','fontsize',10)
-   h = legend('Northern Hemisphere', ...
-              'Southern Hemisphere', ...
-	      'Tropics', ...
-	      'North America','Location','NorthWest');
-   legend(h,'boxoff');
-
-   print -dpsc -append w_obs_num_time.ps
-
-function [yp_num,xp] = Myplot(file1,top,ylab,region,ptype)
-
-p      = load(file1);
-xp     = p(:,1);
-count  = 4+(region-1)*3;
+count  = offset+(plotdat.region-1)*3;
 yp_num = p(:,count);
 
-subplot(2,2,region)
-   plot(xp,yp_num,ptype,'LineWidth',2.0)
+subplot(2,2,plotdat.region)
+   plot(xp,yp_num,plotdat.ptype,'LineWidth',2.0)
    grid
-   xlabel('Time Interval', 'fontsize', 10) ;
-   ylabel(ylab, 'fontsize', 10) ;
-   title(top, 'fontsize', 14,'FontWeight','bold')
+   datetick('x',1)
+   ylabel(plotdat.ylabel, 'fontsize', 10) ;
+   title(plotdat.title, 'fontsize', 14,'FontWeight','bold')
+
+
+
+function y = SqueezeMissing(x)
+
+missing = find(x < -98); % 'missing' is coded as -99
+
+if isempty(missing)
+  y = x;
+else
+  y = x;
+  y(missing) = NaN;
+end
+
+
+function CenterAnnotation(top)
+subplot('position',[0.48 0.48 0.04 0.04])
+axis off
+h = text(0.5,0.5,top);
+set(h,'HorizontalAlignment','center','VerticalAlignment','bottom', ...
+   'FontSize',12,'FontWeight','bold')
