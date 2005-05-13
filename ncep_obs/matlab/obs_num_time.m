@@ -17,13 +17,14 @@ function obs_num_time(ddir)
 % $Source$
 % $Name$
 
-% Make sure the directory with the files is available to matlab
-if (nargin > 0 )
-   datafile = fullfile(ddir,'ObsDiagAtts');
+% Ensures the specified directory is searched first.
+if ( nargin > 0 )
+   startpath = addpath(ddir);
 else
-   datafile = 'ObsDiagAtts';
-   ddir = [];
+   startpath = path;
 end
+
+datafile = 'ObsDiagAtts';
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
@@ -33,38 +34,47 @@ if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp   = datenum(obs_year,obs_month,obs_day);
+   temp = datenum(obs_year,obs_month,obs_day);
    toff = temp - round(t1); % determine temporal offset (calendar base)
    day1 = datestr(t1+toff,'yyyy-mm-dd HH');
    dayN = datestr(tN+toff,'yyyy-mm-dd HH');
+   pmax = psurface;
+   pmin = ptop;
+
+   % There is no vertical distribution of surface pressure
+
+   varnames = {'T','W','Q'};
+   varnames = {'T','W','Q','P'};
+
+   Regions = {'Northern Hemisphere', ...
+              'Southern Hemisphere', ...
+              'Tropics', 'North America'};
+   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
+% set up a structure with all static plotting components
+
+plotdat.level   = level;
+plotdat.toff    = toff;
+plotdat.ylabel  = 'observation count';
+
 %----------------------------------------------------------------------
 % Loop around observation types
 %----------------------------------------------------------------------
 
-varnames = {'T','W','Q','P'};
-Regions = {'Northern Hemisphere', ...
-           'Southern Hemisphere', ...
-           'Tropics', 'North America'};
-ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
-
 for ivar = 1:length(varnames),
 
-   % Set up a structure with all the plotting components
+   % set up a structure with all the plotting components
 
-   plotdat.level   = level;
-   plotdat.ylabel  = 'observation count';
    plotdat.varname = varnames{ivar};
-   plotdat.toff    = toff;
 
    switch obs_select
       case 1,
          string1 = sprintf('%s (all data)',     plotdat.varname);
-      case 2,
+      case 2, 
          string1 = sprintf('%s (RaObs)',        plotdat.varname);
       otherwise,
          string1 = sprintf('%s (ACARS,SATWND)', plotdat.varname);
@@ -72,14 +82,12 @@ for ivar = 1:length(varnames),
 
    switch varnames{ivar}
       case{'P'}
-         fname = fullfile(ddir,sprintf('%sges_times.dat',varnames{ivar}));
-         main = sprintf('%s',string1);
+         plotdat.fname = sprintf('%sges_times.dat',varnames{ivar});
+         plotdat.main  = sprintf('%s',string1);
       otherwise
-         fname = fullfile(ddir,sprintf('%sges_times_%04dmb.dat',varnames{ivar},level));
-         main = sprintf('%s %d hPa',string1,plotdat.level);
+         plotdat.fname = sprintf('%sges_times_%04dmb.dat',varnames{ivar},level);
+         plotdat.main  = sprintf('%s %d hPa',string1,plotdat.level);
    end
-
-   plotdat.fname = fname;
 
    % plot by region
 
@@ -87,24 +95,20 @@ for ivar = 1:length(varnames),
    page2 = 2*(ivar-1)+2;
    figure(page1); clf;
 
-%  NbyRegion = zeros(xxx,iregion)
    for iregion = 1:length(Regions),
-      plotdat.title  = Regions{iregion}; 
+      plotdat.title  = Regions{iregion};
       plotdat.region = iregion;
       plotdat.ptype  = ptypes{iregion};
       [nT,xax]       = myplot(plotdat);
       NbyRegion(:,iregion) = nT;
    end
 
-   %[nT_SH,xax]    = myplot(plotdat);
-   %[nT_TR,xax]    = myplot(plotdat);
-   %[nT_NA,xax]    = myplot(plotdat);
-
-   CenterAnnotation(main)
+   CenterAnnotation(plotdat.main)
+   BottomAnnotation(plotdat.fname)
 
    psfname = sprintf('%s_obs_num_time.ps',plotdat.varname);
    print(page1,'-dpsc',psfname);
-  
+
    % All regions on one figure
 
    figure(page2); clf;
@@ -114,17 +118,21 @@ for ivar = 1:length(varnames),
 	    xax, NbyRegion(:,3), ptypes{3}, ...
 	    xax, NbyRegion(:,4), ptypes{4}, 'LineWidth', 2.0);
    grid
-   title(main, 'FontSize', 12, 'FontWeight', 'bold')
+   title(plotdat.main, 'FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
    datetick('x',1)
    h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, ...
 	      'Location','NorthWest');
    legend(h,'boxoff');
 
+   BottomAnnotation(plotdat.fname)
+
    str = sprintf('print -f%d -dpsc -append %s',page2,psfname);
    eval(str)
 
 end
+
+path(startpath); % restore MATLABPATH to original setting
 
 %----------------------------------------------------------------------
 % 'Helper' functions
@@ -145,7 +153,7 @@ subplot(2,2,plotdat.region)
    grid
    datetick('x',1)
    ylabel(plotdat.ylabel, 'fontsize', 10) ;
-   title(plotdat.title, 'fontsize', 14,'FontWeight','bold')
+   title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
 
 
 
@@ -161,9 +169,23 @@ else
 end
 
 
-function CenterAnnotation(top)
+
+function CenterAnnotation(main)
 subplot('position',[0.48 0.48 0.04 0.04])
 axis off
-h = text(0.5,0.5,top);
-set(h,'HorizontalAlignment','center','VerticalAlignment','bottom', ...
+h = text(0.5,0.5,main);
+set(h,'HorizontalAlignment','center','VerticalAlignment','bottom',...
    'FontSize',12,'FontWeight','bold')
+
+
+
+function BottomAnnotation(main)
+% annotates the directory containing the data being plotted
+subplot('position',[0.48 0.01 0.04 0.04])
+axis off
+bob = which(main);
+[pathstr,name,ext,versn] = fileparts(bob);
+h = text(0.0,0.5,pathstr);
+set(h,'HorizontalAlignment','center', ...
+      'VerticalAlignment','middle',...
+      'FontSize',8)

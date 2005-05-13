@@ -56,7 +56,7 @@ type(time_type)         :: next_time
 
 !---------------------
 integer :: ibintoday, obsindex, i, j, iunit, ierr, io
-integer :: num_obs_in_set, obs_used
+integer :: num_obs_in_set, obs_used_in_set, obs_used = 0
 
 ! Storage with fixed size for observation space diagnostics
 real(r8) :: prior_mean(1), posterior_mean(1)
@@ -179,7 +179,7 @@ type(time_type), allocatable, dimension(:) :: bincenter
 !-----------------------------------------------------------------------
 
 integer  :: seconds, days, DayOne
-integer  :: k0, k1, kkk, NBinsPerDay, Nepochs
+integer  :: obslevel, k1, kkk, NBinsPerDay, Nepochs
 integer  :: calendar_type
 integer  :: WgesUnit, WanlUnit, TgesUnit, TanlUnit
 integer  :: QgesUnit, QanlUnit, PgesUnit, PanlUnit
@@ -197,14 +197,16 @@ character(len = 129) :: QgesName, QanlName, PgesName, PanlName
 ! Some variables to keep track of who's rejected why ...
 !-----------------------------------------------------------------------
 
+integer                      :: NwrongType = 0   ! namelist discrimination
+integer                      :: NbadQC     = 0   ! out-of-range QC values
+integer                      :: NbadLevel  = 0   ! out-of-range pressures
 integer, dimension(Nregions) :: NWrejected = 0   ! all days, each region, one layer
 integer, dimension(Nregions) :: NTrejected = 0   ! all days, each region, one layer
 integer, dimension(Nregions) :: NQrejected = 0   ! all days, each region, one layer
 integer, dimension(Nregions) :: NPrejected = 0   ! all days, each region, one layer
-integer, dimension(Nregions) :: NbadW = 0        ! V with no U, all days, regions
-integer, dimension(Nregions) :: NbadP = 0        ! out-of-range pressures
-integer, dimension(Nregions) :: NbadWvert = 0    ! V with no U, select days, all levels
-integer, dimension(Nregions) :: NbadUVratio = 0    ! V with no U, select days, all levels
+integer, dimension(Nregions) :: NbadW      = 0   ! V with no U, all days, regions
+integer, dimension(Nregions) :: NbadWvert  = 0   ! V with no U, select days, all levels
+integer, dimension(Nregions) :: NbadUVratio = 0  ! V with no U, select days, all levels
 
 !-----------------------------------------------------------------------
 
@@ -450,7 +452,7 @@ DayLoop : do iday=1, tot_days
       call get_obs_time_range(seq, beg_time, end_time, key_bounds, &
                   num_obs_in_set, out_of_range, observation)
 
-      obs_used = 0
+      obs_used_in_set = 0
       call print_time(         beg_time,'bin  start ',logfileunit)
       call print_time(bincenter(iepoch),'bin center ',logfileunit)
       call print_time(         end_time,'bin    end ',logfileunit)
@@ -481,12 +483,14 @@ DayLoop : do iday=1, tot_days
 
          lon0      = obsloc3(1) + 1.01_r8             ! 0-360
          lat0      = obsloc3(2) + 1.01_r8 + 90.0_r8   ! 0-180
-         ipressure = 0.01_r8 * obsloc3(3)       ! mb TJH
+         ipressure = nint(0.01_r8 * obsloc3(3))       ! cvrt to hPa
+         obslevel  = GetClosestLevel(ipressure) 
 
          call get_qc(observation,          qc(obsindex:obsindex),         1)
          call get_obs_values(observation, obs(obsindex:obsindex), obs_index)
 
          ! get interpolated values of prior and posterior ensemble mean
+
          call get_obs_values(observation,       prior_mean,       prior_mean_index)
          call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
          call get_obs_values(observation,     prior_spread,     prior_spread_index)
@@ -499,24 +503,42 @@ DayLoop : do iday=1, tot_days
          !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
          !--------------------------------------------------------------
-         if( qc(obsindex) >= qc_threshold ) cycle ObservationLoop 
-         if( pr_mean == 0.0_r8)             cycle ObservationLoop ! deprecated
 
          keeper = CheckObsType(obs_select, obs_err_var(obsindex), flavor, ipressure)
-         if ( .not. keeper )                cycle ObservationLoop
+         if ( .not. keeper ) then
+         !  write(*,*)'obs ',obsindex,' rejected by CheckObsType ',obs_err_var(obsindex)
+            NwrongType = NwrongType + 1
+            cycle ObservationLoop
+         endif
 
-         obs_used = obs_used + 1
+         if( qc(obsindex) >= qc_threshold ) then
+         !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(obsindex)
+            NbadQC = NbadQC + 1
+            cycle ObservationLoop 
+         endif
+
+         if ( obslevel < 1 .or. obslevel > nlev )   then
+            write(*,*)'obs ',obsindex,' rejected. Unreasonable level ',obslevel
+            write(*,*)'obs ',obsindex,' rejected. pressure was ',ipressure
+            NbadLevel = NbadLevel + 1
+            cycle ObservationLoop
+         endif
+
+         !--------------------------------------------------------------
+         ! 
+         !--------------------------------------------------------------
+
+         obs_used_in_set = obs_used_in_set + 1
+         obs_used        = obs_used        + 1
 
          !--------------------------------------------------------------
          ! If it is a U wind component, all we need to do is save it.
-         ! It will be matched up with a V component.
+         ! It will be matched up with the subsequent V component.
+         ! At some point we have to remove the dependency that the 
+         ! U component MUST preceed the V component.
          !--------------------------------------------------------------
 
          if ( flavor == KIND_U ) then
-            ! The U, V components are ASSUMED to come in adjacent pairs.
-            ! So we capture the U component and when we
-            ! know we have a V component, we can check these to make sure
-            ! they are the matching U. 
 
             U_obs         = obs(obsindex)
             U_obs_err_var = obs_err_var(obsindex)
@@ -528,6 +550,7 @@ DayLoop : do iday=1, tot_days
             U_po_sprd     = po_sprd
 
             cycle ObservationLoop
+
          endif
 
          !--------------------------------------------------------------
@@ -578,8 +601,7 @@ DayLoop : do iday=1, tot_days
             ! If the observation is within our layer, great -- if
             ! not ... we still need to do vertical stats.
 
-            condition3:  if(ipressure .le. pint(level_index) .and. &
-                            ipressure .gt. pint(level_index+1))    then
+            DesiredLevel: if ( obslevel == level_index ) then
 
                select case ( flavor )
 
@@ -588,12 +610,12 @@ DayLoop : do iday=1, tot_days
                   ! immediately preceeded the V component and has been saved.
                   ! We check for compatibility and proceed.  
 
+                     !write(*,*)'V(ts) - obsindex ',obsindex
+
                      ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc) 
                      if ( ierr /= 0 ) then
-                        write(*,*)'Aiiiii ... V with no matching U ...'
+                     !  write(*,*)'time series ... V with no matching U ...'
                         NbadW(iregion) = NbadW(iregion) + 1
-                        U_obs_loc =  set_location_missing()
-                        U_flavor = KIND_V ! intentional mismatch
                         cycle ObservationLoop
                      endif
 
@@ -675,7 +697,7 @@ DayLoop : do iday=1, tot_days
 
                end select
 
-            endif condition3
+            endif DesiredLevel
 
             !-----------------------------------------------------------
             ! end of time series statistics
@@ -687,31 +709,15 @@ DayLoop : do iday=1, tot_days
             if(ipressure > pint(1) )       cycle Areas  ! pressure more than 1025
             if(ipressure <= pint(nlev+1) ) cycle Areas  ! pressure less than   75
 
-            ! This defines bins relative to the pressure interval array, which
-            ! was somewhat arbitrarily defined by Hui. There are slight
-            ! differences between this method and the 'GetClosestLevel' method
-            ! which defines bins relative to the strict midpoint of the plev
-            ! array. 
-            !PressureLoop: do kkk=1, nlev
-            !   if(ipressure .le. pint(kkk) .and. ipressure .gt. pint(kkk+1) ) then
-            !   k0 = kkk
-            !   exit PressureLoop
-            !   endif
-            !enddo PressureLoop
-
-            k0 = GetClosestLevel(ipressure)
-            if ( k0 < 1 .or. k0 > nlev)   then
-               NbadP(iregion) = NbadP(iregion) + 1
-               cycle Areas
-            endif
-
             select case (flavor)
 
                case ( KIND_V ) ! Wind v-component
 
+                  ! write(*,*)'V(vert) - obsindex ',obsindex
+
                   ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc) 
                   if ( ierr /= 0 ) then
-                     write(*,*)'Aiiiii ... V with no matching U ...'
+                  !  write(*,*)'vertical ... V with no matching U ...'
                      NbadWvert(iregion) = NbadWvert(iregion) + 1
                      cycle ObservationLoop
                   endif
@@ -734,18 +740,18 @@ DayLoop : do iday=1, tot_days
                      speed_anl2 = sqrt( U_po_mean**2 + po_mean**2 )
                      speed_obs2 = sqrt( U_obs**2 + obs(obsindex)**2 )
 
-                          num_ver_W(k0,iregion) =      num_ver_W(k0,iregion) + 1
+                          num_ver_W(obslevel,iregion) =      num_ver_W(obslevel,iregion) + 1
 
-                      rms_ges_ver_W(k0,iregion) =  rms_ges_ver_W(k0,iregion) + &
+                      rms_ges_ver_W(obslevel,iregion) =  rms_ges_ver_W(obslevel,iregion) + &
                                    (pr_mean-obs(obsindex))**2 + (U_pr_mean- U_obs)**2
 
-                      rms_anl_ver_W(k0,iregion) =  rms_anl_ver_W(k0,iregion) + &
+                      rms_anl_ver_W(obslevel,iregion) =  rms_anl_ver_W(obslevel,iregion) + &
                                    (po_mean-obs(obsindex))**2 + (U_po_mean- U_obs)**2
 
-                     bias_ges_ver_W(k0,iregion) = bias_ges_ver_W(k0,iregion) + &
+                     bias_ges_ver_W(obslevel,iregion) = bias_ges_ver_W(obslevel,iregion) + &
                                                   speed_ges2 - speed_obs2
 
-                     bias_anl_ver_W(k0,iregion) = bias_anl_ver_W(k0,iregion) + &
+                     bias_anl_ver_W(obslevel,iregion) = bias_anl_ver_W(obslevel,iregion) + &
                                                   speed_anl2 - speed_obs2
                   else
                      NbadUVratio = NbadUVratio + 1
@@ -757,14 +763,14 @@ DayLoop : do iday=1, tot_days
                            obs_err_var(obsindex))
 
                   if(ratio <= rat_cri )  then
-                          num_ver_T(k0,iregion) =      num_ver_T(k0,iregion) + 1
-                      rms_ges_ver_T(k0,iregion) =  rms_ges_ver_T(k0,iregion) + &
+                          num_ver_T(obslevel,iregion) =      num_ver_T(obslevel,iregion) + 1
+                      rms_ges_ver_T(obslevel,iregion) =  rms_ges_ver_T(obslevel,iregion) + &
                                                   (pr_mean    - obs(obsindex))**2
-                      rms_anl_ver_T(k0,iregion) =  rms_anl_ver_T(k0,iregion) + &
+                      rms_anl_ver_T(obslevel,iregion) =  rms_anl_ver_T(obslevel,iregion) + &
                                                   (po_mean- obs(obsindex))**2
-                     bias_ges_ver_T(k0,iregion) = bias_ges_ver_T(k0,iregion) + &
+                     bias_ges_ver_T(obslevel,iregion) = bias_ges_ver_T(obslevel,iregion) + &
                                                   pr_mean     - obs(obsindex)
-                     bias_anl_ver_T(k0,iregion) = bias_anl_ver_T(k0,iregion) + &
+                     bias_anl_ver_T(obslevel,iregion) = bias_anl_ver_T(obslevel,iregion) + &
                                                   po_mean - obs(obsindex)
                   endif
 
@@ -774,14 +780,14 @@ DayLoop : do iday=1, tot_days
                            obs_err_var(obsindex))
 
                   if(ratio <= rat_cri )  then
-                          num_ver_Q(k0,iregion) =      num_ver_Q(k0,iregion) + 1  
-                      rms_ges_ver_Q(k0,iregion) =  rms_ges_ver_Q(k0,iregion) + &
+                          num_ver_Q(obslevel,iregion) =      num_ver_Q(obslevel,iregion) + 1  
+                      rms_ges_ver_Q(obslevel,iregion) =  rms_ges_ver_Q(obslevel,iregion) + &
                                                   (pr_mean    - obs(obsindex))**2
-                      rms_anl_ver_Q(k0,iregion) =  rms_anl_ver_Q(k0,iregion) + &
+                      rms_anl_ver_Q(obslevel,iregion) =  rms_anl_ver_Q(obslevel,iregion) + &
                                                   (po_mean- obs(obsindex))**2
-                     bias_ges_ver_Q(k0,iregion) = bias_ges_ver_Q(k0,iregion) + &
+                     bias_ges_ver_Q(obslevel,iregion) = bias_ges_ver_Q(obslevel,iregion) + &
                                                  pr_mean     - obs(obsindex)
-                     bias_anl_ver_Q(k0,iregion) = bias_anl_ver_Q(k0,iregion) + &
+                     bias_anl_ver_Q(obslevel,iregion) = bias_anl_ver_Q(obslevel,iregion) + &
                                                  po_mean - obs(obsindex)
                   endif
 
@@ -794,7 +800,7 @@ DayLoop : do iday=1, tot_days
          enddo Areas
 
       !-----------------------------------------------------------------
-      end do ObservationLoop
+      enddo ObservationLoop
       !-----------------------------------------------------------------
 
       deallocate(keys, obs,  obs_err_var, qc)
@@ -865,11 +871,14 @@ DayLoop : do iday=1, tot_days
          endif
       enddo
 
-   end do Advancesets
+      write(msgstring,'(''num obs used in epoch '',i3,'' = '',i8)') iepoch, obs_used_in_set
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+
+   enddo Advancesets
 
    call destroy_obs_sequence(seq)
 
-end do Dayloop
+enddo Dayloop
 
 if ( iepoch /= Nepochs ) then
    write(msgstring,'(''iepochs ('',i3,'') /= ('',i3,'') Nepochs'')') iepoch, Nepochs
@@ -1088,25 +1097,32 @@ close(QgesUnit)
 close(QanlUnit)
 
 write(*,*)''
+write(*,*)'# observations used  : ',obs_used     
 write(*,*)'Rejected Observations summary.'
+write(*,*)'# NwrongType         : ',NwrongType     
+write(*,*)'# NbadQC             : ',NbadQC     
+write(*,*)'# NbadLevel          : ',NbadLevel     
 write(*,'('' For each region, '',i4,'' hPa only: NH / SH / TR / NA'')')plev(level_index)
 write(*,*)'# Wind pairs   tossed: ',NWrejected
 write(*,*)'# Temperatures tossed: ',NTrejected
 write(*,*)'# Moisture obs tossed: ',NQrejected
 write(*,*)'# Pressure obs tossed: ',NPrejected
-write(*,*)'# NbadP              : ',NbadP     
 write(*,*)'# NbadW              : ',NbadW
 write(*,*)'All levels, select days: '
 write(*,*)'# NbadWvert          : ',NbadWvert
 write(*,*)''
 
+write(logfileunit,*)''
+write(logfileunit,*)'# observations used  : ',obs_used     
 write(logfileunit,*)'Rejected Observations summary.'
+write(logfileunit,*)'# NwrongType         : ',NwrongType     
+write(logfileunit,*)'# NbadQC             : ',NbadQC     
+write(logfileunit,*)'# NbadLevel          : ',NbadLevel     
 write(logfileunit,'('' For each region, '',i4,'' hPa only: NH / SH / TR / NA'')')plev(level_index)
 write(logfileunit,*)'# Wind pairs   tossed: ',NWrejected
 write(logfileunit,*)'# Temperatures tossed: ',NTrejected
 write(logfileunit,*)'# Moisture obs tossed: ',NQrejected
 write(logfileunit,*)'# Pressure obs tossed: ',NPrejected
-write(logfileunit,*)'# NbadP              : ',NbadP     
 write(logfileunit,*)'# NbadW              : ',NbadW
 write(logfileunit,*)'All levels, select days: '
 write(logfileunit,*)'# NbadWvert          : ',NbadWvert
@@ -1124,6 +1140,8 @@ write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
 write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
 write(iunit,'(''iskip          = '',i6,'';'')')iskip
 write(iunit,'(''level          = '',i6,'';'')')plev(level_index)
+write(iunit,'(''psurface       = '',i6,'';'')')pint(1)
+write(iunit,'(''ptop           = '',i6,'';'')')pint(nlev+1)
 write(iunit,'(''obs_select     = '',i3,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
 write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
@@ -1131,6 +1149,7 @@ write(iunit,'(''bin_width      = '',f9.2,'';'')')bin_width
 write(iunit,'(''bin_separation = '',f9.2,'';'')')bin_separation 
 write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
 write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
+write(iunit,'(''plev    = ['',11(1x,i5),''];'')')plev
 write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
 write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
 write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
@@ -1168,12 +1187,12 @@ contains
    ! flavor 1 has to be either U or V, flavor 2 has to be the complement
    if ( ((flavor1 + flavor2) /= (KIND_U + KIND_V)) .and. &
         ((flavor1 == KIND_U) .or. (flavor1 == KIND_V)) ) then
-      write(*,*) 'flavors not appropriate ...',flavor1, flavor2
+      write(*,*) 'flavors not complementary ...',flavor1, flavor2
       return
    endif 
 
    if ( obsloc1 /= obsloc2 ) then
-      write(*,*) 'locations no match ...'
+      write(*,*) 'locations do not match ...'
       call write_location(6,obsloc1,'FORMATTED')
       call write_location(6,obsloc2,'FORMATTED')
       return
@@ -1199,9 +1218,20 @@ contains
    integer :: i
 
    dx = abs(pressure - plev)    ! whole array
- 
-   ! level_index = minloc(dx)   why this does not work is beyond me
+
    level_index = minval( inds , mask=(dx == minval(dx)))
+
+   ! This defines bins relative to the pressure interval array, which
+   ! was somewhat arbitrarily defined by Hui. There are slight
+   ! differences between this method and the 'GetClosestLevel' method
+   ! which defines bins relative to the strict midpoint of the plev
+   ! array. 
+   !PressureLoop: do kkk=1, nlev
+   !   if(ipressure .le. pint(kkk) .and. ipressure .gt. pint(kkk+1) ) then
+   !   level_index = kkk
+   !   exit PressureLoop
+   !   endif
+   !enddo PressureLoop
 
    end Function GetClosestLevel
 

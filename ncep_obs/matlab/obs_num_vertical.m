@@ -17,16 +17,14 @@ function obs_num_vertical(ddir)
 % $Source$
 % $Name$
 
-% This ensures the datafiles exist. 
+% Ensures the specified directory is searched first.
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'ObsDiagAtts');
-   Tfname = fullfile(ddir,'Tges_ver_ave.dat');
-   Wfname = fullfile(ddir,'Wges_ver_ave.dat');
+   startpath = addpath(ddir);
 else
-   datafile = 'ObsDiagAtts';
-   Tfname = 'Tges_ver_ave.dat';
-   Wfname = 'Wges_ver_ave.dat'; 
+   startpath = path;
 end
+
+datafile = 'ObsDiagAtts';
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
@@ -36,180 +34,136 @@ if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp   = datenum(obs_year,obs_month,obs_day);
+   temp = datenum(obs_year,obs_month,obs_day);
    toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
-   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
+   day1 = datestr(t1+toff+iskip,'yyyy-mm-dd HH');
+   dayN = datestr(tN+toff,      'yyyy-mm-dd HH');
+   pmax = psurface;
+   pmin = ptop;
+
+   % There is no vertical distribution of surface pressure
+
+   varnames = {'T','W','Q'};
+
+   Regions = {'Northern Hemisphere', ...
+              'Southern Hemisphere', ...
+              'Tropics', 'North America'};
+   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
-if ( exist(Tfname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.',Tfname))
-end
-if ( exist(Wfname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.',Wfname))
-end
+% set up a structure with all static plotting components
 
-linewidth = 2.0;
-
-%----------------------------------------------------------------------
-figure(1); clf;   % Temperature
-%----------------------------------------------------------------------
-switch obs_select
-   case 1,
-      string1 = sprintf('%s (all data)', 'T');
-   case 2, 
-      string1 = sprintf('%s (RaObs)', 'T');
-   otherwise,
-      string1 = sprintf('%s (ACARS,SATWND)', 'T');
-end
-
-pv      = load(Tfname); p_v = SqueezeMissing(pv);
-
-yp_v     = p_v(:,1); 
-nT_NH    = p_v(:,3);
-nT_SH    = p_v(:,5);
-nT_TR    = p_v(:,7);
-nT_NA    = p_v(:,9);
-
-subplot('position', [0.1,0.6,0.35,0.35])
-plot(nT_NH, yp_v, 'gs-', 'LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('Northern Hemisphere','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure (hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-subplot('position', [0.6,0.6,0.35,0.35])
-plot(nT_SH, yp_v, 'bd-', 'LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('Southern Hemisphere','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure (hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-subplot('position', [0.1,0.1,0.35,0.35])
-plot(nT_TR, yp_v, 'ro-', 'LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('Tropics','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure (hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-subplot('position', [0.6,0.1,0.35,0.35])
-plot(nT_NA, yp_v, 'k+-', 'LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('North America','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure (hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-main = sprintf('# of %s %s -> %s',string1,day1,dayN);
-
-CenterAnnotation(main)
-
-% disp('Pausing, hit any key ...'); pause
-print -dpsc t_num_vert.ps
+plotdat.toff      = toff;
+plotdat.linewidth = 2.0;
+plotdat.pmax      = pmax;
+plotdat.pmin      = pmin;
+plotdat.ylabel    = 'Pressure (hPa)';
+plotdat.xlabel    = 'observation count';
 
 %----------------------------------------------------------------------
-figure(2); clf; % All regions on one large figure
+% Loop around observation types
 %----------------------------------------------------------------------
 
-h = plot(nT_NH, yp_v, 'gs-', ...
-         nT_SH, yp_v, 'bd-', ...
-         nT_TR, yp_v, 'ro-', ...
-         nT_NA, yp_v, 'k+-', 'LineWidth', linewidth);
-grid
-set(gca,'YDir', 'reverse')
-title(main,'FontSize',14,'FontWeight','bold')
-ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
+for ivar = 1:length(varnames),
 
-h = legend('Northern Hemisphere','Southern Hemisphere', ...
-       'Tropics','North America','Location','SouthEast');
-legend(h,'boxoff')
+   % set up a structure with all the plotting components
 
-print -dpsc -append t_num_vert.ps
+   plotdat.varname = varnames{ivar};
 
-%----------------------------------------------------------------------
-figure(3); clf; % Wind Observations ... Individual regions 
-%----------------------------------------------------------------------
-switch obs_select
-   case 1,
-      string1 = sprintf('%s (all data)', 'T');
-   case 2, 
-      string1 = sprintf('%s (RaObs)', 'T');
-   otherwise,
-      string1 = sprintf('%s (ACARS,SATWND)', 'T');
+   switch obs_select
+      case 1,
+         string1 = sprintf('%s (all data)',     plotdat.varname);
+      case 2, 
+         string1 = sprintf('%s (RaObs)',        plotdat.varname);
+      otherwise,
+         string1 = sprintf('%s (ACARS,SATWND)', plotdat.varname);
+   end
+
+   plotdat.fname = sprintf('%sges_ver_ave.dat',varnames{ivar});
+   plotdat.main  = sprintf('%s %s -- %s',string1,day1,dayN);
+
+   % plot by region
+
+   page1 = 2*(ivar-1)+1;
+   page2 = 2*(ivar-1)+2;
+   figure(page1); clf;
+
+   for iregion = 1:length(Regions),
+      plotdat.title  = Regions{iregion};
+      plotdat.region = iregion;
+      plotdat.ptype  = ptypes{iregion};
+      [nobs,obslevels] = myplot(plotdat);
+      NbyRegion(:,iregion) = nobs;
+   end
+
+   CenterAnnotation(plotdat.main)
+   BottomAnnotation(plotdat.fname)
+
+   psfname = sprintf('%s_num_vert.ps',plotdat.varname);
+   print(page1,'-dpsc',psfname);
+
+   % All regions on one figure
+
+   figure(page2); clf;
+
+   h = plot(NbyRegion(:,1), obslevels, ptypes{1}, ...
+            NbyRegion(:,2), obslevels, ptypes{2}, ...
+            NbyRegion(:,3), obslevels, ptypes{3}, ...
+            NbyRegion(:,4), obslevels, ptypes{4}, 'LineWidth', plotdat.linewidth);
+   grid
+   ax = axis; 
+   ax(3) = plotdat.pmin; 
+   ax(4) = plotdat.pmax; 
+   axis(ax)
+   set(gca,'YDir', 'reverse')
+   title(plotdat.main, 'FontSize', 12, 'FontWeight', 'bold')
+   ylabel(plotdat.ylabel, 'fontsize', 10)
+   xlabel(plotdat.xlabel, 'fontsize', 10)
+   
+   h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, ...
+              'Location','Best');
+   legend(h,'boxoff');
+
+   BottomAnnotation(plotdat.fname)
+
+   str = sprintf('print -f%d -dpsc -append %s',page2,psfname);
+   eval(str)
+
 end
 
-pv   = load(Wfname); p_v = SqueezeMissing(pv);
-
-yp_v  = p_v(:,1);
-nW_NH = p_v(:,3);
-nW_SH = p_v(:,5);
-nW_TR = p_v(:,7);
-nW_NA = p_v(:,9);
-
-subplot('position', [0.1,0.6,0.35,0.35])
-plot(nW_NH ,yp_v,'gs-','LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('Northern Hemisphere','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-subplot('position', [0.6,0.6,0.35,0.35])
-plot(nW_SH ,yp_v,'bd-','LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('Southern Hemisphere','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-subplot('position', [0.1,0.1,0.35,0.35])
-plot(nW_TR ,yp_v,'ro-','LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('Tropics','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-subplot('position', [0.6,0.1,0.35,0.35])
-plot(nW_NA ,yp_v,'k+-','LineWidth', linewidth)
-grid
-set(gca,'YDir', 'reverse')
-title('North America','fontsize', 12,'FontWeight','bold')
-ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
-
-main = sprintf('# of %s %s -> %s',string1,day1,dayN);
-
-CenterAnnotation(main)
-
-print -dpsc w_num_vert.ps
+path(startpath); % restore MATLABPATH to original setting
 
 %----------------------------------------------------------------------
-figure(4); clf; % All regions on one large figure
+% 'Helper' functions
 %----------------------------------------------------------------------
+function [Nobs,levels] = myplot(plotdat)
 
-h = plot(nT_NH, yp_v, 'gs-', ...
-         nT_SH, yp_v, 'bd-', ...
-         nT_TR, yp_v, 'ro-', ...
-         nT_NA, yp_v, 'k+-', 'LineWidth', linewidth);
-grid
-set(gca,'YDir', 'reverse')
-title(main,'FontSize',14,'FontWeight','bold')
-ylabel('Pressure(hPa)', 'fontsize', 10)
-xlabel('observation count','fontsize',10)
+if ( exist(plotdat.fname,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.',plotdat.fname))
+end
 
-h = legend('Northern Hemisphere','Southern Hemisphere', ...
-       'Tropics','North America','Location','SouthEast');
-legend(h,'boxoff')
+regionindex = 3 + 2*(plotdat.region - 1);
 
-print -dpsc -append w_num_vert.ps
+datmat = load(plotdat.fname);
+obsmat = SqueezeMissing(datmat);
+levels = obsmat(:,1); 
+Nobs   = obsmat(:,regionindex); 
+
+subplot(2,2,plotdat.region)
+   plot(Nobs, levels, plotdat.ptype , 'LineWidth', plotdat.linewidth)
+   grid
+   ax = axis; 
+   ax(3) = plotdat.pmin; 
+   ax(4) = plotdat.pmax; 
+   axis(ax)
+   set(gca,'YDir', 'reverse')
+   title( plotdat.title,  'fontsize', 12,'FontWeight','bold')
+   ylabel(plotdat.ylabel, 'fontsize', 10)
+   xlabel(plotdat.xlabel, 'fontsize', 10)
+
 
 
 function y = SqueezeMissing(x)
@@ -223,10 +177,24 @@ else
   y(missing) = NaN;
 end
 
-function CenterAnnotation(top)
+
+
+function CenterAnnotation(main)
 subplot('position',[0.48 0.48 0.04 0.04])
 axis off
-h = text(0.5,0.5,top);
-set(h,'HorizontalAlignment','center','VerticalAlignment','bottom', ...
+h = text(0.5,0.5,main);
+set(h,'HorizontalAlignment','center','VerticalAlignment','bottom',...
    'FontSize',12,'FontWeight','bold')
 
+
+
+function BottomAnnotation(main)
+% annotates the directory containing the data being plotted
+subplot('position',[0.48 0.01 0.04 0.04])
+axis off
+bob = which(main);
+[pathstr,name,ext,versn] = fileparts(bob);
+h = text(0.0,0.5,pathstr);
+set(h,'HorizontalAlignment','center', ...
+      'VerticalAlignment','middle',...
+      'FontSize',8)

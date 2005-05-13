@@ -15,18 +15,14 @@ function fit_ens_spread_time(ddir)
 % $Source$
 % $Name$
 
-% This ensures the directory with the datafiles
-% is in Matlab's search path.
-
-% This ensures the directory with the datafiles 
-% is in Matlab's search path.
-
+% Ensures the specified directory is searched first.
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'ObsDiagAtts');
+   startpath = addpath(ddir);
 else
-   datafile = 'ObsDiagAtts';
-   ddir = [];
+   startpath = path;
 end
+
+datafile = 'ObsDiagAtts';
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
@@ -38,31 +34,43 @@ if ( exist(datafile) == 2 )
 
    temp = datenum(obs_year,obs_month,obs_day);
    toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff,'yyyy-mmm-dd HH');
-   dayN = datestr(tN+toff,'yyyy-mmm-dd HH');
+   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
+   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
+   pmax = psurface;
+   pmin = ptop;
+
+   % There is no vertical distribution of surface pressure
+
+   varnames = {'T','W','Q','P'};
+
+   Regions = {'Northern Hemisphere', ...
+              'Southern Hemisphere', ...
+              'Tropics', 'North America'};
+   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
+% set up a structure with all static plotting components
+
+plotdat.toff      = toff;
+plotdat.level     = level;
+plotdat.pmax      = pmax;
+plotdat.pmin      = pmin;
+plotdat.linewidth = 2.0;
+plotdat.flavor    = 'Ens Spread';
+plotdat.ylabel    = 'RMSE'; 
+
 %----------------------------------------------------------------------
 % Loop around observation types
 %----------------------------------------------------------------------
-
-varnames = {'T','W','Q','P'};
-Regions = {'Northern Hemisphere', ...
-           'Southern Hemisphere', ...
-           'Tropics', 'North America'};
 
 for ivar = 1:length(varnames),
 
    % Set up a structure with all the plotting components
 
-   plotdat.level   = level;
-   plotdat.flavor  = 'Ens Spread';
-   plotdat.ylabel  = 'RMSE';
    plotdat.varname = varnames{ivar};
-   plotdat.toff    = toff;
 
    switch obs_select
       case 1,
@@ -75,12 +83,12 @@ for ivar = 1:length(varnames),
 
    switch varnames{ivar}
       case{'P'}
-         ges = fullfile(ddir,sprintf('%sges_times.dat',varnames{ivar}));
-         anl = fullfile(ddir,sprintf('%sanl_times.dat',varnames{ivar}));
+         ges  = sprintf('%sges_times.dat',varnames{ivar});
+         anl  = sprintf('%sanl_times.dat',varnames{ivar});
          main = sprintf('%s %s',plotdat.flavor,obsstring);
       otherwise
-         ges = fullfile(ddir,sprintf('%sges_times_%04dmb.dat',varnames{ivar},level));
-         anl = fullfile(ddir,sprintf('%sanl_times_%04dmb.dat',varnames{ivar},level));
+         ges  = sprintf('%sges_times_%04dmb.dat',varnames{ivar},level);
+         anl  = sprintf('%sanl_times_%04dmb.dat',varnames{ivar},level);
          main = sprintf('%s %s %d hPa',plotdat.flavor,obsstring,plotdat.level);
    end
 
@@ -98,6 +106,7 @@ for ivar = 1:length(varnames),
    end
 
    CenterAnnotation(main);  % One title in the middle
+   BottomAnnotation(ges);   % directory in middle, bottom
 
    % create a postscript file
 
@@ -105,6 +114,8 @@ for ivar = 1:length(varnames),
    print(ivar,'-dpsc',psfname);
 
 end
+
+path(startpath); % restore MATLABPATH to original setting
 
 %----------------------------------------------------------------------
 % 'Helper' functions
@@ -160,3 +171,16 @@ axis off
 h = text(0.5,0.5,main);
 set(h,'HorizontalAlignment','center','VerticalAlignment','bottom',...
    'FontSize',12,'FontWeight','bold')
+
+
+
+function BottomAnnotation(main)
+% annotates the directory containing the data being plotted
+subplot('position',[0.48 0.01 0.04 0.04])
+axis off
+bob = which(main);
+[pathstr,name,ext,versn] = fileparts(bob);
+h = text(0.0,0.5,pathstr);
+set(h,'HorizontalAlignment','center', ...
+      'VerticalAlignment','middle',...
+      'FontSize',8)

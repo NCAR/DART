@@ -18,137 +18,139 @@ function fit_ens_mean_vertical(ddir)
 % $Source$
 % $Name$
 
-% This ensures the directory with the datafiles 
-% is in Matlab's search path.
-
-% Ensures the datafiles exist.
+% Ensures the specified directory is searched first.
 if ( nargin > 0 )
-   datafile = fullfile(ddir,'ObsDiagAtts');
-   TGuessFname = fullfile(ddir,'Tges_ver_ave.dat');
-   TAnalyFname = fullfile(ddir,'Tanl_ver_ave.dat');
-   WGuessFname = fullfile(ddir,'Wges_ver_ave.dat');
-   WAnalyFname = fullfile(ddir,'Wanl_ver_ave.dat');
+   startpath = addpath(ddir);
 else
-   datafile = 'ObsDiagAtts';
-   TGuessFname = 'Tges_ver_ave.dat';
-   TAnalyFname = 'Tanl_ver_ave.dat';
-   WGuessFname = 'Wges_ver_ave.dat';
-   WAnalyFname = 'Wanl_ver_ave.dat';
-end
-if ( exist(TGuessFname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.', TGuessFname))
-end
-if ( exist(WGuessFname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.', WGuessFname))
-end
-if ( exist(TAnalyFname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.', TAnalyFname))
-end
-if ( exist(WAnalyFname,'file') ~= 2 )
-   error(sprintf('%s does not seem to exist.', WAnalyFname))
+   startpath = path;
 end
 
-% subplot('position', [0.1,0.6,0.35,0.35])  ==? subplot(2,2,1)
-% subplot('position', [0.6,0.6,0.35,0.35])  ==? subplot(2,2,2)
-% subplot('position', [0.1,0.1,0.35,0.35])  ==? subplot(2,2,3)
-% subplot('position', [0.6,0.1,0.35,0.35])  ==? subplot(2,2,4)
+datafile    = 'ObsDiagAtts';
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
 %----------------------------------------------------------------------
-  
+
 if ( exist(datafile) == 2 )
 
    eval(datafile)
 
    temp = datenum(obs_year,obs_month,obs_day);
    toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
-   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
+   day1 = datestr(t1+toff+iskip,'yyyy-mm-dd HH');
+   dayN = datestr(tN+toff      ,'yyyy-mm-dd HH');
+   pmax = psurface;
+   pmin = ptop;
+
+   % There is no vertical distribution of surface pressure
+
+   varnames = {'T','W','Q'};
+
+   Regions = {'Northern Hemisphere', ...
+              'Southern Hemisphere', ...
+              'Tropics', 'North America'};
+   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
+% set up a structure with all static plotting components
+
+plotdat.toff      = toff;
+plotdat.linewidth = 2.0;
+plotdat.pmax      = pmax;
+plotdat.pmin      = pmin;
+plotdat.ylabel    = 'Pressure (hPa)';
+plotdat.xlabel    = 'RMSE';
+
 main = sprintf('Ensemble Mean %s - %s',day1,dayN);
 
 %----------------------------------------------------------------------
-figure(1); clf; % Temperature
+% Loop around observation types
 %----------------------------------------------------------------------
 
-pv = load(TGuessFname); p_v = SqueezeMissing(pv); yp_v = p_v(:,1);
-av = load(TAnalyFname); a_v = SqueezeMissing(av); ya_v = a_v(:,1);
+for ivar = 1:length(varnames),
 
-ylab   = 'Pressure (hPa)';
-xlab   = 'Temperature RMSE';
+   % set up a structure with all the plotting components
 
-% Try to figure out intelligent axis limits
-xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];      % concatenate all data
-xlims   = [0.0 max(xdatarr(:))]; % limits of all data
-ydatarr = [p_v(:,1) a_v(:,1)];               % concatenate all data
-ylims   = [min(ydatarr(:)) max(ydatarr(:))]; % limits of all data
-axlims  = [floor(xlims(1)) ceil(xlims(2)) round(ylims)];
+   plotdat.varname = varnames{ivar};
 
-region = 'Northern Hemisphere';
-myplot(1, p_v(:,2), yp_v, a_v(:,2), ya_v, xlab, ylab, region, axlims)
-region = 'Southern Hemisphere';
-myplot(2, p_v(:,4), yp_v, a_v(:,4), ya_v, xlab, ylab, region, axlims)
-region = 'Tropics';
-myplot(3, p_v(:,6), yp_v, a_v(:,6), ya_v, xlab, ylab, region, axlims)
-region = 'North America';
-myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, axlims)
+   switch obs_select
+      case 1,
+         string1 = sprintf('%s Ens Mean (all data)',     plotdat.varname);
+      case 2,
+         string1 = sprintf('%s Ens Mean (RaObs)',        plotdat.varname);
+      otherwise, 
+         string1 = sprintf('%s Ens Mean (ACARS,SATWND)', plotdat.varname);
+   end
 
-CenterAnnotation(main)
+   plotdat.ges  = sprintf('%sges_ver_ave.dat',varnames{ivar});
+   plotdat.anl  = sprintf('%sanl_ver_ave.dat',varnames{ivar});
+   plotdat.main = sprintf('%s %sZ -- %sZ',string1,day1,dayN);
 
-%----------------------------------------------------------------------
-figure(2); clf; % Windspeed
-%----------------------------------------------------------------------
+   % plot by region
 
-pv = load(WGuessFname); p_v = SqueezeMissing(pv); yp_v = p_v(:,1);
-av = load(WAnalyFname); a_v = SqueezeMissing(av); ya_v = a_v(:,1);
+   figure(ivar); clf;
 
-ylab   = 'Pressure (hPa)';
-xlab   = 'Windspeed RMSE';
+   for iregion = 1:length(Regions),
+      plotdat.title  = Regions{iregion};
+      plotdat.region = iregion;
+      myplot(plotdat);
+   end
 
-% Try to figure out intelligent axis limits
-xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];      % concatenate all data
-xlims   = [0.0 max(xdatarr(:))]; % limits of all data
-ydatarr = [p_v(:,1) a_v(:,1)];               % concatenate all data
-ylims   = [min(ydatarr(:)) max(ydatarr(:))]; % limits of all data
-axlims  = [floor(xlims(1)) ceil(xlims(2)) round(ylims)];
+   CenterAnnotation(plotdat.main)
+   BottomAnnotation(plotdat.ges)
 
-region = 'Northern Hemisphere';
-myplot(1, p_v(:,2), yp_v, a_v(:,2), ya_v, xlab, ylab, region, axlims)
-region = 'Southern Hemisphere';
-myplot(2, p_v(:,4), yp_v, a_v(:,4), ya_v, xlab, ylab, region, axlims) 
-region = 'Tropics';
-myplot(3, p_v(:,6), yp_v, a_v(:,6), ya_v, xlab, ylab, region, axlims) 
-region = 'North America';
-myplot(4, p_v(:,8), yp_v, a_v(:,8), ya_v, xlab, ylab, region, axlims)
+   % create a postscript file
 
-CenterAnnotation(main)
-
-print -f1 -dpsc t_vertical.ps 
-print -f2 -dpsc w_vertical.ps
+   psfname = sprintf('%s_vertical.ps',plotdat.varname);
+   print(ivar,'-dpsc',psfname);
 
 
-
-function myplot(figpos,gx,gy,ax,ay,xlab,ylab,region,axlims)
-
-subplot(2,2,figpos)
-plot(gx,gy,'k+-',ax,ay,'ro-','LineWidth',1.5)
-axis(axlims)
-grid
-set(gca,'YDir', 'reverse')
-title({region}, 'FontSize', 14, 'FontWeight', 'bold' )
-ylabel(ylab, 'fontsize', 10)
-xlabel(xlab, 'fontsize', 10)
-if   isempty(strfind(lower(xlab),'wind')) 
-   h = legend('guess', 'analysis','Location','East');
-else
-   h = legend('guess', 'analysis','Location','SouthEast');
 end
-legend(h,'boxoff');
+
+path(startpath); % restore MATLABPATH to original setting
+
+%----------------------------------------------------------------------
+% 'Helper' functions
+%----------------------------------------------------------------------
+
+function myplot(plotdat)
+regionindex = 2 + 2*(plotdat.region -1);
+pv = load(plotdat.ges); p_v = SqueezeMissing(pv);
+av = load(plotdat.anl); a_v = SqueezeMissing(av);
+guessY = p_v(:,1);
+analyY = a_v(:,1);
+guessX = p_v(:,regionindex);
+analyX = a_v(:,regionindex);
+
+% Try to figure out intelligent axis limits
+xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];  % concatenate all data
+xlims   = [0.0 max(xdatarr(:))];         % limits of all data
+ylims   = [plotdat.pmin plotdat.pmax];   % from obs_diag.f90 
+axlims  = [floor(xlims(1)) ceil(xlims(2)) ylims];
+
+% sometimes there is no valid data, must patch axis limits
+if (~isfinite(axlims(2)))
+   axlims(2) =  1;
+end
+
+subplot(2,2,plotdat.region)
+   plot(guessX,guessY,'k+-',analyX,analyY,'ro-','LineWidth',plotdat.linewidth)
+   axis(axlims)
+   grid
+   set(gca,'YDir', 'reverse')
+   title( plotdat.title,  'FontSize', 12, 'FontWeight', 'bold' )
+   ylabel(plotdat.ylabel, 'FontSize', 10)
+   xlabel(plotdat.xlabel, 'FontSize', 10)
+   if   isempty(strfind(lower(plotdat.varname),'w')) 
+      h = legend('guess', 'analysis','Location','East');
+   else
+      h = legend('guess', 'analysis','Location','SouthEast');
+   end
+   legend(h,'boxoff');
+
 
 
 function y = SqueezeMissing(x)
@@ -164,10 +166,22 @@ end
 
 
 
-function CenterAnnotation(top)
+function CenterAnnotation(main)
 subplot('position',[0.48 0.48 0.04 0.04])
 axis off
-h = text(0.5,0.5,top);
+h = text(0.5,0.5,main);
 set(h,'HorizontalAlignment','center','VerticalAlignment','bottom',...
    'FontSize',12,'FontWeight','bold')
 
+
+
+function BottomAnnotation(main)
+% annotates the directory containing the data being plotted
+subplot('position',[0.48 0.01 0.04 0.04])
+axis off
+bob = which(main);
+[pathstr,name,ext,versn] = fileparts(bob);
+h = text(0.0,0.5,pathstr);
+set(h,'HorizontalAlignment','center', ...
+      'VerticalAlignment','middle',...
+      'FontSize',8)
