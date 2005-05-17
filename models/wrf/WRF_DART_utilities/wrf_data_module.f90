@@ -19,8 +19,8 @@ use netcdf
 implicit none
 private
 
-public wrf_data, wrf_bdy_data, wrf_open_and_alloc, wrfbdy_open_and_alloc, &
-       wrf_dealloc, wrfbdy_dealloc, wrf_io, wrfbdy_io, set_wrf_date, get_wrf_date
+public :: wrf_data, wrf_bdy_data, wrf_open_and_alloc, wrfbdy_open_and_alloc, &
+          wrf_dealloc, wrfbdy_dealloc, wrf_io, wrfbdy_io, set_wrf_date, get_wrf_date
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -234,7 +234,7 @@ if(wrf%n_moist > 4) then
 endif
 
 if(wrf%n_moist > 5) then
-   call check ( nf90_inq_varid(wrf%ncid, "QGRAUPEL", wrf%qg_id))
+   call check ( nf90_inq_varid(wrf%ncid, "QGRAUP", wrf%qg_id))
    allocate(wrf%qg(wrf%we,wrf%sn,wrf%bt))
 endif
 
@@ -1070,14 +1070,16 @@ else
       call check( nf90_get_var(wrf%ncid, wrf%v10_id,  wrf%v10,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%t2_id,  wrf%t2,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%q2_id,  wrf%q2,  start = (/ 1, 1, lngth /)))
-      istatus = nf90_get_var(wrf%ncid, wrf%ps_id,  wrf%ps,  start = (/ 1, 1, lngth /))
-      if(istatus /= nf90_noerr) then
+      istatus = nf90_inq_varid(wrf%ncid, "PSFC", wrf%ps_id)
+      if(istatus == nf90_noerr) then
+         call check( nf90_get_var(wrf%ncid, wrf%ps_id,  wrf%ps,  start = (/ 1, 1, lngth /)))
+      else
          call error_handler(E_MSG,'PSFC', &
               trim(nf90_strerror(istatus)), source, revision, revdate)
-      call error_handler(E_MSG,'wrf_io', &
-         'sets PSFC to zero', source, revision, revdate)
-      wrf%ps(:,:) = 0.0_r8
-   endif
+         call error_handler(E_MSG,'wrf_io', &
+              'sets PSFC to zero', source, revision, revdate)
+         wrf%ps(:,:) = 0.0_r8
+      endif
    endif
 endif
 

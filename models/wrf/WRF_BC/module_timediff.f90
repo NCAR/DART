@@ -17,7 +17,7 @@ MODULE module_timediff
   implicit none
   private
 
-public time_diff, find_time_index
+public :: time_diff, find_time_index
 
 CONTAINS
 
@@ -76,8 +76,8 @@ SUBROUTINE find_time_index(timelist, time_to_find, ntimes, itime)
 !##################################################
   implicit none
 
-  character(len=80), dimension(:), intent(in)  :: timelist
-  character(len=80),               intent(in)  :: time_to_find
+  character(len=19), dimension(:), intent(in)  :: timelist
+  character(len=19),               intent(in)  :: time_to_find
   integer,                         intent(in)  :: ntimes
   integer,                         intent(out) :: itime
 

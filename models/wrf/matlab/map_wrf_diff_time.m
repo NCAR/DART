@@ -125,7 +125,7 @@ if strcmp(field_name,'PH')
 end
 if strcmp(field_name,'T')
    var_units = ' (K)';
-   iso = [0.25:0.5:5.25];
+   iso = [250:5:310];
 end
 if strcmp(field_name,'MU')
    var_units = ' (Pa)';
@@ -155,8 +155,9 @@ figure('Position',[1 scrsz(4)/2 0.8*scrsz(4) 0.8*scrsz(4)])
 
 m = ceil(sqrt(ftime-stime+1));
 
-iso = [-3:0.25:3];
-%iso = [260:5:320];
+%iso = [-3:0.25:3];
+%iso = [0.1:0.2:5.25];
+%iso = [0.01:0.02:5.25];
 
 pane = 1;
 
@@ -379,12 +380,16 @@ for itime = stime:ftime
    plotm(usalo('statebvec'),'color',[0 0 0]);
    plotm(usalo('conusvec'),'color',[0 0 0]);
 
-% axis( [-0.6 0.6 .2 1.2 ]) % This works pretty well for present CONUS domain
-axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
+%axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
+   [xlim ylim]=mfwdtran([xlat(1,1) xlat(sn,we)],[xlon(1,1) xlon(sn,we)]);
+   set(gca,'xlim',[min(xlim(:)) max(xlim(:))]);
+   set(gca,'ylim',[min(ylim(:)) max(ylim(:))]);
 
    if strcmp(field_name,'VECT')
 
       scale = ceil(we/20);
+
+% legend
 
       quiverm(xlat([1:scale:sn],[1:scale:we]),xlon([1:scale:sn],[1:scale:we]), ...
 	      fieldv([1:scale:sn],[1:scale:we]),fieldu([1:scale:sn],[1:scale:we]),'k')
@@ -392,6 +397,8 @@ axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
    else
 
       if min(min(field)) ~= max(max(field))
+
+%         field = field/max(max(field));
 
 %         if (max(max(field)) > min(iso)) & (min(min(field)) < max(iso))
 %            [C h] = contourm(xlat,xlon,field, iso, 'r','LineWidth',2);

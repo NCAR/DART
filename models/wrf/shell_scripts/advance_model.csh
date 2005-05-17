@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh -f
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -13,12 +13,14 @@
 # where the model advance is executed as a separate process.
 
 # This script copies the necessary files into the temporary directory
-# for a model run. It assumes that there is ${PBS_O_WORKDIR}/WRF directory
+# for a model run. It assumes that there is ${WORKDIR}/WRF directory
 # where boundary conditions files reside.
+
+set infl = 0.0
 
 set days_in_month = ( 31 28 31 30 31 30 31 31 30 31 30 31 )
 
-set PBS_O_WORKDIR = $1
+set WORKDIR = $1
 set element = $2
 set temp_dir = $3
 
@@ -26,56 +28,81 @@ set temp_dir = $3
 
 # set verbose
 
-rm -rf $temp_dir
-mkdir  $temp_dir
-cd     $temp_dir
+rm -rf   $temp_dir
+mkdir -p $temp_dir
+cd       $temp_dir
 
 # Copy or link the required files to the temp directory
 
-mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
-cp ${PBS_O_WORKDIR}/wrfinput_d0? .
-                   # Provides auxilliary info not avail. from DART state vector
-ln -s ${PBS_O_WORKDIR}/input.nml .
+ln -s ${WORKDIR}/input.nml .
 
-ln -s  ${PBS_O_WORKDIR}/RRTM_DATA .
-ln -s  ${PBS_O_WORKDIR}/LANDUSE.TBL .
-ln -s  ${PBS_O_WORKDIR}/VEGPARM.TBL .
-ln -s  ${PBS_O_WORKDIR}/SOILPARM.TBL .
-ln -s  ${PBS_O_WORKDIR}/GENPARM.TBL .
-ln -s  ${PBS_O_WORKDIR}/wrf.exe .
+ln -s ${WORKDIR}/RRTM_DATA .
+ln -s ${WORKDIR}/LANDUSE.TBL .
+ln -s ${WORKDIR}/VEGPARM.TBL .
+ln -s ${WORKDIR}/SOILPARM.TBL .
+ln -s ${WORKDIR}/GENPARM.TBL .
+ln -s ${WORKDIR}/wrf.exe .
 
 hostname > nfile
 hostname >> nfile
-###ln -s  ${PBS_O_WORKDIR}/nfile$element nfile
+
+cp -pv ${WORKDIR}/wrfinput_d0? .
+                   # Provides auxilliary info not avail. from DART state vector
+
+if ( -e ${WORKDIR}/assim_model_state_ic_mean ) then
+   ln -s ${WORKDIR}/assim_model_state_ic_mean dart_wrf_vector
+   echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
+   cp -pv wrfinput_d01 wrfinput_mean
+endif
+
+mv -v ${WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
 
 # Convert DART to wrfinput
 
-echo ".true." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
+echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
+
+rm dart_wrf_vector
 
 set time = `head -1 wrf.info`
 set targsecs = $time[1]
 set targdays = $time[2]
-set targkey = `expr $targdays \* 86400`
-set targkey = `expr $targkey \+ $targsecs`
+set targkey = `echo "$targdays * 86400 + $targsecs" | bc`
 
 set time = `head -2 wrf.info | tail -1`
 set wrfsecs = $time[1]
 set wrfdays = $time[2]
-set wrfkey = `expr $wrfdays \* 86400`
-set wrfkey = `expr $wrfkey \+ $wrfsecs`
+set wrfkey = `echo "$wrfdays * 86400 + $wrfsecs" | bc`
+
+# If model blew up in the previous cycle, relax BC tendency toward mean.
+
+if ( -e $WORKDIR/blown_${wrfdays}_${wrfsecs}.out ) then
+   set MBLOWN = `cat $WORKDIR/blown_${wrfdays}_${wrfsecs}.out`
+   set NBLOWN = `cat $WORKDIR/blown_${wrfdays}_${wrfsecs}.out | wc -l`
+   set BLOWN = 0
+   set imem = 1
+   while ( $imem <= $NBLOWN )
+      if ( $MBLOWN[$imem] == $element ) then
+         @ BLOWN ++
+      endif
+      @ imem ++
+   end
+   if ( $BLOWN > 0 ) then
+      set infl = 0.0
+   endif
+endif
 
 # Find all BC's file available and sort them with "keys".
 
 #--1st, check if LBCs are "specified" (in which case wrfbdy files are req'd)
-set SPEC_BC = `grep specified ${PBS_O_WORKDIR}/namelist.input | grep true | cat | wc -l`
+set SPEC_BC = `grep specified ${WORKDIR}/namelist.input | grep true | cat | wc -l`
 
 if ($SPEC_BC > 0) then
-   ls ${PBS_O_WORKDIR}/WRF/wrfbdy_*_$element > bdy.list
+   ls ${WORKDIR}/WRF/wrfbdy_*_$element > bdy.list
 else
-   echo ${PBS_O_WORKDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element > bdy.list
+   echo ${WORKDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element > bdy.list
 endif
 
-echo ${PBS_O_WORKDIR}/WRF/wrfbdy_ > str.name
+echo ${WORKDIR}/WRF/wrfbdy_ > str.name
 sed 's/\//\\\//g' < str.name > str.name2
 set STRNAME = `cat str.name2`
 set COMMAND = s/`echo ${STRNAME}`//
@@ -88,8 +115,7 @@ set ifile = 1
 set iday = 1
 set isec = 2
 while ( $ifile <= $num_files )
-   set key = `expr $items[$iday] \* 86400`
-   set key = `expr $key \+ $items[$isec]`
+   set key = `echo "$items[$iday] * 86400 + $items[$isec]" | bc`
    echo $key >> keys
    @ ifile ++
    set iday = `expr $iday \+ 3`
@@ -139,16 +165,16 @@ end
 
 while ( $wrfkey < $targkey )
 
-   set iday = `expr $keys[$ifile] \/ 86400`
-   set isec = `expr $keys[$ifile] \% 86400`
+   set iday = `echo "$keys[$ifile] / 86400" | bc`
+   set isec = `echo "$keys[$ifile] % 86400" | bc`
 
 # Copy the boundary condition file to the temp directory.
-   cp ${PBS_O_WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+   cp ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
 
    if ( $targkey > $keys[$ifile] ) then
-      set INTERVAL_SS = `expr $keys[$ifile] \- $wrfkey`
+      set INTERVAL_SS = `echo "$keys[$ifile] - $wrfkey" | bc`
    else
-      set INTERVAL_SS = `expr $targkey \- $wrfkey`
+      set INTERVAL_SS = `echo "$targkey - $wrfkey" | bc`
    endif
    set RUN_HOURS   = `expr $INTERVAL_SS \/ 3600`
    set REMAIN      = `expr $INTERVAL_SS \% 3600`
@@ -235,19 +261,17 @@ cat > script.sed << EOF
  end_minute                 = ${END_MIN}, ${END_MIN}, ${END_MIN}
  /end_second/c\
  end_second                 = ${END_SEC}, ${END_SEC}, ${END_SEC}
- /history_interval/c\
- history_interval           = ${INTERVAL_MIN}, ${INTERVAL_MIN}, ${INTERVAL_MIN}
 #  dart_tf_wrf is expecting only a single time per file
  /frames_per_outfile/c\
  frames_per_outfile         = 1, 1, 1,
 EOF
 
  sed -f script.sed \
-    ${PBS_O_WORKDIR}/namelist.input > namelist.input
+    ${WORKDIR}/namelist.input > namelist.input
 
 # Update boundary conditions
 
-   ${PBS_O_WORKDIR}/update_wrf_bc >& out.update_wrf_bc
+   echo $infl | ${WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
    if ( -e rsl.out.integration ) then
       rm -f rsl.*
@@ -259,14 +283,27 @@ EOF
 
    set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
    if ($SUCCESS == 0) then
-      echo $element >> $PBS_O_WORKDIR/blown_${targdays}_${targsecs}.out
+      echo $element >> $WORKDIR/blown_${targdays}_${targsecs}.out
    endif
+
+if ( -e ${WORKDIR}/extract ) then
+   if ( $element == 1 ) then
+      ls wrfout_d0${MY_NUM_DOMAINS}_* > wrfout.list
+      if ( -e ${WORKDIR}/psfc.nc ) then
+         cp ${WORKDIR}/psfc.nc .
+      endif
+      echo `cat wrfout.list | wc -l` | ${WORKDIR}/extract
+      mv psfc.nc ${WORKDIR}/.
+   endif
+endif
 
    set dn = 1
    while ( $dn <= $MY_NUM_DOMAINS )
       mv -f wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
       @ dn ++
    end
+
+   rm -f wrfout*
 
    set START_YEAR  = $END_YEAR
    set START_MONTH = $END_MONTH
@@ -283,14 +320,12 @@ end
 # end big loop here
 #################################################
 
-mv dart_wrf_vector dart_wrf_vector.input
-
 # create new input to DART (taken from "wrfinput")
-echo ".false." | ${PBS_O_WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
+echo ".false." | ${WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
 
-mv -f dart_wrf_vector $PBS_O_WORKDIR/assim_model_state_ud$element
+mv -f dart_wrf_vector $WORKDIR/assim_model_state_ud$element
 
-cd $PBS_O_WORKDIR
+cd $WORKDIR
 #rm -rf $temp_dir
 
 exit

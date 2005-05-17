@@ -48,7 +48,7 @@ private
 
 !  public routines and data for the WRF model
 
-public     get_model_size,                    &
+public ::  get_model_size,                    &
            get_state_meta_data,               &
            model_interpolate,                 &
            get_model_time_step,               &
@@ -60,7 +60,7 @@ public     get_model_size,                    &
 
 !  public stubs 
 
-public     adv_1step,       &
+public ::  adv_1step,       &
            end_model,       &
            init_time,       &
            init_conditions
@@ -130,6 +130,8 @@ TYPE wrf_static_data_for_dart
    integer, dimension(:),   pointer :: var_type
    integer, dimension(:,:), pointer :: land
 
+   integer, dimension(:,:,:,:), pointer :: dart_ind
+
 end type wrf_static_data_for_dart
 
 type wrf_dom
@@ -154,7 +156,7 @@ integer :: io, ierr, iunit
 character (len=80)    :: name
 character (len=1)     :: idom
 logical, parameter    :: debug = .false.
-integer               :: var_id, ind, i, id, dart_index
+integer               :: var_id, ind, i, j, k, id, dart_index, model_type
 
 integer  :: proj_code
 real(r8) :: stdlon,truelat1,truelat2
@@ -201,12 +203,17 @@ endif
 
 call set_calendar_type(calendar_type)
 
-dart_index = 0
+dart_index = 1
 
 do id=1,num_domains
 
    write( idom , '(I1)') id
 
+   if(.not. file_exist('wrfinput_d0'//idom)) then
+      call error_handler(E_ERR,'static_init_model', &
+           'Cannot proceed without wrfinput_d0'//idom, source, revision, revdate)
+   endif
+      
    call check( nf90_open('wrfinput_d0'//idom, NF90_NOWRITE, ncid) )
    if(debug) write(6,*) ' ncid is ',ncid
 
@@ -436,119 +443,172 @@ do id=1,num_domains
    end if
 
 ! indices into 1D array
+   allocate(wrf%dom(id)%dart_ind(wrf%dom(id)%wes,wrf%dom(id)%sns,wrf%dom(id)%bts,19))
    allocate(wrf%dom(id)%var_index(2,wrf%dom(id)%number_of_wrf_variables))
 ! dimension of variables
    allocate(wrf%dom(id)%var_size(3,wrf%dom(id)%number_of_wrf_variables))
+
+   wrf%dom(id)%dart_ind = 0
 
    ind = 1                         ! *** u field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%wes
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bt
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_U) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** v field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sns
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bt
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_V) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** w field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bts
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_W) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** geopotential field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bts
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** theta field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bt
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_T) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** mu field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = 1
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_MU) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** tslb field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_TSLB) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
    ind = ind + 1                   ! *** tsk field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
    wrf%dom(id)%var_size(3,ind) = 1
-   dart_index = dart_index + 1
    wrf%dom(id)%var_index(1,ind) = dart_index
-   dart_index = dart_index - 1 +  &
-        wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-   wrf%dom(id)%var_index(2,ind) = dart_index
+   do k=1,wrf%dom(id)%var_size(3,ind)
+      do j=1,wrf%dom(id)%var_size(2,ind)
+         do i=1,wrf%dom(id)%var_size(1,ind)
+            wrf%dom(id)%dart_ind(i,j,k,TYPE_TSK) = dart_index
+            dart_index = dart_index + 1
+         enddo
+      enddo
+   enddo
+   wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
-   do i = 1, wrf%dom(id)%n_moist
+   do model_type = TYPE_QV, TYPE_QV + wrf%dom(id)%n_moist - 1
       ind = ind + 1                   ! *** moisture field ***
       wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
       wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
       wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bt
-      dart_index = dart_index + 1
       wrf%dom(id)%var_index(1,ind) = dart_index
-      dart_index = dart_index - 1 +  &
-           wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-      wrf%dom(id)%var_index(2,ind) = dart_index
+      do k=1,wrf%dom(id)%var_size(3,ind)
+         do j=1,wrf%dom(id)%var_size(2,ind)
+            do i=1,wrf%dom(id)%var_size(1,ind)
+               wrf%dom(id)%dart_ind(i,j,k,model_type) = dart_index
+               dart_index = dart_index + 1
+            enddo
+         enddo
+      enddo
+      wrf%dom(id)%var_index(2,ind) = dart_index - 1
    enddo
 
    if(wrf%dom(id)%surf_obs ) then
-      do i = 1, 5
+      do model_type = TYPE_U10, TYPE_PS
          ind = ind + 1                   ! *** Surface variable ***
          wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
          wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
          wrf%dom(id)%var_size(3,ind) = 1
-         dart_index = dart_index + 1
          wrf%dom(id)%var_index(1,ind) = dart_index
-         dart_index = dart_index - 1 +  &
-              wrf%dom(id)%var_size(1,ind)*wrf%dom(id)%var_size(2,ind)*wrf%dom(id)%var_size(3,ind)
-         wrf%dom(id)%var_index(2,ind) = dart_index
+         do k=1,wrf%dom(id)%var_size(3,ind)
+            do j=1,wrf%dom(id)%var_size(2,ind)
+               do i=1,wrf%dom(id)%var_size(1,ind)
+                  wrf%dom(id)%dart_ind(i,j,k,model_type) = dart_index
+                  dart_index = dart_index + 1
+               enddo
+            enddo
+         enddo
+         wrf%dom(id)%var_index(2,ind) = dart_index - 1
       enddo
    end if
 
 enddo
 
-wrf%model_size = dart_index
+wrf%model_size = dart_index - 1
 if(debug) write(6,*) ' wrf model size is ',wrf%model_size
 
 contains
@@ -711,7 +771,7 @@ integer             :: which_vert
 integer             :: i, i_u, j, j_v, k, k2, i1,i2
 real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
 real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
-integer             :: in, ii, id
+integer             :: id
 
 real(r8), dimension(2) :: fld
 real(r8), allocatable, dimension(:) :: v_h, v_p
@@ -726,23 +786,37 @@ dom_found = .false.
 
 istatus = 0
 
-xyz_loc(:) = get_location(location)
+xyz_loc = get_location(location)
 which_vert = nint(query_location(location,'which_vert'))
 
 id = num_domains
 do while (.not. dom_found)
 
-   call latlon_to_ij(wrf%dom(id)%proj, xyz_loc(2), xyz_loc(1), xloc,yloc)
-
-   if ( (xloc >= 1 .and. xloc <= wrf%dom(id)%we .and. &
-        yloc >= 1 .and. yloc <= wrf%dom(id)%sn) .or. id == 1 ) then
-
-      dom_found = .true.
+   if( (wrf%dom(id)%proj%hemi == 1. .and. xyz_loc(2) == -90.) .or. &
+       (wrf%dom(id)%proj%hemi == -1. .and. xyz_loc(2) == 90.) .or. &
+       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(xyz_loc(2)) >= 90.0) ) then
 
    else
 
-      id = id - 1
+      call latlon_to_ij(wrf%dom(id)%proj, xyz_loc(2), xyz_loc(1), xloc,yloc)
 
+      if ( (xloc >= 1 .and. xloc <= wrf%dom(id)%we .and. &
+           yloc >= 1 .and. yloc <= wrf%dom(id)%sn) ) then
+
+         dom_found = .true.
+
+      endif
+
+   endif
+
+   if (.not. dom_found) then
+      if (id == 1) then
+         obs_val = missing_r8
+         istatus = 1
+         return
+      else
+         id = id - 1
+      endif
    endif
 
 end do
@@ -775,13 +849,17 @@ if(which_vert == 1) then
    zloc = xyz_loc(3)
    if(debug) print*,' obs is by model level and zloc =',zloc
 else if(which_vert == 2) then
-   ! get model pressure profile
-   call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
-   ! get pressure vertical co-ordinate
-   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
-   if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
-   if(debug) print*,'model pressure profile'
-   if(debug) print*,v_p
+   if(xyz_loc(3) >= 10000.0_r8) then
+      ! get model pressure profile
+      call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
+      ! get pressure vertical co-ordinate
+      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
+      if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
+      if(debug) print*,'model pressure profile'
+      if(debug) print*,v_p
+   else
+      zloc = missing_r8
+   endif
 else if(which_vert == 3) then
    ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
@@ -820,13 +898,19 @@ if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
 
       do k2=1,2
 
-         i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
-         i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
+!!$         i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
+!!$         i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
+
+         i1 = wrf%dom(id)%dart_ind(i_u,j  ,k+k2-1,TYPE_U)
+         i2 = wrf%dom(id)%dart_ind(i_u,j+1,k+k2-1,TYPE_U)
 
          ugrid = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
 
-         i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
-         i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id) 
+!!$         i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
+!!$         i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id) 
+
+         i1 = wrf%dom(id)%dart_ind(i,j_v  ,k+k2-1,TYPE_V)
+         i2 = wrf%dom(id)%dart_ind(i,j_v+1,k+k2-1,TYPE_V) 
 
          vgrid = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
 
@@ -856,8 +940,10 @@ else if( obs_kind == KIND_T ) then                ! T
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-      i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
-      i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
+!!$      i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
+!!$      i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_T)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_T)
       a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
       pres1 = model_pressure_t(i  ,j  ,k,id,x)
       pres2 = model_pressure_t(i+1,j  ,k,id,x)
@@ -866,8 +952,10 @@ else if( obs_kind == KIND_T ) then                ! T
       pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
       fld(1) = (ts0 + a1)*(pres/ps0)**kappa
 
-      i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
-      i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
+!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
+!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_T)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_T)
       a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
       pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
       pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
@@ -917,12 +1005,16 @@ else if( obs_kind == KIND_W ) then                ! W
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_W) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_W)) then
 
-      i1 = get_wrf_index(i,j  ,k,TYPE_W,id)
-      i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
+!!$      i1 = get_wrf_index(i,j  ,k,TYPE_W,id)
+!!$      i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_W)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_W)
       fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
-      i1 = get_wrf_index(i,j  ,k+1,TYPE_W,id)
-      i2 = get_wrf_index(i,j+1,k+1,TYPE_W,id)
+!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_W,id)
+!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_W,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_W)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_W)
       fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -933,46 +1025,44 @@ else if( obs_kind == KIND_W ) then                ! W
 
 else if( obs_kind == KIND_QV ) then                ! QV
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_QV == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
-      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      fld(1) = a1 /(1.0_r8 + a1)
-
-      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
-      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      fld(2) = a1 /(1.0_r8 + a1)
-
-   else
+!!$   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+!!$      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+!!$
+!!$!!$      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
+!!$!!$      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
+!!$      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
+!!$      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
+!!$      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+!!$      fld(1) = a1 /(1.0_r8 + a1)
+!!$
+!!$!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
+!!$!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
+!!$      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
+!!$      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
+!!$      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+!!$      fld(2) = a1 /(1.0_r8 + a1)
+!!$
+!!$   else
 
       fld(:) = missing_r8
 
-   endif
+!!$   endif
 
 else if( obs_kind == KIND_QR) then                ! QR
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_QR == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j  ,k,TYPE_QR,id)
-      i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
+!!$      i1 = get_wrf_index(i,j  ,k,TYPE_QR,id)
+!!$      i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QR)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QR)
       fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
-      i1 = get_wrf_index(i,j  ,k+1,TYPE_QR,id)
-      i2 = get_wrf_index(i,j+1,k+1,TYPE_QR,id)
+!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QR,id)
+!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QR,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QR)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QR)
       fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -1006,38 +1096,41 @@ else if( obs_kind == KIND_P) then                 ! Pressure
 
 else if( obs_kind == KIND_PS) then                ! Surface pressure
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_PS == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
-      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
-      obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      if(debug) print*,' for sfc model val =',obs_val
-
-   else
+!!$   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+!!$      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+!!$      wrf%dom(id)%surf_obs) then
+!!$
+!!$!!$      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
+!!$!!$      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
+!!$      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
+!!$      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_PS)
+!!$      if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
+!!$           x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
+!!$
+!!$         obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+!!$
+!!$      else
+!!$
+!!$         obs_val = missing_r8
+!!$
+!!$      endif
+!!$
+!!$   else
 
       obs_val = missing_r8
 
-   endif
+!!$   endif
 
 else if( obs_kind == KIND_U10 ) then                ! 10-m U-wind
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_U10 == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      wrf%dom(id)%surf_obs) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j,1,TYPE_U10,id)
-      i2 = get_wrf_index(i,j+1,1,TYPE_U10,id)
+!!$      i1 = get_wrf_index(i,j,1,TYPE_U10,id)
+!!$      i2 = get_wrf_index(i,j+1,1,TYPE_U10,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_U10)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_U10)
       obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -1048,16 +1141,14 @@ else if( obs_kind == KIND_U10 ) then                ! 10-m U-wind
 
 else if( obs_kind == KIND_V10 ) then                ! 10-m V-wind
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_V10 == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      wrf%dom(id)%surf_obs) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j,1,TYPE_V10,id)
-      i2 = get_wrf_index(i,j+1,1,TYPE_V10,id)
+!!$      i1 = get_wrf_index(i,j,1,TYPE_V10,id)
+!!$      i2 = get_wrf_index(i,j+1,1,TYPE_V10,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_V10)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_V10)
       obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -1068,16 +1159,14 @@ else if( obs_kind == KIND_V10 ) then                ! 10-m V-wind
 
 else if( obs_kind == KIND_T2 ) then                ! 2-m Temperature
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_T2 == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      wrf%dom(id)%surf_obs) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j,1,TYPE_T2,id)
-      i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
+!!$      i1 = get_wrf_index(i,j,1,TYPE_T2,id)
+!!$      i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
       obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -1088,16 +1177,14 @@ else if( obs_kind == KIND_T2 ) then                ! 2-m Temperature
 
 else if( obs_kind == KIND_Q2 ) then                ! 2-m Specific humidity
 
-   in = 0
-   do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-      if(TYPE_Q2 == wrf%dom(id)%var_type(ii) ) in = ii
-   enddo
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      wrf%dom(id)%surf_obs) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,in) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,in)) then
-
-      i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
-      i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
+!!$      i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
+!!$      i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
       obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -1131,6 +1218,7 @@ if(obs_kind /= KIND_PS .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
    else
       obs_val = missing_r8
    endif
+
 endif
 
 if(obs_val == missing_r8) istatus = 1
@@ -1186,7 +1274,8 @@ do id=1,num_domains
 
       num_total = num_total + 1
       if(num_total <= indmax) then
-         indices(num_total) = get_wrf_index(ii,jj,k,type_u,id)
+!!$         indices(num_total) = get_wrf_index(ii,jj,k,type_u,id)
+         indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_u)
          dist(num_total) = close_dist(i)
       end if
 
@@ -1202,7 +1291,8 @@ do id=1,num_domains
 
       num_total = num_total + 1
       if(num_total <= indmax) then
-         indices(num_total) = get_wrf_index(ii,jj,k,type_v,id)
+!!$         indices(num_total) = get_wrf_index(ii,jj,k,type_v,id)
+         indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_v)
          dist(num_total) = close_dist(i)
       end if
 
@@ -1218,12 +1308,14 @@ do id=1,num_domains
 
       num_total = num_total + 1
       if(num_total <= indmax) then
-         indices(num_total) = get_wrf_index(ii,jj,k,type_w,id)
+!!$         indices(num_total) = get_wrf_index(ii,jj,k,type_w,id)
+         indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_w)
          dist(num_total) = close_dist(i)
       end if
       num_total = num_total + 1
       if(num_total <= indmax) then
-         indices(num_total) = get_wrf_index(ii,jj,k,type_gz,id)
+!!$         indices(num_total) = get_wrf_index(ii,jj,k,type_gz,id)
+         indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_gz)
          dist(num_total) = close_dist(i)
       end if
 
@@ -1233,20 +1325,23 @@ do id=1,num_domains
 
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_mu,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_mu,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_mu)
             dist(num_total) = close_dist(i)
          end if
 
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_tsk,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_tsk,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_tsk)
             dist(num_total) = close_dist(i)
          end if
 
          do kk = 1, wrf%dom(id)%sls
             num_total = num_total + 1
             if(num_total <= indmax) then
-               indices(num_total) = get_wrf_index(ii,jj,kk,type_tslb,id)
+!!$               indices(num_total) = get_wrf_index(ii,jj,kk,type_tslb,id)
+               indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,kk,type_tslb)
                dist(num_total) = close_dist(i)
             end if
          enddo
@@ -1255,31 +1350,36 @@ do id=1,num_domains
 
             num_total = num_total + 1
             if(num_total <= indmax) then
-               indices(num_total) = get_wrf_index(ii,jj,k,type_u10,id)
+!!$               indices(num_total) = get_wrf_index(ii,jj,k,type_u10,id)
+               indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_u10)
                dist(num_total) = close_dist(i)
             end if
 
             num_total = num_total + 1
             if(num_total <= indmax) then
-               indices(num_total) = get_wrf_index(ii,jj,k,type_v10,id)
+!!$               indices(num_total) = get_wrf_index(ii,jj,k,type_v10,id)
+               indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_v10)
                dist(num_total) = close_dist(i)
             end if
 
             num_total = num_total + 1
             if(num_total <= indmax) then
-               indices(num_total) = get_wrf_index(ii,jj,k,type_t2,id)
+!!$               indices(num_total) = get_wrf_index(ii,jj,k,type_t2,id)
+               indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_t2)
                dist(num_total) = close_dist(i)
             end if
 
             num_total = num_total + 1
             if(num_total <= indmax) then
-               indices(num_total) = get_wrf_index(ii,jj,k,type_q2,id)
+!!$               indices(num_total) = get_wrf_index(ii,jj,k,type_q2,id)
+               indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_q2)
                dist(num_total) = close_dist(i)
             end if
 
             num_total = num_total + 1
             if(num_total <= indmax) then
-               indices(num_total) = get_wrf_index(ii,jj,k,type_ps,id)
+!!$               indices(num_total) = get_wrf_index(ii,jj,k,type_ps,id)
+               indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_ps)
                dist(num_total) = close_dist(i)
             end if
 
@@ -1299,48 +1399,55 @@ do id=1,num_domains
 
       num_total = num_total + 1
       if(num_total <= indmax) then
-         indices(num_total) = get_wrf_index(ii,jj,k,type_t,id)
+!!$         indices(num_total) = get_wrf_index(ii,jj,k,type_t,id)
+         indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_t)
          dist(num_total) = close_dist(i)
       end if
       if( wrf%dom(id)%n_moist >= 1) then
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qv,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qv,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qv)
             dist(num_total) = close_dist(i)
          end if
       end if
       if( wrf%dom(id)%n_moist >= 2) then
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qc,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qc,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qc)
             dist(num_total) = close_dist(i)
          end if
       end if
       if( wrf%dom(id)%n_moist >= 3) then
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qr,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qr,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qr)
             dist(num_total) = close_dist(i)
          end if
       end if
       if( wrf%dom(id)%n_moist >= 4) then
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qi,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qi,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qi)
             dist(num_total) = close_dist(i)
          end if
       end if
       if( wrf%dom(id)%n_moist >= 5) then
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qs,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qs,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qs)
             dist(num_total) = close_dist(i)
          end if
       end if
       if( wrf%dom(id)%n_moist == 6) then
          num_total = num_total + 1
          if(num_total <= indmax) then
-            indices(num_total) = get_wrf_index(ii,jj,k,type_qg,id)
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qg,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qg)
             dist(num_total) = close_dist(i)
          end if
       end if
@@ -1360,22 +1467,25 @@ function get_wrf_index( i,j,k,var_type,id )
 integer, intent(in) :: i,j,k,var_type,id
 
 integer :: get_wrf_index
-integer :: in, ii
+integer :: in
 
 character(len=129) :: errstring
 
-in = 0
-do ii = 1, wrf%dom(id)%number_of_wrf_variables 
-   if(var_type == wrf%dom(id)%var_type(ii) ) in = ii
-enddo
+!!$do in = 1, wrf%dom(id)%number_of_wrf_variables
+!!$   if(var_type == wrf%dom(id)%var_type(in) ) then
+!!$      exit
+!!$   endif
+!!$enddo
 
 if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,in) .and. &
    j >= 1 .and. j <= wrf%dom(id)%var_size(2,in) .and. &
    k >= 1 .and. k <= wrf%dom(id)%var_size(3,in)) then
 
-   get_wrf_index = wrf%dom(id)%var_index(1,in)-1 +   &
-        i + wrf%dom(id)%var_size(1,in)*(j-1) + &
-        (wrf%dom(id)%var_size(1,in)*wrf%dom(id)%var_size(2,in))*(k-1)
+   get_wrf_index = wrf%dom(id)%dart_ind(i,j,k,var_type)
+
+!!$   get_wrf_index = wrf%dom(id)%var_index(1,in)-1 +   &
+!!$        i + wrf%dom(id)%var_size(1,in)*((j-1) + &
+!!$        wrf%dom(id)%var_size(2,in)*(k-1))
 
 else
 
@@ -3037,10 +3147,12 @@ if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
 
    if(wrf%dom(id)%surf_obs ) then
 
-      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
-      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
+!!$      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
+!!$      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_PS)
       if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
-         x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
+           x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
 
          v_p(0) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
@@ -3163,12 +3275,14 @@ elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
 
    if(wrf%dom(id)%surf_obs ) then
 
-      ips = get_wrf_index(i,j,1,TYPE_PS,id)
+!!$      ips = get_wrf_index(i,j,1,TYPE_PS,id)
+      ips = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
       model_pressure = x(ips)
 
    else
 
-      imu = get_wrf_index(i,j,1,TYPE_MU,id)
+!!$      imu = get_wrf_index(i,j,1,TYPE_MU,id)
+      imu = wrf%dom(id)%dart_ind(i,j,1,TYPE_MU)
       model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
 
    endif
@@ -3203,8 +3317,10 @@ model_pressure_t = missing_r8
 
 cpovcv = cp / (cp - gas_constant)
 
-iqv = get_wrf_index(i,j,k,TYPE_QV,id)
-it  = get_wrf_index(i,j,k,TYPE_T,id)
+!!$iqv = get_wrf_index(i,j,k,TYPE_QV,id)
+!!$it  = get_wrf_index(i,j,k,TYPE_T,id)
+iqv = wrf%dom(id)%dart_ind(i,j,k,TYPE_QV)
+it  = wrf%dom(id)%dart_ind(i,j,k,TYPE_T)
 
 qvf1 = 1.0_r8 + x(iqv) / rd_over_rv
 
@@ -3236,9 +3352,12 @@ model_rho_t = missing_r8
 
 ! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
 
-imu = get_wrf_index(i,j,1,TYPE_MU,id)
-iph = get_wrf_index(i,j,k,TYPE_GZ,id)
-iphp1 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+!!$imu = get_wrf_index(i,j,1,TYPE_MU,id)
+!!$iph = get_wrf_index(i,j,k,TYPE_GZ,id)
+!!$iphp1 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+imu = wrf%dom(id)%dart_ind(i,j,1,TYPE_MU)
+iph = wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ)
+iphp1 = wrf%dom(id)%dart_ind(i,j,k+1,TYPE_GZ)
 
 ph_e = ( (x(iphp1) + wrf%dom(id)%phb(i,j,k+1)) - (x(iph) + wrf%dom(id)%phb(i,j,k)) ) &
      /wrf%dom(id)%dnw(k)
@@ -3268,8 +3387,10 @@ if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
    j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
 
    do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
-      i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
-      i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_GZ)
       fll(k) = (dym*( dxm*(wrf%dom(id)%phb(i,j,k)+x(i1)) + &
            dx*(wrf%dom(id)%phb(i+1,j,k)+x(i1+1))) + &
            dy*(dxm*(wrf%dom(id)%phb(i,j+1,k)+x(i2)) + &
@@ -3311,15 +3432,18 @@ model_height = missing_r8
 
 if( (var_type == type_w) .or. (var_type == type_gz) ) then
 
-   i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+!!$   i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
+   i1 = wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ)
    model_height = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
 
 elseif( var_type == type_u ) then
 
    if( i == wrf%dom(id)%var_size(1,TYPE_U) ) then
 
-      i1 = get_wrf_index(i-1,j,k  ,TYPE_GZ,id)
-      i2 = get_wrf_index(i-1,j,k+1,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i-1,j,k  ,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i-1,j,k+1,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i-1,j,k  ,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i-1,j,k+1,TYPE_GZ)
 
       model_height = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
                       +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
@@ -3328,8 +3452,10 @@ elseif( var_type == type_u ) then
 
    elseif( i == 1 ) then
 
-      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
-      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,k  ,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i,j,k+1,TYPE_GZ)
 
       model_height = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
                       +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
@@ -3338,8 +3464,10 @@ elseif( var_type == type_u ) then
 
    else
 
-      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
-      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,k  ,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i,j,k+1,TYPE_GZ)
 
       model_height = ( (wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
                       +(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
@@ -3352,10 +3480,14 @@ elseif( var_type == type_v ) then
 
    if( j == wrf%dom(id)%var_size(2,TYPE_V) ) then
 
-      i1 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
-      i2 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
-      i3 = get_wrf_index(i,j-2,k  ,TYPE_GZ,id)
-      i4 = get_wrf_index(i,j-2,k+1,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
+!!$      i3 = get_wrf_index(i,j-2,k  ,TYPE_GZ,id)
+!!$      i4 = get_wrf_index(i,j-2,k+1,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i,j-1,k  ,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i,j-1,k+1,TYPE_GZ)
+      i3 = wrf%dom(id)%dart_ind(i,j-2,k  ,TYPE_GZ)
+      i4 = wrf%dom(id)%dart_ind(i,j-2,k+1,TYPE_GZ)
 
       model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
                       +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
@@ -3364,10 +3496,14 @@ elseif( var_type == type_v ) then
 
    elseif( j == 1 ) then
 
-      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
-      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
-      i3 = get_wrf_index(i,j+1,k  ,TYPE_GZ,id)
-      i4 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
+!!$      i3 = get_wrf_index(i,j+1,k  ,TYPE_GZ,id)
+!!$      i4 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k  ,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_GZ)
+      i3 = wrf%dom(id)%dart_ind(i,j+1,k  ,TYPE_GZ)
+      i4 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_GZ)
 
       model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
                       +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
@@ -3376,10 +3512,14 @@ elseif( var_type == type_v ) then
 
    else
 
-      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
-      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
-      i3 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
-      i4 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
+!!$      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
+!!$      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
+!!$      i3 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
+!!$      i4 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k  ,TYPE_GZ)
+      i2 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_GZ)
+      i3 = wrf%dom(id)%dart_ind(i,j-1,k  ,TYPE_GZ)
+      i4 = wrf%dom(id)%dart_ind(i,j-1,k+1,TYPE_GZ)
 
       model_height = ( (wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
                       +(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
@@ -3407,8 +3547,10 @@ elseif( var_type == type_t2 .or. var_type == type_q2 ) then
 
 else
 
-   i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
-   i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+!!$   i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
+!!$   i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
+   i1 = wrf%dom(id)%dart_ind(i,j,k  ,TYPE_GZ)
+   i2 = wrf%dom(id)%dart_ind(i,j,k+1,TYPE_GZ)
 
    model_height = ( (wrf%dom(id)%phb(i,j,k  )+x(i1)) &
                    +(wrf%dom(id)%phb(i,j,k+1)+x(i2)) )/(2.0_r8*gravity)

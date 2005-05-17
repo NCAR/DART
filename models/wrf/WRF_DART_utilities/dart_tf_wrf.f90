@@ -16,7 +16,7 @@ use time_manager_mod, only : time_type, write_time, read_time, get_date, set_dat
                              get_time, print_time, set_calendar_type, GREGORIAN, julian_day
 use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             finalize_utilities, register_module, logfileunit
+                             finalize_utilities, register_module, logfileunit, timestamp
 use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date, &
                              get_wrf_date
 use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_restart, &
@@ -74,9 +74,8 @@ character(len=1)  :: idom
 logical, parameter :: debug = .false.
 integer            :: mode, io, ierr, var_id, id
 
-call initialize_utilities
+call initialize_utilities('dart_tf_wrf')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING dart_tf_wrf ...'
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
@@ -247,6 +246,7 @@ deallocate(dart)
 write(logfileunit,*)'FINISHED dart_tf_wrf.'
 write(logfileunit,*)
 
+call timestamp(source,revision,revdate,'none')
 call finalize_utilities ! closes the log file.
  
 contains

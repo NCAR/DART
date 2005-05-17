@@ -7,7 +7,7 @@
 % $Source$
 % $Name$
 
-fname = 'Prior_Diag';
+fname = 'Posterior_Diag';
 
 nc = netcdf( [fname,'.nc'] , 'nowrite' ) ;
 
@@ -63,43 +63,50 @@ ny = sn;
 var_units = 'U (m/s)';
 var_name = ['U_d0',int2str(id)];
 maxlev = bt;
-maxval = 8.0;
+%maxval = 8.0;
+maxval = 2.0;
 if field_num > 1
 nx = we;
 ny = sn;
 var_units = 'W (m/s)';
 var_name = ['W_d0',int2str(id)];
 maxlev = bt + 1;
-maxval = 0.03;
+%maxval = 0.03;
+maxval = 0.3;
 end
 if field_num > 2
 var_units = 'PH (m^2/s^2)';
 var_name = ['PH_d0',int2str(id)];
-maxval = 700.0;
+%maxval = 700.0;
+maxval = 100.0;
 end
 if field_num > 3
 var_units = 'T (K)';
 var_name = ['T_d0',int2str(id)];
 maxlev = bt;
-maxval = 4.0;
+%maxval = 4.0;
+maxval = 1.0;
 end
 if field_num > 4
 var_units = 'MU (Pa)';
 var_name = ['MU_d0',int2str(id)];
 maxlev = 1;
-maxval = 700.0;
+%maxval = 700.0;
+maxval = 100.0;
 end
 if field_num > 5
 var_units = 'TSLB (K)';
 var_name = ['TSLB_d0',int2str(id)];
 maxlev = sls;
-maxval = 4.0;
+%maxval = 4.0;
+maxval = 0.1;
 end
 if field_num > 6
 var_units = 'QV (kg/kg)';
 var_name = ['QVAPOR_d0',int2str(id)];
 maxlev = bt;
-maxval = 0.001;
+%maxval = 0.001;
+maxval = 0.0005;
 end
 if field_num > 7
 var_units = 'QC (kg/kg)';
@@ -109,7 +116,8 @@ end
 if field_num > 8
 var_units = 'QR (kg/kg)';
 var_name = ['QRAIN_d0',int2str(id)];
-maxval = 0.00007;
+%maxval = 0.00007;
+maxval = 0.0002;
 end
 
 x = [1:2*num_true_times];
@@ -205,9 +213,11 @@ subplot(3,3,field_num);
 %     plot(x,rmse,x,spread,x,E2,'--m')
 %else
      plot(x,rmse,x,spread,'LineWidth',2)
-%     plot(x,rmse,x,rmse_3dvar(:,field_num),x,rmse_no_assim(:,field_num),'LineWidth',2)
-%     plot(x,rmse,x,rmse_3dvar(:,field_num),'LineWidth',2)
+%     plot(x,rmse,'--k',x,rmse_3dvar(:,field_num),':k',x,rmse_no_assim(:,field_num),'-.k','LineWidth',2)
+%     plot(x,rmse,x,rmse_OSSE31(:,field_num),x,rmse_OSSE30(:,field_num),x,rmse_OSSE26(:,field_num),x,rmse_OSSE32(:,field_num),x,rmse_OSSE33(:,field_num),x,rmse_OSSE34(:,field_num),'LineWidth',2)
 %end
+
+%rmse_OSSE34(:,field_num) = rmse;
 
      plot_title = [var_units];
 
@@ -215,7 +225,7 @@ subplot(3,3,field_num);
 
 %     xlabel(time_unit)
 
-     room = (x(2*num_true_times)-x(1))/10;
+     room = (x(2*num_true_times)-x(1)+1)/10;
 
 %     axis ([(x(1)-room) (x(2*num_true_times)+room) min(min(rmse,spread)) max(max(rmse,spread))])
      axis ([(x(1)-room) (x(2*num_true_times)+room) 0.0 maxval])
@@ -226,6 +236,8 @@ subplot(3,3,field_num);
 %     end
 
 end
+
+%legend('Clim BC','20% 3D-Var BC','50% 3D-Var BC','100% 3D-Var BC','120% 3D-Var BC','150% 3D-Var BC','200% 3D-Var BC')
 
 %if (ens_size > 0.0)
 %     legend('RMS error','Spread','E2')

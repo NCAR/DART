@@ -18,7 +18,7 @@ program update_wrf_bc
 use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, register_module, &
-                                    error_handler, E_ERR, logfileunit
+                                    error_handler, E_ERR, logfileunit, timestamp
 use module_netcdf_interface, only : get_dims_cdf, get_gl_att_real_cdf, put_gl_att_real_cdf, &
                                     get_var_3d_real_cdf, get_var_2d_real_cdf, put_var_3d_real_cdf, &
                                     put_var_2d_real_cdf, get_times_cdf, put_time_cdf
@@ -48,7 +48,7 @@ integer, parameter :: max_3d_variables = 20, &
                       max_times        = 100
 
 character(len=80) :: wrf_output_file, wrf_mean_output_file, &
-                     wrf_bdy_file
+                     wrf_bdy_file, time_name
 
 character(len=20) :: var_pref, var_name
 
@@ -89,9 +89,8 @@ integer :: io, iunit
 
 !----------------------------------------------------------------------
 
-call initialize_utilities
+call initialize_utilities('update_wrf_bc')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING update_wrf_bc ...'
 
 ! Reading the namelist input
 if(file_exist('namelist.input')) then
@@ -174,7 +173,7 @@ var3d(7)='QCLOUD'
 var3d(8)='QRAIN'
 var3d(9)='QICE'
 var3d(10)='QSNOW'
-var3d(11)='QGRAUPEL'
+var3d(11)='QGRAUP'
 
 !--2D need update
 num2d=5
@@ -191,12 +190,13 @@ north_end=0
 
 !---------------------------------------------------------------------
 !-- Current time in file
-call get_times_cdf( wrf_output_file, 'Times', udtime, ntimes_ud, max_times, debug )
+time_name = 'Times'
+call get_times_cdf( wrf_output_file, time_name, udtime, ntimes_ud, max_times, debug )
 
 if(debug) print*, 'udtime = ',udtime(1)
 
 !-- list of boundary times
-call get_times_cdf( wrf_bdy_file, 'Times', bdytime, ntimes_bdy, max_times, debug )
+call get_times_cdf( wrf_bdy_file, time_name, bdytime, ntimes_bdy, max_times, debug )
 
 !-- Time index of current tendency - to grab from wrfbdy
 call find_time_index(bdytime, udtime(1), ntimes_bdy, itime)
@@ -206,9 +206,11 @@ if(debug) print*, 'bdytime = ',bdytime(itime)
 
 !---------------------------------------------------------------------
 !--First, the boundary frequency.
-call get_times_cdf( wrf_bdy_file, 'md___thisbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', &
+time_name = 'md___thisbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_'
+call get_times_cdf( wrf_bdy_file, time_name, &
      thisbdytime, ntimes_bdy, max_times, debug )
-call get_times_cdf( wrf_bdy_file, 'md___nextbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', &
+time_name = 'md___nextbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_'
+call get_times_cdf( wrf_bdy_file, time_name, &
      nextbdytime, ntimes_bdy, max_times, debug )
 call time_diff( thisbdytime(itime), nextbdytime(itime), bdyfrq_old ) 
 
@@ -223,7 +225,8 @@ if(debug) print*, 'New bdyfrq = ',bdyfrq
 
 !-- put in the new thisbdytime
 thisbdytime(itime) = udtime(1)
-call put_time_cdf( wrf_bdy_file, 'md___thisbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', &
+time_name = 'md___thisbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_'
+call put_time_cdf( wrf_bdy_file, time_name, &
      thisbdytime(itime), itime, debug )
 
 !--For 2D variables
@@ -542,7 +545,7 @@ endif
                     'After  couple Sampe ', trim(var3d(n)), &
                     '=', full3d(dims(1)/2,dims(2)/2,dims(3)/2)
             endif
-         case ('QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUPEL') ;
+         case ('QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUP') ;
             var_pref='R' // var3d(n)(1:2)
 
             call get_var_3d_real_cdf( wrf_output_file, trim(var3d(n)), full3d, &
@@ -697,6 +700,7 @@ endif
    write(logfileunit,*)'FINISHED update_wrf_bc.'
    write(logfileunit,*)
 
+   call timestamp(source, revision, revdate, 'none')
    call finalize_utilities ! closes the log file.
  
    write(*,*) 'update_wrf_bc terminated normally.'
