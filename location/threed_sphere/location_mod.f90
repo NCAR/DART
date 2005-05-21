@@ -548,7 +548,7 @@ SELECT CASE (fileformat)
 ! TJH -- would like to use a fixed-format write instead.:
 !     the free-format write may/may not "wrap" depending on the precision
 !     you compile with -- makes reading unpredictable ...
-      write(ifile, '( 2(f18.14,1x),f18.9,1x,i6 )')loc%lon, loc%lat, loc%vloc, loc%which_vert
+      write(ifile, '(1x,3(f22.14,1x),i8)')loc%lon, loc%lat, loc%vloc, loc%which_vert
 
 END SELECT
 
