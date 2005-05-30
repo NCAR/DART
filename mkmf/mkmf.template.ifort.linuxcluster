@@ -15,6 +15,7 @@
 #     fisher    NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
 #     lightning NETCDF = /gpfs/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort8.1-64
 #     dart      NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
+#     bangkok   NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046_pe050.1
 #
 # FFLAGS   used all the time
 #     -fpp     run Fortran preprocessor on source files prior to compilation
