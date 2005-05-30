@@ -102,10 +102,12 @@ real(r8):: rat_cri    = 3.0      ! QC ratio
 real(r8):: qc_threshold = 4.0    ! maximum NCEP QC factor
 real(r8):: bin_separation = 6.0  ! Bins every so often (hours)
 real(r8):: bin_width = 6.0       ! width of the bin (hour)
+logical :: print_mismatched_locs = .false.
 
 namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
                        tot_days, iskip, level, obs_select, rat_cri, &
-                       qc_threshold, bin_separation, bin_width
+                       qc_threshold, bin_separation, bin_width, &
+                       print_mismatched_locs
 
 !-----------------------------------------------------------------------
 ! Spatial
@@ -160,7 +162,7 @@ data pint / 1025, 950, 900, 800, 600, 450, 350, 275, 225, 175, 125, 75/
 integer,  allocatable, dimension(:,:) :: num_in_level_W, &
                                          num_in_level_T, &
                                          num_in_level_Q, &
-                                         num_in_level_P
+                                         num_in_level_P 
 
 real(r8), allocatable, dimension(:,:) :: rms_ges_mean_W, rms_ges_spread_W, &
                                          rms_anl_mean_W, rms_anl_spread_W, &
@@ -200,13 +202,17 @@ character(len = 129) :: QgesName, QanlName, PgesName, PanlName
 integer                      :: NwrongType = 0   ! namelist discrimination
 integer                      :: NbadQC     = 0   ! out-of-range QC values
 integer                      :: NbadLevel  = 0   ! out-of-range pressures
-integer, dimension(Nregions) :: NWrejected = 0   ! all days, each region, one layer
-integer, dimension(Nregions) :: NTrejected = 0   ! all days, each region, one layer
-integer, dimension(Nregions) :: NQrejected = 0   ! all days, each region, one layer
-integer, dimension(Nregions) :: NPrejected = 0   ! all days, each region, one layer
-integer, dimension(Nregions) :: NbadW      = 0   ! V with no U, all days, regions
-integer, dimension(Nregions) :: NbadWvert  = 0   ! V with no U, select days, all levels
-integer, dimension(Nregions) :: NbadUVratio = 0  ! V with no U, select days, all levels
+
+integer, allocatable, dimension(:,:) :: N_rej_level_W, & ! U or V failed rat_cri test
+                                        N_rej_level_T, & ! T failed rat_cri test
+                                        N_rej_level_Q, & ! Q failed rat_cri test
+                                        N_rej_level_P, & ! P failed rat_cri test
+                                        N_bad_W          ! V w/o U, desired level
+
+integer, dimension(nlev,Nregions) :: N_rej_vert_W = 0 ! V or U failed rat_cri test
+integer, dimension(nlev,Nregions) :: N_rej_vert_T = 0 ! T failed rat_cri test
+integer, dimension(nlev,Nregions) :: N_rej_vert_Q = 0 ! Q failed rat_cri test
+integer, dimension(nlev,Nregions) :: NbadWvert = 0    ! V w/o U, select days, all levels
 
 !-----------------------------------------------------------------------
 
@@ -241,8 +247,8 @@ call set_calendar_type(calendar_type)
 
 NBinsPerDay  = nint( 24.0_r8 / bin_separation )
     binsep   = set_time(nint(bin_separation * 3600.0_r8), 0)
-    binwidth = set_time(nint(bin_width * 3600.0_r8), 0)    ! full bin width 
-halfbinwidth = set_time(nint(bin_width * 1800.0_r8), 0)    ! half bin width 
+    binwidth = set_time(nint(bin_width      * 3600.0_r8), 0) ! full bin width 
+halfbinwidth = set_time(nint(bin_width      * 1800.0_r8), 0) ! half bin width 
 
 
 ! Initialize.
@@ -292,6 +298,13 @@ allocate(num_in_level_W(Nepochs, Nregions), &
          num_in_level_Q(Nepochs, Nregions), &
          num_in_level_P(Nepochs, Nregions))
 
+allocate( N_rej_level_W(Nepochs, Nregions), &
+          N_rej_level_T(Nepochs, Nregions), &
+          N_rej_level_Q(Nepochs, Nregions), &
+          N_rej_level_P(Nepochs, Nregions), &
+                N_bad_W(Nepochs, Nregions) )
+
+
 allocate(bincenter(Nepochs), epoch_center(Nepochs))
 
 rms_ges_mean_W   = 0.0_r8
@@ -316,6 +329,12 @@ num_in_level_W   = 0
 num_in_level_T   = 0
 num_in_level_Q   = 0
 num_in_level_P   = 0
+
+N_rej_level_W    = 0
+N_rej_level_T    = 0
+N_rej_level_Q    = 0
+N_rej_level_P    = 0
+N_bad_W          = 0
 
 iepoch = 0  ! epoch counter
 
@@ -511,17 +530,17 @@ DayLoop : do iday=1, tot_days
             cycle ObservationLoop
          endif
 
+         if ( obslevel < 1 .or. obslevel > nlev )   then
+         !  write(*,*)'obs ',obsindex,' rejected. Uninteresting level ',obslevel
+         !  write(*,*)'obs ',obsindex,' rejected. pressure was ',ipressure
+            NbadLevel = NbadLevel + 1
+            cycle ObservationLoop
+         endif
+
          if( qc(obsindex) >= qc_threshold ) then
          !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(obsindex)
             NbadQC = NbadQC + 1
             cycle ObservationLoop 
-         endif
-
-         if ( obslevel < 1 .or. obslevel > nlev )   then
-            write(*,*)'obs ',obsindex,' rejected. Unreasonable level ',obslevel
-            write(*,*)'obs ',obsindex,' rejected. pressure was ',ipressure
-            NbadLevel = NbadLevel + 1
-            cycle ObservationLoop
          endif
 
          !--------------------------------------------------------------
@@ -588,7 +607,7 @@ DayLoop : do iday=1, tot_days
                   rms_anl_spread_P(iepoch, iregion) = &
                   rms_anl_spread_P(iepoch, iregion) + po_sprd**2
                else
-                  NPrejected(iregion) = NPrejected(iregion) + 1 
+                  N_rej_level_P(iepoch, iregion) = N_rej_level_P(iepoch, iregion) + 1 
                endif
 
                cycle Areas
@@ -615,7 +634,7 @@ DayLoop : do iday=1, tot_days
                      ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc) 
                      if ( ierr /= 0 ) then
                      !  write(*,*)'time series ... V with no matching U ...'
-                        NbadW(iregion) = NbadW(iregion) + 1
+                        N_bad_W(iepoch, iregion) = N_bad_W(iepoch, iregion) + 1
                         cycle ObservationLoop
                      endif
 
@@ -645,7 +664,7 @@ DayLoop : do iday=1, tot_days
                         rms_anl_spread_W(iepoch,iregion) = &
                         rms_anl_spread_W(iepoch,iregion) + po_sprd**2 + U_po_sprd**2
                      else
-                        NWrejected(iregion) = NWrejected(iregion) + 1
+                        N_rej_level_W(iepoch, iregion) = N_rej_level_W(iepoch, iregion) + 1
                      endif
 
                   case ( KIND_T ) !! Temperature
@@ -668,7 +687,7 @@ DayLoop : do iday=1, tot_days
                         rms_anl_spread_T(iepoch,iregion) = &
                         rms_anl_spread_T(iepoch,iregion) + po_sprd**2
                      else
-                        NTrejected(iregion) = NTrejected(iregion) + 1
+                        N_rej_level_T(iepoch, iregion) = N_rej_level_T(iepoch, iregion) + 1
                      endif
 
                   case ( KIND_QV ) !! Moisture Q
@@ -692,7 +711,7 @@ DayLoop : do iday=1, tot_days
                         rms_anl_spread_Q(iepoch,iregion) = &
                         rms_anl_spread_Q(iepoch,iregion) + po_sprd**2
                      else
-                        NQrejected(iregion) = NQrejected(iregion) + 1
+                        N_rej_level_Q(iepoch, iregion) = N_rej_level_Q(iepoch, iregion) + 1
                      endif
 
                end select
@@ -706,8 +725,6 @@ DayLoop : do iday=1, tot_days
             !-----------------------------------------------------------
 
             if(iday <= iskip)              cycle Areas
-            if(ipressure > pint(1) )       cycle Areas  ! pressure more than 1025
-            if(ipressure <= pint(nlev+1) ) cycle Areas  ! pressure less than   75
 
             select case (flavor)
 
@@ -718,7 +735,7 @@ DayLoop : do iday=1, tot_days
                   ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc) 
                   if ( ierr /= 0 ) then
                   !  write(*,*)'vertical ... V with no matching U ...'
-                     NbadWvert(iregion) = NbadWvert(iregion) + 1
+                     NbadWvert(obslevel,iregion) = NbadWvert(obslevel,iregion) + 1
                      cycle ObservationLoop
                   endif
 
@@ -754,7 +771,7 @@ DayLoop : do iday=1, tot_days
                      bias_anl_ver_W(obslevel,iregion) = bias_anl_ver_W(obslevel,iregion) + &
                                                   speed_anl2 - speed_obs2
                   else
-                     NbadUVratio = NbadUVratio + 1
+                     N_rej_vert_W(obslevel,iregion) = N_rej_vert_W(obslevel,iregion) + 1
                   endif
 
                case ( KIND_T ) ! Temperature
@@ -772,6 +789,8 @@ DayLoop : do iday=1, tot_days
                                                   pr_mean     - obs(obsindex)
                      bias_anl_ver_T(obslevel,iregion) = bias_anl_ver_T(obslevel,iregion) + &
                                                   po_mean - obs(obsindex)
+                  else
+                     N_rej_vert_T(obslevel,iregion) = N_rej_vert_T(obslevel,iregion) + 1
                   endif
 
                case ( KIND_QV ) ! Moisture
@@ -789,6 +808,8 @@ DayLoop : do iday=1, tot_days
                                                  pr_mean     - obs(obsindex)
                      bias_anl_ver_Q(obslevel,iregion) = bias_anl_ver_Q(obslevel,iregion) + &
                                                  po_mean - obs(obsindex)
+                  else
+                     N_rej_vert_Q(obslevel,iregion) = N_rej_vert_Q(obslevel,iregion) + 1
                   endif
 
             end select
@@ -871,7 +892,7 @@ DayLoop : do iday=1, tot_days
          endif
       enddo
 
-      write(msgstring,'(''num obs used in epoch '',i3,'' = '',i8)') iepoch, obs_used_in_set
+      write(msgstring,'(''num obs considered in epoch '',i3,'' = '',i8)') iepoch, obs_used_in_set
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
    enddo Advancesets
@@ -953,19 +974,6 @@ close(QanlUnit)
 close(PgesUnit)
 close(PanlUnit)
 
-deallocate(rms_ges_mean_W, rms_ges_spread_W, &
-           rms_anl_mean_W, rms_anl_spread_W, &
-           rms_ges_mean_T, rms_ges_spread_T, &
-           rms_anl_mean_T, rms_anl_spread_T, &
-           rms_ges_mean_Q, rms_ges_spread_Q, &
-           rms_anl_mean_Q, rms_anl_spread_Q, &
-           rms_ges_mean_P, rms_ges_spread_P, &
-           rms_anl_mean_P, rms_anl_spread_P)
-
-deallocate(num_in_level_W, &
-           num_in_level_T, &
-           num_in_level_Q, &
-           num_in_level_P)
 
 !-----------------------------------------------------------------------
 ! All-day average of the vertical statistics
@@ -1097,35 +1105,69 @@ close(QgesUnit)
 close(QanlUnit)
 
 write(*,*)''
-write(*,*)'# observations used  : ',obs_used     
-write(*,*)'Rejected Observations summary.'
-write(*,*)'# NwrongType         : ',NwrongType     
-write(*,*)'# NbadQC             : ',NbadQC     
-write(*,*)'# NbadLevel          : ',NbadLevel     
+write(*,*)'# NwrongType            : ',NwrongType
+write(*,*)'# NbadLevel             : ',NbadLevel
+write(*,'('' # QC > '',f9.4,''        :   '',i10)')qc_threshold, NbadQC
+write(*,*)'--------------------------------------'
+write(*,*)'Rejected Observations   : ',NwrongType+NbadLevel+NbadQC
+write(*,*)'Considered Observations : ',obs_used,' (may not be in any region)'
+write(*,*)''
+write(*,'('' Observations failing the rat_cri (i.e. > '',f9.4,'') test are marked "tossed".'')')rat_cri
 write(*,'('' For each region, '',i4,'' hPa only: NH / SH / TR / NA'')')plev(level_index)
-write(*,*)'# Wind pairs   tossed: ',NWrejected
-write(*,*)'# Temperatures tossed: ',NTrejected
-write(*,*)'# Moisture obs tossed: ',NQrejected
-write(*,*)'# Pressure obs tossed: ',NPrejected
-write(*,*)'# NbadW              : ',NbadW
+write(*,*)''
+write(*,*)'# Wind pairs   tossed: ',sum( N_rej_level_W,1)
+write(*,*)'# bad Wind components: ',sum(       N_bad_W,1)
+write(*,*)'# Wind pairs     used: ',sum(num_in_level_W,1)
+write(*,*)''
+write(*,*)'# Temperatures tossed: ',sum( N_rej_level_T,1)
+write(*,*)'# Temperatures   used: ',sum(num_in_level_T,1)
+write(*,*)''
+write(*,*)'# Moisture obs tossed: ',sum( N_rej_level_Q,1)
+write(*,*)'# Moisture obs   used: ',sum(num_in_level_Q,1)
+write(*,*)''
+write(*,*)'# Pressure obs tossed: ',sum( N_rej_level_P,1)
+write(*,*)'# Pressure obs   used: ',sum(num_in_level_P,1)
+write(*,*)''
 write(*,*)'All levels, select days: '
-write(*,*)'# NbadWvert          : ',NbadWvert
+write(*,*)'# Wind pairs   tossed: ',sum( N_rej_vert_W,1)
+write(*,*)'# bad Wind components: ',sum(    NbadWvert,1)
+write(*,*)'# Wind pairs     used: ',sum(    num_ver_W,1)
+write(*,*)''
+write(*,*)'# Temperatures tossed: ',sum( N_rej_vert_T,1)
+write(*,*)'# Temperatures   used: ',sum(    num_ver_T,1)
+write(*,*)''
+write(*,*)'# Moisture obs tossed: ',sum( N_rej_vert_Q,1)
+write(*,*)'# Moisture obs   used: ',sum(    num_ver_Q,1)
 write(*,*)''
 
 write(logfileunit,*)''
-write(logfileunit,*)'# observations used  : ',obs_used     
-write(logfileunit,*)'Rejected Observations summary.'
-write(logfileunit,*)'# NwrongType         : ',NwrongType     
-write(logfileunit,*)'# NbadQC             : ',NbadQC     
-write(logfileunit,*)'# NbadLevel          : ',NbadLevel     
+write(logfileunit,*)'# NwrongType            : ',NwrongType
+write(logfileunit,*)'# NbadLevel             : ',NbadLevel
+write(logfileunit,'('' # QC > '',f9.4,''        :   '',i10)')qc_threshold, NbadQC
+write(logfileunit,*)'--------------------------------------'
+write(logfileunit,*)'Rejected Observations   : ',NwrongType+NbadLevel+NbadQC
+write(logfileunit,*)'Considered Observations : ',obs_used,' (may not be in any region)'
+write(logfileunit,*)''
+write(logfileunit,'('' Observations failing the rat_cri ('',f9.4,'') test are marked "tossed".'')')rat_cri
 write(logfileunit,'('' For each region, '',i4,'' hPa only: NH / SH / TR / NA'')')plev(level_index)
-write(logfileunit,*)'# Wind pairs   tossed: ',NWrejected
-write(logfileunit,*)'# Temperatures tossed: ',NTrejected
-write(logfileunit,*)'# Moisture obs tossed: ',NQrejected
-write(logfileunit,*)'# Pressure obs tossed: ',NPrejected
-write(logfileunit,*)'# NbadW              : ',NbadW
+write(logfileunit,*)''
+write(logfileunit,*)'# Wind pairs   tossed: ',sum(N_rej_level_W,1)
+write(logfileunit,*)'# bad Wind components: ',sum(N_bad_W,1)
+write(logfileunit,*)'# Wind pairs     used: ',sum(num_in_level_W,1)
+write(logfileunit,*)''
+write(logfileunit,*)'# Temperatures tossed: ',sum(N_rej_level_T,1)
+write(logfileunit,*)'# Temperatures   used: ',sum(num_in_level_T,1)
+write(logfileunit,*)''
+write(logfileunit,*)'# Moisture obs tossed: ',sum(N_rej_level_Q,1)
+write(logfileunit,*)'# Moisture obs   used: ',sum(num_in_level_Q,1)
+write(logfileunit,*)''
+write(logfileunit,*)'# Pressure obs tossed: ',sum(N_rej_level_P,1)
+write(logfileunit,*)'# Pressure obs   used: ',sum(num_in_level_P,1)
+write(logfileunit,*)''
 write(logfileunit,*)'All levels, select days: '
-write(logfileunit,*)'# NbadWvert          : ',NbadWvert
+write(logfileunit,*)'# Wind     obs tossed: ',N_rej_vert_W
+write(logfileunit,*)'# bad Wind components: ',NbadWvert
+write(logfileunit,*)'# Wind     obs   used: ',N_rej_vert_W
 
 !-----------------------------------------------------------------------
 ! Echo attributes to a file to facilitate plotting.
@@ -1156,8 +1198,27 @@ write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
 write(iunit,'(''latlim2 = ['',4(1x,f9.2),''];'')')latlim2
 close(iunit)
 
-
 deallocate(epoch_center, bincenter)
+
+deallocate(rms_ges_mean_W, rms_ges_spread_W, &
+           rms_anl_mean_W, rms_anl_spread_W, &
+           rms_ges_mean_T, rms_ges_spread_T, &
+           rms_anl_mean_T, rms_anl_spread_T, &
+           rms_ges_mean_Q, rms_ges_spread_Q, &
+           rms_anl_mean_Q, rms_anl_spread_Q, &
+           rms_ges_mean_P, rms_ges_spread_P, &
+           rms_anl_mean_P, rms_anl_spread_P)
+
+deallocate(num_in_level_W, &
+           num_in_level_T, &
+           num_in_level_Q, &
+           num_in_level_P, &
+            N_rej_level_W, &
+            N_rej_level_T, &
+            N_rej_level_Q, &
+            N_rej_level_P, &
+            N_bad_W)
+
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
 
@@ -1192,9 +1253,11 @@ contains
    endif 
 
    if ( obsloc1 /= obsloc2 ) then
-      write(*,*) 'locations do not match ...'
-      call write_location(6,obsloc1,'FORMATTED')
-      call write_location(6,obsloc2,'FORMATTED')
+      if ( print_mismatched_locs ) then
+         write(*,*) 'locations do not match ...'
+         call write_location(6,obsloc1,'FORMATTED')
+         call write_location(6,obsloc2,'FORMATTED')
+      endif
       return
    endif
 
@@ -1217,9 +1280,16 @@ contains
    integer, dimension(nlev), save :: inds = (/ (i,i=1,nlev) /)
    integer :: i
 
-   dx = abs(pressure - plev)    ! whole array
-
-   level_index = minval( inds , mask=(dx == minval(dx)))
+   if ( pressure > pint(1) ) then ! pressure greater than 1025
+      level_index = -1
+      return
+   else if ( pressure <= pint(nlev+1) ) then ! pressure less than 75
+      level_index = 100 + nlev 
+      return 
+   else
+      dx = abs(pressure - plev)    ! whole array
+      level_index = minval( inds , mask=(dx == minval(dx)))
+   endif
 
    ! This defines bins relative to the pressure interval array, which
    ! was somewhat arbitrarily defined by Hui. There are slight
@@ -1232,6 +1302,7 @@ contains
    !   exit PressureLoop
    !   endif
    !enddo PressureLoop
+
 
    end Function GetClosestLevel
 

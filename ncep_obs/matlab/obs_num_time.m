@@ -154,6 +154,7 @@ subplot(2,2,plotdat.region)
    datetick('x',1)
    ylabel(plotdat.ylabel, 'fontsize', 10) ;
    title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
+   axis([min(xp) max(xp) -Inf Inf])
 
 
 
@@ -188,4 +189,5 @@ bob = which(main);
 h = text(0.0,0.5,pathstr);
 set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
+      'Interpreter','none',...
       'FontSize',8)
