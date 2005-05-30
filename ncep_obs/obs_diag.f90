@@ -226,15 +226,14 @@ call init_obs(   next_obs, 0, 0)
 
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-
-   do while(ierr /= 0)
-      read(iunit, nml = obsdiag_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'obsdiag_nml')
-   enddo
- 11 continue
+   read(iunit, nml = obsdiag_nml, iostat = io)
+   if ( io /= 0 ) then
+      write(msgstring,*)'obsdiag_nml read error ',io
+      call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+   endif
    call close_file(iunit)
 endif
+call error_handler(E_MSG,'obs_diag','obsdiag_nml values are',' ',' ',' ') 
 write(logfileunit,nml=obsdiag_nml)
 write(    *      ,nml=obsdiag_nml)
 
