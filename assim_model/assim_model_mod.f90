@@ -914,11 +914,11 @@ if ( ios /= 0 ) then
    write(errstring,*)'read error is : ',ios
    call error_handler(E_ERR,'aread_state_restart',errstring,source,revision,revdate)
 
-else  ! A DEBUG STATEMENT, REALLY
+! else  ! A DEBUG STATEMENT, REALLY
 
-   write(errstring,'(''modl max/min/(1) is'',3(1x,E12.6) )') &
-            maxval(model_state), minval(model_state), model_state(1)
-   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+!  write(errstring,'(''modl max/min/(1) is'',3(1x,E12.6) )') &
+!           maxval(model_state), minval(model_state), model_state(1)
+!  call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
 
 endif
 
