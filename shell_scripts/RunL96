@@ -79,7 +79,7 @@ if ( ${?ObSec1} ) then
    set ob_seconds_1 = $ObSec1
 endif
 
-set         cutoff = 1000000.0
+set         cutoff = 0.20
 set    cov_inflate = 1.05
 set cov_inflate_sd = 0.05
 set sd_lower_bound = 0.05
@@ -110,7 +110,7 @@ set output_obs_ens_spread = .true.
 set num_output_state_members = $NumEns
 set num_output_obs_members = $NumEns
 set output_interval = 1
-set num_groups = 4
+set num_groups = 1
 
 #======================================================================
 # This block checks to see if input is viable.
@@ -354,7 +354,6 @@ echo " "                                                          > filter.nml
 echo "&filter_nml"                                               >> filter.nml
 echo "   async = $async ,"                                       >> filter.nml
 echo "   ens_size = $ens_size ,"                                 >> filter.nml
-echo "   cutoff = $cutoff ,"                                     >> filter.nml
 echo "   cov_inflate = $cov_inflate ,"                           >> filter.nml
 echo "   start_from_restart = $start_from_restart ,"             >> filter.nml
 echo "   output_restart = $output_restart ,"                     >> filter.nml
