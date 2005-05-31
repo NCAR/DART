@@ -194,7 +194,8 @@ type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 logical, optional :: no_vert
 
-real(r8) :: lon_dif, horiz_dist, vert_dist, lat1_ind, lat2_ind
+real(r8) :: lon_dif, horiz_dist, vert_dist
+integer  :: lat1_ind, lat2_ind
 real(r8) :: horiz_dist_orig, temp
 logical :: comp_h_only
 character(len=129) :: errstring
