@@ -195,9 +195,10 @@ real(r8) :: get_dist
 logical, optional :: no_vert
 
 real(r8) :: lon_dif, horiz_dist, vert_dist
-integer  :: lat1_ind, lat2_ind
-real(r8) :: horiz_dist_orig, temp
-logical :: comp_h_only
+real(r8) :: horiz_dist_orig
+integer  :: lat1_ind, lat2_ind, temp  ! indexes into lookup tables
+logical  :: comp_h_only
+
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
@@ -211,7 +212,7 @@ if(approximate_distance) then
    ! Option 1: Use table lookup; faster but less accurate
    lat1_ind = int(loc1%lat*100.0_r8)
    lat2_ind = int(loc2%lat*100.0_r8)
-   temp = int(1000.0_r8 * (my_sin(lat2_ind) * my_sin(lat1_ind) + &
+   temp     = int(1000.0_r8 * (my_sin(lat2_ind) * my_sin(lat1_ind) + &
       my_cos(lat2_ind) * my_cos(lat1_ind) * my_cos(int(lon_dif*100.0_r8))))
    get_dist = my_acos(temp)
 else
@@ -241,8 +242,8 @@ if(loc1%which_vert == -2 .or. loc2%which_vert == -2) comp_h_only = .true.
 if(.not. comp_h_only) then
    ! Vert distance can only be done for like vertical locations types
    if(loc1%which_vert /= loc2%which_vert) then
-      write(errstring,*)'loc1%which_vert (',loc1%which_vert,') /= &
-         loc2%which_vert (',loc2%which_vert,')'
+      write(errstring,*)'loc1%which_vert (',loc1%which_vert, &
+                   ') /= loc2%which_vert (',loc2%which_vert,')'
       call error_handler(E_MSG, 'get_dist', errstring, source, revision, revdate)
       call write_location(logfileunit,loc1)
       call write_location(logfileunit,loc2)
