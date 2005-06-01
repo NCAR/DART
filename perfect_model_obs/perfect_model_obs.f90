@@ -23,11 +23,11 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
    get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, get_num_qc, &
-   get_num_copies, read_obs_seq_header, set_qc_meta_data
+   get_num_copies, read_obs_seq_header, set_qc_meta_data, get_expected_obs
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
 
-use obs_model_mod,    only : get_expected_obs, move_ahead
+use obs_model_mod,    only : move_ahead
 
 use assim_model_mod, only  : static_init_assim_model, get_model_size, &
    aget_initial_condition, get_model_state_vector, set_model_state_vector, &
