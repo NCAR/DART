@@ -18,7 +18,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
    get_obs_values, init_obs, assignment(=), &
    get_num_copies, get_qc, get_num_qc, set_qc, static_init_obs_sequence, destroy_obs, &
-   read_obs_seq_header, set_qc_meta_data
+   read_obs_seq_header, set_qc_meta_data, get_expected_obs
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance
 use time_manager_mod, only : time_type, get_time, set_time, operator(/=), operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
@@ -31,7 +31,7 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    pert_model_state, open_restart_read, close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  assim_tools_mod, only : assim_tools_init, filter_assim, assim_tools_end
-use    obs_model_mod, only : get_expected_obs, move_ahead
+use    obs_model_mod, only : move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
    ensemble_type, ens_direct=> ens, ens_mean_direct=>ens_mean, ens_spread_direct=>ens_spread, &

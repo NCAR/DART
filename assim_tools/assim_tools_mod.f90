@@ -23,11 +23,11 @@ use random_seq_mod, only : random_seq_type, random_gaussian, &
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
    init_obs, get_obs_from_key, get_obs_def, get_obs_values, get_qc, set_qc, &
    set_obs, get_copy_meta_data, read_obs_seq, destroy_obs_sequence, get_num_obs, &
-   write_obs_seq, destroy_obs
+   write_obs_seq, destroy_obs, get_expected_obs
    
 use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location
 use cov_cutoff_mod, only   : comp_cov_factor
-use obs_model_mod, only    : get_expected_obs, get_close_states
+use obs_model_mod, only    : get_close_states
 use reg_factor_mod, only   : comp_reg_factor
 use location_mod, only     : location_type, get_dist, alloc_get_close_obs, get_close_obs
 use time_manager_mod, only : time_type
@@ -368,18 +368,12 @@ else
       call error_handler(E_ERR,'obs_increment_eakf', &
            'Both obs_var and prior_var are zero. This is inconsistent', &
            source, revision, revdate)
-!!$      if (prior_mean == obs) then
-!!$         var_ratio = 1.0_r8
-!!$         new_mean  = prior_mean
-!!$      else
-!!$         call error_handler(E_ERR,'obs_increment_eakf','Both obs_var and prior_var are zero and prior_mean is different from the obs. This is inconsistent',source, revision, revdate)
-!!$      endif
    endif
 endif
 
 a = sqrt(var_ratio)
 
-   obs_inc = a * (ens - prior_mean) + new_mean - ens
+obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment_eakf
 
@@ -489,7 +483,7 @@ if(ens_size /= 20) then
    stop
 endif
 
-! This is believed to have kurtosis of 3.0, verify again from initial uniform
+! This has kurtosis of 3.0, verify again from initial uniform
 !new_ens(1) = -2.146750_r8
 !new_ens(2) = -1.601447_r8
 !new_ens(3) = -1.151582_r8
@@ -501,7 +495,7 @@ endif
 !new_ens(9) = -1.658448E-02_r8
 !new_ens(10) = -9.175255E-04_r8
 
-! This is believed to have kurtosis of 3.0, verify again from initial inverse gaussian
+! This has kurtosis of 3.0, verify again from initial inverse gaussian
 !new_ens(1) = -2.188401_r8
 !new_ens(2) = -1.502174_r8
 !new_ens(3) = -1.094422_r8
@@ -513,7 +507,7 @@ endif
 !new_ens(9) = -6.894587E-02_r8
 !new_ens(10) = -1.243549E-02_r8
 
-! This is believed to have kurtosis of 2.0, verify again 
+! This has kurtosis of 2.0, verify again 
 new_ens(1) = -1.789296_r8
 new_ens(2) = -1.523611_r8
 new_ens(3) = -1.271505_r8
@@ -525,7 +519,7 @@ new_ens(8) = -0.2598947_r8
 new_ens(9) = -0.1242189_r8
 new_ens(10) = -2.539018E-02_r8
 
-! This is believed to have kurtosis of 1.7, verify again 
+! This has kurtosis of 1.7, verify again 
 !new_ens(1) = -1.648638_r8
 !new_ens(2) = -1.459415_r8
 !new_ens(3) = -1.272322_r8

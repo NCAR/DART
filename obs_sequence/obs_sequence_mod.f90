@@ -21,15 +21,22 @@ module obs_sequence_mod
 ! copy subroutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use        types_mod, only : r8, DEG2RAD, earth_radius
+use        types_mod, only : r8, DEG2RAD, earth_radius, t_kelvin, es_alpha, es_beta, &
+                             es_gamma, gas_constant_v, &
+                             gas_constant, L_over_Rv, missing_r8, ps0
 use     location_mod, only : location_type, interactive_location
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, set_radar_obs_def, destroy_obs_def, &
-                             interactive_obs_def, copy_obs_def
+                             interactive_obs_def, copy_obs_def, get_obs_def_location, &
+                             get_expected_obs_from_def, &
+                             get_obs_kind, KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
+                             KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, KIND_REF
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
+use  assim_model_mod, only : interpolate
+
 
 implicit none 
 private
@@ -45,7 +52,8 @@ public obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
    get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, &
    append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
-   get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header
+   get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
+   get_expected_obs
 
 ! Public interfaces for obs
 public obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -203,9 +211,12 @@ if ( seq%max_num_obs > 0 ) then
    if (associated(seq%qc_meta_data))   deallocate(seq%qc_meta_data)
           
    do i = 1, seq%max_num_obs
- !    if (associated(seq%obs(i))) call destroy_obs( seq%obs(i) )
+   !    if (associated(seq%obs(i))) call destroy_obs( seq%obs(i) )
                                   call destroy_obs( seq%obs(i) )
    end do
+
+   ! Also free up the obs storage in the sequence
+   if(associated(seq%obs)) deallocate(seq%obs)
 
    seq%first_time  = -1
    seq%last_time   = -1
@@ -215,6 +226,7 @@ if ( seq%max_num_obs > 0 ) then
    seq%max_num_obs = -1                                                       
 
 endif
+
 
 end subroutine destroy_obs_sequence
 
@@ -269,17 +281,81 @@ do i = obs_num, max_num_obs
    write(*, *) 'input a -1 if there are no more obs'
    read(*, *) end_it_all
    if(end_it_all == -1) exit
-   call interactive_obs(num_copies, num_qc, obs)
+   ! Need to have key available for specialized observation modules
+   call interactive_obs(num_copies, num_qc, obs, i)
    if(i == 1) then
-      write(*, *) 'calling insert obs in sequence'
       call insert_obs_in_seq(interactive_obs_sequence, obs)
-      write(*, *) 'back from insert obs in sequence'
    else
       call insert_obs_in_seq(interactive_obs_sequence, obs, interactive_obs_sequence%obs(i - 1))
    endif
 end do
 
 end function interactive_obs_sequence
+
+
+!---------------------------------------------------------
+
+subroutine get_expected_obs(seq, keys, state, obs_vals, istatus)
+!---------------------------------------------------------------------------
+! Compute forward operator for set of obs in sequence
+
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: keys(:)
+real(r8),                intent(in)  :: state(:)
+real(r8),                intent(out) :: obs_vals(:)
+integer,                 intent(out) :: istatus
+
+integer             :: num_obs, i
+type(location_type) :: location
+integer             :: obs_kind
+type(obs_type)      :: obs
+type(obs_def_type)  :: obs_def
+integer             :: obs_kind_ind
+logical             :: assimilate_this_ob, evaluate_this_ob
+
+!!! WARNING: THIS ISN"T NEEDED AFTER MOVE TO OBS_SEQUENCE_MOD???
+!if ( .not. module_initialized ) call initialize_module
+
+num_obs = size(keys)
+
+! NEED to initialize istatus  to okay value
+istatus = 0
+
+! Initialize the observation type
+!!! Can actually init with the correct size here if wanted
+call init_obs(obs, 0, 0)
+
+do i = 1, num_obs
+   call get_obs_from_key(seq, keys(i), obs)
+   call get_obs_def(obs, obs_def)
+   location = get_obs_def_location(obs_def)
+   obs_kind_ind = get_obs_kind(obs_def)
+! Check in kind for negative for identity obs
+   if(obs_kind_ind < 0) then
+      if ( -obs_kind_ind > size(state) ) call error_handler(E_ERR, &
+         'get_expected_obs', &
+         'identity obs is outside of state vector ', &
+         source, revision, revdate)
+      obs_vals(i) = state(-1 * obs_kind_ind)
+! Otherwise do forward operator for this kind
+   else
+      call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, state, obs_vals(i), &
+         istatus, assimilate_this_ob, evaluate_this_ob)
+
+   !!!elseif(obs_kind_ind == KIND_TD) then ! Dew-point temperature
+   !!!   call take_td(state, obs_def, obs_vals(i), istatus)
+   !!!elseif(obs_kind_ind == KIND_VR) then ! Radial velocity
+   !!!   call take_vr(state, obs_def, obs_vals(i), istatus)
+   !!!else
+   !!!   call take_obs(state, location, obs_kind, obs_vals(i), istatus)
+   endif
+end do
+
+! Need to destroy this obs to free up allocated space
+call destroy_obs(obs)
+
+end subroutine get_expected_obs
+
 
 !---------------------------------------------------------
 
@@ -1283,16 +1359,16 @@ end subroutine read_obs
 
 !------------------------------------------------------------------------------
 
-subroutine interactive_obs(num_copies, num_qc, obs)
+subroutine interactive_obs(num_copies, num_qc, obs, key)
 
-integer,           intent(in) :: num_copies, num_qc
+integer,           intent(in) :: num_copies, num_qc, key
 type(obs_type), intent(inout) :: obs
 
 integer :: i
 
 ! Does interactive initialization of an observation type
 
-call interactive_obs_def(obs%def)
+call interactive_obs_def(obs%def, key)
 do i = 1, num_copies
    write(*, *) 'Enter value ', i, 'for this observation'
    read(*, *) obs%values(i)
@@ -1500,5 +1576,144 @@ end function get_num_times
 !subroutine set_cov_group ???
 
 !=================================================
+
+
+
+
+
+! TEMPORARY HOME FOR TAKE_OBS STUFF, SHOULD MOVE TO OBS_KIND OR BELOW
+
+
+subroutine take_obs(state_vector, location, obs_kind, obs_vals, istatus)
+!--------------------------------------------------------------------
+!
+
+implicit none
+
+real(r8),            intent(in) :: state_vector(:)
+type(location_type), intent(in) :: location
+integer,             intent(in) :: obs_kind
+real(r8),           intent(out) :: obs_vals
+integer,            intent(out) :: istatus
+
+! Not needed in obs_sequence_mod???
+!!!if ( .not. module_initialized ) call initialize_module
+
+! Initially, have only raw state observations implemented so obs_kind is
+! irrelevant. Just do interpolation and return.
+
+call interpolate(state_vector, location, obs_kind, obs_vals, istatus)
+
+end subroutine take_obs
+
+
+
+subroutine take_vr(state_vector, obs_def, vr, istatus)
+!--------------------------------------------------------------------
+!
+
+implicit none
+
+real(r8),            intent(in) :: state_vector(:)
+type(obs_def_type),  intent(in) :: obs_def
+real(r8),           intent(out) :: vr
+integer,            intent(out) :: istatus
+
+type(location_type) :: location
+
+real(r8) :: u, v, w, p, qr, alpha, wt, direction(3)
+
+! Not needed in obs_sequence_mod???
+!!!if ( .not. module_initialized ) call initialize_module
+
+location = get_obs_def_location(obs_def)
+!WRF direction = get_platform_orientation(get_obs_def_platform(obs_def))
+
+call interpolate(state_vector, location, KIND_U, u, istatus)
+call interpolate(state_vector, location, KIND_V, v, istatus)
+call interpolate(state_vector, location, KIND_W, w, istatus)
+call interpolate(state_vector, location, KIND_P, p, istatus)
+call interpolate(state_vector, location, KIND_QR, qr, istatus)
+
+alpha=(ps0/p)**0.4_r8
+if(qr <= 0.0_r8) then
+   wt=0.0_r8
+else
+   wt=5.4_r8*alpha*qr**0.125_r8
+endif
+
+print*,'Terminal velocity = ',wt
+
+! direction(1) = sin(az)cos(elev)
+! direction(2) = cos(az)cos(elev)
+! direction(3) = sin(elev)
+! az and elev are angles at the observation location.
+
+vr = direction(1)*u + direction(2)*v + direction(3)*(w+wt)
+
+end subroutine take_vr
+
+
+subroutine take_td(state_vector, obs_def, td, istatus)
+!--------------------------------------------------------------------
+!
+
+implicit none
+
+real(r8),           intent(in)  :: state_vector(:)
+type(obs_def_type), intent(in)  :: obs_def
+real(r8),           intent(out) :: td
+integer,            intent(out) :: istatus
+
+type(location_type) :: location
+
+real(r8) :: t, qv, t_c, es, qvs, p, INVTD, rd_over_rv, rd_over_rv1
+
+! Not needed in obs_sequence_mod???
+!!!if ( .not. module_initialized ) call initialize_module
+
+location = get_obs_def_location(obs_def)
+
+call interpolate(state_vector, location, KIND_P, p, istatus)
+call interpolate(state_vector, location, KIND_QV, qv, istatus)
+call interpolate(state_vector, location, KIND_T, t, istatus)
+
+if( p /= missing_r8 .and. qv /= missing_r8 .and. t /= missing_r8 ) then
+
+   rd_over_rv = gas_constant / gas_constant_v
+   rd_over_rv1 = 1.0_r8 - rd_over_rv
+
+   t_c = t - t_kelvin
+
+!------------------------------------------------------------------------------
+!  Calculate saturation vapour pressure:
+!------------------------------------------------------------------------------
+
+   es = es_alpha * exp( es_beta * t_c / ( t_c + es_gamma ) )
+
+!------------------------------------------------------------------------------
+!  Calculate saturation specific humidity:
+!------------------------------------------------------------------------------
+
+   qvs = rd_over_rv * es / ( p - rd_over_rv1 * es )
+
+   INVTD = 1.0_r8/t  - LOG (qv / qvs) / L_over_Rv
+
+   td = 1.0_r8 / INVTD
+
+else
+
+   td = missing_r8
+
+endif
+
+print*,INVTD, t, qv, qvs, es, p
+
+end subroutine take_td
+
+
+
+
+
 
 end module obs_sequence_mod
