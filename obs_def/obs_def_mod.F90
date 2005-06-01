@@ -117,7 +117,7 @@ integer, parameter :: RADIOSONDE_U_WIND_COMPONENT                          = 1, 
                       V_10_METER_WIND                                      = 15, &
                       TEMPERATURE_2_METER                                  = 16, &
                       SPECIFIC_HUMIDITY_2_METER                            = 17, &
-                      DEW_POINT_2_METER                        = 18
+                      DEW_POINT_2_METER                                    = 18
 
 
 integer, parameter :: max_obs_kinds = 18
@@ -131,24 +131,24 @@ type obs_kind_type
 end type obs_kind_type
 
 type(obs_kind_type) :: obs_kind_info(max_obs_kinds) = &
-   (/obs_kind_type(RADIOSONDE_U_WIND_COMPONENT, 'radiosonde_u_wind_component', .false., .false.), &
-     obs_kind_type(RADIOSONDE_V_WIND_COMPONENT, 'radiosonde_v_wind_component', .false., .false.), &
-     obs_kind_type(SURFACE_PRESSURE,  'surface_pressure',                      .false., .false.), &
-     obs_kind_type(RADIOSONDE_TEMPERATURE,  'radiosonde_temperature',          .false., .false.), &
+   (/obs_kind_type(RADIOSONDE_U_WIND_COMPONENT, 'radiosonde_u_wind_component',   .false., .false.), &
+     obs_kind_type(RADIOSONDE_V_WIND_COMPONENT, 'radiosonde_v_wind_component',   .false., .false.), &
+     obs_kind_type(SURFACE_PRESSURE,  'surface_pressure',                        .false., .false.), &
+     obs_kind_type(RADIOSONDE_TEMPERATURE,  'radiosonde_temperature',            .false., .false.), &
      obs_kind_type(RADIOSONDE_SPECIFIC_HUMIDITY, 'radiosonde_specific_humidity', .false., .false.), &
-     obs_kind_type(RADIOSONDE_PRESSURE, 'radiosonde_pressure',                 .false., .false.), &
-     obs_kind_type(VERTICAL_VELOCITY,  'vertical_velocity',                    .false., .false.), &
-     obs_kind_type(RAINWATER_MIXING_RATIO, 'rainwater_mixing_ratio',           .false., .false.), &
-     obs_kind_type(RAW_STATE_VARIABLE,  'raw_state_variable',                  .false., .false.), &
-     obs_kind_type(DEW_POINT_TEMPERATURE,  'dew_point_temperature',            .false., .false.), &
-     obs_kind_type(DENSITY, 'density',                                         .false., .false.), &
-     obs_kind_type(DOPPLER_RADIAL_VELOCITY, 'doppler_radial_velocity',         .false., .false.), &
-     obs_kind_type(RADAR_REFLECTIVITY, 'radar_reflectivity',                   .false., .false.), &
-     obs_kind_type(U_10_METER_WIND, 'u_10_meter_wind',                         .false., .false.), &
-     obs_kind_type(V_10_METER_WIND, 'v_10_meter_wind',                         .false., .false.), &
-     obs_kind_type(TEMPERATURE_2_METER, 'temperature_2_meter',                 .false., .false.), &
-     obs_kind_type(SPECIFIC_HUMIDITY_2_METER, 'specific_humidity_2_meter',     .false., .false.), &
-     obs_kind_type(DEW_POINT_2_METER, 'dew_point_2_meter', .false., .false.) /)
+     obs_kind_type(RADIOSONDE_PRESSURE, 'radiosonde_pressure',                   .false., .false.), &
+     obs_kind_type(VERTICAL_VELOCITY,  'vertical_velocity',                      .false., .false.), &
+     obs_kind_type(RAINWATER_MIXING_RATIO, 'rainwater_mixing_ratio',             .false., .false.), &
+     obs_kind_type(RAW_STATE_VARIABLE,  'raw_state_variable',                    .false., .false.), &
+     obs_kind_type(DEW_POINT_TEMPERATURE,  'dew_point_temperature',              .false., .false.), &
+     obs_kind_type(DENSITY, 'density',                                           .false., .false.), &
+     obs_kind_type(DOPPLER_RADIAL_VELOCITY, 'doppler_radial_velocity',           .false., .false.), &
+     obs_kind_type(RADAR_REFLECTIVITY, 'radar_reflectivity',                     .false., .false.), &
+     obs_kind_type(U_10_METER_WIND, 'u_10_meter_wind',                           .false., .false.), &
+     obs_kind_type(V_10_METER_WIND, 'v_10_meter_wind',                           .false., .false.), &
+     obs_kind_type(TEMPERATURE_2_METER, 'temperature_2_meter',                   .false., .false.), &
+     obs_kind_type(SPECIFIC_HUMIDITY_2_METER, 'specific_humidity_2_meter',       .false., .false.), &
+     obs_kind_type(DEW_POINT_2_METER, 'dew_point_2_meter',                       .false., .false.) /)
 
 ! Namelist array to turn on any requested observation types
 character(len = 129) :: assimilate_these_obs_types(max_obs_kinds) = 'null'
@@ -463,8 +463,22 @@ if(obs_kind_info(obs_kind_ind)%assimilate .or. obs_kind_info(obs_kind_ind)%evalu
    location = get_obs_def_location(obs_def)
    ! Compute the forward operator;
    select case(obs_kind_ind)
+      #IFDEF raw_state_variable
          case(RAW_STATE_VARIABLE)
          call interpolate(state, location, 1, obs_val, istatus)
+      #ENDIF
+      #IFDEF radiosonde_u_wind_component
+         case(RADIOSONDE_U_WIND_COMPONENT)
+         call interpolate(state, location, TYPE_U, obs_val, istatus)
+      #ENDIF
+      #IFDEF radiosonde_v_wind_component
+         case(RADIOSONDE_V_WIND_COMPONENT)
+         call interpolate(state, location, TYPE_V, obs_val, istatus)
+      #ENDIF
+      #IFDEF radiosonde_temperature
+         case(RADIOSONDE_TEMPERATURE)
+         call interpolate(state, location, TYPE_T, obs_val, istatus)
+      #ENDIF
    end select
 else
    ! Not computing forward operator
@@ -618,17 +632,17 @@ do i = 1, max_obs_kinds
    if(obs_kind_info(i)%assimilate .or. obs_kind_info(i)%evaluate) &
       write(*, *) obs_kind_info(i)%index, trim(obs_kind_info(i)%name)
 end do
-write(*, *) 'OR'
-write(*, *) '        Input -1 * state_variable index for an identity observation'
 read(*, *) obs_def%kind
 
 
 ! Input any special stuff for this kind
 select case(obs_def%kind)
-   !case(RAW_STATE_VARIABLE)
-   !case(RADIOSONDE_U_WIND_COMPONENT)
-   !case(RADIOSONDE_V_WIND_COMPONENT)
-   !case(RADIOSONDE_TEMPERATURE)
+   #IFDEF doppler_radial_velocity
+      call interactive_doppler_radial_velocity()
+   #ENDIF
+   #IFDEFF radar_reflectivity
+   #ENDIF radar_reflectivity
+
 end select
 
 
