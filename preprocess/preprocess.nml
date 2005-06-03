@@ -1,0 +1,3 @@
+&preprocess_nml
+   input_file = '../../../obs_def.F90',
+   output_file = '../../../obs_def.f90' /
