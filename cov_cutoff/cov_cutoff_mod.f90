@@ -48,7 +48,7 @@ contains
 
 
 
-function comp_cov_factor(z_in, c)
+function comp_cov_factor(z_in, c, localization_override)
 !----------------------------------------------------------------------
 ! function comp_cov_factor(z_in, c)
 !
@@ -68,9 +68,17 @@ implicit none
 
 real(r8), intent(in) :: z_in, c
 real(r8)             :: comp_cov_factor
+integer, optional    :: localization_override
 
 real(r8)           :: z, r
 integer            :: iunit, ierr, io
+integer            :: localization_type
+
+if(present(localization_override)) then
+   localization_type = localization_override
+else
+   localization_type = select_localization
+endif
 
 z = abs(z_in)
 
@@ -102,7 +110,7 @@ if(.not. namelist_initialized) then
 endif
 !---------------------------------------------------------
 
-if(select_localization == 3) then ! Ramped localization
+if(localization_type == 3) then ! Ramped localization
 
    if(z >= 2.0_r8 * c) then
       comp_cov_factor = 0.0_r8
@@ -112,7 +120,7 @@ if(select_localization == 3) then ! Ramped localization
       comp_cov_factor = 1.0_r8
    endif
 
-else if(select_localization == 2) then ! BOXCAR localization
+else if(localization_type == 2) then ! BOXCAR localization
 
    if(z < 2.0_r8 * c) then
       comp_cov_factor = 1.0_r8
@@ -120,7 +128,7 @@ else if(select_localization == 2) then ! BOXCAR localization
       comp_cov_factor = 0.0_r8
    endif
 
-else if(select_localization == 1) then ! Standard Gaspari Cohn localization
+else if(localization_type == 1) then ! Standard Gaspari Cohn localization
 
    if( z >= c*2.0_r8 ) then
 
@@ -145,7 +153,7 @@ else if(select_localization == 1) then ! Standard Gaspari Cohn localization
 else ! Otherwise namelist parameter is illegal; this is an error
 
      call error_handler(E_ERR,'comp_cov_factor', &
-              'Illegal value of "select_localization" in cov_cutoff_mod namelist', &
+              'Illegal value of "localization" in cov_cutoff_mod namelist', &
                source, revision, revdate )
 
 endif
