@@ -15,6 +15,7 @@ use     types_mod, only : r8
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
                           register_module, close_file, error_handler, E_ERR, &
                           E_MSG, logfileunit
+use time_manager_mod, only : time_type, write_time, get_time
 
 implicit none
 private
@@ -32,14 +33,19 @@ integer :: select_regression = 1
 ! Value 2 selects L96 file format: Works for archived 40 observation L96 files
 ! Value 3 selects bgrid archive default: Reads in file from bgrid experiments
 character(len = 129) :: input_reg_file = "time_mean_reg"
+character(len = 129) :: reg_diagnostics_file = "reg_diagnostics"
+logical              :: save_reg_diagnostics = .false.
 
-namelist / reg_factor_nml / select_regression, input_reg_file
+namelist / reg_factor_nml / select_regression, input_reg_file, &
+                            save_reg_diagnostics, reg_diagnostics_file
 
 !============================================================================
 
 
 ! Flags for loading startup
 logical :: first_call = .true.
+! Unit for output diagnostics
+integer :: diag_unit
 ! Size of regression input files
 integer :: num_obs, model_size
 
@@ -59,7 +65,7 @@ revdate  = "$Date$"
 CONTAINS
 
 
-function comp_reg_factor(num_groups, regress, time_index, &
+function comp_reg_factor(num_groups, regress, obs_time, &
    obs_index, state_index, obs_state_ind, obs_state_max)
 
 ! Computes factor by which to multiply regression coefficients
@@ -68,14 +74,15 @@ function comp_reg_factor(num_groups, regress, time_index, &
 ! methodology (for instance time mean from previous runs). Could
 ! also implement the standard distance dependence method, too.
 
-integer, intent(in) :: num_groups, time_index, obs_index, state_index
+integer, intent(in) :: num_groups, obs_index, state_index
+type(time_type), intent(in) :: obs_time
 integer, intent(in), optional :: obs_state_ind, obs_state_max
 real(r8), intent(in) :: regress(num_groups)
 real(r8) :: comp_reg_factor
 
 real(r8) :: sum_reg2, sum_reg_reg
 
-integer :: i, j, ii, jj, iunit, ierr, io 
+integer :: i, j, ii, jj, iunit, ierr, io, secs, days
 
 !--------------------------------------------------------
 ! Initialize namelist if not already done
@@ -101,6 +108,11 @@ if(.not. namelist_initialized) then
    call error_handler(E_MSG,'comp_reg_factor','reg_factor_nml values are',' ',' ',' ')
    write(logfileunit, nml=reg_factor_nml)
    write(     *     , nml=reg_factor_nml)
+
+   ! See if diagnostic output is requested, if so, open file
+   if(save_reg_diagnostics) then
+      diag_unit = open_file(reg_diagnostics_file, action = 'write')
+   endif
 
 endif
 !---------------------------------------------------------
@@ -129,8 +141,12 @@ if(select_regression == 1) then
 
       if(comp_reg_factor < 0.0_r8) comp_reg_factor = 0.0_r8
 
-!!!      if(obs_index == 14) write(44, *) time_index, obs_index, state_index, &
-!!!         comp_reg_factor
+      ! Write out diagnostic information
+      if(save_reg_diagnostics) then
+         call get_time(obs_time, secs, days)
+         write(diag_unit, 22) days, secs, obs_index, state_index, comp_reg_factor
+         22 format(4(i7, 1x), e10.4)
+      endif
 
    endif
 
