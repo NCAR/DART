@@ -23,14 +23,10 @@ use  assim_model_mod, only : get_state_meta_data, interpolate
 
 
 ! Need to include use statements for whatever observation kind detail modules are being used
-! Would be nice to have a preprocessor tool to handle this from namelist????
-!use....
-
-!use....
-
-
-
-
+#IFDEF raw_state_1d_integral
+   use obs_def_raw_state_mod, only : write_1d_integral, read_1d_integral, &
+                                        interactive_1d_integral, get_expected_1d_integral
+#ENDIF
 
 implicit none
 private
@@ -50,8 +46,6 @@ public init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
 public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
        KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, KIND_TD2
 
-
-
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source$", &
@@ -65,6 +59,7 @@ type obs_def_type
    integer               :: kind
    type(time_type)       :: time
    real(r8)              :: error_variance
+   integer               :: key             ! Used by specialized observation types
 end type obs_def_type
 
 logical, save :: module_initialized = .false.
@@ -117,10 +112,12 @@ integer, parameter :: RADIOSONDE_U_WIND_COMPONENT                          = 1, 
                       V_10_METER_WIND                                      = 15, &
                       TEMPERATURE_2_METER                                  = 16, &
                       SPECIFIC_HUMIDITY_2_METER                            = 17, &
-                      DEW_POINT_2_METER                                    = 18
+                      DEW_POINT_2_METER                                    = 18, &
+                      RAW_STATE_1D_INTEGRAL                                = 19
 
 
-integer, parameter :: max_obs_kinds = 18
+
+integer, parameter :: max_obs_kinds = 19
 integer :: num_kind_assimilate, num_kind_evaluate
 
 type obs_kind_type
@@ -148,8 +145,8 @@ type(obs_kind_type) :: obs_kind_info(max_obs_kinds) = &
      obs_kind_type(V_10_METER_WIND, 'v_10_meter_wind',                           .false., .false.), &
      obs_kind_type(TEMPERATURE_2_METER, 'temperature_2_meter',                   .false., .false.), &
      obs_kind_type(SPECIFIC_HUMIDITY_2_METER, 'specific_humidity_2_meter',       .false., .false.), &
-     obs_kind_type(DEW_POINT_2_METER, 'dew_point_2_meter',                       .false., .false.) /)
-
+     obs_kind_type(DEW_POINT_2_METER, 'dew_point_2_meter',                       .false., .false.), &
+     obs_kind_type(RAW_STATE_1D_INTEGRAL, 'raw_state_1d_integral',               .false., .false.) /)
 ! Namelist array to turn on any requested observation types
 character(len = 129) :: assimilate_these_obs_types(max_obs_kinds) = 'null'
 character(len = 129) :: evaluate_these_obs_types(max_obs_kinds) = 'null'
@@ -262,6 +259,8 @@ obs_def%location = location
 obs_def%kind = kind
 obs_def%time = time
 obs_def%error_variance = error_variance
+! No key assigned for standard observation defs
+obs_def%key = -1
 
 end subroutine init_obs_def
 
@@ -280,6 +279,7 @@ obs_def1%location = obs_def2%location
 obs_def1%kind = obs_def2%kind
 obs_def1%time = obs_def2%time
 obs_def1%error_variance = obs_def2%error_variance
+obs_def1%key = obs_def2%key
 !WRF obs_def1%platform = obs_def2%platform
 !deallocate(obs_def1%platform_qc)
 !allocate(obs_def1%platform_qc(size(obs_def2%platform_qc))
@@ -467,6 +467,10 @@ if(obs_kind_info(obs_kind_ind)%assimilate .or. obs_kind_info(obs_kind_ind)%evalu
          case(RAW_STATE_VARIABLE)
          call interpolate(state, location, 1, obs_val, istatus)
       #ENDIF
+      #IFDEF raw_state_1d_integral
+         case(RAW_STATE_1D_INTEGRAL)
+            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
+      #ENDIF
       #IFDEF radiosonde_u_wind_component
          case(RADIOSONDE_U_WIND_COMPONENT)
          call interpolate(state, location, TYPE_U, obs_val, istatus)
@@ -490,13 +494,14 @@ end subroutine get_expected_obs_from_def
 
 !----------------------------------------------------------------------------
 
-subroutine read_obs_def(ifile, obs_def, fform)
+subroutine read_obs_def(ifile, obs_def, key, fform)
 
 ! Reads an obs_def from file which is just an integer unit number in the
 ! current preliminary implementation.
 
 type(obs_def_type),      intent(inout) :: obs_def
 integer,                 intent(in)    :: ifile
+integer,                 intent(in)    :: key
 character(len=*), intent(in), optional :: fform
 
 character(len=5)  :: header
@@ -542,6 +547,10 @@ select case(obs_def%kind)
    case(RADIOSONDE_U_WIND_COMPONENT)
    case(RADIOSONDE_V_WIND_COMPONENT)
    case(RADIOSONDE_TEMPERATURE)
+   #IFDEF raw_state_1d_integral
+      case(RAW_STATE_1D_INTEGRAL)
+         call read_1d_integral(obs_def%key, ifile, fileformat)
+   #ENDIF
 end select
 
 ! Read the time for the observation
@@ -560,12 +569,13 @@ end subroutine read_obs_def
 
 !----------------------------------------------------------------------------
 
-subroutine write_obs_def(ifile, obs_def, fform)
+subroutine write_obs_def(ifile, obs_def, key, fform)
 
 ! Writes an obs_def to file.
 
 integer,                    intent(in) :: ifile
 type(obs_def_type),         intent(in) :: obs_def
+integer,                    intent(in) :: key
 character(len=*), intent(in), optional :: fform
 
 character(len=32) :: fileformat
@@ -600,6 +610,10 @@ select case(obs_def%kind)
    case(RADIOSONDE_U_WIND_COMPONENT)
    case(RADIOSONDE_V_WIND_COMPONENT)
    case(RADIOSONDE_TEMPERATURE)
+   #IFDEF raw_state_1d_integral
+      case(RAW_STATE_1D_INTEGRAL)
+         call write_1d_integral(obs_def%key, ifile, fileformat)
+   #ENDIF
 end select
 
 call write_time(ifile, obs_def%time, fileformat)
@@ -642,7 +656,10 @@ select case(obs_def%kind)
    #ENDIF
    #IFDEFF radar_reflectivity
    #ENDIF radar_reflectivity
-
+   #IFDEF raw_state_1d_integral
+      case(RAW_STATE_1D_INTEGRAL)
+         call interactive_1d_integral(obs_def%key)
+   #ENDIF
 end select
 
 

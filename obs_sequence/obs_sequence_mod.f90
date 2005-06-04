@@ -295,7 +295,8 @@ end function interactive_obs_sequence
 
 !---------------------------------------------------------
 
-subroutine get_expected_obs(seq, keys, state, obs_vals, istatus)
+subroutine get_expected_obs(seq, keys, state, obs_vals, istatus, &
+   assimilate_this_ob, evaluate_this_ob)
 !---------------------------------------------------------------------------
 ! Compute forward operator for set of obs in sequence
 
@@ -304,6 +305,7 @@ integer,                 intent(in)  :: keys(:)
 real(r8),                intent(in)  :: state(:)
 real(r8),                intent(out) :: obs_vals(:)
 integer,                 intent(out) :: istatus
+logical,                 intent(out) :: assimilate_this_ob, evaluate_this_ob
 
 integer             :: num_obs, i
 type(location_type) :: location
@@ -311,7 +313,6 @@ integer             :: obs_kind
 type(obs_type)      :: obs
 type(obs_def_type)  :: obs_def
 integer             :: obs_kind_ind
-logical             :: assimilate_this_ob, evaluate_this_ob
 
 !!! WARNING: THIS ISN"T NEEDED AFTER MOVE TO OBS_SEQUENCE_MOD???
 !if ( .not. module_initialized ) call initialize_module
@@ -1306,10 +1307,10 @@ end do
 
 if(write_binary_obs_sequence) then
    write(file_id) obs%prev_time, obs%next_time, obs%cov_group
-   call write_obs_def(file_id, obs%def, 'unformatted')
+   call write_obs_def(file_id, obs%def, obs%key, 'unformatted')
 else
    write(file_id, *) obs%prev_time, obs%next_time, obs%cov_group
-   call write_obs_def(file_id, obs%def)
+   call write_obs_def(file_id, obs%def, obs%key)
 endif
 
 end subroutine write_obs
@@ -1348,10 +1349,10 @@ endif
 
 if(read_binary_obs_sequence) then
    read(file_id) obs%prev_time, obs%next_time, obs%cov_group
-   call read_obs_def(file_id, obs%def, 'unformatted')
+   call read_obs_def(file_id, obs%def, key, 'unformatted')
 else
    read(file_id, *) obs%prev_time, obs%next_time, obs%cov_group
-   call read_obs_def(file_id, obs%def)
+   call read_obs_def(file_id, obs%def, key)
 endif
 
 
@@ -1510,9 +1511,7 @@ do ilev = 1, n_elev
             end do
 
             if(obs_num == 1) then
-               write(*, *) 'calling insert obs in sequence'
                call insert_obs_in_seq(obs_sequence, obs)
-               write(*, *) 'back from insert obs in sequence'
             else
                call insert_obs_in_seq(obs_sequence, obs, &
                     obs_sequence%obs(obs_num - 1))
