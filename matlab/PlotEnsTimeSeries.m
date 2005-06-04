@@ -142,7 +142,7 @@ switch lower(t.model)
       ylabel('state variable 2')
       zlabel('state variable 3')
 
-   case {'lorenz_96', 'lorenz_04'}
+   case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04'}
 
       % Use one figure with subplots 
       figure(1); clf; iplot = 0;
@@ -164,68 +164,11 @@ switch lower(t.model)
                legend boxoff
                plot(times,   truth,'b','LineWidth',2); % plot again - on top
                plot(times,ens_mean,'r','LineWidth',2); %      again - on top
-               title(sprintf('%s Variable %d Ensemble Members of %s',...
-                     t.model, ivar, pinfo.diagn_file), ...
+               title(sprintf('%s %s varnum %d Ensemble Members of %s',...
+                     t.model, pinfo.var, ivar, pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
                xlabel(sprintf('model time (%d timesteps)',t.num_times))
       end
-
-   case 'lorenz_96_2scale'
-
-      % Use one figure with subplots 
-      figure(1); clf; iplot = 0;
-      for ivar = pinfo.var_inds,
-
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
-
-            iplot = iplot + 1;
-            subplot(length(pinfo.var_inds), 1, iplot);
-               % This is a bit wasteful, but we plot everything once to define
-               % the color order for the legend and then again for visibility
-               plot(times,      truth,'b','LineWidth',2); hold on;
-               plot(times,   ens_mean,'r','LineWidth',2);
-               plot(times,ens_members,'g');
-               legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
-               legend boxoff
-               plot(times,   truth,'b','LineWidth',2); % plot again - on top
-               plot(times,ens_mean,'r','LineWidth',2); %      again - on top
-               title(sprintf('%s Variable %d Ensemble Members of %s',...
-                     t.model, ivar, pinfo.diagn_file), ...
-                     'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',t.num_times))
-      end
-
-   case 'lorenz_96_2scale'
-
-      % Use one figure with subplots 
-      figure(1); clf; iplot = 0;
-      for ivar = pinfo.state_var_inds,
-
-            truth       = get_var_series(pinfo.truth_file, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, ivar);  % all members
-
-            iplot = iplot + 1;
-            subplot(length(pinfo.state_var_inds), 1, iplot);
-               % This is a bit wasteful, but we plot everything once to define
-               % the color order for the legend and then again for visibility
-               plot(times,      truth,'b','LineWidth',2); hold on;
-               plot(times,   ens_mean,'r','LineWidth',2);
-               plot(times,ens_members,'g');
-               legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
-               legend boxoff
-               plot(times,   truth,'b','LineWidth',2); % plot again - on top
-               plot(times,ens_mean,'r','LineWidth',2); %      again - on top
-               title(sprintf('%s Variable %d Ensemble Members of %s',...
-                     t.model, ivar, pinfo.diagn_file), ...
-                     'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',t.num_times))
-      end
-
 
    case 'fms_bgrid'
 

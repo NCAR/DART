@@ -21,6 +21,33 @@ switch lower(vars.model)
       %  model has no choice.
       varid = vars.def_state_vars;
 
+   case 'forced_lorenz_96'
+
+      % query to see if these are OK, if not ...
+
+      disp(sprintf('\nUsing %s state variable IDs %s ', ...
+                      vars.def_var, num2str(vars.def_state_vars)))
+      disp('If these are OK, <cr>;')
+      disp('If not, please enter array of state variable ID''s')
+      disp(sprintf('To choose from entire state enter A 25 50 75 (between %d and %d)',vars.min_state_var,vars.max_state_var))
+      disp(sprintf('To choose traditional model state enter S 1  23 40 (between %d and %d)',vars.min_model_var,vars.max_model_var))
+      disp(sprintf('To choose forcing estimates enter F 2 12 22 (between %d and %d)',vars.min_force_var,vars.max_force_var))
+      IDstring = input('(no intervening syntax required)\n','s');
+
+      if isempty(IDstring) 
+         varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
+      else 
+         [vrbl, vrbl_inds] = ParseAlphaNumeric(IDstring);
+
+	 % Must shift the 'forcing' variables by the number of state variables.
+         switch lower(vrbl)
+	 case 'f'
+            varid = struct('var','state','var_inds',vrbl_inds+vars.num_model_vars); 
+	 otherwise
+            varid = struct('var','state','var_inds',vrbl_inds); 
+	 end
+      end 
+
    case 'lorenz_96_2scale'
 
       % query to see if these are OK, if not ...

@@ -76,7 +76,8 @@ close(f);
 
 switch lower(model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
+	 'lorenz_04','forced_lorenz_96'} 
 
       BulletProof(pinfo,X,Y,Z)          % rudimentary bulletproofing
       
@@ -120,14 +121,17 @@ switch lower(model)
               pinfo.var1ind, pinfo.var2ind, pinfo.var3ind, pinfo.fname, ...
               model, pinfo.ens_mem);
          [legh, objh, outh, outm] = legend([outh; h],outm,0);
-      
-         set(objh(1),'interpreter','none')
+ 
+         set(objh(1:nlines+1),'interpreter','none')
       end
       legend boxoff
 
    case 'fms_bgrid'
 
-      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem 
+      disp(sprintf('PlotPhaseSpace'))
+      pinfo
+
+      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem 
       
       x = Get1Copy(pinfo.fname, ens_mem_id, pinfo.var1name, ...
                   pinfo.var1_lvlind, pinfo.var1_latind, pinfo.var1_lonind);
@@ -173,7 +177,7 @@ switch lower(model)
                pinfo.var2name, pinfo.var3name, model, pinfo.fname, pinfo.ens_mem);
          [legh, objh, outh, outm] = legend([outh; h],outm,0);
       
-         set(objh(1),'interpreter','none')
+         set(objh(1:nlines+1),'interpreter','none')
       end
       legend boxoff
 

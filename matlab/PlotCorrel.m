@@ -52,7 +52,8 @@ end
 
 switch(lower(model))
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
+	   'lorenz_04','forced_lorenz_96'}
 
       base_var_index = pinfo.base_var_index;
       base_time      = pinfo.base_time;
@@ -82,6 +83,7 @@ switch(lower(model))
       end
       
       % Now for the plotting part ...
+      disp('Please be patient ... this usually takes a bit ...')
       clf;
       
       contour(correl,[-1:0.2:1]);
@@ -160,7 +162,7 @@ switch(lower(model))
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', vars.model))
+      error(sprintf('model %s not implemented yet', model))
 
 end
 

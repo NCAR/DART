@@ -51,7 +51,7 @@ vars  = CheckModel(fname);   % also gets default values for this model.
 
 switch lower(vars.model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
 
       str1 = sprintf('[%d - %d]',vars.min_state_var, vars.max_state_var);
 
@@ -136,8 +136,6 @@ switch lower(vars.model)
    case 'fms_bgrid'
 
       pinfo = GetBgridInfo(fname, 'PlotPhaseSpace');
-
-      pinfo                            % just echo stuff for posterity.
 
    otherwise
 

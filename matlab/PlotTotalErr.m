@@ -35,7 +35,6 @@ CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
 f = netcdf(pinfo.truth_file,'nowrite');
 model = f.model(:); 
-close(f)
 
 
 % Get the netcdf variable indices for desired "copies"
@@ -113,6 +112,85 @@ switch lower(model)
       xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
 
+   case 'forced_lorenz_96'
+
+      % This model has the state variables replicated, so there is a difference
+      % between num_state_vars and the length of the state variable.
+      forcing           = f.model_forcing(:);
+      delta_t           = f.model_delta_t(:);
+      time_step_days    = f.model_time_step_days(:);
+      time_step_seconds = f.model_time_step_seconds(:);
+      num_model_vars    = f.model_num_state_vars(:);  % ACTUAL state vars, not
+
+      % Get the appropriate netcdf variables
+
+      Whole_truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index);
+      Whole_ens    = get_state_copy(pinfo.diagn_file, 'state',  ens_mean_index);
+      Whole_spread = get_state_copy(pinfo.diagn_file, 'state',ens_spread_index);
+      num_vars = size(Whole_spread,2);
+
+      %--------------------------------------------------------------------------
+      % Treat the traditional state variable independent of the forcing variables
+      %--------------------------------------------------------------------------
+
+      ind1 = 1;                 % ASSUMPTION: traditional state is first
+      indN = num_model_vars;
+
+      truth  = Whole_truth(  :, ind1:indN );
+      ens    = Whole_ens(    :, ind1:indN );
+      spread = Whole_spread( :, ind1:indN );
+
+      % Compute the spread; zero truth for this and compute distance from 0
+
+      err        = total_err(truth, ens);
+      err_spread = total_err(zeros(size(spread)), spread);
+      errTotal   = sum(err)/num_times;
+      spreadTotal= sum(err_spread)/num_times;
+      string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+      string2 = ['time-mean Ensemble Spread Total Error = ' num2str(spreadTotal)];
+
+      clf; subplot(2,1,1);
+
+      plot(times,err, 'b', times,err_spread, 'r');
+      legend(string1,string2,0)
+      legend boxoff
+      title(sprintf('%s Total Error over statevars %d to %d for %s',...
+                    model, ind1, indN, pinfo.diagn_file), ...
+            'interpreter','none','fontweight','bold')
+      xlabel(sprintf('model time (%d timesteps)',num_times))
+      ylabel('Total Error')
+
+      %--------------------------------------------------------------------------
+      % Now for the forcing
+      %--------------------------------------------------------------------------
+
+      ind1 = num_model_vars + 1;
+      indN = num_vars;
+
+      truth  = Whole_truth(  :, ind1:indN );
+      ens    = Whole_ens(    :, ind1:indN );
+      spread = Whole_spread( :, ind1:indN );
+
+      % Compute the spread; zero truth for this and compute distance from 0
+
+      err        = total_err(truth, ens);
+      err_spread = total_err(zeros(size(spread)), spread);
+      errTotal   = sum(err)/num_times;
+      spreadTotal= sum(err_spread)/num_times;
+      string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+      string2 = ['time-mean Ensemble Spread Total Error = ' num2str(spreadTotal)];
+
+      subplot(2,1,2)
+
+      plot(times,err, 'b', times,err_spread, 'r');
+      legend(string1,string2,0)
+      legend boxoff
+      title(sprintf('%s Total Error over statevars %d to %d for %s',...
+                    model, ind1, indN, pinfo.diagn_file), ...
+            'interpreter','none','fontweight','bold')
+      xlabel(sprintf('model time (%d timesteps)',num_times))
+      ylabel('Total Error')
+
    case 'fms_bgrid'
 
       BgridTotalError( pinfo )
@@ -122,9 +200,11 @@ switch lower(model)
       disp(sprintf('unknown model %s -- doing nothing',t.model))
 
 end
+close(f)
 
-
-
+%=======================================================================
+% helper functions
+%=======================================================================
 
 function BgridTotalError( pinfo )
 % netcdf has no state vector, it has prognostic variables.
@@ -347,7 +427,7 @@ figure(4); clf;
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
 
 %----------------------------------------------------------------------
-% helper functions
+% helper function
 %----------------------------------------------------------------------
 function slice = GetPS(fname,copyindex);
 corner     = [-1, copyindex, -1, -1];
@@ -374,6 +454,9 @@ ted        = getnc(fname,varstring,corner,endpnt);
 slice      = reshape(ted,[nt ny*nx]);
 
 
+%----------------------------------------------------------------------
+% helper function
+%----------------------------------------------------------------------
 function wts = SphereWeights(lons, lats)
 % SphereWeights creates weights based on area ...
 %

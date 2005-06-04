@@ -29,7 +29,7 @@ vars = CheckModel(diagn_file);   % also gets default values for this file.
 pinfo.fname = diagn_file;
 
 switch lower(vars.model)
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
 
       pinfo.base_var = vars.def_var;
 

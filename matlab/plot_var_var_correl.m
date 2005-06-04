@@ -34,7 +34,7 @@ vars = CheckModel(fname);   % also gets default values for this file.
 pinfo.fname = fname;
 
 switch lower(vars.model) 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
 
       inputstring = input( ...
            sprintf('Input index for base variable (between %d and %d)  ', ...

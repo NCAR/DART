@@ -64,7 +64,7 @@ switch lower(true_model)
          end
       end
 
-   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
 
       clf; iplot = 0;
       for ivar = pinfo.state_var_inds,
@@ -79,7 +79,7 @@ switch lower(true_model)
                'interpreter','none','fontweight','bold')
       end
 
-   case {'lorenz_96_2scale'}
+   case 'lorenz_96_2scale'
 
       clf; iplot = 0;
       for ivar = pinfo.state_var_inds,
@@ -118,6 +118,9 @@ switch lower(true_model)
                  pinfo.longitude)}, 'interpreter','none','fontweight','bold')
 
    otherwise
+
+      error(sprintf('model %s unknown',model))
+
 end
 
 
