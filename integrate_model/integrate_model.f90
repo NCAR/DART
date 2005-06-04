@@ -19,7 +19,7 @@ use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
                              operator(>), operator(<), read_time
 use    utilities_mod, only : get_unit, open_file, close_file, check_nml_error, &
                              file_exist, initialize_utilities, register_module, &
-                             error_handler, logfileunit, E_MSG
+                             error_handler, logfileunit, E_MSG, timestamp
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    set_model_time, get_model_time, init_diag_output, &
@@ -38,7 +38,7 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-type(time_type)         :: time, target_time, model_time
+type(time_type)         :: target_time, model_time
 real(r8), allocatable   :: x(:)
 integer :: iunit, ierr, io, model_size
 type(ensemble_type) :: ens_handle
@@ -55,9 +55,8 @@ namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
    ic_file_name, ud_file_name
 !----------------------------------------------------------------
 
-call initialize_utilities
+call initialize_utilities('integrate_model')
 call register_module(source,revision,revdate)
-call error_handler(E_MSG,'integrate_model','STARTING ...',source,revision,revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('integrate_model.nml')) then
@@ -105,5 +104,7 @@ iunit = open_restart_write(ud_file_name)
 call get_ensemble_member(ens_handle, 1, x, model_time)
 call awrite_state_restart(model_time, x, iunit)
 call close_restart(iunit)
+
+call timestamp(source,revision,revdate,'end') ! closes the log file.
 
 end program integrate_model
