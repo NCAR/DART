@@ -19,6 +19,5 @@
    num_output_obs_members = 0,
    output_interval = 1,
    num_groups = 1,
-   outlier_threshold = -1.0,
-   save_reg_series = .false.  /
+   outlier_threshold = -1.0 /
 

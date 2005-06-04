@@ -55,7 +55,7 @@ type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
-integer :: i, j, iunit, io, days, secs, reg_series_unit
+integer :: i, j, iunit, io, days, secs
 integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
@@ -98,7 +98,6 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: outlier_threshold = -1.0_r8
-logical  :: save_reg_series = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -120,7 +119,7 @@ namelist /filter_nml/async, adv_ens_command, ens_size, cov_inflate, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_state_members, num_output_obs_members, output_interval, &
-   num_groups, outlier_threshold, save_reg_series
+   num_groups, outlier_threshold
 
 !----------------------------------------------------------------
 ! Start of the routine
@@ -169,12 +168,6 @@ call filter_set_initial_time()
 
 call filter_read_restart()
 
-! Open an output file for the regression series if requested
-if(save_reg_series) then
-   reg_series_unit = get_unit()
-   open(unit = reg_series_unit, file = 'reg_time_series')
-endif
-
 ! Start out with no previously used observations
 last_key_used = -99
 
@@ -189,8 +182,6 @@ write(*, *) 'starting advance time loop;'
    call move_ahead(ens_handle, ens_size, model_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
    if(key_bounds(1) < 0) exit AdvanceTime
-   ! Write the divider for the regression series if requested
-   if(save_reg_series) write(reg_series_unit, *) -99, -99, -99.0_r8
 
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), obs(num_obs_in_set), &
@@ -222,8 +213,7 @@ write(*, *) 'starting advance time loop;'
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
    
    call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
-         num_groups, seq, keys, save_reg_series, reg_series_unit, &
-         obs_sequence_in_name)
+         num_groups, seq, keys, obs_sequence_in_name)
    ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
@@ -254,9 +244,6 @@ call filter_output_restart()
 
 ! Output the restart for the assim_tools inflation parameters
 call assim_tools_end()
-
-! Close regression time series file if needed
-if(save_reg_series) close(reg_series_unit)
 
 write(logfileunit,*)'FINISHED filter.'
 write(logfileunit,*)
@@ -686,6 +673,7 @@ real(r8) :: qc(num_obs_in_set)
 real(r8) :: obs_mean(1), obs_spread(1)
 real(r8) :: error, diff_sd, ratio
 type(obs_type) :: observation
+logical :: evaluate_this_ob, assimilate_this_ob
 
 ! Construct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
@@ -701,11 +689,16 @@ do k = 1, ens_size
       ! Get the qc value set so far
       if(k == 1) call get_qc(observation, qc(j:j), 1)
       if(is_ens_in_core()) then
-         call get_expected_obs(seq, keys(j:j), ens_direct(k, :), ens_obs(k, j:j), istatus)
+         call get_expected_obs(seq, keys(j:j), ens_direct(k, :), ens_obs(k, j:j), istatus, &
+            assimilate_this_ob, evaluate_this_ob)
       else
-         call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k, j:j), istatus)
+         call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k, j:j), istatus, &
+            assimilate_this_ob, evaluate_this_ob)
       endif
-      if(istatus > 0) then 
+
+
+      ! If the observation is not being used at all, also set qc to not able to compute
+      if(istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then 
          qc(j) = qc(j) + 2**prior_post * 1000
          ! TEST LINE for doing quality control pass through
          call set_qc(observation, qc(j:j), 1)         

@@ -25,7 +25,8 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_nu
    set_obs, get_copy_meta_data, read_obs_seq, destroy_obs_sequence, get_num_obs, &
    write_obs_seq, destroy_obs, get_expected_obs
    
-use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location
+use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location, &
+                             get_obs_def_time
 use cov_cutoff_mod, only   : comp_cov_factor
 use obs_model_mod, only    : get_close_states
 use reg_factor_mod, only   : comp_reg_factor
@@ -840,7 +841,7 @@ end subroutine update_from_obs_inc
 
 subroutine filter_assim_region(domain_size, ens_size, model_size, &
    num_groups, num_obs_in_set, obs_val_index, &
-   save_reg_series, reg_series_unit, ens, ens_obs_in, compute_obs, seq, keys, my_state, &
+   ens, ens_obs_in, compute_obs, seq, keys, my_state, &
    my_cov_inflate, my_cov_inflate_sd)
 
 integer, intent(in) :: domain_size
@@ -848,9 +849,9 @@ integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(nu
 real(r8), intent(inout) :: ens(ens_size, domain_size)
 real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs(num_obs_in_set)
-integer, intent(in) :: obs_val_index, reg_series_unit
+integer, intent(in) :: obs_val_index
 type(obs_sequence_type), intent(inout) :: seq
-logical, intent(in) :: save_reg_series, my_state(model_size)
+logical, intent(in) :: my_state(model_size)
 real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
@@ -872,6 +873,7 @@ integer :: num_cant_recompute
 real(r8) :: close_dist(num_obs_in_set)
 integer :: inv_indices(model_size), indices(domain_size)
 real(r8) :: net_a(num_groups)
+logical :: evaluate_this_ob, assimilate_this_ob
 
 ! Specify initial storage size for number of close states
 first_num_close = min(model_size, 200000)
@@ -972,9 +974,14 @@ Observations : do jjj = 1, num_obs_in_set
    if(compute_obs(j)) then
       do k = 1, ens_size
          ! Only compute forward operator if allowed
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus)
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus, &
+            assimilate_this_ob, evaluate_this_ob)
+         ! If evaluating but not assimilating, just skip but don't change qc
+         if(evaluate_this_ob .and. .not. assimilate_this_ob) goto 333
+
          ! Inability to compute forward operator implies skip this observation
-         if (istatus > 0) then
+         ! Also skip on qc if not being used at all (NOT CLEAR THIS COULD EVER HAPPEN)
+         if (istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then
             qc(j) = qc(j) + 4000.0_r8
             goto 333
          endif
@@ -1003,9 +1010,6 @@ Observations : do jjj = 1, num_obs_in_set
       cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
       if(cov_factor <= 0.0_r8) cycle CLOSE_STATE
 
-! DIAGNOSTICS ON OBS DENSITY for T42 CAM TESTS
-if(ind == 931730) write(*, *) 'QOD: ', j, dist_ptr(1, k), cov_factor
-
       ! Get the ensemble elements for this state variable and do regression
       swath = ens(:, inv_indices(ind))
 
@@ -1022,11 +1026,13 @@ if(ind == 931730) write(*, *) 'QOD: ', j, dist_ptr(1, k), cov_factor
       if(num_groups == 1) then
           reg_factor = 1.0_r8
       else
-! PROBLEM WITH TIME INFO ON REGRESSION COEF
-!!!         reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
-         reg_factor = comp_reg_factor(num_groups, regress, 1, j, ind)
+
+         ! Pass the time along with the index for possible diagnostic output
+         call get_obs_def(observation, obs_def)
+         ! Compute regression factor for this obs-state pair
+         reg_factor = comp_reg_factor(num_groups, regress, &
+            get_obs_def_time(obs_def), j, ind)
       endif
-      if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
 
       ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
       reg_factor = min(reg_factor, cov_factor)
@@ -1078,11 +1084,13 @@ if(ind == 931730) write(*, *) 'QOD: ', j, dist_ptr(1, k), cov_factor
       if(num_groups == 1) then
           reg_factor = 1.0_r8
       else
-! PROBLEM WITH TIME INFO ON REGRESSION COEF
-!!!         reg_factor = comp_reg_factor(num_groups, regress, i, j, ind)
-         reg_factor = comp_reg_factor(num_groups, regress, 1, j, ind)
+         ! Pass the time along with the index for possible diagnostic output
+         call get_obs_def(observation, obs_def)
+         ! Compute regression factor for this obs-state pair
+         ! Negative final argument indicates that this is an obs-obs regression computation.
+         reg_factor = comp_reg_factor(num_groups, regress, &
+            get_obs_def_time(obs_def), j, -1*k)
       endif
-      !!!if(save_reg_series) write(reg_series_unit, *) j, k, reg_factor
 
       ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
       reg_factor = min(reg_factor, cov_factor)
@@ -1111,16 +1119,13 @@ end subroutine filter_assim_region
 !---------------------------------------------------------------------------
 
 subroutine filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size, model_size, num_obs_in_set, &
-   num_groups, seq, keys, save_reg_series, reg_series_unit, &
-   obs_sequence_in_name)
+   num_groups, seq, keys, obs_sequence_in_name)
 
 integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
 type(ensemble_type), intent(in) :: ens_handle
 real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
 logical, intent(in) :: compute_obs_in(num_obs_in_set)
-integer, intent(in) :: reg_series_unit
 type(obs_sequence_type), intent(inout) :: seq
-logical, intent(in) :: save_reg_series
 character(len=*), intent(in) :: obs_sequence_in_name
 
 integer :: i, j, domain_size, indx, obs_val_index, iunit, control_unit
@@ -1217,13 +1222,13 @@ do j = 1, num_domains
    if(do_parallel == 0) then
       if(num_domains > 1 .or. .not. is_ens_in_core()) then
          call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
-            num_obs_in_set, obs_val_index, save_reg_series, &
-            reg_series_unit, ens, ens_obs, compute_obs, seq, keys, my_state, &
+            num_obs_in_set, obs_val_index, &
+            ens, ens_obs, compute_obs, seq, keys, my_state, &
             reg_cov_inflate(j), reg_cov_inflate_sd(j))
       else
          call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
-            num_obs_in_set, obs_val_index, save_reg_series, &
-            reg_series_unit, ens_direct, ens_obs, compute_obs, seq, keys, my_state, &
+            num_obs_in_set, obs_val_index, &
+            ens_direct, ens_obs, compute_obs, seq, keys, my_state, &
             reg_cov_inflate(j), reg_cov_inflate_sd(j))
       endif
    else
@@ -1257,8 +1262,7 @@ do j = 1, num_domains
       !!!open(unit = iunit, file = in_file_name(j), action = 'write', form = 'formatted', &
          status = 'replace')
       write(iunit) num_domains, domain_size, ens_size, model_size, num_groups, &
-         num_obs_in_set, obs_val_index, save_reg_series, &
-         reg_series_unit, obs_sequence_in_name
+         num_obs_in_set, obs_val_index, obs_sequence_in_name
       write(iunit) ens, ens_obs, compute_obs, keys, my_state
       write(iunit) reg_cov_inflate(j), reg_cov_inflate_sd(j)
       close(iunit)
@@ -1370,9 +1374,8 @@ character(len = *), intent(in) :: in_file_name, out_file_name
 ! AND IN GENERAL NEED TO WORK ON REGSERIES STUFF!!!
 
 integer :: n_domains, domain_size, ens_size, model_size, num_groups
-integer :: num_obs_in_set, obs_val_index, reg_series_unit
+integer :: num_obs_in_set, obs_val_index
 character(len = 129) :: obs_sequence_in_name
-logical :: save_reg_series
 real(r8), allocatable :: ens(:, :), ens_obs(:, :)
 integer, allocatable :: keys(:)
 logical, allocatable :: my_state(:), compute_obs(:)
@@ -1386,8 +1389,7 @@ iunit = get_unit()
 open(unit = iunit, file = in_file_name, action = 'read', form = 'unformatted')
 !!!open(unit = iunit, file = in_file_name, action = 'read', form = 'formatted')
 read(iunit) n_domains, domain_size, ens_size, model_size, num_groups, &
-   num_obs_in_set, obs_val_index, save_reg_series, &
-   reg_series_unit, obs_sequence_in_name
+   num_obs_in_set, obs_val_index, obs_sequence_in_name
 
 ! Allocate storage
 allocate(ens(ens_size, domain_size), ens_obs(ens_size, num_obs_in_set), &
@@ -1403,8 +1405,8 @@ call read_obs_seq(obs_sequence_in_name, 0, 0, 0, seq2)
 
 ! Do ensemble filter update for this region
 call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
-   num_obs_in_set, obs_val_index, save_reg_series, &
-   reg_series_unit, ens, ens_obs, compute_obs, seq2, keys, my_state, &
+   num_obs_in_set, obs_val_index, &
+   ens, ens_obs, compute_obs, seq2, keys, my_state, &
    my_cov_inflate, my_cov_inflate_sd)
 
 ! Write out the updated ensemble region, need to do QC also
