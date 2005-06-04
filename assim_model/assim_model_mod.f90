@@ -479,8 +479,8 @@ type(time_type) :: aget_closest_state_time_to
 
 type(time_type) :: time_step
 
-character(len=129) :: errstring
-integer :: is1,is2,id1,id2
+!!!character(len=129) :: errstring
+!!!integer :: is1,is2,id1,id2
 
 ! Get the model time step capabilities
 time_step = get_model_time_step()
