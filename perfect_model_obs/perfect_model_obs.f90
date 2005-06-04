@@ -66,6 +66,7 @@ real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 real(r8), allocatable   :: ens(:)
 character(len=129)      :: copy_meta_data(2), msgstring, qc_meta_data
+logical                 :: assimilate_this_ob, evaluate_this_ob
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -212,7 +213,10 @@ AdvanceTime: do
 ! Can do this purely sequentially in perfect_model_obs for now if desired
    do j = 1, num_obs_in_set
 ! Compute the observations from the state
-      call get_expected_obs(seq, keys(j:j), ens, true_obs(1:1), istatus)
+      call get_expected_obs(seq, keys(j:j), ens, true_obs(1:1), istatus, &
+         assimilate_this_ob, evaluate_this_ob)
+! If observation is not being evaluated or assimilated, also want to skip it
+! Ends up setting a 1000 qc field so observation is not used again.
 
 ! Get the observational error covariance (diagonal at present)
       call get_obs_from_key(seq, keys(j), obs)
@@ -220,7 +224,7 @@ AdvanceTime: do
 
 ! Generate the synthetic observations by adding in error samples
 
-      if(istatus == 0) then
+      if(istatus == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
          obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
          ! Set qc to 0 if none existed before
          if(cnum_qc == 0) then
