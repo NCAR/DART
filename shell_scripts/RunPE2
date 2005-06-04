@@ -47,20 +47,23 @@ switch ($#argv)
    breaksw
 endsw
 
+exit
+
 #======================================================================
 # Set defaults.
 # This is only meant to be illustrative.
 # It is ABSOLUTELY not comprehensive.
 #======================================================================
 
-set ens_size = 3
+set ens_size = 10
+set start_from_restart = .true.
+set output_restart = .true.
+
 set num_output_state_members = $ens_size
 set num_output_obs_members = $ens_size
 set async = 0
 set cutoff = 0.25
 set cov_inflate = 1.01
-set start_from_restart = .true.
-set output_restart = .true.
 set perfect_restart_in_file_name = '"perfect_ics"'
 set perfect_restart_out_file_name = '"perfect_restart"'
 set filter_restart_in_file_name = '"filter_ics"'
@@ -230,14 +233,10 @@ default:
    echo "-1"            >> $COS  ;# end of observation definition
    echo "set_def.out"   >> $COS  ;# output filename
 
-   echo '&utilities_nml'                               > utilities.nml
-   echo '   logfilename = "create_obs_sequence.out",' >> utilities.nml
-   echo '   TERMLEVEL = 1 /'                          >> utilities.nml
-
    echo '&assim_model_nml'                             > assim_mod.nml
    echo '   binary_restart_files = .false. /'         >> assim_mod.nml
 
-   cat utilities.nml assim_mod.nml > input.nml
+   cat assim_mod.nml > input.nml
 
    ./create_obs_sequence < $COS
 
@@ -253,11 +252,7 @@ default:
    echo "1 0"                   >> $CFN ;# observation interval
    echo "$obs_sequence_in_name" >> $CFN ;# output file name -- destined for perfect_model_obs
 
-   echo '&utilities_nml'                                    > utilities.nml
-   echo '   logfilename = "create_fixed_network_seq.out",' >> utilities.nml
-   echo '   TERMLEVEL = 1 /'                               >> utilities.nml
-
-   cat utilities.nml assim_mod.nml > input.nml
+   cat assim_mod.nml > input.nml
 
    ./create_fixed_network_seq < $CFN 
 
@@ -294,11 +289,7 @@ echo "   init_time_days = $init_time_days ,"                       >> perfect.nm
 echo "   init_time_seconds = $init_time_seconds ,"                 >> perfect.nml
 echo "   output_interval = $output_interval /"                     >> perfect.nml
 
-echo '&utilities_nml'                              > utilities.nml
-echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
-echo '   TERMLEVEL = 1  /'                        >> utilities.nml
-
-cat utilities.nml assim_mod.nml perfect.nml > input.nml
+cat assim_mod.nml perfect.nml > input.nml
 
 ./perfect_model_obs
  
@@ -323,14 +314,9 @@ echo " "
 echo "Running filter ..."
 echo " "
 
-
 echo "Ensemble size is $ens_size ..."
 echo "Num output (obs/state) members is $num_output_state_members ..."
 sleep 2
-
-echo '&utilities_nml'                            > utilities.nml
-echo '   logfilename = "filter.out"'            >> utilities.nml
-echo '   TERMLEVEL = 1 /'                       >> utilities.nml
 
 echo " "                                                            > filter.nml
 echo "&filter_nml"                                                 >> filter.nml
@@ -356,7 +342,7 @@ echo "   output_interval = $output_interval ,"                     >> filter.nml
 echo "   num_groups = $num_groups    /"                            >> filter.nml
 echo " "                                                           >> filter.nml
 
-cat utilities.nml assim_mod.nml filter.nml > input.nml
+cat assim_mod.nml filter.nml > input.nml
 
 cat input.nml
 
@@ -368,7 +354,7 @@ else
    echo " "
    echo "filter terminated normally"
    echo " "
-   \rm -f utilities.nml assim_mod.nml perfect.nml filter.nml input.nml
+   \rm -f assim_mod.nml perfect.nml filter.nml input.nml
    \rm -f set_def.out input.nml*default
 endif
 

@@ -54,13 +54,15 @@ endsw
 # It is ABSOLUTELY not comprehensive.
 #======================================================================
 
+set obs_error_variance = 0.1
+if ( ${?ObsError} ) then
+   set obs_error_variance = $ObsError
+endif
+
 set num_obs = 360
 set num_periods = 24
-set obs_error_variance = 0.1
 set ob_day_1 = 0
 set ob_seconds_1 = 43200
-set cov_inflate = 1.1
-set cutoff = 400.0
 
 if ( ${?NumObs} ) then     ;# if environment var NumObs exists, use it
    set num_obs = $NumObs
@@ -71,15 +73,42 @@ endif
 if ( ${?ObSec1} ) then
    set ob_seconds_1 = $ObSec1
 endif
-if ( ${?ObsError} ) then
-   set obs_error_variance = $ObsError
-endif
+
+set cov_inflate = 1.1
+set cutoff = 400.0
+set         cutoff = 0.20
+set    cov_inflate = 1.05
+set cov_inflate_sd = 0.05
+set sd_lower_bound = 0.05
+set          async = 0
+
 if ( ${?CovInflate} ) then
    set cov_inflate = $CovInflate
 endif
 if ( ${?Cutoff} ) then
    set cutoff = $Cutoff
 endif
+if ( ${?Async} ) then
+   set async = $Async
+endif
+
+set ens_size = $NumEns
+set start_from_restart = .true.
+set output_restart = .true.
+set obs_sequence_in_name = '"obs_seq.out"'
+set obs_sequence_out_name = '"obs_seq.final"'
+set restart_in_file_name = '"filter_ics"'
+set restart_out_file_name = '"filter_restart"'
+set init_time_days = 0
+set init_time_seconds = 0
+set output_state_ens_mean = .true.
+set output_state_ens_spread = .true.
+set output_obs_ens_mean = .true.
+set output_obs_ens_spread = .true.
+set num_output_state_members = $NumEns
+set num_output_obs_members = $NumEns
+set output_interval = 1
+set num_groups = 1
 
 #======================================================================
 # This block checks to see if input is viable.
@@ -148,6 +177,11 @@ if !( -e filter ) then
    make || exit 4
    \rm -f input.nml.filter_default
 endif
+if !( -e integrate_model ) then
+   csh mkmf_integrate_model
+   make || exit 4
+   \rm -f input.nml.integrate_model_default
+endif
 \rm -f *.o *.d *.mod Makefile
 
 #======================================================================
@@ -200,11 +234,7 @@ end
 echo "-1"                           >> $COS ;# -1 to exit ...
 echo "set_def.out"                  >> $COS ;# output file name
 
-echo '&utilities_nml'                                  > utilities.nml
-echo '   logfilename = "create_obs_sequence.out"'     >> utilities.nml
-echo '   TERMLEVEL = 1   /'                           >> utilities.nml
-
-cat utilities.nml assim_mod.nml model.nml > input.nml
+cat assim_mod.nml model.nml > input.nml
 
 ./create_obs_sequence < $COS
 
@@ -231,11 +261,7 @@ echo $ob_day_1 $ob_seconds_1 >> $CFN ;# time of first observation
 echo $ob_day_1 $ob_seconds_1 >> $CFN ;# observation interval
 echo "obs_seq.in"            >> $CFN ;# output file name -- destined for perfect_model_obs
  
-echo '&utilities_nml'                                   > utilities.nml
-echo '   logfilename = "create_fixed_network_seq.out"' >> utilities.nml
-echo '   TERMLEVEL = 1   /'                            >> utilities.nml
-
-cat utilities.nml assim_mod.nml model.nml > input.nml
+cat assim_mod.nml model.nml > input.nml
 
 ./create_fixed_network_seq < $CFN
 
@@ -257,23 +283,27 @@ echo " "
 cat << ENDofTask03 > perfect.nml
 
 &perfect_model_obs_nml
-   async = 0,
-   obs_seq_in_file_name = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
    start_from_restart = .true.,
-   output_restart = .true.,
-   restart_in_file_name = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_interval = 1  /
+   output_restart = .true.  / 
 ENDofTask03
 
-echo '&utilities_nml'                              > utilities.nml
-echo '   logfilename = "perfect_obs.out"'         >> utilities.nml
-echo '   TERMLEVEL = 1  /'                        >> utilities.nml
+echo " "                                                          > assim_tools.nml
+echo "&assim_tools_nml"                                          >> assim_tools.nml
+echo "   filter_kind = 1,"                                       >> assim_tools.nml
+echo "   cutoff = $cutoff ,"                                     >> assim_tools.nml
+echo "   sort_obs_inc = .false."                                 >> assim_tools.nml
+echo "   cov_inflate = $cov_inflate ,"                           >> assim_tools.nml
+echo "   cov_inflate_sd = $cov_inflate_sd ,"                     >> assim_tools.nml
+echo "   sd_lower_bound = $sd_lower_bound ,"                     >> assim_tools.nml
+echo "   deterministic_cov_inflate = .true. ,"                   >> assim_tools.nml
+echo "   start_from_assim_restart = .false. ,"                   >> assim_tools.nml
+echo "   assim_restart_in_file_name = 'assim_tools_ics',"        >> assim_tools.nml
+echo "   assim_restart_out_file_name = 'assim_tools_restart',"   >> assim_tools.nml
+echo "   do_parallel = 0,"                                       >> assim_tools.nml
+echo "   num_domains = 1  /"                                     >> assim_tools.nml
+echo " "                                                         >> assim_tools.nml
 
-cat utilities.nml assim_mod.nml model.nml perfect.nml > input.nml
+cat perfect.nml assim_tools.nml assim_mod.nml model.nml > input.nml
 
 ./perfect_model_obs
  
@@ -291,42 +321,15 @@ endif
 # 4) Filter
 #    creates files Prior_Diag.nc, Posterior_Diag.nc
 #======================================================================
-# Set defaults
-#======================================================================
 
 echo " "
 echo "Running filter ..."
 echo " "
 
-set async = 0
-set ens_size = $NumEns
-set start_from_restart = .true.
-set output_restart = .true.
-set obs_sequence_in_name = '"obs_seq.out"'
-set obs_sequence_out_name = '"obs_seq.final"'
-set restart_in_file_name = '"filter_ics"'
-set restart_out_file_name = '"filter_restart"'
-set init_time_days = 0
-set init_time_seconds = 0
-set output_state_ens_mean = .true.
-set output_state_ens_spread = .true.
-set output_obs_ens_mean = .true.
-set output_obs_ens_spread = .true.
-set num_output_state_members = $NumEns
-set num_output_obs_members = $NumEns
-set output_interval = 1
-set num_groups = 2
-
-
-echo '&utilities_nml'                            > utilities.nml
-echo '   logfilename = "filter.out"'            >> utilities.nml
-echo '   TERMLEVEL = 1   /'                     >> utilities.nml
-
 echo " "                                                          > filter.nml
 echo "&filter_nml"                                               >> filter.nml
 echo "   async = $async ,"                                       >> filter.nml
 echo "   ens_size = $ens_size ,"                                 >> filter.nml
-echo "   cutoff = $cutoff ,"                                     >> filter.nml
 echo "   cov_inflate = $cov_inflate ,"                           >> filter.nml
 echo "   start_from_restart = $start_from_restart ,"             >> filter.nml
 echo "   output_restart = $output_restart ,"                     >> filter.nml
@@ -346,7 +349,7 @@ echo "   output_interval = $output_interval ,"                   >> filter.nml
 echo "   num_groups = $num_groups    /"                          >> filter.nml
 echo " "                                                         >> filter.nml
 
-cat utilities.nml assim_mod.nml model.nml filter.nml > input.nml
+cat filter.nml assim_tools.nml assim_mod.nml model.nml > input.nml
 
 ./filter
 
@@ -357,7 +360,8 @@ else
    echo "filter terminated normally"
    echo " "
    \rm -f $COS $CFN set_def.out
-   \rm -f utilities.nml assim_mod.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f assim_mod.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f assim_tools.nml go_end_filter
 endif
 
 #======================================================================

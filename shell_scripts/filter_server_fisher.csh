@@ -43,22 +43,18 @@ while($iproc <= $NPROCS)
 end
 echo This_job_has_allocated $NPROCS nodes >> filter_server.log
 
+#-------------------------------------------------------------------------------------- 
 # Hang around forever for now and wait for go_advance file to appear
+#-------------------------------------------------------------------------------------- 
 while(1 == 1)
-   # If go_end_filter exists then stop this process
-   ls go_end_filter > .option3_garb
-   if($status == 0) then
+
+   if( -e go_end_filter ) then
+
       echo "terminating normally at " `date` >> filter_server.log
       rm -f go_end_filter
       exit
-   endif
- 
 
-#--------------------------------------------------------------------------------------- 
-   # Check to see if the go_advance_model file exists
-   ls go_advance_model > .option3_garb
-   if($status == 0) then
-
+   else if( -e go_advance_model ) then
 
       # First line of filter_control should have number of model states to be integrated
       set nensmbl = `head -1 filter_control`
@@ -93,12 +89,8 @@ while(1 == 1)
       echo "Completed this advance at " `date` >> filter_server.log
       echo --------- >> filter_server.log
       rm -f go_advance_model
-   endif
 
-#--------------------------------------------------------------------------------------- 
-   # Check to see if the go_advance_model file exists
-   ls go_assim_regions > .option3_garb
-   if($status == 0) then
+   else if( -e go_assim_regions ) then
 
       # First line of assim_region_control should have number of regions to be assimilated
       set nregions = `head -1 assim_region_control`
