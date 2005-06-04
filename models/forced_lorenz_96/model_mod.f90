@@ -113,7 +113,7 @@ allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 do i = 1, num_state_vars
-   x_loc = (i - 1.0) / num_state_vars
+   x_loc = (i - 1.0_r8) / num_state_vars
    state_loc(i) =  set_location(x_loc)
    ! Forcing is at same location as corresponding state variable
    state_loc(i + num_state_vars) = set_location(x_loc)
@@ -324,7 +324,7 @@ if(1 == 1) return
 
 
 ! Next one does an average over a range of points
-obs_val = 0.0
+obs_val = 0.0_r8
 lower_index = lower_index - 7
 upper_index = upper_index - 7
 if(lower_index < 1) lower_index = lower_index + model_size
@@ -502,9 +502,18 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Lorenz_96"))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Forced_Lorenz_96"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_forcing", forcing ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_num_state_vars", num_state_vars ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_time_step_days", time_step_days ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_time_step_seconds", time_step_seconds ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_random_forcing_amplitude", random_forcing_amplitude ))
+if ( reset_forcing ) then
+   call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_reset_forcing", 'TRUE' ))
+else
+   call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_reset_forcing", 'FALSE' ))
+endif
 
 !--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
@@ -530,24 +539,41 @@ call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r
 !--------------------------------------------------------------------
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
 !--------------------------------------------------------------------
+!if ( output_state_vector ) then
 
-! Define the state vector coordinate variable
-call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-           dimids=StateVarDimID, varid=StateVarVarID))
-call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
-call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
+   ! Define the state vector coordinate variable
+   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+              dimids=StateVarDimID, varid=StateVarVarID))
+   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
+   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
+   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
 
-! Define the actual state vector
-call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-           dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
-call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
+   ! Define the actual state vector
+   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
+              dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
+   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
 
-! Leave define mode so we can fill
-call check(nf90_enddef(ncfileID))
+   ! Leave define mode so we can fill
+   call check(nf90_enddef(ncfileID))
 
-! Fill the state variable coordinate variable
-call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
+   ! Fill the state variable coordinate variable
+   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
+
+!This is not ready yet ... the model state is replicated. This is an attempt
+! to parse it back into two pieces -- just don't know what to call them, etc. 
+!else
+!
+!   call check(nf90_def_var(ncid=ncFileID, name="X", xtype=nf90_double, &
+!        dimids = (/ , VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
+!        varid  = uVarID))
+!   call check(nf90_put_att(ncFileID, uVarID, "long_name", "model component"))
+!
+!   call check(nf90_def_var(ncid=ncFileID, name="XF", xtype=nf90_real, &
+!        dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
+!        varid  = vVarID))
+!   call check(nf90_put_att(ncFileID, vVarID, "long_name", "estimate of forcing"))
+!
+!endif
 
 !--------------------------------------------------------------------
 ! Fill the location variable
@@ -631,10 +657,38 @@ ierr = 0                      ! assume normal termination
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 
 ! no matter the value of "output_state_vector", we only do one thing.
+! if ( output_state_vector ) then
 
-call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
-call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
+   call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
+   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
              start=(/ 1, copyindex, timeindex /)))
+
+! else
+!----------------------------------------------------------------------------
+! Fill the variables
+! TemperatureGrid : surface pressure  Var%ps(tis:tie, tjs:tje)
+!                 : temperature       Var%t (tis:tie, tjs:tje, klb:kub)
+!                 : tracers           Var%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
+! VelocityGrid    : u                 Var%u (vis:vie, vjs:vje, klb:kub)
+!                 : v                 Var%v (vis:vie, vjs:tje, klb:kub)
+!----------------------------------------------------------------------------
+!
+!   x = statevec ! Unfortunately, have to explicity cast it ...
+!                ! the filter uses a type=double,
+!                ! the vector_to_prog_var function expects a single.
+!   call vector_to_prog_var(x, get_model_size(), Var)
+!
+!   call check(NF90_inq_varid(ncFileID, "ps", psVarID))
+!   call check(nf90_put_var( ncFileID, psVarID, Var%ps(tis:tie, tjs:tje), &
+!        start=(/ 1, 1, copyindex, timeindex /)))
+!
+!   call check(NF90_inq_varid(ncFileID, "t", tVarID))
+!   call check(nf90_put_var( ncFileID, tVarID, Var%t( tis:tie, tjs:tje, klb:kub), &
+!        start=(/ 1, 1, 1, copyindex, timeindex /)))
+!
+! endif
+
+
 
 ! write (*,*)'Finished filling variables ...'
 call check(nf90_sync(ncFileID))
