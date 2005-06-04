@@ -100,7 +100,7 @@ allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 do i = 1, model_size
-   x_loc = (i - 1.0) / model_size
+   x_loc = (i - 1.0_r8) / model_size
    state_loc(i) =  set_location(x_loc)
 end do
 
@@ -281,7 +281,7 @@ if(1 == 1) return
 
 
 ! Next one does an average over a range of points
-obs_val = 0.0
+obs_val = 0.0_r8
 lower_index = lower_index - 7
 upper_index = upper_index - 7
 if(lower_index < 1) lower_index = lower_index + model_size
