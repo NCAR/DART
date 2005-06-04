@@ -65,8 +65,6 @@ switch lower(vars.model)
       pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
       pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
 
-      pinfo                            % just echo stuff for posterity.
-
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))

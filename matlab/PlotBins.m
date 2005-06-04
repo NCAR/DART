@@ -203,6 +203,4 @@ function PlotLocator(pinfo)
    plot(pinfo.longitude,pinfo.latitude,'pg','MarkerSize',12,'MarkerFaceColor','g');
    axis([0 360 -90 90])
    worldmap
-   axis image
-   grid on
    
