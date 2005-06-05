@@ -54,7 +54,7 @@ type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle
 
-integer                 :: i, j, iunit
+integer                 :: j, iunit, time_step_number
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies
 
@@ -185,9 +185,13 @@ call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
 ! Start out with no previously used observations
 last_key_used = -99
 
+! Time step number is used to do periodic diagnostic output
+time_step_number = 0
+
 ! Advance the model and ensemble to the closest time to the next
 ! available observations (need to think hard about these model time interfaces).
 AdvanceTime: do
+   time_step_number = time_step_number + 1
 
    ! Get the model to a good time to use a next set of observations
    call move_ahead(ens_handle, 1, model_size, seq, last_key_used, &
@@ -202,7 +206,7 @@ AdvanceTime: do
 
 ! Output the true state
    call get_ensemble_member(ens_handle, 1, ens, time1)
-   if(i / output_interval * output_interval == i) then
+   if(time_step_number / output_interval * output_interval == time_step_number) then
       call aoutput_diagnostics(StateUnit, time1, ens, 1)
    endif
 
