@@ -1,5 +1,16 @@
 function varid = SetVariableID(vars);
-% SetVariableID   queries the 
+% SetVariableID   queries the user to override default variable ID's 
+%                 (i.e. model state variable indices) for different model types. 
+%
+% varid = SetVariableID(vars);
+%
+% This routine is not intended to be called directly.
+% As such, the example seems pretty silly.
+%
+% vars.model = 'lorenz_96';
+% vars.def_var = 'state';
+% vars.def_state_vars = [2 4 5];
+% varid = SetVariableID(vars) 
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -23,7 +34,7 @@ switch lower(vars.model)
 
    case 'forced_lorenz_96'
 
-      % query to see if these are OK, if not ...
+      % Determine which State Variable and where ...
 
       disp(sprintf('\nUsing %s state variable IDs %s ', ...
                       vars.def_var, num2str(vars.def_state_vars)))

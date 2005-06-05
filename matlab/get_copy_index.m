@@ -2,6 +2,11 @@ function copy_index = get_copy_index(fname, copystring)
 %GET_COPY_INDEX  Gets an index corresponding to copy meta_data string
 % Retrieves index associated with a given copy meta_data string in 
 % file fname. If string is not found in meta_data list, a -1 is returned.
+%
+% Example:
+% fname = 'Prior_Diag.nc';
+% copystring = 'ensemble member 5';
+% copy_index = get_copy_index(fname, copystring);
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -35,7 +40,7 @@ for i = 1:num_copies,
    nowhitemd = dewhite(copy_meta_data(i,:));
 
    if strcmp(nowhitemd , nowhitecs) == 1
-      fprintf('copy %3i selected for %s\n', i,copystring);
+      fprintf('%s is copy %3i\n', copystring,i);
       copy_index = i;
    end
 end

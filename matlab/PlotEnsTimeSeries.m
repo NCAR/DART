@@ -30,7 +30,7 @@ function PlotEnsTimeSeries( pinfo )
 % pinfo.level      = 3;
 % pinfo.latitude   = 23.5;
 % pinfo.longitude  = 45.67;
-% PlotEnsMeanTimeSeries( pinfo )
+% PlotEnsTimeSeries( pinfo )
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research

@@ -80,7 +80,9 @@ switch lower(model)
 	 'lorenz_04','forced_lorenz_96'} 
 
       BulletProof(pinfo,X,Y,Z)          % rudimentary bulletproofing
-      
+
+      pinfo     
+
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem 
       
       x = get_var_series(pinfo.fname, pinfo.var1name, ens_mem_id, pinfo.var1ind);

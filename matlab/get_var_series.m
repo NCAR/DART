@@ -3,13 +3,13 @@ function var_vec = get_var_series(fname, varname, copynum, state_var)
 %
 % Retrieves a particular copy of a state variable from a file whose
 % full or relative path is specified in the file argument.
-% NEED TO DEAL WITH ERRORS.
 %
 % Example 1:
 % fname     = '../work/Prior_Diag.nc';
-% copynum   = 8;        % Ensemble Member
-% state_var = 3;        % which state variable
-% var_vec   = get_var_series(fname, copynum, state_var);
+% varname   = 'state';      % State Variable
+% copynum   = 8;            % Ensemble Member
+% state_var = 3;            % which state variable
+% var_vec   = get_var_series(fname, varname, copynum, state_var);
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
