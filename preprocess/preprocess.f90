@@ -16,7 +16,8 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 character(len = 256) :: line, test, ifdef_kind, path_name
-integer :: iunit, ierr, io, i, j, status, num_kind_assimilate, num_kind_evaluate
+integer :: iunit, ierr, io, i, j, status
+integer :: num_kind_assimilate = 0, num_kind_evaluate = 0
 character(len = 169) :: err_string
 character(len = 15) :: module_name
 
@@ -105,7 +106,6 @@ end do
 
 
 
-write(*, *) '-----------------------------------------'
 
 ! Meaning of the status variable
 ! status = 1: Reading normally
@@ -132,9 +132,6 @@ READ_LINE: do
          ifdef_kind = trim(adjustl(test(7:)))
          do j = 1, num_kind_assimilate
             ! Is it being assimilated?
-write(*, *) 'test is ', test
-write(*, *) 'ifdef_kind ', ifdef_kind
-write(*, *) 'assilate_these ', assimilate_these_obs_types(j)
             if(ifdef_kind == trim(adjustl(assimilate_these_obs_types(j)))) then
                cycle READ_LINE    
             endif
