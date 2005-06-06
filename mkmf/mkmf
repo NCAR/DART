@@ -22,7 +22,8 @@
 # write to: Free Software Foundation, Inc.,
 #           675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# modified 4/23 to concatenate all namelist files into one.
+# modified 4/23/05 to concatenate all namelist files into one by
+# Josh Hacker.
 #-----------------------------------------------------------------------
 
 require 5;
