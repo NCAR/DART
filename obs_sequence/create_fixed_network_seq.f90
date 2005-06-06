@@ -12,7 +12,8 @@ program create_fixed_network_seq
 ! $Name$
 
 use        types_mod, only : r8
-use    utilities_mod, only : timestamp, register_module, open_file, close_file
+use    utilities_mod, only : timestamp, register_module, open_file, close_file, &
+                             initialize_utilities
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_num_obs, init_obs_sequence, get_first_obs, write_obs_seq, set_copy_meta_data, &
@@ -40,6 +41,7 @@ type(time_type)         :: ob_time, init_time, this_time, period
 integer                 :: seconds, days, i, j, network_size, option, num_times, num_copies, num_qc
 
 ! Record the current time, date, etc. to the logfile
+call initialize_utilities('Create_fixed_network_seq')
 call register_module(source,revision,revdate)
 
 ! Call the underlying model's static initialization for calendar info
