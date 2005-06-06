@@ -93,6 +93,41 @@ echo 'Saved all existing *.nml into directory '"$SAVEME"
 echo 'Will restore and remove the directory at the end.'
 
 #======================================================================
+# Run the 'preprocessor' to subset the possible observation sets.
+# This MUST be done before compiling anything else.
+# This physically removes code blocks from preprocess_nml:input_file
+# and creates a preprocess_nml:output_file   that must match the
+# one in the path_names_* files later on. Be aware there is a check
+# such that preprocess will die if the output_file already exists.
+#======================================================================
+
+if !( -e preprocess ) then
+   csh mkmf_preprocess
+   make || exit 1
+   \rm -f input.nml.preprocess_default
+endif
+
+# remove any pre-existing output file ...
+if ( -e ../../../obs_def/obs_def_mod.f90 ) then
+   \mv  ../../../obs_def/obs_def_mod.f90 ${SAVEME}
+endif
+
+cat << ENDofTask00 > input.nml
+&preprocess_nml
+   input_file  = '../../../obs_def/obs_def_mod.F90',
+   output_file = '../../../obs_def/obs_def_mod.f90' /
+
+ENDofTask00
+
+echo "&obs_def_nml"                                           > obs_def.nml
+echo "   assimilate_these_obs_types = 'raw_state_variable'/" >> obs_def.nml
+echo " "                                                     >> obs_def.nml
+
+cat obs_def.nml >> input.nml
+
+./preprocess || exit 9
+
+#======================================================================
 # Building the executables and storing the namelists.
 # Each mkmf_* builds a namelist file containing all the namelists
 # for the executable. These show ALL the namelist variables -- this
@@ -171,6 +206,8 @@ switch ( ${Model} )
       echo "-1"           >> $COS  ;# -1 == no more observations ------------
       echo "set_def.out"  >> $COS  ;# output file name
 
+      cp -p ../random_obs_input $COS ;# TJH OVERRIDE ...
+
       echo "set_def.out"   > $CFN  ;# same filename as 'output' above
       echo "1"            >> $CFN  ;# make a "regular" sequence
       echo "1000"         >> $CFN  ;# number of observations in first set
@@ -178,11 +215,13 @@ switch ( ${Model} )
       echo "1 0"          >> $CFN  ;# observation interval (days, seconds)
       echo "obs_seq.in"   >> $CFN  ;# output file -- destined for perfect_model_obs
 
-      echo "&model_nml"              > model.nml
-      echo "   model_size = 40,"    >> model.nml
-      echo "   forcing = 8.00,"     >> model.nml
-      echo "   deltat = 0.005  /"   >> model.nml
-
+      echo "&model_nml"                      > model.nml
+      echo "   model_size = 40,"            >> model.nml
+      echo "   forcing = 8.00,"             >> model.nml
+      echo "   deltat = 0.005,"             >> model.nml
+      echo "   time_step_days = 0"          >> model.nml
+      echo "   time_step_seconds = 3600  /" >> model.nml
+     
       set num_ens_members = 200
 
    breaksw
@@ -314,6 +353,26 @@ endsw
 # Create namelists and run ...
 #======================================================================
 
+cat << ENDofTask09 > assim_tools.nml
+&assim_tools_nml
+   filter_kind = 1,
+   cutoff = 10000000.0,
+   sort_obs_inc = .false.,
+   cov_inflate = 1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05,
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name = 'assim_tools_ics',
+   assim_restart_out_file_name = 'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1,
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+ENDofTask09
+
 echo "&assim_model_nml"                                         > assim_mod.nml
 echo "    read_binary_restart_files = $BINARY_RESTART_FILES ," >> assim_mod.nml
 echo "   write_binary_restart_files = $BINARY_RESTART_FILES /" >> assim_mod.nml
@@ -322,15 +381,11 @@ echo "#----------------------------------------------------------------------"
 echo "Step 1.1: Create an observation definition."
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                                 > utilities.nml
-echo '   logfilename = "create_obs_sequence.out",'   >> utilities.nml
-echo '   TERMLEVEL = 1 /'                            >> utilities.nml
+echo '&obs_sequence_nml'                           > obs_sequence.nml
+echo '   read_binary_obs_sequence  = .false.,'    >> obs_sequence.nml
+echo '   write_binary_obs_sequence = .false. /'   >> obs_sequence.nml
 
-echo '&obs_sequence_nml'                         > obs_sequence.nml
-echo '   read_binary_obs_sequence = .true.,'    >> obs_sequence.nml
-echo '   write_binary_obs_sequence = .true. /'  >> obs_sequence.nml
-
-cat utilities.nml assim_mod.nml > input.nml
+cat model.nml assim_mod.nml obs_sequence.nml > input.nml
 
 ./create_obs_sequence < $COS
 
@@ -347,11 +402,7 @@ echo "#----------------------------------------------------------------------"
 echo "# Step 1.2: Create a fixed network definition (with nothing in them)"
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                                    > utilities.nml
-echo '   logfilename = "create_fixed_network_seq.out",' >> utilities.nml
-echo '   TERMLEVEL = 1 /'                               >> utilities.nml
-
-cat utilities.nml assim_mod.nml > input.nml
+cat model.nml assim_mod.nml obs_sequence.nml > input.nml
 
 ./create_fixed_network_seq < $CFN
 
@@ -379,10 +430,6 @@ echo "#----------------------------------------------------------------------"
 # with restart = FALSE!  "counterintuitive" as they say.
 #----------------------------------------------------------------------
 
-echo '&utilities_nml'                                > utilities.nml
-echo '   logfilename = "perfect_model_obs.out",'    >> utilities.nml
-echo '   TERMLEVEL = 1   /'                         >> utilities.nml
-
 cat << ENDofTask02 > perfect.nml
 &perfect_model_obs_nml
    async = 0,
@@ -397,7 +444,7 @@ cat << ENDofTask02 > perfect.nml
    output_interval = 1  /
 ENDofTask02
 
-cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
+cat assim_tools.nml assim_mod.nml perfect.nml model.nml obs_sequence.nml > input.nml
 
 ./perfect_model_obs
  
@@ -421,10 +468,6 @@ echo "#----------------------------------------------------------------------"
 echo "# Step 2.1: Generate a 'perfect' observation sequence for the filter"
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                                > utilities.nml
-echo '   logfilename = "perfect_model_obs.out",'    >> utilities.nml
-echo '   TERMLEVEL = 1  /'                          >> utilities.nml
-
 cat << ENDofTask02 > perfect.nml
 &perfect_model_obs_nml
    async = 0,
@@ -439,7 +482,7 @@ cat << ENDofTask02 > perfect.nml
    output_interval = 1  /
 ENDofTask02
 
-cat utilities.nml assim_mod.nml perfect.nml model.nml > input.nml
+cat assim_mod.nml perfect.nml model.nml > input.nml
 
 ./perfect_model_obs
  
@@ -456,15 +499,10 @@ echo "#----------------------------------------------------------------------"
 echo "# Step 2.2: Generate a set of ensemble initial conditions"
 echo "#----------------------------------------------------------------------"
 
-echo '&utilities_nml'                      > utilities.nml
-echo '   logfilename = "dart_log.out",'   >> utilities.nml
-echo '   TERMLEVEL = 1  /'                >> utilities.nml
-
 cat << ENDofTask03 > filter.nml
 &filter_nml
    async = 0,
    ens_size = xxxxxxxx,
-   cutoff = 0.0,
    cov_inflate = 1.00,
    start_from_restart = .false.,
    output_restart = .true.
@@ -487,7 +525,7 @@ ENDofTask03
 set STRING = "1,$ s#xxxxxxxx#$num_ens_members#"
 sed -e "$STRING" filter.nml > input.nml
 
-cat utilities.nml assim_mod.nml model.nml >> input.nml
+cat assim_tools.nml assim_mod.nml model.nml obs_sequence.nml >> input.nml
 
 #----------------------------------------------------------------------
 # Step 4: filter
@@ -504,7 +542,7 @@ else
    echo " "
    echo "filter terminated normally"
    echo " "
-   \rm -f utilities.nml perfect.nml model.nml assim_mod.nml filter.nml 
+   \rm -f perfect.nml model.nml assim_mod.nml filter.nml 
    \rm -f set_def.out obs_seq.in ${COS} ${CFN}
 endif
 
@@ -517,7 +555,11 @@ mv  filter_restart  filter_ics
 
 \mv -f ${SAVEME}/*.nml .
 \mv -f ${SAVEME}/*default .
+if ( -e ${SAVEME}/obs_def_mod.f90 ) then
+   \mv  ${SAVEME}/obs_def_mod.f90 ../../../obs_def/obs_def_mod.f90
+endif
 \rmdir ${SAVEME}
 \rm -f nullnamelist$$.nml nullnamelist$$.nml_default
+\rm -f obs_def.nml model.nml assim_mod.nml obs_sequence.nml input.nml assim_tools.nml 
 
 exit
