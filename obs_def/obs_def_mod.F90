@@ -642,6 +642,7 @@ if ( .not. module_initialized ) call initialize_module
 
 ! Get the observation kind WANT A STRING OPTION, TOO?
 write(*, *) 'Input the index for the observation kind'
+write(*, *) '-1 * state variable index for identity obs OR '
 do i = 1, max_obs_kinds
    if(obs_kind_info(i)%assimilate .or. obs_kind_info(i)%evaluate) &
       write(*, *) obs_kind_info(i)%index, trim(obs_kind_info(i)%name)
