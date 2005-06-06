@@ -290,9 +290,8 @@ contains
 subroutine perfect_initialize_modules_used()
 
 ! Initialize modules used that require it
-call initialize_utilities
+call initialize_utilities('Perfect_model_obs')
 call register_module(source,revision,revdate)
-call error_handler(E_MSG,'perfect_model_obs','STARTING',source,revision,revdate)
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
