@@ -338,6 +338,7 @@ do i = 1, num_obs
          'identity obs is outside of state vector ', &
          source, revision, revdate)
       obs_vals(i) = state(-1 * obs_kind_ind)
+      assimilate_this_ob = .true.; evaluate_this_ob = .false.
 ! Otherwise do forward operator for this kind
    else
       call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, state, obs_vals(i), &
