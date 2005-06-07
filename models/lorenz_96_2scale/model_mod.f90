@@ -101,7 +101,6 @@ subroutine static_init_model()
 ! the time type for the time stepping (is this general enough for time???)
 
 integer  :: i, iunit, ierr, io, kount
-character(len=129) :: errstring
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -182,7 +181,7 @@ real(r8), intent( in) ::  x(:)
 real(r8), intent(out) :: dt(:)
 
 integer :: j, jp1, jp2, jm1, jm2 
-integer :: k, kp1, kp2, km1, km2 
+integer :: k, kp1,      km1, km2 
 integer :: jk
 integer :: xs, xe, ys, ye, js, je
 real(r8) :: fast_sum, c1, c2, c3
@@ -297,7 +296,6 @@ real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
 real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
-integer :: i
 
 call comp_dt(x, dx)        !  Compute the first intermediate step
 x1    = delta_t * dx
@@ -371,7 +369,7 @@ integer,             intent(in) :: itype
 integer,            intent(out) :: istatus
 
 
-integer :: lower_index, upper_index, i, base_index, top_index
+integer :: lower_index, upper_index,    base_index, top_index
 real(r8) :: lctn, lctnfrac
 
 ! All interpolations okay for now
@@ -535,9 +533,9 @@ character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1,str2
+character(len=NF90_MAX_NAME) :: str1
 
-integer             :: i, Nlocations
+integer             :: i
 type(location_type) :: lctn 
 ierr = 0                      ! assume normal termination
 

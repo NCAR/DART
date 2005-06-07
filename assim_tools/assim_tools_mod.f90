@@ -638,7 +638,7 @@ real(r8), intent(out)           :: obs_inc(ens_size)
 real(r8) :: a, obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
 real(r8) :: sx, s_x2, prior_cov
-real(r8) :: temp_mean, temp_obs(ens_size), updated_mean, var_ratio, temp_cov
+real(r8) :: temp_mean, temp_obs(ens_size)
 
 integer  :: i
 
@@ -792,11 +792,6 @@ real(r8), intent(inout)            :: net_a
 real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty
 real(r8) :: restoration_inc(ens_size), state_mean
 real(r8) :: factor
-real(r8) :: state_variance, state_sd, update(ens_size), update_mean
-real(r8) :: update_variance, update_sd, state_a
-
-real(r8) :: sum_y, sum_xy, sum_x2, sum_y2, correl, c_top, c_bot
-
 
 ! For efficiency, just compute regression coefficient here
 sum_x  = sum(obs)
