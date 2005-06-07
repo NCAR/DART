@@ -6,3 +6,5 @@ csh mkmf_perfect_model_obs
 make
 csh mkmf_filter
 make
+./perfect_model_obs
+./filter
