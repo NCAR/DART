@@ -78,8 +78,8 @@ if ( ${?ObSec1} ) then
    set ob_seconds_1 = $ObSec1
 endif
 
-set         cutoff = 0.20
-set    cov_inflate = 1.05
+set         cutoff = 1000000.0
+set    cov_inflate = 1.00
 set cov_inflate_sd = 0.05
 set sd_lower_bound = 0.05
 set          async = 0
@@ -156,6 +156,39 @@ echo 'Saved all existing *.nml into directory '"$SAVEME"
 echo 'Will restore and remove the directory at the end.'
 
 #======================================================================
+# Run the 'preprocessor' to subset the possible observation sets.
+# This MUST be done before compiling anything else.
+# This physically removes code blocks from preprocess_nml:input_file
+# and creates a preprocess_nml:output_file   that must match the
+# one in the path_names_* files later on. Be aware there is a check
+# such that preprocess will die if the output_file already exists.
+#======================================================================
+
+if !( -e preprocess ) then
+   csh mkmf_preprocess
+   make || exit 1
+   \rm -f input.nml.preprocess_default
+endif
+
+# remove any pre-existing output file ... 
+if ( -e ../../../obs_def/obs_def_mod.f90 ) then
+   \mv  ../../../obs_def/obs_def_mod.f90 ${SAVEME}
+endif
+
+cat << ENDofTask00 > input.nml
+&preprocess_nml
+   input_file  = '../../../obs_def/obs_def_mod.F90',
+   output_file = '../../../obs_def/obs_def_mod.f90' /
+
+ENDofTask00
+
+echo "&obs_def_nml"                                            > obs_def.nml
+echo "   assimilate_these_obs_types = 'raw_state_variable' /" >> obs_def.nml
+echo ''                                                       >> obs_def.nml
+
+./preprocess || exit 9
+
+#======================================================================
 # Create the executables if they do not exist.
 #======================================================================
 
@@ -194,6 +227,7 @@ cat << ENDofTask01 > assim_mod.nml
 &assim_model_nml
     read_binary_restart_files = .false. ,
    write_binary_restart_files = .false. /
+
 ENDofTask01
 
 echo ' '                                > model.nml
@@ -203,6 +237,7 @@ echo '   forcing = 8.0,'               >> model.nml
 echo '   deltat = 0.05,'               >> model.nml
 echo '   time_step_days = 0,'          >> model.nml
 echo '   time_step_seconds = 3600  /'  >> model.nml
+echo ' '                               >> model.nml
 
 #======================================================================
 # Simulate a particular observing system:
@@ -213,7 +248,7 @@ echo " "
 echo "Running create_obs_sequence ..."
 echo " "
 
-cat assim_mod.nml model.nml > input.nml
+cat assim_mod.nml obs_def.nml model.nml > input.nml
 
 ./create_obs_sequence < ../random_obs.input
 
@@ -240,7 +275,7 @@ echo $ob_day_1 $ob_seconds_1   >> $CFN ;# time of first observation
 echo $ob_int_days $ob_int_secs >> $CFN ;# observation interval
 echo "obs_seq.in"              >> $CFN ;# output file name -- destined for perfect_model_obs
  
-cat assim_mod.nml model.nml > input.nml
+cat assim_mod.nml obs_def.nml model.nml > input.nml
 
 ./create_fixed_network_seq < $CFN
 
@@ -260,10 +295,10 @@ echo "Running perfect_model_obs ..."
 echo " "
 
 cat << ENDofTask03 > perfect.nml
-
 &perfect_model_obs_nml
    start_from_restart = .true.,
    output_restart = .true. /
+
 ENDofTask03
 
 echo " "                                                          > assim_tools.nml
@@ -282,7 +317,9 @@ echo "   do_parallel = 0,"                                       >> assim_tools.
 echo "   num_domains = 1  /"                                     >> assim_tools.nml
 echo " "                                                         >> assim_tools.nml
 
-cat perfect.nml assim_tools.nml assim_mod.nml model.nml > input.nml
+cat perfect.nml assim_tools.nml obs_def.nml assim_mod.nml model.nml > input.nml
+
+cp input.nml perfect.nml
 
 ./perfect_model_obs
  
@@ -328,7 +365,7 @@ echo "   output_interval = $output_interval ,"                   >> filter.nml
 echo "   num_groups = $num_groups    /"                          >> filter.nml
 echo " "                                                         >> filter.nml
 
-cat filter.nml assim_tools.nml assim_mod.nml model.nml > input.nml
+cat filter.nml assim_tools.nml obs_def.nml assim_mod.nml model.nml > input.nml
 
 ./filter
 
@@ -339,7 +376,7 @@ else
    echo "filter terminated normally"
    echo " "
    \rm -f $CFN set_def.out
-   \rm -f assim_mod.nml model.nml perfect.nml filter.nml input.nml
+   \rm -f assim_mod.nml model.nml filter.nml 
    \rm -f assim_tools.nml go_end_filter
 endif
 
@@ -349,6 +386,9 @@ endif
 
 \mv -f ${SAVEME}/*.nml .
 \mv -f ${SAVEME}/*default .
+if ( -e ${SAVEME}/obs_def_mod.f90 ) then
+   \mv  ${SAVEME}/obs_def_mod.f90 ../../../obs_def/obs_def_mod.f90
+endif
 \rmdir ${SAVEME}
 \rm -f nullnamelist$$.nml nullnamelist$$.nml_default
 
