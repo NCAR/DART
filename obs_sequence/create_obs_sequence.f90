@@ -11,7 +11,8 @@ program create_obs_sequence
 ! $Author$
 ! $Name$
 
-use    utilities_mod, only : timestamp, register_module, open_file, close_file
+use    utilities_mod, only : timestamp, register_module, open_file, close_file, &
+                             initialize_utilities 
 use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
                              interactive_obs_sequence, static_init_obs_sequence
 use  assim_model_mod, only : static_init_assim_model
@@ -28,6 +29,7 @@ type(obs_sequence_type) :: seq
 character(len = 129)    :: file_name
 
 ! Record the current time, date, etc. to the logfile
+call initialize_utilities('create_obs_sequence')
 call register_module(source,revision,revdate)
 
 ! Initialize the assim_model module, need this to get model
