@@ -1,3 +1,7 @@
+csh mkmf_preprocess
+make
+rm -f ../../../obs_def/obs_def_mod.f90
+./preprocess
 csh mkmf_create_fixed_network_seq
 make
 csh mkmf_create_obs_sequence
