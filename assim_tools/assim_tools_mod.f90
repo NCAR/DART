@@ -334,7 +334,11 @@ if(sort_obs_inc) then
    end do
 end if
 
-net_a = a * sqrt(my_cov_inflate)
+if(my_cov_inflate < 0.0) then
+   net_a = a
+else
+   net_a = a * sqrt(my_cov_inflate)
+endif
 !!!write(*, *) 'in obs_increment a, my_cov ', a, sqrt(my_cov_inflate), net_a
 
 end subroutine obs_increment
