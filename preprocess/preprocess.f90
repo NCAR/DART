@@ -1,11 +1,22 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program preprocess
 
-! NEED TO ADD IN ALL THE CVS AND ERROR STUFF
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
+! NEED TO ADD IN ALL THE ERROR STUFF
 
 use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, check_nml_error, logfileunit, close_file
+                             open_file, check_nml_error, logfileunit, close_file, &
+                             initialize_utilities, timestamp
 
 implicit none
 
@@ -39,7 +50,7 @@ namelist /obs_def_nml/ assimilate_these_obs_types, evaluate_these_obs_types
 
 
 !Begin by reading the namelist
-
+call initialize_utilities('preprocess')
 call register_module(source, revision, revdate)
 
 ! Read the preprocess_nml to get the preprocessor observation types to keep
@@ -157,5 +168,7 @@ READ_LINE: do
       if(test(1:6) == '#ENDIF' .or. test(1:6) == '#endif') status = 1
    endif
 end do READ_LINE
+
+call timestamp(source,revision,revdate,'end') ! closes the log file.
 
 end program preprocess
