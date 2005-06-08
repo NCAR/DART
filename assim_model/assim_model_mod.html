@@ -333,7 +333,8 @@ type(time_type), intent(in)                       :: <em class=code> time</em>
 <P>
   Returns the closest time that a model is capable of advancing a given state to a 
   specified time. For instance, what is the closest time to 12GMT 01 January, 2004
-  that a model state at 00GMT 01 January, 2004 can be advanced?  
+  that a model state at 00GMT 01 January, 2004 can be advanced?  If the model time
+  is past the time, the model time is returned (new feature in releases after Hawaii).
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -910,7 +911,9 @@ from a state restart file.
  <H3 class=indent1>Description</H3>
  <P>
  Computes the closest time to which a model can advance given
-the current model time and a target time.
+the current model time and a target time. If the target time is earlier
+than the model time, the model time is returned (new feature in post Hawaii
+releases).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>aget_closest_state_time_to&nbsp; &nbsp; </em>
@@ -1287,10 +1290,6 @@ documentation for arguments and details.
     <!-- comment --><TD VALIGN=top>The header of the metadata for the copies of the data 
                         in diagnostic input file is not = 'locat'</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>aget_closest_state_time_to</TD>
-    <!-- message --><TD VALIGN=top>model time (days,secs) > time (days,secs)</TD>
-    <!-- comment --><TD VALIGN=top>model time has already advanced beyond this observation time.</TD>
-</TR>
 <TR><!-- routine --><TD VALIGN=top>set_model_state_vector</TD>
     <!-- message --><TD VALIGN=top>state vector has length # 
                       model size (#) does not match.</TD>
@@ -1356,9 +1355,6 @@ documentation for arguments and details.
     <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
       Consult the NetCDF manual. </TD>
 </TR>
-<!--<TR><!-- routine --><TD VALIGN=top>xxx</TD>
-    <!-- message --><TD VALIGN=top>xxx </TD>
-    <!-- comment --><TD VALIGN=top>xxx </TD>
 </TR> -->
 </TABLE>
 </div>
@@ -1391,15 +1387,7 @@ documentation for arguments and details.
 <BR><HR><BR>
 <H2>PRIVATE COMPONENTS</H2>
 
-<div class=routine>
-<pre>
-type location_type
-   private
-   real(r8) :: x
-end type location_type</pre>
-</div>
 
-<H3 class=indent1>Discussion</H3>
 
 <!--==================================================================-->
 

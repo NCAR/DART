@@ -194,8 +194,7 @@ type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
 logical, optional :: no_vert
 
-real(r8) :: lon_dif, horiz_dist, vert_dist
-real(r8) :: horiz_dist_orig
+real(r8) :: lon_dif, vert_dist
 integer  :: lat1_ind, lat2_ind, temp  ! indexes into lookup tables
 logical  :: comp_h_only
 

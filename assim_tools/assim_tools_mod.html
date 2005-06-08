@@ -100,9 +100,8 @@ ensemble_manager_mod
 <TABLE>
 <TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
                    <TD><A HREF="#yyyroutine1">assim_tools_init   </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">obs_increment      </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">update_from_obs_inc</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">look_for_bias      </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">obs_increment (Now Private)      </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">update_from_obs_inc (Now Private)</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">filter_assim       </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">async_assim_region </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">assim_tools_end    </A></TD></TR>
@@ -248,49 +247,6 @@ real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode>correl_out 
 
 </TABLE>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine4"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> call look_for_bias(ens, n, obs, obs_var, var_ratio) </em>
-
-<pre>
-real(r8), intent(in), dimension(n)   :: <em class=code>ens </em>
-integer,  intent(in)                 :: <em class=code>n </em>
-real(r8), intent(in),                :: <em class=code>obs </em>
-real(r8), intent(in)                 :: <em class=code>obs_var </em>
-real(r8), intent(out)                :: <em class=code>var_ratio </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-   Given a prior ensemble estimate, an observation, and the observational
-   error variance, computes the ratio of the square of ratio of the difference between
-   the ensemble mean and the observation to the expected value of this difference.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ens &nbsp; &nbsp; </em></TD>
-    <TD>The prior ensemble expected values for this observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>n</em></TD>
-    <TD>Size of the ensemble.</TD></TR>
-
-<TR><TD valign=top><em class=code>obs &nbsp; &nbsp; </em></TD>
-    <TD>The observed value.</TD></TR>
-
-<TR><TD valign=top><em class=code>obs_var &nbsp; &nbsp; </em></TD>
-    <TD>The observational error variance.</TD></TR>
-
-<TR><TD valign=top><em class=code>var_ratio</em></TD>
-    <TD>Ratio of square of difference between ensemble mean prior and
-        observed value to the expected variance of this quantity.</TD></TR>
-
-</TABLE>
-
 <!--==================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="yyyroutine5"></A>
@@ -415,8 +371,9 @@ inflation.
 <div class=namelist><pre>
 <em class=call>namelist / assim_tools_nml / </em> &#38;
 filter_kind, cutoff, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &#38;
-deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &#38;
-assim_restart_out_file_name, do_parallel, num_domains, parallel_command
+deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &#38; 
+assim_restart_out_file_name, do_parallel, num_domains, parallel_command, &#38;
+spread_restoration, cov_inflate_upper_bound, internal_outlier_threshold 
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -504,6 +461,24 @@ assim_restart_out_file_name, do_parallel, num_domains, parallel_command
  <TR><!--contents--><TD valign=top>parallel_command</TD>
      <!--  type  --><TD valign=top>character(len=129)</TD>
  <!--descript--><TD>Command to be executed for option 2.  Default: ./assim_filter.csh</TD></TR>
+ <TR><!--contents--><TD valign=top>spread_restoration</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+ <!--descript--><TD> True turns on algorithm to restore amount of spread that would be
+             expected to be lost if underlying obs/state variable correlation were really
+             0.  Default: false </TD></TR>
+ <TR><!--contents--><TD valign=top>cov_inflate_upper_bound</TD>
+     <!--  type  --><TD valign=top>real</TD>
+ <!--descript--><TD> Upper bound on values allowed for adaptive covariance inflation. Default
+    is very large number so limit never comes into play. If the covariance inflation value
+    exceeds this, it is set to this value.  Default: 10000000</TD></TR>
+ <TR><!--contents--><TD valign=top>internal_outlier_threshold</TD>
+     <!--  type  --><TD valign=top>real</TD>
+ <!--descript--><TD> Like the global outlier threshold in the filter, except it
+    is applied during the sequential update phase. If the difference between the 
+    prior ensemble mean and the observed value is more than this many standard
+    deviations of the expected value, the observation is not used. It will still 
+    appear in the diagnostic output since this is generated in the filter before the
+    sequential phase begins.  Default: -1.0</TD></TR>
 </TABLE>
 
 <!--==================================================================-->

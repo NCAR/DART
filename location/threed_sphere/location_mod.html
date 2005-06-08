@@ -110,6 +110,10 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationName">LocationName</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationLName">LocationLName</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#horiz_dist_only">horiz_dist_only</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#alloc_get_close_obs">alloc_get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#equal">operator(==)</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#not_equal">operator(/=)</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -267,10 +271,11 @@ use of the integer unit number.
 <A NAME="get_dist"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> var = get_dist( loc1, loc2)</em>
+<em class=call> var = get_dist( loc1, loc2, no_vert)</em>
 <pre>
 real(r8)                             :: <em class=code> get_dist </em>
 type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
+logical, optional                    :: <em class=code> no_vert </em>
 </pre></div>
 
 <H2 class=indent1>Description</H2>
@@ -282,7 +287,9 @@ computes an ellipsoidal distance with the horizontal component as above and
 the vertical distance determined by the types of the locations and the 
 normalization constants set by the namelist for the different vertical 
 coordinate types. The vertical normalization gives the vertical distance
-that is equally weighted as a horizontal distance of 1 radian.
+that is equally weighted as a horizontal distance of 1 radian. If no_vert
+is present, it overrides the value in the namelist and controls whether
+vertical distance is included or not.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -292,6 +299,10 @@ that is equally weighted as a horizontal distance of 1 radian.
 
 <TR><TD valign=top><em class=code>loc2</em></TD>
     <TD>second location.</TD></TR>
+
+<TR><TD valign=top><em class=code>no_vert</em></TD>
+    <TD>If true, no vertical component to distance. If false, vertical
+         component is included.</TD></TR>
 
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>distance between loc1 and loc2.</TD></TR>
@@ -469,6 +480,114 @@ and attr='VLOC' returns the vertical location.
  </TABLE>
  <BR>
 
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="alloc_get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call alloc_get_close_obs(num,obs,cutoff,obs_box) </em>
+ <pre>
+ integer, intent(in)                           :: <em class=code>num</em>
+ type(location_type), dimension(num), intent(in) :: <em class=code>obs</em>
+ real(r8), intent(in)                          :: <em class=code>cutoff</em>
+ integer, dimension(num), intent(out)            :: <em class=code>obs_box</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ An initialization routine for efficient algorithm for finding all observations
+ that are close to a given location. Divides the threed horizontal domain into a
+ grid of lat lon boxes (the number of boxes is controlled by the parameters
+ nlon and nlat which are set to 71 and 36 at present) and finds out which box
+ each observation is in. This info is saved and then one need only search
+ in potentially close boxes for close states.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
+     <TD>Number of observations</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>Locations of each of the observations</TD></TR>
+ <TR><TD valign=top><em class=code>cutoff&nbsp; &nbsp; </em></TD>
+     <TD>Need to find observations within this cutoff distance</TD></TR>
+ <TR><TD valign=top><em class=code>obs_box&nbsp; &nbsp; </em></TD>
+     <TD>Index of box containing each observation</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(base_ob,num,obs,cutoff,obs_box,num_close,clo
+ se_ind,dist) </em>
+ <pre>
+ integer, intent(in)                           :: <em class=code>base_ob</em>
+ integer, intent(in)                           :: <em class=code>num</em>
+ type(location_type), dimension(num), intent(in) :: <em class=code>obs</em>
+ real(r8), intent(in)                          :: <em class=code>cutoff</em>
+ integer, dimension(num), intent(in)             :: <em class=code>obs_box</em>
+ integer, intent(out)                          :: <em class=code>num_close</em>
+ integer, dimension(num), intent(out)            :: <em class=code>close_ind</em>
+ real(r8), dimension(num), intent(out)           :: <em class=code>dist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Finds all observations that are within radius cutoff of the observation
+  with index base_ob. The number, the index of each close ob, and the distance
+  to each close ob are returned. The obs_box structure created by alloc_get_close_obs
+  is a required input argument.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>base_ob&nbsp; &nbsp; </em></TD>
+     <TD>Index of the observation to which all other close obs are to be found.<
+ /TD></TR>
+ <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
+     <TD>Number of observations.</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>The locations of each observation.</TD></TR>
+ <TR><TD valign=top><em class=code>cutoff&nbsp; &nbsp; </em></TD>
+     <TD>Find close_obs within this radius.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_box&nbsp; &nbsp; </em></TD>
+     <TD>Which box is each observation in, generated by alloc_get_close_obs.</TD
+ ></TR>
+ <TR><TD valign=top><em class=code>num_close&nbsp; &nbsp; </em></TD>
+     <TD>Number of close obs found.</TD></TR>
+ <TR><TD valign=top><em class=code>close_ind&nbsp; &nbsp; </em></TD>
+     <TD>Indices of each of the close obs.</TD></TR>
+ <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
+     <TD>Distance to each of the close obs.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="equal"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> loc1 == loc2 </em>
+ <pre>
+ type(location_type), intent(in)       :: <em class=code>loc1, loc2</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Returns true if the two location types have identical values, else
+  false.
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="not_equal"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call>loc1 /= loc2 </em>
+ <pre>
+ type(location_type), intent(in)       :: <em class=code>loc1, loc2</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Returns true if the two location types do NOT have identical values,
+  else false.
+ </P>
+ <BR>
+
+
+
 <!--================================================================-->
 <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
 <A NAME="LocationDims"></A>
@@ -517,7 +636,7 @@ is horizontal only or not.
  <div class=namelist><pre>
  <em class=call>namelist / location_nml / </em> &#38;
  horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &#38;
- vert_normalization_level
+ vert_normalization_level, approximate_distance
 
 
  </pre></div>
@@ -550,6 +669,13 @@ vertical and horizontal separation.
      <!--  type  --><TD valign=top>real(r8)</TD>
      <!--descript--><TD>How many model levels should be equal to one radian? 
 	                Default: 20.0</TD></TR>
+ <TR><!--contents--><TD valign=top>approximate_distance</TD>
+     <!--  type  --><TD valign=top>logical. </TD>
+     <!--descript--><TD> If true, uses a table lookup for fast approximate
+            computation of distances on sphere. Distance computation can be
+            a first order cost for some spherical problems, so this can increase
+            speed significantly at a loss of some precision. Default: .false.
+	                </TD></TR>
  </TABLE>
  <BR>
 

@@ -112,8 +112,7 @@ ensemble_manager
       output_state_ens_mean, output_state_ens_spread, 
       output_obs_ens_mean,   output_obs_ens_spread, 
       num_output_state_members, num_output_obs_members, 
-      output_interval,  num_groups, outlier_threshold, 
-      save_reg_series
+      output_interval,  num_groups, outlier_threshold 
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -219,12 +218,6 @@ ensemble_manager
                        violated for the prior estimate. Negative value 
                        means no quality control of this kind. 
                        Default value is -1.0 </TD></TR>
-<TR><!--contents--><TD valign=top>save_reg_series              </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Save statistics about the regression series for different
-                       observation / state variable pairs. Currently only
-                       minimally supported for non-parallel low-order models.
-                       Default is .false. </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

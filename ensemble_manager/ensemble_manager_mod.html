@@ -105,6 +105,10 @@ time_manager_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#put_region_by_number">put_region_by_number</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#transpose_ens_to_regions">transpose_ens_to_regions</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#transpose_regions_to_ens">transpose_regions_to_ens</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#is_ens_in_core">is_ens_in_core</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens">ens</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens">ens_mean</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens">ens_spread</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -602,6 +606,49 @@ in the array region_id.
  <BR>
 
 <!--=================================================================-->
+<!--===================== DESCRIPTION OF FUNCTION =====================-->
+
+<A NAME="is_ens_in_core"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> var = is_ens_in_core()</em>
+<pre>
+</pre></div>
+
+<H2 class=indent1>Description</H2>
+
+<P>
+Returns true if the ensemble is stored in core and false otherwise. Used
+to determine if it is okay to make direct access to the ensemble, 
+ensemble mean, and ensemble spread for efficiency.
+</P>
+
+
+<BR>
+
+<!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
+
+<A NAME="ens"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>real(r8), allocatable :: ens(:, :), ens_mean(:), ens_spread(:) </em>
+<pre>
+</pre></div>
+
+<H2 class=indent1>Description</H2>
+
+<P>
+These three arrays are managed by the ensemble_manager. If the ensemble is
+being stored in core (in_core = .true.), then these arrays can be accessed
+directly to avoid the added overhead of a copy when they need to be used.
+This is purely for efficiency and is not a very safe programming practice.
+</P>
+
+
+<BR>
+
+<!--================================================================-->
+
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>

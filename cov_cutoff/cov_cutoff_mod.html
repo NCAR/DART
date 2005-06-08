@@ -110,11 +110,12 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="yyyroutine1"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> var = comp_cov_factor(z_in, c) </em>
+<em class=call> var = comp_cov_factor(z_in, c, localization_override) </em>
 <pre>
 real(r8)                              :: <em class=code> comp_cov_factor </em>
 real(r8), intent(in)                  :: <em class=code> z_in </em>
 real(r8), intent(in)                  :: <em class=code> c </em>
+real(r8), optional                    :: <em class=code> localization_override </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -122,7 +123,8 @@ real(r8), intent(in)                  :: <em class=code> c </em>
 <P>
    Returns a weighting factor for observation and state variable separated
    by distance z_in and with a half-width distance, c. Three options are
-   provided and controlled by a namelist parameter. 
+   provided and controlled by a namelist parameter. The optional argument
+   localization_override controls the type of localization if it is present.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -133,6 +135,11 @@ real(r8), intent(in)                  :: <em class=code> c </em>
 <TR><TD valign=top><em class=code>c</em></TD>
     <TD>Factor that describes the localization function. Describes the
         half-width of the functions used here. </TD></TR>
+
+<TR><TD valign=top><em class=code>localization_override</em></TD>
+    <TD> Controls localization type if present. Same values as for namelist
+         control. </TD></TR>
+
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>Covariance value returned. </TD></TR>
 
