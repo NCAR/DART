@@ -157,7 +157,7 @@ end do
 dt(num_state_vars + 1 : model_size) = 0.0_r8
 
 
-! Try adding in some random spread???
+! Try adding in some random spread
 if(.not. reset_forcing) &
    dt(num_state_vars + 1 : model_size) = &
       random_gaussian(random, 0.0_r8, random_forcing_amplitude)
