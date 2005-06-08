@@ -26,10 +26,10 @@ use utilities_mod, only : register_module, error_handler, E_ERR
 implicit none
 private
 
-public get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
+public :: get_obs_kind, set_obs_kind, write_kind, read_kind, obs_kind_type, &
        interactive_kind
 
-public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
+public :: KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
        KIND_VR, KIND_REF
 
 ! CVS Generated file description for error handling, do not edit

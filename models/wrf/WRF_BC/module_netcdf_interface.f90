@@ -20,7 +20,7 @@ MODULE module_netcdf_interface
   implicit none
   private
 
-public  get_dims_cdf,        &
+public :: get_dims_cdf,      &
         get_gl_att_real_cdf, &
         put_gl_att_real_cdf, &
         get_var_3d_real_cdf, &

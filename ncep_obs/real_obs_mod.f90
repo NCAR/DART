@@ -31,7 +31,7 @@ use     obs_kind_mod, only : obs_kind_type, set_obs_kind, &
 implicit none
 private
 
-public  real_obs_sequence
+public :: real_obs_sequence
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

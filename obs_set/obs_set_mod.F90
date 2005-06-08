@@ -20,7 +20,7 @@ use time_manager_mod, only : time_type, read_time, write_time, &
 implicit none
 private
 
-public obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
+public :: obs_set_type, init_obs_set, get_obs_set_time, get_obs_values,&
    set_obs_values, set_single_obs_value, set_obs_set_time, &
    get_single_obs_value, &
    contains_data, obs_value_missing, &

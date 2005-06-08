@@ -19,7 +19,7 @@ use   location_mod, only : loc_type, get_dist, set_loc
 implicit none
 private
 
-public num_obs, obs_var, take_obs, ens_ics, get_close_state, &
+public :: num_obs, obs_var, take_obs, ens_ics, get_close_state, &
    max_num_pos_obs, init_obs, take_single_obs, obs_loc
 
 ! CVS Generated file description for error handling, do not edit

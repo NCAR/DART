@@ -17,7 +17,7 @@ use utilities_mod, only : register_module, error_handler, E_ERR
 implicit none
 private
 
-public random_seq_type, init_ran1, ran1, gasdev
+public :: random_seq_type, init_ran1, ran1, gasdev
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

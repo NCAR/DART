@@ -26,7 +26,7 @@ use   location_mod, only: location_type, vert_is_level
 implicit none
 private
 
-public obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
+public :: obs_set_def_type, init_obs_set_def, get_diag_obs_err_cov, &
        get_expected_obs, get_obs_def, get_num_obs, get_obs_locations, &
        get_close_states, get_num_close_states, add_obs, &
        diag_obs_err_cov, read_obs_set_def, write_obs_set_def, obs_set_def_copy, &

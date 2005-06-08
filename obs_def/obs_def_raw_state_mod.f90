@@ -16,7 +16,8 @@ use cov_cutoff_mod,   only : comp_cov_factor
 
 implicit none
 
-public write_1d_integral, read_1d_integral, interactive_1d_integral, get_expected_1d_integral
+public :: write_1d_integral, read_1d_integral, interactive_1d_integral, &
+          get_expected_1d_integral
 
 ! Storage for the special information required for observations of this type
 integer, parameter                      :: max_1d_integral_obs = 100

@@ -16,7 +16,7 @@ use assim_tools_mod, only : sample_cov
 
 private
 
-public single_ob_qc, pair_ob_qc
+public :: single_ob_qc, pair_ob_qc
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &

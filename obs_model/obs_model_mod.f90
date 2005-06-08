@@ -32,8 +32,8 @@ use ensemble_manager_mod, only : get_ensemble_time, Aadvance_state, ensemble_typ
 implicit none
 private
 
-!public take_obs, interactive_def, get_expected_obs, get_close_states, move_ahead, take_vr, take_td
-public get_close_states, move_ahead
+!public :: take_obs, interactive_def, get_expected_obs, get_close_states, move_ahead, take_vr, take_td
+public :: get_close_states, move_ahead
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

@@ -30,7 +30,7 @@ use obs_set_def_mod, only : obs_set_def_type, get_num_obs, &
 implicit none
 private
 
-public set_def_list_type, list_element_type, get_number_obs_subsets, &
+public :: set_def_list_type, list_element_type, get_number_obs_subsets, &
    init_set_def_list, add_to_list, get_total_num_obs, &
    write_set_def_list, read_set_def_list, write_list_element, &
    read_list_element, list_element_copy, set_def_list_copy, &

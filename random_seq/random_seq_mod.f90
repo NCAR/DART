@@ -18,7 +18,7 @@ use random_nr_mod, only : random_seq_type, init_ran1, ran1, gasdev
 implicit none
 private
 
-public random_seq_type, init_random_seq, random_gaussian, &
+public :: random_seq_type, init_random_seq, random_gaussian, &
    several_random_gaussians, random_uniform, twod_gaussians
 
 ! CVS Generated file description for error handling, do not edit

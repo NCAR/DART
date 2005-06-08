@@ -22,11 +22,11 @@ interface assignment(=)
    module procedure copy_platform
 end interface
 
-public platform_type, read_platform, copy_platform, write_platform, assignment(=), &
+public :: platform_type, read_platform, copy_platform, write_platform, assignment(=), &
        set_platform_location, get_platform_location, &
        set_platform_orientation, get_platform_orientation
 
-public write_orientation, read_orientation
+public :: write_orientation, read_orientation
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

@@ -20,7 +20,7 @@ use    obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
 implicit none
 private
 
-public take_obs, interactive_def
+public :: take_obs, interactive_def
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

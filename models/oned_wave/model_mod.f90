@@ -25,11 +25,11 @@ type location_type
    real(r8) :: x
 end type location_type
 
-public model_size, init_conditions, adv_1step, advance, output
-public barot_to_dp, dp_to_barot
-public delta_t, adv_true_state
-public location_type, model_state_location, loc_dist, diag_output_index
-public model_get_close_state
+public :: model_size, init_conditions, adv_1step, advance, output
+public :: barot_to_dp, dp_to_barot
+public :: delta_t, adv_true_state
+public :: location_type, model_state_location, loc_dist, diag_output_index
+public :: model_get_close_state
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

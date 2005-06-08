@@ -46,7 +46,7 @@ interface assignment(=)
 end interface
 
 ! Public interfaces for obs sequences
-public obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
+public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_num_copies, get_num_qc, get_num_obs, get_max_num_obs, get_copy_meta_data, &
    get_qc_meta_data, get_next_obs, get_prev_obs, insert_obs_in_seq, &
    delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
@@ -56,12 +56,12 @@ public obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_expected_obs
 
 ! Public interfaces for obs
-public obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
+public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, get_qc, set_qc, write_obs, read_obs, &
    interactive_obs, simul_radar, copy_obs, assignment(=)
 
 ! Public interfaces for obs covariance modeling
-public obs_cov_type
+public :: obs_cov_type
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

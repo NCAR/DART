@@ -22,7 +22,7 @@ use utilities_mod, only : register_module, error_handler, E_ERR
 implicit none
 private
 
-public conv_state_to_obs, obs_def_type, obs_m_rinv, state_obs_dep_type, &
+public :: conv_state_to_obs, obs_def_type, obs_m_rinv, state_obs_dep_type, &
    dep_obs, init_state_obs_dep, def_single_obs, get_state_var_indices
 
 ! Define a type for linear model operator
