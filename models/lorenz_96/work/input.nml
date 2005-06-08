@@ -53,7 +53,10 @@
    assim_restart_out_file_name = 'assim_tools_restart',
    do_parallel = 0,
    num_domains = 1,
-   parallel_command = "./assim_filter.csh" /
+   parallel_command = "./assim_filter.csh" 
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
 
 &cov_cutoff_nml
    select_localization = 1  /
