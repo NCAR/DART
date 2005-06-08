@@ -20,7 +20,7 @@ use utilities_mod, only : error_handler, E_ERR
 implicit none
 private
 
-public chsone
+public :: chsone
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &

@@ -25,7 +25,7 @@ use    utilities_mod, only : file_exist, open_file, close_file, check_nml_error,
 implicit none
 private
 
-public num_obs, obs_var, take_obs, ens_ics, state_to_obs, &
+public :: num_obs, obs_var, take_obs, ens_ics, state_to_obs, &
        init_obs, take_single_obs, get_close_state, obs_loc
 
 ! CVS Generated file description for error handling, do not edit

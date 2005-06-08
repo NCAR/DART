@@ -25,7 +25,7 @@ use model_mod,      only : advance
 implicit none
 
 private
-public forecast_advance, forecast_out
+public :: forecast_advance, forecast_out
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

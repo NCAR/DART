@@ -23,7 +23,7 @@ use loc_and_dist_mod, only : loc_type, get_dist, set_loc
 implicit none
 private
 
-public init_model, get_model_size, lat_max, num_lon, init_conditions, & 
+public :: init_model, get_model_size, lat_max, num_lon, init_conditions, & 
    adv_1step, advance, &
    output, barot_to_dp, dp_to_barot, delta_t, adv_true_state, &
    dp_to_grid, lon, lat, model_state_location, diag_output_index, &

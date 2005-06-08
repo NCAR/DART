@@ -36,7 +36,7 @@ private
 logical :: first_ens_seq = .true.
 type (random_seq_type) :: ens_seq
 
-public init_model, get_model_size, init_conditions, adv_1step, advance, &
+public :: init_model, get_model_size, init_conditions, adv_1step, advance, &
    adv_true_state, output, diag_output_index, get_close_pts, state_loc, &
    model_output
 

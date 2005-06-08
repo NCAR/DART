@@ -25,7 +25,7 @@ use  nag_wrap_mod, only : e04dgf_wrap
 implicit none
 private
 
-public min_cost, adj_forecast_eval, adj_forecast_out
+public :: min_cost, adj_forecast_eval, adj_forecast_out
 
 ! let CVS fill strings ... DO NOT EDIT ...
 character(len=128) :: &

@@ -33,7 +33,7 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-public init_ensemble_manager, get_ensemble_member, put_ensemble_member, &
+public :: init_ensemble_manager, get_ensemble_member, put_ensemble_member, &
    update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
    get_ensemble_region, put_ensemble_region, get_ensemble_time, Aadvance_state, &
    ensemble_type, get_region_by_number, put_region_by_number, &

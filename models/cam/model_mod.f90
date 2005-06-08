@@ -87,7 +87,7 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 implicit none
 private
 
-public model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
+public :: model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
    read_cam_init_size, init_model_instance, end_model_instance, &
    write_cam_init, get_model_size, static_init_model, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
