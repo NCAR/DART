@@ -64,7 +64,7 @@
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg",
-   save_reg_diagnostics = .false.,
+   save_reg_diagnostics = .true.,
    reg_diagnostics_file = 'reg_diagnostics'  /
 
 &obs_sequence_nml
