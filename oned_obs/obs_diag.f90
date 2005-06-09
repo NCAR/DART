@@ -22,11 +22,9 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_obs_time_range, get_time_range_keys, get_num_obs, &
                              get_next_obs, get_num_times, get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
-                             get_qc, destroy_obs_sequence, get_last_obs
+                             get_qc, destroy_obs_sequence, get_last_obs, get_num_qc
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_def_kind 
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                             obs_kind_type, get_obs_kind 
+                             get_obs_def_location, get_obs_kind
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=)
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
@@ -47,7 +45,7 @@ revdate  = "$Date$"
 type(obs_sequence_type) :: seq
 type(obs_type)          :: observation, next_obs
 type(obs_def_type)      :: obs_def
-type(obs_kind_type)     :: obs_kind
+!type(obs_kind_type)     :: obs_kind
 type(location_type)     :: obs_loc
 type(time_type)         :: first_time, last_time, this_time
 
@@ -80,6 +78,7 @@ integer :: obs_month  = 1
 integer :: obs_day    = 1
 integer :: tot_days   = 1        ! total days
 integer :: iskip      = 0        ! skip the first 'iskip' days
+integer :: level      = 1013     ! artificial level for plotting ease.
 integer :: obs_select = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 real(r8):: rat_cri    = 3.0      ! QC ratio
 real(r8):: qc_threshold = 4.0    ! maximum NCEP QC factor
@@ -87,7 +86,7 @@ integer :: bin_separation = 3600 ! Bins every so often seconds
 integer :: bin_width = 0         ! width of the bin seconds
 
 namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
-                       tot_days, iskip, obs_select, rat_cri, &
+                       tot_days, iskip, level, obs_select, rat_cri, &
                        qc_threshold, bin_separation, bin_width
 
 !-----------------------------------------------------------------------
@@ -108,6 +107,10 @@ data lonlim2 / 1.0_r8, 0.5_r8, 1.0_r8 /
 integer  :: iregion, iepoch
 real(r8) :: rlocation
 
+character(len=3), parameter :: varnames = 'raw'
+character(len=5), dimension(Nregions), parameter :: Regions = &
+   (/ 'whole','ying ','yang ' /)
+
 !-----------------------------------------------------------------------
 ! Spatio-Temporal Variables
 ! Dimension 1 is temporal, actually - these are time-by-region- 
@@ -125,7 +128,7 @@ type(time_type), allocatable, dimension(:) :: bincenter
 !-----------------------------------------------------------------------
 
 integer  :: seconds, days
-integer  :: Nepochs
+integer  :: Nepochs, num_copies, num_qc
 integer  :: gesUnit, anlUnit
 
 real(r8) :: ratio
@@ -139,17 +142,14 @@ character(len = 129) :: gesName, anlName, msgstring
 ! Some variables to keep track of who's rejected why ...
 !-----------------------------------------------------------------------
 
-integer                      :: NwrongType = 0   ! namelist discrimination
-integer                      :: NbadQC     = 0   ! out-of-range QC values
-integer                      :: NbadLevel  = 0   ! out-of-range pressures
+integer :: NwrongType = 0   ! namelist discrimination
+integer :: NbadQC     = 0   ! out-of-range QC values
+integer :: NbadLevel  = 0   ! out-of-range pressures
 
 !-----------------------------------------------------------------------
 
 call initialize_utilities('obs_diag')
 call register_module(source,revision,revdate) 
-call static_init_obs_sequence()  ! Initialize the obs sequence module 
-call init_obs(observation, 0, 0) ! Initialize the observation type variables
-call init_obs(   next_obs, 0, 0)
 
 ! Begin by reading the namelist input for obs_diag
 
@@ -166,12 +166,16 @@ call error_handler(E_MSG,'obs_diag','obsdiag_nml values are',' ',' ',' ')
 write(logfileunit,nml=obsdiag_nml)
 write(    *      ,nml=obsdiag_nml)
 
-! Now that we have input, do some checking and setup
+! Initialize the obs sequence module.
+! Read in with enough space for diagnostic output values.
 
-! Read in with enough space for diagnostic output values
-! Need time of start and finish to determine number of epochs. 
-
+call static_init_obs_sequence()
 call read_obs_seq(obs_sequence_name, 0, 0, 0, seq)
+num_copies = get_num_copies(seq)
+num_qc     = get_num_qc(seq)
+
+call init_obs(observation, num_copies, num_qc)
+call init_obs(   next_obs, num_copies, num_qc)
 
 !--------------------------------------------------------------------
 ! The observations for the low-order models are all exactly at 
@@ -181,7 +185,8 @@ call read_obs_seq(obs_sequence_name, 0, 0, 0, seq)
 ! Get the time of the last observation in the sequence. For Fun.
 
 is_there_one = get_last_obs(seq, observation)
-if ( is_there_one /= .TRUE. ) then
+!if ( is_there_one /= .TRUE. ) then
+if ( .not. is_there_one ) then
       call error_handler(E_ERR,'obs_diag','No "last" observation in sequence.', &
       source,revision,revdate)
 endif
@@ -191,7 +196,8 @@ last_time   = get_obs_def_time(obs_def)
 ! Get the time of the first observation in the sequence.
 
 is_there_one = get_first_obs(seq, observation)
-if ( is_there_one /= .TRUE. ) then
+!if ( is_there_one /= .TRUE. ) then
+if ( .not. is_there_one ) then
       call error_handler(E_ERR,'obs_diag','No Observations in sequence.', &
       source,revision,revdate)
 endif
@@ -385,8 +391,8 @@ posterior_spread(1) = 0.0_r8
          call get_obs_def(observation, obs_def)
 
          obs_err_var(obsindex) = get_obs_def_error_variance(obs_def) 
-         obs_kind              = get_obs_def_kind(obs_def)
-         flavor                = get_obs_kind(obs_kind)
+!        obs_kind              = get_obs_def_kind(obs_def)
+         flavor                = get_obs_kind(obs_def)
          obs_loc               = get_obs_def_location(obs_def)
          rlocation             = get_location(obs_loc) 
 
@@ -443,7 +449,7 @@ posterior_spread(1) = 0.0_r8
             ! Check for desired type ... joke
             !-----------------------------------------------------------
 
-        !   if (flavor > 0 ) then  ! keep all types, for now ...
+!           if (flavor > 0 ) then  ! keep all types, for now ...
 
                ratio = GetRatio(obs(obsindex), pr_mean, pr_sprd, &
                         obs_err_var(obsindex))
@@ -506,8 +512,8 @@ posterior_spread(1) = 0.0_r8
 !enddo Dayloop
 
 !-----------------------------------------------------------------------
-write(gesName,'(''guess.dat'')')
-write(anlName,'(''analysis.dat'')')
+write(gesName,'(''rawges_times_'',i4.4,''mb.dat'')')level
+write(anlName,'(''rawanl_times_'',i4.4,''mb.dat'')')level
 
 gesUnit = get_unit()
 OPEN(gesUnit,FILE=trim(adjustl(gesName)),FORM='formatted')
@@ -551,22 +557,45 @@ write(logfileunit,*)'Considered Observations : ',obs_used
 ! This file is also a matlab function ... the variables are
 ! loaded by just typing the name at the matlab prompt.
 !-----------------------------------------------------------------------
+!  varnames = {'T','W','Q'};
+!  varnames = {'T','W','Q','P'};
+
+!  Regions = {'Northern Hemisphere', ...
+!             'Southern Hemisphere', ...
+!             'Tropics', 'North America'};
 
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
-write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
-write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
-write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
-write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
-write(iunit,'(''iskip          = '',i6,'';'')')iskip
-write(iunit,'(''obs_select     = '',i3,'';'')')obs_select
+
+!write(iunit,*)'Regions(1) = ',trim(adjustl(Regions(1))),';'
+!write(iunit,*)'Regions(2) = ',trim(adjustl(Regions(2))),';'
+!write(iunit,*)'Regions(3) = ',trim(adjustl(Regions(3))),';'
+write(iunit,'(''varnames  = { ... '')')
+write(iunit,'("''raw''",''};'')')
+write(iunit,'(''Regions  = { ... '')')
+write(iunit,'("''whole''",'',...'')')
+write(iunit,'("''ying''",'',...'')')
+write(iunit,'("''yang''",''};'')')
+do i = 1,Nregions
+!   write(iunit,*)trim(adjustl(Regions(i)))//', ...'
+!   write(iunit,'('',a(8),'',...'')')trim(adjustl(Regions(i)))
+!   write(iunit,100)trim(adjustl(Regions(i)))
+enddo
+100  format('',a,'',', ...')
+write(iunit,'(''obs_year       = '',i,'';'')')obs_year
+write(iunit,'(''obs_month      = '',i,'';'')')obs_month
+write(iunit,'(''obs_day        = '',i,'';'')')obs_day
+write(iunit,'(''tot_days       = '',i,'';'')')tot_days
+write(iunit,'(''iskip          = '',i,'';'')')iskip
+write(iunit,'(''level          = '',i,'';'')')level
+write(iunit,'(''obs_select     = '',i,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
 write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
-write(iunit,'(''bin_width      = '',f9.2,'';'')')bin_width
-write(iunit,'(''bin_separation = '',f9.2,'';'')')bin_separation 
+write(iunit,'(''bin_width      = '',i,'';'')')bin_width
+write(iunit,'(''bin_separation = '',i,'';'')')bin_separation 
 write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
 write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
-write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
-write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
+write(iunit,'(''lonlim1 = ['',3(1x,f9.2),''];'')')lonlim1
+write(iunit,'(''lonlim2 = ['',3(1x,f9.2),''];'')')lonlim2
 close(iunit)
 
 deallocate( epoch_center, bincenter)
@@ -615,39 +644,6 @@ contains
 
    keeper = .true. ! Innocent till proven guilty ...
 
-   select case ( flavor )
-      case ( KIND_V ) !! Wind component
-
-         if(obs_select == 2) then ! keep RA only and skip ACARS and SATWND data
-            if( abs(sqrt( obs_err_var) - 2.5_r8 ) <= 0.1_r8)               keeper = .false.
-            if(     sqrt( obs_err_var) > 3.3_r8)                           keeper = .false.
-            if(     sqrt( obs_err_var) > 2.5_r8 .and. ipressure .gt. 420 ) keeper = .false.
-            if(     sqrt( obs_err_var) > 1.7_r8 .and. ipressure .gt. 680 ) keeper = .false.
-         endif
-
-         if(obs_select == 3) then ! keep only ACARS and SATWND data
-            if( sqrt( obs_err_var) <  2.5_r8 .and. ipressure < 400 ) keeper = .false.
-            if( sqrt( obs_err_var) >  2.5_r8 .and. &
-                sqrt( obs_err_var) <  3.5_r8 .and. ipressure < 400 ) keeper = .false.
-            if( sqrt( obs_err_var) <= 1.7_r8)                        keeper = .false.
-         endif
-
-      case ( KIND_T ) !! Temperature
-
-         if(obs_select == 2) then ! temporarily keep RA only 
-            if( abs(sqrt(obs_err_var) - 1.0_r8) <= 0.1_r8) keeper = .false.
-         endif
-
-         if(obs_select == 3) then ! temporarily keep only ACARS and SATWND data
-            if( abs(sqrt(obs_err_var) - 1.0_r8) >  0.1_r8) keeper = .false.
-         endif
-
-      case default
-
-         ! Moisture (Q) and Surface Pressure (P) are always accepted
-         keeper = .true.
-
-   end select
    end Function CheckObsType
 
 end program obs_diag
