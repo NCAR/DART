@@ -6,7 +6,7 @@ function obs_num_time(ddir)
 %
 % USAGE: if the preprocessed data files are in a directory called 'plot'
 % 
-% obs_num_time('plot')
+% obs_num_time('argghhh')
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -24,11 +24,22 @@ else
    startpath = path;
 end
 
-datafile = 'ObsDiagAtts';
+%----------------------------------------------------------------------
+% Defaults
+%----------------------------------------------------------------------
+
+varnames = {'T','W','Q','P'};
+
+Regions = {'Northern Hemisphere', ...
+           'Southern Hemisphere', ...
+           'Tropics', 'North America'};
+
+ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
 %----------------------------------------------------------------------
+datafile = 'ObsDiagAtts';
 
 if ( exist(datafile) == 2 )
 
@@ -38,18 +49,9 @@ if ( exist(datafile) == 2 )
    toff = temp - round(t1); % determine temporal offset (calendar base)
    day1 = datestr(t1+toff,'yyyy-mm-dd HH');
    dayN = datestr(tN+toff,'yyyy-mm-dd HH');
-   pmax = psurface;
-   pmin = ptop;
 
-   % There is no vertical distribution of surface pressure
-
-   varnames = {'T','W','Q'};
-   varnames = {'T','W','Q','P'};
-
-   Regions = {'Northern Hemisphere', ...
-              'Southern Hemisphere', ...
-              'Tropics', 'North America'};
-   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
+   % Be aware that the low order models override the varnames
+   % and Regions variables defined above.
 
 else
    error(sprintf('%s cannot be found.', datafile))
@@ -57,15 +59,17 @@ end
 
 % set up a structure with all static plotting components
 
-plotdat.level   = level;
-plotdat.toff    = toff;
-plotdat.ylabel  = 'observation count';
+plotdat.level    = level;
+plotdat.toff     = toff;
+plotdat.ylabel   = 'observation count';
+plotdat.nregions = length(Regions);
+plotdat.nvars    = length(varnames);
 
 %----------------------------------------------------------------------
 % Loop around observation types
 %----------------------------------------------------------------------
 
-for ivar = 1:length(varnames),
+for ivar = 1:plotdat.nvars,
 
    % set up a structure with all the plotting components
 
@@ -95,7 +99,7 @@ for ivar = 1:length(varnames),
    page2 = 2*(ivar-1)+2;
    figure(page1); clf;
 
-   for iregion = 1:length(Regions),
+   for iregion = 1:plotdat.nregions,
       plotdat.title  = Regions{iregion};
       plotdat.region = iregion;
       plotdat.ptype  = ptypes{iregion};
@@ -113,16 +117,25 @@ for ivar = 1:length(varnames),
 
    figure(page2); clf;
 
-   h = plot(xax, NbyRegion(:,1), ptypes{1}, ...
-            xax, NbyRegion(:,2), ptypes{2}, ...
-	    xax, NbyRegion(:,3), ptypes{3}, ...
-	    xax, NbyRegion(:,4), ptypes{4}, 'LineWidth', 2.0);
+   if (plotdat.nregions > 3 )
+      h = plot(xax, NbyRegion(:,1), ptypes{1}, ...
+               xax, NbyRegion(:,2), ptypes{2}, ...
+	       xax, NbyRegion(:,3), ptypes{3}, ...
+	       xax, NbyRegion(:,4), ptypes{4}, 'LineWidth', 2.0);
+      h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, ...
+	         'Location','NorthWest');
+   else
+      h = plot(xax, NbyRegion(:,1), ptypes{1}, ...
+               xax, NbyRegion(:,2), ptypes{2}, ...
+	       xax, NbyRegion(:,3), ptypes{3}, 'LineWidth', 2.0);
+      h = legend(Regions{1},Regions{2},Regions{3}, ...
+   	         'Location','NorthWest');
+   end
+
    grid
    title(plotdat.main, 'FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
    datetick('x',1)
-   h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, ...
-	      'Location','NorthWest');
    legend(h,'boxoff');
 
    BottomAnnotation(plotdat.fname)

@@ -25,11 +25,23 @@ else
    startpath = path;
 end
 
-datafile = 'ObsDiagAtts';
+%----------------------------------------------------------------------
+% Defaults
+%----------------------------------------------------------------------
+
+varnames = {'T','W','Q','P'};
+
+Regions = {'Northern Hemisphere', ...
+           'Southern Hemisphere', ...
+           'Tropics', 'North America'};
+
+ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
 %----------------------------------------------------------------------
+
+datafile = 'ObsDiagAtts';
 
 if ( exist(datafile) == 2 )
 
@@ -39,17 +51,6 @@ if ( exist(datafile) == 2 )
    toff = temp - round(t1); % determine temporal offset (calendar base)
    day1 = datestr(t1+toff,'yyyy-mm-dd HH');
    dayN = datestr(tN+toff,'yyyy-mm-dd HH');
-   pmax = psurface;
-   pmin = ptop;
-
-   % There is no vertical distribution of surface pressure
-
-   varnames = {'T','W','Q','P'};
-
-   Regions = {'Northern Hemisphere', ...
-              'Southern Hemisphere', ...
-              'Tropics', 'North America'};
-   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 else
    error(sprintf('%s cannot be found.', datafile))
@@ -57,20 +58,18 @@ end
 
 % set up a structure with all static plotting components
 
-plotdat.toff      = toff;
 plotdat.level     = level;
-plotdat.pmax      = pmax;
-plotdat.pmin      = pmin;
-plotdat.linewidth = 2.0;
+plotdat.toff      = toff;
 plotdat.ylabel    = 'RMSE';
+plotdat.nregions  = length(Regions);
+plotdat.nvars     = length(varnames);
+plotdat.linewidth = 2.0;
 
 %----------------------------------------------------------------------
 % Loop around observation types
 %----------------------------------------------------------------------
 
-for ivar = 1:length(varnames),
-
-   % set up a structure with all the plotting components
+for ivar = 1:plotdat.nvars,
 
    plotdat.varname = varnames{ivar};
 
@@ -101,7 +100,7 @@ for ivar = 1:length(varnames),
 
    figure(ivar); clf;
 
-   for iregion = 1:4,
+   for iregion = 1:plotdat.nregions,
       plotdat.title  = Regions{iregion};
       plotdat.region = iregion;
       myplot(plotdat);

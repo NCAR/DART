@@ -25,11 +25,22 @@ else
    startpath = path;
 end
 
-datafile = 'ObsDiagAtts';
+%----------------------------------------------------------------------
+% Defaults
+%----------------------------------------------------------------------
+
+varnames = {'T','W','Q','P'};
+
+Regions = {'Northern Hemisphere', ...
+           'Southern Hemisphere', ...
+           'Tropics', 'North America'};
+
+ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 %----------------------------------------------------------------------
 % Get attributes from obs_diag run.
 %----------------------------------------------------------------------
+datafile = 'ObsDiagAtts';
 
 if ( exist(datafile) == 2 )
 
@@ -39,40 +50,30 @@ if ( exist(datafile) == 2 )
    toff = temp - round(t1); % determine temporal offset (calendar base)
    day1 = datestr(t1+toff,'yyyy-mm-dd HH');
    dayN = datestr(tN+toff,'yyyy-mm-dd HH');
-   pmax = psurface;
-   pmin = ptop;
 
-   % There is no vertical distribution of surface pressure
-
-   varnames = {'T','W','Q'};
-
-   Regions = {'Northern Hemisphere', ...
-              'Southern Hemisphere', ...
-              'Tropics', 'North America'};
-   ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
+   % Be aware that the low order models override the varnames
+   % and Regions variables defined above.
 
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
+% Set up a structure with all the plotting components
+
+plotdat.level    = level;
+plotdat.toff     = toff;
+plotdat.ylabel   = 'RMSE';
+plotdat.nregions = length(Regions);
+plotdat.nvars    = length(varnames);
+plotdat.flavor   = 'Ens Mean';
+
 %----------------------------------------------------------------------
 % Loop around observation types
 %----------------------------------------------------------------------
 
-varnames = {'T','W','Q','P'};
-Regions = {'Northern Hemisphere', ...
-           'Southern Hemisphere', ...
-           'Tropics', 'North America'};
+for ivar = 1:plotdat.nvars,
 
-for ivar = 1:length(varnames),
-
-   % Set up a structure with all the plotting components
-
-   plotdat.level   = level;
-   plotdat.flavor  = 'Ens Mean';
-   plotdat.ylabel  = 'RMSE';
    plotdat.varname = varnames{ivar};
-   plotdat.toff    = toff;
 
    switch obs_select
       case 1,
