@@ -1,4 +1,4 @@
-function plotdat = plot_reg_factor(fname,obsindex)
+%function plotdat = plot_reg_factor(fname,obsindex)
 % DART : 
 %
 %
@@ -12,14 +12,17 @@ function plotdat = plot_reg_factor(fname,obsindex)
 % $Source$
 % $Name$
 
-s1 = input(sprintf('Input name of reg_factor file. <cr> for  %s ',fname),'s');
-if ~isempty(s1), fname = str2num(deblank(s1)); end
-
-if ( exist(fname) == 2 )
-   pinfo.fname = fname;
+if (exist('fname') ~= 1)
+   fname = input('Input name of reg diagnostics file; <cr> for reg_diagnostics\n','s');
+   if isempty(fname)
+      fname = 'reg_diagnostics';
+   end
 else
-   error(sprintf('%s does not exist ... ',fname))
+   s1 = input(sprintf('Input name of reg_diagnostics file. <cr> for  %s ',fname),'s');
+   if ~isempty(s1), fname = deblank(s1); end
 end
+
+obs_index = input('Input observation index \n');
 
 disp('loading usually takes a while ... please be patient ...')
 load(fname)
@@ -47,9 +50,9 @@ state_ind_mat = reshape(state_indices,num_state,num_obs);
 unique_obs    =   obs_ind_mat(1,:);   % matrix of obs   indices
 unique_states = state_ind_mat(:,1);   % matrix of state indices
 
-plotdat.data = reshape(reg_diagnostics(:,5),[num_state num_obs num_times]);
+% This banks on the fact the state index varies fastest, then obs, then time.
 
-obs_index = 14;
+plotdat.data = reshape(reg_diagnostics(:,5),[num_state num_obs num_times]);
 
 subset = squeeze(plotdat.data(:,obs_index,:)); 
 
@@ -57,7 +60,9 @@ plotdat.shapes = {'states','observations','times'};
 plotdat.x      = unique_states;
 plotdat.mean   = mean(subset,2);
 plotdat.median = median(subset,2);
-plot(plotdat.x,plotdat.mean,'k-',plotdat.x, plotdat.median,'c-')
+plot(plotdat.x,plotdat.mean,'k-',plotdat.x, plotdat.median,'r-')
+title('regression factor diagnostics')
+xlabel('state variable index')
 
 legend('mean','median')
 legend boxoff
