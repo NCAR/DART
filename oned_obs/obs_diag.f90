@@ -45,7 +45,6 @@ revdate  = "$Date$"
 type(obs_sequence_type) :: seq
 type(obs_type)          :: observation, next_obs
 type(obs_def_type)      :: obs_def
-!type(obs_kind_type)     :: obs_kind
 type(location_type)     :: obs_loc
 type(time_type)         :: first_time, last_time, this_time
 
@@ -222,7 +221,7 @@ call print_time( last_time,  'last time   ',logfileunit)
 ! Then we have to reset to the first observation for processing
 
 !is_there_one = get_first_obs(seq, observation)
-!if ( is_there_one /= .TRUE. ) then
+!if ( .not. is_there_one ) then
 !      call error_handler(E_ERR,'obs_diag','No Observations in sequence.', &
 !      source,revision,revdate)
 !endif
@@ -251,14 +250,16 @@ bincenter(1) = first_time
 beg_time     = bincenter(1) - halfbinwidth
 end_time     = bincenter(1) + halfbinwidth
 
+!-----------------------------------------------------------------------
+! Initialize.
+!-----------------------------------------------------------------------
+
 rms_ges_mean   = 0.0_r8
 rms_anl_mean   = 0.0_r8
 rms_ges_spread = 0.0_r8
 rms_anl_spread = 0.0_r8
-
-!-----------------------------------------------------------------------
-! Initialize.
-!-----------------------------------------------------------------------
+num_in_region  = 0
+num_rejected   = 0
 
 prior_mean(1)       = 0.0_r8
 prior_spread(1)     = 0.0_r8
