@@ -11,4 +11,11 @@ make
 csh mkmf_filter
 make
 ./perfect_model_obs
+# For forced L96, want to change to allow filter to assimilate forcing
+# Use vi to change value of reset_forcing
+echo ':0'                        > vi_script
+echo '/reset_forcing'            >> vi_script
+echo ':s/true/false/'            >> vi_script
+echo ':wq'                       >> vi_script
+vi -s vi_script input.nml
 ./filter
