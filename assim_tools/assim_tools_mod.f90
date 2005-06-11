@@ -1520,11 +1520,14 @@ do i = -sd_intervals, sd_intervals
    
    ! Can now compute the standard deviation consistent with this as
    ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
-   new_cov_inflate_sd = sqrt( -1.0_r8 * x_dist**2 / (2.0_r8 * log(ratio)))
-   write(*, *) 'at x new_sd ', lam(1), new_cov_inflate_sd
-   if(i /= 0) cov_sd_sum = cov_sd_sum + new_cov_inflate_sd
-   cov_sd_sample(i) = new_cov_inflate_sd
-   if(i == 0) cov_sd_sample(i) = 1e10_r8
+   if(i == 0) then
+      cov_sd_sample(i) = 1e10_r8
+   else 
+      new_cov_inflate_sd = sqrt( -1.0_r8 * x_dist**2 / (2.0_r8 * log(ratio)))
+      !!!write(*, *) 'at x new_sd ', lam(1), new_cov_inflate_sd
+      cov_sd_sum = cov_sd_sum + new_cov_inflate_sd
+      cov_sd_sample(i) = new_cov_inflate_sd
+   endif
 end do
 
 new_cov_inflate_sd = minval(cov_sd_sample)
