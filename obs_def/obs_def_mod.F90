@@ -475,25 +475,21 @@ if(obs_kind_info(obs_kind_ind)%assimilate .or. obs_kind_info(obs_kind_ind)%evalu
          case(RADIOSONDE_U_WIND_COMPONENT)
          !!!call interpolate(state, location, TYPE_U, obs_val, istatus)
          call interpolate(state, location, 1, obs_val, istatus)
-write(*, *) 'getting expected u wind'
       #ENDIF
       #IFDEF radiosonde_v_wind_component
          case(RADIOSONDE_V_WIND_COMPONENT)
          !!!call interpolate(state, location, TYPE_V, obs_val, istatus)
          call interpolate(state, location, 2, obs_val, istatus)
-write(*, *) 'getting expected v wind'
       #ENDIF
       #IFDEF radiosonde_temperature
          case(SURFACE_PRESSURE)
          !!!call interpolate(state, location, TYPE_PS, obs_val, istatus)
          call interpolate(state, location, 3, obs_val, istatus)
-write(*, *) 'getting expected ps'
       #ENDIF
       #IFDEF radiosonde_temperature
          case(RADIOSONDE_TEMPERATURE)
          !!!call interpolate(state, location, TYPE_T, obs_val, istatus)
          call interpolate(state, location, 4, obs_val, istatus)
-write(*, *) 'getting expected t'
       #ENDIF
    end select
 else
