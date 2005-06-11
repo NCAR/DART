@@ -130,6 +130,7 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#static_init_obs_sequence">static_init_obs_sequence</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#destroy_obs_sequence">destroy_obs_sequence</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_obs_seq_header">read_obs_seq_header</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_obs">get_expected_obs</A></TD></TR>
 
 <TR><TD>&nbsp;</TD><TD>                                   </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD>LINKS BELOW FOR OBS_TYPE INTERFACES</A></TD></TR>
@@ -1399,6 +1400,47 @@ assignment(=).
      <TD>Copy into obs1.</TD></TR>
  </TABLE>
  <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_expected_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_expected_obs(seq, keys, state, obs_vals, istatus, assimilate_this_ob, evaluate_this_ob) </em>
+ <pre>
+ type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+ integer, dimension(:), intent(in)   :: <em class=code>keys</em>
+ real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+ real(r8), dimension(:), intent(out) :: <em class=code>obs_vals</em>
+ integer, intent(out)                :: <em class=code>istatus</em>
+ logical, intent(out)                :: <em class=code>assimilate_this_ob</em>
+ logical, intent(out)                :: <em class=code>evaluate_this_ob</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Used to compute the expected value of a set of observations in an
+observation sequence given a model state vector. Also returns a
+status variable that reports on problems taking forward operators.
+This is normally applied to a single observation at a time in the
+current (H) implementation.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>An observation sequence</TD></TR>
+ <TR><TD valign=top><em class=code>keys&nbsp; &nbsp; </em></TD>
+     <TD>List of integer keys that define observations from seq</TD></TR>
+ <TR><TD valign=top><em class=code>state&nbsp; &nbsp; </em></TD>
+     <TD>Model state vector</TD></TR>
+ <TR><TD valign=top><em class=code>obs_vals&nbsp; &nbsp; </em></TD>
+     <TD>Returned expected values of the observations</TD></TR>
+ <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
+     <TD>Integer error code for use in quality control</TD></TR>
+ <TR><TD valign=top><em class=code>assimilate_this_ob&nbsp; &nbsp; </em></TD>
+     <TD>Returned true if this observation kind is being assimilated.</TD></TR>
+ <TR><TD valign=top><em class=code>evaluate_this_ob&nbsp; &nbsp; </em></TD>
+     <TD>Returns true if this observation kind is being evaluated but not assimilated.</TD></TR>
+ </TABLE>
+ <BR>
+
 
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
