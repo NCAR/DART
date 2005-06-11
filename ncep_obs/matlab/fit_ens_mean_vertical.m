@@ -1,6 +1,18 @@
 function fit_ens_mean_vertical(ddir)
 % fit_ens_mean_vertical(ddir)
 %
+% Plots the RMS of the ensemble mean as a function of height for 
+% several regions. The ensemble mean is averaged over a time period. 
+% The calculations are done by 'obs_diag' - which generates data files 
+% that are used by this plotting routine.
+%
+% the input data files are of the form *ges_ver_ave.dat,
+% where the 'ave' refers to averaging over time. The first part of
+% the file name is the name of the variable contained in the file.
+%
+% 'obs_diag' also produces a matlab-compatible file of plotting attributes:
+% ObsDiagAtts.m which specifies the run-time configuration of obs_diag.
+%
 % ddir     is an optional argument specifying the directory containing
 %               the data files as preprocessed by the support routines.
 %

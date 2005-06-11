@@ -1,9 +1,12 @@
 function fit_ens_mean_time(ddir)
 % fit_ens_mean_time(ddir)
 %
-% fit_ens_mean_time: plots the average of all the observations in given regions
-%          as a function of time for both the 'analysis' and the 'guess'.
-%          The input datafile is the result of running 'obs_diag'.
+% Plots the average of all the observations in given regions as a 
+% function of time for both the 'analysis' and the 'guess'. The input 
+% datafile is the result of running 'obs_diag'.
+%
+% 'obs_diag' also produces a matlab-compatible file of plotting attributes:
+% ObsDiagAtts.m which specifies the run-time configuration of obs_diag.
 %
 % ddir     is an optional argument specifying the directory containing
 %               the data files as preprocessed by the support routines.

@@ -1,8 +1,10 @@
 function obs_num_time(ddir)
-% obs_num_time     Plots the total number of observations as a function of time for a given level for several different regions.
+% obs_num_time(ddir)
+% Plots the total number of observations as a function of time 
+% for a given level for several different regions.
 % 
-% ddir     an optional argument specifying the directory containing
-%          the data files as preprocessed by the support routines.
+% ddir   an optional argument specifying the directory containing
+%        the data files as preprocessed by the support routines.
 %
 % USAGE: if the preprocessed data files are in a directory called 'plot'
 % 

@@ -1,6 +1,16 @@
 function fit_ens_spread_time(ddir)
 % fit_ens_spread_time(ddir)
 %
+% Plots the spatial mean RMS of the spread of the ensemble as a 
+% function of time for both the 'guess' and the 'analysis'. 
+% Several regions are plotted. This function simply plots the 
+% data in *ges_times.dat using metadata in ObsDiagAtts.m - both
+% created by the executable 'obs_diag'.
+%
+% The figures are automatically saved as postscript files.
+%
+% ddir   is an optional argument specifying the directory containing
+%        the data files as preprocessed by the support routines.
 %
 % USAGE
 %

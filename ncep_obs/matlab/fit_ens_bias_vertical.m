@@ -1,12 +1,24 @@
-function fit_bias_ens_mean(ddir)
-% fit_bias_ens_mean(ddir)
+function fit_ens_bias_vertical(ddir)
+% fit_ens_bias_vertical(ddir)
 %
-% ddir     is an optional argument specifying the directory containing
-%               the data files as preprocessed by the support routines.
+% Plots the RMS bias as a function of height for several regions.
+% The bias is averaged over a time period. The bias and averaging
+% is done by 'obs_diag' - which generates data files that are
+% used by this plotting routine.
+%
+% the input data files are of the form *ges_ver_ave_bias.dat,
+% where the 'ave' refers to averaging over time. The first part of
+% the file name is the name of the variable contained in the file.
+%
+% 'obs_diag' also produces a matlab-compatible file of plotting attributes:
+% ObsDiagAtts.m which specifies the run-time configuration of obs_diag.
+%
+% ddir   is an optional argument specifying the directory containing
+%        the data files as preprocessed by the support routines.
 %
 % USAGE:
 %
-% fit_bias_ens_mean('plot')
+% fit_ens_bias_vertical('plot')
 %
 % Remember you can click and drag the legends ...
 

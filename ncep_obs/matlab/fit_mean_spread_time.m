@@ -1,6 +1,11 @@
 function fit_mean_spread_time(ddir)
 % fit_mean_spread_time(ddir)
 %
+% Plots the Ensemble mean and spread as a function of time at a single 
+% level for several regions. This function simply plots the 
+% data in *ges_times_*mb.dat using metadata in ObsDiagAtts.m - both
+% created by the executable 'obs_diag'.
+
 % ddir     is an optional argument specifying the directory containing
 %               the data files as preprocessed by the support routines.
 %
