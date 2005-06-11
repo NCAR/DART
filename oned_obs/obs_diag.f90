@@ -559,6 +559,10 @@ write(logfileunit,'('' # QC > '',f9.4,''        :   '',i10)')qc_threshold, NbadQ
 write(logfileunit,*)'--------------------------------------'
 write(logfileunit,*)'Rejected Observations   : ',NwrongType+NbadQC
 write(logfileunit,*)'Considered Observations : ',obs_used
+write(logfileunit,'('' Observations failing the rat_cri (i.e. > '',f9.4,'') test are marked "tossed".'')')rat_cri
+write(logfileunit,*)'regions  : ',( Regions(i), i=1,Nregions )
+write(logfileunit,*)'# tossed : ',sum(num_rejected,1)
+write(logfileunit,*)'#   used : ',sum(num_in_region,1)
 
 !-----------------------------------------------------------------------
 ! Echo attributes to a file to facilitate plotting.
