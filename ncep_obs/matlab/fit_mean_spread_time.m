@@ -151,14 +151,17 @@ subplot(2,2,plotdat.region)
    % Since the mean and the spread are getting plotted
    % on the same figure, we should have two axes ... 
    % bias on left, spread on right, for example. no time now ...
+
+   gmean = mean(ens_mean);   gstring = sprintf('Ens. mean;   mean=%.3f',gmean);
+   amean = mean(ens_spread); astring = sprintf('Ens. spread; mean=%.3f',amean);
+
    plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
    ylabel(plotdat.ylabel, 'fontsize', 10);
    datetick('x',1)
    title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
-   h = legend('Ens. mean', 'Ens. spread');
+   h = legend(gstring, astring);
    legend(h,'boxoff')
-
 
 
 function y = SqueezeMissing(x)

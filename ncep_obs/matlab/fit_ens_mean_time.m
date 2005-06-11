@@ -1,6 +1,10 @@
 function fit_ens_mean_time(ddir)
 % fit_ens_mean_time(ddir)
 %
+% fit_ens_mean_time: plots the average of all the observations in given regions
+%          as a function of time for both the 'analysis' and the 'guess'.
+%          The input datafile is the result of running 'obs_diag'.
+%
 % ddir     is an optional argument specifying the directory containing
 %               the data files as preprocessed by the support routines.
 %
@@ -137,6 +141,9 @@ count  = offset+(plotdat.region-1)*3;
 yp     = p(:,count);
 ya     = a(:,count);
 
+gmean = mean(yp); gstring = sprintf('guess;    mean=%.3f',gmean);
+amean = mean(ya); astring = sprintf('anaylsis; mean=%.3f',amean);
+
 subplot(2,2,plotdat.region)
    plot(xp,yp,'k+-',xa,ya,'ro-','LineWidth',1.5)
    grid
@@ -144,7 +151,7 @@ subplot(2,2,plotdat.region)
    datetick('x',1)
    ylabel(plotdat.ylabel, 'fontsize', 10);
    title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
-   h = legend('guess', 'analysis');
+   h = legend(gstring, astring);
    legend(h,'boxoff')
 
 

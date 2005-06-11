@@ -135,22 +135,25 @@ a1   = load(plotdat.anl); a = SqueezeMissing(a1);
 
 xp        = p(:,1) + p(:,2)./86400 + plotdat.toff;
 xa        = a(:,1) + a(:,2)./86400 + plotdat.toff;
+
 offset    = 4;  % columns 1,2 are time, 3=mean, 4=spread, 5=numobs
+
 count     = offset+(plotdat.region-1)*3;
 yp_spread = p(:,count);
 ya_spread = a(:,count);
-%
+
+gmean = mean(yp_spread); gstring = sprintf('guess;    mean=%.3f',gmean);
+amean = mean(ya_spread); astring = sprintf('anaylsis; mean=%.3f',amean);
+
 subplot(2,2,plotdat.region)
-plot(xp, yp_spread, 'k+-', xa, ya_spread, 'ro-', 'LineWidth', 1.5)
-grid
-ylabel(plotdat.ylabel, 'fontsize', 10)
-ax = axis; ax(3) = 0.0;
-axis(ax)
-datetick('x',1)
-title(plotdat.title, 'fontsize', 12, 'FontWeight', 'bold')
-legend('guess', 'analysis')
-h = legend;
-legend(h,'boxoff')
+   plot(xp, yp_spread, 'k+-', xa, ya_spread, 'ro-', 'LineWidth', 1.5)
+   grid
+   ax = axis; ax(3) = 0.0; axis(ax)
+   datetick('x',1)
+   ylabel(plotdat.ylabel, 'fontsize', 10)
+   title(plotdat.title, 'fontsize', 12, 'FontWeight', 'bold')
+   h = legend(gstring, astring);
+   legend(h,'boxoff')
 
 
 
