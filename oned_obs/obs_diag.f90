@@ -107,8 +107,8 @@ integer  :: iregion, iepoch
 real(r8) :: rlocation
 
 character(len=3), parameter :: varnames = 'raw'
-character(len=5), dimension(Nregions), parameter :: Regions = &
-   (/ 'whole','ying ','yang ' /)
+character(len=6), dimension(Nregions), parameter :: Regions = &
+   (/ 'whole ','ying  ','yang  ' /)
 
 !-----------------------------------------------------------------------
 ! Spatio-Temporal Variables
@@ -541,10 +541,17 @@ close(anlUnit)
 
 write(*,*)''
 write(*,*)'# NwrongType            : ',NwrongType
-write(*,'('' # QC > '',f9.4,''        :   '',i10)')qc_threshold, NbadQC
+write(*,'('' # QC > '',f9.4,''        :   '',i)')qc_threshold, NbadQC
 write(*,*)'--------------------------------------'
 write(*,*)'Rejected Observations   : ',NwrongType+NbadQC
 write(*,*)'Considered Observations : ',obs_used
+write(*,'('' Observations failing the rat_cri (i.e. > '',f9.4,'') test are marked "tossed".'')')rat_cri
+write(*,*)'regions  : ',( Regions(i), i=1,Nregions )
+write(*,*)'# tossed : ',sum(num_rejected,1)
+write(*,*)'#   used : ',sum(num_in_region,1)
+
+
+
 
 write(logfileunit,*)''
 write(logfileunit,*)'# NwrongType            : ',NwrongType
