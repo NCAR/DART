@@ -98,13 +98,8 @@ ensemble_manager_mod
 
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
-                   <TD><A HREF="#take_obs">take_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_def">interactive_def</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_obs">get_expected_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_states">get_close_states</A></TD></TR>
+                   <TD><A HREF="#get_close_states">get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#move_ahead">move_ahead</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#take_vr">take_vr</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#take_td">take_td</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -174,40 +169,6 @@ in the existing model_mod.f90 modules.
      <TD>Location of defined observation</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
      <TD>Kind of defined observation</TD></TR>
- </TABLE>
- <BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_expected_obs"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_expected_obs(seq, keys, state, obs_vals, istatus) </em>
- <pre>
- type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
- integer, dimension(:), intent(in)   :: <em class=code>keys</em>
- real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
- real(r8), dimension(:), intent(out) :: <em class=code>obs_vals</em>
- integer, intent(out)                :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Used to compute the expected value of a set of observations in an
-observation sequence given a model state vector. Also returns a
-status variable that reports on problems taking forward operators.
-This is normally applied to a single observation at a time in the
-current (H) implementation. 
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
-     <TD>An observation sequence</TD></TR>
- <TR><TD valign=top><em class=code>keys&nbsp; &nbsp; </em></TD>
-     <TD>List of integer keys that define observations from seq</TD></TR>
- <TR><TD valign=top><em class=code>state&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector</TD></TR>
- <TR><TD valign=top><em class=code>obs_vals&nbsp; &nbsp; </em></TD>
-     <TD>Returned expected values of the observations</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Integer error code for use in quality control</TD></TR>
  </TABLE>
  <BR>
 
