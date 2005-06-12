@@ -1,5 +1,8 @@
 function obs_num_time(ddir)
 % obs_num_time(ddir)
+%
+% Part of the observation-space diagnostics routines.
+%
 % Plots the total number of observations as a function of time 
 % for a given level for several different regions.
 % 
@@ -8,7 +11,12 @@ function obs_num_time(ddir)
 %
 % USAGE: if the preprocessed data files are in a directory called 'plot'
 % 
-% obs_num_time('argghhh')
+% obs_num_time('plot')
+%
+% USAGE: if the preprocessed data files are in the current directory
+%
+% obs_num_time
+
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research

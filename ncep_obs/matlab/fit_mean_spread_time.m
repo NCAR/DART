@@ -1,11 +1,17 @@
 function fit_mean_spread_time(ddir)
 % fit_mean_spread_time(ddir)
 %
-% Plots the Ensemble mean and spread as a function of time at a single 
+% Part of the observation-space diagnostics routines.
+%
+% Plots the spatial mean RMSE of the ensemble mean and 
+% RMS of the ensemble spread as a function of time at a single 
 % level for several regions. This function simply plots the 
 % data in *ges_times_*mb.dat using metadata in ObsDiagAtts.m - both
 % created by the executable 'obs_diag'.
-
+%
+% 'obs_diag' also produces a matlab-compatible file of plotting attributes:
+% ObsDiagAtts.m which specifies the run-time configuration of obs_diag.
+%
 % ddir     is an optional argument specifying the directory containing
 %               the data files as preprocessed by the support routines.
 %
@@ -13,6 +19,10 @@ function fit_mean_spread_time(ddir)
 %
 % ddir = 'plot';
 % fit_mean_spread_time(ddir)
+%
+% USAGE: if the preprocessed data files are in the current directory
+%
+% fit_mean_spread_time
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research

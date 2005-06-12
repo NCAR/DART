@@ -1,9 +1,13 @@
 function fit_ens_mean_time(ddir)
 % fit_ens_mean_time(ddir)
 %
-% Plots the average of all the observations in given regions as a 
-% function of time for both the 'analysis' and the 'guess'. The input 
-% datafile is the result of running 'obs_diag'.
+% Part of the observation-space diagnostics routines.
+%
+% Plots the spatial mean RMSE of the ensemble mean as a function of 
+% time for both the 'guess' and the 'analysis' at a single level.
+% Several regions are plotted. This function simply plots the
+% data in *ges_times.dat using metadata in ObsDiagAtts.m - both
+% created by the executable 'obs_diag'.
 %
 % 'obs_diag' also produces a matlab-compatible file of plotting attributes:
 % ObsDiagAtts.m which specifies the run-time configuration of obs_diag.
@@ -15,6 +19,10 @@ function fit_ens_mean_time(ddir)
 %
 % ddir = 'plot';
 % fit_ens_mean_time(ddir)
+%
+% USAGE: if the preprocessed data files are in the current directory 
+%
+% fit_ens_mean_time
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research

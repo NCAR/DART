@@ -1,20 +1,31 @@
 function fit_ens_spread_time(ddir)
 % fit_ens_spread_time(ddir)
 %
-% Plots the spatial mean RMS of the spread of the ensemble as a 
-% function of time for both the 'guess' and the 'analysis'. 
+% Part of the observation-space diagnostics routines.
+%
+% Plots the spatial mean RMS of the spread of the ensemble as a function 
+% of time for both the 'guess' and the 'analysis' at a single level. 
 % Several regions are plotted. This function simply plots the 
 % data in *ges_times.dat using metadata in ObsDiagAtts.m - both
 % created by the executable 'obs_diag'.
 %
+% 'obs_diag' also produces a matlab-compatible file of plotting attributes:
+% ObsDiagAtts.m which specifies the run-time configuration of obs_diag.
+
+
 % The figures are automatically saved as postscript files.
 %
 % ddir   is an optional argument specifying the directory containing
 %        the data files as preprocessed by the support routines.
 %
-% USAGE
+% USAGE: if the preprocessed data files are in a directory called 'plot'
 %
 % fit_ens_spread_time('plot')
+%
+% USAGE: if the preprocessed data files are in the current directory
+%
+% fit_ens_spread_time
+
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -70,7 +81,7 @@ end
 
 plotdat.level     = level;
 plotdat.toff      = toff;
-plotdat.ylabel    = 'RMSE'; 
+plotdat.ylabel    = 'RMS'; 
 plotdat.nregions  = length(Regions); 
 plotdat.nvars     = length(varnames); 
 plotdat.flavor    = 'Ens Spread';
