@@ -129,7 +129,7 @@ switch lower(t.model)
       end
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ts   = get_state_copy(pinfo.diagn_file,pinfo.var, truth_index);
+      ts   = get_state_copy(pinfo.truth_file,pinfo.var, truth_index);
       ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index);
       plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
              ens(:,1), ens(:,2), ens(:,3), 'r')
