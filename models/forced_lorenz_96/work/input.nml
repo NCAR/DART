@@ -1,16 +1,3 @@
-&perfect_model_obs_nml
-   async = 0,
-   adv_ens_command = "./advance_ens.csh",
-   obs_seq_in_file_name = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   start_from_restart = .true.,
-   output_restart = .true.,
-   restart_in_file_name = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_interval = 1  /
-
 &filter_nml
    async = 0,
    adv_ens_command = "./advance_ens.csh",
@@ -52,14 +39,19 @@
    assim_restart_out_file_name = 'assim_tools_restart',
    do_parallel = 0,
    num_domains = 1,
-   parallel_command = "./assim_filter.csh" /
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
 
 &cov_cutoff_nml
    select_localization = 1  /
 
 &reg_factor_nml
    select_regression = 1,
-   input_reg_file = "time_mean_reg"  /
+   input_reg_file = "time_mean_reg" 
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
    read_binary_obs_sequence = .false.,
