@@ -14,9 +14,9 @@
 # NETCDF and LIBS needs to be customized for your site
 #
 
-FC = /contrib/intel/8.1-32/bin/ifort
-LD = /contrib/intel/8.1-32/bin/ifort
-NETCDF = /contrib/netcdf/3.5.1-intel-8.1-32
+FC = ifort
+LD = ifort
+NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort8.1-64
 INCS = -I$(NETCDF)/include
 FFLAGS = -fpp -O2 $(INCS)
 LIBS = -L$(NETCDF)/lib -lnetcdf
