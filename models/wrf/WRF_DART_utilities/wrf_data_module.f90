@@ -34,10 +34,11 @@ TYPE wrf_data
    integer :: sls_id, sls, bt_id, bt, sn_id, sn, we_id, we
    integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, tslb_id, mu_id, mub_id, &
               tsk_id, qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
-              u10_id, v10_id, t2_id, q2_id, ps_id
+              u10_id, v10_id, t2_id, q2_id, ps_id, hdiab_id
 
    integer :: n_moist
    logical :: surf_obs
+   logical :: h_diab
 
 
 !---
@@ -64,6 +65,7 @@ TYPE wrf_data
    real(r8), pointer :: t2(:,:)
    real(r8), pointer :: q2(:,:)
    real(r8), pointer :: ps(:,:)
+   real(r8), pointer :: hdiab(:,:,:)
 
 end type
 
@@ -139,6 +141,7 @@ implicit none
 type(wrf_data)     :: wrf
 character (len=*)  :: file_name   ! filename from which dimensions, 
                                   ! variable id's are read
+integer            :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer            :: mode, istatus
 logical            :: debug
 
@@ -276,6 +279,32 @@ if( wrf%surf_obs ) then
 
 endif
 
+if( wrf%h_diab ) then
+
+   istatus = nf90_inq_varid(wrf%ncid, "H_DIABATIC", wrf%hdiab_id)
+   if(istatus /= nf90_noerr) then
+      call error_handler(E_MSG,'H_DIABATIC', &
+           trim(nf90_strerror(istatus)), source, revision, revdate)
+      if(mode == NF90_WRITE) then
+         call error_handler(E_MSG,'wrf_open_and_alloc', &
+              'creates H_DIABATIC', source, revision, revdate)
+         call check(nf90_Inquire(wrf%ncid, nDimensions, nVariables, nAttributes, unlimitedDimID))
+         call check(nf90_Redef(wrf%ncid))
+         call check(nf90_def_var(wrf%ncid, name="H_DIABATIC", xtype=nf90_real, &
+              dimids= (/ wrf%we_id,  wrf%sn_id, wrf%bt_id, unlimitedDimID/), varid=wrf%hdiab_id) )
+         call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "FieldType", 104))
+         call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "MemoryOrder", "XYZ"))
+         call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "description", &
+              "PREVIOUS TIMESTEP CONDENSATIONAL HEATING"))
+         call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "units", ""))
+         call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "stagger", ""))
+         call check(nf90_enddef(wrf%ncid))
+      endif
+   endif
+   allocate(wrf%hdiab(wrf%we,wrf%sn,wrf%bt))
+
+endif
+
 contains
 
   ! Internal subroutine - checks error status after each netcdf, prints 
@@ -343,6 +372,10 @@ if( wrf%surf_obs ) then
    deallocate(wrf%t2)
    deallocate(wrf%q2)
    deallocate(wrf%ps)
+endif
+
+if( wrf%h_diab ) then
+   deallocate(wrf%hdiab)
 endif
 
 end subroutine wrf_dealloc
@@ -1030,6 +1063,13 @@ if (in_or_out  == "OUTPUT") then
          call check( nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /)))
       endif
    endif
+   if( wrf%h_diab ) then
+      istatus = nf90_put_var(wrf%ncid, wrf%hdiab_id, wrf%hdiab, start = (/ 1, 1, 1, 1 /))
+      if(istatus /= nf90_noerr) then
+         call error_handler(E_ERR,'H_DIABATIC', &
+              trim(nf90_strerror(istatus)), source, revision, revdate)
+      endif
+   endif
 else
    call check( nf90_get_var(wrf%ncid, wrf%u_id,    wrf%u,    start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%v_id,    wrf%v,    start = (/ 1, 1, 1, lngth /)))
@@ -1079,6 +1119,16 @@ else
          call error_handler(E_MSG,'wrf_io', &
               'sets PSFC to zero', source, revision, revdate)
          wrf%ps(:,:) = 0.0_r8
+      endif
+   endif
+   if( wrf%h_diab ) then
+      istatus = nf90_get_var(wrf%ncid, wrf%hdiab_id,  wrf%hdiab,  start = (/ 1, 1, 1, lngth /))
+      if(istatus /= nf90_noerr) then
+         call error_handler(E_MSG,'H_DIABATIC', &
+              trim(nf90_strerror(istatus)), source, revision, revdate)
+         call error_handler(E_MSG,'wrf_io', &
+              'sets H_DIABATIC to zero', source, revision, revdate)
+         wrf%hdiab(:,:,:) = 0.0_r8
       endif
    endif
 endif

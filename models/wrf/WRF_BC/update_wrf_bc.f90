@@ -141,9 +141,9 @@ endif
 
 if(file_exist('wrfinput_mean')) then
    wrf_mean_output_file='wrfinput_mean'
-   write(6,*) 'Input real coefficient multiplying (wrfinput_d01 - wrfinput_mean):'
-   write(6,*) 'Result will be added to the fields at the end of the interval.'
-   read(5,*) infl
+   write(*,*) 'Input real coefficient multiplying (wrfinput_d01 - wrfinput_mean):'
+   write(*,*) 'Result will be added to the fields at the end of the interval.'
+   read(*,*) infl
 else
    wrf_mean_output_file='wrfinput_d01'
    infl = 0.0_r8

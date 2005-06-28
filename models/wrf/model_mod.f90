@@ -36,7 +36,7 @@ use     utilities_mod, only : file_exist, open_file, check_nml_error, &
 use      obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
                               KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
                               KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, &
-                              KIND_Q2, KIND_TD2
+                              KIND_Q2, KIND_TD2, KIND_QG, KIND_QS
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                               gridwind_to_truewind
@@ -76,15 +76,16 @@ revdate  = "$Date$"
 ! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector  = .true.     ! output prognostic variables
+logical :: output_state_vector  = .false.     ! output prognostic variables
 integer :: num_moist_vars       = 0
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 logical :: surf_obs             = .false.
+logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
-                     num_domains, calendar_type, surf_obs, &
+                     num_domains, calendar_type, surf_obs, h_diab, &
                      adv_mod_command
 
 !-----------------------------------------------------------------------
@@ -97,12 +98,10 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
                       TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
                       TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18, &
-                      TYPE_TSK = 19
+                      TYPE_TSK = 19,  TYPE_HDIAB = 20
 
 
-real (kind=r8), PARAMETER    :: cp = 7.0_r8*gas_constant/2.0_r8
-real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
-real (kind=r8), PARAMETER    :: kappa = gas_constant / cp
+real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
 
 real (kind=r8), PARAMETER    :: gravity = 9.81_r8
@@ -112,7 +111,7 @@ real (kind=r8), PARAMETER    :: gravity = 9.81_r8
 TYPE wrf_static_data_for_dart
 
    integer  :: bt, bts, sn, sns, we, wes, sls
-   real(r8) :: dx, dy, dt
+   real(r8) :: dx, dy, dt, p_top
    integer  :: map_proj
    real(r8) :: cen_lat,cen_lon
    type(proj_info) :: proj
@@ -159,7 +158,7 @@ logical, parameter    :: debug = .false.
 integer               :: var_id, ind, i, j, k, id, dart_index, model_type
 
 integer  :: proj_code
-real(r8) :: stdlon,truelat1,truelat2
+real(r8) :: stdlon,truelat1,truelat2,dt
 
 !----------------------------------------------------------------------
 
@@ -170,8 +169,13 @@ call register_module(source, revision, revdate)
 if(file_exist('input.nml')) then
 
    iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io )
-   ierr = check_nml_error(io, 'model_nml')
+   ierr = 1
+
+   READBLOCK: do while(ierr /= 0)
+      read(iunit, nml = model_nml, iostat = io )
+      if ( io < 0 ) exit READBLOCK          ! end-of-file
+      ierr = check_nml_error(io, 'model_nml')
+   enddo READBLOCK
    call close_file(iunit)
 
 endif
@@ -205,17 +209,28 @@ call set_calendar_type(calendar_type)
 
 dart_index = 1
 
+call read_dt_from_wrf_nml()
+
 do id=1,num_domains
 
    write( idom , '(I1)') id
 
-   if(.not. file_exist('wrfinput_d0'//idom)) then
+   write(*,*) '******************'
+   write(*,*) '**  DOMAIN # ',idom,'  **'
+   write(*,*) '******************'
+
+   if(file_exist('wrfinput_d0'//idom)) then
+
+      call check( nf90_open('wrfinput_d0'//idom, NF90_NOWRITE, ncid) )
+
+   else
+
       call error_handler(E_ERR,'static_init_model', &
-           'Cannot proceed without wrfinput_d0'//idom, source, revision, revdate)
+           'Please put wrfinput_d0'//idom//' in the work directory.', source, revision,revdate)      
+
    endif
-      
-   call check( nf90_open('wrfinput_d0'//idom, NF90_NOWRITE, ncid) )
-   if(debug) write(6,*) ' ncid is ',ncid
+
+   if(debug) write(*,*) ' ncid is ',ncid
 
 ! get wrf grid dimensions
 
@@ -241,9 +256,9 @@ do id=1,num_domains
    call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sls) )
 
    if(debug) then
-      write(6,*) ' dimensions bt, sn, we are ',wrf%dom(id)%bt, &
+      write(*,*) ' dimensions bt, sn, we are ',wrf%dom(id)%bt, &
            wrf%dom(id)%sn, wrf%dom(id)%we
-      write(6,*) ' staggered  bt, sn, we are ',wrf%dom(id)%bts, &
+      write(*,*) ' staggered  bt, sn, we are ',wrf%dom(id)%bts, &
            wrf%dom(id)%sns,wrf%dom(id)%wes
    endif
 
@@ -251,45 +266,46 @@ do id=1,num_domains
 
    call check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dom(id)%dx) )
    call check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dom(id)%dy) )
-   call check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt) )
-   print*,'dt from wrfinput is: ',wrf%dom(id)%dt
-   call read_dt_from_wrf_nml(wrf%dom(id)%dt)
+   call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
+   print*,'dt from wrfinput is: ',dt
    print*,'Using dt from namelist.input: ',wrf%dom(id)%dt
-   if(debug) write(6,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
-        wrf%dom(id)%dy, wrf%dom(id)%dt
+   if(debug) write(*,*) ' dx, dy are ',wrf%dom(id)%dx, wrf%dom(id)%dy
 
    call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', wrf%dom(id)%map_proj) )
-   if(debug) write(6,*) ' map_proj is ',wrf%dom(id)%map_proj
+   if(debug) write(*,*) ' map_proj is ',wrf%dom(id)%map_proj
 
    call check( nf90_get_att(ncid, nf90_global, 'CEN_LAT', wrf%dom(id)%cen_lat) )
-   if(debug) write(6,*) ' cen_lat is ',wrf%dom(id)%cen_lat
+   if(debug) write(*,*) ' cen_lat is ',wrf%dom(id)%cen_lat
 
    call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', wrf%dom(id)%cen_lon) )
 
    call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1) )
-   if(debug) write(6,*) ' truelat1 is ',truelat1
+   if(debug) write(*,*) ' truelat1 is ',truelat1
 
    call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2) )
-   if(debug) write(6,*) ' truelat2 is ',truelat2
+   if(debug) write(*,*) ' truelat2 is ',truelat2
 
    call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon) )
+
+   call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
+   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%p_top) )
 
 !  get 1D (z) static data defining grid levels
 
    allocate(wrf%dom(id)%dn(1:wrf%dom(id)%bt))
    call check( nf90_inq_varid(ncid, "DN", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%dn) )
-   if(debug) write(6,*) ' dn ',wrf%dom(id)%dn
+   if(debug) write(*,*) ' dn ',wrf%dom(id)%dn
 
    allocate(wrf%dom(id)%znu(1:wrf%dom(id)%bt))
    call check( nf90_inq_varid(ncid, "ZNU", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%znu) )
-   if(debug) write(6,*) ' znu is ',wrf%dom(id)%znu
+   if(debug) write(*,*) ' znu is ',wrf%dom(id)%znu
 
    allocate(wrf%dom(id)%dnw(1:wrf%dom(id)%bt))
    call check( nf90_inq_varid(ncid, "DNW", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%dnw) )
-   if(debug) write(6,*) ' dnw is ',wrf%dom(id)%dnw
+   if(debug) write(*,*) ' dnw is ',wrf%dom(id)%dnw
 
    allocate(wrf%dom(id)%zs(1:wrf%dom(id)%sls))
    call check( nf90_inq_varid(ncid, "ZS", var_id) )
@@ -301,8 +317,8 @@ do id=1,num_domains
    call check( nf90_inq_varid(ncid, "MUB", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mub) )
    if(debug) then
-      write(6,*) ' corners of mub '
-      write(6,*) wrf%dom(id)%mub(1,1),wrf%dom(id)%mub(wrf%dom(id)%we,1),  &
+      write(*,*) ' corners of mub '
+      write(*,*) wrf%dom(id)%mub(1,1),wrf%dom(id)%mub(wrf%dom(id)%we,1),  &
            wrf%dom(id)%mub(1,wrf%dom(id)%sn),wrf%dom(id)%mub(wrf%dom(id)%we, &
            wrf%dom(id)%sn)
    end if
@@ -319,19 +335,19 @@ do id=1,num_domains
    call check( nf90_inq_varid(ncid, "XLAND", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%land) )
    if(debug) then
-      write(6,*) ' corners of land '
-      write(6,*) wrf%dom(id)%land(1,1),wrf%dom(id)%land(wrf%dom(id)%we,1),  &
+      write(*,*) ' corners of land '
+      write(*,*) wrf%dom(id)%land(1,1),wrf%dom(id)%land(wrf%dom(id)%we,1),  &
            wrf%dom(id)%land(1,wrf%dom(id)%sn),wrf%dom(id)%land(wrf%dom(id)%we, &
            wrf%dom(id)%sn)
    end if
 
    if(debug) then
-      write(6,*) ' corners of lat '
-      write(6,*) wrf%dom(id)%latitude(1,1),wrf%dom(id)%latitude(wrf%dom(id)%we,1),  &
+      write(*,*) ' corners of lat '
+      write(*,*) wrf%dom(id)%latitude(1,1),wrf%dom(id)%latitude(wrf%dom(id)%we,1),  &
            wrf%dom(id)%latitude(1,wrf%dom(id)%sn), &
            wrf%dom(id)%latitude(wrf%dom(id)%we,wrf%dom(id)%sn)
-      write(6,*) ' corners of long '
-      write(6,*) wrf%dom(id)%longitude(1,1),wrf%dom(id)%longitude(wrf%dom(id)%we,1),  &
+      write(*,*) ' corners of long '
+      write(*,*) wrf%dom(id)%longitude(1,1),wrf%dom(id)%longitude(wrf%dom(id)%we,1),  &
            wrf%dom(id)%longitude(1,wrf%dom(id)%sn), &
            wrf%dom(id)%longitude(wrf%dom(id)%we,wrf%dom(id)%sn)
    end if
@@ -358,11 +374,11 @@ do id=1,num_domains
    call check( nf90_inq_varid(ncid, "PHB", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%phb) )
    if(debug) then
-      write(6,*) ' corners of phb '
-      write(6,*) wrf%dom(id)%phb(1,1,1),wrf%dom(id)%phb(wrf%dom(id)%we,1,1),  &
+      write(*,*) ' corners of phb '
+      write(*,*) wrf%dom(id)%phb(1,1,1),wrf%dom(id)%phb(wrf%dom(id)%we,1,1),  &
            wrf%dom(id)%phb(1,wrf%dom(id)%sn,1),wrf%dom(id)%phb(wrf%dom(id)%we, &
            wrf%dom(id)%sn,1)
-      write(6,*) wrf%dom(id)%phb(1,1,wrf%dom(id)%bts), &
+      write(*,*) wrf%dom(id)%phb(1,1,wrf%dom(id)%bts), &
            wrf%dom(id)%phb(wrf%dom(id)%we,1,wrf%dom(id)%bts),  &
            wrf%dom(id)%phb(1,wrf%dom(id)%sn,wrf%dom(id)%bts), &
            wrf%dom(id)%phb(wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts)
@@ -400,6 +416,9 @@ do id=1,num_domains
    if( wrf%dom(id)%surf_obs ) then
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 5
    endif
+   if( h_diab ) then
+      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 1
+   endif
    allocate(wrf%dom(id)%var_type(wrf%dom(id)%number_of_wrf_variables))
    wrf%dom(id)%var_type(1)  = TYPE_U
    wrf%dom(id)%var_type(2)  = TYPE_V
@@ -435,15 +454,24 @@ do id=1,num_domains
       wrf%dom(id)%var_type(ind) = TYPE_QG
    end if
    if( wrf%dom(id)%surf_obs ) then
-      wrf%dom(id)%var_type(ind + 1) = TYPE_U10
-      wrf%dom(id)%var_type(ind + 2) = TYPE_V10
-      wrf%dom(id)%var_type(ind + 3) = TYPE_T2
-      wrf%dom(id)%var_type(ind + 4) = TYPE_Q2
-      wrf%dom(id)%var_type(ind + 5) = TYPE_PS
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_U10
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_V10
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_T2
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_Q2
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_PS
+   end if
+   if( h_diab ) then
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_HDIAB
    end if
 
 ! indices into 1D array
-   allocate(wrf%dom(id)%dart_ind(wrf%dom(id)%wes,wrf%dom(id)%sns,wrf%dom(id)%bts,19))
+   allocate(wrf%dom(id)%dart_ind(wrf%dom(id)%wes,wrf%dom(id)%sns,wrf%dom(id)%bts,20))
    allocate(wrf%dom(id)%var_index(2,wrf%dom(id)%number_of_wrf_variables))
 ! dimension of variables
    allocate(wrf%dom(id)%var_size(3,wrf%dom(id)%number_of_wrf_variables))
@@ -606,10 +634,29 @@ do id=1,num_domains
       enddo
    end if
 
+   if(h_diab ) then
+      ind = ind + 1                   ! *** h_diabatic variable ***
+      wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+      wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+      wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%bt
+      wrf%dom(id)%var_index(1,ind) = dart_index
+      do k=1,wrf%dom(id)%var_size(3,ind)
+         do j=1,wrf%dom(id)%var_size(2,ind)
+            do i=1,wrf%dom(id)%var_size(1,ind)
+               wrf%dom(id)%dart_ind(i,j,k,TYPE_HDIAB) = dart_index
+               dart_index = dart_index + 1
+            enddo
+         enddo
+      enddo
+      wrf%dom(id)%var_index(2,ind) = dart_index - 1
+   end if
+
 enddo
 
+write(*,*)
+
 wrf%model_size = dart_index - 1
-if(debug) write(6,*) ' wrf model size is ',wrf%model_size
+if(debug) write(*,*) ' wrf model size is ',wrf%model_size
 
 contains
 
@@ -734,8 +781,8 @@ kp = 1 + (index-1)/(nx*ny)
 jp = 1 + (index - (kp-1)*nx*ny - 1)/nx
 ip = index - (kp-1)*nx*ny - (jp-1)*nx
 
-if(debug) write(6,*) ' ip, jp, kp for index ',ip,jp,kp,index
-if(debug) write(6,*) ' Var type: ',var_type
+if(debug) write(*,*) ' ip, jp, kp for index ',ip,jp,kp,index
+if(debug) write(*,*) ' Var type: ',var_type
 
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )
 
@@ -745,7 +792,7 @@ else
    lev = real(kp) ! This is the index of the vertical
 endif
 
-if(debug) write(6,*) 'lon, lat, lev: ',lon, lat, lev
+if(debug) write(*,*) 'lon, lat, lev: ',lon, lat, lev
 
 ! lev is an index here, so which_vert is OK to be hardwired to a 1
 location = set_location(lon, lat, lev, 1) 
@@ -773,6 +820,8 @@ real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
 real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
 integer             :: id
 
+character(len=129) :: errstring
+
 real(r8), dimension(2) :: fld
 real(r8), allocatable, dimension(:) :: v_h, v_p
 
@@ -792,9 +841,11 @@ which_vert = nint(query_location(location,'which_vert'))
 id = num_domains
 do while (.not. dom_found)
 
-   if( (wrf%dom(id)%proj%hemi == 1. .and. xyz_loc(2) == -90.) .or. &
-       (wrf%dom(id)%proj%hemi == -1. .and. xyz_loc(2) == 90.) .or. &
-       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(xyz_loc(2)) >= 90.0) ) then
+   ! Checking for exact equality on real variable types is generally a bad idea.
+
+   if( (wrf%dom(id)%proj%hemi ==  1.0_r8 .and. xyz_loc(2) == -90.0_r8) .or. &
+       (wrf%dom(id)%proj%hemi == -1.0_r8 .and. xyz_loc(2) ==  90.0_r8) .or. &
+       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(xyz_loc(2)) >= 90.0_r8) ) then
 
    else
 
@@ -827,12 +878,12 @@ if(debug) then
    j = yloc
 
    print*,xyz_loc(2), xyz_loc(1), xloc,yloc
-   write(6,*) ' corners of lat '
-   write(6,*) wrf%dom(id)%latitude(i,j),wrf%dom(id)%latitude(i+1,j),  &
+   write(*,*) ' corners of lat '
+   write(*,*) wrf%dom(id)%latitude(i,j),wrf%dom(id)%latitude(i+1,j),  &
         wrf%dom(id)%latitude(i,j+1), &
         wrf%dom(id)%latitude(i+1,j+1)
-   write(6,*) ' corners of long '
-   write(6,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%longitude(i+1,j),  &
+   write(*,*) ' corners of long '
+   write(*,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%longitude(i+1,j),  &
         wrf%dom(id)%longitude(i,j+1), &
         wrf%dom(id)%longitude(i+1,j+1)
 
@@ -849,20 +900,24 @@ if(which_vert == 1) then
    zloc = xyz_loc(3)
    if(debug) print*,' obs is by model level and zloc =',zloc
 else if(which_vert == 2) then
-   if(xyz_loc(3) >= 10000.0_r8) then
-      ! get model pressure profile
-      call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
-      ! get pressure vertical co-ordinate
-      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
-      if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
-      if(debug) print*,'model pressure profile'
-      if(debug) print*,v_p
-   else
-      zloc = missing_r8
+   if(xyz_loc(3) < 10000.0_r8) then
+      obs_val = missing_r8
+      istatus = 1
+      deallocate(v_h, v_p)
+      return
    endif
+   ! get model pressure profile
+   call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
+   ! get pressure vertical co-ordinate
+   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
+   if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
+   if(debug) print*,'model pressure profile'
+   if(debug) print*,v_p
 else if(which_vert == 3) then
    ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
+   if(debug) print*,'model height profile'
+   if(debug) print*,v_h
    ! get height vertical co-ordinate
    call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
    if(debug) print*,' obs is by height and zloc =',zloc
@@ -879,7 +934,12 @@ else
         source, revision, revdate)
 end if
 
-if(zloc /= missing_r8) then
+if(zloc == missing_r8) then
+   obs_val = missing_r8
+   istatus = 1
+   deallocate(v_h, v_p)
+   return
+endif
 
 k = max(1,int(zloc))
 
@@ -1025,30 +1085,30 @@ else if( obs_kind == KIND_W ) then                ! W
 
 else if( obs_kind == KIND_QV ) then                ! QV
 
-!!$   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-!!$      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
-!!$
-!!$!!$      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
-!!$!!$      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-!!$      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
-!!$      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
-!!$      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-!!$      fld(1) = a1 /(1.0_r8 + a1)
-!!$
-!!$!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
-!!$!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-!!$      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
-!!$      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
-!!$      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-!!$      fld(2) = a1 /(1.0_r8 + a1)
-!!$
-!!$   else
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+!!$      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
+!!$      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      fld(1) = a1 /(1.0_r8 + a1)
+
+!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
+!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
+      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      fld(2) = a1 /(1.0_r8 + a1)
+
+   else
 
       fld(:) = missing_r8
 
-!!$   endif
+   endif
 
-else if( obs_kind == KIND_QR) then                ! QR
+else if( obs_kind == KIND_QR) then                ! RAIN
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
@@ -1063,6 +1123,44 @@ else if( obs_kind == KIND_QR) then                ! QR
 !!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QR,id)
       i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QR)
       i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QR)
+      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+   else
+
+      fld(:) = missing_r8
+
+   endif
+
+else if( obs_kind == KIND_QG) then                ! GRAUPEL
+
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QG)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QG)
+      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QG)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QG)
+      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+   else
+
+      fld(:) = missing_r8
+
+   endif
+
+else if( obs_kind == KIND_QS) then                ! SNOW
+
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QS)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QS)
+      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QS)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QS)
       fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
    else
@@ -1096,30 +1194,30 @@ else if( obs_kind == KIND_P) then                 ! Pressure
 
 else if( obs_kind == KIND_PS) then                ! Surface pressure
 
-!!$   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-!!$      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-!!$      wrf%dom(id)%surf_obs) then
-!!$
-!!$!!$      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
-!!$!!$      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
-!!$      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
-!!$      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_PS)
-!!$      if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
-!!$           x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
-!!$
-!!$         obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-!!$
-!!$      else
-!!$
-!!$         obs_val = missing_r8
-!!$
-!!$      endif
-!!$
-!!$   else
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      wrf%dom(id)%surf_obs) then
+
+!!$      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
+!!$      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
+      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
+      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_PS)
+      if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
+           x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
+
+         obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         obs_val = missing_r8
+
+      endif
+
+   else
 
       obs_val = missing_r8
 
-!!$   endif
+   endif
 
 else if( obs_kind == KIND_U10 ) then                ! 10-m U-wind
 
@@ -1194,16 +1292,10 @@ else if( obs_kind == KIND_Q2 ) then                ! 2-m Specific humidity
    endif
 
 else
-   call error_handler(E_ERR,'model_interpolate', 'wrong obs kind', &
+   write(errstring,*)'do not recognize obs kind ',obs_kind
+   call error_handler(E_ERR,'model_interpolate', errstring, &
         source, revision, revdate)
 end if
-
-else
-
-   obs_val = missing_r8
-   fld(:) = missing_r8
-
-endif
 
 ! Do vertical interpolation
 if(obs_kind /= KIND_PS .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
@@ -1451,6 +1543,14 @@ do id=1,num_domains
             dist(num_total) = close_dist(i)
          end if
       end if
+      if( h_diab) then
+         num_total = num_total + 1
+         if(num_total <= indmax) then
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_hdiab,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_hdiab)
+            dist(num_total) = close_dist(i)
+         end if
+      end if
 
    enddo
 
@@ -1471,11 +1571,11 @@ integer :: in
 
 character(len=129) :: errstring
 
-!!$do in = 1, wrf%dom(id)%number_of_wrf_variables
-!!$   if(var_type == wrf%dom(id)%var_type(in) ) then
-!!$      exit
-!!$   endif
-!!$enddo
+do in = 1, wrf%dom(id)%number_of_wrf_variables
+   if(var_type == wrf%dom(id)%var_type(in) ) then
+      exit
+   endif
+enddo
 
 if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,in) .and. &
    j >= 1 .and. j <= wrf%dom(id)%var_size(2,in) .and. &
@@ -1523,18 +1623,18 @@ integer             :: i, j, k, n, m, fis, is, ie, num
 
 logical,  parameter :: debug = .false.  
 
-if(debug) write(6,*) ' in grid_close_states '
+if(debug) write(*,*) ' in grid_close_states '
 
 ! use meaningful units for radius -- convert radians to meters 
 radius = radius_in*earth_radius*1000.0_r8
-if(debug) write(6,*) ' radius in grid_close_states is ',radius
+if(debug) write(*,*) ' radius in grid_close_states is ',radius
 
 ! Get index to closest lat and lon for this observation
 
 n = wrf%dom(id)%we
 m = wrf%dom(id)%sn
 
-if(debug) write(6,*) 'obs location: ',get_location(o_loc)
+if(debug) write(*,*) 'obs location: ',get_location(o_loc)
 
 rad = get_dist_wrf(1,1,1, type_t, o_loc, id, x)
 i_closest = 1
@@ -1549,18 +1649,18 @@ do j=1,m
          i_closest = i
          j_closest = j
       end if
-      if(debug) write(6,*) i,j,radn,rad
+      if(debug) write(*,*) i,j,radn,rad
    enddo
 enddo
 
-if(debug) write(6,*) ' closest grid point is ',i_closest,j_closest
-if(debug) write(6,*) ' at distance ',rad
+if(debug) write(*,*) ' closest grid point is ',i_closest,j_closest
+if(debug) write(*,*) ' at distance ',rad
 
 ! define box edges for radius check
 dxr = 1.0_r8 + radius/wrf%dom(id)%dx  !  radius in multiples of dx
 dyr = 1.0_r8 + radius/wrf%dom(id)%dy  !  radius in multiples of dy
 
-if(debug) write(6,*) ' dxr, dyr in grid_close_states ',dxr,dyr
+if(debug) write(*,*) ' dxr, dyr in grid_close_states ',dxr,dyr
 
 
 j = j_closest
@@ -1598,8 +1698,8 @@ do while( sdy .lt. dyr )
 enddo
 
 if(debug) then
-   write(6,*) ' ixmin, ixmax, jymin, jymax are '
-   write(6,*) ixmin, ixmax, jymin, jymax
+   write(*,*) ' ixmin, ixmax, jymin, jymax are '
+   write(*,*) ixmin, ixmax, jymin, jymax
 endif
 
 !  we have bounding box, get and check distances.
@@ -1608,7 +1708,7 @@ endif
 radius = radius_in
 num = 0
 
-if(debug) write(6,*) 'radius (radian) ',radius
+if(debug) write(*,*) 'radius (radian) ',radius
 
 ! check distance for u points, expand box so that
 ! we don't leave possible points out of check
@@ -1620,7 +1720,7 @@ do j = jymin, jymax
       gdist = get_dist_wrf(i,j,k, type_u, o_loc, id, x)
       if ( gdist <= radius ) then
          num = num + 1
-         if(debug) write(6,*) ' u pt ',num,i,j,gdist
+         if(debug) write(*,*) ' u pt ',num,i,j,gdist
          close_lon_ind(num) = i
          close_lat_ind(num) = j
          close_vert_ind(num) = k
@@ -1657,7 +1757,7 @@ else
             gdist = get_dist_wrf(i,j,k, type_u, o_loc, id, x)
             if ( gdist <= radius ) then
                num = num + 1
-               if(debug) write(6,*) ' u pt ',num,i,j,k, id,gdist
+               if(debug) write(*,*) ' u pt ',num,i,j,k, id,gdist
                close_lon_ind(num) = i
                close_lat_ind(num) = j
                close_vert_ind(num) = k
@@ -1683,7 +1783,7 @@ do j = max(1,jymin-1), jymax+1
          close_lat_ind(num) = j
          close_vert_ind(num) = k
          close_dist(num) = gdist
-         if(debug) write(6,*) ' v pt ',num,i,j,gdist
+         if(debug) write(*,*) ' v pt ',num,i,j,gdist
       end if
    enddo
 enddo
@@ -1719,7 +1819,7 @@ else
                close_lat_ind(num) = j
                close_vert_ind(num) = k
                close_dist(num) = gdist
-               if(debug) write(6,*) ' v pt ',num,i,j,gdist
+               if(debug) write(*,*) ' v pt ',num,i,j,gdist
             end if
          enddo
       enddo
@@ -1740,7 +1840,7 @@ do j = jymin, jymax
          close_lat_ind(num) = j
          close_vert_ind(num) = k
          close_dist(num) = gdist
-         if(debug) write(6,*) ' w pt ',num,i,j,gdist
+         if(debug) write(*,*) ' w pt ',num,i,j,gdist
       end if
    enddo
 enddo
@@ -1776,7 +1876,7 @@ else
                close_lat_ind(num) = j
                close_vert_ind(num) = k
                close_dist(num) = gdist
-               if(debug) write(6,*) ' w pt ',num,i,j,gdist
+               if(debug) write(*,*) ' w pt ',num,i,j,gdist
             end if
          enddo
       enddo
@@ -1797,7 +1897,7 @@ do j = jymin, jymax
          close_lat_ind(num) = j
          close_vert_ind(num) = k
          close_dist(num) = gdist
-         if(debug) write(6,*) ' p pt ',num,i,j,gdist
+         if(debug) write(*,*) ' p pt ',num,i,j,gdist
       end if
 
    enddo
@@ -1834,7 +1934,7 @@ else
                close_lat_ind(num) = j
                close_vert_ind(num) = k
                close_dist(num) = gdist
-               if(debug) write(6,*) ' p pt ',num,i,j,gdist
+               if(debug) write(*,*) ' p pt ',num,i,j,gdist
             end if
 
          enddo
@@ -1856,8 +1956,8 @@ type(location_type), intent(in) :: o_loc
 integer,             intent(in) :: i,j,k,var_type, id
 real(r8),            intent(in) :: x(:)
 
-type(location_type) :: loc
-real(r8)            :: long, lat, vloc
+type(location_type) :: s_loc, obs_loc
+real(r8)            :: long, lat, vloc, xyz_loc(3)
 integer             :: which_vert
 
 character(len=129) :: errstring
@@ -1869,7 +1969,11 @@ call get_wrf_horizontal_location( i, j, var_type, id, long, lat )
 ! We will set which_vert based on the incoming location type
 ! This will ensure compatibility for measuring 'horizontal'
 ! and cannot think of anything better for vertical.
+!
+! For (near) surface observations (which_vert = -1),
+! use height as the vertical coordinate for localization.
 
+xyz_loc = get_location(o_loc)
 which_vert = nint(query_location(o_loc,'which_vert'))
 
 if(horiz_dist_only .or. which_vert == -2) then
@@ -1890,13 +1994,10 @@ else
 
       vloc = model_pressure(i,j,k,id,var_type,x)
 
-   elseif(which_vert == 3 ) then
+   elseif(which_vert == 3 .or. which_vert == -1) then
 
       vloc = model_height(i,j,k,id,var_type,x)
-
-   elseif(which_vert == -1 ) then
-
-      vloc = wrf%dom(id)%hgt(i,j)
+      which_vert = 3
 
    else
       write(errstring, *) 'Which_vert = ',which_vert, ' is not allowed.'
@@ -1911,8 +2012,9 @@ else
 
 endif
 
-loc          = set_location(long, lat, vloc, which_vert)
-get_dist_wrf = get_dist(loc,o_loc)
+s_loc        = set_location(long, lat, vloc, which_vert)
+obs_loc      = set_location(xyz_loc(1), xyz_loc(2), xyz_loc(3), which_vert)
+get_dist_wrf = get_dist(s_loc,obs_loc)
 
 end function get_dist_wrf
 
@@ -2971,6 +3073,10 @@ do id=1,num_domains
 
    deallocate(temp2d)
 
+   if( h_diab) then
+      j  = j + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt
+   end if
+
 enddo
 
 endif
@@ -3283,7 +3389,7 @@ elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
 
 !!$      imu = get_wrf_index(i,j,1,TYPE_MU,id)
       imu = wrf%dom(id)%dart_ind(i,j,1,TYPE_MU)
-      model_pressure = wrf%dom(id)%mub(i,j)+x(imu)
+      model_pressure = wrf%dom(id)%p_top + wrf%dom(id)%mub(i,j) + x(imu)
 
    endif
 
@@ -3305,8 +3411,11 @@ integer,  intent(in)  :: i,j,k,id
 real(r8), intent(in)  :: x(:)
 real(r8)              :: model_pressure_t
 
+real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
+real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
+
 integer  :: iqv,it
-real(r8) :: cpovcv,qvf1,rho
+real(r8) :: qvf1,rho
 
 model_pressure_t = missing_r8
 
@@ -3314,8 +3423,6 @@ model_pressure_t = missing_r8
 !         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
 
 ! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
-
-cpovcv = cp / (cp - gas_constant)
 
 !!$iqv = get_wrf_index(i,j,k,TYPE_QV,id)
 !!$it  = get_wrf_index(i,j,k,TYPE_T,id)
@@ -3579,26 +3686,62 @@ end subroutine pert_model_state
 
 !#######################################################
 
-subroutine read_dt_from_wrf_nml(dt)
+subroutine read_dt_from_wrf_nml()
 
-real(r8), intent(out) :: dt
+real(r8) :: dt
 
-integer :: time_step
-integer :: io, ierr, iunit
+integer :: time_step, time_step_fract_num, time_step_fract_den
+integer :: max_dom
+integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
+integer, dimension(3) :: dx, dy, grid_id, level, parent_id
+integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
+integer, dimension(3) :: parent_time_step_ratio
+integer :: io, ierr, iunit, id
 
-namelist /domains/ time_step
+namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
+namelist /domains/ max_dom
+namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
+namelist /domains/ dx, dy, grid_id, level, parent_id
+namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
+namelist /domains/ parent_time_step_ratio
 
-iunit = open_file('namelist.input', action = 'read')
-read(iunit, nml = domains, iostat = io )
-ierr = check_nml_error(io, 'domains')
-call close_file(iunit)
+if(file_exist('namelist.input')) then
+
+   iunit = open_file('namelist.input', action = 'read')
+   read(iunit, nml = domains, iostat = io )
+   ierr = check_nml_error(io, 'domains')
+   call close_file(iunit)
+
+else
+
+   call error_handler(E_ERR,'read_dt_from_wrf_nml', &
+        'Please put namelist.input in the work directory.', source, revision,revdate)
+
+endif
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'read_dt_from_wrf_nml','domains namelist values are',' ',' ',' ')
 write(logfileunit, nml=domains)
 write(     *     , nml=domains)
 
-dt = time_step
+if (max_dom /= num_domains) then
+
+   write(*,*) 'max_dom in namelist.input = ',max_dom
+   write(*,*) 'num_domains in input.nml  = ',num_domains
+   call error_handler(E_ERR,'read_dt_from_wrf_nml', &
+        'Make them consistent.', source, revision,revdate)
+
+endif
+
+if (time_step_fract_den /= 0) then
+   dt = real(time_step) + real(time_step_fract_num) / real(time_step_fract_den)
+else
+   dt = real(time_step)
+endif
+
+do id=1,num_domains
+   wrf%dom(id)%dt = dt / real(parent_time_step_ratio(id))
+enddo
 
 end subroutine read_dt_from_wrf_nml
 

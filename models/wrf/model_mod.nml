@@ -4,5 +4,6 @@
    num_domains = 1,
    calendar_type = 3,
    surf_obs = .false.,
+   h_diab = .false.,
    adv_mod_command = 'wrf.exe' /
 

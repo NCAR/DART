@@ -44,10 +44,11 @@ integer :: num_moist_vars       = 0
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 logical :: surf_obs             = .false.
+logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
-                     num_domains, calendar_type, surf_obs, &
+                     num_domains, calendar_type, surf_obs, h_diab, &
                      adv_mod_command
 
 !-------------------------------------------------------------
@@ -93,7 +94,7 @@ if(file_exist('input.nml')) then
 
 else
 
-   write(6,*) 'input.nml does not exist here. Using default values.'
+   write(*,*) 'input.nml does not exist here. Using default values.'
 
 endif
 
@@ -103,9 +104,9 @@ write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar_type)
 
-write(6,*) 'DART to WRF (.true./T) or WRF to DART (.false./F)?'
+write(*,*) 'DART to WRF (.true./T) or WRF to DART (.false./F)?'
 
-read(5,*) dart_to_wrf
+read(*,*) dart_to_wrf
 
 if ( dart_to_wrf ) then
    call error_handler(E_MSG,'dart_to_wrf', &
@@ -121,6 +122,7 @@ allocate(wrf%dom(num_domains))
 
 wrf%dom(:)%n_moist = num_moist_vars
 wrf%dom(:)%surf_obs = surf_obs
+wrf%dom(:)%h_diab = h_diab
 
 ! open wrf data netCDF file 'wrfinput_d0x'
 ! we get sizes of the WRF geometry and resolution
@@ -128,26 +130,26 @@ wrf%dom(:)%surf_obs = surf_obs
 mode = NF90_NOWRITE                   ! read the netcdf file
 if( dart_to_wrf ) mode = NF90_WRITE   ! write to the netcdf file
 
-if(debug) write(6,*) ' wrf_open_and_alloc '
+if(debug) write(*,*) ' wrf_open_and_alloc '
 do id=1,num_domains
    write( idom , '(I1)') id
    call wrf_open_and_alloc( wrf%dom(id), 'wrfinput_d0'//idom, mode, debug )
 enddo
-if(debug) write(6,*) ' returned from wrf_open_and_alloc '
+if(debug) write(*,*) ' returned from wrf_open_and_alloc '
 
 !---
 ! allocate space for DART data
 
-if(debug) write(6,*) ' dart_open_and_alloc '
+if(debug) write(*,*) ' dart_open_and_alloc '
 
 call dart_open_and_alloc( wrf, dart, number_dart_values, dart_unit, dart_to_wrf, &
      debug  )
-if(debug) write(6,*) ' returned from dart_open_and_alloc '
+if(debug) write(*,*) ' returned from dart_open_and_alloc '
 
 !----------------------------------------------------------------------
 !  get DART data or WRF data
 
-if(debug) write(6,*) ' state input '
+if(debug) write(*,*) ' state input '
 
 if( dart_to_wrf ) then
 
@@ -171,22 +173,22 @@ else
    enddo
 
 end if
-if(debug) write(6,*) ' returned from state input '
+if(debug) write(*,*) ' returned from state input '
 
 !---
 !  translate from DART to WRF, or WRF to DART
 
-if(debug) write(6,*) ' transfer data to_from dart-wrf '
+if(debug) write(*,*) ' transfer data to_from dart-wrf '
 
 call transfer_dart_wrf ( dart_to_wrf, dart, wrf,    &
      number_dart_values )
 
-if(debug) write(6,*) ' transfer complete '
+if(debug) write(*,*) ' transfer complete '
 
 !---
 !  output
 
-if(debug) write(6,*) ' state output '
+if(debug) write(*,*) ' state output '
 if( dart_to_wrf ) then
 
    call get_date(dart_time(2), year, month, day, hour, minute, second)
@@ -209,14 +211,14 @@ else
         ndims=ndims, dimids=dimids) )
    do i=1,ndims
       call check( nf90_inquire_dimension(wrf%dom(1)%ncid, dimids(i), len=idims(i)) )
-      if(debug) write(6,*) ' dimension ',i,idims(i)
+      if(debug) write(*,*) ' dimension ',i,idims(i)
    enddo
 
    call check( nf90_get_var(wrf%dom(1)%ncid, var_id, timestring, start = (/ 1, idims(2) /)) )
    call get_wrf_date(timestring, year, month, day, hour, minute, second)
    dart_time(1) = set_date(year, month, day, hour, minute, second)
 
-   write(6,*) 'Time from wrfinput_d0x'
+   write(*,*) 'Time from wrfinput_d0x'
    call print_time(dart_time(1))
 
    if(file_exist('wrf.info')) then
@@ -225,13 +227,13 @@ else
       close(iunit)
    endif
 
-   write(6,*) 'Time written to dart vector file:'
+   write(*,*) 'Time written to dart vector file:'
    call print_time(dart_time(1))
 
    call awrite_state_restart(dart_time(1), dart, dart_unit)
 
 end if
-if(debug) write(6,*) ' returned from state output '
+if(debug) write(*,*) ' returned from state output '
 
 do id=1,num_domains
    call check ( nf90_sync(wrf%dom(id)%ncid) )
@@ -297,7 +299,7 @@ do id=1,num_domains
 ! moist variables. Order is qv, qc, qr, qi, qs, qg.
 
    if(wrf%dom(id)%n_moist > 6) then
-      write(6,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
+      write(*,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
       stop
    else
       n_values = n_values + wrf%dom(id)%n_moist*(wrf%dom(id)%bt)*(wrf%dom(id)%sn)*(wrf%dom(id)%we)
@@ -307,9 +309,13 @@ do id=1,num_domains
       n_values = n_values + 5 * wrf%dom(id)%sn * wrf%dom(id)%we
    endif
 
+   if( wrf%dom(id)%h_diab ) then
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )
+   endif
+
 enddo
 
-if(debug) write(6,*) ' dart vector length is ',n_values
+if(debug) write(*,*) ' dart vector length is ',n_values
 
 allocate(dart(n_values))
 
@@ -444,6 +450,14 @@ do id=1,num_domains
       in = n_values+1
       call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%ps,wrf%dom(id)%we,wrf%dom(id)%sn)
       n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! ps
+
+   endif
+
+   if( wrf%dom(id)%h_diab ) then
+
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%hdiab,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )
 
    endif
 
