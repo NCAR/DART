@@ -123,7 +123,7 @@ if(select_regression == 1) then
 ! Get regression directly from sampling theory
 ! If only one group, don't know what else to do
    if(num_groups == 1) then
-      comp_reg_factor = 1
+      comp_reg_factor = 1.0_r8
    else
 
       sum_reg_reg = 0.0_r8
@@ -134,7 +134,7 @@ if(select_regression == 1) then
          end do                                               
       end do
       if (sum_reg2 /= 0.0_r8) then
-         comp_reg_factor = 2 * sum_reg_reg / (sum_reg2 * (num_groups - 1))
+         comp_reg_factor = 2.0_r8 * sum_reg_reg / (sum_reg2 * (num_groups - 1))
       else
          comp_reg_factor = 0.0_r8
       endif
