@@ -87,5 +87,19 @@
    logfilename = 'dart_log.out'  /
 
 &preprocess_nml
-   input_file = '../../../obs_def/obs_def_mod.F90',
+   input_file = '../../../obs_def/ALL_obs_def_mod.F90',
    output_file = '../../../obs_def/obs_def_mod.f90' /
+
+&obsdiag_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_year   = 0,
+   obs_month  = 1,
+   obs_day    = 1,
+   tot_days   = 1,
+   iskip      = 0,
+   level      = 1013,
+   obs_select = 1,
+   rat_cri    = 3.0,
+   qc_threshold = 4.0,
+   bin_separation = 21600,
+   bin_width = 0  /
