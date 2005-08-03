@@ -1,0 +1,110 @@
+&perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .true.,
+   output_restart = .true.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1  /
+
+&filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 20, 
+   cov_inflate = 1.0,
+   start_from_restart = .true.,
+   output_restart = .true.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart", 
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true., 
+   num_output_state_members = 20,
+   num_output_obs_members = 20,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0,
+   save_reg_series = .false.  /
+
+&ensemble_manager_nml
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&assim_tools_nml
+   filter_kind = 1,
+   cutoff = 1000000.0,
+   sort_obs_inc = .true.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05, 
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name = 'assim_tools_ics',
+   assim_restart_out_file_name = 'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1,
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+
+&cov_cutoff_nml
+   select_localization = 1  /
+
+&reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg"  /
+
+&obs_sequence_nml
+   read_binary_obs_sequence = .false.,
+   write_binary_obs_sequence = .false.  /
+
+&assim_model_nml
+   read_binary_restart_files = .false.,
+   write_binary_restart_files = .false. /
+
+&model_nml
+   model_size = 960,
+   forcing = 15.00,
+   delta_t = 0.001,
+   space_time_scale = 10.00,
+   coupling = 3.00,
+   K = 32,
+   smooth_steps = 12,
+   time_step_days = 0,
+   time_step_seconds = 3600  /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   logfilename = 'dart_log.out'  /
+
+&obs_def_nml
+   assimilate_these_obs_types = 'raw_state_variable'/
+
+&preprocess_nml
+   input_file = '../../../obs_def/ALL_obs_def_mod.F90',
+   output_file = '../../../obs_def/obs_def_mod.f90' /
+
+&obsdiag_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_year   = 0,
+   obs_month  = 1,
+   obs_day    = 1,
+   tot_days   = 1,
+   iskip      = 0,
+   level      = 1013,
+   obs_select = 1,
+   rat_cri    = 300.0,
+   qc_threshold = 4.0,
+   bin_separation = 3600,
+   bin_width = 0  /
