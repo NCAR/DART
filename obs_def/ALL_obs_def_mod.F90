@@ -35,16 +35,16 @@ interface assignment(=)
    module procedure copy_obs_def
 end interface
 
-public init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
+public :: init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
    get_obs_def_error_variance, set_obs_def_location, set_obs_def_kind, set_obs_def_time, &
-   set_obs_def_error_variance, interactive_obs_def, write_obs_def, read_obs_def, obs_def_type, &
-   get_expected_obs_from_def, &
+   set_obs_def_error_variance, interactive_obs_def, write_obs_def, read_obs_def, &
+   obs_def_type, get_expected_obs_from_def, &
    set_radar_obs_def, destroy_obs_def, copy_obs_def, assignment(=)
 !WRF public set_obs_def_platform, get_obs_def_platform
 
 ! Public for obs kinds
-public KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
-       KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, KIND_TD2
+public :: KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
+          KIND_RHO, KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, KIND_TD2
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
