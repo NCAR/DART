@@ -5,7 +5,8 @@
    space_time_scale = 10.00,
    coupling = 3.00,
    K = 32,
-   smooth_steps = 12,
+   smooth_steps = 16,
    time_step_days = 0,
-   time_step_seconds = 3600  /
+   time_step_seconds = 3600,
+   model_number = 3  /
 

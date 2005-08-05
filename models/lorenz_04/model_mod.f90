@@ -1,18 +1,18 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
-! <next five lines automatically updated by CVS, do not edit>
+! <next four lines automatically updated by CVS, do not edit>
 ! $Source$ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+!
 
 use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_time
+use time_manager_mod, only : time_type, set_time, get_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
@@ -33,6 +33,7 @@ public :: get_model_size, &
           model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
+          nc_read_model_vars, &
           pert_model_state
 
 ! CVS Generated file description for error handling, do not edit
@@ -41,10 +42,8 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-! Basic model parameters controlled by nameslist; have defaults
-
 !---------------------------------------------------------------
-! Namelist with default values
+! Basic model parameters controlled by nameslist; have defaults
 !
 integer  :: model_size       = 960
 real(r8) :: forcing          = 15.00_r8
@@ -52,13 +51,15 @@ real(r8) :: delta_t          = 0.001_r8
 real(r8) :: space_time_scale = 10.00_r8
 real(r8) :: coupling         = 3.00_r8
 integer  :: K                = 32
-integer  :: smooth_steps     = 12
-integer  :: time_step_days = 0
+integer  :: smooth_steps     = 16
+integer  :: time_step_days    = 0
 integer  :: time_step_seconds = 3600
+integer  :: model_number      = 3 ! (2 for single scale, 3 for 2-scale, Lorenz 05)
 
-namelist /model_nml/ model_size, forcing, delta_t, space_time_scale, coupling, K, smooth_steps, time_step_days, time_step_seconds
-!----------------------------------------------------------------
+namelist /model_nml/ model_size, forcing, delta_t, space_time_scale, coupling, K, &
+       smooth_steps, time_step_days, time_step_seconds, model_number
 
+!---------------------------------------------------------------- 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
 type(time_type) :: time_step
@@ -116,7 +117,7 @@ allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 do i = 1, model_size
-   x_loc = (i - 1.0) / model_size
+   x_loc = (i - 1.0_r8) / model_size
    state_loc(i) =  set_location(x_loc)
 end do
 
@@ -126,23 +127,23 @@ end do
 time_step = set_time(time_step_seconds, time_step_days)
 
 ! Generate the alpha and beta parameters for the calculation of "a"
-alpha = (3.00*(smooth_steps**2) + 3.00) &
-      / (2.00*(smooth_steps**3) + 4.00*smooth_steps)
-beta  = (4.00*(smooth_steps**2) + 2.00) &
-      / (2.00*(smooth_steps**4) + 4.00*(smooth_steps**2))
+alpha = (3.0_r8*(smooth_steps**2) + 3.0_r8) &
+      / (2.0_r8*(smooth_steps**3) + 4.0_r8*smooth_steps)
+beta  = (2.0_r8*(smooth_steps**2) + 1.0_r8) &
+      / (1.0_r8*(smooth_steps**4) + 2.0_r8*(smooth_steps**2))
 
 ! The "a" vector is a smoothing filter for the production of x and y from z
 ! in L2k4. Apologies for the "ri" and "j" construct
 allocate(a(2*smooth_steps + 1))
-ri = - smooth_steps - 1.0
+ri = - smooth_steps - 1.0_r8
 j = 0
 do i = - smooth_steps, smooth_steps
    j = j + 1
-   ri = ri + 1.0
+   ri = ri + 1.0_r8
    a(j) = alpha - beta*abs(ri)
 end do
-a(1)=a(1)/2.00
-a(2*smooth_steps+1)=a(2*smooth_steps+1)/2.00
+a(1)=a(1)/2.00_r8
+a(2*smooth_steps+1)=a(2*smooth_steps+1)/2.00_r8
 
 ! defining parameters to help reduce the number of operations in the calculation
 ! of dz/dt
@@ -155,8 +156,7 @@ sts2 = space_time_scale**2
 end subroutine static_init_model
 
 
-
-subroutine comp_dt(z, dt)
+subroutine comp_dt(z, dt) 
 !------------------------------------------------------------------
 ! subroutine comp_dt(z, dt)
 ! 
@@ -164,6 +164,13 @@ subroutine comp_dt(z, dt)
 !
 ! The model equations are given by
 ! 
+! Model 2 (II)
+!      dX_i
+!      ---- = [X,X]_{K,i} -  X_i + F 
+!       dt                
+!                         
+!
+! Model 3 (III)
 !      dZ_i
 !      ---- = [X,X]_{K,i} + b^2 (-Y_{i-2}Y_{i-1} + Y_{i-1}Y_{i+1})
 !       dt                +  c  (-Y_{i-2}X_{i-1} + Y_{i-1}X_{i+1})
@@ -184,8 +191,9 @@ subroutine comp_dt(z, dt)
 ! of summation are replaced by (K-1)/2. THIS CODE ONLY IMPLEMENTS THE
 ! K EVEN SOLUTION!!!
 !
-! The variable that is integrated is Z, but the integration requires
-! the variables X and Y.  They are obtained by
+! The variable that is integrated is X (model II) or Z (model III), 
+! but the integration of Z requires
+! the variables X and Y.  For model III they are obtained by
 !
 !      X_i = sumprime_{j= -J}^{J} a_j Z_{i+j}
 !      Y_i = Z_i - X_i.
@@ -197,7 +205,7 @@ subroutine comp_dt(z, dt)
 ! where
 !
 !      alpha = (3J^2 + 3)/(2J^3 + 4J)
-!      beta  = (4J^2 + 2)/(2J^4 + 4J^2).
+!      beta  = (2J^2 + 1)/(1J^4 + 2J^2).
 !
 ! This choice of alpha and beta ensures that X_i will equal Z_i
 ! when Z_i varies quadratically over the interval 2J.   This choice
@@ -226,8 +234,18 @@ real(r8)                     ::    wx(- K4:model_size + K4)
 real(r8)                     :: xx
 integer                      :: i, j
 
-! Decompose z into x and y
-call z2xy(z,x,y)
+! could branch this differently for more effecient model II
+
+if ( model_number == 3 ) then
+   ! Decompose z into x and y
+   call z2xy(z,x,y)
+elseif ( model_number == 2 ) then
+   x = z
+   y = 0.0_r8   ! just a dummy
+else
+   call error_handler(E_ERR,'comp_dt',&
+         'Do not know that model number', source, revision, revdate)
+endif
 
 ! Deal with cyclic boundary conditions using buffers
 do i = 1, model_size
@@ -245,11 +263,11 @@ end do
 
 ! Calculate the W's
 do i = 1, model_size
-   wx(i) = xwrap(i - (-H))/2.00
+   wx(i) = xwrap(i - (-H))/2.00_r8
    do j = - H + 1, H - 1
       wx(i) = wx(i) + xwrap(i - j)
    end do
-   wx(i) = wx(i) + xwrap(i - H)/2.00
+   wx(i) = wx(i) + xwrap(i - H)/2.00_r8
    wx(i) = wx(i)/K
 end do
 
@@ -261,17 +279,22 @@ end do
 
 ! Generate dz/dt
 do i = 1, model_size
-   xx = wx(i - K + (-H))*xwrap(i + K + (-H))/2.00
+   xx = wx(i - K + (-H))*xwrap(i + K + (-H))/2.00_r8
    do j = - H + 1, H - 1
       xx = xx + wx(i - K + j)*xwrap(i + K + j)
    end do
-   xx = xx + wx(i - K + H)*xwrap(i + K + H)/2.00
+   xx = xx + wx(i - K + H)*xwrap(i + K + H)/2.00_r8
    xx = - wx(i - K2)*wx(i - K) + xx/K
       
-   dt(i) = xx + (sts2)*( - ywrap(i - 2)*ywrap(i - 1) &
+   if ( model_number == 3 ) then
+     dt(i) = xx + (sts2)*( - ywrap(i - 2)*ywrap(i - 1) &
          + ywrap(i - 1)*ywrap(i + 1)) + coupling*( - ywrap(i - 2)*xwrap(i - 1) &
          + ywrap(i - 1)*xwrap(i + 1)) - xwrap(i) - space_time_scale*ywrap(i) &
          + forcing
+   else ! must be model II
+     dt(i) = xx - xwrap(i) + forcing
+   endif
+
 end do
 
 end subroutine comp_dt
@@ -302,13 +325,13 @@ end do
 ! Generate the x variables
 do i = 1, model_size
    ia = 1
-   x(i) = a(ia)*zwrap(i - ( - smooth_steps))/2.00
+   x(i) = a(ia)*zwrap(i - ( - smooth_steps))/2.00_r8
    do j = - smooth_steps + 1, smooth_steps - 1
       ia = ia + 1
       x(i) = x(i) + a(ia)*zwrap(i - j)
    end do
    ia = ia + 1
-   x(i) = x(i) + a(ia)*zwrap(i - smooth_steps)/2.00
+   x(i) = x(i) + a(ia)*zwrap(i - smooth_steps)/2.00_r8
 end do
 
 ! Generate the y variables
@@ -353,26 +376,28 @@ subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
-real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
+real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, xp, yp, inter
+real(r8), dimension(size(x)) :: dxt
 
-call comp_dt(x, dx)        !  Compute the first intermediate step
+call comp_dt(x, dx)    !  Compute the first intermediate step
 x1    = delta_t * dx
 inter = x + x1 / 2.0_r8
 
-call comp_dt(inter, dx)    !  Compute the second intermediate step
+call comp_dt(inter, dx)!  Compute the second intermediate step
 x2    = delta_t * dx
 inter = x + x2 / 2.0_r8
 
-call comp_dt(inter, dx)    !  Compute the third intermediate step
+call comp_dt(inter, dx)!  Compute the third intermediate step
 x3    = delta_t * dx
 inter = x + x3
 
-call comp_dt(inter, dx)    !  Compute fourth intermediate step
+call comp_dt(inter, dx)!  Compute fourth intermediate step
 x4 = delta_t * dx
 
 !  Compute new value for x
 
-x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
+dxt = x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
+x = x + dxt
 
 end subroutine adv_1step
 
@@ -461,7 +486,7 @@ if(1 == 1) return
 
 
 ! Next one does an average over a range of points
-obs_val = 0.0
+obs_val = 0.0_r8
 lower_index = lower_index - 7
 upper_index = upper_index - 7
 if(lower_index < 1) lower_index = lower_index + model_size
@@ -531,11 +556,11 @@ subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
 !
 ! Stub for computation of get close states
    
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius  
-integer, intent(out) :: inum, indices(:)
-real(r8), intent(out) :: dist(:)
-real(r8), intent(in) :: x(:)
+type(location_type), intent( in) :: o_loc
+real(r8),            intent( in) :: radius  
+integer,             intent(out) :: inum, indices(:)
+real(r8),            intent(out) :: dist(:)
+real(r8),            intent( in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (inum = -1 return)
@@ -632,13 +657,19 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Lorenz_04"))
+if ( model_number == 2 ) then
+   call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_scale", "single"))
+else if ( model_number == 3 ) then
+   call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_scale", "2-scale"))
+endif
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_forcing", forcing ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "space_time_scale", space_time_scale ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "coupling", coupling ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "K", K ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "smooth_steps", smooth_steps ))
-
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "time_step_days", time_step_days ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "time_step_seconds", time_step_seconds ))
 
 !--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
@@ -784,6 +815,62 @@ contains
          trim(nf90_strerror(istatus)), source, revision, revdate)
    end subroutine check
 end function nc_write_model_vars
+
+
+
+
+function nc_read_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+!------------------------------------------------------------------
+! Reads the model-specific variables from a netCDF file
+
+use typeSizes
+use netcdf
+
+integer,                intent(in)  :: ncFileID      ! netCDF file identifier
+real(r8), dimension(:), intent(out) :: statevec
+integer,                intent(in)  :: copyindex
+integer,                intent(in)  :: timeindex
+integer                             :: ierr          ! return value of function
+
+!-------------------------------------------------------------------------------
+! General netCDF variables
+!-------------------------------------------------------------------------------
+
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: StateVarID
+
+!-------------------------------------------------------------------------------
+! local variables
+!-------------------------------------------------------------------------------
+
+ierr = 0                      ! assume normal termination
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file
+!-------------------------------------------------------------------------------
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+
+! no matter the value of "output_state_vector", we only do one thing.
+
+call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
+call check(NF90_get_var(ncFileID, StateVarID, statevec,  &
+             start=(/ 1, copyindex, timeindex /)))
+
+! write (*,*)'Finished filling variables ...'
+call check(nf90_sync(ncFileID))
+! write (*,*)'netCDF file is synched ...'
+
+contains
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+   integer, intent ( in) :: istatus
+      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars',&
+         trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
+end function nc_read_model_vars
 
 
 
