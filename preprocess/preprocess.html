@@ -27,7 +27,7 @@
 
 <HTML>
 <TITLE>program preprocess</TITLE>
-<link rel=stylesheet type=text/css href=doc.css>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 <BODY>
 
 <DIV ALIGN=CENTER>
@@ -61,18 +61,21 @@
 <H2>OVERVIEW</H2>
 
 <P>
-Program to preprocess the obs_def_mod.F90 to remove code sections that
-are not needed for the selected observation types. The sections of
-obs_def_mod.F90 that are optional are delimited by 
+Program to preprocess the <em class="file">ALL_obs_def_mod.F90</em> to remove 
+code sections that are not needed for the selected observation types. The resulting 
+file: <em class="file">obs_def_mod.f90</em>, is to be compiled by subsequent programs.
+The sections of <em class="file">ALL_obs_def_mod.F90</em> that are optional are 
+delimited by 
+<pre><em class="code">
 	#IFDEF observation_type
-	#ENDIF
-where observation type is the name of one of the types of observations
-defined in obs_def_mod.F90. The observation kinds to be assimilated or
-evaluated are specified by entries in the obs_def_nml which is read by 
-preprocess. Code for ifdef blocks that are not to be assimilated or
-evaluated are not included in obs_def_mod.f90. 
-</P>
-<P>
+	#ENDIF</em>
+</pre>
+where <em class="code">observation_type</em> is the name of one of the types of observations
+defined in <em class="file">ALL_obs_def_mod.F90</em>. The observation kinds 
+to be assimilated or evaluated are specified by entries in the 
+<em class=code>&obs_def_nml</em> which is read by <em class="program">preprocess</em>. 
+Code for ifdef blocks that are <strong>not</strong> to be assimilated or
+evaluated are <strong>not</strong> included in <em class="file">obs_def_mod.f90</em>. 
 </P>
 
 <!--==================================================================-->
@@ -84,7 +87,6 @@ evaluated are not included in obs_def_mod.f90.
 types_mod
 utilities_mod
 </PRE>
-
 
 <P>
 Optional namelist interfaces <em class=code>&obs_def_nml</em> 
@@ -99,20 +101,21 @@ may be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 
-
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+'&amp;' and terminating with a slash '/'.
 
 <div class=namelist><pre>
-<em class=call>namelist / preprocess_nml/ </em> &
+<em class=call>namelist / preprocess_nml/ </em> &amp;
    input_file, output_file
 </pre></div>
+</P>
 
 <H3 class=indent1>Discussion</H3>
 
@@ -120,23 +123,23 @@ may be read from file <em class=file>input.nml</em>.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TR><TH align="left" width="15%">Contents    </TH>
+    <TH align="left" width="30%">Type        </TH>
+    <TH align="left" width="55%">Description </TH></TR>
 <TR><!--contents--><TD valign=top>input_file           </TD>
-    <!--  type  --><TD valign=top>character(len=129) <em class="unit">
-[default: 'no_default_input_file']</em></TD>
+    <!--  type  --><TD valign=top>character(len=129)<BR>
+          <em class="unit">[default: 'no_default_input_file']</em></TD>
     <!--descript--><TD> The file to be preprocessed. Normally a relative 
-    path_name to obs_def_mod.F90.</TD></TR>
+    path_name to <em class="file">ALL_obs_def_mod.F90</em>.</TD></TR>
 <TR><!--contents--><TD valign=top>output_file           </TD>
-    <!--  type  --><TD valign=top>character(len=129) <em class="unit">
-[default: 'no_default_input_file']</em></TD>
+    <!--  type  --><TD valign=top>character(len=129)<BR>
+          <em class="unit">[default: 'no_default_input_file']</em></TD>
     <!--descript--><TD> The file to be created. Normally a relative 
-    path_name to obs_def_mod.f90.</TD></TR>
+    path_name to <em class="file">obs_def_mod.f90</em>.</TD></TR>
 </TABLE>
 
 <div class=namelist><pre>
-<em class=call>namelist / obs_def_nml/ </em> &
+<em class=call>namelist / obs_def_nml/ </em> &amp;
    assimilate_these_obs_types, evaluate_these_obs_types
 </pre></div>
 
@@ -146,19 +149,19 @@ may be read from file <em class=file>input.nml</em>.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TR><TH align="left" width="15%">Contents    </TH>
+    <TH align="left" width="30%">Type        </TH>
+    <TH align="left" width="55%">Description </TH></TR>
 <TR><!--contents--><TD valign=top>assimilate_these_obs_types </TD>
-    <!--  type  --><TD valign=top>character(len=129), dimension(max_obs_kinds) <em class="unit">
-[default: 'null']</em></TD>
+    <!--  type  --><TD valign=top>character(len=129), dimension(max_obs_kinds)<BR>
+          <em class="unit">[default: 'null']</em></TD>
     <!--descript--><TD> List of observation kinds to be assimilated
-    specified by string name from obs_def_mod.F90.</TD></TR>
+    specified by string name from <em class="file">ALL_obs_def_mod.F90</em>.</TD></TR>
 <TR><!--contents--><TD valign=top>evaluate_these_obs_types</TD>
-    <!--  type  --><TD valign=top>character(len=129), dimension(max_obs_kinds) <em class="unit">
-[default: 'null']</em></TD>
+    <!--  type  --><TD valign=top>character(len=129), dimension(max_obs_kinds)<BR>
+          <em class="unit">[default: 'null']</em></TD>
     <!--descript--><TD> List of observation kinds to be evaluated but not assimilated
-    specified by string name from obs_def_mod.F90. </TD></TR>
+    specified by string name from <em class="file">ALL_obs_def_mod.F90</em>. </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -168,8 +171,8 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>input_file, specified by namelist; usually obs_def_mod.F90.
-    <LI>output_file, specified by namelist; usually obs_def_mod.f90.
+<UL><LI>input_file, specified by namelist; usually <em class="file">ALL_obs_def_mod.F90</em>.
+    <LI>output_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
     <LI>namelistfile
 </UL>
 
