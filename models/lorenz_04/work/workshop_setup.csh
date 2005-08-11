@@ -14,8 +14,7 @@
 # executes a known "perfect model" experiment using an existing
 # observation sequence file (obs_seq.in) and initial conditions appropriate 
 # for both 'perfect_model_obs' (perfect_ics) and 'filter' (filter_ics).
-# There are enough initial conditions for 20 ensemble members in filter.
-# Use ens_size = 21 and it WILL bomb. Guaranteed.
+# There are enough initial conditions for 500 ensemble members.
 # The 'input.nml' file controls all facets of this execution.
 #
 # 'create_obs_sequence' and 'create_fixed_network_sequence' were used to
