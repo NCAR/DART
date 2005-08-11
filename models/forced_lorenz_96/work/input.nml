@@ -78,7 +78,7 @@
    assimilate_these_obs_types = 'raw_state_variable'/
 
 &preprocess_nml
-   input_file = '../../../obs_def/obs_def_mod.F90',
+   input_file = '../../../obs_def/ALL_obs_def_mod.F90',
    output_file = '../../../obs_def/obs_def_mod.f90' /
 
 &obsdiag_nml
