@@ -309,7 +309,7 @@ logical,                 intent(out) :: assimilate_this_ob, evaluate_this_ob
 
 integer             :: num_obs, i
 type(location_type) :: location
-integer             :: obs_kind
+!!!integer             :: obs_kind
 type(obs_type)      :: obs
 type(obs_def_type)  :: obs_def
 integer             :: obs_kind_ind
