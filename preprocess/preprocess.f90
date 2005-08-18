@@ -26,14 +26,13 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-character(len = 256) :: line, test, ifdef_kind, path_name
+character(len = 256) :: line, test, ifdef_kind
 integer :: iunit, ierr, io, i, j, status
 integer :: num_kind_assimilate = 0, num_kind_evaluate = 0
 character(len = 169) :: err_string
-character(len = 15) :: module_name
 
 integer, parameter :: max_obs_kinds = 1000
-integer :: path_name_len, input_unit, output_unit
+integer :: input_unit, output_unit
 
 ! Namelist array to identify input and output file
 character(len = 129) :: input_file = "no_default_input_file"
