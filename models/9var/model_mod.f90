@@ -154,7 +154,8 @@ implicit none
 real(r8), intent(in)  :: xxx(:)
 real(r8), intent(out) :: dxxx(:)
 
-real(r8) :: x(3), y(3), z(3), dx(3), dy(3), dz(3), rnum(9)
+real(r8) :: x(3), y(3), z(3), dx(3), dy(3), dz(3)
+!!! real(r8) :: rnum(9)
 integer  :: i, j, k
 
 !  unpack the 9-vectors into the x, y and z 3-vectors
@@ -374,9 +375,11 @@ implicit none
 real(r8), intent(in)  :: xxx(9)
 real(r8), intent(out) :: init_xxx(9)
 
-real(r8) :: x(3), y(3), z(3), wkspce(3)
+real(r8) :: x(3), y(3), z(3)
+!!!real(r8) :: wkspce(3)
 real(r8) :: lhs(3,3),rhs(3)
-integer  :: i, j, k, ifail
+integer  :: i, j, k
+!!!integer  :: ifail
 
 !  unpack the 9-vectors into the x, y and z 3-vectors
 
@@ -410,7 +413,7 @@ do i = 1, 3
       *y(k)**2-nu*a(j)*a(k)*(a(j)+a(k))*y(j)*y(k)  )
 end do
 
-ifail=0
+!!!ifail=0
 !  n.a.g. ROUTINE TO CALCULATE APPROXIMATE SOLUTION X TO aX=B (I.E. lhs*X=rhs)
 !!!call f04arf_wrap(lhs,3,rhs,3,x,wkspce,ifail)
 !        print *,'XINIT=',X
