@@ -24,7 +24,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 integer  :: num_sets, level, obs_kind, num, num_done, iunit
-real(r8) :: err_var, bot_lat, top_lat, bot_lon, top_lon, lat, lon
+real(r8) :: err_var, bot_lat, top_lat, bot_lon, top_lon
 type(random_seq_type) :: r
 
 ! Initialize the random sequence
