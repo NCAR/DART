@@ -376,7 +376,7 @@ subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
-real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, xp, yp, inter
+real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
 real(r8), dimension(size(x)) :: dxt
 
 call comp_dt(x, dx)    !  Compute the first intermediate step
