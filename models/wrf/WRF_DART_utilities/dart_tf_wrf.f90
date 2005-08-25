@@ -87,11 +87,6 @@ if(file_exist('input.nml')) then
 
    call close_file(iunit)
 
-   if ( debug ) then
-      ! namelist validation
-      write(*,'(''num_moist_vars = '',i3)')num_moist_vars
-   endif
-
 else
 
    write(*,*) 'input.nml does not exist here. Using default values.'
