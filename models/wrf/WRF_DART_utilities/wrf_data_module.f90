@@ -33,7 +33,7 @@ TYPE wrf_data
    integer :: ncid                                    ! netcdf id for file
    integer :: sls_id, sls, bt_id, bt, sn_id, sn, we_id, we
    integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, tslb_id, mu_id, mub_id, &
-              tsk_id, qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, &
+              tsk_id, qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, qnice_id, &
               u10_id, v10_id, t2_id, q2_id, ps_id, hdiab_id
 
    integer :: n_moist
@@ -58,6 +58,7 @@ TYPE wrf_data
    real(r8), pointer :: qi(:,:,:)
    real(r8), pointer :: qs(:,:,:)
    real(r8), pointer :: qg(:,:,:)
+   real(r8), pointer :: qnice(:,:,:)
    real(r8), pointer :: mu(:,:)
    real(r8), pointer :: mub(:,:)
    real(r8), pointer :: u10(:,:)
@@ -97,11 +98,11 @@ TYPE wrf_bdy_data
               qsxs_id , qsxe_id , qsys_id , qsye_id ,  &
               qstxs_id, qstxe_id, qstys_id, qstye_id,  &
               qgxs_id , qgxe_id , qgys_id , qgye_id ,  &
-              qgtxs_id, qgtxe_id, qgtys_id, qgtye_id
+              qgtxs_id, qgtxe_id, qgtys_id, qgtye_id,  &
+              qnicexs_id , qnicexe_id , qniceys_id , qniceye_id ,  &
+              qnicetxs_id, qnicetxe_id, qnicetys_id, qnicetye_id
 
    integer :: n_moist
-
-   !!!! char Times(Time, DateStrLen) ;
 
    real(r8), pointer :: uxs(:,:,:,:) , uxe(:,:,:,:) , uys(:,:,:,:) , uye(:,:,:,:)
    real(r8), pointer :: utxs(:,:,:,:), utxe(:,:,:,:), utys(:,:,:,:), utye(:,:,:,:)
@@ -127,6 +128,8 @@ TYPE wrf_bdy_data
    real(r8), pointer :: qstxs(:,:,:,:), qstxe(:,:,:,:), qstys(:,:,:,:),qstye(:,:,:,:)
    real(r8), pointer :: qgxs(:,:,:,:) , qgxe(:,:,:,:) , qgys(:,:,:,:) , qgye(:,:,:,:)
    real(r8), pointer :: qgtxs(:,:,:,:), qgtxe(:,:,:,:), qgtys(:,:,:,:),qgtye(:,:,:,:)
+   real(r8), pointer :: qnicexs(:,:,:,:) , qnicexe(:,:,:,:) , qniceys(:,:,:,:) , qniceye(:,:,:,:)
+   real(r8), pointer :: qnicetxs(:,:,:,:), qnicetxe(:,:,:,:), qnicetys(:,:,:,:),qnicetye(:,:,:,:)
 
 end type
 
@@ -242,6 +245,11 @@ if(wrf%n_moist > 5) then
 endif
 
 if(wrf%n_moist > 6) then
+   call check ( nf90_inq_varid(wrf%ncid, "QNICE", wrf%qnice_id))
+   allocate(wrf%qnice(wrf%we,wrf%sn,wrf%bt))
+endif
+
+if(wrf%n_moist > 7) then
    write(6,*) 'n_moist = ',wrf%n_moist
    call error_handler(E_ERR,'wrf_open_and_alloc', &
          'n_moist is too large.', source, revision, revdate)
@@ -360,6 +368,10 @@ if(wrf%n_moist > 5) then
 endif
 
 if(wrf%n_moist > 6) then
+   deallocate(wrf%qnice)
+endif
+
+if(wrf%n_moist > 7) then
    write(6,*) 'n_moist = ',wrf%n_moist
    call error_handler(E_ERR,'wrf_dealloc', &
          'n_moist is too large.', source, revision, revdate)
@@ -422,97 +434,97 @@ if(debug) write(6,*) ' dimensions bt, sn, we are ',wrfbdy%bt,wrfbdy%sn,wrfbdy%we
 ! get wrfbdy variable ids and allocate space for wrfbdy variables
 
   !-- u on bdy
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BXS", wrfbdy%uxs_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BXS", wrfbdy%uxs_id) )
 if(debug) write(6,*) ' uxs_id = ',wrfbdy%uxs_id
 allocate( wrfbdy%uxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BXE", wrfbdy%uxe_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BXE", wrfbdy%uxe_id) )
 if(debug) write(6,*) ' uxe_id = ',wrfbdy%uxe_id
 allocate( wrfbdy%uxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BYS", wrfbdy%uys_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BYS", wrfbdy%uys_id) )
 if(debug) write(6,*) ' uys_id = ',wrfbdy%uys_id
 allocate( wrfbdy%uys( wrfbdy%we+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BYE", wrfbdy%uye_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BYE", wrfbdy%uye_id) )
 if(debug) write(6,*) ' uye_id = ',wrfbdy%uye_id
 allocate( wrfbdy%uye( wrfbdy%we+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
   !-- u tendency on bdy
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BTXS", wrfbdy%utxs_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BTXS", wrfbdy%utxs_id) )
 if(debug) write(6,*) ' utxs_id = ',wrfbdy%utxs_id
 allocate( wrfbdy%utxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BTXE", wrfbdy%utxe_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BTXE", wrfbdy%utxe_id) )
 if(debug) write(6,*) ' utxe_id = ',wrfbdy%utxe_id
 allocate( wrfbdy%utxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BTYS", wrfbdy%utys_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BTYS", wrfbdy%utys_id) )
 if(debug) write(6,*) ' utys_id = ',wrfbdy%utys_id
 allocate( wrfbdy%utys( wrfbdy%we+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RU_BTYE", wrfbdy%utye_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "U_BTYE", wrfbdy%utye_id) )
 if(debug) write(6,*) ' utye_id = ',wrfbdy%utye_id
 allocate( wrfbdy%utye( wrfbdy%we+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
   !-- v on bdy
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BXS", wrfbdy%vxs_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BXS", wrfbdy%vxs_id) )
 if(debug) write(6,*) ' vxs_id = ',wrfbdy%vxs_id
 allocate( wrfbdy%vxs( wrfbdy%sn+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BXE", wrfbdy%vxe_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BXE", wrfbdy%vxe_id) )
 if(debug) write(6,*) ' vxe_id = ',wrfbdy%vxe_id
 allocate( wrfbdy%vxe( wrfbdy%sn+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BYS", wrfbdy%vys_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BYS", wrfbdy%vys_id) )
 if(debug) write(6,*) ' vys_id = ',wrfbdy%vys_id
 allocate( wrfbdy%vys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BYE", wrfbdy%vye_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BYE", wrfbdy%vye_id) )
 if(debug) write(6,*) ' vye_id = ',wrfbdy%vye_id
 allocate( wrfbdy%vye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
   !-- v tendency on bdy
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BTXS", wrfbdy%vtxs_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BTXS", wrfbdy%vtxs_id) )
 if(debug) write(6,*) ' vtxs_id = ',wrfbdy%vtxs_id
 allocate( wrfbdy%vtxs( wrfbdy%sn+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BTXE", wrfbdy%vtxe_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BTXE", wrfbdy%vtxe_id) )
 if(debug) write(6,*) ' vtxe_id = ',wrfbdy%vtxe_id
 allocate( wrfbdy%vtxe( wrfbdy%sn+1, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BTYS", wrfbdy%vtys_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BTYS", wrfbdy%vtys_id) )
 if(debug) write(6,*) ' vtys_id = ',wrfbdy%vtys_id
 allocate( wrfbdy%vtys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RV_BTYE", wrfbdy%vtye_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "V_BTYE", wrfbdy%vtye_id) )
 if(debug) write(6,*) ' vtye_id = ',wrfbdy%vtye_id
 allocate( wrfbdy%vtye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
   !-- w on bdy
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BXS", wrfbdy%wxs_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BXS", wrfbdy%wxs_id) )
 allocate( wrfbdy%wxs( wrfbdy%sn, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BXE", wrfbdy%wxe_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BXE", wrfbdy%wxe_id) )
 allocate( wrfbdy%wxe( wrfbdy%sn, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BYS", wrfbdy%wys_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BYS", wrfbdy%wys_id) )
 allocate( wrfbdy%wys( wrfbdy%we, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BYE", wrfbdy%wye_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BYE", wrfbdy%wye_id) )
 allocate( wrfbdy%wye( wrfbdy%we, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
   !-- w tendency on bdy
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BTXS", wrfbdy%wtxs_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BTXS", wrfbdy%wtxs_id) )
 allocate( wrfbdy%wtxs( wrfbdy%sn, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BTXE", wrfbdy%wtxe_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BTXE", wrfbdy%wtxe_id) )
 allocate( wrfbdy%wtxe( wrfbdy%sn, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BTYS", wrfbdy%wtys_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BTYS", wrfbdy%wtys_id) )
 allocate( wrfbdy%wtys( wrfbdy%we, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
-call check ( nf90_inq_varid(wrfbdy%ncid, "RW_BTYE", wrfbdy%wtye_id) )
+call check ( nf90_inq_varid(wrfbdy%ncid, "W_BTYE", wrfbdy%wtye_id) )
 allocate( wrfbdy%wtye( wrfbdy%we, wrfbdy%bt+1, wrfbdy%bdywdth, wrfbdy%time ) )
 
   !-- height on bdy
@@ -619,173 +631,201 @@ allocate( wrfbdy%mutye( wrfbdy%we, wrfbdy%bdywdth, wrfbdy%time ) )
 
 if(wrfbdy%n_moist > 0) then
    !-- qv on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BXS", wrfbdy%qvxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BXS", wrfbdy%qvxs_id) )
    allocate( wrfbdy%qvxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BXE", wrfbdy%qvxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BXE", wrfbdy%qvxe_id) )
    allocate( wrfbdy%qvxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BYS", wrfbdy%qvys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BYS", wrfbdy%qvys_id) )
    allocate( wrfbdy%qvys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BYE", wrfbdy%qvye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BYE", wrfbdy%qvye_id) )
    allocate( wrfbdy%qvye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
    !-- qv tendency on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BTXS", wrfbdy%qvtxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BTXS", wrfbdy%qvtxs_id) )
    allocate( wrfbdy%qvtxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BTXE", wrfbdy%qvtxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BTXE", wrfbdy%qvtxe_id) )
    allocate( wrfbdy%qvtxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BTYS", wrfbdy%qvtys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BTYS", wrfbdy%qvtys_id) )
    allocate( wrfbdy%qvtys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQV_BTYE", wrfbdy%qvtye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QVAPOR_BTYE", wrfbdy%qvtye_id) )
    allocate( wrfbdy%qvtye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 endif
 
 if(wrfbdy%n_moist > 1) then
    !-- qc on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BXS", wrfbdy%qcxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BXS", wrfbdy%qcxs_id) )
    allocate( wrfbdy%qcxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BXE", wrfbdy%qcxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BXE", wrfbdy%qcxe_id) )
    allocate( wrfbdy%qcxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BYS", wrfbdy%qcys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BYS", wrfbdy%qcys_id) )
    allocate( wrfbdy%qcys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BYE", wrfbdy%qcye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BYE", wrfbdy%qcye_id) )
    allocate( wrfbdy%qcye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
    !-- qc tendency on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BTXS", wrfbdy%qctxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BTXS", wrfbdy%qctxs_id) )
    allocate( wrfbdy%qctxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BTXE", wrfbdy%qctxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BTXE", wrfbdy%qctxe_id) )
    allocate( wrfbdy%qctxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BTYS", wrfbdy%qctys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BTYS", wrfbdy%qctys_id) )
    allocate( wrfbdy%qctys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQC_BTYE", wrfbdy%qctye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QCLOUD_BTYE", wrfbdy%qctye_id) )
    allocate( wrfbdy%qctye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 endif
 
 if(wrfbdy%n_moist > 2) then
    !-- qr on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BXS", wrfbdy%qrxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BXS", wrfbdy%qrxs_id) )
    allocate( wrfbdy%qrxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BXE", wrfbdy%qrxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BXE", wrfbdy%qrxe_id) )
    allocate( wrfbdy%qrxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BYS", wrfbdy%qrys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BYS", wrfbdy%qrys_id) )
    allocate( wrfbdy%qrys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BYE", wrfbdy%qrye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BYE", wrfbdy%qrye_id) )
    allocate( wrfbdy%qrye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
    !-- qr tendency on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BTXS", wrfbdy%qrtxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BTXS", wrfbdy%qrtxs_id) )
    allocate( wrfbdy%qrtxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BTXE", wrfbdy%qrtxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BTXE", wrfbdy%qrtxe_id) )
    allocate( wrfbdy%qrtxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BTYS", wrfbdy%qrtys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BTYS", wrfbdy%qrtys_id) )
    allocate( wrfbdy%qrtys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQR_BTYE", wrfbdy%qrtye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QRAIN_BTYE", wrfbdy%qrtye_id) )
    allocate( wrfbdy%qrtye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 endif
 
 if(wrfbdy%n_moist > 3) then
    !-- qi on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BXS", wrfbdy%qixs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BXS", wrfbdy%qixs_id) )
    allocate( wrfbdy%qixs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BXE", wrfbdy%qixe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BXE", wrfbdy%qixe_id) )
    allocate( wrfbdy%qixe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BYS", wrfbdy%qiys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BYS", wrfbdy%qiys_id) )
    allocate( wrfbdy%qiys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BYE", wrfbdy%qiye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BYE", wrfbdy%qiye_id) )
    allocate( wrfbdy%qiye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
    !-- qi tendency on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BTXS", wrfbdy%qitxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BTXS", wrfbdy%qitxs_id) )
    allocate( wrfbdy%qitxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BTXE", wrfbdy%qitxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BTXE", wrfbdy%qitxe_id) )
    allocate( wrfbdy%qitxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BTYS", wrfbdy%qitys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BTYS", wrfbdy%qitys_id) )
    allocate( wrfbdy%qitys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQI_BTYE", wrfbdy%qitye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QICE_BTYE", wrfbdy%qitye_id) )
    allocate( wrfbdy%qitye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 endif
 
 if(wrfbdy%n_moist > 4) then
    !-- qs on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BXS", wrfbdy%qsxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BXS", wrfbdy%qsxs_id) )
    allocate( wrfbdy%qsxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BXE", wrfbdy%qsxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BXE", wrfbdy%qsxe_id) )
    allocate( wrfbdy%qsxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BYS", wrfbdy%qsys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BYS", wrfbdy%qsys_id) )
    allocate( wrfbdy%qsys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BYE", wrfbdy%qsye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BYE", wrfbdy%qsye_id) )
    allocate( wrfbdy%qsye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
    !-- qs tendency on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BTXS", wrfbdy%qstxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BTXS", wrfbdy%qstxs_id) )
    allocate( wrfbdy%qstxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BTXE", wrfbdy%qstxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BTXE", wrfbdy%qstxe_id) )
    allocate( wrfbdy%qstxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BTYS", wrfbdy%qstys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BTYS", wrfbdy%qstys_id) )
    allocate( wrfbdy%qstys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQS_BTYE", wrfbdy%qstye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QSNOW_BTYE", wrfbdy%qstye_id) )
    allocate( wrfbdy%qstye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 endif
 
 if(wrfbdy%n_moist > 5) then
    !-- qg on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BXS", wrfbdy%qgxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BXS", wrfbdy%qgxs_id) )
    allocate( wrfbdy%qgxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BXE", wrfbdy%qgxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BXE", wrfbdy%qgxe_id) )
    allocate( wrfbdy%qgxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BYS", wrfbdy%qgys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BYS", wrfbdy%qgys_id) )
    allocate( wrfbdy%qgys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BYE", wrfbdy%qgye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BYE", wrfbdy%qgye_id) )
    allocate( wrfbdy%qgye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
    !-- qg tendency on bdy
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BTXS", wrfbdy%qgtxs_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BTXS", wrfbdy%qgtxs_id) )
    allocate( wrfbdy%qgtxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BTXE", wrfbdy%qgtxe_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BTXE", wrfbdy%qgtxe_id) )
    allocate( wrfbdy%qgtxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BTYS", wrfbdy%qgtys_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BTYS", wrfbdy%qgtys_id) )
    allocate( wrfbdy%qgtys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 
-   call check ( nf90_inq_varid(wrfbdy%ncid, "RQG_BTYE", wrfbdy%qgtye_id) )
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QGRAUP_BTYE", wrfbdy%qgtye_id) )
    allocate( wrfbdy%qgtye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
 endif
 
 if(wrfbdy%n_moist > 6) then
+   !-- qnice on bdy
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BXS", wrfbdy%qnicexs_id) )
+   allocate( wrfbdy%qnicexs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BXE", wrfbdy%qnicexe_id) )
+   allocate( wrfbdy%qnicexe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BYS", wrfbdy%qniceys_id) )
+   allocate( wrfbdy%qniceys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BYE", wrfbdy%qniceye_id) )
+   allocate( wrfbdy%qniceye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   !-- qnice tendency on bdy
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BTXS", wrfbdy%qnicetxs_id) )
+   allocate( wrfbdy%qnicetxs( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BTXE", wrfbdy%qnicetxe_id) )
+   allocate( wrfbdy%qnicetxe( wrfbdy%sn, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BTYS", wrfbdy%qnicetys_id) )
+   allocate( wrfbdy%qnicetys( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+
+   call check ( nf90_inq_varid(wrfbdy%ncid, "QNICE_BTYE", wrfbdy%qnicetye_id) )
+   allocate( wrfbdy%qnicetye( wrfbdy%we, wrfbdy%bt, wrfbdy%bdywdth, wrfbdy%time ) )
+endif
+
+if(wrfbdy%n_moist > 7) then
    write(6,*) 'n_moist = ',wrfbdy%n_moist
    call error_handler(E_ERR,'wrfbdy_open_and_alloc', &
          'n_moist is too large.', source, revision, revdate)
@@ -969,6 +1009,20 @@ if(wrfbdy%n_moist > 5) then
 endif
 
 if(wrfbdy%n_moist > 6) then
+   !-- qnice on bdy
+   deallocate( wrfbdy%qnicexs )
+   deallocate( wrfbdy%qnicexe )
+   deallocate( wrfbdy%qniceys )
+   deallocate( wrfbdy%qniceye )
+
+   !-- qnice tendency on bdy
+   deallocate( wrfbdy%qnicetxs )
+   deallocate( wrfbdy%qnicetxe )
+   deallocate( wrfbdy%qnicetys )
+   deallocate( wrfbdy%qnicetye )
+endif
+
+if(wrfbdy%n_moist > 7) then
    write(6,*) 'n_moist = ',wrfbdy%n_moist
    call error_handler(E_ERR,'wrfbdy_dealloc', &
          'n_moist is too large.', source, revision, revdate)
@@ -1040,6 +1094,9 @@ if (in_or_out  == "OUTPUT") then
       call check( nf90_put_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, 1 /)))
    endif
    if(wrf%n_moist > 6) then
+      call check( nf90_put_var(wrf%ncid, wrf%qnice_id, wrf%qnice, start = (/ 1, 1, 1, 1 /)))
+   endif
+   if(wrf%n_moist > 7) then
       write(6,*) 'n_moist = ',wrf%n_moist
       call error_handler(E_ERR,'wrf_io', &
            'n_moist is too large.', source, revision, revdate)
@@ -1100,6 +1157,9 @@ else
       call check( nf90_get_var(wrf%ncid, wrf%qg_id, wrf%qg, start = (/ 1, 1, 1, lngth /)))
    endif
    if(wrf%n_moist > 6) then
+      call check( nf90_get_var(wrf%ncid, wrf%qnice_id, wrf%qnice, start = (/ 1, 1, 1, lngth /)))
+   endif
+   if(wrf%n_moist > 7) then
       write(6,*) 'n_moist = ',wrf%n_moist
       call error_handler(E_ERR,'wrf_io', &
            'n_moist is too large.', source, revision, revdate)
@@ -1341,6 +1401,18 @@ if (in_or_out  == "OUTPUT") then
       call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qgtye_id, wrfbdy%qgtye, start = (/ 1, 1, 1, 1 /)))
    endif
    if(wrfbdy%n_moist > 6) then
+      !-- qnice on boundary
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qnicexs_id, wrfbdy%qnicexs, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qnicexe_id, wrfbdy%qnicexe, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qniceys_id, wrfbdy%qniceys, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qniceye_id, wrfbdy%qniceye, start = (/ 1, 1, 1, 1 /)))
+      !-- qnice tendencies on boundary
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qnicetxs_id, wrfbdy%qnicetxs, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qnicetxe_id, wrfbdy%qnicetxe, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qnicetys_id, wrfbdy%qnicetys, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrfbdy%ncid, wrfbdy%qnicetye_id, wrfbdy%qnicetye, start = (/ 1, 1, 1, 1 /)))
+   endif
+   if(wrfbdy%n_moist > 7) then
       write(6,*) 'n_moist = ',wrfbdy%n_moist
       call error_handler(E_ERR,'wrfbdy_io', &
            'n_moist is too large.', source, revision, revdate)
@@ -1489,6 +1561,18 @@ else
       call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qgtye_id, wrfbdy%qgtye, start = (/ 1, 1, 1, lngth /)))
    endif
    if(wrfbdy%n_moist > 6) then
+      !-- qnice on boundary
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qnicexs_id, wrfbdy%qnicexs, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qnicexe_id, wrfbdy%qnicexe, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qniceys_id, wrfbdy%qniceys, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qniceye_id, wrfbdy%qniceye, start = (/ 1, 1, 1, lngth /)))
+      !-- qnice tendencies on boundary
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qnicetxs_id, wrfbdy%qnicetxs, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qnicetxe_id, wrfbdy%qnicetxe, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qnicetys_id, wrfbdy%qnicetys, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrfbdy%ncid, wrfbdy%qnicetye_id, wrfbdy%qnicetye, start = (/ 1, 1, 1, lngth /)))
+   endif
+   if(wrfbdy%n_moist > 7) then
       write(6,*) 'n_moist = ',wrfbdy%n_moist
       call error_handler(E_ERR,'wrfbdy_io', &
            'n_moist is too large.', source, revision, revdate)
