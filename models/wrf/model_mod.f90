@@ -28,15 +28,16 @@ use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use      location_mod, only : location_type, get_location, set_location, &
                               get_dist, horiz_dist_only, &
                               LocationDims, LocationName, LocationLName, &
-                              query_location
+                              query_location, vert_is_noloc, vert_is_surface, &
+                              vert_is_level, vert_is_pressure, vert_is_height
 use     utilities_mod, only : file_exist, open_file, check_nml_error, &
                               close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit
 use      obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                              KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
-                              KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, &
-                              KIND_Q2, KIND_TD2, KIND_QG, KIND_QS
+                              KIND_P, KIND_W, KIND_QR, KIND_RHO, &
+                              KIND_U10, KIND_V10, KIND_T2, &
+                              KIND_Q2, KIND_QG, KIND_QS
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                               gridwind_to_truewind
@@ -269,7 +270,8 @@ do id=1,num_domains
    call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
    print*,'dt from wrfinput is: ',dt
    print*,'Using dt from namelist.input: ',wrf%dom(id)%dt
-   if(debug) write(*,*) ' dx, dy are ',wrf%dom(id)%dx, wrf%dom(id)%dy
+   if(debug) write(*,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
+        wrf%dom(id)%dy, wrf%dom(id)%dt
 
    call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', wrf%dom(id)%map_proj) )
    if(debug) write(*,*) ' map_proj is ',wrf%dom(id)%map_proj
@@ -698,7 +700,8 @@ type(time_type) :: get_model_time_step
 ! Need to translate from wrf model timestep (in seconds) to
 ! DART time increment
 
-get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
+!!$get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
+get_model_time_step = set_time(21600, 0)
 
 end function get_model_time_step
 
@@ -814,7 +817,6 @@ integer,            intent(out) :: istatus
 
 logical, parameter  :: debug = .false.
 real(r8)            :: xloc, yloc, zloc, xloc_u, yloc_v, xyz_loc(3)
-integer             :: which_vert
 integer             :: i, i_u, j, j_v, k, k2, i1,i2
 real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
 real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
@@ -836,7 +838,6 @@ dom_found = .false.
 istatus = 0
 
 xyz_loc = get_location(location)
-which_vert = nint(query_location(location,'which_vert'))
 
 id = num_domains
 do while (.not. dom_found)
@@ -894,12 +895,12 @@ allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
 call toGrid(xloc,i,dx,dxm)
 call toGrid(yloc,j,dy,dym)
 
-if(which_vert == 1) then
+if(vert_is_level(location)) then
 
    ! If obs is by model level
    zloc = xyz_loc(3)
    if(debug) print*,' obs is by model level and zloc =',zloc
-else if(which_vert == 2) then
+else if(vert_is_pressure(location)) then
    if(xyz_loc(3) < 10000.0_r8) then
       obs_val = missing_r8
       istatus = 1
@@ -913,7 +914,7 @@ else if(which_vert == 2) then
    if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
    if(debug) print*,'model pressure profile'
    if(debug) print*,v_p
-else if(which_vert == 3) then
+else if(vert_is_height(location)) then
    ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
    if(debug) print*,'model height profile'
@@ -921,7 +922,7 @@ else if(which_vert == 3) then
    ! get height vertical co-ordinate
    call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
    if(debug) print*,' obs is by height and zloc =',zloc
-else if(which_vert == -1) then
+else if(vert_is_surface(location)) then
    ! get terrain height
    v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
                    dx*wrf%dom(id)%hgt(i+1,j) ) + &
@@ -930,7 +931,8 @@ else if(which_vert == -1) then
    zloc = 0.0_r8
    if(debug) print*,' obs is at the surface = ', xyz_loc(3)
 else
-   call error_handler(E_ERR,'model_interpolate', 'wrong option for which_vert', &
+   write(errstring,*) 'wrong option for which_vert ',nint(query_location(location,'which_vert'))
+   call error_handler(E_ERR,'model_interpolate', errstring, &
         source, revision, revdate)
 end if
 
@@ -1970,19 +1972,19 @@ call get_wrf_horizontal_location( i, j, var_type, id, long, lat )
 ! This will ensure compatibility for measuring 'horizontal'
 ! and cannot think of anything better for vertical.
 !
-! For (near) surface observations (which_vert = -1),
+! For (near) surface observations,
 ! use height as the vertical coordinate for localization.
 
 xyz_loc = get_location(o_loc)
 which_vert = nint(query_location(o_loc,'which_vert'))
 
-if(horiz_dist_only .or. which_vert == -2) then
+if(horiz_dist_only .or. vert_is_noloc(o_loc)) then
 
    vloc = missing_r8
 
 else
 
-   if(which_vert == 1 ) then
+   if(vert_is_level(o_loc)) then
 
       if( (var_type == type_w ) .or. (var_type == type_gz) ) then
          vloc = real(k) - 0.5_r8
@@ -1990,11 +1992,11 @@ else
          vloc = real(k)
       endif
 
-   elseif(which_vert == 2 ) then
+   elseif(vert_is_pressure(o_loc)) then
 
       vloc = model_pressure(i,j,k,id,var_type,x)
 
-   elseif(which_vert == 3 .or. which_vert == -1) then
+   elseif(vert_is_height(o_loc) .or. vert_is_surface(o_loc)) then
 
       vloc = model_height(i,j,k,id,var_type,x)
       which_vert = 3
@@ -2005,7 +2007,7 @@ else
    endif
 
    if (vloc == missing_r8 ) then
-      print*,i,j,k, id, var_type,which_vert
+      print*, i, j, k, id, var_type, which_vert
       write(errstring, *) 'Unable to define vloc.'
       call error_handler(E_ERR,'get_dist_wrf', errstring, source, revision, revdate)
    endif
@@ -3693,7 +3695,7 @@ real(r8) :: dt
 integer :: time_step, time_step_fract_num, time_step_fract_den
 integer :: max_dom
 integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
-integer, dimension(3) :: dx, dy, grid_id, level, parent_id
+integer, dimension(3) :: dx, dy, grid_id, parent_id
 integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
 integer, dimension(3) :: parent_time_step_ratio
 integer :: io, ierr, iunit, id
@@ -3701,7 +3703,7 @@ integer :: io, ierr, iunit, id
 namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
 namelist /domains/ max_dom
 namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
-namelist /domains/ dx, dy, grid_id, level, parent_id
+namelist /domains/ dx, dy, grid_id, parent_id
 namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
 namelist /domains/ parent_time_step_ratio
 
