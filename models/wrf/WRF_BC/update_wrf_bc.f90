@@ -50,7 +50,7 @@ integer, parameter :: max_3d_variables = 20, &
 character(len=80) :: wrf_output_file, wrf_mean_output_file, &
                      wrf_bdy_file, time_name
 
-character(len=20) :: var_pref, var_name
+character(len=20) :: var_name
 
 character(len=20) :: var3d(max_3d_variables), &
                      var2d(max_2d_variables)
@@ -174,6 +174,7 @@ var3d(8)='QRAIN'
 var3d(9)='QICE'
 var3d(10)='QSNOW'
 var3d(11)='QGRAUP'
+var3d(12)='QNICE'
 
 !--2D need update
 num2d=5
@@ -505,48 +506,15 @@ endif
 
       select case(trim(var3d(n)))
          case ('U') ;		! U
-            var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=u(:,:,:)
             full3d_mean(:,:,:)=u_mean(:,:,:)
          case ('V') ;		! V
-            var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=v(:,:,:)
             full3d_mean(:,:,:)=v_mean(:,:,:)
          case ('W') ;		! W
-            var_pref='R' // trim(var3d(n))
             full3d(:,:,:)=w(:,:,:)
             full3d_mean(:,:,:)=w_mean(:,:,:)
-         case ('T', 'PH') ;
-            var_pref=trim(var3d(n))
-
-            call get_var_3d_real_cdf( wrf_output_file, trim(var3d(n)), full3d, &
-                                      dims(1), dims(2), dims(3), 1, debug )
-
-            call get_var_3d_real_cdf( wrf_mean_output_file, trim(var3d(n)), full3d_mean, &
-                                      dims(1), dims(2), dims(3), 1, debug )
-
-            if(debug) then
-               write(unit=*, fmt='(3a,e20.12,4x)') &
-                    'Before couple Sampe ', trim(var3d(n)), &
-                    '=', full3d(dims(1)/2,dims(2)/2,dims(3)/2)
-            endif
-
-            do k=1,dims(3)
-            do j=1,dims(2)
-            do i=1,dims(1)
-               full3d(i,j,k)=full3d(i,j,k)*(mu(i,j)+mub(i,j))
-               full3d_mean(i,j,k)=full3d_mean(i,j,k)*(mu_mean(i,j)+mub(i,j))
-            enddo
-            enddo
-            enddo
-
-            if(debug) then
-               write(unit=*, fmt='(3a,e20.12,4x)') &
-                    'After  couple Sampe ', trim(var3d(n)), &
-                    '=', full3d(dims(1)/2,dims(2)/2,dims(3)/2)
-            endif
-         case ('QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUP') ;
-            var_pref='R' // var3d(n)(1:2)
+         case ('T', 'PH', 'QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUP', 'QNICE') ;
 
             call get_var_3d_real_cdf( wrf_output_file, trim(var3d(n)), full3d, &
                                       dims(1), dims(2), dims(3), 1, debug )
@@ -579,7 +547,7 @@ endif
       end select
 
       do m=1,4
-         var_name=trim(var_pref) // trim(bdyname(m))
+         var_name=trim(var3d(n)) // trim(bdyname(m))
          call get_dims_cdf( wrf_bdy_file, trim(var_name), dims, ndims, debug )
 
          allocate(frst3d(dims(1), dims(2), dims(3)))
@@ -588,12 +556,12 @@ endif
 
 !-----Calculate variable at second time level
 !--------Get variable tendancy at first time level
-        var_name=trim(var_pref) // trim(tenname(m))
+        var_name=trim(var3d(n)) // trim(tenname(m))
         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                   dims(1), dims(2), dims(3), itime, debug )
 
 !--------Get variable at first time level
-        var_name=trim(var_pref) // trim(bdyname(m))
+        var_name=trim(var3d(n)) // trim(bdyname(m))
         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
                                dims(1), dims(2), dims(3), itime, debug )
 
@@ -666,12 +634,12 @@ endif
          endif
 
 !-----output new variable at first time level
-         var_name=trim(var_pref) // trim(bdyname(m))
+         var_name=trim(var3d(n)) // trim(bdyname(m))
          call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
                                    dims(1), dims(2), dims(3), itime, debug )
 
 !-----output new tendancy 
-         var_name=trim(var_pref) // trim(tenname(m))
+         var_name=trim(var3d(n)) // trim(tenname(m))
          call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                    dims(1), dims(2), dims(3), itime, debug )
 
