@@ -10,7 +10,7 @@
 # $Name$
 #
 #----------------------------------------------------------------------
-# Purpose: Run wrfsi
+# Purpose: Run wrfsi V2.1
 #-----------------------------------------------------------------------
 # set echo
 
@@ -41,8 +41,6 @@
 
  set MY_NUM_ACTIVE_SUBNESTS = `expr ${MY_NUM_DOMAINS} \- 1`
 
-### setenv	MACHINE		"ibmncar"
-
  setenv SOURCE_ROOT   $INSTALLROOT
  setenv GEOG_DATAROOT /usr/local/wrfsi/SI_GEOG
  setenv GRIB_DATADIR  ${DATAROOT}/${GRIB_DATA}
@@ -55,23 +53,8 @@
     setenv PATH_TO_PERL /usr/local/bin
  endif
 
- if(${OS} == 'AIX') then
-    if ( ! -d /home/blackforest/$user/bin/netcdf_links ) then
-     mkdir -p /home/blackforest/$user/bin/netcdf_links
-     set cwd = `pwd`
-     cd /home/blackforest/$user/bin/netcdf_links
-     ln -sf /usr/local/apps/netcdf-3.5.1/bin bin
-     ln -sf /usr/local/apps/netcdf-3.5.1/man man
-     ln -sf /usr/local/apps/netcdf-3.5.1/include include
-     ln -sf /usr/local/apps/netcdf-3.5.1/lib32/r4i4 lib
-     cd ${cwd}
-    endif
-
-    setenv NETCDF	/home/blackforest/$user/bin/netcdf_links
-# else
-#    setenv NETCDF	/usr/local/netcdf
-    setenv NETCDF	/ocotillo/users/caya/netcdf
- endif
+# setenv NETCDF	/usr/local/netcdf
+ setenv NETCDF	/ocotillo/users/caya/netcdf
 
  set BGN_CCYYMMDDHH = ${START_DATE}
  set END_CCYYMMDDHH = `advance_cymdh ${START_DATE} ${FORECAST_LENGTH}`
@@ -80,8 +63,7 @@
 
  setenv BGN_CCYYMMDDHH ${BGN_CCYYMMDDHH}
  setenv END_CCYYMMDDHH ${END_CCYYMMDDHH}
- setenv INTERVAL_IN_HOUR ${INTERVAL_IN_HOUR}
-
+ 
  setenv	MY_PROJECTION		lambert
  setenv MY_MOAD_STAND_LATS	"30.0, 60.0"
  set    VERTIVAL_LEVELS	=	( "1.000, 0.990, 0.978, 0.964, 0.946," \
@@ -152,95 +134,145 @@ install_wrfsi:
  
 #--------------------------------------------------------------------
 
- if ( ! -d ${DATAROOT} ) mkdir -p ${DATAROOT}
+ mkdir -p ${DATAROOT}
  cd ${DATAROOT}
 
- if(! -d templates ) mkdir -p templates
+ mkdir -p templates
  cd templates
 
-# if(! -d ${TEMPLATES} ) mkdir -p ${TEMPLATES}
+# mkdir -p ${TEMPLATES}
 # cd ${TEMPLATES}
 
  rm -f script.sed
 
 cat > script.sed << EOF
- s/MY_SIMULATION_NAME/${CASE_NAME}/g
- s/MY_USER_DESC/${user}/g
- s/MY_START_YEAR/${s_year}/g
- s/MY_START_MONTH/${s_month}/g
- s/MY_START_DAY/${s_day}/g
- s/MY_START_HOUR/${s_hour}/g
- s/MY_START_MINUTE/00/g
- s/MY_START_SECOND/00/g
- s/MY_END_YEAR/${e_year}/g
- s/MY_END_MONTH/${e_month}/g
- s/MY_END_DAY/${e_day}/g
- s/MY_END_HOUR/${e_hour}/g
- s/MY_END_MINUTE/00/g
- s/MY_END_SECOND/00/g
- s/MY_INTERVAL/${INTERVAL_IN_SECOND}/g
- s/MY_NUM_DOMAINS/${MY_NUM_DOMAINS}/g
- s/MY_PROJECTION/${MY_PROJECTION}/g
- s/LLI2/${LLI2}/g
- s/LLJ2/${LLJ2}/g
- s/URI2/${URI2}/g
- s/URJ2/${URJ2}/g
- s/MY_INIT_DATA/${DATASOURCE}/g
- s/MY_MOAD_KNOWN_LAT/${MY_MOAD_KNOWN_LAT}/g
- s/MY_MOAD_KNOWN_LON/${MY_MOAD_KNOWN_LON}/g
- s/MY_MOAD_STAND_LATS/${MY_MOAD_STAND_LATS}/g
- s/MY_MOAD_STAND_LONS/${MY_MOAD_STAND_LONS}/g
- s/GRID_DISTANCE/${GRID_DISTANCE}/g
- s/WEST_EAST_GRIDS/${WEST_EAST_GRIDS}/g
- s/SOUTH_NORTH_GRIDS/${SOUTH_NORTH_GRIDS}/g
- s/VERTIVAL_LEVELS/${VERTIVAL_LEVELS}/g
- s/MY_NUM_ACTIVE_SUBNESTS/${MY_NUM_ACTIVE_SUBNESTS}/g
+ /SIMULATION_NAME/c\
+ SIMULATION_NAME = '${CASE_NAME}',
+ /USER_DESC/c\
+ USER_DESC = '${user}'
+ /START_YEAR/c\
+ START_YEAR = ${s_year},
+ /START_MONTH/c\
+ START_MONTH = ${s_month},
+ /START_DAY/c\
+ START_DAY = ${s_day},
+ /START_HOUR/c\
+ START_HOUR = ${s_hour},
+ /START_MINUTE/c\
+ START_MINUTE = 00,
+ /START_SECOND/c\
+ START_SECOND = 00,
+ /END_YEAR/c\
+ END_YEAR = ${e_year},
+ /END_MONTH/c\
+ END_MONTH = ${e_month},
+ /END_DAY/c\
+ END_DAY = ${e_day},
+ /END_HOUR/c\
+ END_HOUR = ${e_hour},
+ /END_MINUTE/c\
+ END_MINUTE = 00,
+ /END_SECOND/c\
+ END_SECOND = 00,
+ /INTERVAL/c\
+ INTERVAL = ${INTERVAL_IN_SECOND}
+ /NUM_DOMAINS/c\
+ NUM_DOMAINS = ${MY_NUM_DOMAINS},
+ /XDIM/c\
+ XDIM = ${WEST_EAST_GRIDS},
+ /YDIM/c\
+ YDIM = ${SOUTH_NORTH_GRIDS},
+ /DOMAIN_ORIGIN_LLI/c\
+ DOMAIN_ORIGIN_LLI = 1,${LLI2},
+ /DOMAIN_ORIGIN_LLJ/c\
+ DOMAIN_ORIGIN_LLJ = 1,${LLJ2},
+ /DOMAIN_ORIGIN_URI/c\
+ DOMAIN_ORIGIN_URI = ${WEST_EAST_GRIDS},${URI2},
+ /DOMAIN_ORIGIN_URJ/c\
+ DOMAIN_ORIGIN_URJ = ${SOUTH_NORTH_GRIDS},${URJ2},
+ /MAP_PROJ_NAME/c\
+ MAP_PROJ_NAME = '${MY_PROJECTION}',
+ /MOAD_KNOWN_LAT/c\
+ MOAD_KNOWN_LAT = ${MY_MOAD_KNOWN_LAT},
+ /MOAD_KNOWN_LON/c\
+ MOAD_KNOWN_LON = ${MY_MOAD_KNOWN_LON},
+ /MOAD_STAND_LATS/c\
+ MOAD_STAND_LATS = ${MY_MOAD_STAND_LATS},
+ /MOAD_STAND_LONS/c\
+ MOAD_STAND_LONS = ${MY_MOAD_STAND_LONS},
+ /MOAD_DELTA_X/c\
+ MOAD_DELTA_X = ${GRID_DISTANCE},
+ /MOAD_DELTA_Y/c\
+ MOAD_DELTA_Y = ${GRID_DISTANCE},
+ /TOPO_30S/c\
+ TOPO_30S = '${GEOG_DATAROOT}/topo_30s',
+ /LANDUSE_30S/c\
+ LANDUSE_30S = '${GEOG_DATAROOT}/landuse_30s',
+ /SOILTYPE_TOP_30S/c\
+ SOILTYPE_TOP_30S = '${GEOG_DATAROOT}/soiltype_top_30s',
+ /SOILTYPE_BOT_30S/c\
+ SOILTYPE_BOT_30S = '${GEOG_DATAROOT}/soiltype_bot_30s',
+ /GREENFRAC/c\
+ GREENFRAC = '${GEOG_DATAROOT}/greenfrac',
+ /SOILTEMP_1DEG/c\
+ SOILTEMP_1DEG = '${GEOG_DATAROOT}/soiltemp_1deg',
+ /ALBEDO_NCEP/c\
+ ALBEDO_NCEP = '${GEOG_DATAROOT}/albedo_ncep',
+ /MAXSNOWALB/c\
+ MAXSNOWALB = '${GEOG_DATAROOT}/maxsnowalb',
+ /ISLOPE/c\
+ ISLOPE = '${GEOG_DATAROOT}/islope'
+ /NUM_ACTIVE_SUBNESTS/c\
+ NUM_ACTIVE_SUBNESTS = ${MY_NUM_ACTIVE_SUBNESTS},
+ /INIT_ROOT/c\
+ INIT_ROOT = '${DATASOURCE}',
+ /LBC_ROOT/c\
+ LBC_ROOT = '${DATASOURCE}',
+ /LEVELS/c\
+ LEVELS = ${VERTIVAL_LEVELS}
+ /ANALPATH/c\
+ ANALPATH = '${EXT_DATAROOT}/extprd',
+ /LBCPATH/c\
+ LBCPATH = '${EXT_DATAROOT}/extprd',
+ /LSMPATH/c\
+ LSMPATH = '${EXT_DATAROOT}/extprd',
+ /CONSTANTS_PATH/c\
+ CONSTANTS_PATH = '${EXT_DATAROOT}/extprd'
 EOF
 
  sed -f script.sed \
-    ${SOURCE_ROOT}/templates/default/wrfsi.nl.template > sample
-
- m4 -DMY_GEOG_ROOT=${GEOG_DATAROOT} \
-    -DMY_EXT_DATAROOT=${EXT_DATAROOT} \
-    sample > wrfsi.nl
-
- cp wrfsi.nl ${DATAROOT}/wrfsi.nl
+    ${SOURCE_ROOT}/templates/default/wrfsi.nl > wrfsi.nl
 
 #--------------------------------------------------------------------
 
 grid_gen:
 
- if(! -d ${DATAROOT}/data/cdl ) mkdir -p ${MOAD_DATAROOT}/cdl
- if(! -d ${DATAROOT}/static ) mkdir -p ${MOAD_DATAROOT}/static
- if ( ! -d ${MOAD_DATAROOT}/extprd ) mkdir -p ${MOAD_DATAROOT}/extprd
- if ( ! -d ${MOAD_DATAROOT}/log    ) mkdir -p ${MOAD_DATAROOT}/log
- if ( ! -d ${MOAD_DATAROOT}/siprd  ) mkdir -p ${MOAD_DATAROOT}/siprd
-
  if ( $RUN_GRID_GEN ) then
-    cp ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/cdl/wrfsi.cdl
-    cp ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/static/.
+    mkdir -p ${TEMPLATES}
+    cp -pv ${DATAROOT}/templates/wrfsi.nl ${TEMPLATES}/wrfsi.nl
 
-    $INSTALLROOT/etc/window_domain_rt.pl -w wrfsi \
-           -t ${TEMPLATES} -c \
+    cd ${INSTALLROOT}/etc
+    ./window_domain_rt.pl -w wrfsi -t ${TEMPLATES} -c \
            -s ${SOURCE_ROOT}
 
-    $SOURCE_ROOT/bin/gridgen_model.exe ${MOAD_DATAROOT}
-    cp ${MOAD_DATAROOT}/static/static.wrfsi.d01 \
-       ${MOAD_DATAROOT}/static/static.wrfsi
-    cp -r ${MOAD_DATAROOT}/static ${INSTALLROOT}/domains/${CASE_NAME}
+    cp -r ${MOAD_DATAROOT} ${INSTALLROOT}/domains/${CASE_NAME}
  else
-    cp -rf ${INSTALLROOT}/domains/${CASE_NAME}/static ${MOAD_DATAROOT}
-    cp -f ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/cdl/wrfsi.cdl
-    cp -f ${DATAROOT}/wrfsi.nl ${MOAD_DATAROOT}/static/.
+    cp -rf ${INSTALLROOT}/domains/${CASE_NAME} ${MOAD_DATAROOT}
  endif
- 
+
+# THE SCRIPT window_domain_rt.pl GENERATE THE DIRECTORY STRUCTURE OF
+# $MOAD_DATAROOT. SINCE WE CHOSE $EXT_DATAROOT == $MOAD_DATAROOT,
+# ${EXT_DATAROOT}/extprd HAS TO BE CREATED AFTER window_domain_rt.pl IS RUN.
+
+ mkdir -p ${EXT_DATAROOT}/extprd
+
 #--------------------------------------------------------------------
 
 grip_prep:
 
 # link to appropriate GRIB DATA
  set END_DATE = `advance_cymdh $START_DATE $FORECAST_LENGTH`  # End time of forecast
- if ( ! -e $GRIB_DATADIR ) mkdir $GRIB_DATADIR
+ mkdir -p $GRIB_DATADIR
  cd $GRIB_DATADIR
 
  set DATE = $START_DATE
@@ -258,7 +290,7 @@ grip_prep:
      set YY = `echo $DATE | cut -c1-4`
      set GRIB_FILE = ${YY}${MM}${DD}${HH}.AWIP3D00.tm00
    endif
- 
+
    if ( -e $GRIB_DATA_DIR/$GRIB_FILE ) then
      ln -s $GRIB_DATA_DIR/$GRIB_FILE $GRIB_FILE
    else
@@ -272,7 +304,7 @@ grip_prep:
 
  cd ${MOAD_DATAROOT}/static
 
- cp $SOURCE_ROOT/extdata/static/Vtable.$DATASOURCE .
+ cp -pv $SOURCE_ROOT/extdata/static/Vtable.$DATASOURCE .
 
 cat >! ./grib_prep.nl << EOF
 &filetimespec
@@ -305,16 +337,7 @@ cat >! ./grib_prep.nl << EOF
 /
 EOF
 
- $INSTALLROOT/etc/grib_prep.pl -l ${FORECAST_LENGTH} \
-                               -s ${START_DATE} \
-                               -t ${DATA_INTERVAL} \
-                                  ${DATASOURCE}
-
  cd ${MOAD_DATAROOT}
-
- setenv EXT_DATAROOT ${MOAD_DATAROOT}
-
- $INSTALLROOT/etc/wrfprep.pl -f ${FORECAST_LENGTH} -s ${START_DATE}
 
 wrfsi:
 
@@ -322,5 +345,3 @@ wrfsi:
 	${BGN_CCYYMMDDHH} ${FORECAST_LENGTH} ${DATASOURCE}
 
  exit ( 0 )
-
-#mv ${EXT_DATAROOT}/siprd/wrf_real_input_em* /mmm/users/mslee/SIOUT_100KM/.
