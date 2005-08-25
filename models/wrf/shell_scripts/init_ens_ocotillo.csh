@@ -20,6 +20,20 @@
 #
 #-----------------------------------------------------------------------
 
+#      The GRID GENeration is the most expensive operation here.
+#      Thus, it is advised to first run with
+#
+#      setenv RUN_GRIDGEN 1
+#      NCYCLE = 1
+#      ES = 1
+#
+#      This generate the GRID once and for all.
+#      If the result is correct, then run with
+#
+#      setenv RUN_GRIDGEN 0
+#
+#      and increase NCYCLE and ES as desired.
+
 #--------------------------------------------
 # 0) Set up various environment variables:
 #--------------------------------------------
@@ -27,9 +41,13 @@
 setenv RUN_GRIDGEN 0
 setenv RPC_UNSUPPORTED_NETIFS eth0
 
-setenv CASE_NAME	     conus
+setenv CASE_NAME	     conus200
 setenv START_DATE_ASSIM 2003010100            # Start time of period.
-setenv NCYCLE 40                              # Number of assimilation cycles.
+
+set seconds = 0
+set days = 146827
+
+setenv NCYCLE 120                             # Number of assimilation cycles.
 setenv FCST_RANGE 6                           # Forecast range (hours).
 setenv INTERVAL 6                             # Interval between analyses (hours)
 
@@ -38,7 +56,7 @@ setenv GRIB_DATA AVN                          # AVN = (NCEP/FNL - 1deg res.)
 
 setenv DATASOURCE AVN
 
-setenv DATA_DIR     /ocotillo1/wrfdev/${GRIB_DATA}      # Global analysis directory
+setenv DATA_DIR     /ocotillo6/caya/wrfdev/${GRIB_DATA}      # Global analysis directory
 
 setenv S_AVAIL_DATE 1999122500
 setenv E_AVAIL_DATE 2004060700
@@ -46,15 +64,16 @@ setenv BACK_YEAR       5000000
 
 setenv DAT_DIR     `pwd`                      # Scratch data space.
 
+#setenv WRF_DIR        /ocotillo1/${USER}/WRFV2.0.3.1/WRFV2   # WRF
 setenv WRF_DIR        /ocotillo1/${USER}/WRFV2   # WRF
 setenv WRFSI_DIR_SRC  ${WRF_DIR}/wrfsi        # WRF SI.
 
 setenv VARTMP         /var/tmp                # Remote work directory
 
 set startnode = 1
-set endnode = 10
+set endnode = 14
 
-set ES = 41
+set ES = 1
 set SCALE = 0.2
 
 setenv WRF_DT 600                             # Model timestep (seconds)
@@ -82,9 +101,6 @@ set URJ = (  45 72 72 )
 
 set grid_ratio = ( 1 3 3 )
 set time_step_ratio = ( 1 3 3 )
-
-set seconds = 0
-set days = 146827
 
 set nextmem = 72                # Advance this many hours for the next member.
 
@@ -158,7 +174,7 @@ while ( $ICYC <= $NCYCLE )
     echo "1) Prepare global analysis from ${GRIB_DATA}."
 
     set DATE = $START_DATE
-    (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir ${DAT_DIR_MEM} ; mkdir ${DAT_DIR_MEM}/${GRIB_DATA}" )
+    (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir -p ${DAT_DIR_MEM}/${GRIB_DATA}" )
     while ( $DATE <= $END_DATE )
 
 	set MM = `echo $DATE | cut -c5-6`
@@ -314,7 +330,6 @@ cat >! ${WRF_DIR}/test/em_real/namelist.input << EOF
  dx                         = $dx[$dn],
  dy                         = $dx[$dn],
  grid_id                    = 1,
- level                      = 1,
  parent_id                  = 0,
  i_parent_start             = 0,
  j_parent_start             = 0,
@@ -396,17 +411,17 @@ EOF
 
    rm ${WRF_DIR}/test/em_real/wrf_real_input_em*
 
-   mv ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em.d0${dn}.* ${WRF_DIR}/test/em_real/.
+   mv -v ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em.d0${dn}.* ${WRF_DIR}/test/em_real/.
    if ($dn > 1) then
-      mv ${WRF_DIR}/test/em_real/wrf_real_input_em.d0${dn}.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00 \
+      mv -v ${WRF_DIR}/test/em_real/wrf_real_input_em.d0${dn}.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00 \
          ${WRF_DIR}/test/em_real/wrf_real_input_em.d01.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00
    endif
 
    ./run_wrfreal.csh $NC $WRF_DIR
 
-   mv ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_d0${dn}_${NC}
+   mv -v ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_d0${dn}_${NC}
    if ($dn == 1) then
-      mv ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
+      mv -v ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
    endif
 
    @ dn ++
@@ -440,16 +455,16 @@ end
 if ( $ICYC == 1 ) then
    set dn = 1
    while ( $dn <= $MY_NUM_DOMAINS )
-      cp ${DAT_DIR}/wrfinput_d0${dn}_1 ${DAT_DIR}/wrfinput_d0${dn}_mean
+      cp -pv ${DAT_DIR}/wrfinput_d0${dn}_1 ${DAT_DIR}/wrfinput_d0${dn}_mean
       @ dn ++
    end
    rm -f filter_ics
 endif
-cp ${DAT_DIR}/wrfbdy_1 ${DAT_DIR}/wrfbdy_mean
+cp -pv ${DAT_DIR}/wrfbdy_1 ${DAT_DIR}/wrfbdy_mean
 
 ensemble_init < ens.info > out.ensemble_init_${days}_${seconds}
 
-mv ${DAT_DIR}/wrfbdy_mean ${DAT_DIR}/wrfbdy_mean_${days}_${seconds}
+mv -v ${DAT_DIR}/wrfbdy_mean ${DAT_DIR}/wrfbdy_mean_${days}_${seconds}
 
 set NC = 1
 # Loop over the ensemble members
@@ -457,7 +472,7 @@ while ( $NC <= $ES )
 
    set dn = 1
    while ( $dn <= $MY_NUM_DOMAINS )
-      mv ${DAT_DIR}/wrfinput_d0${dn}_${NC} wrfinput_d0${dn}
+      mv -v ${DAT_DIR}/wrfinput_d0${dn}_${NC} wrfinput_d0${dn}
       @ dn ++
    end
 
@@ -475,7 +490,7 @@ while ( $NC <= $ES )
 
    endif
 
-   mv ${DAT_DIR}/wrfbdy_${NC} ${DAT_DIR}/wrfbdy_${days}_${seconds}_${NC}
+   mv -v ${DAT_DIR}/wrfbdy_${NC} ${DAT_DIR}/wrfbdy_${days}_${seconds}_${NC}
 
    @ NC ++
 

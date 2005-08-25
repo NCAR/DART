@@ -28,7 +28,7 @@ set temp_dir = $3
 
 # set verbose
 
-rm -rf   $temp_dir
+\rm -rf  $temp_dir
 mkdir -p $temp_dir
 cd       $temp_dir
 
@@ -42,6 +42,7 @@ ln -s ${WORKDIR}/VEGPARM.TBL .
 ln -s ${WORKDIR}/SOILPARM.TBL .
 ln -s ${WORKDIR}/GENPARM.TBL .
 ln -s ${WORKDIR}/wrf.exe .
+ln -s ${WORKDIR}/gribmap.txt .
 
 hostname > nfile
 hostname >> nfile
@@ -49,7 +50,7 @@ hostname >> nfile
 cp -pv ${WORKDIR}/wrfinput_d0? .
                    # Provides auxilliary info not avail. from DART state vector
 
-if ( -e ${WORKDIR}/assim_model_state_ic_mean ) then
+if ( -e  ${WORKDIR}/assim_model_state_ic_mean ) then
    ln -s ${WORKDIR}/assim_model_state_ic_mean dart_wrf_vector
    echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
    cp -pv wrfinput_d01 wrfinput_mean
@@ -61,16 +62,16 @@ mv -v ${WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
 
 echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
 
-rm dart_wrf_vector
+\rm dart_wrf_vector
 
-set time = `head -1 wrf.info`
-set targsecs = $time[1]
-set targdays = $time[2]
+set secday = `head -1 wrf.info`
+set targsecs = $secday[1]
+set targdays = $secday[2]
 set targkey = `echo "$targdays * 86400 + $targsecs" | bc`
 
-set time = `head -2 wrf.info | tail -1`
-set wrfsecs = $time[1]
-set wrfdays = $time[2]
+set secday = `head -2 wrf.info | tail -1`
+set wrfsecs = $secday[1]
+set wrfdays = $secday[2]
 set wrfkey = `echo "$wrfdays * 86400 + $wrfsecs" | bc`
 
 # If model blew up in the previous cycle, relax BC tendency toward mean.
@@ -169,7 +170,7 @@ while ( $wrfkey < $targkey )
    set isec = `echo "$keys[$ifile] % 86400" | bc`
 
 # Copy the boundary condition file to the temp directory.
-   cp ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+   cp -pv ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
 
    if ( $targkey > $keys[$ifile] ) then
       set INTERVAL_SS = `echo "$keys[$ifile] - $wrfkey" | bc`
@@ -229,7 +230,7 @@ endif
 # Create WRF namelist.input:
 #-----------------------------------------------------------------------
 
-rm -f script.sed
+\rm -f script.sed
 cat > script.sed << EOF
  /run_hours/c\
  run_hours                  = ${RUN_HOURS}
@@ -274,7 +275,7 @@ EOF
    echo $infl | ${WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
    if ( -e rsl.out.integration ) then
-      rm -f rsl.*
+      \rm -f rsl.*
    endif
 
    ${ADV_MOD_COMMAND} >>& rsl.out.integration
@@ -290,10 +291,10 @@ if ( -e ${WORKDIR}/extract ) then
    if ( $element == 1 ) then
       ls wrfout_d0${MY_NUM_DOMAINS}_* > wrfout.list
       if ( -e ${WORKDIR}/psfc.nc ) then
-         cp ${WORKDIR}/psfc.nc .
+         cp -pv ${WORKDIR}/psfc.nc .
       endif
       echo `cat wrfout.list | wc -l` | ${WORKDIR}/extract
-      mv psfc.nc ${WORKDIR}/.
+      mv -v psfc.nc ${WORKDIR}/.
    endif
 endif
 
@@ -303,7 +304,7 @@ endif
       @ dn ++
    end
 
-   rm -f wrfout*
+   \rm -f wrfout*
 
    set START_YEAR  = $END_YEAR
    set START_MONTH = $END_MONTH
@@ -326,6 +327,6 @@ echo ".false." | ${WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
 mv -f dart_wrf_vector $WORKDIR/assim_model_state_ud$element
 
 cd $WORKDIR
-#rm -rf $temp_dir
+#\rm -rf $temp_dir
 
 exit
