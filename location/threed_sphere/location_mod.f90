@@ -34,10 +34,11 @@ implicit none
 private
 
 public :: location_type, get_dist, get_location, set_location, set_location_missing, &
-       write_location, read_location, interactive_location, &
-       vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-       LocationDims, LocationName, LocationLName, horiz_dist_only, &
-       alloc_get_close_obs, get_close_obs, operator(==), operator(/=)
+          write_location, read_location, interactive_location, vert_is_undef, &
+          vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
+          query_location, LocationDims, LocationName, LocationLName, &
+          horiz_dist_only, alloc_get_close_obs, get_close_obs, &
+          operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -45,17 +46,19 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+! The possible values for the location_type%which_vert component.
+! These are intended to be PRIVATE to this module. Do not make public.
+
+integer, parameter :: VERTISUNDEF    = -2 ! has no vertical location (undefined)
+integer, parameter :: VERTISSURFACE  = -1 ! surface value
+integer, parameter :: VERTISLEVEL    =  1 ! by level
+integer, parameter :: VERTISPRESSURE =  2 ! by pressure
+integer, parameter :: VERTISHEIGHT   =  3 ! by height
+
 type location_type
    private 
    real(r8) :: lon, lat, vloc
-   integer  :: which_vert
-   ! which_vert determines if the location is by level or by height/pressure
-   !-2 ===> obs/state vector component has no vertical location
-   !-1 ===> obs is surface value
-   ! 1 ===> obs is by level
-   ! 2 ===> obs is by pressure
-   ! 3 ===> obs is by height
-
+   integer  :: which_vert     ! determines if by level, height, pressure, ...
 end type location_type
 
 type(random_seq_type) :: ran_seq
@@ -234,8 +237,8 @@ if(present(no_vert)) then
 else 
    comp_h_only = horiz_dist_only
 endif
-! Finally, if which_vert is -2 for either location do only horizontal
-if(loc1%which_vert == -2 .or. loc2%which_vert == -2) comp_h_only = .true.
+! Finally, if which_vert has no vertical definition for either location do only horizontal
+if(loc1%which_vert == VERTISUNDEF .or. loc2%which_vert == VERTISUNDEF) comp_h_only = .true.
 
 ! Add in vertical component if required
 if(.not. comp_h_only) then
@@ -287,6 +290,46 @@ end function get_location
 
 
 
+function vert_is_undef(loc)
+!---------------------------------------------------------------------------
+!
+! Given a location, return true if vertical coordinate is undefined, else false
+
+logical :: vert_is_undef
+type(location_type), intent(in) :: loc
+
+if ( .not. module_initialized ) call initialize_module
+
+if(loc%which_vert == VERTISUNDEF) then
+   vert_is_noloc = .true.
+else
+   vert_is_noloc = .false.
+endif
+
+end function vert_is_undef
+
+
+
+function vert_is_surface(loc)
+!---------------------------------------------------------------------------
+!
+! Given a location, return true if vertical coordinate is surface, else false
+
+logical :: vert_is_surface
+type(location_type), intent(in) :: loc
+
+if ( .not. module_initialized ) call initialize_module
+
+if(loc%which_vert == VERTISSURFACE) then
+   vert_is_surface = .true.
+else
+   vert_is_surface = .false.
+endif
+
+end function vert_is_surface
+
+
+
 function vert_is_pressure(loc)
 !---------------------------------------------------------------------------
 !
@@ -297,13 +340,15 @@ type(location_type), intent(in) :: loc
 
 if ( .not. module_initialized ) call initialize_module
 
-if(loc%which_vert == 2) then
+if(loc%which_vert == VERTISPRESSURE) then
    vert_is_pressure = .true.
 else
    vert_is_pressure = .false.
 endif
 
 end function vert_is_pressure
+
+
 
 function vert_is_height(loc)
 !---------------------------------------------------------------------------
@@ -315,13 +360,15 @@ type(location_type), intent(in) :: loc
 
 if ( .not. module_initialized ) call initialize_module
 
-if(loc%which_vert == 3 ) then
+if(loc%which_vert == VERTISHEIGHT ) then
    vert_is_height = .true.
 else
    vert_is_height = .false.
 endif
 
 end function vert_is_height
+
+
 
 function vert_is_level(loc)
 !---------------------------------------------------------------------------
@@ -333,7 +380,7 @@ type(location_type), intent(in) :: loc
 
 if ( .not. module_initialized ) call initialize_module
 
-if(loc%which_vert == 1) then
+if(loc%which_vert == VERTISLEVEL) then
    vert_is_level = .true.
 else
    vert_is_level = .false.
@@ -453,8 +500,7 @@ endif
 set_location%lon = lon * DEG2RAD
 set_location%lat = lat * DEG2RAD
 
-! NOVERT   Jeff said use -2 for 'no vertical location' variables
-if(which_vert < -2 .or. which_vert == 0 .or. which_vert > 3) then
+if(which_vert < VERTISUNDEF .or. which_vert == 0 .or. which_vert > VERTISHEIGHT) then
    write(errstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, or 3'
    call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
 endif
@@ -623,24 +669,30 @@ if(present(set_to_default)) then
 endif
 
 write(*, *)'Vertical co-ordinate options'
-write(*, *)'-1 -> surface, 1 -> model level, 2 -> pressure, 3 -> height'
+write(*, *)VERTISUNDEF,' --> vertical coordinate undefined'
+write(*, *)VERTISSURFACE,' --> surface'
+write(*, *)VERTISLEVEL,' --> model level'
+write(*, *)VERTISPRESSURE,' --> pressure'
+write(*, *)VERTISHEIGHT,' --> height'
+
 100   read(*, *) location%which_vert
-if(location%which_vert == 1 ) then
+if(location%which_vert == VERTISLEVEL ) then
    write(*, *) 'Vertical co-ordinate model level'
    read(*, *) location%vloc
-else if(location%which_vert == 2 ) then
+else if(location%which_vert == VERTISPRESSURE ) then
    write(*, *) 'Vertical co-ordinate Pressure (in hPa)'
    read(*, *) location%vloc
    location%vloc = 100.0 * location%vloc
-else if(location%which_vert == 3 ) then
+else if(location%which_vert == VERTISHEIGHT ) then
    write(*, *) 'Vertical co-ordinate height (in gpm)'
    read(*, *) location%vloc
-else if(location%which_vert == -1 ) then
+else if(location%which_vert == VERTISSURFACE ) then
    write(*, *) 'Vertical co-ordinate surface pressure (in hPa)'
    read(*, *) location%vloc
    location%vloc = 100.0 * location%vloc
 else
-   write(*, *) 'Wrong choice of which_vert try again between -1 and 3'
+   write(*, *) 'Wrong choice of which_vert try again between ',VERTISUNDEF, &
+               ' and ',VERTISHEIGHT
    go to 100
 end if
 

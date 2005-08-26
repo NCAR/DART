@@ -102,6 +102,8 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_location">read_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_location">interactive_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location_missing">set_location_missing</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_undef">vert_is_undef</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_surface">vert_is_surface</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_pressure">vert_is_pressure</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_level">vert_is_level</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_height">vert_is_height</A></TD></TR>
@@ -380,6 +382,50 @@ types module.
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>set_location_missing&nbsp; &nbsp; </em></TD>
      <TD>A location with all elements set to missing values</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="vert_is_undef"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = vert_is_undef(loc) </em>
+ <pre>
+ logical                         :: <em class=code>vert_is_undef</em>
+ type(location_type), intent(in) :: <em class=code>loc</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns true if which_vert has no vertical location (undefined), else false.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>vert_is_undef&nbsp; &nbsp; </em></TD>
+     <TD>Returns true if vertical coordinate is not applicable.</TD></TR>
+ <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
+     <TD>A location type</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--================================================================-->
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="vert_is_surface"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = vert_is_surface(loc) </em>
+ <pre>
+ logical                         :: <em class=code>vert_is_surface</em>
+ type(location_type), intent(in) :: <em class=code>loc</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns true if which_vert is for surface, else false.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>vert_is_surface&nbsp; &nbsp; </em></TD>
+     <TD>Returns true if vertical coordinate type is surface</TD></TR>
+ <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
+     <TD>A location type</TD></TR>
  </TABLE>
  <BR>
 
