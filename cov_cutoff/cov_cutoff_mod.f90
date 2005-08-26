@@ -74,14 +74,6 @@ real(r8)           :: z, r
 integer            :: iunit, ierr, io
 integer            :: localization_type
 
-if(present(localization_override)) then
-   localization_type = localization_override
-else
-   localization_type = select_localization
-endif
-
-z = abs(z_in)
-
 !--------------------------------------------------------
 ! Initialize namelist if not already done
 if(.not. namelist_initialized) then
@@ -110,6 +102,16 @@ if(.not. namelist_initialized) then
 endif
 !---------------------------------------------------------
 
+if(present(localization_override)) then
+   localization_type = localization_override
+else
+   localization_type = select_localization
+endif
+
+z = abs(z_in)
+
+!----------------------------------------------------------
+
 if(localization_type == 3) then ! Ramped localization
 
    if(z >= 2.0_r8 * c) then
@@ -121,7 +123,6 @@ if(localization_type == 3) then ! Ramped localization
    endif
 
 else if(localization_type == 2) then ! BOXCAR localization
-
    if(z < 2.0_r8 * c) then
       comp_cov_factor = 1.0_r8
    else
