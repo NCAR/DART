@@ -13,7 +13,7 @@ program preprocess
 
 ! NEED TO ADD IN ALL THE ERROR STUFF
 
-use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
+use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
                              open_file, check_nml_error, logfileunit, close_file, &
                              initialize_utilities, timestamp
