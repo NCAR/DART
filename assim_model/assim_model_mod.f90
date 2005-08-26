@@ -492,7 +492,7 @@ if(model_time > time) then
    !!!write(errstring, *)'model time (',is1,id1,') > time (',is2,id2,')'
    !!!call error_handler(E_ERR,'aget_closest_state_time_to', errstring, source, revision, revdate)
 
-   ! If model_time is past start of obs window, don't advnce it
+   ! If model_time is past start of obs window, don't advance it
    aget_closest_state_time_to = model_time
    return
 endif
