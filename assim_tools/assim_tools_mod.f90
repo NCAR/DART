@@ -25,17 +25,16 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_nu
    set_obs, get_copy_meta_data, read_obs_seq, destroy_obs_sequence, get_num_obs, &
    write_obs_seq, destroy_obs, get_expected_obs
    
-use obs_def_mod, only      : obs_def_type, get_obs_def_error_variance, get_obs_def_location, &
-                             get_obs_def_time
-use cov_cutoff_mod, only   : comp_cov_factor
-use obs_model_mod, only    : get_close_states
-use reg_factor_mod, only   : comp_reg_factor
-use location_mod, only     : location_type, get_dist, alloc_get_close_obs, get_close_obs
-use time_manager_mod, only : time_type
-use ensemble_manager_mod, only : ensemble_type, &
-                                 transpose_ens_to_regions, transpose_regions_to_ens, &
-                                 put_region_by_number, get_region_by_number, is_ens_in_core, &
-                                 ens_direct => ens
+use          obs_def_mod, only : obs_def_type, get_obs_def_error_variance, &
+                                 get_obs_def_location, get_obs_def_time
+use       cov_cutoff_mod, only : comp_cov_factor
+use        obs_model_mod, only : get_close_states
+use       reg_factor_mod, only : comp_reg_factor
+use         location_mod, only : location_type, get_dist, alloc_get_close_obs, &
+                                 get_close_obs
+use ensemble_manager_mod, only : ensemble_type, transpose_ens_to_regions, &
+                                 transpose_regions_to_ens, put_region_by_number, &
+                                 get_region_by_number, is_ens_in_core, ens_direct => ens
 
 implicit none
 private
@@ -994,7 +993,7 @@ Observations : do jjj = 1, num_obs_in_set
       grp_top = grp_bot + grp_size - 1
 
       ! Call obs_increment to do observation space
-      call obs_increment(ens_obs(grp_bot:grp_top, j), ens_size/num_groups, obs(j), &
+      call obs_increment(ens_obs(grp_bot:grp_top, j), grp_size, obs(j), &
          obs_err_var(j), obs_inc(grp_bot:grp_top), my_cov_inflate, my_cov_inflate_sd, net_a(group))
    end do Group1
 
@@ -1017,7 +1016,7 @@ Observations : do jjj = 1, num_obs_in_set
          grp_bot = (group - 1) * grp_size + 1
          grp_top = grp_bot + grp_size - 1
          call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
-            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), grp_size, &
             ens_inc(grp_bot:grp_top), regress(group), net_a(group))
       end do Group2
 
@@ -1075,7 +1074,7 @@ Observations : do jjj = 1, num_obs_in_set
          grp_bot = (group - 1) * grp_size + 1
          grp_top = grp_bot + grp_size - 1
          call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
-            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), ens_size/num_groups, &
+            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), grp_size, &
             ens_inc(grp_bot:grp_top), regress(group), net_a(group))
       end do Group3
 
@@ -1120,18 +1119,20 @@ end subroutine filter_assim_region
 subroutine filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size, model_size, num_obs_in_set, &
    num_groups, seq, keys, obs_sequence_in_name)
 
-integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
-type(ensemble_type), intent(in) :: ens_handle
-real(r8), intent(in) :: ens_obs(ens_size, num_obs_in_set)
-logical, intent(in) :: compute_obs_in(num_obs_in_set)
+integer,                 intent(in) :: ens_size, model_size, num_groups, num_obs_in_set
+integer,                 intent(in) :: keys(num_obs_in_set)
+type(ensemble_type),     intent(in) :: ens_handle
+real(r8),                intent(in) :: ens_obs(ens_size, num_obs_in_set)
+logical,                 intent(in) :: compute_obs_in(num_obs_in_set)
 type(obs_sequence_type), intent(inout) :: seq
-character(len=*), intent(in) :: obs_sequence_in_name
+character(len=*),        intent(in) :: obs_sequence_in_name
 
 integer :: i, j, domain_size, indx, obs_val_index, iunit, control_unit
 integer :: base_size, remainder, domain_top, domain_bottom
 logical :: compute_obs(num_obs_in_set), my_state(model_size)
-real(r8), allocatable :: ens(:, :)
-integer, allocatable :: indices(:)
+
+real(r8), allocatable :: ens(:,:)
+integer,  allocatable :: indices(:)
 
 character(len=28) :: in_file_name(num_domains), out_file_name(num_domains)
 character(len=129) :: temp_obs_seq_file, errstring
@@ -1217,7 +1218,7 @@ do j = 1, num_domains
       call get_region_by_number(ens_handle, j, domain_size, ens, indices)
    endif
 
-! Do ensemble filter update for this region
+   ! Do ensemble filter update for this region
    if(do_parallel == 0) then
       if(num_domains > 1 .or. .not. is_ens_in_core()) then
          call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
@@ -1231,7 +1232,8 @@ do j = 1, num_domains
             reg_cov_inflate(j), reg_cov_inflate_sd(j))
       endif
    else
-   ! Loop to write out arguments for each region
+
+      ! Loop to write out arguments for each region
       if(j < 10) then
          write(in_file_name(j), 11) 'filter_assim_region__in', j
          write(out_file_name(j), 11) 'filter_assim_region_out', j
@@ -1289,7 +1291,7 @@ if(do_parallel == 2 .or. do_parallel == 3) then
    close(control_unit)
 
 
-! Spawn the job to do parallel assims for do_parallel 2
+   ! Spawn the job to do parallel assims for do_parallel 2
    if(do_parallel == 2) then
       call system('echo go > batchflag; '//parallel_command//' ; sleep 1')
 
@@ -1300,7 +1302,7 @@ if(do_parallel == 2 .or. do_parallel == 3) then
             exit
          endif
       end do
-! Do the continuously running script case
+   ! Do the continuously running script case
    else if(do_parallel == 3) then
       call system('echo a > go_assim_regions')
       do
