@@ -301,9 +301,9 @@ type(location_type), intent(in) :: loc
 if ( .not. module_initialized ) call initialize_module
 
 if(loc%which_vert == VERTISUNDEF) then
-   vert_is_noloc = .true.
+   vert_is_undef = .true.
 else
-   vert_is_noloc = .false.
+   vert_is_undef = .false.
 endif
 
 end function vert_is_undef
