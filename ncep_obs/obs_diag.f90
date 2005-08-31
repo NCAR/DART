@@ -26,12 +26,15 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_next_obs, get_num_times, get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence 
+
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_def_kind 
+                             get_obs_def_location, get_obs_kind, &
+                             KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV
+
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=)
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                             obs_kind_type, get_obs_kind 
+!use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
+!                             obs_kind_type, get_obs_kind 
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, operator(*), &
                              operator(+), operator(-), operator(/=), operator(>)
@@ -50,7 +53,7 @@ revdate  = "$Date$"
 type(obs_sequence_type) :: seq
 type(obs_type)          :: observation, next_obs
 type(obs_def_type)      :: obs_def
-type(obs_kind_type)     :: obs_kind
+!type(obs_kind_type)     :: obs_kind
 type(location_type)     :: obs_loc
 type(time_type)         :: next_time
 
@@ -119,7 +122,14 @@ namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
 ! index 4 == region 4 == North America
 ! TJH - some kind of crazy nomenclature that South Pole = lat 0?
 
+
 integer, parameter :: Nregions = 4 
+
+character(len=20), parameter, dimension(Nregions) :: RegionNames = &
+ (/ 'Northern Hemisphere ', &
+    'Southern Hemisphere ', &
+    'Tropics             ', &
+    'North America       ' /)
 
 real(r8) :: lonlim1(Nregions), lonlim2(Nregions), &
             latlim1(Nregions), latlim2(Nregions)
@@ -435,7 +445,7 @@ DayLoop : do iday=1, tot_days
    !--------------------------------------------------------------------
 
    is_there_one = get_first_obs(seq, observation)
-   if ( is_there_one /= .TRUE. ) then
+   if ( .not. is_there_one ) then
       call error_handler(E_ERR,'obs_diag','No Observations in sequence.', &
       source,revision,revdate)
    endif
@@ -494,8 +504,7 @@ DayLoop : do iday=1, tot_days
          call get_obs_def(observation, obs_def)
 
          obs_err_var(obsindex) = get_obs_def_error_variance(obs_def) 
-         obs_kind              = get_obs_def_kind(obs_def)
-         flavor                = get_obs_kind(obs_kind)
+         flavor                = get_obs_kind(obs_def)
          obs_loc               = get_obs_def_location(obs_def)
          obsloc3               = get_location(obs_loc) 
 
@@ -1175,6 +1184,7 @@ write(logfileunit,*)'# Wind     obs   used: ',N_rej_vert_W
 !-----------------------------------------------------------------------
 
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
+write(iunit,'(''RegionNames    = '',a,'';'')')RegionNames
 write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
 write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
 write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
@@ -1277,7 +1287,6 @@ contains
 
    integer, dimension(nlev) :: dx
    integer, dimension(nlev), save :: inds = (/ (i,i=1,nlev) /)
-   integer :: i
 
    if ( pressure > pint(1) ) then ! pressure greater than 1025
       level_index = -1
