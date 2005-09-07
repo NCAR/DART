@@ -13,29 +13,27 @@ program perfect_model_obs
 
 ! Program to build an obs_sequence file from simulated observations.
 
-use types_mod,        only : r8
-use utilities_mod,    only : open_file, check_nml_error, file_exist, get_unit, close_file, &
+use        types_mod, only : r8
+use    utilities_mod, only : open_file, check_nml_error, file_exist, get_unit, close_file, &
                              initialize_utilities, register_module, error_handler, &
                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, timestamp
-use time_manager_mod, only : time_type, set_time, get_time, operator(/=), operator(*), operator(+)
-
+use time_manager_mod, only : time_type, set_time, get_time, &
+                             operator(/=), operator(*), operator(+) 
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
    get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
-   get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, get_num_qc, &
-   get_num_copies, read_obs_seq_header, set_qc_meta_data, get_expected_obs
+   get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, &
+   get_num_qc, get_num_copies, read_obs_seq_header, set_qc_meta_data, get_expected_obs
 
-use obs_def_mod,      only : obs_def_type, get_obs_def_time, get_obs_def_error_variance
-
-use obs_model_mod,    only : move_ahead
-
-use assim_model_mod, only  : static_init_assim_model, get_model_size, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance 
+use    obs_model_mod, only : move_ahead 
+use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    aget_initial_condition, get_model_state_vector, set_model_state_vector, &
-   set_model_time, get_model_time, &
-   netcdf_file_type, init_diag_output, aoutput_diagnostics, finalize_diag_output, &
-   init_assim_model, read_state_restart, awrite_state_restart, &
-   open_restart_read, open_restart_write, close_restart
-use random_seq_mod,  only  : random_seq_type, init_random_seq, random_gaussian
+   set_model_time, get_model_time, netcdf_file_type, init_diag_output, &
+   aoutput_diagnostics, finalize_diag_output, init_assim_model, read_state_restart, &
+   awrite_state_restart, open_restart_read, open_restart_write, close_restart
+
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, end_ensemble_manager, ensemble_type
 
