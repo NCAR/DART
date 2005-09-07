@@ -41,15 +41,18 @@ cp ${PBS_O_WORKDIR}/input.nml .
 cp ${PBS_O_WORKDIR}/trans_dart_to_sccm .
 cp ${PBS_O_WORKDIR}/trans_sccm_to_dart .
 
+# Yuqiong PLEASE COPY YOUR MODEL PROGRAM, SCRIPTS and ANY NEEDED
+# FILES TO THIS TEMPORARY DIRETORY HERE
+
 # Translate the dart file to an sccm input file (dart_data.dat)
 ./trans_dart_to_sccm
 
-# Advance the model (advanced state overwrites dart_data.dat)
-# ADVANCE MODEL COMMAND
+# Yuqiong: Advance the model (advanced state overwrites dart_data.dat)
+# ADVANCE MODEL COMMAND GOES HERE
 
 # Append the output from the advance to the file in the working directory
-# NEED TO DO THIS TO KEEP RECORD OF RUN
-###cat integrate_model_out_temp >> $PBS_O_WORKDIR/integrate_model_out_temp$element
+# NEED TO DO THIS TO KEEP RECORD OF RUN. Yuqiong, keep your output somewher
+# if you need it.
 
 # Convert the sccm file to a dart file (ends up in dart_file_out)
 ./trans_sccm_to_dart
