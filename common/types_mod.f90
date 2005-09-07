@@ -17,7 +17,7 @@ private
 public :: i8, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
 public :: MISSING_I, MISSING_DATA
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
-public :: L_over_Rv, ps0, earth_radius
+public :: L_over_Rv, ps0, earth_radius, gravity
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -70,5 +70,6 @@ real(r8), PARAMETER :: gas_constant   = 287.0_r8
 real(r8), PARAMETER :: L_over_Rv      = 5418.12_r8
 real(r8), PARAMETER :: ps0            = 100000.0_r8    ! Base sea level pressure
 real(r8), PARAMETER :: earth_radius   = 6370.0_r8      ! km, consistant with WRF
+real(r8), PARAMETER :: gravity        = 9.81_r8
 
 END MODULE types_mod
