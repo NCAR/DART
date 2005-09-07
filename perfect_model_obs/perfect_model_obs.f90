@@ -228,6 +228,15 @@ AdvanceTime: do
 
       if(istatus == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
          obs_value(1) = random_gaussian(random_seq, true_obs(1), sqrt(get_obs_def_error_variance(obs_def)))
+
+!TEMPORARY INCONSISTENT BIAS ADDITION; Reproduces CAM type problems
+!         if(j / 2 * 2 == j) then
+!            obs_value(1) = obs_value(1) + 1.0_r8
+!         else
+!            obs_value(1) = obs_value(1) - 1.0_r8
+!         endif
+
+
          ! Set qc to 0 if none existed before
          if(cnum_qc == 0) then
             qc(1) = 0.0_r8
