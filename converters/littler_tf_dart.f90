@@ -15,24 +15,23 @@ use        types_mod, only : r8, DEG2RAD, RAD2DEG, MISSING_I, MISSING_R8
 use    utilities_mod, only : open_file, check_nml_error, close_file, file_exist, &
                              get_unit, initialize_utilities, &
                              finalize_utilities, register_module, error_handler, E_ERR, &
-                             logfileunit
+                             E_MSG, logfileunit
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
                              insert_obs_in_seq, write_obs_seq, read_obs_seq, &
                              set_qc, set_obs_values, set_copy_meta_data, &
-                             assignment(=), &
+                             assignment(=), get_obs_time_range, &
                              init_obs, static_init_obs_sequence, get_num_qc, set_obs_def, &
                              get_num_obs, get_max_num_obs, get_obs_values, &
-                             get_obs_from_key, get_obs_def, get_qc
+                             get_time_range_keys, get_obs_from_key, get_obs_def, get_qc
 use      obs_def_mod, only : copy_obs_def, obs_def_type, &
                              get_obs_def_time, get_obs_def_location, &
-                             get_obs_def_error_variance, get_obs_def_kind, &
+                             get_obs_def_error_variance, get_obs_kind, &
                              set_obs_def_kind, set_obs_def_location, set_obs_def_time, &
                              set_obs_def_error_variance
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_T, &
-                             get_obs_kind, set_obs_kind
+use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV
 use     location_mod, only : location_type, get_location, query_location, set_location
 use time_manager_mod, only : time_type, get_time, set_calendar_type, GREGORIAN, get_date, &
-                             set_date, operator(/=)
+                             set_date, operator(/=), set_time
 
 implicit none
 
@@ -50,13 +49,14 @@ type(time_type)         :: time, stime, ftime
 
 INTEGER                 :: iunit, endfile
 
-integer                 :: kind, which_vert
+integer                 :: key_bounds(2), kind, which_vert, pwhich_vert
 real(r8)                :: obs_value(1), qc(1)
 real(r8), dimension(3)  :: loc, sloc, floc
 real(r8)                :: lon, lat, vloc, pvloc
 
 integer           :: is, ie, iobs, k
-integer           :: num_obs, num_copies, num_qc, max_num_obs, dart_seq_num_obs
+integer           :: num_obs, num_copies, num_qc, max_num_obs, dart_seq_num_obs, num_obs_in_set
+integer, allocatable :: keys(:)
 
 character(len = 129) :: dart_file_name     = 'obs_seq.out', &
                         littler_file_name = 'little-r.dat', &
@@ -68,7 +68,7 @@ CHARACTER *120 :: rpt_format
 CHARACTER *120 :: meas_format
 CHARACTER *120 :: end_format
 character *40  :: tst_id, tst_name, tst_pltfrm, tst_src
-real(r8)       :: tst_ter, tst_slp, tst_xlat, tst_xlon
+real(r8)       :: tst_ter, tst_slp, tst_xlat, tst_xlon, tst_Psfc
 integer        :: kx, iseq_num, tst_sut, tst_julian
 logical        :: tst_sound, tst_bogus, tst_discard
 integer        :: i1,i2,i3,i4,i5,i6,i7,i8,i9,i10
@@ -81,7 +81,7 @@ integer, allocatable  :: zpp_qc(:), tt_qc(:), td_qc(:), &
                          zuu_qc(:), zvv_qc(:), p_qc(:), &
                          spd_qc(:), dir_qc(:), cld_qc(:), ciel_qc(:)
 
-logical :: littler_to_dart
+logical :: littler_to_dart, out_of_range
 
 !------------------------------------------------------------------------------
 
@@ -95,6 +95,8 @@ call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING littler_tf_dart ...'
 
 call set_calendar_type(calendar_type)
+
+write(6,*) 'littler to DART (.true./T) or DART to littler (.false./F)?'
 
 read(5,*) littler_to_dart
 
@@ -154,23 +156,39 @@ if(.not. littler_to_dart) then
    call read_obs_seq(dart_file_name, 0, 0, 0, dart_seq)
 
    dart_seq_num_obs = get_num_obs(dart_seq)
+   stime = set_time(0, 0)
+   ftime = set_time(0, 200000)
+   call get_obs_time_range(dart_seq, stime, ftime, key_bounds, num_obs_in_set, &
+                           out_of_range)
+   if(num_obs_in_set /= dart_seq_num_obs) then
+      print*,'Did not get all obs.'
+      print*,'Got ',num_obs_in_set
+      print*,'In file: ',dart_seq_num_obs
+      stop
+   endif
+   allocate(keys(dart_seq_num_obs))
+
+   call get_time_range_keys(dart_seq, key_bounds, dart_seq_num_obs, keys)
+
+   print*,'First obs key: ',keys(1)
+   print*,'Last  obs key: ',keys(dart_seq_num_obs)
+   print*,'Number of obs: ',dart_seq_num_obs
 
    iunit = get_unit()
-
    open(unit=iunit,file=littler_file_name,status='new')
 
    is = 1
    ie = 1
    do while (ie <= dart_seq_num_obs+1)
 
-      call get_obs_from_key(dart_seq, is, obs)
+      call get_obs_from_key(dart_seq, keys(is), obs)
       call get_obs_def(obs, obs_def)
 
       sloc = get_location(get_obs_def_location(obs_def))
       stime = get_obs_def_time(obs_def)
 
       if(ie <= dart_seq_num_obs) then
-         call get_obs_from_key(dart_seq, ie, obs)
+         call get_obs_from_key(dart_seq, keys(ie), obs)
          call get_obs_def(obs, obs_def)
       endif
 
@@ -180,18 +198,33 @@ if(.not. littler_to_dart) then
       if ( ftime /= stime .or. sloc(1) /= floc(1) .or. &
            sloc(2) /= floc(2) .or. ie == dart_seq_num_obs+1) then
 
+         tst_Psfc = MISSING_R8
+
          kx = 1
-         call get_obs_from_key(dart_seq, is, obs)
+         call get_obs_from_key(dart_seq, keys(is), obs)
          call get_obs_def(obs, obs_def)
-         loc = get_location(get_obs_def_location(obs_def))
+         location = get_obs_def_location(obs_def)
+         loc = get_location(location)
+         pwhich_vert = nint(query_location(location,'which_vert'))
          pvloc = loc(3)
          do iobs = is+1, ie-1
-            call get_obs_from_key(dart_seq, iobs, obs)
+            call get_obs_from_key(dart_seq, keys(iobs), obs)
             call get_obs_def(obs, obs_def)
-            loc = get_location(get_obs_def_location(obs_def))
-            vloc = loc(3)
-            if (vloc /= pvloc) kx = kx + 1
-            pvloc = vloc
+            location = get_obs_def_location(obs_def)
+            loc = get_location(location)
+            which_vert = nint(query_location(location,'which_vert'))
+
+!!$            if (which_vert == -1) then
+!!$               kind = get_obs_kind(obs_def)
+!!$               if (kind == KIND_PS) then
+!!$                  call get_obs_values(obs, obs_value, 1)
+!!$                  tst_Psfc = obs_value(1)
+!!$               endif
+!!$            endif
+
+            if (loc(3) /= pvloc .and. which_vert == pwhich_vert) kx = kx + 1
+            pvloc = loc(3)
+            pwhich_vert = which_vert
          enddo
 
 !!$         if (kx > 1) then
@@ -211,7 +244,7 @@ if(.not. littler_to_dart) then
               tst_xlat, tst_xlon, tst_id , tst_name, &
               tst_pltfrm, tst_src, tst_ter, kx, i1, i2, iseq_num, i3, &
               tst_sound, tst_bogus, tst_discard, tst_sut, tst_julian, date_char, &
-              tst_slp, i6, f1, i7, f2, i8, f3, i9, f4, i10, &
+              tst_slp, i6, f1, i7, f2, i8, f3, i9, tst_Psfc, i10, &
               f5, i11, f6, i12, f7, i13, f8, i14, f9, i15, &
               f10, i16, f11, i17, f12, i18
 
@@ -243,26 +276,45 @@ if(.not. littler_to_dart) then
          ciel_qc(:) = 0
 
          k = 1
-         call get_obs_from_key(dart_seq, is, obs)
+         call get_obs_from_key(dart_seq, keys(is), obs)
          call get_obs_def(obs, obs_def)
-         loc = get_location(get_obs_def_location(obs_def))
+         location = get_obs_def_location(obs_def)
+         loc = get_location(location)
+         pwhich_vert = nint(query_location(location,'which_vert'))
          pvloc = loc(3)
          do iobs = is, ie-1
-            call get_obs_from_key(dart_seq, iobs, obs)
+            call get_obs_from_key(dart_seq, keys(iobs), obs)
             call get_obs_def(obs, obs_def)
             location = get_obs_def_location(obs_def)
             loc = get_location(location)
-            if (loc(3) /= pvloc) k = k + 1
-            pvloc = loc(3)
             which_vert = nint(query_location(location,'which_vert'))
+
+            if (loc(3) /= pvloc .and. which_vert == pwhich_vert) k = k + 1
+            pvloc = loc(3)
+            pwhich_vert = which_vert
             
             if(which_vert == 2) then
                p(k) = loc(3)
+!--------------------------------------------------------------------------
+!  Flaging all data above 100 hPa.
+!--------------------------------------------------------------------------
+               if(p(k) < 10000.0_r8) then
+                  p_qc(k) = MISSING_I
+                  zpp_qc(k) = MISSING_I
+                  tt_qc(k) = MISSING_I
+                  td_qc(k) = MISSING_I
+                  spd_qc(k) = MISSING_I
+                  dir_qc(k) = MISSING_I
+                  zuu_qc(k) = MISSING_I
+                  zvv_qc(k) = MISSING_I
+                  cld_qc(k) = MISSING_I
+                  ciel_qc(k) = MISSING_I
+               endif
             elseif(which_vert == 3) then
                z(k) = loc(3)
             endif
 
-            kind = get_obs_kind(get_obs_def_kind(obs_def))
+            kind = get_obs_kind(obs_def)
 
             call get_obs_values(obs, obs_value, 1)
             if(kind == KIND_U) then
@@ -271,13 +323,17 @@ if(.not. littler_to_dart) then
             elseif(kind == KIND_V) then
                num_obs = num_obs + 1
                vv(k) = obs_value(1)
+!!$               print*,'Wind: ',p(k),get_obs_def_error_variance(obs_def)
             elseif(kind == KIND_T) then
                num_obs = num_obs + 1
                t(k) = obs_value(1)
+!!$               print*,'Temp: ',p(k),get_obs_def_error_variance(obs_def)
+!!$            elseif(kind == KIND_PS) then
+!!$               num_obs = num_obs + 1
             else
                write(errstring,*)'Observation type ', &
-                    kind,' not implemented yet.'
-               call error_handler(E_ERR,'littler_tf_dart',errstring, &
+                    kind,' not implemented yet: ',obs_value(1)
+               call error_handler(E_MSG,'littler_tf_dart',errstring, &
                     source, revision, revdate)
             endif
          enddo
@@ -299,9 +355,11 @@ if(.not. littler_to_dart) then
 
                      dir(k) = atan(uu(k)/vv(k))*RAD2DEG
 
-                     if (uu(k) <= 0.0_r8 .and. vv(k) >= 0.0_r8) dir(k) = dir(k) + 180.0_r8
-                     if (uu(k) >= 0.0_r8 .and. vv(k) >= 0.0_r8) dir(k) = dir(k) + 180.0_r8
-                     if (uu(k) >= 0.0_r8 .and. vv(k) <= 0.0_r8) dir(k) = dir(k) + 360.0_r8
+                     if (vv(k) >= 0.0_r8) then
+                        dir(k) = dir(k) + 180.0_r8
+                     else
+                        if (uu(k) >= 0.0_r8) dir(k) = dir(k) + 360.0_r8
+                     endif
 
                   endif
 
@@ -340,6 +398,8 @@ if(.not. littler_to_dart) then
 
    enddo
 
+   deallocate(keys)
+
    close(iunit)
 
 else
@@ -359,7 +419,7 @@ else
            tst_xlat, tst_xlon, tst_id, tst_name, &
            tst_pltfrm, tst_src, tst_ter, kx, i1, i2, iseq_num, i3, &
            tst_sound, tst_bogus, tst_discard, tst_sut, tst_julian, date_char, &
-           tst_slp, i6, f1,i7, f2,i8, f3,i9, f4,i10, f5,i11, &
+           tst_slp, i6, f1,i7, f2,i8, f3,i9, tst_Psfc,i10, f5,i11, &
            f6,i12, f7,i13, f8,i14, f9,i15, f10,i16, f11,i17, f12,i18
 
       print*,'kx = ',kx
@@ -410,7 +470,7 @@ else
 
             num_obs = num_obs + 1
 
-            call set_obs_def_kind(obs_def, set_obs_kind(KIND_T))
+            call set_obs_def_kind(obs_def, KIND_T)
 
             call set_obs_def_error_variance(obs_def, 1.0_r8)
 
@@ -444,7 +504,7 @@ else
 
             num_obs = num_obs + 1
 
-            call set_obs_def_kind(obs_def, set_obs_kind(KIND_U))
+            call set_obs_def_kind(obs_def, KIND_U)
 
             call set_obs_def_error_variance(obs_def, 1.0_r8)
 
@@ -469,7 +529,7 @@ else
 
             num_obs = num_obs + 1
 
-            call set_obs_def_kind(obs_def, set_obs_kind(KIND_V))
+            call set_obs_def_kind(obs_def, KIND_V)
 
             call set_obs_def_error_variance(obs_def, 1.0_r8)
 
