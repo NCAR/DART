@@ -307,12 +307,14 @@ else
    if(present(var_type)) var_type = TYPE_z
 endif 
 
+! With the threed_sphere location module ... you specify that the 
+! vertical coordinate is a 'level' by 'which_vert' == 1
 
 lon = lons(lon_index)
 lat = lats(lat_index)
 lev = levs(lev_index)
 
-location = set_location(lon, lat, lev)
+location = set_location(lon, lat, lev, 1)
 
 end subroutine get_state_meta_data
 
