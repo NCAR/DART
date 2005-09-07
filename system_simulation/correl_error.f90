@@ -9,7 +9,7 @@ implicit none
 integer, parameter :: sample_size = 1000000
 type (random_seq_type) :: ran_id
 real(r8) :: zero_2(2) = 0.0, cov(2, 2)
-real(r8) :: t_correl, correl_mean, sample_correl, ratio_mean
+real(r8) :: t_correl, correl_mean, sample_correl, ratio_mean, correl_mean2, correl_sd
 real(r8), allocatable :: pairs(:, :), obs_inc(:), unobs_inc(:), new_unobs(:)
 real(r8) :: s_mean(2), s_var(2), new_mean, new_var, a
 integer i, j, k, lji, ens_size
@@ -19,16 +19,21 @@ call init_random_seq(ran_id)
 ! Loop through a range of ensemble sizes
 do lji = 2, 2
 ens_size = 10 * 2**(lji - 1)
+
+ens_size = 80
+
+
 allocate(pairs(2, ens_size), obs_inc(ens_size), unobs_inc(ens_size), new_unobs(ens_size))
 write(*, *) 'stats for ensemble size ', ens_size
-! Loop through real correlations every 0.10
-!do j = 7, 20
-do j = 0, 0
+! Loop through real correlations every 0.05
+do j = 0, 50
+!do j = 0, 0
    ! Loop through a large number of samples to get mean
    correl_mean = 0.0_r8
+   correl_mean2 = 0.0_r8
    ratio_mean = 0.0_r8
    do k = 1, sample_size
-      t_correl = j * 0.05_r8
+      t_correl = j * 0.02_r8
 
       ! Generate the covariance matrix for this correlation
       cov(1, 1) = 1.0;    cov(2, 2) = 1.0_r8
@@ -45,6 +50,7 @@ do j = 0, 0
    
       ! Keep a sum of the sample_correl
       correl_mean = correl_mean + abs(sample_correl)
+      correl_mean2 = correl_mean2 + sample_correl**2
 
 
       !-----------------
@@ -80,9 +86,10 @@ do j = 0, 0
 
    end do
    correl_mean = correl_mean / sample_size
-   write(*, *) t_correl, correl_mean
+   correl_sd = sqrt((correl_mean2 - sample_size * correl_mean**2) / (sample_size - 1))
+   write(*, *) t_correl, correl_mean, correl_sd
    ratio_mean = ratio_mean / sample_size
-   write(*, *) 'ratio mean ', ratio_mean
+   !write(*, *) 'ratio mean ', ratio_mean
 end do
 deallocate(pairs)
 end do
