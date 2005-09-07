@@ -28,7 +28,7 @@ use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use      location_mod, only : location_type, get_location, set_location, &
                               get_dist, horiz_dist_only, &
                               LocationDims, LocationName, LocationLName, &
-                              query_location, vert_is_noloc, vert_is_surface, &
+                              query_location, vert_is_undef, vert_is_surface, &
                               vert_is_level, vert_is_pressure, vert_is_height
 use     utilities_mod, only : file_exist, open_file, check_nml_error, &
                               close_file, &
@@ -700,8 +700,7 @@ type(time_type) :: get_model_time_step
 ! Need to translate from wrf model timestep (in seconds) to
 ! DART time increment
 
-!!$get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
-get_model_time_step = set_time(21600, 0)
+get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
 
 end function get_model_time_step
 
@@ -1978,7 +1977,7 @@ call get_wrf_horizontal_location( i, j, var_type, id, long, lat )
 xyz_loc = get_location(o_loc)
 which_vert = nint(query_location(o_loc,'which_vert'))
 
-if(horiz_dist_only .or. vert_is_noloc(o_loc)) then
+if(horiz_dist_only .or. vert_is_undef(o_loc)) then
 
    vloc = missing_r8
 
