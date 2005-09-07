@@ -259,7 +259,7 @@ if(my_cov_inflate > 0.0_r8) then
       ! To increase the variance of the prior ensemble to the appropriate level
       ! Would probably want to keep the mean fixed by shifting AND do a sort
       ! on the final prior/posterior increment pairs to avoid large regression
-      ! error as per stocahstic filter algorithms. This might help to avoid 
+      ! error as per stochastic filter algorithms. This might help to avoid 
       ! problems with generating gravity waves in the Bgrid model, for instance.
       ! If this is first time through, need to initialize the random sequence
       if(first_inc_ran_call) then
@@ -869,7 +869,7 @@ type(location_type) :: obs_loc(num_obs_in_set)
 integer :: obs_box(num_obs_in_set), close_ind(num_obs_in_set), num_close
 integer :: num_cant_recompute
 real(r8) :: close_dist(num_obs_in_set)
-integer :: inv_indices(model_size), indices(domain_size)
+integer :: inv_indices(model_size)
 real(r8) :: net_a(num_groups)
 logical :: evaluate_this_ob, assimilate_this_ob
 
@@ -881,7 +881,6 @@ inv_indices = 0
 indx = 1
 do i = 1, model_size
    if(my_state(i)) then
-      indices(indx) = i
       inv_indices(i) = indx
       indx = indx + 1
    endif
