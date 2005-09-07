@@ -11,7 +11,7 @@ module time_manager_mod
 ! $Author$
 ! $Name$
 
-use     types_mod, only : r8, missing_i
+use     types_mod, only : missing_i
 use utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
                           register_module, dump_unit_attributes
 
@@ -85,6 +85,16 @@ revision = '$Revision$', &
 revdate  = '$Date$'
 
 !====================================================================
+! This module works best when the real variables have more than 7 
+! significant digits, so this module defines its own KIND.
+! This kind will usually resolve to a 64bit real if the machine 
+! supports it, but is guaranteed to resolve to something more than 32 bits.  
+!====================================================================
+
+integer, parameter :: digits12 = SELECTED_REAL_KIND(12)   ! type guaranteed
+                                                          ! to have 12 signif
+                                                          ! digits.
+
 
 ! Global data to define calendar type
 integer, parameter :: THIRTY_DAY_MONTHS = 1,      JULIAN = 2, &
@@ -479,7 +489,7 @@ integer,         intent(in) :: n
 type(time_type)             :: time_scalar_mult
 
 integer            :: days, seconds
-real(r8)           :: sec_prod 
+real(digits12)     :: sec_prod
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
@@ -488,20 +498,20 @@ if ( .not. module_initialized ) call time_manager_init
 ! Could multiply by some large factor n, and seconds could be up to 86399
 ! Need to avoid overflowing integers and wrapping around to negatives
 
-sec_prod = (time%seconds*1.0_r8) * (n*1.0_r8)
+sec_prod = (time%seconds*1.0_digits12) * (n*1.0_digits12)
 
 ! If sec_prod is large compared to precision of double precision, things
 ! can go bad.  Need to warn and abort on this.
 
-if(sec_prod /= 0.0_r8) then
+if(sec_prod /= 0.0_digits12) then
    if(log10(sec_prod) > precision(sec_prod) - 3) then
       write(errstring,*)'Insufficient precision to handle scalar product.'
       call error_handler(E_ERR,'time_scalar_mult',errstring,source,revision,revdate) 
    endif
 end if
 
-days    = sec_prod / (24.0_r8 * 60._r8 * 60.0_r8)
-seconds = sec_prod - days * (24.0_r8 * 60.0_r8 * 60.0_r8)    ! QJLA nint or round or ...
+days    = sec_prod / (24.0_digits12 * 60.0_digits12 * 60.0_digits12)
+seconds = sec_prod - days * (24.0_digits12 * 60.0_digits12 * 60.0_digits12)
 
 time_scalar_mult = set_time(seconds, time%days * n + days)
 
@@ -538,15 +548,15 @@ implicit none
 type(time_type), intent(in) :: time1, time2
 integer                     :: time_divide
 
-real(r8)           :: d1, d2
+real(digits12)     :: d1, d2
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time intervals to floating point days; risky for general performance?
 
-d1 = time1%days * (60.0_r8 * 60.0_r8 * 24.0_r8) + (time1%seconds*1.0_r8)
-d2 = time2%days * (60.0_r8 * 60.0_r8 * 24.0_r8) + (time2%seconds*1.0_r8) 
+d1 = time1%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time1%seconds*1.0_digits12)
+d2 = time2%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time2%seconds*1.0_digits12) 
 
 ! Get integer quotient of this, check carefully to avoid round-off problems.
 
@@ -571,16 +581,16 @@ function time_real_divide(time1, time2)
 implicit none
 
 type(time_type), intent(in) :: time1, time2
-real(r8)                    :: time_real_divide
+real(digits12)              :: time_real_divide
 
-real(r8) :: d1, d2
+real(digits12) :: d1, d2
 
 if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time intervals to floating point days; risky for general performance?
 
-d1 = time1%days * (60.0_r8 * 60.0_r8 * 24.0_r8) + (time1%seconds*1.0_r8)
-d2 = time2%days * (60.0_r8 * 60.0_r8 * 24.0_r8) + (time2%seconds*1.0_r8) 
+d1 = time1%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time1%seconds*1.0_digits12)
+d2 = time2%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time2%seconds*1.0_digits12) 
 
 time_real_divide = d1 / d2
 
@@ -599,7 +609,7 @@ integer,         intent(in) :: n
 type(time_type), intent(in) :: time
 type(time_type)             :: time_scalar_divide
 
-real(r8)        :: d, div
+real(digits12)  :: d, div
 integer         :: days, seconds
 type(time_type) :: prod1, prod2
 character(len=129) :: errstring
@@ -608,11 +618,11 @@ if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time interval to floating point days; risky for general performance?
 
-d   = time%days * (60.0_r8 * 60.0_r8 * 24.0_r8) + (time%seconds*1.0_r8)
-div = d / (1.0_r8 * n)
+d   = time%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time%seconds*1.0_digits12)
+div = d / (1.0_digits12 * n)
 
-days    = div / (60.0_r8 * 60.0_r8 * 24.0_r8)
-seconds = div - days * (60.0_r8 * 60.0_r8 * 24.0_r8)
+days    = div / (60.0_digits12 * 60.0_digits12 * 24.0_digits12)
+seconds = div - days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12)
 time_scalar_divide = set_time(seconds, days)
 
 ! Need to make sure that roundoff isn't killing this
