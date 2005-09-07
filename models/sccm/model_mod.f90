@@ -123,7 +123,7 @@ model_size = (3 + pcnst) * plev + 1 + 4*kpt + 2*kpt*msl
 ! depth of soil levels
 allocate(state_loc(model_size), pressure(plev), depth(msl), temp_state(model_size))
 
-! NOTICE: NEED TO GET THE ABILITY TO COMPUTE THE PRESSURE LEVELS SOMEHOW
+! Yuqiong: NOTICE: NEED TO GET THE ABILITY TO COMPUTE THE PRESSURE LEVELS SOMEHOW
 ! SAME FOR SOIL IN THE LONG RUN
 ! COULD READ A's AND B's FROM NETCDF FILE FOR MODEL AND COMPUTE EACH TIME???
 
@@ -769,6 +769,9 @@ integer :: qnHVarID, qnOHVarID, qnOVarID
 ierr = 0  ! assume normal termination
 
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+
+
+write(*,*)'nc_write_model_vars: time index is ',timeindex 
 
 if ( output_state_vector ) then
 
