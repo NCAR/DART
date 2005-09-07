@@ -11,19 +11,16 @@ module obs_model_mod
 ! $Author$
 ! $Name$
 
-use        types_mod, only : r8, t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, &
-                             gas_constant, L_over_Rv, missing_r8, ps0
+use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR
-use     location_mod, only : location_type, interactive_location, get_location
-use  assim_model_mod, only : interpolate, aget_closest_state_time_to, &
+use     location_mod, only : location_type
+use  assim_model_mod, only : aget_closest_state_time_to, &
                              am_get_close_states => get_close_states, &
                              get_model_time_step
 use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
                              get_obs_def, init_obs, destroy_obs, get_num_copies, &
                              get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
 use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time
-!WRF use      obs_def_mod, only : get_obs_def_platform
-!WRF use     platform_mod, only : platform_type, get_platform_orientation
 use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
                              operator(-), operator(/), operator(+), print_time, operator(<)
 
@@ -32,7 +29,6 @@ use ensemble_manager_mod, only : get_ensemble_time, Aadvance_state, ensemble_typ
 implicit none
 private
 
-!public :: take_obs, interactive_def, get_expected_obs, get_close_states, move_ahead, take_vr, take_td
 public :: get_close_states, move_ahead
 
 ! CVS Generated file description for error handling, do not edit
@@ -114,7 +110,6 @@ type(obs_type)  :: observation
 type(obs_def_type) :: obs_def
 logical :: is_this_last, is_there_one, out_of_range
 
-
 ! Initialize a temporary observation type to use
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
@@ -160,7 +155,6 @@ end_time = time2 + delta_time / 2
 
 call print_time(start_time,str=' start time of obs range')
 call print_time(end_time,  str='   end time of obs range')
-!write(*, *)'----------------------------------------------------------------------'
 
 ! If the next observation is not in the window, then have an error
 if(next_time < start_time .or. next_time > end_time) then
