@@ -1,0 +1,121 @@
+&perfect_model_obs_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   obs_seq_in_file_name = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   start_from_restart = .false.,
+   output_restart = .false.,
+   restart_in_file_name = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_interval = 1  /
+
+&filter_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 20, 
+   cov_inflate = 1.0,
+   start_from_restart = .false.,
+   output_restart = .false.,
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   restart_in_file_name = "filter_ics",
+   restart_out_file_name = "filter_restart", 
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .true.,
+   output_obs_ens_spread = .true., 
+   num_output_state_members = 0,
+   num_output_obs_members = 0,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0 /
+
+&ensemble_manager_nml
+   in_core = .true.,
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&assim_tools_nml
+   filter_kind = 1,
+   cutoff = 0.2,
+   sort_obs_inc = .false.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = 0.05,
+   sd_lower_bound = 0.05, 
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name = 'assim_tools_ics',
+   assim_restart_out_file_name = 'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1,
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 10000000.0,
+   internal_outlier_threshold = -1.0 /
+
+&cov_cutoff_nml
+   select_localization = 1  /
+
+&reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg" 
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
+
+&obs_sequence_nml
+   read_binary_obs_sequence = .false.,
+   write_binary_obs_sequence = .false.  /
+
+&obs_def_nml
+   assimilate_these_obs_types = 'radiosonde_temperature',
+                                'radiosonde_u_wind_component',
+                                'radiosonde_v_wind_component'
+   evaluate_these_obs_types = 'surface_pressure' /
+
+&assim_model_nml
+   read_binary_restart_files = .true.,
+   write_binary_restart_files = .true. /
+
+&model_nml
+   output_state_vector      = .false.,
+   model_version            = '3.0.7',
+   model_config_file        = 'caminput.nc',
+   highest_obs_pressure_mb  = 30.0,
+   state_num_0d             = 0,
+   state_num_1d             = 0,
+   state_num_2d             = 1,
+   state_num_3d             = 6,
+   state_names_2d = 'PS      ',19*'        ',
+   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE   ',14*'        ',
+   which_vert_1d            =     20*0,
+   which_vert_2d            = -1 ,19*0,
+   which_vert_3d            = 6*1,14*0,
+   state_names_pert         = 20*'        ',
+   Time_step_seconds = 21600,
+   Time_step_days = 0    /
+
+&location_nml
+   horiz_dist_only = .true.,
+   vert_normalization_pressure = 100000.0, 
+   vert_normalization_height = 10000.0,
+   vert_normalization_level = 20.0,
+   approximate_distance = .false. /
+
+&preprocess_nml
+   input_file =  '../../../obs_def/ALL_obs_def_mod.F90',
+   output_file = '../../../obs_def/obs_def_mod.f90' /
+
+&obs_def_nml
+   assimilate_these_obs_types = 'radiosonde_temperature',
+                                'radiosonde_u_wind_component',
+                                'radiosonde_v_wind_component'
+   evaluate_these_obs_types = 'surface_pressure' /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   logfilename = 'dart_log.out'  /
+
