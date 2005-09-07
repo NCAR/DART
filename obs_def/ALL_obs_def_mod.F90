@@ -16,7 +16,6 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_
                              open_file, check_nml_error, logfileunit, close_file
 use     location_mod, only : location_type, read_location, write_location, set_location, &
                              interactive_location, set_location_missing
-!WRF use     location_mod, only : query_location
 use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
                              interactive_time
 use  assim_model_mod, only : get_state_meta_data, interpolate
@@ -25,7 +24,17 @@ use  assim_model_mod, only : get_state_meta_data, interpolate
 ! Need to include use statements for whatever observation kind detail modules are being used
 #IFDEF raw_state_1d_integral
    use obs_def_raw_state_mod, only : write_1d_integral, read_1d_integral, &
-                                        interactive_1d_integral, get_expected_1d_integral
+                                     interactive_1d_integral, get_expected_1d_integral
+#ENDIF
+#IFDEF doppler_radial_velocity
+   use obs_def_radar_mod, only : write_rad_vel, read_rad_vel, &
+                                 interactive_rad_vel, get_expected_rad_vel
+#ENDIF
+#IFDEF radar_reflectivity
+   use obs_def_radar_mod, only : get_expected_rad_ref
+#ENDIF
+#IFDEF dew_point_2_meter
+   use obs_def_dew_point_mod, only : get_expected_dew_point
 #ENDIF
 
 implicit none
@@ -36,7 +45,7 @@ interface assignment(=)
 end interface
 
 public :: init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
-   get_obs_def_error_variance, set_obs_def_location, set_obs_def_kind, set_obs_def_time, &
+          get_obs_def_error_variance, set_obs_def_location, set_obs_def_kind, set_obs_def_time, &
    set_obs_def_error_variance, interactive_obs_def, write_obs_def, read_obs_def, &
    obs_def_type, get_expected_obs_from_def, &
    set_radar_obs_def, destroy_obs_def, copy_obs_def, assignment(=)
@@ -45,6 +54,9 @@ public :: init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
 ! Public for obs kinds
 public :: KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
           KIND_RHO, KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, KIND_TD2
+
+! Public for _more_ obs kinds
+public :: DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -122,7 +134,7 @@ integer :: num_kind_assimilate, num_kind_evaluate
 
 type obs_kind_type
    integer              :: index
-   character(len = 32) :: name
+   character(len = 32)  :: name
    logical              :: assimilate
    logical              :: evaluate
 end type obs_kind_type
@@ -280,7 +292,6 @@ obs_def1%kind = obs_def2%kind
 obs_def1%time = obs_def2%time
 obs_def1%error_variance = obs_def2%error_variance
 obs_def1%key = obs_def2%key
-!WRF obs_def1%platform = obs_def2%platform
 !deallocate(obs_def1%platform_qc)
 !allocate(obs_def1%platform_qc(size(obs_def2%platform_qc))
 ! Should this be pointer assignment or regular
@@ -572,8 +583,6 @@ SELECT CASE (fileformat)
       read(ifile, *) obs_def%error_variance
 END SELECT
 
-!WRF call read_platform(ifile, obs_def%platform, fform)
-
 end subroutine read_obs_def
 
 !----------------------------------------------------------------------------
@@ -750,7 +759,6 @@ end subroutine set_radar_obs_def
 
 !----------------------------------------------------------------
 
-
 subroutine destroy_obs_def(obs_def)
 ! TECHNICALLY NEED TO CALL DESTRUCTORS FOR ALL SUBCOMPONENTS, NO ALLOCATED STORAGE YET
 ! obs_def_type has the following components:
@@ -770,6 +778,6 @@ call set_obs_def_error_variance( obs_def, missing_r8)
 
 end subroutine destroy_obs_def
 
-!-------------------------------------------------------
+!---------------------------------------------------------------------------
 
 end module obs_def_mod

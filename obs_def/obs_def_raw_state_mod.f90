@@ -4,15 +4,11 @@
 
 module obs_def_raw_state_mod
 
-use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, check_nml_error, logfileunit, close_file
+use        types_mod, only : r8
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location 
-!WRF use     location_mod, only : query_location
-use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
-                             interactive_time
-use  assim_model_mod, only : get_state_meta_data, interpolate
-use cov_cutoff_mod,   only : comp_cov_factor
+use  assim_model_mod, only : interpolate
+use   cov_cutoff_mod, only : comp_cov_factor
 
 implicit none
 
@@ -28,16 +24,39 @@ integer, dimension(max_1d_integral_obs) :: num_points, localization_type
 ! For now, read in all info on first read call, write all info on first write call
 logical :: already_read = .false., already_written = .false.
 
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
+logical, save :: module_initialized = .false.
+
 contains
 
 !----------------------------------------------------------------------
 
-subroutine write_1d_integral(key, ifile, fileformat)
+  subroutine initialize_module
+!----------------------------------------------------------------------------
+! subroutine initialize_module
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
+
+end subroutine initialize_module
+
+
+
+ subroutine write_1d_integral(key, ifile, fileformat)
+!----------------------------------------------------------------------------
+!subroutine write_1d_integral(key, ifile, fileformat)
 
 integer, intent(in)             :: key, ifile
 character(len=32), intent(in)   :: fileformat
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Philosophy, dump ALL information about this special obs_type at once???
 ! For now, this means you can only write ONCE (that's all we're doing 3 June 05)
@@ -73,15 +92,19 @@ END SELECT
 
 end subroutine write_1d_integral
 
-!----------------------------------------------------------------------
 
-subroutine read_1d_integral(key, ifile, fileformat)
+
+ subroutine read_1d_integral(key, ifile, fileformat)
+!----------------------------------------------------------------------
+!subroutine read_1d_integral(key, ifile, fileformat)
 
 integer, intent(out)            :: key
 integer, intent(in)             :: ifile
 character(len=32), intent(in)   :: fileformat
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Philosophy, read ALL information about this special obs_type at once???
 ! For now, this means you can only read ONCE (that's all we're doing 3 June 05)
@@ -117,19 +140,28 @@ END SELECT
 
 end subroutine read_1d_integral
 
-!----------------------------------------------------------------------
 
-subroutine interactive_1d_integral(key)
+
+ subroutine interactive_1d_integral(key)
+!----------------------------------------------------------------------
+!subroutine interactive_1d_integral(key)
+!
+! Initializes the specialized part of a 1d_integral observation
+! Passes back up the key for this one
 
 integer, intent(out) :: key
 
-! Initializes the specialized part of a 1d_integral observation
-! Passes back up the key for this one
+character(len=129) :: msgstring
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Make sure there's enough space, if not die for now (clean later)
 if(num_1d_integral_obs >= max_1d_integral_obs) then
    ! PUT IN ERROR HANDLER CALL
-   stop
+   write(msgstring, *)'Not enough space for a 1d_integral_obs.'
+   call error_handler(E_MSG,'interactive_1d_integral',msgstring,source,revision,revdate)
+   write(msgstring, *)'Can only have max_1d_integral_obs (currently ',max_1d_integral_obs,')'
+   call error_handler(E_ERR,'interactive_1d_integral',msgstring,source,revision,revdate)
 endif
 
 ! Increment the index
@@ -147,9 +179,11 @@ read(*, *) localization_type(num_1d_integral_obs)
 
 end subroutine interactive_1d_integral
 
-!----------------------------------------------------------------------
 
-subroutine get_expected_1d_integral(state, location, key, val, istatus)
+
+ subroutine get_expected_1d_integral(state, location, key, val, istatus)
+!----------------------------------------------------------------------
+!subroutine get_expected_1d_integral(state, location, key, val, istatus)
 
 real(r8), intent(in)            :: state(:)
 type(location_type), intent(in) :: location
@@ -160,6 +194,8 @@ integer, intent(out)            :: istatus
 integer :: i
 real(r8) :: range, loc, bottom, dx, x, sum, dist, weight, weight_sum
 type(location_type) :: location2
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Figure out the total range of the integrated funtion (1 is max)
 range = 4.0_r8 * half_width(key)
@@ -181,8 +217,8 @@ dx = range / (num_points(key) - 1)
 
 ! Loop to compute the value at each point, then multiply by localization
 ! to get weighted integral
-sum = 0.0
-weight_sum = 0.0
+sum = 0.0_r8
+weight_sum = 0.0_r8
 do i = 1, num_points(key)
    x = bottom + (i - 1) * dx
    if(x > 1.0_r8) x = x - 1.0_r8

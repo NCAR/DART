@@ -33,7 +33,7 @@ revdate  = "$Date$"
 logical, save :: module_initialized = .false.
 
 ! Storage for the special information required for observations of this type
-integer, parameter  :: max_rad_vel_obs = 100000
+integer, parameter  :: max_rad_vel_obs = 300000
 type(location_type) :: rad_loc(max_rad_vel_obs)
 real(r8)            :: direction(3,max_rad_vel_obs)
 
@@ -211,14 +211,9 @@ real(r8), parameter :: powr = (7.0_r8 + b)/4.0_r8
 real(r8), parameter :: pows = (7.0_r8 + d)/4.0_r8
 real(r8), parameter :: powg_dry = (7.0_r8 + f)/4.0_r8
 real(r8), parameter :: powg_wet = 1.7875_r8
-real(r8), parameter :: ar = n0r*a*gam7b/(PI*rho_r*n0r)**powr
-real(r8), parameter :: as_wet = n0s*c*gam7d/(PI*rho_s*n0s)**pows
-real(r8), parameter :: as_dry = dief*((rho_s/rho_r)**2)*as_wet
-real(r8), parameter :: ag_dry = 1.0e18_r8*dief*((rho_g/rho_r)**2)*n0g*gam7f/(PI*rho_g*n0g)**powg_dry
-real(r8), parameter :: ag_wet = ((7.2e20_r8*n0g)**0.95_r8)*gam7f/ &
-                                (720.0_r8*((PI*rho_g*n0g)**powg_wet))
 
 real(r8) :: u, v, w, qr, qg, qs, alpha, wt, rho, temp, precip, ref
+real(r8) :: ar, as_wet, as_dry, ag_dry, ag_wet
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -264,23 +259,30 @@ if (istatus /= 0) then
 endif
 
 precip = rho * (qr + qs + qg)
-if(precip <= 0.0_r8) then
+if(precip <= epsilon(precip)) then
    wt = 0.0_r8
 else
    alpha=sqrt(rhos0/rho)
+   ar = n0r*a*gam7b/(PI*rho_r*n0r)**powr
    wt = ar*((rho * qr)**powr)
+   as_wet = n0s*c*gam7d/(PI*rho_s*n0s)**pows
    if ( temp < 273.15_r8 ) then
+      as_dry = dief*((rho_s/rho_r)**2)*as_wet
       wt = alpha*(wt + as_dry*((rho * qs)**pows))
+      ag_dry = 1.0e18_r8*dief*((rho_g/rho_r)**2)*n0g*gam7f/(PI*rho_g*n0g)**powg_dry
       wt = wt + sqrt(e/rho)*ag_dry*((rho * qg)**powg_dry)
    else
       wt = alpha*(wt + as_wet*((rho * qs)**pows))
-      wt = wt + sqrt(e/rho)*ag_wet*((rho * qg)**powg_wet)
+      ag_wet = ((7.2e20_r8)**0.95_r8)*gam7f/(720.0_r8*(n0g**0.8375_r8))
+      wt = wt + sqrt(e/rho)*ag_wet*(((rho * qg)/(PI*rho_g))**powg_wet)
    endif
 
    call get_reflectivity(qr, qg, qs, rho, temp, ref)
    wt = wt/ref
 
-!!$   print*,'Terminal velocity = ',wt,qr,qs,qg,temp,10.0_r8 * log10(ref)
+!!$   if(precip < epsilon(precip)) then
+!!$      print*,'Terminal velocity = ',wt,qr,qs,qg,temp,10.0_r8 * log10(ref),epsilon(precip),precip
+!!$   endif
 
 endif
 
@@ -374,14 +376,25 @@ real(r8) :: precip
 !!$If melted raindrop diameters are used, then the factor is 0.224.  If
 !!$equivalent ice sphere diameters are used, then the factor is 0.189.
 
-real(r8), parameter :: ar = 7.2e20_r8/(((PI*rho_r)**1.75_r8)*(n0r**0.75_r8))
-real(r8), parameter :: ag_dry = dief*((rho_g/rho_r)**2)*7.2e20_r8/ &
-                                (((PI*rho_g)**1.75_r8)*(n0g**0.75_r8))
-! This is appropriate for 10-cm radar.
-real(r8), parameter :: ag_wet = (7.2e20_r8/(((PI*rho_g)**1.75_r8)*(n0g**0.75_r8)))**0.95_r8
+!!$real(r8), parameter :: ar = 7.2e20_r8/(((PI*rho_r)**1.75_r8)*(n0r**0.75_r8))
+!!$real(r8), parameter :: ag_dry = dief*((rho_g/rho_r)**2)*7.2e20_r8/ &
+!!$                                (((PI*rho_g)**1.75_r8)*(n0g**0.75_r8))
+!!$! This is appropriate for 10-cm radar.
+!!$real(r8), parameter :: ag_wet = (7.2e20_r8/(((PI*rho_g)**1.75_r8)*(n0g**0.75_r8)))**0.95_r8
+!!$
+!!$real(r8), parameter :: as_wet = 7.2e20_r8/(((PI*rho_s)**1.75_r8)*(n0s**0.75_r8))
+!!$real(r8), parameter :: as_dry = dief*((rho_s/rho_r)**2)*as_wet
 
-real(r8), parameter :: as_wet = 7.2e20_r8/(((PI*rho_s)**1.75_r8)*(n0s**0.75_r8))
-real(r8), parameter :: as_dry = dief*((rho_s/rho_r)**2)*as_wet
+!!$real(r8), parameter :: ar = 7.2e20_r8/((exp(log(PI*rho_r)*1.75_r8))*(exp(log(n0r)*0.75_r8)))
+!!$real(r8), parameter :: ag_dry = dief*((rho_g/rho_r)**2)*7.2e20_r8/ &
+!!$                                ((exp(log(PI*rho_g)*1.75_r8))*exp(log(n0g)*0.75_r8)))
+!!$! This is appropriate for 10-cm radar.
+!!$real(r8), parameter :: ag_wet = exp(log(7.2e20_r8/((exp(log(PI*rho_g)*1.75_r8))*(exp(log(n0g)*0.75_r8))))*0.95_r8)
+!!$
+!!$real(r8), parameter :: as_wet = 7.2e20_r8/((exp(log(PI*rho_s)*1.75_r8))*exp(log(n0s)*0.75_r8)))
+!!$real(r8), parameter :: as_dry = dief*((rho_s/rho_r)**2)*as_wet
+
+real(r8) :: ar, ag_dry, ag_wet, as_wet, as_dry
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -389,14 +402,21 @@ ref = 0.0_r8
 
 ! RAIN
 precip = rho * qr
-if ( precip > 0.0_r8 ) ref = ref + ar * (precip**1.75_r8)
+if ( precip > 0.0_r8 ) then
+   ar = 7.2e20_r8/(((PI*rho_r)**1.75_r8)*(n0r**0.75_r8))
+   ref = ref + ar * (precip**1.75_r8)
+endif
 
 ! HAIL / GRAUPEL
 precip = rho * qg
 if ( precip > 0.0_r8 ) then
    if ( temp < 273.15_r8 ) then
+      ag_dry = dief*((rho_g/rho_r)**2)*7.2e20_r8/ &
+           (((PI*rho_g)**1.75_r8)*(n0g**0.75_r8))
       ref = ref + ag_dry * (precip**1.75_r8)
    else
+      ! This is appropriate for 10-cm radar.
+      ag_wet = (7.2e20_r8/(((PI*rho_g)**1.75_r8)*(n0g**0.75_r8)))**0.95_r8
       ref = ref + ag_wet * (precip**1.6625_r8)
    endif
 endif
@@ -404,7 +424,9 @@ endif
 ! SNOW
 precip = rho * qs
 if ( precip > 0.0_r8 ) then
+   as_wet = 7.2e20_r8/(((PI*rho_s)**1.75_r8)*(n0s**0.75_r8))
    if ( temp < 273.15_r8 ) then
+      as_dry = dief*((rho_s/rho_r)**2)*as_wet
       ref = ref + as_dry * (precip**1.75_r8)
    else
       ref = ref + as_wet * (precip**1.75_r8)
