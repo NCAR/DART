@@ -57,19 +57,27 @@ make         || exit 1
 
 #----------------------------------------------------------------------
 
-csh mkmf_ps_rand_local
+csh mkmf_id_set_def_stdin
 make         || exit 3
-csh mkmf_column_rand
+csh mkmf_pressure_col_rand
 make         || exit 4
-csh mkmf_create_obs_sequence
+csh mkmf_ps_rand_local
 make         || exit 5
-csh mkmf_create_fixed_network_seq
+csh mkmf_column_rand
 make         || exit 6
-csh mkmf_perfect_model_obs
+csh mkmf_create_obs_sequence
 make         || exit 7
-csh mkmf_filter
+csh mkmf_create_fixed_network_seq
 make         || exit 8
-csh mkmf_obs_diag
+csh mkmf_integrate_model
 make         || exit 9
+csh mkmf_perfect_model_obs
+make         || exit 10
+csh mkmf_assim_region
+make         || exit 11
+csh mkmf_filter
+make         || exit 12
+csh mkmf_obs_diag
+make         || exit 13
 ./perfect_model_obs
 ./filter
