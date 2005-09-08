@@ -20,11 +20,23 @@
 #    --warn
 #    --wide
 #    --O0    no optimization
+#      --chk [<args>]
+#             check for:
+#                subscripts and substrings out of bounds,
+#                interface mismatches,
+#                uninitialized variables.
+#             Arguments can be combined (separated by commas).
+#         <args>:
+#             a   argument checking.  
+#             e   array expression shape checking.  
+#             s   subscript checking.  
+#             u   undefined variable checking.  
+#             x   extra checking.
 #
 # FFLAGS   useful for production
 #    --li    use Lahey intrinsic procedures
-#    --O     classical, memory, and interprocedural optimizations
-#    --O2    -O1 + loop and array optimizations
+#    --o1    classical, memory, and interprocedural optimizations
+#    --o2    -o1 + loop and array optimizations
 #    --sse2  optimize using SSE2 instructions
 #
 # FFLAGS   for historical reasons
@@ -41,6 +53,7 @@ CPPFLAGS =
 LIST = --list
 NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-lf95.6.20a
 INCS = -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdf -L/usr/local/lib -ludunits
-FFLAGS = --ap --trap --verbose --warn --wide -O0 $(INCS) 
+LIBS = -L$(NETCDF)/lib -lnetcdf
+#FFLAGS = --ap --trap --warn --wide --chk a,s,u,x --o0 $(INCS) 
+FFLAGS = --ap --trap --warn --wide --oO $(INCS) 
 LDFLAGS = $(LIBS)
