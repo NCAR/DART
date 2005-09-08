@@ -143,16 +143,16 @@ READ_LINE: do
          do j = 1, num_kind_assimilate
             ! Is it being assimilated?
             if(ifdef_kind == trim(adjustl(assimilate_these_obs_types(j)))) then
-               cycle READ_LINE    
+               cycle READ_LINE
             endif
          end do
          do j = 1, num_kind_evaluate
             ! Is it being evaluated?
             if(ifdef_kind == evaluate_these_obs_types(j)) then
-               cycle READ_LINE    
+               cycle READ_LINE
             endif
          end do
-          
+
          ! An unimplemented ifdef has been encountered, don't output ifdef line
          status = 2
       else if(test(1:6) == '#ENDIF' .or. test(1:6) == '#endif') then

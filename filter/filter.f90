@@ -36,7 +36,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
    ensemble_type, ens_direct=> ens, ens_mean_direct=>ens_mean, ens_spread_direct=>ens_spread, &
    is_ens_in_core, get_ensemble_time
-   
+
 !-----------------------------------------------------------------------------------------
 
 implicit none
@@ -186,8 +186,8 @@ write(*, *) 'starting advance time loop;'
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), obs(num_obs_in_set), &
             ens_obs(ens_size, num_obs_in_set), compute_obs(num_obs_in_set)) 
+
    ! For starters allow all obs to be computed as before
-!!!   compute_obs = .false.
    compute_obs = .true.
 ! Debugging test with some obs that can't be recomputed
 !   do j = 1, num_obs_in_set
@@ -205,13 +205,13 @@ write(*, *) 'starting advance time loop;'
    endif
    ! Get the observational values, error covariance, and input qc value
    call filter_get_obs_info()
-   
+
    ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(ens_obs, ens_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .true., 0, &
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
-   
+
    call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
          num_groups, seq, keys, obs_sequence_in_name)
    ! Do posterior state space diagnostic output as required
@@ -665,8 +665,8 @@ integer,  intent(in) :: num_output_members, members_index, ens_mean_index, ens_s
 real(r8), intent(in) :: outlier_threshold
 real(r8), intent(in) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set)
 type(obs_sequence_type), intent(inout) :: seq
-logical, intent(in) :: do_qc
-logical, intent(in) :: output_ens_mean, output_ens_spread
+logical,  intent(in) :: do_qc
+logical,  intent(in) :: output_ens_mean, output_ens_spread
 
 integer :: j, k, istatus, ens_offset
 real(r8) :: qc(num_obs_in_set)
@@ -722,7 +722,7 @@ do j = 1, num_obs_in_set
       ratio = abs(error / diff_sd)
       if(ratio > outlier_threshold) qc(j) = qc(j) + 2**prior_post * 10000
    endif
-   
+
    ! If requested output the ensemble mean
    if(output_ens_mean) call set_obs_values(observation, obs_mean, ens_mean_index)
    ! If requested output the ensemble spread

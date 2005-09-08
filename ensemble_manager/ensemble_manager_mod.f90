@@ -157,12 +157,11 @@ if(present(file_name)) then
          !open(unit = seq_unit, file = this_file_name, access = 'direct', &
          !   form = 'unformatted', status = 'replace', recl = req_rec_length)
 
-         !write(seq_unit) ens(1, :)
          write(seq_unit) ens
          close(seq_unit)
       endif
 
-      ! If the inital file time is being overridden, do it
+      ! If the initial file time is being overridden, do it
       if(present(init_time)) ens_time(i) = init_time
 
       if(.not. single_restart_file_in) call close_restart(iunit)
@@ -652,7 +651,7 @@ implicit none
 type(ensemble_type),intent(in)    :: ens_handle
 type(time_type),    intent(in)    :: target_time
 integer,            intent(in)    :: asynch
-character(len=129), intent(in)    :: adv_ens_command                                                      
+character(len=129), intent(in)    :: adv_ens_command
 
 type(time_type) :: time_step
 
@@ -1090,4 +1089,3 @@ end function is_ens_in_core
 
 
 end module ensemble_manager_mod
-

@@ -24,7 +24,6 @@ use     location_mod, only : location_type, set_location
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
                              copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def
-use time_manager_mod, only : read_time, set_time
 use     obs_kind_mod, only : obs_kind_type, set_obs_kind, &
                              KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV
 
@@ -40,7 +39,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
-!-------------------------------------------------      
+!-------------------------------------------------
 
 contains
 
@@ -375,8 +374,6 @@ integer, intent(in) :: obs_kind, which_vert, seconds, days
 
 type(obs_kind_type) :: kind0
 type(location_type) :: loc0
-
-integer :: ind
 
 if ( .not. module_initialized ) call initialize_module
 

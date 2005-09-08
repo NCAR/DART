@@ -26,12 +26,12 @@ function var_interp = interp_to_pressure( var_in, pressure, p_level)
 
     below(jj,ii) = log( pressure(max(1 ,kk  ),jj,ii) ) ;  % pressure level below p_level
     dlogp(jj,ii) = log( pressure(min(Nk,kk+1),jj,ii) )    ...
-                    - log( pressure(max(1 ,kk  ),jj,ii) ) ;  
+                    - log( pressure(max(1 ,kk  ),jj,ii) ) ;
     var_below(jj,ii) = var_in(max(1 ,kk  ),jj,ii) ;
     dvar (jj,ii) = var_in(min(Nk,kk+1),jj,ii) - var_in(max(1 ,kk  ),jj,ii) ;
  end; end
 
  var_interp =  ( dvar ./ dlogp ) .* ( log(p_level) - below )  + var_below ;
 
- var_interp( p_level > pressure(1,:,:) ) = NaN ;  
-   % p_level is beneath surface  
+ var_interp( p_level > pressure(1,:,:) ) = NaN ;
+   % p_level is beneath surface

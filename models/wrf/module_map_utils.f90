@@ -338,11 +338,11 @@ CONTAINS
           proj%truelat2=proj%truelat1
         ENDIF
         CALL set_lc(proj)
-   
+
       CASE (PROJ_MERC)
         PRINT '(A)', 'Setting up MERCATOR map...'
         CALL set_merc(proj)
-   
+
       CASE (PROJ_LATLON)
         PRINT '(A)', 'Setting up CYLINDRICAL EQUIDISTANT LATLON map...'
         ! Convert lon1 to 0->360 notation
@@ -351,7 +351,7 @@ CONTAINS
       CASE DEFAULT
         PRINT '(A,I2)', 'Unknown projection code: ', proj%code
         STOP 'MAP_INIT'
-    
+
     END SELECT pick_proj
     proj%init = .TRUE.
     RETURN
