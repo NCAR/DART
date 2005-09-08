@@ -157,7 +157,13 @@ set ifile = 1
 # Find the next BC's file available.
 
 while ( $keys[${ifile}] <= $wrfkey )
-   @ ifile ++
+   if ($ifile < $num_files ) then
+      @ ifile ++
+   else
+      echo No boundary file available to move beyond
+      echo ${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:${START_MIN}:${START_SEC}
+      exit
+   endif
 end
 
 #################################################
