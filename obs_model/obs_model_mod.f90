@@ -98,12 +98,12 @@ subroutine move_ahead(ens_handle, ens_size, model_size, seq, last_key_used, &
 
 implicit none
 
-type(ensemble_type) :: ens_handle
-integer, intent(in) :: ens_size, model_size
-type(obs_sequence_type), intent(in) :: seq
-integer, intent(in) :: last_key_used, async
-integer, intent(out) :: key_bounds(2), num_obs_in_set
-character(len = 129), intent(in) :: adv_ens_command
+type(ensemble_type),     intent(in)  :: ens_handle
+integer,                 intent(in)  :: ens_size, model_size
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: last_key_used, async
+integer,                 intent(out) :: key_bounds(2), num_obs_in_set
+character(len = 129),    intent(in)  :: adv_ens_command
 
 type(time_type) :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)  :: observation
