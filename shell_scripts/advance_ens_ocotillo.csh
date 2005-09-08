@@ -1,4 +1,4 @@
-#!/bin/tcsh
+#!/bin/csh -f
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -83,7 +83,7 @@ while($batch <= $nbatch)
    end
 # Another way to monitor progress.  batchflag has other info to start,
 # so this echo can be removed and scripts will still work.
-      echo waiting to finish batch $batch  >> $PBS_O_WORKDIR/batchflag
+      echo waiting to finish batch $batch of $nbatch >> $PBS_O_WORKDIR/batchflag
       wait
    @ batch++
 end
