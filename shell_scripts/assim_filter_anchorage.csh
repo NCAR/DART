@@ -58,7 +58,7 @@ endif
 cat "$PBS_NODEFILE"
 echo This job has allocated $NPROCS nodes
 
-# First line of filter_control should have number of regions to be assimilated
+# First line of assim_region_control should have number of regions to be assimilated
 set nregions = `head -1 assim_region_control`
 
 # figure # batches of CAM runs to do, from # regions and # processors
