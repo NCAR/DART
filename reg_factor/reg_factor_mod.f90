@@ -178,7 +178,7 @@ else if(select_regression == 2) then
 
    comp_reg_factor = time_mean_reg(obs_index, state_index)
 
-   if(comp_reg_factor < 0.0) comp_reg_factor = 0.0_r8
+   if(comp_reg_factor < 0.0_r8) comp_reg_factor = 0.0_r8
 
 !_____________________________________________________________________
 
