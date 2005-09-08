@@ -20,6 +20,7 @@
 # FFLAGS   useful for debugging
 #     -C       (partially) enable extensive runtime error checking
 #     -g       include symbol table
+#     -p       profiling with gprof (put in [FFLAGS and LDFLAGS] or INCS)
 #
 # FFLAGS   useful for benchmarking
 #     -O0      disable optimizations
@@ -32,6 +33,6 @@ FC = ifort
 LD = ifort
 NETCDF = /ocotillo/users/caya/netcdf
 INCS = -I$(NETCDF)/include
-FFLAGS = -fpp -O0 $(INCS)
+FFLAGS = -O0 $(INCS)
 LIBS = -L$(NETCDF)/lib -lnetcdf -L/ocotillo/users/caya/udunits-1.12.1/lib -ludunits
 LDFLAGS = $(INCS) $(LIBS)
