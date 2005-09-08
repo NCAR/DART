@@ -35,8 +35,6 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use  assim_tools_mod, only : obs_increment, update_from_obs_inc, assim_tools_init, &
    filter_assim
-use   cov_cutoff_mod, only : comp_cov_factor
-use   reg_factor_mod, only : comp_reg_factor
 use    obs_model_mod, only : get_close_states, get_expected_obs, move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean, update_ens_mean_spread, end_ensemble_manager, &
@@ -60,8 +58,8 @@ type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
-integer :: i, j, k, ind, iunit, io, istatus, days, secs, reg_series_unit
-integer :: time_step_number, num_domains
+integer :: i, j, k, iunit, io, days, secs, reg_series_unit
+integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
 integer :: grp_size, grp_bot, grp_top, group
@@ -76,7 +74,7 @@ integer :: prior_obs_mean_index, posterior_obs_mean_index
 integer :: prior_obs_spread_index, posterior_obs_spread_index
 
 ! Storage for direct access to ensemble state vectors
-real(r8),        allocatable ::  ens_mean(:), temp_ens(:)
+real(r8),        allocatable :: ens_mean(:), temp_ens(:)
 type(time_type)              :: ens_mean_time, temp_time
 
 ! Storage for use with parallelizable efficient filter
@@ -239,7 +237,7 @@ write(*, *) 'starting advance time loop;'
       call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
          num_groups, seq, keys, confidence_slope, cutoff, save_reg_series, reg_series_unit, &
          obs_sequence_in_name)
-   ! Do prior state space diagnostic output as required
+   ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
 
@@ -657,7 +655,7 @@ real(r8) ::  obs_mean(1), obs_spread(1)
 real(r8) :: error, diff_sd, ratio
 type(obs_type) :: observation
 
-! Construnct an observation temporary
+! Construct an observation temporary
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
 ens_obs = 0.0
