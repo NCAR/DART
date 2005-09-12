@@ -347,8 +347,8 @@ if ( .not. module_initialized ) call initialize_module
 
 ! Does real initialization of an observation type
 
-call real_obs_def(obsdef0, lon01, lat01, vloc, obs_value, &
-                    var2, aqc, obs_kind, which_vert, seconds, days)
+call real_obs_def(obsdef0, lon01, lat01, vloc, &
+                    var2, obs_kind, which_vert, seconds, days)
 call set_obs_def(obs, obsdef0)
 
 do i = 1, num_copies
@@ -365,11 +365,11 @@ end subroutine real_obs
 
 
 
-subroutine real_obs_def(obs_def, lon01, lat01, vloc, obs_value, &
-                        var2, aqc, obs_kind, which_vert, seconds, days)
+subroutine real_obs_def(obs_def, lon01, lat01, vloc, &
+                        var2, obs_kind, which_vert, seconds, days)
 !----------------------------------------------------------------------
 type(obs_def_type), intent(inout) :: obs_def
-real(r8),intent(in) :: lon01, lat01, vloc, obs_value, var2, aqc
+real(r8),intent(in) :: lon01, lat01, vloc, var2
 integer, intent(in) :: obs_kind, which_vert, seconds, days
 
 type(obs_kind_type) :: kind0
