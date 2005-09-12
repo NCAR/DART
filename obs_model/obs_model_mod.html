@@ -30,18 +30,14 @@
 <link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
-<!--kdr PRIVATE COMPONENTS destination don't exist -->
-
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
 </DIV>
 
 <!--==================================================================-->
@@ -82,7 +78,6 @@ types_mod
 utilities_mod
 location_mod (depends on model choice)
 assim_model_mod
-obs_kind_mod
 obs_sequence_mod
 obs_def_mod
 time_manager_mod
@@ -97,7 +92,7 @@ ensemble_manager_mod
 <H2>PUBLIC INTERFACE</H2>
 
 <TABLE>
-<TR><TD><em class=call>use assim_model_mod, only : </em></TD>
+<TR><TD><em class=call>use obs_model_mod, only : </em></TD>
                    <TD><A HREF="#get_close_states">get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#move_ahead">move_ahead</A></TD></TR>
 </TABLE>
@@ -115,62 +110,6 @@ ensemble_manager_mod
 <H2>PUBLIC COMPONENTS</H2>
 <BR>
 
-
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="take_obs"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call take_obs(state_vector, location, obs_kind, obs_vals, istatus) 
- </em>
- <pre>
- real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
- type(location_type), intent(in)    :: <em class=code>location</em>
- type(obs_kind_type), intent(in)    :: <em class=code>obs_kind</em>
- real(r8), intent(out)              :: <em class=code>obs_vals</em>
- integer, intent(out)               :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Given a model state vector and the location and kind of an observation,
-returns the expected value of the observation (the forward operator) and
-an integer status variable that can be used for quality control. Standard
-values of the istatus variable MUST BE DEFINED but samples can be seen
-in the existing model_mod.f90 modules.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>state_vector&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector</TD></TR>
- <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>Location of the observation</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>Kind of the observation</TD></TR>
- <TR><TD valign=top><em class=code>obs_vals&nbsp; &nbsp; </em></TD>
-     <TD>Returns the forward operator estimate of the observation</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Status value useful for quality control</TD></TR>
- </TABLE>
- <BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="interactive_def"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call interactive_def(location, obs_kind) </em>
- <pre>
- type(location_type), intent(out) :: <em class=code>location</em>
- type(obs_kind_type), intent(out) :: <em class=code>obs_kind</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Allows definition of an observation using standard input.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>Location of defined observation</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>Kind of defined observation</TD></TR>
- </TABLE>
- <BR>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_close_states"></A>
@@ -216,20 +155,19 @@ in many complex models.
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="move_ahead"></A>
  <P></P><HR><P></P>
-<!--kdr ens_handle has no intent listed in code -->
  <div class=routine>
  <em class=call> call move_ahead(ens_handle, ens_size, model_size, seq, 
 	 last_key_used, key_bounds, num_obs_in_set, async, adv_ens_command) </em>
  <pre>
- type(ensemble_type), intent(in)     :: <em class=code>ens_handle</em>
- integer, intent(in)                 :: <em class=code>ens_size</em>
- integer, intent(in)                 :: <em class=code>model_size</em>
- type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
- integer, intent(in)                 :: <em class=code>last_key_used</em>
- integer, dimension(2), intent(out)  :: <em class=code>key_bounds</em>
- integer, intent(out)                :: <em class=code>num_obs_in_set</em>
- integer, intent(in)                 :: <em class=code>async</em>
- character(len=129), intent(in)      :: <em class=code>adv_ens_command</em>
+ type(ensemble_type),     intent(in)  :: <em class=code>ens_handle</em>
+ integer,                 intent(in)  :: <em class=code>ens_size</em>
+ integer,                 intent(in)  :: <em class=code>model_size</em>
+ type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+ integer,                 intent(in)  :: <em class=code>last_key_used</em>
+ integer, dimension(2),   intent(out) :: <em class=code>key_bounds</em>
+ integer,                 intent(out) :: <em class=code>num_obs_in_set</em>
+ integer,                 intent(in)  :: <em class=code>async</em>
+ character(len=129),      intent(in)  :: <em class=code>adv_ens_command</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -268,101 +206,6 @@ and all observations in this window are added to the set to be assimilated.
  </TABLE>
  <BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="take_vr"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call take_vr(state_vector, obs_def, vr, istatus) </em>
- <pre>
- real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
- type(obs_def_type), intent(in)     :: <em class=code>obs_def</em>
- real(r8), intent(out)              :: <em class=code>vr</em>
- integer, intent(out)               :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Given a description of a radar observation and model state vector,
-return the expected value of the radar observation. Returned istatus
-value describes problems found in computing forward operator. 
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>state_vector&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector</TD></TR>
- <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
-     <TD>Definition of radar observation</TD></TR>
- <TR><TD valign=top><em class=code>vr&nbsp; &nbsp; </em></TD>
-     <TD>Returned expected value (forward operator) for 
-		 radar observation</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Returned integer describing problems with applying 
-		  forward operator</TD></TR>
- </TABLE>
- <BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="take_td"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call take_td(state_vector, obs_def, td, istatus) </em>
- <pre>
- real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
- type(obs_def_type), intent(in)     :: <em class=code>obs_def</em>
- real(r8), intent(out)              :: <em class=code>td</em>
- integer, intent(out)               :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Given a description of a dewpoint temperature observation and model state vector,
-return the expected value of the dewpoint. Returned status
-value describes problems found in computing forward operator. 
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>state_vector&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector</TD></TR>
- <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
-     <TD>Definition of radar observation</TD></TR>
- <TR><TD valign=top><em class=code>td&nbsp; &nbsp; </em></TD>
-     <TD>Returned expected value (forward operator) for 
-		 dew point temperature</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Returned integer describing problems with applying 
-		 forward operator</TD></TR>
- </TABLE>
- <BR>
-
-
-<!--==================================================================-   ->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-   ->
-
-NOTE that 'end comment' strings have spaces inserted
-
-<A NAME="Namelist"></A>
-<BR><HR><BR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
-<div class=namelist><pre>
-<em class=call>namelist / filter_nml / </em> &
-      async, adv_ens_command, ens_size, cutoff, cov_inflate, 
-</pre></div>
-
-<H3 class=indent1>Discussion</H3>
-
-<P>This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents-   -><TD valign=top>async                        </TD>
-    <!--  type  -   -><TD valign=top>integer                      </TD>
-    <!--descript-   -><TD>Controls whether models are advanced via a subroutine call or
-                       separate from the model advances). </TD></TR>
-</TABLE>
--->
-
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
@@ -393,11 +236,6 @@ NOTE that 'end comment' strings have spaces inserted
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>get_expected_obs</TD>
-    <!-- message --><TD VALIGN=top>identity obs is outside of state vector</TD>
-    <!-- comment --><TD VALIGN=top>Can't compute identity observation for non-existent variable</TD>
-</TR>
-
 <TR><!-- routine --><TD VALIGN=top>move_ahead</TD>
     <!-- message --><TD VALIGN=top>next obs time not in model time window</TD>
     <!-- comment --><TD VALIGN=top>Error in algorithm to compute observation window</TD>
@@ -416,7 +254,7 @@ NOTE that 'end comment' strings have spaces inserted
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                            -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
