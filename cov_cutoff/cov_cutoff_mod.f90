@@ -112,7 +112,41 @@ z = abs(z_in)
 
 !----------------------------------------------------------
 
-if(localization_type == 3) then ! Ramped localization
+if(localization_type == 1) then ! Standard Gaspari Cohn localization
+
+   if( z >= c*2.0_r8 ) then
+
+      comp_cov_factor = 0.0_r8
+
+   else if( z <= c ) then
+      r = z / c
+      comp_cov_factor = &
+           ( ( ( -0.25_r8*r +0.5_r8 )*r +0.625_r8 )*r -5.0_r8/3.0_r8 )*r**2 + 1.0_r8
+!!$           r**5 * (-0.25_r8 ) + &
+!!$           r**4 / 2.0_r8 +              &
+!!$           r**3 * 5.0_r8/8.0_r8 -       &
+!!$           r**2 * 5.0_r8/3.0_r8 + 1.0_r8
+   else
+
+      r = z / c
+      comp_cov_factor = &
+           ( ( ( ( r/12.0_r8 -0.5_r8 )*r +0.625_r8 )*r +5.0_r8/3.0_r8 )*r -5.0_r8 )*r &
+!!$           r**5 / 12.0_r8  -  &
+!!$           r**4 / 2.0_r8   +  &
+!!$           r**3 * 5.0_r8 / 8.0_r8 + &
+!!$           r**2 * 5.0_r8 / 3.0_r8 - 5.0_r8*r &
+           + 4.0_r8 - 2.0_r8 / (3.0_r8 * r) 
+   endif
+
+else if(localization_type == 2) then ! BOXCAR localization
+
+   if(z < 2.0_r8 * c) then
+      comp_cov_factor = 1.0_r8
+   else
+      comp_cov_factor = 0.0_r8
+   endif
+
+else if(localization_type == 3) then ! Ramped localization
 
    if(z >= 2.0_r8 * c) then
       comp_cov_factor = 0.0_r8
@@ -120,35 +154,6 @@ if(localization_type == 3) then ! Ramped localization
       comp_cov_factor = (2.0_r8 * c - z) / c
    else
       comp_cov_factor = 1.0_r8
-   endif
-
-else if(localization_type == 2) then ! BOXCAR localization
-   if(z < 2.0_r8 * c) then
-      comp_cov_factor = 1.0_r8
-   else
-      comp_cov_factor = 0.0_r8
-   endif
-
-else if(localization_type == 1) then ! Standard Gaspari Cohn localization
-
-   if( z >= c*2.0_r8 ) then
-
-      comp_cov_factor = 0.0_r8
-
-   else if( z >= c .and. z < c*2.0_r8 ) then
-
-      r = z / c
-      comp_cov_factor = r**5 / 12.0_r8  -  &
-                        r**4 / 2.0_r8   +  &
-                        r**3 * 5.0_r8 / 8.0_r8 + &
-                        r**2 * 5.0_r8 / 3.0_r8 - &
-                        5.0_r8*r + 4.0_r8 - 2.0_r8 / (3.0_r8 * r) 
-   else
-      r = z / c
-      comp_cov_factor = r**5 * (-0.25_r8 ) + &
-                        r**4 / 2.0_r8 +              &
-                        r**3 * 5.0_r8/8.0_r8 -       &
-                        r**2 * 5.0_r8/3.0_r8 + 1.0_r8
    endif
 
 else ! Otherwise namelist parameter is illegal; this is an error
