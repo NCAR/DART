@@ -745,6 +745,12 @@ do i = 1, ens_size
 
 end do
 
+! Following block needed for WRF only
+! Write out the ensemble mean for the calculation of flow-dependent BC of WRF.
+!call update_ens_mean(ens_handle)
+!ic_file_unit = open_restart_write('assim_model_state_ic_mean')
+!call awrite_state_restart(smodel_time, ens_mean, ic_file_unit, target_time)
+!call close_restart(ic_file_unit)
 
 ! Also need synchronization block at the end for the asynch
 
