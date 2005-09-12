@@ -57,14 +57,12 @@ integer,             intent(in)  :: key
 real(r8),            intent(out) :: td
 integer,             intent(out) :: istatus
 
-integer  :: iok, ipres, iqv, it
+integer  :: ipres, iqv, it
 real(r8) :: t, qv, t_c, es, qvs, p, INVTD, rd_over_rv, rd_over_rv1
 
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
-
-iok = 0
 
 if(key == 1) then
    ipres = KIND_P
@@ -80,42 +78,42 @@ else
         source, revision, revdate)
 endif
 
-call interpolate(state_vector, location, ipres, p, iok)
-if (iok /= 0) istatus = 1
-call interpolate(state_vector, location, iqv, qv, iok)
-if (iok /= 0) istatus = 1
-call interpolate(state_vector, location, it, t, iok)
-if (iok /= 0) istatus = 1
+call interpolate(state_vector, location, ipres, p, istatus)
+if (istatus /= 0) then
+   td = missing_r8
+   return
+endif
+call interpolate(state_vector, location, iqv, qv, istatus)
+if (istatus /= 0) then
+   td = missing_r8
+   return
+endif
+call interpolate(state_vector, location, it, t, istatus)
+if (istatus /= 0) then
+   td = missing_r8
+   return
+endif
 
-if( p /= missing_r8 .and. qv /= missing_r8 .and. t /= missing_r8 &
-     .and. istatus == 0) then
+rd_over_rv = gas_constant / gas_constant_v
+rd_over_rv1 = 1.0_r8 - rd_over_rv
 
-   rd_over_rv = gas_constant / gas_constant_v
-   rd_over_rv1 = 1.0_r8 - rd_over_rv
-
-   t_c = t - t_kelvin
+t_c = t - t_kelvin
 
 !------------------------------------------------------------------------------
 !  Calculate saturation vapour pressure:
 !------------------------------------------------------------------------------
 
-   es = es_alpha * exp( es_beta * t_c / ( t_c + es_gamma ) )
+es = es_alpha * exp( es_beta * t_c / ( t_c + es_gamma ) )
 
 !------------------------------------------------------------------------------
 !  Calculate saturation specific humidity:
 !------------------------------------------------------------------------------
 
-   qvs = rd_over_rv * es / ( p - rd_over_rv1 * es )
+qvs = rd_over_rv * es / ( p - rd_over_rv1 * es )
 
-   INVTD = 1.0_r8/t  - LOG (qv / qvs) / L_over_Rv
+INVTD = 1.0_r8/t  - LOG (qv / qvs) / L_over_Rv
 
-   td = 1.0_r8 / INVTD
-
-else
-
-   td = missing_r8
-
-endif
+td = 1.0_r8 / INVTD
 
 end subroutine get_expected_dew_point
 
