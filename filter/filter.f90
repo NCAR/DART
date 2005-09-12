@@ -12,7 +12,7 @@ program filter
 ! $Name$
 
 !-----------------------------------------------------------------------------------------
-use        types_mod, only : r8
+use        types_mod, only : r8, missing_r8
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, &
    get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, &
    get_time_range_keys, set_obs_values, set_obs, write_obs_seq, get_num_obs, &
@@ -252,7 +252,7 @@ write(logfileunit,*)
 ! Must be done always because this also terminates option 3 for assim_tools!
 call system('echo a > go_end_filter')
 
-call timestamp(source,revision,revdate,'end') ! closes the log file.
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
 contains
 
@@ -698,10 +698,19 @@ do k = 1, ens_size
 
 
       ! If the observation is not being used at all, also set qc to not able to compute
-      if(istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then 
-         qc(j) = qc(j) + 2**prior_post * 1000
+      if(istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then
+         if (prior_post == 0) then
+            qc(j) = qc(j) + 1000.0_r8       ! Prior
+         elseif (prior_post == 2) then
+            qc(j) = qc(j) + 1000000.0_r8    ! Posterior
+         else
+            call error_handler(E_ERR, 'obs_space_diagnostics', &
+                 'prior_post value not known.', &
+                 source, revision, revdate)
+         endif
+
          ! TEST LINE for doing quality control pass through
-         call set_qc(observation, qc(j:j), 1)         
+         call set_qc(observation, qc(j:j), 1)
          !!! exit
       endif
    end do
@@ -710,17 +719,22 @@ end do
 do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation)
    ! Compute ensemble mean and spread, zero if qc problem occurred
-   obs_mean(1) = sum(ens_obs(:, j)) / ens_size
-   obs_spread(1) = sqrt(sum((ens_obs(:, j) - obs_mean(1))**2) / (ens_size - 1))
+   if(qc(j) < 1000.0_r8) then
+      obs_mean(1) = sum(ens_obs(:, j)) / ens_size
+      obs_spread(1) = sqrt(sum((ens_obs(:, j) - obs_mean(1))**2) / (ens_size - 1))
+   else
+      obs_mean(1) = missing_r8
+      obs_spread(1) = 0.0_r8
+   endif
 
    ! This is efficient place to do observation space quality control
    ! For now just looking for outliers from prior
    ! Need to get the observation value for this
-   if(outlier_threshold > 0.0_r8 .and. do_qc) then
+   if((outlier_threshold > 0.0_r8) .and. do_qc .and. (qc(j) < 1000.0_r8)) then
       error = obs_mean(1) - obs(j)
       diff_sd = sqrt(obs_spread(1)**2 + obs_err_var(j))
       ratio = abs(error / diff_sd)
-      if(ratio > outlier_threshold) qc(j) = qc(j) + 2**prior_post * 10000
+      if(ratio > outlier_threshold) qc(j) = qc(j) + 2**prior_post * 100
    endif
 
    ! If requested output the ensemble mean
