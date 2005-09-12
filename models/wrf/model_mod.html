@@ -1,11 +1,4 @@
 <!--
-Alain; I changed a couple things, marked with 'kdr'.
-
-I also changed most of the function documentation to make it consistent with
-the rest of the html pages; the name of the function is used as the defined
-variable type in the declarations, rather than dummy variable names such as
-'var'
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                                       !!
 !!                   GNU General Public License                          !!
@@ -161,7 +154,7 @@ may be read from file <em class=file>input.nml</em>.
 <div class=routine>
 <em class=call> model_size = get_model_size( )</em>
 <pre>
-integer                               :: <em class=code> model_size </em>
+integer :: <em class=code> model_size </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -224,7 +217,6 @@ of ways is provided. </TD></TR>
 
 <A NAME="yyyroutine3"></A>
 <P></P><HR><P></P>
-<!--kdr Alain; I changed this because it's a subroutine call now -->
 <div class=routine>
 <em class=call> call model_interpolate(x, location, obs_kind, obs_val, istatus)</em>
 <pre>
@@ -279,7 +271,7 @@ available (obs_kind = KIND_REF in obs_kind_mod).
 <A NAME="yyyroutine4"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> var = get_model_time_step( )</em>
+<em class=call> model_time_step = get_model_time_step( )</em>
 <pre>
 type(time_type)                       :: <em class=code> get_model_time_step </em>
 </pre></div>
@@ -328,7 +320,6 @@ time step, pressure at the top of the model, map projection parameters, etc).
 
 <A NAME="yyyroutine6"></A>
 <P></P><HR><P></P>
-<!--kdr Alain; old names 'oloc' and 'inum' were different names than in code -->
 <div class=routine>
 <em class=call>call model_get_close_states(o_loc, radius, num_total, indices, dist, x) </em>
 <pre>
@@ -568,9 +559,9 @@ A stub is provided for the WRF model.
 <A NAME="yyyroutine12"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call init_time(time) </em>
+<em class=call>call init_time(i_time) </em>
 <pre>
-type(time_type),          intent(in)    :: <em class=code> time </em>
+type(time_type),        intent(in)  :: <em class=code> i_time </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -591,7 +582,7 @@ meaningfully supported for the WRF model.
 <div class=routine>
 <em class=call>call init_conditions( x )</em>
 <pre>
-real(r8), dimension(:),   intent(out)   :: <em class=code> x </em>
+real(r8), dimension(:), intent(out) :: <em class=code> x </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -623,7 +614,7 @@ state is always to be provided from input files.
 <div class=namelist>
 <pre>
 <em class=call>namelist / model_nml / </em> &#38;
-    output_state_vector, num_moist_vars, num_domains, calendar_type, surf_obs, adv_mod_command
+    output_state_vector, num_moist_vars, num_domains, calendar_type, surf_obs, h_diab, adv_mod_command
 </pre>
 </div>
 </P>
@@ -644,7 +635,7 @@ state is always to be provided from input files.
 	    for easier plotting (recommended).</TD></TR>
 <TR><!--contents--><TD valign=top>num_moist_vars               </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Number of moist variables in the state vector [0,...,6].</TD></TR>
+    <!--descript--><TD>Number of moist variables in the state vector [0,...,7].</TD></TR>
 <TR><!--contents--><TD valign=top>num_domains                  </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Total number of WRF domains, including the nest.</TD></TR>
@@ -653,10 +644,15 @@ state is always to be provided from input files.
     <!--descript--><TD>Calendar type. We recommend (GREGORIAN = 3) for WRF.</TD></TR>
 <TR><!--contents--><TD valign=top>surf_obs                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, includes U10, V10, T2, and Q2 in the state vector. 
+    <!--descript--><TD>If true, includes U10, V10, T2, Q2, and PS in the state vector. 
 	    The resulting extended state vector permits simpler observational operators 
 	    for these variables. With this strategy, the surface scheme can be changed 
 	    without the requirement of changing the observational operators in DART.</TD></TR>
+<TR><!--contents--><TD valign=top>h_diab                     </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If true, includes H_DIABATIC in the state vector. 
+	    This produces a smoother restart and reduces the spinup problem during the assimilation. 
+            This is especially useful for convective scale assimilations.</TD></TR>
 <TR><!--contents--><TD valign=top>adv_mod_command              </TD>
     <!--  type  --><TD valign=top>character(len=32)            </TD>
     <!--descript--><TD>For single-threaded, set to 'wrf.exe'. 
@@ -699,52 +695,55 @@ state is always to be provided from input files.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 <TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
+                                   nc_write_model_vars</TD>
+    <!-- message --><TD VALIGN=top>num_moist_vars is too large</TD>
+    <!-- comment --><TD VALIGN=top>The maximum number of moist variable in WRFV2.1 is 7</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
+    <!-- message --><TD VALIGN=top>'Please put wrfinput_d0'//idom//' in the work directory.'</TD>
+    <!-- comment --><TD VALIGN=top>One of the wrfinput_d0# is missing in the work directory</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model </TD>
+    <!-- message --><TD VALIGN=top>Map projection no supported</TD>
+    <!-- comment --><TD VALIGN=top>Try PROJ_LATLON(0), PROJ_LC(1), PROJ_PS(2), PROJ_MERC(3)</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
                                    nc_write_model_atts <BR>
-                                   nc_write_model_vars <BR>
-                    </TD>
+                                   nc_write_model_vars <BR></TD>
     <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error messages</TD>
     <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in the named routine</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>static_init_model </TD>
-    <!-- message --><TD VALIGN=top>num_moist_vars is too large.</TD>
-    <!-- comment --><TD VALIGN=top>xxx</TD>
-</TR>
-<TR><!-- routine --><TD VALIGN=top>static_init_model </TD>
-    <!-- message --><TD VALIGN=top>Map projection no supported.</TD>
-    <!-- comment --><TD VALIGN=top>Try PROJ_LATLON(0), PROJ_LC(1), PROJ_PS(2), PROJ_MERC(3)</TD>
-</TR>
 <TR><!-- routine --><TD VALIGN=top>get_state_meta_data </TD>
     <!-- message --><TD VALIGN=top>dart index out of range</TD>
-    <!-- comment --><TD VALIGN=top>xxx</TD>
+    <!-- comment --><TD VALIGN=top>Unlikely. Would indicate a serious bug in the code</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>model_interpolate <BR> get_dist_wrf </TD>
     <!-- message --><TD VALIGN=top>wrong option for which_vert</TD>
-    <!-- comment --><TD VALIGN=top>See which_vert description in location/threed_sphere/location_mod.html 
-                    </TD> 
+    <!-- comment --><TD VALIGN=top>See which_vert description in location/threed_sphere/location_mod.html </TD> 
 </TR>
 <TR><!-- routine --><TD VALIGN=top>model_interpolate </TD>
-    <!-- message --><TD VALIGN=top>wrong obs kind</TD>
+    <!-- message --><TD VALIGN=top>'do not recognize obs kind ',obs_kind</TD>
     <!-- comment --><TD VALIGN=top>See list in 'use obs_kind_mod' statement in model_mod.f90</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>get_wrf_index </TD>
-    <!-- message --><TD VALIGN=top>Indices ,i,j,k, exceed grid dimensions: #1,#2,#3 </TD>
-    <!-- comment --><TD VALIGN=top>xxx</TD>
+    <!-- message --><TD VALIGN=top>'Indices ',i,j,k,' exceed grid dimensions: ',#1,#2,#3 </TD>
+    <!-- comment --><TD VALIGN=top>One of the grid indices exceeds the corresponding dimension for the var_type input. Unlikely to happen but would indicate a serious bug in the code</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>get_dist_wrf </TD>
     <!-- message --><TD VALIGN=top>Unable to define vloc</TD>
-    <!-- comment --><TD VALIGN=top>vloc == missing_r8</TD>
+    <!-- comment --><TD VALIGN=top>The vertical location is below the model surface or above the model lid</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>nc_write_model_atts</TD>
     <!-- message --><TD VALIGN=top>Time dimension ID # must match Unlimited Dimension ID #</TD>
     <!-- comment --><TD VALIGN=top>NetCDF file writing error</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>nc_write_model_vars</TD>
-    <!-- message --><TD VALIGN=top>num_moist_vars is too large </TD>
-    <!-- comment --><TD VALIGN=top>wrf%dom(id)%n_moist > 6</TD>
+<TR><!-- routine --><TD VALIGN=top>read_dt_from_wrf_nml</TD>
+    <!-- message --><TD VALIGN=top>Please put namelist.input in the work directory</TD>
+    <!-- comment --><TD VALIGN=top>The file namelist.input is missing in the work directory</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>xxx</TD>
-    <!-- message --><TD VALIGN=top>xxx</TD>
-    <!-- comment --><TD VALIGN=top>xxx</TD>
+<TR><!-- routine --><TD VALIGN=top>read_dt_from_wrf_nml</TD>
+    <!-- message --><TD VALIGN=top>'max_dom in namelist.input = ',max_dom'num_domains in input.nml  = ',num_domains'Make them consistent.'</TD>
+    <!-- comment --><TD VALIGN=top>The number of WRF domains in namelist.input and in input.nml do not match</TD>
 </TR>
 
 </TABLE>
@@ -1043,15 +1042,15 @@ according to var_type.
 
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call read_dt_from_wrf_nml(dt)</em>
+<em class=call> call read_dt_from_wrf_nml( )</em>
 <pre>
-real(r8),                 intent(out) :: <em class=code> dt </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Read the wrf model time step from namelist.input.
+Read the wrf model time step from namelist.input for all domains.
+The time is stored as part of the type <em clas=code>wrf_static_data_for_dart</em> of the variable <em class=code>wrf</em>.
 </P>
 
 
