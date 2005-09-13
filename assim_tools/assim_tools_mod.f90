@@ -790,7 +790,7 @@ integer, intent(in)             :: ens_size
 real(r8), intent(in)            :: obs(ens_size), obs_inc(ens_size)
 real(r8), intent(in)            :: state(ens_size)
 real(r8), intent(out)           :: state_inc(ens_size), reg_coef
-real(r8), intent(inout)            :: net_a
+real(r8), intent(inout)         :: net_a
 
 real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty
 real(r8) :: restoration_inc(ens_size), state_mean
@@ -817,7 +817,7 @@ if(spread_restoration) then
    if(net_a > 1.0_r8) net_a = 1.0_r8
 
    ! Default restoration increment is 0.0
-  restoration_inc = 0.0_r8
+   restoration_inc = 0.0_r8
 
    ! Compute the factor by which to inflate
    ! These come from correl_error.f90 in system_simulation and the files ens??_pairs and
@@ -852,7 +852,9 @@ type(obs_sequence_type), intent(inout) :: seq
 logical, intent(in) :: my_state(model_size)
 real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 
+character(len=129) :: msgstring
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
+integer :: grp_beg(num_groups), grp_end(num_groups)
 integer :: num_close_ptr(1), indx
 type(obs_type) :: observation
 type(obs_def_type) :: obs_def
@@ -865,6 +867,7 @@ integer, allocatable :: close_ptr(:, :)
 real(r8), allocatable :: dist_ptr(:, :)
 real(r8) :: swath(ens_size), reg_factor
 type(location_type) :: obs_loc(num_obs_in_set)
+
 ! Added for get_close obs
 integer :: obs_box(num_obs_in_set), close_ind(num_obs_in_set), num_close
 integer :: num_cant_recompute
@@ -874,7 +877,15 @@ real(r8) :: net_a(num_groups)
 logical :: evaluate_this_ob, assimilate_this_ob
 
 ! Specify initial storage size for number of close states
-first_num_close = min(model_size, 200000)
+first_num_close = min(domain_size, 400000)
+
+! Divide ensemble into num_groups groups
+grp_size = ens_size / num_groups
+
+do group = 1, num_groups
+   grp_beg(group) = (group - 1) * grp_size + 1
+   grp_end(group) = grp_beg(group) + grp_size - 1
+enddo
 
 ! Generate an array with the indices of my state variables
 inv_indices = 0
@@ -904,7 +915,7 @@ Locations: do i = 1, num_obs_in_set
    obs_err_var(i) = get_obs_def_error_variance(obs_def)
    ! Get the value of the observation
    call get_obs_values(observation, obs(i:i), obs_val_index)
-   ! Get the qc value; if qc is bad, don't be close to any state
+   ! Get the qc value set so far
    call get_qc(observation, qc(i:i), 1)
 end do Locations
 
@@ -938,23 +949,48 @@ if(num_cant_recompute > 0) &
 Observations : do jjj = 1, num_obs_in_set
    j = order(jjj)
 
-   ! Get this observation in a temporary and get its qc value for possible update
-   call get_obs_from_key(seq, keys(j), observation)
-
    ! Just skip observations that have failed prior qc ( >3 for now)
    if(qc(j) > 3.01_r8 .or. obs(j) == missing_r8) cycle Observations
    
+   ! Compute the ensemble prior for this ob if it can be computed here
+   if(compute_obs(j)) then
+      do k = 1, ens_size
+         ! Only compute forward operator if allowed
+         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus, &
+              assimilate_this_ob, evaluate_this_ob)
+         ! If evaluating but not assimilating, just skip but don't change qc
+         if(evaluate_this_ob .and. .not. assimilate_this_ob) cycle Observations
+         ! Inability to compute forward operator implies skip this observation
+         ! Also skip on qc if not being used at all (NOT CLEAR THIS COULD EVER HAPPEN)
+         if (istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then
+            !!!write(msgstring, FMT='(a,i7,a,i7)') 'Skipping obs ',j
+            !!!call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+            qc(j) = qc(j) + 200.0_r8
+            call get_obs_from_key(seq, keys(j), observation)
+            ! Write out the updated quality control for this observation
+            ! At present: THIS DOES NOT GO BACK TO FILE FOR MULTI-DOMAIN RUNS
+            call set_qc(observation, qc(j:j), 1)
+            call set_obs(seq, observation, keys(j))
+            cycle Observations
+         endif
+      end do
+   endif
+
    ! Getting close states for each scalar observation for now
    ! Need model state for some distance computations in sigma, have
    ! to pick some state, only current ones are ensemble, just pass 1
-   222 call get_close_states(seq, keys(j), 2.0_r8*cutoff, num_close_ptr(1), &
-      close_ptr(1, :), dist_ptr(1, :), ens(1, :))
+222 call get_close_states(seq, keys(j), 2.0_r8*cutoff, num_close_ptr(1), &
+         close_ptr(1, :), dist_ptr(1, :), ens(1, :))
    if(num_close_ptr(1) < 0) then
       deallocate(close_ptr, dist_ptr)
       allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
       goto 222
    endif
-   
+  
+   !!! These calls are useful for WRF but generate too much output for low-order models. 
+   !!!write(msgstring, FMT='(a,i7,a,i7)') 'Variables updated for obs ',j,' : ',num_close_ptr(1)
+   !!!call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
+
    ! Determine if this observation is close to ANY state variable for this process
    CLOSE_STATE1: do k = 1, num_close_ptr(1)
       ind = close_ptr(1, k)
@@ -966,30 +1002,11 @@ Observations : do jjj = 1, num_obs_in_set
    ! Falling off end means no close states, skip this observation
    cycle Observations
 
-   ! Compute the ensemble prior for this ob if it can be computed here
    777 continue
-   if(compute_obs(j)) then
-      do k = 1, ens_size
-         ! Only compute forward operator if allowed
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus, &
-            assimilate_this_ob, evaluate_this_ob)
-         ! If evaluating but not assimilating, just skip but don't change qc
-         if(evaluate_this_ob .and. .not. assimilate_this_ob) goto 333
 
-         ! Inability to compute forward operator implies skip this observation
-         ! Also skip on qc if not being used at all (NOT CLEAR THIS COULD EVER HAPPEN)
-         if (istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then
-            qc(j) = qc(j) + 4000.0_r8
-            goto 333
-         endif
-      end do
-   endif
-
-   ! Divide ensemble into num_groups groups
-   grp_size = ens_size / num_groups
    Group1: do group = 1, num_groups
-      grp_bot = (group - 1) * grp_size + 1
-      grp_top = grp_bot + grp_size - 1
+      grp_bot = grp_beg(group)
+      grp_top = grp_end(group)
 
       ! Call obs_increment to do observation space
       call obs_increment(ens_obs(grp_bot:grp_top, j), grp_size, obs(j), &
@@ -1012,8 +1029,8 @@ Observations : do jjj = 1, num_obs_in_set
 
       ! Loop through the groups
       Group2: do group = 1, num_groups
-         grp_bot = (group - 1) * grp_size + 1
-         grp_top = grp_bot + grp_size - 1
+         grp_bot = grp_beg(group)
+         grp_top = grp_end(group)
          call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
             obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), grp_size, &
             ens_inc(grp_bot:grp_top), regress(group), net_a(group))
@@ -1042,7 +1059,7 @@ Observations : do jjj = 1, num_obs_in_set
 
    ! Also need to update all obs variable priors that cannot be recomputed
    ! If there are no obs that can't be recomputed can skip obs update section
-   if(num_cant_recompute == 0) goto 333
+   if(num_cant_recompute == 0) cycle Observations
 
    ! GET_CLOSE_OBS; get a list of obs that are close to the ob being processed
    call get_close_obs(j, num_obs_in_set, obs_loc, 2.0_r8*cutoff, obs_box, &
@@ -1070,8 +1087,8 @@ Observations : do jjj = 1, num_obs_in_set
 
       ! Loop through the groups
       Group3: do group = 1, num_groups
-         grp_bot = (group - 1) * grp_size + 1
-         grp_top = grp_bot + grp_size - 1
+         grp_bot = grp_beg(group)
+         grp_top = grp_end(group)
          call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
             obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), grp_size, &
             ens_inc(grp_bot:grp_top), regress(group), net_a(group))
@@ -1099,11 +1116,6 @@ Observations : do jjj = 1, num_obs_in_set
 
 !------------------
 
-   ! Write out the updated quality control for this observation
-   ! At present: THIS DOES NOT GO BACK TO FILE FOR MULTI-DOMAIN RUNS
-   333 call set_qc(observation, qc(j:j), 1)
-   call set_obs(seq, observation, keys(j))
-
 end do Observations
 
 ! Free up storage
@@ -1126,7 +1138,7 @@ logical,                 intent(in) :: compute_obs_in(num_obs_in_set)
 type(obs_sequence_type), intent(inout) :: seq
 character(len=*),        intent(in) :: obs_sequence_in_name
 
-integer :: i, j, domain_size, indx, obs_val_index, iunit, control_unit
+integer :: i, j, indx, obs_val_index, iunit, control_unit
 integer :: base_size, remainder, domain_top, domain_bottom
 logical :: compute_obs(num_obs_in_set), my_state(model_size)
 
@@ -1176,10 +1188,9 @@ domain_top = 0
 ! TEMPORARY TEST OF ENSEMBLE TRANSPOSING
 do j = 1, num_domains
    domain_bottom = domain_top + 1
-   domain_size = base_size
-   if(j <= remainder) domain_size = domain_size + 1
-   region_size(j) = domain_size
-   domain_top = domain_bottom + domain_size - 1
+   region_size(j) = base_size
+   if(j <= remainder) region_size(j) = region_size(j) + 1
+   domain_top = domain_bottom + region_size(j) - 1
    which_domain(domain_bottom : domain_top) = j
 end do
 
@@ -1193,17 +1204,15 @@ do j = 1, num_domains
    domain_bottom = domain_top + 1
 
    ! Find out which state variables are in my domain
-   !call whats_in_my_domain(num_domains, j, my_state, domain_size)
+   !call whats_in_my_domain(num_domains, j, my_state, region_size(j))
    ! Temporarily just do the domain stuff here
-   domain_size = base_size
-   if(j <= remainder) domain_size = domain_size + 1
-   domain_top = domain_bottom + domain_size - 1
+   domain_top = domain_bottom + region_size(j) - 1
    my_state = .false.
    my_state(domain_bottom : domain_top) = .true.
 
    if(num_domains > 1 .or. .not. is_ens_in_core()) then
       ! Generate an array with the indices of my state variables
-      allocate(ens(ens_size, domain_size), indices(domain_size))
+      allocate(ens(ens_size, region_size(j)), indices(region_size(j)))
 
       indx = 1
       do i = 1, model_size
@@ -1214,18 +1223,18 @@ do j = 1, num_domains
       end do
 
       ! Get the ensemble (whole thing for now) from storage
-      call get_region_by_number(ens_handle, j, domain_size, ens, indices)
+      call get_region_by_number(ens_handle, j, region_size(j), ens, indices)
    endif
 
    ! Do ensemble filter update for this region
    if(do_parallel == 0) then
       if(num_domains > 1 .or. .not. is_ens_in_core()) then
-         call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
+         call filter_assim_region(region_size(j), ens_size, model_size, num_groups, &
             num_obs_in_set, obs_val_index, &
             ens, ens_obs, compute_obs, seq, keys, my_state, &
             reg_cov_inflate(j), reg_cov_inflate_sd(j))
       else
-         call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
+         call filter_assim_region(region_size(j), ens_size, model_size, num_groups, &
             num_obs_in_set, obs_val_index, &
             ens_direct, ens_obs, compute_obs, seq, keys, my_state, &
             reg_cov_inflate(j), reg_cov_inflate_sd(j))
@@ -1261,7 +1270,7 @@ do j = 1, num_domains
       open(unit = iunit, file = in_file_name(j), action = 'write', form = 'unformatted', &
       !!!open(unit = iunit, file = in_file_name(j), action = 'write', form = 'formatted', &
          status = 'replace')
-      write(iunit) num_domains, domain_size, ens_size, model_size, num_groups, &
+      write(iunit) num_domains, region_size(j), ens_size, model_size, num_groups, &
          num_obs_in_set, obs_val_index, obs_sequence_in_name
       write(iunit) ens, ens_obs, compute_obs, keys, my_state
       write(iunit) reg_cov_inflate(j), reg_cov_inflate_sd(j)
@@ -1270,7 +1279,7 @@ do j = 1, num_domains
 
    ! Put this region into storage for single executable which is now finished
    if(do_parallel == 0 .and. (num_domains > 1 .or. .not. is_ens_in_core())) & 
-      call put_region_by_number(ens_handle, j, domain_size, ens, indices)
+      call put_region_by_number(ens_handle, j, region_size(j), ens, indices)
    ! Free up the storage allocated for the region
    if(num_domains > 1 .or. .not. is_ens_in_core()) deallocate(ens, indices)
 
@@ -1317,18 +1326,16 @@ if(do_parallel == 2 .or. do_parallel == 3) then
    domain_top = 0
    do j = 1, num_domains
    ! Find out which state variables are in my domain
-   !call whats_in_my_domain(num_domains, j, my_state, domain_size)
+   !call whats_in_my_domain(num_domains, j, my_state, region_size(j))
    ! Temporarily just do the domain stuff here
       domain_bottom = domain_top + 1
 
-      domain_size = base_size
-      if(j <= remainder) domain_size = domain_size + 1
-      domain_top = domain_bottom + domain_size - 1
+      domain_top = domain_bottom + region_size(j) - 1
       my_state = .false.
       my_state(domain_bottom : domain_top) = .true.
 
       ! Generate an array with the indices of my state variables
-      allocate(ens(ens_size, domain_size), indices(domain_size))
+      allocate(ens(ens_size, region_size(j)), indices(region_size(j)))
 
       indx = 1
       do i = 1, model_size
@@ -1346,7 +1353,7 @@ if(do_parallel == 2 .or. do_parallel == 3) then
       ! Also read in the cov_inflation parameters
       read(iunit) reg_cov_inflate(j), reg_cov_inflate_sd(j)
       close(iunit)
-      call put_region_by_number(ens_handle, j, domain_size, ens, indices)
+      call put_region_by_number(ens_handle, j, region_size(j), ens, indices)
       deallocate(ens, indices)
    end do
 
