@@ -14,7 +14,7 @@ module obs_def_mod
 use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
                              open_file, check_nml_error, logfileunit, close_file
-use     location_mod, only : location_type, read_location, write_location, set_location, &
+use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
                              interactive_time
@@ -46,17 +46,14 @@ end interface
 
 public :: init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
           get_obs_def_error_variance, set_obs_def_location, set_obs_def_kind, set_obs_def_time, &
-   set_obs_def_error_variance, interactive_obs_def, write_obs_def, read_obs_def, &
-   obs_def_type, get_expected_obs_from_def, &
-   set_radar_obs_def, destroy_obs_def, copy_obs_def, assignment(=)
-!WRF public set_obs_def_platform, get_obs_def_platform
+          set_obs_def_error_variance, set_obs_def_key, interactive_obs_def, write_obs_def, &
+          read_obs_def, obs_def_type, get_expected_obs_from_def, destroy_obs_def, &
+          copy_obs_def, assignment(=), max_obs_kinds, get_obs_name
 
-! Public for obs kinds
-public :: KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_W, KIND_QR, KIND_TD, &
-          KIND_RHO, KIND_VR, KIND_REF, KIND_U10, KIND_V10, KIND_T2, KIND_Q2, KIND_TD2
-
-! Public for _more_ obs kinds
-public :: DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY
+public :: RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, SURFACE_PRESSURE, &
+          RADIOSONDE_TEMPERATURE, RADIOSONDE_SPECIFIC_HUMIDITY, &
+          DEW_POINT_TEMPERATURE, DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY, &
+          U_10_METER_WIND, V_10_METER_WIND, TEMPERATURE_2_METER, DEW_POINT_2_METER
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -82,30 +79,23 @@ logical, save :: module_initialized = .false.
 ! ADD A LONG TABLE OF DEFINED BUFR INDICES, ETC.
 ! Definition of observation kind types:
 
-! KIND_U   = zonal wind component
-! KIND_V   = meridional wind component
-! KIND_PS  = Surface pressure
-! KIND_T   = Temperature
-! KIND_QV  = Specific humidity (mixing ratio)
-! KIND_P   = Pressure
-! KIND_W   = Vertical velocity
-! KIND_QR  = Rainwater mixing ratio
-! KIND_TD  = Dew point temperature
-! KIND_RHO = Density
-! KIND_VR  = Doppler radar radial velocity
-! KIND_REF = Radar reflectivity
-! KIND_U10 = zonal windERR component at 10 m AGL
-! KIND_V10 = meridional wind component at 10 m AGL
-! KIND_T2  = Temperature at 2 m AGL
-! KIND_Q2  = Specific humidity (mixing ratio) at 2 m AGL
-! KIND_TD2 = Dew point temperature at 2 m AGL
-
-integer, parameter :: KIND_U = 1, KIND_V = 2, KIND_PS = 3, KIND_T = 4,   &
-                      KIND_QV = 5, KIND_P = 6, KIND_W = 7, KIND_QR = 8, KIND_TD = 10, &
-                      KIND_RHO = 11, &
-                      KIND_VR = 100, KIND_REF = 101, &
-                      KIND_U10 = 200, KIND_V10 = 201, KIND_T2 = 202, KIND_Q2 = 203, &
-                      KIND_TD2 = 204
+! U   = zonal wind component
+! V   = meridional wind component
+! PS  = Surface pressure
+! T   = Temperature
+! QV  = Specific humidity (mixing ratio)
+! P   = Pressure
+! W   = Vertical velocity
+! QR  = Rainwater mixing ratio
+! TD  = Dew point temperature
+! RHO = Density
+! VR  = Doppler radar radial velocity
+! REF = Radar reflectivity
+! U10 = zonal windERR component at 10 m AGL
+! V10 = meridional wind component at 10 m AGL
+! T2  = Temperature at 2 m AGL
+! Q2  = Specific humidity (mixing ratio) at 2 m AGL
+! TD2 = Dew point temperature at 2 m AGL
 
 integer, parameter :: RADIOSONDE_U_WIND_COMPONENT                          = 1, &
                       RADIOSONDE_V_WIND_COMPONENT                          = 2, &
@@ -167,10 +157,9 @@ namelist /obs_def_nml/ assimilate_these_obs_types, evaluate_these_obs_types
 
 contains
 
+!----------------------------------------------------------------------------
 
   subroutine initialize_module
-!----------------------------------------------------------------------------
-! subroutine initialize_module
 
 integer :: iunit, ierr, io, i, j
 character(len = 169) :: err_string
@@ -360,18 +349,18 @@ end function get_obs_def_time
 
 !----------------------------------------------------------------------------
 
-!WRF function get_obs_def_platform(obs_def)
+function get_obs_name(obs_kind_ind)
 
-! Returns the platform of an obs_def
+! Returns observation name
 
-!WRF type(platform_type)            :: get_obs_def_platform
-!WRF type(obs_def_type), intent(in) :: obs_def
+integer, intent(in) :: obs_kind_ind
+character(len = 32) :: get_obs_name
 
-!WRF if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module
 
-!WRF get_obs_def_platform = obs_def%platform
+get_obs_name = obs_kind_info(obs_kind_ind)%name
 
-!WRF end function get_obs_def_platform
+end function get_obs_name
 
 !----------------------------------------------------------------------------
 
@@ -405,6 +394,21 @@ end subroutine set_obs_def_error_variance
 
 !----------------------------------------------------------------------------
 
+subroutine set_obs_def_key(obs_def, key)
+
+! Sets the key of an obs_def
+
+type(obs_def_type), intent(inout) :: obs_def
+integer,            intent(in)    :: key
+
+if ( .not. module_initialized ) call initialize_module
+
+obs_def%key = key
+
+end subroutine set_obs_def_key
+
+!----------------------------------------------------------------------------
+
 subroutine set_obs_def_kind(obs_def, kind)
 
 ! Sets the kind of an obs_def
@@ -432,22 +436,6 @@ if ( .not. module_initialized ) call initialize_module
 obs_def%time = time
 
 end subroutine set_obs_def_time
-
-!----------------------------------------------------------------------------
-
-!WRF subroutine set_obs_def_platform(obs_def, platform)
-
-! Sets the platform of an obs_def
-
-!WRF type(obs_def_type),  intent(inout) :: obs_def
-!WRF type(platform_type), intent(in)    :: platform
-
-!WRF if ( .not. module_initialized ) call initialize_module
-
-!WRF obs_def%platform = platform
-
-!WRF end subroutine set_obs_def_platform
-
 
 !----------------------------------------------------------------------------
 
@@ -482,6 +470,10 @@ if(obs_kind_info(obs_kind_ind)%assimilate .or. obs_kind_info(obs_kind_ind)%evalu
          case(RAW_STATE_1D_INTEGRAL)
             call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
       #ENDIF
+      #IFDEF dew_point_temperature
+         case(DEW_POINT_TEMPERATURE)
+            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+      #ENDIF
       #IFDEF radiosonde_u_wind_component
          case(RADIOSONDE_U_WIND_COMPONENT)
          !!!call interpolate(state, location, TYPE_U, obs_val, istatus)
@@ -492,7 +484,7 @@ if(obs_kind_info(obs_kind_ind)%assimilate .or. obs_kind_info(obs_kind_ind)%evalu
          !!!call interpolate(state, location, TYPE_V, obs_val, istatus)
          call interpolate(state, location, 2, obs_val, istatus)
       #ENDIF
-      #IFDEF radiosonde_temperature
+      #IFDEF surface_pressure
          case(SURFACE_PRESSURE)
          !!!call interpolate(state, location, TYPE_PS, obs_val, istatus)
          call interpolate(state, location, 3, obs_val, istatus)
@@ -502,6 +494,21 @@ if(obs_kind_info(obs_kind_ind)%assimilate .or. obs_kind_info(obs_kind_ind)%evalu
          !!!call interpolate(state, location, TYPE_T, obs_val, istatus)
          call interpolate(state, location, 4, obs_val, istatus)
       #ENDIF
+
+      #IFDEF doppler_radial_velocity
+         case(DOPPLER_RADIAL_VELOCITY)
+            call get_expected_rad_vel(state, location, obs_def%key, obs_val, istatus)
+      #ENDIF
+      #IFDEF radar_reflectivity
+         case(RADAR_REFLECTIVITY)
+            call get_expected_rad_ref(state, location, obs_val, istatus)
+      #ENDIF
+      #IFDEF dew_point_2_meter
+         case(DEW_POINT_2_METER)
+            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+      #ENDIF
+         case DEFAULT
+            call interpolate(state, location, obs_kind_ind, obs_val, istatus)
    end select
 else
    ! Not computing forward operator
@@ -541,7 +548,7 @@ SELECT CASE (fileformat)
       read(ifile, 11) header
 11    Format(a5)
       if(header /= 'obdef') then
-   call error_handler(E_ERR,'read_obs_def', 'Expected location header "obdef" in input file', &
+   call error_handler(E_ERR,'read_obs_def', 'Expected header "obdef" in input file', &
                       source, revision, revdate)
       endif
 END SELECT
@@ -562,14 +569,13 @@ END SELECT
 
 ! This kind may have its own module that needs to read more
 select case(obs_def%kind)
-   case(RAW_STATE_VARIABLE)
-   case(RADIOSONDE_U_WIND_COMPONENT)
-   case(RADIOSONDE_V_WIND_COMPONENT)
-   case(RADIOSONDE_TEMPERATURE)
-   case(SURFACE_PRESSURE)
    #IFDEF raw_state_1d_integral
       case(RAW_STATE_1D_INTEGRAL)
          call read_1d_integral(obs_def%key, ifile, fileformat)
+   #ENDIF
+   #IFDEF doppler_radial_velocity
+      case(DOPPLER_RADIAL_VELOCITY)
+         call read_rad_vel(obs_def%key, ifile, fileformat)
    #ENDIF
 end select
 
@@ -633,6 +639,10 @@ select case(obs_def%kind)
       case(RAW_STATE_1D_INTEGRAL)
          call write_1d_integral(obs_def%key, ifile, fileformat)
    #ENDIF
+   #IFDEF doppler_radial_velocity
+      case(DOPPLER_RADIAL_VELOCITY)
+         call write_rad_vel(obs_def%key, ifile, fileformat)
+   #ENDIF
 end select
 
 call write_time(ifile, obs_def%time, fileformat)
@@ -672,10 +682,9 @@ read(*, *) obs_def%kind
 ! Input any special stuff for this kind
 select case(obs_def%kind)
    #IFDEF doppler_radial_velocity
-      call interactive_doppler_radial_velocity()
+      case(DOPPLER_RADIAL_VELOCITY)
+         call interactive_rad_vel(obs_def%key)
    #ENDIF
-   #IFDEFF radar_reflectivity
-   #ENDIF radar_reflectivity
    #IFDEF raw_state_1d_integral
       case(RAW_STATE_1D_INTEGRAL)
          call interactive_1d_integral(obs_def%key)
@@ -703,69 +712,10 @@ read(*, *) obs_def%error_variance
 
 end subroutine interactive_obs_def
 
-
-subroutine set_radar_obs_def(rad_loc,rgate,raz,elev_rad,ae,dir,var,obs_def)
-!---------------------------------------------------------------------------
-!
-! Allows creation of a radar observation
-
-type(location_type),    intent(in)    :: rad_loc
-real(r8),               intent(in)    :: rgate,raz,elev_rad,ae,var
-real(r8),               intent(in)    :: dir(3)
-type(obs_def_type),     intent(inout) :: obs_def
-
-real(r8) :: h, spath, x, y, rad_lon, rad_lat, obs_lon, obs_lat, vloc
-
-if ( .not. module_initialized ) call initialize_module
-
-! Set the observation kind
-obs_def%kind = KIND_VR
-
-! Doviak & Zrniv, 1993: Doppler radar and weather observations, eq. 2.28b-c
-
-h = sqrt( rgate*rgate + ae*ae + 2.0_r8 *rgate*ae*sin(elev_rad) ) - ae
-spath = ae * asin(rgate * cos(elev_rad) / (ae + h))
-
-x = spath*sin(raz)
-y = spath*cos(raz)
-
-!WRF rad_lon = query_location(rad_loc, 'lon')
-!WRF rad_lat = query_location(rad_loc, 'lat')
-
-obs_lat = y/ae + rad_lat
-obs_lon = x/(ae*cos(rad_lat + y/(2.0_r8*ae))) + rad_lon
-
-!WRF vloc = query_location(rad_loc, 'vloc')
-
-vloc = vloc + h
-
-obs_lon = obs_lon*RAD2DEG
-obs_lat = obs_lat*RAD2DEG
-
-!WRF obs_def%location = set_location(obs_lon, obs_lat, vloc, 3)
-
-! Set the time
-obs_def%time = set_time(0, 0)
-
-obs_def%error_variance = var
-
-!WRF call set_platform_location(obs_def%platform, rad_loc)
-!WRF call set_platform_orientation(obs_def%platform, dir)
-
-!WRF call set_obs_def_platform(obs_def, obs_def%platform)
-
-end subroutine set_radar_obs_def
-
-
 !----------------------------------------------------------------
 
 subroutine destroy_obs_def(obs_def)
 ! TECHNICALLY NEED TO CALL DESTRUCTORS FOR ALL SUBCOMPONENTS, NO ALLOCATED STORAGE YET
-! obs_def_type has the following components:
-! type(location_type) :: location      ! center of mass, so to speak
-! type(obs_kind_type) :: kind          ! keyword, BUFR values for now
-! type(time_type)     :: time
-! real(r8)            :: error_variance
 
 type(obs_def_type), intent(inout) :: obs_def
 
