@@ -26,11 +26,9 @@ use        types_mod, only : r8, DEG2RAD, earth_radius, t_kelvin, es_alpha, es_b
                              gas_constant, L_over_Rv, missing_r8, ps0
 use     location_mod, only : location_type, interactive_location
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
-                             write_obs_def, set_radar_obs_def, destroy_obs_def, &
+                             write_obs_def, destroy_obs_def, &
                              interactive_obs_def, copy_obs_def, get_obs_def_location, &
-                             get_expected_obs_from_def, &
-                             get_obs_kind, KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                             KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_VR, KIND_REF
+                             get_expected_obs_from_def, get_obs_kind
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
@@ -58,7 +56,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, get_qc, set_qc, write_obs, read_obs, &
-   interactive_obs, simul_radar, copy_obs, assignment(=)
+   interactive_obs, copy_obs, assignment(=)
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -239,7 +237,7 @@ function interactive_obs_sequence()
 type(obs_sequence_type) :: interactive_obs_sequence
 
 type(obs_type) :: obs
-integer :: max_num_obs, obs_num, num_copies, num_qc, num_radar, i, end_it_all
+integer :: max_num_obs, num_copies, num_qc, i, end_it_all
 
 
 write(*, *) 'Input upper bound on number of observations in sequence'
@@ -267,17 +265,8 @@ end do
 ! Initialize the obs variable
 call init_obs(obs, num_copies, num_qc)
 
-obs_num = 1
-
-!WRF write(*, *) 'How many radars do you want to simulate?'
-!WRF read(*, *) num_radar
-
-!WRF do i = 1, num_radar
-!WRF   call simul_radar(max_num_obs, obs_num, num_copies, num_qc, interactive_obs_sequence, obs)
-!WRF end do
-
 ! Loop to initialize each observation in turn; terminate by ???
-do i = obs_num, max_num_obs
+do i = 1, max_num_obs
    write(*, *) 'input a -1 if there are no more obs'
    read(*, *) end_it_all
    if(end_it_all == -1) exit
@@ -297,7 +286,7 @@ end function interactive_obs_sequence
 
 subroutine get_expected_obs(seq, keys, state, obs_vals, istatus, &
    assimilate_this_ob, evaluate_this_ob)
-!---------------------------------------------------------------------------
+
 ! Compute forward operator for set of obs in sequence
 
 type(obs_sequence_type), intent(in)  :: seq
@@ -309,13 +298,9 @@ logical,                 intent(out) :: assimilate_this_ob, evaluate_this_ob
 
 integer             :: num_obs, i
 type(location_type) :: location
-!!!integer             :: obs_kind
 type(obs_type)      :: obs
 type(obs_def_type)  :: obs_def
 integer             :: obs_kind_ind
-
-!!! WARNING: THIS ISN"T NEEDED AFTER MOVE TO OBS_SEQUENCE_MOD???
-!if ( .not. module_initialized ) call initialize_module
 
 num_obs = size(keys)
 
@@ -343,13 +328,6 @@ do i = 1, num_obs
    else
       call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, state, obs_vals(i), &
          istatus, assimilate_this_ob, evaluate_this_ob)
-
-   !!!elseif(obs_kind_ind == KIND_TD) then ! Dew-point temperature
-   !!!   call take_td(state, obs_def, obs_vals(i), istatus)
-   !!!elseif(obs_kind_ind == KIND_VR) then ! Radial velocity
-   !!!   call take_vr(state, obs_def, obs_vals(i), istatus)
-   !!!else
-   !!!   call take_obs(state, location, obs_kind, obs_vals(i), istatus)
    endif
 end do
 
@@ -1386,157 +1364,6 @@ end do
 end subroutine interactive_obs
 
 
-!------------------------------------------------------------------------------
-
-subroutine simul_radar(max_num_obs, obs_num, num_copies, num_qc, &
-     obs_sequence, obs)
-
-integer,                 intent(in)    :: max_num_obs, num_copies, num_qc
-integer,                 intent(inout) :: obs_num
-type(obs_type),          intent(inout) :: obs
-type(obs_sequence_type), intent(inout) :: obs_sequence
-
-type(location_type)    :: rad_loc
-
-real(r8)               :: elev_clear(9)  = (/0.5_r8, 1.5_r8, 2.4_r8, 3.4_r8, &
-                                             4.3_r8, 6.0_r8, 9.9_r8, 14.6_r8, 19.5_r8/)
-real(r8)               :: elev_storm(14) = (/0.5_r8, 1.5_r8, 2.4_r8, 3.4_r8, &
-                                             4.3_r8, 5.3_r8, 6.2_r8, 7.5_r8, 8.7_r8, &
-                                             10.0_r8, 12.0_r8, 14.0_r8, 16.7_r8, 19.5_r8/)
-real(r8), allocatable  :: elev(:), azim(:), gate(:)
-real(r8)               :: faz, laz, daz, raz, fgate, lgate, dgate, rgate, ae, var, elev_rad
-real(r8)               :: dir(3)
-
-integer :: i, ilev, n_elev, iaz, n_az, igate, n_gate
-
-character(len=129) :: msgstring
-
-! Does interactive initialization of radar observations
-
-write(*, *)'Input radar location'
-call interactive_location(rad_loc)
-
-n_elev = 0
-
-do while(n_elev /= 9 .and. n_elev /= 14 .and. n_elev /= -1)
-   write(*, *)'Input 9 for 9 pre-defined elevations (clear mode)'
-   write(*, *)'Input 14 for 14 pre-defined elevations (storm mode)'
-   write(*, *)'Input -1 to choose number and elevation angles'
-   read(*, *) n_elev
-end do
-
-if(n_elev == -1) then
-   do while(n_elev < 1)
-      write(*, *)'Input number of elevations'
-      read(*, *) n_elev
-   end do
-   allocate(elev(n_elev))
-   do i = 1, n_elev
-      write(*, FMT='(a,i2)') 'Input elevation angle # ',i
-      read(*, *) elev(i)
-   end do
-else
-   allocate(elev(n_elev))
-   if(n_elev == 9) elev(:) = elev_clear(:)
-   if(n_elev == 14) elev(:) = elev_storm(:)
-endif
-
-write(*, *)'Input first azimuth angle (degree)'
-read(*, *) faz
-faz = DEG2RAD*faz
-
-write(*, *)'Input last azimuth angle (degree)'
-read(*, *) laz
-laz = DEG2RAD*laz
-
-write(*, *)'Input azimuth angle increment (degree)'
-read(*, *) daz
-daz = DEG2RAD*daz
-
-n_az = int((laz - faz)/daz) + 1
-
-allocate(azim(n_az))
-do iaz = 1, n_az
-   azim(iaz) = faz + (iaz-1)*daz
-enddo
-
-write(*, *)'Input closest gate (m)'
-read(*, *) fgate
-
-write(*, *)'Input farthest gate (m)'
-read(*, *) lgate
-
-write(*, *)'Input gate length (m)'
-read(*, *) dgate
-
-n_gate = int((lgate - fgate)/dgate) + 1
-
-allocate(gate(n_gate))
-do igate = 1, n_gate
-   gate(igate) = fgate + (igate-1)*dgate
-enddo
-
-write(*, *)'Input error variance for Doppler velocity'
-read(*, *) var
-
-ae = 4000.0_r8 * earth_radius / 3.0_r8
-
-do ilev = 1, n_elev
-
-   elev_rad = DEG2RAD*elev(ilev)
-
-   do iaz = 1, n_az
-
-      raz = azim(iaz)
-
-      dir(1) = sin(raz)*cos(elev_rad)
-      dir(2) = cos(raz)*cos(elev_rad)
-      dir(3) = sin(elev_rad)
-
-      do igate = 1, n_gate
-
-         rgate = gate(igate)
-
-         if (obs_num <= max_num_obs) then
-
-            call set_radar_obs_def(rad_loc,rgate,raz,elev_rad,ae,dir,var,obs%def)
-
-            do i = 1, num_copies
-               write(*, *) 'Enter value ', i, 'for this observation'
-               read(*, *) obs%values(i)
-            end do
-
-            do i = 1, num_qc
-               write(*, *) 'Enter quality control value ', i, 'for this observation'
-               read(*, *) obs%qc(i)
-            end do
-
-            if(obs_num == 1) then
-               call insert_obs_in_seq(obs_sequence, obs)
-            else
-               call insert_obs_in_seq(obs_sequence, obs, &
-                    obs_sequence%obs(obs_num - 1))
-            endif
-
-            obs_num = obs_num + 1
-
-         else
-
-            write(msgstring,*) 'ran out of room, obs_num (',obs_num, &
-                 ') > max_num_obs (',max_num_obs,')'
-            call error_handler(E_ERR,'simul_radar',msgstring,source,revision,revdate)
-
-         endif
-
-      end do
-   end do
-end do
-
-deallocate(gate, azim, elev)
-
-end subroutine simul_radar
-
-
 !---------------------------------------------------------
 
 function get_num_times(seq)
@@ -1576,144 +1403,6 @@ end function get_num_times
 !subroutine set_cov_group ???
 
 !=================================================
-
-
-
-
-
-! TEMPORARY HOME FOR TAKE_OBS STUFF, SHOULD MOVE TO OBS_KIND OR BELOW
-
-
-subroutine take_obs(state_vector, location, obs_kind, obs_vals, istatus)
-!--------------------------------------------------------------------
-!
-
-implicit none
-
-real(r8),            intent(in) :: state_vector(:)
-type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_kind
-real(r8),           intent(out) :: obs_vals
-integer,            intent(out) :: istatus
-
-! Not needed in obs_sequence_mod???
-!!!if ( .not. module_initialized ) call initialize_module
-
-! Initially, have only raw state observations implemented so obs_kind is
-! irrelevant. Just do interpolation and return.
-
-call interpolate(state_vector, location, obs_kind, obs_vals, istatus)
-
-end subroutine take_obs
-
-
-
-subroutine take_vr(state_vector, obs_def, vr, istatus)
-!--------------------------------------------------------------------
-!
-
-implicit none
-
-real(r8),            intent(in) :: state_vector(:)
-type(obs_def_type),  intent(in) :: obs_def
-real(r8),           intent(out) :: vr
-integer,            intent(out) :: istatus
-
-type(location_type) :: location
-
-real(r8) :: u, v, w, p, qr, alpha, wt, direction(3)
-
-! Not needed in obs_sequence_mod???
-!!!if ( .not. module_initialized ) call initialize_module
-
-location = get_obs_def_location(obs_def)
-!WRF direction = get_platform_orientation(get_obs_def_platform(obs_def))
-
-call interpolate(state_vector, location, KIND_U, u, istatus)
-call interpolate(state_vector, location, KIND_V, v, istatus)
-call interpolate(state_vector, location, KIND_W, w, istatus)
-call interpolate(state_vector, location, KIND_P, p, istatus)
-call interpolate(state_vector, location, KIND_QR, qr, istatus)
-
-alpha=(ps0/p)**0.4_r8
-if(qr <= 0.0_r8) then
-   wt=0.0_r8
-else
-   wt=5.4_r8*alpha*qr**0.125_r8
-endif
-
-print*,'Terminal velocity = ',wt
-
-! direction(1) = sin(az)cos(elev)
-! direction(2) = cos(az)cos(elev)
-! direction(3) = sin(elev)
-! az and elev are angles at the observation location.
-
-vr = direction(1)*u + direction(2)*v + direction(3)*(w+wt)
-
-end subroutine take_vr
-
-
-subroutine take_td(state_vector, obs_def, td, istatus)
-!--------------------------------------------------------------------
-!
-
-implicit none
-
-real(r8),           intent(in)  :: state_vector(:)
-type(obs_def_type), intent(in)  :: obs_def
-real(r8),           intent(out) :: td
-integer,            intent(out) :: istatus
-
-type(location_type) :: location
-
-real(r8) :: t, qv, t_c, es, qvs, p, INVTD, rd_over_rv, rd_over_rv1
-
-! Not needed in obs_sequence_mod???
-!!!if ( .not. module_initialized ) call initialize_module
-
-location = get_obs_def_location(obs_def)
-
-call interpolate(state_vector, location, KIND_P, p, istatus)
-call interpolate(state_vector, location, KIND_QV, qv, istatus)
-call interpolate(state_vector, location, KIND_T, t, istatus)
-
-if( p /= missing_r8 .and. qv /= missing_r8 .and. t /= missing_r8 ) then
-
-   rd_over_rv = gas_constant / gas_constant_v
-   rd_over_rv1 = 1.0_r8 - rd_over_rv
-
-   t_c = t - t_kelvin
-
-!------------------------------------------------------------------------------
-!  Calculate saturation vapour pressure:
-!------------------------------------------------------------------------------
-
-   es = es_alpha * exp( es_beta * t_c / ( t_c + es_gamma ) )
-
-!------------------------------------------------------------------------------
-!  Calculate saturation specific humidity:
-!------------------------------------------------------------------------------
-
-   qvs = rd_over_rv * es / ( p - rd_over_rv1 * es )
-
-   INVTD = 1.0_r8/t  - LOG (qv / qvs) / L_over_Rv
-
-   td = 1.0_r8 / INVTD
-
-else
-
-   td = missing_r8
-
-endif
-
-print*,INVTD, t, qv, qvs, es, p
-
-end subroutine take_td
-
-
-
-
 
 
 end module obs_sequence_mod
