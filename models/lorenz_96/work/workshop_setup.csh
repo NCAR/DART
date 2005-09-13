@@ -67,5 +67,9 @@ csh mkmf_filter
 make         || exit 6
 csh mkmf_obs_diag
 make         || exit 7
+csh mkmf_assim_region
+make         || exit 8
+csh mkmf_integrate_model
+make         || exit 9
 ./perfect_model_obs
 ./filter
