@@ -91,6 +91,10 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
 
 !-----------------------------------------------------------------------
 
+! Private definition of domain map projection use by WRF
+
+integer, parameter :: map_sphere = 0, map_lambert = 1, map_polar_stereo = 2, map_mercator = 3
+
 ! Private definition of model variable types
 
 integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
@@ -99,7 +103,7 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
                       TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
                       TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18, &
-                      TYPE_TSK = 19,  TYPE_HDIAB = 20
+                      TYPE_TSK = 19,  TYPE_HDIAB = 20, TYPE_QNICE = 21
 
 
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
@@ -190,7 +194,7 @@ allocate(wrf%dom(num_domains))
 
 wrf%dom(:)%n_moist = num_moist_vars
 
-if( num_moist_vars > 6) then
+if( num_moist_vars > 7) then
    write(*,'(''num_moist_vars = '',i3)')num_moist_vars
    call error_handler(E_ERR,'static_init_model', &
         'num_moist_vars is too large.', source, revision,revdate)
@@ -227,7 +231,7 @@ do id=1,num_domains
    else
 
       call error_handler(E_ERR,'static_init_model', &
-           'Please put wrfinput_d0'//idom//' in the work directory.', source, revision,revdate)      
+           'Please put wrfinput_d0'//idom//' in the work directory.', source, revision,revdate)
 
    endif
 
@@ -396,13 +400,13 @@ do id=1,num_domains
 
 ! Populate the map projection structure
 
-   if(wrf%dom(id)%map_proj == 0) then
+   if(wrf%dom(id)%map_proj == map_sphere) then
       proj_code = PROJ_LATLON
-   elseif(wrf%dom(id)%map_proj == 1) then
+   elseif(wrf%dom(id)%map_proj == map_lambert) then
       proj_code = PROJ_LC
-   elseif(wrf%dom(id)%map_proj == 2) then
+   elseif(wrf%dom(id)%map_proj == map_polar_stereo) then
       proj_code = PROJ_PS
-   elseif(wrf%dom(id)%map_proj == 3) then
+   elseif(wrf%dom(id)%map_proj == map_mercator) then
       proj_code = PROJ_MERC
    else
       call error_handler(E_ERR,'static_init_model', &
@@ -451,9 +455,13 @@ do id=1,num_domains
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QS
    end if
-   if( wrf%dom(id)%n_moist == 6) then
+   if( wrf%dom(id)%n_moist >= 6) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QG
+   end if
+   if( wrf%dom(id)%n_moist == 7) then
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_QNICE
    end if
    if( wrf%dom(id)%surf_obs ) then
       ind = ind + 1
@@ -764,7 +772,7 @@ do while (.not. var_found)
       end if
    end if
    if( (index .ge. wrf%dom(id)%var_index(1,i) ) .and.  &
-        (index .le. wrf%dom(id)%var_index(2,i) )       )  then
+       (index .le. wrf%dom(id)%var_index(2,i) )       )  then
       var_found = .true.
       var_type = wrf%dom(id)%var_type(i)
       index = index - wrf%dom(id)%var_index(1,i) + 1
@@ -1536,11 +1544,19 @@ do id=1,num_domains
             dist(num_total) = close_dist(i)
          end if
       end if
-      if( wrf%dom(id)%n_moist == 6) then
+      if( wrf%dom(id)%n_moist >= 6) then
          num_total = num_total + 1
          if(num_total <= indmax) then
 !!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qg,id)
             indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qg)
+            dist(num_total) = close_dist(i)
+         end if
+      end if
+      if( wrf%dom(id)%n_moist == 7) then
+         num_total = num_total + 1
+         if(num_total <= indmax) then
+!!$            indices(num_total) = get_wrf_index(ii,jj,k,type_qnice,id)
+            indices(num_total) = wrf%dom(id)%dart_ind(ii,jj,k,type_qnice)
             dist(num_total) = close_dist(i)
          end if
       end if
@@ -2447,8 +2463,11 @@ if ( output_state_vector ) then
    if( wrf%dom(num_domains)%n_moist >= 5) then
       call check(nf90_put_att(ncFileID, StateVarId, "QS_units","kg/kg"))
    endif
-   if( wrf%dom(num_domains)%n_moist == 6) then
+   if( wrf%dom(num_domains)%n_moist >= 6) then
       call check(nf90_put_att(ncFileID, StateVarId, "QG_units","kg/kg"))
+   endif
+   if( wrf%dom(num_domains)%n_moist == 7) then
+      call check(nf90_put_att(ncFileID, StateVarId, "QNICE_units","kg-1"))
    endif
    if(wrf%dom(num_domains)%surf_obs ) then
       call check(nf90_put_att(ncFileID, StateVarId, "U10_units","m/s"))
@@ -2641,13 +2660,22 @@ do id=1,num_domains
            "description", "Snow mixing ratio"))
    endif
 
-   if( wrf%dom(id)%n_moist == 6) then
+   if( wrf%dom(id)%n_moist >= 6) then
       call check(nf90_def_var(ncid=ncFileID, name="QGRAUP_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
            unlimitedDimID /), varid  = var_id))
       call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
       call check(nf90_put_att(ncFileID, var_id, "description", &
            "Graupel mixing ratio"))
+   endif
+
+   if( wrf%dom(id)%n_moist == 7) then
+      call check(nf90_def_var(ncid=ncFileID, name="QNICE_d0"//idom, xtype=nf90_real, &
+           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
+           unlimitedDimID /), varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "units", "kg-1"))
+      call check(nf90_put_att(ncFileID, var_id, "description", &
+           "Ice Number concentration"))
    endif
 
    if(wrf%dom(id)%surf_obs ) then
@@ -2986,9 +3014,22 @@ do id=1,num_domains
       call check(nf90_put_var( ncFileID, VarID, temp3d, &
            start=(/ 1, 1, 1, copyindex, timeindex /) ))
    endif
-   if( wrf%dom(id)%n_moist == 6) then
+   if( wrf%dom(id)%n_moist >= 6) then
       !----------------------------------------------------------------------------
       varname = 'QGRAUP_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+      temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   endif
+   if( wrf%dom(id)%n_moist == 7) then
+      !----------------------------------------------------------------------------
+      varname = 'QNICE_d0'//idom
       !----------------------------------------------------------------------------
       call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
       i       = j + 1
@@ -3002,7 +3043,7 @@ do id=1,num_domains
 
    deallocate(temp3d)
 
-   if ( wrf%dom(id)%n_moist > 6 ) then
+   if ( wrf%dom(id)%n_moist > 7 ) then
       write(*,'(''wrf%dom(id)%n_moist = '',i3)')wrf%dom(id)%n_moist
       call error_handler(E_ERR,'nc_write_model_vars', &
                'num_moist_vars is too large.', source, revision, revdate)
