@@ -1,0 +1,41 @@
+1.  Tell DART what to extract from the truth run
+
+  a. Run create_obs_sequence: defines an observation network
+  b. Run create_fixed_network: spreads it in tim
+
+2.  Create my synthetic obs
+
+  a. Select a random seed in the wrf1d namelist
+
+  b. Copy input.nml.perfect_model_obs_default to input.nml
+
+  c. Run perfect_model_obs: create obs_seq.out
+
+3.  Create an "ensemble mean" about which we will perturb
+
+  a. Run gen_init: creates file member1_ics
+
+  b. Copy member1_ics to filter_ics
+
+4.  Assimilation expt
+
+  a. Change the random seed in the wrf1d namelist (first member != truth)
+
+  b. Copy input.nml.filter to input.nml
+    start_seconds = 43200
+    cutoff = 1000.0
+    start_from_restart = .false.
+
+  c. Run filter
+
+NOTES:
+
+1.  All obs are located by model vertical coordinate right now (type=1).  Surface obs are at coordinate 0.
+  
+2.  To add another variable to the state vector:
+
+  a.  Select a type name and index
+  b.  add one to the total_num* 
+  c.  Make sure the locations are defined (init)
+  d.  Put in roll and unroll
+  e.  To output, add in write_atts and write_vars
