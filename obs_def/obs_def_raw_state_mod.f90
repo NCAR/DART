@@ -2,6 +2,44 @@
 ! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+! BEGIN DART PREPROCESS KIND LIST
+! raw_state_variable,    RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE
+! raw_state_1d_integral, RAW_STATE_1D_INTEGRAL, KIND_1D_INTEGRAL
+! END DART PREPROCESS KIND LIST
+
+! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+!   use obs_def_raw_state_mod, only : write_1d_integral, read_1d_integral, &
+!                                     interactive_1d_integral, get_expected_1d_integral
+! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+
+! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+!         case(RAW_STATE_VARIABLE)                                                            
+!         call interpolate(state, location, 1, obs_val, istatus)                              
+!         case(RAW_STATE_1D_INTEGRAL)                                                         
+!            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)  
+! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+
+! BEGIN DART PREPROCESS READ_OBS_DEF
+!      case(RAW_STATE_VARIABLE)
+!         continue
+!      case(RAW_STATE_1D_INTEGRAL)
+!         call read_1d_integral(obs_def%key, ifile, fileformat)
+! END DART PREPROCESS READ_OBS_DEF
+
+! BEGIN DART PREPROCESS WRITE_OBS_DEF
+!      case(RAW_STATE_VARIABLE)
+!         continue
+!      case(RAW_STATE_1D_INTEGRAL)
+!         call write_1d_integral(obs_def%key, ifile, fileformat)
+! END DART PREPROCESS WRITE_OBS_DEF
+
+! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
+!      case(RAW_STATE_VARIABLE)
+!         continue
+!      case(RAW_STATE_1D_INTEGRAL)
+!         call interactive_1d_integral(obs_def%key)
+! END DART PREPROCESS INTERACTIVE_OBS_DEF
+
 module obs_def_raw_state_mod
 
 use        types_mod, only : r8
