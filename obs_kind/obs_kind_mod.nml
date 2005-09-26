@@ -1,0 +1,6 @@
+&obs_kind_nml
+   assimilate_these_obs_types = 'radiosonde_temperature',
+                                'radiosonde_u_wind_component',
+                                'radiosonde_v_wind_component'
+   evaluate_these_obs_types = 'surface_pressure' /
+
