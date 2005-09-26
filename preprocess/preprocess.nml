@@ -2,7 +2,7 @@
    default_obs_def_mod_file = 'null', 
    default_obs_kind_mod_file = 'null', 
    output_obs_def_mod_file = 'null', 
-   input_obs_def_mod_file = 'null', 
+   output_obs_kind_mod_file = 'null', 
    input_files =  '../../../obs_def/ALL_obs_def_mod.F90',
                   '../../../obs_def/another_mod.f90',
                   '../../../and_yet_another_file_mod.f90'/
