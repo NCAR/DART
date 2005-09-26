@@ -32,8 +32,8 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, check_nml_error, &
-                             register_module, error_handler, E_ERR, E_MSG, logfileunit
-use  assim_model_mod, only : interpolate
+                             register_module, error_handler, E_ERR, E_WARN, E_MSG, logfileunit
+use     obs_kind_mod, only : write_obs_kind, read_obs_kind
 
 
 implicit none 
@@ -953,10 +953,16 @@ if(write_binary_obs_sequence) then
    write(msgstring, *) 'opening unformatted file ',trim(file_name)
    call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
    open(unit = file_id, file = file_name, form = "unformatted")
+   ! Write the initial string for help in figuring out binary
+   write(file_id) 'obs_sequence'
+   call write_obs_kind(file_id, 'unformatted')
 else
    write(msgstring, *) 'opening formatted file ',trim(file_name)
    call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
    open(unit = file_id, file = file_name)
+   ! Write the initial string for help in figuring out binary
+   write(file_id, *) 'obs_sequence'
+   call write_obs_kind(file_id)
 endif
 
 ! First inefficient ugly pass at writing an obs sequence, need to update for storage size
@@ -1015,14 +1021,44 @@ type(obs_sequence_type), intent(out) :: seq
 
 integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id
 character(len = 16) label(2)
+character(len =12) header
+logical :: pre_I_format
+
+! Have to be backwards compatible: assume new format for now
+pre_I_format = .false.
 
 ! Open the file
 file_id = get_unit()
 if(read_binary_obs_sequence) then
    open(unit = file_id, file = file_name, form = "unformatted")
+   ! Read in the fixed header
+   read(file_id) header
+   if(header /= 'obs_sequence') then
+      call error_handler(E_MSG, 'read_obs_seq', &
+         'NO header string obs_sequence: Guessing this is Hawaii format', &
+         source, revision, revdate)
+      ! Set format to pre_I_format and rewind the file
+      pre_I_format = .true.
+      rewind file_id
+   endif
+   call read_obs_kind(file_id, pre_I_format, 'unformatted')
 else
    open(unit = file_id, file = file_name)
+   ! Read in the fixed header
+   read(file_id, *) header
+   if(header /= 'obs_sequence') then
+      call error_handler(E_MSG, 'read_obs_seq', &
+         'NO header string obs_sequence: Guessing this is Hawaii format', &
+         source, revision, revdate)
+write(*, *) 'keep going'
+      ! Set format to pre_I_format and rewind the file
+      pre_I_format = .true.
+      rewind file_id
+   endif
+   ! Read in the obs_kind table and initialize mapping
+   call read_obs_kind(file_id, pre_I_format)
 endif
+
 
 ! First, determine the size that was written out
 if(read_binary_obs_sequence) then
@@ -1087,20 +1123,51 @@ integer, intent(out) :: num_copies, num_qc, num_obs, max_num_obs
 
 integer :: file_id
 character(len = 16) label(2)
+character(len = 12) header
+logical :: pre_I_format
+
+! Have to be backwards compatible: assume new format for now
+pre_I_format = .false.
 
 ! Open the file
 file_id = get_unit()
 if(read_binary_obs_sequence) then
    open(unit = file_id, file = file_name, form = "unformatted")
+   ! Read in the fixed header
+   read(file_id) header
+   if(header /= 'obs_sequence') then
+      call error_handler(E_MSG, 'read_obs_seq', &
+         'NO header string obs_sequence: Guessing this is Hawaii format', &
+         source, revision, revdate)
+      ! Set format to pre_I_format and rewind the file
+      pre_I_format = .true.
+      rewind file_id
+   endif
+   ! Read in the obs_kind table and initialize mapping
+   call read_obs_kind(file_id, pre_I_format, 'unformatted')
 else
    open(unit = file_id, file = file_name)
+   ! Read in the fixed header
+   read(file_id, *) header
+   if(header /= 'obs_sequence') then
+      call error_handler(E_MSG, 'read_obs_seq', &
+         'NO header string obs_sequence: Guessing this is Hawaii format', &
+         source, revision, revdate)
+      ! Set format to pre_I_format and rewind the file
+      pre_I_format = .true.
+      rewind file_id
+   endif
+   ! Read in the obs_kind table and initialize mapping
+   call read_obs_kind(file_id, pre_I_format)
 endif
 
 ! First, determine the size that was written out
 if(read_binary_obs_sequence) then
    read(file_id) num_copies, num_qc, num_obs, max_num_obs
 else
+   write(*, *) 'reading the num_copies'
    read(file_id, *) label(1), num_copies,label(2), num_qc
+   write(*, *) 'num_copies, num_qc ', num_copies, num_qc
    read(file_id, *) label(1), num_obs,   label(2), max_num_obs
 endif
 
