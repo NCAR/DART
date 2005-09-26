@@ -23,7 +23,7 @@ private
 
 public :: max_obs_kinds, get_obs_kind_name, assimilate_this_obs_kind, &
           evaluate_this_obs_kind, get_obs_kind_var_type, get_obs_kind_index, &
-          write_obs_kind, read_obs_kind, write_kind_menu, map_def_index
+          write_obs_kind, read_obs_kind, get_kind_from_menu, map_def_index
 
 ! Public access to the raw variable types
 public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
@@ -244,7 +244,7 @@ integer :: i
 if ( .not. module_initialized ) call initialize_module
 
 do i = 1, max_obs_kinds
-   if(obs_kind_name == obs_kind_info(i)%name) then
+   if(trim(adjustl(obs_kind_name)) == trim(adjustl(obs_kind_info(i)%name))) then
       get_obs_kind_index = i
       return
    endif
@@ -349,7 +349,7 @@ end subroutine write_obs_kind
 !----------------------------------------------------------------------------
 
 
-subroutine read_obs_kind(ifile, fform)
+subroutine read_obs_kind(ifile, pre_I_format, fform)
 
 ! Reads the observation kind strings and corresponding integer
 ! indices as a header for an obs_sequence file. If this isn't
@@ -357,6 +357,7 @@ subroutine read_obs_kind(ifile, fform)
 ! compatibility.
 
 integer,                    intent(in) :: ifile
+logical,                    intent(in) :: pre_I_format
 character(len=*), intent(in), optional :: fform
 
 character(len=20)  :: header
@@ -365,6 +366,19 @@ character(len=129) :: msg_string
 integer            :: i, num_def_kinds, o_index, list_index
 
 if ( .not. module_initialized ) call initialize_module
+
+! If this is old format, there's no obs_kind header to read
+! Still need to initialize input kind map to use the order in
+! the obs_kind file. It's users responsibility to make sure
+! that this order is consistent with what the obs_sequence
+! file thinks.
+if(pre_I_format) then
+   if(.not. allocated(map)) allocate(map(max_obs_kinds))
+   do i = 1, max_obs_kinds
+      map(i) = i
+   end do
+   return
+endif
 
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
@@ -435,22 +449,49 @@ end subroutine read_obs_kind
 
 !----------------------------------------------------------------------------
 
-subroutine write_kind_menu()
+function get_kind_from_menu()
 
-integer :: i
+integer :: get_kind_from_menu
+
+integer :: i, ierr
+character(len=32) :: in
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Should only do kinds that have been selected by preprocessor, so those
 ! are ones that are being evaluated or assimilated.
-write(*, *) '     ', 'Input the index for the observation kind from table below:'
-write(*, *) '     ', '-1 * state variable index for identity observations'
+21 write(*, *) '     ', 'Input -1 * state variable index for identity observations'
+write(*, *) '     ', 'OR input the name of the observation kind from table below:'
+write(*, *) '     ', 'OR input the integer index, BUT see documentation...'
 do i = 1, max_obs_kinds
    if(assimilate_this_obs_kind(i) .or. evaluate_this_obs_kind(i)) &
       write(*, *) '     ',  obs_kind_info(i)%index, trim(obs_kind_info(i)%name)
 end do
 
-end subroutine write_kind_menu
+! Read the input as a string, convert to integers as appropriate 
+read(*, 11) in
+11 format(A)
+
+! If string is a positive or negative number, convert it to integer
+read(in, *, IOSTAT = ierr) get_kind_from_menu
+if(ierr /= 0) then
+   get_kind_from_menu = get_obs_kind_index(in)
+   ! If string isn't found, need to reprompt
+   if(get_kind_from_menu == -1) then
+      write(*, *) trim(in) // ' is not a supported kind: Please try again.'
+      goto 21
+   endif
+else
+   ! Make sure that number entered isn't 0 or too larg
+   if(get_kind_from_menu == 0 .or. get_kind_from_menu > max_obs_kinds) then
+      write(*, *) get_kind_from_menu, 'is not a legal entry: Please try again.'
+      goto 21
+   endif
+endif
+
+! Make sure 
+
+end function get_kind_from_menu
 
 !----------------------------------------------------------------------------
 
