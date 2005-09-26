@@ -30,7 +30,7 @@ use    obs_model_mod, only : move_ahead
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    aget_initial_condition, get_model_state_vector, set_model_state_vector, &
    set_model_time, get_model_time, netcdf_file_type, init_diag_output, &
-   aoutput_diagnostics, finalize_diag_output, init_assim_model, read_state_restart, &
+   aoutput_diagnostics, finalize_diag_output, init_assim_model, &
    awrite_state_restart, open_restart_read, open_restart_write, close_restart
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
