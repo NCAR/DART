@@ -25,7 +25,13 @@ use time_manager_mod, only : time_type, read_time, write_time, set_time, set_tim
                              interactive_time
 use  assim_model_mod, only : get_state_meta_data, interpolate
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, max_obs_kinds, &
-                             get_obs_kind_name, map_def_index, write_kind_menu
+                             get_obs_kind_name, map_def_index, get_kind_from_menu
+use     obs_kind_mod, only : KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
+                             KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
+                             KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE, &
+                             KIND_VERTICAL_VELOCITY, KIND_RAINWATER_MIXING_RATIO, &
+                             KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
+                             KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY
 
 ! DART PREPROCESS USE FOR OBS_KIND_MOD INSERTED HERE
 
@@ -489,11 +495,7 @@ integer :: i
 if ( .not. module_initialized ) call initialize_module
 
 ! Get the observation kind WANT A STRING OPTION, TOO?
-!write(*, *) 'Input the index for the observation kind'
-!write(*, *) '-1 * state variable index for identity obs OR '
-call write_kind_menu()
-read(*, *) obs_def%kind
-
+obs_def%kind = get_kind_from_menu()
 
 ! Input any special stuff for this kind
 select case(obs_def%kind)
