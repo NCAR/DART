@@ -38,9 +38,9 @@ revdate  = "$Date$"
 
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: max_kinds = 10000
-character(len = 256) :: line, test, kind_string(max_kinds), kind_identifier(max_kinds), &
+character(len = 256) :: line, test, kind_string(max_kinds), &
                         raw_kind_item(max_kinds), t_string
-integer              :: iunit, ierr, io, i, j, k, l_kind_string, l_kind_identifier
+integer              :: iunit, ierr, io, i, j, k, l_kind_string
 integer              :: num_kinds_found
 character(len = 169) :: err_string
 character(len = 14)  :: item_string
@@ -201,7 +201,7 @@ SEARCH_INPUT_FILES: do j = 1, num_input_files
       if(test(1:33) == '! BEGIN DART PREPROCESS KIND LIST') exit FIND_KIND_LIST
    end do FIND_KIND_LIST
 
-   ! Subsequent lines contain the kind_string, kind_identifier, and raw_kind_ident separated by commas
+   ! Subsequent lines contain the kind_identifier (same as kind_string), and raw_kind_ident separated by commas
    EXTRACT_KINDS: do
       read(in_unit, 222, IOSTAT = ierr) line
       ! If end of file, then the input file is incomplete or weird stuff has happened
@@ -217,7 +217,7 @@ SEARCH_INPUT_FILES: do j = 1, num_input_files
 
       ! Found a kind; increment the count
       num_kinds_found = num_kinds_found + 1
-      ! Otherwise this line should contain kind_string,   kind_identifier,  raw_kind_item with leading comment
+      ! Otherwise this line should contain kind_identifier (same as kind_string),  raw_kind_item with leading comment
       ! Get rid of the leading comment and subsequent space
       test = adjustl(line(2:))
       ! Compute the length of the kind_string by seeking comma
@@ -227,15 +227,8 @@ SEARCH_INPUT_FILES: do j = 1, num_input_files
       end do
       kind_string(num_kinds_found) = adjustl(test(1:l_kind_string))
   
-      ! Next get the kind_identifier
-      do k = l_kind_string + 2, 256
-         l_kind_identifier = k - (l_kind_string + 2)
-         if(test(k:k) == ',') exit
-      end do
-      kind_identifier(num_kinds_found) = adjustl(test(l_kind_string + 2: l_kind_string + 1 + l_kind_identifier))
-
       ! Finally get the raw_kind_item
-      raw_kind_item(num_kinds_found) = adjustl(test(l_kind_string + l_kind_identifier + 3:))
+      raw_kind_item(num_kinds_found) = adjustl(test(l_kind_string + 2:))
          
    end do EXTRACT_KINDS
 
@@ -263,7 +256,7 @@ end do
 
 ! Loop to write out all the public declarations
 do i = 1, num_kinds_found
-   write(line, *) 'public :: ', trim(kind_identifier(i))
+   write(line, *) 'public :: ', trim(kind_string(i))
    write(obs_kind_out_unit, 51) adjustl(line)
    51 format(A)
 end do
@@ -287,7 +280,7 @@ end do
 
 ! Write out the integer declaration lines
 do i = 1, num_kinds_found
-   write(line, *) 'integer, parameter :: ', trim(adjustl(kind_identifier(i))), ' = ', i
+   write(line, *) 'integer, parameter :: ', trim(adjustl(kind_string(i))), ' = ', i
    write(obs_kind_out_unit, 51) adjustl(line)
 end do
 
@@ -314,7 +307,7 @@ end do
 
 ! Write out the definitions of each entry of obs_kind_info
 do i = 1, num_kinds_found
-   write(line, *) 'obs_kind_info(', i, ') = obs_kind_type(', trim(kind_identifier(i)), ", '", trim(kind_string(i)), "', &"
+   write(line, *) 'obs_kind_info(', i, ') = obs_kind_type(', trim(kind_string(i)), ", '", trim(kind_string(i)), "', &"
    write(obs_kind_out_unit, 21) trim(line)
    write(line, *) '   ', trim(raw_kind_item(i)), ', .false., .false.)'
    write(obs_kind_out_unit, 21) trim(line)
@@ -426,7 +419,7 @@ ITEMS: do i = 1, 7
    ! in the individual special obs_def file
    else
       do k = 1, num_kinds_found
-         write(obs_def_out_unit, 21) 'use obs_kind_mod, only : ' // kind_identifier(k) 
+         write(obs_def_out_unit, 21) 'use obs_kind_mod, only : ' // trim(kind_string(k))
       end do
    endif
 
