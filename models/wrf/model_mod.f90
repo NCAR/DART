@@ -23,7 +23,7 @@ module model_mod
 !-----------------------------------------------------------------------
 
 use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
-                              gas_constant, gas_constant_v
+                              gas_constant, gas_constant_v, gravity
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 use      location_mod, only : location_type, get_location, set_location, &
                               get_dist, horiz_dist_only, &
@@ -34,10 +34,14 @@ use     utilities_mod, only : file_exist, open_file, check_nml_error, &
                               close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit
-use      obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                              KIND_P, KIND_W, KIND_QR, KIND_RHO, &
-                              KIND_U10, KIND_V10, KIND_T2, &
-                              KIND_Q2, KIND_QG, KIND_QS
+use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
+                              KIND_SPECIFIC_HUMIDITY, &
+                              KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
+                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
+                              KIND_U_10_METER_WIND, KIND_V_10_METER_WIND, &
+                              KIND_TEMPERATURE_2_METER, KIND_SPECIFIC_HUMIDITY_2_METER, &
+                              KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                               gridwind_to_truewind
@@ -108,8 +112,6 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
 
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
-
-real (kind=r8), PARAMETER    :: gravity = 9.81_r8
 
 !---- private data ----
 
@@ -709,6 +711,7 @@ type(time_type) :: get_model_time_step
 ! DART time increment
 
 get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
+!!$get_model_time_step = set_time(21600, 0)
 
 end function get_model_time_step
 
@@ -918,7 +921,7 @@ else if(vert_is_pressure(location)) then
    call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
    ! get pressure vertical co-ordinate
    call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
-   if(debug.and.obs_kind /= KIND_PS) print*,' obs is by pressure and zloc =',zloc
+   if(debug.and.obs_kind /= KIND_SURFACE_PRESSURE) print*,' obs is by pressure and zloc =',zloc
    if(debug) print*,'model pressure profile'
    if(debug) print*,v_p
 else if(vert_is_height(location)) then
@@ -953,7 +956,7 @@ endif
 k = max(1,int(zloc))
 
 ! Get the desired field to be interpolated
-if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
+if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then        ! U, V
 
    xloc_u = xloc + 0.5
    yloc_v = yloc + 0.5
@@ -966,6 +969,9 @@ if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
       j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
 
       do k2=1,2
+
+         ! For memory economy over speed, dart_ind should be removed from
+         ! the wrf structure and get_wrf_index reactivated.
 
 !!$         i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
 !!$         i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
@@ -986,7 +992,7 @@ if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
          call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
               utrue, vtrue)
 
-         if( obs_kind == KIND_U) then
+         if( obs_kind == KIND_U_WIND_COMPONENT) then
 
             fld(k2) = utrue
 
@@ -1004,7 +1010,7 @@ if( obs_kind == KIND_U .or. obs_kind == KIND_V) then        ! U, V
 
    endif
 
-else if( obs_kind == KIND_T ) then                ! T
+else if( obs_kind == KIND_TEMPERATURE ) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
@@ -1039,7 +1045,7 @@ else if( obs_kind == KIND_T ) then                ! T
 
    endif
 
-else if( obs_kind == KIND_RHO ) then
+else if( obs_kind == KIND_DENSITY ) then
 
    ! Rho calculated at mass points, and so is like "TYPE_T" 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
@@ -1066,7 +1072,7 @@ else if( obs_kind == KIND_RHO ) then
 
    endif
 
-else if( obs_kind == KIND_W ) then                ! W
+else if( obs_kind == KIND_VERTICAL_VELOCITY ) then
 
    zloc = zloc + 0.5_r8
    k = max(1,int(zloc))
@@ -1092,24 +1098,34 @@ else if( obs_kind == KIND_W ) then                ! W
 
    endif
 
-else if( obs_kind == KIND_QV ) then                ! QV
+else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
+
+!  Convert water vapor mixing ratio to specific humidity:
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+      if ( wrf%dom(id)%n_moist >= 1) then
 
 !!$      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
 !!$      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      fld(1) = a1 /(1.0_r8 + a1)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
+         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         fld(1) = a1 /(1.0_r8 + a1)
 
 !!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
 !!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      fld(2) = a1 /(1.0_r8 + a1)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
+         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         fld(2) = a1 /(1.0_r8 + a1)
+
+      else
+
+         fld(:) = 0.0_r8
+
+      endif
 
    else
 
@@ -1117,22 +1133,33 @@ else if( obs_kind == KIND_QV ) then                ! QV
 
    endif
 
-else if( obs_kind == KIND_QR) then                ! RAIN
+else if( obs_kind == KIND_RAINWATER_MIXING_RATIO) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+      if( wrf%dom(id)%n_moist >= 3) then
 
 !!$      i1 = get_wrf_index(i,j  ,k,TYPE_QR,id)
 !!$      i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QR)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QR)
-      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QR)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QR)
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
 !!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QR,id)
 !!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QR,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QR)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QR)
-      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QR)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QR)
+         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+         fld = max(0.0_r8, fld)
+
+      else
+
+         fld(:) = 0.0_r8
+
+      endif
+
 
    else
 
@@ -1140,18 +1167,28 @@ else if( obs_kind == KIND_QR) then                ! RAIN
 
    endif
 
-else if( obs_kind == KIND_QG) then                ! GRAUPEL
+else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QG)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QG)
-      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      if( wrf%dom(id)%n_moist >= 6) then
 
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QG)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QG)
-      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QG)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QG)
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QG)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QG)
+         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         fld = max(0.0_r8, fld)
+
+      else
+
+         fld(:) = 0.0_r8
+
+      endif
+
 
    else
 
@@ -1159,18 +1196,28 @@ else if( obs_kind == KIND_QG) then                ! GRAUPEL
 
    endif
 
-else if( obs_kind == KIND_QS) then                ! SNOW
+else if( obs_kind == KIND_SNOW_MIXING_RATIO) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QS)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QS)
-      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      if( wrf%dom(id)%n_moist >= 5) then
 
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QS)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QS)
-      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QS)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QS)
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QS)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QS)
+         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+         fld = max(0.0_r8, fld)
+
+      else
+
+         fld(:) = 0.0_r8
+
+      endif
 
    else
 
@@ -1178,7 +1225,7 @@ else if( obs_kind == KIND_QS) then                ! SNOW
 
    endif
 
-else if( obs_kind == KIND_P) then                 ! Pressure
+else if( obs_kind == KIND_PRESSURE) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
@@ -1201,7 +1248,7 @@ else if( obs_kind == KIND_P) then                 ! Pressure
 
    endif
 
-else if( obs_kind == KIND_PS) then                ! Surface pressure
+else if( obs_kind == KIND_SURFACE_PRESSURE) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
@@ -1228,7 +1275,7 @@ else if( obs_kind == KIND_PS) then                ! Surface pressure
 
    endif
 
-else if( obs_kind == KIND_U10 ) then                ! 10-m U-wind
+else if( obs_kind == KIND_U_10_METER_WIND ) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
@@ -1246,7 +1293,7 @@ else if( obs_kind == KIND_U10 ) then                ! 10-m U-wind
 
    endif
 
-else if( obs_kind == KIND_V10 ) then                ! 10-m V-wind
+else if( obs_kind == KIND_V_10_METER_WIND ) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
@@ -1264,7 +1311,7 @@ else if( obs_kind == KIND_V10 ) then                ! 10-m V-wind
 
    endif
 
-else if( obs_kind == KIND_T2 ) then                ! 2-m Temperature
+else if( obs_kind == KIND_TEMPERATURE_2_METER ) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
@@ -1282,7 +1329,7 @@ else if( obs_kind == KIND_T2 ) then                ! 2-m Temperature
 
    endif
 
-else if( obs_kind == KIND_Q2 ) then                ! 2-m Specific humidity
+else if( obs_kind == KIND_SPECIFIC_HUMIDITY_2_METER ) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
@@ -1293,6 +1340,9 @@ else if( obs_kind == KIND_Q2 ) then                ! 2-m Specific humidity
       i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
       i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
       obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      !  Convert water vapor mixing ratio to specific humidity:
+      obs_val = obs_val / (1.0_r8 + obs_val)
 
    else
 
@@ -1307,8 +1357,11 @@ else
 end if
 
 ! Do vertical interpolation
-if(obs_kind /= KIND_PS .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
-     .and. obs_kind /= KIND_T2 .and. obs_kind /= KIND_Q2) then
+if(obs_kind /= KIND_SURFACE_PRESSURE &
+     .and. obs_kind /= KIND_U_10_METER_WIND &
+     .and. obs_kind /= KIND_V_10_METER_WIND &
+     .and. obs_kind /= KIND_TEMPERATURE_2_METER &
+     .and. obs_kind /= KIND_SPECIFIC_HUMIDITY_2_METER) then
 
    call toGrid(zloc, k, dz, dzm)
 
