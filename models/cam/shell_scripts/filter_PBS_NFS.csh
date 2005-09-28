@@ -17,6 +17,7 @@
 # 
 # written 11/1/04 Kevin Raeder
 # last revised 11/11/04 Kevin Raeder
+# last revised  9/28/05 Tim Hoar ... verbose flags
 #-------------------------
 
 ### Job name
@@ -32,28 +33,28 @@
 
 ### This job's working directory; must cd to it, or it will run in /home...
 set tempdir = /scratch/local/tmp$$$user
-rm $tempdir
-mkdir $tempdir
-echo filter- cd to $tempdir >> $PBS_O_WORKDIR/run_job.log
-echo cd to $tempdir > $PBS_O_WORKDIR/run_filter.stout
+\rm -f $tempdir
+mkdir -p $tempdir
+echo "filter- cd to $tempdir" >> $PBS_O_WORKDIR/run_job.log
+echo "cd to $tempdir"          > $PBS_O_WORKDIR/run_filter.stout
 cd $tempdir
 
 if ($?PBS_O_WORKDIR) then
    # it's a batch job and the central experiment directory is automatically defined
-   echo filter- running on `cat $PBS_NODEFILE` >> $PBS_O_WORKDIR/run_job.log
+   echo "filter- running on "`cat $PBS_NODEFILE` >> $PBS_O_WORKDIR/run_job.log
 else
-   echo filter- setenv PBS_O_WORKDIR >> $PBS_O_WORKDIR/run_job.log
+   echo "filter- setenv PBS_O_WORKDIR"           >> $PBS_O_WORKDIR/run_job.log
    setenv PBS_O_WORKDIR `pwd`
 endif
 
 #-----------------------
 # Get filter input files
-cp $PBS_O_WORKDIR/input.nml .
-cp $PBS_O_WORKDIR/caminput.nc .
-cp $PBS_O_WORKDIR/obs_seq.out .
-cp $PBS_O_WORKDIR/filter .
-cp $PBS_O_WORKDIR/filter_ic_old* .
-cp $PBS_O_WORKDIR/assim_ic_old .
+cp -v $PBS_O_WORKDIR/input.nml .
+cp -v $PBS_O_WORKDIR/caminput.nc .
+cp -v $PBS_O_WORKDIR/obs_seq.out .
+cp -v $PBS_O_WORKDIR/filter .
+cp -v $PBS_O_WORKDIR/filter_ic_old* .
+cp -v $PBS_O_WORKDIR/assim_ic_old .
 
 #-----------------------
 # Run the filter
@@ -79,16 +80,16 @@ while($again == true)
    if(-e go_advance_model && ${go_advance_exist} == false) then
       # remove files needed for previous stage, to conserve disc space
       if (-e filter_assim_region_out1) then
-         rm $PBS_O_WORKDIR/filter_assim_region_out* filter_assim_region_out*
+         \rm -f $PBS_O_WORKDIR/filter_assim_region_out* filter_assim_region_out*
       endif
-      cp go_advance_model $PBS_O_WORKDIR
-      cp filter_control $PBS_O_WORKDIR
+      cp -v go_advance_model $PBS_O_WORKDIR
+      cp -v filter_control $PBS_O_WORKDIR
       # copy in numerical order, not alphabetic; this permits filter_server to send
       # the first batch of model advances as soon as the necessary initial conditions
       # are there
       set n = 1
       while (-e assim_model_state_ic$n)
-         cp assim_model_state_ic$n $PBS_O_WORKDIR
+         cp -v assim_model_state_ic$n $PBS_O_WORKDIR
          @ n++
       end
       set go_advance_exist = true
@@ -109,32 +110,32 @@ while($again == true)
   # from here to signal filter to  proceed.  
   if(! -e $PBS_O_WORKDIR/go_advance_model && ${go_advance_exist} == true) then
       # remove files needed for previous stage, to conserve disc space
-      rm assim_model_state_ic* $PBS_O_WORKDIR/assim_model_state_ic*
-      cp $PBS_O_WORKDIR/assim_model_state_ud* .
+      \rm -f assim_model_state_ic* $PBS_O_WORKDIR/assim_model_state_ic*
+      cp -v $PBS_O_WORKDIR/assim_model_state_ud* .
       set go_advance_exist = false
-      rm go_advance_model 
+      \rm -f go_advance_model 
    endif
       
    # When filter writes out go_assim_regions, copy it to the central directory to 
    # signal assim_regions to go.  If it already exists, do nothing.
    if(-e go_assim_regions && ${go_assim_exist} == false) then
       # remove files needed for previous stage, to conserve disc space
-      rm assim_model_state_ud* $PBS_O_WORKDIR/assim_model_state_ud*
-      cp filter_assim_region__in* $PBS_O_WORKDIR
-      cp assim_region_control $PBS_O_WORKDIR
-      cp filter_assim_obs_seq $PBS_O_WORKDIR
+      \rm -f assim_model_state_ud* $PBS_O_WORKDIR/assim_model_state_ud*
+      cp -v filter_assim_region__in* $PBS_O_WORKDIR
+      cp -v assim_region_control $PBS_O_WORKDIR
+      cp -v filter_assim_obs_seq $PBS_O_WORKDIR
       set go_assim_exist = true
-      cp go_assim_regions $PBS_O_WORKDIR
+      cp -v go_assim_regions $PBS_O_WORKDIR
    endif
       
    # When the go_assim_regions disappears from the central directory, remove it
    # from here to signal filter to  proceed.
    if(! -e $PBS_O_WORKDIR/go_assim_regions && ${go_assim_exist} == true) then
       # remove files needed for previous stage, to conserve disc space
-      rm filter_assim_region__in* $PBS_O_WORKDIR/filter_assim_region__in*
-      cp $PBS_O_WORKDIR/filter_assim_region_out* .
+      \rm -f filter_assim_region__in* $PBS_O_WORKDIR/filter_assim_region__in*
+      cp -v $PBS_O_WORKDIR/filter_assim_region_out* .
       set go_assim_exist = false
-      rm go_assim_regions 
+      \rm -f go_assim_regions 
    endif
 
    # When filter writes out go_end_filter... 
@@ -153,21 +154,21 @@ while($again == true)
       end
 
       # move output to central directory for analysis and storage
-      cp filter_ic_new*                     $PBS_O_WORKDIR
-      cp assim_ic_new                       $PBS_O_WORKDIR
-      echo filter- copied filter_ic_new to PBS >> $PBS_O_WORKDIR/run_job.log
-      ls -lt $PBS_O_WORKDIR/filter_ic*         >> $PBS_O_WORKDIR/run_job.log
-      cp Prior_Diag.nc Posterior_Diag.nc    $PBS_O_WORKDIR
-      cp obs_seq.final                      $PBS_O_WORKDIR
-      cp filter.out                         $PBS_O_WORKDIR
+      cp -v filter_ic_new*                          $PBS_O_WORKDIR
+      cp -v assim_ic_new                            $PBS_O_WORKDIR
+      echo "filter- copied filter_ic_new to PBS" >> $PBS_O_WORKDIR/run_job.log
+      ls -lt $PBS_O_WORKDIR/filter_ic*           >> $PBS_O_WORKDIR/run_job.log
+      cp -v Prior_Diag.nc Posterior_Diag.nc         $PBS_O_WORKDIR
+      cp -v obs_seq.final                           $PBS_O_WORKDIR
+      cp -v filter.out                              $PBS_O_WORKDIR
 
       # signal job.csh that filter is done with this obs_seq.out/day.
-      mv go_end_filter $PBS_O_WORKDIR
-      echo filter- moved go_end_filter to PBS_O_WORKDIR >> $PBS_O_WORKDIR/run_job.log
-      ls -lt $PBS_O_WORKDIR/go*                         >> $PBS_O_WORKDIR/run_job.log
+      mv -v go_end_filter $PBS_O_WORKDIR
+      echo "filter- moved go_end_filter to PBS_O_WORKDIR" >> $PBS_O_WORKDIR/run_job.log
+      ls -lt $PBS_O_WORKDIR/go*                           >> $PBS_O_WORKDIR/run_job.log
 
       set again = false
-      echo filter- "filter.csh terminating normally at " `date`  >> $PBS_O_WORKDIR/run_job.log
+      echo "filter- filter.csh terminating normally at "`date`  >> $PBS_O_WORKDIR/run_job.log
    else
       sleep $nsec
       if ($nsec < 8) @ nsec = 2 * $nsec
@@ -176,7 +177,7 @@ while($again == true)
 end
 
 #-----------------------------------------------
-mv dart_out.log $PBS_O_WORKDIR
+mv -v dart_out.log $PBS_O_WORKDIR
 
 # to prevent losing restart files look for signal from job.csh that it's safe
 cd $PBS_O_WORKDIR
@@ -184,10 +185,10 @@ cd $PBS_O_WORKDIR
 set again = true
 while($again == true)
    if (-e rm_filter_temp) then
-      rm -rf $tempdir rm_filter_temp
+      \rm -rf $tempdir rm_filter_temp
       set again = false
    else
-      echo filter- rm_filter_temp not found yet  >> $PBS_O_WORKDIR/run_job.log
+      echo "filter- rm_filter_temp not found yet"  >> $PBS_O_WORKDIR/run_job.log
       sleep 10
    endif
 end
