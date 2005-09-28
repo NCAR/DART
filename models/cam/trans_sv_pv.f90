@@ -21,11 +21,13 @@ program trans_sv_pv
 !
 ! author: Kevin Raeder 2/21/03
 !         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
+! mod:    to read temp_ic (assim_model_state_ic; 2 times) or temp_ud (1 time) and put
+!         the fields into the CAM initial file
 !
 !----------------------------------------------------------------------
 
 use       types_mod, only : r8
-use   utilities_mod, only : get_unit
+use   utilities_mod, only : get_unit, file_exist, open_file
 use       model_mod, only : model_type, init_model_instance, write_cam_init, &
    vector_to_prog_var 
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
@@ -46,8 +48,8 @@ type(model_type)       :: var
 ! Guam clean out advance_model
 type(time_type)        :: adv_to_time
 real(r8), allocatable  :: x_state(:)
-integer                :: file_unit, x_size
-character (len = 128)  :: file_name = 'caminput.nc', file_in = 'temp_ic'
+integer                :: file_unit, mem_unit, x_size
+character (len = 128)  :: file_name, file_in 
 
 ! Static init assim model calls static_init_model
 PRINT*,'static_init_assim_model in trans_sv_pv'
@@ -57,12 +59,23 @@ call init_assim_model(x)
 ! Allocate the instance of the cam model type for storage
 call init_model_instance(var)
 
-! Get file for DART vector input
-file_unit = open_restart_read(file_in)
-
-! read in state vector from DART and throwing away the time(s)
-! since those are handled by trans_time.f90
-call read_state_restart(x, file_unit, adv_to_time)
+if (file_exist( 'temp_ic' )) then
+   file_in = 'temp_ic'
+   file_name = 'caminput.nc'
+   ! Get file for DART vector input
+   file_unit = open_restart_read(file_in)
+   ! read in target time and state vector from DART and throwing away the time(s)
+   ! since those are handled by trans_time.f90
+   call read_state_restart(x, file_unit, adv_to_time)
+else if (file_exist( 'member' )) then
+   mem_unit = open_file ('member')
+   read(mem_unit,'(A)') file_in
+   read(mem_unit,'(A)') file_name
+   PRINT*,' file_in = ',file_in
+   file_unit = open_restart_read(file_in)
+   ! read state vector from DART and throw away the time
+   call read_state_restart(x, file_unit)
+endif
 call close_restart(file_unit)
 
 ! Get the state part of the assim_model type x
