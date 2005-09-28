@@ -2505,14 +2505,15 @@ end subroutine print_date
 
 
 
-function read_time(file_unit, form)
+function read_time(file_unit, form, ios_out)
 !--------------------------------------------------------------------------------
 !
 
 implicit none
 
-integer,          intent(in)           :: file_unit
-character(len=*), intent(in), optional :: form
+integer,          intent(in)            :: file_unit
+character(len=*), intent(in), optional  :: form
+integer,          intent(out), optional :: ios_out
 
 type(time_type)   :: read_time
 integer           :: secs, days, ios
@@ -2533,11 +2534,20 @@ SELECT CASE (fileformat)
 END SELECT
 
 if ( ios /= 0 ) then
+
+   ! If ios_out argument is present, just return a non-zero ios
+   if(present(ios_out)) then
+      ios_out = ios
+      return
+   endif
+
+   ! Otherwise, read error is fatal, print message and stop
    call dump_unit_attributes(file_unit)   ! TJH DEBUG statement
    write(str1,*)'read status is',ios
    call error_handler(E_ERR,'read_time',str1,source,revision,revdate)
 else
    read_time = set_time(secs, days)
+   if(present(ios_out)) ios_out = 0
 endif
 
 end function read_time
