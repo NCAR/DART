@@ -63,8 +63,9 @@ integer, allocatable    :: keys(:)
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 real(r8), allocatable   :: ens(:)
-character(len=129)      :: copy_meta_data(2), msgstring, qc_meta_data
-logical                 :: assimilate_this_ob, evaluate_this_ob
+character(len=129)      :: copy_meta_data(2), msgstring, qc_meta_data, obs_seq_read_format
+logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
+integer                 :: obs_seq_file_id
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -121,7 +122,8 @@ write(logfileunit, nml=perfect_model_obs_nml)
 write(     *     , nml=perfect_model_obs_nml)
 
 ! Find out how many data copies are in the obs_sequence 
-call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max)
+call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max, &
+   obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
 
 ! First two copies of output will be truth and observation;
 ! Will overwrite first two existing copies in file if there are any
