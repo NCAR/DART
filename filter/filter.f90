@@ -423,6 +423,9 @@ subroutine filter_setup_obs_sequence()
 integer :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc
 real(r8) :: qc(1)
 character(len = 129) :: qc_meta_data = 'quality control'
+logical :: pre_I_format
+character(len = 129) :: obs_seq_read_format
+integer :: obs_seq_file_id
 
 ! Determine the number of output obs space fields
 num_obs_copies = 2 * num_output_obs_members
@@ -430,7 +433,8 @@ if(output_obs_ens_mean) num_obs_copies = num_obs_copies + 2
 if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
 
 ! For now, want to have a single qc field, increment if one doesn't exist
-call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs)
+call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, &
+   obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
 if(tnum_qc == 0) then
    qc_num_inc = 1
 else if(tnum_qc == 1) then
