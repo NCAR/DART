@@ -77,9 +77,9 @@ use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file,
 use     location_mod, only : location_type, get_location, set_location, &
                              get_dist, vert_is_level, query_location, &
                              LocationDims, LocationName, LocationLName
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P
-!    and maybe KIND_W, KIND_QR, KIND_TD, KIND_VR, KIND_REF, KIND_U10, KIND_V10, 
-!              KIND_T2, KIND_Q2, KIND_TD2
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                             KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_QV, &
+                             KIND_PRESSURE
 use    random_nr_mod, only : init_ran1
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -148,7 +148,7 @@ character(len = 128) :: model_config_file = 'caminput.nc', &
                         model_version = '3.0'
 
 ! Define highest pressure for which obserations are used in mb
-real(r8) :: highest_obs_pressure_mb = 30.0
+real(r8) :: highest_obs_pressure_mb = 30.0_r8
 
 ! Namelist variables for defining state vector, and default values
 ! read in sizes from first namelist, allocate, set default values, then get values from
@@ -254,7 +254,7 @@ character (len=128), allocatable :: state_units(:)
 ! array for the linking of obs_kinds (KIND_) to model field TYPE_s
 ! It's filled in obs_field_location
 ! The max size of KIND_ should come from obs_kind_mod
-integer, dimension(1000) :: obs_loc_in_sv = (/(0,iii=1,1000)/)
+integer, dimension(100) :: obs_loc_in_sv = (/(0,iii=1,100)/)
 !
 !---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
@@ -626,11 +626,6 @@ subroutine plevs_cam (ncol    , ncold   ,ps      ,pmid    )
 ! Author: B. Boville (plevs0), 
 !         Kevin Raeder modified  8/1/03 to use hy[ab][im] from within module
 !         rather than in a common block, for use in DART,
-!
-!-----------------------------------------------------------------------
-!
-! $Id$
-! $Author$
 !
 !-----------------------------------------------------------------------
 
@@ -1184,7 +1179,7 @@ else
    lon_below = num_lons
    lon_above = 1
    if(lon < bot_lon) then
-      temp_lon = lon + 360.0
+      temp_lon = lon + 360.0_r8
    else
       temp_lon = lon
    endif
@@ -1210,12 +1205,12 @@ else if(lat <= bot_lat) then
 ! South of bottom lat NEED TO DO BETTER: NOT REALLY REGULAR
    lat_below = 1
    lat_above = 2
-   lat_fract = 0.0
+   lat_fract = 0.0_r8
 else
 ! North of top lat NEED TO DO BETTER: NOT REALLY REGULAR
    lat_below = num_lats - 1
    lat_above = num_lats
-   lat_fract = 1.0
+   lat_fract = 1.0_r8
 endif
 
 20 continue
@@ -1249,9 +1244,9 @@ endif
 istatus = vstatus
 if(istatus /= 1) then
    do i = 1, 2
-      a(i) = lon_fract * val(2, i) + (1.0 - lon_fract) * val(1, i)
+      a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
    end do
-   interp_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
+   interp_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
 else
    interp_val = 0.
 endif
@@ -1285,11 +1280,7 @@ istatus = 0
 vstatus = 0
 
 ! Need to get the surface pressure at this point. Easy for A-grid.
-! kdr debug
-!if (lat_index == 6 .and. lon_index == 12 ) &
-!   write(*,*) 'get_val_press; calling get_val for surf press'
-call get_val(ps(1), x, lon_index, lat_index, -1, KIND_PS, vstatus)
-! call get_val(ps(1), x, lon_index, lat_index, -1, 3, vstatus)
+call get_val(ps(1), x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
 if (vstatus > 0) then
    val = 0.
    istatus = 1
@@ -1302,9 +1293,6 @@ call plevs_cam (1, 1, ps, pfull)
 !write(*, *) 'pressure levs in model are ', pfull
 
 ! Interpolate in vertical to get two bounding levels
-!if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 .and. pressure > 90000.) &
-!   write(*, *)'    pressure top bottom ', pressure, pfull(1, 1), pfull(1, num_levs)
-
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
    istatus = 1
    val = 0.
@@ -1315,7 +1303,8 @@ if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
 ! do i=1,exclude_obs_kinds_num
 !    if (include .and. obs_kind == exclude_obs_kinds(i)) include = .false.
 ! enddo
-elseif (obs_kind == 3 .or. obs_kind == 5) then
+! elseif (obs_kind == 3 .or. obs_kind == 5) then
+elseif (obs_kind == KIND_SURFACE_PRESSURE .or. obs_kind == KIND_SPECIFIC_HUMIDITY) then
    istatus = 1
    val = 0.
 ! else if (.not.include) then
@@ -1324,7 +1313,7 @@ elseif (obs_kind == 3 .or. obs_kind == 5) then
 
 else 
 !   if(pressure < 20000.) then
-   if(pressure < highest_obs_pressure_mb * 100.0) then
+   if(pressure < highest_obs_pressure_mb * 100.0_r8) then
       istatus = 2
    else
       istatus = 0
@@ -1349,7 +1338,7 @@ else
 !   write(*,*) '              bot_val,vstatus =',bot_val,vstatus
    if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, obs_kind, vstatus)
    if (vstatus == 0) then
-      val = (1.0 - fraction) * bot_val + fraction * top_val
+      val = (1.0_r8 - fraction) * bot_val + fraction * top_val
    else
      istatus = 1
       val = 0.
@@ -2202,7 +2191,7 @@ else if(o_lat >= lat_top) then
 else
    diff = (o_lat - lat_bot) / lat_int
    lower_ind = int(diff) + 1
-   if(diff - int(diff) < 0.5) then
+   if(diff - int(diff) < 0.5_r8) then
       get_closest_lat_index = lower_ind
    else
       get_closest_lat_index = lower_ind + 1
@@ -2230,14 +2219,14 @@ lon_top = lons(nlon)
 lon_int = lons(2) - lons(1)
 if(o_lon <= lon_bot) then
    diff = (lon_bot - o_lon) / lon_int
-   if(diff > 0.5) then
+   if(diff > 0.5_r8) then
       get_closest_lon_index = nlon
    else
       get_closest_lon_index = 1
    end if
 else if(o_lon >= lon_top) then
    diff = (o_lon - lon_top) / lon_int
-   if(diff > 0.5) then
+   if(diff > 0.5_r8) then
       get_closest_lon_index = 1
    else
       get_closest_lon_index = nlon
@@ -2245,7 +2234,7 @@ else if(o_lon >= lon_top) then
 else
    diff = (o_lon - lon_bot) / lon_int
    lower_ind = int(diff) + 1
-   if(diff - int(diff) < 0.5) then
+   if(diff - int(diff) < 0.5_r8) then
       get_closest_lon_index = lower_ind
    else
       get_closest_lon_index = lower_ind + 1
@@ -2438,23 +2427,23 @@ end subroutine order_state_fields
 ! This subroutine will be called from static_init_model, so it will not have to be 
 ! recomputed for every obs.
 
-! use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, KIND_P
+! use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
 
 integer :: i, nfld
 integer, intent(out) :: obs_loc_in_sv(:)
 character (len = 129) :: errstring
 
 ! 2D fields
-obs_loc_in_sv(KIND_PS) = TYPE_PS
+obs_loc_in_sv(KIND_SURFACE_PRESSURE) = TYPE_PS
 
 ! 3D fields
-obs_loc_in_sv(KIND_T) = TYPE_T
-obs_loc_in_sv(KIND_U) = TYPE_U
-obs_loc_in_sv(KIND_V) = TYPE_V
-obs_loc_in_sv(KIND_QV) = TYPE_Q
+obs_loc_in_sv(KIND_TEMPERATURE) = TYPE_T
+obs_loc_in_sv(KIND_U_WIND_COMPONENT) = TYPE_U
+obs_loc_in_sv(KIND_V_WIND_COMPONENT) = TYPE_V
+obs_loc_in_sv(KIND_SPECIFIC_HUMIDITY) = TYPE_Q
 
 write(*,*) 'OBS_KIND   FIELD_TYPE'
-do i=1,1000
+do i=1,100
    if (obs_loc_in_sv(i) /= 0) write(*,'(2I8)') i, obs_loc_in_sv(i)
 enddo
 
@@ -2463,7 +2452,7 @@ enddo
 ! The max size of KIND_ should come from obs_kind_mod
 ! do i=1,state_num_3d
 !    if (state_name_3d(i)(1:1) == 'T' .and. &
-!        KIND_T <= 1000) ) obs_loc_in_sv(KIND_T) = TYPE_3D(i)
+!        KIND_TEMPERATURE <= 100) ) obs_loc_in_sv(KIND_TEMPERATURE) = TYPE_3D(i)
 ! enddo 
 
 return
