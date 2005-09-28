@@ -1,3 +1,8 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+
 ! vars_3d still has order of variables; lon,lev,lat,field in some(?) routines
 !  (use vars_3d as a search tag if I decide to change over to all lon,lat,lev)
 ! ARE THEY SEPARATE?
@@ -16,9 +21,6 @@
 !!!!!!!!!!!!!!!!!!!!!!
 
 
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
@@ -78,7 +80,7 @@ use     location_mod, only : location_type, get_location, set_location, &
                              get_dist, vert_is_level, query_location, &
                              LocationDims, LocationName, LocationLName
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                             KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_QV, &
+                             KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_PRESSURE
 use    random_nr_mod, only : init_ran1
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
