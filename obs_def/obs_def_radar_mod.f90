@@ -2,6 +2,45 @@
 ! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+! BEGIN DART PREPROCESS KIND LIST
+! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
+! RADAR_REFLECTIVITY, KIND_RADAR_REFLECTIVITY
+! END DART PREPROCESS KIND LIST
+
+! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+!   use obs_def_radar_mod, only : write_rad_vel, read_rad_vel, &
+!                                 interactive_rad_vel, get_expected_rad_vel
+!   use obs_def_radar_mod, only : get_expected_rad_ref
+! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+
+! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+!         case(DOPPLER_RADIAL_VELOCITY)
+!            call get_expected_rad_vel(state, location, obs_def%key, obs_val, istatus)
+!         case(RADAR_REFLECTIVITY)
+!            call get_expected_rad_ref(state, location, obs_val, istatus)
+! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+
+! BEGIN DART PREPROCESS READ_OBS_DEF
+!      case(DOPPLER_RADIAL_VELOCITY)
+!         call read_rad_vel(obs_def%key, ifile, fileformat)
+!      case(RADAR_REFLECTIVITY)
+!         continue
+! END DART PREPROCESS READ_OBS_DEF
+
+! BEGIN DART PREPROCESS WRITE_OBS_DEF
+!      case(DOPPLER_RADIAL_VELOCITY)
+!         call write_rad_vel(obs_def%key, ifile, fileformat)
+!      case(RADAR_REFLECTIVITY)
+!         continue
+! END DART PREPROCESS WRITE_OBS_DEF
+
+! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
+!      case(DOPPLER_RADIAL_VELOCITY)
+!         call interactive_rad_vel(obs_def%key)
+!      case(RADAR_REFLECTIVITY)
+!         continue
+! END DART PREPROCESS INTERACTIVE_OBS_DEF
+
 module obs_def_radar_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
@@ -15,8 +54,10 @@ use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR
 use     location_mod, only : location_type, write_location, read_location
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_P, KIND_W, KIND_QR, KIND_RHO, &
-                             KIND_QG, KIND_QS, KIND_T
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                             KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &
+                             KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
+                             KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO
 
 implicit none
 private
@@ -44,22 +85,18 @@ real(r8), parameter :: rho_r = 1000.0_r8, rho_g = 917.0_r8, rho_s = 100.0_r8
 
 contains
 
+!----------------------------------------------------------------------
 
-
-  subroutine initialize_module
-!----------------------------------------------------------------------------
-! subroutine initialize_module
+subroutine initialize_module
 
 call register_module(source, revision, revdate)
 module_initialized = .true.
 
 end subroutine initialize_module
 
-
-
- subroutine write_rad_vel(key, ifile, fform)
 !----------------------------------------------------------------------
-!subroutine write_rad_vel(key, ifile, fform)
+
+subroutine write_rad_vel(key, ifile, fform)
 
 integer,          intent(in)           :: key, ifile
 character(len=*), intent(in), optional :: fform
@@ -89,11 +126,9 @@ END SELECT
 
 end subroutine write_rad_vel
 
-
-
- subroutine read_rad_vel(key, ifile, fform)
 !----------------------------------------------------------------------
-!subroutine read_rad_vel(key, ifile, fform)
+
+subroutine read_rad_vel(key, ifile, fform)
 
 integer,          intent(out)          :: key
 integer,          intent(in)           :: ifile
@@ -140,11 +175,9 @@ direction(:, key) = orientation
 
 end subroutine read_rad_vel
 
-
-
- subroutine set_rad_vel(key, location, orientation)
 !----------------------------------------------------------------------
-!subroutine set_rad_vel(key, location, orientation)
+
+subroutine set_rad_vel(key, location, orientation)
 
 integer,             intent(in) :: key
 real(r8),            intent(in) :: orientation(3)
@@ -163,11 +196,9 @@ direction(:, key) = orientation
 
 end subroutine set_rad_vel
 
-
-
- subroutine interactive_rad_vel(key)
 !----------------------------------------------------------------------
-!subroutine interactive_rad_vel(key)
+
+subroutine interactive_rad_vel(key)
 
 integer, intent(out) :: key
 
@@ -187,12 +218,10 @@ key = key + 1
 
 end subroutine interactive_rad_vel
 
-
-
- subroutine get_expected_rad_vel(state_vector, location, key, vr, istatus)
 !----------------------------------------------------------------------
-!subroutine get_expected_rad_vel(state_vector, location, key, vr, istatus)
-!
+
+subroutine get_expected_rad_vel(state_vector, location, key, vr, istatus)
+
 ! Reference: Lin et al., 1983 (J. Climate Appl.Meteor., 1065-1092)
 ! Note that the reflectivity-weighted mean terminal velocities are used here.
 
@@ -217,42 +246,42 @@ real(r8) :: ar, as_wet, as_dry, ag_dry, ag_wet
 
 if ( .not. module_initialized ) call initialize_module
 
-call interpolate(state_vector, location, KIND_U, u, istatus)
+call interpolate(state_vector, location, KIND_U_WIND_COMPONENT, u, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_V, v, istatus)
+call interpolate(state_vector, location, KIND_V_WIND_COMPONENT, v, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_W, w, istatus)
+call interpolate(state_vector, location, KIND_VERTICAL_VELOCITY, w, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_QR, qr, istatus)
+call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, qr, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_QG, qg, istatus)
+call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, qg, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_QS, qs, istatus)
+call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, qs, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_RHO, rho, istatus)
+call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_T, temp, istatus)
+call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
 if (istatus /= 0) then
    vr = missing_r8
    return
@@ -295,11 +324,9 @@ vr = direction(1, key)*u + direction(2, key)*v + direction(3, key)*(w-wt)
 
 end subroutine get_expected_rad_vel
 
-
-
- subroutine get_expected_rad_ref(state_vector, location, ref, istatus)
 !----------------------------------------------------------------------
-!subroutine get_expected_rad_ref(state_vector, location, ref, istatus)
+
+subroutine get_expected_rad_ref(state_vector, location, ref, istatus)
 !
 ! Computes "radar reflectivity" [ = 10 * log_10( radar reflectivity factor) ]
 ! in dBZ.  Reflectivities below ref_thresh are set to ref_thresh.
@@ -311,38 +338,36 @@ type(location_type), intent(in)  :: location
 real(r8),            intent(out) :: ref
 integer,             intent(out) :: istatus
 
-real(r8) :: ref_thresh ! Reflectivity below this value (including -infinity,
-                       ! corresponding to qr = 0) is set to this value.
-                       ! In future, would like to flag this occurence (through
-                       ! istatus??).
+real(r8), parameter :: ref_thresh = 1.0_r8 ! Reflectivity below this value
+                                           ! (corresponding to 0 dBZ) is set to this value.
+                                           ! In future, would like to flag this occurence (through
+                                           ! istatus??). Should be set in namelist.
 
 real(r8) :: qr, qg, qs, rho, temp
 
 if ( .not. module_initialized ) call initialize_module
 
-ref_thresh = 0.0_r8  ! in dBZ.  Should be set in namelist.
-
-call interpolate(state_vector, location, KIND_QR , qr , istatus)
+call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO , qr , istatus)
 if (istatus /= 0) then
    ref = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_QG , qg , istatus)
+call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, qg, istatus)
 if (istatus /= 0) then
    ref = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_QS , qs , istatus)
+call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, qs, istatus)
 if (istatus /= 0) then
    ref = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_RHO, rho, istatus)
+call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
 if (istatus /= 0) then
    ref = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_T, temp, istatus)
+call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
 if (istatus /= 0) then
    ref = missing_r8
    return
@@ -350,15 +375,13 @@ endif
 
 call get_reflectivity(qr, qg, qs, rho, temp, ref)
 
-ref = max(ref_thresh, 10.0_r8 * log10(ref))
+!!$ref = 10.0_r8 * log10(max(ref_thresh, ref))
 
 end subroutine get_expected_rad_ref
 
-
-
- subroutine get_reflectivity(qr, qg, qs, rho, temp, ref)
 !----------------------------------------------------------------------
-!subroutine get_reflectivity(qr, qg, qs, rho, temp, ref)
+
+subroutine get_reflectivity(qr, qg, qs, rho, temp, ref)
 !
 ! Computes "radar reflectivity factor" in mm^6 m^-3
 !
@@ -435,13 +458,9 @@ endif
 
 end subroutine get_reflectivity
 
-
-
- subroutine write_orientation(ifile, orientation, fform)
 !----------------------------------------------------------------------
-!subroutine write_orientation(ifile, orientation, fform)
 
-implicit none
+subroutine write_orientation(ifile, orientation, fform)
 
 integer,                    intent(in) :: ifile
 real(r8),                   intent(in) :: orientation(3)
@@ -464,16 +483,12 @@ END SELECT
 
 end subroutine write_orientation
 
+!----------------------------------------------------------------------
 
-
- function read_orientation(ifile, fform)
-!----------------------------------------------------------------------------
-!function read_orientation(ifile, fform)
+function read_orientation(ifile, fform)
 
 ! Reads orientation from file that was written by write_orientation.
 ! See write_orientation for additional discussion.
-
-implicit none
 
 integer,                    intent(in) :: ifile
 real(r8)                               :: read_orientation(3)
@@ -699,7 +714,7 @@ end function read_orientation
 !!$if ( .not. module_initialized ) call initialize_module
 !!$
 !!$! Set the observation kind
-!!$obs_def%kind = KIND_VR
+!!$obs_def%kind = KIND_VELOCITY
 !!$
 !!$vloc = query_location(rad_loc, 'vloc')
 !!$which_vert = nint(query_location(rad_loc,'which_vert'))
@@ -773,11 +788,11 @@ end function read_orientation
 !!$if ( .not. module_initialized ) call initialize_module
 !!$
 !!$! Set the observation kind
-!!$call set_obs_def_kind(obs_def,KIND_REF)
+!!$call set_obs_def_kind(obs_def,KIND_RADAR_REFLECTIVITY)
 !!$
 !!$vloc = query_location(rad_loc, 'vloc')
 !!$
-!!$! Doviak & Zrniv, 1993: Doppler radar and weather observations, eq. 2.28b-c
+!!$! Doviak & Zrnic, 1993: Doppler radar and weather observations, eq. 2.28b-c
 !!$
 !!$ae = 4000.0_r8 * earth_radius / 3.0_r8
 !!$

@@ -2,6 +2,37 @@
 ! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+! BEGIN DART PREPROCESS KIND LIST
+! DEW_POINT_TEMPERATURE, KIND_DEW_POINT_TEMPERATURE
+! DEW_POINT_2_METER, KIND_DEW_POINT_2_METER
+! END DART PREPROCESS KIND LIST
+
+! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+!   use obs_def_dew_point_mod, only : get_expected_dew_point
+! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+
+! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+!         case(DEW_POINT_TEMPERATURE)
+!            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!         case(DEW_POINT_2_METER)
+!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+
+! BEGIN DART PREPROCESS READ_OBS_DEF
+!         case(DEW_POINT_TEMPERATURE, DEW_POINT_2_METER)
+!            continue
+! END DART PREPROCESS READ_OBS_DEF
+
+! BEGIN DART PREPROCESS WRITE_OBS_DEF
+!         case(DEW_POINT_TEMPERATURE, DEW_POINT_2_METER)
+!            continue
+! END DART PREPROCESS WRITE_OBS_DEF
+
+! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
+!         case(DEW_POINT_TEMPERATURE, DEW_POINT_2_METER)
+!            continue
+! END DART PREPROCESS INTERACTIVE_OBS_DEF
+
 module obs_def_dew_point_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
@@ -17,7 +48,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_PS, KIND_T, KIND_QV, KIND_P, KIND_T2, KIND_Q2
+use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
+                             KIND_PRESSURE, KIND_TEMPERATURE_2_METER, KIND_SPECIFIC_HUMIDITY_2_METER
 
 implicit none
 private
@@ -36,11 +68,7 @@ contains
 
 !----------------------------------------------------------------------
 
-
-
-  subroutine initialize_module
-!----------------------------------------------------------------------------
-! subroutine initialize_module
+subroutine initialize_module
 
 call register_module(source, revision, revdate)
 module_initialized = .true.
@@ -65,13 +93,13 @@ character(len=129) :: errstring
 if ( .not. module_initialized ) call initialize_module
 
 if(key == 1) then
-   ipres = KIND_P
-   iqv = KIND_QV
-   it = KIND_T
+   ipres = KIND_PRESSURE
+   iqv = KIND_SPECIFIC_HUMIDITY
+   it = KIND_TEMPERATURE
 elseif(key == 2) then
-   ipres = KIND_PS
-   iqv = KIND_Q2
-   it = KIND_T2
+   ipres = KIND_SURFACE_PRESSURE
+   iqv = KIND_SPECIFIC_HUMIDITY_2_METER
+   it = KIND_TEMPERATURE_2_METER
 else
    write(errstring,*)'key has to be 1 (upper levels) or 2 (2-meter), got ',key
    call error_handler(E_ERR,'get_expected_dew_point', errstring, &
