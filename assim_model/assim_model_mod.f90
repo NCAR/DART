@@ -21,7 +21,7 @@ use location_mod, only : location_type, get_dist, read_location, &
 use time_manager_mod, only : time_type, get_time, read_time, write_time, get_calendar_type, &
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR, &
                              operator(<), operator(>), operator(+), operator(-), &
-                             operator(/), operator(*), operator(==), operator(/=)
+                             operator(/), operator(*), operator(==), operator(/=), print_time
 use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
                           register_module, error_handler, E_ERR, E_WARN, E_MSG, E_DBG, &
                           logfileunit, dump_unit_attributes
@@ -953,26 +953,64 @@ function open_restart_read(file_name)
 character(len = *), intent(in) :: file_name
 integer :: open_restart_read
 
-integer :: ios
-character(len=129) :: errstring
+integer :: ios, ios_out, i
+character(len=129) :: errstring, my_format
+type(time_type) :: temp_time
 
+
+! An experiment to try to autodetect format of restart file when opening
+! Know that the first thing in here has to be a time, so try to read it.
+! If it fails with one format, try the other. If it fails with both, punt.
 open_restart_read = get_unit()
+read_format = 'formatted'
 open(unit   = open_restart_read, &
      file   = trim(file_name),         &
      form   = read_format,       &
      action = 'read',            &
      status = 'old',             &
      iostat = ios)
-
-if ( ios /= 0 ) then
-   write(errstring, *) 'Problem opening file ',trim(adjustl(file_name))
-   call error_handler(E_MSG,'open_restart_read',errstring,source,revision,revdate)
-   write(errstring, *) 'OPEN status was ',ios
-   call error_handler(E_ERR,'open_restart_read',errstring,source,revision,revdate)
-else
-   write(errstring, *) 'Using restart file ',trim(adjustl(file_name)),' on unit ',open_restart_read
-   call error_handler(E_MSG,'open_restart_read',errstring,source,revision,revdate)
+! An opening error means something is wrong with the file, error and stop
+if(ios /= 0) goto 11
+temp_time = read_time(open_restart_read, read_format, ios_out)
+write(*, *) 'BACK FROM FORMATTED READ_TIME TEST', ios_out
+call print_time(temp_time)
+if(ios_out == 0) then 
+   ! It appears to be formatted, proceed
+   rewind open_restart_read
+   write(*, *) 'Detected a formatted file and opened successfully'
+   return
 endif
+
+! Next, try to see if an unformatted read works instead
+close(open_restart_read)
+
+open_restart_read = get_unit()
+read_format = 'unformatted'
+open(unit   = open_restart_read, &
+     file   = trim(file_name),         &
+     form   = read_format,       &
+     action = 'read',            &
+     status = 'old',             &
+     iostat = ios)
+! An opening error means something is wrong with the file, error and stop
+if(ios /= 0) goto 11
+rewind open_restart_read
+temp_time = read_time(open_restart_read, read_format, ios_out)
+write(*, *) 'BACK FROM UNFORMATTED READ_TIME TEST', ios_out
+call print_time(temp_time)
+if(ios_out == 0) then 
+   ! It appears to be unformatted, proceed
+   rewind open_restart_read
+   write(*, *) 'Detected an unformatted file and opened successfully'
+   return
+endif
+
+! Otherwise, neither format works. Have a fatal error.
+11 continue
+write(errstring, *) 'Problem opening file ',trim(adjustl(file_name))
+call error_handler(E_MSG,'open_restart_read',errstring,source,revision,revdate)
+write(errstring, *) 'OPEN status was ',ios
+call error_handler(E_ERR,'open_restart_read',errstring,source,revision,revdate)
 
 end function open_restart_read
 
