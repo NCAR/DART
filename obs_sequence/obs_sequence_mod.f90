@@ -1023,50 +1023,11 @@ integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id
 character(len = 16) label(2)
 character(len =12) header
 logical :: pre_I_format
+character(len = 129) :: read_format
 
-! Have to be backwards compatible: assume new format for now
-pre_I_format = .false.
-
-! Open the file
-file_id = get_unit()
-if(read_binary_obs_sequence) then
-   open(unit = file_id, file = file_name, form = "unformatted")
-   ! Read in the fixed header
-   read(file_id) header
-   if(header /= 'obs_sequence') then
-      call error_handler(E_MSG, 'read_obs_seq', &
-         'NO header string obs_sequence: Guessing this is Hawaii format', &
-         source, revision, revdate)
-      ! Set format to pre_I_format and rewind the file
-      pre_I_format = .true.
-      rewind file_id
-   endif
-   call read_obs_kind(file_id, pre_I_format, 'unformatted')
-else
-   open(unit = file_id, file = file_name)
-   ! Read in the fixed header
-   read(file_id, *) header
-   if(header /= 'obs_sequence') then
-      call error_handler(E_MSG, 'read_obs_seq', &
-         'NO header string obs_sequence: Guessing this is Hawaii format', &
-         source, revision, revdate)
-write(*, *) 'keep going'
-      ! Set format to pre_I_format and rewind the file
-      pre_I_format = .true.
-      rewind file_id
-   endif
-   ! Read in the obs_kind table and initialize mapping
-   call read_obs_kind(file_id, pre_I_format)
-endif
-
-
-! First, determine the size that was written out
-if(read_binary_obs_sequence) then
-   read(file_id) num_copies, num_qc, num_obs, max_num_obs
-else
-   read(file_id, *) label(1), num_copies,label(2), num_qc
-   read(file_id, *) label(1), num_obs,   label(2), max_num_obs
-endif
+! Use read_obs_seq_header to get file format and header info
+call read_obs_seq_header(file_name, num_copies, num_qc, num_obs, &
+   max_num_obs, file_id, read_format, pre_I_format)
 
 call init_obs_sequence(seq, num_copies + add_copies, &
    num_qc + add_qc, num_obs + add_obs)
@@ -1076,7 +1037,7 @@ seq%num_obs = num_obs
 
 ! Get the available copy_meta_data
 do i = 1, num_copies
-   if(read_binary_obs_sequence) then
+   if(read_format == 'unformatted') then
       read(file_id) seq%copy_meta_data(i)
    else
       read(file_id, '(a129)') seq%copy_meta_data(i)
@@ -1085,7 +1046,7 @@ end do
 
 ! Get the available qc_meta_data
 do i = 1, num_qc
-   if(read_binary_obs_sequence) then
+   if(read_format == 'unformatted') then
       read(file_id) seq%qc_meta_data(i)
    else
       read(file_id, '(a129)') seq%qc_meta_data(i)
@@ -1093,7 +1054,7 @@ do i = 1, num_qc
 end do
 
 ! Read the first and last avail_time pointers
-if(read_binary_obs_sequence) then
+if(read_format == 'unformatted') then
    read(file_id) seq%first_time, seq%last_time
 else
    read(file_id, *) label(1),seq%first_time,label(2), seq%last_time
@@ -1101,8 +1062,9 @@ endif
 
 ! Now read in all the previously defined observations
 do i = 1, num_obs
-   if(.not. read_binary_obs_sequence) read(file_id,*) label(1)
-   call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i))
+   if(.not. read_format == 'unformatted') read(file_id,*) label(1)
+   call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i), &
+      read_format)
 ! Also set the key in the obs
    seq%obs(i)%key = i
 end do
@@ -1114,67 +1076,130 @@ end subroutine read_obs_seq
 
 !------------------------------------------------------------------
 
-subroutine read_obs_seq_header(file_name, num_copies, num_qc, num_obs, max_num_obs)
+subroutine read_obs_seq_header(file_name, num_copies, num_qc, num_obs, &
+   max_num_obs, file_id, read_format, pre_I_format, close_the_file)
 
 ! Be able to increase size at read in time for efficiency
 
-character(len = 129), intent(in) :: file_name
-integer, intent(out) :: num_copies, num_qc, num_obs, max_num_obs
+character(len = 129),   intent(in) :: file_name
+integer,               intent(out) :: num_copies, num_qc, num_obs, max_num_obs, file_id
+character(len = 129),  intent(out) :: read_format
+logical,               intent(out) :: pre_I_format
+logical,      intent(in), optional :: close_the_file
 
-integer :: file_id
 character(len = 16) label(2)
 character(len = 12) header
-logical :: pre_I_format
+character(len = 129) msg_string
+integer :: ios
+
+! Determine the format for an obs_sequence file to be read. Options are:
+! 1. Formatted, I-release format
+! 2. Formatted, Hawaii-release format
+! 3. Unformatted, I-release format
+! 4. Formatted, Hawaii-release format
+!
+! Also return the num_copies, num_qc, num_obs and max_num_obs along
+! with the read_format (formatted or unformatted) and release version
+! (pre_I_format).
 
 ! Have to be backwards compatible: assume new format for now
 pre_I_format = .false.
 
-! Open the file
+! Try opening the file as formatted
 file_id = get_unit()
-if(read_binary_obs_sequence) then
-   open(unit = file_id, file = file_name, form = "unformatted")
-   ! Read in the fixed header
-   read(file_id) header
-   if(header /= 'obs_sequence') then
-      call error_handler(E_MSG, 'read_obs_seq', &
-         'NO header string obs_sequence: Guessing this is Hawaii format', &
-         source, revision, revdate)
-      ! Set format to pre_I_format and rewind the file
+read_format = 'formatted'
+open(unit = file_id, file = file_name, form = read_format, &
+   action = 'read', status = 'old', iostat = ios)
+! If opening error, move to unformatted; else try to find lines
+if(ios == 0) then
+   ! Try to read in the I-format file header
+   read(file_id, *, iostat = ios) header
+
+   ! If read succeeds and header is 'obs_sequence' it is I-format, formatted
+   if(ios == 0 .and. header == 'obs_sequence') goto 31
+
+   ! Maybe it's formatted old H-format
+   rewind file_id
+   read(file_id, *, iostat = ios) label(1), num_copies, label(2), num_qc
+
+   ! If read succeeds and label(1) is 'num_copies:' it is pre_I, formatted
+   if(ios == 0 .and. label(1) == 'num_copies:') then
       pre_I_format = .true.
-      rewind file_id
+      ! Can read next line to extract rest of header information and return
+      read(file_id, *, iostat = ios) label(1), num_obs, label(2), max_num_obs
+      ! Also call read_obs_kind to initialize default obs_kind mapping
+      call read_obs_kind(file_id, pre_I_format, read_format)
+      goto 51
    endif
-   ! Read in the obs_kind table and initialize mapping
-   call read_obs_kind(file_id, pre_I_format, 'unformatted')
-else
-   open(unit = file_id, file = file_name)
-   ! Read in the fixed header
-   read(file_id, *) header
-   if(header /= 'obs_sequence') then
-      call error_handler(E_MSG, 'read_obs_seq', &
-         'NO header string obs_sequence: Guessing this is Hawaii format', &
-         source, revision, revdate)
-      ! Set format to pre_I_format and rewind the file
-      pre_I_format = .true.
-      rewind file_id
-   endif
-   ! Read in the obs_kind table and initialize mapping
-   call read_obs_kind(file_id, pre_I_format)
+
 endif
 
-! First, determine the size that was written out
-if(read_binary_obs_sequence) then
-   read(file_id) num_copies, num_qc, num_obs, max_num_obs
+! Next try unformatted open and reads
+close(file_id)
+read_format = 'unformatted'
+pre_I_format = .false.
+open(unit = file_id, file = file_name, form = read_format, &
+   action = 'read', status = 'old', iostat = ios)
+! If no opening error try to detect pre_i or I format, else error
+if(ios == 0) then
+   ! Try reading the 'obs_sequence' header
+   read(file_id, iostat = ios) header
+   if(header == 'obs_sequence') goto 41
+
+   ! Maybe it's unformatted but in the old format
+   rewind file_id
+   read(file_id, iostat = ios) num_copies, num_qc, num_obs, max_num_obs
+   ! If it's pre-i unformatted, we've read in the header and we're done
+   ! Initialize the default mapping for obs_kind by calling read_obs_kind
+   if(ios == 0) then
+      pre_I_format = .true.
+      call read_obs_kind(file_id, pre_I_format, read_format)
+      goto 51
+   endif
+
 else
-   write(*, *) 'reading the num_copies'
-   read(file_id, *) label(1), num_copies,label(2), num_qc
-   write(*, *) 'num_copies, num_qc ', num_copies, num_qc
-   read(file_id, *) label(1), num_obs,   label(2), max_num_obs
+   ! Unable to figure out what to do with file or it doesn't exist
+   write(msg_string, *) 'Unable to open file ', file_name
+   call error_handler(E_ERR, 'read_obs_seq_header', msg_string, &
+      source, revision, revdate)
 endif
 
-call close_file(file_id)
+! Falling off the end here means file didn't correspond with any 
+! expected format
+write(msg_string, *) 'Unable to determine format of file ', file_name
+call error_handler(E_ERR, 'read_obs_seq_header', msg_string, &
+   source, revision, revdate)
+
+
+! Format is I and formatted
+31 continue
+! Read in the obs_kind mapping table
+call read_obs_kind(file_id, pre_I_format, read_format)
+! Read in the rest of the header information
+read(file_id, *) label(1), num_copies, label(2), num_qc
+read(file_id, *) label(1), num_obs, label(2), max_num_obs
+goto 51
+
+! Format is I and unformatted
+41 continue
+! Read in the obs_kind mapping table
+call read_obs_kind(file_id, pre_I_format, read_format)
+! Read in the rest of the header information
+read(file_id) num_copies, num_qc, num_obs, max_num_obs
+
+
+! Ready to exit, close the file if requested by optional argument
+51 continue
+if(present(close_the_file)) then
+   if(close_the_file) close(file_id)
+endif
+!write(*, *) 'pre_I is ', pre_I_format
+!write(*, *) 'format is ', read_format
+!write(*, *) num_copies, num_qc, num_obs, max_num_obs
 
 end subroutine read_obs_seq_header
 !-------------------------------------------------
+
 
 !=================================================
 
@@ -1363,18 +1388,20 @@ end subroutine write_obs
 
 !-------------------------------------------------
 
-subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, obs)
+subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, &
+   obs, read_format)
 
 ! Read in observation from file, watch for allocation of storage
 
 integer, intent(in) :: file_id, num_copies, add_copies, num_qc, add_qc, key
+character(len = 129), intent(in) :: read_format
 type(obs_type), intent(inout) :: obs
 
 integer :: i
 
 ! Read in values and qc
 if(num_copies > 0) then
-   if(read_binary_obs_sequence) then
+   if(read_format == 'unformatted') then
       do i = 1, num_copies
          read(file_id) obs%values(i)
       end do
@@ -1384,7 +1411,7 @@ if(num_copies > 0) then
 endif
 
 if(num_qc > 0) then
-   if(read_binary_obs_sequence) then
+   if(read_format == 'unformatted') then
       do i = 1, num_qc
          read(file_id) obs%qc(i)
       end do
@@ -1393,7 +1420,7 @@ if(num_qc > 0) then
    endif
 endif
 
-if(read_binary_obs_sequence) then
+if(read_format == 'unformatted') then
    read(file_id) obs%prev_time, obs%next_time, obs%cov_group
    call read_obs_def(file_id, obs%def, key, 'unformatted')
 else
