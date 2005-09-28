@@ -424,6 +424,7 @@ SELECT CASE (fileformat)
          list_index = get_obs_kind_index(o_name)
          ! Check for error
          if(list_index == -1) then
+            write(msg_string, *) 'didnt find observation kind ', o_name, ' in obs_kind_mod list'
             call error_handler(E_ERR, 'read_obs_kind', msg_string, &
                source, revision, revdate)
          endif
@@ -438,6 +439,7 @@ SELECT CASE (fileformat)
          list_index = get_obs_kind_index(o_name)
          ! Check for error
          if(list_index == -1) then
+            write(msg_string, *) 'didnt find observation kind ', o_name, ' in obs_kind_mod list'
             call error_handler(E_ERR, 'read_obs_kind', msg_string, &
                source, revision, revdate)
          endif
