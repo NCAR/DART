@@ -62,13 +62,13 @@ integer :: obs_def_in_unit, obs_def_out_unit, obs_kind_in_unit, obs_kind_out_uni
 ! and these files are used to fill in observation kind details in
 ! DEFAULT_obs_def_mod.f90 and DEFAULT_obs_kind_mod.f90.
 integer, parameter   :: max_input_files = 1000
-character(len = 129) :: default_obs_def_mod_file = 'null'
-character(len = 129) :: default_obs_kind_mod_file = 'null'
+character(len = 129) :: input_obs_def_mod_file = 'null'
+character(len = 129) :: input_obs_kind_mod_file = 'null'
 character(len = 129) :: output_obs_def_mod_file = 'null'
 character(len = 129) :: output_obs_kind_mod_file = 'null'
 character(len = 129) :: input_files(max_input_files) = 'null'
 
-namelist /preprocess_nml/ default_obs_def_mod_file, default_obs_kind_mod_file, &
+namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file, &
    output_obs_def_mod_file, output_obs_kind_mod_file, input_files
 
 !Begin by reading the namelist
@@ -90,10 +90,10 @@ endif
 ! Output the namelist file information
 write(logfileunit, *) 'Path names of default obs_def and obs_kind modules'
 write(*, *) 'Path names of default obs_def and obs_kind modules'
-write(logfileunit, *) trim(default_obs_def_mod_file)
-write(logfileunit, *) trim(default_obs_kind_mod_file)
-write(*, *) trim(default_obs_def_mod_file)
-write(*, *) trim(default_obs_kind_mod_file)
+write(logfileunit, *) trim(input_obs_def_mod_file)
+write(logfileunit, *) trim(input_obs_kind_mod_file)
+write(*, *) trim(input_obs_def_mod_file)
+write(*, *) trim(input_obs_kind_mod_file)
 
 write(logfileunit, *) 'Path names of output obs_def and obs_kind modules'
 write(*, *) 'Path names of output obs_def and obs_kind modules'
@@ -103,11 +103,11 @@ write(*, *) trim(output_obs_def_mod_file)
 write(*, *) trim(output_obs_kind_mod_file)
 
 ! A path for the default files is required. Have an error is these are still null.
-if(default_obs_def_mod_file == 'null') &
-   call error_handler(E_ERR, 'preprocess', 'Namelist must provide default_obs_def_mod_file', &
+if(input_obs_def_mod_file == 'null') &
+   call error_handler(E_ERR, 'preprocess', 'Namelist must provide input_obs_def_mod_file', &
       source, revision, revdate)
-if(default_obs_kind_mod_file == 'null') &
-   call error_handler(E_ERR, 'preprocess', 'Namelist must provide default_obs_kind_mod_file', &
+if(input_obs_kind_mod_file == 'null') &
+   call error_handler(E_ERR, 'preprocess', 'Namelist must provide input_obs_kind_mod_file', &
       source, revision, revdate)
 
 ! A path for the output files is required. Have an error is these are still null.
@@ -130,21 +130,21 @@ end do
 
 ! Try to open the DEFAULT and OUTPUT files
 ! DEFAULT files must exist or else an error
-if(file_exist(trim(default_obs_def_mod_file))) then
+if(file_exist(trim(input_obs_def_mod_file))) then
    ! Open the file for reading
-   obs_def_in_unit = open_file(default_obs_def_mod_file)
+   obs_def_in_unit = open_file(input_obs_def_mod_file)
 else
    ! If file does not exist it is an error
-   write(err_string, *) 'file ', trim(default_obs_def_mod_file), ' does not exist'                   
+   write(err_string, *) 'file ', trim(input_obs_def_mod_file), ' does not exist'                   
    call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)            
 endif
 
-if(file_exist(trim(default_obs_kind_mod_file))) then
+if(file_exist(trim(input_obs_kind_mod_file))) then
    ! Open the file for reading
-   obs_kind_in_unit = open_file(default_obs_kind_mod_file)
+   obs_kind_in_unit = open_file(input_obs_kind_mod_file)
 else
    ! If file does not exist it is an error
-   write(err_string, *) 'file ', trim(default_obs_kind_mod_file), ' does not exist'                   
+   write(err_string, *) 'file ', trim(input_obs_kind_mod_file), ' does not exist'                   
    call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)            
 endif
 
@@ -257,7 +257,7 @@ end do
 ! Loop to write out all the public declarations
 do i = 1, num_kinds_found
    write(line, *) 'public :: ', trim(kind_string(i))
-   write(obs_kind_out_unit, 51) adjustl(line)
+   write(obs_kind_out_unit, 51) trim(adjustl(line))
    51 format(A)
 end do
 
@@ -281,12 +281,12 @@ end do
 ! Write out the integer declaration lines
 do i = 1, num_kinds_found
    write(line, *) 'integer, parameter :: ', trim(adjustl(kind_string(i))), ' = ', i
-   write(obs_kind_out_unit, 51) adjustl(line)
+   write(obs_kind_out_unit, 51) trim(adjustl(line))
 end do
 
 ! Write out the max_obs_kinds, too
 write(line, *) 'integer, parameter :: max_obs_kinds = ', num_kinds_found
-write(obs_kind_out_unit, 51) adjustl(line)
+write(obs_kind_out_unit, 51) trim(adjustl(line))
 
 ! Copy over lines up to the next insertion point
 do
