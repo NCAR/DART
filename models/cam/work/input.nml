@@ -70,12 +70,6 @@
    read_binary_obs_sequence = .false.,
    write_binary_obs_sequence = .false.  /
 
-&obs_def_nml
-   assimilate_these_obs_types = 'radiosonde_temperature',
-                                'radiosonde_u_wind_component',
-                                'radiosonde_v_wind_component'
-   evaluate_these_obs_types = 'surface_pressure' /
-
 &assim_model_nml
    read_binary_restart_files = .true.,
    write_binary_restart_files = .true. /
@@ -95,6 +89,7 @@
    which_vert_2d            = -1 ,19*0,
    which_vert_3d            = 6*1,14*0,
    state_names_pert         = 20*'        ',
+   state_names_sd           = 20*0.0,
    Time_step_seconds = 21600,
    Time_step_days = 0    /
 
@@ -106,14 +101,17 @@
    approximate_distance = .false. /
 
 &preprocess_nml
-   input_file =  '../../../obs_def/ALL_obs_def_mod.F90',
-   output_file = '../../../obs_def/obs_def_mod.f90' /
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'  /
 
-&obs_def_nml
-   assimilate_these_obs_types = 'radiosonde_temperature',
-                                'radiosonde_u_wind_component',
-                                'radiosonde_v_wind_component'
-   evaluate_these_obs_types = 'surface_pressure' /
+&obs_kind_nml
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                'RADIOSONDE_U_WIND_COMPONENT',
+                                'RADIOSONDE_V_WIND_COMPONENT'
+   evaluate_these_obs_types =   'RADIOSONDE_SURFACE_PRESSURE'  /
 
 &utilities_nml
    TERMLEVEL = 1,

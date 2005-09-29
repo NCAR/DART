@@ -57,19 +57,15 @@ make         || exit 1
 
 #----------------------------------------------------------------------
 
-csh mkmf_create_obs_sequence
+csh mkmf_gen_init
 make         || exit 3
-csh mkmf_create_fixed_network_seq
+csh mkmf_create_obs_sequence
 make         || exit 4
-csh mkmf_perfect_model_obs
+csh mkmf_create_fixed_network_seq
 make         || exit 5
-csh mkmf_filter
+csh mkmf_perfect_model_obs
 make         || exit 6
-csh mkmf_obs_diag
+csh mkmf_filter
 make         || exit 7
-csh mkmf_assim_region
+csh mkmf_obs_diag
 make         || exit 8
-csh mkmf_integrate_model
-make         || exit 9
-./perfect_model_obs
-./filter
