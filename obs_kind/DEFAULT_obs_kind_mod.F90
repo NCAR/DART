@@ -31,7 +31,8 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE, &
           KIND_VERTICAL_VELOCITY, KIND_RAINWATER_MIXING_RATIO, &
           KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
-          KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY
+          KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, &
+          KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO
 
 ! Public access to the observation types is provided here
 ! This is constructed by the preprocessor
@@ -64,7 +65,9 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
                       KIND_DENSITY                     = 10, &
                       KIND_VELOCITY                    = 11, &
                       KIND_RADAR_REFLECTIVITY          = 12, &
-                      KIND_1D_INTEGRAL                 = 13
+                      KIND_1D_INTEGRAL                 = 13, &
+                      KIND_GRAUPEL_MIXING_RATIO        = 14, &
+                      KIND_SNOW_MIXING_RATIO           = 15
 
 
 
