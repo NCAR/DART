@@ -971,9 +971,6 @@ open(unit   = open_restart_read, &
      iostat = ios)
 ! An opening error means something is wrong with the file, error and stop
 if(ios /= 0) goto 11
-temp_time = read_time(open_restart_read, read_format, ios_out)
-write(*, *) 'BACK FROM FORMATTED READ_TIME TEST', ios_out
-call print_time(temp_time)
 if(ios_out == 0) then 
    ! It appears to be formatted, proceed
    rewind open_restart_read
@@ -995,9 +992,6 @@ open(unit   = open_restart_read, &
 ! An opening error means something is wrong with the file, error and stop
 if(ios /= 0) goto 11
 rewind open_restart_read
-temp_time = read_time(open_restart_read, read_format, ios_out)
-write(*, *) 'BACK FROM UNFORMATTED READ_TIME TEST', ios_out
-call print_time(temp_time)
 if(ios_out == 0) then 
    ! It appears to be unformatted, proceed
    rewind open_restart_read
