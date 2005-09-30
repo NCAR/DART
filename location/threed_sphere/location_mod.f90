@@ -74,7 +74,7 @@ character(len = 129), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, lev or pressure"
 
 ! Global storage for fast approximate sin and cosine lookups
-real(r8) :: my_sin(-315:315), my_cos(-315:315), my_acos(-1000:1000)
+real(r8) :: my_sin(-630:630), my_cos(-630:630), my_acos(-1000:1000)
 
 ! Global storage for efficient get_close_obs search
 ! WARNING: NLON MUST BE ODD
@@ -164,7 +164,7 @@ call error_handler(E_MSG,'location_mod:initialize_module',str2,source,revision,r
 ! Don't worry about rounding errors as long as one gives more weight
 ! Really only need tables half this size, too (sin from -pi/2 to pi/2, cos only +)
 if(approximate_distance) then
-   do i = -315, 315
+   do i = -630, 630
       my_cos(i) = cos(i / 100.0_r8)
       my_sin(i) = sin(i / 100.0_r8)
    end do
@@ -198,7 +198,7 @@ real(r8) :: get_dist
 logical, optional :: no_vert
 
 real(r8) :: lon_dif, vert_dist
-integer  :: lat1_ind, lat2_ind, temp  ! indexes into lookup tables
+integer  :: lat1_ind, lat2_ind, lon_ind, temp  ! indexes into lookup tables
 logical  :: comp_h_only
 
 character(len=129) :: errstring
@@ -209,13 +209,13 @@ if ( .not. module_initialized ) call initialize_module
 ! Compute great circle path shortest route between two points
 lon_dif = loc1%lon - loc2%lon
 
-
 if(approximate_distance) then
    ! Option 1: Use table lookup; faster but less accurate
    lat1_ind = int(loc1%lat*100.0_r8)
    lat2_ind = int(loc2%lat*100.0_r8)
+   lon_ind = int(lon_dif*100.0_r8)
    temp     = int(1000.0_r8 * (my_sin(lat2_ind) * my_sin(lat1_ind) + &
-      my_cos(lat2_ind) * my_cos(lat1_ind) * my_cos(int(lon_dif*100.0_r8))))
+      my_cos(lat2_ind) * my_cos(lat1_ind) * my_cos(lon_ind)))
    get_dist = my_acos(temp)
 else
    ! Option 2: Use pre-defined trig functions: accurate but slow
