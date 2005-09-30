@@ -14,7 +14,7 @@ module assim_model_mod
 ! This module is used to wrap around the basic portions of existing dynamical models to
 ! add capabilities needed by the standard assimilation methods.
 
-use    types_mod, only : r8
+use    types_mod, only : r8, digits12
 use location_mod, only : location_type, get_dist, read_location, &
                          LocationDims, LocationName, LocationLName
 ! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
@@ -74,7 +74,7 @@ type netcdf_file_type
    integer :: ncid                       ! the "unit" -- sorta
    integer :: Ntimes                     ! the current working length
    integer :: NtimesMAX                  ! the allocated length.
-   real(r8),        pointer :: rtimes(:) ! times -- as real*8
+   real(digits12),  pointer :: rtimes(:) ! times -- as a 64bit (at least) real
    type(time_type), pointer :: times(:)  ! times -- as the models use
    character(len=80)        :: fname     ! filename ...
 end type netcdf_file_type
@@ -1233,15 +1233,15 @@ integer                     :: lngth
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer  :: TimeVarID
 integer  :: secs, days, ncid
-real(r8) :: r8time         ! gets promoted to nf90_double ...
+real(digits12) :: realtime         ! gets promoted to nf90_double ...
 
 character(len=NF90_MAX_NAME)          :: varname
 integer                               :: xtype, ndims, nAtts
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
 character(len=129)                    :: msgstring
 
-type(time_type), allocatable, dimension(:) :: temptime    ! only to reallocate mirror
-real(r8),        allocatable, dimension(:) :: tempR8time  ! only to reallocate mirror
+type(time_type), allocatable, dimension(:) :: temptime   ! only to reallocate mirror
+real(digits12),  allocatable, dimension(:) :: tempRtime  ! only to reallocate mirror
 
 lngth = -1 ! assume a bad termination
 
@@ -1269,9 +1269,9 @@ if ( lngth == ncFileID%NtimesMAX ) then
    write(msgstring,*)'doubling mirror length of ',lngth,' of ',ncFileID%fname
    call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
 
-   allocate(temptime(ncFileID%NtimesMAX), tempR8time(ncFileID%NtimesMAX)) 
-   temptime   = ncFileID%times             ! preserve
-   tempR8time = ncFileID%rtimes            ! preserve
+   allocate(temptime(ncFileID%NtimesMAX), tempRtime(ncFileID%NtimesMAX)) 
+   temptime   = ncFileID%times            ! preserve
+   tempRtime = ncFileID%rtimes            ! preserve
 
    deallocate(ncFileID%times, ncFileID%rtimes)
 
@@ -1279,23 +1279,25 @@ if ( lngth == ncFileID%NtimesMAX ) then
 
    allocate(ncFileID%times(ncFileID%NtimesMAX), ncFileID%rtimes(ncFileID%NtimesMAX) )
 
-   ncFileID%times(1:lngth)  = temptime     ! reinstate
-   ncFileID%rtimes(1:lngth) = tempR8time   ! reinstate
+   ncFileID%times(1:lngth)  = temptime    ! reinstate
+   ncFileID%rtimes(1:lngth) = tempRtime   ! reinstate
+
+   deallocate(temptime, tempRtime)
 
 endif
 
-call get_time(time, secs, days)    ! get time components to append
-r8time = days + secs/86400.0_r8    ! time base is "days since ..."
-lngth           = lngth + 1        ! index of new time 
-ncFileID%Ntimes = lngth            ! new working length of time mirror
+call get_time(time, secs, days)         ! get time components to append
+realtime = days + secs/86400.0_digits12 ! time base is "days since ..."
+lngth           = lngth + 1             ! index of new time 
+ncFileID%Ntimes = lngth                 ! new working length of time mirror
 
-call check(nf90_put_var(ncid, TimeVarID, r8time, start=(/ lngth /) ))
+call check(nf90_put_var(ncid, TimeVarID, realtime, start=(/ lngth /) ))
 
 ncFileID%times( lngth) = time
-ncFileID%rtimes(lngth) = r8time
+ncFileID%rtimes(lngth) = realtime
 
 write(msgstring,*)'ncFileID (',ncid,') : ',trim(adjustl(varname)), &
-         ' (should be "time") has length ',lngth, ' appending t= ',r8time
+         ' (should be "time") has length ',lngth, ' appending t= ',realtime
 call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
 
 contains
@@ -1360,7 +1362,7 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
 
 integer         :: i
 integer         :: secs, days, ncid
-real(r8)        :: r8time          ! same as "statetime", different base
+real(digits12)  :: realtime          ! same as "statetime", different base
 character(len=129) :: msgstring
 
 timeindex = -1  ! assume bad things are going to happen
@@ -1400,8 +1402,8 @@ endif
 
 ! convert statetime to time base of "days since ..."
 call get_time(statetime, secs, days)
-r8time = days + secs/(60*60*24.0_r8)   ! netCDF timebase ... what about calendar?!
-                                       ! does get_time handle that?
+realtime = days + secs/(60*60*24.0_digits12) ! netCDF timebase ... what about calendar?!
+                                             ! does get_time handle that?
 
 
 if (ncFileID%Ntimes < 1) then          ! First attempt at writing a state ...
