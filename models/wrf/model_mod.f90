@@ -39,8 +39,6 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SPECIFIC_HUMIDITY, &
                               KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
                               KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
-                              KIND_U_10_METER_WIND, KIND_V_10_METER_WIND, &
-                              KIND_TEMPERATURE_2_METER, KIND_SPECIFIC_HUMIDITY_2_METER, &
                               KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
@@ -958,55 +956,88 @@ k = max(1,int(zloc))
 ! Get the desired field to be interpolated
 if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then        ! U, V
 
-   xloc_u = xloc + 0.5
-   yloc_v = yloc + 0.5
-   call toGrid(xloc_u,i_u,dx_u,dxm_u)
-   call toGrid(yloc_v,j_v,dy_v,dym_v)
+   if(.not. vert_is_surface(location)) then
 
-   if(i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
-      j   >= 1 .and. j   < wrf%dom(id)%var_size(2,TYPE_U) .and. &
-      i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
-      j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
+      xloc_u = xloc + 0.5
+      yloc_v = yloc + 0.5
+      call toGrid(xloc_u,i_u,dx_u,dxm_u)
+      call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-      do k2=1,2
+      if(i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
+           j   >= 1 .and. j   < wrf%dom(id)%var_size(2,TYPE_U) .and. &
+           i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
+           j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
 
-         ! For memory economy over speed, dart_ind should be removed from
-         ! the wrf structure and get_wrf_index reactivated.
+         do k2=1,2
 
-!!$         i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
-!!$         i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
+            ! For memory economy over speed, dart_ind should be removed from
+            ! the wrf structure and get_wrf_index reactivated.
 
-         i1 = wrf%dom(id)%dart_ind(i_u,j  ,k+k2-1,TYPE_U)
-         i2 = wrf%dom(id)%dart_ind(i_u,j+1,k+k2-1,TYPE_U)
+!!$            i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
+!!$            i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
 
-         ugrid = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
+            i1 = wrf%dom(id)%dart_ind(i_u,j  ,k+k2-1,TYPE_U)
+            i2 = wrf%dom(id)%dart_ind(i_u,j+1,k+k2-1,TYPE_U)
 
-!!$         i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
-!!$         i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id) 
+            ugrid = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
 
-         i1 = wrf%dom(id)%dart_ind(i,j_v  ,k+k2-1,TYPE_V)
-         i2 = wrf%dom(id)%dart_ind(i,j_v+1,k+k2-1,TYPE_V) 
+!!$            i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
+!!$            i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id) 
 
-         vgrid = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
+            i1 = wrf%dom(id)%dart_ind(i,j_v  ,k+k2-1,TYPE_V)
+            i2 = wrf%dom(id)%dart_ind(i,j_v+1,k+k2-1,TYPE_V) 
 
-         call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
-              utrue, vtrue)
+            vgrid = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
 
-         if( obs_kind == KIND_U_WIND_COMPONENT) then
+            call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
+                 utrue, vtrue)
 
-            fld(k2) = utrue
+            if( obs_kind == KIND_U_WIND_COMPONENT) then
 
-         else   ! must want v
+               fld(k2) = utrue
 
-            fld(k2) = vtrue
+            else   ! must want v
 
-         endif
+               fld(k2) = vtrue
 
-      enddo
+            endif
+
+         enddo
+
+      else
+
+         fld(:) = missing_r8
+
+      endif
 
    else
 
-      fld(:) = missing_r8
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+         wrf%dom(id)%surf_obs) then
+
+         if( obs_kind == KIND_U_WIND_COMPONENT) then
+
+!!$            i1 = get_wrf_index(i,j,1,TYPE_U10,id)
+!!$            i2 = get_wrf_index(i,j+1,1,TYPE_U10,id)
+            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_U10)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_U10)
+
+         else
+!!$            i1 = get_wrf_index(i,j,1,TYPE_V10,id)
+!!$            i2 = get_wrf_index(i,j+1,1,TYPE_V10,id)
+            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_V10)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_V10)
+
+         endif
+
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         fld(1) = missing_r8
+
+      endif
 
    endif
 
@@ -1015,29 +1046,49 @@ else if( obs_kind == KIND_TEMPERATURE ) then
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-!!$      i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
-!!$      i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_T)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_T)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      pres1 = model_pressure_t(i  ,j  ,k,id,x)
-      pres2 = model_pressure_t(i+1,j  ,k,id,x)
-      pres3 = model_pressure_t(i  ,j+1,k,id,x)
-      pres4 = model_pressure_t(i+1,j+1,k,id,x)
-      pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-      fld(1) = (ts0 + a1)*(pres/ps0)**kappa
+      if(.not. vert_is_surface(location)) then
 
-!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
-!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_T)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_T)
-      a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-      pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
-      pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
-      pres3 = model_pressure_t(i  ,j+1,k+1,id,x)
-      pres4 = model_pressure_t(i+1,j+1,k+1,id,x)
-      pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-      fld(2) = (ts0 + a1)*(pres/ps0)**kappa
+!!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
+!!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_T)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_T)
+         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         pres1 = model_pressure_t(i  ,j  ,k,id,x)
+         pres2 = model_pressure_t(i+1,j  ,k,id,x)
+         pres3 = model_pressure_t(i  ,j+1,k,id,x)
+         pres4 = model_pressure_t(i+1,j+1,k,id,x)
+         pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+         fld(1) = (ts0 + a1)*(pres/ps0)**kappa
+
+!!$         i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
+!!$         i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_T)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_T)
+         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
+         pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
+         pres3 = model_pressure_t(i  ,j+1,k+1,id,x)
+         pres4 = model_pressure_t(i+1,j+1,k+1,id,x)
+         pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+         fld(2) = (ts0 + a1)*(pres/ps0)**kappa
+
+      else
+
+         if(wrf%dom(id)%surf_obs) then
+
+!!$            i1 = get_wrf_index(i,j,1,TYPE_T2,id)
+!!$            i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
+            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
+            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+         else
+
+            fld(1) = missing_r8
+
+         endif
+
+      endif
 
    else
 
@@ -1107,19 +1158,40 @@ else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
 
       if ( wrf%dom(id)%n_moist >= 1) then
 
-!!$      i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
-!!$      i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         fld(1) = a1 /(1.0_r8 + a1)
+         if(.not. vert_is_surface(location)) then
 
-!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
-!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         fld(2) = a1 /(1.0_r8 + a1)
+!!$            i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
+!!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
+            i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
+            a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+            fld(1) = a1 /(1.0_r8 + a1)
+
+!!$            i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
+!!$            i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
+            i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
+            a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+            fld(2) = a1 /(1.0_r8 + a1)
+
+         else
+
+            if(wrf%dom(id)%surf_obs) then
+
+!!$               i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
+!!$               i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
+               i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
+               i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
+               fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+               fld(1) = fld(1) / (1.0_r8 + fld(1))
+
+            else
+
+               fld(1) = missing_r8
+
+            endif
+
+         endif
 
       else
 
@@ -1261,92 +1333,17 @@ else if( obs_kind == KIND_SURFACE_PRESSURE) then
       if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
            x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
 
-         obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
       else
 
-         obs_val = missing_r8
+         fld(1) = missing_r8
 
       endif
 
    else
 
-      obs_val = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_U_10_METER_WIND ) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      wrf%dom(id)%surf_obs) then
-
-!!$      i1 = get_wrf_index(i,j,1,TYPE_U10,id)
-!!$      i2 = get_wrf_index(i,j+1,1,TYPE_U10,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_U10)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_U10)
-      obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-   else
-
-      obs_val = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_V_10_METER_WIND ) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      wrf%dom(id)%surf_obs) then
-
-!!$      i1 = get_wrf_index(i,j,1,TYPE_V10,id)
-!!$      i2 = get_wrf_index(i,j+1,1,TYPE_V10,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_V10)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_V10)
-      obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-   else
-
-      obs_val = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_TEMPERATURE_2_METER ) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      wrf%dom(id)%surf_obs) then
-
-!!$      i1 = get_wrf_index(i,j,1,TYPE_T2,id)
-!!$      i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
-      obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-   else
-
-      obs_val = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_SPECIFIC_HUMIDITY_2_METER ) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      wrf%dom(id)%surf_obs) then
-
-!!$      i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
-!!$      i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
-      obs_val = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      !  Convert water vapor mixing ratio to specific humidity:
-      obs_val = obs_val / (1.0_r8 + obs_val)
-
-   else
-
-      obs_val = missing_r8
+      fld(1) = missing_r8
 
    endif
 
@@ -1357,11 +1354,7 @@ else
 end if
 
 ! Do vertical interpolation
-if(obs_kind /= KIND_SURFACE_PRESSURE &
-     .and. obs_kind /= KIND_U_10_METER_WIND &
-     .and. obs_kind /= KIND_V_10_METER_WIND &
-     .and. obs_kind /= KIND_TEMPERATURE_2_METER &
-     .and. obs_kind /= KIND_SPECIFIC_HUMIDITY_2_METER) then
+if(.not. vert_is_surface(location)) then
 
    call toGrid(zloc, k, dz, dzm)
 
@@ -1372,6 +1365,10 @@ if(obs_kind /= KIND_SURFACE_PRESSURE &
    else
       obs_val = missing_r8
    endif
+
+else
+
+   obs_val = fld(1)
 
 endif
 
