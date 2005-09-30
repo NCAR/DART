@@ -78,7 +78,9 @@ integer :: num_kind_assimilate, num_kind_evaluate
 
 ! Map from values of kind in obs_def to the fixed values in the list above
 ! Initially, these are undefined and have values -1
-integer, allocatable :: map(:)
+! For the first index 1, the value is the index in the input obs_sequence file.
+! The first index 2 is the value of the corresponding index in this kind module.
+integer :: map(2, max_obs_kinds) = -1
 
 ! An observation kind type links together all the information required
 ! An integer index that is also associated with the parameter above,
@@ -208,9 +210,24 @@ function map_def_index(obs_def_index)
 integer, intent(in) :: obs_def_index
 integer             :: map_def_index
 
+character(len = 169) :: err_string
+integer :: i
+
 if ( .not. module_initialized ) call initialize_module
 
-map_def_index = map(obs_def_index)
+! Need to search through the first column of map to find this obs_def_index value
+! Then return the index into table in this module from corresponding row in 
+! second column.
+do i = 1, max_obs_kinds
+   if(map(1, i) == obs_def_index) then
+      map_def_index = map(2, i)
+      return
+   endif
+end do
+
+! Error, didn't find this obs_def_index in the map
+write(err_string, *) 'Couldnt find obs_def_index ', obs_def_index, ' in obs_kind map'
+call error_handler(E_ERR, 'maps_def_index', err_string, source, revision, revdate)
 
 end function map_def_index
 
@@ -373,9 +390,8 @@ if ( .not. module_initialized ) call initialize_module
 ! that this order is consistent with what the obs_sequence
 ! file thinks.
 if(pre_I_format) then
-   if(.not. allocated(map)) allocate(map(max_obs_kinds))
    do i = 1, max_obs_kinds
-      map(i) = i
+      map(1, i) = i; map(2, i) = i
    end do
    return
 endif
@@ -383,7 +399,7 @@ endif
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
 
-! Write the 5 character identifier for verbose formatted output
+! Read the 5 character identifier for verbose formatted output
 SELECT CASE (fileformat)
    CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
       ! Need to look for header string
@@ -392,11 +408,6 @@ SELECT CASE (fileformat)
          call error_handler(E_ERR, 'read_obs_kind', 'Didnt find obs_kind_definitions string', &
             source, revision, revdate)
       endif
-      ! NEED TO CHECK FOR AN ERROR HERE AND HANDLE
-      !!!if(read_error) then
-      !!!   set_default_map
-      !!!   rewind somehow
-      !!!endif
    CASE DEFAULT
       read(ifile, 11) header
 11    format(a20)
@@ -404,10 +415,6 @@ SELECT CASE (fileformat)
          call error_handler(E_ERR, 'read_obs_kind', 'Didnt find obs_kind_definitions string', &
             source, revision, revdate)
       endif
-      ! NEED TO CHECK FOR AN ERROR HERE AND HANDLE
-      !!!if(read_error) then
-      !!!   set_default_map
-      !!!endif
 END SELECT
 
 ! Loop through the list to write out the integer indices and strings
@@ -417,7 +424,6 @@ END SELECT
 SELECT CASE (fileformat)
    CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
       read(ifile) num_def_kinds
-      if(.not. allocated(map)) allocate(map(num_def_kinds))
       do i = 1, num_def_kinds
          read(ifile) o_index, o_name
          ! What is the integer associated with this o_name in this module?
@@ -428,11 +434,11 @@ SELECT CASE (fileformat)
             call error_handler(E_ERR, 'read_obs_kind', msg_string, &
                source, revision, revdate)
          endif
-         map(o_index) = list_index
+         map(1, i) = o_index
+         map(2, i) = list_index
       end do
    CASE DEFAULT
       read(ifile, *) num_def_kinds
-      if(.not. allocated(map)) allocate(map(num_def_kinds))
       do i = 1, num_def_kinds
          read(ifile, *) o_index, o_name
          ! What is the integer associated with this o_name in this module?
@@ -443,7 +449,8 @@ SELECT CASE (fileformat)
             call error_handler(E_ERR, 'read_obs_kind', msg_string, &
                source, revision, revdate)
          endif
-         map(o_index) = list_index
+         map(1, i) = o_index
+         map(2, i) = list_index
       end do
 END SELECT
 
