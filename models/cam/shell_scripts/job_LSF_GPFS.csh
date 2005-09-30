@@ -29,7 +29,7 @@
 #BSUB -J DARTCAM
 #BSUB -o DARTCAM.%J.log
 #BSUB -P 86850054
-#BSUB -q special
+#BSUB -q standby
 #BSUB -n 1
 
 # If they exist, log the values of the batch environment vars.
@@ -97,12 +97,15 @@ echo "job- CENTRALDIR is ${CENTRALDIR}"
 # Run parameters to change
 
 # Directory where output will be kept (relative to '.')
-set exp = Verbose
+set exp = Experiment1
 
 # 'day'/obs_seq.out numbers to assimilate during this job
 # First and last obs seq files. 
 set obs_seq_1 = 1
 set obs_seq_n = 1
+
+# number of obs_seqs / day
+set obs_seq_freq = 2
 
 # The "day" of the first obs_seq.out file of the experiment
 set obs_seq_first = 1
@@ -113,19 +116,28 @@ set obs_seq_first = 1
 set output_root = 01_
 
 set num_ens = 80
-set obs_seq_1_ic  = /ncar/dart/CAM_init/T21x80/03-01-01/DART
+
+# Initial conditions for DART-CAM for the first obs_seq.out file
+set obs_seq_1_ic  = /ncar/dart/CAM_init/T21x80/03-01-01/DART_lunes
 set obs_seq_1_cam = /ncar/dart/CAM_init/T21x80/03-01-01/CAM/caminput_
 set obs_seq_1_clm = /ncar/dart/CAM_init/T21x80/03-01-01/CLM/clminput_
 
-# The CAM executable, source and pieces parts live in a sub-directory
-# of the 'central' directory. This sub-directory ...
-set CAMsrc = cam3_0_7_brnchT_assim01
+# Get the CAM executable from a sub-directory of the whole CAM package to be used
+set CAMsrc = /home/lightning/raeder/Cam3/cam3.1/models/atm/cam/bld/T21
+
 
 # Each obs_seq file gets its own input.nml ... the following variable
 # helps set this up. 
+
+
 set input = input_
 
+
+# CHANGE choice of whether forecasts on caminput_##.nc files should be replaced with
+#        analyses from filter_ic_new.#### at the end of each obs_seq.  See 'stuff' below
+
 # CHANGE names of obs_seq files below, if necessary
+
 
 # Not currently used; all previous days initial files are gzipped
 # Now don't even gzip those; keep available for other restarts
@@ -170,6 +182,7 @@ while($i <= $obs_seq_n) ;# start i loop
    echo "starting observation sequence file $i at "`date`
    echo "starting observation sequence file $i at "`date` >> $MASTERLOG
 
+
    @ j = $i - 1
    set out_prev = ${output_root}
    if ($j < 10) set out_prev = ${output_root}0
@@ -183,26 +196,42 @@ while($i <= $obs_seq_n) ;# start i loop
    # Get filter input files
    # The first one is different than all the rest ...
 
-   if ($i == 1) then
-      cp ${input}1.nml input.nml
+#   if ($i == 1) then
+   if ($i == $obs_seq_first) then
+      cp ${input}${obs_seq_first}.nml input.nml
    else
-      cp ${input}n.nml input.nml
+      if (-e ${input}n.nml) then
+         cp ${input}n.nml input.nml
+      else if (-e ${input}${i}.nml) then
+         cp ${input}${i}.nml input.nml
+      else
+         echo "input_next is MISSING" >> $MASTERLOG
+         echo "input_next is MISSING"
+         exit
+      endif
    endif
 
    # get rid of previous link
    rm obs_seq.out
+   
+   #----------------------
+   # Get obs_seq file for this assimilation
+   # set day and hour for this obs_seq
+   # Normally, when starting with 12 hourly from beginning;  
+   @ day = ($i + 1) / $obs_seq_freq
+   @ hour = ($i % $obs_seq_freq) * 24 / $obs_seq_freq 
+   if ($hour == 0) set hour = 24
+   echo "obs_seq, day, hour = $i $day $hour " >> $MASTERLOG
+
    if ($i == 0) then
       set OBS_SEQ = /scratch/cluster/raeder/GWD_T42/obs_seq_1-1-03.out
-   else if ($i < 10) then
-   #  set OBS_SEQ = /ptmp/thoar/Obs_sets/Created_2005Apr08/obs_seq2003010${i}
-   #  set OBS_SEQ = /ptmp/thoar/Obs_sets/RAOBsOnly/obs_seq2003010${i}
-   #  set OBS_SEQ = /ptmp/thoar/Obs_sets/NoAircraftW/obs_seq2003010${i}
-      set OBS_SEQ = /ptmp/thoar/Obs_sets/NoAircraftT/obs_seq2003010${i}
+   else if ($i < 19) then
+      set OBS_SEQ = /ncar/dart/Obs_sets/Allx12/obs_seq2003010${day}${hour}
    else
-   #  set OBS_SEQ = /ptmp/thoar/Obs_sets/Created_2005Apr08/obs_seq200301${i}
-   #  set OBS_SEQ = /ptmp/thoar/Obs_sets/RAOBsOnly/obs_seq200301${i}
-   #  set OBS_SEQ = /ptmp/thoar/Obs_sets/NoAircraftW/obs_seq200301${i}
-      set OBS_SEQ = /ptmp/thoar/Obs_sets/NoAircraftT/obs_seq200301${i}
+      set OBS_SEQ = /ncar/dart/Obs_sets/Allx12/obs_seq200301${day}${hour}
+
+## obs_seq_freq = 24      set OBS_SEQ = /ncar/dart/Obs_sets/All/obs_seq200301${i}
+
    endif
 
    if ( -s $OBS_SEQ ) then    ;# -s is true if xxxx has non-zero size
@@ -246,9 +275,9 @@ while($i <= $obs_seq_n) ;# start i loop
            ln -s $from filter_ic_old.$from:e
            @ n++ 
       end
-   else
+   else if (-e ${from_root}/filter_ic) then
       rm filter_ic_old
-      ln -s $from_root/filter_ic filter_ic_old
+      ln -s ${from_root}/filter_ic filter_ic_old
    endif
    echo ' '
    echo "job- filter_ic_old is/are" >> $MASTERLOG
@@ -322,9 +351,11 @@ while($i <= $obs_seq_n) ;# start i loop
       else
          # do this while waiting for go_end_filter to first appear
          sleep $nsec
-         if ($nsec < 8) @ nsec = 2 * $nsec
-         echo "job.csh waiting for go_end_filter to appear "`date` >>$MASTERLOG
-         echo "job.csh waiting for go_end_filter to appear "`date`
+         if ($nsec < 8) then
+            @ nsec = 2 * $nsec
+            echo "job.csh waiting for go_end_filter to appear "`date` >>$MASTERLOG
+            echo "job.csh waiting for go_end_filter to appear "`date`
+         endif
       endif
    end
 
@@ -363,6 +394,50 @@ while($i <= $obs_seq_n) ;# start i loop
       endif
    end
 
+   # Move the filter restart file(s) to the storage subdirectory
+   echo "moving filter_ic_newS to ${exp}/${output_dir}/DART/filter_icS"
+
+   if (-e filter_ic_new) then
+      mv -v filter_ic_new ${exp}/${output_dir}/DART/filter_ic
+      if (! $status == 0 ) then
+         echo "failed moving filter_ic_new to ${exp}/${output_dir}/DART/filter_ic"
+         $KILLCOMMAND
+      endif
+   else if (-e filter_ic_new.0001) then
+      set n = 1
+      while($n <= ${num_ens})
+           set from = filter_ic_new*[.0]$n
+           set dest = $exp/${output_dir}/DART/filter_ic.$from:e
+           # # stuff analyses into CAM initial files using
+           # echo $from >! member
+           # echo caminput_${n}.nc >> member
+           # ./trans_sv_pv
+           # echo "stuffing analyses from $from into caminput_${n}.nc" >> $MASTERLOG
+           # ls -l caminput_${n}.nc >> $MASTERLOG
+           # # end stuffing
+           mv -v $from $dest
+           if (! $status == 0 ) then
+              echo "failed moving $from to ${dest}"
+              $KILLCOMMAND
+           endif
+           @ n++
+      end
+   else
+      echo "NO filter_ic_new FOUND"
+      echo "NO filter_ic_new FOUND"
+      echo "NO filter_ic_new FOUND"
+      echo "NO filter_ic_new FOUND"
+      $KILLCOMMAND
+   endif
+
+   if (-e assim_ic_new) then
+      mv -v assim_ic_new ${exp}/${output_dir}/DART/assim_tools_ics
+      if (! $status == 0 ) then
+         echo "failed moving assim_ic_new to ${exp}/${output_dir}/DART/assim_tools_ics"
+         $KILLCOMMAND
+      endif
+   endif
+
    set n = 1
    while($n <= ${num_ens})    ;# loop over all ensemble members ... one-at-a-time
       set CAMINPUT = caminput_${n}.nc 
@@ -393,42 +468,6 @@ while($i <= $obs_seq_n) ;# start i loop
      @ n++
    end
 
-   # Move the filter restart file(s) to the storage subdirectory
-   echo "moving filter_ic_newS to ${exp}/${output_dir}/DART/filter_icS"
-
-   if (-e filter_ic_new) then
-      mv -v filter_ic_new ${exp}/${output_dir}/DART/filter_ic
-      if (! $status == 0 ) then
-         echo "failed moving filter_ic_new to ${exp}/${output_dir}/DART/filter_ic"
-         $KILLCOMMAND
-      endif
-   else if (-e filter_ic_new.0001) then
-      set n = 1
-      while($n <= ${num_ens})
-           set from = filter_ic_new*[.0]$n
-           set dest = $exp/${output_dir}/DART/filter_ic.$from:e
-           mv -v $from $dest
-           if (! $status == 0 ) then
-              echo "failed moving $from to ${dest}"
-              $KILLCOMMAND
-           endif
-           @ n++
-      end
-   else
-      echo "NO filter_ic_new FOUND"
-      echo "NO filter_ic_new FOUND"
-      echo "NO filter_ic_new FOUND"
-      echo "NO filter_ic_new FOUND"
-      $KILLCOMMAND
-   endif
-
-   if (-e assim_ic_new) then
-      mv -v assim_ic_new ${exp}/${output_dir}/DART/assim_tools_ics
-      if (! $status == 0 ) then
-         echo "failed moving assim_ic_new to ${exp}/${output_dir}/DART/assim_tools_ics"
-         $KILLCOMMAND
-      endif
-   endif
 
    # test whether it's safe to end this obs_seq_ by signalling filter.csh to end
    # kluge ('00num_ens') to prevent losing restart files only good for >9 ens members
@@ -450,48 +489,16 @@ while($i <= $obs_seq_n) ;# start i loop
        echo "Then remove temp and cam advance temps" >> $MASTERLOG
    endif
 
-   # Compress older output which we won't need immediately
+   # Compress and archive older output which we won't need immediately
    #
    # if ($i % $save_freq != $mod_save) then
-   # # if ($i > 1) then
-   #    @ j = $i - 1
-   #    cd ${exp}/${out_prev}
-# {out_put_dir}$j
-   #    if (-e ${exp}/${output_dir}/CLM/clminput_${num_ens}.nc) then
-   # #       gzip -r CLM
-   # #      tar cf clminput.gz.tar CLM
-   #      rm -rf CLM
-   #    else
-   #       echo 'NO clminput.20;  ABORTING compression'
-   #    endif       
-   #    if (-e ${exp}/${output_dir}/CAM/caminput_${num_ens}.nc) then
-   # #       gzip -r CAM
-   # #      tar cf caminput.gz.tar CAM
-   #      rm -rf CAM
-   #    else
-   #       echo 'NO caminput.20;  ABORTING compression'
-   #    endif
-   #    if (-e ${exp}/${output_dir}/DART/filter_ic*${num_ens} || \
-   #        -e ${exp}/${output_dir}/DART/filter_ics) then
-   #        rm -rf DART
-   #    endif
-   #    cd ../..
-   # else
-   # UNTESTED
-   #    cd ${exp}/${output_dir}
-   #    set list = `du -bc DART/filter_ic.0001 CAM/caminput_1.nc CLM/clminput_1.nc`
-   #    size_element = $list[7]
-   #    # This ignores compression in restart2ms
-   #    set div = 1
-   #    while (${num_ens} * ${size_element} / $div > 2000000000)
-   #        @ div = $div * 2
-   #    end
-   #    set $num_per_batch = ${num_ens} / $div
-   #    ~/restart2ms ${num_ens} ${num_per_batch} compress  &
-   #       this won't work because CAM and CLM files are compressed by restart2ms
-   #       They must be unzipped for the next obs_seq to use them; fix restart2ms?
-   #    cd ../..
-   # endif
+   if ($i > $obs_seq_first ) then
+       cd ${exp}/${out_prev}
+       bsub < ~/auto_re2ms_LSF.csh                                         >>& $MASTERLOG
+       cd ../..
+       echo "Backing up restart $j to mass store;  in separate batch job"  >> $MASTERLOG
+    endif
+
 
    mv -v cam_out_temp1       ${exp}/${output_dir}   ;# save a representative model advance
    mv -v cam_reg_temp1       ${exp}/${output_dir}   ;# ditto for assimilation region
@@ -499,7 +506,7 @@ while($i <= $obs_seq_n) ;# start i loop
    mv -v casemodel           ${exp}/${output_dir}
    mv -v run_filter.stout    ${exp}/${output_dir}   ;# stdout   from filter.f90
    mv -v filter_log.out      ${exp}/${output_dir}   ;# DART log from filter.f90 (input.nml)
-   mv -v filter_server.*.log ${exp}/${output_dir}   ;# output from filter_server.csh
+   mv -v filter_server.*.*   ${exp}/${output_dir}   ;# output from filter_server.csh
    mv -v filter.*.log        ${exp}/${output_dir}   ;# output from batch filter.csh
 
    cp -p filter_server.csh   ${exp}/${output_dir}
@@ -511,5 +518,6 @@ while($i <= $obs_seq_n) ;# start i loop
    @ i++
 end
 
-mv -v run_job.*    ${exp}
+mv -v run_job.log    ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log
 mv -v namelist     ${exp}
+mv -v filter.*.log ${exp}
