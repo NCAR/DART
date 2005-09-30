@@ -3,10 +3,10 @@
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 ! BEGIN DART PREPROCESS KIND LIST
-! METAR_U_10_METER_WIND, KIND_U_10_METER_WIND
-! METAR_V_10_METER_WIND, KIND_V_10_METER_WIND
-! METAR_TEMPERATURE_2_METER, KIND_TEMPERATURE_2_METER
-! METAR_SPECIFIC_HUMIDITY_2_METER, KIND_SPECIFIC_HUMIDITY_2_METER
+! METAR_U_10_METER_WIND, KIND_U_WIND_COMPONENT
+! METAR_V_10_METER_WIND, KIND_V_WIND_COMPONENT
+! METAR_TEMPERATURE_2_METER, KIND_TEMPERATURE
+! METAR_SPECIFIC_HUMIDITY_2_METER, KIND_SPECIFIC_HUMIDITY
 ! METAR_SURFACE_PRESSURE, KIND_SURFACE_PRESSURE
 ! END DART PREPROCESS KIND LIST
 
@@ -16,13 +16,13 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(METAR_U_10_METER_WIND)
-!            call interpolate(state, location, KIND_U_10_METER_WIND, obs_val, istatus)
+!            call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
 !         case(METAR_V_10_METER_WIND)
-!            call interpolate(state, location, KIND_V_10_METER_WIND, obs_val, istatus)
+!            call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
 !         case(METAR_TEMPERATURE_2_METER)
-!            call interpolate(state, location, KIND_TEMPERATURE_2_METER, obs_val, istatus)
+!            call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
 !         case(METAR_SPECIFIC_HUMIDITY_2_METER)
-!            call interpolate(state, location, KIND_SPECIFIC_HUMIDITY_2_METER, obs_val, istatus)
+!            call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
 !         case(METAR_SURFACE_PRESSURE)
 !            call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
