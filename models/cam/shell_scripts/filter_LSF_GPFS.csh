@@ -1,4 +1,4 @@
-#!/bin/csh -f
+#!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
