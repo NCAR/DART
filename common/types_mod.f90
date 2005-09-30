@@ -14,7 +14,7 @@ MODULE types_mod
 implicit none
 private 
 
-public :: i8, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
+public :: i8, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8, digits12
 public :: MISSING_I, MISSING_DATA
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
@@ -47,6 +47,13 @@ SAVE
   integer, parameter :: c4 = SELECTED_REAL_KIND(6,30)
   integer, parameter :: r8 = SELECTED_REAL_KIND(12)
   integer, parameter :: c8 = SELECTED_REAL_KIND(12)
+
+! 'digits12' is reserved for real variables that MUST retain 64 bits of
+! precision. DO NOT CHANGE '12' to a smaller number. BAD BAD BAD things happen.
+! This is a small subset of the variables. Changing this will ruin the ability
+! to distinguish timesteps that are a few seconds apart, for instance.
+
+  integer, parameter :: digits12 = SELECTED_REAL_KIND(12)
 
 !----------------------------------------------------------------------------
 ! Constants ... 

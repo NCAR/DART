@@ -11,13 +11,17 @@ module time_manager_mod
 ! $Author$
 ! $Name$
 
-use     types_mod, only : missing_i
+use     types_mod, only : missing_i, digits12
 use utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
                           register_module, dump_unit_attributes
 
 implicit none
 private
 
+!====================================================================
+! This module works best when the real variables have more than 7 
+! significant digits, so this module uses the 'digits12' parameter 
+! defined in types_mod ... 
 !====================================================================
 ! The time_manager provides a single defined type, time_type, which is 
 ! used to store time and date quantities. A time_type is a positive 
@@ -83,17 +87,6 @@ character(len=128) :: &
 source   = '$Source$', &
 revision = '$Revision$', &
 revdate  = '$Date$'
-
-!====================================================================
-! This module works best when the real variables have more than 7 
-! significant digits, so this module defines its own KIND.
-! This kind will usually resolve to a 64bit real if the machine 
-! supports it, but is guaranteed to resolve to something more than 32 bits.  
-!====================================================================
-
-integer, parameter :: digits12 = SELECTED_REAL_KIND(12)   ! type guaranteed
-                                                          ! to have 12 signif
-                                                          ! digits.
 
 
 ! Global data to define calendar type
