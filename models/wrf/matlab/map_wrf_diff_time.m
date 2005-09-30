@@ -61,12 +61,15 @@ if (fact(2) ~= 0.0) | (fact(3) ~= 0.0)
    else
       fname = char(state_name(3));
    end
-   ncopy = getnc(fname, 'copy');
-   ens_size = size(ncopy, 1) - 2;
-   disp(['The first ' int2str(ens_size) ' copies are ensemble members.'])
-   disp(['The ensemble mean is copy #' int2str(ens_size+1)])
-   disp(['The ensemble spread is copy #',int2str(ens_size+2)])
+   ncopy = size(getnc(fname, 'copy'), 1);
+   copy_name = deblank(getnc(fname, 'CopyMetaData'));
+   for icopy = 1:ncopy
+      disp(['Copy # ' int2str(icopy) ' is ' copy_name(icopy,:)])
+   end
    cop(2:3) = input('Input copy for Prior and/or Posterior: ');
+   string2 = sprintf('%s',copy_name(cop(2),:));
+else
+   string2 = sprintf('True state');
 end
 
 for iy = 1:sn
@@ -90,17 +93,20 @@ ftime = input('End time : ');
 if strcmp(field_name,'MU') | strcmp(field_name,'XLAND')
    field_level = 1;
    vert_coord = 1;
-   lev_units = ' ';
+   lev_units = '';
 else
    vert_coord = 0;
-   while vert_coord ~= 1 & vert_coord ~= 2
-      vert_coord = input('Input 1 for model or 2 for pressure level:');
+   while vert_coord ~= 1 & vert_coord ~= 2 & vert_coord ~= 3
+      vert_coord = input('Input vertical coordinate: model(1), pressure(2), height(3): ');
       if vert_coord == 1
          field_level = input('Input model level: ');
-         lev_units = ' model level';
+         lev_units = 'model level';
       elseif vert_coord == 2
          field_level = input('Input pressure level (hPa): ');
-         lev_units = ' (hPa)';
+         lev_units = 'hPa';
+      elseif vert_coord == 3
+         field_level = input('Input height (meters): ');
+         lev_units = 'm';
       else
          disp('Invalid choice. Please try again')
       end
@@ -112,46 +118,48 @@ uname = ['U_d0',int2str(id)];
 vname = ['V_d0',int2str(id)];
 
 if strcmp(field_name,'U') | strcmp(field_name,'V') | strcmp(field_name,'VECT')
-   var_units = ' (m/s)';
+   var_units = 'm/s';
    iso = [0.5:1:5];
 end
 if strcmp(field_name,'W')
-   var_units = ' (m/s)';
+   var_units = 'm/s';
    iso = [0.01:0.01:0.1];
 end
 if strcmp(field_name,'PH')
-   var_units = ' (m^2/s^2)';
+   var_units = 'm^2/s^2';
    iso = [50:50:300];
 end
 if strcmp(field_name,'T')
-   var_units = ' (K)';
+   var_units = 'K';
    iso = [250:5:310];
 end
 if strcmp(field_name,'MU')
-   var_units = ' (Pa)';
+   var_units = 'Pa';
    iso = [100:100:600];
 end
 if strcmp(field_name,'QV')
-   var_units = ' (kg/kg)';
+   var_units = 'kg/kg';
    iso = [0.0001:0.0001:0.001];
 end
 if strcmp(field_name,'QC')
-   var_units = ' (kg/kg)';
+   var_units = 'kg/kg';
    iso = [0.00001:0.00001:0.0001];
 end
 if strcmp(field_name,'QR')
-   var_units = ' (kg/kg)';
+   var_units = 'kg/kg';
    iso = [0.00001:0.00001:0.0001];
 end
 if strcmp(field_name,'XLAND')
-   var_units = ' (-)';
+   var_units = '-';
 end
 if strcmp(field_name,'HDIV')
-   var_units = ' ((m/s)/km)';
+   var_units = '(m/s)/km';
+   iso = [-0.5:0.05:0.5];
 end
-
-scrsz = get(0,'ScreenSize');
-figure('Position',[1 scrsz(4)/2 0.8*scrsz(4) 0.8*scrsz(4)])
+if strcmp(field_name,'REF')
+   var_units = 'dBZ';
+   iso = [-10:5:80];
+end
 
 m = ceil(sqrt(ftime-stime+1));
 
@@ -163,9 +171,7 @@ pane = 1;
 
 for itime = stime:ftime
 
-   plot_title = [field_name var_units '   ' num2str(field_level) lev_units ...
-			    '   ' num2str(fix(true_times(itime))) ' days   ' ...
-   num2str((true_times(itime)-fix(true_times(itime)))*86400) ' sec'];
+   plot_title = sprintf('%s (%s)  %i (%s)  day = %i  sec = %i  %s',field_name,var_units,field_level,lev_units,fix(true_times(itime)),fix((true_times(itime)-fix(true_times(itime)))*86400),string2);
 
 % Extract field
 
@@ -178,6 +184,18 @@ for itime = stime:ftime
       if fact(istate) ~= 0.0
 
 	 fname = char(state_name(istate));
+ %--Set up, compute pressure 
+         [ Cp, Rd, gamma, Rv, L_c, g, T0, p0 ] = get_constants ;
+
+         [ mu, dnw, phi, theta, qv ] =  ...
+   get_aux_fields_for_p( fname, T0, itime, cop(istate), id ) ;
+
+         pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 ) ;
+
+         var_in = zeros(bt,sn,we);
+
+ %--Retrieve specified variable from netcdf file
+
          if vert_coord == 1
 
 	    if strcmp(field_name,'MU')
@@ -248,19 +266,7 @@ for itime = stime:ftime
 
             end
 
-         else
-
- %--Set up, compute pressure 
-            [ Cp, Rd, gamma, Rv, L_c, g, T0, p0] = get_constants ;
-
-            [ mu, dnw, phi, theta, qv ] =  ...
-   get_aux_fields_for_p( fname, T0, itime, cop(istate), id ) ;
-
-            pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 ) ;
-
- %--Retrieve specified variable from netcdf file
-
-            var_in = zeros(bt,sn,we);
+         elseif vert_coord == 2
 
 	    if strcmp(field_name,'VECT')
                var_inu = zeros(bt,sn,we);
@@ -361,6 +367,26 @@ for itime = stime:ftime
 
             end
 
+         else
+
+            height = compute_height( phi, g ) ;
+
+	    if strcmp(field_name,'REF')
+
+               [ qr, qg, qs ] =  ...
+   get_aux_fields_for_ref( fname, itime, cop(istate), id ) ;
+
+               rho = compute_density( mu, dnw, phi ) ;
+
+               temp = compute_temperature( pres, theta, Cp, Rd, p0 ) ;
+
+               var_in = compute_reflectivity( qr, qg, qs, rho, temp ) ;
+
+            end
+
+            var_lev = interp_to_height( var_in, height, field_level) ;
+            field = field + fact(istate)*var_lev;
+
          end
 
       end
@@ -380,7 +406,6 @@ for itime = stime:ftime
    plotm(usalo('statebvec'),'color',[0 0 0]);
    plotm(usalo('conusvec'),'color',[0 0 0]);
 
-%axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
    [xlim ylim]=mfwdtran([xlat(1,1) xlat(sn,we)],[xlon(1,1) xlon(sn,we)]);
    set(gca,'xlim',[min(xlim(:)) max(xlim(:))]);
    set(gca,'ylim',[min(ylim(:)) max(ylim(:))]);
@@ -410,12 +435,20 @@ for itime = stime:ftime
 %            hm = clabelm(Cm,hm,'labelspacing',288);  set(hm,'Fontsize',12);
 %         end
 
-[C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
+   if strcmp(field_name,'REF')
+     eval('dbz_colors')
+     h = pcolorm(xlat,xlon,field);
+
+   else
+
+     [C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
+
+   end
 
 %[C,h] = contour (field, iso);
 %hold on
 %[Cm,hm] = contour (field, -iso, '--');
-colorbar('vert')
+cb = colorbar('vert'); set(cb,'Fontsize',12);
 %clabel(C, h);
 %clabel(Cm, hm);
 
@@ -424,6 +457,8 @@ colorbar('vert')
    end
 
    title(plot_title,'Fontsize',12)
+
+   wysiwyg
 
    pane = pane + 1;
 

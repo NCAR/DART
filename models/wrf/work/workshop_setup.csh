@@ -52,7 +52,7 @@
 
 csh mkmf_preprocess
 make         || exit 1
-\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_def/obs_def_mod.f90 ../../../obs_kind/obs_kind_mod.f90
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
@@ -65,8 +65,8 @@ csh mkmf_perfect_model_obs
 make         || exit 5
 csh mkmf_filter
 make         || exit 6
-csh mkmf_obs_diag
-make         || exit 7
+#csh mkmf_obs_diag
+#make         || exit 7
 #./perfect_model_obs
 #./filter
 csh mkmf_assim_region

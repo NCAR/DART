@@ -21,11 +21,13 @@ use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
                              get_obs_def, read_obs_seq, &
                              get_copy_meta_data, set_copy_meta_data, &
                              get_qc_meta_data, set_qc_meta_data
+use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, &
+                             RADIOSONDE_V_WIND_COMPONENT, &
+                             RADIOSONDE_SURFACE_PRESSURE, &
+                             RADIOSONDE_TEMPERATURE, &
+                             RADIOSONDE_SPECIFIC_HUMIDITY
 use      obs_def_mod, only : obs_def_type, get_obs_kind, &
-                             get_obs_def_time, get_obs_def_location, &
-                             RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
-                             SURFACE_PRESSURE, &
-                             RADIOSONDE_TEMPERATURE, RADIOSONDE_SPECIFIC_HUMIDITY
+                             get_obs_def_time, get_obs_def_location
 use     location_mod, only : location_type, get_location
 use time_manager_mod, only : time_type, operator(/=), get_time, print_time, &
                              set_calendar_type, GREGORIAN
