@@ -49,7 +49,7 @@ use              fms_mod, only: file_exist, open_namelist_file, &
                                 fms_init,        &
                                 open_restart_file
 
-use utilities_mod, only : open_file, check_nml_error
+use utilities_mod, only : open_file, check_nml_error, error_handler, E_ERR
 
 
 ! routines used by subroutine bgrid_physics
@@ -70,6 +70,8 @@ use          location_mod, only: location_type, get_location, set_location, &
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
 use         utilities_mod, only: error_handler, E_ERR, logfileunit, register_module
+use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                                 KIND_SURFACE_PRESSURE, KIND_TEMPERATURE
 
 !-----------------------------------------------------------------------
 
@@ -1129,18 +1131,40 @@ end subroutine get_state_meta_data
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus)
+subroutine model_interpolate(x, location, itype_in, obs_val, istatus)
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer,             intent(in) :: itype
+integer,             intent(in) :: itype_in
 real(r8),            intent(out):: obs_val
 integer,             intent(out):: istatus
 
-integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
+integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i, itype
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
+character(len = 129) :: msg_string
+
+! The itype_in variable uses types defined in the kinds module. The whole bgrid 
+! model_mod should be modified to use this correctly. However, as a fast patch
+! for the initial I-release, will just map the u, v, t, and ps kinds to the
+! default expectations of the bgrid which are hard coded as u=1, v=2, ps =3,
+! t = 4, and tracers for numbers larger than 4. For now, the tracer observations
+! are not implemented.
+if(itype_in == KIND_U_WIND_COMPONENT) then
+   itype = 1
+else if(itype_in == KIND_V_WIND_COMPONENT) then
+   itype = 2
+else if(itype_in == KIND_SURFACE_PRESSURE) then
+   itype = 3
+else if(itype_in == KIND_TEMPERATURE) then
+   itype = 4
+else
+   ! Error for higher or lower for now
+   write(msg_string, *) 'Only know how to do u, v, ps, t observations'
+   call error_handler(E_ERR, 'model_interpolate', msg_string, &
+      source, revision, revdate)
+endif 
 
 ! All interps okay for now
 istatus = 0
