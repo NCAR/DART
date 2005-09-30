@@ -19,9 +19,17 @@ set CENTRALDIR = $1
 set element = $2
 set temp_dir = $3
 
-\rm -rf  $temp_dir
-mkdir -p $temp_dir
-cd       $temp_dir
+# Originally, we ensured temp_dir was empty, this proved to be a bit more 
+# overhead and, in fact, screwed up on a GPFS system - bug reported (and fixed?)
+
+if ( -d $temp_dir ) then
+   cd   $temp_dir
+else
+   echo "FATAL ERROR assim_region.csh ... temp_dir( ${temp_dir} ) does not exist."
+   echo "FATAL ERROR assim_region.csh ... temp_dir( ${temp_dir} ) does not exist." >> assim_region.stout
+
+   exit 99
+endif
 
 echo "starting assim_region.csh for region $element at"`date` > assim_region.stout
 echo "CENTRALDIR is $CENTRALDIR"                             >> assim_region.stout
@@ -34,6 +42,7 @@ if ( -s  ${CENTRALDIR}/input.nml ) then
    cp -p ${CENTRALDIR}/input.nml .
 else
    # using defaults, i suppose.
+   echo "WARNING assim_region.csh ... unable to copy ${CENTRALDIR}/input.nml" >> assim_region.stout
 endif
 
 if ( -s  ${CENTRALDIR}/filter_assim_obs_seq ) then
@@ -83,5 +92,16 @@ cat assim_region.stout                >> $CENTRALDIR/cam_reg_temp$element
 mv filter_assim_region_out $CENTRALDIR/filter_assim_region_out$element
 
 cd $CENTRALDIR       ;# simply get out of this directory
-\rm -rf $temp_dir    ;# clean out 'this' directory
-echo "finished assim_region.csh for region $element at "`date` >> $CENTRALDIR/cam_reg_temp$element
+
+# If the region output does not exist or is zero length, we save everything we can
+# to a dead directory for a post-mortem. If the region is 'full', we carry on.
+
+if (-z filter_assim_region_out$element || ! -e filter_assim_region_out$element) then
+   echo "NO filter_assim_region_out$element; filter_server should stop " >> $CENTRALDIR/cam_reg_temp$element
+   mkdir ${temp_dir}_dead
+   mv ${temp_dir}/*  ${temp_dir}_dead
+else
+   \rm  $temp_dir/*    ;# clean out 'this' directory
+   echo "finished assim_region.csh for region $element at "`date` >> $CENTRALDIR/cam_reg_temp$element
+endif
+
