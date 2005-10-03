@@ -16,7 +16,7 @@ module obs_kind_mod
 ! assimilation.
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, check_nml_error, logfileunit, close_file
+                             open_file, logfileunit, close_file
 
 implicit none
 private
@@ -119,22 +119,28 @@ contains
 
   subroutine initialize_module
 
-integer :: iunit, ierr, io, i, j
-character(len = 169) :: err_string
+integer :: iunit, io, i, j
+character(len = 169) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 module_initialized = .true.
 
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-   iunit = open_file(fname = 'input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = obs_kind_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'obs_kind_nml')
-   enddo
- 11 continue
+   iunit = open_file('input.nml', action = 'read')
+   read(iunit, nml = obs_kind_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'obs_kind_mod:initialize_module:&obs_kind_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
+
 
 ! DART PREPROCESS OBS_KIND_INFO INSERTED HERE
 
