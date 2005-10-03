@@ -12,7 +12,7 @@ module reg_factor_mod
 ! $Name$
 
 use     types_mod, only : r8
-use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
+use utilities_mod, only : get_unit, file_exist, open_file, &
                           register_module, close_file, error_handler, E_ERR, &
                           E_MSG, logfileunit
 use time_manager_mod, only : time_type, write_time, get_time
@@ -81,8 +81,9 @@ real(r8), intent(in) :: regress(num_groups)
 real(r8) :: comp_reg_factor
 
 real(r8) :: sum_reg2, sum_reg_reg
+character(len=129) :: err_string, nml_string
 
-integer :: i, j, ii, jj, iunit, ierr, io, secs, days
+integer :: i, j, ii, jj, iunit, io, secs, days
 
 !--------------------------------------------------------
 ! Initialize namelist if not already done
@@ -91,16 +92,20 @@ if(.not. namelist_initialized) then
    call register_module(source,revision,revdate)
 
    namelist_initialized = .true.
+
+   ! Begin by reading the namelist input
    if(file_exist('input.nml')) then
       iunit = open_file('input.nml', action = 'read')
-      ierr = 1
-
-      READBLOCK: do while(ierr /= 0)
-         read(iunit, nml = reg_factor_nml, iostat = io)
-         if ( io < 0 ) exit READBLOCK          ! end-of-file
-         ierr = check_nml_error(io, 'reg_factor_nml')
-      enddo READBLOCK
-
+      read(iunit, nml = reg_factor_nml, iostat = io)
+      if(io /= 0) then
+         ! A non-zero return means a bad entry was found for this namelist
+         ! Reread the line into a string and print out a fatal error message.
+         BACKSPACE iunit
+         read(iunit, '(A)') nml_string
+         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+         call error_handler(E_ERR, 'comp_reg_factor:&reg_factor_nml problem', &
+                            err_string, source, revision, revdate)
+      endif
       call close_file(iunit)
    endif
 
