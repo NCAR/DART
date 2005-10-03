@@ -86,6 +86,7 @@ contains
    integer :: iunit, io
    logical :: lfile
 
+   character(len=129) :: err_string, nml_string
    character(len= 8) :: cdate
    character(len=10) :: ctime
    character(len= 5) :: zone
@@ -131,8 +132,18 @@ contains
             open( iunit, file='input.nml')
             read( iunit, nml = utilities_nml, iostat = io)
             if (io /= 0 ) then
-               write(*,*)'  No utilities_nml in input.nml, iostat was ',io 
-               write(*,*)'  using default values ...'
+               ! A non-zero return means a bad entry was found for this namelist
+               ! Reread the line into a string and print out a fatal error message.
+               BACKSPACE iunit
+               read(iunit, '(A)') nml_string
+               write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+
+               write(*,*)trim(adjustl(source))
+               write(*,*)trim(adjustl(revision))
+               write(*,*)trim(adjustl(revdate))
+               write(*,*)'utilities_mod:initialize_utilities:&utilities_nml problem'
+               write(*,*)trim(adjustl(err_string))
+               stop 99
             endif
             close(iunit)
 
