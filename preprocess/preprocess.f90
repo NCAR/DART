@@ -25,7 +25,7 @@ program preprocess
 
 use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, check_nml_error, logfileunit, close_file, &
+                             open_file, logfileunit, close_file, &
                              initialize_utilities, timestamp
 
 implicit none
@@ -42,7 +42,7 @@ character(len = 256) :: line, test, kind_string(max_kinds), &
                         raw_kind_item(max_kinds), t_string
 integer              :: iunit, ierr, io, i, j, k, l_kind_string
 integer              :: num_kinds_found
-character(len = 169) :: err_string
+character(len = 169) :: err_string, nml_string
 character(len = 14)  :: item_string
 
 ! List of the DART PREPROCESS strings
@@ -77,13 +77,17 @@ call register_module(source, revision, revdate)
 
 ! Read the preprocess_nml to get the preprocessor observation types to keep
 if(file_exist('input.nml')) then
-   iunit = open_file(fname = 'input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = preprocess_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'preprocess_nml')
-   enddo
- 11 continue
+   iunit = open_file('input.nml', action = 'read')
+   read(iunit, nml = preprocess_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'preprocess:&preprocess_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 

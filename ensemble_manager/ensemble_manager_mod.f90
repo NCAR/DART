@@ -14,7 +14,7 @@ module ensemble_manager_mod
 
 use types_mod, only : r8
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
-                              check_nml_error, file_exist, error_handler, &
+                              file_exist, error_handler, &
                               E_ERR, E_WARN, E_MSG, E_DBG, initialize_utilities, &
                               logfileunit, timestamp
 use assim_model_mod, only : aread_state_restart, awrite_state_restart, open_restart_read, &
@@ -90,7 +90,7 @@ character(len = 129), intent(in), optional  :: file_name
 type(time_type), intent(in), optional       :: init_time
 
 integer :: iunit, i, ierr, io, seq_unit
-character(len = 129) :: msgstring, this_file_name
+character(len = 129) :: msgstring, this_file_name, nml_string
 character(len = 4) :: extension
 
 ! Initialize the module with utilities 
@@ -100,23 +100,26 @@ call register_module(source, revision, revdate)
 ens_size = ens_size_in
 model_size = model_size_in
 
-! Read namelist for run time control
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-
-   READBLOCK: do while(ierr /= 0)
-      read(iunit, nml = ensemble_manager_nml, iostat = io)
-      if ( io < 0 ) exit READBLOCK          ! end-of-file
-      ierr = check_nml_error(io, 'ensemble_manager_nml')
-   enddo READBLOCK
-
+   read(iunit, nml = ensemble_manager_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&ensemble_manager_nml problem', &
+                         msgstring, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
 call error_handler(E_MSG,'init_ensemble_manager','ensemble_manager_nml values are',' ',' ',' ')
 write(logfileunit,nml=ensemble_manager_nml)
 write(     *     ,nml=ensemble_manager_nml)
+
 ! Initialize the storage and read in from restart file if needed
 if(in_core) then 
    ! Don't allocate space for mean and spread until needed to conserve space
