@@ -14,7 +14,7 @@ module assim_tools_mod
 ! A variety of operations required by assimilation.
 
 use      types_mod, only : r8, missing_r8, PI
-use  utilities_mod, only : file_exist, open_file, close_file, check_nml_error, get_unit, &
+use  utilities_mod, only : file_exist, open_file, close_file, get_unit, &
                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 use       sort_mod, only : index_sort 
 use random_seq_mod, only : random_seq_type, random_gaussian, &
@@ -98,20 +98,24 @@ subroutine assim_tools_init(dont_read_restart)
 logical, intent(in), optional :: dont_read_restart
 
 integer :: iunit, ierr, io, restart_unit, i, res_num_domains
+character(len=159) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 
-! Read namelist for run time control
+! Read namelist for run-time control
 
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-
-   READBLOCK: do while(ierr /= 0)
-      read(iunit, nml = assim_tools_nml, iostat = io)
-      if ( io < 0 ) exit READBLOCK          ! end-of-file
-      ierr = check_nml_error(io, 'assim_tools_nml')
-   enddo READBLOCK
+   read(iunit, nml = assim_tools_nml, iostat = io)
+   if ( io /= 0 ) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'assim_tools_init:&assim_tools_nml problem', &
+           err_string, source, revision, revdate)
+   endif
  
    call close_file(iunit)
 endif

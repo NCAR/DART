@@ -22,7 +22,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, &
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance
 use time_manager_mod, only : time_type, get_time, set_time, operator(/=), operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
-                              check_nml_error, file_exist, error_handler, &
+                              file_exist, error_handler, &
                               E_ERR, E_MSG, E_DBG, initialize_utilities, &
                               logfileunit, timestamp
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
@@ -55,6 +55,7 @@ type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
+character(len=159) :: nml_string
 integer :: i, j, iunit, io, days, secs
 integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
@@ -135,12 +136,16 @@ call filter_initialize_modules_used()
 ! Intel 8.0 quirk that the subroutine does not compile.  
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = filter_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'filter_nml')
-   enddo
- 11 continue
+   read(iunit, nml = filter_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'filter:&filter_nml problem', &
+                         msgstring, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
@@ -391,17 +396,29 @@ subroutine filter_read_namelist()
 ! Consequently, the code block has been duplicated in the main program.
 ! There is an error report (28Jun2004) to fix this.
 !
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-!      read(iunit, nml = filter_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'filter_nml')
-   enddo
- 11 continue
-   call close_file(iunit)
-endif
+
+!integer :: iunit, io
+!character(len=159) :: nml_string
+!
+!if(file_exist('input.nml')) then
+!   iunit = open_file('input.nml', action = 'read')
+!   read(iunit, nml = filter_nml, iostat = io)
+!   if(io /= 0) then
+!      ! A non-zero return means a bad entry was found for this namelist
+!      ! Reread the line into a string and print out a fatal error message.
+!      BACKSPACE iunit
+!      read(iunit, '(A)') nml_string
+!      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+!      call error_handler(E_ERR, 'filter:&filter_nml problem', &
+!                         msgstring, source, revision, revdate)
+!   endif
+!   call close_file(iunit)
+!endif
+
+! Record the namelist values used for the run ...
+!call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')
 !write(logfileunit, nml=filter_nml)
+!write(     *     , nml=filter_nml)
 
 end subroutine filter_read_namelist
 
