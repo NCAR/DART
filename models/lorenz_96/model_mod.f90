@@ -15,7 +15,7 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 implicit none
@@ -89,8 +89,8 @@ if(file_exist('input.nml')) then
       BACKSPACE iunit
       read(iunit, '(A)') nml_string
       write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_model:&model_nml problem', err_string, &
-         source, revision, revdate)
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
    endif
    call close_file(iunit)
 endif
