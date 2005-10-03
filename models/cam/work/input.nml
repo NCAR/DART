@@ -12,17 +12,17 @@
    output_interval = 1  /
 
 &filter_nml
-   async = 0,
+   async = 3,
    adv_ens_command = "./advance_ens.csh",
-   ens_size = 20, 
+   ens_size = 80, 
    cov_inflate = 1.0,
-   start_from_restart = .false.,
-   output_restart = .false.,
+   start_from_restart = .true.,
+   output_restart = .true.,
    obs_sequence_in_name = "obs_seq.out",
    obs_sequence_out_name = "obs_seq.final",
-   restart_in_file_name = "filter_ics",
-   restart_out_file_name = "filter_restart", 
-   init_time_days = 0,
+   restart_in_file_name = "filter_ic_old",
+   restart_out_file_name = "filter_ic_new", 
+   init_time_days = 146827,
    init_time_seconds = 0,
    output_state_ens_mean = .true.,
    output_state_ens_spread = .true.,
@@ -31,31 +31,31 @@
    num_output_state_members = 0,
    num_output_obs_members = 0,
    output_interval = 1,
-   num_groups = 1,
-   outlier_threshold = -1.0 /
+   num_groups = 2,
+   outlier_threshold = 3.0 /
 
 &ensemble_manager_nml
    in_core = .true.,
-   single_restart_file_in = .true.,
-   single_restart_file_out = .true. /
+   single_restart_file_in = .false.,
+   single_restart_file_out = .false. /
 
 &assim_tools_nml
    filter_kind = 1,
    cutoff = 0.2,
-   sort_obs_inc = .false.,
-   cov_inflate = -1.0,
+   sort_obs_inc = .true.,
+   cov_inflate = 1.2,
    cov_inflate_sd = 0.05,
    sd_lower_bound = 0.05, 
-   deterministic_cov_inflate = .true.,
+   deterministic_cov_inflate = .false.,
    start_from_assim_restart = .false.,
-   assim_restart_in_file_name = 'assim_tools_ics',
-   assim_restart_out_file_name = 'assim_tools_restart',
+   assim_restart_in_file_name = 'assim_ic_old',
+   assim_restart_out_file_name = 'assim_ic_new',
    do_parallel = 0,
    num_domains = 1,
    parallel_command = "./assim_filter.csh",
-   spread_restoration = .false.,
-   cov_inflate_upper_bound = 10000000.0,
-   internal_outlier_threshold = -1.0 /
+   spread_restoration = .true.,
+   cov_inflate_upper_bound = 1.6,
+   internal_outlier_threshold = 3.0 /
 
 &cov_cutoff_nml
    select_localization = 1  /
@@ -67,8 +67,8 @@
    reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
-   read_binary_obs_sequence = .false.,
-   write_binary_obs_sequence = .false.  /
+   read_binary_obs_sequence = .true.,
+   write_binary_obs_sequence = .true.  /
 
 &assim_model_nml
    read_binary_restart_files = .true.,
@@ -76,15 +76,15 @@
 
 &model_nml
    output_state_vector      = .false.,
-   model_version            = '3.0.7',
+   model_version            = '3.1',
    model_config_file        = 'caminput.nc',
-   highest_obs_pressure_mb  = 30.0,
+   highest_obs_pressure_mb  = 150.0,
    state_num_0d             = 0,
    state_num_1d             = 0,
    state_num_2d             = 1,
    state_num_3d             = 6,
    state_names_2d = 'PS      ',19*'        ',
-   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE   ',14*'        ',
+   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE  ',14*'        ',
    which_vert_1d            =     20*0,
    which_vert_2d            = -1 ,19*0,
    which_vert_3d            = 6*1,14*0,
@@ -94,11 +94,11 @@
    Time_step_days = 0    /
 
 &location_nml
-   horiz_dist_only = .true.,
+   horiz_dist_only = .false.,
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height = 10000.0,
    vert_normalization_level = 20.0,
-   approximate_distance = .false. /
+   approximate_distance = .true. /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -110,10 +110,16 @@
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT'
+                                'RADIOSONDE_V_WIND_COMPONENT',
+                                'ACARS_U_WIND_COMPONENT',
+                                'ACARS_V_WIND_COMPONENT',
+                                'ACARS_TEMPERATURE',
+                                'SAT_U_WIND_COMPONENT',
+                                'SAT_V_WIND_COMPONENT'
    evaluate_these_obs_types =   'RADIOSONDE_SURFACE_PRESSURE'  /
 
 &utilities_nml
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
+
 
