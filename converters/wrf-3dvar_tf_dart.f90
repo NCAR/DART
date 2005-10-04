@@ -12,8 +12,9 @@ PROGRAM wrf_3dvar_tf_dart
 ! $Name$
 
 use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
-use     utilities_mod, only : open_file, check_nml_error, close_file, file_exist, initialize_utilities, &
-                              finalize_utilities, register_module, logfileunit, E_MSG, error_handler
+use     utilities_mod, only : open_file, close_file, file_exist, initialize_utilities, &
+                              finalize_utilities, register_module, logfileunit, E_MSG, E_ERR, &
+                              error_handler
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
                               set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
                               init_obs, static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
@@ -48,7 +49,7 @@ integer           :: num_prof, max_levels
 
 character(len=80) :: dummy
 
-character(len=12) :: platform_name
+character(len=12) :: platform_name, err_string, nml_string
 integer           :: year, month, day, hours, minutes, seconds
 real(r8)          :: lat,lon,elv
 integer           :: levels
@@ -72,25 +73,29 @@ namelist /wrf_3dvar_tf_dart_nml/ wrf_3dvar_file, obs_seq_out_file_name, calendar
 
 !------------------------------------------------------------------------------
 
-call initialize_utilities
+call initialize_utilities('wrf_3dvar_tf_dart')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING wrf_3dvar_tf_dart ...'
-call error_handler(E_MSG,'wrf_3dvar_tf_dart','STARTING ...',source,revision,revdate)
+!write(logfileunit,*)'STARTING wrf_3dvar_tf_dart ...'
+!call error_handler(E_MSG,'wrf_3dvar_tf_dart','STARTING ...',source,revision,revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = wrf_3dvar_tf_dart_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'wrf_3dvar_tf_dart_nml')
-   enddo
- 11 continue
+   read(iunit, nml = wrf_3dvar_tf_dart_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'wrf_3dvar_tf_dart:&wrf_3dvar_tf_dart_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'wrf_3dvar_tf_dart_nml','wrf_3dvar_tf_dart_nml values are',' ',' ',' ')
+call error_handler(E_MSG,'wrf_3dvar_tf_dart','wrf_3dvar_tf_dart_nml values are',' ',' ',' ')
 write(logfileunit, nml=wrf_3dvar_tf_dart_nml)
 write(     *     , nml=wrf_3dvar_tf_dart_nml)
 

@@ -12,7 +12,7 @@ PROGRAM littler_tf_dart
 ! $Name$
 
 use        types_mod, only : r8, DEG2RAD, RAD2DEG, MISSING_I, MISSING_R8
-use    utilities_mod, only : open_file, check_nml_error, close_file, file_exist, &
+use    utilities_mod, only : open_file, close_file, file_exist, &
                              get_unit, initialize_utilities, &
                              finalize_utilities, register_module, error_handler, E_ERR, &
                              E_MSG, logfileunit
@@ -90,9 +90,8 @@ rpt_format =  ' ( 2f20.5 , 4a40 , f20.5 , 5i10 , 3L10 , ' &
 meas_format =  ' ( 10( f13.5 , i7 ) ) '
 end_format = ' ( 3 ( i7 ) ) '
 
-call initialize_utilities
+call initialize_utilities('littler_tf_dart')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING littler_tf_dart ...'
 
 call set_calendar_type(calendar_type)
 
