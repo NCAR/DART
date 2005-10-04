@@ -17,9 +17,9 @@ program integrate_model
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
                              operator(>), operator(<), read_time
-use    utilities_mod, only : get_unit, open_file, close_file, check_nml_error, &
+use    utilities_mod, only : get_unit, open_file, close_file, &
                              file_exist, initialize_utilities, register_module, &
-                             error_handler, logfileunit, E_MSG, timestamp
+                             error_handler, logfileunit, E_MSG, E_ERR, timestamp
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    get_model_size, get_initial_condition, get_closest_state_time_to, &
    set_model_time, get_model_time, init_diag_output, &
@@ -40,10 +40,11 @@ revdate  = "$Date$"
 
 type(time_type)         :: target_time, model_time
 real(r8), allocatable   :: x(:)
-integer :: iunit, ierr, io, model_size
-type(ensemble_type) :: ens_handle
+integer                 :: iunit, io, model_size
+type(ensemble_type)     :: ens_handle
+character (len=129)     :: err_string, nml_string
+character (len=129)     :: adv_ens_command = ''
 
-character (len=129)    :: adv_ens_command = ''
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
@@ -53,20 +54,25 @@ character(len = 129) :: ic_file_name = "temp_ic", &
 
 namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
    ic_file_name, ud_file_name
+
 !----------------------------------------------------------------
 
 call initialize_utilities('integrate_model')
 call register_module(source,revision,revdate)
 
 ! Begin by reading the namelist input
-if(file_exist('integrate_model.nml')) then
+if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = integrate_model_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'integrate_model_nml')
-   enddo
- 11 continue
+   read(iunit, nml = integrate_model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'integrate_model:&integrate_model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
