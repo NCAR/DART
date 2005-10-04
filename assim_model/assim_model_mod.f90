@@ -89,17 +89,13 @@ type(time_type) :: time_step
 
 !-------------------------------------------------------------
 ! Namelist with default values
-! binary_restart_files  == .true.  -> use unformatted file format. 
+! write_binary_restart_files  == .true.  -> use unformatted file format. 
 !                                     Full precision, faster, smaller,
 !                                     but not as portable.
-! binary_restart_files  == .false.  -> use ascii file format. 
-!                                     Portable, but loses precision,
-!                                     slower, and larger.
 
-logical  :: read_binary_restart_files = .true.
 logical  :: write_binary_restart_files = .true.
 
-namelist /assim_model_nml/ read_binary_restart_files, write_binary_restart_files
+namelist /assim_model_nml/ write_binary_restart_files
 !-------------------------------------------------------------
 
 contains
@@ -163,13 +159,7 @@ call error_handler(E_MSG,'static_init_assim_model','assim_model_nml values are',
 write(logfileunit, nml=assim_model_nml)
 write(     *     , nml=assim_model_nml)
 
-! Set the read and write formats for restart files
-if(read_binary_restart_files) then
-   read_format = "unformatted"
-else
-   read_format = "formatted"
-endif
-
+! Set the write format for restart files
 if(write_binary_restart_files) then
    write_format = "unformatted"
 else
