@@ -1160,14 +1160,14 @@ if(ios == 0) then
 
 else
    ! Unable to figure out what to do with file or it doesn't exist
-   write(msg_string, *) 'Unable to open file ', file_name
+   write(msg_string, *) 'Unable to open file ', trim(file_name)
    call error_handler(E_ERR, 'read_obs_seq_header', msg_string, &
       source, revision, revdate)
 endif
 
 ! Falling off the end here means file didn't correspond with any 
 ! expected format
-write(msg_string, *) 'Unable to determine format of file ', file_name
+write(msg_string, *) 'Unable to determine format of file ', trim(file_name)
 call error_handler(E_ERR, 'read_obs_seq_header', msg_string, &
    source, revision, revdate)
 
