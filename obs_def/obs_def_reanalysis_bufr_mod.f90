@@ -44,7 +44,10 @@
 !         case(RADIOSONDE_SPECIFIC_HUMIDITY, MARINE_SFC_SPECIFIC_HUMIDITY, &
 !              LAND_SFC_SPECIFIC_HUMIDITY)
 !            call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-!            obs_val = obs_val * 1000.0_r8
+!            !!! UNITS in original BUFR are g/kg; This is converted to kg/kg by
+!            !!! the BUFR to obs_sequence conversion programs making the line below
+!            !!! unnecessary. PLEASE pay attention to units for specific humidity in models.
+!            !!!obs_val = obs_val * 1000.0_r8
 !         case(RADIOSONDE_SURFACE_PRESSURE)
 !            call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
