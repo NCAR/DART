@@ -19,7 +19,7 @@ use     nag_wrap_mod, only : g05ddf_wrap
 use    obs_tools_mod, only : conv_state_to_obs, obs_def_type, def_single_obs
 !!!use transforms_mod
 use loc_and_dist_mod, only : loc_type, set_loc, get_loc
-use    utilities_mod, only : file_exist, open_file, close_file, check_nml_error, &
+use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG
 
 implicit none
@@ -79,37 +79,35 @@ contains
 
 implicit none
 
-integer  :: i, j, unit_num, lon_ind_lo, lon_ind_hi, lat_ind_lo, lat_ind_hi 
-integer  :: state_index(4), unit, ierr, io
+integer  :: i, j, lon_ind_lo, lon_ind_hi, lat_ind_lo, lat_ind_hi 
+integer  :: state_index(4), iunit, io
 real(r8) :: olon, olat, coef(4), temp_lon, frac_lon, frac_lat
 real(r8) :: temp_frac, numerator, denominator
 
-character(len=129) :: errstring
-! Read namelist for run time control
+character(len=129) :: err_string, nml_string
 
 call register_module(source,revision,revdate)
 
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-
-   unit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(unit, nml = obs_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'obs_nml')
-   enddo
- 11 continue
-   call close_file(unit)
-
+   iunit = open_file('input.nml', action = 'read')
+   read(iunit, nml = obs_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'init_obs:&obs_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
+   call close_file(iunit)
 endif
 
-namelist /obs_nml/ close_lat_window, close_lon_window
-
-! Write the namelist to the log file 
-call error_handler(E_MSG,'init_obs','obs_nml namelist values:',' ',' ',' ')
-write(errstring,*)'close_lat_window = ',close_lat_window
-call error_handler(E_MSG,'   ',errstring,' ',' ',' ')
-write(errstring,*)'close_lon_window = ',close_lon_window
-call error_handler(E_MSG,'   ',errstring,' ',' ',' ')
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'static_init_model','obs_nml values are',' ',' ',' ')
+write(logfileunit, nml=obs_nml)
+write(     *     , nml=obs_nml)
 
 ! Initialization for identity observations
 
@@ -118,12 +116,12 @@ write(*, *) 'close_lat_window, close_lon_window ', close_lat_window, close_lon_w
 
 ! Read in the forced_barot_obs_def file
 
-unit_num = open_file('forced_barot_obs_def', action = 'read')
-read(unit_num, *) num_obs
+iunit = open_file('forced_barot_obs_def', action = 'read')
+read(iunit, *) num_obs
 allocate(obs_def(num_obs), obs_loc(num_obs), obs_variance(num_obs))
 
 do i = 1, num_obs
-   read(unit_num, *) olon, olat, obs_variance(i)
+   read(iunit, *) olon, olat, obs_variance(i)
    if( olon <   0.0_r8 .or. olon > 360.0_r8 .or. &
        olat < -90.0_r8 .or. olat >  90.0_r8) then
       write(*, *) 'illegal obs location read in init_obs for forced_barot'
@@ -133,7 +131,7 @@ do i = 1, num_obs
 
    call set_loc(obs_loc(i), olon, olat)
 end do
-call close_file(unit = unit_num)
+call close_file(iunit)
 
 ! Four point interpolation for points wherever
 
