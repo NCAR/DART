@@ -33,8 +33,9 @@ module gswm_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 
 use types_mod
-use utilities_mod,    only: get_unit, open_file, close_file, &
-                            check_nml_error, file_exist
+use utilities_mod,    only: get_unit, open_file, close_file, file_exist, &
+                            register_module, error_handler, E_MSG, E_ERR, &
+                            logfileunit
 use location_mod,     only: location_type, get_location, set_location, &
                             get_dist
 use time_manager_mod, only: time_type, set_time, get_time,  &
@@ -48,7 +49,7 @@ use time_manager_mod, only: time_type, set_time, get_time,  &
 implicit none
 private
 
-public :: psi, static_model_init
+public :: psi, static_init_model
 
 !-----------------------------------------------------------------------
 ! let CVS fill strings ... DO NOT EDIT ...
@@ -123,7 +124,6 @@ integer                            :: ntracers
 real, dimension(:), pointer        :: v_lons, v_lats, t_lons, t_lats
 
 
-
 ! this is from setatmos.f
 ! common/interp1/zpt(37,101,3),zpu(37,101,3),zpr(37,101,3),                 
 !    +zpxh(37,101,3),do2(37,101,3) 
@@ -138,31 +138,37 @@ CONTAINS
 !#######################################################################
 
 
-SUBROUTINE Static_Model_Init()
+SUBROUTINE static_init_model()
 
-integer :: iunit, io, ierr
+integer :: iunit, io
 
+character(len=129) :: err_string, nml_string
+
+! Print module information to log file and stdout.
+call register_module(source, revision, revdate)
+
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
    read(iunit, nml = model_nml, iostat = io)
-   ierr = check_nml_error(io, 'model_nml')
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
-write(*,*)'model_nml values  --- may come from input.nml'
-write(*,*)'current time ',current_time
-write(*,*)'override ',override
-write(*,*)'dt_atmos ',dt_atmos
-write(*,*)'days ',days
-write(*,*)'hours ',hours
-write(*,*)'minutes ',minutes
-write(*,*)'seconds ',seconds
-write(*,*)'noise_sd ',noise_sd
-write(*,*)'dt_bias ',dt_bias
-write(*,*)'output_state_vector ',output_state_vector
-write(*,*)''
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
 
-END SUBROUTINE Static_Model_Init
+END SUBROUTINE static_init_model
 
 
 

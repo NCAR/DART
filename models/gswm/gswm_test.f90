@@ -16,7 +16,7 @@ use gswm_mod,          only : psi, static_model_init
 use time_manager_mod
 use location_mod
 use utilities_mod,     only : get_unit, open_file, close_file, &
-                              check_nml_error, file_exist
+                              file_exist
 
 implicit none
 
