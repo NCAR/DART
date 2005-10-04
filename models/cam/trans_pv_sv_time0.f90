@@ -24,7 +24,8 @@ program trans_pv_sv_time0
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit, file_exist, open_file, close_file
+use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
+                             logfileunit, error_handler, E_ERR, E_MSG
 use        model_mod, only : model_type, init_model_instance, read_cam_init, &
                              prog_var_to_vector
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
@@ -60,6 +61,7 @@ integer                :: file_unit, x_size, iunit, io
 logical :: start_from_restart = .false., output_restart = .false.
 integer :: async = 0
 integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1
+character(len = 129) :: err_string, nml_string
 character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
@@ -101,20 +103,25 @@ call set_model_state_vector(x, x_state)
 ! Set model_time from the namelist, rather than temp_ic as is done in trans_pv_sv
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-!   ierr = 1
-!   do while(ierr /= 0)
-!!Either an i/o list or a namelist may be specified but not both
-!!      read(iunit, nml = filter_nml, iostat = io, end = 11) init_time_seconds
-!      read(iunit, iostat = io, end = 11) init_time_days
-!      read(iunit, iostat = io, end = 11) init_time_seconds
-      read(iunit, nml = perfect_model_obs_nml, iostat = io, end = 11) 
-
-      PRINT*,'init_time_days and _seconds = ',init_time_days, init_time_seconds 
-!      ierr = check_nml_error(io, 'filter_nml')
-!   enddo
- 11 continue
+   read(iunit, nml = perfect_model_obs_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'trans_pv_sv_time0:&perfect_model_obs_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
+   PRINT*,'init_time_days and _seconds = ',init_time_days, init_time_seconds 
    call close_file(iunit)
 endif
+
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'trans_pv_sv_time0','perfect_model_obs_nml values are',' ',' ',' ')
+write(logfileunit, nml=perfect_model_obs_nml)
+write(     *     , nml=perfect_model_obs_nml)
+
 
 call filter_set_initial_time
 
