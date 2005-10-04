@@ -15,7 +15,7 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, get_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 implicit none
@@ -91,19 +91,24 @@ real(r8) :: ri
 real(r8) :: alpha, beta
 integer  :: i, iunit, ierr, io
 integer  :: j
- 
+character(len=129) :: err_string, nml_string 
+
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = model_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'model_nml')
-   enddo
- 11 continue
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
