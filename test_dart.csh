@@ -61,7 +61,7 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 
     cd ${DARTHOME}/models/${MODEL}/work
 
-    rm -fv ../../../obs_def/obs_def_mod.f90 preprocess
+    rm -fv ../../../obs_def/obs_def_mod.f90 ../../../obs_kind/obs_kind_mod.f90 preprocess
     rm -f *.o *.mod
 
     csh mkmf_preprocess
@@ -99,10 +99,13 @@ cd ${DARTHOME}/models/lorenz_96/work
 
 # Make sure that all .o, .mod and executables are gone
 rm -rf *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
-rm -rf integrate_model perfect_model_obs
+rm -rf integrate_model perfect_model_obs ../../../obs_kind/obs_kind_mod.f90
+rm -rf ../../../obs_def/obs_def_mod.f90
 
 # Begin by compiling all programs; need to stop if an error is detected
-csh mkmf_assim_region
+csh mkmf_preprocess               || exit 97
+make                              || exit 98
+csh mkmf_assim_region             || exit 99
 make                              || exit 100
 csh mkmf_create_fixed_network_seq || exit 101
 make                              || exit 102
@@ -114,6 +117,11 @@ csh mkmf_integrate_model          || exit 107
 make                              || exit 108
 csh mkmf_perfect_model_obs        || exit 109
 make                              || exit 110
+
+# Need to do preprocessing
+#cp input.nml.preprocess_default input.nml
+./preprocess
+
 
 #----------------------------------------------------------------------
 echo "-----------------------------------------------------------------"
@@ -150,8 +158,6 @@ echo '/cutoff'                        >> vi_script
 echo ':s/0.2/1000000.0/'              >> vi_script
 echo '/cov_inflate'                   >> vi_script
 echo ':s/-1.0/1.05/'                  >> vi_script
-echo '/read_binary_restart_files'     >> vi_script
-echo ':s/true/false/'                 >> vi_script
 echo ':wq'                            >> vi_script
 vi -s vi_script input.nml
 
