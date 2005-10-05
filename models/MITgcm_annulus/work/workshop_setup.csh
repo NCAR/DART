@@ -65,7 +65,12 @@ csh mkmf_perfect_model_obs
 make         || exit 5
 csh mkmf_filter
 make         || exit 6
+csh mkmf_dart_to_MITgcm
+make         || exit 7
+csh mkmf_MITgcm_to_dart
+make         || exit 8
+csh mkmf_perfect_ics
+make         || exit 9
+./perfect_model_obs || exit 10
+./filter            || exit 11
 
-
-./perfect_model_obs
-./filter

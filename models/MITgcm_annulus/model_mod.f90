@@ -16,9 +16,13 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
-use     obs_kind_mod, only : kind_u, kind_v, kind_t, kind_p, kind_w
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
+                             KIND_V_WIND_COMPONENT, &
+                             KIND_TEMPERATURE, &
+                             KIND_SURFACE_PRESSURE, &
+                             KIND_VERTICAL_VELOCITY
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
@@ -155,6 +159,7 @@ integer  :: i, iunit, ierr, io
 real(r8) ::  az,  rad,  zed
 integer  :: iaz, irad, ized
 integer  :: icount, itype
+character(len=129) :: err_string, nml_string
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -162,12 +167,16 @@ call register_module(source, revision, revdate)
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = model_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'model_nml')
-   enddo
- 11 continue
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
@@ -245,66 +254,66 @@ icount = 0
 do iaz = 1, naz
    az = (iaz - 1)*daz
    do irad = 1, nrad
-      rad = (irad - 1)*drad + drad/2.00d0
+      rad = (irad - 1)*drad + drad/2.00_r8
       do ized = 1, nzed
-         zed = - (ized - 1)*dzed - dzed/2.00d0
+         zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = kind_u 
+         state_kind(icount) = KIND_U_WIND_COMPONENT 
       end do
    end do
 end do
 
 ! Next the V variable
 do iaz = 1, naz
-   az = (iaz - 1)*daz + daz/2.00d0
+   az = (iaz - 1)*daz + daz/2.00_r8
    do irad = 1, nrad
       rad = (irad - 1)*drad 
       do ized = 1, nzed
-         zed = - (ized - 1)*dzed - dzed/2.00d0
+         zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = kind_v
+         state_kind(icount) = KIND_V_WIND_COMPONENT
       end do
    end do
 end do
 
 ! Now the W variable
 do iaz = 1, naz
-   az = (iaz - 1)*daz + daz/2.00d0
+   az = (iaz - 1)*daz + daz/2.00_r8
    do irad = 1, nrad
-      rad = (irad - 1)*drad + drad/2.00d0 
+      rad = (irad - 1)*drad + drad/2.00_r8 
       do ized = 1, nzed
          zed = - (ized - 1)*dzed 
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = kind_w
+         state_kind(icount) = KIND_VERTICAL_VELOCITY
       end do
    end do
 end do
 
 ! And finally the T and P variables
 do iaz = 1, naz
-   az = (iaz - 1)*daz + daz/2.00d0
+   az = (iaz - 1)*daz + daz/2.00_r8
    do irad = 1, nrad
-      rad = (irad - 1)*drad + drad/2.00d0
+      rad = (irad - 1)*drad + drad/2.00_r8
       do ized = 1, nzed
-         zed = - (ized - 1)*dzed - dzed/2.00d0
+         zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = kind_t
+         state_kind(icount) = KIND_TEMPERATURE
       end do
    end do
 end do
 do iaz = 1, naz
-   az = (iaz - 1)*daz + daz/2.00d0
+   az = (iaz - 1)*daz + daz/2.00_r8
    do irad = 1, nrad
-      rad = (irad - 1)*drad + drad/2.00d0
+      rad = (irad - 1)*drad + drad/2.00_r8
       do ized = 1, nzed
-         zed = - (ized - 1)*dzed - dzed/2.00d0
+         zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = kind_p
+         state_kind(icount) = KIND_SURFACE_PRESSURE
       end do
    end do
 end do
