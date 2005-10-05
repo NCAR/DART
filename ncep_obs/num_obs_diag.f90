@@ -26,17 +26,19 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_next_obs, get_num_times, get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence 
-use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_def_kind 
+use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=)
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                             obs_kind_type, get_obs_kind 
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
+                             KIND_V_WIND_COMPONENT, &
+                             KIND_SURFACE_PRESSURE, &
+                             KIND_TEMPERATURE, &
+                             KIND_SPECIFIC_HUMIDITY
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, operator(*), &
                              operator(+), operator(-), operator(/=), operator(>)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
-                             check_nml_error, file_exist, error_handler, E_ERR, E_MSG, &
+                             file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, logfileunit, timestamp
 
 implicit none
@@ -50,12 +52,11 @@ revdate  = "$Date$"
 type(obs_sequence_type) :: seq
 type(obs_type)          :: observation, next_obs
 type(obs_def_type)      :: obs_def
-type(obs_kind_type)     :: obs_kind
 type(location_type)     :: obs_loc
 type(time_type)         :: next_time
 
 !---------------------
-integer :: ibintoday, obsindex, i, j, iunit, ierr, io
+integer :: ibintoday, obsindex, i, j, iunit, io
 integer :: num_obs_in_set, obs_used_in_set, obs_used = 0
 
 integer :: obs_index
@@ -147,7 +148,7 @@ type(time_type) :: beg_time, end_time
 type(time_type) :: binsep, binwidth, halfbinwidth 
 
 character(len =   6) :: day_num 
-character(len = 129) :: msgstring
+character(len = 129) :: msgstring, nml_string
 
 !-----------------------------------------------------------------------
 
@@ -157,20 +158,26 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 call init_obs(observation, 0, 0) ! Initialize the observation type variables
 call init_obs(   next_obs, 0, 0)
 
-! Begin by reading the namelist input for numobsdiag
-
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = numobsdiag_nml, iostat = io )
-   if ( io /= 0 ) then                                                          
-      write(msgstring,*)'numobsdiag_nml read error ',io                            
-      call error_handler(E_ERR,'num_obs_diag',msgstring,source,revision,revdate)    
+   read(iunit, nml = numobsdiag_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'num_obs_diag:&numobsdiag_nml problem', &
+                         msgstring, source, revision, revdate)
    endif
    call close_file(iunit)
 endif
+
+! Record the namelist values used for the run ...
 call error_handler(E_MSG,'num_obs_diag','numobsdiag_nml values are',' ',' ',' ')
-write(logfileunit,nml=numobsdiag_nml)
-write(    *      ,nml=numobsdiag_nml)
+write(logfileunit, nml=numobsdiag_nml)
+write(     *     , nml=numobsdiag_nml)
 
 ! Now that we have input, do some checking and setup
 
