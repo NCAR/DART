@@ -22,7 +22,7 @@ use        types_mod, only : r8, pi
 use time_manager_mod, only : time_type,set_time,print_time
 use     location_mod, only : location_type, set_location, get_location,&
                              query_location, get_dist  
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &       
+use    utilities_mod, only : file_exist, open_file, close_file, &       
                              error_handler, E_ERR, E_MSG, E_WARN, logfileunit
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 ! ROSE Modules
@@ -129,19 +129,25 @@ integer :: seconds_of_day = 86400
 real(r8) :: d_lat, d_lon
 real(r8) :: z_m
 real(r8) :: dz = 2500.0_r8, zbot = 17500.0_r8
+character(len=129) :: err_string, nml_string
 
-
-! Reading the namelist input
+! Begin by reading the namelist input
 if(file_exist('rose.nml')) then
    iunit = open_file('rose.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = rose_nml, iostat = io)
-      ierr = check_nml_error(io, 'rose_nml')
-   end do
+   read(iunit, nml = rose_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&rose_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 else
-call error_handler(E_MSG,'static_init_model','rose_nml not available',source,revision,revdate)
+   call error_handler(E_MSG,'static_init_model','rose_nml not available', &
+                      source,revision,revdate)
 endif
 
 call error_handler(E_MSG,'static_init_model','rose_nml values are',source,revision,revdate)
@@ -149,22 +155,28 @@ write(logfileunit,nml=rose_nml)
 write(     *     ,nml=rose_nml)
 
 
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = model_nml, iostat = io)
-      ierr = check_nml_error(io, 'model_nml')
-   end do
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 else
-call error_handler(E_MSG,'static_init_model','model_nml not available',source,revision,revdate)
+   call error_handler(E_MSG,'static_init_model','model_nml not available', &
+                      source,revision,revdate)
 endif
 
 call error_handler(E_MSG,'static_init_model','model_nml values are',source,revision,revdate)
 write(logfileunit,nml=model_nml)
 write(     *     ,nml=model_nml)
-
 
 ! Compute overall model size and put in global storage
 model_size = nx * ny * nz * state_num_3d

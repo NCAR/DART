@@ -11,23 +11,28 @@ module DArose_mod
 ! $Author$
 ! $Name$
 
-   use params, only : ntime, nout, noutdiag, nouttid, nend,&
-       & nsave
-   use dynam,  only : deltat, dtleap, ntrans, ndiabat, ninterp, &
-       & namf10, namf12, namf13, namf14, namf17, & 
-       & namf20, namf23, namf26, namf27, namf28, &
-       & namf30, namf40, namf41, namf52, namf53       
-   use chem,   only : nrates
-   use chem0d, only : niter, dtchem
+use params, only : ntime, nout, noutdiag, nouttid, nend, nsave
+use dynam,  only : deltat, dtleap, ntrans, ndiabat, ninterp, &
+                   namf10, namf12, namf13, namf14, namf17, & 
+                   namf20, namf23, namf26, namf27, namf28, &
+                   namf30, namf40, namf41, namf52, namf53       
+use chem,   only : nrates
+use chem0d, only : niter, dtchem
 
-   use types_mod, only: r8, pi
-   use utilities_mod, only: open_file, close_file, &
-                            check_nml_error, file_exist
+use     types_mod, only: r8, pi
+use utilities_mod, only: open_file, close_file, file_exist, &
+                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 
-   implicit none
-   private
-   public :: msetvar, output_prog_diag, & 
-             h_tune, z_tune
+implicit none
+private
+
+public :: msetvar, output_prog_diag, h_tune, z_tune
+
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
    logical :: output_prog_diag = .false.
    character (len=50) :: input_dir = '../DAinput/'
@@ -49,32 +54,47 @@ module DArose_mod
 
 subroutine msetvar
 
-      implicit none
+   implicit none
 
-      integer :: iunit, io, ierr
- 
-      ntime = 8              ! number of steps per hour
+   integer :: iunit, io
+   character(len=129) :: err_string, nml_string
 
-      if(file_exist('rose.nml')) then
-         iunit = open_file('rose.nml', action = 'read')
-         ierr = 1
-         do while(ierr /= 0)
-            read(iunit, nml = rose_nml, iostat = io)
-            ierr = check_nml_error(io, 'rose_nml')
-         end do  
-         call close_file(iunit)
+   ! Print module information to log file and stdout.
+   call register_module(source, revision, revdate)
+
+   ntime = 8              ! number of steps per hour
+
+   ! Begin by reading the namelist input
+   if(file_exist('rose.nml')) then
+      iunit = open_file('rose.nml', action = 'read')
+      read(iunit, nml = rose_nml, iostat = io)
+      if(io /= 0) then
+         ! A non-zero return means a bad entry was found for this namelist
+         ! Reread the line into a string and print out a fatal error message.
+         BACKSPACE iunit
+         read(iunit, '(A)') nml_string
+         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+         call error_handler(E_ERR, 'msetvar:&rose_nml problem', &
+                            err_string, source, revision, revdate)
       endif
+      call close_file(iunit)
+   endif
 
-      write(*,*) 'rose_nml values  --- may come from rose.nml'
-      write(*,*) 'target_time ', target_time
-      write(*,*) 'input_dir ', input_dir 
-      write(*,*) 'out_dir ', out_dir
-      write(*,*) 'ncep_file ', ncep_file
-      write(*,*) 'restart_file ', restart_file
-      write(*,*) 'output_prog_diag ', output_prog_diag
-      write(*,*) 'h_tune ', h_tune
-      write(*,*) 'z_tune ', z_tune
-      write(*,*) 'ntime ', ntime
+   ! Record the namelist values used for the run ...
+   call error_handler(E_MSG,'msetvar','rose_nml values are',' ',' ',' ')
+   write(logfileunit, nml=rose_nml)
+   write(     *     , nml=rose_nml)
+
+   !  write(*,*) 'rose_nml values  --- may come from rose.nml'
+   !  write(*,*) 'target_time ', target_time
+   !  write(*,*) 'input_dir ', input_dir 
+   !  write(*,*) 'out_dir ', out_dir
+   !  write(*,*) 'ncep_file ', ncep_file
+   !  write(*,*) 'restart_file ', restart_file
+   !  write(*,*) 'output_prog_diag ', output_prog_diag
+   !  write(*,*) 'h_tune ', h_tune
+   !  write(*,*) 'z_tune ', z_tune
+   !  write(*,*) 'ntime ', ntime
 
 !-------------------------------------------------------------------
 !... set program control parameters 
@@ -82,8 +102,8 @@ subroutine msetvar
 
       lengdy = ntime*24
 
-      deltat = 3600./float(ntime)
-      dtleap = deltat*2.
+      deltat = 3600.0_r8/float(ntime)
+      dtleap = deltat*2.0_r8
       dtchem = deltat
 
 !... length of integration
