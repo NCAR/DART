@@ -68,11 +68,9 @@
    reg_diagnostics_file = 'reg_diagnostics'  /
 
 &obs_sequence_nml
-   read_binary_obs_sequence = .false.,
    write_binary_obs_sequence = .false.  /
 
 &assim_model_nml
-   read_binary_restart_files = .false.,
    write_binary_restart_files = .false. /
 
 &model_nml
