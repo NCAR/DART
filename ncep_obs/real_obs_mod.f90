@@ -18,7 +18,7 @@ use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), 
                              operator(/=), set_date, set_calendar_type, get_time, &
                              get_date, set_time
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             check_nml_error, register_module, error_handler, &
+                             register_module, error_handler, &
                              E_ERR, E_MSG
 use     location_mod, only : location_type, set_location 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
