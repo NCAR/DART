@@ -15,7 +15,7 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, close_file, &
+use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
@@ -82,9 +82,8 @@ subroutine static_init_model()
 ! identity info, sets the location of the state variables, and initializes
 ! the time type for the time stepping (is this general enough for time???)
 
-real(r8)           :: x_loc
-integer            :: i, iunit, io
-character(len=129) :: err_string, nml_string
+real(r8) :: x_loc
+integer  :: i, iunit, ierr, io
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -92,26 +91,22 @@ call register_module(source, revision, revdate)
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
+   ierr = 1
+   do while(ierr /= 0)
+      read(iunit, nml = model_nml, iostat = io, end = 11)
+      ierr = check_nml_error(io, 'model_nml')
+   enddo
+ 11 continue
    call close_file(iunit)
 endif
+
+! Model size is twice the number of state_vars
+model_size = 2 * num_state_vars
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
-
-! Model size is twice the number of state_vars
-model_size = 2 * num_state_vars
 
 ! Create storage for locations
 allocate(state_loc(model_size))
@@ -162,10 +157,18 @@ end do
 dt(num_state_vars + 1 : model_size) = 0.0_r8
 
 
-! Try adding in some random spread
+! Try adding in some random spread; fixed across the instances (basically a global var)
 if(.not. reset_forcing) &
    dt(num_state_vars + 1 : model_size) = &
       random_gaussian(random, 0.0_r8, random_forcing_amplitude)
+
+! Try adding in some random noise to each forcing variable, completely local
+!if(.not. reset_forcing) then
+!   do j = num_state_vars + 1, model_size
+!      dt(j) = random_gaussian(random, 0.0_r8, random_forcing_amplitude)
+!   end do
+!endif 
+   
 
 
 
