@@ -4,7 +4,7 @@
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DEW_POINT_TEMPERATURE, KIND_DEW_POINT_TEMPERATURE
-! DEW_POINT_2_METER, KIND_DEW_POINT_2_METER
+! DEW_POINT_2_METER, KIND_DEW_POINT_TEMPERATURE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -49,7 +49,7 @@ use     location_mod, only : location_type, set_location, get_location , write_l
                              read_location
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE, KIND_TEMPERATURE_2_METER, KIND_SPECIFIC_HUMIDITY_2_METER
+                             KIND_PRESSURE
 
 implicit none
 private
@@ -85,7 +85,7 @@ integer,             intent(in)  :: key
 real(r8),            intent(out) :: td
 integer,             intent(out) :: istatus
 
-integer  :: ipres, iqv, it
+integer  :: ipres
 real(r8) :: t, qv, t_c, es, qvs, p, INVTD, rd_over_rv, rd_over_rv1
 
 character(len=129) :: errstring
@@ -94,12 +94,8 @@ if ( .not. module_initialized ) call initialize_module
 
 if(key == 1) then
    ipres = KIND_PRESSURE
-   iqv = KIND_SPECIFIC_HUMIDITY
-   it = KIND_TEMPERATURE
 elseif(key == 2) then
    ipres = KIND_SURFACE_PRESSURE
-   iqv = KIND_SPECIFIC_HUMIDITY_2_METER
-   it = KIND_TEMPERATURE_2_METER
 else
    write(errstring,*)'key has to be 1 (upper levels) or 2 (2-meter), got ',key
    call error_handler(E_ERR,'get_expected_dew_point', errstring, &
@@ -111,12 +107,12 @@ if (istatus /= 0) then
    td = missing_r8
    return
 endif
-call interpolate(state_vector, location, iqv, qv, istatus)
+call interpolate(state_vector, location, KIND_SPECIFIC_HUMIDITY, qv, istatus)
 if (istatus /= 0) then
    td = missing_r8
    return
 endif
-call interpolate(state_vector, location, it, t, istatus)
+call interpolate(state_vector, location, KIND_TEMPERATURE, t, istatus)
 if (istatus /= 0) then
    td = missing_r8
    return
