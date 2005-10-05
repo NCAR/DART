@@ -8,7 +8,7 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_raw_state_mod, only : write_1d_integral, read_1d_integral, &
+!   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &
 !                                     interactive_1d_integral, get_expected_1d_integral
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
@@ -40,7 +40,7 @@
 !         call interactive_1d_integral(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-module obs_def_raw_state_mod
+module obs_def_1d_state_mod
 
 use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
@@ -281,4 +281,4 @@ end subroutine get_expected_1d_integral
 
 !----------------------------------------------------------------------
 
-end module obs_def_raw_state_mod
+end module obs_def_1d_state_mod
