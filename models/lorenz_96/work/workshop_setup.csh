@@ -71,5 +71,5 @@ csh mkmf_assim_region
 make         || exit 8
 csh mkmf_integrate_model
 make         || exit 9
-./perfect_model_obs
-./filter
+./perfect_model_obs || exit 10
+./filter            || exit 11
