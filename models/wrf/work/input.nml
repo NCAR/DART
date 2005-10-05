@@ -49,7 +49,6 @@
 
 
 &assim_model_nml
-   read_binary_restart_files = .true.,
    write_binary_restart_files = .true.
 /
 
@@ -89,7 +88,6 @@
 
 
 &obs_sequence_nml
-   read_binary_obs_sequence = .false.,
    write_binary_obs_sequence = .false.
 /
 

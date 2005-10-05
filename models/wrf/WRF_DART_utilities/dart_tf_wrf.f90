@@ -14,7 +14,7 @@ PROGRAM dart_tf_wrf
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date, set_date, operator(-), &
                              get_time, print_time, set_calendar_type, GREGORIAN, julian_day
-use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
+use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
                              finalize_utilities, register_module, logfileunit, timestamp
 use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date, &
@@ -73,26 +73,32 @@ character(len=1)  :: idom
 !  misc stuff
 
 logical, parameter :: debug = .false.
-integer            :: mode, io, ierr, var_id, id
+integer            :: mode, io, var_id, id
+character(len=129) :: err_string, nml_string
 
 call initialize_utilities('dart_tf_wrf')
 call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-
    iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io )
-   ierr = check_nml_error(io, 'model_nml')
-
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'dart_tf_wrf:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
-
 else
-
-   write(*,*) 'input.nml does not exist here. Using default values.'
-
+   err_string = 'input.nml does not exist here. Using default values.'
+   call error_handler(E_MSG,'dart_tf_wrf',err_string,' ',' ',' ')
 endif
 
+! Record the namelist values used for the run ...
 call error_handler(E_MSG,'dart_tf_wrf','model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 write(     *     , nml=model_nml)

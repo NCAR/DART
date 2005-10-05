@@ -30,8 +30,7 @@ use      location_mod, only : location_type, get_location, set_location, &
                               LocationDims, LocationName, LocationLName, &
                               query_location, vert_is_undef, vert_is_surface, &
                               vert_is_level, vert_is_pressure, vert_is_height
-use     utilities_mod, only : file_exist, open_file, check_nml_error, &
-                              close_file, &
+use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
@@ -155,7 +154,8 @@ subroutine static_init_model()
 ! INitializes class data for WRF???
 
 integer :: ncid
-integer :: io, ierr, iunit
+integer :: io, iunit
+character(len=129) :: err_string, nml_string
 
 character (len=80)    :: name
 character (len=1)     :: idom
@@ -170,19 +170,20 @@ real(r8) :: stdlon,truelat1,truelat2,dt
 ! Register the module
 call register_module(source, revision, revdate)
 
-! Reading the namelist input
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-
-   READBLOCK: do while(ierr /= 0)
-      read(iunit, nml = model_nml, iostat = io )
-      if ( io < 0 ) exit READBLOCK          ! end-of-file
-      ierr = check_nml_error(io, 'model_nml')
-   enddo READBLOCK
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
-
 endif
 
 ! Record the namelist values used for the run ...
@@ -3788,7 +3789,8 @@ integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
 integer, dimension(3) :: dx, dy, grid_id, parent_id
 integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
 integer, dimension(3) :: parent_time_step_ratio
-integer :: io, ierr, iunit, id
+integer :: io, iunit, id
+character(len=129) :: err_string, nml_string
 
 namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
 namelist /domains/ max_dom
@@ -3797,18 +3799,24 @@ namelist /domains/ dx, dy, grid_id, parent_id
 namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
 namelist /domains/ parent_time_step_ratio
 
+
+! Begin by reading the namelist input
 if(file_exist('namelist.input')) then
-
    iunit = open_file('namelist.input', action = 'read')
-   read(iunit, nml = domains, iostat = io )
-   ierr = check_nml_error(io, 'domains')
+   read(iunit, nml = domains, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'read_dt_from_wrf_nml:&domains problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
-
 else
-
    call error_handler(E_ERR,'read_dt_from_wrf_nml', &
         'Please put namelist.input in the work directory.', source, revision,revdate)
-
 endif
 
 ! Record the namelist values used for the run ...

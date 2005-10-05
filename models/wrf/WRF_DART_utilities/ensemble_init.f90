@@ -42,7 +42,7 @@ use  wrf_data_module, only : wrf_data, wrf_bdy_data, &
                              wrf_dealloc, wrfbdy_dealloc, &
                              wrf_io, wrfbdy_io, &
                              set_wrf_date
-use    utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, &
+use    utilities_mod, only : get_unit, file_exist, open_file, &
                              close_file, error_handler, E_ERR, E_MSG, initialize_utilities, &
                              finalize_utilities, register_module, logfileunit, timestamp
 
@@ -90,6 +90,7 @@ type(time_type)   :: dart_time(2)
 integer           :: year, month, day, hour, minute, second
 
 character(len=19) :: timestring
+character(len=129) :: err_string, nml_string
 
 read(5,*) Ne       ! Read ensemble size from stdin.
 read(5,*) scale    ! Read scaling       from stdin.
@@ -98,21 +99,27 @@ call initialize_utilities('ensemble_init')
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING ensemble_init ...'
 
+
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-
    iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io )
-   ierr = check_nml_error(io, 'model_nml')
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'ensemble_init:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
-
 else
-
-   write(*,*) 'input.nml does not exist here. Using default values.'
-
+   err_string = 'input.nml does not exist here. Using default values.'
+   call error_handler(E_MSG,'ensemble_init',err_string,' ',' ',' ')
 endif
 
-call error_handler(E_MSG,'dart_tf_wrf','model_nml values are',' ',' ',' ')
+call error_handler(E_MSG,'ensemble_init','model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
 

@@ -65,10 +65,8 @@ csh mkmf_perfect_model_obs
 make         || exit 5
 csh mkmf_filter
 make         || exit 6
-#csh mkmf_obs_diag
-#make         || exit 7
-#./perfect_model_obs
-#./filter
+csh mkmf_obs_diag
+make         || exit 7
 csh mkmf_assim_region
 make         || exit 8
 csh mkmf_dart_tf_wrf
@@ -81,3 +79,5 @@ csh mkmf_extract
 make         || exit 12
 csh mkmf_select
 make         || exit 13
+#./perfect_model_obs || exit 14
+#./filter            || exit 15
