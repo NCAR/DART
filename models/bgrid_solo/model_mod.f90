@@ -49,7 +49,7 @@ use              fms_mod, only: file_exist, open_namelist_file, &
                                 fms_init,        &
                                 open_restart_file
 
-use utilities_mod, only : open_file, check_nml_error, error_handler, E_ERR
+use utilities_mod, only : open_file, error_handler, E_ERR, E_MSG
 
 
 ! routines used by subroutine bgrid_physics
@@ -363,38 +363,51 @@ end subroutine init_conditions
    subroutine atmos_model_init()
 
 !-----------------------------------------------------------------------
-    integer :: total_days, total_seconds, iunit, ierr, io, id, jd, kd
-    integer :: idate(6)
-    type (time_type) :: Run_length
-    logical :: use_namelist
 
-    integer :: num_atmos_calls
+   integer :: total_days, total_seconds, iunit, ierr, io, id, jd, kd
+   integer :: idate(6)
+   type (time_type) :: Run_length
+   logical :: use_namelist
+
+   integer :: num_atmos_calls
+   character(len=129) :: err_string, nml_string
+
 !-----------------------------------------------------------------------
-!----- initialization timing identifiers ----
 
-call register_module(source,revision,revdate)
+   !----- initialization timing identifiers ----
 
+   call register_module(source,revision,revdate)
 
-!----- read namelist -------
+   !----- read namelist -------
 
-   iunit = open_namelist_file ( )
-   ierr=1; do while (ierr /= 0)
-          read  (iunit, nml=model_nml, iostat=io, end=10)
-          ierr = check_nml_error (io, 'model_nml')
-   enddo
-10 close (iunit)
+   if(file_exist('input.nml')) then
+      iunit = open_file('input.nml', action = 'read')
+      read(iunit, nml = model_nml, iostat = io)
+      if(io /= 0) then
+         ! A non-zero return means a bad entry was found for this namelist
+         ! Reread the line into a string and print out a fatal error message.
+         BACKSPACE iunit
+         read(iunit, '(A)') nml_string
+         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+         call error_handler(E_ERR, 'atmos_model_init:&model_nml problem', &
+                            err_string, source, revision, revdate)
+      endif
+      call close_file(iunit)
+   endif
 
-!----- write namelist to logfile -----
+   !----- write namelist to logfile -----
 
+   call error_handler(E_MSG,'atmos_model_init','model_nml values are',' ',' ',' ')
    call write_version_number (version,tag)
-    write (stdlog(), nml=model_nml)
-    write (logfileunit, nml=model_nml)
+   write (logfileunit, nml=model_nml)
+   write (stdlog(),    nml=model_nml)
 
    if(dt_atmos == 0) then
      call error_mesg ('program atmos_model', 'dt_atmos has not been specified', FATAL)
    endif
 
-!----- read restart file -----
+   !----- read restart file -----
+
    if (file_exist('INPUT/atmos_model.res')) then
        iunit = open_restart_file ('INPUT/atmos_model.res', 'read')
        read  (iunit) idate
@@ -407,14 +420,14 @@ call register_module(source,revision,revdate)
 !----- override date with namelist values ------
 !----- (either no restart or override flag on) ---
 
- if ( use_namelist .or. override ) then
+   if ( use_namelist .or. override ) then
       idate(1:2) = 0
       idate(3:6) = current_time
- endif
+   endif
 
 !----- write current/initial date actually used to logfile file -----
 
-      write (stdlog(),16) idate(3:6)
+   write (stdlog(),16) idate(3:6)
 
  16 format ('  current time used = day',i5,' hour',i3,2(':',i2.2))
 
@@ -428,10 +441,10 @@ call register_module(source,revision,revdate)
 !    call get_base_date ( date_init(1), date_init(2), date_init(3), &
 !                         date_init(4), date_init(5), date_init(6)  )
 
-    if ( date_init(1)+date_init(2) /= 0 ) then
-         call error_mesg ('program atmos_model', 'invalid base base - &
+   if ( date_init(1)+date_init(2) /= 0 ) then
+        call error_mesg('program atmos_model', 'invalid base base - &
                           &must have year = month = 0', FATAL)
-    endif
+   endif
 
 !----- set initial and current time types ------
 !----- set run length and compute ending time -----
@@ -494,36 +507,41 @@ call register_module(source,revision,revdate)
 
  type (time_type),     intent(in)    :: Time_init, mTime, Time_step
 
-
 !!! WARNING: This PROG_VAR_TYPE MAY HOG STORAGE FOREVER, NEED TO DEALLOCATE
-type(prog_var_type) :: Var
+ type(prog_var_type) :: Var
 
-  integer :: iunit, sec, ierr, io
-  integer :: tnlon, tnlat, vnlon, vnlat
-  integer :: t_horiz_size, v_horiz_size
+ integer :: i, iunit, sec, io
+ integer :: tnlon, tnlat, vnlon, vnlat
+ integer :: t_horiz_size, v_horiz_size
 
-real(r8), allocatable :: t_lat_bnds(:), t_lon_bnds(:), v_lat_bnds(:), v_lon_bnds(:)
+ real(r8), allocatable :: t_lat_bnds(:), t_lon_bnds(:), v_lat_bnds(:), v_lon_bnds(:)
 
-integer :: i
-
+ character(len=129) :: err_string, nml_string
 
 !-----------------------------------------------------------------------
 !----- read namelist -----
 
-    if (file_exist('input.nml')) then
-        iunit = open_namelist_file ( )
-        ierr=1; do while (ierr /= 0)
-           read (iunit, nml=atmosphere_nml, iostat=io, end=10)
-           ierr = check_nml_error (io, 'atmosphere_nml')
-        enddo
- 10     call close_file (iunit)
-    endif
+   if(file_exist('input.nml')) then
+      iunit = open_file('input.nml', action = 'read')
+      read(iunit, nml = atmosphere_nml, iostat = io)
+      if(io /= 0) then
+         ! A non-zero return means a bad entry was found for this namelist
+         ! Reread the line into a string and print out a fatal error message.
+         BACKSPACE iunit
+         read(iunit, '(A)') nml_string
+         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+         call error_handler(E_ERR, 'atmosphere_init:&atmosphere_nml problem', &
+                            err_string, source, revision, revdate)
+      endif
+      call close_file(iunit)
+   endif
 
 !----- write version and namelist to log file -----
 
-    call write_version_number ( version, tag )
-     write (stdlog(), nml=atmosphere_nml)
-     write (logfileunit, nml=atmosphere_nml)
+   call error_handler(E_MSG,'atmosphere_init','atmosphere_nml values are',' ',' ',' ') 
+   call write_version_number ( version, tag )
+   write (stdlog(),    nml=atmosphere_nml)
+   write (logfileunit, nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 
@@ -537,21 +555,22 @@ integer :: i
 
 !----- initialize storage needed for vert motion ----
 
-    omega => var_init (Dynam%Hgrid, Dynam%Vgrid%nlev)
+   omega => var_init (Dynam%Hgrid, Dynam%Vgrid%nlev)
 
 !----- initialize physics interface -----
 
-    call hs_forcing_init ( atmos_axes, mTime )
+   call hs_forcing_init ( atmos_axes, mTime )
 
 !   ----- use entire grid as window ? -----
 
-    if (physics_window(1) <= 0) physics_window(1) = Dynam%Hgrid%Tmp%ie-Dynam%Hgrid%Tmp%is+1
-    if (physics_window(2) <= 0) physics_window(2) = Dynam%Hgrid%Tmp%je-Dynam%Hgrid%Tmp%js+1
+   if (physics_window(1) <= 0) physics_window(1) = Dynam%Hgrid%Tmp%ie-Dynam%Hgrid%Tmp%is+1
+   if (physics_window(2) <= 0) physics_window(2) = Dynam%Hgrid%Tmp%je-Dynam%Hgrid%Tmp%js+1
 
 !-----------------------------------------------------------------------
 
 ! Initialize model_size variables
 ! Fixed to use only global grid for now (need to modify for mpp)
+
 call get_horiz_grid_size (Dynam % Hgrid, TGRID, tnlon, tnlat, .true.)
 call get_horiz_grid_size (Dynam % Hgrid, VGRID, vnlon, vnlat, .true.)
 t_horiz_size = tnlon * tnlat

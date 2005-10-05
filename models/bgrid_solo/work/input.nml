@@ -62,12 +62,11 @@
 
 &reg_factor_nml
    select_regression = 1,
-   input_reg_file = "time_mean_reg" 
+   input_reg_file = "time_mean_reg",
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
-   read_binary_obs_sequence = .false.,
    write_binary_obs_sequence = .false.  /
 
 &obs_kind_nml
@@ -81,11 +80,9 @@
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_raw_state_mod.f90',
-                              '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'  /
+   input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'  /
 
 &assim_model_nml
-   read_binary_restart_files = .false.,
    write_binary_restart_files = .false. /
 
 
@@ -187,5 +184,4 @@
      file_name  = 'dynam_integral.out',
      time_units = 'days',
      output_interval = 1.00   /
-
 
