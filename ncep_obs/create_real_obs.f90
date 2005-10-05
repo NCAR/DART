@@ -15,8 +15,8 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence 
 use     real_obs_mod, only : real_obs_sequence
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             check_nml_error, initialize_utilities, register_module, &
-                             error_handler, timestamp, E_MSG, logfileunit
+                             initialize_utilities, register_module, &
+                             error_handler, timestamp, E_ERR, E_MSG, logfileunit
 
 implicit none
 
@@ -28,9 +28,9 @@ revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 
-character(len = 129) :: output_name
+character(len = 129) :: output_name, err_string, nml_string
 character(len = 8 ) :: obsdate
-integer :: iunit, ierr, io, ii, day1
+integer :: iunit, io, ii, day1
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -60,26 +60,31 @@ namelist /ncepobs_nml/year, month, day, tot_days, max_num, select_obs, ObsBase, 
 
 call initialize_utilities('create_real_obs')
 call register_module(source,revision,revdate)
-call error_handler(E_MSG,'create_real_obs','STARTING',source,revision,revdate)
 
 ! Initialize the obs_sequence module ...
 
 call static_init_obs_sequence()
 
-! Read namelist ...
-
+! Begin by reading the namelist input
 if(file_exist('input.nml')) then
-  iunit = open_file('input.nml', action = 'read')
-  ierr = 1
-
-  do while(ierr /= 0)
-     read(iunit, nml = ncepobs_nml, iostat = io, end = 11)
-     ierr = check_nml_error(io, 'ncepobs_nml')
-   enddo
-11 continue
+   iunit = open_file('input.nml', action = 'read')
+   read(iunit, nml = ncepobs_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'create_real_obs:&ncepobs_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
-write(logfileunit,nml=ncepobs_nml)
+
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'create_real_obs','ncepobs_nml values are',' ',' ',' ')
+write(logfileunit, nml=ncepobs_nml)
+write(     *     , nml=ncepobs_nml)
 
 ! Loop through the days interested.
 
