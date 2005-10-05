@@ -20,7 +20,7 @@
 #    --warn
 #    --wide
 #    --O0    no optimization
-#      --chk [<args>]
+#    --chk [<args>]
 #             check for:
 #                subscripts and substrings out of bounds,
 #                interface mismatches,
@@ -32,6 +32,9 @@
 #             s   subscript checking.  
 #             u   undefined variable checking.  
 #             x   extra checking.
+#    --chkglobal
+#    --verbose
+#    --wo     warn if obsolescent feature
 #
 # FFLAGS   useful for production
 #    --li    use Lahey intrinsic procedures
@@ -55,5 +58,5 @@ NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-lf95.6.20a
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 #FFLAGS = --ap --trap --warn --wide --chk a,s,u,x --o0 $(INCS) 
-FFLAGS = --ap --trap --warn --wide --oO $(INCS) 
+FFLAGS = --ap --trap --warn --wide --oO $(INCS)
 LDFLAGS = $(LIBS)
