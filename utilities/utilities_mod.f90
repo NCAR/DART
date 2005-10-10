@@ -57,6 +57,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 public :: file_exist, get_unit, check_nml_error, open_file, timestamp, &
        close_file, register_module, error_handler, logfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
+       namelist_is_in_file, check_namelist_read, &
        E_DBG, E_MSG, E_WARN, E_ERR, &
        DEBUG, MESSAGE, WARNING, FATAL
 
@@ -828,7 +829,100 @@ if (open) close(iunit)
 
 end subroutine close_file
 
+!#######################################################################
+
+
+
+function namelist_is_in_file(namelist_file_name, nml_name, iunit)
+!-----------------------------------------------------------------------
+! 
+! Searches file open on iunit for a line containing ONLY the string
+! &nml_name, for instance &filter_nml. If found, rewinds the file and
+! returns true. Otherwise, rewinds the file and returns false.
 !
+
+logical                        :: namelist_is_in_file
+character(len = *), intent(in) :: namelist_file_name
+character(len = *), intent(in) :: nml_name
+integer, intent(out)           :: iunit
+
+character(len = 169) :: nml_string, test_string, err_string
+integer              :: io
+
+! Check for file existence; no file is an error
+if(file_exist(trim(namelist_file_name))) then
+   ! Open the file
+   iunit = open_file(trim(namelist_file_name), action = 'read')
+
+   ! Now look for the start of a namelist with &nml_name
+   test_string = '&' // trim(adjustl(nml_name))
+
+   ! Read each line until end of file is found
+   do
+      read(iunit, '(A)', iostat = io) nml_string
+      if(io /= 0) then
+         ! No values for this namelist; return false and close file
+         namelist_is_in_file = .false.
+         call close_file(iunit)
+         return
+      else
+         if(trim(adjustl(nml_string)) == trim(adjustl(test_string))) then
+            namelist_is_in_file = .true.
+            rewind(iunit)
+            return
+         endif
+      endif
+   end do
+else
+   ! No namelist_file_name file is an error
+   write(err_string, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
+   call error_handler(E_ERR, 'namelist_is_in_file', err_string, &
+      source, revision, revdate)
+endif
+
+end function namelist_is_in_file
+
+
+!#######################################################################
+
+
+
+subroutine check_namelist_read(iunit, iostat_in, nml_name)
+!-----------------------------------------------------------------------
+! 
+! Confirms that a namelist read was successful. If it failed
+! produces an error message and stops execution.
+!
+
+integer,            intent(in) :: iunit, iostat_in
+character(len = *), intent(in) :: nml_name
+
+character(len=159) :: nml_string, err_string
+integer            :: io
+
+if(iostat_in == 0) then
+   ! If the namelist read was successful, just close the file
+   call close_file(iunit)
+else
+   ! If it wasn't successful, print the line on which it failed  
+   BACKSPACE iunit
+   read(iunit, '(A)', iostat = io) nml_string
+   ! A failure in this read means that the namelist started but never terminated
+   ! Result was falling off the end, so backspace followed by read fails
+   if(io /= 0) then
+      write(err_string, *) 'Namelist ', trim(nml_name), ' started but never terminated'
+      call error_handler(E_ERR, 'check_namelist_read', err_string, &
+         source, revision, revdate)
+   else
+      ! Didn't fall off end so bad entry in the middle of namelist
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
+      call error_handler(E_ERR, 'check_namelist_read', err_string, &
+         source, revision, revdate)
+   endif
+endif
+
+end subroutine check_namelist_read
+
 !=======================================================================
 ! End of utilities_mod
 !=======================================================================
