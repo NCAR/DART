@@ -24,7 +24,7 @@ use time_manager_mod, only : time_type, get_time, set_time, operator(/=), operat
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
                               file_exist, error_handler, &
                               E_ERR, E_MSG, E_DBG, initialize_utilities, &
-                              logfileunit, timestamp
+                              logfileunit, timestamp, namelist_is_in_file, check_namelist_read
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    netcdf_file_type, init_diag_output, finalize_diag_output, & 
    aoutput_diagnostics, aread_state_restart, &
@@ -55,7 +55,6 @@ type(time_type)         :: time1
 type(random_seq_type)   :: random_seq
 
 character(len=129) :: msgstring
-character(len=159) :: nml_string
 integer :: i, j, iunit, io, days, secs
 integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
@@ -131,22 +130,10 @@ call system('rm -f go_advance_model go_end_filter go_assim_regions')
 
 call filter_initialize_modules_used()
 
-! call filter_read_namelist()
-! Begin by reading the namelist input 
-! Intel 8.0 quirk that the subroutine does not compile.  
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
+! Read the namelist entry
+if(namelist_is_in_file("input.nml", "filter_nml", iunit)) then
    read(iunit, nml = filter_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'filter:&filter_nml problem', &
-                         msgstring, source, revision, revdate)
-   endif
-   call close_file(iunit)
+   call check_namelist_read(iunit, io, "filter_nml")
 endif
 
 ! Record the namelist values used for the run ...
@@ -387,40 +374,6 @@ call static_init_obs_sequence()
 call static_init_assim_model()
 
 end subroutine filter_initialize_modules_used
-
-!-------------------------------------------------------------------------
-
-subroutine filter_read_namelist()
-!
-! Intel 8.0 compiler chokes on any I/O in this subroutine.
-! Consequently, the code block has been duplicated in the main program.
-! There is an error report (28Jun2004) to fix this.
-!
-
-!integer :: iunit, io
-!character(len=159) :: nml_string
-!
-!if(file_exist('input.nml')) then
-!   iunit = open_file('input.nml', action = 'read')
-!   read(iunit, nml = filter_nml, iostat = io)
-!   if(io /= 0) then
-!      ! A non-zero return means a bad entry was found for this namelist
-!      ! Reread the line into a string and print out a fatal error message.
-!      BACKSPACE iunit
-!      read(iunit, '(A)') nml_string
-!      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-!      call error_handler(E_ERR, 'filter:&filter_nml problem', &
-!                         msgstring, source, revision, revdate)
-!   endif
-!   call close_file(iunit)
-!endif
-
-! Record the namelist values used for the run ...
-!call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')
-!write(logfileunit, nml=filter_nml)
-!write(     *     , nml=filter_nml)
-
-end subroutine filter_read_namelist
 
 !-------------------------------------------------------------------------
 
