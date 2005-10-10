@@ -16,6 +16,7 @@ program perfect_model_obs
 use        types_mod, only : r8
 use    utilities_mod, only : open_file, file_exist, get_unit, close_file, &
                              initialize_utilities, register_module, error_handler, &
+                             namelist_is_in_file, check_namelist_read, &
                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, timestamp
 use time_manager_mod, only : time_type, set_time, get_time, &
                              operator(/=), operator(*), operator(+) 
@@ -64,7 +65,7 @@ real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 real(r8), allocatable   :: ens(:)
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
-character(len=159)      :: msgstring, nml_string
+character(len=159)      :: msgstring
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 integer                 :: obs_seq_file_id
 
@@ -103,22 +104,10 @@ call system('rm -f go_advance_model go_end_filter go_assim_regions')
 
 call perfect_initialize_modules_used()
 
-! call perfect_read_namelist()
-! Begin by reading the namelist input
-! Intel 8.0 quirk that the subroutine does not compile.
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
+! Read the namelist entry
+if(namelist_is_in_file("input.nml", "perfect_model_obs_nml", iunit)) then
    read(iunit, nml = perfect_model_obs_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'perfect_model_obs:&perfect_model_obs_nml problem', &
-                         msgstring, source, revision, revdate)
-   endif
-   call close_file(iunit)
+   call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 endif
 
 ! Record the namelist values used for the run ...
@@ -314,37 +303,6 @@ call static_init_obs_sequence()
 call static_init_assim_model()
 
 end subroutine perfect_initialize_modules_used
-
-!---------------------------------------------------------------------
-
-subroutine perfect_read_namelist()
-!
-! Intel 8.0 compiler chokes on any I/O in this subroutine.
-! Consequently, the code block has been duplicated in the main program.
-! There is an error report (28Jun2004) to fix this.
-!
-
-!if(file_exist('input.nml')) then
-!   iunit = open_file('input.nml', action = 'read')
-!  read(iunit, nml = perfect_model_obs_nml, iostat = io)
-!   if(io /= 0) then
-!      ! A non-zero return means a bad entry was found for this namelist
-!      ! Reread the line into a string and print out a fatal error message.
-!      BACKSPACE iunit
-!      read(iunit, '(A)') nml_string
-!      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-!      call error_handler(E_ERR, 'perfect_model_obs:&perfect_model_obs_nml problem', &
-!                         msgstring, source, revision, revdate)
-!   endif
-!   call close_file(iunit)
-!endif
-
-! Record the namelist values used for the run ...
-!call error_handler(E_MSG,'perfect_model_obs','perfect_model_obs_nml values are',' ',' ',' ')
-!write(logfileunit, nml=perfect_model_obs_nml)
-!write(     *     , nml=perfect_model_obs_nml)
-
-end subroutine perfect_read_namelist
 
 !---------------------------------------------------------------------
 
