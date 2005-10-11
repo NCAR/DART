@@ -75,7 +75,7 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, print_time, set_calendar_type, &
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use    utilities_mod, only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_MSG, logfileunit
+                             register_module, error_handler, file_exist, E_ERR, E_MSG, logfileunit
 use     location_mod, only : location_type, get_location, set_location, &
                              get_dist, vert_is_level, query_location, &
                              LocationDims, LocationName, LocationLName

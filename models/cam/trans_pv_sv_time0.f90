@@ -24,9 +24,10 @@ program trans_pv_sv_time0
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : logfileunit, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : logfileunit, error_handler, E_ERR, E_MSG, find_namelist_in_file, &
+                             check_namelist_read
 use        model_mod, only : model_type, init_model_instance, read_cam_init, &
-                             prog_var_to_vector, find_namelist_in_file, check_namelist_read
+                             prog_var_to_vector
 
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
