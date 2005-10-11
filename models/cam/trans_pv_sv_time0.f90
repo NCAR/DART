@@ -24,10 +24,10 @@ program trans_pv_sv_time0
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
-                             logfileunit, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : logfileunit, error_handler, E_ERR, E_MSG
 use        model_mod, only : model_type, init_model_instance, read_cam_init, &
-                             prog_var_to_vector
+                             prog_var_to_vector, find_namelist_in_file, check_namelist_read
+
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
    set_model_time, open_restart_read, open_restart_write, close_restart, &
@@ -100,22 +100,10 @@ call prog_var_to_vector(var, x_state)
 ! Put this in the structure
 call set_model_state_vector(x, x_state)
 
-! Set model_time from the namelist, rather than temp_ic as is done in trans_pv_sv
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = perfect_model_obs_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'trans_pv_sv_time0:&perfect_model_obs_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   PRINT*,'init_time_days and _seconds = ',init_time_days, init_time_seconds 
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "perfect_model_obs_nml", iunit)
+read(iunit, nml = perfect_model_obs_nml, iostat = io)
+call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'trans_pv_sv_time0','perfect_model_obs_nml values are',' ',' ',' ')

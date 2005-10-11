@@ -18,11 +18,10 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date,  &
                              set_date, operator(-), get_time, print_time, &
                              set_calendar_type, GREGORIAN, julian_day
-use    utilities_mod, only : get_unit, file_exist, open_file,             &
-                             close_file, error_handler,  &
+use    utilities_mod, only : get_unit, error_handler,  &
                              E_ERR, E_MSG, initialize_utilities,          &
                              finalize_utilities, register_module,         &
-                             logfileunit
+                             logfileunit, find_namelist_in_file, check_namelist_read
 
 implicit none
 
@@ -82,52 +81,15 @@ call initialize_utilities
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING trans_perfect_ics ...'
 
-! read the namelist input
-if(file_exist('input.nml')) then
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "assim_model_nml", iunit)
+read(iunit, nml = assim_model_nml, iostat = io)
+call check_namelist_read(iunit, io, "assim_model_nml")
 
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = assim_model_nml, iostat = io )
-   ierr = check_nml_error(io, 'assim_model_nml')
-
-   read(iunit, nml = model_nml, iostat = io )
-   ierr = check_nml_error(io, 'model_nml')
-
-   call close_file(iunit)
-
-endif
-
-
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-
-   iunit = open_file('input.nml', action = 'read')
-
-   read(iunit, nml = assim_model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'trans_perfect_ics:&assim_model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-
-   rewind(iunit)
-
-   read(iunit, nml = model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'trans_perfect_ics::&model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'trans_perfect_ics:','assim_model_nml values are',' ',' ',' ')
