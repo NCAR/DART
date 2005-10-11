@@ -16,7 +16,7 @@ program perfect_model_obs
 use        types_mod, only : r8
 use    utilities_mod, only : open_file, file_exist, get_unit, close_file, &
                              initialize_utilities, register_module, error_handler, &
-                             namelist_is_in_file, check_namelist_read, &
+                             find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, timestamp
 use time_manager_mod, only : time_type, set_time, get_time, &
                              operator(/=), operator(*), operator(+) 
@@ -105,10 +105,9 @@ call system('rm -f go_advance_model go_end_filter go_assim_regions')
 call perfect_initialize_modules_used()
 
 ! Read the namelist entry
-if(namelist_is_in_file("input.nml", "perfect_model_obs_nml", iunit)) then
-   read(iunit, nml = perfect_model_obs_nml, iostat = io)
-   call check_namelist_read(iunit, io, "perfect_model_obs_nml")
-endif
+call find_namelist_in_file("input.nml", "perfect_model_obs_nml", iunit)
+read(iunit, nml = perfect_model_obs_nml, iostat = io)
+call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'perfect_model_obs','perfect_model_obs_nml values are',' ',' ',' ')
