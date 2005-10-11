@@ -22,9 +22,11 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time, get_cal
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR, &
                              operator(<), operator(>), operator(+), operator(-), &
                              operator(/), operator(*), operator(==), operator(/=), print_time
-use utilities_mod, only : get_unit, file_exist, open_file, check_nml_error, close_file, &
+use utilities_mod, only : get_unit, close_file, &
                           register_module, error_handler, E_ERR, E_WARN, E_MSG, E_DBG, &
-                          logfileunit, dump_unit_attributes
+                          logfileunit, dump_unit_attributes, find_namelist_in_file, &
+                          check_namelist_read
+
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
            get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
            end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
@@ -143,21 +145,10 @@ character(len=129) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = assim_model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_assim_model:&assim_model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "assim_model_nml", iunit)
+read(iunit, nml = assim_model_nml, iostat = io)
+call check_namelist_read(iunit, io, "assim_model_nml")
 
 ! Record the namelist values used for the run ... 
 call error_handler(E_MSG,'static_init_assim_model','assim_model_nml values are',' ',' ',' ')
