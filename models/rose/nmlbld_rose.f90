@@ -12,9 +12,10 @@ program nmlbld_rose
 ! $Name$
 
    use     types_mod, only: r8, pi
-   use utilities_mod, only: open_file, close_file, file_exist, &
+   use utilities_mod, only: open_file, close_file,  &
                             error_handler, E_ERR, E_MSG, E_WARN, logfileunit, &
-                            initialize_utilities, register_module
+                            initialize_utilities, register_module, &
+                            find_namelist_in_file, check_namelist_read
 
    implicit none
 
@@ -47,21 +48,10 @@ program nmlbld_rose
    call initialize_utilities('nmlbld_rose')
    call register_module(source,revision,revdate)
 
-   ! Begin by reading the namelist input
-   if(file_exist('rose.nml_default')) then
-      iunit = open_file('rose.nml_default', action = 'read')
-      read(iunit, nml = rose_nml, iostat = io)
-      if(io /= 0) then
-         ! A non-zero return means a bad entry was found for this namelist
-         ! Reread the line into a string and print out a fatal error message.
-         BACKSPACE iunit
-         read(iunit, '(A)') nml_string
-         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-         call error_handler(E_ERR, 'nmlbld_rose:&model_nml problem', &
-                            err_string, source, revision, revdate)
-      endif
-      call close_file(iunit)
-   endif
+   ! Read the namelist entry
+   call find_namelist_in_file("rose.nml_default", "rose_nml", iunit)
+   read(iunit, nml = rose_nml, iostat = io)
+   call check_namelist_read(iunit, io, "rose_nml")
 
    ! Read another piece of information and add to namelist.
 
