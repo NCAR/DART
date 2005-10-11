@@ -70,8 +70,7 @@
    write_binary_obs_sequence = .false.  /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'/
-                                'RADIOSONDE_U_WIND_COMPONENT',
+   assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT'
    evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE' /
 
