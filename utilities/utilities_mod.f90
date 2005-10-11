@@ -57,7 +57,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 public :: file_exist, get_unit, check_nml_error, open_file, timestamp, &
        close_file, register_module, error_handler, logfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       namelist_is_in_file, check_namelist_read, &
+       find_namelist_in_file, check_namelist_read, &
        E_DBG, E_MSG, E_WARN, E_ERR, &
        DEBUG, MESSAGE, WARNING, FATAL
 
@@ -101,6 +101,8 @@ contains
          return
 
       else ! initialize the module
+         
+         module_initialized = .true.
 
          ! Since the logfile is not open yet, the error terminations
          ! must be handled differently than all other cases.
@@ -114,41 +116,10 @@ contains
 
          write(*,*)'Initializing the utilities module.'
 
-         inquire (file = 'input.nml', exist = lfile) ! does a namelist exist
-
-         ! Read the namelist input if it exists
-         if( lfile ) then
-
-            ! write(*,*)'Determine unit for namelist'
-
-            ! determine an open unit for the namelist 
-            iunit = nextunit()
-            if ( iunit < 0 ) then
-               write(*,*)'   unable to get a unit to use to read the namelist.'
-               write(*,*)'   stopping.'
-               stop 99
-            endif
-
-            ! If the file exists, it might still not contain the utilities_nml namelist
-            open( iunit, file='input.nml')
-            read( iunit, nml = utilities_nml, iostat = io)
-            if (io /= 0 ) then
-               ! A non-zero return means a bad entry was found for this namelist
-               ! Reread the line into a string and print out a fatal error message.
-               BACKSPACE iunit
-               read(iunit, '(A)') nml_string
-               write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-
-               write(*,*)trim(adjustl(source))
-               write(*,*)trim(adjustl(revision))
-               write(*,*)trim(adjustl(revdate))
-               write(*,*)'utilities_mod:initialize_utilities:&utilities_nml problem'
-               write(*,*)trim(adjustl(err_string))
-               stop 99
-            endif
-            close(iunit)
-
-         endif
+         ! Read the namelist entry
+         call find_namelist_in_file("input.nml", "utilities_nml", iunit, .false.)
+         read(iunit, nml = utilities_nml, iostat = io)
+         call check_namelist_read(iunit, io, "utilities_nml", .false.)
 
          ! Open the log file with the name from the namelist 
          logfileunit = nextunit()
@@ -195,8 +166,6 @@ contains
 
          ! Check to make sure termlevel is set to a reasonable value
          call checkTermLevel
-
-         module_initialized = .true.
 
          ! Echo the module information using normal mechanism
          call register_module(source, revision, revdate)
@@ -833,21 +802,29 @@ end subroutine close_file
 
 
 
-function namelist_is_in_file(namelist_file_name, nml_name, iunit)
+subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, &
+   write_to_logfile_in)
 !-----------------------------------------------------------------------
 ! 
-! Searches file open on iunit for a line containing ONLY the string
+! Opens namelist_file_name if it exists on unit iunit, error if it
+! doesn't exist.
+! Searches file for a line containing ONLY the string
 ! &nml_name, for instance &filter_nml. If found, rewinds the file and
-! returns true. Otherwise, rewinds the file and returns false.
+! returns true. Otherwise, error message and terminates
 !
 
-logical                        :: namelist_is_in_file
 character(len = *), intent(in) :: namelist_file_name
 character(len = *), intent(in) :: nml_name
 integer, intent(out)           :: iunit
+logical, intent(in), optional :: write_to_logfile_in
 
 character(len = 169) :: nml_string, test_string, err_string
 integer              :: io
+logical              :: write_to_logfile
+
+! Decide if there is a logfile or not
+write_to_logfile = .true.
+if(present(write_to_logfile_in)) write_to_logfile = write_to_logfile_in
 
 ! Check for file existence; no file is an error
 if(file_exist(trim(namelist_file_name))) then
@@ -861,13 +838,23 @@ if(file_exist(trim(namelist_file_name))) then
    do
       read(iunit, '(A)', iostat = io) nml_string
       if(io /= 0) then
-         ! No values for this namelist; return false and close file
-         namelist_is_in_file = .false.
-         call close_file(iunit)
-         return
+         ! No values for this namelist; error
+         write(err_string, *) 'Namelist entry &', nml_name, ' must exist in ', namelist_file_name
+         ! Can't write to logfile if it hasn't yet been opened
+         if(write_to_logfile) then
+            call error_handler(E_ERR, 'find_namelist_in_file', err_string, &
+               source, revision, revdate)
+         else
+            write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
+            write(*, *) 'Error is in subroutine find_namelist_in_file'
+            write(*, *) err_string
+            write(*,*)'  ',trim(source)
+            write(*,*)'  ',trim(revision)
+            write(*,*)'  ',trim(revdate)
+            stop 
+         endif
       else
          if(trim(adjustl(nml_string)) == trim(adjustl(test_string))) then
-            namelist_is_in_file = .true.
             rewind(iunit)
             return
          endif
@@ -876,18 +863,29 @@ if(file_exist(trim(namelist_file_name))) then
 else
    ! No namelist_file_name file is an error
    write(err_string, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
-   call error_handler(E_ERR, 'namelist_is_in_file', err_string, &
-      source, revision, revdate)
+   if(write_to_logfile) then
+      call error_handler(E_ERR, 'find_namelist_in_file', err_string, &
+         source, revision, revdate)
+   else
+      write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
+      write(*, *) 'Error is in subroutine find_namelist_in_file'
+      write(*, *) err_string
+      write(*,*)'  ',trim(source)
+      write(*,*)'  ',trim(revision)
+      write(*,*)'  ',trim(revdate)
+      stop 
+   endif
 endif
 
-end function namelist_is_in_file
+end subroutine find_namelist_in_file
 
 
 !#######################################################################
 
 
 
-subroutine check_namelist_read(iunit, iostat_in, nml_name)
+subroutine check_namelist_read(iunit, iostat_in, nml_name, &
+   write_to_logfile_in)
 !-----------------------------------------------------------------------
 ! 
 ! Confirms that a namelist read was successful. If it failed
@@ -896,9 +894,15 @@ subroutine check_namelist_read(iunit, iostat_in, nml_name)
 
 integer,            intent(in) :: iunit, iostat_in
 character(len = *), intent(in) :: nml_name
+logical, intent(in), optional :: write_to_logfile_in
 
 character(len=159) :: nml_string, err_string
 integer            :: io
+logical            :: write_to_logfile
+
+! Decide if there is a logfile or not
+write_to_logfile = .true.
+if(present(write_to_logfile_in)) write_to_logfile = write_to_logfile_in
 
 if(iostat_in == 0) then
    ! If the namelist read was successful, just close the file
@@ -911,13 +915,33 @@ else
    ! Result was falling off the end, so backspace followed by read fails
    if(io /= 0) then
       write(err_string, *) 'Namelist ', trim(nml_name), ' started but never terminated'
-      call error_handler(E_ERR, 'check_namelist_read', err_string, &
-         source, revision, revdate)
+      if(write_to_logfile) then
+         call error_handler(E_ERR, 'check_namelist_read', err_string, &
+            source, revision, revdate)
+      else
+         write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
+         write(*, *) 'Error is in subroutine check_namelist_read'
+         write(*, *) err_string
+         write(*,*)'  ',trim(source)
+         write(*,*)'  ',trim(revision)
+         write(*,*)'  ',trim(revdate)
+         stop 
+      endif
    else
       ! Didn't fall off end so bad entry in the middle of namelist
       write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
-      call error_handler(E_ERR, 'check_namelist_read', err_string, &
-         source, revision, revdate)
+      if(write_to_logfile) then
+         call error_handler(E_ERR, 'check_namelist_read', err_string, &
+            source, revision, revdate)
+      else
+         write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
+         write(*, *) 'Error is in subroutine check_namelist_read'
+         write(*, *) err_string
+         write(*,*)'  ',trim(source)
+         write(*,*)'  ',trim(revision)
+         write(*,*)'  ',trim(revdate)
+         stop 
+      endif
    endif
 endif
 
