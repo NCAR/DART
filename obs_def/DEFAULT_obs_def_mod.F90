@@ -17,8 +17,7 @@ module obs_def_mod
 ! the code.
 
 use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, logfileunit, close_file
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit
 use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
