@@ -16,7 +16,7 @@ use types_mod, only : r8
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
                               file_exist, error_handler, &
                               E_ERR, E_WARN, E_MSG, E_DBG, initialize_utilities, &
-                              logfileunit, timestamp
+                              logfileunit, timestamp, find_namelist_in_file, check_namelist_read
 use assim_model_mod, only : aread_state_restart, awrite_state_restart, open_restart_read, &
    open_restart_write, close_restart, get_model_time_step, adv_1step
 use time_manager_mod, only : time_type, get_time, read_time, write_time, get_calendar_type, &
@@ -100,21 +100,10 @@ call register_module(source, revision, revdate)
 ens_size = ens_size_in
 model_size = model_size_in
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = ensemble_manager_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_model:&ensemble_manager_nml problem', &
-                         msgstring, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "ensemble_manager_nml", iunit)
+read(iunit, nml = ensemble_manager_nml, iostat = io)
+call check_namelist_read(iunit, io, "ensemble_manager_nml")
 
 call error_handler(E_MSG,'init_ensemble_manager','ensemble_manager_nml values are',' ',' ',' ')
 write(logfileunit,nml=ensemble_manager_nml)
@@ -372,6 +361,8 @@ if(in_core) then
    endif
    do i = 1, model_size
       ens_spread(i) = sqrt(sum((ens(1:, i) - ens_mean(i))**2) / (ens_size - 1))
+      ! Substitute output of variance IMPORTANT FOR LOW ORDER DISCUSSION
+      !!!ens_spread(i) = (sum((ens(1:, i) - ens_mean(i))**2) / (ens_size - 1))
    end do
 else
    ! Get the ensemble mean from disk file; mean is copy 0

@@ -15,8 +15,8 @@ module obs_kind_mod
 ! modules to construct a final fortran 90 obs_kind_mod for use with a DART
 ! assimilation.
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, logfileunit, close_file
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             logfileunit, find_namelist_in_file, check_namelist_read
 
 implicit none
 private
@@ -126,21 +126,10 @@ character(len = 169) :: err_string, nml_string
 call register_module(source, revision, revdate)
 module_initialized = .true.
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = obs_kind_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'obs_kind_mod:initialize_module:&obs_kind_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "obs_kind_nml", iunit)
+read(iunit, nml = obs_kind_nml, iostat = io)
+call check_namelist_read(iunit, io, "obs_kind_nml")
 
 
 ! DART PREPROCESS OBS_KIND_INFO INSERTED HERE

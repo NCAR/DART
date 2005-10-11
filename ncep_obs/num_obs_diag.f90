@@ -37,9 +37,9 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, operator(*), &
                              operator(+), operator(-), operator(/=), operator(>)
-use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
-                             file_exist, error_handler, E_ERR, E_MSG, &
-                             initialize_utilities, logfileunit, timestamp
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             initialize_utilities, logfileunit, timestamp, &
+                             find_namelist_in_file, check_namelist_read
 
 implicit none
 
@@ -158,21 +158,10 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 call init_obs(observation, 0, 0) ! Initialize the observation type variables
 call init_obs(   next_obs, 0, 0)
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = numobsdiag_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'num_obs_diag:&numobsdiag_nml problem', &
-                         msgstring, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "numobsdiag_nml", iunit)
+read(iunit, nml = numobsdiag_nml, iostat = io)
+call check_namelist_read(iunit, io, "numobsdiag_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'num_obs_diag','numobsdiag_nml values are',' ',' ',' ')

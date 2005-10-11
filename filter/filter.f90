@@ -24,7 +24,7 @@ use time_manager_mod, only : time_type, get_time, set_time, operator(/=), operat
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
                               file_exist, error_handler, &
                               E_ERR, E_MSG, E_DBG, initialize_utilities, &
-                              logfileunit, timestamp, namelist_is_in_file, check_namelist_read
+                              logfileunit, timestamp, find_namelist_in_file, check_namelist_read
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    netcdf_file_type, init_diag_output, finalize_diag_output, & 
    aoutput_diagnostics, aread_state_restart, &
@@ -131,10 +131,9 @@ call system('rm -f go_advance_model go_end_filter go_assim_regions')
 call filter_initialize_modules_used()
 
 ! Read the namelist entry
-if(namelist_is_in_file("input.nml", "filter_nml", iunit)) then
-   read(iunit, nml = filter_nml, iostat = io)
-   call check_namelist_read(iunit, io, "filter_nml")
-endif
+call find_namelist_in_file("input.nml", "filter_nml", iunit)
+read(iunit, nml = filter_nml, iostat = io)
+call check_namelist_read(iunit, io, "filter_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')

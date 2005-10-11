@@ -26,8 +26,8 @@ module location_mod
 ! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
-use  utilities_mod, only : file_exist, open_file, close_file, &
-                           register_module, error_handler, E_ERR, E_MSG, logfileunit
+use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
+                           find_namelist_in_file, check_namelist_read
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -129,21 +129,10 @@ character(len=129) :: str1,str2
 call register_module(source, revision, revdate)
 module_initialized = .true.
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = location_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') str2
-      write(str1, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(str2))
-      call error_handler(E_ERR, 'location_mod:initialize_module:&location_nml problem', &
-                         str1, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "location_nml", iunit)
+read(iunit, nml = location_nml, iostat = io)
+call check_namelist_read(iunit, io, "location_nml")
 
 ! Write the namelist values to the log file
 

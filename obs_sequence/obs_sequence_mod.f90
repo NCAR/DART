@@ -31,7 +31,7 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              get_expected_obs_from_def, get_obs_kind
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=)
-use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
+use    utilities_mod, only : get_unit, close_file, find_namelist_in_file, check_namelist_read, &
                              register_module, error_handler, E_ERR, E_WARN, E_MSG, logfileunit
 use     obs_kind_mod, only : write_obs_kind, read_obs_kind
 
@@ -128,21 +128,10 @@ character(len=159) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = obs_sequence_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_obs_sequence:&obs_sequence_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "obs_sequence_nml", iunit)
+read(iunit, nml = obs_sequence_nml, iostat = io)
+call check_namelist_read(iunit, io, "obs_sequence_nml")
 
 call error_handler(E_MSG,'static_init_obs_sequence','obs_sequence_nml values are',' ',' ',' ')
 write(logfileunit,nml=obs_sequence_nml)

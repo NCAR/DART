@@ -15,8 +15,8 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
-                             register_module, error_handler, E_ERR, E_MSG, logfileunit
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
+                             find_namelist_in_file, check_namelist_read
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -88,17 +88,10 @@ integer  :: i, iunit, ierr, io
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = model_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'model_nml')
-   enddo
- 11 continue
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
 
 ! Model size is twice the number of state_vars
 model_size = 2 * num_state_vars

@@ -17,8 +17,8 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, close_file, &
-                             register_module, error_handler, E_ERR, E_MSG, logfileunit
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
+                             find_namelist_in_file, check_namelist_read
 
 implicit none
 private
@@ -84,21 +84,10 @@ character(len=129) :: err_string, nml_string
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')

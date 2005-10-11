@@ -12,9 +12,9 @@ module reg_factor_mod
 ! $Name$
 
 use     types_mod, only : r8
-use utilities_mod, only : get_unit, file_exist, open_file, &
-                          register_module, close_file, error_handler, E_ERR, &
-                          E_MSG, logfileunit
+use utilities_mod, only : get_unit, open_file, register_module, error_handler, E_ERR, &
+                          E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
+
 use time_manager_mod, only : time_type, write_time, get_time
 
 implicit none
@@ -93,21 +93,10 @@ if(.not. namelist_initialized) then
 
    namelist_initialized = .true.
 
-   ! Begin by reading the namelist input
-   if(file_exist('input.nml')) then
-      iunit = open_file('input.nml', action = 'read')
-      read(iunit, nml = reg_factor_nml, iostat = io)
-      if(io /= 0) then
-         ! A non-zero return means a bad entry was found for this namelist
-         ! Reread the line into a string and print out a fatal error message.
-         BACKSPACE iunit
-         read(iunit, '(A)') nml_string
-         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-         call error_handler(E_ERR, 'comp_reg_factor:&reg_factor_nml problem', &
-                            err_string, source, revision, revdate)
-      endif
-      call close_file(iunit)
-   endif
+   ! Read the namelist entry
+   call find_namelist_in_file("input.nml", "reg_factor_nml", iunit)
+   read(iunit, nml = reg_factor_nml, iostat = io)
+   call check_namelist_read(iunit, io, "reg_factor_nml")
 
    ! Record the namelist values used for the run ...
    call error_handler(E_MSG,'comp_reg_factor','reg_factor_nml values are',' ',' ',' ')

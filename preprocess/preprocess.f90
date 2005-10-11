@@ -25,8 +25,8 @@ program preprocess
 
 use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, logfileunit, close_file, &
-                             initialize_utilities, timestamp
+                             open_file, logfileunit, initialize_utilities, timestamp, &
+                             find_namelist_in_file, check_namelist_read
 
 implicit none
 
@@ -75,21 +75,10 @@ namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file, &
 call initialize_utilities('preprocess')
 call register_module(source, revision, revdate)
 
-! Read the preprocess_nml to get the preprocessor observation types to keep
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = preprocess_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'preprocess:&preprocess_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "preprocess_nml", iunit)
+read(iunit, nml = preprocess_nml, iostat = io)
+call check_namelist_read(iunit, io, "preprocess_nml")
 
 ! Output the namelist file information
 write(logfileunit, *) 'Path names of default obs_def and obs_kind modules'

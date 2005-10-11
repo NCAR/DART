@@ -13,8 +13,8 @@ module cov_cutoff_mod
 !
 
 use     types_mod, only : r8
-use utilities_mod, only : file_exist, open_file, close_file, &
-                          register_module, error_handler, E_ERR, E_MSG, logfileunit
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                          logfileunit, find_namelist_in_file, check_namelist_read
 
 implicit none
 private
@@ -83,21 +83,10 @@ if(.not. namelist_initialized) then
 
    namelist_initialized = .true.
 
-   ! Begin by reading the namelist input
-   if(file_exist('input.nml')) then
-      iunit = open_file('input.nml', action = 'read')
-      read(iunit, nml = cov_cutoff_nml, iostat = io)
-      if(io /= 0) then
-         ! A non-zero return means a bad entry was found for this namelist
-         ! Reread the line into a string and print out a fatal error message.
-         BACKSPACE iunit
-         read(iunit, '(A)') nml_string
-         write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-         call error_handler(E_ERR, 'comp_cov_factor:&cov_cutoff_nml problem', &
-                            err_string, source, revision, revdate)
-      endif
-      call close_file(iunit)
-   endif
+   ! Read the namelist entry
+   call find_namelist_in_file("input.nml", "cov_cutoff_nml", iunit)
+   read(iunit, nml = cov_cutoff_nml, iostat = io)
+   call check_namelist_read(iunit, io, "cov_cutoff_nml")
 
    call error_handler(E_MSG,'comp_cov_factor','cov_cutoff_nml values are',' ',' ',' ')
    write(logfileunit,nml=cov_cutoff_nml)
