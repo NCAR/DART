@@ -185,3 +185,5 @@
      time_units = 'days',
      output_interval = 1.00   /
 
+&atmosphere_nml 
+                             /
