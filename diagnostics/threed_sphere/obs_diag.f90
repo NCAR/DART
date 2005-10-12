@@ -122,10 +122,10 @@ real(r8), dimension(4) :: lonlim2 = (/ 360.0_r8, 360.0_r8, 360.0_r8, 295.0_r8 /)
 real(r8), dimension(4) :: latlim1 = (/ 110.0_r8,  10.0_r8,  70.0_r8, 115.0_r8 /)
 real(r8), dimension(4) :: latlim2 = (/ 170.0_r8,  70.0_r8, 110.0_r8, 145.0_r8 /)
 
-character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere', &
-                                                    'Southern Hemisphere', &
-                                                    'Tropics',             &
-                                                    'North America' /)
+character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
+                                                    'Southern Hemisphere ', &
+                                                    'Tropics             ', &
+                                                    'North America       ' /)
 
 namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
                        tot_days, iskip, plevel, hlevel, obs_select, Nregions, rat_cri, &
@@ -388,9 +388,9 @@ ObsFileLoop : do ifile=1, tot_days*4
 !-----------------------------------------------------------------------
 
    write(day_num, '(i2.2,''_'',i2.2,''/'')') obs_month, obs_day + (ifile-1) 
-   write(obs_seq_in_file_name,*)day_num//trim(adjustl(obs_sequence_name))
+   write(obs_seq_in_file_name,*)trim(adjustl(day_num))//trim(adjustl(obs_sequence_name))
 
-   if ( file_exist(obs_seq_in_file_name) ) then
+   if ( file_exist(trim(adjustl(obs_seq_in_file_name))) ) then
       write(msgstring,*)'opening ', trim(adjustl(obs_seq_in_file_name))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    else
@@ -402,6 +402,8 @@ ObsFileLoop : do ifile=1, tot_days*4
 
    ! Read in information about observation sequence so we can allocate
    ! observations. We need info about how many copies, qc values, etc.
+
+   obs_seq_in_file_name = trim(adjustl(obs_seq_in_file_name)) ! Lahey requirement
 
    call read_obs_seq_header(obs_seq_in_file_name, &
              num_copies, num_qc, num_obs, max_num_obs, &
