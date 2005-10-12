@@ -1128,40 +1128,19 @@ end subroutine get_state_meta_data
 
 
 
-subroutine model_interpolate(x, location, itype_in, obs_val, istatus)
+recursive subroutine model_interpolate(x, location, itype, obs_val, istatus)
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer,             intent(in) :: itype_in
+integer,             intent(in) :: itype
 real(r8),            intent(out):: obs_val
 integer,             intent(out):: istatus
 
-integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i, itype
+integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
-character(len = 129) :: msg_string
 
-! The itype_in variable uses types defined in the kinds module. The whole bgrid 
-! model_mod should be modified to use this correctly. However, as a fast patch
-! for the initial I-release, will just map the u, v, t, and ps kinds to the
-! default expectations of the bgrid which are hard coded as u=1, v=2, ps =3,
-! t = 4, and tracers for numbers larger than 4. For now, the tracer observations
-! are not implemented.
-if(itype_in == KIND_U_WIND_COMPONENT) then
-   itype = 1
-else if(itype_in == KIND_V_WIND_COMPONENT) then
-   itype = 2
-else if(itype_in == KIND_SURFACE_PRESSURE) then
-   itype = 3
-else if(itype_in == KIND_TEMPERATURE) then
-   itype = 4
-else
-   ! Error for higher or lower for now
-   write(msg_string, *) 'Only know how to do u, v, ps, t observations'
-   call error_handler(E_ERR, 'model_interpolate', msg_string, &
-      source, revision, revdate)
-endif 
 
 ! All interps okay for now
 istatus = 0
@@ -1185,7 +1164,7 @@ endif
    
 ! Depending on itype, get appropriate lon and lat grid specs
 ! Types temporarily defined as 1=u, 2=v, 3=ps, 4=t, n=tracer number n-4
-if(itype == 1 .or. itype == 2) then
+if(itype == KIND_U_WIND_COMPONENT .or. itype == KIND_V_WIND_COMPONENT) then
    num_lons = size(v_lons)
    num_lats = size(v_lats)
    bot_lon = v_lons(1)
@@ -1283,14 +1262,39 @@ real(r8) :: get_val
 real(r8), intent(in) :: x(:)
 integer, intent(in) :: lon_index, lat_index, level, itype
 
+character(len = 129) :: msg_string
+integer :: model_type
+
+! Need to change the obs kind defined itype to the appropriate model type
+! The itype_in variable uses types defined in the kinds module. The whole bgrid 
+! model_mod should be modified to use this correctly. However, as a fast patch
+! for the initial I-release, will just map the u, v, t, and ps kinds to the
+! default expectations of the bgrid which are hard coded as u=1, v=2, ps =3,
+! t = 4, and tracers for numbers larger than 4. For now, the tracer observations
+! are not implemented.
+if(itype == KIND_U_WIND_COMPONENT) then
+   model_type = 1
+else if(itype == KIND_V_WIND_COMPONENT) then
+   model_type = 2
+else if(itype == KIND_SURFACE_PRESSURE) then
+   model_type = 3
+else if(itype == KIND_TEMPERATURE) then
+   model_type = 4
+else
+   ! Error for higher or lower for now
+   write(msg_string, *) 'Only know how to do u, v, ps, t observations'
+   call error_handler(E_ERR, 'get_val', msg_string, &
+      source, revision, revdate)
+endif 
+
 ! Find the index into state array and return this value
-get_val = x(get_state_index(lon_index, lat_index, level, itype))
+get_val = x(get_state_index(lon_index, lat_index, level, model_type))
 
 end function get_val
 
 
 
-  function get_val_pressure(x, lon_index, lat_index, pressure, itype)
+  recursive function get_val_pressure(x, lon_index, lat_index, pressure, itype)
 !================================================================================
 ! function get_val_pressure(x, lon_index, lat_index, pressure, itype)
 !
@@ -1310,9 +1314,9 @@ real(r8) :: bot_val, top_val, ps_lon
 ! For t or tracers (on mass grid with ps) this is trivial
 ! For u or v (on velocity grid)
 
-if(itype >= 3) then
+if(itype == KIND_TEMPERATURE .or. itype == KIND_SURFACE_PRESSURE) then
 
-   ps = get_val(x, lon_index, lat_index, -1, 3)
+   ps = get_val(x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE)
 
 else
 
@@ -1324,7 +1328,7 @@ else
    ! The vertical is not important for this interpolation -- still --
    ! mark it as missing (-1.0) but give it some type information (2==pressure)
    ps_location = set_location(ps_lon, v_lats(lat_index), -1.0_r8, 2 )
-   call model_interpolate(x, ps_location, 3, ps(1,1), istatus)
+   call model_interpolate(x, ps_location, KIND_SURFACE_PRESSURE, ps(1,1), istatus)
 
 endif
 
