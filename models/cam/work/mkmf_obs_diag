@@ -9,5 +9,5 @@
 # $Source$
 # $Name$
 #
-../../mkmf/mkmf -p obs_diag -t ../../mkmf/mkmf.template -c"-Duse_netCDF" \
- -a "../.." path_names_obs_diag
+../../../mkmf/mkmf -p obs_diag -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_obs_diag
