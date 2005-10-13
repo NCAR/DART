@@ -134,11 +134,8 @@ install_wrfsi:
  
 #--------------------------------------------------------------------
 
- mkdir -p ${DATAROOT}
- cd ${DATAROOT}
-
- mkdir -p templates
- cd templates
+ mkdir -p ${DATAROOT}/templates
+ cd ${DATAROOT}/templates
 
 # mkdir -p ${TEMPLATES}
 # cd ${TEMPLATES}
