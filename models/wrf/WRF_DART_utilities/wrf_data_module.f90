@@ -12,7 +12,7 @@ MODULE wrf_data_module
 ! $Name$ 
 
 use     types_mod, only : r8
-use utilities_mod, only : error_handler, E_ERR, E_MSG
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 
 use netcdf
 
@@ -133,7 +133,17 @@ TYPE wrf_bdy_data
 
 end type
 
+logical, save :: module_initialized = .false.
+
 contains
+
+subroutine initialize_module
+
+  call register_module(source, revision, revdate)
+  module_initialized = .true.
+
+end subroutine initialize_module
+
 
 !**********************************************************************
 
@@ -150,6 +160,7 @@ logical            :: debug
 
 character (len=80) :: name
 
+if ( .not. module_initialized ) call initialize_module
 
 if(debug) write(6,*) 'Openning ',file_name
 call check ( nf90_open(file_name, mode, wrf%ncid) )
@@ -270,6 +281,7 @@ if( wrf%surf_obs ) then
    call check ( nf90_inq_varid(wrf%ncid, "Q2", wrf%q2_id))
    allocate(wrf%q2(wrf%we,wrf%sn))
 
+   allocate(wrf%ps(wrf%we,wrf%sn))
    istatus = nf90_inq_varid(wrf%ncid, "PSFC", wrf%ps_id)
    if(istatus /= nf90_noerr) then
       call error_handler(E_MSG,'PSFC', &
@@ -277,18 +289,21 @@ if( wrf%surf_obs ) then
       if(mode == NF90_WRITE) then
          call error_handler(E_MSG,'wrf_open_and_alloc', &
               'creates PSFC', source, revision, revdate)
+         call check(nf90_Inquire(wrf%ncid, nDimensions, nVariables, nAttributes, unlimitedDimID))
          call check(nf90_Redef(wrf%ncid))
          call check(nf90_def_var(wrf%ncid, name="PSFC", xtype=nf90_real, &
-              dimids= (/ wrf%we_id,  wrf%sn_id/), varid=wrf%ps_id) )
+              dimids= (/ wrf%we_id,  wrf%sn_id, unlimitedDimID/), varid=wrf%ps_id) )
          call check(nf90_enddef(wrf%ncid))
+         wrf%ps(:,:) = 0.0_r8
+         call check( nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /)))
       endif
    endif
-   allocate(wrf%ps(wrf%we,wrf%sn))
 
 endif
 
 if( wrf%h_diab ) then
 
+   allocate(wrf%hdiab(wrf%we,wrf%sn,wrf%bt))
    istatus = nf90_inq_varid(wrf%ncid, "H_DIABATIC", wrf%hdiab_id)
    if(istatus /= nf90_noerr) then
       call error_handler(E_MSG,'H_DIABATIC', &
@@ -307,9 +322,10 @@ if( wrf%h_diab ) then
          call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "units", ""))
          call check(nf90_put_att(wrf%ncid, wrf%hdiab_id, "stagger", ""))
          call check(nf90_enddef(wrf%ncid))
+         wrf%hdiab(:,:,:) = 0.0_r8
+         call check( nf90_put_var(wrf%ncid, wrf%hdiab_id, wrf%hdiab, start = (/ 1, 1, 1, 1 /)))
       endif
    endif
-   allocate(wrf%hdiab(wrf%we,wrf%sn,wrf%bt))
 
 endif
 
@@ -332,6 +348,8 @@ subroutine wrf_dealloc( wrf )
 implicit none
 
 type(wrf_data) :: wrf
+
+if ( .not. module_initialized ) call initialize_module
 
 deallocate(wrf%u)
 deallocate(wrf%v)
@@ -405,6 +423,8 @@ integer            :: mode
 logical            :: debug
 
 character (len=80) :: name
+
+if ( .not. module_initialized ) call initialize_module
 
 if (debug) write(6,*) '   in wrfbdy_open_and_alloc, file =', file_name
 
@@ -852,6 +872,8 @@ implicit none
 
 type(wrf_bdy_data) :: wrfbdy
 
+if ( .not. module_initialized ) call initialize_module
+
   !-- u on bdy
 deallocate( wrfbdy%uxs )
 deallocate( wrfbdy%uxe )
@@ -1044,6 +1066,8 @@ logical           :: debug
 integer :: k, ndims, lngth, dimids(5), istatus
 
 !----------------------------------------------------------------------
+
+if ( .not. module_initialized ) call initialize_module
 
 if(debug) then
 
@@ -1251,6 +1275,8 @@ logical            :: debug
 integer :: ndims, lngth, dimids(5)
 
 !----------------------------------------------------------------------
+
+if ( .not. module_initialized ) call initialize_module
 
 if(debug) then
 
@@ -1604,6 +1630,8 @@ character(len=19), intent(out) :: timestring
 character(len=4)  :: ch_year
 character(len=2)  :: ch_month, ch_day, ch_hour, ch_minute, ch_second
 
+if ( .not. module_initialized ) call initialize_module
+
 write(ch_year,'(i4)') year
 write(ch_month,'(i2)') month
 if (ch_month(1:1) == " ") ch_month(1:1) = "0"
@@ -1641,6 +1669,8 @@ implicit none
 
 integer,           intent(out) :: year, month, day, hour, minute, second
 character(len=19), intent(in)  :: tstring
+
+if ( .not. module_initialized ) call initialize_module
 
 read(tstring(1:4),'(i4)') year
 read(tstring(6:7),'(i2)') month
