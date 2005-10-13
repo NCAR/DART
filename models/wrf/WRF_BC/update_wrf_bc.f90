@@ -15,6 +15,8 @@ program update_wrf_bc
 ! program to update BC file from 3dvar or filter output.
 ! current version reads only wrf-netcdf file format.
 
+! Input files: wrfinput_d01, wrfbdy_d01, and wrfinput_mean (optional).
+
 use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, register_module, &
@@ -155,7 +157,7 @@ bdyname(2)='_BXE'
 bdyname(3)='_BYS'
 bdyname(4)='_BYE'
 
-!--boundary tendancy variables
+!--boundary tendency variables
 tenname(1)='_BTXS'
 tenname(2)='_BTXE'
 tenname(3)='_BTYS'
@@ -323,7 +325,7 @@ endif
       allocate(tend2d(dims(1), dims(2)))
 
 !-----Calculate variable at second time level
-!--------Get variable tendancy at first time level
+!--------Get variable tendency
       var_name='MU' // trim(tenname(m))
       call get_var_2d_real_cdf( wrf_bdy_file, trim(var_name), tend2d, &
            dims(1), dims(2), itime, debug )
@@ -335,12 +337,12 @@ endif
 
       scnd2d = tend2d*bdyfrq_old + frst2d
 
+!--------Get variable at second time level
 !      call get_var_2d_real_cdf( wrf_bdy_file, trim(var_name), scnd2d, &
 !                                dims(1), dims(2), 2, debug )
 
 
 
-!-----calculate variable at first time level
 !-----Add BC perturbation at second time level
       select case(m)
          case (1) ;		! West boundary
@@ -375,7 +377,7 @@ endif
             print *, 'It is impossible here. mu, m=', m
       end select
 
-!-----calculate new tendancy 
+!-----calculate new tendency 
 
       tend2d = (scnd2d - frst2d)/bdyfrq
 
@@ -392,7 +394,7 @@ endif
       var_name='MU' // trim(bdyname(m))
       call put_var_2d_real_cdf( wrf_bdy_file, trim(var_name), frst2d, &
                                 dims(1), dims(2), itime, debug )
-!-----output new tendancy 
+!-----output new tendency 
       var_name='MU' // trim(tenname(m))
       call put_var_2d_real_cdf( wrf_bdy_file, trim(var_name), tend2d, &
                                 dims(1), dims(2), itime, debug )
@@ -555,7 +557,7 @@ endif
          allocate(tend3d(dims(1), dims(2), dims(3)))
 
 !-----Calculate variable at second time level
-!--------Get variable tendancy at first time level
+!--------Get variable tendency
         var_name=trim(var3d(n)) // trim(tenname(m))
         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                   dims(1), dims(2), dims(3), itime, debug )
@@ -571,6 +573,7 @@ endif
 !         call get_var_3d_real_cdf( wrf_bdy_file, trim(var_name), scnd3d, &
 !                                   dims(1), dims(2), dims(3), 2, debug )
 
+!-----Add BC perturbation at second time level
          select case(trim(bdyname(m)))
             case ('_BXS') ;		! West boundary
                do l=1,dims(3)
@@ -620,7 +623,7 @@ endif
             scnd3d(:,:,:) = max(0.0_r8,scnd3d(:,:,:))
          endif
 
-!--------calculate new tendancy
+!--------calculate new tendency
 
          tend3d = (scnd3d - frst3d)/bdyfrq
 
@@ -638,7 +641,7 @@ endif
          call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), frst3d, &
                                    dims(1), dims(2), dims(3), itime, debug )
 
-!-----output new tendancy 
+!-----output new tendency 
          var_name=trim(var3d(n)) // trim(tenname(m))
          call put_var_3d_real_cdf( wrf_bdy_file, trim(var_name), tend3d, &
                                    dims(1), dims(2), dims(3), itime, debug )
