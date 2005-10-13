@@ -3,16 +3,19 @@
    month = 1,
    day = 1,
    tot_days = 1,
+   max_num = 700000,
+   ObsBase = '/project/dart/home/hliu/ncepobs/April05/temp_obs.'
    select_obs  = 0,
    ADPUPA = .true., 
    AIRCAR = .false., 
    AIRCFT = .false., 
+   SATEMP = .false., 
+   SFCSHP = .false., 
+   ADPSFC = .false., 
    SATWND = .false.,
    obs_U  = .true., 
    obs_V  = .false., 
    obs_T  = .false.,
    obs_PS = .false.,
-   obs_QV = .false.,
-   max_num = 700000,
-   ObsBase = '/project/dart/home/hliu/ncepobs/April05/temp_obs.'  /
+   obs_QV = .false.   /
 
