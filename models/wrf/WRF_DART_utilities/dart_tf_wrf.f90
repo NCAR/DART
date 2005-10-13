@@ -16,7 +16,7 @@ use time_manager_mod, only : time_type, write_time, read_time, get_date, set_dat
                              get_time, print_time, set_calendar_type, GREGORIAN, julian_day
 use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             finalize_utilities, register_module, logfileunit, timestamp
+                             register_module, logfileunit, timestamp
 use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date, &
                              get_wrf_date
 use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_restart, &
@@ -53,28 +53,27 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
 
 !-------------------------------------------------------------
 
-integer :: iunit, dart_unit
-logical :: dart_to_wrf
-
 type(wrf_dom) :: wrf
 
 real(r8), pointer :: dart(:)
 type(time_type)   :: dart_time(2)
-integer           :: number_dart_values, &
+integer           :: number_dart_values, ndays, &
                      year, month, day, hour, minute, second
-integer           :: ndays
 integer           :: ndims, idims(2), dimids(2)
 integer           :: i, ivtype
 character(len=80) :: varname
 character(len=19) :: timestring
 character(len=1)  :: idom
-
-!----
-!  misc stuff
+character(len=129) :: err_string, nml_string
 
 logical, parameter :: debug = .false.
-integer            :: mode, io, var_id, id
-character(len=129) :: err_string, nml_string
+integer            :: mode, io, var_id, id, iunit, dart_unit
+
+logical :: dart_to_wrf
+
+write(*,*) 'DART to WRF (.true./T) or WRF to DART (.false./F)?'
+
+read(*,*) dart_to_wrf
 
 call initialize_utilities('dart_tf_wrf')
 call register_module(source, revision, revdate)
@@ -105,17 +104,13 @@ write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar_type)
 
-write(*,*) 'DART to WRF (.true./T) or WRF to DART (.false./F)?'
-
-read(*,*) dart_to_wrf
-
 if ( dart_to_wrf ) then
    call error_handler(E_MSG,'dart_to_wrf', &
-       'Converting a dart state vector to a WRF netcdf restart file', &
+       'Converting a dart state vector to a WRF netcdf file', &
        source, revision, revdate)
 else
    call error_handler(E_MSG,'dart_to_wrf', &
-       'Converting a WRF netcdf restart file to a dart state vector', &
+       'Converting a WRF netcdf file to a dart state vector', &
        source, revision, revdate)
 endif
 
@@ -148,7 +143,7 @@ call dart_open_and_alloc( wrf, dart, number_dart_values, dart_unit, dart_to_wrf,
 if(debug) write(*,*) ' returned from dart_open_and_alloc '
 
 !----------------------------------------------------------------------
-!  get DART data or WRF data
+!  get DART or WRF data
 
 if(debug) write(*,*) ' state input '
 
@@ -192,7 +187,7 @@ if(debug) write(*,*) ' transfer complete '
 if(debug) write(*,*) ' state output '
 if( dart_to_wrf ) then
 
-   call get_date(dart_time(2), year, month, day, hour, minute, second)
+!!$   call get_date(dart_time(2), year, month, day, hour, minute, second)
    call set_wrf_date(timestring, year, month, day, hour, minute, second)
    ndays = julian_day(year, month, day)
 
@@ -219,8 +214,7 @@ else
    call get_wrf_date(timestring, year, month, day, hour, minute, second)
    dart_time(1) = set_date(year, month, day, hour, minute, second)
 
-   write(*,*) 'Time from wrfinput_d0x'
-   call print_time(dart_time(1))
+   call print_time(dart_time(1),str='Time from wrfinput_d0x:')
 
    if(file_exist('wrf.info')) then
       open(unit = iunit, file = 'wrf.info')
@@ -228,8 +222,7 @@ else
       close(iunit)
    endif
 
-   write(*,*) 'Time written to dart vector file:'
-   call print_time(dart_time(1))
+   call print_time(dart_time(1),str='Time written to dart vector file:')
 
    call awrite_state_restart(dart_time(1), dart, dart_unit)
 
@@ -249,8 +242,7 @@ deallocate(dart)
 write(logfileunit,*)'FINISHED dart_tf_wrf.'
 write(logfileunit,*)
 
-call timestamp(source,revision,revdate,'none')
-call finalize_utilities ! closes the log file.
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 contains
 

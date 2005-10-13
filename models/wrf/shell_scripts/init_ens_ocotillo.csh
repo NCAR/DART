@@ -171,42 +171,43 @@ while ( $ICYC <= $NCYCLE )
 # 1) Prepare global analysis.
 #---------------------------------------------------
 
-    echo "1) Prepare global analysis from ${GRIB_DATA}."
+   echo "1) Prepare global analysis from ${GRIB_DATA}."
 
-    set DATE = $START_DATE
-    (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir -p ${DAT_DIR_MEM}/${GRIB_DATA}" )
-    while ( $DATE <= $END_DATE )
+   set DATE = $START_DATE
+   (rsh -n node$inode "rm -rf ${DAT_DIR_MEM} >& /dev/null ; mkdir -p ${DAT_DIR_MEM}/${GRIB_DATA}" )
+   while ( $DATE <= $END_DATE )
 
-	set MM = `echo $DATE | cut -c5-6`
-	set DD = `echo $DATE | cut -c7-8`
-	set HH = `echo $DATE | cut -c9-10`
+      set MM = `echo $DATE | cut -c5-6`
+      set DD = `echo $DATE | cut -c7-8`
+      set HH = `echo $DATE | cut -c9-10`
 
       if ($GRIB_DATA == AVN) then
-	set YY = `echo $DATE | cut -c3-4`
-	set GRIB_FILE = fnl_${YY}${MM}${DD}_${HH}_00
+	 set YY = `echo $DATE | cut -c3-4`
+	 set GRIB_FILE = fnl_${YY}${MM}${DD}_${HH}_00
       else
-	set YY = `echo $DATE | cut -c1-4`
-	set GRIB_FILE = ${YY}${MM}${DD}${HH}.AWIP3D00.tm00
+	 set YY = `echo $DATE | cut -c1-4`
+	 set GRIB_FILE = ${YY}${MM}${DD}${HH}.AWIP3D00.tm00
       endif
 
-	if ( -e ${DATA_DIR}/$GRIB_FILE ) then
-	    echo "   File $GRIB_FILE exists in ${DATA_DIR}/"
-	else 
-      if ($GRIB_DATA == AVN) then
+      if ( -e ${DATA_DIR}/$GRIB_FILE ) then
+         echo "   File $GRIB_FILE exists in ${DATA_DIR}/"
+      else 
+         if ($GRIB_DATA == AVN) then
 	    echo "   Retrieving $GRIB_FILE to $DATA_DIR"
-#	    msrcp mss:/DSS/DS083.2/data/$GRIB_FILE $DATA_DIR/.
+#	     msrcp mss:/DSS/DS083.2/data/$GRIB_FILE $DATA_DIR/.
             rsh -n bay "rm -f /mmmtmp/${USER}/migs/$GRIB_FILE"
             rsh -n bay "msrcp mss:/DSS/DS083.2/data/$GRIB_FILE /mmmtmp/${USER}/migs/. ; rcp /mmmtmp/${USER}/migs/$GRIB_FILE ocotillo:$DATA_DIR/."
             rsh -n bay "rm -f /mmmtmp/${USER}/migs/$GRIB_FILE"
-	else 
+	 else 
 	    echo "Please put $GRIB_FILE to $DATA_DIR first."
             exit
-	endif
-	endif
-	set DATE=`advance_cymdh ${DATE} ${INTERVAL}`
+	 endif
+      endif
 
-    end 
-    echo ""
+      set DATE=`advance_cymdh ${DATE} ${INTERVAL}`
+
+   end
+   echo ""
 
 #------------------------------------------------------------
 # 2) First stage of preprocessing into WRF format (runs SI). 
