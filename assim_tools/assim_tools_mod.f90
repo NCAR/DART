@@ -97,7 +97,7 @@ subroutine assim_tools_init(dont_read_restart)
 
 logical, intent(in), optional :: dont_read_restart
 
-integer :: iunit, ierr, io, restart_unit, i, res_num_domains
+integer :: iunit, io, restart_unit, i, res_num_domains
 character(len=159) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
@@ -337,7 +337,7 @@ if(sort_obs_inc) then
    end do
 end if
 
-if(my_cov_inflate < 0.0) then
+if(my_cov_inflate < 0.0_r8) then
    net_a = a
 else
    net_a = a * sqrt(my_cov_inflate)
@@ -990,7 +990,7 @@ Observations : do jjj = 1, num_obs_in_set
       allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
       goto 222
    endif
-  
+   
    !!! These calls are useful for WRF but generate too much output for low-order models. 
    !!!write(msgstring, FMT='(a,i7,a,i7)') 'Variables updated for obs ',j,' : ',num_close_ptr(1)
    !!!call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
