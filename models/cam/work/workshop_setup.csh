@@ -79,11 +79,9 @@ csh mkmf_trans_date_to_dart
 make         || exit 10
 csh mkmf_trans_pv_sv
 make         || exit 11
-csh mkmf_trans_pv_sv_pert0
-make         || exit 12
 csh mkmf_trans_pv_sv_time0
-make         || exit 13
+make         || exit 12
 csh mkmf_trans_sv_pv
-make         || exit 14 
+make         || exit 13 
 csh mkmf_trans_time
-make         || exit 15
+make         || exit 14
