@@ -1347,7 +1347,7 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
 
 integer         :: i
 integer         :: secs, days, ncid
-real(digits12)  :: realtime          ! same as "statetime", different base
+
 character(len=129) :: msgstring
 
 timeindex = -1  ! assume bad things are going to happen
@@ -1387,9 +1387,6 @@ endif
 
 ! convert statetime to time base of "days since ..."
 call get_time(statetime, secs, days)
-realtime = days + secs/(60*60*24.0_digits12) ! netCDF timebase ... what about calendar?!
-                                             ! does get_time handle that?
-
 
 if (ncFileID%Ntimes < 1) then          ! First attempt at writing a state ...
 
