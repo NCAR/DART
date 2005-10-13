@@ -85,9 +85,7 @@ contains
    character(len=*), intent(in), optional :: progname
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
-   logical :: lfile
 
-   character(len=129) :: err_string, nml_string
    character(len= 8) :: cdate
    character(len=10) :: ctime
    character(len= 5) :: zone

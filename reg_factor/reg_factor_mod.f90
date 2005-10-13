@@ -81,7 +81,6 @@ real(r8), intent(in) :: regress(num_groups)
 real(r8) :: comp_reg_factor
 
 real(r8) :: sum_reg2, sum_reg_reg
-character(len=129) :: err_string, nml_string
 
 integer :: i, j, ii, jj, iunit, io, secs, days
 

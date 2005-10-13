@@ -42,8 +42,7 @@ character(len = 256) :: line, test, kind_string(max_kinds), &
                         raw_kind_item(max_kinds), t_string
 integer              :: iunit, ierr, io, i, j, k, l_kind_string
 integer              :: num_kinds_found
-character(len = 169) :: err_string, nml_string
-character(len = 14)  :: item_string
+character(len = 169) :: err_string
 
 ! List of the DART PREPROCESS strings
 character(len = 29) :: preprocess_string(7) = (/'USE FOR OBS_KIND_MOD         ', &

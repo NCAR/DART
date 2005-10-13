@@ -124,7 +124,6 @@ subroutine static_init_obs_sequence
 ! Read the namelist input
 
 integer :: iunit, io
-character(len=159) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 
@@ -1010,8 +1009,7 @@ integer,                 intent(in)  :: add_copies, add_qc, add_obs
 type(obs_sequence_type), intent(out) :: seq
 
 integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id
-character(len = 16) label(2)
-character(len =12) header
+character(len = 16) :: label(2)
 logical :: pre_I_format
 character(len = 129) :: read_format
 

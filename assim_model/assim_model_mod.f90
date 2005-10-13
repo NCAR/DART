@@ -139,7 +139,6 @@ end subroutine init_assim_model
 implicit none
 
 integer :: iunit, io
-character(len=129) :: err_string, nml_string
 
 ! First thing to do is echo info to logfile ... 
 
@@ -939,8 +938,8 @@ function open_restart_read(file_name)
 character(len = *), intent(in) :: file_name
 integer :: open_restart_read
 
-integer :: ios, ios_out, i
-character(len=129) :: errstring, my_format
+integer :: ios, ios_out
+character(len=129) :: errstring
 type(time_type) :: temp_time
 
 

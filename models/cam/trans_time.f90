@@ -39,7 +39,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 integer :: ntimes = 2, n, nhtfrq, calendar_type = GREGORIAN
-integer :: file_unit(2), seconds, days, year, month, day, hour, minute, second, &
+integer :: file_unit(2), year, month, day, hour, minute, second, &
            cam_date, cam_tod
 type(time_type)       :: dart_time(2), forecast_length
 character (len = 128) :: file_name = 'temp_ic', file_out = 'times'

@@ -36,7 +36,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 integer               :: calendar_type = GREGORIAN
-integer               :: file_unit, seconds, days, &
+integer               :: file_unit, seconds, &
                          year, month, day, hour, minute, second, &
                          cam_date, cam_tod
 type(time_type)       :: dart_time

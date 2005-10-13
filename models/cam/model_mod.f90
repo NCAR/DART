@@ -280,7 +280,7 @@ character(len = *), intent(in) :: file_name
 integer, intent(out) :: num_lons, num_lats, num_levs
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
-integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
+integer :: londimid, levdimid, latdimid, ncfileid
 
 write(*, *) 'file_name in read_cam_init_size is ', trim(file_name)
 
@@ -320,11 +320,10 @@ character(len = *), intent(in) :: file_name
 type(model_type), intent(out) :: var
 
 ! Local workspace
-integer :: i, j, k, n, m, ifld  ! grid and constituent indices
-integer :: plon, plat, plev, num_coord, coord_order
+integer :: i, k, n, m, ifld  ! grid and constituent indices
+integer :: num_coord, coord_order
 
-character (len=NF90_MAX_NAME) :: clon,clat,clev
-integer :: londimid, levdimid, latdimid, ncfileid, ncfldid
+integer :: ncfileid, ncfldid
 integer :: coord_3d(3), coord_2d(2)
 real(r8), allocatable :: temp_3d(:,:,:)
 
@@ -548,7 +547,7 @@ end subroutine nc_read_model_atts
 
 !----------------------------------------------------------------------
 ! Local workspace
-integer :: i,ifld             ! grid indices
+integer :: i             ! grid indices
 integer :: ncfileid, ncfldid, idim
 
 !----------------------------------------------------------------------
@@ -673,7 +672,8 @@ end subroutine plevs_cam
 type(model_type), intent(in) :: var
 real(r8), intent(out) :: x(:)
 
-integer :: i, j, k, nf, nt, indx, coord_3d(3), coord_2d(2), coord_order
+integer :: i, j, k, nf, indx
+!integer :: coord_3d(3), coord_2d(2), coord_order
 character(len=129) :: errstring
 
 ! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
@@ -740,7 +740,7 @@ end subroutine prog_var_to_vector
 real(r8), intent(in) :: x(:)
 type(model_type), intent(out) :: var
 
-integer :: i, j, k, nf, nt, n0, indx
+integer :: i, j, k, nf, indx
 character(len=129) :: errstring
 
 ! Start copying fields from straight vector
@@ -907,8 +907,7 @@ end function get_model_size
 ! be done once. For now, does this by reading info from a fixed
 ! name netcdf file. 
 
-integer :: i, j, iunit, io
-character(len=129) :: err_string, nml_string
+integer :: iunit, io
 ! calendar types listed in time_manager_mod.f90
 integer :: calendar_type = GREGORIAN
 
@@ -1132,7 +1131,7 @@ type(location_type), intent(in) :: location
 integer,             intent(in) :: type
 integer,            intent(out) :: istatus
 
-integer :: lon_below, lon_above, lat_below, lat_above, i, vstatus, which_vert
+integer :: lon_below, lon_above, lat_below, lat_above, i, vstatus
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
@@ -1264,9 +1263,8 @@ integer, intent(in) :: lon_index, lat_index, obs_kind
 integer, intent(out) :: istatus
 
 real(r8) :: ps(1), pfull(1, num_levs), fraction
-type(location_type) :: ps_location
-integer :: top_lev, bot_lev, i, k, vstatus
-real(r8) :: bot_val, top_val, ps_lon
+integer  :: top_lev, bot_lev, i, vstatus
+real(r8) :: bot_val, top_val
 
 ! No errors to start with
 istatus = 0
@@ -1471,10 +1469,11 @@ real(r8),            intent(out) :: dist(:)
 real(r8),            intent(in)  :: x(:)
 
 type(location_type) :: s_loc
-real(r8) :: loc_array(3), o_lon, o_lat, sloc_array(3), ps(1)
+real(r8) :: loc_array(3), sloc_array(3), ps(1)
 real(r8) :: pfull(1, num_levs), m_press, t_dist
-integer  :: num, max_size, i, j, num1
-integer  :: hsize, num_per_col, col_base_index, istatus, which_vert
+integer  :: num, max_size, i, j
+integer  :: hsize, num_per_col, col_base_index, which_vert
+!integer  :: istatus
 integer,  allocatable :: lon_ind(:), lat_ind(:)
 real(r8), allocatable :: close_dist(:)
 character(len=129)    :: errstring
@@ -1600,12 +1599,11 @@ integer,             intent(inout) :: num
 integer,             intent(inout) :: close_lon_ind(:), close_lat_ind(:)
 real(r8),            intent(out)   :: close_dist(:)
 
-real(r8) :: glat, glon, loc_array(3), o_lon, o_lat, o_lev
-real(r8) :: gdist, diff, row_dist(nlon)
-integer  :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
+real(r8) :: glat, loc_array(3), o_lon, o_lat
+real(r8) :: row_dist(nlon)
+integer  :: blat_ind, blon_ind, lat_ind
 integer  :: row_lon_ind(nlon), row_num
 real(r8), parameter :: glev = 1.0_r8
-type(location_type) :: loc
 
 ! Get the lat and lon from the loc
 loc_array = get_location(o_loc)
@@ -1784,7 +1782,7 @@ character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1,str2
+character(len=NF90_MAX_NAME) :: str1
 
 ierr = 0     ! assume normal termination
 
@@ -2204,7 +2202,7 @@ real(r8), intent(in) :: o_lon, lons(nlon)
 integer :: get_closest_lon_index
 
 real(r8) :: diff, lon_bot, lon_top, lon_int
-integer :: lower_ind, blon_ind
+integer :: lower_ind
 
 ! Find closest longitude on grid to given longitude
 lon_bot = lons(1)
@@ -2294,7 +2292,7 @@ do while (state_names_pert(ipert) /= '        ')
            
          if (m <= state_num_2d + state_num_1d + state_num_0d) then
             field_num = m - state_num_1d - state_num_0d
-            WRITE(*,'(A,1p2E12.4)') '    first and last state = ', &
+            WRITE(*,'(A,1p,2E12.4)') '    first and last state = ', &
                    var_temp%vars_2d(1,1,field_num),var_temp%vars_2d(num_lons,num_lats,field_num)
             do j = 1, num_lats
             do i = 1, num_lons
@@ -2303,7 +2301,7 @@ do while (state_names_pert(ipert) /= '        ')
                var_temp%vars_2d(i,j,field_num) = pert_val
             end do
             end do
-            WRITE(*,'(A,1p2E12.4)') ' new first and last state = ', &
+            WRITE(*,'(A,1p,2E12.4)') ' new first and last state = ', &
                    var_temp%vars_2d(1,1,field_num),var_temp%vars_2d(num_lons,num_lats,field_num)
          else  
             field_num = m - state_num_2d - state_num_1d - state_num_0d
@@ -2422,9 +2420,9 @@ end subroutine order_state_fields
 
 ! use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
 
-integer :: i, nfld
 integer, intent(out) :: obs_loc_in_sv(:)
-character (len = 129) :: errstring
+
+integer :: i
 
 ! 2D fields
 obs_loc_in_sv(KIND_SURFACE_PRESSURE) = TYPE_PS

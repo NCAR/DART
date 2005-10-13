@@ -27,7 +27,7 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 integer, allocatable :: levels(:)
-integer  :: level, num_cols, num_levs, i, j, iunit
+integer  :: level, num_cols, num_levs, i, iunit
 real(r8) :: lat, lon, t_err_var, uv_err_var, ps_err_var, q_err_var
 type(random_seq_type) :: r
 

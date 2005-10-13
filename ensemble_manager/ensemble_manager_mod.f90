@@ -89,8 +89,8 @@ integer, intent(in)                         :: ens_size_in, model_size_in
 character(len = 129), intent(in), optional  :: file_name
 type(time_type), intent(in), optional       :: init_time
 
-integer :: iunit, i, ierr, io, seq_unit
-character(len = 129) :: msgstring, this_file_name, nml_string
+integer :: iunit, i, io, seq_unit
+character(len = 129) :: msgstring, this_file_name
 character(len = 4) :: extension
 
 ! Initialize the module with utilities 

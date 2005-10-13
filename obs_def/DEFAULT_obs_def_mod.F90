@@ -77,9 +77,6 @@ contains
 
 subroutine initialize_module
 
-integer :: iunit, ierr, io, i, j
-character(len = 169) :: err_string
-
 call register_module(source, revision, revdate)
 module_initialized = .true.
 
@@ -488,8 +485,6 @@ subroutine interactive_obs_def(obs_def, key)
 
 type(obs_def_type), intent(inout) :: obs_def
 integer,               intent(in) :: key
-
-integer :: i
 
 if ( .not. module_initialized ) call initialize_module
 

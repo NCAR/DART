@@ -856,7 +856,7 @@ type(obs_sequence_type), intent(inout) :: seq
 logical, intent(in) :: my_state(model_size)
 real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 
-character(len=129) :: msgstring
+!!!character(len=129) :: msgstring
 integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
 integer :: grp_beg(num_groups), grp_end(num_groups)
 integer :: num_close_ptr(1), indx

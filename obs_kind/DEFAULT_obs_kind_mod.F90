@@ -121,7 +121,7 @@ contains
   subroutine initialize_module
 
 integer :: iunit, io, i, j
-character(len = 169) :: err_string, nml_string
+character(len = 169) :: err_string
 
 call register_module(source, revision, revdate)
 module_initialized = .true.

@@ -73,7 +73,6 @@ integer, optional    :: localization_override
 real(r8)           :: z, r
 integer            :: iunit, io
 integer            :: localization_type
-character(len=159) :: err_string, nml_string
 
 !--------------------------------------------------------
 ! Initialize namelist if not already done

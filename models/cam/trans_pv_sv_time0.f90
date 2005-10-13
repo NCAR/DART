@@ -53,7 +53,7 @@ character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ud'
 ! Temporary allocatable storage to read in a native format for cam state
 type(assim_model_type) :: x
 type(model_type)       :: var
-type(time_type)        :: model_time, adv_to_time
+type(time_type)        :: model_time
 real(r8), allocatable  :: x_state(:), x_temp(:)
 integer                :: file_unit, x_size, iunit, io
 
@@ -62,7 +62,6 @@ integer                :: file_unit, x_size, iunit, io
 logical :: start_from_restart = .false., output_restart = .false.
 integer :: async = 0
 integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1
-character(len = 129) :: err_string, nml_string
 character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
