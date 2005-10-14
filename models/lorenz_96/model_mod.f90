@@ -74,7 +74,6 @@ subroutine static_init_model()
 
 real(r8) :: x_loc
 integer  :: i, iunit, io
-character(len = 159) :: err_string, nml_string
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
