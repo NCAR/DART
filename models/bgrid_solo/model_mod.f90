@@ -1308,7 +1308,7 @@ integer, intent(out) :: istatus
 
 type(location_type) :: ps_location
 real(r8) :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), rfrac
-integer  :: top_lev, bot_lev, i, istatus
+integer  :: top_lev, bot_lev, i
 real(r8) :: bot_val, top_val, ps_lon
 
 ! Need to get the surface pressure at this point.
@@ -2258,6 +2258,8 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
+! Some compilers require an assignment to intent(out) arguments
+pert_state = 0.0
 interf_provided = .false.
 
 end subroutine pert_model_state
