@@ -1232,10 +1232,10 @@ if(vert_is_level(location)) then
 
 else
 ! Case of pressure specified in vertical
-   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, itype)
-   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, itype)
-   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, itype)
-   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, itype)
+   val(1, 1) =  get_val_pressure(x, lon_below, lat_below, pressure, itype, istatus)
+   val(1, 2) =  get_val_pressure(x, lon_below, lat_above, pressure, itype, istatus)
+   val(2, 1) =  get_val_pressure(x, lon_above, lat_below, pressure, itype, istatus)
+   val(2, 2) =  get_val_pressure(x, lon_above, lat_above, pressure, itype, istatus)
 endif
 
 ! Do the weighted average for interpolation
@@ -1294,9 +1294,9 @@ end function get_val
 
 
 
-  recursive function get_val_pressure(x, lon_index, lat_index, pressure, itype)
+  recursive function get_val_pressure(x, lon_index, lat_index, pressure, itype, istatus)
 !================================================================================
-! function get_val_pressure(x, lon_index, lat_index, pressure, itype)
+! function get_val_pressure(x, lon_index, lat_index, pressure, itype, istatus)
 !
 ! Gets the vertically interpolated value on pressure for variable type
 ! at lon_index, lat_index horizontal grid point
@@ -1304,6 +1304,7 @@ end function get_val
 real(r8) :: get_val_pressure
 real(r8), intent(in) :: x(:), pressure
 integer,  intent(in) :: lon_index, lat_index, itype
+integer, intent(out) :: istatus
 
 type(location_type) :: ps_location
 real(r8) :: ps(1, 1), pfull(1, 1, Dynam%Vgrid%nlev), rfrac
@@ -1349,12 +1350,15 @@ if(pressure < pfull(1, 1, 1)) then
    top_lev = 1
    bot_lev = 2
    rfrac = 1.0_r8
+   ! Actually, just fail using istatus
+   istatus = 1
 else if(pressure > pfull(1, 1, Dynam%Vgrid%nlev)) then
 ! Same for bottom
    bot_lev = Dynam%Vgrid%nlev
    top_lev = bot_lev - 1
    rfrac = 0.0_r8
-
+   ! Actually, just fail using istatus
+   istatus = 1
 else
 
 ! Search down through pressures
