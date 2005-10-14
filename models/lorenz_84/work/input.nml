@@ -100,7 +100,6 @@
    obs_day    = 1,
    tot_days   = 1,
    iskip      = 0,
-   level      = 1013,
    obs_select = 1,
    rat_cri    = 300.0,
    qc_threshold = 4.0,
