@@ -76,8 +76,8 @@ do i = 1, num_cols
 
    ! Do ps ob
    write(iunit, *) 0
-   ! Kind for surface pressure is 3
-   write(iunit, *) 3
+   ! Kind for surface pressure
+   write(iunit, *) 'RADIOSONDE_SURFACE_PRESSURE'
    write(iunit, *) 1
    ! Level is -1 for ps
    write(iunit, *) -1
@@ -91,8 +91,8 @@ do i = 1, num_cols
 
       write(iunit, *) 0
       ! Write out the t observation
-      ! Kind for t is 4
-      write(iunit, *) 4
+      ! Kind for t
+      write(iunit, *) 'RADIOSONDE_TEMPERATURE'
       write(iunit, *) 1
       write(iunit, *) level
       write(iunit, *) lon
@@ -102,8 +102,8 @@ do i = 1, num_cols
 
       write(iunit, *) 0
       ! Write out the u observation
-      ! Kind for u is 1
-      write(iunit, *) 1
+      ! Kind for u is 
+      write(iunit, *) 'RADIOSONDE_U_WIND_COMPONENT'
       write(iunit, *) 1
       write(iunit, *) level
       write(iunit, *) lon
@@ -113,8 +113,8 @@ do i = 1, num_cols
 
       write(iunit, *) 0
       ! Write out the v observation
-      ! Kind for v is 2
-      write(iunit, *) 2
+      ! Kind for v is 
+      write(iunit, *) 'RADIOSONDE_V_WIND_COMPONENT'
       write(iunit, *) 1
       write(iunit, *) level
       write(iunit, *) lon

@@ -96,7 +96,7 @@ do i = 1, num_cols
    if(lat >  90.0_r8) lat =  90.0_r8
 
    ! Do ps ob
-   write(iunit, *) 3
+   write(iunit, *) 'RADIOSONDE_SURFACE_PRESSURE'
    ! MOdel level of -1 for ps
    write(iunit, *) 1
    write(iunit, *) -1
@@ -109,8 +109,8 @@ do i = 1, num_cols
    do level = 1, num_levs
 
       write(iunit, *) 0
-      ! Kind for t is 4
-      write(iunit, *) 4
+      ! Kind for t is 
+      write(iunit, *) 'RADIOSONDE_TEMPERATURE'
       ! On pressure level
       write(iunit, *) 2
       write(iunit, *) pressure(level) 
@@ -121,8 +121,8 @@ do i = 1, num_cols
 
       write(iunit, *) 0
       ! Write out the u observation
-      ! Kind for u is 1
-      write(iunit, *) 1
+      ! Kind for u is
+      write(iunit, *) 'RADIOSONDE_U_WIND_COMPONENT'
       write(iunit, *) 2
       write(iunit, *) pressure(level)
       write(iunit, *) lon
@@ -132,8 +132,8 @@ do i = 1, num_cols
 
       write(iunit, *) 0
       ! Write out the v observation
-      ! Kind for v is 2
-      write(iunit, *) 2
+      ! Kind for v is 
+      write(iunit, *) 'RADIOSONDE_V_WIND_COMPONENT'
       write(iunit, *) 2
       write(iunit, *) pressure(level)
       write(iunit, *) lon

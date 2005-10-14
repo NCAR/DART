@@ -23,7 +23,7 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-integer  :: num_sets, level, obs_kind, num, num_done, iunit
+integer  :: num_sets, level, num, num_done, iunit
 real(r8) :: err_var, bot_lat, top_lat, bot_lon, top_lon
 type(random_seq_type) :: r
 
@@ -33,7 +33,6 @@ call init_random_seq(r)
 ! Set up constants
 num_sets =  1
 level    = -1
-obs_kind =  3
 
 ! Open an output file and write header info
 iunit = get_unit()
@@ -65,16 +64,13 @@ write(iunit, *) num
 write(iunit, *) 0
 write(iunit, *) 0
 
-! The radar question percolates through, want no radars
-!!!write(iunit, *) 0
-
 num_done = 0
 do while(num_done < num)
    ! There are more obs
    write(iunit, *) 0
 
    ! Kind is ps
-   write(iunit, *) obs_kind
+   write(iunit, *) 'RADIOSONDE_SURFACE_PRESSURE'
 
    ! Put this on model level -1
    write(iunit, *) 1
