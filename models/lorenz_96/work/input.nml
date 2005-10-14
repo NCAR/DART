@@ -33,6 +33,10 @@
    output_interval = 1,
    num_groups = 1,
    outlier_threshold = -1.00 /
+
+Remember that namelists must be listed even if only defaults are to be used
+&integrate_model_nml
+                       /
    
 
 &ensemble_manager_nml
