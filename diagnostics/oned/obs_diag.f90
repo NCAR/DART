@@ -16,23 +16,28 @@ program obs_diag
 ! regions and accumulates statistics for these epochs and regions.
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r8
+use        types_mod, only : r8, digits12
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
                              get_obs_time_range, get_time_range_keys, get_num_obs, &
                              get_next_obs, get_num_times, get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
-                             get_qc, destroy_obs_sequence, get_last_obs, get_num_qc
+                             get_qc, destroy_obs_sequence, get_last_obs, get_num_qc, &
+                             read_obs_seq_header, destroy_obs
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location, get_obs_kind
+                             get_obs_def_location, get_obs_kind, get_obs_name
+use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=)
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
-                             operator(*), &
-                             operator(+), operator(-), operator(/=), operator(>)
+                             print_date, &
+                             operator(*), operator(+), operator(-), &
+                             operator(>), operator(<), &
+                             operator(/=), operator(<=)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
-                             initialize_utilities, logfileunit, timestamp
+                             initialize_utilities, logfileunit, timestamp, &
+                             find_namelist_in_file, check_namelist_read
 
 implicit none
 
@@ -44,30 +49,35 @@ revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 type(obs_type)          :: observation, next_obs
+type(obs_type)          :: obs1, obsN
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc
-type(time_type)         :: first_time, last_time, this_time
+
 
 !---------------------
-integer :: obsindex, i, j, iunit, io
-integer :: num_obs_in_set, obs_used_in_set, obs_used = 0
-character(len=129) :: err_string, nml_string
+integer :: obsindex, i, j, iunit, io, ivarcount
+character(len=129) :: obs_seq_in_file_name
 
 ! Storage with fixed size for observation space diagnostics
-real(r8) :: prior_mean(1), posterior_mean(1)
-real(r8) :: prior_spread(1), posterior_spread(1)
+real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_spread
 real(r8) :: pr_mean, po_mean ! same as above, without useless dimension 
 real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
 
 integer :: obs_index, prior_mean_index, posterior_mean_index
 integer :: prior_spread_index, posterior_spread_index
 integer :: key_bounds(2), flavor
+integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
+character(len=129) :: obs_seq_read_format
+logical :: pre_I_format
 
-real(r8), allocatable :: obs_err_var(:), obs(:), qc(:)
+real(r8), dimension(1) :: obs, qc
+real(r8) :: obs_err_var
+
 integer,  allocatable :: keys(:)
 
-logical :: out_of_range, is_there_one, keeper
-logical :: is_this_last = .false.
+logical :: out_of_range, is_there_one, is_this_last, keeper
+
+integer, parameter :: MaxRegions = 4 
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
@@ -78,66 +88,69 @@ integer :: obs_month  = 1
 integer :: obs_day    = 1
 integer :: tot_days   = 1        ! total days
 integer :: iskip      = 0        ! skip the first 'iskip' days
-integer :: level      = 1013     ! artificial level for plotting ease.
 integer :: obs_select = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 real(r8):: rat_cri    = 3.0      ! QC ratio
 real(r8):: qc_threshold = 4.0    ! maximum NCEP QC factor
-integer :: bin_separation = 3600 ! Bins every so often seconds
 integer :: bin_width = 0         ! width of the bin seconds
+logical :: verbose = .false.
 
-namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
-                       tot_days, iskip, level, obs_select, rat_cri, &
-                       qc_threshold, bin_separation, bin_width
-
-!-----------------------------------------------------------------------
-! Spatial
-! Each observation kind gets its own mean, spread, for Guess/Analysis
-!-----------------------------------------------------------------------
 ! index 1 == region 1 == [0.0, 1.0) i.e. Entire domain
 ! index 2 == region 2 == [0.0, 0.5)
 ! index 3 == region 3 == [0.5, 1.0)
 
-integer, parameter :: Nregions = 3 
+real(r8), dimension(MaxRegions) :: lonlim1 = (/ 0.0_r8, 0.0_r8, 0.5_r8, -1.0_r8 /)
+real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8, -1.0_r8 /)
 
-real(r8) :: lonlim1(Nregions), lonlim2(Nregions)
+character(len=6), dimension(MaxRegions) :: reg_names = &
+                                   (/ 'whole ','ying  ','yang  ','bogus '/)
 
-data lonlim1 / 0.0_r8, 0.0_r8, 0.5_r8 /
-data lonlim2 / 1.0_r8, 0.5_r8, 1.0_r8 /
-
-integer  :: iregion, iepoch
-real(r8) :: rlocation
-
-character(len=3), parameter :: varnames = 'raw'
-character(len=6), dimension(Nregions), parameter :: Regions = &
-   (/ 'whole ','ying  ','yang  ' /)
+namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
+                       tot_days, iskip, obs_select, rat_cri, &
+                       qc_threshold, bin_width, &
+                       lonlim1, lonlim2, reg_names, verbose
 
 !-----------------------------------------------------------------------
-! Spatio-Temporal Variables
-! Dimension 1 is temporal, actually - these are time-by-region- 
+! Variables used to accumulate the statistics.
+! Dimension 1 is temporal, actually - these are time-by-region-by-var
 !-----------------------------------------------------------------------
 
-real(r8), allocatable, dimension(:,:) :: rms_ges_mean, rms_ges_spread, &
-                                         rms_anl_mean, rms_anl_spread
-integer,  allocatable, dimension(:,:) :: num_in_region, num_rejected
+integer,  allocatable, dimension(:,:,:) :: num_in_level
 
-real(r8),        allocatable, dimension(:) :: epoch_center
+! statistics by time, for a particular level:  time-region-variable
+real(r8), allocatable, dimension(:,:,:) :: rms_ges_mean   ! prior mean - obs
+real(r8), allocatable, dimension(:,:,:) :: rms_ges_spread ! prior spread     
+real(r8), allocatable, dimension(:,:,:) :: rms_anl_mean   ! posterior mean - obs
+real(r8), allocatable, dimension(:,:,:) :: rms_anl_spread ! posterior spread
+
 type(time_type), allocatable, dimension(:) :: bincenter
+real(digits12),  allocatable, dimension(:) :: epoch_center
+integer,         allocatable, dimension(:) :: obs_used_in_epoch
 
 !-----------------------------------------------------------------------
 ! General purpose variables
 !-----------------------------------------------------------------------
 
 integer  :: seconds, days
-integer  :: Nepochs, num_copies, num_qc
+integer  :: Nepochs
 integer  :: gesUnit, anlUnit
+
+! These pairs of variables are used when we diagnose which observations 
+! are far from the background.
+integer  :: nsigma(0:100) = 0
+integer  :: nsigmaUnit
 
 real(r8) :: ratio
 
-type(time_type) :: beg_time, end_time
-type(time_type) :: binsep, halfbinwidth 
+type(time_type) :: beg_time, end_time  ! of the particular bin
+type(time_type) :: seqT1, seqTN        ! first,last time in entire observation sequence
+type(time_type) :: binsep, binwidth, halfbinwidth 
+type(time_type) :: obs_time, skip_time
 
 character(len = 129) :: gesName, anlName, msgstring
 
+integer  :: num_obs_in_epoch 
+integer  :: Nregions, iregion, iepoch, ivar
+real(r8) :: rlocation
 !-----------------------------------------------------------------------
 ! Some variables to keep track of who's rejected why ...
 !-----------------------------------------------------------------------
@@ -146,132 +159,209 @@ integer :: NwrongType = 0   ! namelist discrimination
 integer :: NbadQC     = 0   ! out-of-range QC values
 integer :: NbadLevel  = 0   ! out-of-range pressures
 
-!-----------------------------------------------------------------------
+! track rejection by time-region-variable
+integer, allocatable, dimension(:,:,:) :: Nrejected
+
+!=======================================================================
+! Get the party started
+!=======================================================================
 
 call initialize_utilities('obs_diag')
 call register_module(source,revision,revdate) 
+call static_init_obs_sequence()
 
-! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = obsdiag_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'obs_diag:&obsdiag_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+prior_mean(1)       = 0.0_r8
+prior_spread(1)     = 0.0_r8
+posterior_mean(1)   = 0.0_r8
+posterior_spread(1) = 0.0_r8
+
+!----------------------------------------------------------------------
+! Read the namelist
+!----------------------------------------------------------------------
+
+call find_namelist_in_file("input.nml", "obsdiag_nml", iunit)
+read(iunit, nml = obsdiag_nml, iostat = io)
+call check_namelist_read(iunit, io, "obsdiag_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'obs_diag','obsdiag_nml values are',' ',' ',' ')
 write(logfileunit, nml=obsdiag_nml)
 write(     *     , nml=obsdiag_nml)
 
-! Initialize the obs sequence module.
-! Read in with enough space for diagnostic output values.
+!----------------------------------------------------------------------
+! Now that we have input, do some checking and setup
+!----------------------------------------------------------------------
 
-call static_init_obs_sequence()
-call read_obs_seq(obs_sequence_name, 0, 0, 0, seq)
-num_copies = get_num_copies(seq)
-num_qc     = get_num_qc(seq)
+! Determine the number of regions from namelist input
+Nregions = 0
+FindNumRegions : do iregion = 1,MaxRegions
 
-call init_obs(observation, num_copies, num_qc)
-call init_obs(   next_obs, num_copies, num_qc)
+   if (( lonlim1(iregion)  <   0      ) .or. &
+       ( lonlim2(iregion)  <   0      ) .or. &
+       (reg_names(iregion) == 'bogus ') ) exit FindNumRegions
 
-!--------------------------------------------------------------------
-! The observations for the low-order models are all exactly at 
-! the assimilation timestep. So if we get the first and second
-! observation sequence, we know the bin separation. 
-!--------------------------------------------------------------------
-! Get the time of the last observation in the sequence. For Fun.
+   Nregions = Nregions + 1
 
-is_there_one = get_last_obs(seq, observation)
-!if ( is_there_one /= .TRUE. ) then
-if ( .not. is_there_one ) then
-      call error_handler(E_ERR,'obs_diag','No "last" observation in sequence.', &
-      source,revision,revdate)
-endif
-call get_obs_def(observation, obs_def)
-last_time   = get_obs_def_time(obs_def)
+enddo FindNumRegions
 
-! Get the time of the first observation in the sequence.
+! Open file for histogram of innovations, as a function of standard deviation.
+nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
+write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio    key   kind'
 
-is_there_one = get_first_obs(seq, observation)
-!if ( is_there_one /= .TRUE. ) then
-if ( .not. is_there_one ) then
-      call error_handler(E_ERR,'obs_diag','No Observations in sequence.', &
-      source,revision,revdate)
-endif
-call get_obs_def(observation, obs_def)
-first_time   = get_obs_def_time(obs_def)
+!----------------------------------------------------------------------
+! Determine temporal bin characteristics.
+! Nepochs is the total number of time intervals of the period requested.
+!----------------------------------------------------------------------
+! The low order models are fundamentally different than the high-order 
+! models. The low-order models assimilate at every time step and have
+! a much different connotation of 'time' ... i.e.  no real calendar.
+!----------------------------------------------------------------------
 
-! Get the time of the second observation in the sequence.
-
-!call get_next_obs(seq, observation, next_obs, is_this_last)
-!call get_obs_def(next_obs, obs_def)
-!this_time = get_obs_def_time(obs_def)
-
-! Log what we have and determine the bin separation 
-
-call print_time(first_time,  'first time  ')
-!call print_time( this_time,  'second time ')
-call print_time( last_time,  'last time   ')
-call print_time(first_time,  'first time  ',logfileunit)
-!call print_time( this_time,  'second time ',logfileunit)
-call print_time( last_time,  'last time   ',logfileunit)
-
-! Then we have to reset to the first observation for processing
-
-!is_there_one = get_first_obs(seq, observation)
-!if ( .not. is_there_one ) then
-!      call error_handler(E_ERR,'obs_diag','No Observations in sequence.', &
-!      source,revision,revdate)
-!endif
-!call get_obs_def(observation, obs_def)
-
-! Get the number of different times in the sequence.
-! The low order models assimilate at every time step.
-
-Nepochs = get_num_times(seq)
-allocate(    bincenter(Nepochs),           epoch_center(Nepochs))
-allocate( rms_ges_mean(Nepochs, Nregions), rms_ges_spread(Nepochs, Nregions), &
-          rms_anl_mean(Nepochs, Nregions), rms_anl_spread(Nepochs, Nregions), &
-         num_in_region(Nepochs, Nregions),   num_rejected(Nepochs, Nregions) )
-
-write(*,*)'Sequence has ',Nepochs,' different times in it.'
-
-binsep       = set_time(bin_separation, 0)     ! bin separation
-halfbinwidth = set_time(bin_width/2, 0)        ! half bin width 
-
-call print_time(      binsep,'binsep       ')
-call print_time(halfbinwidth,'halfbinwidth ')
-call print_time(      binsep,'binsep       ',logfileunit)
-call print_time(halfbinwidth,'halfbinwidth ',logfileunit)
-
-bincenter(1) = first_time
-beg_time     = bincenter(1) - halfbinwidth
-end_time     = bincenter(1) + halfbinwidth
-
-!-----------------------------------------------------------------------
-! Initialize.
+!ObsFileLoop : do ifile=1, tot_days*4
 !-----------------------------------------------------------------------
 
-rms_ges_mean   = 0.0_r8
-rms_anl_mean   = 0.0_r8
-rms_ges_spread = 0.0_r8
-rms_anl_spread = 0.0_r8
-num_in_region  = 0
-num_rejected   = 0
+   ! Read in information about observation sequence so we can allocate
+   ! observations. We need info about how many copies, qc values, etc.
 
-prior_mean(1)       = 0.0_r8
-prior_spread(1)     = 0.0_r8
-posterior_mean(1)   = 0.0_r8
-posterior_spread(1) = 0.0_r8
+   obs_seq_in_file_name = trim(adjustl(obs_sequence_name)) ! Lahey requirement
+
+   call read_obs_seq_header(obs_seq_in_file_name, &
+             num_copies, num_qc, num_obs, max_num_obs, &
+             obs_seq_file_id, obs_seq_read_format, pre_I_format, &
+             close_the_file = .true.)
+
+   if ( verbose ) then
+      write(logfileunit,*)'num_copies          is ',num_copies
+      write(logfileunit,*)'num_qc              is ',num_qc
+      write(logfileunit,*)'num_obs             is ',num_obs
+      write(logfileunit,*)'max_num_obs         is ',max_num_obs
+      write(logfileunit,*)'obs_seq_read_format is ',trim(adjustl(obs_seq_read_format))
+      write(logfileunit,*)'pre_I_format        is ',pre_I_format
+      write(    *      ,*)'num_copies          is ',num_copies
+      write(    *      ,*)'num_qc              is ',num_qc
+      write(    *      ,*)'num_obs             is ',num_obs
+      write(    *      ,*)'max_num_obs         is ',max_num_obs
+      write(    *      ,*)'obs_seq_read_format is ',trim(adjustl(obs_seq_read_format))
+      write(    *      ,*)'pre_I_format        is ',pre_I_format
+   endif
+
+   ! Initialize some (individual) observation variables
+
+   call init_obs(       obs1, num_copies, num_qc)   ! First obs in sequence
+   call init_obs(       obsN, num_copies, num_qc)   ! Last  obs in sequence
+   call init_obs(observation, num_copies, num_qc)   ! current obs
+   call init_obs(   next_obs, num_copies, num_qc)   ! duh ...
+
+   ! Read in the entire observation sequence
+
+   call read_obs_seq(obs_sequence_name, 0, 0, 0, seq)
+
+   !--------------------------------------------------------------------
+   ! The observations for the low-order models are all exactly at 
+   ! the assimilation timestep. So we know the bin separation. 
+   !--------------------------------------------------------------------
+
+   is_there_one = get_first_obs(seq, obs1)
+   if ( .not. is_there_one ) then
+         call error_handler(E_ERR,'obs_diag','No first observation in sequence.', &
+         source,revision,revdate)
+   endif
+   call get_obs_def(obs1,     obs_def)
+   seqT1   = get_obs_def_time(obs_def)
+
+   is_there_one = get_last_obs(seq, obsN)
+   if ( .not. is_there_one ) then
+         call error_handler(E_ERR,'obs_diag','No last observation in sequence.', &
+         source,revision,revdate)
+   endif
+   call get_obs_def(obsN,     obs_def)
+   seqTN   = get_obs_def_time(obs_def)
+
+   call print_time(seqT1,'First observation time',logfileunit)
+   call print_time(seqTN,'Last  observation time',logfileunit)
+
+   !--------------------------------------------------------------------
+   ! If the last observation is before the period of interest, move on.
+   !--------------------------------------------------------------------
+
+   ! we always process the entire file
+
+   !--------------------------------------------------------------------
+   ! If the first observation is after the period of interest, finish.
+   !--------------------------------------------------------------------
+
+   ! we always process the entire file
+
+   !--------------------------------------------------------------------
+   ! Get the number of different times in the sequence.
+   ! The low order models assimilate at every time step.
+   !--------------------------------------------------------------------
+
+   beg_time  = seqT1
+   end_time  = set_time(0, iskip)   ! convert days to skip to a time_type object
+   skip_time = beg_time + end_time  ! the start time for the accumulation of vertical statistics 
+
+   Nepochs = get_num_times(seq)
+   write(*,*)'Sequence has ',Nepochs,' different times in it.'
+
+   allocate(bincenter(Nepochs), epoch_center(Nepochs))  ! time_type and 'real'
+   allocate(obs_used_in_epoch(Nepochs))
+   obs_used_in_epoch = 0
+   epoch_center      = -999.0_digits12
+
+   allocate(rms_ges_mean(  Nepochs, Nregions, max_obs_kinds), &
+            rms_ges_spread(Nepochs, Nregions, max_obs_kinds), &
+            rms_anl_mean(  Nepochs, Nregions, max_obs_kinds), &
+            rms_anl_spread(Nepochs, Nregions, max_obs_kinds))
+   allocate(num_in_level(  Nepochs, Nregions, max_obs_kinds), &
+            Nrejected(     Nepochs, Nregions, max_obs_kinds))
+
+   rms_ges_mean   = 0
+   rms_ges_spread = 0
+   rms_anl_mean   = 0
+   rms_anl_spread = 0
+   Nrejected      = 0
+   num_in_level   = 0
+
+   !binsep       = (seqTN - seqT1)/(Nepochs-1)
+   binsep       = set_time(60,0)
+   halfbinwidth = set_time(bin_width/2, 0)        ! half bin width 
+
+   call print_time(      binsep,'binsep       ')
+   call print_time(halfbinwidth,'halfbinwidth ')
+   call print_time(      binsep,'binsep       ',logfileunit)
+   call print_time(halfbinwidth,'halfbinwidth ',logfileunit)
+
+   ! Navigate the entire list once for all obs to determine the unique times
+   observation       = obs1
+   iepoch            = 1
+   bincenter(iepoch) = seqT1
+   call get_time(bincenter(iepoch),seconds,days)
+   epoch_center(iepoch) = days + seconds/86400.0_digits12
+
+   BinLoop : do obsindex = 1,max_num_obs
+
+      call get_next_obs(seq, observation, next_obs, is_this_last)
+      if ( is_this_last) exit BinLoop
+
+      call get_obs_def(next_obs, obs_def)
+      obs_time = get_obs_def_time(obs_def)
+
+      if ( obs_time /= bincenter(iepoch) ) then
+         iepoch = iepoch + 1
+         bincenter(iepoch) = obs_time
+         call get_time(bincenter(iepoch),seconds,days)
+         epoch_center(iepoch) = days + seconds/86400.0_digits12
+
+         write(msgstring,'(''epoch '',i4,'' center '')')iepoch
+         call print_time(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
+         call print_date(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
+         write(logfileunit,*)''
+      endif
+
+      observation = next_obs
+
+   enddo BinLoop
 
    !--------------------------------------------------------------------
    ! Find the index of obs, ensemble mean, spread ... etc.
@@ -351,61 +441,63 @@ posterior_spread(1) = 0.0_r8
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
    !====================================================================
-   Advancesets : do iepoch = 1, Nepochs
+   EpochLoop : do iepoch = 1, Nepochs
    !====================================================================
 
-      if ( iepoch > 1 ) then ! Get the next time (if any) in the obs sequence
+      beg_time     = bincenter(iepoch) - halfbinwidth + set_time(1,0)
+      end_time     = bincenter(iepoch) + halfbinwidth
 
-         if( is_this_last ) exit Advancesets
-
-         call get_next_obs(seq, observation, next_obs, is_this_last)
-         call get_obs_def(next_obs, obs_def)
-         this_time = get_obs_def_time(obs_def)
-
-         bincenter(iepoch) = bincenter(iepoch-1) + binsep
-         beg_time          = bincenter(iepoch) - halfbinwidth
-         end_time          = bincenter(iepoch) + halfbinwidth
-
+      if ( verbose ) then
+         call print_time(         beg_time,'epoch  start ',logfileunit)
+         call print_time(bincenter(iepoch),'epoch center ',logfileunit)
+         call print_time(         end_time,'epoch    end ',logfileunit)
+         call print_time(         beg_time,'epoch  start ')
+         call print_time(bincenter(iepoch),'epoch center ')
+         call print_time(         end_time,'epoch    end ')
       endif
 
-      call get_time(bincenter(iepoch),seconds,days)
-      epoch_center(iepoch) = days + seconds/86400.0_r8
-
       call get_obs_time_range(seq, beg_time, end_time, key_bounds, &
-                  num_obs_in_set, out_of_range, observation)
+                  num_obs_in_epoch, out_of_range )
 
-      obs_used_in_set = 0
+      if( num_obs_in_epoch == 0 ) then
+         if ( verbose ) then
+            write(logfileunit,*)' No observations in epoch ',iepoch,' cycling ...'
+            write(     *     ,*)' No observations in epoch ',iepoch,' cycling ...'
+         endif
+         cycle EpochLoop
+      endif
+
+      write(logfileunit, *) 'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
+      write(     *     , *) 'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
+
       call print_time(         beg_time,'bin  start ',logfileunit)
       call print_time(bincenter(iepoch),'bin center ',logfileunit)
       call print_time(         end_time,'bin    end ',logfileunit)
-      write(logfileunit, *) 'num_obs_in_bin (', iepoch, ') = ', num_obs_in_set
+      write(logfileunit, *) 'num_obs_in_bin (', iepoch, ') = ', num_obs_in_epoch
       call print_time(         beg_time,'bin  start ')
       call print_time(bincenter(iepoch),'bin center ')
       call print_time(         end_time,'bin    end ')
-      write(     *     , *) 'num_obs_in_bin (', iepoch, ') = ', num_obs_in_set
+      write(     *     , *) 'num_obs_in_bin (', iepoch, ') = ', num_obs_in_epoch
 
-      allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), &
-                obs(num_obs_in_set), qc(num_obs_in_set))
+      allocate(keys(num_obs_in_epoch))
 
-      call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-      call print_time(this_time,'time is')
-      call print_time(this_time,'time is',logfileunit)
+      call get_time_range_keys(seq, key_bounds, num_obs_in_epoch, keys)
+
 
       !-----------------------------------------------------------------
-      ObservationLoop : do obsindex = 1, num_obs_in_set
+      ObservationLoop : do obsindex = 1, num_obs_in_epoch
       !-----------------------------------------------------------------
 
          call get_obs_from_key(seq, keys(obsindex), observation) 
          call get_obs_def(observation, obs_def)
+         obs_time    = get_obs_def_time(obs_def)
+         flavor      = get_obs_kind(obs_def)
+         obs_err_var = get_obs_def_error_variance(obs_def) 
+         obs_loc     = get_obs_def_location(obs_def)
+         rlocation   = get_location(obs_loc) 
 
-         obs_err_var(obsindex) = get_obs_def_error_variance(obs_def) 
-!        obs_kind              = get_obs_def_kind(obs_def)
-         flavor                = get_obs_kind(obs_def)
-         obs_loc               = get_obs_def_location(obs_def)
-         rlocation             = get_location(obs_loc) 
-
-         call get_qc(observation,          qc(obsindex:obsindex),         1)
-         call get_obs_values(observation, obs(obsindex:obsindex), obs_index)
+         call get_qc(observation, qc, 1)
+         call get_obs_values(observation, obs, obs_index)
 
          ! get interpolated values of prior and posterior ensemble mean
 
@@ -420,29 +512,56 @@ posterior_spread(1) = 0.0_r8
          po_sprd = posterior_spread(1)
 
          !--------------------------------------------------------------
+         ! (DEBUG) Summary of observation knowledge at this point
+         !--------------------------------------------------------------
+         ! call print_time(obs_time,'time is')
+         ! call print_time(obs_time,'time is',logfileunit)
+         ! write(*,*)'observation # ',obsindex
+         ! write(*,*)'obs_flavor ',flavor
+         ! write(*,*)'obs_err_var ',obs_err_var
+         ! write(*,*)'lon0/lat0 ',lon0,lat0
+         ! write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
+         ! write(*,*)'qc ',qc
+         ! write(*,*)'obs(1) ',obs(1)
+         ! write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
+         ! write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
+
+         !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
          !--------------------------------------------------------------
 
          keeper = .true.
 !        keeper = CheckObsType(obs_select, obs_err_var(obsindex), flavor, ipressure)
          if ( .not. keeper ) then
-!        !  write(*,*)'obs ',obsindex,' rejected by CheckObsType ',obs_err_var(obsindex)
+            write(*,*)'obs ',obsindex,' rejected by CheckObsType ',obs_err_var
             NwrongType = NwrongType + 1
-!           cycle ObservationLoop
+            cycle ObservationLoop
          endif
 
-         if( qc(obsindex) >= qc_threshold ) then
-         !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(obsindex)
+         if( qc(1) >= qc_threshold ) then
+         !  write(*,*)'obs ',obsindex,' rejected by qc ',qc
             NbadQC = NbadQC + 1
             cycle ObservationLoop 
          endif
 
-         !--------------------------------------------------------------
-         ! 
-         !--------------------------------------------------------------
+         ! update the histogram of the magnitude of the innovation,
+         ! where each bin is a single standard deviation. This is 
+         ! a one-sided histogram.
 
-         obs_used_in_set = obs_used_in_set + 1
-         obs_used        = obs_used        + 1
+         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
+         nsigma(int(ratio)) = nsigma(int(ratio)) + 1
+
+         ! Individual observations that are very far away get individually
+         ! logged to a separate file.
+
+         if(ratio > 10.0_r8) then
+            call get_time(obs_time,seconds,days)
+         !  write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,2f8.2,f7.1,2i7)') &
+         !       days, seconds, lon0, lat0, ivert, &
+         !       obs(1), pr_mean, ratio, obsindex, flavor
+         endif
+
+         obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
 
          !--------------------------------------------------------------
          ! We have four regions of interest
@@ -460,25 +579,25 @@ posterior_spread(1) = 0.0_r8
 !           if (flavor > 0 ) then  ! keep all types, for now ...
 
                ratio = GetRatio(obs(obsindex), pr_mean, pr_sprd, &
-                        obs_err_var(obsindex))
+                        obs_err_var)
 
                if ( ratio <= rat_cri ) then
-                  num_in_region(iepoch, iregion) = &
-                  num_in_region(iepoch, iregion) + 1
+                  num_in_level(iepoch, iregion, flavor) = &
+                  num_in_level(iepoch, iregion, flavor) + 1
 
-                  rms_ges_mean(iepoch, iregion) = &
-                  rms_ges_mean(iepoch, iregion) + (pr_mean - obs(obsindex))**2
+                  rms_ges_mean(iepoch, iregion, flavor) = &
+                  rms_ges_mean(iepoch, iregion, flavor) + (pr_mean - obs(obsindex))**2
 
-                  rms_anl_mean(iepoch, iregion) = &
-                  rms_anl_mean(iepoch, iregion) + (po_mean - obs(obsindex))**2
+                  rms_anl_mean(iepoch, iregion, flavor) = &
+                  rms_anl_mean(iepoch, iregion, flavor) + (po_mean - obs(obsindex))**2
 
-                  rms_ges_spread(iepoch, iregion) = &
-                  rms_ges_spread(iepoch, iregion) + pr_sprd**2
+                  rms_ges_spread(iepoch, iregion, flavor) = &
+                  rms_ges_spread(iepoch, iregion, flavor) + pr_sprd**2
 
-                  rms_anl_spread(iepoch, iregion) = &
-                  rms_anl_spread(iepoch, iregion) + po_sprd**2
+                  rms_anl_spread(iepoch, iregion, flavor) = &
+                  rms_anl_spread(iepoch, iregion, flavor) + po_sprd**2
                else
-                  num_rejected(iepoch, iregion) = num_rejected(iepoch, iregion) + 1 
+                  Nrejected(iepoch, iregion, flavor) = Nrejected(iepoch, iregion, flavor) + 1 
                endif
 
         !   endif
@@ -489,138 +608,182 @@ posterior_spread(1) = 0.0_r8
       enddo ObservationLoop
       !-----------------------------------------------------------------
 
-      deallocate(keys, obs,  obs_err_var, qc)
+      deallocate(keys)
 
-      do iregion=1, Nregions
-         if (num_in_region(iepoch, iregion) .gt. 0) then
-             rms_ges_mean(iepoch, iregion) = sqrt(   rms_ges_mean(iepoch, iregion) / &
-                                                    num_in_region(iepoch, iregion) )
-             rms_anl_mean(iepoch, iregion) = sqrt(   rms_anl_mean(iepoch, iregion) / &
-                                                    num_in_region(iepoch, iregion) )
-           rms_ges_spread(iepoch, iregion) = sqrt( rms_ges_spread(iepoch, iregion) / &
-                                                    num_in_region(iepoch, iregion) )
-           rms_anl_spread(iepoch, iregion) = sqrt( rms_anl_spread(iepoch, iregion) / &
-                                                    num_in_region(iepoch, iregion) )
-         else
-              rms_ges_mean(iepoch, iregion) = -99.0_r8
-              rms_anl_mean(iepoch, iregion) = -99.0_r8
-            rms_ges_spread(iepoch, iregion) = -99.0_r8
-            rms_anl_spread(iepoch, iregion) = -99.0_r8
-         endif
+      write(msgstring,'(''num obs considered in epoch '',i4,'' = '',i8)') &
+                         iepoch, obs_used_in_epoch(iepoch)
+      if(verbose) call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
-      enddo
+   enddo EpochLoop
 
-      write(msgstring,'(''num obs considered in epoch '',i4,'' = '',i8)') iepoch, obs_used_in_set
-      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   if (verbose) then
+      write(logfileunit,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
+      write(     *     ,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
+   endif
 
-   enddo Advancesets
-
+   call destroy_obs(obs1)
+   call destroy_obs(obsN)
+   call destroy_obs(observation)
+   call destroy_obs(next_obs)
    call destroy_obs_sequence(seq)
 
-!enddo Dayloop
+!enddo ObsFileLoop
 
 !-----------------------------------------------------------------------
-write(gesName,'(''rawges_times_'',i4.4,''mb.dat'')')level
-write(anlName,'(''rawanl_times_'',i4.4,''mb.dat'')')level
-
-gesUnit = get_unit()
-OPEN(gesUnit,FILE=trim(adjustl(gesName)),FORM='formatted')
-anlUnit = get_unit()
-OPEN(anlUnit,FILE=trim(adjustl(anlName)),FORM='formatted')
-
-do i=1, Nepochs
-
-   call get_time(bincenter(i),seconds,days)
-!  call print_time(bincenter(i),'bin center ')
-!  write(*,*)'bin center (',i,') is ',days, seconds
-
-   write(gesUnit,91) days, seconds, &
-       (rms_ges_mean(i,j),rms_ges_spread(i,j),num_in_region(i,j),j=1,Nregions)
-   write(anlUnit,91) days, seconds, &
-       (rms_anl_mean(i,j),rms_anl_spread(i,j),num_in_region(i,j),j=1,Nregions)
-
-enddo
-
-91 format(i6,1x,i5,3(1x,2f8.3,1x,i4))
-
-close(gesUnit)
-close(anlUnit)
-
-write(*,*)''
-write(*,*)'# NwrongType            : ',NwrongType
-write(*,'('' # QC > '',f9.4,''        :   '',i)')qc_threshold, NbadQC
-write(*,*)'--------------------------------------'
-write(*,*)'Rejected Observations   : ',NwrongType+NbadQC
-write(*,*)'Considered Observations : ',obs_used
-write(*,'('' Observations failing the rat_cri (i.e. > '',f9.4,'') test are marked "tossed".'')')rat_cri
-write(*,*)'regions  : ',( Regions(i), i=1,Nregions )
-write(*,*)'# tossed : ',sum(num_rejected,1)
-write(*,*)'#   used : ',sum(num_in_region,1)
-
-
-
-
-write(logfileunit,*)''
-write(logfileunit,*)'# NwrongType            : ',NwrongType
-write(logfileunit,'('' # QC > '',f9.4,''        :   '',i10)')qc_threshold, NbadQC
-write(logfileunit,*)'--------------------------------------'
-write(logfileunit,*)'Rejected Observations   : ',NwrongType+NbadQC
-write(logfileunit,*)'Considered Observations : ',obs_used
-write(logfileunit,'('' Observations failing the rat_cri (i.e. > '',f9.4,'') test are marked "tossed".'')')rat_cri
-write(logfileunit,*)'regions  : ',( Regions(i), i=1,Nregions )
-write(logfileunit,*)'# tossed : ',sum(num_rejected,1)
-write(logfileunit,*)'#   used : ',sum(num_in_region,1)
-
+! We have read all possible files, and stuffed the observations into the
+! appropriate bins. Time to normalize and finish up. Almost.
 !-----------------------------------------------------------------------
-! Echo attributes to a file to facilitate plotting.
+! First, echo attributes to a file to facilitate plotting.
 ! This file is also a matlab function ... the variables are
 ! loaded by just typing the name at the matlab prompt.
+! The output file names are included in this master file, 
+! but they are created on-the-fly, so we must leave this open till then.
 !-----------------------------------------------------------------------
-!  varnames = {'T','W','Q'};
-!  varnames = {'T','W','Q','P'};
-
-!  Regions = {'Northern Hemisphere', ...
-!             'Southern Hemisphere', ...
-!             'Tropics', 'North America'};
 
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
-
-!write(iunit,*)'Regions(1) = ',trim(adjustl(Regions(1))),';'
-!write(iunit,*)'Regions(2) = ',trim(adjustl(Regions(2))),';'
-!write(iunit,*)'Regions(3) = ',trim(adjustl(Regions(3))),';'
-write(iunit,'(''varnames  = { ... '')')
-write(iunit,'("''raw''",''};'')')
-write(iunit,'(''Regions  = { ... '')')
-write(iunit,'("''whole''",'',...'')')
-write(iunit,'("''ying''",'',...'')')
-write(iunit,'("''yang''",''};'')')
-do i = 1,Nregions
-!   write(iunit,*)trim(adjustl(Regions(i)))//', ...'
-!   write(iunit,'('',a(8),'',...'')')trim(adjustl(Regions(i)))
-!   write(iunit,100)trim(adjustl(Regions(i)))
-enddo
-100  format('',a,'',', ...')
 write(iunit,'(''obs_year       = '',i,'';'')')obs_year
 write(iunit,'(''obs_month      = '',i,'';'')')obs_month
 write(iunit,'(''obs_day        = '',i,'';'')')obs_day
 write(iunit,'(''tot_days       = '',i,'';'')')tot_days
 write(iunit,'(''iskip          = '',i,'';'')')iskip
-write(iunit,'(''level          = '',i,'';'')')level
 write(iunit,'(''obs_select     = '',i,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
 write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
 write(iunit,'(''bin_width      = '',i,'';'')')bin_width
-write(iunit,'(''bin_separation = '',i,'';'')')bin_separation 
 write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
 write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
 write(iunit,'(''lonlim1 = ['',3(1x,f9.2),''];'')')lonlim1
 write(iunit,'(''lonlim2 = ['',3(1x,f9.2),''];'')')lonlim2
-close(iunit)
+do iregion=1,Nregions
+   write(iunit,47)iregion,trim(adjustl(reg_names(iregion)))
+enddo
+47 format('Regions(',i3,') = {''',a,'''};')
+
+do iepoch = 1, Nepochs
+   write(msgstring,'(''num obs used in epoch '',i3,'' = '',i8)') iepoch, obs_used_in_epoch(iepoch)
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+enddo
+
+if (verbose) then
+   write(logfileunit,*)'Normalizing time-region-variable quantities for desired level.'
+   write(     *     ,*)'Normalizing time-region-variable quantities for desired level.'
+endif
+
+ivarcount = 0
+
+OneLevel : do ivar=1,max_obs_kinds
+   do iregion=1, Nregions
+   do iepoch=1, Nepochs
+      
+      if (num_in_level(iepoch, iregion, flavor) == 0) then
+           rms_ges_mean(iepoch, iregion, flavor) = -99.0_r8
+           rms_anl_mean(iepoch, iregion, flavor) = -99.0_r8
+         rms_ges_spread(iepoch, iregion, flavor) = -99.0_r8
+         rms_anl_spread(iepoch, iregion, flavor) = -99.0_r8
+      else
+
+          rms_ges_mean(iepoch, iregion, flavor) = sqrt(   rms_ges_mean(iepoch, iregion, flavor) / &
+                                                          num_in_level(iepoch, iregion, flavor) )
+          rms_anl_mean(iepoch, iregion, flavor) = sqrt(   rms_anl_mean(iepoch, iregion, flavor) / &
+                                                          num_in_level(iepoch, iregion, flavor) )
+        rms_ges_spread(iepoch, iregion, flavor) = sqrt( rms_ges_spread(iepoch, iregion, flavor) / &
+                                                          num_in_level(iepoch, iregion, flavor) )
+        rms_anl_spread(iepoch, iregion, flavor) = sqrt( rms_anl_spread(iepoch, iregion, flavor) / &
+                                                          num_in_level(iepoch, iregion, flavor) )
+      endif
+
+   enddo
+   enddo
+
+   !--------------------------------------------------------------------
+   ! Create data files for all observation kinds we have used
+   !--------------------------------------------------------------------
+
+   if( all (num_in_level(:, :, ivar) == 0) ) cycle OneLevel
+
+   ivarcount = ivarcount + 1
+
+   write(gesName,'(a,''_ges_times.dat'')') trim(adjustl(get_obs_name(ivar)))
+   write(anlName,'(a,''_anl_times.dat'')') trim(adjustl(get_obs_name(ivar)))
+   gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
+   anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
+
+   if (verbose) then
+      write(logfileunit,*)'Creating '//trim(adjustl(anlName))
+      write(     *     ,*)'Creating '//trim(adjustl(gesName))
+   endif
+
+   do i=1, Nepochs
+      if( any (num_in_level(i, :, ivar) /= 0) ) then
+         call get_time(bincenter(i),seconds,days)
+         write(gesUnit,91) days, seconds, &
+              (rms_ges_mean(i,j,ivar),rms_ges_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
+         write(anlUnit,91) days, seconds, &
+              (rms_anl_mean(i,j,ivar),rms_anl_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
+      endif
+   enddo
+   close(gesUnit)
+   close(anlUnit)
+
+   write(iunit,95) ivarcount, trim(adjustl(get_obs_name(ivar)))
+
+enddo OneLevel
+
+91 format(i7,1x,i5,4(1x,2f7.2,1x,i8))
+95 format('One_Level_Varnames(',i3,') = {''',a,'''};')
+
+
+! Actually print the histogram of innovations as a function of standard deviation. 
+close(nsigmaUnit)
+do i=0,100
+   if(nsigma(i) /= 0) write(*,*)'innovations within ',i,' stdev = ',nsigma(i)
+enddo
+
+deallocate(rms_ges_mean, rms_ges_spread, &
+           rms_anl_mean, rms_anl_spread)
+
+deallocate(num_in_level)
+
+!-----------------------------------------------------------------------
+close(iunit)   ! Finally close the 'master' matlab diagnostic file.
+!-----------------------------------------------------------------------
+! Print final rejection summary.
+!-----------------------------------------------------------------------
+
+
+write(*,*) ''
+write(*,*) '# observations used  : ',sum(obs_used_in_epoch)
+write(*,*) 'Rejected Observations summary.'
+write(*,*) '# NwrongType         : ',NwrongType
+write(*,*) '# NbadQC             : ',NbadQC
+write(*,*) '# NbadLevel          : ',NbadLevel
+write(*,'(a)')'Table of observations rejected by region for specified level'
+write(*,'(5a)')'                                       ',reg_names(1:Nregions)
+do ivar=1,max_obs_kinds
+   write(*,'(3a,4i8)') ' # ',get_obs_name(ivar),'         : ',sum(Nrejected(:,:,ivar),1)
+enddo
+write(*,*)''
+
+write(logfileunit,*) ''
+write(logfileunit,*) '# observations used  : ',sum(obs_used_in_epoch)
+write(logfileunit,*) 'Rejected Observations summary.'
+write(logfileunit,*) '# NwrongType         : ',NwrongType
+write(logfileunit,*) '# NbadQC             : ',NbadQC
+write(logfileunit,*) '# NbadLevel          : ',NbadLevel
+write(logfileunit,'(a)')'Table of observations rejected by region for specified level'
+write(logfileunit,'(5a)')' ',reg_names(1:Nregions)
+do ivar=1,max_obs_kinds
+   write(logfileunit,'(3a,4i8)') ' # ',get_obs_name(ivar),'         : ',sum(Nrejected(:,:,ivar),1)
+enddo
+
+!-----------------------------------------------------------------------
+! Really, really, done.
+!-----------------------------------------------------------------------
 
 deallocate( epoch_center, bincenter)
 deallocate( rms_ges_mean, rms_ges_spread, &
             rms_anl_mean, rms_anl_spread, &
-           num_in_region, num_rejected )
+           num_in_level, Nrejected )
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
