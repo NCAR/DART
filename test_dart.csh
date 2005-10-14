@@ -51,8 +51,9 @@ echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 
 @ makenum  = 1
 @ modelnum = 101
-foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
-    lorenz_04                bgrid_solo cam wrf pe2lyr )
+foreach MODEL ( lorenz_96 )
+#foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
+#    lorenz_04                bgrid_solo cam wrf pe2lyr )
 #   lorenz_04 MITgcm_annulus bgrid_solo cam wrf pe2lyr rose )
 
     echo "----------------------------------------------------------"
@@ -103,8 +104,10 @@ rm -rf integrate_model perfect_model_obs ../../../obs_kind/obs_kind_mod.f90
 rm -rf ../../../obs_def/obs_def_mod.f90
 
 # Begin by compiling all programs; need to stop if an error is detected
-csh mkmf_preprocess               || exit 97
-make                              || exit 98
+csh mkmf_preprocess               || exit 96
+make                              || exit 97
+./preprocess                      || exit 98
+# Preprocess must be done before rest of makes
 csh mkmf_assim_region             || exit 99
 make                              || exit 100
 csh mkmf_create_fixed_network_seq || exit 101
@@ -118,48 +121,12 @@ make                              || exit 108
 csh mkmf_perfect_model_obs        || exit 109
 make                              || exit 110
 
-# Need to do preprocessing
-#cp input.nml.preprocess_default input.nml
-./preprocess
 
 
 #----------------------------------------------------------------------
 echo "-----------------------------------------------------------------"
 echo "Setup appropriate namelists for a 1000-step test run."
-echo "Begin by modifying perfect model namelist and getting rid of all other stuff."
 echo "-----------------------------------------------------------------"
-#----------------------------------------------------------------------
-echo ':0'                              > vi_script
-echo '/start_from_restart'            >> vi_script
-echo ':s/false/true/'                 >> vi_script
-echo '/output_restart'                >> vi_script
-echo ':s/false/true/'                 >> vi_script
-echo '/ensemble_manager_nml'          >> vi_script
-echo ':.,$ delete'                    >> vi_script
-echo ':wq'                            >> vi_script
-vi -s vi_script input.nml.perfect_model_obs_default
-
-# Prepend this to the filter namelist and create input.nml
-cat input.nml.perfect_model_obs_default input.nml.filter_default > input.nml
-
-# Need to modify rest of input.nml for test run
-echo ':0'                              > vi_script
-echo '/ens_size'                      >> vi_script
-echo ':s/20/80/'                      >> vi_script
-echo '/start_from_restart'            >> vi_script
-echo ':s/false/true/'                 >> vi_script
-echo '/output_restart'                >> vi_script
-echo ':s/false/true/'                 >> vi_script
-echo '/num_output_state_members'      >> vi_script
-echo ':s/0/20/'                       >> vi_script
-echo '/num_groups'                    >> vi_script
-echo ':s/1/4/'                        >> vi_script
-echo '/cutoff'                        >> vi_script
-echo ':s/0.2/1000000.0/'              >> vi_script
-echo '/cov_inflate'                   >> vi_script
-echo ':s/-1.0/1.05/'                  >> vi_script
-echo ':wq'                            >> vi_script
-vi -s vi_script input.nml
 
 echo "input.nml is "
 cat input.nml
@@ -181,23 +148,40 @@ echo " "
 
 ./create_fixed_network_seq < temp_input      || exit 112
 
+# Need to modify rest of input.nml for test run
+echo ':0'                              > vi_script
+echo '/ens_size'                      >> vi_script
+echo ':s/20/80/'                      >> vi_script
+echo '/num_groups'                    >> vi_script
+echo ':s/1/4/'                        >> vi_script
+echo '/assim_tools_nml'               >> vi_script
+echo '/cov_inflate'                   >> vi_script
+echo ':s/-1.0/1.05/'                  >> vi_script
+echo '/cov_inflate_sd'                >> vi_script
+echo ':s/-0.05/0.05'                  >> vi_script
+echo '/sd_lower_bound'                >> vi_script
+echo ':s/-0.05/0.05'                  >> vi_script
+echo ':wq'                            >> vi_script
+vi -s vi_script input.nml
+
 # Run the perfect model and the filter
 ./perfect_model_obs  || exit 113
 ./filter             || exit 114
 
 # Need to do visual matlab inspection of this output for now
 # plot_total_err
-if ( -e /usr/local/bin/Matlab ) then
+if ( -e /usr/local/bin/matlab ) then
    matlab -nojvm
 else
    ls -lrt
    cp -p *.nc /project/gsp/thoar/Test1
 endif
 
+
 #-----------------------------------------------------------------------
 echo "-----------------------------------------------------------------"
 echo "Prepare to set up a sequence of 10 hour runs for testing"
-echo "In first case, just do 10 days and output filter restarts in both"
+echo "In first case, just do 10 hours and output filter restarts in both"
 echo "the single file and multiple file format for later testing"
 echo "-----------------------------------------------------------------"
 #-----------------------------------------------------------------------
@@ -226,7 +210,7 @@ mv  filter_restart   filter_ics.spun_up
 #-----------------------------------------------------------------------
 echo " "
 echo "To reproduce across a variety of options, need num_domains 2 or greater"
-echo "and binary restart files."
+echo " and binary restart files to be written."
 echo "Start from previous restart and create new restart."
 echo " "
 #-----------------------------------------------------------------------
@@ -235,14 +219,13 @@ echo ':0'                                  > vi_script
 echo '/num_domains'                       >> vi_script
 echo ':s/1/3/'                            >> vi_script
 echo ':0'                                 >> vi_script
-echo '/read_binary_restart_files'         >> vi_script
-echo ':s/false/true/'                     >> vi_script
-echo ':0'                                 >> vi_script
 echo '/restart_in_file_name'              >> vi_script
 echo ':s/perfect_ics/perfect_ics.spun_up' >> vi_script
 echo '/filter_nml'                        >> vi_script
 echo '/restart_in_file_name'              >> vi_script
 echo ':s/filter_ics/filter_ics.spun_up'   >> vi_script
+echo '/write_binary_restart_files'        >> vi_script
+echo ':s/.false./.true./'                 >> vi_script
 echo ':wq'                                >> vi_script
 vi -s vi_script input.nml
 
@@ -305,6 +288,7 @@ echo " "
 ./perfect_model_obs  || exit
 ./filter             || exit
 
+
 # Do some tests on perfect_model_obs options first
 # Set up baseline output file
 mv perfect_restart  perfect_restart.baseline
@@ -337,7 +321,7 @@ diff perfect_restart.out_of_core  perfect_restart.baseline || exit
 echo "diff of obs_seq.out:"
 diff obs_seq.out.out_of_core      obs_seq.out.baseline     || exit
 #diff True_State.nc.out_of_core    True_State.nc.baseline   ||exit
- 
+
 #-----------------------------------------------------------------------
 echo "Test the two async options"
 # Need to get the scripts (problem here because script names are machine dependent)
@@ -394,7 +378,7 @@ echo " "
 
 mv perfect_restart       perfect_restart.3
 mv obs_seq.out               obs_seq.out.3
-mv True_State.nc           True_State.nc.3
+cp True_State.nc           True_State.nc.3
 
 diff perfect_restart.3   perfect_restart.baseline  || exit
 diff     obs_seq.out.3       obs_seq.out.baseline  || exit
@@ -412,10 +396,10 @@ cp -p obs_seq.out.baseline obs_seq.out
 mv obs_seq.final              obs_seq.final.baseline
 mv filter_restart            filter_restart.baseline
 mv assim_tools_restart  assim_tools_restart.baseline
-mv Prior_Diag.nc              Prior_Diag.nc.baseline
-mv Posterior_Diag.nc      Posterior_Diag.nc.baseline
+cp Prior_Diag.nc              Prior_Diag.nc.baseline
+cp Posterior_Diag.nc      Posterior_Diag.nc.baseline
 
-if ( -e /usr/local/bin/Matlab ) then
+if ( -e /usr/local/bin/matlab ) then
    matlab -nojvm
 else
    ls -lrt
