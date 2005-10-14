@@ -59,7 +59,7 @@ type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc
 
 !---------------------
-integer :: obsindex, i, j, iunit, ierr, io
+integer :: obsindex, i, j, iunit, ierr, io, ivarcount
 character(len = 129) :: obs_seq_in_file_name
 
 ! Storage with fixed size for observation space diagnostics
@@ -110,8 +110,8 @@ integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=n
 integer :: Nregions       = 4
 real(r8):: rat_cri        = 3.0_r8   ! QC ratio
 real(r8):: qc_threshold   = 4.0_r8   ! maximum NCEP QC factor
-real(r8):: bin_separation = 6.0_r8   ! Bins every so often (hours)
-real(r8):: bin_width      = 6.0_r8   ! width of the bin (hours)
+real(r8):: bin_separation_hours = 6.0_r8   ! Bins every so often (hours)
+real(r8):: bin_width_hours      = 6.0_r8   ! width of the bin (hours)
 logical :: print_mismatched_locs = .false.
 logical :: verbose = .false.
 
@@ -129,7 +129,7 @@ character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
 
 namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
                        tot_days, iskip, plevel, hlevel, obs_select, Nregions, rat_cri, &
-                       qc_threshold, bin_separation, bin_width, &
+                       qc_threshold, bin_separation_hours, bin_width_hours, &
                        lonlim1, lonlim2, latlim1, latlim2, reg_names, &
                        print_mismatched_locs, verbose
 
@@ -203,10 +203,12 @@ integer  :: obslevel, NBinsPerDay, Nepochs
 integer  :: calendar_type
 integer  :: gesUnit, anlUnit
 
-integer  :: nsigma(0:100), nsigmaUnit
+! These pairs of variables are used when we diagnose which observations 
+! are far from the background.
+integer  :: nsigma(0:100) = 0
+integer  :: nsigmaUnit
 
 real(r8) :: ratio, ratioU
-real(digits12) :: t1, tN
 
 type(time_type) :: TimeMin, TimeMax    ! of the entire period of interest
 type(time_type) :: beg_time, end_time  ! of the particular bin
@@ -215,7 +217,7 @@ type(time_type) :: seqT1, seqTN        ! first,last time in entire observation s
 type(time_type) :: obs_time, skip_time
 
 character(len =   6) :: day_num 
-character(len = 129) :: gesName, anlName, msgstring, nml_string
+character(len = 129) :: gesName, anlName, msgstring
 
 !-----------------------------------------------------------------------
 ! Some variables to keep track of who's rejected why ...
@@ -245,7 +247,12 @@ write(logfileunit,*)levels_int
 scale_factor = 1.0_r8
 which_vert   = -2     ! set to 'undefined' value 
 
-scale_factor(KIND_SURFACE_PRESSURE)  =    0.01_r8
+! The surface pressure in the obs_sequence is in Pa, we want to convert
+! from Pa to hPa for plotting. The specific humidity is a similar thing.
+! In the obs_sequence file, the units are kg/kg, we want to plot
+! in the g/kg world...
+
+scale_factor(KIND_SURFACE_PRESSURE)  =    0.01_r8  
 scale_factor(KIND_SPECIFIC_HUMIDITY) = 1000.0_r8
 
 prior_mean(1)       = 0.0_r8
@@ -296,18 +303,17 @@ Nrejected  = 0
 plevel_index = GetClosestLevel(plevel, 2)  ! Set desired input level to nearest actual
 hlevel_index = GetClosestLevel(hlevel, 3)  ! ditto for heights.
 
-nsigma = 0
-nsigmaUnit = get_unit()
-OPEN(nsigmaUnit,FILE='nsigma.dat',FORM='FORMATTED')
+! Open file for histogram of innovations, as a function of standard deviation.
+nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
 write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio    key   kind'
 
 ! Determine temporal bin characteristics.
 ! Nepochs is the total number of time intervals of the period requested.
 
-NBinsPerDay  = nint( 24.0_r8 / bin_separation )
-    binsep   = set_time(nint(bin_separation * 3600.0_r8), 0)
-    binwidth = set_time(nint(bin_width      * 3600.0_r8), 0) ! full bin width 
-halfbinwidth = set_time(nint(bin_width      * 1800.0_r8), 0) ! half bin width 
+NBinsPerDay  = nint( 24.0_r8 / bin_separation_hours )
+    binsep   = set_time(nint(bin_separation_hours * 3600.0_r8), 0)
+    binwidth = set_time(nint(bin_width_hours      * 3600.0_r8), 0) ! full bin width 
+halfbinwidth = set_time(nint(bin_width_hours      * 1800.0_r8), 0) ! half bin width 
 beg_time     = set_date(obs_year, obs_month, obs_day, 0, 0, 0)
 end_time     = set_time(0, iskip)   ! convert days to skip to a time_type object
 skip_time    = beg_time + end_time  ! the start time for the accumulation of vertical statistics 
@@ -336,7 +342,7 @@ obs_used_in_epoch = 0
 BinLoop : do iepoch = 1,Nepochs
       bincenter(iepoch) = beg_time + (iepoch-1) * binsep
       call get_time(bincenter(iepoch),seconds,days)
-      epoch_center(iepoch) = days + seconds/86400.0_r8
+      epoch_center(iepoch) = days + seconds/86400.0_digits12
 
       write(msgstring,'(''epoch '',i4,'' center '')')iepoch
       call print_time(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
@@ -694,17 +700,24 @@ ObsFileLoop : do ifile=1, tot_days*4
             cycle ObservationLoop
          endif
 
+         ! update the histogram of the magnitude of the innovation,
+         ! where each bin is a single standard deviation. This is 
+         ! a one-sided histogram.
+
          ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
          nsigma(int(ratio)) = nsigma(int(ratio)) + 1
-  !      if(ratio > 10.0_r8) then
-  !         call get_time(obs_time,seconds,days)
-  !         write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,2f8.2,f7.1,2i7)') &
-  !              days, seconds, lon0,lat0,ivert, &
-  !              obs(1), pr_mean,ratio,obsindex,flavor
-  !      endif
+
+         ! Individual observations that are very far away get individually
+         ! logged to a separate file.
+
+         if(ratio > 10.0_r8) then
+            call get_time(obs_time,seconds,days)
+            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,2f8.2,f7.1,2i7)') &
+                 days, seconds, lon0, lat0, ivert, &
+                 obs(1), pr_mean, ratio, obsindex, flavor
+         endif
 
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
-  !      write(*,*)'incrementing obs in this epoch to ',obs_used_in_epoch(iepoch)
 
          !--------------------------------------------------------------
          ! If it is a U wind component, all we need to do is save it.
@@ -914,8 +927,45 @@ enddo ObsFileLoop
 
 !-----------------------------------------------------------------------
 ! We have read all possible files, and stuffed the observations into the
-! appropriate bins. Time to normalize and finish up.
+! appropriate bins. Time to normalize and finish up. Almost.
 !-----------------------------------------------------------------------
+! First, echo attributes to a file to facilitate plotting.
+! This file is also a matlab function ... the variables are
+! loaded by just typing the name at the matlab prompt.
+! The output file names are included in this master file, 
+! but they are created on-the-fly, so we must leave this open till then.
+!-----------------------------------------------------------------------
+
+iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
+write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
+write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
+write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
+write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
+write(iunit,'(''iskip          = '',i6,'';'')')iskip
+write(iunit,'(''plevel         = '',i6,'';'')')plevel
+write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
+write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,2)
+write(iunit,'(''ptop           = '',i6,'';'')')levels_int(nlev+1,2)
+write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
+write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
+write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
+write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
+write(iunit,'(''bin_width_hours      = '',f9.2,'';'')')bin_width_hours
+write(iunit,'(''bin_separation_hours = '',f9.2,'';'')')bin_separation_hours 
+write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
+write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
+write(iunit,'(''plev     = ['',11(1x,i5),''];'')')levels(:,2)
+write(iunit,'(''plev_int = ['',12(1x,i5),''];'')')levels_int(:,2)
+write(iunit,'(''hlev     = ['',11(1x,i5),''];'')')levels(:,3)
+write(iunit,'(''hlev_int = ['',12(1x,i5),''];'')')levels_int(:,3)
+write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
+write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
+write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
+write(iunit,'(''latlim2 = ['',4(1x,f9.2),''];'')')latlim2
+do iregion=1,Nregions
+   write(iunit,47)iregion,trim(adjustl(reg_names(iregion)))
+enddo
+47 format('Regions(',i3,') = {''',a,'''};')
 
 do iepoch = 1, Nepochs
    write(msgstring,'(''num obs used in epoch '',i3,'' = '',i8)') iepoch, obs_used_in_epoch(iepoch)
@@ -927,7 +977,9 @@ if (verbose) then
    write(     *     ,*)'Normalizing time-region-variable quantities for desired level.'
 endif
 
-OurLevel : do ivar=1,max_obs_kinds
+ivarcount = 0
+
+OneLevel : do ivar=1,max_obs_kinds
 
    do iregion=1, Nregions
       do iepoch = 1, Nepochs
@@ -957,11 +1009,9 @@ OurLevel : do ivar=1,max_obs_kinds
    ! Create data files for all observation kinds we have used
    !--------------------------------------------------------------------
 
-   if( all (num_in_level(:, :, ivar) == 0) ) then
-   !  write(logfileunit,*)'No valid data for variable number ',ivar
-   !  write(     *     ,*)'No valid data for variable number ',ivar
-      cycle OurLevel
-   endif
+   if( all (num_in_level(:, :, ivar) == 0) ) cycle OneLevel
+
+   ivarcount = ivarcount + 1
 
    write(gesName,'(a,''_ges_times.dat'')') trim(adjustl(get_obs_name(ivar)))
    write(anlName,'(a,''_anl_times.dat'')') trim(adjustl(get_obs_name(ivar)))
@@ -985,15 +1035,20 @@ OurLevel : do ivar=1,max_obs_kinds
    close(gesUnit)
    close(anlUnit)
 
-enddo OurLevel
+   write(iunit,95) ivarcount, trim(adjustl(get_obs_name(ivar)))
+
+
+enddo OneLevel
 
 91 format(i7,1x,i5,4(1x,2f7.2,1x,i8))
+95 format('One_Level_Varnames(',i3,') = {''',a,'''};')
+96 format('All_Level_Varnames(',i3,') = {''',a,'''};')
 
-
+! Actually print the histogram of innovations as a function of standard deviation. 
 close(nsigmaUnit)
-!do i=0,100
-!   if(nsigma(i) /= 0) print*,i,nsigma(i)
-!enddo
+do i=0,100
+   if(nsigma(i) /= 0) write(*,*)'innovations within ',i,' stdev = ',nsigma(i)
+enddo
 
 deallocate(rms_ges_mean, rms_ges_spread, &
            rms_anl_mean, rms_anl_spread)
@@ -1007,6 +1062,8 @@ if (verbose) then
    write(logfileunit,*)'Normalize quantities for all levels.'
    write(     *     ,*)'Normalize quantities for all levels.'
 endif
+
+ivarcount = 0
 
 AllLevels : do ivar=1,max_obs_kinds
 
@@ -1039,6 +1096,8 @@ AllLevels : do ivar=1,max_obs_kinds
    !--------------------------------------------------------------------
 
    if( all (num_ver(:,:,ivar) == 0) ) cycle AllLevels
+
+   ivarcount = ivarcount + 1
 
    write(gesName,'(a,''_ges_ver_ave.dat'')') trim(adjustl(get_obs_name(ivar)))
    write(anlName,'(a,''_anl_ver_ave.dat'')') trim(adjustl(get_obs_name(ivar)))
@@ -1078,9 +1137,17 @@ AllLevels : do ivar=1,max_obs_kinds
    close(gesUnit)
    close(anlUnit)
 
+   write(iunit,96) ivarcount, trim(adjustl(get_obs_name(ivar)))
+
 enddo AllLevels
 
 610 format(i5, 4(f8.3, i8) )
+
+!-----------------------------------------------------------------------
+close(iunit)   ! Finally close the 'master' matlab diagnostic file.
+!-----------------------------------------------------------------------
+! Print final rejection summary.
+!-----------------------------------------------------------------------
 
 write(*,*) ''
 write(*,*) '# observations used  : ',sum(obs_used_in_epoch)
@@ -1112,35 +1179,8 @@ write(logfileunit,'(a,4i8)') ' # bad winds per region for specified level : ',Nb
 write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels      : ',NbadWvert
 
 !-----------------------------------------------------------------------
-! Echo attributes to a file to facilitate plotting.
-! This file is also a matlab function ... the variables are
-! loaded by just typing the name at the matlab prompt.
+! Really, really, done.
 !-----------------------------------------------------------------------
-
-iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
-write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
-write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
-write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
-write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
-write(iunit,'(''iskip          = '',i6,'';'')')iskip
-write(iunit,'(''plevel         = '',i6,'';'')')plevel
-write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,2)
-write(iunit,'(''ptop           = '',i6,'';'')')levels_int(nlev+1,2)
-write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
-write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
-write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
-write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
-write(iunit,'(''bin_width      = '',f9.2,'';'')')bin_width
-write(iunit,'(''bin_separation = '',f9.2,'';'')')bin_separation 
-write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
-write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
-write(iunit,'(''plev    = ['',11(1x,i5),''];'')')levels(:,2)
-write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
-write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
-write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
-write(iunit,'(''latlim2 = ['',4(1x,f9.2),''];'')')latlim2
-close(iunit)
-
 
 deallocate(epoch_center, bincenter)
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
