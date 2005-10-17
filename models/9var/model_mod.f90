@@ -105,7 +105,6 @@ subroutine static_init_model()
 implicit none
 real(r8) :: x_loc
 integer :: i, iunit, io
-character(len=129) :: err_string, nml_string
 
 ! Register the module into the logfile
 call register_module(source, revision, revdate)

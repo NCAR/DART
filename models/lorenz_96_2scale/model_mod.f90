@@ -100,8 +100,7 @@ subroutine static_init_model()
 ! identity info, sets the location of the state variables, and initializes
 ! the time type for the time stepping (is this general enough for time???)
 
-integer  :: i, iunit, ierr, io, kount
-character(len=129) :: err_string, nml_string
+integer  :: i, iunit, io, kount
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)

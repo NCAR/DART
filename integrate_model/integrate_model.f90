@@ -43,7 +43,6 @@ type(time_type)         :: target_time, model_time
 real(r8), allocatable   :: x(:)
 integer                 :: iunit, io, model_size
 type(ensemble_type)     :: ens_handle
-character (len=129)     :: err_string, nml_string
 character (len=129)     :: adv_ens_command = ''
 
 !----------------------------------------------------------------

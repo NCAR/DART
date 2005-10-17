@@ -89,9 +89,8 @@ subroutine static_init_model()
 real(r8) :: x_loc
 real(r8) :: ri
 real(r8) :: alpha, beta
-integer  :: i, iunit, ierr, io
+integer  :: i, iunit, io
 integer  :: j
-character(len=129) :: err_string, nml_string 
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)

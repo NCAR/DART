@@ -98,7 +98,6 @@ subroutine assim_tools_init(dont_read_restart)
 logical, intent(in), optional :: dont_read_restart
 
 integer :: iunit, io, restart_unit, i, res_num_domains
-character(len=159) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 

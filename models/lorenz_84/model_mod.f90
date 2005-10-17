@@ -80,8 +80,7 @@ subroutine static_init_model()
 !
 
 real(r8) :: x_loc
-integer  :: i, iunit, ierr, io
-character(len=129) :: err_string, nml_string
+integer  :: i, iunit, io
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -383,7 +382,7 @@ character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1,str2 
+character(len=NF90_MAX_NAME) :: str1
 
 integer             :: i
 type(location_type) :: lctn 

@@ -237,8 +237,7 @@ type(time_type), intent(in) :: mTime
 type(prog_var_type) :: Var
 type(time_type) :: Time_next
 
-integer :: i, j, k
-real(r8) :: temp_t
+!!!integer :: i, j, k
 
 ! Convert the vector to a B-grid native state representation
 call vector_to_prog_var(x, get_model_size(), Var)
@@ -330,7 +329,7 @@ real(r8), intent(inout) :: x(:)
 type(prog_var_type) :: Var
 real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: fis, res
 real(r8), allocatable, dimension(:) :: eta, peta
-integer :: ix, jx, kx, nt
+integer :: ix, jx, kx
 ! Havana no longer distinguishes prognostic tracers
 !!!integer :: ix, jx, kx, nt, ntp
 
@@ -365,13 +364,10 @@ end subroutine init_conditions
 
 !-----------------------------------------------------------------------
 
-   integer :: total_days, total_seconds, iunit, ierr, io, id, jd, kd
+   integer :: iunit, io
    integer :: idate(6)
    type (time_type) :: Run_length
    logical :: use_namelist
-
-   integer :: num_atmos_calls
-   character(len=129) :: err_string, nml_string
 
 !-----------------------------------------------------------------------
 
@@ -506,8 +502,6 @@ end subroutine init_conditions
 
  real(r8), allocatable :: t_lat_bnds(:), t_lon_bnds(:), v_lat_bnds(:), v_lon_bnds(:)
 
- character(len=129) :: err_string, nml_string
-
 !-----------------------------------------------------------------------
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "atmosphere_nml", iunit)
@@ -600,8 +594,6 @@ deallocate(t_lon_bnds, t_lat_bnds, v_lon_bnds, v_lat_bnds)
 
  type(prog_var_type), intent(in) :: Var
 
- integer :: iunit
-
     call bgrid_core_driver_end ( Var, Dynam )
 
  end subroutine atmosphere_end
@@ -673,7 +665,7 @@ type   (prog_var_type),intent(in)    :: Var
 type   (prog_var_type),intent(inout) :: Var_dt
 
 !-----------------------------------------------------------------------
-  integer :: j, k, n, is, ie, js, je, i1, i2, j1, j2, nt
+  integer :: is, ie, js, je, i1, i2, j1, j2, nt
   integer :: ix, jx, dimi, jdim
 !-----------------------------------------------------------------------
 
@@ -1026,7 +1018,7 @@ integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
-integer :: i, j, k, nt, indx, local_var_type, var_type_temp
+integer :: indx, local_var_type, var_type_temp
 integer :: tis, tie, tjs, tje, vis, vie, vjs, vje
 integer :: t_size, v_size, t_grid_size, v_grid_size, t_per_col, v_per_col
 integer :: num_t_lons, num_t_lats, num_v_lons, num_v_lats
@@ -1502,13 +1494,10 @@ integer, intent(out) :: nfound, indices(:)
 real(r8), intent(out) :: dist(:)
 real(r8), intent(in) :: x(:)
 
-real(r8) :: loc_array(3), o_lon, o_lat
 integer :: tnlon, tnlat, vnlon, vnlat, num, max_size, i, j, num1
 integer :: t_size, v_size, t_per_col, t_grid_size, v_per_col, col_base_index
 integer, allocatable :: lon_ind(:), lat_ind(:)
 real(r8), allocatable :: close_dist(:)
-
-integer :: lji
 
 ! Number found starts at 0
 nfound = 0
@@ -1582,9 +1571,9 @@ integer, intent(inout) :: num
 integer, intent(inout) :: close_lon_ind(:), close_lat_ind(:)
 real(r8), intent(out) :: close_dist(:)
 
-real(r8) :: glat, glon, loc_array(3), o_lon, o_lat, o_lev
-real(r8) :: gdist, diff, row_dist(nlon)
-integer :: blat_ind, blon_ind, i, j, lat_ind, lon_ind
+real(r8) :: glat, loc_array(3), o_lon, o_lat
+real(r8) :: row_dist(nlon)
+integer :: blat_ind, blon_ind, lat_ind
 integer :: row_lon_ind(nlon), row_num
 real(r8), parameter :: glev = 1.0_r8
 
@@ -1766,7 +1755,7 @@ real(r8), intent(in) :: o_lon, lons(nlon)
 integer :: get_closest_lon_index
 
 real(r8) :: diff, lon_bot, lon_top, lon_int
-integer :: lower_ind, blon_ind 
+integer :: lower_ind
 
 ! Find closest longitude on grid to given longitude
 lon_bot = lons(1)
@@ -1850,7 +1839,7 @@ character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1,str2
+character(len=NF90_MAX_NAME) :: str1
 !-----------------------------------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
@@ -2143,7 +2132,7 @@ integer :: StateVarID, psVarID, tVarID, rVarID, uVarID, vVarID
 integer :: tis, tie, tjs, tje       ! temperature grid start/stop
 integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
 integer :: kub, klb
-integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
+integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer
 
 ierr = 0     ! assume normal termination
 
