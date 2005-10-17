@@ -61,7 +61,7 @@ type(location_type)     :: obs_loc
 !---------------------
 integer :: obsindex, i, j, iunit, ierr, io, ivarcount
 character(len = 129) :: obs_seq_in_file_name
-character(len =  32) :: generic_obs_name   ! same length as obs_def_mod:get_obs_name 
+character(len =  40) :: generic_obs_name   ! 8 longer than length of obs_def_mod:get_obs_name 
 
 ! Storage with fixed size for observation space diagnostics
 real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_spread
@@ -1311,9 +1311,14 @@ contains
 
    Function ProcessName(obs_name) result(generic_obs_name)
    ! Just an effort to replace "_V_WIND_COMPONENT" with
-   ! _WIND_SPEED since we generate wind speed from U,V components.
+   ! _HORIZONTAL_WIND_VELOCITY
+   !
+   ! Since the second string is 8 characters longer than the first,
+   ! the output string must be longer than the input.
+   ! The intput string length is determined by the get_obs_name routine.
+
    character(len=*), intent(in) :: obs_name
-   character(len=129)           :: generic_obs_name
+   character(len=40)            :: generic_obs_name
 
    integer :: indx1,indxN
 
@@ -1321,7 +1326,7 @@ contains
    indxN = len_trim(obs_name)
 
    if (indx1 > 0) then
-      generic_obs_name = obs_name(1:indx1)//'_WIND_SPEED'//obs_name(indx1+18:indxN)
+      generic_obs_name = obs_name(1:indx1)//'_HORIZONTAL_WIND_VELOCITY'//obs_name(indx1+18:indxN)
    else
       generic_obs_name = obs_name
    endif
