@@ -51,9 +51,9 @@ echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 
 @ makenum  = 1
 @ modelnum = 101
-foreach MODEL ( lorenz_96 )
-#foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
-#    lorenz_04                bgrid_solo cam wrf pe2lyr )
+
+foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
+    lorenz_04                bgrid_solo cam wrf pe2lyr )
 #   lorenz_04 MITgcm_annulus bgrid_solo cam wrf pe2lyr rose )
 
     echo "----------------------------------------------------------"
