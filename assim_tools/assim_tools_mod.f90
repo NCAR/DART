@@ -14,7 +14,7 @@ module assim_tools_mod
 ! A variety of operations required by assimilation.
 
 use      types_mod, only : r8, missing_r8, PI
-use  utilities_mod, only : file_exist, open_file, close_file, get_unit, &
+use  utilities_mod, only : file_exist, get_unit, check_namelist_read, find_namelist_in_file, &
                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 use       sort_mod, only : index_sort 
 use random_seq_mod, only : random_seq_type, random_gaussian, &
@@ -102,23 +102,10 @@ character(len=159) :: err_string, nml_string
 
 call register_module(source, revision, revdate)
 
-! Read namelist for run-time control
-
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = assim_tools_nml, iostat = io)
-   if ( io /= 0 ) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'assim_tools_init:&assim_tools_nml problem', &
-           err_string, source, revision, revdate)
-   endif
- 
-   call close_file(iunit)
-endif
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "assim_tools_nml", iunit)
+read(iunit, nml = assim_tools_nml, iostat = io)
+call check_namelist_read(iunit, io, "assim_tools_nml")
 
 ! Write the namelist values to the log file
 
