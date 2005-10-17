@@ -799,6 +799,12 @@ vertical and horizontal separation.
 <P></P><HR><P></P>
 <H2>KNOWN BUGS</H2>
 <P>
+The Hawaii and Workshop versions of this module had an error in the
+approximate distance computation. The available values in the lookup
+table for cosine were insufficient for some cases. This manifested 
+itself as potential errors, most commonly for computing distances 
+near the poles. For relatively small horizontal localizations, this 
+problem only occurred for locations very near the pole.
 None.
 </P>
 

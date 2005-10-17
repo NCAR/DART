@@ -148,7 +148,6 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_obs">write_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_obs">read_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_obs">interactive_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#simul_radar">simul_radar</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs">copy_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs">assignment(=)</A></TD></TR>
 </TABLE>
@@ -782,8 +781,13 @@ controlled by the namelist parameter write_binary_obs_sequence.
 Read an observation sequence from file_name. It is convenient to be able
 to add additional data copies associated with each observation, or to add
 additional quality control fields, or to add space for additional 
-observations. The format of the file is specified by the namelist 
-parameter read_binary_obs_sequence.
+observations. The format of the file is now automatically detected.
+Obs sequence files from large models (CAM in particular) from previous
+releases (before I) are also automatically detected. The new obs_sequence
+file format with I and later releases has a header that associates
+observation kind strings with an integer which was not present in 
+previous versions. The default definitions from the Hawaii and workshop
+releases are assumed when an old format sequence file is detected.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
@@ -1026,8 +1030,7 @@ sequence.
  <P>
 Allows one to see the global metadata associated with an observation
 sequence that has been written to a file without reading the whole
-file. The format of the file is controlled by the namelist parameter
-read_binary_obs_sequence. 
+file. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
@@ -1292,8 +1295,7 @@ parameter write_binary_obs_sequence.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Reads an observation structure from a file that is open with a format
-consistent with the namelist parameter read_binary_obs_sequence. The
+Reads an observation structure from an obs_sequence file. The
 number of copies of data and the number of qc values associated with 
 each observation must be provided. If additional copies of data or
 additional qc fields are needed, arguments allow them to be added.
@@ -1339,41 +1341,6 @@ and qc fields associated with the observation are input.
      <TD>Number of qc fields to be associated with observation.</TD></TR>
  <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
      <TD>Observation created via standard input.</TD></TR>
- </TABLE>
- <BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="simul_radar"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call simul_radar(max_num_obs,obs_num,num_copies,num_qc,obs_sequence,obs) </em>
- <pre>
- integer, intent(in)                    :: <em class=code>max_num_obs</em>
- integer, intent(inout)                 :: <em class=code>obs_num</em>
- integer, intent(in)                    :: <em class=code>num_copies</em>
- integer, intent(in)                    :: <em class=code>num_qc</em>
- type(obs_sequence_type), intent(inout) :: <em class=code>obs_sequence</em>
- type(obs_type), intent(inout)          :: <em class=code>obs</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Preliminary method for interactive definition of radar observations using
-standard in. The I-release will refine the process for adding observations
-and wil replace this routine.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>max_num_obs&nbsp; &nbsp; </em></TD>
-     <TD>Maximum number of obs sequence can hold.</TD></TR>
- <TR><TD valign=top><em class=code>obs_num&nbsp; &nbsp; </em></TD>
-     <TD>Current number of obs in sequence.</TD></TR>
- <TR><TD valign=top><em class=code>num_copies&nbsp; &nbsp; </em></TD>
-     <TD>Number of data copies associated with observations.</TD></TR>
- <TR><TD valign=top><em class=code>num_qc&nbsp; &nbsp; </em></TD>
-     <TD>Number of qc fields associated with observations.</TD></TR>
- <TR><TD valign=top><em class=code>obs_sequence&nbsp; &nbsp; </em></TD>
-     <TD>Obs_sequence in which to include radar observations.</TD></TR>
- <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
-     <TD>Observation to hold the radar observations.</TD></TR>
  </TABLE>
  <BR>
 
@@ -1450,15 +1417,13 @@ current (H) implementation.
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / obs_sequence_nml / </em> &#38;
- read_binary_obs_sequence,write_binary_obs_sequence                                                                                                                                                                                                                                                         
+ write_binary_obs_sequence                                                                                                                                                                                                                                                         
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
-Namelist options control format for IO. Note that these read and write
-formats are used for intermediate files when any of the shell driven
-options for parallelization are used. In these cases, both options
-must be the same. Future versions should automate file reading and only
-the write parameter should remain.
+Namelist option control format for output. Note that the write
+format is used for intermediate files when any of the shell driven
+options for parallelization are used. 
  </em>
  </P>
 <!--kdr put previous comment in FUTURE -->
@@ -1468,9 +1433,6 @@ the write parameter should remain.
  <TR><TH align=left>Contents    </TH>
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
- <TR><!--contents--><TD valign=top>read_binary_obs_sequence</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>If true, read binary obs_sequence files. Default: false</TD></TR>
  <TR><!--contents--><TD valign=top>write_binary_obs_sequence</TD>
      <!--  type  --><TD>logical</TD>
  <!--descript--><TD>If true, write binary obs_sequence files. Default: false</TD></TR>
@@ -1524,10 +1486,6 @@ the write parameter should remain.
     <!-- comment --><TD VALIGN=top>Overflowed the obs sequence.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>simul_radar</TD>
-    <!-- message --><TD VALIGN=top>ran out of room, obs_num # > max_num_obs #</TD>
-    <!-- comment --><TD VALIGN=top>Overflowed observation sequence.</TD>
-</TR>
 
 </TABLE>
 </div>

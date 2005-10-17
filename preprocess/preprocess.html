@@ -61,21 +61,38 @@
 <H2>OVERVIEW</H2>
 
 <P>
-Program to preprocess the <em class="file">ALL_obs_def_mod.F90</em> to remove 
-code sections that are not needed for the selected observation types. The resulting 
-file: <em class="file">obs_def_mod.f90</em>, is to be compiled by subsequent programs.
-The sections of <em class="file">ALL_obs_def_mod.F90</em> that are optional are 
-delimited by 
-<pre><em class="code">
-	#IFDEF observation_type
-	#ENDIF</em>
-</pre>
-where <em class="code">observation_type</em> is the name of one of the types of observations
-defined in <em class="file">ALL_obs_def_mod.F90</em>. The observation kinds 
-to be assimilated or evaluated are specified by entries in the 
-<em class=code>&obs_def_nml</em> which is read by <em class="program">preprocess</em>. 
-Code for ifdef blocks that are <strong>not</strong> to be assimilated or
-evaluated are <strong>not</strong> included in <em class="file">obs_def_mod.f90</em>. 
+Program to create observation kind and observation defintion modules (normally
+obs_kind_mod.f90 and obs_def_mod.f90) from a set of other extended format Fortran90 
+files. There are three kinds of input files: a default template for the obs_kind_mod
+normally DEFAULT_obs_kind_mod.F90 in the obs_kind directory; a default template of the
+obs_def_mod, normally DEFAULT_obs_def_mod.F90 in the obs_def directory; 0 or more
+special obs_def modules such as obs_def_mod_reanalysis_bufr_mod.f90 found in the
+obs_def directory. The DEFAULT_obs_kind_mod.F90 and DEFAULT_obs_def_mod.F90 are
+used as templates into which required information from all specified 
+special obs_def modules is inserted. If no special obs_def modules are specified
+by the namelist, then the DEFAULT_obs_kind_mod.F90 and DEFAULT_obs_def_mod.F90 are 
+copied directly to the final obs_kind and obs_def modules, normally obs_kind_mod.f90
+in the obs_kind directory and obs_def_mod.f90 in the obs_def directory. In this
+default case, only identity observations can be used by the filter (i.e. the
+state variable values are directly observed; forward operator is an identity).
+<P>
+If one or more special obs_def files are specified, information from these files
+is incorporated into the output obs_def and obs_kind modules and the observation
+types specified in the special obs_def files will be available for use by the
+filter programs.
+<P>
+The special obs_def files must contain a number of sections of specially formatted
+F90 comments. They can also contain F90 code required for implementing operations
+needed for the observations. These sections are described in the documentation for
+the special obs_def modules, especially see obs_def_1d_state_mod.f90.
+<P> The DEFAULT obs_kind and obs_def modules also require specially commented
+sections to indicate where code from the special obs_def modules is to be 
+inserted. See the documentation for the DEFAULT_obs_kind_mod.F90 and
+the DEFAULT_obs_def_mod.F90 for details.
+
+
+
+
 </P>
 
 <!--==================================================================-->
@@ -89,9 +106,8 @@ utilities_mod
 </PRE>
 
 <P>
-Optional namelist interfaces <em class=code>&obs_def_nml</em> 
-and <em class=code>&preprocess_nml</em> 
-may be read from file <em class=file>input.nml</em>.
+Namelist interface <em class=code>&preprocess_nml</em> 
+must be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
@@ -113,7 +129,8 @@ may be read from file <em class=file>input.nml</em>.
 
 <div class=namelist><pre>
 <em class=call>namelist / preprocess_nml/ </em> &amp;
-   input_file, output_file
+  input_obs_def_mod_file, input_obs_kind_mod_file, output_obs_def_mod_file, 
+  output_obs_kind_mod_file, input_files(max_input_files) 
 </pre></div>
 </P>
 
@@ -126,43 +143,50 @@ may be read from file <em class=file>input.nml</em>.
 <TR><TH align="left" width="15%">Contents    </TH>
     <TH align="left" width="30%">Type        </TH>
     <TH align="left" width="55%">Description </TH></TR>
-<TR><!--contents--><TD valign=top>input_file           </TD>
+<TR><!--contents--><TD valign=top>input_obs_def_mod_file           </TD>
     <!--  type  --><TD valign=top>character(len=129)<BR>
-          <em class="unit">[default: 'no_default_input_file']</em></TD>
-    <!--descript--><TD> The file to be preprocessed. Normally a relative 
-    path_name to <em class="file">ALL_obs_def_mod.F90</em>.</TD></TR>
-<TR><!--contents--><TD valign=top>output_file           </TD>
+          <em class="unit">[default: 'null']</em></TD>
+    <!--descript--><TD> Path name of input obs definition module to be
+     preprocessed. Normally this is 
+    <em class="file">DEFAULT_obs_def_mod.F90</em> in the obs_def
+     directory. This file must have the appropriate commented lines indicating
+     where the different parts of the input special obs definition modules
+     are to be inserted.  </TD></TR>
+<TR><!--contents--><TD valign=top>output_obs_def_mod_file           </TD>
     <!--  type  --><TD valign=top>character(len=129)<BR>
-          <em class="unit">[default: 'no_default_input_file']</em></TD>
-    <!--descript--><TD> The file to be created. Normally a relative 
-    path_name to <em class="file">obs_def_mod.f90</em>.</TD></TR>
+          <em class="unit">[default: 'null']</em></TD>
+    <!--descript--><TD> Path name of output obs definition module to be
+     created by preprocessor. Normally this is 
+    <em class="file">obs_def_mod.f90</em> in the obs_def
+     directory.   </TD></TR>
+<TR><!--contents--><TD valign=top>input_obs_kind_mod_file           </TD>
+    <!--  type  --><TD valign=top>character(len=129)<BR>
+          <em class="unit">[default: 'null']</em></TD>
+    <!--descript--><TD> Path name of input obs kind module to be
+     preprocessed. Normally this is 
+    <em class="file">DEFAULT_obs_kind_mod.F90</em> in the obs_kind
+     directory. This file must have the appropriate commented lines indicating
+     where the different parts of the input special obs definition modules
+     are to be inserted.  </TD></TR>
+<TR><!--contents--><TD valign=top>output_obs_kind_mod_file           </TD>
+    <!--  type  --><TD valign=top>character(len=129)<BR>
+          <em class="unit">[default: 'null']</em></TD>
+    <!--descript--><TD> Path name of output obs kind module to be
+     created by the preprocessor. Normally this is 
+    <em class="file">obs_kind_mod.F90</em> in the obs_kind
+     directory.   </TD></TR>
+<TR><!--contents--><TD valign=top>input_files           </TD>
+    <!--  type  --><TD valign=top>character(len=129)<BR>
+          <em class="unit">[default: 'null']</em></TD>
+    <!--descript--><TD> A list of up to max_input_files file names that contain
+     special format obs definition files that are to be incorporated into the
+     preprocessed obs_kind_mod.f90 and obs_def_mod.f90. The files must be in the
+     special obs definition format that includes commented F90 lines delimitting
+     information about the observation type(s). These files normally reside in
+     the obs_def directory in files such as 
+      <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.</TD></TR>
 </TABLE>
 
-<div class=namelist><pre>
-<em class=call>namelist / obs_def_nml/ </em> &amp;
-   assimilate_these_obs_types, evaluate_these_obs_types
-</pre></div>
-
-<H3 class=indent1>Discussion</H3>
-
-<P>This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align="left" width="15%">Contents    </TH>
-    <TH align="left" width="30%">Type        </TH>
-    <TH align="left" width="55%">Description </TH></TR>
-<TR><!--contents--><TD valign=top>assimilate_these_obs_types </TD>
-    <!--  type  --><TD valign=top>character(len=129), dimension(max_obs_kinds)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> List of observation kinds to be assimilated
-    specified by string name from <em class="file">ALL_obs_def_mod.F90</em>.</TD></TR>
-<TR><!--contents--><TD valign=top>evaluate_these_obs_types</TD>
-    <!--  type  --><TD valign=top>character(len=129), dimension(max_obs_kinds)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> List of observation kinds to be evaluated but not assimilated
-    specified by string name from <em class="file">ALL_obs_def_mod.F90</em>. </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -171,8 +195,11 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>input_file, specified by namelist; usually <em class="file">ALL_obs_def_mod.F90</em>.
-    <LI>output_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
+<UL><LI>input_obs_def_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_def_mod.F90</em>.
+<LI>output_obs_def_mod_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
+<LI>input_obs_kind_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_kind_mod.F90</em>.
+<LI>output_obs_kind_mod_file, specified by namelist; usually <em class="file">obs_kind_mod.f90</em>.
+    <LI>input_files, specified by namelist; usually files like <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.
     <LI>namelistfile
 </UL>
 
@@ -197,14 +224,72 @@ may be read from file <em class=file>input.nml</em>.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>preprocess</TD>
-    <!-- message --><TD VALIGN=top>input file 'file name' does not exist.</TD>
-    <!-- comment --><TD VALIGN=top>Need an input file to preprocess.</TD>
+    <!-- message --><TD VALIGN=top>Namelist must provide input_obs_def_mod_file</TD>
+    <!-- comment --><TD VALIGN=top>Need an input obs_def file to preprocess.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>preprocess</TD>
-    <!-- message --><TD VALIGN=top>output file 'file name' exists: MOVE TO AVOID OVERWRITE.</TD>
-    <!-- comment --><TD VALIGN=top>Don't want to risk overwriting files.</TD>
+    <!-- message --><TD VALIGN=top>Namelist must provide input_obs_kind_mod_file</TD>
+    <!-- comment --><TD VALIGN=top>Need an input obs_kind file to preprocess.</TD>
 </TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>Namelist must provide output_obs_def_mod_file</TD>
+    <!-- comment --><TD VALIGN=top>Need an output obs_def file to create.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>Namelist must provide output_obs_kind_mod_file</TD>
+    <!-- comment --><TD VALIGN=top>Need an output obs_kind file to create.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>file ____ does not exist</TD>
+    <!-- comment --><TD VALIGN=top>The input obs_def and obs_kind files must exist.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>file ______ exists: Please Rename</TD>
+    <!-- comment --><TD VALIGN=top>The output obs_kind and obs_def files must not
+     exist. Want to avoid overwriting something important.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>input_files _______ does NOT exist</TD>
+    <!-- comment --><TD VALIGN=top>All of the specified special obs_def input modules
+    must exist.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>file _____ does NOT contain ! BEGIN DART PREPROCESS KIND LIST</TD>
+    <!-- comment --><TD VALIGN=top>Each special obs_def input file must contain this comment string.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>file _____ does NOT contain " END DART PREPROCESS KIND LIST</TD>
+    <!-- comment --><TD VALIGN=top>Each special obs_def input file must contain this comment string.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>Input DEFAULT obs_kind file ended unexpectedly.</TD>
+    <!-- comment --><TD VALIGN=top>Did not find strings indicating where to insert special obs_def sections in the input obs_kind module.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>Input DEFAULT obs_def file ended unexpectedly.</TD>
+    <!-- comment --><TD VALIGN=top>Did not find strings indicating where to insert special obs_def sections in the input obs_def module.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>file _____ does NOT contain ! BEGIN DART PREPROCESS.</TD>
+    <!-- comment --><TD VALIGN=top>Input special obs_def file must contain this comment string.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>preprocess</TD>
+    <!-- message --><TD VALIGN=top>file _____ does NOT contain ! END DART PREPROCESS.</TD>
+    <!-- comment --><TD VALIGN=top>Input special obs_def file must contain this comment string.</TD>
+</TR>
+
 </TABLE>
 </div>
 

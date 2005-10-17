@@ -99,6 +99,8 @@ types_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#initialize_utilities">initialize_utilities</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#finalize_utilities">finalize_utilities</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#dump_unit_attributes">dump_unit_attributes</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#find_namelist_in_file">find_namelist_in_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_read">check_namelist_read</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_DBG, DEBUG</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_MSG, MESSAGE</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_WARN, WARNING</A></TD></TR>
@@ -338,6 +340,86 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
  </TABLE>
  <BR>
 
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="find_namelist_in_file"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call find_namelist_in_file(namelist_file_name, nml_name, iunit,
+      <em class=optionalcode>[, write_to_logfile_in]</em>) </em>
+ <pre>
+ character(len=*), intent(in)           :: <em class=code>namelist_file_name</em>
+ character(len=*), intent(in)           :: <em class=code>nml_name</em>
+ integer,          intent(out)           :: <em class=code>iunit</em>
+ logical, optional, intent(in)          :: <em class=optionalcode>write_to_logfile_in</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+   Opens the file namelist_file_name if it exists on unit iunit. A fatal error occurs
+   if the file does not exist (DART requires an input.nml to be available, even if it
+   contains no values). Searches through the file for a line containing ONLY the 
+   string &nml_name (for instance &filter_nml if nml_name is "filter_nml"). If
+   this line is found, the file is rewound and the routine returns. Otherwise,
+   a fatal error message is issued.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>namelist&nbsp; &nbsp; </em></TD>
+     <TD>Name of file assumed to hold the namelist. </TD></TR>
+ <TR><TD valign=top><em class=code>nml_name&nbsp; &nbsp; </em></TD>
+     <TD>Name of the namelist to be searched for in the file, for
+         instance, filter_nml.</TD></TR>
+ <TR><TD valign=top><em class=code>iunit&nbsp; &nbsp; </em></TD>
+     <TD>Channel number on which file is opened.</TD></TR>
+ <TR><TD valign=top><em class=optionalcode>write_to_logfile_in&nbsp; &nbsp; </em></TD>
+     <TD>When the namelist for the utilities module is read, the logfile has not
+         yet been open because its name is in the namelist. If errors are found,
+         have to write to standard out. So, when utilities module calls this
+         internally, this optional argument is set to false. For all other
+         applications, it is normally not used (default is false).</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="check_namelist_read"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call check_namelist_read(iunit, iostat_in, nml_name,
+               <em class=optionalcode>[, write_to_logfile_in]</em>) </em>
+ <pre>
+ integer, intent(in)                    :: <em class=code>iunit</em>
+ integer, intent(in)                    :: <em class=code>iostat_in</em>
+ character(len=*), intent(in)           :: <em class=code>nml_name</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>write_to_logfile_in</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Once a namelist has been read from an opened namelist file, this routine checks 
+  for possible errors i the read. If the namelist read was successful, the file
+  opened on iunit is closed and the routine returns. If iostat is not zero, an 
+  attempt is made to rewind the file on iunit and read the last line that was
+  successfully read. If this can be done, this last line is printed with the
+  preamble "INVALID NAMELIST ENTRY". If the attempt to read the line after rewinding
+  fails, it is assumed that the original read (before the call to this subroutine)
+  failed by reaching the end of the file. An error message stating that the namelist
+  started but was never terminated is issued.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>iunit&nbsp; &nbsp; </em></TD>
+     <TD>Channel number on which file is opened.</TD></TR>
+ <TR><TD valign=top><em class=code>iostat_in&nbsp; &nbsp; </em></TD>
+     <TD>Error status return from an attempted read of a namelist from
+         this file.</TD></TR>
+ <TR><TD valign=top><em class=code>nml_name&nbsp; &nbsp; </em></TD>
+     <TD>The name of the namelist that is being read (for instance filter_nml.</TD></TR>
+ <TR><TD valign=top><em class=optionalcode>write_to_logfile_in&nbsp; &nbsp; </em></TD>
+     <TD>When the namelist for the utilities module is read, the logfile has not
+         yet been open because its name is in the namelist. If errors are found,
+         have to write to standard out. So, when utilities module calls this
+         internally, this optional argument is set to false. For all other
+         applications, it is normally not used (default is false).</TD></TR>
+ </TABLE>
+ <BR>
+
+
 
 <!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
@@ -521,6 +603,26 @@ lead to termination (be careful doing this).
 be caused by having an entry in the namelist input file that is not in the
 namelist, by having illegal values for namelist variables, or by a 
 variety of other compiler dependent problems. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>find_namelist_in_file</TD>
+    <!-- message --><TD VALIGN=top>Namelist entry &____ must exist in namelist_nml.</TD>
+    <!-- comment --><TD VALIGN=top>There must be an entry for the required namelist,
+for instance &filter_nml, in the input.nml namelist file. Even if no values are to be 
+changed from the default, an entry like &filter_nml followed by a line containing only
+/ is required. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>find_namelist_in_file</TD>
+    <!-- message --><TD VALIGN=top>Namelist input file: input.nml must exist</TD>
+    <!-- comment --><TD VALIGN=top>The namelist input file (usually input.nml) 
+                                   must exist. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>check_namelist_read</TD>
+    <!-- message --><TD VALIGN=top>INVALID NAMELIST ENTRY: ___ in namelist ____</TD>
+    <!-- comment --><TD VALIGN=top> While reading the namelist, either a bad
+entry was found or an end of file was encountered. The most confusing case is
+when a namelist is being read successfully but is not appropriately terminated
+with a /. The line printed out by the error message will be the start of the
+next namelist in the input.nml file in this case. </TD>
 </TR>
 </TABLE>
 </div>

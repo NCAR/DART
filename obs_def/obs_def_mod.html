@@ -61,19 +61,23 @@
 <H2>OVERVIEW</H2>
 Provides an abstraction of the definition of an observation. An observation
 sequence at a higher level is composed of observation definitions associated
-with observed values. An observation definition can become quite complicated 
-by using a variety of lower order modules that define metadata associated with
-an observation. This is the only module in DART that requires preprocessing
-to exclude unnecessary code. Code for reading, writing, getting the expected
-value of, and interactive definition of (yes, this sentence is not parallel)
-obs_def_type's for different kinds of observations need to be turned off
-when they are not in use since they may involve model variables that are
-not available for all models. So, DEFAULT_obs_def_mod.F90 is stored in the repository
-and preprocessed to form obs_def_mod.f90 which is compiled by mkmf. The 
-syntax #IFDEF observation_type starts a section of optional code and it
-is concluded by #ENDIF. See the preprocess program for more details of how
-this is done. Preprocess reads the obs_def_nml to see what types of observations
-are being assimilated or evaluated to determine what sections of code to keep.
+with observed values. For now, the basic operations required to implement an
+observation definition are an ability to compute a forward operator given the
+model state vector, the ability to read/write the observation definition from/to
+a file, and a capability to do a standard input driven interactive definition
+of the observation definition.
+<P>
+Beginning with the I-release of DART, a more flexible. powerful (and complicated)
+mechanism for incorporating new types of observations is part of DART. The
+obs_def module being described here is created by the program preprocess.f90
+from two kinds of input files. First, a DEFAULT obs_def module (normally called
+DEFAULT_obs_def_mod.F90 and documented in this directory) is used as a template
+into which the preprocessor incorporates information from zero or more special
+obs_def modules (such as obs_def_1d_state_mod.f90 or obs_def_reanalyis_bufr_mod.f90)
+which are also documented in this directory. If no special obs_def files are 
+included in the preprocessor namelist, a minimal obs_def_mod.f90 is created which
+can only support identity forward observation operators.
+
 <P>
 <BR>
 
@@ -88,7 +92,8 @@ utilities_mod
 location_mod (depends on model choice)
 time_manager_mod
 assim_model_mod
-Other obs_def_kind modules as required
+obs_kind_mod
+Other speical obs_def_kind modules as required
 </PRE>
 
 <!--==================================================================-->
@@ -118,7 +123,6 @@ Other obs_def_kind modules as required
 <TR><TD>&nbsp;</TD><TD><A HREF="#destroy_obs_def">destroy_obs_def</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs_def">copy_obs_def</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs_def">assignment(=)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#max_obs_kinds">max_obs_kinds</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_name">get_obs_name</A></TD></TR>
 </TABLE>
 
@@ -328,7 +332,8 @@ Returns time from an obs_def.
 </div>
  <H3 class=indent1>Description</H3>
  <P>
-Returns the observation name.
+Given the integer index associated with an observation type, returns the observation name.
+See obs_kind for more detail.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>get_obs_name&nbsp; &nbsp; </em></TD>
@@ -576,58 +581,6 @@ Releases all storage associated with an obs_def and its subcomponents.
  </TABLE>
  <BR>
 
-<!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
-
-<A NAME="max_obs_kinds"></A>
-<BR><HR><BR>
-<div class=routine>
-<em class=call>integer, parameter :: max_obs_kinds = 19 </em>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-The number of defined observation kinds.
-</P>
-<BR>
-
-<!--============== DESCRIPTION OF A NAMELIST ========================-->
- <A NAME="Namelist"></A>
- <BR><HR><BR>
-<H2>NAMELIST</H2>
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&#38;' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / obs_def_nml / </em> &#38;
- assimilate_these_obs, evaluate_these_obs
- </pre></div>
- <H3 class=indent1>Discussion</H3>
- <P>
-Control what observation types are to be assimilated and what types are
-to be evaluated (forward operators are computed for diagnostics but 
-observations don't impact the state). The observation kinds are selected
-by using the string values found in the data structure obs_kind_info.
-Any number of these can be selected to be assimilated or evaluated but not
-both. This namelist is also used by the preprocess program to select
-those parts of the code in DEFAULT_obs_def_mod.F90 that should be included in
-the obs_def_mod.f90 that is generated.
- </P>
-<!--kdr put previous comment in FUTURE -->
- <P>This namelist is read in a file called <em class=file>input.nml</em>
- </P>
- <TABLE border=0 cellpadding=3 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
- <TR><!--contents--><TD valign=top>assimilate_these_obs</TD>
-     <!--  type  --><TD>character(len=129), dimension(max_obs_kinds)</TD>
- <!--descript--><TD>Types of observations to be assimilated. Default: 'null'</TD></TR>
- <TR><!--contents--><TD valign=top>evaluate_these_obs</TD>
-     <!--  type  --><TD>character(len=129), dimension(max_obs_kinds)</TD>
- <!--descript--><TD>Types of observations to be evaluated only. Default: 'null'</TD></TR>
- </TABLE>
- <BR>
-
-<!--==================================================================-->
-
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -659,22 +612,40 @@ the obs_def_mod.f90 that is generated.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
-    <!-- message --><TD VALIGN=top>Obs_kind_name from obs_def_nml is not a legal observation kind</TD>
-    <!-- comment --><TD VALIGN=top>The obs type from obs_def_nml is not a legal observation kind.</TD>
+<TR><!-- routine --><TD VALIGN=top>get_expected_obs_from_def</TD>
+    <!-- message --><TD VALIGN=top>Attempt to evaluate undefined obs_kind_type</TD>
+    <!-- comment --><TD VALIGN=top>An observation kind integer index for which
+     no forward operator has been defined is an error.</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
-    <!-- message --><TD VALIGN=top>Illegal to evaluate and assimilate same kind</TD>
-    <!-- comment --><TD VALIGN=top>An observation cannot just be evaluated and assimilated.</TD>
-</TR>
+
 <TR><!-- routine --><TD VALIGN=top>read_obs_def</TD>
     <!-- message --><TD VALIGN=top>Expected header "obdef" in input file</TD>
     <!-- comment --><TD VALIGN=top>The format of the input file is not consistent.</TD>
 </TR>
+
 <TR><!-- routine --><TD VALIGN=top>read_obs_def</TD>
     <!-- message --><TD VALIGN=top>Expected kind header "kind " in input file</TD>
     <!-- comment --><TD VALIGN=top>The format of the input file is not consistent.</TD>
 </TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_obs_def</TD>
+    <!-- message --><TD VALIGN=top>Attempt to read for undefined obs_kind type</TD>
+    <!-- comment --><TD VALIGN=top>Reading for an observation kind integer index for which
+     no forward operator has been defined is an error.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>write_obs_def</TD>
+    <!-- message --><TD VALIGN=top>Attempt to write for undefined obs_kind type</TD>
+    <!-- comment --><TD VALIGN=top>Writing for an observation kind integer index for which
+     no forward operator has been defined is an error.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>interactive_obs_def</TD>
+    <!-- message --><TD VALIGN=top>Attempt to  interactively create undefined obs_kind type</TD>
+    <!-- comment --><TD VALIGN=top>Creating an observation kind integer index for which
+     no forward operator has been defined is an error.</TD>
+</TR>
+
 </TABLE>
 </div>
 

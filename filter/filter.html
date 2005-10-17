@@ -66,7 +66,19 @@
    number of assimilation steps to be done are controlled by the input
    observation sequence and by the time-stepping capabilities of the model
    being used in the assimilation. This documentation was created for the
-   H-release of DART.
+   I-release of DART.
+</P>
+
+<P>
+   Quality control flags for observations are set in filter. If forward 
+   observation operators cannot be computed for any ensemble member, the
+   quality control flag for the observation is incremented by 1000 for the
+   prior and 100000 for a violation when computing posterior diagnostics.
+</P>
+
+<P>
+   The filter also performs an outlier test on observations which set the 
+   quality control flags (see outlier_threshold in namelist).
 </P>
 
 <P>
@@ -214,9 +226,10 @@ ensemble_manager
     <!--descript--><TD>Discard all observations where the prior ensemble mean
                        and the observation value differ by more than this many
                        of the expected standard deviations. A quality control
-                       flag value is incremented by 10000 if this check is
-                       violated for the prior estimate. Negative value 
-                       means no quality control of this kind. 
+                       flag value is incremented by 100 if this check is
+                       violated for the prior ensemble mean and by 400 it this check
+                       is violated for the posterior ensemble mean. Negative value 
+                       means no quality control of this kind is performed. 
                        Default value is -1.0 </TD></TR>
 </TABLE>
 
