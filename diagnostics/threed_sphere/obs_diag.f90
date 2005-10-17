@@ -35,7 +35,7 @@ use     location_mod, only : location_type, get_location, set_location_missing, 
                              write_location, operator(/=), vert_is_surface, vert_is_pressure, &
                              vert_is_height
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
-                             set_calendar_type, print_date, &
+                             set_calendar_type, print_date, GREGORIAN, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), &
                              operator(/=), operator(<=)
@@ -61,6 +61,7 @@ type(location_type)     :: obs_loc
 !---------------------
 integer :: obsindex, i, j, iunit, ierr, io, ivarcount
 character(len = 129) :: obs_seq_in_file_name
+character(len =  32) :: generic_obs_name   ! same length as obs_def_mod:get_obs_name 
 
 ! Storage with fixed size for observation space diagnostics
 real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_spread
@@ -103,7 +104,7 @@ integer :: obs_year       = 2003     ! the first date of the diagnostics
 integer :: obs_month      = 1
 integer :: obs_day        = 1
 integer :: tot_days       = 1        ! total days
-integer :: iskip          = 0        ! skip the first 'iskip' days
+integer :: iskip_days     = 0        ! skip the first 'iskip' days
 integer :: plevel         = 500      ! pressure level (hPa)
 integer :: hlevel         = 5000     ! height (meters)
 integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
@@ -115,7 +116,7 @@ real(r8):: bin_width_hours      = 6.0_r8   ! width of the bin (hours)
 logical :: print_mismatched_locs = .false.
 logical :: verbose = .false.
 
-! TJH - some kind of crazy nomenclature that South Pole = lat 0?
+! TJH - South Pole == lat 0   after you convert from radians.
 
 real(r8), dimension(4) :: lonlim1 = (/   0.0_r8,   0.0_r8,   0.0_r8, 235.0_r8 /)
 real(r8), dimension(4) :: lonlim2 = (/ 360.0_r8, 360.0_r8, 360.0_r8, 295.0_r8 /)
@@ -128,7 +129,7 @@ character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
                                                     'North America       ' /)
 
 namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
-                       tot_days, iskip, plevel, hlevel, obs_select, Nregions, rat_cri, &
+                       tot_days, iskip_days, plevel, hlevel, obs_select, Nregions, rat_cri, &
                        qc_threshold, bin_separation_hours, bin_width_hours, &
                        lonlim1, lonlim2, latlim1, latlim2, reg_names, &
                        print_mismatched_locs, verbose
@@ -200,7 +201,6 @@ integer,         allocatable, dimension(:) :: obs_used_in_epoch
 
 integer  :: seconds, days
 integer  :: obslevel, NBinsPerDay, Nepochs
-integer  :: calendar_type
 integer  :: gesUnit, anlUnit
 
 ! These pairs of variables are used when we diagnose which observations 
@@ -262,8 +262,7 @@ posterior_spread(1) = 0.0_r8
 
 U_obs_loc = set_location_missing()
 
-calendar_type = 3   ! HARDWIRED VALUE TO MATCH TIME_MANAGER_MOD 'GREGORIAN'
-call set_calendar_type(calendar_type)
+call set_calendar_type(GREGORIAN)
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -315,7 +314,7 @@ NBinsPerDay  = nint( 24.0_r8 / bin_separation_hours )
     binwidth = set_time(nint(bin_width_hours      * 3600.0_r8), 0) ! full bin width 
 halfbinwidth = set_time(nint(bin_width_hours      * 1800.0_r8), 0) ! half bin width 
 beg_time     = set_date(obs_year, obs_month, obs_day, 0, 0, 0)
-end_time     = set_time(0, iskip)   ! convert days to skip to a time_type object
+end_time     = set_time(0, iskip_days)   ! convert days to skip to a time_type object
 skip_time    = beg_time + end_time  ! the start time for the accumulation of vertical statistics 
 Nepochs      = NBinsPerDay*tot_days
 
@@ -324,8 +323,8 @@ write(*,*)'Requesting ',Nepochs,' assimilation periods.'
 allocate(rms_ges_mean(  Nepochs, Nregions, max_obs_kinds), &
          rms_ges_spread(Nepochs, Nregions, max_obs_kinds), &
          rms_anl_mean(  Nepochs, Nregions, max_obs_kinds), &
-         rms_anl_spread(Nepochs, Nregions, max_obs_kinds))
-allocate(num_in_level(  Nepochs, Nregions, max_obs_kinds))
+         rms_anl_spread(Nepochs, Nregions, max_obs_kinds), &
+         num_in_level(  Nepochs, Nregions, max_obs_kinds) )
 
 rms_ges_mean   = 0.0_r8
 rms_anl_mean   = 0.0_r8
@@ -335,8 +334,7 @@ num_in_level   = 0
 
 ! Define the centers of the temporal bins.
 
-allocate(bincenter(Nepochs), epoch_center(Nepochs))  ! time_type and 'real'
-allocate(obs_used_in_epoch(Nepochs))
+allocate(bincenter(Nepochs), epoch_center(Nepochs) ,obs_used_in_epoch(Nepochs))
 obs_used_in_epoch = 0
 
 BinLoop : do iepoch = 1,Nepochs
@@ -941,7 +939,7 @@ write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
 write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
 write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
 write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
-write(iunit,'(''iskip          = '',i6,'';'')')iskip
+write(iunit,'(''iskip          = '',i6,'';'')')iskip_days
 write(iunit,'(''plevel         = '',i6,'';'')')plevel
 write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
 write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,2)
@@ -1013,8 +1011,10 @@ OneLevel : do ivar=1,max_obs_kinds
 
    ivarcount = ivarcount + 1
 
-   write(gesName,'(a,''_ges_times.dat'')') trim(adjustl(get_obs_name(ivar)))
-   write(anlName,'(a,''_anl_times.dat'')') trim(adjustl(get_obs_name(ivar)))
+   generic_obs_name = ProcessName(get_obs_name(ivar))
+
+   write(gesName,'(a,''_ges_times.dat'')') trim(adjustl(generic_obs_name))
+   write(anlName,'(a,''_anl_times.dat'')') trim(adjustl(generic_obs_name))
    gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
    anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
 
@@ -1035,7 +1035,7 @@ OneLevel : do ivar=1,max_obs_kinds
    close(gesUnit)
    close(anlUnit)
 
-   write(iunit,95) ivarcount, trim(adjustl(get_obs_name(ivar)))
+   write(iunit,95) ivarcount, trim(adjustl(generic_obs_name))
 
 
 enddo OneLevel
@@ -1051,9 +1051,8 @@ do i=0,100
 enddo
 
 deallocate(rms_ges_mean, rms_ges_spread, &
-           rms_anl_mean, rms_anl_spread)
-
-deallocate(num_in_level)
+           rms_anl_mean, rms_anl_spread, &
+           num_in_level)
 
 !-----------------------------------------------------------------------
 ! temporal average of the vertical statistics
@@ -1099,8 +1098,10 @@ AllLevels : do ivar=1,max_obs_kinds
 
    ivarcount = ivarcount + 1
 
-   write(gesName,'(a,''_ges_ver_ave.dat'')') trim(adjustl(get_obs_name(ivar)))
-   write(anlName,'(a,''_anl_ver_ave.dat'')') trim(adjustl(get_obs_name(ivar)))
+   generic_obs_name = ProcessName(get_obs_name(ivar))
+
+   write(gesName,'(a,''_ges_ver_ave.dat'')') trim(adjustl(generic_obs_name))
+   write(anlName,'(a,''_anl_ver_ave.dat'')') trim(adjustl(generic_obs_name))
    gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
    anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
 
@@ -1118,8 +1119,8 @@ AllLevels : do ivar=1,max_obs_kinds
    close(gesUnit)
    close(anlUnit)
 
-   write(gesName,'(a,''_ges_ver_ave_bias.dat'')') trim(adjustl(get_obs_name(ivar)))
-   write(anlName,'(a,''_anl_ver_ave_bias.dat'')') trim(adjustl(get_obs_name(ivar)))
+   write(gesName,'(a,''_ges_ver_ave_bias.dat'')') trim(adjustl(generic_obs_name))
+   write(anlName,'(a,''_anl_ver_ave_bias.dat'')') trim(adjustl(generic_obs_name))
    gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
    anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
 
@@ -1137,7 +1138,7 @@ AllLevels : do ivar=1,max_obs_kinds
    close(gesUnit)
    close(anlUnit)
 
-   write(iunit,96) ivarcount, trim(adjustl(get_obs_name(ivar)))
+   write(iunit,96) ivarcount, trim(adjustl(generic_obs_name))
 
 enddo AllLevels
 
@@ -1158,7 +1159,8 @@ write(*,*) '# NbadLevel          : ',NbadLevel
 write(*,'(a)')'Table of observations rejected by region for specified level'
 write(*,'(5a)')'                                       ',reg_names(1:Nregions)
 do ivar=1,max_obs_kinds
-   write(*,'(3a,4i8)') ' # ',get_obs_name(ivar),'         : ',Nrejected(:,ivar)
+   generic_obs_name = ProcessName(get_obs_name(ivar))
+   write(*,'(3a,4i8)') ' # ',generic_obs_name,'         : ',Nrejected(:,ivar)
 enddo
 write(*,'(a,4i8)') ' # bad winds per region for specified level : ',NbadW
 write(*,'(a,4i8)') ' # bad winds per region for all levels      : ',NbadWvert
@@ -1173,7 +1175,8 @@ write(logfileunit,*) '# NbadLevel          : ',NbadLevel
 write(logfileunit,'(a)')'Table of observations rejected by region for specified level'
 write(logfileunit,'(5a)')'                                       ',reg_names(1:Nregions)
 do ivar=1,max_obs_kinds
-   write(logfileunit,'(3a,4i8)') ' # ',get_obs_name(ivar),'         : ',Nrejected(:,ivar)
+   generic_obs_name = ProcessName(get_obs_name(ivar))
+   write(logfileunit,'(3a,4i8)') ' # ',generic_obs_name,'         : ',Nrejected(:,ivar)
 enddo
 write(logfileunit,'(a,4i8)') ' # bad winds per region for specified level : ',NbadW
 write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels      : ',NbadWvert
@@ -1182,9 +1185,11 @@ write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels      : ',Nb
 ! Really, really, done.
 !-----------------------------------------------------------------------
 
-deallocate(epoch_center, bincenter)
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+deallocate(rms_ges_ver, rms_anl_ver, bias_ges_ver, bias_anl_ver, &
+           num_ver, NbadW, NbadWvert, Nrejected, & 
+           epoch_center, bincenter, obs_used_in_epoch)
 
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
 contains
 
@@ -1302,5 +1307,25 @@ contains
    if( (obs_select == 3) .and. (platform == 'RADIOSONDE') ) keeper = .false.
 
    end Function CheckObsType
+
+
+   Function ProcessName(obs_name) result(generic_obs_name)
+   ! Just an effort to replace "_V_WIND_COMPONENT" with
+   ! _WIND_SPEED since we generate wind speed from U,V components.
+   character(len=*), intent(in) :: obs_name
+   character(len=129)           :: generic_obs_name
+
+   integer :: indx1,indxN
+
+   indx1 = index(obs_name,'_V_WIND_COMPONENT') - 1
+   indxN = len_trim(obs_name)
+
+   if (indx1 > 0) then
+      generic_obs_name = obs_name(1:indx1)//'_WIND_SPEED'//obs_name(indx1+18:indxN)
+   else
+      generic_obs_name = obs_name
+   endif
+
+   end Function ProcessName
 
 end program obs_diag
