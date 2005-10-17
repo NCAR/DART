@@ -32,7 +32,7 @@ use     location_mod, only : location_type, get_location, set_location_missing, 
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              print_date, &
                              operator(*), operator(+), operator(-), &
-                             operator(>), operator(<), &
+                             operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
@@ -87,11 +87,11 @@ integer :: obs_year   = 0        ! the first date of the diagnostics
 integer :: obs_month  = 1
 integer :: obs_day    = 1
 integer :: tot_days   = 1        ! total days
-integer :: iskip      = 0        ! skip the first 'iskip' days
+integer :: iskip_days = 0        ! skip the first 'iskip' days
 integer :: obs_select = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 real(r8):: rat_cri    = 3.0      ! QC ratio
 real(r8):: qc_threshold = 4.0    ! maximum NCEP QC factor
-integer :: bin_width = 0         ! width of the bin seconds
+integer :: bin_width_seconds  = 0         ! width of the bin seconds
 logical :: verbose = .false.
 
 ! index 1 == region 1 == [0.0, 1.0) i.e. Entire domain
@@ -105,8 +105,8 @@ character(len=6), dimension(MaxRegions) :: reg_names = &
                                    (/ 'whole ','ying  ','yang  ','bogus '/)
 
 namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
-                       tot_days, iskip, obs_select, rat_cri, &
-                       qc_threshold, bin_width, &
+                       tot_days, iskip_days, obs_select, rat_cri, &
+                       qc_threshold, bin_width_seconds, &
                        lonlim1, lonlim2, reg_names, verbose
 
 !-----------------------------------------------------------------------
@@ -137,7 +137,6 @@ integer  :: gesUnit, anlUnit
 ! These pairs of variables are used when we diagnose which observations 
 ! are far from the background.
 integer  :: nsigma(0:100) = 0
-integer  :: nsigmaUnit
 
 real(r8) :: ratio
 
@@ -204,9 +203,6 @@ FindNumRegions : do iregion = 1,MaxRegions
 
 enddo FindNumRegions
 
-! Open file for histogram of innovations, as a function of standard deviation.
-nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
-write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio    key   kind'
 
 !----------------------------------------------------------------------
 ! Determine temporal bin characteristics.
@@ -298,7 +294,7 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
    !--------------------------------------------------------------------
 
    beg_time  = seqT1
-   end_time  = set_time(0, iskip)   ! convert days to skip to a time_type object
+   end_time  = set_time(0, iskip_days)  ! convert to a time_type object
    skip_time = beg_time + end_time  ! the start time for the accumulation of vertical statistics 
 
    Nepochs = get_num_times(seq)
@@ -323,21 +319,17 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
    Nrejected      = 0
    num_in_level   = 0
 
-   !binsep       = (seqTN - seqT1)/(Nepochs-1)
-   binsep       = set_time(60,0)
-   halfbinwidth = set_time(bin_width/2, 0)        ! half bin width 
-
-   call print_time(      binsep,'binsep       ')
-   call print_time(halfbinwidth,'halfbinwidth ')
-   call print_time(      binsep,'binsep       ',logfileunit)
-   call print_time(halfbinwidth,'halfbinwidth ',logfileunit)
-
-   ! Navigate the entire list once for all obs to determine the unique times
+   !--------------------------------------------------------------------
+   ! Navigate the entire obs sequence once to determine the unique times
+   !--------------------------------------------------------------------
    observation       = obs1
    iepoch            = 1
    bincenter(iepoch) = seqT1
    call get_time(bincenter(iepoch),seconds,days)
    epoch_center(iepoch) = days + seconds/86400.0_digits12
+
+   write(msgstring,'(''epoch '',i4,'' center '')')iepoch
+   call print_time(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
 
    BinLoop : do obsindex = 1,max_num_obs
 
@@ -348,6 +340,12 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
       obs_time = get_obs_def_time(obs_def)
 
       if ( obs_time /= bincenter(iepoch) ) then
+         if (iepoch == Nepochs) then
+            ! Just making sure we stay within array bounds.
+            write(msgstring,*)'no room for another bin center'
+            call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+         endif
+
          iepoch = iepoch + 1
          bincenter(iepoch) = obs_time
          call get_time(bincenter(iepoch),seconds,days)
@@ -355,13 +353,34 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
 
          write(msgstring,'(''epoch '',i4,'' center '')')iepoch
          call print_time(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
-         call print_date(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
-         write(logfileunit,*)''
+!        call print_date(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
       endif
 
       observation = next_obs
 
    enddo BinLoop
+
+   if (iepoch /= Nepochs) then
+      write(msgstring,*)'Nepochs is ',Nepochs,' but only found ',&
+                         iepoch,' unique times in sequence.'
+      call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+   endif
+
+   if (bin_width_seconds <= 0) then  ! no user guidance.
+      binsep       = bincenter(2) - bincenter(1)
+      binwidth     = binsep
+      halfbinwidth = binwidth / 2
+   else
+      binsep       = bincenter(2) - bincenter(1)
+      binwidth     = set_time(bin_width_seconds,0)
+      halfbinwidth = binwidth / 2
+      call get_time(binwidth,bin_width_seconds,days) 
+   endif
+
+   call print_time(      binsep,'binsep       ')
+   call print_time(halfbinwidth,'halfbinwidth ')
+   call print_time(      binsep,'binsep       ',logfileunit)
+   call print_time(halfbinwidth,'halfbinwidth ',logfileunit)
 
    !--------------------------------------------------------------------
    ! Find the index of obs, ensemble mean, spread ... etc.
@@ -447,15 +466,6 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
       beg_time     = bincenter(iepoch) - halfbinwidth + set_time(1,0)
       end_time     = bincenter(iepoch) + halfbinwidth
 
-      if ( verbose ) then
-         call print_time(         beg_time,'epoch  start ',logfileunit)
-         call print_time(bincenter(iepoch),'epoch center ',logfileunit)
-         call print_time(         end_time,'epoch    end ',logfileunit)
-         call print_time(         beg_time,'epoch  start ')
-         call print_time(bincenter(iepoch),'epoch center ')
-         call print_time(         end_time,'epoch    end ')
-      endif
-
       call get_obs_time_range(seq, beg_time, end_time, key_bounds, &
                   num_obs_in_epoch, out_of_range )
 
@@ -467,22 +477,21 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
          cycle EpochLoop
       endif
 
-      write(logfileunit, *) 'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
-      write(     *     , *) 'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
+      if ( verbose ) then
+         call print_time(         beg_time,' epoch  start ',logfileunit)
+         call print_time(bincenter(iepoch),' epoch center ',logfileunit)
+         call print_time(         end_time,' epoch    end ',logfileunit)
+         write(logfileunit, *)'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
 
-      call print_time(         beg_time,'bin  start ',logfileunit)
-      call print_time(bincenter(iepoch),'bin center ',logfileunit)
-      call print_time(         end_time,'bin    end ',logfileunit)
-      write(logfileunit, *) 'num_obs_in_bin (', iepoch, ') = ', num_obs_in_epoch
-      call print_time(         beg_time,'bin  start ')
-      call print_time(bincenter(iepoch),'bin center ')
-      call print_time(         end_time,'bin    end ')
-      write(     *     , *) 'num_obs_in_bin (', iepoch, ') = ', num_obs_in_epoch
+         call print_time(         beg_time,' epoch  start ')
+         call print_time(bincenter(iepoch),' epoch center ')
+         call print_time(         end_time,' epoch    end ')
+         write(     *     , *)'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
+      endif
 
       allocate(keys(num_obs_in_epoch))
 
       call get_time_range_keys(seq, key_bounds, num_obs_in_epoch, keys)
-
 
       !-----------------------------------------------------------------
       ObservationLoop : do obsindex = 1, num_obs_in_epoch
@@ -551,16 +560,6 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
          ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
          nsigma(int(ratio)) = nsigma(int(ratio)) + 1
 
-         ! Individual observations that are very far away get individually
-         ! logged to a separate file.
-
-         if(ratio > 10.0_r8) then
-            call get_time(obs_time,seconds,days)
-         !  write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,2f8.2,f7.1,2i7)') &
-         !       days, seconds, lon0, lat0, ivert, &
-         !       obs(1), pr_mean, ratio, obsindex, flavor
-         endif
-
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
 
          !--------------------------------------------------------------
@@ -598,6 +597,12 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
                   rms_anl_spread(iepoch, iregion, flavor) + po_sprd**2
                else
                   Nrejected(iepoch, iregion, flavor) = Nrejected(iepoch, iregion, flavor) + 1 
+                  if (verbose) then
+                     write(logfileunit,*)'obsindex ',obsindex,' ratio ', ratio
+                     write(logfileunit,*)'val,prm,prs,var ',obs(obsindex), &
+                                          pr_mean, pr_sprd, obs_err_var
+                  endif
+
                endif
 
         !   endif
@@ -610,9 +615,13 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
 
       deallocate(keys)
 
-      write(msgstring,'(''num obs considered in epoch '',i4,'' = '',i8)') &
-                         iepoch, obs_used_in_epoch(iepoch)
-      if(verbose) call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+!     if(verbose) then
+!        write(msgstring,'(''num obs considered in epoch '',i4,'' = '',i8)') &
+!                        iepoch, obs_used_in_epoch(iepoch)
+!        call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+!        write(logfileunit,*)''
+!        write(     *     ,*)''
+!     endif
 
    enddo EpochLoop
 
@@ -645,22 +654,22 @@ write(iunit,'(''obs_year       = '',i,'';'')')obs_year
 write(iunit,'(''obs_month      = '',i,'';'')')obs_month
 write(iunit,'(''obs_day        = '',i,'';'')')obs_day
 write(iunit,'(''tot_days       = '',i,'';'')')tot_days
-write(iunit,'(''iskip          = '',i,'';'')')iskip
+write(iunit,'(''iskip_days     = '',i,'';'')')iskip_days
 write(iunit,'(''obs_select     = '',i,'';'')')obs_select
-write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
-write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
-write(iunit,'(''bin_width      = '',i,'';'')')bin_width
-write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
-write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
-write(iunit,'(''lonlim1 = ['',3(1x,f9.2),''];'')')lonlim1
-write(iunit,'(''lonlim2 = ['',3(1x,f9.2),''];'')')lonlim2
+write(iunit,'(''rat_cri        = '',f,'';'')')rat_cri
+write(iunit,'(''qc_threshold   = '',f,'';'')')qc_threshold
+write(iunit,'(''bin_width_seconds = '',i,'';'')')bin_width_seconds
+write(iunit,'(''t1             = '',f,'';'')')epoch_center(1)
+write(iunit,'(''tN             = '',f,'';'')')epoch_center(Nepochs)
 do iregion=1,Nregions
+   write(iunit,'(''lonlim1('',i,'') = '',f,'';'')')iregion, lonlim1(iregion)
+   write(iunit,'(''lonlim2('',i,'') = '',f,'';'')')iregion, lonlim2(iregion)
    write(iunit,47)iregion,trim(adjustl(reg_names(iregion)))
 enddo
-47 format('Regions(',i3,') = {''',a,'''};')
+47 format('Regions(',i4,') = {''',a,'''};')
 
 do iepoch = 1, Nepochs
-   write(msgstring,'(''num obs used in epoch '',i3,'' = '',i8)') iepoch, obs_used_in_epoch(iepoch)
+   write(msgstring,'(''num obs used in epoch '',i5,'' = '',i8)') iepoch, obs_used_in_epoch(iepoch)
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 enddo
 
@@ -734,22 +743,15 @@ enddo OneLevel
 
 
 ! Actually print the histogram of innovations as a function of standard deviation. 
-close(nsigmaUnit)
 do i=0,100
    if(nsigma(i) /= 0) write(*,*)'innovations within ',i,' stdev = ',nsigma(i)
 enddo
-
-deallocate(rms_ges_mean, rms_ges_spread, &
-           rms_anl_mean, rms_anl_spread)
-
-deallocate(num_in_level)
 
 !-----------------------------------------------------------------------
 close(iunit)   ! Finally close the 'master' matlab diagnostic file.
 !-----------------------------------------------------------------------
 ! Print final rejection summary.
 !-----------------------------------------------------------------------
-
 
 write(*,*) ''
 write(*,*) '# observations used  : ',sum(obs_used_in_epoch)
@@ -780,10 +782,10 @@ enddo
 ! Really, really, done.
 !-----------------------------------------------------------------------
 
-deallocate( epoch_center, bincenter)
-deallocate( rms_ges_mean, rms_ges_spread, &
-            rms_anl_mean, rms_anl_spread, &
-           num_in_level, Nrejected )
+deallocate(rms_ges_mean, rms_ges_spread, &
+           rms_anl_mean, rms_anl_spread, &
+           num_in_level, Nrejected, &
+           obs_used_in_epoch, bincenter, epoch_center)
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
