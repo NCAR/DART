@@ -1214,7 +1214,7 @@ documentation for arguments and details.
 </P>
 <div class=namelist><pre>
 <em class=call>namelist / assim_model_nml / </em> &
-    read_binary_restart_files, write_binary_restart_files
+    write_binary_restart_files
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -1226,15 +1226,6 @@ documentation for arguments and details.
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>read_binary_restart_files</TD>
-    <!--  type  --><TD>logical                         </TD>
-    <!--descript--><TD> Are input state restart files ascii (false) or 
-                        unformatted (true)? Default is true. NOTE:
-                        when using parallel options to advance model
-                        states, temporary files are written out using
-                        the same interfaces. read and write options
-                        must be either both false or both true in 
-                        this case.
 <TR><!--contents--><TD valign=top>write_binary_restart_files</TD>
     <!--  type  --><TD>logical                         </TD>
     <!--descript--><TD> Are output state restart files ascii (false) or 
