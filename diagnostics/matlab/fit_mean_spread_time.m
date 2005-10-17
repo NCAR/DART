@@ -48,19 +48,16 @@ datafile = 'ObsDiagAtts';
 ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 %----------------------------------------------------------------------
-% Get attributes from obs_diag run.
+% Get plotting metadata from obs_diag run.
 %----------------------------------------------------------------------
 
 if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp = datenum(obs_year,obs_month,obs_day);
-   toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
-   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
-
-   % The Regions and the xxxx_varnames come from this file also. 
+   if ( exist('plevel','var') == 0 )
+      plevel = 1;
+   end
 
 else
    error(sprintf('%s cannot be found.', datafile))
@@ -68,8 +65,14 @@ end
 
 % set up a structure with all static plotting components
 
-plotdat.level     = plevel;
-plotdat.toff      = toff;
+temp = datenum(obs_year,obs_month,obs_day);
+plotdat.toff      = temp - round(t1); % determine temporal offset (calendar base)
+plotdat.day1      = datestr(t1+plotdat.toff,'yyyy-mm-dd HH');
+plotdat.dayN      = datestr(tN+plotdat.toff,'yyyy-mm-dd HH');
+plotdat.obs_year  = obs_year;
+plotdat.obs_month = obs_month;
+plotdat.obs_day   = obs_day;
+plotdat.level     = plevel; 
 plotdat.ylabel    = 'RMSE';
 plotdat.nregions  = length(Regions);
 plotdat.nvars     = length(One_Level_Varnames);
@@ -98,8 +101,8 @@ for ivar = 1:plotdat.nvars,
          anl  = sprintf('%s_anl_times.dat',One_Level_Varnames{ivar});
          main = sprintf('%s',string1);
 %     otherwise
-%        ges  = sprintf('%s_ges_times_%04dmb.dat',One_Level_Varnames{ivar},level);
-%        anl  = sprintf('%s_anl_times_%04dmb.dat',One_Level_Varnames{ivar},level);
+%        ges  = sprintf('%s_ges_times_%04dmb.dat',One_Level_Varnames{ivar},plotdat.level);
+%        anl  = sprintf('%s_anl_times_%04dmb.dat',One_Level_Varnames{ivar},plotdat.level);
 %        main = sprintf('%s %d hPa',string1,plotdat.level);
 %  end
 
@@ -168,8 +171,12 @@ subplot(2,2,plotdat.region)
    plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
    ylabel(plotdat.ylabel, 'fontsize', 10);
-   datetick('x',1)
-   title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
+   xlabel('days')
+
+   if (plotdat.obs_year > 1000); datetick('x',1); end
+
+   title(plotdat.title, 'Interpreter', 'none', ...
+         'Fontsize', 12, 'FontWeight', 'bold')
    h = legend(gstring, astring);
    legend(h,'boxoff')
 

@@ -42,21 +42,17 @@ datafile = 'ObsDiagAtts';
 ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
 
 %----------------------------------------------------------------------
-% Get attributes from obs_diag run.
+% Get plotting metadata from obs_diag run.
 %----------------------------------------------------------------------
 
 if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp = datenum(obs_year,obs_month,obs_day);
-   toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff+iskip,'yyyy-mm-dd HH');
-   dayN = datestr(tN+toff,      'yyyy-mm-dd HH');
-   pmax = psurface;
-   pmin = ptop;
-
-   % The Regions and the xxxx_varnames come from this file also. 
+   if ( exist('plevel','var') == 0 )
+      disp(sprintf('%s does not have multiple levels.', datafile))
+      error('It cannot be plotted with this routine.')
+   end
 
 else
    error(sprintf('%s cannot be found.', datafile))
@@ -64,10 +60,17 @@ end
 
 % set up a structure with all static plotting components
 
-plotdat.toff      = toff;
+   temp = datenum(obs_year,obs_month,obs_day);
+plotdat.toff = temp - round(t1); % determine temporal offset (calendar base)
+plotdat.day1      = datestr(t1+plotdat.toff+iskip,'yyyy-mm-dd HH');
+plotdat.dayN      = datestr(tN+plotdat.toff,      'yyyy-mm-dd HH');
+plotdat.psurface  = psurface;
+plotdat.ptop      = ptop;
+plotdat.obs_year  = obs_year;
+plotdat.obs_month = obs_month;
+plotdat.obs_day   = obs_day;
+plotdat.level     = plevel;
 plotdat.linewidth = 2.0;
-plotdat.pmax      = pmax;
-plotdat.pmin      = pmin;
 plotdat.ylabel    = 'Pressure (hPa)';
 
 %----------------------------------------------------------------------
@@ -100,7 +103,7 @@ for ivar = 1:length(All_Level_Varnames),
 
    plotdat.ges  = sprintf('%s_ges_ver_ave_bias.dat',All_Level_Varnames{ivar});
    plotdat.anl  = sprintf('%s_anl_ver_ave_bias.dat',All_Level_Varnames{ivar});
-   plotdat.main = sprintf('%s %sZ -- %sZ',string1,day1,dayN);
+   plotdat.main = sprintf('%s %sZ -- %sZ',string1,plotdat.day1,plotdat.dayN);
 
    % plot by region
 
@@ -138,7 +141,7 @@ analyX = a_v(:,regionindex);
 % Try to figure out intelligent axis limits
 xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];      % concatenate all data
 xlims   = [min(xdatarr(:)) max(xdatarr(:))]; % limits of all data
-ylims   = [plotdat.pmin plotdat.pmax];
+ylims   = [plotdat.ptop plotdat.psurface];
 axlims  = [floor(xlims(1)) ceil(xlims(2)) ylims];
 
 % sometimes there is no valid data, must patch axis limits
@@ -155,7 +158,7 @@ subplot(2,2,plotdat.region)
    grid
    set(gca,'YDir', 'reverse')
    hold on; plot([0 0],[axlims(3) axlims(4)],'k-')
-   title(plotdat.title, 'FontSize', 12, 'FontWeight', 'bold' )
+   title(plotdat.title, 'Interpreter','none','FontSize', 12, 'FontWeight', 'bold' )
    ylabel(plotdat.ylabel, 'fontsize', 10)
    xlabel(plotdat.xlabel, 'fontsize', 10)
    h = legend('guess', 'analysis','Location','best');

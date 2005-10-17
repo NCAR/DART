@@ -42,14 +42,10 @@ if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp = datenum(obs_year,obs_month,obs_day);
-   toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff+iskip,'yyyy-mm-dd HH');
-   dayN = datestr(tN+toff,      'yyyy-mm-dd HH');
-   pmax = psurface;
-   pmin = ptop;
-
-   % The Regions and the xxxx_varnames come from this file also. 
+   if ( exist('plevel','var') == 0 ) 
+      disp(sprintf('%s does not have multiple levels.', datafile))
+      error('It cannot be plotted with this routine.')
+   end
 
 else
    error(sprintf('%s cannot be found.', datafile))
@@ -57,10 +53,16 @@ end
 
 % set up a structure with all static plotting components
 
-plotdat.toff      = toff;
+temp = datenum(obs_year,obs_month,obs_day);
+plotdat.toff      = temp - round(t1); % determine temporal offset (calendar base)
+plotdat.day1      = datestr(t1+plotdat.toff+iskip,'yyyy-mm-dd HH');
+plotdat.dayN      = datestr(tN+plotdat.toff,      'yyyy-mm-dd HH');
+plotdat.obs_year  = obs_year;
+plotdat.obs_month = obs_month;
+plotdat.obs_day   = obs_day;
+plotdat.psurface  = psurface;
+plotdat.ptop      = ptop;
 plotdat.linewidth = 2.0;
-plotdat.pmax      = pmax;
-plotdat.pmin      = pmin;
 plotdat.ylabel    = 'Pressure (hPa)';
 plotdat.xlabel    = 'observation count';
 
@@ -84,7 +86,7 @@ for ivar = 1:length(All_Level_Varnames),
    end
 
    plotdat.fname = sprintf('%s_ges_ver_ave.dat',All_Level_Varnames{ivar});
-   plotdat.main  = sprintf('%s %s -- %s',string1,day1,dayN);
+   plotdat.main  = sprintf('%s %s -- %s',string1,plotdat.day1,plotdat.dayN);
 
    % plot by region
 
@@ -116,8 +118,8 @@ for ivar = 1:length(All_Level_Varnames),
             NbyRegion(:,4), obslevels, ptypes{4}, 'LineWidth', plotdat.linewidth);
    grid
    ax = axis; 
-   ax(3) = plotdat.pmin; 
-   ax(4) = plotdat.pmax; 
+   ax(3) = plotdat.ptop; 
+   ax(4) = plotdat.psurface; 
    axis(ax)
    set(gca,'YDir', 'reverse')
    title(plotdat.main, 'Interpreter','none','FontSize', 12, 'FontWeight', 'bold')
@@ -157,8 +159,8 @@ subplot(2,2,plotdat.region)
    plot(Nobs, levels, plotdat.ptype , 'LineWidth', plotdat.linewidth)
    grid
    ax = axis; 
-   ax(3) = plotdat.pmin; 
-   ax(4) = plotdat.pmax; 
+   ax(3) = plotdat.ptop; 
+   ax(4) = plotdat.psurface; 
    axis(ax)
    set(gca,'YDir', 'reverse')
    title( plotdat.title,  'Interpreter','none','fontsize', 12,'FontWeight','bold')

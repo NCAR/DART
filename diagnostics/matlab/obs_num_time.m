@@ -49,24 +49,26 @@ if ( exist(datafile) == 2 )
 
    eval(datafile)
 
-   temp = datenum(obs_year,obs_month,obs_day);
-   toff = temp - round(t1); % determine temporal offset (calendar base)
-   day1 = datestr(t1+toff,'yyyy-mm-dd HH');
-   dayN = datestr(tN+toff,'yyyy-mm-dd HH');
-
-   % The Regions and the xxxx_varnames come from this file also. 
+   if ( exist('plevel','var') == 0 )
+      plevel = 1;
+   end
 
 else
    error(sprintf('%s cannot be found.', datafile))
 end
 
 % set up a structure with all static plotting components
-
-plotdat.level    = plevel;
-plotdat.toff     = toff;
-plotdat.ylabel   = 'observation count';
-plotdat.nregions = length(Regions);
-plotdat.nvars    = length(One_Level_Varnames);
+temp = datenum(obs_year,obs_month,obs_day);
+plotdat.toff      = temp - round(t1); % determine temporal offset (calendar base)
+plotdat.day1      = datestr(t1+plotdat.toff,'yyyy-mm-dd HH');
+plotdat.dayN      = datestr(tN+plotdat.toff,'yyyy-mm-dd HH');
+plotdat.obs_year  = obs_year;
+plotdat.obs_month = obs_month;
+plotdat.obs_day   = obs_day;
+plotdat.level     = plevel;
+plotdat.ylabel    = 'observation count';
+plotdat.nregions  = length(Regions);
+plotdat.nvars     = length(One_Level_Varnames);
 
 %----------------------------------------------------------------------
 % Loop around observation types
@@ -92,7 +94,7 @@ for ivar = 1:plotdat.nvars,
          plotdat.fname = sprintf('%s_ges_times.dat',One_Level_Varnames{ivar});
          plotdat.main  = sprintf('%s',string1);
 %     otherwise
-%        plotdat.fname = sprintf('%s_ges_times_%04dmb.dat',One_Level_Varnames{ivar},level);
+%        plotdat.fname = sprintf('%s_ges_times_%04dmb.dat',One_Level_Varnames{ivar},plotdat.level);
 %        plotdat.main  = sprintf('%s %d hPa',string1,plotdat.level);
 %  end
 
@@ -136,7 +138,8 @@ for ivar = 1:plotdat.nvars,
    end
 
    grid
-   title(plotdat.main, 'FontSize', 12, 'FontWeight', 'bold')
+   title(plotdat.main,'Interpreter', 'none', ...
+       'FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
    datetick('x',1)
    legend(h,'boxoff');
@@ -167,11 +170,15 @@ yp_num = p(:,count);
 subplot(2,2,plotdat.region)
    plot(xp,yp_num,plotdat.ptype,'LineWidth',2.0)
    grid
-   datetick('x',1)
-   ylabel(plotdat.ylabel, 'fontsize', 10) ;
-   title(plotdat.title, 'fontsize', 12,'FontWeight','bold')
-   axis([min(xp) max(xp) -Inf Inf])
+   xlabel('days')
 
+   if (plotdat.obs_year > 1000); datetick('x',1); end
+   
+   datetick('x',1)
+   ylabel(plotdat.ylabel, 'FontSize', 10) ;
+   title(plotdat.title,'Interpreter', 'none', ...
+        'FontSize', 12, 'FontWeight', 'bold')
+   axis([min(xp) max(xp) -Inf Inf])
 
 
 function y = SqueezeMissing(x)
