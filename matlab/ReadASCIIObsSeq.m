@@ -36,8 +36,8 @@ fid = fopen(fname,'rt');
 % First, determine if it is 'old school' (i.e. pre-I)
 % If the first line contains the word 'obs_sequence', it is pre-I or better.
 DOPPLER_RADIAL_VELOCITY = 12;                      % default value for both formats
-RAW_STATE_1D_INTEGRAL = -99; oned_integral_already_read = 0;
-GPSRO_REFRACTIVITY = -99;
+RAW_STATE_1D_INTEGRAL   = -99; oned_integral_already_read = 0;
+GPSRO_REFRACTIVITY      = -99;
 
 aline      = fgetl(fid);
 values     = sscanf(aline,'%s %*');   % Just concerned with the first word.
@@ -56,7 +56,7 @@ switch lower(values)
          aline = fgetl(fid);
 
          tim = sscanf(aline,'%d %*s');
-         tom = sscanf(aline,'%*d %s');
+         tom = deblank(sscanf(aline,'%*d %s'));
         
          obskindnumber(idef) = tim;
          obskindstring(idef) = {tom};
@@ -101,12 +101,12 @@ disp(sprintf('max_num_obs is %d',max_num_obs))
 
 % Read the metadata 
 for i = 1:num_copies,
-   metadata{i} = fgetl(fid);
+   metadata{i} = deblank(fgetl(fid));
 end
 
 % Read the QC info
 for i = 1:num_qc,
-   qcdata{i} = fgetl(fid);
+   qcdata{i} = deblank(fgetl(fid));
 end
 
 % Read and parse the information that will help us read the rest of the file.
@@ -139,6 +139,21 @@ which_vert = zeros(num_obs,1);
 radloc     = zeros(num_obs,3);
 radwhich_vert = zeros(num_obs,1);
 dir3d      = zeros(num_obs,3);
+
+days(:)          = NaN;
+secs(:)          = NaN;
+evar(:)          = NaN;
+kind(:)          = NaN;
+prev_time(:)     = NaN;
+next_time(:)     = NaN;
+cov_group(:)     = NaN;
+obs(:)           = NaN;
+qc(:)            = NaN;
+loc(:)           = NaN;
+which_vert(:)    = NaN;
+radloc(:)        = NaN;
+radwhich_vert(:) = NaN;
+dir3d(:)         = NaN;
 
 for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
 
@@ -176,7 +191,7 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
    % Read the observation definition obs_def_mod:write_obs_def
 
    aline    = fgetl(fid);
-   obdefstr = sscanf(aline,'%s');
+   obdefstr = deblank(sscanf(aline,'%s'));
 
    if ( ~ strcmp(obdefstr,'obdef') )  
       error(sprintf(' read %s instead of ''obdef''',obdefstr))
@@ -208,14 +223,15 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
          aline = fgetl(fid);  % the number of 1d_integral obs descriptions
          num_1d_integral_obs = sscanf(aline,'%d');
 
-         for i=1:num_1d_integral_obs,
+         for i1d=1:num_1d_integral_obs,
             aline = fgetl(fid);  % half_width, num_points, and localization_type for each
          end
 
-         aline = fgetl(fid);  % get obs_def key 
          oned_integral_already_read = 1;  % true
 
       end
+
+      aline = fgetl(fid);  % get obs_def key 
 
    elseif( kind(i) == GPSRO_REFRACTIVITY )
 
@@ -271,7 +287,7 @@ function [days, secs] = read_time(fid)
 
 function kind = read_kind(fid,i)
    aline   = fgetl(fid);
-   kindstr = sscanf(aline,'%s');
+   kindstr = deblank(sscanf(aline,'%s'));
    if ( ~ strcmp(kindstr,'kind') )  
       error(sprintf(' read %s instead of ''kind'' at obs %d',kindstr,i))
    end
@@ -330,7 +346,7 @@ function read_platform(fid,i)
 % obs_def_radar_mod:write_rad_vel    component.
 
 aline       = fgetl(fid);
-platformstr = sscanf(aline,'%s');
+platformstr = deblank(sscanf(aline,'%s'));
 if ( ~ strcmp(platformstr,'platform') )  
    error(sprintf(' read %s instead of ''platform'' at obs %d',platformstr,i))
 end
@@ -341,7 +357,7 @@ function dir3d = read_orientation(fid,i)
 % obs_def_radar_mod:write_rad_vel    component.
 
 aline    = fgetl(fid);
-platformstr = sscanf(aline,'%s');
+platformstr = deblank(sscanf(aline,'%s'));
 if ( ~ strcmp(platformstr,'dir3d') )  
     error(sprintf(' read %s instead of ''dir3d''',platformstr))
 end
@@ -366,7 +382,7 @@ function read_gpsro_ref(fid,i)
 % character(len=6) :: gpsro_ref_form
 
 aline  = fgetl(fid);
-gpskey = sscanf(aline,'%s %*d');
+gpskey = deblank(sscanf(aline,'%s %*d'));
 if ( ~ strcmp(gpskey,'gpsroref') )  
     error(sprintf(' read %s instead of ''gpsroref''',platformstr))
 end
