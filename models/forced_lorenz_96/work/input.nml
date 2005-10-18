@@ -101,10 +101,9 @@
    obs_month  = 1,
    obs_day    = 1,
    tot_days   = 1,
-   iskip      = 0,
+   iskip_days = 0,
    obs_select = 1,
    rat_cri    = 3.0,
    qc_threshold = 4.0, 
-   bin_separation = 3600,
-   bin_width = 0  /
+   bin_width_seconds = 0  /
 
