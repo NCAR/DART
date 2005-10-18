@@ -24,8 +24,37 @@ use     location_mod, only : location_type, set_location
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
                              copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def
-use     obs_kind_mod, only : obs_kind_type, set_obs_kind, &
-                             KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV
+
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
+                             KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
+                             KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE, &
+                             KIND_VERTICAL_VELOCITY, KIND_RAINWATER_MIXING_RATIO, &
+                             KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
+                             KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY 
+
+use obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT
+use obs_kind_mod, only : RADIOSONDE_V_WIND_COMPONENT
+use obs_kind_mod, only : RADIOSONDE_SURFACE_PRESSURE
+use obs_kind_mod, only : RADIOSONDE_TEMPERATURE
+use obs_kind_mod, only : RADIOSONDE_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : AIRCRAFT_U_WIND_COMPONENT
+use obs_kind_mod, only : AIRCRAFT_V_WIND_COMPONENT
+use obs_kind_mod, only : AIRCRAFT_TEMPERATURE
+use obs_kind_mod, only : ACARS_U_WIND_COMPONENT
+use obs_kind_mod, only : ACARS_V_WIND_COMPONENT
+use obs_kind_mod, only : ACARS_TEMPERATURE
+use obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT
+use obs_kind_mod, only : MARINE_SFC_V_WIND_COMPONENT
+use obs_kind_mod, only : MARINE_SFC_TEMPERATURE
+use obs_kind_mod, only : MARINE_SFC_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT
+use obs_kind_mod, only : LAND_SFC_V_WIND_COMPONENT
+use obs_kind_mod, only : LAND_SFC_TEMPERATURE
+use obs_kind_mod, only : LAND_SFC_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : SAT_U_WIND_COMPONENT
+use obs_kind_mod, only : SAT_V_WIND_COMPONENT
+use obs_kind_mod, only : ATOV_TEMPERATURE
+
 
 implicit none
 private
@@ -45,13 +74,14 @@ contains
 
 
   function real_obs_sequence (year, month, day, max_num, select_obs, ObsBase, &
-           ADDUPA, AIRCAR, AIRCFT, SATWND, obs_U, obs_V, obs_T, obs_PS, obs_QV)
+           ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
+           obs_U, obs_V, obs_T, obs_PS, obs_QV)
 !------------------------------------------------------------------------------
 !  this function is to prepare NCEP decoded BUFR data to DART sequence format
 !
 integer,            intent(in) :: year, month, day, max_num, select_obs
 character(len = *), intent(in) :: ObsBase
-logical,            intent(in) :: ADDUPA, AIRCAR, AIRCFT, SATWND
+logical,            intent(in) :: ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND
 logical,            intent(in) :: obs_U, obs_V, obs_T, obs_PS, obs_QV
 
 type(obs_sequence_type) :: real_obs_sequence
@@ -61,14 +91,14 @@ type(obs_type) :: obs, prev_obs
 integer :: i, num_copies, num_qc, dfile
 integer :: days, seconds
 integer :: day0, sec0, day_plus
-integer :: hour, min, sec
+integer :: hour, imin, sec
 integer :: year2, month2, day2, hour2, min2, sec2
 integer :: obs_num, calender_type, iskip
 type(time_type) :: current_day, next_day
 
 integer :: obs_unit, obs_unit2
-integer :: obs_prof, obs_kind, which_vert, iqc, obstype, pc
-real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, count, zob2
+integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
+real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, rcount, zob2
 real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
 
 character(len = 8 ) :: obsdate, obsdate2
@@ -109,9 +139,9 @@ call set_calendar_type(calender_type)
 
 ! get the time (seconds & days) for 00Z of current day (year,month,day)
 hour = 0
-min  = 0
+imin = 0
 sec  = 0
-current_day = set_date(year, month, day, hour, min, sec)
+current_day = set_date(year, month, day, hour, imin, sec)
 call get_time(current_day, sec0, day0)
 
 day_plus = day0 + 1
@@ -146,7 +176,7 @@ dfile = 1
 obsloop:  do
 
    if(dfile ==1) then
-      read(obs_unit,880,end=100) obs_err, lon, lat, lev, zob, zob2, count,time, &
+      read(obs_unit,880,end=100) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
                                   obstype, iqc, subset, pc
    endif
    go to 102 
@@ -165,7 +195,7 @@ obsloop:  do
 
    ! input file index for the next day
    if(dfile ==2) then
-      read(obs_unit2,880,end=200) obs_err, lon, lat, lev, zob, zob2, count,time, &
+      read(obs_unit2,880,end=200) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
                                    obstype, iqc, subset, pc
    endif
 
@@ -185,12 +215,58 @@ obsloop:  do
       cycle obsloop 
    endif 
 
-   obs_prof = count/1000000
-   if(obs_prof == 2) obs_kind = KIND_U           ! U
-   if(obs_prof == 9) obs_kind = KIND_V           ! V
-   if(obs_prof == 3) obs_kind = KIND_PS          ! Ps
-   if(obs_prof == 1) obs_kind = KIND_T           ! T
-   if(obs_prof == 5) obs_kind = KIND_QV          ! q
+   obs_prof = rcount/1000000
+  if(obs_prof == 1) then
+    obs_kind_gen = KIND_TEMPERATURE
+    if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_TEMPERATURE
+    if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_TEMPERATURE
+    if(obstype == 133                    ) obs_kind = ACARS_TEMPERATURE
+    if(obstype == 161 .or. obstype == 163) obs_kind = ATOV_TEMPERATURE
+    if(obstype == 171 .or. obstype == 173) obs_kind = ATOV_TEMPERATURE
+    if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_TEMPERATURE
+    if(obstype == 181                    ) obs_kind =  LAND_SFC_TEMPERATURE
+   endif
+
+   if(obs_prof == 5) then
+    obs_kind_gen = KIND_SPECIFIC_HUMIDITY
+    if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_SPECIFIC_HUMIDITY
+    if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_SPECIFIC_HUMIDITY
+    if(obstype == 181                    ) obs_kind =  LAND_SFC_SPECIFIC_HUMIDITY
+   endif
+    
+   if(obs_prof == 3) then
+    obs_kind_gen = KIND_SURFACE_PRESSURE
+    if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_PRESSURE
+   endif
+
+   if(obs_prof == 2) then
+    obs_kind_gen = KIND_U_WIND_COMPONENT
+    if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_U_WIND_COMPONENT
+    if(obstype == 221                    ) obs_kind = RADIOSONDE_U_WIND_COMPONENT
+    if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_U_WIND_COMPONENT
+    if(obstype == 233                    ) obs_kind = ACARS_U_WIND_COMPONENT
+    if(obstype == 242 .or. obstype == 243) obs_kind = SAT_U_WIND_COMPONENT
+    if(obstype == 245 .or. obstype == 246) obs_kind = SAT_U_WIND_COMPONENT
+    if(obstype == 252 .or. obstype == 253) obs_kind = SAT_U_WIND_COMPONENT
+    if(obstype == 255                    ) obs_kind = SAT_U_WIND_COMPONENT
+    if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_U_WIND_COMPONENT
+    if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_U_WIND_COMPONENT
+   endif
+
+   if(obs_prof == 9) then
+    obs_kind_gen = KIND_V_WIND_COMPONENT
+    if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_V_WIND_COMPONENT
+    if(obstype == 221                    ) obs_kind = RADIOSONDE_V_WIND_COMPONENT
+    if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_V_WIND_COMPONENT
+    if(obstype == 233                    ) obs_kind = ACARS_V_WIND_COMPONENT
+    if(obstype == 242 .or. obstype == 243) obs_kind = SAT_V_WIND_COMPONENT
+    if(obstype == 245 .or. obstype == 246) obs_kind = SAT_V_WIND_COMPONENT
+    if(obstype == 252 .or. obstype == 253) obs_kind = SAT_V_WIND_COMPONENT
+    if(obstype == 255                    ) obs_kind = SAT_V_WIND_COMPONENT
+    if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_V_WIND_COMPONENT
+    if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_V_WIND_COMPONENT
+   endif
+
 
 !   do observations selections
 
@@ -205,15 +281,18 @@ obsloop:  do
       if( (ADDUPA .and. (subset =='ADPUPA')) .or. &
           (AIRCAR .and. (subset =='AIRCAR')) .or. &
           (AIRCFT .and. (subset =='AIRCFT')) .or. &
+          (SATEMP .and. (subset =='SATEMP')) .or. &
+          (SFCSHP .and. (subset =='SFCSHP')) .or. &
+          (ADPSFC .and. (subset =='ADPSFC')) .or. &
           (SATWND .and. (subset =='SATWND'))       ) then
 
          ! then select the obs kind requested
 
-         if( (obs_T  .and. (obs_kind == KIND_T )) .or. &
-             (obs_U  .and. (obs_kind == KIND_U )) .or. &
-             (obs_V  .and. (obs_kind == KIND_V )) .or. &
-             (obs_PS .and. (obs_kind == KIND_PS)) .or. &
-             (obs_QV .and. (obs_kind == KIND_QV))        ) then
+         if( (obs_T  .and. (obs_kind_gen == KIND_TEMPERATURE )) .or. &
+             (obs_U  .and. (obs_kind_gen == KIND_U_WIND_COMPONENT )) .or. &
+             (obs_V  .and. (obs_kind_gen == KIND_V_WIND_COMPONENT )) .or. &
+             (obs_PS .and. (obs_kind_gen == KIND_SURFACE_PRESSURE)) .or. &
+             (obs_QV .and. (obs_kind_gen == KIND_SPECIFIC_HUMIDITY))        ) then
              pass = .false.
          endif
 
@@ -247,21 +326,21 @@ obsloop:  do
    if(lat01 >=  90.0_r8) lat01 =  90.0_r8
    if(lat01 <= -90.0_r8) lat01 = -90.0_r8
 
-   if (obs_kind == KIND_U .or.  &
-       obs_kind == KIND_V .or.  &
-       obs_kind == KIND_T .or.  &
-       obs_kind == KIND_QV) then
+   if (obs_kind_gen == KIND_U_WIND_COMPONENT .or.  &
+       obs_kind_gen == KIND_V_WIND_COMPONENT .or.  &
+       obs_kind_gen == KIND_TEMPERATURE .or.  &
+       obs_kind_gen == KIND_SPECIFIC_HUMIDITY) then
        vloc = lev*100.0_r8         ! (transfer Pressure coordinate from mb to Pascal) 
        which_vert = 2
    endif
 
-   if (obs_kind == KIND_PS) then  ! for Ps
+   if (obs_kind_gen == KIND_SURFACE_PRESSURE) then  ! for Ps
       vloc = lev                  ! station height, not used now for Ps obs
       which_vert = -1
       obs_err = obs_err*100.0_r8  ! convert obs_err to Pa
    endif
 
-   if (obs_kind == KIND_QV) then      ! for Q
+    if (obs_kind_gen == KIND_SPECIFIC_HUMIDITY) then      ! for Q
       obs_err = obs_err*1.0e-3_r8 ! convert obs_err to kg/kg
    endif
 
@@ -269,9 +348,9 @@ obsloop:  do
 
    ! set obs value
 
-   if(obs_kind == KIND_PS) then
+   if(obs_kind_gen == KIND_SURFACE_PRESSURE) then
       obs_value = zob*100.0_r8      !  for Ps variable only in Pascal
-   else if(obs_kind == KIND_QV) then
+    else if(obs_kind_gen == KIND_SPECIFIC_HUMIDITY) then
       obs_value = zob*1.0e-3_r8     !  for Q variable to kg/kg
    else
       obs_value = zob               !  for T, U, V
@@ -372,7 +451,6 @@ type(obs_def_type), intent(inout) :: obs_def
 real(r8),intent(in) :: lon01, lat01, vloc, var2
 integer, intent(in) :: obs_kind, which_vert, seconds, days
 
-type(obs_kind_type) :: kind0
 type(location_type) :: loc0
 
 if ( .not. module_initialized ) call initialize_module
@@ -382,8 +460,7 @@ loc0 = set_location(lon01, lat01, vloc, which_vert )
 call set_obs_def_location(obs_def, loc0)
 
 ! set obs kind
-kind0 = set_obs_kind(obs_kind)
-call set_obs_def_kind(obs_def, kind0)
+call set_obs_def_kind(obs_def, obs_kind)
 
 call set_obs_def_time(obs_def, set_time(seconds, days) )
 call set_obs_def_error_variance(obs_def, var2)
