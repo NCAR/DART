@@ -1,4 +1,4 @@
-oned_obs/obs_diag.f90
+diagnostics/oned/obs_diag.f90
 common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 obs_sequence/obs_sequence_mod.f90
