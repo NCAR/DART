@@ -105,7 +105,7 @@
    obs_month  = 1,
    obs_day    = 1,
    tot_days   = 1,
-   iskip      = 0,
+   iskip_days = 0,
    plevel     = 500,
    obs_select = 1,
    rat_cri    = 3.0,
