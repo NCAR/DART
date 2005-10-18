@@ -5,6 +5,10 @@ function a = ReadASCIIObsSeq(fname)
 % a = ReadASCIIObsSeq('obs_seq.final');
 %
 % This is pretty slow -- lots of logic and nested loops -- hard to vectorize. 
+% The best thing is probably to turn it into a '.mex' file.
+%
+% The file contains a linked list which we are reading sequentially.
+% The resulting sequence "a.obs" is NOT guaranteed to be in a temporally ascending order.
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -28,13 +32,65 @@ fid = fopen(fname,'rt');
 %
 
 % Read and parse the information that will help us read the rest of the file.
-aline      = fgetl(fid);
-values     = sscanf(aline,'%*s %d %*s %d');
-num_copies   = values(1);
-num_qc       = values(2);
+
+% First, determine if it is 'old school' (i.e. pre-I)
+% If the first line contains the word 'obs_sequence', it is pre-I or better.
+DOPPLER_RADIAL_VELOCITY = 12;                      % default value for both formats
+RAW_STATE_1D_INTEGRAL = -99; oned_integral_already_read = 0;
+GPSRO_REFRACTIVITY = -99;
 
 aline      = fgetl(fid);
-values     = sscanf(aline,'%*s %d %*s %d');
+values     = sscanf(aline,'%s %*');   % Just concerned with the first word.
+
+switch lower(values)
+   case 'obs_sequence'      % pre-I or newer format 
+
+      aline = fgetl(fid);   % skip line containing the word 'obs_kind_definitions'
+      aline = fgetl(fid);
+      numdefs = sscanf(aline,'%d');
+
+      obskindnumber = zeros(1,numdefs);
+      obskindstring = cell(1,numdefs);
+
+      for idef =1:numdefs,
+         aline = fgetl(fid);
+
+         tim = sscanf(aline,'%d %*s');
+         tom = sscanf(aline,'%*d %s');
+        
+         obskindnumber(idef) = tim;
+         obskindstring(idef) = {tom};
+
+         switch obskindstring{idef}
+            case 'DOPPLER_RADIAL_VELOCITY'
+               DOPPLER_RADIAL_VELOCITY = obskindnumber(idef);
+            case 'RAW_STATE_1D_INTEGRAL'
+               RAW_STATE_1D_INTEGRAL = obskindnumber(idef);
+            case 'GPSRO_REFRACTIVITY'
+               GPSRO_REFRACTIVITY = obskindnumber(idef);
+         end
+      end
+
+      aline      = fgetl(fid);
+      values     = sscanf(aline,'%*s %d %*s %d');
+      num_copies = values(1);
+      num_qc     = values(2);
+
+      a = struct('filename',fname,'obskindnumber',obskindnumber);
+      a.obskindstring = obskindstring;
+
+   otherwise                % before pre-I
+
+      values     = sscanf(aline,'%*s %d %*s %d');
+      num_copies = values(1);
+      num_qc     = values(2);
+
+      a = struct('filename',fname);
+
+end
+
+aline        = fgetl(fid);
+values       = sscanf(aline,'%*s %d %*s %d');
 num_obs      = values(1);
 max_num_obs  = values(2);
 
@@ -43,7 +99,7 @@ disp(sprintf('num_qc      is %d',num_qc))
 disp(sprintf('num_obs     is %d',num_obs))
 disp(sprintf('max_num_obs is %d',max_num_obs))
 
-% Read the metadata -- just throwing it away for now
+% Read the metadata 
 for i = 1:num_copies,
    metadata{i} = fgetl(fid);
 end
@@ -61,6 +117,13 @@ last_time  = values(2);
 
 disp(sprintf('first_time = %d  last_time = %d',first_time, last_time))
 
+a.num_copies  = num_copies;
+a.num_qc      = num_qc;
+a.num_obs     = num_obs;
+a.max_num_obs = max_num_obs;
+a.first_time  = first_time;
+a.last_time   = last_time;
+
 % Read the observations
 days       = zeros(num_obs,1);
 secs       = zeros(num_obs,1);
@@ -73,6 +136,9 @@ obs        = zeros(num_copies,num_obs);
 qc         = zeros(num_qc,num_obs);
 loc        = zeros(num_obs,3);  % declare for worst case, pare down later.
 which_vert = zeros(num_obs,1);
+radloc     = zeros(num_obs,3);
+radwhich_vert = zeros(num_obs,1);
+dir3d      = zeros(num_obs,3);
 
 for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
 
@@ -119,7 +185,44 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
    % Read what was written by location_mod:write_location
 
    [loc(i,:) which_vert(i)] = read_location(fid,i); 
-   kind(i)            = read_kind(fid,i);  % companion to obs_kind_mod:write_kind
+   kind(i)                  = read_kind(fid,i);  % companion to obs_kind_mod:write_kind
+
+   %------------------------------------------------------------
+   % Specific kinds of observations have additional metadata.
+   % Basically, we have to troll through the obs_def* files to 
+   % see what types need special attention.
+   %------------------------------------------------------------
+
+   if(kind(i) == DOPPLER_RADIAL_VELOCITY)
+
+      read_platform(fid,i);
+      [radloc(i,:) radwhich_vert(i)] = read_location(fid,i); 
+      dir3d                          = read_orientation(fid,i); 
+      aline      = fgetl(fid);     % read the line with the key
+
+   elseif(kind(i) == RAW_STATE_1D_INTEGRAL )
+
+      % Right now, I am throwing away the results.
+      if ( ~ oned_integral_already_read ) 
+
+         aline = fgetl(fid);  % the number of 1d_integral obs descriptions
+         num_1d_integral_obs = sscanf(aline,'%d');
+
+         for i=1:num_1d_integral_obs,
+            aline = fgetl(fid);  % half_width, num_points, and localization_type for each
+         end
+
+         aline = fgetl(fid);  % get obs_def key 
+         oned_integral_already_read = 1;  % true
+
+      end
+
+   elseif( kind(i) == GPSRO_REFRACTIVITY )
+
+      read_gpsro_ref(fid,i);
+
+   end
+
    [days(i), secs(i)] = read_time(fid);    % companion to time_manager_mod:write_time
 
    % And finally: the error variance
@@ -129,26 +232,19 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
 
 end
 
-a = struct( 'filename'   , fname       , ...
-	    'num_copies' , num_copies  , ...
-            'num_qc'     , num_qc      , ...
-	    'num_obs'    , num_obs     , ...
-	    'max_num_obs', max_num_obs , ...
-	    'first_time' , first_time  , ...
-	    'last_time'  , last_time   , ...
-	    'days'       , days        , ...
-	    'secs'       , secs        , ...
-	    'evar'       , evar        , ...
-	    'obs'        , obs         , ...
-	    'qc'         , qc          , ...
-	    'prev_time'  , prev_time   , ...
-	    'next_time'  , next_time   , ...
-	    'cov_group'  , cov_group   , ...
-	    'loc'        , loc         , ...
-	    'which_vert' , which_vert  , ...
-	    'kind'       , kind        );
-%    'metadata', metadata, ...
-%    'qcdata', qcdata, ...
+a.days       = days;
+a.secs       = secs;
+a.evar       = evar;
+a.obs        = obs;
+a.qc         = qc;
+a.prev_time  = prev_time;
+a.next_time  = next_time;
+a.cov_group  = cov_group;
+a.loc        = loc;
+a.which_vert = which_vert;
+a.kind       = kind;
+a.metadata   = metadata;
+a.qcdata     = qcdata;
 
 fclose(fid);
 
@@ -206,7 +302,6 @@ switch lower(locstr)
          values   = sscanf(aline,'%e');
 	 %lon      = values(1);
 	 %lat      = values(2);
-	 %lev      = values(3);
          locs(1:2) = values(1:2);
       case 'loc3s'       % location/simple_threed_sphere/location_mod.f90:write_location
          aline    = cvrtline(fgetl(fid));
@@ -229,3 +324,59 @@ switch lower(locstr)
       otherwise
          error(sprintf('unrecognized location type ... read %s',locstr))
 end
+
+
+function read_platform(fid,i)
+% obs_def_radar_mod:write_rad_vel    component.
+
+aline       = fgetl(fid);
+platformstr = sscanf(aline,'%s');
+if ( ~ strcmp(platformstr,'platform') )  
+   error(sprintf(' read %s instead of ''platform'' at obs %d',platformstr,i))
+end
+
+
+
+function dir3d = read_orientation(fid,i)
+% obs_def_radar_mod:write_rad_vel    component.
+
+aline    = fgetl(fid);
+platformstr = sscanf(aline,'%s');
+if ( ~ strcmp(platformstr,'dir3d') )  
+    error(sprintf(' read %s instead of ''dir3d''',platformstr))
+end
+aline    = cvrtline(fgetl(fid));
+values   = sscanf(aline,'%e');
+dir3d    = values(1:3);
+
+
+
+function read_gpsro_ref(fid,i)
+% obs_def_gps_mod:read_gpsro_ref    equivalent.
+%
+% for now, no return values.
+%
+% if it dies in here, it dies everywhere, so we don't need a return code.
+%
+% read(ifile, FMT='(a8, i8)') header, key
+% read(ifile, *) rfict(key), step_size(key), ray_top(key), &
+%                  (ray_direction(ii, key), ii=1, 3), gpsro_ref_form(key)
+%
+% real(r8) :: rfict, step_size, ray_top, ray_direction
+% character(len=6) :: gpsro_ref_form
+
+aline  = fgetl(fid);
+gpskey = sscanf(aline,'%s %*d');
+if ( ~ strcmp(gpskey,'gpsroref') )  
+    error(sprintf(' read %s instead of ''gpsroref''',platformstr))
+end
+aline  = cvrtline(fgetl(fid));
+values = sscanf(aline,'%e %*s');
+form   = sscanf(aline,'%*e %s');
+if (length(values) ~= 6) 
+   error(sprintf('read %d items instead of 6 for obs# %d',length(values),i))
+end
+rfict         = values(1);
+step_size     = values(2);
+ray_top       = values(3);
+ray_direction = values(4:6);
