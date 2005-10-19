@@ -13,6 +13,12 @@ program advance_cymdh
 
   implicit none
 
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
+
   interface
      integer function iargc()
      end function iargc
