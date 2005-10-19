@@ -264,7 +264,6 @@ if(wrf%n_moist > 7) then
    write(6,*) 'n_moist = ',wrf%n_moist
    call error_handler(E_ERR,'wrf_open_and_alloc', &
          'n_moist is too large.', source, revision, revdate)
-   stop
 endif
 
 if( wrf%surf_obs ) then
@@ -393,7 +392,6 @@ if(wrf%n_moist > 7) then
    write(6,*) 'n_moist = ',wrf%n_moist
    call error_handler(E_ERR,'wrf_dealloc', &
          'n_moist is too large.', source, revision, revdate)
-   stop
 endif
 
 if( wrf%surf_obs ) then
@@ -849,7 +847,6 @@ if(wrfbdy%n_moist > 7) then
    write(6,*) 'n_moist = ',wrfbdy%n_moist
    call error_handler(E_ERR,'wrfbdy_open_and_alloc', &
          'n_moist is too large.', source, revision, revdate)
-   stop
 endif
 
 contains
@@ -1048,7 +1045,6 @@ if(wrfbdy%n_moist > 7) then
    write(6,*) 'n_moist = ',wrfbdy%n_moist
    call error_handler(E_ERR,'wrfbdy_dealloc', &
          'n_moist is too large.', source, revision, revdate)
-   stop
 endif
 
 end subroutine wrfbdy_dealloc
@@ -1124,7 +1120,6 @@ if (in_or_out  == "OUTPUT") then
       write(6,*) 'n_moist = ',wrf%n_moist
       call error_handler(E_ERR,'wrf_io', &
            'n_moist is too large.', source, revision, revdate)
-      stop
    endif
    if( wrf%surf_obs ) then
       call check( nf90_put_var(wrf%ncid, wrf%u10_id, wrf%u10, start = (/ 1, 1, 1 /)))
@@ -1187,7 +1182,6 @@ else
       write(6,*) 'n_moist = ',wrf%n_moist
       call error_handler(E_ERR,'wrf_io', &
            'n_moist is too large.', source, revision, revdate)
-      stop
    endif
    if( wrf%surf_obs ) then
       call check( nf90_get_var(wrf%ncid, wrf%u10_id,  wrf%u10,  start = (/ 1, 1, lngth /)))
@@ -1442,7 +1436,6 @@ if (in_or_out  == "OUTPUT") then
       write(6,*) 'n_moist = ',wrfbdy%n_moist
       call error_handler(E_ERR,'wrfbdy_io', &
            'n_moist is too large.', source, revision, revdate)
-      stop
    endif
 else
    !-- u on boundary
@@ -1602,7 +1595,6 @@ else
       write(6,*) 'n_moist = ',wrfbdy%n_moist
       call error_handler(E_ERR,'wrfbdy_io', &
            'n_moist is too large.', source, revision, revdate)
-      stop
    endif
 endif
 
