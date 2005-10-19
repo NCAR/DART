@@ -44,9 +44,10 @@ use  wrf_data_module, only : wrf_data, wrf_bdy_data, &
                              set_wrf_date
 use    utilities_mod, only : get_unit, file_exist, open_file, &
                              close_file, error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             finalize_utilities, register_module, logfileunit, timestamp
+                             register_module, logfileunit, timestamp, &
+                             find_namelist_in_file, check_namelist_read
 
-use                         netcdf
+use netcdf
 
 implicit none
 
@@ -73,7 +74,7 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      adv_mod_command
 !-----------------------------------------------------------------------
 
-integer :: iunit, io, ierr, var_id, itime
+integer :: iunit, io, var_id, itime
 
 type(wrf_data)     :: wrf, wrf_mean, wrf_tmp
 type(wrf_bdy_data) :: wrf_bdy, wrf_bdy_mean, wrf_bdy_tmp
@@ -90,34 +91,17 @@ type(time_type)   :: dart_time(2)
 integer           :: year, month, day, hour, minute, second
 
 character(len=19) :: timestring
-character(len=129) :: err_string, nml_string
 
-read(5,*) Ne       ! Read ensemble size from stdin.
-read(5,*) scale    ! Read scaling       from stdin.
+read(*,*) Ne       ! Read ensemble size from stdin.
+read(*,*) scale    ! Read scaling       from stdin.
 
 call initialize_utilities('ensemble_init')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING ensemble_init ...'
-
 
 ! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'ensemble_init:&model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-else
-   err_string = 'input.nml does not exist here. Using default values.'
-   call error_handler(E_MSG,'ensemble_init',err_string,' ',' ',' ')
-endif
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
 
 call error_handler(E_MSG,'ensemble_init','model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
@@ -165,7 +149,7 @@ do i=1,Ne
    !- Open appropriate files
    write( imem , '(I6)') i
 
-   if(debug) write(6,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))
+   if(debug) write(*,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))
    call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_NOWRITE, wrf_bdy%ncid) )
 
    !- Read data
@@ -181,7 +165,7 @@ enddo
 
 call wrfbdy_add( wrf_bdy_tmp, 1.0_r8/Ne, wrf_bdy,  0.0_r8)
 
-if (debug) write(6,*) ' --------------------'
+if (debug) write(*,*) ' --------------------'
 
 itime = 1
 
@@ -190,7 +174,7 @@ do i=1,Ne
 
    !- Open appropriate files
    write( imem , '(I6)') i
-   if(debug) write(6,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))
+   if(debug) write(*,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))
    call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_NOWRITE, wrf_bdy%ncid) )
 
    !- Read data, again
@@ -206,39 +190,39 @@ do i=1,Ne
    call wrfbdy_add( wrf_bdy, scale , wrf_bdy_mean, 1.0_r8 )
 
    !- Open same files for writing
-   if(debug) write(6,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))//' for WRITE'
+   if(debug) write(*,*) ' OPENING  wrfbdy_'//adjustl(trim(imem))//' for WRITE'
    call check ( nf90_open('wrfbdy_'//adjustl(trim(imem)), NF90_WRITE, wrf_bdy%ncid) )
 
    !- Write bdy for ith member
-   if(debug) write(6,*) 'Write boundary conditions'
+   if(debug) write(*,*) 'Write boundary conditions'
    call wrfbdy_io( wrf_bdy, "OUTPUT", debug )
 
    call check( nf90_inq_varid(wrf_bdy%ncid, 'md___thisbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', var_id) )
    call check( nf90_get_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
-   if(debug) write(6,*) 'Original_thisbdytime = ',timestring
+   if(debug) write(*,*) 'Original_thisbdytime = ',timestring
    call check( nf90_Redef(wrf_bdy%ncid) )
    call check( nf90_put_att(wrf_bdy%ncid, NF90_GLOBAL, "Original_thisbdytime", timestring) )
    call check( nf90_enddef(wrf_bdy%ncid) )
    call get_date(dart_time(1), year, month, day, hour, minute, second)
    call set_wrf_date(timestring, year, month, day, hour, minute, second)
-   if(debug) write(6,*) 'New thisbdytime = ',timestring
+   if(debug) write(*,*) 'New thisbdytime = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
    call check( nf90_inq_varid(wrf_bdy%ncid, "Times", var_id) )
-   if(debug) write(6,*) 'writing Times = ',timestring
+   if(debug) write(*,*) 'writing Times = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring) )
 
-   if(debug) write(6,*) 'writing START_DATE = ',timestring
+   if(debug) write(*,*) 'writing START_DATE = ',timestring
    call check( nf90_put_att(wrf_bdy%ncid, nf90_global, "START_DATE", timestring) )
 
    call check( nf90_inq_varid(wrf_bdy%ncid, 'md___nextbdytimee_x_t_d_o_m_a_i_n_m_e_t_a_data_', var_id) )
    call check( nf90_get_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
-   if(debug) write(6,*) 'Original_nextbdytime = ',timestring
+   if(debug) write(*,*) 'Original_nextbdytime = ',timestring
    call check( nf90_Redef(wrf_bdy%ncid) )
    call check( nf90_put_att(wrf_bdy%ncid, NF90_GLOBAL, "Original_nextbdytime", timestring) )
    call check( nf90_enddef(wrf_bdy%ncid) )
    call get_date(dart_time(2), year, month, day, hour, minute, second)
    call set_wrf_date(timestring, year, month, day, hour, minute, second)
-   if(debug) write(6,*) 'New nextbdytime = ',timestring
+   if(debug) write(*,*) 'New nextbdytime = ',timestring
    call check( nf90_put_var(wrf_bdy%ncid, var_id, timestring, start = (/ 1, itime /)) )
 
    !- Close files
@@ -338,8 +322,7 @@ enddo
 write(logfileunit,*)'FINISHED ensemble_init.'
 write(logfileunit,*)
 
-call timestamp(source,revision,revdate,'none')
-call finalize_utilities ! closes the log file.
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 contains
 
@@ -536,7 +519,7 @@ subroutine wrfbdy_add( wrfbdy_a, a, wrfbdy_b, b  )
      wrfbdy_a%qnicetye = a * wrfbdy_a%qnicetye + b * wrfbdy_b%qnicetye
   endif
   if(wrfbdy_a%n_moist > 7) then
-     write(6,*) 'n_moist = ',wrfbdy_a%n_moist
+     write(*,*) 'n_moist = ',wrfbdy_a%n_moist
      call error_handler(E_ERR,'wrfbdy_add', &
           'n_moist is too large.', source, revision, revdate)
      stop
