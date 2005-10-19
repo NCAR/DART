@@ -173,6 +173,7 @@ yp_num = p(:,count);
 
 subplot(2,2,plotdat.region)
    plot(xp,yp_num,plotdat.ptype,'LineWidth',2.0)
+   axis([min(xp) max(xp) -Inf Inf])
    grid
 
    if (plotdat.bin1 > 1000);
@@ -184,7 +185,6 @@ subplot(2,2,plotdat.region)
    ylabel(plotdat.ylabel, 'FontSize', 10) ;
    title(plotdat.title,'Interpreter', 'none', ...
         'FontSize', 12, 'FontWeight', 'bold')
-   axis([min(xp) max(xp) -Inf Inf])
 
 
 function y = SqueezeMissing(x)
