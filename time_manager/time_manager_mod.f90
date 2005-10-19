@@ -2482,6 +2482,7 @@ if ( .not. module_initialized ) call time_manager_init
 ! NOTE: there is no check for PE number
 
 !!!  unit_in = stdout()
+  unit_in = 6
 
   if (present(iunit)) unit_in = iunit
 
