@@ -1,5 +1,6 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, 
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 !dis
@@ -160,7 +161,7 @@ MODULE map_utils
 !
 ! REFERENCES
 ! ----------
-!  Hoke, Hayes, and Renninger, "Map Preojections and Grid Systems for
+!  Hoke, Hayes, and Renninger, "Map Projections and Grid Systems for
 !       Meteorological Applications." AFGWC/TN-79/003(Rev), Air Weather
 !       Service, 1985.
 !
@@ -174,13 +175,20 @@ MODULE map_utils
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use         types_mod, only : r8
+  use     types_mod, only : r8
+  use utilities_mod, only : register_module
 
   IMPLICIT NONE
   private
 
   public :: proj_info, map_init, map_set, latlon_to_ij, &
        PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, gridwind_to_truewind
+
+! CVS Generated file description for error handling, do not edit
+character(len=128), parameter :: &
+source   = "$Source$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
   ! Define some private constants
   REAL (kind=r8), PARAMETER    :: pi = 3.1415927_r8
@@ -233,6 +241,8 @@ CONTAINS
 
     IMPLICIT NONE
     TYPE(proj_info), INTENT(INOUT)  :: proj
+
+    call register_module(source, revision, revdate)
 
     proj%lat1 =    -999.9_r8
     proj%lon1 =    -999.9_r8
