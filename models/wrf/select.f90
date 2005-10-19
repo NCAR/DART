@@ -10,8 +10,8 @@ PROGRAM select
 ! $Date$
 
 use        types_mod, only : r8
-use    utilities_mod, only : initialize_utilities, &
-                             finalize_utilities, register_module, logfileunit
+use    utilities_mod, only : initialize_utilities, timestamp, &
+                             register_module, logfileunit
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
                              insert_obs_in_seq, get_first_obs, get_next_obs, &
                              write_obs_seq, &
@@ -62,9 +62,8 @@ integer              :: calendar_type         = GREGORIAN
 
 logical  :: is_this_last, is_there_one
 
-call initialize_utilities
+call initialize_utilities('Select')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING select ...'
 
 call set_calendar_type(calendar_type)
 
@@ -162,6 +161,6 @@ call write_obs_seq(seq, out_file_name)
 write(logfileunit,*)'FINISHED select.'
 write(logfileunit,*)
 
-call finalize_utilities ! closes the log file.
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 END PROGRAM select

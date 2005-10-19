@@ -11,7 +11,7 @@ PROGRAM extract
 
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              error_handler, E_ERR, initialize_utilities, &
-                             finalize_utilities, register_module, logfileunit
+                             timestamp, register_module, logfileunit
 use    netcdf
 
 implicit none
@@ -38,9 +38,8 @@ character(len=19) :: time_string, time_string_last
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: var_id, outid, TimeDimID, TimeVarID, weDimID, snDimID, out_var_id, ncid, sn_id, we_id, DateDimID
 
-call initialize_utilities
+call initialize_utilities('Extract')
 call register_module(source, revision, revdate)
-write(logfileunit,*)'STARTING extract ...'
 
 ps_var = 'MU'
 
@@ -107,7 +106,10 @@ enddo
 
 call close_file(iunit)
 
-call finalize_utilities ! closes the log file.
+write(logfileunit,*)'FINISHED extract.'
+write(logfileunit,*)
+
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 contains
 
