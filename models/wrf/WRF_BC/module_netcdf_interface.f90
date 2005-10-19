@@ -154,7 +154,7 @@ contains
   subroutine check(istatus)
     integer, intent (in) :: istatus
 
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'get_gl_att_real_cdf', &
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'put_gl_att_real_cdf', &
        trim(nf90_strerror(istatus)), source, revision, revdate)
 
   end subroutine check
