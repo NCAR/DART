@@ -152,8 +152,8 @@ count  = offset+(plotdat.region-1)*3;
 yp     = p(:,count);
 ya     = a(:,count);
 
-gmean = mean(yp); gstring = sprintf('guess;    mean=%.3f',gmean);
-amean = mean(ya); astring = sprintf('anaylsis; mean=%.3f',amean);
+gmean = mean(yp(isfinite(yp))); gstring = sprintf('guess;    mean=%.3f',gmean);
+amean = mean(ya(isfinite(ya))); astring = sprintf('anaylsis; mean=%.3f',amean);
 
 subplot(2,2,plotdat.region)
    plot(xp,yp,'k+-',xa,ya,'ro-','LineWidth',1.5)
