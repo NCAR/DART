@@ -37,8 +37,8 @@ use     location_mod, only : location_type, get_location, set_location_missing, 
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, print_date, GREGORIAN, &
                              operator(*), operator(+), operator(-), &
-                             operator(>), operator(<), &
-                             operator(/=), operator(<=)
+                             operator(>), operator(<), operator(/), &
+                             operator(/=), operator(<=), operator(>=) 
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, logfileunit, timestamp, &
@@ -100,19 +100,18 @@ logical :: out_of_range, is_there_one, is_this_last, keeper
 ! Namelist with default values
 !
 character(len = 129) :: obs_sequence_name = "obs_seq.final"
-integer :: obs_year       = 2003     ! the first date of the diagnostics
-integer :: obs_month      = 1
-integer :: obs_day        = 1
-integer :: tot_days       = 1        ! total days
-integer :: iskip_days     = 0        ! skip the first 'iskip' days
+integer, dimension(6) :: first_bin_center = (/ 2003, 1, 1, 0, 0, 0 /)
+integer, dimension(6) :: last_bin_center  = (/ 2003, 1, 2, 0, 0, 0 /)
+integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
+integer, dimension(6) :: bin_width        = (/    0, 0, 0, 6, 0, 0 /)
+integer, dimension(6) :: time_to_skip     = (/    0, 0, 1, 0, 0, 0 /)
+integer :: max_num_bins   = 1000000  ! maximum number of bins to consider
 integer :: plevel         = 500      ! pressure level (hPa)
 integer :: hlevel         = 5000     ! height (meters)
 integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 integer :: Nregions       = 4
 real(r8):: rat_cri        = 3.0_r8   ! QC ratio
 real(r8):: qc_threshold   = 4.0_r8   ! maximum NCEP QC factor
-real(r8):: bin_separation_hours = 6.0_r8   ! Bins every so often (hours)
-real(r8):: bin_width_hours      = 6.0_r8   ! width of the bin (hours)
 logical :: print_mismatched_locs = .false.
 logical :: verbose = .false.
 
@@ -120,18 +119,20 @@ logical :: verbose = .false.
 
 real(r8), dimension(4) :: lonlim1 = (/   0.0_r8,   0.0_r8,   0.0_r8, 235.0_r8 /)
 real(r8), dimension(4) :: lonlim2 = (/ 360.0_r8, 360.0_r8, 360.0_r8, 295.0_r8 /)
-real(r8), dimension(4) :: latlim1 = (/ 110.0_r8,  10.0_r8,  70.0_r8, 115.0_r8 /)
-real(r8), dimension(4) :: latlim2 = (/ 170.0_r8,  70.0_r8, 110.0_r8, 145.0_r8 /)
+!real(r8), dimension(4) :: latlim1 = (/ 110.0_r8,  10.0_r8,  70.0_r8, 115.0_r8 /)
+!real(r8), dimension(4) :: latlim2 = (/ 170.0_r8,  70.0_r8, 110.0_r8, 145.0_r8 /)
+real(r8), dimension(4) :: latlim1 = (/  20.0_r8, -80.0_r8, -20.0_r8,  25.0_r8 /)
+real(r8), dimension(4) :: latlim2 = (/  80.0_r8, -20.0_r8,  20.0_r8,  55.0_r8 /)
 
 character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
                                                     'Southern Hemisphere ', &
                                                     'Tropics             ', &
                                                     'North America       ' /)
 
-namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
-                       tot_days, iskip_days, plevel, hlevel, obs_select, Nregions, rat_cri, &
-                       qc_threshold, bin_separation_hours, bin_width_hours, &
-                       lonlim1, lonlim2, latlim1, latlim2, reg_names, &
+namelist /obsdiag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
+                       bin_separation, bin_width, time_to_skip, max_num_bins, &
+                       plevel, hlevel, obs_select, Nregions, rat_cri, &
+                       qc_threshold, lonlim1, lonlim2, latlim1, latlim2, reg_names, &
                        print_mismatched_locs, verbose
 
 integer  :: iregion, iepoch, iday, ivar, ifile, num_obs_in_epoch
@@ -200,13 +201,14 @@ integer,         allocatable, dimension(:) :: obs_used_in_epoch
 !-----------------------------------------------------------------------
 
 integer  :: seconds, days
-integer  :: obslevel, NBinsPerDay, Nepochs
+integer  :: obslevel, Nepochs
 integer  :: gesUnit, anlUnit
 
 ! These pairs of variables are used when we diagnose which observations 
 ! are far from the background.
-integer  :: nsigma(0:100) = 0
-integer  :: nsigmaUnit
+integer, parameter :: MaxSigmaBins = 100
+integer  :: nsigma(0:MaxSigmaBins) = 0
+integer  :: nsigmaUnit, indx
 
 real(r8) :: ratio, ratioU
 
@@ -218,6 +220,7 @@ type(time_type) :: obs_time, skip_time
 
 character(len =   6) :: day_num 
 character(len = 129) :: gesName, anlName, msgstring
+character(len =  32) :: str1, str2, str3
 
 !-----------------------------------------------------------------------
 ! Some variables to keep track of who's rejected why ...
@@ -262,8 +265,6 @@ posterior_spread(1) = 0.0_r8
 
 U_obs_loc = set_location_missing()
 
-call set_calendar_type(GREGORIAN)
-
 !----------------------------------------------------------------------
 ! Read the namelist
 !----------------------------------------------------------------------
@@ -277,6 +278,9 @@ call error_handler(E_MSG,'obs_diag','obsdiag_nml values are',' ',' ',' ')
 write(logfileunit,nml=obsdiag_nml)
 write(    *      ,nml=obsdiag_nml)
 
+! Open file for histogram of innovations, as a function of standard deviation.
+nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
+write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio    key   kind'
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
 !----------------------------------------------------------------------
@@ -302,43 +306,43 @@ Nrejected  = 0
 plevel_index = GetClosestLevel(plevel, 2)  ! Set desired input level to nearest actual
 hlevel_index = GetClosestLevel(hlevel, 3)  ! ditto for heights.
 
-! Open file for histogram of innovations, as a function of standard deviation.
-nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
-write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio    key   kind'
-
 ! Determine temporal bin characteristics.
-! Nepochs is the total number of time intervals of the period requested.
+! The user input is not guaranteed to align on bin centers. 
+! So -- we will assume the start time is correct and take strides till we
+! get past the last time of interest. 
+! Nepochs will be the total number of time intervals of the period requested.
 
-NBinsPerDay  = nint( 24.0_r8 / bin_separation_hours )
-    binsep   = set_time(nint(bin_separation_hours * 3600.0_r8), 0)
-    binwidth = set_time(nint(bin_width_hours      * 3600.0_r8), 0) ! full bin width 
-halfbinwidth = set_time(nint(bin_width_hours      * 1800.0_r8), 0) ! half bin width 
-beg_time     = set_date(obs_year, obs_month, obs_day, 0, 0, 0)
-end_time     = set_time(0, iskip_days)   ! convert days to skip to a time_type object
-skip_time    = beg_time + end_time  ! the start time for the accumulation of vertical statistics 
-Nepochs      = NBinsPerDay*tot_days
+call set_calendar_type(GREGORIAN)
+
+call Convert2Time(beg_time, end_time, skip_time, binsep, binwidth, halfbinwidth)
+
+TimeMin  = beg_time
+NepochLoop : do iepoch = 1,max_num_bins
+   Nepochs = iepoch
+   TimeMax = TimeMin + binsep
+   if ( TimeMax >= end_time ) exit NepochLoop
+   TimeMin = TimeMax
+enddo NepochLoop
 
 write(*,*)'Requesting ',Nepochs,' assimilation periods.'
-
-allocate(rms_ges_mean(  Nepochs, Nregions, max_obs_kinds), &
-         rms_ges_spread(Nepochs, Nregions, max_obs_kinds), &
-         rms_anl_mean(  Nepochs, Nregions, max_obs_kinds), &
-         rms_anl_spread(Nepochs, Nregions, max_obs_kinds), &
-         num_in_level(  Nepochs, Nregions, max_obs_kinds) )
-
-rms_ges_mean   = 0.0_r8
-rms_anl_mean   = 0.0_r8
-rms_ges_spread = 0.0_r8
-rms_anl_spread = 0.0_r8
-num_in_level   = 0
 
 ! Define the centers of the temporal bins.
 
 allocate(bincenter(Nepochs), epoch_center(Nepochs) ,obs_used_in_epoch(Nepochs))
 obs_used_in_epoch = 0
 
-BinLoop : do iepoch = 1,Nepochs
-      bincenter(iepoch) = beg_time + (iepoch-1) * binsep
+iepoch = 1
+bincenter(iepoch) = beg_time
+call get_time(bincenter(iepoch),seconds,days)
+epoch_center(iepoch) = days + seconds/86400.0_digits12
+
+write(msgstring,'(''epoch '',i4,'' center '')')iepoch
+call print_time(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
+call print_date(bincenter(iepoch),trim(adjustl(msgstring)),logfileunit)
+
+write(logfileunit,*)''
+BinLoop : do iepoch = 2,Nepochs
+      bincenter(iepoch) = bincenter(iepoch-1) + binsep
       call get_time(bincenter(iepoch),seconds,days)
       epoch_center(iepoch) = days + seconds/86400.0_digits12
 
@@ -354,6 +358,17 @@ TimeMax = bincenter(Nepochs) + halfbinwidth   ! maximum time of interest
 if (verbose) call print_time(TimeMin,'minimum time of interest',logfileunit)
 if (verbose) call print_time(TimeMax,'maximum time of interest',logfileunit)
 
+allocate(rms_ges_mean(  Nepochs, Nregions, max_obs_kinds), &
+         rms_ges_spread(Nepochs, Nregions, max_obs_kinds), &
+         rms_anl_mean(  Nepochs, Nregions, max_obs_kinds), &
+         rms_anl_spread(Nepochs, Nregions, max_obs_kinds), &
+         num_in_level(  Nepochs, Nregions, max_obs_kinds) )
+
+rms_ges_mean   = 0.0_r8
+rms_anl_mean   = 0.0_r8
+rms_ges_spread = 0.0_r8
+rms_anl_spread = 0.0_r8
+num_in_level   = 0
 
 !-----------------------------------------------------------------------
 ! We must assume the observation sequence files span an unknown amount
@@ -365,33 +380,16 @@ if (verbose) call print_time(TimeMax,'maximum time of interest',logfileunit)
 !
 ! Directory/file names are similar to    01_03/obs_seq.final
 !
-! We will stop when we encounter an observation with a time
-! stamp out of the desired range. 
 !-----------------------------------------------------------------------
-
-! Open and prepare the first observation sequence.
-! This entails creating the file name, 
-
-!call GetNextObsSequence(obs_sequence_name, obs_month, obs1, obsN, observation, &
-!        next_obs, seq, seqT1, seqTN, obs_index, &
-!        prior_mean_index, posterior_mean_index, prior_spread_index, posterior_spread_index)
-!
-!EpochLoop : do iepoch = 1, Nepochs
-!
-!
-!
-!enddo EpochLoop
-
-
 ! The strategy at this point is to open WAY too many files and 
 ! check the observation sequences against ALL of the temporal bins.
-! If the sequence is completely past the time period of interest, we stop.
 ! If the sequence is completely before the time period of interest, we skip.
+! If the sequence is completely past the time period of interest, we stop.
 
-ObsFileLoop : do ifile=1, tot_days*4
+ObsFileLoop : do ifile=1, Nepochs*4
 !-----------------------------------------------------------------------
 
-   write(day_num, '(i2.2,''_'',i2.2,''/'')') obs_month, obs_day + (ifile-1) 
+   write(day_num, '(i2.2,''_'',i2.2,''/'')') first_bin_center(2), ifile 
    write(obs_seq_in_file_name,*)trim(adjustl(day_num))//trim(adjustl(obs_sequence_name))
 
    if ( file_exist(trim(adjustl(obs_seq_in_file_name))) ) then
@@ -580,12 +578,15 @@ ObsFileLoop : do ifile=1, tot_days*4
       end_time = bincenter(iepoch) + halfbinwidth
 
       if ( verbose ) then
-         call print_time(         beg_time,'epoch  start ',logfileunit)
-         call print_time(bincenter(iepoch),'epoch center ',logfileunit)
-         call print_time(         end_time,'epoch    end ',logfileunit)
-         call print_time(         beg_time,'epoch  start ')
-         call print_time(bincenter(iepoch),'epoch center ')
-         call print_time(         end_time,'epoch    end ')
+         write(str1,'(''epoch '',i6,''  start'')')iepoch
+         write(str2,'(''epoch '',i6,'' center'')')iepoch
+         write(str3,'(''epoch '',i6,''    end'')')iepoch
+         call print_time(         beg_time,str1,logfileunit)
+         call print_time(bincenter(iepoch),str2,logfileunit)
+         call print_time(         end_time,str3,logfileunit)
+         call print_time(         beg_time,str1)
+         call print_time(bincenter(iepoch),str2)
+         call print_time(         end_time,str3)
       endif
 
       call get_obs_time_range(seq, beg_time, end_time, key_bounds, &
@@ -620,8 +621,8 @@ ObsFileLoop : do ifile=1, tot_days*4
 
          obs_loc = get_obs_def_location(obs_def)
          obsloc3 = get_location(obs_loc)
-         lon0    = obsloc3(1) + 1.01_r8             ! 0-360
-         lat0    = obsloc3(2) + 1.01_r8 + 90.0_r8   ! 0-180
+         lon0    = obsloc3(1) ! [  0, 360]
+         lat0    = obsloc3(2) ! [-90,  90]
 
          if(vert_is_surface(obs_loc)) then    ! use closest height equivalent 
             level_index        = 1            ! use 'surface' level
@@ -703,7 +704,8 @@ ObsFileLoop : do ifile=1, tot_days*4
          ! a one-sided histogram.
 
          ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
-         nsigma(int(ratio)) = nsigma(int(ratio)) + 1
+         indx         = min(int(ratio), MaxSigmaBins)
+         nsigma(indx) = nsigma(indx) + 1
 
          ! Individual observations that are very far away get individually
          ! logged to a separate file.
@@ -712,7 +714,7 @@ ObsFileLoop : do ifile=1, tot_days*4
             call get_time(obs_time,seconds,days)
             write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,2f8.2,f7.1,2i7)') &
                  days, seconds, lon0, lat0, ivert, &
-                 obs(1), pr_mean, ratio, obsindex, flavor
+                 obs(1), pr_mean, ratio, keys(obsindex), flavor
          endif
 
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
@@ -935,11 +937,13 @@ enddo ObsFileLoop
 !-----------------------------------------------------------------------
 
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
-write(iunit,'(''obs_year       = '',i6,'';'')')obs_year
-write(iunit,'(''obs_month      = '',i6,'';'')')obs_month
-write(iunit,'(''obs_day        = '',i6,'';'')')obs_day
-write(iunit,'(''tot_days       = '',i6,'';'')')tot_days
-write(iunit,'(''iskip          = '',i6,'';'')')iskip_days
+write(iunit,'(''first_bin_center = ['',6(1x,i5),''];'')')first_bin_center
+write(iunit,'(''bin_separation   = ['',6(1x,i5),''];'')')bin_separation
+write(iunit,'(''bin_width        = ['',6(1x,i5),''];'')')bin_width
+write(iunit,'(''time_to_skip     = ['',6(1x,i5),''];'')')time_to_skip
+write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
+write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
+write(iunit,'(''Nepochs        = '',i6,'';'')')Nepochs
 write(iunit,'(''plevel         = '',i6,'';'')')plevel
 write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
 write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,2)
@@ -948,10 +952,6 @@ write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
 write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
 write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
-write(iunit,'(''bin_width_hours      = '',f9.2,'';'')')bin_width_hours
-write(iunit,'(''bin_separation_hours = '',f9.2,'';'')')bin_separation_hours 
-write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
-write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
 write(iunit,'(''plev     = ['',11(1x,i5),''];'')')levels(:,2)
 write(iunit,'(''plev_int = ['',12(1x,i5),''];'')')levels_int(:,2)
 write(iunit,'(''hlev     = ['',11(1x,i5),''];'')')levels(:,3)
@@ -1162,8 +1162,8 @@ do ivar=1,max_obs_kinds
    generic_obs_name = ProcessName(get_obs_name(ivar))
    write(*,'(3a,4i8)') ' # ',generic_obs_name,'         : ',Nrejected(:,ivar)
 enddo
-write(*,'(a,4i8)') ' # bad winds per region for specified level : ',NbadW
-write(*,'(a,4i8)') ' # bad winds per region for all levels      : ',NbadWvert
+write(*,'(a,4i8)') ' # bad winds per region for specified level         : ',NbadW
+write(*,'(a,4i8)') ' # bad winds per region for all levels              : ',NbadWvert
 write(*,*)''
 
 write(logfileunit,*) ''
@@ -1178,8 +1178,8 @@ do ivar=1,max_obs_kinds
    generic_obs_name = ProcessName(get_obs_name(ivar))
    write(logfileunit,'(3a,4i8)') ' # ',generic_obs_name,'         : ',Nrejected(:,ivar)
 enddo
-write(logfileunit,'(a,4i8)') ' # bad winds per region for specified level : ',NbadW
-write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels      : ',NbadWvert
+write(logfileunit,'(a,4i8)') ' # bad winds per region for specified level         : ',NbadW
+write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels              : ',NbadWvert
 
 !-----------------------------------------------------------------------
 ! Really, really, done.
@@ -1332,5 +1332,95 @@ contains
    endif
 
    end Function ProcessName
+
+
+   Subroutine Convert2Time(beg_time, end_time, skip_time, binsep, &
+                           binwidth, halfbinwidth)
+   ! We are using bin_separation and bin_width as offsets relative to the
+   ! first time. to ensure this, the year and month must be zero.
+
+   type(time_type), intent(out) :: beg_time     ! first_bin_center
+   type(time_type), intent(out) :: end_time     ! last_bin_center
+   type(time_type), intent(out) :: skip_time    ! time AFTER first_bin_center
+   type(time_type), intent(out) :: binsep       ! time between bin centers
+   type(time_type), intent(out) :: binwidth     ! period of interest around center
+   type(time_type), intent(out) :: halfbinwidth ! half that period
+
+   character(len=129) :: msgstring
+   logical :: error_out = .false.
+   integer :: seconds
+
+   ! do some error-checking first
+
+   if ( (bin_separation(1) /= 0) .or. (bin_separation(2) /= 0) ) then
+      write(msgstring,*)'bin_separation:year,month must both be zero, they are ', &
+      bin_separation(1),bin_separation(2)
+      call error_handler(E_MSG,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
+      error_out = .true.
+   endif
+
+   if ( (bin_width(1) /= 0) .or. (bin_width(2) /= 0) ) then
+      write(msgstring,*)'bin_width:year,month must both be zero, they are ', &
+      bin_width(1),bin_width(2)
+      call error_handler(E_MSG,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
+      error_out = .true.
+   endif
+   
+   if ( (time_to_skip(1) /= 0) .or. (time_to_skip(2) /= 0) ) then
+      write(msgstring,*)'time_to_skip:year,month must both be zero, they are ', &
+      time_to_skip(1),time_to_skip(2)
+      call error_handler(E_MSG,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
+      error_out = .true.
+   endif
+
+   if ( error_out ) call error_handler(E_ERR,'obs_diag:Convert2Time', &
+       'namelist parameter out-of-bounds. Fix and try again.',source,revision,revdate)
+
+   ! Set time of first bin center
+
+   beg_time   = set_date(first_bin_center(1), first_bin_center(2), &
+                         first_bin_center(3), first_bin_center(4), &
+                         first_bin_center(5), first_bin_center(6) )
+
+   ! Set time of _intended_ last bin center
+   end_time   = set_date( last_bin_center(1),  last_bin_center(2), &
+                          last_bin_center(3),  last_bin_center(4), &
+                          last_bin_center(5),  last_bin_center(6) )
+
+   seconds  = bin_separation(4)*3600 + bin_separation(5)*60 + bin_separation(6)
+   binsep   = set_time(seconds, bin_separation(3))
+
+   seconds  = bin_width(4)*3600 + bin_width(5)*60 + bin_width(6)
+   binwidth = set_time(seconds, bin_width(3))
+
+   halfbinwidth = binwidth / 2
+
+   seconds   = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6)
+   skip_time = beg_time + set_time(seconds, time_to_skip(3))
+
+   if ( verbose ) then
+      call print_date(    beg_time,'requested beginning date',logfileunit)
+      call print_date(   skip_time,'requested skip      date',logfileunit)
+      call print_date(    end_time,'requested end       date',logfileunit)
+      call print_time(    beg_time,'requested beginning time',logfileunit)
+      call print_time(   skip_time,'requested skip      time',logfileunit)
+      call print_time(    end_time,'requested end       time',logfileunit)
+      call print_time(      binsep,'requested bin separation',logfileunit)
+      call print_time(    binwidth,'requested bin      width',logfileunit)
+      call print_time(halfbinwidth,'implied     halfbinwidth',logfileunit)
+
+      call print_date(    beg_time,'requested beginning date')
+      call print_date(   skip_time,'requested skip      date')
+      call print_date(    end_time,'requested end       date')
+      call print_time(    beg_time,'requested beginning time')
+      call print_time(   skip_time,'requested skip      time')
+      call print_time(    end_time,'requested end       time')
+      call print_time(      binsep,'requested bin separation')
+      call print_time(    binwidth,'requested bin      width')
+      call print_time(halfbinwidth,'implied     halfbinwidth')
+   endif
+
+   end Subroutine Convert2Time
+
 
 end program obs_diag
