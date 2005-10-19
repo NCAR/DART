@@ -57,6 +57,15 @@ if ( exist(datafile) == 2 )
 
    if ( exist('plevel','var') == 0 )
       plevel = 1;
+      iskip = iskip_days;
+      plotdat.toff = 0;
+      plotdat.bin1 = datenum(t1);
+   else  % high dimensional models
+      % Coordinate between time types and dates
+      skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
+      iskip = time_to_skip(3) + skip_seconds/86400;
+      plotdat.bin1 = datenum(first_bin_center); % a known date in matlab's time units
+      plotdat.toff = plotdat.bin1 - t1;         % determine temporal offset (calendar base)
    end
 
 else
@@ -64,14 +73,8 @@ else
 end
 
 % set up a structure with all static plotting components
-
-temp = datenum(obs_year,obs_month,obs_day);
-plotdat.toff      = temp - round(t1); % determine temporal offset (calendar base)
-plotdat.day1      = datestr(t1+plotdat.toff,'yyyy-mm-dd HH');
+plotdat.day1      = datestr(t1+plotdat.toff+iskip,'yyyy-mm-dd HH');
 plotdat.dayN      = datestr(tN+plotdat.toff,'yyyy-mm-dd HH');
-plotdat.obs_year  = obs_year;
-plotdat.obs_month = obs_month;
-plotdat.obs_day   = obs_day;
 plotdat.level     = plevel; 
 plotdat.ylabel    = 'RMSE';
 plotdat.nregions  = length(Regions);
@@ -171,9 +174,12 @@ subplot(2,2,plotdat.region)
    plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
    ylabel(plotdat.ylabel, 'fontsize', 10);
-   xlabel('days')
 
-   if (plotdat.obs_year > 1000); datetick('x',1); end
+   if (plotdat.bin1 > 1000);
+      datetick('x',1);
+   else
+      xlabel('days')
+   end
 
    title(plotdat.title, 'Interpreter', 'none', ...
          'Fontsize', 12, 'FontWeight', 'bold')
