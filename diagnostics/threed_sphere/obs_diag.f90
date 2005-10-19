@@ -1046,7 +1046,7 @@ enddo OneLevel
 
 ! Actually print the histogram of innovations as a function of standard deviation. 
 close(nsigmaUnit)
-do i=0,100
+do i=0,MaxSigmaBins
    if(nsigma(i) /= 0) write(*,*)'innovations within ',i+1,' stdev = ',nsigma(i)
 enddo
 
