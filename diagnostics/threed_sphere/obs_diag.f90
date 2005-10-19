@@ -320,7 +320,7 @@ TimeMin  = beg_time
 NepochLoop : do iepoch = 1,max_num_bins
    Nepochs = iepoch
    TimeMax = TimeMin + binsep
-   if ( TimeMax >= end_time ) exit NepochLoop
+   if ( TimeMax > end_time ) exit NepochLoop
    TimeMin = TimeMax
 enddo NepochLoop
 
@@ -885,7 +885,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             else
 
                if(ratio <= rat_cri )  then
-                  num_ver(obslevel,iregion,flavor) =      num_ver(obslevel,iregion,flavor) + 1
+                      num_ver(obslevel,iregion,flavor) =      num_ver(obslevel,iregion,flavor) + 1
                   rms_ges_ver(obslevel,iregion,flavor) =  rms_ges_ver(obslevel,iregion,flavor) + &
                        (pr_mean - obs(1))**2
                   rms_anl_ver(obslevel,iregion,flavor) =  rms_anl_ver(obslevel,iregion,flavor) + &
