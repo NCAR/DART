@@ -168,8 +168,10 @@ subplot(2,2,plotdat.region)
    % on the same figure, we should have two axes ... 
    % bias on left, spread on right, for example. no time now ...
 
-   gmean = mean(ens_mean);   gstring = sprintf('Ens. mean;   mean=%.3f',gmean);
-   amean = mean(ens_spread); astring = sprintf('Ens. spread; mean=%.3f',amean);
+   gmean = mean(ens_mean(  isfinite(ens_mean  )));   
+   amean = mean(ens_spread(isfinite(ens_spread))); 
+   gstring = sprintf('Ens. mean;   mean=%.3f',gmean);
+   astring = sprintf('Ens. spread; mean=%.3f',amean);
 
    plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
