@@ -95,10 +95,6 @@
 
 &obsdiag_nml
    obs_sequence_name = 'obs_seq.final',
-   obs_year   = 0,
-   obs_month  = 1,
-   obs_day    = 1,
-   tot_days   = 1,
    iskip_days = 0,
    obs_select = 1,
    rat_cri    = 300.0,
