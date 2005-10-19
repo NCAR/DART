@@ -83,10 +83,6 @@ integer, parameter :: MaxRegions = 4
 ! Namelist with default values
 !
 character(len = 129) :: obs_sequence_name = "obs_seq.final"
-integer :: obs_year   = 0        ! the first date of the diagnostics
-integer :: obs_month  = 1
-integer :: obs_day    = 1
-integer :: tot_days   = 1        ! total days
 integer :: iskip_days = 0        ! skip the first 'iskip' days
 integer :: obs_select = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 real(r8):: rat_cri    = 3.0      ! QC ratio
@@ -104,8 +100,8 @@ real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8, -1.0_r8 
 character(len=6), dimension(MaxRegions) :: reg_names = &
                                    (/ 'whole ','ying  ','yang  ','bogus '/)
 
-namelist /obsdiag_nml/ obs_sequence_name, obs_year, obs_month, obs_day, &
-                       tot_days, iskip_days, obs_select, rat_cri, &
+namelist /obsdiag_nml/ obs_sequence_name, &
+                       iskip_days, obs_select, rat_cri, &
                        qc_threshold, bin_width_seconds, &
                        lonlim1, lonlim2, reg_names, verbose
 
@@ -136,7 +132,9 @@ integer  :: gesUnit, anlUnit
 
 ! These pairs of variables are used when we diagnose which observations 
 ! are far from the background.
-integer  :: nsigma(0:100) = 0
+integer, parameter :: MaxSigmaBins = 100  
+integer  :: nsigma(0:MaxSigmaBins) = 0
+integer  :: indx
 
 real(r8) :: ratio
 
@@ -558,7 +556,8 @@ enddo FindNumRegions
          ! a one-sided histogram.
 
          ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
-         nsigma(int(ratio)) = nsigma(int(ratio)) + 1
+         indx         = min(int(ratio), MaxSigmaBins)
+         nsigma(indx) = nsigma(indx) + 1
 
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
 
@@ -650,10 +649,6 @@ enddo FindNumRegions
 !-----------------------------------------------------------------------
 
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
-write(iunit,'(''obs_year       = '',i,'';'')')obs_year
-write(iunit,'(''obs_month      = '',i,'';'')')obs_month
-write(iunit,'(''obs_day        = '',i,'';'')')obs_day
-write(iunit,'(''tot_days       = '',i,'';'')')tot_days
 write(iunit,'(''iskip_days     = '',i,'';'')')iskip_days
 write(iunit,'(''obs_select     = '',i,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f,'';'')')rat_cri
