@@ -94,7 +94,7 @@ real(r8) :: obs_err_var
 
 integer,  allocatable :: keys(:)
 
-logical :: out_of_range, is_there_one, is_this_last, keeper
+logical :: out_of_range, is_there_one, keeper
 
 !-----------------------------------------------------------------------
 ! Namelist with default values
@@ -135,7 +135,7 @@ namelist /obsdiag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
                        qc_threshold, lonlim1, lonlim2, latlim1, latlim2, reg_names, &
                        print_mismatched_locs, verbose
 
-integer  :: iregion, iepoch, iday, ivar, ifile, num_obs_in_epoch
+integer  :: iregion, iepoch, ivar, ifile, num_obs_in_epoch
 real(r8) :: lon0, lat0, obsloc3(3)
 real(r8) :: speed_obs2, speed_ges2, speed_anl2
 
@@ -1024,13 +1024,11 @@ OneLevel : do ivar=1,max_obs_kinds
    endif
 
    do i=1, Nepochs
-      if( any (num_in_level(i, :, ivar) /= 0) ) then
-         call get_time(bincenter(i),seconds,days)
-         write(gesUnit,91) days, seconds, &
-              (rms_ges_mean(i,j,ivar),rms_ges_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
-         write(anlUnit,91) days, seconds, &
-              (rms_anl_mean(i,j,ivar),rms_anl_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
-      endif
+      call get_time(bincenter(i),seconds,days)
+      write(gesUnit,91) days, seconds, &
+        (rms_ges_mean(i,j,ivar),rms_ges_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
+      write(anlUnit,91) days, seconds, &
+        (rms_anl_mean(i,j,ivar),rms_anl_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
    enddo
    close(gesUnit)
    close(anlUnit)
@@ -1047,7 +1045,7 @@ enddo OneLevel
 ! Actually print the histogram of innovations as a function of standard deviation. 
 close(nsigmaUnit)
 do i=0,MaxSigmaBins
-   if(nsigma(i) /= 0) write(*,*)'innovations within ',i+1,' stdev = ',nsigma(i)
+   if(nsigma(i) /= 0) write(*,*)'innovations in stdev bin ',i+1,' = ',nsigma(i)
 enddo
 
 deallocate(rms_ges_mean, rms_ges_spread, &
@@ -1259,7 +1257,7 @@ contains
          level_index_out = a(1)
       endif
 
-      write(*,*)'level_in/column ',level_in,levind,' results in ',level_index_out
+     ! write(*,*)'level_in/column ',level_in,levind,' results in ',level_index_out
 
    else  ! we have pressure levels (or surface obs ... also in pressure units)
 
