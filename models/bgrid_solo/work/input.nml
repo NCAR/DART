@@ -98,6 +98,14 @@
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
 
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins,
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, 360]
 
 &obsdiag_nml
    obs_sequence_name = 'obs_seq.final',
