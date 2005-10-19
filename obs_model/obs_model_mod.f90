@@ -21,7 +21,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
                              get_obs_def, init_obs, destroy_obs, get_num_copies, &
                              get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
 use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time
-use time_manager_mod, only : time_type, operator(/=), operator(>), get_time, set_time, &
+use time_manager_mod, only : time_type, operator(/=), operator(>), set_time, &
                              operator(-), operator(/), operator(+), print_time, operator(<)
 
 use ensemble_manager_mod, only : get_ensemble_time, Aadvance_state, ensemble_type
