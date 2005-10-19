@@ -355,8 +355,23 @@ enddo BinLoop
 TimeMin = bincenter(   1   ) - halfbinwidth   ! minimum time of interest
 TimeMax = bincenter(Nepochs) + halfbinwidth   ! maximum time of interest
 
-if (verbose) call print_time(TimeMin,'minimum time of interest',logfileunit)
-if (verbose) call print_time(TimeMax,'maximum time of interest',logfileunit)
+if (verbose) then
+   call print_time(TimeMin,'minimum time of interest')
+   call print_time(TimeMax,'maximum time of interest')
+   call print_time(skip_time,'start accruing vertical statistics after')
+
+   call print_date(TimeMin,'minimum date of interest')
+   call print_date(TimeMax,'maximum date of interest')
+   call print_date(skip_time,'start accruing vertical statistics after')
+
+   call print_time(TimeMin,'minimum time of interest',logfileunit)
+   call print_time(TimeMax,'maximum time of interest',logfileunit)
+   call print_time(skip_time,'start accruing vertical statistics after',logfileunit)
+
+   call print_date(TimeMin,'minimum date of interest',logfileunit)
+   call print_date(TimeMax,'maximum date of interest',logfileunit)
+   call print_date(skip_time,'start accruing vertical statistics after',logfileunit)
+endif
 
 allocate(rms_ges_mean(  Nepochs, Nregions, max_obs_kinds), &
          rms_ges_spread(Nepochs, Nregions, max_obs_kinds), &
