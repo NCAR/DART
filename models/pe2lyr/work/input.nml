@@ -97,16 +97,15 @@
 
 &obsdiag_nml
    obs_sequence_name = 'obs_seq.final',
-   obs_year   = 2003,
-   obs_month  = 1,
-   obs_day    = 1,
-   tot_days   = 1,
-   iskip_days = 0,
+   first_bin_center =  2003, 1, 1, 0, 0, 0 ,
+   last_bin_center  =  2003, 1, 7, 0, 0, 0 ,
+   bin_separation   =     0, 0, 0, 6, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 1, 0, 0, 0 ,
+   max_num_bins  = 1000,
    plevel     = 1013,
    obs_select = 1,
    rat_cri    = 3.0,
    qc_threshold = 4.0, 
-   bin_separation_hours = 24.0,
-   bin_width_hours = 6.0,
    print_mismatched_locs = .false.   /
 
