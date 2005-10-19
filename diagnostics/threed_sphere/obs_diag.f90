@@ -1047,7 +1047,7 @@ enddo OneLevel
 ! Actually print the histogram of innovations as a function of standard deviation. 
 close(nsigmaUnit)
 do i=0,100
-   if(nsigma(i) /= 0) write(*,*)'innovations within ',i,' stdev = ',nsigma(i)
+   if(nsigma(i) /= 0) write(*,*)'innovations within ',i+1,' stdev = ',nsigma(i)
 enddo
 
 deallocate(rms_ges_mean, rms_ges_spread, &
