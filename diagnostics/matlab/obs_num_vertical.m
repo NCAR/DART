@@ -108,13 +108,29 @@ for ivar = 1:length(All_Level_Varnames),
    print(page1,'-dpsc',psfname);
 
    % All regions on one figure
+   % We assume there is at least one region and then we'll add to that.
 
    figure(page2); clf;
 
-   h = plot(NbyRegion(:,1), obslevels, ptypes{1}, ...
-            NbyRegion(:,2), obslevels, ptypes{2}, ...
-            NbyRegion(:,3), obslevels, ptypes{3}, ...
-            NbyRegion(:,4), obslevels, ptypes{4}, 'LineWidth', plotdat.linewidth);
+   h = plot(NbyRegion(:,1), obslevels, ptypes{1}, 'LineWidth', plotdat.linewidth);
+   [legh, objh, outh, outm] = legend(Regions{1});
+   hold on;
+
+   for iregion = 2:length(Regions),
+      h = plot(NbyRegion(:,iregion), obslevels, ptypes{iregion}, ...
+                                'LineWidth', plotdat.linewidth);
+      % Must add salient information to the legend.
+      % legh     handle to the legend axes
+      % objh     handle for the text, lines, and patches in the legend
+      % outh     handle for the lines and patches in the plot
+      % outm     cell array for the text in the legend
+      nlines = length(outm);
+      outm{nlines + 1} = Regions{iregion};
+      [legh, objh, outh, outm] = legend([outh; h],outm,0);
+      %h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, 'Location','Best');
+   end
+
+   legend boxoff
    grid
    ax = axis; 
    ax(3) = plotdat.ptop; 
@@ -124,15 +140,12 @@ for ivar = 1:length(All_Level_Varnames),
    title(plotdat.main, 'Interpreter','none','FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
    xlabel(plotdat.xlabel, 'fontsize', 10)
-   
-   h = legend(Regions{1},Regions{2},Regions{3},Regions{4}, ...
-              'Location','Best');
-   legend(h,'boxoff');
-
    BottomAnnotation(plotdat.fname)
 
    str = sprintf('print -f%d -dpsc -append %s',page2,psfname);
    eval(str)
+
+   hold off
 
 end
 
