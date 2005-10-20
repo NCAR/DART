@@ -137,54 +137,7 @@ switch lower(deblank(routine))
               'var3_lon' , var3_lon, 'var3_lonind', var3_lonind, ...
               'ens_mem'  , ens_mem , 'ltype',ltype);
 
-   case 'plotsawtoothnotready'
-
-      % model: 'Forced_Lorenz_96'
-      % def_var: 'state'
-      % num_state_vars: 80
-      % num_model_vars: 40
-      % num_force_vars: 40
-      % num_ens_members: 22
-      % time_series_length: 1000
-      % min_state_var: 1
-      % max_state_var: 80
-      % min_model_var: 1
-      % max_model_var: 40
-      % min_force_var: 1
-      % max_force_var: 40
-      % min_ens_mem: 1
-      % max_ens_mem: 22
-      % def_state_vars: [1 13 27]
-      % def_force_vars: [41 53 67]
-      % prior_file: 'Prior_Diag.nc'
-      % posterior_file: 'Posterior_Diag.nc'
-      % truth_file: 'True_State.nc'
-      % var: 'state'
-      % var_inds: [10 35 45 78]
-      % copyindices: [4 6 8 10 12 14 16 18 20 22]
-
-      disp('Getting information for the ''base'' variable.')
-       base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(     base_var,times);
-      [base_lvl,  base_lvlind] = GetLevel(    base_var,levels);
-      [base_lat,  base_latind] = GetLatitude( base_var,TmpJ,VelJ);
-      [base_lon,  base_lonind] = GetLongitude(base_var,TmpI,VelI);
-
-      disp('Getting information for the ''comparison'' variable.')
-       comp_var               = GetVar(prognostic_vars,          base_var);
-      [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvl);
-
-      pinfo = struct('model',model , 'fname'      , fname,       ...
-              'base_var' ,base_var , 'comp_var'   , comp_var,    ...
-              'base_time',base_time, 'base_tmeind', base_tmeind, ...
-              'base_lvl' ,base_lvl , 'base_lvlind', base_lvlind, ...
-              'base_lat' ,base_lat , 'base_latind', base_latind, ...
-              'base_lon' ,base_lon , 'base_lonind', base_lonind, ...
-              'comp_lvl' ,comp_lvl , 'comp_lvlind', comp_lvlind);
-
    otherwise
-
-      error(sprintf('%s not supported for bgrid at this time. Sorry.',routine))
 
 end
 
