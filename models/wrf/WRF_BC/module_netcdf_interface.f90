@@ -42,11 +42,11 @@ CONTAINS
 
 !--------------------------------------------------------------------
 
-subroutine get_dims_cdf( file, var, idims, ndims, debug )
+subroutine get_dims_cdf( fname, var, idims, ndims, debug )
 
   implicit none
 
-  character (len=80),     intent(in) :: file
+  character (len=80),     intent(in) :: fname
   character (len=*),      intent(in) :: var
   logical,                intent(in) :: debug
   integer, intent(out), dimension(4) :: idims
@@ -55,19 +55,19 @@ subroutine get_dims_cdf( file, var, idims, ndims, debug )
   integer  :: cdfid, id_data, i
   integer  :: dimids(4)
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_NOWRITE, cdfid) )
+  call check( nf90_open(fname, NF90_NOWRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, var, id_data) )
 
   call check( nf90_Inquire_Variable(cdfid, id_data, ndims=ndims, dimids=dimids) )
 
-  if(debug) write(6,*) ' number of dims for ',var,' ',ndims
+  !if(debug) write(6,*) ' number of dims for ',var,' ',ndims
 
   do i=1,ndims
      call check( nf90_inquire_dimension(cdfid, dimids(i), len=idims(i)) )
-     if(debug) write(6,*) ' dimension ',i,idims(i)
+  !  if(debug) write(6,*) ' dimension ',i,idims(i)
   enddo
 
   call check( nf90_close(cdfid) )
@@ -88,20 +88,20 @@ end subroutine get_dims_cdf
 
 !-------------------------------------------------------------------------------
 
-subroutine get_gl_att_real_cdf( file, att_name, value, debug )
+subroutine get_gl_att_real_cdf( fname, att_name, value, debug )
 
   implicit none
 
-  character (len=80), intent(in) :: file
+  character (len=80), intent(in) :: fname
   character (len=*),  intent(in) :: att_name
   logical,            intent(in) :: debug
   real(r8),          intent(out) :: value
 
   integer :: cdfid
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_NOWRITE, cdfid) )
+  call check( nf90_open(fname, NF90_NOWRITE, cdfid) )
 
   call check( nf90_get_att(cdfid, nf90_global, att_name, value) )
 
@@ -125,20 +125,20 @@ end subroutine get_gl_att_real_cdf
 
 !-------------------------------------------------------------------------------
 
-subroutine put_gl_att_real_cdf( file, att_name, value, debug )
+subroutine put_gl_att_real_cdf( fname, att_name, value, debug )
 
   implicit none
 
-  character (len=80), intent(in) :: file
+  character (len=80), intent(in) :: fname
   character (len=*),  intent(in) :: att_name
   logical,            intent(in) :: debug
   real(r8),           intent(in) :: value
 
   integer :: cdfid
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_WRITE, cdfid) )
+  call check( nf90_open(fname, NF90_WRITE, cdfid) )
 
   call check( nf90_redef(cdfid) )
   call check( nf90_put_att(cdfid, nf90_global, att_name, value) )
@@ -165,13 +165,13 @@ end subroutine put_gl_att_real_cdf
 
 !--------------------------------------------------------------------
 
-subroutine get_var_3d_real_cdf( file, var, data, &
+subroutine get_var_3d_real_cdf( fname, var, data, &
      i1, i2, i3, time, debug )
 
   implicit none
 
   integer,                    intent(in) :: i1, i2, i3, time
-  character (len=80),         intent(in) :: file
+  character (len=80),         intent(in) :: fname
   logical,                    intent(in) :: debug
   character (len=*),          intent(in) :: var
   real(r8), dimension(i1,i2,i3), intent(out) :: data
@@ -181,9 +181,9 @@ subroutine get_var_3d_real_cdf( file, var, data, &
   integer            :: ndims, idims(4), dimids(4)
   integer            :: i, ivtype
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_NOWRITE, cdfid) )
+  call check( nf90_open(fname, NF90_NOWRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, var, id_data) )
 
@@ -241,13 +241,13 @@ end subroutine get_var_3d_real_cdf
 
 !--------------------------------------------------------------------
 
-subroutine get_var_2d_real_cdf( file, var, data, &
+subroutine get_var_2d_real_cdf( fname, var, data, &
      i1, i2, time, debug )
 
   implicit none
 
   integer,                 intent(in) :: i1, i2, time
-  character (len=80),      intent(in) :: file
+  character (len=80),      intent(in) :: fname
   logical,                 intent(in) :: debug
   character (len=*),       intent(in) :: var
   real(r8), dimension(i1,i2), intent(out) :: data
@@ -257,9 +257,9 @@ subroutine get_var_2d_real_cdf( file, var, data, &
   integer            :: ndims, idims(4), dimids(4)
   integer            :: i, ivtype
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_NOWRITE, cdfid) )
+  call check( nf90_open(fname, NF90_NOWRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, var, id_data) )
 
@@ -314,13 +314,13 @@ end subroutine get_var_2d_real_cdf
 
 !--------------------------------------------------------------------
 
-subroutine put_var_3d_real_cdf( file, var, data, &
+subroutine put_var_3d_real_cdf( fname, var, data, &
      i1, i2, i3, time, debug )
 
   implicit none
 
   integer,                       intent(in) :: i1, i2, i3, time
-  character (len=80),            intent(in) :: file
+  character (len=80),            intent(in) :: fname
   logical,                       intent(in) :: debug
   character (len=*),             intent(in) :: var
   real(r8), dimension(i1,i2,i3), intent(in) :: data
@@ -330,9 +330,9 @@ subroutine put_var_3d_real_cdf( file, var, data, &
   integer            :: ndims, idims(4), dimids(4)
   integer            :: i, ivtype
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_WRITE, cdfid) )
+  call check( nf90_open(fname, NF90_WRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, var, id_data) )
 
@@ -383,13 +383,13 @@ end subroutine put_var_3d_real_cdf
 
 !--------------------------------------------------------------------
 
-subroutine put_var_2d_real_cdf( file, var, data, &
+subroutine put_var_2d_real_cdf( fname, var, data, &
      i1, i2, time, debug )
 
   implicit none
 
   integer,                    intent(in) :: i1, i2, time
-  character (len=80),         intent(in) :: file
+  character (len=80),         intent(in) :: fname
   logical,                    intent(in) :: debug
   character (len=*),          intent(in) :: var
   real(r8), dimension(i1,i2), intent(in) :: data
@@ -399,9 +399,9 @@ subroutine put_var_2d_real_cdf( file, var, data, &
   integer            :: ndims, idims(3), dimids(3)
   integer            :: i, ivtype
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_WRITE, cdfid) )
+  call check( nf90_open(fname, NF90_WRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, var, id_data) )
 
@@ -450,13 +450,13 @@ end subroutine put_var_2d_real_cdf
 
 !--------------------------------------------------------------------
 
-subroutine get_times_cdf( file, time_name, times, n_times, max_times, debug )
+subroutine get_times_cdf( fname, time_name, times, n_times, max_times, debug )
 
   implicit none
 
   integer,            intent(in)  :: max_times
   integer,            intent(out) :: n_times
-  character (len=80), intent(in)  :: file, time_name
+  character (len=80), intent(in)  :: fname, time_name
   character (len=19), intent(out) :: times(max_times)
   logical,            intent(in)  :: debug
 
@@ -466,9 +466,9 @@ subroutine get_times_cdf( file, time_name, times, n_times, max_times, debug )
   integer            :: istart(max_times),iend(max_times), dimids(max_times)
   integer            :: i, ivtype
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_NOWRITE, cdfid) )
+  call check( nf90_open(fname, NF90_NOWRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, time_name, id_time) )
 
@@ -495,7 +495,7 @@ subroutine get_times_cdf( file, time_name, times, n_times, max_times, debug )
 !                                times(i)          )
     time1 = times(i)
 
-    if(debug) write(6,*) trim(file), time1(1:19)
+    if(debug) write(6,*) trim(fname), time1(1:19)
   enddo
 
   call check( nf90_close(cdfid) )
@@ -515,20 +515,20 @@ end subroutine get_times_cdf
 
 !--------------------------------------------------------------------
 
-subroutine put_time_cdf( file, time_name, char, itime, debug )
+subroutine put_time_cdf( fname, time_name, char, itime, debug )
 
   implicit none
 
   integer,            intent(in)  :: itime
-  character (len=80), intent(in)  :: file, time_name
+  character (len=80), intent(in)  :: fname, time_name
   character (len=19), intent(out) :: char
   logical,            intent(in)  :: debug
 
   integer            :: cdfid, id_time
 
-  if(debug) write(6,*) ' open netcdf file ', trim(file)
+  if(debug) write(6,*) ' open netcdf file ', trim(fname)
 
-  call check( nf90_open(file, NF90_WRITE, cdfid) )
+  call check( nf90_open(fname, NF90_WRITE, cdfid) )
 
   call check( nf90_inq_varid(cdfid, time_name, id_time) )
 
