@@ -83,7 +83,7 @@ subroutine static_init_model()
 ! the time type for the time stepping (is this general enough for time???)
 
 real(r8) :: x_loc
-integer  :: i, iunit, ierr, io
+integer  :: i, iunit, io
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
