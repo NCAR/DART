@@ -63,11 +63,8 @@ subroutine get_dims_cdf( fname, var, idims, ndims, debug )
 
   call check( nf90_Inquire_Variable(cdfid, id_data, ndims=ndims, dimids=dimids) )
 
-  !if(debug) write(6,*) ' number of dims for ',var,' ',ndims
-
   do i=1,ndims
      call check( nf90_inquire_dimension(cdfid, dimids(i), len=idims(i)) )
-  !  if(debug) write(6,*) ' dimension ',i,idims(i)
   enddo
 
   call check( nf90_close(cdfid) )
