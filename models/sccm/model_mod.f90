@@ -653,7 +653,6 @@ else
    !call check(nf90_put_att(ncFileID, trcrVarID, "long_name", "zonal wind component"))
    !call check(nf90_put_att(ncFileID, trcrVarID, "units", "m/s"))
 
-
    ! Surface Pressure
    call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_real, &
           dimids = (/ MemberDimID, unlimitedDimID /), varid  = psVarID))
