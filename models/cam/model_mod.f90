@@ -137,7 +137,12 @@ type(time_type) :: Time_step_atmos
 ! Random sequence and init for pert_model_state
 logical :: first_pert_call = .true.
 type(random_seq_type)   :: random_seq
-
+! Variable for keeping track of which ensemble member is to be perturbed
+! by pert_model_state, which is called by filter for each ensemble member
+! for a cold start.
+integer    :: ens_member 
+data ens_member /0/
+!
 !----------------------------------------------------------------------
 ! Namelist variables with default values follow
 
@@ -205,6 +210,7 @@ namelist /model_nml/ output_state_vector , model_version , model_config_file &
                      ,state_names_pert ,state_names_sd &
                      ,highest_obs_pressure_mb ,Time_step_seconds ,Time_step_days
 
+!---- namelist (saved in file input.nml) ----
 !----------------------------------------------------------------------
 ! derived parameters
 integer :: nflds         ! # fields to read
@@ -258,7 +264,6 @@ character (len=128), allocatable :: state_units(:)
 ! The max size of KIND_ should come from obs_kind_mod
 integer, dimension(100) :: obs_loc_in_sv = (/(0,iii=1,100)/)
 !
-!---- namelist (saved in file input.nml) ----
 !-----------------------------------------------------------------------
 
 !#######################################################################
@@ -1285,31 +1290,18 @@ call plevs_cam (1, 1, ps, pfull)
 
 ! Interpolate in vertical to get two bounding levels
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
+   ! Exclude obs below the model's lowest level and above the highest level
    istatus = 1
    val = 0.
-
-! Exclude obs if obs_kind is found in list from namelist
-! (obs_kinds found in obs_kind/obs_kind_mod.f90; KIND_x)
-! This should be done in obs_???, but not for now.
-! do i=1,exclude_obs_kinds_num
-!    if (include .and. obs_kind == exclude_obs_kinds(i)) include = .false.
-! enddo
-! elseif (obs_kind == 3 .or. obs_kind == 5) then
-elseif (obs_kind == KIND_SURFACE_PRESSURE .or. obs_kind == KIND_SPECIFIC_HUMIDITY) then
-   istatus = 1
-   val = 0.
-! else if (.not.include) then
-!   istatus = 1
-!   val = 0.
-
 else 
-!   if(pressure < 20000.) then
    if(pressure < highest_obs_pressure_mb * 100.0_r8) then
+      ! Exclude from assimilation the obs above a user specified level
+      ! but still calculate the expected obs.
       istatus = 2
    else
       istatus = 0
    endif
-! Search down through pressures
+   ! Search down through pressures
    do i = 2, num_levs 
       if(pressure < pfull(1, i)) then
          top_lev = i -1
@@ -1322,11 +1314,7 @@ else
 
 21 continue
 
-!if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 ) &
-!   write(*,*) '              calling get_val for bot val'
    call get_val(bot_val, x, lon_index, lat_index, bot_lev, obs_kind, vstatus)
-!if (obs_kind == 4 .and. lat_index == 6 .and. lon_index == 12 ) &
-!   write(*,*) '              bot_val,vstatus =',bot_val,vstatus
    if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, obs_kind, vstatus)
    if (vstatus == 0) then
       val = (1.0_r8 - fraction) * bot_val + fraction * top_val
@@ -2252,7 +2240,7 @@ logical,  intent(out)   :: interf_provided
 
 type(random_seq_type)   :: random_seq
 type(model_type)        :: var_temp
-integer                 :: i, ipert, j, k, m, field_num, ens_member, iunit
+integer                 :: i, ipert, j, k, m, field_num, iunit, io
 real(r8)                :: pert_val
 
 ! FIX for 1D 0D  fields?
@@ -2266,22 +2254,17 @@ call init_model_instance(var_temp)
 call vector_to_prog_var(state,var_temp)
 
 ! If first call initialize random sequence for perturbations.
+! init_random_seq only needed for documentation; initializing the module.
 if(first_pert_call) then 
    call init_random_seq(random_seq)
    first_pert_call = .false.
 endif
 
 ! init_random_seq calls init_ran1, but I need to call init_ran1 with a different seed/temp 
-! for each ens_member.  init_random_seq only needed for documentation; initializing 
-! the module
-if(file_exist('ens_member')) then
-   iunit = open_file('ens_member', action = 'read')
-   read(iunit, *) ens_member
-   call init_ran1(random_seq,-1*ens_member)
-   call close_file(iunit)
-else
-   WRITE(*,*) 'no ens_member file available; perturbing next ensemble member (in filter) '
-endif
+! for each ens_member.  Get a new seed by keeping track of the previous seed.
+
+ens_member = ens_member + 1
+call init_ran1(random_seq,-1*ens_member)
 
 ipert = 1
 do while (state_names_pert(ipert) /= '        ')
