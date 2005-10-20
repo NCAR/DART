@@ -23,7 +23,7 @@ use time_manager_mod, only : time_type, set_time, get_time, get_date, &
                              set_date, operator(+), set_calendar_type, &
                              GREGORIAN
 use     location_mod, only : location_type, set_location, query_location
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
 
 implicit none
@@ -93,8 +93,9 @@ subroutine static_init_model()
 ! configuration details of the model.
 
 real(r8) :: x_loc
-integer  :: i, j, iunit, ierr, io, indx, g_offset, s_offset, tile
+integer  :: i, j, iunit, io, indx, g_offset, s_offset, tile
 type(time_type) :: temp_time
+character(len=129) :: err_string, nml_string
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -102,12 +103,16 @@ call register_module(source, revision, revdate)
 ! Begin by reading the namelist input
 if(file_exist('input.nml')) then
    iunit = open_file('input.nml', action = 'read')
-   ierr = 1
-   do while(ierr /= 0)
-      read(iunit, nml = model_nml, iostat = io, end = 11)
-      ierr = check_nml_error(io, 'model_nml')
-   enddo
- 11 continue
+   read(iunit, nml = model_nml, iostat = io)
+   if(io /= 0) then
+      ! A non-zero return means a bad entry was found for this namelist
+      ! Reread the line into a string and print out a fatal error message.
+      BACKSPACE iunit
+      read(iunit, '(A)') nml_string
+      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
+      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
+                         err_string, source, revision, revdate)
+   endif
    call close_file(iunit)
 endif
 
@@ -620,24 +625,28 @@ if ( output_state_vector ) then
 
 else
 
+   ! U wind component
    call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_real, &
           dimids = (/ AtmosDimID, MemberDimID, unlimitedDimID /), varid  = uVarID))
    call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"))
    call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"))
 
 
+   ! V wind component
    call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_real, &
           dimids = (/ AtmosDimID, MemberDimID, unlimitedDimID /), varid  = vVarID))
    call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"))
    call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"))
 
 
+   ! Temperature
    call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_real, &
           dimids = (/ AtmosDimID, MemberDimID, unlimitedDimID /), varid  = tVarID))
    call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"))
    !call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"))
 
 
+   ! Tracers
    call check(nf90_def_var(ncid=ncFileID, name="tracer", xtype=nf90_real, &
           dimids = (/ AtmosDimID, TracerDimID, MemberDimID, unlimitedDimID /), &
           varid  = trcrVarID))
@@ -645,44 +654,51 @@ else
    !call check(nf90_put_att(ncFileID, trcrVarID, "units", "m/s"))
 
 
+   ! Surface Pressure
    call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_real, &
           dimids = (/ MemberDimID, unlimitedDimID /), varid  = psVarID))
    call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"))
    !call check(nf90_put_att(ncFileID, psVarID, "units", "m/s"))
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="h2osnow", xtype=nf90_real, &
+   ! Snow water (per tile)
+   call check(nf90_def_var(ncid=ncFileID, name="h2osno", xtype=nf90_real, &
           dimids = (/ TileDimID, MemberDimID, unlimitedDimID /), varid  = h2osnoVarID))
    call check(nf90_put_att(ncFileID, h2osnoVarID, "long_name", "snow water"))
    !call check(nf90_put_att(ncFileID, h2osnoVarID, "units", "degrees Kelvin"))
 
 
+   ! Water in Canopy (per tile)
    call check(nf90_def_var(ncid=ncFileID, name="h2ocan", xtype=nf90_real, &
           dimids = (/ TileDimID, MemberDimID, unlimitedDimID /), varid  = h2ocanVarID))
    call check(nf90_put_att(ncFileID, h2ocanVarID, "long_name", "water in canopy"))
    !call check(nf90_put_att(ncFileID, h2ocanVarID, "units", "?"))
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="Tveg", xtype=nf90_real, &
+   ! Temperature of the Vegetation (per tile)
+   call check(nf90_def_var(ncid=ncFileID, name="tv", xtype=nf90_real, &
           dimids = (/ TileDimID, MemberDimID, unlimitedDimID /), varid  = TvegVarID))
    call check(nf90_put_att(ncFileID, TvegVarID, "long_name", "temperature of vegetation"))
    !call check(nf90_put_att(ncFileID, TvegVarID, "units", "?"))
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="Tskin", xtype=nf90_real, &
+   ! Surface Skin Temperature
+   call check(nf90_def_var(ncid=ncFileID, name="tg", xtype=nf90_real, &
           dimids = (/ TileDimID, MemberDimID, unlimitedDimID /), varid  = TskinVarID))
    call check(nf90_put_att(ncFileID, TskinVarID, "long_name", "surface skin temperature"))
    call check(nf90_put_att(ncFileID, TskinVarID, "units", "?"))
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="h2osoil", xtype=nf90_real, &
+   ! Soil Moisture, by level and tile  (one tile-all levels, ... next tile)
+   call check(nf90_def_var(ncid=ncFileID, name="h2osoi", xtype=nf90_real, &
           dimids = (/ SoilDimID, TileDimID, MemberDimID, unlimitedDimID /), &
           varid  = h2osoilVarID))
    call check(nf90_put_att(ncFileID, h2osoilVarID, "long_name", "Soil Moisture"))
    !call check(nf90_put_att(ncFileID, h2osoilVarID, "units", "?"))
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="Tsoil", xtype=nf90_real, &
+   ! Soil Temperature, by level and tile  (one tile-all levels, ... next tile)
+   call check(nf90_def_var(ncid=ncFileID, name="tsoi", xtype=nf90_real, &
           dimids = (/ SoilDimID, TileDimID, MemberDimID, unlimitedDimID /), &
           varid  = TsoilVarID))
    call check(nf90_put_att(ncFileID, TsoilVarID, "long_name", "Soil Temperature"))
@@ -781,7 +797,11 @@ if ( output_state_vector ) then
 
 else
 
-!   call init_model_instance(Var)
+   ! This block is STRONGLY dependent on the information I gleaned from 
+   ! get_state_meta_data. Should anything in get_state_meta_data change,
+   ! those changes must occur here also. TJH 31 Aug 2005
+
+
 !  call vector_to_prog_var(statevec, Var)
 !  
 !  call check(NF90_inq_varid(ncFileID,  "u1",  u1VarID))

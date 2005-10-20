@@ -186,6 +186,8 @@ echo "&obs_def_nml"                                            > obs_def.nml
 echo "   assimilate_these_obs_types = 'raw_state_variable' /" >> obs_def.nml
 echo ''                                                       >> obs_def.nml
 
+cat obs_def.nml >> input.nml
+
 ./preprocess || exit 9
 
 #======================================================================
@@ -249,6 +251,7 @@ echo "Running create_obs_sequence ..."
 echo " "
 
 cat assim_mod.nml obs_def.nml model.nml > input.nml
+cp -p input.nml create_obs_sequence.nml
 
 ./create_obs_sequence < ../random_obs.input
 
@@ -276,6 +279,7 @@ echo $ob_int_days $ob_int_secs >> $CFN ;# observation interval
 echo "obs_seq.in"              >> $CFN ;# output file name -- destined for perfect_model_obs
  
 cat assim_mod.nml obs_def.nml model.nml > input.nml
+cp -p input.nml create_fixed_network_seq.nml
 
 ./create_fixed_network_seq < $CFN
 
@@ -318,8 +322,7 @@ echo "   num_domains = 1  /"                                     >> assim_tools.
 echo " "                                                         >> assim_tools.nml
 
 cat perfect.nml assim_tools.nml obs_def.nml assim_mod.nml model.nml > input.nml
-
-cp input.nml perfect.nml
+cp -p input.nml perfect_run.nml
 
 ./perfect_model_obs
  
@@ -365,7 +368,8 @@ echo "   output_interval = $output_interval ,"                   >> filter.nml
 echo "   num_groups = $num_groups    /"                          >> filter.nml
 echo " "                                                         >> filter.nml
 
-cat filter.nml assim_tools.nml obs_def.nml assim_mod.nml model.nml > input.nml
+cat perfect.nml filter.nml assim_tools.nml obs_def.nml assim_mod.nml model.nml > input.nml
+cp -p input.nml filter.nml
 
 ./filter
 
@@ -375,9 +379,9 @@ else
    echo " "
    echo "filter terminated normally"
    echo " "
-   \rm -f $CFN set_def.out
-   \rm -f assim_mod.nml model.nml filter.nml 
-   \rm -f assim_tools.nml go_end_filter
+#   \rm -f $CFN set_def.out
+#   \rm -f assim_mod.nml model.nml filter.nml 
+#   \rm -f assim_tools.nml go_end_filter
 endif
 
 #======================================================================

@@ -144,8 +144,10 @@ switch lower(t.model)
 
    case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04'}
 
+      pinfo
+
       % Use one figure with subplots 
-      figure(1); clf; iplot = 0;
+      figure; clf; iplot = 0;
       for ivar = pinfo.var_inds,
 
             truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
@@ -162,8 +164,8 @@ switch lower(t.model)
                legend('True State','Ensemble Mean', ...
                       sprintf('Ensemble Members (%d)',d.num_copies-2),0)
                legend boxoff
-               plot(times,   truth,'b','LineWidth',2); % plot again - on top
-               plot(times,ens_mean,'r','LineWidth',2); %      again - on top
+          %    plot(times,   truth,'b','LineWidth',2); % plot again - on top
+          %    plot(times,ens_mean,'r','LineWidth',2); %      again - on top
                title(sprintf('%s %s varnum %d Ensemble Members of %s',...
                      t.model, pinfo.var, ivar, pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')

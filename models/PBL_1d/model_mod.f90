@@ -19,12 +19,17 @@ use time_manager_mod, only : time_type, set_time, get_time, &
 use     location_mod, only : location_type, get_dist, set_location, &
                              get_location, query_location, &
                              LocationDims, LocationName, LocationLName
-use    utilities_mod, only : file_exist, open_file, check_nml_error, close_file, &
+use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
-use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
-                             KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
-                             KIND_U10, KIND_V10, KIND_T2, &
-                             KIND_Q2, KIND_TD2
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
+                             KIND_V_WIND_COMPONENT, &
+                             KIND_SURFACE_PRESSURE, &
+                             KIND_TEMPERATURE, &
+                             KIND_QV, &
+                             KIND_U10, &
+                             KIND_V10, &
+                             KIND_T2, &
+                             KIND_Q2, &
 
 use        map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                              PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
@@ -189,7 +194,6 @@ call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
 if(file_exist('wrf1d_namelist.input')) then
-
    unit_nml = open_file(fname = 'wrf1d_namelist.input', action = 'read')
    call do_namelist_wrf1d(unit_nml,logfileunit)
    close(unit_nml)
@@ -1317,11 +1321,11 @@ k = max(1,int(zloc_ind))
 
 ! find the WRF type that corresponds to the obs_kind
 select case(obs_kind)
-  case(KIND_U)
+  case(KIND_U_WIND_COMPONENT)
     my_type = TYPE_U
-  case(KIND_V)
+  case(KIND_V_WIND_COMPONENT)
     my_type = TYPE_V
-  case(KIND_T)
+  case(KIND_TEMPERATURE)
     my_type = TYPE_T
   case(KIND_QV)
     my_type = TYPE_QV
@@ -1339,7 +1343,7 @@ select case(obs_kind)
        source, revision, revdate)
 end select
 
-if(obs_kind /= KIND_PS .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
+if(obs_kind /= KIND_SURFACE_PRESSURE .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
      .and. obs_kind /= KIND_T2 .and. obs_kind /= KIND_Q2) then
 
   if ( my_type == TYPE_U .or. my_type == TYPE_V ) then
