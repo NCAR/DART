@@ -345,28 +345,28 @@ endif
 
 !-----Add BC perturbation at second time level
       select case(m)
-         case (1) ;		! West boundary
+         case (1) ;             ! West boundary
             do l=1,dims(2)
             do j=1,dims(1)
                frst2d(j,l)=mu(l,j)
                scnd2d(j,l) = scnd2d(j,l) + infl*(mu(l,j)-mu_mean(l,j))
             enddo
             enddo
-         case (2) ;		! East boundary
+         case (2) ;             ! East boundary
             do l=1,dims(2)
             do j=1,dims(1)
                frst2d(j,l)=mu(east_end-l,j)
                scnd2d(j,l) = scnd2d(j,l) + infl*(mu(east_end-l,j)-mu_mean(east_end-l,j))
             enddo
             enddo
-         case (3) ;		! South boundary
+         case (3) ;             ! South boundary
             do l=1,dims(2)
             do i=1,dims(1)
                frst2d(i,l)=mu(i,l)
                scnd2d(i,l) = scnd2d(i,l) + infl*(mu(i,l)-mu_mean(i,l))
             enddo
             enddo
-         case (4) ;		! North boundary
+         case (4) ;             ! North boundary
             do l=1,dims(2)
             do i=1,dims(1)
                frst2d(i,l)=mu(i,north_end-l)
