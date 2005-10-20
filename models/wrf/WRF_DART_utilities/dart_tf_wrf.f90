@@ -16,7 +16,8 @@ use time_manager_mod, only : time_type, write_time, read_time, get_date, set_dat
                              get_time, print_time, set_calendar_type, GREGORIAN, julian_day
 use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             register_module, logfileunit, timestamp
+                             register_module, logfileunit, timestamp, &
+                             find_namelist_in_file, check_namelist_read
 use  wrf_data_module, only : wrf_data, wrf_open_and_alloc, wrf_dealloc, wrf_io, set_wrf_date, &
                              get_wrf_date
 use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_restart, &
@@ -64,7 +65,6 @@ integer           :: i, ivtype
 character(len=80) :: varname
 character(len=19) :: timestring
 character(len=1)  :: idom
-character(len=129) :: err_string, nml_string
 
 logical, parameter :: debug = .false.
 integer            :: mode, io, var_id, id, iunit, dart_unit
@@ -79,23 +79,9 @@ call initialize_utilities('dart_tf_wrf')
 call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'dart_tf_wrf:&model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-else
-   err_string = 'input.nml does not exist here. Using default values.'
-   call error_handler(E_MSG,'dart_tf_wrf',err_string,' ',' ',' ')
-endif
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'dart_tf_wrf','model_nml values are',' ',' ',' ')
@@ -261,16 +247,18 @@ subroutine dart_open_and_alloc( wrf, dart, n_values, dart_unit, dart_to_wrf, &
 
 implicit none
 
-integer,          intent(out)  :: dart_unit
+integer,       intent(out) :: dart_unit
 
-logical,          intent(in)  :: dart_to_wrf, debug
+logical,       intent(in)  :: dart_to_wrf, debug
 
-type(wrf_dom),    intent(in)  :: wrf
-real(r8),         pointer     :: dart(:)
+type(wrf_dom), intent(in)  :: wrf
+real(r8),      pointer     :: dart(:)
 
-integer,          intent(out) :: n_values 
+integer,       intent(out) :: n_values 
 
 integer :: id
+
+character(len=80) :: stringerror
 
 ! compute number of values in 1D vector
 
@@ -289,11 +277,12 @@ do id=1,num_domains
    n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
-! moist variables. Order is qv, qc, qr, qi, qs, qg.
+! moist variables. Order is qv, qc, qr, qi, qs, qg, qnice.
 
-   if(wrf%dom(id)%n_moist > 6) then
-      write(*,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
-      stop
+   if(wrf%dom(id)%n_moist > 7) then
+      write(stringerror,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
+      call error_handler(E_ERR, 'dart_open_and_alloc', &
+           stringerror, source, revision, revdate)
    else
       n_values = n_values + wrf%dom(id)%n_moist*(wrf%dom(id)%bt)*(wrf%dom(id)%sn)*(wrf%dom(id)%we)
    endif
@@ -328,12 +317,12 @@ subroutine transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in)
 
 implicit none
 
-logical,          intent(in) :: dart_to_wrf
+logical,          intent(in)    :: dart_to_wrf
 
-type(wrf_dom),    intent(in) :: wrf
-real(r8), pointer            :: dart(:)
+type(wrf_dom),    intent(inout) :: wrf
+real(r8), pointer               :: dart(:)
 
-integer,          intent(in) :: n_values_in
+integer,          intent(in)    :: n_values_in
 
 !---
 
@@ -416,7 +405,12 @@ do id=1,num_domains
       call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qg,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
       n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qg
    endif
-   if(wrf%dom(id)%n_moist > 6) then
+   if(wrf%dom(id)%n_moist == 7) then
+      in = n_values+1
+      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qnice,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
+      n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qnice
+   endif
+   if(wrf%dom(id)%n_moist > 7) then
       write(stringerror,*) 'n_moist = ',wrf%dom(id)%n_moist,' is too large.'
       call error_handler(E_ERR, 'transfer_dart_wrf', &
            stringerror, source, revision, revdate)
@@ -470,10 +464,10 @@ subroutine trans_2d( one_to_two, a1d, a2d, nx, ny )
 
 implicit none
 
-integer  :: nx,ny
-real(r8) :: a1d(:)
-real(r8) :: a2d(nx,ny)
-logical  :: one_to_two
+integer,  intent(in)    :: nx,ny
+real(r8), intent(inout) :: a1d(:)
+real(r8), intent(inout) :: a2d(nx,ny)
+logical,  intent(in)    :: one_to_two
 
 !---
 
@@ -518,10 +512,10 @@ subroutine trans_3d( one_to_three, a1d, a3d, nx, ny, nz )
 
 implicit none
 
-integer  :: nx,ny,nz
-real(r8) :: a1d(:)
-real(r8) :: a3d(:,:,:)
-logical  :: one_to_three
+integer,  intent(in)    :: nx,ny,nz
+real(r8), intent(inout) :: a1d(:)
+real(r8), intent(inout) :: a3d(:,:,:)
+logical,  intent(in)    :: one_to_three
 
 !---
 
