@@ -13,14 +13,15 @@ PROGRAM wrf_3dvar_tf_dart
 
 use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
 use     utilities_mod, only : open_file, close_file, initialize_utilities, &
-                              finalize_utilities, register_module, logfileunit, E_MSG, E_ERR, &
+                              register_module, logfileunit, E_MSG, timestamp, &
                               error_handler, find_namelist_in_file, check_namelist_read
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
                               set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
                               init_obs, static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
                               set_obs_def_kind, set_obs_def_time, set_obs_def_key, &
-                              obs_def_type, DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY
+                              obs_def_type
+use      obs_kind_mod, only : DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY
 use      location_mod, only : location_type, set_location
 use  time_manager_mod, only : time_type, set_date, set_calendar_type, GREGORIAN
 use obs_def_radar_mod, only : set_rad_vel
@@ -39,7 +40,7 @@ type(obs_def_type)      :: obs_def
 type(location_type)     :: location
 type(time_type)         :: time
 
-INTEGER           :: iunit, ierr, iost, io
+INTEGER           :: iunit, iost, io
 
 character(len=19) :: radar_name
 real(r8)          :: radar_long, radar_lat, radar_elev
@@ -49,7 +50,7 @@ integer           :: num_prof, max_levels
 
 character(len=80) :: dummy
 
-character(len=12) :: platform_name, err_string, nml_string
+character(len=12) :: platform_name
 integer           :: year, month, day, hours, minutes, seconds
 real(r8)          :: lat,lon,elv
 integer           :: levels
@@ -75,8 +76,6 @@ namelist /wrf_3dvar_tf_dart_nml/ wrf_3dvar_file, obs_seq_out_file_name, calendar
 
 call initialize_utilities('wrf_3dvar_tf_dart')
 call register_module(source, revision, revdate)
-!write(logfileunit,*)'STARTING wrf_3dvar_tf_dart ...'
-!call error_handler(E_MSG,'wrf_3dvar_tf_dart','STARTING ...',source,revision,revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "wrf_3dvar_tf_dart_nml", iunit)
@@ -121,7 +120,7 @@ num_qc = 1
 ! Initialize an obs_sequence structure
 call init_obs_sequence(seq, num_copies, num_qc, max_num_obs)
 
-call set_copy_meta_data(seq, 1, 'observations')
+call set_copy_meta_data(seq, 1, 'MM5 3D-VAR 2.0 Radar observation')
 call set_qc_meta_data(seq, 1, 'missing')
 
 call init_obs(obs, num_copies, num_qc)
@@ -149,8 +148,8 @@ READ (UNIT = iunit, IOSTAT = iost, &
 time = set_date(year, month, day, hours, minutes, seconds)
 
 IF (iost /= 0) THEN
-   WRITE (0,'(/,A,I3,/)') ' END OF UNIT: ',iunit
-   WRITE (0,'(A,I3)')     ' IOSTAT == ',iost
+   WRITE (*,'(/,A,I3,/)') ' END OF UNIT: ',iunit
+   WRITE (*,'(A,I3)')     ' IOSTAT == ',iost
    EXIT reports
 ENDIF
 
@@ -299,6 +298,6 @@ call write_obs_seq(seq, obs_seq_out_file_name)
 write(logfileunit,*)'FINISHED wrf_3dvar_tf_dart.'
 write(logfileunit,*)
 
-call finalize_utilities ! closes the log file.
+call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 END PROGRAM wrf_3dvar_tf_dart
