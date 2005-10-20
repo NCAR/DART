@@ -28,7 +28,7 @@ revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 
-character(len = 129) :: output_name, err_string, nml_string
+character(len = 129) :: output_name
 character(len = 8 ) :: obsdate
 integer :: iunit, io, ii, day1
 

@@ -244,9 +244,8 @@ real(r8) :: xo, yo, zo       ! perigee location in Cartesian coordinate
 real(r8) :: ref_perigee, ref00, ref1, ref2, dist_to_perigee
 real(r8) :: phase
 real(r8) :: xx, yy, zz, height1, lat1, lon1, delta_phase1, delta_phase2
-character(len = 129) ::  msgstring
 
-integer  :: iter, istatus0, io, iunit
+integer  :: iter, istatus0
 real(r8) :: lon, lat, height, obsloc(3)
 
 if ( .not. module_initialized ) call initialize_module
