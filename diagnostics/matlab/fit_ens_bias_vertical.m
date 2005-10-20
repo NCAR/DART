@@ -138,7 +138,8 @@ guessX = p_v(:,regionindex);
 analyX = a_v(:,regionindex);
 
 % Try to figure out intelligent axis limits
-xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];      % concatenate all data
+indmax = size(p_v,2);
+xdatarr = [p_v(:,2:2:indmax)  a_v(:,2:2:indmax)]; % concatenate all data
 xlims   = [min(xdatarr(:)) max(xdatarr(:))]; % limits of all data
 ylims   = [plotdat.ptop plotdat.psurface];
 axlims  = [floor(xlims(1)) ceil(xlims(2)) ylims];

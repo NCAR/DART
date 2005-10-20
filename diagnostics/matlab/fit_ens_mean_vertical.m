@@ -138,9 +138,10 @@ guessX = p_v(:,regionindex);
 analyX = a_v(:,regionindex);
 
 % Try to figure out intelligent axis limits
-xdatarr = [p_v(:,2:2:8)  a_v(:,2:2:8)];  % concatenate all data
-xlims   = [0.0 max(xdatarr(:))];         % limits of all data
-ylims   = [plotdat.ptop plotdat.psurface];   % from obs_diag.f90 
+indmax  = size(p_v,2);
+xdatarr = [p_v(:,2:2:indmax)  a_v(:,2:2:indmax)];  % concatenate all data
+xlims   = [0.0 max(xdatarr(:))];                   % limits of all data
+ylims   = [plotdat.ptop plotdat.psurface];         % from obs_diag.f90 
 axlims  = [floor(xlims(1)) ceil(xlims(2)) ylims];
 
 % sometimes there is no valid data, must patch axis limits
