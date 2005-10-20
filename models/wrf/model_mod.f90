@@ -32,7 +32,7 @@ use      location_mod, only : location_type, get_location, set_location, &
                               vert_is_level, vert_is_pressure, vert_is_height
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, &
-                              E_MSG, logfileunit
+                              E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
                               KIND_SPECIFIC_HUMIDITY, &
@@ -155,7 +155,6 @@ subroutine static_init_model()
 
 integer :: ncid
 integer :: io, iunit
-character(len=129) :: err_string, nml_string
 
 character (len=80)    :: name
 character (len=1)     :: idom
@@ -171,20 +170,9 @@ real(r8) :: stdlon,truelat1,truelat2,dt
 call register_module(source, revision, revdate)
 
 ! Begin by reading the namelist input
-if(file_exist('input.nml')) then
-   iunit = open_file('input.nml', action = 'read')
-   read(iunit, nml = model_nml, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'static_init_model:&model_nml problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-endif
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
@@ -709,8 +697,8 @@ type(time_type) :: get_model_time_step
 ! Need to translate from wrf model timestep (in seconds) to
 ! DART time increment
 
-get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
-!!$get_model_time_step = set_time(21600, 0)
+!!$get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
+get_model_time_step = set_time(21600, 0)
 
 end function get_model_time_step
 
@@ -3774,6 +3762,7 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
+pert_state = state
 
 end subroutine pert_model_state
 
@@ -3784,13 +3773,12 @@ subroutine read_dt_from_wrf_nml()
 real(r8) :: dt
 
 integer :: time_step, time_step_fract_num, time_step_fract_den
-integer :: max_dom
+integer :: max_dom, feedback, smooth_option
 integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
 integer, dimension(3) :: dx, dy, grid_id, parent_id
 integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
 integer, dimension(3) :: parent_time_step_ratio
 integer :: io, iunit, id
-character(len=129) :: err_string, nml_string
 
 namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
 namelist /domains/ max_dom
@@ -3798,26 +3786,13 @@ namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
 namelist /domains/ dx, dy, grid_id, parent_id
 namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
 namelist /domains/ parent_time_step_ratio
+namelist /domains/ feedback, smooth_option
 
 
 ! Begin by reading the namelist input
-if(file_exist('namelist.input')) then
-   iunit = open_file('namelist.input', action = 'read')
-   read(iunit, nml = domains, iostat = io)
-   if(io /= 0) then
-      ! A non-zero return means a bad entry was found for this namelist
-      ! Reread the line into a string and print out a fatal error message.
-      BACKSPACE iunit
-      read(iunit, '(A)') nml_string
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(adjustl(nml_string))
-      call error_handler(E_ERR, 'read_dt_from_wrf_nml:&domains problem', &
-                         err_string, source, revision, revdate)
-   endif
-   call close_file(iunit)
-else
-   call error_handler(E_ERR,'read_dt_from_wrf_nml', &
-        'Please put namelist.input in the work directory.', source, revision,revdate)
-endif
+call find_namelist_in_file("namelist.input", "domains", iunit)
+read(iunit, nml = domains, iostat = io)
+call check_namelist_read(iunit, io, "domains")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'read_dt_from_wrf_nml','domains namelist values are',' ',' ',' ')
