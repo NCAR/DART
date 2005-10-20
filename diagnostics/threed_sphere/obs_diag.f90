@@ -38,7 +38,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              set_calendar_type, print_date, GREGORIAN, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
-                             operator(/=), operator(<=), operator(>=) 
+                             operator(/=), operator(<=)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, logfileunit, timestamp, &
@@ -119,8 +119,6 @@ logical :: verbose = .false.
 
 real(r8), dimension(4) :: lonlim1 = (/   0.0_r8,   0.0_r8,   0.0_r8, 235.0_r8 /)
 real(r8), dimension(4) :: lonlim2 = (/ 360.0_r8, 360.0_r8, 360.0_r8, 295.0_r8 /)
-!real(r8), dimension(4) :: latlim1 = (/ 110.0_r8,  10.0_r8,  70.0_r8, 115.0_r8 /)
-!real(r8), dimension(4) :: latlim2 = (/ 170.0_r8,  70.0_r8, 110.0_r8, 145.0_r8 /)
 real(r8), dimension(4) :: latlim1 = (/  20.0_r8, -80.0_r8, -20.0_r8,  25.0_r8 /)
 real(r8), dimension(4) :: latlim2 = (/  80.0_r8, -20.0_r8,  20.0_r8,  55.0_r8 /)
 
@@ -1053,7 +1051,7 @@ OneLevel : do ivar=1,max_obs_kinds
 
 enddo OneLevel
 
-91 format(i7,1x,i5,4(1x,2f7.2,1x,i8))
+91 format(i7,1x,i5,4(1x,2f8.2,1x,i8))
 95 format('One_Level_Varnames(',i3,') = {''',a,'''};')
 96 format('All_Level_Varnames(',i3,') = {''',a,'''};')
 
@@ -1155,7 +1153,7 @@ AllLevels : do ivar=1,max_obs_kinds
 
 enddo AllLevels
 
-610 format(i5, 4(f8.3, i8) )
+610 format(i5, 4(1x,f13.3,1x,i8) )
 
 !-----------------------------------------------------------------------
 close(iunit)   ! Finally close the 'master' matlab diagnostic file.
