@@ -51,7 +51,8 @@ if ( exist(datafile) == 2 )
 
    if ( exist('plevel','var') == 0 )
       disp(sprintf('%s does not have multiple levels.', datafile))
-      error('It cannot be plotted with this routine.')
+      disp('It cannot be plotted with fit_ens_bias_vertical.')
+      return
    end
 
 else

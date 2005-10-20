@@ -44,7 +44,8 @@ if ( exist(datafile) == 2 )
 
    if ( exist('plevel','var') == 0 ) 
       disp(sprintf('%s does not have multiple levels.', datafile))
-      error('It cannot be plotted with this routine.')
+      disp('It cannot be plotted with obs_num_vertical.')
+      return
    end
 
 else
