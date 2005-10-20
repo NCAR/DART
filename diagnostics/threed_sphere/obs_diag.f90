@@ -858,7 +858,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             ! vertical statistical part
             !-----------------------------------------------------------
 
-            if ( obs_time <= skip_time) cycle Areas
+            if ( obs_time < skip_time) cycle Areas
 
             if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
 
