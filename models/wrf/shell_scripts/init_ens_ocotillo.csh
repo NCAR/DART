@@ -1,4 +1,4 @@
-#!/bin/csh -f
+#!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -44,10 +44,10 @@ setenv RPC_UNSUPPORTED_NETIFS eth0
 setenv CASE_NAME	     conus200
 setenv START_DATE_ASSIM 2003010100            # Start time of period.
 
-set seconds = 0
-set days = 146827
+set ini_seconds = 0
+set ini_days = 146827
 
-setenv NCYCLE 120                             # Number of assimilation cycles.
+setenv NCYCLE 4                             # Number of assimilation cycles.
 setenv FCST_RANGE 6                           # Forecast range (hours).
 setenv INTERVAL 6                             # Interval between analyses (hours)
 
@@ -106,6 +106,9 @@ set nextmem = 72                # Advance this many hours for the next member.
 
 # End of user modifications.
 
+set seconds = $ini_seconds
+set days = $ini_days
+
 set e_we = ( 0 0 0 )
 set e_sn = ( 0 0 0 )
 set dx = ( 0 0 0 )
@@ -153,8 +156,6 @@ rm ${WRF_DIR}/test/em_real/run_real_*.out
 set ICYC = 1
 # Loop over cycles
 while ( $ICYC <= $NCYCLE )
-
-##########if ( $ICYC == 2 ) then
 
    set START_DATE = $START_DATE_ASSIM
 
@@ -274,7 +275,8 @@ source ./get_date_range.csh $START_DATE $FCST_RANGE
 
 setenv INTERVAL_SS `expr $INTERVAL \* 3600`
 
-rcp -r node${inode}:${VARTMP}/${user}_GEN_INIT_ENS_${NC}/data/siprd ${WRF_DIR}/test/em_real/.
+rcp -r node${inode}:${VARTMP}/${user}_GEN_INIT_ENS_${NC}/data/siprd \
+                    ${WRF_DIR}/test/em_real/.
 ########   (rsh -n node$inode "rm -rf ${VARTMP}/${user}_GEN_INIT_ENS_${NC}" )
 
 set dn = 1
@@ -361,7 +363,8 @@ cat >! ${WRF_DIR}/test/em_real/namelist.input << EOF
  maxens2                    = 3,
  maxens3                    = 16,
  ensdim                     = 144,
- /
+ sst_update                 = 1
+/
 
  &dynamics
  dyn_opt                    = 2,
@@ -412,17 +415,25 @@ EOF
 
    rm ${WRF_DIR}/test/em_real/wrf_real_input_em*
 
-   mv -v ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em.d0${dn}.* ${WRF_DIR}/test/em_real/.
+   mv -v ${WRF_DIR}/test/em_real/siprd/wrf_real_input_em.d0${dn}.* \
+         ${WRF_DIR}/test/em_real/.
    if ($dn > 1) then
       mv -v ${WRF_DIR}/test/em_real/wrf_real_input_em.d0${dn}.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00 \
-         ${WRF_DIR}/test/em_real/wrf_real_input_em.d01.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00
+            ${WRF_DIR}/test/em_real/wrf_real_input_em.d01.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00
    endif
 
    ./run_wrfreal.csh $NC $WRF_DIR
 
-   mv -v ${WRF_DIR}/test/em_real/wrfinput_d01 ${DAT_DIR}/wrfinput_d0${dn}_${NC}
+   if ( $NC == 1 ) then
+      mv -v ${WRF_DIR}/test/em_real/wrflowinp_d0${dn} \
+            ${DAT_DIR}/wrflowinp_d0${dn}_${days}_${seconds}
+   endif
+
+   mv -v ${WRF_DIR}/test/em_real/wrfinput_d01 \
+         ${DAT_DIR}/wrfinput_d0${dn}_${NC}
    if ($dn == 1) then
-      mv -v ${WRF_DIR}/test/em_real/wrfbdy_d01 ${DAT_DIR}/wrfbdy_${NC}
+      mv -v ${WRF_DIR}/test/em_real/wrfbdy_d01 \
+            ${DAT_DIR}/wrfbdy_${NC}
    endif
 
    @ dn ++
@@ -452,11 +463,26 @@ end
 
 end
 
+# Save a copy of wrfinput for TSK, TMN, SST, VEGFRA, ALBBCK, IVGTYP
+#set dn = 1
+#while ( $dn <= $MY_NUM_DOMAINS )
+#   cp -pv ${DAT_DIR}/wrfinput_d0${dn}_1 \
+#          ${DAT_DIR}/wrfinput_d0${dn}.${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:00:00
+#   @ dn ++
+#end
+
 # Prepare to do the ensemble initial conditions file.
+set dn = 1
+while ( $dn <= $MY_NUM_DOMAINS )
+   cp -pv ${DAT_DIR}/wrfinput_d0${dn}_1 \
+          ${DAT_DIR}/wrfinput_d0${dn}_mean
+   @ dn ++
+end
 if ( $ICYC == 1 ) then
    set dn = 1
    while ( $dn <= $MY_NUM_DOMAINS )
-      cp -pv ${DAT_DIR}/wrfinput_d0${dn}_1 ${DAT_DIR}/wrfinput_d0${dn}_mean
+      cp -pv ${DAT_DIR}/wrfinput_d0${dn}_mean \
+             ${DAT_DIR}/wrfinput_d0${dn}_mean_${ini_days}_${ini_seconds}
       @ dn ++
    end
    rm -f filter_ics
@@ -491,16 +517,14 @@ while ( $NC <= $ES )
 
    endif
 
-   mv -v ${DAT_DIR}/wrfbdy_${NC} ${DAT_DIR}/wrfbdy_${days}_${seconds}_${NC}
+   mv -v ${DAT_DIR}/wrfbdy_${NC} \
+         ${DAT_DIR}/wrfbdy_${days}_${seconds}_${NC}
 
    @ NC ++
 
-end
-
-##########endif
+end   # Loop over the ensemble members
 
 set START_DATE_ASSIM = `advance_cymdh $START_DATE_ASSIM $FCST_RANGE` # Advance to next cycle
-@ ICYC ++
 
 echo $seconds $days > wrf.info
 
@@ -514,6 +538,8 @@ endif
 
 echo $seconds $days >> wrf.info
 
-end
+@ ICYC ++
+
+end   # Loop over cycles
 
 exit (0)
