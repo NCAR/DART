@@ -1,4 +1,4 @@
-#!/bin/csh -f
+#!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -15,6 +15,14 @@
 # This script copies the necessary files into the temporary directory
 # for a model run. It assumes that there is ${WORKDIR}/WRF directory
 # where boundary conditions files reside.
+
+# If the ensemble mean assim_model_state_ic_mean is present in the WORKDIR,
+# it is converted to a WRF netCDF format.
+# It is then used in update_wrf_bc the calculate the deviation from the mean.
+# This deviation from the mean is then added at the end of the interval to
+# calculate new boundary tendencies. The magnitude of the perturbation added
+# at the end of the interval is controled by infl. The purpose is to increase
+# time correlation at the lateral boundaries.
 
 set infl = 0.0
 
@@ -44,13 +52,17 @@ ln -s ${WORKDIR}/GENPARM.TBL .
 ln -s ${WORKDIR}/wrf.exe .
 ln -s ${WORKDIR}/gribmap.txt .
 
+# nfile is required when using mpi to run wrf.exe
+# nfile is machine specific; ideally, it should be
+# constructed by the script advance_ens.csh
+
 hostname > nfile
 hostname >> nfile
-
+###ln -s  ${WORKDIR}/nfile$element nfile
 cp -pv ${WORKDIR}/wrfinput_d0? .
                    # Provides auxilliary info not avail. from DART state vector
 
-if ( -e  ${WORKDIR}/assim_model_state_ic_mean ) then
+if (  -e ${WORKDIR}/assim_model_state_ic_mean ) then
    ln -s ${WORKDIR}/assim_model_state_ic_mean dart_wrf_vector
    echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
    cp -pv wrfinput_d01 wrfinput_mean
@@ -64,6 +76,9 @@ echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
 
 \rm dart_wrf_vector
 
+# The program dart_tf_wrf has created the file wrf.info.
+# Time information is extracted from wrf.info.
+
 set secday = `head -1 wrf.info`
 set targsecs = $secday[1]
 set targdays = $secday[2]
@@ -74,7 +89,8 @@ set wrfsecs = $secday[1]
 set wrfdays = $secday[2]
 set wrfkey = `echo "$wrfdays * 86400 + $wrfsecs" | bc`
 
-# If model blew up in the previous cycle, relax BC tendency toward mean.
+# If model blew up in the previous cycle, the member is now likely an outlier.
+# Set infl = 0. to avoid further deterioration of the ensemble member.
 
 if ( -e $WORKDIR/blown_${wrfdays}_${wrfsecs}.out ) then
    set MBLOWN = `cat $WORKDIR/blown_${wrfdays}_${wrfsecs}.out`
@@ -124,20 +140,20 @@ while ( $ifile <= $num_files )
 end
 set keys = `sort keys`
 
-set date              = `head -3 wrf.info | tail -1`
-set START_YEAR  = $date[1]
-set START_MONTH = $date[2]
-set START_DAY   = $date[3]
-set START_HOUR  = $date[4]
-set START_MIN   = $date[5]
-set START_SEC   = $date[6]
+set cal_date    = `head -3 wrf.info | tail -1`
+set START_YEAR  = $cal_date[1]
+set START_MONTH = $cal_date[2]
+set START_DAY   = $cal_date[3]
+set START_HOUR  = $cal_date[4]
+set START_MIN   = $cal_date[5]
+set START_SEC   = $cal_date[6]
 
-set END_YEAR    = $date[1]
-set END_MONTH   = $date[2]
-set END_DAY     = $date[3]
-set END_HOUR    = $date[4]
-set END_MIN     = $date[5]
-set END_SEC     = $date[6]
+set END_YEAR    = $cal_date[1]
+set END_MONTH   = $cal_date[2]
+set END_DAY     = $cal_date[3]
+set END_HOUR    = $cal_date[4]
+set END_MIN     = $cal_date[5]
+set END_SEC     = $cal_date[6]
 
 set MY_NUM_DOMAINS    = `head -4 wrf.info | tail -1`
 set ADV_MOD_COMMAND   = `head -5 wrf.info | tail -1`
@@ -166,9 +182,9 @@ while ( $keys[${ifile}] <= $wrfkey )
    endif
 end
 
-#################################################
-# big loop here
-#################################################
+###############################################################
+# Advance the model with new BC until target time is reached. #
+###############################################################
 
 while ( $wrfkey < $targkey )
 
@@ -177,6 +193,8 @@ while ( $wrfkey < $targkey )
 
 # Copy the boundary condition file to the temp directory.
    cp -pv ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+
+   cp -pv ${WORKDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
 
    if ( $targkey > $keys[$ifile] ) then
       set INTERVAL_SS = `echo "$keys[$ifile] - $wrfkey" | bc`
@@ -233,7 +251,7 @@ endif
    set END_MONTH = `echo $END_MONTH | cut -c2-3`
 
 #-----------------------------------------------------------------------
-# Create WRF namelist.input:
+# Update time control entries in the WRF namelist.input:
 #-----------------------------------------------------------------------
 
 \rm -f script.sed
@@ -323,9 +341,9 @@ endif
 
 end
 
-#################################################
-# end big loop here
-#################################################
+##############################################
+# At this point, the target time is reached. #
+##############################################
 
 # create new input to DART (taken from "wrfinput")
 echo ".false." | ${WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
