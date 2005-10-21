@@ -1,3 +1,8 @@
+ obs_sequence
+obs_kind_definitions
+ 2
+ 1 RAW_STATE_VARIABLE
+ 2 RAW_STATE_1D_INTEGRAL
   num_copies:            0  num_qc:            0
   num_obs:         3000  max_num_obs:         3000
   first:            1  last:         3000

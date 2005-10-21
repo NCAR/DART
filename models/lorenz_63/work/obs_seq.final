@@ -1,3 +1,8 @@
+ obs_sequence
+obs_kind_definitions
+ 2
+ 1 RAW_STATE_VARIABLE
+ 2 RAW_STATE_1D_INTEGRAL
   num_copies:  6  num_qc:  1
   num_obs:  600  max_num_obs:  600
 observations                                                                                                                     
