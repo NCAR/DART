@@ -52,7 +52,8 @@
 
 csh mkmf_preprocess
 make         || exit 1
-\rm -f ../../../obs_def/obs_def_mod.f90 ../../../obs_kind/obs_kind_mod.f90
+\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_kind/obs_kind_mod.f90
 \rm -f perfect_model_obs
 \rm -f filter
 ./preprocess || exit 2
@@ -75,4 +76,4 @@ csh mkmf_perfect_ics
 make         || exit 9
 ./perfect_model_obs || exit 10
 ./filter            || exit 11
-
+\rm -f go_end_filter
