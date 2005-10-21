@@ -1,3 +1,7 @@
+ obs_sequence
+obs_kind_definitions
+ 1
+ -300 RAW_STATE_VARIABLE
   num_copies:  0  num_qc:  0
   num_obs:  100  max_num_obs:  100
   first:  1  last:  100
