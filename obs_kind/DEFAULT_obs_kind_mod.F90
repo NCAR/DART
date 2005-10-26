@@ -416,7 +416,7 @@ SELECT CASE (fileformat)
       endif
 END SELECT
 
-! Loop through the list to write out the integer indices and strings
+! Loop through the list to read the integer indices and strings
 ! For all the defined observation types
 ! Set up the map from kinds in the obs_sequence file to those
 ! in the data structure in this module.
