@@ -26,14 +26,14 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              read_obs_seq_header, destroy_obs
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location, get_obs_kind, get_obs_name
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name
+use     obs_kind_mod, only : max_obs_kinds
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=)
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              print_date, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
-                             operator(/=), operator(<=)
+                             operator(/=)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, logfileunit, timestamp, &
@@ -98,7 +98,7 @@ real(r8), dimension(MaxRegions) :: lonlim1 = (/ 0.0_r8, 0.0_r8, 0.5_r8, -1.0_r8 
 real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8, -1.0_r8 /)
 
 character(len=6), dimension(MaxRegions) :: reg_names = &
-                                   (/ 'whole ','ying  ','yang  ','bogus '/)
+                                   (/ 'whole ','yin   ','yang  ','bogus '/)
 
 namelist /obsdiag_nml/ obs_sequence_name, &
                        iskip_days, obs_select, rat_cri, &
@@ -152,6 +152,7 @@ real(r8) :: rlocation
 ! Some variables to keep track of who's rejected why ...
 !-----------------------------------------------------------------------
 
+integer :: Nidentity  = 0   ! identity observations are not appropriate.
 integer :: NwrongType = 0   ! namelist discrimination
 integer :: NbadQC     = 0   ! out-of-range QC values
 integer :: NbadLevel  = 0   ! out-of-range pressures
@@ -272,7 +273,9 @@ enddo FindNumRegions
    seqTN   = get_obs_def_time(obs_def)
 
    call print_time(seqT1,'First observation time',logfileunit)
+   call print_time(seqT1,'First observation time')
    call print_time(seqTN,'Last  observation time',logfileunit)
+   call print_time(seqTN,'Last  observation time')
 
    !--------------------------------------------------------------------
    ! If the last observation is before the period of interest, move on.
@@ -461,7 +464,16 @@ enddo FindNumRegions
    EpochLoop : do iepoch = 1, Nepochs
    !====================================================================
 
-      beg_time     = bincenter(iepoch) - halfbinwidth + set_time(1,0)
+      ! If the start time was 0,0 ... subtracting the halfbinwidth
+      ! would result in a negative time, which is not allowed. Bad
+      ! things happened. Since, by definition, the first observation
+      ! is at the earliest time, we lose nothing by using it for the 
+      ! start time of the first epoch.
+      if (iepoch == 1) then
+         beg_time = seqT1
+      else
+         beg_time = bincenter(iepoch) - halfbinwidth + set_time(1,0)
+      endif
       end_time     = bincenter(iepoch) + halfbinwidth
 
       call get_obs_time_range(seq, beg_time, end_time, key_bounds, &
@@ -469,6 +481,12 @@ enddo FindNumRegions
 
       if( num_obs_in_epoch == 0 ) then
          if ( verbose ) then
+            call print_time(         beg_time,' epoch  start ',logfileunit)
+            call print_time(         beg_time,' epoch  start ')
+            call print_time(bincenter(iepoch),' epoch center ',logfileunit)
+            call print_time(bincenter(iepoch),' epoch center ')
+            call print_time(         end_time,' epoch    end ',logfileunit)
+            call print_time(         end_time,' epoch    end ')
             write(logfileunit,*)' No observations in epoch ',iepoch,' cycling ...'
             write(     *     ,*)' No observations in epoch ',iepoch,' cycling ...'
          endif
@@ -498,7 +516,7 @@ enddo FindNumRegions
          call get_obs_from_key(seq, keys(obsindex), observation) 
          call get_obs_def(observation, obs_def)
          obs_time    = get_obs_def_time(obs_def)
-         flavor      = get_obs_kind(obs_def)
+         flavor      = get_obs_kind(obs_def) ! this is (almost) always [1,max_obs_kinds]
          obs_err_var = get_obs_def_error_variance(obs_def) 
          obs_loc     = get_obs_def_location(obs_def)
          rlocation   = get_location(obs_loc) 
@@ -536,6 +554,12 @@ enddo FindNumRegions
          !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
          !--------------------------------------------------------------
+
+         if ( flavor < 0 ) then
+         !  write(*,*)'obs ',obsindex,' is an identity observation - no fair.',obs_err_var
+            Nidentity = Nidentity + 1
+            cycle ObservationLoop
+         endif
 
          keeper = .true.
 !        keeper = CheckObsType(obs_select, obs_err_var(obsindex), flavor, ipressure)
@@ -679,7 +703,7 @@ OneLevel : do ivar=1,max_obs_kinds
    do iregion=1, Nregions
    do iepoch=1, Nepochs
       
-      if (num_in_level(iepoch, iregion, flavor) == 0) then
+      if ( num_in_level(iepoch, iregion, flavor) == 0) then
            rms_ges_mean(iepoch, iregion, flavor) = -99.0_r8
            rms_anl_mean(iepoch, iregion, flavor) = -99.0_r8
          rms_ges_spread(iepoch, iregion, flavor) = -99.0_r8
@@ -751,6 +775,7 @@ close(iunit)   ! Finally close the 'master' matlab diagnostic file.
 write(*,*) ''
 write(*,*) '# observations used  : ',sum(obs_used_in_epoch)
 write(*,*) 'Rejected Observations summary.'
+write(*,*) '# NIdentityObs       : ',Nidentity
 write(*,*) '# NwrongType         : ',NwrongType
 write(*,*) '# NbadQC             : ',NbadQC
 write(*,*) '# NbadLevel          : ',NbadLevel
@@ -764,6 +789,7 @@ write(*,*)''
 write(logfileunit,*) ''
 write(logfileunit,*) '# observations used  : ',sum(obs_used_in_epoch)
 write(logfileunit,*) 'Rejected Observations summary.'
+write(logfileunit,*) '# NIdentityObs       : ',Nidentity
 write(logfileunit,*) '# NwrongType         : ',NwrongType
 write(logfileunit,*) '# NbadQC             : ',NbadQC
 write(logfileunit,*) '# NbadLevel          : ',NbadLevel
