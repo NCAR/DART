@@ -672,6 +672,11 @@ enddo FindNumRegions
 ! but they are created on-the-fly, so we must leave this open till then.
 !-----------------------------------------------------------------------
 
+if (sum(obs_used_in_epoch) == 0 ) then
+   call error_handler(E_ERR,'obs_diag','All identity observations. Stopping.', &
+                     source, revision, revdate)
+endif
+
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
 write(iunit,'(''iskip_days     = '',i,'';'')')iskip_days
 write(iunit,'(''obs_select     = '',i,'';'')')obs_select
