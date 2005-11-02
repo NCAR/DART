@@ -45,9 +45,10 @@ else
    set DARTHOME = `pwd`
 endif
 
-if ( ! -d $LOGDIR ) then
-   echo "Creating $LOGDIR"
-   mkdir -p $LOGDIR
+setenv ARCHIVEDIR ${DARTHOME}/${LOGDIR}
+if ( ! -d $ARCHIVEDIR ) then
+   echo "Creating $ARCHIVEDIR"
+   mkdir -pv $ARCHIVEDIR
 endif
 
 echo "The top-level DART directory (DARTHOME) is $DARTHOME"
@@ -68,6 +69,7 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     cd ${DARTHOME}/models/${MODEL}/work
 
     \rm -fv ../../../obs_def/obs_def_mod.f90
+    \rm -fv ../../../obs_kind/obs_kind_mod.f90
     \rm -fv *.o *.mod Makefile .cppdefs input.nml*default 
     \rm -fv obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
     \rm -fv assim_region integrate_model
@@ -84,28 +86,28 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     # Save the output to a directory for comparison
     #------------------------------------------------------------------
 
-    mkdir -p ${LOGDIR}/${MODEL}/work
+    mkdir -pv ${ARCHIVEDIR}/${MODEL}/work
 
-    mv -v dart_log.out        ${LOGDIR}/${MODEL}/work
-    mv -v True_State.nc       ${LOGDIR}/${MODEL}/work
-    mv -v perfect_restart     ${LOGDIR}/${MODEL}/work
-    mv -v obs_seq.out         ${LOGDIR}/${MODEL}/work
-    mv -v Prior_Diag.nc       ${LOGDIR}/${MODEL}/work
-    mv -v Posterior_Diag.nc   ${LOGDIR}/${MODEL}/work
-    mv -v obs_seq.final       ${LOGDIR}/${MODEL}/work
-    mv -v filter_restart      ${LOGDIR}/${MODEL}/work
-    mv -v assim_tools_restart ${LOGDIR}/${MODEL}/work
+    mv -v dart_log.out        ${ARCHIVEDIR}/${MODEL}/work
+    mv -v True_State.nc       ${ARCHIVEDIR}/${MODEL}/work
+    mv -v perfect_restart     ${ARCHIVEDIR}/${MODEL}/work
+    mv -v obs_seq.out         ${ARCHIVEDIR}/${MODEL}/work
+    mv -v Prior_Diag.nc       ${ARCHIVEDIR}/${MODEL}/work
+    mv -v Posterior_Diag.nc   ${ARCHIVEDIR}/${MODEL}/work
+    mv -v obs_seq.final       ${ARCHIVEDIR}/${MODEL}/work
+    mv -v filter_restart      ${ARCHIVEDIR}/${MODEL}/work
+    mv -v assim_tools_restart ${ARCHIVEDIR}/${MODEL}/work
 
-    # mv rawges_times_1013mb.dat ${LOGDIR}/${MODEL}/work
-    # mv rawanl_times_1013mb.dat ${LOGDIR}/${MODEL}/work
-    # mv ObsDiagAtts.m           ${LOGDIR}/${MODEL}/work
+    mv -v *ges_times*dat      ${ARCHIVEDIR}/${MODEL}/work
+    mv -v *anl_times*dat      ${ARCHIVEDIR}/${MODEL}/work
+    mv -v ObsDiagAtts.m       ${ARCHIVEDIR}/${MODEL}/work
 
     #------------------------------------------------------------------
     # clean up and move on
     #------------------------------------------------------------------
     \rm -fv *.o *.mod Makefile .cppdefs input.nml*default 
     \rm -fv obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
-    \rm -fv assim_region integrate_model
+    \rm -fv assim_region integrate_model preprocess
 
    @ makenum  = $makenum  + 1
    @ modelnum = $modelnum + 1
