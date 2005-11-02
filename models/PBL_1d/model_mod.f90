@@ -18,19 +18,20 @@ use time_manager_mod, only : time_type, set_time, get_time, &
                              operator(==), operator(<=)
 use     location_mod, only : location_type, get_dist, set_location, &
                              get_location, query_location, &
-                             LocationDims, LocationName, LocationLName
+                             LocationDims, LocationName, LocationLName, &
+                             vert_is_surface, vert_is_pressure, &
+                             vert_is_level, vert_is_height
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
+!use     obs_kind_mod, only : KIND_U, KIND_V, KIND_PS, KIND_T, KIND_QV, &
+!                             KIND_P, KIND_W, KIND_QR, KIND_TD, KIND_RHO, &
+!                             KIND_U10, KIND_V10, KIND_T2, &
+!                             KIND_Q2, KIND_TD2
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, &
                              KIND_SURFACE_PRESSURE, &
                              KIND_TEMPERATURE, &
-                             KIND_QV, &
-                             KIND_U10, &
-                             KIND_V10, &
-                             KIND_T2, &
-                             KIND_Q2, &
-
+                             KIND_SPECIFIC_HUMIDITY 
 use        map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                              PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                              gridwind_to_truewind
@@ -273,7 +274,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -284,7 +285,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -295,7 +296,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -306,7 +307,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -317,7 +318,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -328,7 +329,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -339,7 +340,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -350,7 +351,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(real(k - bot + 1),1)
+  state_loc(k) = set_location((k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -358,28 +359,28 @@ var_cnt = var_cnt + 1
 wrf_meta%var_type(var_cnt) = TYPE_U10
 wrf_meta%var_size(var_cnt) = 1
 wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(0.0,1)
+state_loc(dart_index) = set_location(0.0_r8,1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
 wrf_meta%var_type(var_cnt) = TYPE_V10
 wrf_meta%var_size(var_cnt) = 1
 wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(0.0,1)
+state_loc(dart_index) = set_location(0.0_r8,1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
 wrf_meta%var_type(var_cnt) = TYPE_T2
 wrf_meta%var_size(var_cnt) = 1
 wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(0.0,1)
+state_loc(dart_index) = set_location(0.0_r8,1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
 wrf_meta%var_type(var_cnt) = TYPE_Q2
 wrf_meta%var_size(var_cnt) = 1
 wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(0.0,1)
+state_loc(dart_index) = set_location(0.0_r8,1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
@@ -389,7 +390,7 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(-real(k - bot + 1),1)
+  state_loc(k) = set_location(-(k - bot + 1.0_r8),1)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -397,7 +398,7 @@ var_cnt = var_cnt + 1
 wrf_meta%var_type(var_cnt) = TYPE_TSK
 wrf_meta%var_size(var_cnt) = 1
 wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(0.0,1)
+state_loc(dart_index) = set_location(0.0_r8,1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
@@ -411,7 +412,7 @@ do vcnt = 1, wrf_meta%number_of_1d_gen
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(real(10000+k),1)
+    state_loc(k) = set_location((10000.0_r8+k),1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -425,7 +426,7 @@ do vcnt = 1, wrf_meta%number_of_2d_gen
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(real(10000+k),1)
+    state_loc(k) = set_location((10000.0_r8+k),1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -439,7 +440,7 @@ do vcnt = 1, wrf_meta%number_noassim_profiles
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(real(10000+k),1)
+    state_loc(k) = set_location((10000.0_r8+k),1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -453,7 +454,7 @@ do vcnt = 1, wrf_meta%number_noassim_soil_vars
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(real(10000+k),1)
+    state_loc(k) = set_location((10000.0_r8+k),1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -464,7 +465,7 @@ do vcnt = 1, wrf_meta%number_noassim_scalars
   wrf_meta%var_type(var_cnt) = 300 + vcnt - 1 !TYPE_UZ0 ... TYPE_TMN
   wrf_meta%var_size(var_cnt) = 1
   wrf_meta%var_index(var_cnt) = dart_index
-  state_loc(dart_index) = set_location(real(10000),1)
+  state_loc(dart_index) = set_location(10000.0_r8,1)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 enddo
@@ -474,7 +475,7 @@ do vcnt = 1, wrf_meta%number_dependent_params
   wrf_meta%var_type(var_cnt) = 400 + vcnt - 1 !TYPE_VEGFRA...?
   wrf_meta%var_size(var_cnt) = 1
   wrf_meta%var_index(var_cnt) = dart_index
-  state_loc(dart_index) = set_location(real(10000),1)
+  state_loc(dart_index) = set_location(10000.0_r8,1)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 enddo
@@ -1282,7 +1283,6 @@ integer,            intent(out) :: istatus
  
 logical, parameter  :: debug = .false.
 real(r8)            :: zloc_ind, zloc_val
-integer             :: which_vert
 integer             :: k, k1, k2
 real(r8)            :: dz,dzm,cent_lon_deg
 real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
@@ -1299,18 +1299,22 @@ istatus = 0
 
 ! Convert location to real
 zloc_val = get_location(location)
-which_vert = nint(query_location(location,'which_vert'))
 
-if ( which_vert == 1 .or. which_vert < 0 ) then      ! model level
+if ( vert_is_level(location) .or. vert_is_surface(location) ) then      ! model level
   zloc_ind = zloc_val
-elseif ( which_vert == 2 ) then                      ! pressure
+elseif ( vert_is_pressure(location) ) then                      ! pressure
   istatus = 1
   errstring = "obs in pressure coords not yet implemented"
   call error_handler(E_ERR,'model_interpolate', errstring, &
        source, revision, revdate)
-elseif ( which_vert == 3 ) then                      ! height
+elseif ( vert_is_height(location) ) then                      ! height
   istatus = 1
   errstring = "obs in height coords not yet implemented"
+  call error_handler(E_ERR,'model_interpolate', errstring, &
+       source, revision, revdate)
+else
+  istatus = 1
+  errstring = "undefined obs vertical coords not yet implemented"
   call error_handler(E_ERR,'model_interpolate', errstring, &
        source, revision, revdate)
 endif
@@ -1319,32 +1323,73 @@ if(zloc_ind /= missing_r8) then
 
 k = max(1,int(zloc_ind))
 
-! find the WRF type that corresponds to the obs_kind
-select case(obs_kind)
-  case(KIND_U_WIND_COMPONENT)
-    my_type = TYPE_U
-  case(KIND_V_WIND_COMPONENT)
-    my_type = TYPE_V
-  case(KIND_TEMPERATURE)
-    my_type = TYPE_T
-  case(KIND_QV)
-    my_type = TYPE_QV
-  case(KIND_U10)
+! TJH attempt at logic to use generic obs kinds 
+! Since there are no 'generic' kinds for most surface variables,
+! we simply look at the generic kind and query the location to
+! determine if the obs is at the surface ...
+
+if      ( (obs_kind == KIND_U_WIND_COMPONENT) .and. vert_is_surface(location)) then
     my_type = TYPE_U10
-  case(KIND_V10)
+
+else if ( (obs_kind == KIND_V_WIND_COMPONENT) .and. vert_is_surface(location)) then
     my_type = TYPE_V10
-  case(KIND_T2)
+
+else if ( (obs_kind == KIND_TEMPERATURE)      .and. vert_is_surface(location)) then
     my_type = TYPE_T2
-  case(KIND_Q2)
+
+else if ( obs_kind == KIND_SPECIFIC_HUMIDITY  .and. vert_is_surface(location)) then 
+    ! convert water vapor mixing ratio to specific humidity
     my_type = TYPE_Q2
-  case default
+
+
+else if ( obs_kind == KIND_U_WIND_COMPONENT ) then 
+    my_type = TYPE_U
+else if ( obs_kind == KIND_V_WIND_COMPONENT ) then 
+    my_type = TYPE_V
+else if ( obs_kind == KIND_SPECIFIC_HUMIDITY ) then 
+    ! convert water vapor mixing ratio to specific humidity
+    my_type = TYPE_QV
+
+
+else
     write(errstring,*) "No such obs kind in the state vector: ",obs_kind
     call error_handler(E_ERR,'model_interpolate', errstring, &
        source, revision, revdate)
-end select
+endif
 
-if(obs_kind /= KIND_SURFACE_PRESSURE .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
-     .and. obs_kind /= KIND_T2 .and. obs_kind /= KIND_Q2) then
+
+! find the WRF type that corresponds to the obs_kind
+! The new generic obs kind supercedes this block.  
+!select case(obs_kind)
+!  case(KIND_U)
+!    my_type = TYPE_U
+!  case(KIND_V)
+!    my_type = TYPE_V
+!  case(KIND_T)
+!    my_type = TYPE_T
+!  case(KIND_QV)
+!    my_type = TYPE_QV
+!  case(KIND_U10)
+!    my_type = TYPE_U10
+!  case(KIND_V10)
+!    my_type = TYPE_V10
+!  case(KIND_T2)
+!    my_type = TYPE_T2
+!  case(KIND_Q2)
+!    my_type = TYPE_Q2
+!  case default
+!    write(errstring,*) "No such obs kind in the state vector: ",obs_kind
+!    call error_handler(E_ERR,'model_interpolate', errstring, &
+!       source, revision, revdate)
+!end select
+
+! If it is NOT a surface variable .... do something
+! This could be replaced by the 'vert_is_surface' function.
+
+!if(obs_kind /= KIND_PS .and. obs_kind /= KIND_U10 .and. obs_kind /= KIND_V10 &
+!     .and. obs_kind /= KIND_T2 .and. obs_kind /= KIND_Q2) then
+
+if( .not. vert_is_surface(location) ) then
 
   if ( my_type == TYPE_U .or. my_type == TYPE_V ) then
      do k2 = 1,2
