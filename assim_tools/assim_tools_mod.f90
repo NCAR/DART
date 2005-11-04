@@ -1353,9 +1353,8 @@ endif
 ! UNTRANSPOSE TO REGIONS
 call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
 
-
-write(*, *) 'done with routine filter_assim reg_cov_inflate is ', reg_cov_inflate
-write(logfileunit, *) 'done with routine filter_assim reg_cov_inflate is ', reg_cov_inflate
+write(errstring,'( ''done -- reg_cov_inflate is '',f18.13 )') reg_cov_inflate
+call error_handler(E_MSG,'filter_assim',errstring,source,revision,revdate)
 
 end subroutine filter_assim
 
