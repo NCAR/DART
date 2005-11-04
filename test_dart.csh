@@ -56,17 +56,19 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     lorenz_04 forced_lorenz_96 bgrid_solo cam wrf pe2lyr ) 
 #   null_model PBL_1d rose MITgcm_annulus sccm)
 
-    echo "----------------------------------------------------------"
+    echo "=================================================================="
     echo "Compiling $MODEL at "`date`
     echo ""
 
     cd ${DARTHOME}/models/${MODEL}/work
 
-    rm -fv ../../../obs_def/obs_def_mod.f90 ../../../obs_kind/obs_kind_mod.f90 preprocess
-    rm -f *.o *.mod
+    \rm -fv ../../../obs_def/obs_def_mod.f90 
+    \rm -fv ../../../obs_kind/obs_kind_mod.f90
+    \rm -fv preprocess
+    \rm -f  *.o *.mod
 
     csh mkmf_preprocess
-    make
+    make || exit 1
     ./preprocess
 
     foreach PROG ( create_obs_sequence create_fixed_network_seq \
@@ -92,8 +94,22 @@ end
 # Lots of tests for L96
 #----------------------------------------------------------------------
 
-echo "----------------------------------------------------------"
+# If matlab does not exist, we simply archive some output.
+# If it does, we generate some plots. This just checks to
+# see if matlab exists and creates the archives if need be.
+
+which matlab > /dev/null
+set MatlabExists=$status
+if ( $MatlabExists != 0 ) then
+   mkdir -p ${DARTHOME}/Test1; # directory for output
+   mkdir -p ${DARTHOME}/Test2; # directory for output
+endif
+
+
+echo ""
+echo "=================================================================="
 echo "Testing lorenz_96 (L96) at "`date`
+echo "=================================================================="
 echo ""
 
 cd ${DARTHOME}/models/lorenz_96/work
@@ -123,10 +139,11 @@ make                              || exit 110
 
 
 
-#----------------------------------------------------------------------
-echo "-----------------------------------------------------------------"
+echo ""
+echo "=================================================================="
 echo "Setup appropriate namelists for a 1000-step test run."
-echo "-----------------------------------------------------------------"
+echo "=================================================================="
+echo ""
 
 echo "input.nml is "
 cat input.nml
@@ -168,23 +185,31 @@ vi -s vi_script input.nml
 ./perfect_model_obs  || exit 113
 ./filter             || exit 114
 
-# Need to do visual matlab inspection of this output for now
-# plot_total_err
-if ( -e /usr/local/bin/matlab ) then
-   matlab -nojvm
+# Determine if the run was correct.
+if ( $MatlabExists == 0 ) then
+   echo "plot_total_err"              > batchscript.m
+   echo "print -dpsc DART_fig1.ps"   >> batchscript.m
+   echo "quit"                       >> batchscript.m
+   matlab -nosplash -nojvm -r batchscript
 else
-   ls -lrt
-   cp -p *.nc /project/gsp/thoar/Test1
+   echo "Matlab does not exist in your PATH ... archiving output"
+   \cp -pv input.nml           ${DARTHOME}/Test1
+   \cp -pv filter_restart      ${DARTHOME}/Test1
+   \cp -pv assim_tools_restart ${DARTHOME}/Test1
+   \cp -pv obs_seq.out         ${DARTHOME}/Test1
+   \cp -pv obs_seq.final       ${DARTHOME}/Test1
+   \cp -pv *.nc                ${DARTHOME}/Test1
 endif
 
 
-#-----------------------------------------------------------------------
-echo "-----------------------------------------------------------------"
+
+echo ""
+echo "=================================================================="
 echo "Prepare to set up a sequence of 10 hour runs for testing"
 echo "In first case, just do 10 hours and output filter restarts in both"
 echo "the single file and multiple file format for later testing"
-echo "-----------------------------------------------------------------"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
 
 # Create an obs_sequence file for 10 hour tests
 rm -rf obs_seq.in obs_seq.out obs_seq.final
@@ -207,13 +232,15 @@ echo "Need to start from binary at end of previous long run"
 mv perfect_restart  perfect_ics.spun_up
 mv  filter_restart   filter_ics.spun_up
 
-#-----------------------------------------------------------------------
+
+
 echo " "
+echo "=================================================================="
 echo "To reproduce across a variety of options, need num_domains 2 or greater"
-echo " and binary restart files to be written."
+echo "and binary restart files to be written."
 echo "Start from previous restart and create new restart."
+echo "=================================================================="
 echo " "
-#-----------------------------------------------------------------------
 
 echo ':0'                                  > vi_script
 echo '/num_domains'                       >> vi_script
@@ -231,12 +258,15 @@ vi -s vi_script input.nml
 
 echo "input.nml is "
 cat input.nml
-echo " "
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Run the perfect model and the filter to produce single restart files:"
 echo "perfect_ics.10hour and filter_ics.10hour"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
 
 ./perfect_model_obs   || exit
 ./filter              || exit
@@ -244,10 +274,14 @@ echo "perfect_ics.10hour and filter_ics.10hour"
 mv perfect_restart  perfect_ics.10hour
 mv  filter_restart   filter_ics.10hour
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Now run the filter again to produce multiple restart files:"
 echo "filter_restart.01"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
 
 echo ':0'                                 > vi_script
 echo '/single_restart_file_out'          >> vi_script
@@ -262,12 +296,14 @@ echo " "
 
 ./filter  || exit
 
-#-----------------------------------------------------------------------
+
+
 echo " "
+echo "=================================================================="
 echo "Now do a second 10 hour run from the end of the first 10 hour"
 echo "Also change the filter back to only produce single restart file"
+echo "=================================================================="
 echo " "
-#-----------------------------------------------------------------------
 
 echo ':0'                                          > vi_script
 echo '/restart_in_file_name'                      >> vi_script
@@ -295,9 +331,15 @@ mv perfect_restart  perfect_restart.baseline
 mv obs_seq.out          obs_seq.out.baseline
 mv True_State.nc      True_State.nc.baseline
 
-#-----------------------------------------------------------------------
+
+
+
+echo ""
+echo "=================================================================="
 echo "Test storing the ensemble on disk instead of in core"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
+
 echo ':0'                              > vi_script
 echo '/ensemble_manager'              >> vi_script
 echo '/in_core'                       >> vi_script
@@ -322,8 +364,15 @@ echo "diff of obs_seq.out:"
 diff obs_seq.out.out_of_core      obs_seq.out.baseline     || exit
 #diff True_State.nc.out_of_core    True_State.nc.baseline   ||exit
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Test the two async options"
+echo "Change to async 2 and go back to in_core for ensemble"
+echo "=================================================================="
+echo ""
+
 # Need to get the scripts (problem here because script names are machine dependent)
 #-----------------------------------------------------------------------
 cp -p ../shell_scripts/*.csh .
@@ -331,9 +380,7 @@ cp -p ${DARTHOME}/shell_scripts/advance_ens_fisher.csh     advance_ens.csh
 cp -p ${DARTHOME}/shell_scripts/assim_filter_fisher.csh   assim_filter.csh
 cp -p ${DARTHOME}/shell_scripts/filter_server_fisher.csh filter_server.csh
 
-#-----------------------------------------------------------------------
-echo " Change to async 2 and go back to in_core for ensemble"
-#-----------------------------------------------------------------------
+
 echo ':0'                             > vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
 echo '/async'                        >> vi_script
@@ -358,9 +405,14 @@ diff perfect_restart.2  perfect_restart.baseline  || exit
 diff obs_seq.out.2      obs_seq.out.baseline      || exit
 #diff True_State.nc.2    True_State.nc.baseline    || exit
 
-#-----------------------------------------------------------------------
-echo "Now try option 3 with a filter_server"
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
+echo "Now try async == 3 with filter_server"
+echo "=================================================================="
+echo ""
+
 echo ':0'                             > vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
 echo '/async'                        >> vi_script
@@ -384,10 +436,14 @@ diff perfect_restart.3   perfect_restart.baseline  || exit
 diff     obs_seq.out.3       obs_seq.out.baseline  || exit
 #diff True_State.nc.3    True_State.nc.baseline    || exit
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Next, start checking filter options for this case"
 echo "Begin by checking single versus multiple restarts"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
 
 cp -p obs_seq.out.baseline obs_seq.out
 
@@ -399,17 +455,27 @@ mv assim_tools_restart  assim_tools_restart.baseline
 cp Prior_Diag.nc              Prior_Diag.nc.baseline
 cp Posterior_Diag.nc      Posterior_Diag.nc.baseline
 
-if ( -e /usr/local/bin/matlab ) then
-   matlab -nojvm
+# Determine if the run was correct.
+# can fire off a matlab batch job if matlab exists.
+if ( $MatlabExists == 0 ) then
+   echo "plot_total_err"              > batchscript.m
+   echo "print -dpsc DART_fig2.ps"   >> batchscript.m
+   echo "quit"                       >> batchscript.m
+   matlab -nosplash -nojvm -r batchscript
 else
-   ls -lrt
-   cp -p *.baseline /project/gsp/thoar/Test2
-   cp -p input.nml  /project/gsp/thoar/Test2
+   echo "Matlab does not exist in your PATH ... archiving output"
+   \cp -pv input.nml  ${DARTHOME}/Test2
+   \cp -pv *.baseline ${DARTHOME}/Test2
 endif
 
-#-----------------------------------------------------------------------
-# Now do a run with multiple input files, NOTE: they are filter_restart.00??
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
+echo "Now use multiple input files (named filter_restart.00xx)"
+echo "=================================================================="
+echo ""
+
 echo ':0'                                     > vi_script
 echo '/filter_nml'                           >> vi_script
 echo '/restart_in_file_name'                 >> vi_script
@@ -438,9 +504,14 @@ diff assim_tools_restart.in_files  assim_tools_restart.baseline || exit
 #diff Prior_Diag.nc.in_files        Prior_Diag.nc.baseline
 #diff Posterior_Diag.nc.in_files    Posterior_Diag.nc.baseline
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Next switch the number of domains from 3 to 5"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
+
 echo ':0'                                      > vi_script
 echo '/num_domains'                           >> vi_script
 echo ':s/3/5/'                                >> vi_script
@@ -460,9 +531,14 @@ diff filter_restart       filter_restart.baseline       || exit
 #diff Prior_Diag.nc        Prior_Diag.nc.baseline
 #diff Posterior_Diag.nc    Posterior_Diag.nc.baseline
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Next switch the number of domains back to 3; try parallel option 2"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
+
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/0/2/'                                >> vi_script
@@ -484,9 +560,14 @@ diff assim_tools_restart  assim_tools_restart.baseline  || exit
 #diff Prior_Diag.nc        Prior_Diag.nc.baseline        || exit
 #diff Posterior_Diag.nc    Posterior_Diag.nc.baseline    || exit
 
-#-----------------------------------------------------------------------
+
+
+echo ""
+echo "=================================================================="
 echo "Try parallel option 3"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
+
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/2/3/'                                >> vi_script
@@ -509,9 +590,13 @@ diff assim_tools_restart  assim_tools_restart.baseline  || exit
 
 
 
-#-----------------------------------------------------------------------
+
+echo ""
+echo "=================================================================="
 echo "Go back to parallel option 0 and proceed"
-#-----------------------------------------------------------------------
+echo "=================================================================="
+echo ""
+
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/3/0/'                                >> vi_script
@@ -533,5 +618,5 @@ diff assim_tools_restart  assim_tools_restart.baseline  || exit
 
 echo ""
 echo "Testing complete  at "`date`
-echo "-------------------------------------------"
-
+echo "=================================================================="
+echo ""
