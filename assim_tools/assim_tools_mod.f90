@@ -1353,8 +1353,32 @@ endif
 ! UNTRANSPOSE TO REGIONS
 call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
 
-write(errstring,'( ''done -- reg_cov_inflate is '',f18.13 )') reg_cov_inflate
-call error_handler(E_MSG,'filter_assim',errstring,source,revision,revdate)
+
+call print_regional_results(reg_cov_inflate)
+
+contains
+
+   subroutine print_regional_results(x)
+   ! I wanted to print these out in a fixed format so I could compare
+   ! the results with 'diff' or 'xdiff' ... but the problem is that
+   ! there may be one or N items to print, and I couldn't figure out
+   ! a compact format statement for that.
+   real(r8), dimension(:), intent(in) :: x
+
+   character(len = SIZE(x)*19 + 30) :: msgstring
+   character(len = 19)              :: str1
+   integer :: i
+
+   msgstring = 'done -- reg_cov_inflate is '
+ 
+   do i = 1,SIZE(x)
+      write(str1,'(1x,f18.13)')x(i)
+      msgstring = trim(adjustl(msgstring)) // str1
+   enddo 
+
+   call error_handler(E_MSG,'filter_assim',msgstring,source,revision,revdate)
+
+   end subroutine print_regional_results
 
 end subroutine filter_assim
 
