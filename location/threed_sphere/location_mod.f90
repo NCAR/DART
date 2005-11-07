@@ -38,7 +38,8 @@ public :: location_type, get_dist, get_location, set_location, set_location_miss
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
           horiz_dist_only, alloc_get_close_obs, get_close_obs, &
-          operator(==), operator(/=)
+          operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
+          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
