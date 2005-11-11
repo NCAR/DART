@@ -72,5 +72,5 @@ csh mkmf_filter
 make         || exit 7
 #csh mkmf_obs_diag
 #make         || exit 8
-#./perfect_model_obs
-#./filter
+./perfect_model_obs
+./filter
