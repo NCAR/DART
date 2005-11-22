@@ -562,7 +562,7 @@ enddo FindNumRegions
          endif
 
          keeper = .true.
-!        keeper = CheckObsType(obs_select, obs_err_var(obsindex), flavor, ipressure)
+!        keeper = CheckObsType(obs_select, obs_err_var, flavor, ipressure)
          if ( .not. keeper ) then
             write(*,*)'obs ',obsindex,' rejected by CheckObsType ',obs_err_var
             NwrongType = NwrongType + 1
@@ -600,7 +600,7 @@ enddo FindNumRegions
 
 !           if (flavor > 0 ) then  ! keep all types, for now ...
 
-               ratio = GetRatio(obs(obsindex), pr_mean, pr_sprd, &
+               ratio = GetRatio(obs(1), pr_mean, pr_sprd, &
                         obs_err_var)
 
                if ( ratio <= rat_cri ) then
@@ -608,10 +608,10 @@ enddo FindNumRegions
                   num_in_level(iepoch, iregion, flavor) + 1
 
                   rms_ges_mean(iepoch, iregion, flavor) = &
-                  rms_ges_mean(iepoch, iregion, flavor) + (pr_mean - obs(obsindex))**2
+                  rms_ges_mean(iepoch, iregion, flavor) + (pr_mean - obs(1))**2
 
                   rms_anl_mean(iepoch, iregion, flavor) = &
-                  rms_anl_mean(iepoch, iregion, flavor) + (po_mean - obs(obsindex))**2
+                  rms_anl_mean(iepoch, iregion, flavor) + (po_mean - obs(1))**2
 
                   rms_ges_spread(iepoch, iregion, flavor) = &
                   rms_ges_spread(iepoch, iregion, flavor) + pr_sprd**2
@@ -622,7 +622,7 @@ enddo FindNumRegions
                   Nrejected(iepoch, iregion, flavor) = Nrejected(iepoch, iregion, flavor) + 1 
                   if (verbose) then
                      write(logfileunit,*)'obsindex ',obsindex,' ratio ', ratio
-                     write(logfileunit,*)'val,prm,prs,var ',obs(obsindex), &
+                     write(logfileunit,*)'val,prm,prs,var ',obs(1), &
                                           pr_mean, pr_sprd, obs_err_var
                   endif
 
