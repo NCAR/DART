@@ -63,7 +63,7 @@ real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_sp
 real(r8) :: pr_mean, po_mean ! same as above, without useless dimension 
 real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
 
-integer :: obs_index, prior_mean_index, posterior_mean_index
+integer :: obs_copy_index, prior_mean_index, posterior_mean_index
 integer :: prior_spread_index, posterior_spread_index
 integer :: key_bounds(2), flavor
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
@@ -387,7 +387,7 @@ enddo FindNumRegions
    ! Find the index of obs, ensemble mean, spread ... etc.
    !--------------------------------------------------------------------
 
-   obs_index              = -1
+   obs_copy_index              = -1
    prior_mean_index       = -1
    posterior_mean_index   = -1
    prior_spread_index     = -1
@@ -395,7 +395,7 @@ enddo FindNumRegions
 
    MetaDataLoop : do i=1, get_num_copies(seq)
       if(index(get_copy_meta_data(seq,i), 'observation'              ) > 0) &
-                          obs_index = i
+                          obs_copy_index = i
       if(index(get_copy_meta_data(seq,i), 'prior ensemble mean'      ) > 0) &
                    prior_mean_index = i
       if(index(get_copy_meta_data(seq,i), 'posterior ensemble mean'  ) > 0) &
@@ -410,7 +410,7 @@ enddo FindNumRegions
    ! Make sure we find an index for each of them.
    !--------------------------------------------------------------------
 
-   if ( obs_index              < 0 ) then
+   if ( obs_copy_index              < 0 ) then
       write(msgstring,*)'metadata:observation not found'
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
@@ -430,7 +430,7 @@ enddo FindNumRegions
       write(msgstring,*)'metadata:posterior ensemble spread not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate) 
    endif
-   if ( any( (/obs_index, prior_mean_index, posterior_mean_index, & 
+   if ( any( (/obs_copy_index, prior_mean_index, posterior_mean_index, & 
                prior_spread_index, posterior_spread_index /) < 0) ) then
       write(msgstring,*)'metadata incomplete'
       call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
@@ -441,7 +441,7 @@ enddo FindNumRegions
    !--------------------------------------------------------------------
 
    write(msgstring,'(''observation      index '',i2,'' metadata '',a)') &
-        obs_index, trim(adjustl(get_copy_meta_data(seq,obs_index)))
+        obs_copy_index, trim(adjustl(get_copy_meta_data(seq,obs_copy_index)))
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
    write(msgstring,'(''prior mean       index '',i2,'' metadata '',a)') &
@@ -522,7 +522,7 @@ enddo FindNumRegions
          rlocation   = get_location(obs_loc) 
 
          call get_qc(observation, qc, 1)
-         call get_obs_values(observation, obs, obs_index)
+         call get_obs_values(observation, obs, obs_copy_index)
 
          ! get interpolated values of prior and posterior ensemble mean
 
