@@ -127,7 +127,7 @@ character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
                                                     'Tropics             ', &
                                                     'North America       ' /)
 
-namelist /obsdiag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
+namelist /obs_diag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
                        plevel, hlevel, obs_select, Nregions, rat_cri, &
                        qc_threshold, lonlim1, lonlim2, latlim1, latlim2, reg_names, &
@@ -267,14 +267,14 @@ U_obs_loc = set_location_missing()
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file("input.nml", "obsdiag_nml", iunit)
-read(iunit, nml = obsdiag_nml, iostat = io)
-call check_namelist_read(iunit, io, "obsdiag_nml")
+call find_namelist_in_file("input.nml", "obs_diag_nml", iunit)
+read(iunit, nml = obs_diag_nml, iostat = io)
+call check_namelist_read(iunit, io, "obs_diag_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'obs_diag','obsdiag_nml values are',' ',' ',' ')
-write(logfileunit,nml=obsdiag_nml)
-write(    *      ,nml=obsdiag_nml)
+call error_handler(E_MSG,'obs_diag','obs_diag_nml values are',' ',' ',' ')
+write(logfileunit,nml=obs_diag_nml)
+write(    *      ,nml=obs_diag_nml)
 
 ! Open file for histogram of innovations, as a function of standard deviation.
 nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')

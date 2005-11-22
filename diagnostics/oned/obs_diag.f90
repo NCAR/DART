@@ -100,7 +100,7 @@ real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8, -1.0_r8 
 character(len=6), dimension(MaxRegions) :: reg_names = &
                                    (/ 'whole ','yin   ','yang  ','bogus '/)
 
-namelist /obsdiag_nml/ obs_sequence_name, &
+namelist /obs_diag_nml/ obs_sequence_name, &
                        iskip_days, obs_select, rat_cri, &
                        qc_threshold, bin_width_seconds, &
                        lonlim1, lonlim2, reg_names, verbose
@@ -177,14 +177,14 @@ posterior_spread(1) = 0.0_r8
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file("input.nml", "obsdiag_nml", iunit)
-read(iunit, nml = obsdiag_nml, iostat = io)
-call check_namelist_read(iunit, io, "obsdiag_nml")
+call find_namelist_in_file("input.nml", "obs_diag_nml", iunit)
+read(iunit, nml = obs_diag_nml, iostat = io)
+call check_namelist_read(iunit, io, "obs_diag_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'obs_diag','obsdiag_nml values are',' ',' ',' ')
-write(logfileunit, nml=obsdiag_nml)
-write(     *     , nml=obsdiag_nml)
+call error_handler(E_MSG,'obs_diag','obs_diag_nml values are',' ',' ',' ')
+write(logfileunit, nml=obs_diag_nml)
+write(     *     , nml=obs_diag_nml)
 
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup

@@ -129,7 +129,7 @@
 # Acceptable latitudes range from  [-90,  90]
 # Acceptable longitudes range from [  0, 360]
 
-&obsdiag_nml
+&obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
    first_bin_center =  2003, 1, 1, 6, 0, 0 ,
    last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
