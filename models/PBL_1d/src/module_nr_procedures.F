@@ -9,10 +9,10 @@ CONTAINS
 ! returned in vector b
 
 ! Arguments
-	integer, intent(in) :: n,np
-      	integer, dimension(:), intent(in) :: indx
-	real, dimension(:,:), intent(in) :: a
-	real, dimension(:), intent(out) :: b
+      integer, intent(in) :: n,np
+      integer, dimension(:), intent(in) :: indx
+      real, dimension(:,:), intent(in) :: a
+      real, dimension(:), intent(inout) :: b
 
 ! Local
       INTEGER i,ii,j,ll
@@ -41,22 +41,22 @@ CONTAINS
       return
       END subroutine lubksb
 
-	
+
       SUBROUTINE ludcmp(a,n,np,indx,d)
 
 ! Performs an LU decomposition of array a, returns the index of row ops in indx
 ! Arguments
-	integer, intent(in) :: n,np
-	integer, dimension(:), intent(out) :: indx
-	real, intent(out) :: d
-	real, dimension(:,:), intent(inout) :: a 
+      integer, intent(in) :: n,np
+      integer, dimension(:), intent(out) :: indx
+      real, intent(out) :: d
+      real, dimension(:,:), intent(inout) :: a 
 
 ! Local
-      	integer, parameter :: NMAX=500
-      	real, parameter :: TINY=1.0e-20
-      	integer :: i,imax,j,k
-        real :: aamax,dum,sum
-	real, dimension(NMAX) :: vv
+      integer, parameter :: NMAX=500
+      real, parameter :: TINY=1.0e-20
+      integer :: i,imax,j,k
+      real :: aamax,dum,sum
+      real, dimension(NMAX) :: vv
 
       d=1.
       do 12 i=1,n
