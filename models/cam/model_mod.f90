@@ -78,7 +78,8 @@ use    utilities_mod, only : open_file, close_file, find_namelist_in_file, check
                              register_module, error_handler, file_exist, E_ERR, E_MSG, logfileunit
 use     location_mod, only : location_type, get_location, set_location, &
                              get_dist, vert_is_level, query_location, &
-                             LocationDims, LocationName, LocationLName
+                             LocationDims, LocationName, LocationLName, &
+                             VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_PRESSURE
@@ -1478,7 +1479,9 @@ loc_array = get_location(o_loc)
 !write(*, *) 'oloc is ', loc_array(:)
 
 ! Number found starts at 0
-nfound = 0
+nfound  = 0
+indices = 0
+dist    = 0.
 
 ! Assume that grid size is known from static initialized storage
 
@@ -1518,15 +1521,21 @@ do i = 1, num
       call get_state_meta_data(col_base_index + j, s_loc) 
       sloc_array = get_location(s_loc)
       which_vert = nint(query_location(s_loc))
+
 ! Surface pressure has ps as vertical, others have their level's pressure
 ! Put the appropriate pressure into a location type for computing distance
-      if (which_vert == -2) then
+! integer, parameter :: VERTISUNDEF    = -2 ! has no vertical location (undefined)
+! integer, parameter :: VERTISSURFACE  = -1 ! surface value
+! integer, parameter :: VERTISLEVEL    =  1 ! by level
+! integer, parameter :: VERTISPRESSURE =  2 ! by pressure
+! integer, parameter :: VERTISHEIGHT   =  3 ! by height
+      if (which_vert == VERTISUNDEF) then
          ! NOVERT; field with no vertical location; get_dist will calculate 
          ! horiz dist only based on which_vert of s_loc
-      else if(which_vert == -1 ) then       
+      else if(which_vert == VERTISSURFACE ) then       
          ! surface field; change which_vert for the distance calculation
          s_loc = set_location(sloc_array(1), sloc_array(2), ps(1), 2)
-      else if(which_vert == 1 ) then
+      else if(which_vert == VERTISLEVEL ) then
          m_press = pfull(1, int(sloc_array(3)))
          s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
       else
@@ -1541,7 +1550,7 @@ do i = 1, num
 ! linear with pressure
 ! ERROR; PS model points have no m_press, so they may be included in this;
 !        add which_vert condition
-      if (which_vert == 1 .and. m_press < (highest_obs_pressure_mb*100._r8)) then
+      if (which_vert == VERTISLEVEL .and. m_press < (highest_obs_pressure_mb*100._r8)) then
 !         WRITE(*,*) 'model_get_close_states; increasing t_dist from ',t_dist
          t_dist = t_dist / (m_press/(highest_obs_pressure_mb*100._r8))
 !         WRITE(*,'(2(A,F10.4),A,3F10.4)') '   to ',t_dist,' for m_press = ',m_press, &
