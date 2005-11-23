@@ -43,7 +43,7 @@ end
 % Get some information from the diagn_file
 fd = netcdf(diagn_file);
 dmodel      = fd.model(:);
-dnum_vars   = ncsize(fd('StateVariable')); % determine # of state variables
+dnum_vars   = ncsize(fd('StateVariable')); % determine model size
 dnum_copies = ncsize(fd('copy')); % determine # of ensemble members
 dnum_times  = ncsize(fd('time')); % determine # of output times
 close(fd); 

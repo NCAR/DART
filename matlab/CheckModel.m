@@ -1,5 +1,12 @@
 function vars = CheckModel(fname);
 % CheckModel   tries to ensure that a netcdf file has what we expect. 
+%
+% vars is a structure containing a minimal amount of metadata about the netCDF file.
+% 
+% EXAMPLE:
+% fname = 'Prior_Diag.nc';
+% vars = CheckModel(fname) 
+% 
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
@@ -166,6 +173,30 @@ switch lower(model)
       levels = getnc(fname,'level');
       VelI   = getnc(fname,'VelI');    % longitude
       VelJ   = getnc(fname,'VelJ');    % latitude
+
+      vars = struct('model',model, ...
+              'num_state_vars',num_vars, ...
+              'num_ens_members',num_copies, ...
+              'time_series_length',num_times, ...
+              'min_ens_mem',min(copy), ...
+              'max_ens_mem',max(copy));
+
+   case 'pbl_1d'
+
+      % A more robust way would be to use the netcdf low-level ops:
+      % bob = var(f);     % bob is a cell array of ncvars
+      % name(bob{1})       % is the variable name string
+      % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
+
+      num_vars  = 22; % ps, t, u, v
+      z_level   = ncsize(f('z_level')); % determine # of state variables
+      sl_level  = ncsize(f('sl_level')); % determine # of state variables
+      if (prod(size(z_level)) > 1 ) 
+         error(sprintf('%s has no ''z_level'' dimension.',fname))
+      end
+      times    = getnc(fname,'time');
+      z_level  = getnc(fname,'z_level');
+      sl_level = getnc(fname,'sl_level');
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...

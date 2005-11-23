@@ -195,9 +195,13 @@ switch lower(model)
 
       BgridTotalError( pinfo )
 
+   case 'pbl_1d'
+
+      PBL1DTotalError( pinfo )
+
    otherwise
 
-      disp(sprintf('unknown model %s -- doing nothing',t.model))
+      disp(sprintf('unknown model %s -- doing nothing',model))
 
 end
 close(f)
@@ -205,6 +209,39 @@ close(f)
 %=======================================================================
 % helper functions
 %=======================================================================
+
+function PBL1DTotalError ( pinfo )
+
+% Get some standard plotting arrays
+ z_level = getnc(pinfo.truth_file, 'z_level');
+sl_level = getnc(pinfo.truth_file,'sl_level');
+times    = getnc(pinfo.truth_file,    'time'); 
+num_times  = length(times );
+
+% Get the indices for the true state, ensemble mean and spread                  
+% The metadata is queried to determine which "copy" is appropriate.             
+truth_index      = get_copy_index(pinfo.truth_file, 'true state' ); 
+ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
+ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
+
+% U variable
+
+truth  = getnc(pinfo.truth_file,'U',[-1      truth_index -1],[-1      truth_index -1]);
+ens    = getnc(pinfo.diagn_file,'U',[-1   ens_mean_index -1],[-1   ens_mean_index -1]);
+spread = getnc(pinfo.diagn_file,'U',[-1 ens_spread_index -1],[-1 ens_spread_index -1]);
+
+err        = total_err(              truth,    ens);
+err_spread = total_err(zeros(size(spread)), spread);
+
+y_error  = squeeze(mean(err,2));           % mean over all levels
+y_spread = squeeze(mean(err_spread,2));    % mean over all levels
+
+plot(times,y_error,'r-',times,y_spread,'g-')
+title('PBL_1d mean error of U over time ... all levels.')
+xlabel('days')
+ylabel('mean (all levels) total error')
+axis([-Inf Inf 0 Inf])
+
 
 function BgridTotalError( pinfo )
 % netcdf has no state vector, it has prognostic variables.
