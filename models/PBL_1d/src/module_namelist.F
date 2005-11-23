@@ -42,6 +42,14 @@ MODULE module_namelist
   REAL :: vegfra_ref,zo_ref,emiss_ref,thc_ref,albedo_ref,&
        &ts_ref,tmn_ref,ps_ref,lat_ref,lon_ref
 
+! record 4 - parameter estimation
+  INTEGER                :: num_est_params
+  INTEGER, dimension(10) :: est_param_types
+  REAL   , dimension(10) :: pert_init_sd
+  REAL   , dimension(10) :: pert_param_sd
+  LOGICAL                :: maintain_initial_spread
+  CHARACTER(len=4), dimension(10) :: dist_shape
+
 ! additional variables
 
   REAL :: timeo,timetot
@@ -71,6 +79,9 @@ CONTAINS
          &emiss_ref,thc_ref,albedo_ref,ts_ref,tmn_ref,ps_ref,&
          &lat_ref,lon_ref
     
+    NAMELIST /RECORD4/ num_est_params, est_param_types, pert_param_sd, &
+         &pert_init_sd, maintain_initial_spread, dist_shape
+
 !  Local variables.
     
     LOGICAL :: is_it_there = .FALSE.
@@ -85,11 +96,21 @@ CONTAINS
 !            & STATUS = 'OLD'            , FORM   = 'FORMATTED'      ,&
 !            & ACTION = 'READ'           , ACCESS = 'SEQUENTIAL'     )
        
+!  A couple of defaults
+
+       num_est_params = 0
+       est_param_types(:) = 0
+       pert_init_sd(:) = 0.0
+       pert_param_sd(:) = 0.0
+       maintain_initial_spread = .false.
+       dist_shape(:) = 'norm'
+
 !  File is opened, so read it.
        
        READ (unit_nml , RECORD1 )
        READ (unit_nml , RECORD2 )
        READ (unit_nml , RECORD3 )
+       READ (unit_nml , RECORD4 )
        
        n_moist=MAX(P_QV,P_QC,P_QR,P_QI,P_QS,P_QG)
 
@@ -108,6 +129,7 @@ CONTAINS
     write(logfileunit,nml=record1)
     write(logfileunit,nml=record2)
     write(logfileunit,nml=record3)
+    write(logfileunit,nml=record4)
 
     init_gen_file=TRIM(indir)//'/'//init_gen_file
     out_gen_file=TRIM(outdir)//'/'//out_gen_file

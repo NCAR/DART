@@ -70,7 +70,26 @@ csh mkmf_perfect_model_obs
 make         || exit 6
 csh mkmf_filter
 make         || exit 7
+./perfect_model_obs  || exit 8
+./filter             || exit 9
+
+#----------------------------------------------------------------------
+# The observation-space diagnostics program is not fully developed yet.
+# In order to match the bahavior of the other models that use the threed_sphere
+# location module, the obs_diag.final  file must exist in a directory.
+# We're hardcoding that here. Clearly suboptimal.
+
 csh mkmf_obs_diag
-make         || exit 8
-./perfect_model_obs
-./filter
+make         || exit 10
+
+if (! -d 01_01) then
+   mkdir 01_01
+endif
+
+if ( -e 01_01/obs_seq.final ) then
+     mv -v 01_01/obs_seq.final 01_01/obs_seq.final.old
+endif
+
+mv -v obs_seq.final 01_01
+
+./obs_diag   || exit 11

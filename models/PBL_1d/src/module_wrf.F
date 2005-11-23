@@ -217,16 +217,82 @@ MODULE module_wrf
    
 contains
 
-SUBROUTINE STATIC_INIT_WRF()
+SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
+
+  LOGICAL,INTENT(INOUT)           :: allocate_wrf
+
+  IF (.NOT.init_gen) allocate_wrf=.TRUE.
+
+  IF ( allocate_wrf ) THEN
+    ALLOCATE(moist( ims:ime, kms:kme, jms:jme, n_moist))
+    moist = 0.0
+  ENDIF
 
   IF (surface_physics=='SIMPLESCHEME') THEN
      num_soil_layers=1
+     IF ( allocate_wrf ) THEN         
+        ALLOCATE(&
+             &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &DZS(1:num_soil_layers),&
+             &ZS(1:num_soil_layers))
+     ENDIF
+
   ELSEIF (surface_physics=='SLABSCHEME') THEN
      num_soil_layers=5
-  ELSEIF (surface_physics=='LSMSCHEME') THEN
+     IF ( allocate_wrf ) THEN
+        ALLOCATE(&
+             &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &DZS(1:num_soil_layers),&
+             &ZS(1:num_soil_layers))
+     ENDIF
+   ELSEIF (surface_physics=='LSMSCHEME') THEN
      num_soil_layers=4
-  ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
+     num_st_levels_input=2 
+     num_sm_levels_input=2 
+     IF ( allocate_wrf ) THEN
+        ALLOCATE(&
+             &st_levels_input(num_st_levels_input),&
+             &sm_levels_input(num_sm_levels_input),&
+             &st_input(ims:ime, jms:jme,num_st_levels_input+2),&
+             &sm_input(ims:ime, jms:jme,num_sm_levels_input+2))
+        ALLOCATE(&
+             &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &DZS(1:num_soil_layers),&
+             &ZS(1:num_soil_layers))
+     ENDIF
+
+   ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
      num_soil_layers=6
+     num_st_levels_input=2
+     num_sm_levels_input=2
+     IF ( allocate_wrf ) THEN
+        ALLOCATE(&
+             &st_levels_input(num_st_levels_input),&
+             &sm_levels_input(num_sm_levels_input),&
+             &st_input(ims:ime, jms:jme,num_st_levels_input),&
+             &sm_input(ims:ime, jms:jme,num_sm_levels_input))
+        ALLOCATE(&
+             &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &DZS(1:num_soil_layers),&
+             &ZS(1:num_soil_layers))
+     ENDIF
+
   ENDIF
   
 ! some other stuff we'll need
@@ -239,18 +305,44 @@ SUBROUTINE STATIC_INIT_WRF()
       ntime=NINT(timetot/dt)
    ENDIF
 
+   IF ( allocate_wrf ) THEN
+      ALLOCATE(splinetimes(nsplinetimes),&
+           &u_g_gen(nz,nsplinetimes),v_g_gen(nz,nsplinetimes),&
+           &p_gen(nz,nsplinetimes),p8w_gen(nz,nsplinetimes),&
+           &t_gen_uadv(nz,nsplinetimes),&
+           &t_gen_vadv(nz,nsplinetimes),&
+           &q_gen_uadv(nz,nsplinetimes),&
+           &q_gen_vadv(nz,nsplinetimes),&
+           &u_gen_uadv(nz,nsplinetimes),&
+           &u_gen_vadv(nz,nsplinetimes),&
+           &v_gen_uadv(nz,nsplinetimes),&
+           &v_gen_vadv(nz,nsplinetimes),&
+           &u_gen_wadv(nz,nsplinetimes),&
+           &v_gen_wadv(nz,nsplinetimes),&
+           &t_gen_wadv(nz,nsplinetimes),&
+           &q_gen_wadv(nz,nsplinetimes),&
+           &glw_gen(nsplinetimes),gsw_gen(nsplinetimes))
+           t_gen_vadv = 0.0
+           u_gen_vadv = 0.0
+           v_gen_vadv = 0.0
+           q_gen_vadv = 0.0
+           t_gen_uadv = 0.0
+           u_gen_uadv = 0.0
+           v_gen_uadv = 0.0
+           q_gen_uadv = 0.0
+           t_gen_wadv = 0.0
+           u_gen_wadv = 0.0
+           v_gen_wadv = 0.0
+           q_gen_wadv = 0.0
+   ENDIF
+
+ 
 END SUBROUTINE STATIC_INIT_WRF
 
 
-SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
+SUBROUTINE INIT_WRF(wrf_rnd_seed)
 
-   LOGICAL,INTENT(INOUT)           :: allocate_wrf
    INTEGER,INTENT(INOUT)        :: wrf_rnd_seed
-
-   IF (.NOT.init_gen) allocate_wrf=.TRUE.
-
-   IF ( allocate_wrf ) &
-        &ALLOCATE(moist( ims:ime, kms:kme, jms:jme, n_moist))
 
 !!! basic stuff
 
@@ -327,17 +419,6 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       IF (surface_physics=='SIMPLESCHEME') THEN
 
          num_soil_layers=1
-         IF ( allocate_wrf ) THEN         
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
-
          tslb=tsoil
          smois=0.
          sh2o = 0.
@@ -345,17 +426,7 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       ELSEIF (surface_physics=='SLABSCHEME') THEN
 
          num_soil_layers=5
-         IF ( allocate_wrf ) THEN
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
-         CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
+        CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
          CALL init_soil_1_real ( tsk , tmn , tslb , zs , dzs , &
            &num_soil_layers , 0 , &
            landmask_input , sst_input , flag_sst , &
@@ -368,25 +439,7 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       ELSEIF (surface_physics=='LSMSCHEME') THEN
          
          num_soil_layers=4
-         num_st_levels_input=2 
-         num_sm_levels_input=2 
          
-         IF ( allocate_wrf ) THEN
-            ALLOCATE(&
-                 &st_levels_input(num_st_levels_input),&
-                 &sm_levels_input(num_sm_levels_input),&
-                 &st_input(ims:ime, jms:jme,num_st_levels_input+2),&
-                 &sm_input(ims:ime, jms:jme,num_sm_levels_input+2))
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
-
          CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
          
          st_levels_input(1)=5
@@ -427,25 +480,7 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
          
          num_soil_layers=6
-         num_st_levels_input=2
-         num_sm_levels_input=2
          
-         IF ( allocate_wrf ) THEN
-            ALLOCATE(&
-                 &st_levels_input(num_st_levels_input),&
-                 &sm_levels_input(num_sm_levels_input),&
-                 &st_input(ims:ime, jms:jme,num_st_levels_input),&
-                 &sm_input(ims:ime, jms:jme,num_sm_levels_input))
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
-
          CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
          
          st_levels_input(1)=0
@@ -589,16 +624,6 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       ELSEIF (surface_physics=='SLABSCHEME') THEN
 
          num_soil_layers=5
-         IF ( allocate_wrf ) THEN
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
 
          CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
 
@@ -629,25 +654,7 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       ELSEIF (surface_physics=='LSMSCHEME') THEN
          
          num_soil_layers=4
-         num_st_levels_input=2 
-         num_sm_levels_input=2 
          
-         IF ( allocate_wrf ) THEN
-            ALLOCATE(&
-                 &st_levels_input(num_st_levels_input),&
-                 &sm_levels_input(num_sm_levels_input),&
-                 &st_input(ims:ime, jms:jme,num_st_levels_input+2),&
-                 &sm_input(ims:ime, jms:jme,num_sm_levels_input+2))
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
-
          CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
 
 
@@ -708,25 +715,7 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
       ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
          
          num_soil_layers=6
-         num_st_levels_input=2
-         num_sm_levels_input=2
          
-         IF ( allocate_wrf ) THEN
-            ALLOCATE(&
-                 &st_levels_input(num_st_levels_input),&
-                 &sm_levels_input(num_sm_levels_input),&
-                 &st_input(ims:ime, jms:jme,num_st_levels_input),&
-                 &sm_input(ims:ime, jms:jme,num_sm_levels_input))
-            ALLOCATE(&
-                 &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
-                 &DZS(1:num_soil_layers),&
-                 &ZS(1:num_soil_layers))
-         ENDIF
-
          CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
          
          IF (bamex) THEN
@@ -799,38 +788,7 @@ SUBROUTINE INIT_WRF(allocate_wrf,wrf_rnd_seed)
 
 ! initialize soil end
       
-      IF ( allocate_wrf ) THEN
-         ALLOCATE(splinetimes(nsplinetimes),&
-              &u_g_gen(nz,nsplinetimes),v_g_gen(nz,nsplinetimes),&
-              &p_gen(nz,nsplinetimes),p8w_gen(nz,nsplinetimes),&
-              &t_gen_uadv(nz,nsplinetimes),&
-              &t_gen_vadv(nz,nsplinetimes),&
-              &q_gen_uadv(nz,nsplinetimes),&
-              &q_gen_vadv(nz,nsplinetimes),&
-              &u_gen_uadv(nz,nsplinetimes),&
-              &u_gen_vadv(nz,nsplinetimes),&
-              &v_gen_uadv(nz,nsplinetimes),&
-              &v_gen_vadv(nz,nsplinetimes),&
-              &u_gen_wadv(nz,nsplinetimes),&
-              &v_gen_wadv(nz,nsplinetimes),&
-              &t_gen_wadv(nz,nsplinetimes),&
-              &q_gen_wadv(nz,nsplinetimes),&
-              &glw_gen(nsplinetimes),gsw_gen(nsplinetimes))
-              t_gen_vadv = 0.0
-              u_gen_vadv = 0.0
-              v_gen_vadv = 0.0
-              q_gen_vadv = 0.0
-              t_gen_uadv = 0.0
-              u_gen_uadv = 0.0
-              v_gen_uadv = 0.0
-              q_gen_uadv = 0.0
-              t_gen_wadv = 0.0
-              u_gen_wadv = 0.0
-              v_gen_wadv = 0.0
-              q_gen_wadv = 0.0
-      ENDIF
-
-      DO i=1,nsplinetimes
+     DO i=1,nsplinetimes
          splinetimes(i)=times_gen(1)+(i-1)*splineinterval
       ENDDO
 

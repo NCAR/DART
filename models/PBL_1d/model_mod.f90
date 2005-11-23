@@ -23,6 +23,8 @@ use     location_mod, only : location_type, get_dist, set_location, &
                              vert_is_level, vert_is_height
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
+use random_seq_mod, only : random_seq_type, random_gaussian, &
+                           init_random_seq, random_uniform
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, &
                              KIND_SURFACE_PRESSURE, &
@@ -57,7 +59,9 @@ public :: get_model_size, &
           nc_write_model_vars, &
           nc_read_model_vars, &
           pert_model_state, &
-          get_pblh
+          get_pblh, &
+          pert_params_time, &
+          adjust_param_spread
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -99,12 +103,7 @@ integer, parameter :: TYPE_GSWGEN  = 100,    TYPE_GLWGEN = 101, & !1D
                       TYPE_UGEN_WA = 114,    TYPE_VGEN_WA = 115, & 
                       TYPE_TGEN_WA = 116,    TYPE_QGEN_WA = 117
 
-! far away profiles may or may not be part of the external forcing - perhaps
-! diagnostic
-integer, parameter :: TYPE_RHO = 500, TYPE_U_G  = 501, &
-                      TYPE_V_G  = 502
-
-! yet more far away types that we may want to add to the state vector at some
+! far away types that we may want to add to the state vector at some
 ! point
 integer, parameter :: TYPE_SMOIS = 200,      TYPE_KEEPFR3DFLAG = 201, & ! nsoil
                       TYPE_SMFR3D = 202,     TYPE_SH2O = 203
@@ -123,13 +122,72 @@ integer, parameter :: TYPE_UZ0 = 300,        TYPE_VZ0 = 301, &   !scalars
                       TYPE_ACSNOW = 322,     TYPE_UST = 323, &
                       TYPE_PBLH = 324,       TYPE_TMN = 325
 
+! parameter section - first some strange ones
 integer, parameter :: TYPE_VEGFRA = 400
+
+! far away profiles may or may not be part of the external forcing - perhaps
+! diagnostic
+integer, parameter :: TYPE_RHO = 500, TYPE_U_G  = 501, &
+                      TYPE_V_G  = 502
+
+! parameter section - some out of state (constant) and are far away
+! others are in-state and will be assigned a true location
+! bad list because it might change in the model: ALBEDO, 
+integer, parameter ::  TYPE_EMISS = 600, TYPE_ALBEDO = 601, &
+                       TYPE_Z0    = 602, TYPE_THC    = 603, &
+                       TYPE_MAVAIL= 604
 
 integer, parameter :: calendar_type = NO_CALENDAR
 integer            :: internal_ensemble_counter = 0
 integer            :: number_ensemble_members = 0
 
-TYPE state_vector_meta_data ! additional necessary vars
+! these are parameters that will be stuffed in the the meta data type
+! soil variables in state vector to dart
+integer, parameter  ::   number_of_soil_variables = 1 
+                         ! (TSLB)
+! the usual profile variables in state to dart
+integer, parameter  ::   number_of_profile_variables =     8 
+                         ! (U, V, Z, T, QV, TH, TKE,P)
+! screen height vars in state vector to dart
+integer, parameter  ::   number_of_scalars =               5      
+                         ! (U10, V10, T2, Q2, TSK) 
+! external forcing
+integer, parameter  ::   number_of_2d_gen =               16 
+                         !(UGEN, VGEN, PGEN, P8WGEN,
+                         ! TGEN_UA, TGEN_VA,
+                         ! QGEN_UA, QGEN_VA,
+                         ! UGEN_UA, UGEN_VA,
+                         ! VGEN_UA, VGEN_VA,
+                         ! UGEN_WA, VGEN_WA,
+                         ! TGEN_WA, QGEN_WA)
+integer, parameter  ::   number_of_1d_gen =                2
+                         ! (GSWGEN, GLWGEN)
+! profile variables NOT in state vector to dart
+integer, parameter  ::   number_noassim_profiles =         3
+                         ! RHO, U_G, V_G
+! soil variables NOT in state vector to dart
+integer, parameter  ::   number_noassim_soil_vars =        4 
+                         ! (SMOIS, KEEPFR3DFLAG, 
+                         !  SMFR3D, SH2O)
+! scalars NOT in state vector to dart
+integer, parameter  ::   number_noassim_scalars = 26
+                         ! (UZ0, VZ0, THZ0, QZ0, 
+                         !  QVG, QSG, QCG, QSFC, 
+                         ! AKMS, AKHS, HOL, MOL, 
+                         ! GRDFLX, HFX, QFX, 
+                         ! PSHLTR, QSHLTR, 
+                         ! FLQC, FLHC, Q10, UDRUNOFF, 
+                         ! ACSNOM, ACSNOW, UST, PBLH, TMN)
+
+! parameters that depend on initialization date
+integer, parameter  ::   number_dependent_params = 1
+                         ! (VEGFRA)
+! parameters that are independent, and MAY be in the state
+integer, parameter  ::   number_total_params = 5
+                         ! (EMISS, ALBEDO, Z0, THC, MAVAIL)
+
+TYPE state_vector_meta_data
+! additional necessary vars
    integer             ::   model_size
    integer             ::   total_number_of_vars
 ! soil variables in state vector to dart
@@ -149,6 +207,16 @@ TYPE state_vector_meta_data ! additional necessary vars
    integer             ::   number_noassim_scalars
 ! parameters that depend on initialization date
    integer             ::   number_dependent_params
+! parameters that are independent, and are not in the state
+   integer             ::   number_independent_params
+! parameters in the state, will be estimated
+   integer             ::   number_state_params
+
+! list of parameter types and properties to estimate
+   integer, dimension(:), allocatable :: est_param_types
+   real(r8),dimension(:), allocatable :: pert_init_sd
+   real(r8),dimension(:), allocatable :: pert_param_sd
+   character(len=4),dimension(:), allocatable :: dist_shape
 
    integer, dimension(:), allocatable :: var_type
    integer, dimension(:), allocatable :: var_size
@@ -164,13 +232,15 @@ type(state_vector_meta_data)    :: wrf_meta
 type(proj_info)                 :: my_projection
 
 type(domain_static_data)        :: column
-!******my_projection is hard-coded below - put in wrf profile file?
 
 ! A flag for allocation, starts as true then goes to false with first
 ! call to init_wrf, which occurs in init_conditions.
 
 integer                         :: wrf_rnd_seed
 logical                         :: allocate_wrf = .true.
+
+! random sequence for the parameter estimates
+type (random_seq_type)          :: param_ran_seq
 
 contains
 
@@ -203,11 +273,13 @@ if(file_exist('wrf1d_namelist.input')) then
    close(unit_nml)
 endif
 
-! initialize the random sequence
+! initialize the random sequences
 wrf_rnd_seed = rnd_seed_val
+call init_random_seq(param_ran_seq)
 
 ! need some dimension information
-call static_init_wrf()
+call static_init_wrf(allocate_wrf)
+allocate_wrf = .false.
 
 ! initialize some timing stuff
 time_step = set_time(int(dt), 0)
@@ -217,28 +289,19 @@ call set_calendar_type(calendar_type)
 last_advance_time = set_time(start_forecast*3600,0)
 
 ! numbers
-wrf_meta%number_of_scalars = 5          ! (U10, V10, T2, Q2, TSK)
-wrf_meta%number_of_profile_variables = 8! (U, V, Z, T, QV, TH, TKE,P)
-wrf_meta%number_of_soil_variables = 1   ! (TSLB)
-wrf_meta%number_of_1d_gen = 2           ! (GSWGEN, GLWGEN)
-wrf_meta%number_of_2d_gen = 16          !(UGEN, VGEN, PGEN, P8WGEN,
-                                        ! TGEN_UA, TGEN_VA,
-                                        ! QGEN_UA, QGEN_VA,
-                                        ! UGEN_UA, UGEN_VA,
-                                        ! VGEN_UA, VGEN_VA,
-                                        ! UGEN_WA, VGEN_WA,
-                                        ! TGEN_WA, QGEN_WA)
-wrf_meta%number_noassim_profiles = 3    ! RHO, U_G, V_G
-wrf_meta%number_noassim_soil_vars = 4   ! (SMOIS, KEEPFR3DFLAG, &
-                                        !  SMFR3D, SH2O)
-wrf_meta%number_noassim_scalars = 26    ! (UZ0, VZ0, THZ0, QZ0 &
-                                        !  QVG, QSG, QCG, QSFC, &
-                                        ! AKMS, AKHS, HOL, MOL, &
-                                        ! GRDFLX, HFX, QFX, &
-                                        ! PSHLTR, QSHLTR, &
-                                        ! FLQC, FLHC, Q10, UDRUNOFF, &
-                                        ! ACSNOM, ACSNOW, UST, PBLH, TMN)
-wrf_meta%number_dependent_params = 1    ! (VEGFRA)
+wrf_meta%number_of_scalars = number_of_scalars
+wrf_meta%number_of_profile_variables = number_of_profile_variables
+wrf_meta%number_of_soil_variables = number_of_soil_variables
+wrf_meta%number_of_1d_gen = number_of_1d_gen
+wrf_meta%number_of_2d_gen = number_of_2d_gen
+wrf_meta%number_noassim_profiles = number_noassim_profiles
+wrf_meta%number_noassim_soil_vars = number_noassim_soil_vars
+wrf_meta%number_noassim_scalars = number_noassim_scalars
+wrf_meta%number_dependent_params = number_dependent_params
+wrf_meta%number_state_params = num_est_params !from namelist
+
+! these are not appended or retained in memory because they are constant
+wrf_meta%number_independent_params = number_total_params - num_est_params 
                                          
 
 ! compute the model size
@@ -250,7 +313,8 @@ wrf_meta%model_size = num_soil_layers * wrf_meta%number_of_soil_variables  &
                     + nz              * wrf_meta%number_noassim_profiles &
                     + num_soil_layers * wrf_meta%number_noassim_soil_vars &
                     + 1               * wrf_meta%number_noassim_scalars &
-                    + 1               * wrf_meta%number_dependent_params
+                    + 1               * wrf_meta%number_dependent_params &
+                    + 1               * wrf_meta%number_state_params
 
 ! state vector locations and wrf grid meta data
 wrf_meta%total_number_of_vars = wrf_meta%number_of_scalars &
@@ -261,12 +325,26 @@ wrf_meta%total_number_of_vars = wrf_meta%number_of_scalars &
                               + wrf_meta%number_noassim_profiles &
                               + wrf_meta%number_noassim_soil_vars &
                               + wrf_meta%number_noassim_scalars &
-                              + wrf_meta%number_dependent_params
+                              + wrf_meta%number_dependent_params &
+                              + wrf_meta%number_state_params
+
+allocate(wrf_meta%est_param_types(wrf_meta%number_state_params))
+allocate(wrf_meta%pert_init_sd(wrf_meta%number_state_params))
+allocate(wrf_meta%pert_param_sd(wrf_meta%number_state_params))
+allocate(wrf_meta%dist_shape(wrf_meta%number_state_params))
 
 allocate(wrf_meta%var_type(wrf_meta%total_number_of_vars))
 allocate(wrf_meta%var_size(wrf_meta%total_number_of_vars))
 allocate(wrf_meta%var_index(wrf_meta%total_number_of_vars))
 allocate(state_loc(wrf_meta%model_size))
+
+! fill the parameter estimation types (no error checking)
+do i = 1, wrf_meta%number_state_params
+  wrf_meta%est_param_types(i) = est_param_types(i)
+  wrf_meta%pert_init_sd(i) = pert_init_sd(i)
+  wrf_meta%pert_param_sd(i) = pert_param_sd(i)
+  wrf_meta%dist_shape(i) = dist_shape(i)
+enddo
 
 ! domain info - change lon to [0,360] for DART compliance
 if ( lon_ref < 0.0_r8 ) lon_ref = lon_ref + 360.0_r8
@@ -413,6 +491,16 @@ state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,-1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
+! here are the parameters appended to the state variable
+do i = 1, wrf_meta%number_state_params
+  wrf_meta%var_type(var_cnt) = wrf_meta%est_param_types(i)
+  wrf_meta%var_size(var_cnt) = 1
+  wrf_meta%var_index(var_cnt) = dart_index
+  state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,-1)  !only surface here
+  dart_index = dart_index + wrf_meta%var_size(var_cnt)
+  var_cnt = var_cnt + 1
+enddo
+
 ! all the stuff that we need to carry but don't want to affect
 ! THE ORDER IS IMPORTANT - make sure loop variables are correct
 ! 1D GEN vars
@@ -513,11 +601,12 @@ subroutine init_conditions(x)
   real(r8), intent(out)  :: x(:)
   integer :: i
 
-  call init_wrf(allocate_wrf,wrf_rnd_seed)
-
-  allocate_wrf = .false.
+  call init_wrf(wrf_rnd_seed)
 
   call wrf_to_vector(x)
+
+! initialize any parameter distributions
+  if ( wrf_meta%number_state_params > 0 ) call init_params(x)
 
 ! count the ensemble members
   internal_ensemble_counter = internal_ensemble_counter + 1
@@ -647,6 +736,27 @@ subroutine wrf_to_vector(x)
   x(wrf_meta%var_index(var_cnt)) = tsk(1,1)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
+
+! parameters
+  do vcnt = 1, wrf_meta%number_state_params
+    select case (wrf_meta%est_param_types(vcnt))
+      case (TYPE_EMISS)
+        x(wrf_meta%var_index(var_cnt)) = emiss(1,1)
+      case (TYPE_ALBEDO)
+        x(wrf_meta%var_index(var_cnt)) = albedo(1,1)
+      case (TYPE_Z0)
+        x(wrf_meta%var_index(var_cnt)) = z0(1,1)
+      case (TYPE_THC)
+        x(wrf_meta%var_index(var_cnt)) = thc(1,1)
+      case (TYPE_MAVAIL)
+        x(wrf_meta%var_index(var_cnt)) = mavail(1,1)
+      case default
+        call error_handler(E_ERR, 'wrf_to_vector', &
+         'problem with est_param unroll', source, revision, revdate)
+    end select
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
 
 ! all the far away ones
 ! gsw_gen...glw_gen
@@ -884,6 +994,9 @@ subroutine adv_1step(x, dart_time)
 
    call wrf_to_vector(x)
 
+! perturb the parameters at every time step
+   call pert_params_time(x)
+
    last_advance_time = dart_time
 
 end subroutine adv_1step
@@ -1012,6 +1125,27 @@ subroutine vector_to_wrf(x)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 
+! parameters
+  do vcnt = 1, wrf_meta%number_state_params
+    select case (wrf_meta%est_param_types(vcnt))
+      case (TYPE_EMISS)
+        emiss(1,1) = x(wrf_meta%var_index(var_cnt)) 
+      case (TYPE_ALBEDO)
+        albedo(1,1) = x(wrf_meta%var_index(var_cnt)) 
+      case (TYPE_Z0)
+        z0(1,1) = x(wrf_meta%var_index(var_cnt)) 
+      case (TYPE_THC)
+        thc(1,1) = x(wrf_meta%var_index(var_cnt)) 
+      case (TYPE_MAVAIL)
+        mavail(1,1) = x(wrf_meta%var_index(var_cnt)) 
+      case default
+        call error_handler(E_ERR, 'vector_to_wrf', &
+         'problem with est_param roll', source, revision, revdate)
+    end select
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
+
 ! all the far away ones
 ! gsw_gen...glw_gen
   do vcnt = 1, wrf_meta%number_of_1d_gen
@@ -1024,7 +1158,7 @@ subroutine vector_to_wrf(x)
         case (TYPE_GLWGEN)
           glw_gen(k-bot+1) = x(k)
         case default
-          call error_handler(E_ERR, 'wrf_to_vector', &
+          call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with 1d gen roll', source, revision, revdate)
       end select
     enddo
@@ -1073,7 +1207,7 @@ subroutine vector_to_wrf(x)
         case (TYPE_QGEN_WA)
           q_gen_wadv(iz,ispline) = x(k)
         case default
-          call error_handler(E_ERR, 'wrf_to_vector', &
+          call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with 2d gen roll', source, revision, revdate)
       end select
       iz = iz + 1
@@ -1099,7 +1233,7 @@ subroutine vector_to_wrf(x)
         case (TYPE_V_G)
           v_g(k-bot+1) = x(k)
         case default
-          call error_handler(E_ERR, 'wrf_to_vector', &
+          call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with nossim_profile roll', source, revision, revdate)
       end select
     enddo
@@ -1122,7 +1256,7 @@ subroutine vector_to_wrf(x)
         case (TYPE_SH2O)
           sh2o(1,k-bot+1,1) = x(k)
         case default
-          call error_handler(E_ERR, 'wrf_to_vector', &
+          call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with nossim_soil roll', source, revision, revdate)
       end select
     enddo
@@ -1186,7 +1320,7 @@ subroutine vector_to_wrf(x)
       case (TYPE_PBLH)
         pblh(1,1) = x(wrf_meta%var_index(var_cnt))
       case default
-        call error_handler(E_ERR, 'wrf_to_vector', &
+        call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with noassim_scalar roll', source, revision, revdate)
     end select
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
@@ -1199,7 +1333,7 @@ subroutine vector_to_wrf(x)
       case (TYPE_VEGFRA)
         vegfra(1,1) = x(wrf_meta%var_index(var_cnt)) 
       case default
-        call error_handler(E_ERR, 'wrf_to_vector', &
+        call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with dependent_params roll', source, revision, revdate)
     end select
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
@@ -1529,7 +1663,7 @@ end subroutine get_state_meta_data
 subroutine end_model()
 !------------------------------------------------------------------
 !
-! Does any shutdown and clean-up needed for model. Nothing for L04 for now.
+! Does any shutdown and clean-up needed for model. Nothing for pbl_1d for now.
 
 
 end subroutine end_model
@@ -1637,11 +1771,12 @@ integer :: StateVarID, MemberDimID, TimeDimID
 !------------------------------------------
 ! same for physical space
 !------------------------------------------
-integer :: ZVarVarID, SLVarVarID
-integer :: ZVarDimID, SLVarDimID
+integer :: ZVarVarID, SLVarVarID, PVarVarID
+integer :: ZVarDimID, SLVarDimID, PVarDimID
 integer :: ZVarID(10), &
            SLVarID(2), ScrVarID(5), SkinVarID(4), SclrVarID(1)
 ! U, V, Z, T, RHO, QV, TKE, P, U_G, V_G
+integer :: PVarID(wrf_meta%number_state_params) 
 
 !--------------------------------------------------------------------
 ! local variables
@@ -1652,6 +1787,11 @@ character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1,str2
+
+! strings for parameters
+character(len=10)     :: pName, pUnits      
+character(len=30)     :: pLongName      
+character(len=129)   :: errstring
 
 integer             :: i
 type(location_type) :: lctn
@@ -1705,7 +1845,8 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "ps_ref", ps_ref ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "lat_ref", lat_ref ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "lon_ref", lon_ref ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "julday", julday ))
-
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "parameters_estimated", &
+           wrf_meta%number_state_params ))
 
 !--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
@@ -1853,6 +1994,40 @@ else
            dimids = (/ MemberDimID, TimeDimID /), varid=SclrVarID(1)))
   call check(nf90_put_att(ncFileID, SclrVarID(1), "long_name", "PBL height"))
   call check(nf90_put_att(ncFileID, SclrVarID(1), "units", "m"))
+
+  ! and state parameters
+  do i = 1, wrf_meta%number_state_params
+    select case (wrf_meta%est_param_types(i))
+      case (TYPE_EMISS)
+        pName = "EMISS"
+        pLongName = "Surface emissivity"
+        pUnits = "fraction"
+      case (TYPE_ALBEDO)
+        pName = "ALBEDO"
+        pLongName = "Surface albedo"
+      case (TYPE_Z0)
+        pName = "Z0"
+        pLongName = "Surface roughness"
+        pUnits = "cm"
+      case (TYPE_THC)
+        pName = "THC"
+        pLongName = "Surface thermal heat capacity"
+        pUnits = ""
+      case (TYPE_MAVAIL)
+        pName = "MAVAIL"
+        pLongName = "Surface moisture availability"
+        pUnits = ""
+      case default
+        write(errstring,*) "No such parameter in the state vector"
+        call error_handler(E_ERR,'nc_write_model_atts', errstring, &
+           source, revision, revdate)
+    end select
+    call check(nf90_def_var(ncid=ncFileID, name=trim(pName), xtype=nf90_double,&
+             dimids = (/ MemberDimID, TimeDimID /), varid=PVarID(i)))
+    call check(nf90_put_att(ncFileID, PVarID(i), "long_name", trim(pLongName)))
+    call check(nf90_put_att(ncFileID, PVarID(i), "units", trim(pUnits)))
+  enddo
+
 endif
 
 ! Leave define mode so we can fill
@@ -1940,11 +2115,14 @@ integer                            :: ierr          ! return value of function
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, ZVarID(10), &
            ScrVarID(5), SLVarID(2), SkinVarID(4), SclrVarID(1)
+integer :: PVarID(wrf_meta%number_state_params)
 
 !-------------------------------------------------------------------------------
 ! local variables
 !-------------------------------------------------------------------------------
 
+character(len=129)   :: errstring
+character(len=10)  :: pName
 ierr = 0                      ! assume normal termination
 
 !-------------------------------------------------------------------------------
@@ -2031,6 +2209,41 @@ else
   call check(NF90_inq_varid(ncFileID, "PBLH", SclrVarID(1)) )
   call check(NF90_put_var(ncFileID, SclrVarID(1), pblh(1,1),  &
                start=(/ copyindex, timeindex /)))
+
+  ! and state parameters
+  do i = 1, wrf_meta%number_state_params
+    select case (wrf_meta%est_param_types(i))
+      case (TYPE_EMISS)
+        pName = "EMISS"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), emiss(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_ALBEDO)
+        pName = "ALBEDO"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), albedo(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_Z0)
+        pName = "Z0"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), z0(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_THC)
+        pName = "THC"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), thc(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_MAVAIL)
+        pName = "MAVAIL"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), mavail(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case default
+        write(errstring,*) "No such parameter in the state vector"
+        call error_handler(E_ERR,'nc_write_model_vars', errstring, &
+           source, revision, revdate)
+    end select
+ enddo
 
 endif
 
@@ -2234,7 +2447,7 @@ SUBROUTINE get_projection(projcode,sw_corner_lat, sw_corner_lon, &
    !                       text message each time an error code is returned.
    subroutine check(istatus)
       integer, intent ( in) :: istatus
-      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts',&
+      if(istatus /= nf90_noerr) call error_handler(E_ERR,'get_projection',&
          trim(nf90_strerror(istatus)), source, revision, revdate)
    end subroutine check
 END SUBROUTINE get_projection
@@ -2242,6 +2455,170 @@ END SUBROUTINE get_projection
 !----------------------------------------------------------------------
 !************* Miscellaneous functions/subroutines to do specific jobs
 !----------------------------------------------------------------------
+
+subroutine init_params(x)
+! Initializes parameters with a normal (or lognormal) ditribution
+
+   real(r8), intent(inout)  :: x(:)
+ 
+   integer :: iP, xloc
+   real(r8)              :: sd
+   character(len=129)    :: errstring
+   real(r8)              :: logP, logS
+
+!  Right now we perturb everything in log so as not to get negatives
+   do iP = 1, wrf_meta%number_state_params
+
+      xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
+    
+      if ( wrf_meta%dist_shape(iP) == 'norm' ) then
+
+         x(xloc) = x(xloc)*random_gaussian(param_ran_seq,1.0,wrf_meta%pert_init_sd(iP))
+
+      elseif ( wrf_meta%dist_shape(iP) == 'logn' ) then
+
+         logP = dlog(x(xloc))
+         logP = logP+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_init_sd(iP))
+         x(xloc) = dexp(logP)
+
+      else
+
+         call error_handler (E_ERR,'init_params',&
+              'do not know distribution '//wrf_meta%dist_shape(iP), &
+              source, revision, revdate)
+
+      endif
+
+   enddo   
+
+end subroutine init_params
+
+!----------------------------------------------------------------------
+
+subroutine pert_params_time(x)
+! Adds a little noise to any stoch parameters
+! This is separate in case we want a different distribution from the
+! initial perturbations.  This should be called during assimilation only.
+
+   real(r8), intent(inout)  :: x(:)
+ 
+   integer :: iP, xloc
+   real(r8)              :: sd, logP, logS
+   character(len=129)    :: errstring
+
+   do iP = 1, wrf_meta%number_state_params
+
+      xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
+
+      if ( wrf_meta%dist_shape(iP) == 'norm' ) then
+
+         x(xloc) = x(xloc)*random_gaussian(param_ran_seq,1.0,wrf_meta%pert_param_sd(iP))
+
+     elseif ( wrf_meta%dist_shape(iP) == 'logn' ) then
+
+if ( x(xloc) < 0.0 ) then
+  print*,x(xloc)
+  stop
+endif
+        logP = dlog(x(xloc))
+        logP = logP+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_param_sd(iP))
+        x(xloc) = dexp(logP)
+
+      else
+  
+         call error_handler (E_ERR,'pert_params_time',&
+              'do not know distribution '//wrf_meta%dist_shape(iP), &
+              source, revision, revdate)
+
+      endif
+
+   enddo
+
+end subroutine pert_params_time
+
+!---------------------------------------------------------------------
+subroutine adjust_param_spread(ens, nens)
+! given the ensemble, find the parameters and adjust the spread to the initial
+! values
+   integer, intent(in) :: nens
+   real(r8), intent(inout) :: ens(:,:)
+   integer :: iP, xloc, iEns
+   real(r8)              :: logP(nens)
+   real(r8)              :: mean
+   real(r8)              :: std, std_new, stmp
+   character(len=129)    :: errstring
+
+   
+   if ( maintain_initial_spread ) then
+
+      do iP = 1, wrf_meta%number_state_params
+
+         xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
+         std_new = wrf_meta%pert_init_sd(iP)
+
+         if ( wrf_meta%dist_shape(iP) == 'norm' ) then
+
+            mean = sum(ens(:,xloc))/nens
+            std = sqrt(sum((ens(:,xloc)-mean)**2) / (nens-1))
+            ens(:,xloc) = (ens(:,xloc)-mean) * (std_new/std) + mean
+         
+         elseif ( wrf_meta%dist_shape(iP) == 'logn' ) then
+
+            logP(:) = dlog(ens(:,xloc))
+            mean = sum(logP)/nens
+            std = sqrt(sum((logP-mean)**2) / (nens-1))
+            logP = (logP-mean) * (std_new/std) + mean
+            ens(:,xloc) = dexp(logP)
+ 
+         else
+
+            call error_handler (E_ERR,'adjust_param_spread',&
+                 'do not know distribution '//wrf_meta%dist_shape(iP), &
+                 source, revision, revdate)
+
+         endif
+
+         if ( minval(ens(:,xloc)) < 0.0 ) stop 'bad'
+
+         ! constrain some parameters to [0,1]
+         do iEns = 1, nens
+            if ( ens(iEns,xloc) > 1.0_r8 ) then
+               select case (wrf_meta%est_param_types(iP))
+                  case (TYPE_EMISS)
+                     ens(iEns,xloc) = 1.0_r8
+                  case (TYPE_ALBEDO)
+                     ens(iEns,xloc) = 1.0_r8
+                  case (TYPE_MAVAIL)
+                     ens(iEns,xloc) = 1.0_r8
+                  case default
+               end select
+            endif 
+            if ( ens(iEns,xloc) < 0.0_r8 ) then
+               select case (wrf_meta%est_param_types(iP))
+                  case (TYPE_EMISS)
+                     ens(iEns,xloc) = 0.000001_r8
+                  case (TYPE_ALBEDO)
+                     ens(iEns,xloc) = 0.000001_r8
+                  case (TYPE_THC)
+                     ens(iEns,xloc) = 0.000001_r8
+                  case (TYPE_Z0)
+                     ens(iEns,xloc) = 0.000001_r8
+                  case (TYPE_MAVAIL)
+                     ens(iEns,xloc) = 0.000001_r8
+                  case default
+               end select
+            endif 
+         enddo
+         print*,'*****MIN/MAX after adjust*****',minval(ens(:,xloc)),maxval(ens(:,xloc))
+      enddo
+
+    else
+      return
+    endif
+
+end subroutine adjust_param_spread
+
+!-----------------------------------------------------------------
 
 function get_pblh(x)
 ! Get diagnosed PBL height.
