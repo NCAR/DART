@@ -1850,17 +1850,14 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "parameters_estimated", &
 
 !--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
+! StateVariable is needed by some of our post-processing routines.
 !--------------------------------------------------------------------
-if ( output_state_vector ) then
-  call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=wrf_meta%model_size, dimid = StateVarDimID))
-else
-  call check(nf90_def_dim(ncid=ncFileID, name="z_level", &
-                        len=nz, dimid = ZVarDimID))
-  call check(nf90_def_dim(ncid=ncFileID, name="sl_level", &
-                        len=num_soil_layers, dimid = SLVarDimID))
-endif
-
+call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
+                      len=wrf_meta%model_size, dimid = StateVarDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="z_level", &
+                      len=nz, dimid = ZVarDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="sl_level", &
+                      len=num_soil_layers, dimid = SLVarDimID))
 
 !--------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
