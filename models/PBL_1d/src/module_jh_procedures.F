@@ -1,7 +1,5 @@
 MODULE module_jh_procedures
 
-  USE module_model_constants
-
   IMPLICIT NONE
 
 CONTAINS
@@ -17,10 +15,10 @@ CONTAINS
        &start_hour_wrf, hour_interval_wrf, start_forecast,&
        &forecast_length,&
        &Control_index1,Control_index2,Control_w,infilename)
+
     USE module_nr_procedures
     USE module_model_constants
 
-    IMPLICIT NONE
     INCLUDE 'netcdf.inc'
 
 ! Subroutine selects a random forecast from file wrf_cntl.nc
