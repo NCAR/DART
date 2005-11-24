@@ -75,7 +75,7 @@ contains
 
   function real_obs_sequence (year, month, day, max_num, select_obs, ObsBase, &
            ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
-           obs_U, obs_V, obs_T, obs_PS, obs_QV)
+           obs_U, obs_V, obs_T, obs_PS, obs_QV, bin_beg, bin_end)
 !------------------------------------------------------------------------------
 !  this function is to prepare NCEP decoded BUFR data to DART sequence format
 !
@@ -100,6 +100,8 @@ integer :: obs_unit, obs_unit2
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
 real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, rcount, zob2
 real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
+
+real (r8) :: bin_beg, bin_end
 
 character(len = 8 ) :: obsdate, obsdate2
 character(len = 80) :: obsfile, obsfile2
@@ -143,6 +145,10 @@ imin = 0
 sec  = 0
 current_day = set_date(year, month, day, hour, imin, sec)
 call get_time(current_day, sec0, day0)
+
+!   output the day and sec.
+     print*, 'day, sec= ', sec0, day0
+
 
 day_plus = day0 + 1
 
@@ -197,6 +203,7 @@ obsloop:  do
    if(dfile ==2) then
       read(obs_unit2,880,end=200) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
                                    obstype, iqc, subset, pc
+      time = time + 24.0_r8
    endif
 
  880 format(f4.2,2f7.3,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
@@ -211,9 +218,16 @@ obsloop:  do
    endif 
 
    ! skip the observations not at exact 00Z of the next day
-   if(time > 3.0_r8 .and. dfile == 2) then
+   if(time > 27.0_r8 .and. dfile == 2) then
       cycle obsloop 
    endif 
+
+!  selec the obs for the time window
+   if(time >= bin_beg .and. time <= bin_end) then
+    else
+      iskip = iskip + 1
+      cycle obsloop
+   endif
 
    obs_prof = rcount/1000000
   if(obs_prof == 1) then
@@ -361,8 +375,7 @@ obsloop:  do
    ! set obs time
 
    seconds = time * 3600
-   if(dfile == 1) days = day0
-   if(dfile == 2) days = day_plus
+   days = day0
 
    ! define the obs_def
 

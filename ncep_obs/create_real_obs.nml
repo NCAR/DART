@@ -17,5 +17,6 @@
    obs_V  = .false., 
    obs_T  = .false.,
    obs_PS = .false.,
-   obs_QV = .false.   /
+   obs_QV = .false.,
+   daily_file = .true./
 
