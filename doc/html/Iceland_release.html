@@ -38,24 +38,46 @@ http://www.gnu.org/licenses/gpl.txt
 <P>The Data Assimilation Research Testbed (DART) is designed to 
 facilitate the combination of assimilation algorithms, models, 
 and observation sets to allow increased understanding of all three. 
-The DART programs have been compiled with the Intel 7.1 Fortran compiler 
-and run on a linux compute-server. If your system is different, you will 
-definitely need to read the 
-<A HREF="#customizations">Customizations</A> section.
+The DART programs have been compiled with several Fortran 90 compilers 
+and run on a linux compute-server and linux clusters. 
+You should definitely need read the 
+<A HREF="#customizations">Customizations</A> section.<BR><BR>
+
+DART employs a modular programming approach to apply an Ensemble Kalman Filter
+which nudges models toward a state that is more consistent with information 
+from a set of observations. Models may be swapped in and out, as can 
+different algorithms changes to the Ensemble Kalman Filter. The method 
+requires running multiple instances of a model to generate an ensemble of 
+states. A forward operator appropriate for the type of observation being used is
+applied to each of the states to generate the model's estimate of the observation.
+Comparing these estimates and their uncertainty to the observation and 
+its uncertainty ultimately results in the adjustments to the model states. 
+Sort of. There's more to it, described in detail in the tutorial directory 
+of the package.<BR><BR>
+
+DART ultimately creates a few netCDF files containing the model states just before 
+the adjustment <em class=file>Prior_Diag.nc</em> and just after the adjustment 
+<em class=file>Posterior_Diag.nc</em> as well as a file 
+<em class=file>obs_seq.final</em> with the model estimates of the observations.
+There is a suite of Matlab&#174; functions that facilitate exploration of the
+results.
 </P>
 
 <P>
-<A HREF="DART_Iceland.tar.gz">The latest software release -- "Iceland".</A>
+<A HREF="DART_iceland.tar.gz">The latest software release -- "Iceland".</A>
 </P>
 
-<P>The <b>Iceland</b> release provides several new models and has a fundamentally
-different implementation of the low-level routines that will now operate on a
-much broader class of observations.  As such, the first two program units have
-changed somewhat. The strategy of these two programs units is still the same; 
-declare the characteristics of the observations and then declare the temporal nature 
-of the observations. These are still destined to be run as a back-end to some sort
-of GUI-driven interface, so virtually no work has been done to change the level of
-user interaction required to run these programs.
+<P>The <b>Iceland</b> release provides several new models and has a greatly expanded capability for <b>real</b> observations which required a fundamentally
+different implementation of the low-level routines. It is now required to run a
+preprocessor on several of the program units to construct the source code files
+which will be compiled by the remaining units. Due to the potentially large number
+of observations types possible and for portability reasons, the preprocessor
+is actually a F90 program that uses the namelist mechanism for specifying the
+observations types to be included. This also prevents having a gory set of 
+compile flags that is different for every compiler. 
+One very clever colleague also 'built a better mousetrap' and figured out 
+how to effectively and robustly read namelists, detect errors, and 
+generate meaningful error messages. HURRAY!
 </P>
 
 <P>
@@ -82,8 +104,8 @@ DART specific formats to be available. For instance,
 observation set given a particular model and a description 
 of a sequence of observations requires an input file that 
 describes this observation sequence.
-At present, the observation files for DART are inefficient but 
-human-readable ascii files in a custom format. Third, many DART 
+At present, the observation files for DART are in a custom format in either 
+human-readable ascii or more compact machine-specific binary. Third, many DART 
 modules (including main programs) make use of the Fortan90 
 namelist facility to obtain values of certain parameters 
 at run-time. All programs look for a namelist input file 
@@ -92,18 +114,7 @@ the program is executed. The <em class=file>input.nml</em>
 file can contain a sequence of individual Fortran90 namelists 
 which specify values of particular parameters for modules that 
 compose the executable program.
-Unfortunately, the Fortran90 namelist interface 
-is poorly defined in the language standard, leaving 
-considerable leeway to compiler developers in implementing the 
-facility. The Intel 7.1 compiler has some particularly unpleasant 
-behavior when a namelist file contains an entry that is NOT defined 
-in the program reading the namelist.
-Error behavior is unpredictable, but often results in read 
-errors for other input files opened by DART programs.
-If you encounter run-time read errors, the first course of action
-should be to ensure the components of the namelist are actual components.
-Changing the names of the namelist components <strong>will</strong>
-create unpleasantries. DART provides a mechanism that automatically 
+DART provides a mechanism that automatically 
 generates namelists with the default values for each program to be run.  
 </P>
 
@@ -137,13 +148,13 @@ indented gray box.
 </div><BR>
 And the contents of a file are enclosed in a box with a border:
 <div class=routine>
-&hypothetical_nml<BR>
+&#38;hypothetical_nml<BR>
 &nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<BR>
 &nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<BR>
 &nbsp;&nbsp;init_time_days = 0,<BR>
 &nbsp;&nbsp;init_time_seconds = 0,<BR>
 &nbsp;&nbsp;output_interval = 1<BR>
-&end</div>
+&#38;end</div>
 </P>
 
 <!--==================================================================-->
@@ -164,8 +175,6 @@ the following steps:
 <OL><LI><A HREF="#compilers">Determine which F90 compiler is available</A>.</LI>
     <LI><A HREF="#netCDFlib">Determine the location of the 
         <em class=code>netCDF</em> library</A>.</LI>
-    <LI><A HREF="#udunits">Determine the location of the 
-        <em class=code>udunits</em> library</A>.</LI>
     <LI><A HREF="#download">Download the DART software bundle and untar it 
         into the expected source tree</A>.</LI>
     <LI><A HREF="#customizations">Modify certain DART files to reflect 
@@ -201,12 +210,16 @@ so please email me (Tim Hoar) thoar 'at' ucar 'dot' edu</A>
 
 <P>
 The DART software has been successfully built on several Linux/x86
-platforms with the 
+platforms with several versions of the 
 <A HREF="http://www.intel.com/software/products/compilers/flin">Intel Fortran
-Compiler 7.1 for Linux</A>, which is free for individual scientific use. 
-It has also been built and successfully run with the 
-<A HREF="http://www.pgroup.com">Portland Group Fortran Compiler</A> (5.02), and again with
-the Intel 8.0.034 compiler. 
+Compiler for Linux</A>, which (at one point) is/was free for individual 
+scientific use. 
+It has also been built and successfully run with several 
+versions of each of the following:
+<A HREF="http://www.pgroup.com">Portland Group Fortran Compiler</A>, 
+<A HREF="http://www.lahey.com">Lahey Fortran Compiler</A>, 
+<A HREF="http://www.pathscale.com">Pathscale Fortran Compiler</A>, 
+<A HREF="http://www.absoft.com">Absoft Fortran 90/95 Compiler (Mac OSX)</A>. 
 Since recompiling the code is a necessity to experiment
 with different models, there are no binaries to distribute.
 </P>
@@ -255,42 +268,22 @@ section.
 
 <!--==================================================================-->
 
-<A NAME="udunits"></A>
-<HR></HR>
-<H2>Requirements: the <em class=file>udunits</em> library</H2>
-
-<P>DART also uses the <strong>very</strong> common 
-<A HREF="http://my.unidata.ucar.edu/content/software/udunits/index.html">
-udunits</A> library for manipulating units of physical quantities. If,
-somehow, it is not installed on your system, you will need to install
-it (instructions are available from 
-<A HREF="http://www.unidata.ucar.edu">Unidata's Downloads</A> page).
-</P>
-
-<P>
-The location of the udunits library, <em class=file>libudunits.a</em>,
-will be needed by the makefile template, as described in the 
-<A HREF="#compiling">compiling</A> section.
-</P>
-
-<!--==================================================================-->
-
 <A NAME="download"></A>
 <HR></HR>
 <H2>Unpacking the distribution.</H2>
 
 <P>
 The DART source code is distributed as a compressed tar file. 
-<A HREF="DART_Iceland.tar.gz">DART_Iceland.tar.gz</A>
-[22347692 bytes]. When untarred, the source tree will begin with a 
+<A HREF="DART_iceland.tar.gz">DART_iceland.tar.gz</A>
+[79773188 bytes]. When untarred, the source tree will begin with a 
 directory named <em class=file>DART</em> and will be approximately 
-105 Mb. Compiling the code in this tree (as is usually the case) will
+203 Mb. Compiling the code in this tree (as is usually the case) will
 necessitate much more space.
 </P>
 
 <div class=unix>
-   gunzip <em class=file>DART_Iceland.tar.gz</em><BR>
-   tar -xvf <em class=file>DART_Iceland.tar</em><BR>
+   gunzip <em class=file>DART_iceland.tar.gz</em><BR>
+   tar -xvf <em class=file>DART_iceland.tar</em><BR>
 </div>
 
 <P>
@@ -371,21 +364,22 @@ This is how you inform the build process of the specifics of your system.
 Our intent is that you copy one that is similar to your system into 
 <em class=file>mkmf.template</em> and customize it.
 For the discussion that follows, knowledge of the contents of one of these
-templates (i.e. <em class=file>mkmf.template.pgi</em>) is needed: 
-(note that only the first few lines are shown here)
+templates (i.e. <em class=file>mkmf.template.pgf90.ghotiol</em>) is needed: 
+(note that only the LAST lines are shown here, 
+the head of the file is just a big comment)
 </P>
 
 <div class=routine>
 # Makefile template for PGI f90<BR>
 FC = pgf90<BR>
-CPPFLAGS =<BR>
-FFLAGS = -r8 -Ktrap=fp -pc 64 -I/usr/local/netcdf/include<BR>
 LD = pgf90<BR>
-LDFLAGS = $(LIBS)<BR>
-LIBS = -L/usr/local/netcdf/lib -lnetcdf -L/usr/local/udunits-1.11.7/lib -ludunits<BR>
+CPPFLAGS =<BR>
 LIST = -Mlist<BR>
+NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.2-4<BR>
+FFLAGS = -O0 -Ktrap=fp -pc 64 -I$(NETCDF)/include<BR>
+LIBS = -L$(NETCDF)/lib -lnetcdf<BR>
+LDFLAGS = $(LIBS)<BR>
 <BR>
-# you should never need to change any lines below.<BR>
 ...<BR>
 </div>
 
@@ -397,10 +391,25 @@ lines really doesn't make any difference.
 The <em class=code>FC = pgf90</em> line ultimately defines the 
 Fortran90 compiler to use, etc.
 The lines which are most likely to need site-specific changes 
-start with <em class=code>FFLAGS</em> and <em class=code>LIBS</em>, which 
+start with <em class=code>FFLAGS</em> and <em class=code>NETCDF</em>, which 
 indicate where to look for the netCDF F90 modules and the 
-location of the netCDF and udunits libraries.
+location of the netCDF library and modules.
 </P>
+
+<A HREF="netCDF"></A>
+<H4 class=indent2>NETCDF</H4>
+
+<P class=indent1>
+Modifying the <em class=code>NETCDF</em> value should be relatively
+straightforward.<BR>
+Change the string to reflect the location of your netCDF installation 
+containing <em class=file>netcdf.mod</em> and
+<em class=file>typesizes.mod</em>.
+The value of the <em class=code>NETCDF</em> variable will be used by 
+the <em class=code>FFLAGS, LIBS,</em> and <em class=code>LDFLAGS</em> 
+variables.<BR>
+</P>
+
 
 <A HREF="fflags"></A>
 <H4 class=indent2>FFLAGS</H4>
@@ -408,25 +417,9 @@ location of the netCDF and udunits libraries.
 <P class=indent1>
 Each compiler has different compile flags, so there is really no way
 to exhaustively cover this other than to say the templates as we supply
-them should work -- depending on the location of the netCDF modules 
-<em class=file>netcdf.mod</em> and
-<em class=file>typesizes.mod</em>.
-Change the <em class=code>/usr/local/netcdf/include</em> string to
-reflect the location of your modules.
-The low-order models can be compiled without the <em class=code>-r8</em> 
+them should work -- depending on the location of your netCDF.
+The low-order models can be compiled without a <em class=code>-r8</em> 
 switch, but the <em class=file>bgrid_solo</em> model cannot. 
-</P>
-
-<A HREF="libs"></A>
-<H4 class=indent2>LIBS</H4>
-
-<P class=indent1>
-Modifying the <em class=code>LIBS</em> value should be relatively
-straightforward.<BR>
-Change the <em class=code>/usr/local/netcdf/lib</em> string to
-reflect the location of your <em class=file>libnetcdf.a</em>.<BR>
-Change the <em class=code>/usr/local/udunits-1.11.7/lib</em> string to
-reflect the location of your <em class=file>libudunits.a</em>.
 </P>
 
 <A NAME="path_names"></A>
@@ -437,10 +430,12 @@ Several <em class=file>path_names_*</em> files are provided in
 the <em class=file>work</em> directory for each specific model, 
 in this case: <em class=file>DART/models/lorenz_63/work</em>.
 <OL>
+   <LI><em class=file>path_names_preprocess</em></LI>
    <LI><em class=file>path_names_create_obs_sequence</em></LI>
    <LI><em class=file>path_names_create_fixed_network_seq</em></LI>
    <LI><em class=file>path_names_perfect_model_obs</em></LI>
    <LI><em class=file>path_names_filter</em></LI>
+   <LI><em class=file>path_names_obs_diag</em></LI>
 </OL>
 Since each model comes with its own set of files, no further 
 customization is needed.
@@ -464,24 +459,46 @@ ls -1
 </div><BR>
 
 With the result:
-<PRE>filter_ics 
-mkmf_create_obs_sequence 
-mkmf_create_fixed_network_seq 
-mkmf_filter 
-mkmf_perfect_model_obs 
-path_names_create_obs_sequence 
-path_names_create_fixed_network_seq 
-path_names_filter 
-path_names_perfect_model_obs 
-perfect_ics</PRE>
+<PRE>filter_ics
+filter_restart
+input.nml
+mkmf_create_fixed_network_seq
+mkmf_create_obs_sequence
+mkmf_filter
+mkmf_obs_diag
+mkmf_perfect_model_obs
+mkmf_preprocess
+obs_seq.final
+obs_seq.in
+obs_seq.out
+obs_seq.out.average
+obs_seq.out.x
+obs_seq.out.xy
+obs_seq.out.xyz
+obs_seq.out.z
+path_names_create_fixed_network_seq
+path_names_create_obs_sequence
+path_names_filter
+path_names_obs_diag
+path_names_perfect_model_obs
+path_names_preprocess
+perfect_ics
+perfect_restart
+Posterior_Diag.nc
+Prior_Diag.nc
+set_def.out
+True_State.nc
+workshop_setup.csh </PRE>
 
 <P>
-There are four <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
+There are six <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
 files for the programs 
+<em class=program>preprocess</em>, 
 <em class=program>create_obs_sequence</em>, 
 <em class=program>create_obs_fixed_network_seq</em>, 
-<em class=program>perfect_model_obs</em>, and 
-<em class=program>filter</em> along with the 
+<em class=program>perfect_model_obs</em>,
+<em class=program>filter</em>, and 
+<em class=program>obs_diag</em> along with the 
 corresponding <em class=file>path_names_</em><em class=italic>xxxxxx</em> files.
 You can examine the contents of one of the 
 <em class=file>path_names_</em><em class=italic>xxxxxx</em> files, 
@@ -492,7 +509,7 @@ the L63 model. All of these paths are relative to your
 <em class=file>DART</em> directory.
 The first path is the main program 
 (<em class=file>filter.f90</em>) and is followed by all 
-the Fortran90 modules used by this program.
+the Fortran90 modules used by this program (after preprocessing).
 </P>
 
 <P>
@@ -506,36 +523,69 @@ It is not supposed to compile anything:
 </P>
 
 <div class=unix>
-csh mkmf_create_obs_sequence<BR>
+csh mkmf_preprocess<BR>
 make
 </div>
 
 <P>
 The first command generates an appropriate <em class=file>Makefile</em> and
-the <em class=file>input.nml.create_obs_sequence_default</em> file. 
+the <em class=file>input.nml.preprocess_default</em> file. 
 The second command results in the compilation of a series of 
 Fortran90 modules which ultimately produces an executable file: 
-<em class=program>create_obs_sequence</em>.
+<em class=program>preprocess</em>.
 Should you need to make any changes to the 
 <em class=file>DART/mkmf/mkmf.template</em>, 
 you will need to regenerate the <em class=file>Makefile</em>.  
+<BR><BR>
+The <em class=program>preprocess</em> program actually builds source code to
+be used by all the remaining modules. It is <strong>imperative</strong> to
+actually <strong>run</strong> <em class=program>preprocess</em> before building
+the remaining executables. This is how the same code can assimilate state 
+vector 'observations' for the Lorenz_63 model and real radar reflectivities for WRF 
+without needing to specify a set of radar operators for the Lorenz_63 model!
+<BR><BR>
+<em class=program>preprocess</em> reads the <em class=code>&#38;preprocess_nml</em>
+namelist to determine what observations and operators to incorporate. For this exercise, we will use the values in <em class=file>input.nml</em>.
+<em class=program>preprocess</em> is designed to abort if
+the files it is supposed to build already exist. For this reason, it is necessary
+to remove a couple files (if they exist) before you run the preprocessor.
+It is just a good habit to develop.  
+</P>
+
+<div class=unix>
+\rm -f ../../obs_def/obs_def_mod.f90<BR>
+\rm -f ../../obs_kind/obs_kind_mod.f90<BR>
+./preprocess<BR>
+ls -l ../../obs_def/obs_def_mod.f90<BR>
+ls -l ../../obs_kind/obs_kind_mod.f90<BR>
+</div>
+<P>
+This created <em class=file>../../obs_def/obs_def_mod.f90</em> from
+<em class=file>../../obs_kind/DEFAULT_obs_kind_mod.F90</em> and several other
+modules. <em class=file>../../obs_kind/obs_kind_mod.f90</em> was created similarly.
+Now we can build the rest of the project.
+<BR><BR>
 A series of object files for each module compiled will also be 
 left in the work directory, as some of these are undoubtedly needed by the build
 of the other DART components.
-You can proceed to create the other three programs needed to work with 
+You can proceed to create the other five programs needed to work with 
 L63 in DART as follows:
 </P>
 
 <div class=unix>
+csh mkmf_create_obs_sequence<BR>
+make<BR>
 csh mkmf_create_fixed_network_seq<BR>
 make<BR>
 csh mkmf_perfect_model_obs<BR>
 make<BR>
 csh mkmf_filter<BR>
+make<BR>
+csh mkmf_obs_diag<BR>
 make
 </div><BR>
 
-The result (hopefully) is that four executables now 
+The result (hopefully) is that six executables now 
 reside in your work directory. The most common problem is that the netCDF libraries
 and include files (particularly <em class=file>typesizes.mod</em>) are not found. 
 Edit the <em class=file>DART/mkmf/mkmf.template</em>,
@@ -543,6 +593,10 @@ recreate the <em class=file>Makefile</em>, and try again.<BR><BR>
 
 <TABLE border=0 cellpadding=1 width=100%>
 <TR><TH>program</TH><TH>purpose</TH></TR>
+<TR><TD><em class=program>preprocess</em></TD>
+    <TD>creates custom source code for just the observations
+        of interest
+    </TD></TR>
 <TR><TD><em class=program>create_obs_sequence</em></TD>
     <TD>specify a (set) of observation characteristics taken 
         by a particular (set of) instruments
@@ -555,6 +609,9 @@ recreate the <em class=file>Makefile</em>, and try again.<BR><BR>
     </TD></TR>
 <TR><TD><em class=program>filter</em></TD>
     <TD>perform experiments
+    </TD></TR>
+<TR><TD><em class=program>obs_diag</em></TD>
+    <TD>creates observation-space diagnostic files to be explored by the Matlab&#174; scripts.
     </TD></TR>
 </TABLE>
 
@@ -1142,8 +1199,6 @@ To do this, see the detailed discussion of matlab diagnostics in Appendix I.
 <A NAME="simulate"></A>
 <H3 class=indent1>3. Simulate a particular observing system.</H3>
 
-<em class=changed>Please note this input sequence was wrong prior to 14 Sep 2004, sorry -- TJH</em>
-
 <P class=indent1>Begin by using <em class=program>create_obs_sequence</em> to 
 generate an observation set in which each of the 3 state variables 
 of L63 is observed with an observational error variance of 1.0 
@@ -1294,13 +1349,15 @@ Now try applying all of the matlab diagnostic functions described in
 <A NAME="matlab"></A>
 <!--==================================================================-->
 <HR>
-<H2>Matlab Diagnostics</H2>
+<H2>Matlab&#174; Diagnostics</H2>
 <P>The output files are netCDF files, and may be examined with many
-different software packages. We happen to use Matlab, and provide our
+different software packages. We happen to use Matlab&#174;, and provide our
 diagnostic scripts in the hopes that they are useful.
 </P>
-<P>The Matlab diagnostic scripts and underlying functions reside in the 
-<em class=file>DART/matlab </em> directory. They are reliant on the public-domain 
+<P>
+The diagnostic scripts and underlying functions reside in two places: 
+<em class=file>DART/diagnostics/matlab</em> and
+<em class=file>DART/matlab</em>. They are reliant on the public-domain 
 <A HREF="http://woodshole.er.usgs.gov/staffpages/cdenham/public_html/MexCDF/nc4ml5.html" >
 netcdf toolbox</A> from 
 <em class=file>http://woodshole.er.usgs.gov/staffpages/cdenham/public_html/MexCDF/nc4ml5.html</em>
@@ -1308,14 +1365,18 @@ as well as the public-domain
 <A HREF="http://www.marine.csiro.au/sw/matlab-netcdf.html">CSIRO matlab/netCDF interface</A>
 from <em class=file>http://www.marine.csiro.au/sw/matlab-netcdf.html</em>.
 If you do not have them installed on your system and want to use Matlab to peruse netCDF,
-you must follow their installation instructions.
+you must follow their installation instructions. The 'interested reader' may want to
+look at the <em class=code>DART/matlab/startup.m</em> file I use on my system.
+If you put it in your <em class=unix>$HOME/matlab</em> directory, it is invoked every time you start up Matlab.
 </P>
 
 <P>Once you can access the <em class=program>getnc</em> function from within Matlab,
-   you can use our diagnostic scripts. It is necessary to prepend the location of
-   the DART/matlab scripts to the matlabpath. Keep in mind the location of the netcdf
-   operators on your system WILL be different from ours ... and that's OK.
-   <BR> add the diagnostic/matlab directory to matlabpath
+you can use our diagnostic scripts. It is necessary to prepend the location of
+the <em class=file>DART/matlab</em> scripts to the <em class=code>matlabpath</em>. 
+Keep in mind the location of the netcdf
+operators on your system WILL be different from ours ... and that's OK.
+<BR>
+<BR>
 
 
 
@@ -1343,6 +1404,7 @@ Posterior_Diag.nc  Prior_Diag.nc  True_State.nc
 
 
 >><em class=input>path('../../../matlab',path)</em>
+>><em class=input>path('../../../diagnostics/matlab',path)</em>
 >><em class=input>which plot_ens_err_spread</em>
 ../../../matlab/plot_ens_err_spread.m
 >><em class=input>help plot_ens_err_spread</em>

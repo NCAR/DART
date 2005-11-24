@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+      <!-- $Id$ -->
+      <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+      <title>Data Assimilation Research Testbed -- DART</title>
+      <link href="../../styles/styles.css" rel="stylesheet" type="text/css">
+      <style type="text/css">
+                <!--
+                @import url(../../styles/fontsizer.css);
+                @import url(../../styles/navigation.css);
+                -->
+      </style>
+      <!--#include virtual="../../common/javascript.html" -->
+</head>
+
+<body>
+
+<!--#include virtual="header.html" -->
+
+<A NAME="top"></A>
+
+<table  border=0 cellpadding="2" cellspacing="4">
+
+   <TR VALIGN="TOP">
+
+   <TD><!-- LEFT HAND SIDE COLUMN NAVIGATION BAR -->
+       <!-- [insert a # here]  include virtual="navigation.html"-->
+   </TD>
+
+   <TD><!-- Right HAND SIDE COLUMN -->
+
+      <H1>The Data Assimilation Research Testbed -- DART</H1>
+      <P>
+      The DART software provides a flexible, extensible framework for conducting
+      data assimilation research on a wide variety of models and observations.
+      In order to facilitate the incorporation of new models (which, in the 
+      Atmospheric Science community are generally written in F90), the DART 
+      software is written primarily in F90. The noteable exceptions are the
+      shell scripts that control execution and the diagnostic scripts in Matlab.
+      </P>
+
+      <H1>DART requirements</H1>
+      <P>
+      Minimally, you will need a Fortran90 compiler and the netCDF libraries 
+      built with the F90 interface. 
+      </P>
+
+      <H1>DART tested platforms/models/compilers</H1>
+      <P>
+      With the Hawaii release of DART, great strides have been made in portability.
+      DART has now been compiled under several versions of the Intel Fortran Compiler,
+      the Portland Group Fortran Compiler, the Lahey LF95 Compiler, the IBM XLF Compiler,  
+      and the Absoft Pro Compiler for Mac OSX. 
+      DART has also been exercised on several platforms: Intel Xeon chips running Fedora Core 2,
+      Red Hat 9.0, and Red Hat 7.1; IBM AIX; and a G4 PowerBook running OSX 10.3.8. 
+      </P>
+
+      <H1>DART code distributions</H1>
+      <P>
+      <em>Please</em> let us know if you take a copy.
+      Since the DART software is still an area of active research, there are
+      multiple distributions, with more on the way. We'd like to be able to contact
+      people to inform them of any bugs or updates. (This includes local users, BTW!)
+      As you can see by the timetable of distributions, you could expect to get 
+      about 3 more emails per year. The distribution (gzipped tarfile) can be 
+      downloaded by selecting the 'version'. 
+      <BR><BR>
+      The <em>iceland</em> version is the latest 'official' version.
+      </P>
+      <TABLE border=0 cellpadding=2 width=100%>
+      <TR><TH align=left>version</TH>
+          <TH align=left>date</TH>
+          <TH align=left>instructions</TH>
+          <TH align=left>most noteable change(s)</TH>
+      </TR>
+
+      <TR><!--version--><TD valign=top><A HREF="DART_iceland.tar.gz">iceland</A></TD>
+          <!--   date--><TD valign=top>23 Nov 2005</TD>
+          <!--instruc--><TD valign=top><A HREF="Iceland_release.html">[doc]</A></TD>
+          <!-- change--><TD>huge expansion of real observation capability<BR>
+                            better namelist processing, PBL_1d available.<BR>
+                            <A HREF="I_diffs_from_workshop.html">change log</A></TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_pre_iceland.tar.gz">pre_iceland</A></TD>
+          <!--   date--><TD>20 Oct 2005</TD>
+          <!--instruc--><TD><strong>for developers only</strong></TD>
+          <!-- change--><TD>huge expansion of real observation capability</TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_workshop_2005.tar.gz">DA workshop 2005</A></TD>
+          <!--   date--><TD>13 June 2005</TD>
+          <!--instruc  ><TD><A HREF="hawaii_release.html">[doc]</A></TD-->
+          <!--instruc--><TD>docs included in distrib.</TD>
+          <!-- change--><TD>tutorial (pdf), observation preprocessing</TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_hawaii.tar.gz">hawaii</A></TD>
+          <!--   date--><TD>28 Feb 2005</TD>
+          <!--instruc--><TD><A HREF="hawaii_release.html">[doc]</A></TD>
+          <!-- change--><TD>new filtering algorithms</TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_pre_hawaii.tar.gz">pre-hawaii</A></TD>
+          <!--   date--><TD>20 Dec 2004</TD>
+          <!--instruc--><TD><A HREF="pre_hawaii_release.html">[doc]</A></TD>
+          <!-- change--><TD>new filtering algorithms</TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_guam.tar.gz">guam</A></TD>
+          <!--   date--><TD>12 Aug 2004</TD>
+          <!--instruc--><TD><A HREF="Guam_release.html">[doc]</A></TD>
+          <!-- change--><TD>new observation modules, removing autopromotion</TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_fiji_02.tar.gz">fiji</A></TD>
+          <!--   date--><TD>29 Apr 2004</TD>
+          <!--instruc--><TD><A HREF="Fiji_release.html">[doc]</A></TD>
+          <!-- change--><TD>enhanced portability, CAM, WRF</TD></TR>
+
+      <TR><!--version--><TD><A HREF="DART_ASP_Summer2003_1.tar.gz">easter</A></TD>
+          <!--   date--><TD>8 March 2004</TD>
+          <!--instruc--><TD><A HREF="ASP_DART_exercise.html">[doc]</A></TD>
+          <!-- change--><TD>initial release</TD></TR>
+      <TR><TD colspan=4>The 'easter' release was used for the ASP Summer Colloquium 
+          in 2003 and has extra documentation:<BR>
+          <A HREF="exercise_overview.pdf">Exercise Overview</A><BR>
+          <A HREF="dart_exercise_doc.pdf">DART Exercise Documentation</A><BR>
+          <A HREF="asp_summer_talk.pdf">Slides from Introductory Talk on Exercises</A><BR>
+          <A HREF="ncar_arg_talk.pdf">A Seminar on Filtering in the Bgrid Dynamical Core</A>
+          </TD></TR>
+      </TABLE>
+      <BR><BR>
+
+      <H1>Here is a partial list of downloadable presentations about DART:</H1>
+      <strong>Browsing the tutorial directory in the current distributions is worth
+          the effort.</strong>
+      <OL> 
+      <LI><A HREF="tut1.pdf">A tutorial on ensemble filtering, Jan. 2004</A></LI>
+      <LI><A HREF="caos_dec_2003.pdf">Talk for CAOS Workshop, Dec. 2003</A></LI>
+      <LI><A HREF="agu_2003.pdf">Overview of Filter DA, AGU, Dec. 2003</A></LI>
+      </OL>
+
+      <P>
+      <A NAME="related"></A>
+      <H1>Related Links</H1>
+
+      <ul><li><a href="http://www.gfdl.noaa.gov/~fms">FMS group of GFDL</a></li>
+          <li><a href="http://www.esmf.ucar.edu/">ESMF -- Earth System Modeling Framework</a></li>
+          <li><a href="http://www.meto.gov.uk/research/nwp/numerical/fortran90/f90_standards.html/">UK Met Office Fortran 90 Standards</a></li>
+          <li><a href="http://www.scd.ucar.edu/weg">WEG -- NCAR's Web Engineering Group</A></li>
+          <li><a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview -- a visual browser for netCDF files</A></li>
+      </ul>
+
+      <!--#include virtual="../../common/footernav.html"-->
+      <!--#include virtual="../../common/footer.html"-->
+
+      <p class="footer">
+      Document: <!--#echo var="DOCUMENT_URI" --> <BR>
+      Last modified: <!--#echo var="LAST_MODIFIED" --> <BR>
+      </p>
+   </td>
+   </tr>
+</table>
+</body>
+</html>
