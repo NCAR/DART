@@ -28,11 +28,20 @@ dartloc  = strfind(mydir,'/DART/')+4;
 dartpath = sprintf('%s/matlab',mydir(1:dartloc));
 
 disp(sprintf('\nWelcome to DART ...'))
-disp(sprintf('\nYour current directory is   %s',mydir))
+disp(sprintf('\nYour current directory is  %s',mydir))
 
 if ( ~isempty(dartloc) ) 
    path(dartpath,path);
-   disp(sprintf('Using matlab scripts in     %s',dartpath))
+   disp(sprintf('Using general tools in     %s',dartpath))
+end
+
+% Try to intelligently add the observation-space DART tools.
+
+dartpath = sprintf('%s/diagnostics/matlab',mydir(1:dartloc));
+
+if ( ~isempty(dartloc) ) 
+   path(dartpath,path);
+   disp(sprintf('observation-space tools in %s',dartpath))
 end
 
 % Try to intelligently add the DART model-specific tools.
@@ -44,8 +53,10 @@ dartloc  = strfind(mydir,'/work')-1;
 dartpath = sprintf('%s/matlab',mydir(1:dartloc));
 
 if ( ~isempty(dartloc) ) 
-   path(dartpath,path);
-   disp(sprintf('Using matlab scripts in     %s',dartpath))
+   if ( exist(dartpath,'dir') == 7 )
+      path(dartpath,path);
+      disp(sprintf('Using matlab scripts in     %s',dartpath))
+   end
 end
 
 % Customizations specific for DART:
