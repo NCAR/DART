@@ -35,9 +35,9 @@ div.namelist {
 div.routine {
     background-color: rgb(240,240,240);
     padding: 1.0em;
-    border: none;
+    border: solid;
     border-width: thin;
-    width: 96%;}
+    width: 100%;}
 
 div.routineIndent1 {
     background-color: rgb(240,240,240);
