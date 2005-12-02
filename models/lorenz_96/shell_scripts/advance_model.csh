@@ -17,7 +17,7 @@
 # This script copies the necessary files into the temporary directory
 # and then executes the fortran program integrate_model.
 
-set PBS_O_WORKDIR = $1
+set WORKDIR = $1
 set element = $2
 set temp_dir = $3
 
@@ -25,28 +25,28 @@ set temp_dir = $3
 # where the model advance is executed as a separate process.
 
 # Create a clean temporary directory and go there
-rm -rf $temp_dir
-mkdir  $temp_dir
-cd     $temp_dir
+\rm -rf  $temp_dir
+mkdir -p $temp_dir
+cd       $temp_dir
 
 # Copy the initial condition file to the temp directory
-cp ${PBS_O_WORKDIR}/assim_model_state_ic$element temp_ic
+cp -v ${WORKDIR}/assim_model_state_ic$element temp_ic
 
 # Copy the DART namelist to the temp directory
-cp ${PBS_O_WORKDIR}/input.nml .
+cp -v ${WORKDIR}/input.nml .
 
 # Copy the integrate_model executable to the temporary directory
-cp ${PBS_O_WORKDIR}/integrate_model .
+cp -v ${WORKDIR}/integrate_model .
 
 # Advance the model, saving standard out
 ./integrate_model > integrate_model_out_temp
 
 # Append the output from the advance to the file in the working directory
-cat integrate_model_out_temp >> $PBS_O_WORKDIR/integrate_model_out_temp$element
+cat integrate_model_out_temp >> $WORKDIR/integrate_model_out_temp$element
 
 # Move the updated state vector to the working directory
-mv temp_ud $PBS_O_WORKDIR/assim_model_state_ud$element
+mv -v temp_ud $WORKDIR/assim_model_state_ud$element
 
 # Change back to working directory and get rid of temporary directory
-cd $PBS_O_WORKDIR
-rm -rf $temp_dir
+cd $WORKDIR
+\rm -rf $temp_dir
