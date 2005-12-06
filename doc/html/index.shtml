@@ -85,7 +85,7 @@
 
       <TR><!--version--><TD><A HREF="DART_pre_iceland.tar.gz">pre_iceland</A></TD>
           <!--   date--><TD>20 Oct 2005</TD>
-          <!--instruc--><TD><strong>for developers only</strong></TD>
+          <!--instruc--><TD>for developers only</TD>
           <!-- change--><TD>huge expansion of real observation capability</TD></TR>
 
       <TR><!--version--><TD><A HREF="DART_workshop_2005.tar.gz">DA workshop 2005</A></TD>
