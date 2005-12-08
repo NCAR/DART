@@ -98,7 +98,7 @@ subroutine move_ahead(ens_handle, ens_size, model_size, seq, last_key_used, &
 
 implicit none
 
-type(ensemble_type),     intent(in)  :: ens_handle
+type(ensemble_type),     intent(inout) :: ens_handle
 integer,                 intent(in)  :: ens_size, model_size
 type(obs_sequence_type), intent(in)  :: seq
 integer,                 intent(in)  :: last_key_used, async
