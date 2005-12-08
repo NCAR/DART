@@ -39,7 +39,8 @@ use ensemble_manager_mod, only : ensemble_type, transpose_ens_to_regions, &
 implicit none
 private
 
-public :: assim_tools_init, filter_assim, async_assim_region, assim_tools_end
+public :: assim_tools_init, filter_assim, async_assim_region, &
+   assim_tools_end, bayes_cov_inflate
 
 type (random_seq_type) :: inc_ran_seq
 logical :: first_inc_ran_call = .true.
@@ -209,7 +210,8 @@ if(my_cov_inflate > 0.0_r8) then
    ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
    if(my_cov_inflate_sd > 0.0_r8) then
       call bayes_cov_inflate(prior_mean, sqrt(prior_var), obs, sqrt(obs_var), &
-         my_cov_inflate, my_cov_inflate_sd, new_cov_inflate, new_cov_inflate_sd)
+         my_cov_inflate, my_cov_inflate_sd, new_cov_inflate, new_cov_inflate_sd, &
+         sd_lower_bound)
 
       ! If internal_outlier_threshold is exceeded, don't use this observation
       if(internal_outlier_threshold > 0.0_r8) then
@@ -1354,31 +1356,34 @@ endif
 call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
 
 
-call print_regional_results(reg_cov_inflate)
+write(*, *) 'done with routine filter_assim reg_cov_inflate is ', reg_cov_inflate
+write(logfileunit, *) 'done with routine filter_assim reg_cov_inflate is ', reg_cov_inflate
 
-contains
+!!!call print_regional_results(reg_cov_inflate)
 
-   subroutine print_regional_results(x)
-   ! I wanted to print these out in a fixed format so I could compare
-   ! the results with 'diff' or 'xdiff' ... but the problem is that
-   ! there may be one or N items to print, and I couldn't figure out
-   ! a compact format statement for that.
-   real(r8), dimension(:), intent(in) :: x
+!!!contains
 
-   character(len = SIZE(x)*19 + 30) :: msgstring
-   character(len = 19)              :: str1
-   integer :: i
+!!!   subroutine print_regional_results(x)
+!!!   ! I wanted to print these out in a fixed format so I could compare
+!!!   ! the results with 'diff' or 'xdiff' ... but the problem is that
+!!!   ! there may be one or N items to print, and I couldn't figure out
+!!!   ! a compact format statement for that.
+!!!   real(r8), dimension(:), intent(in) :: x
 
-   msgstring = 'done -- reg_cov_inflate is '
+!!!   character(len = SIZE(x)*19 + 30) :: msgstring
+!!!   character(len = 19)              :: str1
+!!!   integer :: i
+
+!!!   msgstring = 'done -- reg_cov_inflate is '
  
-   do i = 1,SIZE(x)
-      write(str1,'(1x,f18.13)')x(i)
-      msgstring = trim(adjustl(msgstring)) // str1
-   enddo 
+!!!   do i = 1,SIZE(x)
+!!!      write(str1,'(1x,f18.13)')x(i)
+!!!      msgstring = trim(adjustl(msgstring)) // str1
+!!!   enddo 
 
-   call error_handler(E_MSG,'filter_assim',msgstring,source,revision,revdate)
+!!!   call error_handler(E_MSG,'filter_assim',msgstring,source,revision,revdate)
 
-   end subroutine print_regional_results
+!!!   end subroutine print_regional_results
 
 end subroutine filter_assim
 
@@ -1448,111 +1453,78 @@ end subroutine async_assim_region
 !-----------------------------------------------------------------------
 
 subroutine bayes_cov_inflate(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, &
-   new_cov_inflate, new_cov_inflate_sd)
+   new_cov_inflate, new_cov_inflate_sd, sd_lower_bound_in)
 
-real(r8), intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd
+real(r8), intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, sd_lower_bound_in
 real(r8), intent(out) :: new_cov_inflate, new_cov_inflate_sd
 
-integer, parameter :: max_num_iters = 100
-integer, parameter :: sd_range = 4
-integer, parameter :: sd_intervals = 4
-real(r8), parameter :: tol = 0.00000001_r8
-integer :: i
+integer :: i, mlambda_index(1)
 
-real(r8) :: d(3), lam(3), d_new, lam_new, new_max, ratio, x_dist
-real(r8) :: cov_sd_sum, cov_sd_sample(-sd_intervals:sd_intervals)
+real(r8) :: new_1_sd, new_max, ratio
+real(r8) :: dist, b, c, d, Q, R, disc, alpha, beta, cube_root_alpha, cube_root_beta, x
+real(r8) :: rrr, cube_root_rrr, angle, mx(3), sep(3), mlambda(3)
 
-! Compute the maximum value of the updated probability
-lam(1) = l_mean - 2.0_r8 * l_sd
-! Can't go below zero, would get negative undefined inflation
-if(lam(1) <= 0.0_r8) lam(1) = 0.0_r8
-lam(2) = l_mean
-lam(3) = l_mean + 2.0_r8 * l_sd
-do i = 1, 3
-   d(i) = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam(i))
-end do
+! Can analytically find the maximum of the product: d/dlambda is a
+! cubic polynomial in lambda**2; solve using cubic formula for real root
+! Can write so that coefficient of x**3 is 1, other coefficients are:
+dist = abs(x_p - y_o)
+b = -1.0_r8 * (sigma_o**2 + sigma_p**2 * l_mean)
+c = l_sd**2 * sigma_p**4 / 2.0_r8
+d = -1.0_r8 * (l_sd**2 * sigma_p**4 * dist**2) / 2.0_r8
 
-if(d(2) < d(1) .or. d(2) < d(3)) then
-   write(*, *)'mid-point is not greater than endpoints in bayes_cov_inflate'
-   write(*, *) 'need to broaden the search range'
-   do i = 1, 3
-      write(*, *) 'd ', i, lam(i), d(i)
+Q = c - b**2 / 3
+R = d + (2 * b**3) / 27 - (b * c) / 3
+
+! Compute discriminant, if this is not have 3 real roots, else 1 real root
+disc = R**2 / 4 + Q**3 / 27
+
+if(disc < 0.0_r8) then
+   rrr = sqrt(-1.0 * Q**3 / 27)
+   ! Note that rrr is positive so no problem for cube root
+   cube_root_rrr = rrr ** (1.0 / 3.0)
+   angle = acos(-0.5 * R / rrr)
+   do i = 0, 2
+      mx(i+1) = 2.0_r8 * cube_root_rrr * cos((angle + i * 2.0_r8 * PI) / 3.0_r8) - b / 3.0_r8
+      mlambda(i + 1) = (mx(i + 1) - sigma_o**2) / sigma_p**2
+      sep(i+1) = abs(mlambda(i + 1) - l_mean)
    end do
-new_cov_inflate = l_mean
-   !!!stop
+   ! Root closest to initial peak is appropriate
+   mlambda_index = minloc(sep)
+   new_cov_inflate = mlambda(mlambda_index(1))
+
+else
+   ! Only one real root here, find it.
+
+   ! Compute the two primary terms
+   alpha = -R/2 + sqrt(disc)
+   beta = R/2 + sqrt(disc)
+
+   cube_root_alpha = abs(alpha) ** (1.0 / 3.0) * abs(alpha) / alpha
+   cube_root_beta = abs(beta) ** (1.0 / 3.0) * abs(beta) / beta
+
+   x = cube_root_alpha - cube_root_beta - b / 3.0
+
+   ! This root is the value of x = theta**2
+   new_cov_inflate = (x - sigma_o**2) / sigma_p**2
+
 endif
 
-! Do a simple 1D optimization by bracketing
-do i = 1, max_num_iters
-   ! Bring in the right side
-   lam_new = lam(1) + (lam(2) - lam(1)) / 2.0_r8
-   d_new = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam_new)
-   if(d_new > d(2)) then
-      d(3) = d(2); lam(3) = lam(2)
-      d(2) = d_new; lam(2) = lam_new
-   else
-      d(1) = d_new; lam(1) = lam_new
-   endif
-
-   ! Now bring in the left side (this can be coded more glamorously, but I'm rushed)
-   lam_new = lam(2) + (lam(3) - lam(2)) / 2.0_r8
-   d_new = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam_new)
-   if(d_new > d(2)) then
-      d(1) = d(2); lam(1) = lam(2)
-      d(2) = d_new; lam(2) = lam_new
-   else
-      d(3) = d_new; lam(3) = lam_new
-   endif
-
-   ! Exit if tolerance gets down to 0.000001
-   if(abs(lam(1) - lam(2)) < tol) then
-      !write(*, *) 'needed ', i, 'iterations'
-      exit
-   endif
-end do
-
-new_cov_inflate = lam(2)
-!write(*, *) 'New maximum value is at lambda = ', lam(2)
-
-
 ! Temporarily bail out to save cost when lower bound is reached'
-if(l_sd <= sd_lower_bound) then
+if(l_sd <= sd_lower_bound_in) then
    new_cov_inflate_sd = l_sd
    return
 endif
 
-! Try at a more economical method for computing updated SD
 ! First compute the new_max value for normalization purposes
 new_max = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, new_cov_inflate)
 
-! Look at a series of points to deal with skewness???
-cov_sd_sum = 0.0_r8
-do i = -sd_intervals, sd_intervals
-   x_dist = i * sd_range * l_sd / sd_intervals
-   ! Next compute the value one old sd out
-   lam(1) = new_cov_inflate + x_dist
-   if(lam(1) < 0.0_r8) then
-      lam(1) = 0.0_r8
-      x_dist = new_cov_inflate
-   endif
-   d(1) = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lam(1))
-   ! Compute the ratio of this value to the value at the mean (the max value)
-   ratio = d(1) / new_max 
-   
-   ! Can now compute the standard deviation consistent with this as
-   ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
-   if(i == 0) then
-      cov_sd_sample(i) = 1e10_r8
-   else 
-      new_cov_inflate_sd = sqrt( -1.0_r8 * x_dist**2 / (2.0_r8 * log(ratio)))
-      !!!write(*, *) 'at x new_sd ', lam(1), new_cov_inflate_sd
-      cov_sd_sum = cov_sd_sum + new_cov_inflate_sd
-      cov_sd_sample(i) = new_cov_inflate_sd
-   endif
-end do
-
-new_cov_inflate_sd = minval(cov_sd_sample)
-write(*, *) 'old, new min sd      ', l_sd, new_cov_inflate_sd
+! Find value at a point one OLD sd above new mean value
+new_1_sd = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, &
+   new_cov_inflate + l_sd)
+ratio = new_1_sd / new_max 
+! Can now compute the standard deviation consistent with this as
+! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
+new_cov_inflate_sd = sqrt( -1.0_r8 * l_sd**2 / (2.0_r8 * log(ratio)))
 
 
 end subroutine bayes_cov_inflate
@@ -1564,7 +1536,7 @@ function compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda)
 real(r8) :: compute_new_density
 real(r8), intent(in) :: x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, lambda
 
-real(r8) :: dist, exponent, l_prob, var, sd, prob
+real(r8) :: dist, exponent, l_prob, var, theta, prob
 
 ! Compute distance between prior mean and observed value
 dist = abs(x_p - y_o)
@@ -1574,11 +1546,12 @@ exponent = (-1.0_r8 * (lambda - l_mean)**2) / (2.0_r8 * l_sd**2)
 l_prob = 1.0_r8 / (sqrt(2.0_r8 * PI) * l_sd) * exp(exponent)
 
 ! Compute probability that observation would have been observed given this lambda
-var = (sigma_p * sqrt(lambda))**2 + sigma_o**2
-sd = sqrt(var)
+! Traditional value that leaves obs alone is first
+var = lambda * sigma_p**2 + sigma_o**2
+theta = sqrt(var)
 
 exponent = (-1.0_r8 * dist**2) / (2.0_r8 * var)
-prob = 1.0_r8 / (sqrt(2.0_r8 * PI) * sd) * exp(exponent)
+prob = 1.0_r8 / (sqrt(2.0_r8 * PI) * theta) * exp(exponent)
 
 ! Compute the updated probability density for lambda
 compute_new_density = l_prob * prob
