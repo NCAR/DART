@@ -169,7 +169,7 @@ end subroutine static_init_assim_model
 
 
 function init_diag_output(FileName, global_meta_data, &
-                  copies_of_field_per_time, meta_data_per_copy) result(ncFileID)
+                  copies_of_field_per_time, meta_data_per_copy, lagID) result(ncFileID)
 !--------------------------------------------------------------------------------
 !
 ! Typical sequence:
@@ -202,6 +202,7 @@ implicit none
 character(len=*), intent(in) :: FileName, global_meta_data
 integer,          intent(in) :: copies_of_field_per_time
 character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
+integer, OPTIONAL,intent(in) :: lagID
 type(netcdf_file_type)       :: ncFileID
 
 character(len=129)   :: msgstring
@@ -240,6 +241,7 @@ call check(nf90_def_dim(ncid=ncFileID%ncid, &
 call check(nf90_def_dim(ncid=ncFileID%ncid, &
              name="time",           len = nf90_unlimited,         dimid = TimeDimID))
 
+
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
@@ -248,6 +250,13 @@ call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "title", global_meta_data))
 call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", source ))
 call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ))
 call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ))
+
+if (present(lagID)) then
+call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ))
+
+write(*,*)'Got this far ... lag is present'
+
+endif 
 
 !-------------------------------------------------------------------------------
 ! Create variables and attributes.
@@ -269,6 +278,7 @@ call check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_char,
 call check(nf90_put_att(ncFileID%ncid, metadataVarID, "long_name",       &
                         "Metadata for each copy/member"))
 
+
 !    Time -- the unlimited dimension
 call check(nf90_def_var(ncFileID%ncid, name="time", xtype=nf90_double, dimids=TimeDimID, &
                                                                   varid =TimeVarID) )
@@ -277,6 +287,7 @@ if ( i /= 0 ) then
    write(msgstring, *)'nc_write_calendar_atts  bombed with error ', i
    call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
 endif
+
 
 ! Create the time "mirror" with a static length. There is another routine
 ! to increase it if need be. For now, just pick something.

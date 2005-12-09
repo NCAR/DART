@@ -34,8 +34,8 @@ use  assim_tools_mod, only : assim_tools_init, filter_assim, assim_tools_end
 use    obs_model_mod, only : move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
-   ensemble_type, ens_direct=> ens, ens_mean_direct=>ens_mean, ens_spread_direct=>ens_spread, &
-   is_ens_in_core, get_ensemble_time
+   ensemble_type, is_ens_in_core, get_ensemble_time
+
 
 !-----------------------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ write(logfileunit, nml=filter_nml)
 write(     *     , nml=filter_nml)
 ! Can't output more ensemble members than exist
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
-if(num_output_obs_members > ens_size) num_output_obs_members = ens_size
+if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 call filter_alloc_ens_size_storage()
 
@@ -166,7 +166,8 @@ last_key_used = -99
 time_step_number = 0
 
 AdvanceTime : do
-write(*, *) 'starting advance time loop;'
+
+   write(*, *) 'starting advance time loop;'
    time_step_number = time_step_number + 1
 
    ! Get the model to a good time to use a next set of observations
@@ -191,7 +192,7 @@ write(*, *) 'starting advance time loop;'
    if(cov_inflate > 1.0_r8) call filter_ensemble_inflate()
 
    ! Do prior state space diagnostic output as required
-   if(time_step_number / output_interval * output_interval == time_step_number)then 
+   if(time_step_number / output_interval * output_interval == time_step_number) then 
       call filter_state_space_diagnostics(PriorStateUnit)
    endif
    ! Get the observational values, error covariance, and input qc value
@@ -215,10 +216,10 @@ write(*, *) 'starting advance time loop;'
       num_output_obs_members, in_obs_copy + 2, output_obs_ens_mean, &
       posterior_obs_mean_index, output_obs_ens_spread, posterior_obs_spread_index)
 
-! Deallocate storage used for each set
+   ! Deallocate storage used for each set
    deallocate(keys, obs_err_var, obs, ens_obs, compute_obs)
 
-! The last key used is updated to move forward in the observation sequence
+   ! The last key used is updated to move forward in the observation sequence
    last_key_used = key_bounds(2)
 
 end do AdvanceTime
@@ -292,7 +293,7 @@ endif
 
 ! Compute starting point for ensemble member output
 ensemble_offset = 0
-if(output_state_ens_mean) ensemble_offset = ensemble_offset + 1
+if(output_state_ens_mean)   ensemble_offset = ensemble_offset + 1
 if(output_state_ens_spread) ensemble_offset = ensemble_offset + 1
 
 ! Set up the metadata for the output state diagnostic files
@@ -516,8 +517,9 @@ do group = 1, num_groups
    grp_top = grp_bot + grp_size - 1
    ens_mean = 0.0_r8
    do j = grp_bot, grp_top
-   if(is_ens_in_core()) then
-      ens_mean = ens_mean + ens_direct(j, :)
+   if(is_ens_in_core(ens_handle)) then
+      !ens_mean = ens_mean + ens_direct(j, :)
+      ens_mean = ens_mean + ens_handle%ens(j, :)
    else
       call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
       ens_mean = ens_mean + temp_ens
@@ -525,8 +527,8 @@ do group = 1, num_groups
    end do
    ens_mean = ens_mean / grp_size
    do j = grp_bot, grp_top
-   if(is_ens_in_core()) then
-      ens_direct(j, :) = ens_mean + sqrt(cov_inflate) * (ens_direct(j, :) - ens_mean)
+   if(is_ens_in_core(ens_handle)) then
+      ens_handle%ens(j, :) = ens_mean + sqrt(cov_inflate) * (ens_handle%ens(j, :) - ens_mean)
    else
       call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
       temp_ens = ens_mean + sqrt(cov_inflate) * (temp_ens - ens_mean)
@@ -551,9 +553,9 @@ if(output_state_ens_mean .or. output_state_ens_spread) call update_ens_mean_spre
 
 ! Output ensemble mean if requested
 if(output_state_ens_mean) then
-   if(is_ens_in_core()) then
+   if(is_ens_in_core(ens_handle)) then
       call get_ensemble_time(ens_handle, 0, temp_time)
-      call aoutput_diagnostics(out_unit, temp_time, ens_mean_direct, output_state_mean_index)
+      call aoutput_diagnostics(out_unit, temp_time, ens_handle%mean, output_state_mean_index)
    else
       call get_ensemble_member(ens_handle, 0, temp_ens, temp_time)
       call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_mean_index)
@@ -562,9 +564,9 @@ endif
 
 ! Output ensemble spread if requested
 if(output_state_ens_spread) then
-   if(is_ens_in_core()) then
+   if(is_ens_in_core(ens_handle)) then
       call get_ensemble_time(ens_handle, -1, temp_time)
-      call aoutput_diagnostics(out_unit, temp_time, ens_spread_direct, output_state_spread_index)
+      call aoutput_diagnostics(out_unit, temp_time, ens_handle%spread, output_state_spread_index)
    else
       call get_ensemble_member(ens_handle, -1, temp_ens, temp_time)
       call aoutput_diagnostics(out_unit, temp_time, temp_ens, output_state_spread_index)
@@ -573,14 +575,14 @@ endif
 
 ! Compute the offset for copies of the ensemble
 ens_offset = 0
-if(output_state_ens_mean) ens_offset = ens_offset + 1
+if(output_state_ens_mean)   ens_offset = ens_offset + 1
 if(output_state_ens_spread) ens_offset = ens_offset + 1
 
 ! Output state diagnostics as required: NOTE: Prior has been inflated
 do j = 1, num_output_state_members
-   if(is_ens_in_core()) then
+   if(is_ens_in_core(ens_handle)) then
       call get_ensemble_time(ens_handle, j, temp_time)
-      call aoutput_diagnostics( out_unit, temp_time, ens_direct(j, :), ens_offset + j)
+      call aoutput_diagnostics( out_unit, temp_time, ens_handle%ens(j, :), ens_offset + j)
    else
       call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
       call aoutput_diagnostics( out_unit, temp_time, temp_ens, ens_offset + j)
@@ -654,15 +656,15 @@ call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 ens_obs = 0.0_r8
 
 do k = 1, ens_size
-   if(.not. is_ens_in_core()) then
+   if(.not. is_ens_in_core(ens_handle)) then
       call get_ensemble_member(ens_handle, k, temp_ens, temp_time)
    endif
    do j = 1, num_obs_in_set
       call get_obs_from_key(seq, keys(j), observation)
       ! Get the qc value set so far
       if(k == 1) call get_qc(observation, qc(j:j), 1)
-      if(is_ens_in_core()) then
-         call get_expected_obs(seq, keys(j:j), ens_direct(k, :), ens_obs(k, j:j), istatus, &
+      if(is_ens_in_core(ens_handle)) then
+         call get_expected_obs(seq, keys(j:j), ens_handle%ens(k, :), ens_obs(k, j:j), istatus, &
             assimilate_this_ob, evaluate_this_ob)
       else
          call get_expected_obs(seq, keys(j:j), temp_ens, ens_obs(k, j:j), istatus, &
