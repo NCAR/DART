@@ -34,7 +34,7 @@ use         location_mod, only : location_type, get_dist, alloc_get_close_obs, &
                                  get_close_obs
 use ensemble_manager_mod, only : ensemble_type, transpose_ens_to_regions, &
                                  transpose_regions_to_ens, put_region_by_number, &
-                                 get_region_by_number, is_ens_in_core, ens_direct => ens
+                                 get_region_by_number, is_ens_in_core
 
 implicit none
 private
@@ -1124,7 +1124,7 @@ subroutine filter_assim(ens_handle, ens_obs, compute_obs_in, ens_size, model_siz
 
 integer,                 intent(in) :: ens_size, model_size, num_groups, num_obs_in_set
 integer,                 intent(in) :: keys(num_obs_in_set)
-type(ensemble_type),     intent(in) :: ens_handle
+type(ensemble_type),     intent(inout) :: ens_handle
 real(r8),                intent(in) :: ens_obs(ens_size, num_obs_in_set)
 logical,                 intent(in) :: compute_obs_in(num_obs_in_set)
 type(obs_sequence_type), intent(inout) :: seq
@@ -1202,7 +1202,7 @@ do j = 1, num_domains
    my_state = .false.
    my_state(domain_bottom : domain_top) = .true.
 
-   if(num_domains > 1 .or. .not. is_ens_in_core()) then
+   if(num_domains > 1 .or. .not. is_ens_in_core(ens_handle)) then
       ! Generate an array with the indices of my state variables
       allocate(ens(ens_size, region_size(j)), indices(region_size(j)))
 
@@ -1220,7 +1220,7 @@ do j = 1, num_domains
 
    ! Do ensemble filter update for this region
    if(do_parallel == 0) then
-      if(num_domains > 1 .or. .not. is_ens_in_core()) then
+      if(num_domains > 1 .or. .not. is_ens_in_core(ens_handle)) then
          call filter_assim_region(region_size(j), ens_size, model_size, num_groups, &
             num_obs_in_set, obs_val_index, &
             ens, ens_obs, compute_obs, seq, keys, my_state, &
@@ -1228,7 +1228,8 @@ do j = 1, num_domains
       else
          call filter_assim_region(region_size(j), ens_size, model_size, num_groups, &
             num_obs_in_set, obs_val_index, &
-            ens_direct, ens_obs, compute_obs, seq, keys, my_state, &
+            !!!ens_direct, ens_obs, compute_obs, seq, keys, my_state, &
+            ens_handle%ens, ens_obs, compute_obs, seq, keys, my_state, &
             reg_cov_inflate(j), reg_cov_inflate_sd(j))
       endif
    else
@@ -1270,10 +1271,10 @@ do j = 1, num_domains
    endif
 
    ! Put this region into storage for single executable which is now finished
-   if(do_parallel == 0 .and. (num_domains > 1 .or. .not. is_ens_in_core())) & 
+   if(do_parallel == 0 .and. (num_domains > 1 .or. .not. is_ens_in_core(ens_handle))) & 
       call put_region_by_number(ens_handle, j, region_size(j), ens, indices)
    ! Free up the storage allocated for the region
-   if(num_domains > 1 .or. .not. is_ens_in_core()) deallocate(ens, indices)
+   if(num_domains > 1 .or. .not. is_ens_in_core(ens_handle)) deallocate(ens, indices)
 
 end do
 
@@ -1507,7 +1508,7 @@ else
    ! This root is the value of x = theta**2
    new_cov_inflate = (x - sigma_o**2) / sigma_p**2
 
-endif
+   endif
 
 ! Temporarily bail out to save cost when lower bound is reached'
 if(l_sd <= sd_lower_bound_in) then
@@ -1522,8 +1523,8 @@ new_max = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, new_cov_
 new_1_sd = compute_new_density(x_p, sigma_p, y_o, sigma_o, l_mean, l_sd, &
    new_cov_inflate + l_sd)
 ratio = new_1_sd / new_max 
-! Can now compute the standard deviation consistent with this as
-! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
+   ! Can now compute the standard deviation consistent with this as
+   ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is l_sd (distance from mean)
 new_cov_inflate_sd = sqrt( -1.0_r8 * l_sd**2 / (2.0_r8 * log(ratio)))
 
 
