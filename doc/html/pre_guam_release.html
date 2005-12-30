@@ -1,12 +1,12 @@
 <HTML>
-<TITLE>DART "Guam release" Documentation</TITLE>
+<TITLE>DART "pre_guam release" Documentation</TITLE>
 <link rel=stylesheet type=text/css href=doc.css></link>
 <BODY>
 
 <BR>
-<H1>DART "Guam release" Documentation</H1>
+<H1>DART "pre_guam release" Documentation</H1>
 
-<img src = "../../images/Dartboard4.gif"></img>
+<img src = "Dartboard4.gif"></img>
 
 <DIV ALIGN=LEFT class=disclaimer>
 GNU General Public License
@@ -45,28 +45,7 @@ definitely need to read the
 </P>
 
 <P>
-<A HREF="/pub/DART/DART_guam.tar.gz">The latest software release -- "guam".</A>
-</P>
-
-<P>The <b>guam</b> release provides several new models and has a fundamentally
-different implementation of the low-level routines that will now operate on a
-much broader class of observations.  As such, the first two program units have
-changed somewhat. The strategy of these two programs units is still the same; 
-declare the characteristics of the observations and then declare the temporal nature 
-of the observations. These are still destined to be run as a back-end to some sort
-of GUI-driven interface, so virtually no work has been done to change the level of
-user interaction required to run these programs.
-</P>
-
-<P>
-The guam release has also been tested with more compilers in an attempt to 
-determine non-portable code elements. It is my experience that the largest
-impediment to portable code is the reliance on the compiler to autopromote
-<TT>real</TT> variables to one flavor or another. 
-<A HREF="/DART/PrecisionNotes.html">Different compilers perform this autopromotion in different ways</A> Using the F90 "kind" allows for much more flexible code, in that the use
-of interface procedures is possible only when two routines do not have identical
-sets of input arguments -- something that happens when the compiler autopromotes 
-32bit reals to 64bit reals, for example.
+<A HREF="DART_pre_guam.tar.gz">The latest software release -- "pre_guam"</A>[22 Mb -- .tar.gz]
 </P>
 
 <P>DART programs can require three different types of input. 
@@ -157,7 +136,7 @@ This document outlines the installation of the DART software
 and the system requirements. For convenience, some of the original 
 colloquium exercises are repeated here, mostly just to check the
 installation. A few of the 
-<A HREF="/DART/dart_exercise_doc.pdf">exercises from the ASP summer 2003 Colloquium</A>
+<A HREF="dart_exercise_doc.pdf">exercises from the ASP summer 2003 Colloquium</A>
 are repeated here, primarily to serve as the verification of the installation.
 The entire installation process is summarized in
 the following steps:
@@ -179,8 +158,7 @@ the following steps:
 We have tried to make the code as portable as possible, but we
 do not have access to all compilers on all platforms, so there are no
 guarantees. We are interested in your experience building the system,
-so please email me (Tim Hoar) thoar 'at' ucar 'dot' edu</A>
-(trying to cut down on the spam).
+so please email me (Tim Hoar) at <A mailto:"thoar@ucar.edu">thoar@ucar.edu</A>
 </P>
 
 <P>After the installation, you might want to peruse the following.
@@ -281,7 +259,7 @@ will be needed by the makefile template, as described in the
 
 <P>
 The DART source code is distributed as a compressed tar file. 
-<A HREF="/pub/DART/DART_guam.tar.gz">DART_guam.tar.gz</A>
+<A HREF="DART_fiji.tar.gz">DART_fiji.tar.gz</A>
 [22347692 bytes]. When untarred, the source tree will begin with a 
 directory named <em class=file>DART</em> and will be approximately 
 105 Mb. Compiling the code in this tree (as is usually the case) will
@@ -289,8 +267,8 @@ necessitate much more space.
 </P>
 
 <div class=unix>
-   gunzip <em class=file>DART_guam.tar.gz</em><BR>
-   tar -xvf <em class=file>DART_guam.tar</em><BR>
+   gunzip <em class=file>DART_fiji.tar.gz</em><BR>
+   tar -xvf <em class=file>DART_fiji.tar</em><BR>
 </div>
 
 <P>
@@ -437,8 +415,8 @@ Several <em class=file>path_names_*</em> files are provided in
 the <em class=file>work</em> directory for each specific model, 
 in this case: <em class=file>DART/models/lorenz_63/work</em>.
 <OL>
+   <LI><em class=file>path_names_create_obs_set_def</em></LI>
    <LI><em class=file>path_names_create_obs_sequence</em></LI>
-   <LI><em class=file>path_names_create_fixed_network_seq</em></LI>
    <LI><em class=file>path_names_perfect_model_obs</em></LI>
    <LI><em class=file>path_names_filter</em></LI>
 </OL>
@@ -466,11 +444,11 @@ ls -1
 With the result:
 <PRE>filter_ics 
 mkmf_create_obs_sequence 
-mkmf_create_fixed_network_seq 
+mkmf_create_obs_set_def 
 mkmf_filter 
 mkmf_perfect_model_obs 
 path_names_create_obs_sequence 
-path_names_create_fixed_network_seq 
+path_names_create_obs_set_def 
 path_names_filter 
 path_names_perfect_model_obs 
 perfect_ics</PRE>
@@ -478,8 +456,8 @@ perfect_ics</PRE>
 <P>
 There are four <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
 files for the programs 
+<em class=program>create_obs_set_def</em>, 
 <em class=program>create_obs_sequence</em>, 
-<em class=program>create_obs_fixed_network_seq</em>, 
 <em class=program>perfect_model_obs</em>, and 
 <em class=program>filter</em> along with the 
 corresponding <em class=file>path_names_</em><em class=italic>xxxxxx</em> files.
@@ -506,16 +484,18 @@ It is not supposed to compile anything:
 </P>
 
 <div class=unix>
-csh mkmf_create_obs_sequence<BR>
+csh mkmf_create_obs_set_def<BR>
+mv input.nml.mkmf input.nml.create_obs_set_def<BR>
 make
 </div>
 
 <P>
 The first command generates an appropriate <em class=file>Makefile</em> and
-the <em class=file>input.nml.create_obs_sequence_default</em> file. 
-The second command results in the compilation of a series of 
+the <em class=file>input.nml.mkmf</em> file. The second saves the example namelist to a 
+unique name (the next DART release will do this automatically -- no harm is done by 
+omitting this step) and the last command results in the compilation of a series of 
 Fortran90 modules which ultimately produces an executable file: 
-<em class=program>create_obs_sequence</em>.
+<em class=program>create_obs_set_def</em>.
 Should you need to make any changes to the 
 <em class=file>DART/mkmf/mkmf.template</em>, 
 you will need to regenerate the <em class=file>Makefile</em>.  
@@ -527,11 +507,14 @@ L63 in DART as follows:
 </P>
 
 <div class=unix>
-csh mkmf_create_fixed_network_seq<BR>
+csh mkmf_create_obs_sequence<BR>
+mv input.nml.mkmf input.nml.create_obs_sequence<BR>
 make<BR>
 csh mkmf_perfect_model_obs<BR>
+mv input.nml.mkmf input.nml.perfect_model_obs<BR>
 make<BR>
 csh mkmf_filter<BR>
+mv input.nml.mkmf input.nml.filter<BR>
 make
 </div><BR>
 
@@ -543,11 +526,11 @@ recreate the <em class=file>Makefile</em>, and try again.<BR><BR>
 
 <TABLE border=0 cellpadding=1 width=100%>
 <TR><TH>program</TH><TH>purpose</TH></TR>
-<TR><TD><em class=program>create_obs_sequence</em></TD>
+<TR><TD><em class=program>create_obs_set_def</em></TD>
     <TD>specify a (set) of observation characteristics taken 
         by a particular (set of) instruments
     </TD></TR>
-<TR><TD><em class=program>create_fixed_network_seq</em></TD>
+<TR><TD><em class=program>create_obs_sequence</em></TD>
     <TD>specify the temporal attributes of the observation sets
     </TD></TR>
 <TR><TD><em class=program>perfect_model_obs</em></TD>
@@ -624,13 +607,13 @@ for all the times specified in the 'observation sequence definition' file.
 To this end, begin by creating an 'observation sequence definition' 
 file that spans a long time. Creating an 'observation sequence definition' 
 file is a two-step procedure involving 
-<em class=program>create_obs_sequence</em> followed by 
-<em class=program>create_fixed_network_seq</em>. After they are both run, it
+<em class=program>create_obs_set_def</em> followed by 
+<em class=program>create_obs_sequence</em>. After they are both run, it
 is necessary to integrate the model with <em class=program>perfect_model_obs</em>.
 
 <H4 class=indent1>1.1 Create an observation set definition.</H4>
 <P>
-<em class=program>create_obs_sequence</em> creates an observation 
+<em class=program>create_obs_set_def</em> creates an observation 
 set definition, the time-independent part of an observation sequence. 
 An observation set definition file only contains the 
 <em class=code>location, type,</em> 
@@ -671,82 +654,54 @@ the user input looks <em class=input>like this</em>.
 
 <div class=unix>
 <PRE>
-[unixprompt]$ <em class=input>./create_obs_sequence</em>
+[unixprompt]$ <em class=input>./create_obs_set_def</em>
  Initializing the utilities module.
- Trying to read from unit           10
- Trying to open file dart_log.out
- 
  Registering module :
- $source: /home/dart/CVS.REPOS/DART/utilities/utilities_mod.f90,v $
- $revision: 1.18 $
- $date: 2004/06/29 15:16:40 $
+ $Source$
+ $Revision$
+ $Date$
  Registration complete.
- 
+
  &UTILITIES_NML
- TERMLEVEL= 2,LOGFILENAME=dart_log.out                                          
-                                                                            
+ TERMLEVEL =            2,
+ LOGFILENAME = dart_log.out                                                                                                                     
  /
- 
- Registering module :
- $source: /home/dart/CVS.REPOS/DART/obs_sequence/create_obs_sequence.f90,v $
- $revision: 1.18 $
- $date: 2004/05/24 15:41:46 $
- Registration complete.
-
- { ... }
-
- Input upper bound on number of observations in sequence
-<em class=input>10</em>
- 
- Input number of copies of data (0 for just a definition)
-<em class=input>0</em>
-
- Input number of quality control values per field (0 or greater)
-<em class=input>0</em>
-
- input a -1 if there are no more obs 
-<em class=input>0</em>
 
  Registering module :
- $source: /home/dart/CVS.REPOS/DART/obs_def/obs_def_mod.f90,v $
- $revision: 1.21 $
- $date: 2004/06/25 16:17:43 $
+ $Source$
+ $Revision$
+ $Date$
  Registration complete.
+
+ Input the filename for output of observation set_def_list? [set_def.out]
+<em class=input>set_def.out</em>
+
+{ ... }
  
- Registering module :
- $source: /home/dart/CVS.REPOS/DART/obs_kind/obs_kind_mod.f90,v $
- $revision: 1.15 $
- $date: 2004/06/24 21:49:47 $
- Registration complete.
- 
- input obs kind: u =            1  v =            2  ps =            3  t = 
-           4  qv =            5  p =            6  Td =           10  Vr = 
-         100  Ref =          101
- input -1 times the state variable index for an identity observation
-<em class=input>-1</em>
-
- input time in days and seconds
-<em class=input>1 0</em>
-
- input time in days and seconds
-<em class=input>1 0</em>
-
+ Input the number of unique observation sets you might define
+<em class=input>1</em>
+ How many observations in set             1
+<em class=input>1</em>
+ Defining observation             1
  Input error variance for this observation definition
 <em class=input>1000000</em>
+ Input an integer index if this is identity observation, else -1
+<em class=input>1</em>
 
- input a -1 if there are no more obs 
-<em class=input>-1</em>
+ Registering module :
+ $Source$
+ $Revision$
+ $Date$
+ Registration complete.
 
- Input filename for sequence (  set_def.out   usually works well)
-<em class=input> set_def.out </em>
- write_obs_seq  opening formatted file set_def.out
- write_obs_seq  closed file set_def.out
+ set_def.out successfully created.
+ Terminating normally.  
 </PRE>
 </div>
 
 <H4 class=indent1>1.2 Create an observation sequence definition.</H4>
 <P>
-<em class=program>create_fixed_network_seq</em> creates an 'observation 
+<em class=program>create_obs_sequence</em> creates an 'observation 
 sequence definition' by extending the 'observation set definition'
 with the temporal attributes of the observations.<BR>
 <BR>
@@ -770,21 +725,30 @@ with the <em class=program>perfect_model_obs</em> program.
 
 <div class=unix>
 <PRE>
-[unixprompt]$ <em class=input>./create_fixed_network_seq</em>
+[thoar@ghotiol work]$ <em class=input>./create_obs_sequence</em>
+ Registering module :
+ $Source$
+ $Revision$
+ $Date$
+ Registration complete.
 
- ...
+ &UTILITIES_NML
+ TERMLEVEL =            2,
+ LOGFILENAME = dart_log.out                                                                                                                     
+ /
 
  Registering module :
- $source: /home/dart/CVS.REPOS/DART/obs_sequence/obs_sequence_mod.f90,v $
- $revision: 1.31 $
- $date: 2004/06/29 15:04:37 $
+ $Source$
+ $Revision$
+ $Date$
  Registration complete.
- 
- Input filename for network definition sequence (usually  set_def.out  )
+
+ What is name of set_def_list? [set_def.out]
 <em class=input>set_def.out</em>
 
- ...
+ { ... }
 
+ Setting times for obs_def             1
  To input a regularly repeating time sequence enter 1
  To enter an irregular list of times enter 2
 <em class=input>1</em>
@@ -801,7 +765,7 @@ with the <em class=program>perfect_model_obs</em> program.
  time           998  is             0          998
  time           999  is             0          999
  time          1000  is             0         1000
-What is output file name for sequence (  obs_seq.in   is recommended )
+ Input file name for output of obs_sequence? [obs_seq.in]
 <em class=input>obs_seq.in</em>
 </PRE>
 </div>
@@ -871,7 +835,7 @@ in the html files accompanying the source code for the module.
 
 <TR><TD><em class=code>obs_seq_in_file_name</em></TD>
     <TD>specifies the file name that results from running 
-        <em class=program>create_fixed_network_seq</em>, i.e. the
+        <em class=program>create_obs_sequence</em>, i.e. the
         'observation sequence definition' file.</TD></TR>
 
 <TR><TD><em class=code>obs_seq_out_file_name</em></TD>
@@ -969,7 +933,7 @@ perfect_model_obs
    &nbsp;&nbsp;&nbsp;output_interval = 1 <BR>
    &end 
    </div>
-   <BR>
+
    <div class=unix>
    cp perfect_restart perfect_ics<BR>
    perfect_model_obs
@@ -1142,9 +1106,7 @@ To do this, see the detailed discussion of matlab diagnostics in Appendix I.
 <A NAME="simulate"></A>
 <H3 class=indent1>3. Simulate a particular observing system.</H3>
 
-<em class=changed>Please note this input sequence was wrong prior to 14 Sep 2004, sorry -- TJH</em>
-
-<P class=indent1>Begin by using <em class=program>create_obs_sequence</em> to 
+<P class=indent1>Begin by using <em class=program>create_obs_set_def</em> to 
 generate an observation set in which each of the 3 state variables 
 of L63 is observed with an observational error variance of 1.0 
 for each observation.  To do this, use the following input 
@@ -1152,48 +1114,29 @@ sequence (the text including and after # is a comment and does
 not need to be entered):</P>
 
 <TABLE class=indent1 bgcolor="#CCCCCC">
-<TR><TD><em class=input>4</em></TD>
-    <TD># upper bound on num of observations in sequence</TD></TR>
-<TR><TD><em class=input>0</em></TD>
-    <TD># number of copies of data (0 for just a definition)</TD></TR>
-<TR><TD><em class=input>0</em></TD>
-    <TD># number of quality control values per field (0 or greater)</TD></TR>
-<TR><TD><em class=input>0</em></TD>
-    <TD># -1 to exit/end observation definitions</TD></TR>
-<!-- observe state variable 1 -->
-<TR><TD><em class=input>-1</em></TD>
-    <TD># observe state variable 1</TD></TR>
-<TR><TD><em class=input>0 &nbsp; 0</em></TD>
-    <TD># time -- days, seconds </TD></TR>
-<TR><TD><em class=input>1.0</em></TD>
-    <TD># observational variance</TD></TR>
-<TR><TD><em class=input>0</em></TD>
-    <TD># -1 to exit/end observation definitions</TD></TR>
-<!-- observe state variable 2 -->
-<TR><TD><em class=input>-2</em></TD>
-    <TD># observe state variable 2</TD></TR>
-<TR><TD><em class=input>0 &nbsp; 0</em></TD>
-    <TD># time -- days, seconds </TD></TR>
-<TR><TD><em class=input>1.0</em></TD>
-    <TD># observational variance</TD></TR>
-<TR><TD><em class=input>0</em></TD>
-    <TD># -1 to exit/end observation definitions</TD></TR>
-<!-- observe state variable 3 -->
-<TR><TD><em class=input>-3</em></TD>
-    <TD># observe state variable 3</TD></TR>
-<TR><TD><em class=input>0 &nbsp; 0</em></TD>
-    <TD># time -- days, seconds </TD></TR>
-<TR><TD><em class=input>1.0</em></TD>
-    <TD># observational variance</TD></TR>
-<TR><TD><em class=input>-1</em></TD>
-    <TD># -1 to exit/end observation definitions</TD></TR>
 <TR><TD><em class=input>set_def.out</em></TD>
     <TD># Output file name</TD></TR>
+<TR><TD><em class=input>1</em></TD>
+    <TD># Number of sets</TD></TR>
+<TR><TD><em class=input>3</em></TD>
+    <TD># Number of observations in set (x, y, and z)</TD></TR>
+<TR><TD><em class=input>1.0</em></TD>
+    <TD># Variance of first observation</TD></TR>
+<TR><TD><em class=input>1</em></TD>
+    <TD># First ob is identity observation of state variable 1 (x)</TD></TR>
+<TR><TD><em class=input>1.0</em></TD>
+    <TD># Variance of second observation </TD></TR>
+<TR><TD><em class=input>2</em></TD>
+    <TD># Second is identity observation of state variable 2 (y)</TD></TR>
+<TR><TD><em class=input>1.0</em></TD>
+    <TD># Variance of third ob </TD></TR>
+<TR><TD><em class=input>3</em></TD>
+    <TD># Identity ob of third state variable (z)</TD></TR>
 </TABLE>
 
 <P class=indent1>
 Now, generate an observation sequence definition by running 
-<em class=program>create_fixed_network_seq</em> with the 
+<em class=program>create_obs_sequence</em> with the 
 following input sequence:</P>
 
 <TABLE class=indent1 bgcolor="#CCCCCC">
@@ -1362,7 +1305,7 @@ Posterior_Diag.nc  Prior_Diag.nc  True_State.nc
 >><em class=input>plot_ens_err_spread</em>
 </PRE>
 </div>
-<BR>
+
 And the matlab graphics window will display the spread of the ensemble error for
 each state variable. The scripts are designed to do the "obvious" thing for the
 low-order models and will prompt for additional information if needed. 
@@ -1498,14 +1441,6 @@ is certainly not well known.
 Be careful to keep these issues in mind while exploring 
 the capabilities of the ensemble filters with synthetic observations.
 </P>
-
-<HR>
-<!--#config errmsg="SSI Error" timefmt = "%e %h %Y"-->
-<center>
-Last modified: <!--#echo var="LAST_MODIFIED" --> 
- &nbsp; by thoar 'at' ucar 'dot' edu
-</center>
-
 
 </BODY>
 </HTML> 

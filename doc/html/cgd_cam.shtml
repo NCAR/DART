@@ -1,0 +1,64 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+      <!-- $Id$ -->
+      <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+      <title>Data Assimilation Research Testbed -- DART</title>
+      <link href="../../styles/styles.css" rel="stylesheet" type="text/css">
+      <style type="text/css">
+                <!--
+                @import url(../../styles/fontsizer.css);
+                @import url(../../styles/navigation.css);
+                -->
+      </style>
+      <!--#include virtual="../../common/javascript.html" -->
+</head>
+
+<body>
+
+<!--#include virtual="header.html" -->
+
+<A NAME="top"></A>
+
+<TABLE width="95%" align="center" border=0 cellpadding="0" cellspacing="0">
+
+   <TR>
+
+   <TD width="20%" valign="top">
+       <!-- LEFT HAND SIDE COLUMN NAVIGATION BAR -->
+       <!--#include virtual="../navigation.html"-->
+   </TD>
+
+   <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
+
+   <TD valign="top"><!-- Right HAND SIDE COLUMN -->
+
+       The DAI has successfully incorporated <strong>CAM</strong> --
+       <A href="http://www.ccsm.ucar.edu/models/atm-cam/"
+           >The Community Atmosphere Model</A> into the DART framework and
+       work is underway to streamline the use of real obsrvations.
+       <BR>
+       <BR>
+       <a href="amwg_mar04_talk.pdf">Status of collaborations with CGD</a>
+       (pdf file)
+
+       <BR>
+       <BR>
+       <A href="http://www.ccsm.ucar.edu/models/atm-cam/">The Community  Atmosphere Model (CAM) Home Page</A>
+
+       <BR>
+
+      <!--#include virtual="/common/footernav.html"-->
+      <!--#include virtual="/common/footer.html"-->
+
+      <p class="footer">
+      Document: <!--#echo var="DOCUMENT_URI" --> <BR>
+      Last modified: <!--#echo var="LAST_MODIFIED" --> <BR>
+      </p>
+
+   </TD>
+   </TR>
+</TABLE>
+</BODY>
+</HTML>

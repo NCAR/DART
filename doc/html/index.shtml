@@ -5,31 +5,30 @@
       <!-- $Id$ -->
       <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
       <title>Data Assimilation Research Testbed -- DART</title>
-      <link href="../../styles/styles.css" rel="stylesheet" type="text/css">
+      <link href="/styles/styles.css" rel="stylesheet" type="text/css">
       <style type="text/css">
                 <!--
-                @import url(../../styles/fontsizer.css);
-                @import url(../../styles/navigation.css);
+                @import url(/styles/fontsizer.css);
+                @import url(/styles/navigation.css);
                 -->
       </style>
-      <!--#include virtual="../../common/javascript.html" -->
-</head>
-
+      <!--#include virtual="/common/javascript.html" -->
+</HEAD>
 <body>
 
 <!--#include virtual="header.html" -->
 
 <A NAME="top"></A>
 
-<table  border=0 cellpadding="2" cellspacing="4">
+<table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
 
-   <TR VALIGN="TOP">
+   <tr>
+       <!-- SIDE NAVIGATION is formatted by navigation.css-->
+       <td width="20%" valign="top"><!--#include virtual="../navigation.html" --></td>
 
-   <TD><!-- LEFT HAND SIDE COLUMN NAVIGATION BAR -->
-       <!-- [insert a # here]  include virtual="navigation.html"-->
-   </TD>
+       <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
 
-   <TD><!-- Right HAND SIDE COLUMN -->
+       <td valign="top"><!-- Right HAND SIDE COLUMN --> 
 
       <H1>The Data Assimilation Research Testbed -- DART</H1>
       <P>
@@ -76,46 +75,46 @@
           <TH align=left>most noteable change(s)</TH>
       </TR>
 
-      <TR><!--version--><TD valign=top><A HREF="DART_iceland.tar.gz">iceland</A></TD>
-          <!--   date--><TD valign=top>23 Nov 2005</TD>
+      <TR><!--version--><TD valign=top><A HREF="/pub/DART/DART_iceland.tar.gz">iceland</A></TD>
+          <!--   date--><TD valign=top>23&nbsp;Nov&nbsp;2005</TD>
           <!--instruc--><TD valign=top><A HREF="Iceland_release.html">[doc]</A></TD>
           <!-- change--><TD>huge expansion of real observation capability<BR>
                             better namelist processing, PBL_1d available.<BR>
                             <A HREF="I_diffs_from_workshop.html">change log</A></TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_pre_iceland.tar.gz">pre_iceland</A></TD>
-          <!--   date--><TD>20 Oct 2005</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_pre_iceland.tar.gz">pre_iceland</A></TD>
+          <!--   date--><TD>20&nbsp;Oct&nbsp;2005</TD>
           <!--instruc--><TD>for developers only</TD>
           <!-- change--><TD>huge expansion of real observation capability</TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_workshop_2005.tar.gz">DA workshop 2005</A></TD>
-          <!--   date--><TD>13 June 2005</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_workshop_2005.tar.gz">DA workshop 2005</A></TD>
+          <!--   date--><TD>13&nbsp;June&nbsp;2005</TD>
           <!--instruc  ><TD><A HREF="hawaii_release.html">[doc]</A></TD-->
           <!--instruc--><TD>docs included in distrib.</TD>
-          <!-- change--><TD>tutorial (pdf), observation preprocessing</TD></TR>
+          <!-- change--><TD>tutorial directory in distribution, observation preprocessing</TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_hawaii.tar.gz">hawaii</A></TD>
-          <!--   date--><TD>28 Feb 2005</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_hawaii.tar.gz">hawaii</A></TD>
+          <!--   date--><TD>28&nbsp;Feb&nbsp;2005</TD>
           <!--instruc--><TD><A HREF="hawaii_release.html">[doc]</A></TD>
           <!-- change--><TD>new filtering algorithms</TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_pre_hawaii.tar.gz">pre-hawaii</A></TD>
-          <!--   date--><TD>20 Dec 2004</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_pre_hawaii.tar.gz">pre-hawaii</A></TD>
+          <!--   date--><TD>20&nbsp;Dec&nbsp;2004</TD>
           <!--instruc--><TD><A HREF="pre_hawaii_release.html">[doc]</A></TD>
           <!-- change--><TD>new filtering algorithms</TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_guam.tar.gz">guam</A></TD>
-          <!--   date--><TD>12 Aug 2004</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_guam.tar.gz">guam</A></TD>
+          <!--   date--><TD>12&nbsp;Aug&nbsp;2004</TD>
           <!--instruc--><TD><A HREF="Guam_release.html">[doc]</A></TD>
           <!-- change--><TD>new observation modules, removing autopromotion</TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_fiji_02.tar.gz">fiji</A></TD>
-          <!--   date--><TD>29 Apr 2004</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_fiji_02.tar.gz">fiji</A></TD>
+          <!--   date--><TD>29&nbsp;Apr&nbsp;2004</TD>
           <!--instruc--><TD><A HREF="Fiji_release.html">[doc]</A></TD>
           <!-- change--><TD>enhanced portability, CAM, WRF</TD></TR>
 
-      <TR><!--version--><TD><A HREF="DART_ASP_Summer2003_1.tar.gz">easter</A></TD>
-          <!--   date--><TD>8 March 2004</TD>
+      <TR><!--version--><TD><A HREF="/pub/DART/DART_ASP_Summer2003_1.tar.gz">easter</A></TD>
+          <!--   date--><TD>8&nbsp;March&nbsp;2004</TD>
           <!--instruc--><TD><A HREF="ASP_DART_exercise.html">[doc]</A></TD>
           <!-- change--><TD>initial release</TD></TR>
       <TR><TD colspan=4>The 'easter' release was used for the ASP Summer Colloquium 
@@ -148,8 +147,8 @@
           <li><a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview -- a visual browser for netCDF files</A></li>
       </ul>
 
-      <!--#include virtual="../../common/footernav.html"-->
-      <!--#include virtual="../../common/footer.html"-->
+      <!--#include virtual="/common/footernav.html"-->
+      <!--#include virtual="/common/footer.html"-->
 
       <p class="footer">
       Document: <!--#echo var="DOCUMENT_URI" --> <BR>

@@ -40,13 +40,13 @@ facilitate the combination of assimilation algorithms, models,
 and observation sets to allow increased understanding of all three. 
 The DART programs have been compiled with several Fortran 90 compilers 
 and run on a linux compute-server and linux clusters. 
-You should definitely need read the 
+You should definitely read the 
 <A HREF="#customizations">Customizations</A> section.<BR><BR>
 
 DART employs a modular programming approach to apply an Ensemble Kalman Filter
 which nudges models toward a state that is more consistent with information 
 from a set of observations. Models may be swapped in and out, as can 
-different algorithms changes to the Ensemble Kalman Filter. The method 
+different algorithms in the Ensemble Kalman Filter. The method 
 requires running multiple instances of a model to generate an ensemble of 
 states. A forward operator appropriate for the type of observation being used is
 applied to each of the states to generate the model's estimate of the observation.
@@ -64,16 +64,17 @@ results.
 </P>
 
 <P>
-<A HREF="DART_iceland.tar.gz">The latest software release -- "Iceland".</A>
+<A HREF="/pub/DART/DART_iceland.tar.gz">The latest software release -- "Iceland".</A>
 </P>
 
-<P>The <b>Iceland</b> release provides several new models and has a greatly expanded capability for <b>real</b> observations which required a fundamentally
+<P>The <b>Iceland</b> release provides several new models and has a greatly expanded capability for 
+<b>real</b> observations which required a fundamentally
 different implementation of the low-level routines. It is now required to run a
 preprocessor on several of the program units to construct the source code files
 which will be compiled by the remaining units. Due to the potentially large number
 of observations types possible and for portability reasons, the preprocessor
 is actually a F90 program that uses the namelist mechanism for specifying the
-observations types to be included. This also prevents having a gory set of 
+observation types to be included. This also prevents having a gory set of 
 compile flags that is different for every compiler. 
 One very clever colleague also 'built a better mousetrap' and figured out 
 how to effectively and robustly read namelists, detect errors, and 
@@ -85,7 +86,8 @@ The Iceland release has also been tested with more compilers in an attempt to
 determine non-portable code elements. It is my experience that the largest
 impediment to portable code is the reliance on the compiler to autopromote
 <TT>real</TT> variables to one flavor or another. 
-<A HREF="/DART/PrecisionNotes.html">Different compilers perform this autopromotion in different ways</A> Using the F90 "kind" allows for much more flexible code, in that the use
+<A HREF="/DART/PrecisionNotes.html">Different compilers perform this autopromotion in different ways.</A>
+Using the F90 "kind" allows for much more flexible code, in that the use
 of interface procedures is possible only when two routines do not have identical
 sets of input arguments -- something that happens when the compiler autopromotes 
 32bit reals to 64bit reals, for example.
@@ -100,9 +102,9 @@ the appropriate keyboard input can be created and this file
 can be directed to the standard input of the DART program. 
 Second, many DART programs expect one or more input files in 
 DART specific formats to be available. For instance, 
-<em class=program>perfect_model_obs</em> creates a synthetic 
+<em class=program>perfect_model_obs</em>, which creates a synthetic 
 observation set given a particular model and a description 
-of a sequence of observations requires an input file that 
+of a sequence of observations, requires an input file that 
 describes this observation sequence.
 At present, the observation files for DART are in a custom format in either 
 human-readable ascii or more compact machine-specific binary. Third, many DART 
@@ -237,7 +239,7 @@ self-describing data format for the results of assimilation
 experiments. These files have the extension <em class=file>.nc</em> 
 and can be read by a number of standard data analysis tools. 
 In particular, DART also makes use of the F90 interface to the library
-which are available through the <em class=file>netcdf.mod</em> and
+which is available through the <em class=file>netcdf.mod</em> and
 <em class=file>typesizes.mod</em> modules. 
 <em class=bold>IMPORTANT</em>: different compilers create these modules with
 different "case" filenames, and sometimes they are not <strong>both</strong>
@@ -274,7 +276,7 @@ section.
 
 <P>
 The DART source code is distributed as a compressed tar file. 
-<A HREF="DART_iceland.tar.gz">DART_iceland.tar.gz</A>
+<A HREF="/pub/DART/DART_iceland.tar.gz">DART_iceland.tar.gz</A>
 [79773188 bytes]. When untarred, the source tree will begin with a 
 directory named <em class=file>DART</em> and will be approximately 
 203 Mb. Compiling the code in this tree (as is usually the case) will
@@ -498,7 +500,7 @@ There are six <em class=file>mkmf_</em><em class=italic>xxxxxx</em>
 files for the programs 
 <em class=program>preprocess</em>, 
 <em class=program>create_obs_sequence</em>, 
-<em class=program>create_obs_fixed_network_seq</em>, 
+<em class=program>create_fixed_network_seq</em>, 
 <em class=program>perfect_model_obs</em>,
 <em class=program>filter</em>, and 
 <em class=program>obs_diag</em> along with the 
@@ -799,9 +801,6 @@ the user input looks <em class=input>like this</em>.
  input time in days and seconds
 <em class=input>1 0</em>
 
- input time in days and seconds
-<em class=input>1 0</em>
-
  Input error variance for this observation definition
 <em class=input>1000000</em>
 
@@ -1050,15 +1049,14 @@ perfect_model_obs
 <H3 class=indent1>2. Generate a set of ensemble initial conditions.</H3>
 <P class=indent1>
    The set of initial conditions for a 'perfect model' experiment is 
-   created by taking the spun-up state of the model 
+   created in several steps.   1) Starting from the spun-up state of the model 
    (available in <em class=file>perfect_restart</em>),
-   running <em class=program>perfect_model_obs</em> to generate
+   run <em class=program>perfect_model_obs</em> to generate
    the 'true state' of the experiment and a corresponding set of 
-   observations, and then feeding the same initial spun-up state 
+   observations. 2) Feed the same initial spun-up state 
    and resulting observations into <em class=program>filter</em>. 
    <BR><BR>
-   Generating ensemble initial conditions 
-   is achieved by changing a perfect_model_obs namelist parameter, 
+   The first step is achieved by changing a perfect_model_obs namelist parameter, 
    copying <em class=file>perfect_restart</em> to 
    <em class=file>perfect_ics</em>, and 
    rerunning <em class=program>perfect_model_obs</em>.
@@ -1098,7 +1096,7 @@ perfect_model_obs
 
 <H4 class=indent1>Generating the ensemble</H4>
 <P class=indent1>
-   is done with the program <em class=program>filter</em>, which also uses the 
+   This step (#2 from above) is done with the program <em class=program>filter</em>, which also uses the 
    Fortran90 namelist mechanism for input. It is now necessary to copy the
    <em class=file>input.nml.filter_default</em> namelist to <em class=file>input.nml</em> 
    or you may simply insert the <em class=code>filter_nml</em> namelist block into the
@@ -1219,7 +1217,7 @@ perfect_model_obs
 
 <TR><TD valign=top><em class=code>start_from_restart</em></TD>
     <TD>when '.false.', <em class=program>filter</em> will generate 
-        its own set of initial conditions. It is important to note 
+        its own ensemble of initial conditions. It is important to note 
         that the filter still makes use of 
         <em class=file>perfect_ics</em> by randomly perturbing these 
         state variables.</TD></TR>
@@ -1360,7 +1358,7 @@ following input sequence:</P>
 <TR><TD><em class=input>1000</em></TD>
     <TD># 1000 observation times </TD></TR>
 <TR><TD><em class=input>0, 43200</em></TD>
-    <TD># First observation after 12 hours (0 days, 3600 * 12 seconds)</TD></TR>
+    <TD># First observation after 12 hours (0 days, 12 * 3600 seconds)</TD></TR>
 <TR><TD><em class=input>0, 43200</em></TD>
     <TD># Observations every 12 hours </TD></TR>
 <TR><TD><em class=input>obs_seq.in</em></TD>
@@ -1436,7 +1434,7 @@ The large value for the cutoff allows each observation to
 impact all other state variables (see Appendix V for localization). 
 <em class=program>filter</em> produces two output diagnostic files, 
 <em class=file>Prior_Diag.nc</em> which contains values of the 
-ensemble members, ensemble mean and ensemble spread for 12- hour 
+ensemble mean, ensemble spread, and ensemble members for 12- hour 
 lead forecasts before assimilation is applied and 
 <em class=file>Posterior_Diag.nc</em> which contains similar 
 data for after the assimilation is applied (sometimes referred to 
@@ -1590,7 +1588,7 @@ the observational error characteristics, or approximations
 in the filter itself.
 If the filter is inappropriately confident that its prior estimate 
 is correct, it will then tend to give less weight to observations 
-then they should be given. 
+than they should be given. 
 The result can be enhanced overconfidence in the model's 
 state estimate.
 In severe cases, this can spiral out of control and the ensemble 

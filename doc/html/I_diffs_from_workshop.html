@@ -38,11 +38,11 @@ even if none of the values in that namelist entry are set. For
 instance, if a program that uses the assim_tools_mod is run,
 input.nml MUST contain an entry &#38;assim_tools_nml. Any namelist
 values to be set must follow this and the list is terminated
-by a /. If no entries are to be set in a given entry, it must
-still be terminated by a line that contains only a backslash (/).
+by a /. If no entries are to be set in a given namelist, it must
+still be terminated by a line that contains only a slash (/).
 If a variable that is NOT in a given namelist is found in input.nml,
 a fatal error occurs. Failing to terminate a namelist with 
-backslash is also fatal. Tools to support this improved namelist
+slash is also fatal. Tools to support this improved namelist
 error detection are implemented in utilities_mod and can be used
 to check for errors in other applications.
 
@@ -170,7 +170,7 @@ mean for WRF boundary forcing computations. Namelist error checking.</TD></TR>
 <TR><TD valign=top>filter</TD>
 <TD>Incorporated new namelist error checking, modified calls to 
 read_obs_seq_header to support automatic file format detection, changed
-to new_qc values (see summary above). Namelist error checking.</TD></TR>
+to new qc values (see summary above). Namelist error checking.</TD></TR>
 
 <TR><TD valign=top>integrate_model</TD>
 <TD>Namelist error checking.</TD></TR>
