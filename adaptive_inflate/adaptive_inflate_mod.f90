@@ -21,9 +21,11 @@ use    utilities_mod, only : file_exist, get_unit, check_namelist_read, find_nam
 implicit none
 private
 
-public :: bayes_cov_inflate, adaptive_inflate_init, ss_inflate, ss_inflate_sd, &
+public :: update_inflation, adaptive_inflate_init, ss_inflate, ss_inflate_sd, &
    ss_sd_lower_bound, adaptive_inflate_end, do_obs_inflate, do_varying_ss_inflate, &
-   do_single_ss_inflate
+   do_single_ss_inflate, adaptive_inflate_obs_init, deterministic_inflate, &
+   obs_inflate, obs_inflate_sd, obs_sd_lower_bound, obs_inf_upper_bound, bayes_cov_inflate, &
+   ss_inf_upper_bound, inflate_ens
 
 character(len = 129) :: errstring
 
@@ -39,8 +41,8 @@ revdate  = "$Date$"
 ! adaptive inflation and a spatially-varying state space inflation that carries
 ! a mean and variance for the state space inflation at each point. 
 
-! Storage for fixed observation space inflation; publically accessible
-real(r8) :: obs_inflate, obs_inflate_sd
+! Storage for fixed observation space inflation; publically accessible; one per domain/region
+real(r8), allocatable :: obs_inflate(:), obs_inflate_sd(:)
 
 ! Storage for spatially varying state space inflation; publically accessible
 real(r8), allocatable :: ss_inflate(:), ss_inflate_sd(:)
@@ -54,21 +56,24 @@ logical              :: do_varying_ss_inflate      = .false.
 logical              :: do_single_ss_inflate       = .false.
 logical              :: start_from_inflate_restart = .false.
 logical              :: output_restart             = .true.
+logical              :: deterministic_inflate      = .true.
 character(len = 129) :: inflate_in_file_name       = "inflate_ics"
 character(len = 129) :: inflate_out_file_name      = "inflate_restart"
 real(r8)             :: obs_inf_initial            = 1.0_r8
 real(r8)             :: obs_inf_sd_initial         = 0.0_r8
+real(r8)             :: obs_inf_upper_bound        = 1000000_r8
 real(r8)             :: obs_sd_lower_bound         = 0.0_r8
 real(r8)             :: ss_inf_initial             = 1.0_r8
 real(r8)             :: ss_inf_sd_initial          = 0.0_r8
+real(r8)             :: ss_inf_upper_bound         = 1000000_r8
 real(r8)             :: ss_sd_lower_bound          = 0.0_r8
 character(len = 129) :: diagnostic_file_name       = "inflate_diag"
 
 namelist / adaptive_inflate_nml / do_obs_inflate, do_varying_ss_inflate, &
    do_single_ss_inflate, start_from_inflate_restart, inflate_in_file_name, &
-   output_restart, inflate_out_file_name, obs_inf_initial, obs_inf_sd_initial, &
-   obs_sd_lower_bound, ss_inf_initial, ss_inf_sd_initial, ss_sd_lower_bound, &
-   diagnostic_file_name
+   output_restart, deterministic_inflate, inflate_out_file_name, obs_inf_initial, &
+   obs_inf_sd_initial, obs_inf_upper_bound, obs_sd_lower_bound, ss_inf_initial, &
+   ss_inf_upper_bound, ss_inf_sd_initial, ss_sd_lower_bound, diagnostic_file_name
 
 !============================================================================
 
@@ -139,7 +144,20 @@ endif
 
 end subroutine adaptive_inflate_init
 
+
 !------------------------------------------------------------------
+
+subroutine adaptive_inflate_obs_init(num_domains)
+
+integer, intent(in) :: num_domains
+
+if(do_obs_inflate) allocate(obs_inflate(num_domains), obs_inflate_sd(num_domains))
+
+end subroutine adaptive_inflate_obs_init
+
+
+!------------------------------------------------------------------
+
 
 subroutine adaptive_inflate_end
 
@@ -158,7 +176,11 @@ if(output_restart) then
    endif
 endif
 
-deallocate(ss_inflate, ss_inflate_sd)
+if(do_varying_ss_inflate) then
+   deallocate(ss_inflate, ss_inflate_sd)
+else if(do_obs_inflate) then
+   deallocate(obs_inflate, obs_inflate_sd)
+endif
 
 end subroutine adaptive_inflate_end
 
@@ -172,6 +194,58 @@ type(time_type), intent(in) :: time
 ! Only worry about cases that are not varying state space here?
 
 end subroutine output_inflate_diagnostics
+
+
+!------------------------------------------------------------------
+
+subroutine inflate_ens(ens, mean, inflate)
+
+! Inflates subset of ensemble members given mean and inflate
+! Should select between deterministic and stochastic inflation
+
+real(r8), intent(inout) :: ens(:)
+real(r8), intent(in) :: mean, inflate
+
+if(deterministic_inflate) then
+   ens = (ens - mean) * sqrt(inflate) + mean
+else
+
+endif
+
+end subroutine inflate_ens
+
+!------------------------------------------------------------------
+
+subroutine update_inflation(inflate, inflate_sd, prior_mean, prior_var, &
+   obs, obs_var, gamma, sd_lower_bound, inf_upper_bound)
+
+real(r8), intent(inout) :: inflate, inflate_sd
+real(r8), intent(in)    :: prior_mean, prior_var, obs, obs_var, gamma
+real(r8), intent(in)    :: sd_lower_bound, inf_upper_bound
+
+real(r8) :: new_inflate, new_inflate_sd
+
+! Updates the distribution of inflation given prior mean and sd
+! plus the prior mean and variance and obs value and variance.
+! gamma is the 'correlation * localization' limiting factor.
+! A lower bound on the updated inflation sd and an upper bound
+! on the inflation itself are provided. 
+
+call bayes_cov_inflate(prior_mean, prior_var, obs, obs_var, &
+   inflate, inflate_sd, gamma, new_inflate, new_inflate_sd, sd_lower_bound)
+
+! Make sure inflate satisfies constraints
+inflate = new_inflate
+!!!if(new_inflate < 0.0_r8) new_inflate = 0.0_r8
+! Should we continue to enforce > 1.0 on inflate?
+if(inflate < 1.0_r8) inflate = 1.0_r8
+if(inflate > inf_upper_bound) inflate = inf_upper_bound
+
+! Make sure sd satisfies constraints
+inflate_sd = new_inflate_sd
+if(inflate_sd < sd_lower_bound) inflate_sd = sd_lower_bound
+
+end subroutine update_inflation
 
 !------------------------------------------------------------------
 
