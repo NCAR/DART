@@ -2232,6 +2232,7 @@ write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","WRF"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
