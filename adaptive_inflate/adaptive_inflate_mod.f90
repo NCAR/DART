@@ -14,18 +14,21 @@ module adaptive_inflate_mod
 ! Operations and storage required for various adaptive inflation algorithms
 
 use        types_mod, only : r8, PI
-use time_manager_mod, only : time_type
+use time_manager_mod, only : time_type, get_time
 use    utilities_mod, only : file_exist, get_unit, check_namelist_read, find_namelist_in_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
+use   random_seq_mod, only : random_seq_type, random_gaussian, &
+                             init_random_seq, random_uniform
+
 
 implicit none
 private
 
-public :: update_inflation, adaptive_inflate_init, ss_inflate, ss_inflate_sd, &
+public :: update_inflation, adaptive_inflate_ss_init, ss_inflate, ss_inflate_sd, &
    ss_sd_lower_bound, adaptive_inflate_end, do_obs_inflate, do_varying_ss_inflate, &
    do_single_ss_inflate, adaptive_inflate_obs_init, deterministic_inflate, &
    obs_inflate, obs_inflate_sd, obs_sd_lower_bound, obs_inf_upper_bound, bayes_cov_inflate, &
-   ss_inf_upper_bound, inflate_ens
+   ss_inf_upper_bound, inflate_ens, output_inflate_diagnostics
 
 character(len = 129) :: errstring
 
@@ -46,6 +49,17 @@ real(r8), allocatable :: obs_inflate(:), obs_inflate_sd(:)
 
 ! Storage for spatially varying state space inflation; publically accessible
 real(r8), allocatable :: ss_inflate(:), ss_inflate_sd(:)
+
+! Flag indicating whether module has been initialized
+logical :: initialized = .false.
+
+! Controls for a random sequence for non-deterministic inflation
+type (random_seq_type) :: inc_ran_seq
+logical :: first_inc_ran_call = .true.
+
+! Controls opening file for inflate diagnostic output
+logical :: first_diag_call = .true.
+integer :: diag_unit
 
 !============================================================================
 
@@ -82,11 +96,11 @@ contains
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_init(model_size)
+subroutine adaptive_inflate_init()
 
-integer, intent(in) :: model_size
+integer :: iunit, io, true_count
 
-integer :: iunit, io, restart_unit
+if(initialized) return
 
 call register_module(source, revision, revdate)                                         
 
@@ -100,49 +114,64 @@ call error_handler(E_MSG,'adaptive_inflate','adaptive_inflate namelist values','
 write(logfileunit, nml=adaptive_inflate_nml)                                                 
 write(     *     , nml=adaptive_inflate_nml)    
 
-! Look for illegal namelist combinations
-! Single global value for state space inflation is not yet implemented
-if(do_single_ss_inflate) then
-   write(errstring, *) 'do_single_ss_inflate true option not yet implemented'
-   call error_handler(E_ERR,'adaptive_inflate_init', errstring, source, revision, revdate)
-endif
+! Can't do more than one type of inflation
+true_count = 0
+if(do_obs_inflate) true_count = true_count + 1
+if(do_varying_ss_inflate) true_count = true_count + 1
+if(do_single_ss_inflate) true_count = true_count + 1
 
-! Can't do both obs space and spatially varying state space
-if(do_obs_inflate .and. do_varying_ss_inflate) then
-   write(errstring, *) 'do_obs_inflate and do_varying_ss_inflate cannot BOTH be true'
+if(true_count > 1) then
+   write(errstring, *) 'Can only use one type of inflation at a time'
    call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
 endif
 
+end subroutine adaptive_inflate_init
+
+!------------------------------------------------------------------
+
+subroutine adaptive_inflate_ss_init(model_size)
+
+integer, intent(in) :: model_size
+
+integer :: restart_unit, restart_model_size, required_size
+
+! Make sure basic part of module has been initialized already
+call adaptive_inflate_init()
+
 ! If spatially varying state space, allocate storage
 if(do_varying_ss_inflate) allocate(ss_inflate(model_size), ss_inflate_sd(model_size))
+if(do_single_ss_inflate) allocate(ss_inflate(1), ss_inflate_sd(1))
+
+! Only do state space initialization here
+if(do_obs_inflate) return
 
 ! Read in initial values from file OR get from namelist as requested
 ! Initially, file is binary only
-
 if(start_from_inflate_restart) then
+   ! Determine the required size of the restart file
+   if(do_varying_ss_inflate) then
+      required_size = model_size
+   else if(do_single_ss_inflate) then
+      required_size = 1
+   endif
    ! Open the file
    restart_unit = get_unit()
    open(unit = restart_unit, file = inflate_in_file_name, action = 'read', form = 'unformatted')
-
-   if(do_obs_inflate) then
-      read(restart_unit) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
-   else if(do_varying_ss_inflate) then
-      read(restart_unit) ss_inflate, ss_inflate_sd, ss_sd_lower_bound 
+   read(restart_unit) restart_model_size
+   if(restart_model_size /= required_size) then
+      write(errstring, *) 'Size of state space restart file is incorrect'
+      call error_handler(E_ERR, 'adaptive_inflate_init', &
+         errstring, source, revision, revdate)
    endif
-
+   read(restart_unit) ss_inflate, ss_inflate_sd, ss_sd_lower_bound 
    close(restart_unit)
 else
    ! Get initial values from namelist
-   if(do_obs_inflate) then
-      obs_inflate = obs_inf_initial
-      obs_inflate_sd = obs_inf_sd_initial
-   else if(do_varying_ss_inflate) then
-      ss_inflate = ss_inf_initial
-      ss_inflate_sd = ss_inf_sd_initial
-   endif
+   ss_inflate = ss_inf_initial
+   ss_inflate_sd = ss_inf_sd_initial
 endif
 
-end subroutine adaptive_inflate_init
+end subroutine adaptive_inflate_ss_init
 
 
 !------------------------------------------------------------------
@@ -151,7 +180,42 @@ subroutine adaptive_inflate_obs_init(num_domains)
 
 integer, intent(in) :: num_domains
 
-if(do_obs_inflate) allocate(obs_inflate(num_domains), obs_inflate_sd(num_domains))
+integer :: restart_unit, restart_num_domains
+
+! Make sure basic part of module has been initialized already
+call adaptive_inflate_init()
+
+! It is convenient to allocate this storage no matter what
+! Avoids a lot of messy logic in assim_tools
+allocate(obs_inflate(num_domains), obs_inflate_sd(num_domains))
+
+! Need to initialize the values
+! If obs_space inflation is not being done, set everything to -1
+if(.not. do_obs_inflate) then
+   obs_inflate = -1.0_r8
+   obs_inflate_sd = -1.0_r8
+else 
+   ! Doing obs space inflation, follow rest of namelist params
+   if(start_from_inflate_restart) then
+      ! Open the file
+      restart_unit = get_unit()
+      open(unit = restart_unit, file = inflate_in_file_name, action = 'read', &
+         form = 'unformatted')
+      read(restart_unit) restart_num_domains
+      ! Number of domains in restart file must match
+      if(restart_num_domains /= num_domains) then
+         write(errstring, *) 'Number of domains in restart not same as number of domains'
+         call error_handler(E_ERR, 'adaptive_inflate_obs_init', &
+            errstring, source, revision, revdate)
+      endif
+      read(restart_unit) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
+      close(restart_unit)
+   else
+      ! Get initial values from namelist
+      obs_inflate = obs_inf_initial
+      obs_inflate_sd = obs_inf_sd_initial
+   endif
+endif
 
 end subroutine adaptive_inflate_obs_init
 
@@ -170,8 +234,12 @@ if(output_restart) then
    open(unit = restart_unit, file = inflate_out_file_name, action = 'write', form = 'unformatted')
 
    if(do_obs_inflate) then
+      ! Write the size to allow for error check on input
+      write(restart_unit) size(obs_inflate)
       write(restart_unit) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
-   else if(do_varying_ss_inflate) then
+   else if(do_varying_ss_inflate .or. do_single_ss_inflate) then
+      ! Write the size to allow for error check on input
+      write(restart_unit) size(ss_inflate)
       write(restart_unit) ss_inflate, ss_inflate_sd, ss_sd_lower_bound
    endif
 endif
@@ -191,25 +259,97 @@ subroutine output_inflate_diagnostics(time)
 
 type(time_type), intent(in) :: time
 
-! Only worry about cases that are not varying state space here?
+integer :: days, seconds, i
+
+! Diagnostics for spatially-varying state space inflate are done
+! By the filter on the state-space netcdf diagnostic files.
+! Here, need to do initial naive ascii dump for obs space or
+! fixed state space. Assume that values can come from storage in
+! this module directly.
+
+! Only need to do something if obs_space or single state space inflate
+if(do_obs_inflate .or. do_single_ss_inflate) then
+   ! Open the file if this is first time through
+   ! Just make it ascii flat for now
+   ! Both prior and posterior are going in here for now
+   if(first_diag_call) then
+      first_diag_call = .false.
+      ! Open the file
+      diag_unit = get_unit()
+      open(unit = diag_unit, file = diagnostic_file_name, action = 'write', form = 'formatted')
+   endif
+
+   ! Get the time in days and seconds
+   call get_time(time, seconds, days)
+   ! Write out the time followed by the values
+   if(do_single_ss_inflate) then
+      write(diag_unit, *) days, seconds, ss_inflate, ss_inflate_sd
+   else if(do_obs_inflate) then
+      do i = 1, size(obs_inflate)
+         write(diag_unit, *) days, seconds, obs_inflate(i), obs_inflate_sd(i)
+      end do
+   endif
+endif
 
 end subroutine output_inflate_diagnostics
 
 
 !------------------------------------------------------------------
 
-subroutine inflate_ens(ens, mean, inflate)
+subroutine inflate_ens(ens, mean, inflate, var_in)
 
 ! Inflates subset of ensemble members given mean and inflate
 ! Should select between deterministic and stochastic inflation
 
 real(r8), intent(inout) :: ens(:)
 real(r8), intent(in) :: mean, inflate
+real(r8), intent(in), optional :: var_in
+
+integer :: i, ens_size
+real(r8) :: rand_sd, var
 
 if(deterministic_inflate) then
+   ! Just spread the ensemble out linearly
    ens = (ens - mean) * sqrt(inflate) + mean
 else
+   ens_size = size(ens)
 
+   ! Use a stochastic algorithm to spread out.
+   ! WARNING: This requires that the WHOLE ensemble is available here.
+   ! There is no way to confirm that at this level.  For now, (Jan 06)
+   ! filter has an error check for the case of ensemble stored out of 
+   ! core that flags the use of non-deterministic as illegal.
+   ! If var is not present, go ahead and compute it here.
+   if(.not. present(var_in)) then
+      var = sum((ens - mean)**2) / (ens_size - 1)
+   else
+      var = var_in
+   endif
+   
+   ! Another option at this point would be to add in random noise designed
+   ! To increase the variance of the prior ensemble to the appropriate level
+   ! Would probably want to keep the mean fixed by shifting AND do a sort
+   ! on the final prior/posterior increment pairs to avoid large regression
+   ! error as per stochastic filter algorithms. This might help to avoid
+   ! problems with generating gravity waves in the Bgrid model, for instance.
+   ! If this is first time through, need to initialize the random sequence
+   if(first_inc_ran_call) then
+      call init_random_seq(inc_ran_seq)
+      first_inc_ran_call = .false.
+   endif
+   
+    ! Figure out required sd for random noise being added
+    if(inflate > 1.0_r8) then
+       ! Don't allow covariance deflation in this version
+       rand_sd = sqrt(inflate*var - var)
+       !write(*, *) 'rand_sd increment needed is ', sqrt(prior_var), rand_sd
+       ! Add random sample from this noise into the ensemble
+       do i = 1, ens_size
+          ens(i) = random_gaussian(inc_ran_seq, ens(i), rand_sd)
+       end do
+       ! Adjust the mean
+       ens = ens - (sum(ens) / ens_size - mean)
+   endif
 endif
 
 end subroutine inflate_ens
