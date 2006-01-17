@@ -176,9 +176,12 @@ end subroutine adaptive_inflate_ss_init
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_obs_init(num_domains)
+subroutine adaptive_inflate_obs_init(num_domains, dont_read_restart)
 
 integer, intent(in) :: num_domains
+logical, intent(in) :: dont_read_restart
+
+! Don't read restart when doing parallel runs driven by assim_region
 
 integer :: restart_unit, restart_num_domains
 
@@ -196,7 +199,7 @@ if(.not. do_obs_inflate) then
    obs_inflate_sd = -1.0_r8
 else 
    ! Doing obs space inflation, follow rest of namelist params
-   if(start_from_inflate_restart) then
+   if(start_from_inflate_restart .and. .not. dont_read_restart) then
       ! Open the file
       restart_unit = get_unit()
       open(unit = restart_unit, file = inflate_in_file_name, action = 'read', &
