@@ -97,6 +97,9 @@ integer :: iunit, i, io, seq_unit
 character(len = 129) :: msgstring, this_file_name
 character(len = 4) :: extension
 
+! integer :: secs, days       ! for print statement below
+! type(time_type) :: ensemble_valid_time
+
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities 
    call register_module(source, revision, revdate)
@@ -171,6 +174,14 @@ if(present(file_name)) then
       if(present(init_time)) ens_handle%time(i) = init_time
 
       if(.not. single_restart_file_in) call close_restart(iunit)
+
+      ! Print of initial model time
+ !    ensemble_valid_time = ens_handle%time(i)
+ !    call get_time(ensemble_valid_time,secs,days)
+ !    write(msgstring,*)'ensemble file ',trim(adjustl(this_file_name)), &
+ !                      ' (days, seconds)',days,secs
+ !    call error_handler(E_MSG,'init_ensemble_manager',msgstring,source,revision,revdate)
+
    end do
    
    if(single_restart_file_in) call close_restart(iunit)
