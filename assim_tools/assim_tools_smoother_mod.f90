@@ -1018,7 +1018,6 @@ Observations : do jjj = 1, num_obs_in_set
       if(cov_factor <= 0.0_r8) cycle CLOSE_STATE
 
       LAGLOOP: do si = 0, lag
-         print *, ' doing lag ',si
 
       ! Get the ensemble elements for this state variable and do regression
          swath = ens(:, inv_indices(ind), si)
