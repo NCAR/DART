@@ -30,7 +30,7 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    aoutput_diagnostics, aread_state_restart, &
    pert_model_state, open_restart_read, close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use  assim_tools_mod, only : assim_tools_init, filter_assim, assim_tools_end
+use  assim_tools_smoother_mod, only : assim_tools_init, filter_assim, assim_tools_end
 use    obs_model_mod, only : move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
@@ -76,7 +76,8 @@ type(time_type)              :: ens_mean_time, temp_time
 ! Storage for use with parallelizable efficient filter
 real(r8), allocatable  :: ens_obs(:, :)
 real(r8), allocatable  :: obs_err_var(:), obs(:)
-character(len = 129), allocatable   :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
+character(len = 129), allocatable :: prior_copy_meta_data(:), posterior_copy_meta_data(:)
+character(len = 129), allocatable :: smoother_restart_file(:)
 
 logical :: interf_provided
 logical, allocatable :: compute_obs(:)
@@ -87,9 +88,11 @@ logical, allocatable :: compute_obs(:)
 !
 integer  :: async = 0, ens_size = 20
 real(r8) :: cov_inflate = 1.0_r8
-logical  :: start_from_restart = .false., output_restart = .false.
-! if init_time_days and seconds are negative initial time is 0, 0
-! for no restart or comes from restart if restart exists
+logical  :: start_from_smoother_restart = .false.
+logical  :: output_smoother_restart = .true.
+logical  :: start_from_restart = .false.
+! if init_time_days and seconds are negative -- the time comes from the
+! restart file. If you are not starting from a smoother restart file, the initial time is then 0, 0
 integer  :: init_time_days    = 0
 integer  :: init_time_seconds = 0
 ! Control diagnostic output for state variables
@@ -105,7 +108,8 @@ integer  :: lag = 0   ! for smoother set to something greater than 0
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
                         restart_in_file_name  = 'filter_ics',     &
-                        restart_out_file_name = 'filter_restart', &
+                        smoother_restart_in_base  = 'smoother_ics',     &
+                        smoother_restart_out_base = 'smoother_restart', &
                         adv_ens_command       = './advance_ens.csh'
 
 ! adv_ens_command  == 'qsub advance_ens.csh' -> system call advances ensemble by
@@ -117,8 +121,11 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 !                 non-batch executions.
 
 namelist /smoother_nml/async, adv_ens_command, ens_size, cov_inflate, &
-   start_from_restart, output_restart, &
-   obs_sequence_in_name, obs_sequence_out_name, restart_in_file_name, restart_out_file_name, &
+   start_from_smoother_restart, output_smoother_restart, &
+   start_from_restart, &
+   obs_sequence_in_name, obs_sequence_out_name, &
+   restart_in_file_name, &
+   smoother_restart_in_base, smoother_restart_out_base, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_state_members, num_output_obs_members, output_interval, &
@@ -159,7 +166,8 @@ allocate(ens_mean(model_size), temp_ens(model_size))
 ! element 0 is 'lag 0' -- the current ensemble
 ! element 1 is 'lag 1' -- the lag-1 smoothed posterior
 ! element 2 is 'lag 2' -- the lag-2 smoothed posterior, etc.
-allocate(ens_handle(0:lag), SmootherStateUnit(lag))
+allocate(ens_handle(0:lag), SmootherStateUnit(lag), smoother_restart_file(0:lag))
+
 
 ! Initialize the output sequences and state files and set their meta data
 call filter_generate_copy_meta_data()
@@ -169,20 +177,29 @@ call filter_set_initial_time()
 
 ! Read restart and initialize storage for 
 ! Read in the restart for the whole array of ensemble handles
-do si = 0, lag
-   call filter_read_restart(si)
-enddo 
+!smoother_restart_file(0)  = "s000"
+!smoother_restart_file(9)  = "s009"
+if (start_from_smoother_restart) then
+   do si = 0, lag
+      write(smoother_restart_file(si),'(a,i3.3)')   &
+                     trim(adjustl(smoother_restart_in_base)),si
+      write(*,*)'smoother restart name is ',trim(adjustl(smoother_restart_file(si)))
+      call smoother_read_restart(si)
+   enddo
+else
+   ! do normal filter restart - may or may not have cold initialization
+   ! depending on namelist parameter
+   ! if namelist start_from_restart = .false. then, have cold restart
+   do si = 0, lag
+      call filter_read_restart(si)
+   enddo 
+endif
 
 ! Start out with no previously used observations
 last_key_used = -99
 
 ! Time step number is used to do periodic diagnostic output
 time_step_number = 0
-
-! initialize the handles by copying over
-do i = 1, lag
-   call copy_ens(ens_handle(0), ens_handle(i), .true.)
-enddo
 
 
 AdvanceTime : do
@@ -195,13 +212,15 @@ AdvanceTime : do
       key_bounds, num_obs_in_set, async, adv_ens_command)
    if(key_bounds(1) < 0) exit AdvanceTime
    
-
-   if (time_step_number == 1) then
-      do i = 1, lag
-         call copy_ens(ens_handle(0), ens_handle(i), .true.)
-      end do
-   end if
-
+   if (start_from_smoother_restart) then
+   else  
+      ! not starting from smoother restart
+      if (time_step_number == 1) then
+         do i = 1, lag
+            call copy_ens(ens_handle(0), ens_handle(i), .true.)
+         enddo
+      endif
+   endif
 
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), obs(num_obs_in_set), &
@@ -209,11 +228,6 @@ AdvanceTime : do
 
    ! For starters allow all obs to be computed as before
    compute_obs = .true.
-
-! Debugging test with some obs that can't be recomputed
-!   do j = 1, num_obs_in_set
-!      if(j / 2 * 2 == j) compute_obs(j) = .false.
-!   end do
 
    ! Get all the keys associated with this set of observations
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
@@ -246,23 +260,21 @@ AdvanceTime : do
 
    ! Do the smoother copies if we have non-zero lag
    if (lag > 0) then
-
-      if (time_step_number > lag) then
-
+   
+      if (start_from_smoother_restart) then
          do si = 1, lag
             call filter_state_space_diagnostics(SmootherStateUnit(si), si)
             write(*,*)'Finished outputting lag ',si 
          enddo
-
-         !* write out ens_handle(2) to ens_handle(lag + 1)
-         ! need netcdf write out from TimH - tag the lag
-         ! could be handled via some sort of do-loop? attaching 
-         ! the lag as we loop through
       else
-         !* write out only selected elements of ens_handle
-         !* because don't have all the lags yet	- still tag the lag
-      endif      
-
+         if (time_step_number > lag) then
+            do si = 1, lag
+               call filter_state_space_diagnostics(SmootherStateUnit(si), si)
+               write(*,*)'Finished outputting lag ',si 
+            enddo
+         endif      
+      endif
+      ! copies to get appropriate Prior array of ensemble handles
       do si = lag, 1, -1
          ! Time only gets advanced under model propagation 
          write(*,*)' copying  lag ',si-1, ' to ens_handle ',si
@@ -270,7 +282,7 @@ AdvanceTime : do
       enddo     
 
    endif 
-   
+
    ! Do posterior observation space diagnostics
    call obs_space_diagnostics(ens_obs, ens_size, seq, keys, &
       num_obs_in_set, obs, obs_err_var, outlier_threshold, .false., 2, &
@@ -296,7 +308,14 @@ enddo
 call write_obs_seq(seq, obs_sequence_out_name)
 
 ! Output a restart file if requested
-call filter_output_restart()
+! Note, if run w/ smoother-restart - also have `traditional smoother-restart'
+! the '000' restart file is the traditional 'filter_restart'.
+do si = 0, lag
+   write(smoother_restart_file(si),'(a,i3.3)')   &
+                     trim(adjustl(smoother_restart_out_base)),si
+   call smoother_output_restart(si)
+enddo
+
 
 ! Output the restart for the assim_tools inflation parameters
 call assim_tools_end()
@@ -844,20 +863,64 @@ end do
 call destroy_obs(observation)
 
 end subroutine obs_space_diagnostics
-
 !-------------------------------------------------------------------------
 
-subroutine filter_output_restart()
+
+
+!-------------------------------------------------------------------------
+subroutine smoother_output_restart(si)
+
+implicit none
+
+integer, intent(in) :: si
 
 ! Output a restart if requested
-if(output_restart) then
-   call end_ensemble_manager(ens_handle(0), restart_out_file_name)
+if(output_smoother_restart) then
+   call end_ensemble_manager(ens_handle(si), smoother_restart_file(si))
 else
-   call end_ensemble_manager(ens_handle(0))
+   call end_ensemble_manager(ens_handle(si))
 end if
 
-end subroutine filter_output_restart
-
+end subroutine smoother_output_restart
 !-------------------------------------------------------------------------
+
+
+ subroutine smoother_read_restart(si)
+!-------------------------------------------------------------------------
+!subroutine smoother_read_restart(si)
+!
+! If the namelist parameters defining the time for the restart are
+! 'supplied', then use those as starting values for all the restart files.
+! If they are not, (i.e. they are negative) get the restart times from
+! the restart files. Those times represent the 'valid time'.
+
+implicit none
+
+integer, intent(in) :: si
+
+type(time_type) :: ensemble_valid_time
+
+if(init_time_days >= 0) then
+   call init_ensemble_manager(ens_handle(si), ens_size, model_size, &
+                              smoother_restart_file(si), time1)
+else
+   call init_ensemble_manager(ens_handle(si), ens_size, model_size, &
+                              smoother_restart_file(si))
+endif
+
+! Print of initial model time
+call get_ensemble_time(ens_handle(si), 0, ensemble_valid_time)
+call get_time(ensemble_valid_time,secs,days)
+write(msgstring,100),si,days,secs
+call error_handler(E_MSG,'smoother_read_restart',msgstring,source,revision,revdate)
+
+100 format('ensemble member ',i4,' (days,seconds) = ',i4,1x,i4)
+
+end subroutine smoother_read_restart
+!-------------------------------------------------------------------------
+
+
+
+
 
 end program smoother
