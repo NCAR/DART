@@ -1,9 +1,13 @@
 &record1
- init_gen = .TRUE.
- pbltype = 'YSUPBLSCHEME'
- sfctype = 'SFCLAYSCHEME'
- surface_physics = 'SLABSCHEME'
+ init_f = .TRUE.
+ rnd_init = .FALSE.
+ init_f_type = 'OBS'   ! this should be OBS | WRF
+ pbltype = 'MYJPBLSCHEME'
+ sfctype = 'MYJSFCSCHEME'
+ surface_physics = 'LSMSCHEME'
+ bucket_model = 'NONE' !'NONE' !'BUCKET1','BUCKET2'
  dt = 10.
+ nz = 33
  deep_soil_moisture=1.
  P_QV = 2
  P_QC = 1
@@ -19,16 +23,27 @@
 /
 
 &record2
- bamex = .TRUE.
- init_gen_file='wrf_bamex.nc'
- out_gen_file='wrf_profs_out.txt'
+ init_f_file='sgpsondewnpnC1.b1.BAMEX.nc'
+ init_soil_file='sgpswatsE13.b1.BAMEX.nc'
+ init_flux_file='sgpsirsE13.b1.BAMEX.nc'
+ init_smos_file='sgp30smosE13.b1.BAMEX.nc'
+ out_f_file='wrf_profs_out.txt'
  output_state_vector = .false.,
- start_hour_wrf=1
- hour_interval_wrf=1
- start_forecast=12
- forecast_length=12
- splineinterval=1
- outgeninterval=1. 	
+ start_year_f=2003
+ start_month_f=7
+ start_day_f=15
+ start_hour_f=05
+ start_minute_f=30
+ start_forecast=0
+ forecast_length=0
+ interval_f=21600
+ interval_flux=60 
+ interval_soil=3600 
+ interval_smos=1800 
+ splineinterval=3600
+ splineinterval_flux=3600
+ splineinterval_smos=3600
+ outfinterval=9000
  rnd_seed_val = -9812
  z_g=2000.
 /
@@ -45,18 +60,34 @@
  rland_ref=1.
  mminlu_ref='USGS'
  julday_ref=150
- lu_index_ref=7
- mavail_ref=0.5
+ lu_index_ref=2
+ mavail_ref=0.3
  ivgtyp_ref=7
  isltyp_ref=8
  vegfra_ref=0.
- zo_ref=.1
- emiss_ref=.95
+ zo_ref=.15
+ emiss_ref=.985
  thc_ref=.04
- albedo_ref=.3
+ cs_ref=25.0e5
+ albedo_ref=.17
+ maxm_ref=.08
+ minm_ref=.02
+ erate_ref=.45
  ts_ref=293
  tmn_ref=283
  ps_ref=1.e5
- lat_ref=40.
- lon_ref=-90.
+ prate_ref=0.  ! in mm/hr
+ lat_ref=36.605
+ lon_ref=-97.485
+/
+
+&record4
+ num_est_params = 0
+ est_param_types = 600, 601, 602, 603, 604
+ pert_init_sd = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+ pert_param_sd = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+ pert_param_min = 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 
+ pert_param_max = 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 
+ maintain_initial_spread = .false.
+ dist_shape = 'logn','logn','logn','logn','logn'
 /
