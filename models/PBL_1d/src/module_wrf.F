@@ -1,9 +1,13 @@
 MODULE module_wrf
 
+! Primary WRF column model driver.  All memory allocations are done in here.
+
   USE module_model_constants
   USE module_namelist
   USE module_ideal
   USE module_initialize
+  USE module_init_soil_ideal
+  USE module_init_soil_real
   USE module_soil_pre
   USE module_surface_driver
   USE module_pbl_driver
@@ -14,206 +18,261 @@ MODULE module_wrf
   USE module_bl_ysu
   USE module_sf_noahlsm
   USE module_sf_ruclsm
-  USE module_jh_procedures
+  USE module_wrf_init_and_bc
+  USE module_snd_init_and_bc
   USE module_luse_init
   USE module_getsm
   
   IMPLICIT NONE
-
-  INTEGER :: isfcunit=55,iprofunit=56,isimil=57,ncunit=58
-
-  INTEGER,PARAMETER :: ids=1,ide=1, jds=1,jde=1, kds=1,kde=nz, &
-        &ims=1,ime=1, jms=1,jme=1, kms=1,kme=nz, &
-        &its=1,ite=1,jts=1,jte=1,&
-        &kts=1,kte=nz-1, num_tiles=1
-
-  INTEGER, PARAMETER :: k_simil=5,PARAM_FIRST_SCALAR = 2
-  INTEGER :: niter,iter
-
-  REAL, DIMENSION(1:k_simil) :: u_simil,v_simil,q_simil,th_simil
-  REAL :: hvfx,thvstar,qstar,dlmonin,z_level,zo,zol,x,psimzl,y,psihzl,&
-       &rhosfc
-
-  REAL, PARAMETER :: a_stable=1.,b_stable=2./3.,c_stable=5.,d_stable=.35
-
-  INTEGER :: ntime,num_soil_layers,ninputtimes,nsplinetimes,ihour,&
-       &imin,imax
-
-  INTEGER, DIMENSION(num_tiles):: &
-        &     i_start=1,i_end=1,j_start=1 ,j_end=1
-   
-   INTEGER       ::     itimestep,STEPBL,itime_gen=1
-   INTEGER,    DIMENSION( ims:ime , jms:jme )                    &
-                   ::                        LOWLYR
-!
-   LOGICAL          ::   warm_rain
-!
-   REAL,       DIMENSION( ims:ime, kms:kme, jms:jme )            &
-            ::                         p_phy, &
-        pi_phy, &
-        p8w, &
-        rho, &
-        t_phy, &
-        u_phy, &
-        v_phy, &
-        dz8w, &
-        z, &
-        th_phy
-
-   REAL, DIMENSION( ims:ime, jms:jme ) ::   PSFC
-
-   REAL,       DIMENSION( ims:ime, kms:kme+1, jms:jme ) :: z8w
-!
-   REAL, ALLOCATABLE, DIMENSION(:,:,:,: )         &
-       ::                                    moist
-!
-!
-
-   REAL,       DIMENSION( ims:ime , jms:jme )  ::        &
-        XLAND, &
-        HT, &
-        PSIM, &
-        PSIH, &
-        GZ1OZ0, &
-        BR, &
-        CHKLOWQ
-
-!mp@ begin
-   REAL,       DIMENSION( ims:ime , jms:jme )  ::        &
-        &psimfac,psihfac,psiqfac,zl2
-!mp@ begin
-
-   REAL,       DIMENSION( ims:ime, jms:jme )  &
-       ::                           TSK, &
-        UST, &
-        HOL, &
-        MOL, &
-        PBLH, &
-        HFX, &
-        QFX, &
-        REGIME, &
-        ZNT, &
-        QSFC, &
-        AKHS, &
-        AKMS, &
-        QZ0, &
-        THZ0, &
-        UZ0, &
-        VZ0, &
-        GRDFLX  , &
-        WSPD
-   
-!
-   REAL,       DIMENSION( ims:ime, kms:kme, jms:jme )            &
-            ::                       RUBLTEN, &
-        RVBLTEN, &
-        RTHBLTEN, &
-        RQVBLTEN, &
-        RQCBLTEN, &
-        RQIBLTEN, &
-        TKE_MYJ
-   
-   REAL                                ::  u_frame=0.,v_frame=0.
-
-   
-   INTEGER,    DIMENSION( ims:ime , jms:jme )                    &
-         ::                             KPBL
  
-   REAL,    DIMENSION( ims:ime , jms:jme ) :: landmask_input,sst_input,&
-        &cpm,chs
-   LOGICAL :: flag_sst=.TRUE.
+   INTEGER                             :: isfcunit=55,&
+                                          iprofunit=56,&
+                                          isimil=57,&
+                                          ncunit=58
 
-   REAL,       DIMENSION( ims:ime , jms:jme )                    &
-         :: XICE, SEAMASK, CT, SNOW, LH
+   INTEGER, PARAMETER                  :: ids=1,&
+                                          ide=1,&
+                                          jds=1,&
+                                          jde=1,&
+                                          kds=1,&
+                                          ims=1,&
+                                          ime=1,&
+                                          jms=1,&
+                                          jme=1,&
+                                          kms=1,&
+                                          its=1,&
+                                          ite=1,&
+                                          jts=1,&
+                                          jte=1,&
+                                          kts=1,&
+                                          num_tiles=1
+
+   INTEGER                             :: kde, kme, kte
+
+   INTEGER, PARAMETER                  :: k_simil=5,&
+                                          PARAM_FIRST_SCALAR = 2
+
+   INTEGER                             :: niter,iter
+
+   REAL, DIMENSION(1:k_simil)          :: u_simil,v_simil,&
+                                          q_simil,th_simil
+
+   REAL                                :: hvfx,thvstar,qstar,&
+                                          dlmonin,z_level,zo,&
+                                          zol,x,psimzl,y,psihzl,&
+                                          rhosfc
+
+   REAL, PARAMETER                     :: a_stable=1.,&
+                                          b_stable=2./3.,&
+                                          c_stable=5.,&
+                                          d_stable=.35
+
+   INTEGER                             :: ntime,num_soil_layers,&
+                                          nsplinetimes, &
+                                          nsplinetimes_flux, &
+                                          nsplinetimes_smos, &
+                                          n1dsplines, &
+                                          iitime,&
+                                          imin,imax, &
+                                          imin_flux,imax_flux,&
+                                          &imin_smos,imax_smos
+
+   INTEGER, DIMENSION(num_tiles)       :: i_start=1,i_end=1, &
+                                          j_start=1 ,j_end=1 
+! forcing netCDF file IDs
+   INTEGER                             :: ncid_f, ncid_soil, &
+                                          ncid_flux, ncid_smos
+
+! forcing number for soil, atmos, and times
+   INTEGER                             :: ns_f, nz_f, nt_f, nt_f_flux, &
+                                          nt_f_soil, nt_f_smos 
+
+   INTEGER                             :: itimestep,STEPBL,itime_f=1
+
+   INTEGER, DIMENSION( ims:ime , jms:jme )  :: LOWLYR
+
+   LOGICAL                             ::   warm_rain
+
+   REAL, ALLOCATABLE, DIMENSION(:,:,:) ::  p_phy, &
+                                           pi_phy, &
+                                           p8w, &
+                                           rho, &
+                                           t_phy, &
+                                           u_phy, &
+                                           v_phy, &
+                                           dz8w, &
+                                           z, &
+                                           th_phy
+
+   REAL, DIMENSION( ims:ime, jms:jme )  ::   PSFC
+
+   REAL, ALLOCATABLE, DIMENSION(:,:,:)  :: z8w
+
+   REAL, ALLOCATABLE, DIMENSION(:,:,:,:):: moist
+
+   REAL, DIMENSION( ims:ime , jms:jme ):: XLAND, &
+                                          HT, &
+                                          PSIM, &
+                                          PSIH, &
+                                          GZ1OZ0, &
+                                          BR, &
+                                          CHKLOWQ
+
+   REAL, DIMENSION( ims:ime , jms:jme ):: psimfac,psihfac,psiqfac,zl2
+
+   REAL, DIMENSION( ims:ime, jms:jme ) :: TSK, &
+                                          UST, &
+                                          HOL, &
+                                          MOL, &
+                                          PBLH, &
+                                          HFX, &
+                                          QFX, &
+                                          REGIME, &
+                                          ZNT, &
+                                          QSFC, &
+                                          AKHS, &
+                                          AKMS, &
+                                          QZ0, &
+                                          THZ0, &
+                                          UZ0, &
+                                          VZ0, &
+                                          GRDFLX  , &
+                                          WSPD
+   
+   REAL, ALLOCATABLE, DIMENSION(:,:,:) :: RUBLTEN, &
+                                          RVBLTEN, &
+                                          RTHBLTEN, &
+                                          RQVBLTEN, &
+                                          RQCBLTEN, &
+                                          RQIBLTEN, &
+                                          TKE_MYJ
+  
+   REAL                                ::  u_frame=0.,v_frame=0.
+   
+   INTEGER, DIMENSION( ims:ime , jms:jme ) :: KPBL
+ 
+   REAL, DIMENSION( ims:ime , jms:jme ) :: landmask_input,sst_input,&
+                                           cpm,chs
+
+   LOGICAL                              :: flag_sst=.TRUE.
+
+   REAL, DIMENSION( ims:ime , jms:jme ) :: XICE, SEAMASK, CT, SNOW, LH
    
 
-   REAL    :: DTMIN,DTBL
+   REAL                                 :: DTMIN,DTBL
 
-   INTEGER :: i,J,K,NK,jj,ij,iitime
+   INTEGER                              :: i,J,K,NK,jj,ij
 
-   REAL :: dx,time,cor,fract
-   CHARACTER(len=4) :: mminlu
-   INTEGER :: julday
+   REAL                                 :: dx,time,cor,fract,fract_flux
+
+   CHARACTER(len=4)                     :: mminlu
+
+   INTEGER                              :: julday
 
    INTEGER, DIMENSION( ims:ime , jms:jme ) :: ISLTYP,IVGTYP
-   INTEGER :: iswater   
-   REAL :: smcmin,smcmax
 
-   REAL, DIMENSION( ims:ime, jms:jme ) ::   &
-        &ACSNOW,ACSNOM,ALBEDO,CANWAT,CAPG,EMISS,GLW,GSW,MAVAIL,Q10,Q2,&
-        &T2,TH10,TH2,SNOWC,U10,V10,z0,PSHLTR,QSHLTR,RAINBL,&
-        &RAINCV,RAINNCV,SFCEVP,SFCEXC,THC,TMN,SFCRUNOFF,SNOWH,POTEVP,&
-        &SNOPCX,SOILTB,SOILT1,TSNAV,QSG,QVG,QCG,FLHC,FLQC,SNOALB,&
-        &SMSTAV,SMSTOT,TSHLTR,UDRUNOFF,VEGFRA,ALBBCK,SHDMAX,SHDMIN
+   INTEGER                              :: iswater   
+
+   REAL                                 :: smcmin,smcmax
+
+   REAL, DIMENSION( ims:ime, jms:jme )  :: ACSNOW,ACSNOM,ALBEDO, &
+                                           CANWAT,CAPG,EMISS, &
+                                           GLW,GSW,MAVAIL,Q10,Q2,&
+                                           T2,TH10,TH2,SNOWC,U10, &
+                                           V10,z0,PSHLTR,QSHLTR, &
+                                           RAINBL,RAINCV,RAINNCV,&
+                                           SFCEVP,SFCEXC,THC,cs,TMN,&
+                                           SFCRUNOFF,SNOWH,POTEVP,&
+                                           SNOPCX,SOILTB,SOILT1,&
+                                           TSNAV,QSG,QVG,QCG,FLHC,&
+                                           FLQC,SNOALB,SMSTAV,&
+                                           SMSTOT,TSHLTR,UDRUNOFF,&
+                                           VEGFRA,ALBBCK,SHDMAX,SHDMIN,&
+                                           Maxm,Minm,Erate
    
    REAL, DIMENSION( ims:ime, jms:jme ) ::  lu_index
 
-   REAL, ALLOCATABLE, DIMENSION(:,:,:) :: &
-        &TSLB,SMOIS,KEEPFR3DFLAG,SMFR3D,SH2O
+   REAL, ALLOCATABLE, DIMENSION(:,:,:) :: TSLB,SMOIS,KEEPFR3DFLAG, &
+                                          SMFR3D,SH2O
 
-   REAL,  ALLOCATABLE, DIMENSION(:) :: DZS,ZS
+   REAL,  ALLOCATABLE, DIMENSION(:)    :: DZS,ZS
 
-   INTEGER :: num_st_levels_input,num_sm_levels_input
+   INTEGER                             :: num_st_levels_input, &
+                                          num_sm_levels_input
    
-   REAL, ALLOCATABLE, DIMENSION(:,:,:) :: &
-        &st_input,sm_input
-   INTEGER, ALLOCATABLE, DIMENSION(:) :: &
-           &st_levels_input,sm_levels_input
+   REAL, ALLOCATABLE, DIMENSION(:,:,:) :: st_input,sm_input
+   INTEGER, ALLOCATABLE, DIMENSION(:)  :: st_levels_input,sm_levels_input
 
-   REAL, DIMENSION(1:nz) :: z_init,U_init,V_init,T_init,&
-        &Th_init,Exn_init,Q_init,P_init,rho_init
+   REAL, ALLOCATABLE, DIMENSION(:)     :: z_init,u_init,v_init,t_init,&
+                                          th_init,exn_init,q_init, &
+                                          p_init,rho_init
 
-   REAL :: Zo_init,tsoil,thsoil,qsoil
+   REAL                                :: zo_init,tsoil,thsoil,qsoil
 
-   REAL, DIMENSION(1:nz+1) :: z8w_init,p8w_init
+   REAL, ALLOCATABLE, DIMENSION(:)     :: z8w_init, p8w_init
 
-   REAL, ALLOCATABLE, DIMENSION(:) :: u_mid,v_mid
+   REAL, ALLOCATABLE, DIMENSION(:)     :: u_mid,v_mid
 
-   REAL :: cent_lat,cent_lon,truelat1,truelat2,&
-        &sw_corner_lon,sw_corner_lat,lat,lon
+! input map information if horizontal interpolation is necessary
+   REAL                                :: cent_lat,cent_lon, &
+                                          truelat1,truelat2,&
+                                          sw_corner_lon,sw_corner_lat, &
+                                          lat,lon
 
-   INTEGER :: projcode
+   INTEGER                             :: projcode
 
-   REAL,     DIMENSION(1:nz) :: uflux,vflux,hflux,qflux, k_t,k_m
-   REAL,     DIMENSION(1:nz) :: u_g,v_g
+   REAL, ALLOCATABLE, DIMENSION(:)     :: uflux,vflux,hflux,qflux,&
+                                          k_t,k_m
+
+   REAL, ALLOCATABLE, DIMENSION(:)     :: u_g,v_g
    
-   REAL :: a,b,c,d,e
-   REAL, PARAMETER  :: deltat = 2.*3600
+   REAL                                :: a,b,c,d,e
+   REAL, PARAMETER                     :: deltat = 2.*3600
 
-   LOGICAL, PARAMETER          :: FNDSOILW=.TRUE., FNDSNOWH=.TRUE.,&
-        &restart=.FALSE.
+   LOGICAL, PARAMETER                  :: FNDSOILW=.TRUE.,&
+                                          FNDSNOWH=.TRUE.,&
+                                          restart=.FALSE.
 
+! variables controlling the random selection of profiles, etc
+   INTEGER                             :: idum, start_seconds 
 
-   INTEGER :: idum , start_seconds, control_index1, control_index2
-   REAL :: lenfor, control_w
-   REAL, DIMENSION(ntimes_gen) :: times_gen
-   REAL, DIMENSION(nz_gen,ntimes_gen) :: U_init_gen,V_init_gen,&
-        &T_init_gen,&
-        &Th_init_gen,Exn_init_gen,Q_init_gen,P_init_gen
+! number of available forcing times from initialization
+   REAL, DIMENSION(:), ALLOCATABLE     :: times_f, times_f_flux, &
+                                          times_f_soil, times_f_smos
+
+! time series of profiles for forcing
+   REAL, DIMENSION(:,:), ALLOCATABLE   :: u_init_f,v_init_f,&
+                                          t_init_f,th_init_f,&
+                                          exn_init_f,q_init_f,&
+                                          p_init_f
 
 ! results of temporal and spatial interpolations
-   REAL, ALLOCATABLE, DIMENSION(:) :: splinetimes
-   REAL, ALLOCATABLE, DIMENSION(:,:) :: &
-        &u_g_gen,v_g_gen,p_gen,p8w_gen,&
-        &t_gen_uadv,t_gen_vadv,t_gen_wadv,&
-        &q_gen_uadv,q_gen_vadv,q_gen_wadv,&
-        &u_gen_uadv,u_gen_vadv,u_gen_wadv,&
-        &v_gen_uadv,v_gen_vadv,v_gen_wadv
+   REAL, ALLOCATABLE, DIMENSION(:)     :: splinetimes, splinetimes_flux,&
+        &splinetimes_smos
+   REAL, ALLOCATABLE, DIMENSION(:,:)   :: u_g_f,v_g_f,p_f,p8w_f,&
+                                          t_f_uadv,t_f_vadv,t_f_wadv,&
+                                          q_f_uadv,q_f_vadv,q_f_wadv,&
+                                          u_f_uadv,u_f_vadv,u_f_wadv,&
+                                          v_f_uadv,v_f_vadv,v_f_wadv
    
 
-   REAL, ALLOCATABLE, DIMENSION(:) :: &
-        glw_gen,gsw_gen
+   REAL, ALLOCATABLE, DIMENSION(:)     :: glw_f,gsw_f,precip_f
 
-   REAL, DIMENSION(ntimes_gen) :: Th2_init_gen,Tsk_init_gen,&
-        &U10_init_gen,V10_init_gen,     &
-        &Q2_init_gen,Glw_init_gen,Gsw_init_gen,Qsfc_init_gen,&
-        &Tmn_init_gen,vegfra_gen
-   INTEGER, DIMENSION(ntimes_gen) :: isltyp_gen,ivgtyp_gen,lu_index_gen
+   REAL, DIMENSION(:), ALLOCATABLE     :: th2_init_f,tsk_init_f,&
+                                          t2_init_f, &
+                                          u10_init_f,v10_init_f,&
+                                          q2_init_f,glw_init_f, &
+                                          precip_init_f, &
+                                          glw_up_init_f, &
+                                          gsw_init_f,qsfc_init_f,&
+                                          tmn_init_f,vegfra_f
 
-   REAL, DIMENSION(ns_gen,ntimes_gen) :: Tslb_init_gen,Smois_init_gen
-   REAL, DIMENSION(ns_gen) :: zs_gen,dzs_gen
-   REAL, DIMENSION(nz_gen,ntimes_gen) :: z_gen
-   REAL, DIMENSION(nz_gen+1,ntimes_gen) :: z_gen_stag
+   INTEGER, DIMENSION(:), ALLOCATABLE  :: isltyp_f,ivgtyp_f,lu_index_f
+
+   REAL, DIMENSION(:,:), ALLOCATABLE   :: tslb_init_f,smois_init_f
+   REAL, DIMENSION(:), ALLOCATABLE     :: zs_f,dzs_f
+   REAL, DIMENSION(:,:), ALLOCATABLE   :: z_f
+   REAL, DIMENSION(:,:), ALLOCATABLE   :: z_f_stag
    
 contains
 
@@ -221,15 +280,84 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
 
   LOGICAL,INTENT(INOUT)           :: allocate_wrf
 
-  IF (.NOT.init_gen) allocate_wrf=.TRUE.
+  kde = nz
+  kme = nz
+  kte = nz - 1
+
+  IF (.NOT.init_f) allocate_wrf=.TRUE.
 
   IF ( allocate_wrf ) THEN
     ALLOCATE(moist( ims:ime, kms:kme, jms:jme, n_moist))
-    moist = 0.0
+    ALLOCATE(p_phy(ims:ime, kms:kme, jms:jme),            &
+             pi_phy(ims:ime, kms:kme, jms:jme), &
+             p8w(ims:ime, kms:kme, jms:jme), &
+             rho(ims:ime, kms:kme, jms:jme), &
+             t_phy(ims:ime, kms:kme, jms:jme), &
+             u_phy(ims:ime, kms:kme, jms:jme), &
+             v_phy(ims:ime, kms:kme, jms:jme), &
+             dz8w(ims:ime, kms:kme, jms:jme), &
+             z(ims:ime, kms:kme, jms:jme), &
+             th_phy(ims:ime, kms:kme, jms:jme) )
+    ALLOCATE(z8w(ims:ime, kms:kme+1, jms:jme ))
+    ALLOCATE(RUBLTEN(ims:ime, kms:kme, jms:jme),            &
+             RVBLTEN(ims:ime, kms:kme, jms:jme), &
+             RTHBLTEN(ims:ime, kms:kme, jms:jme), &
+             RQVBLTEN(ims:ime, kms:kme, jms:jme), &
+             RQCBLTEN(ims:ime, kms:kme, jms:jme), &
+             RQIBLTEN(ims:ime, kms:kme, jms:jme), &
+             TKE_MYJ(ims:ime, kms:kme, jms:jme) )
+    ALLOCATE(z_init(1:nz), u_init(1:nz), v_init(1:nz), t_init(1:nz), &
+             th_init(1:nz), exn_init(1:nz), q_init(1:nz), p_init(1:nz), &
+             rho_init(1:nz))
+    ALLOCATE(z8w_init(1:nz+1), p8w_init(1:nz+1))
+    ALLOCATE(uflux(1:nz), vflux(1:nz), hflux(1:nz), &
+             qflux(1:nz), k_t(1:nz),k_m(1:nz))
+    ALLOCATE(u_g(1:nz), v_g(1:nz))
+
+!   Explicit zeroing is unfortunately necessary for PGF 
+    moist = 0.0   
+    p_phy = 0.0
+    pi_phy = 0.0
+    p8w = 0.0
+    rho = 0.0
+    t_phy = 0.0
+    u_phy = 0.0
+    v_phy = 0.0
+    dz8w = 0.0
+    z = 0.0
+    th_phy = 0.0
+    z8w = 0.0
+    RUBLTEN = 0.0
+    RVBLTEN = 0.0
+    RTHBLTEN = 0.0
+    RQVBLTEN = 0.0
+    RQCBLTEN = 0.0
+    RQIBLTEN = 0.0
+    TKE_MYJ = 0.0
+    z_init = 0.0
+    u_init = 0.0
+    v_init = 0.0
+    t_init = 0.0
+    th_init = 0.0
+    exn_init = 0.0
+    q_init = 0.0
+    p_init = 0.0
+    rho_init = 0.0
+    z8w_init = 0.0
+    p8w_init = 0.0
+    uflux = 0.0
+    vflux = 0.0
+    hflux = 0.0
+    qflux = 0.0
+    k_t = 0.0
+    k_m = 0.0
+    u_g = 0.0
+    v_g = 0.0
   ENDIF
 
   IF (surface_physics=='SIMPLESCHEME') THEN
      num_soil_layers=1
+     PRINT *,'BUCKET MODEL INACTIVE'
      IF ( allocate_wrf ) THEN         
         ALLOCATE(&
              &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
@@ -240,9 +368,24 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
              &DZS(1:num_soil_layers),&
              &ZS(1:num_soil_layers))
      ENDIF
+  ELSEIF (surface_physics=='FRSCHEME') THEN
 
+     num_soil_layers=1
+     PRINT *,'BUCKET MODEL ACTIVE: ',bucket_model
+     IF ( allocate_wrf ) THEN         
+        ALLOCATE(&
+             &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMOIS( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &KEEPFR3DFLAG( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &DZS(1:num_soil_layers),&
+             &ZS(1:num_soil_layers))
+     ENDIF
   ELSEIF (surface_physics=='SLABSCHEME') THEN
      num_soil_layers=5
+
+     PRINT *,'BUCKET MODEL INACTIVE'
      IF ( allocate_wrf ) THEN
         ALLOCATE(&
              &TSLB( ims:ime , 1:num_soil_layers, jms:jme ),&
@@ -257,6 +400,7 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
      num_soil_layers=4
      num_st_levels_input=2 
      num_sm_levels_input=2 
+     PRINT *,'BUCKET MODEL INACTIVE'
      IF ( allocate_wrf ) THEN
         ALLOCATE(&
              &st_levels_input(num_st_levels_input),&
@@ -277,6 +421,7 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
      num_soil_layers=6
      num_st_levels_input=2
      num_sm_levels_input=2
+     PRINT *,'BUCKET MODEL INACTIVE'
      IF ( allocate_wrf ) THEN
         ALLOCATE(&
              &st_levels_input(num_st_levels_input),&
@@ -298,47 +443,101 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
 ! some other stuff we'll need
   nsplinetimes=INT((REAL(forecast_length)/REAL(splineinterval))+&
        &.999)+1
-  
-   IF (init_gen) THEN
-      ntime=NINT(REAL(forecast_length)*3600./dt)
+  nsplinetimes_flux=INT((REAL(forecast_length)/REAL(splineinterval_flux))+&
+       &.999)+1
+  nsplinetimes_smos=INT((REAL(forecast_length)/REAL(splineinterval_smos))+&
+       &.999)+1
+! this is needed only for the DART interface
+  n1dsplines = 2*nsplinetimes_flux + nsplinetimes_smos
+
+   IF (init_f) THEN
+      ntime=NINT(REAL(forecast_length)/dt)
    ELSE
       ntime=NINT(timetot/dt)
    ENDIF
 
+! atmospheric profiles, forcing
+! get the necessary dimensions from the input forcing file
+! times are computed from the namelist
+   SELECT CASE (init_f_type)
+
+      CASE('WRF')
+         CALL wrf_f_dims(ncid_f, nz_f,ns_f, nt_f, &
+                        dx,cent_lat,cent_lon, &
+                        truelat1,truelat2,mminlu,julday,&
+                        sw_corner_lon,sw_corner_lat,projcode,&
+                        lat, lon, cor)
+         nt_f_flux = nt_f
+         nt_f_soil = nt_f
+         nt_f_smos = nt_f
+
+      CASE('OBS')
+         CALL snd_f_dims(ncid_f,ncid_soil, ncid_flux, ncid_smos, &
+                        nz_f, nt_f, nt_f_flux, nt_f_smos, &
+                        ns_f, nt_f_soil, &
+                        mminlu,julday,&
+                        lat, lon, cor)
+
+      CASE DEFAULT
+         print*,'Do not know how to initialize from type ',init_f_type
+         stop 'module_wrf'
+   END SELECT
+
    IF ( allocate_wrf ) THEN
       ALLOCATE(splinetimes(nsplinetimes),&
-           &u_g_gen(nz,nsplinetimes),v_g_gen(nz,nsplinetimes),&
-           &p_gen(nz,nsplinetimes),p8w_gen(nz,nsplinetimes),&
-           &t_gen_uadv(nz,nsplinetimes),&
-           &t_gen_vadv(nz,nsplinetimes),&
-           &q_gen_uadv(nz,nsplinetimes),&
-           &q_gen_vadv(nz,nsplinetimes),&
-           &u_gen_uadv(nz,nsplinetimes),&
-           &u_gen_vadv(nz,nsplinetimes),&
-           &v_gen_uadv(nz,nsplinetimes),&
-           &v_gen_vadv(nz,nsplinetimes),&
-           &u_gen_wadv(nz,nsplinetimes),&
-           &v_gen_wadv(nz,nsplinetimes),&
-           &t_gen_wadv(nz,nsplinetimes),&
-           &q_gen_wadv(nz,nsplinetimes),&
-           &glw_gen(nsplinetimes),gsw_gen(nsplinetimes))
-           t_gen_vadv = 0.0
-           u_gen_vadv = 0.0
-           v_gen_vadv = 0.0
-           q_gen_vadv = 0.0
-           t_gen_uadv = 0.0
-           u_gen_uadv = 0.0
-           v_gen_uadv = 0.0
-           q_gen_uadv = 0.0
-           t_gen_wadv = 0.0
-           u_gen_wadv = 0.0
-           v_gen_wadv = 0.0
-           q_gen_wadv = 0.0
+           &splinetimes_flux(nsplinetimes_flux),&
+           &splinetimes_smos(nsplinetimes_smos),&
+           u_g_f(nz,nsplinetimes),v_g_f(nz,nsplinetimes),&
+         p_f(nz,nsplinetimes),p8w_f(nz,nsplinetimes),&
+         t_f_uadv(nz,nsplinetimes),&
+         t_f_vadv(nz,nsplinetimes),&
+         q_f_uadv(nz,nsplinetimes),&
+         q_f_vadv(nz,nsplinetimes),&
+         u_f_uadv(nz,nsplinetimes),&
+         u_f_vadv(nz,nsplinetimes),&
+         v_f_uadv(nz,nsplinetimes),&
+         v_f_vadv(nz,nsplinetimes),&
+         u_f_wadv(nz,nsplinetimes),&
+         v_f_wadv(nz,nsplinetimes),&
+         t_f_wadv(nz,nsplinetimes),&
+         q_f_wadv(nz,nsplinetimes),&
+         glw_f(nsplinetimes_flux),gsw_f(nsplinetimes_flux),&
+         precip_f(nsplinetimes_smos))
+         t_f_vadv = 0.0
+         u_f_vadv = 0.0
+         v_f_vadv = 0.0
+         q_f_vadv = 0.0
+         t_f_uadv = 0.0
+         u_f_uadv = 0.0
+         v_f_uadv = 0.0
+         q_f_uadv = 0.0
+         t_f_wadv = 0.0
+         u_f_wadv = 0.0
+         v_f_wadv = 0.0
+         q_f_wadv = 0.0
+      ALLOCATE(isltyp_f(nt_f), ivgtyp_f(nt_f), lu_index_f(nt_f))
+      ALLOCATE(times_f(nt_f), times_f_flux(nt_f_flux), &
+            times_f_soil(nt_f_soil), times_f_smos(nt_f_smos), &
+            th2_init_f(nt_f_smos), t2_init_f(nt_f_smos), &
+            tsk_init_f(nt_f_smos), u10_init_f(nt_f_smos), &
+            v10_init_f(nt_f_smos), q2_init_f(nt_f_smos), &
+            precip_init_f(nt_f_smos), &
+            glw_init_f(nt_f_flux), gsw_init_f(nt_f_flux), &
+            glw_up_init_f(nt_f_flux), &
+            qsfc_init_f(nt_f), tmn_init_f(nt_f), &
+            vegfra_f(nt_f))
+      ALLOCATE(u_init_f(nz_f,nt_f), v_init_f(nz_f,nt_f),&
+            t_init_f(nz_f,nt_f), th_init_f(nz_f,nt_f), &
+            exn_init_f(nz_f,nt_f),q_init_f(nz_f,nt_f), &
+            p_init_f(nz_f,nt_f), z_f(nz_f,nt_f))
+      ALLOCATE(z_f_stag(nz_f+1,nt_f))
+      ALLOCATE(zs_f(ns_f), dzs_f(ns_f))
+      ALLOCATE(tslb_init_f(ns_f,nt_f_soil), smois_init_f(ns_f,nt_f_soil))
    ENDIF
 
- 
 END SUBROUTINE STATIC_INIT_WRF
 
+!*****************************************************
 
 SUBROUTINE INIT_WRF(wrf_rnd_seed)
 
@@ -352,179 +551,33 @@ SUBROUTINE INIT_WRF(wrf_rnd_seed)
    d=.5*dt**2*cor
    e=1.+.25*dt**2*cor**2
 
-
-   IF (.NOT.init_gen) THEN
+   IF (.NOT.init_f) THEN
 
 !! allocate and assign soil, surface and atmosphere for ideal begin
 
-      cent_lat=lat_ref*DEGRAD
-      cor=2.*eomeg*SIN(cent_lat)
-
-! initialize soil begin
-      
-      julday =   julday_ref
-      mminlu =   mminlu_ref
-      lu_index=  lu_index_ref
-      ivgtyp =   ivgtyp_ref
-      isltyp =   isltyp_ref
-      vegfra =   vegfra_ref
-
-      IF (mminlu=='USGS') THEN
-         iswater=16
-      ELSE IF (mminlu(1:3)=='OLD') THEN
-         iswater=7
-      ELSE IF (mminlu(1:3)=='SiB') THEN
-         iswater=15
-      ELSE IF (mminlu=='LW12') THEN
-         iswater=2
-      ELSE
-         PRINT *,'Unknown Landuse Category',mminlu
-         PRINT *,'Stopping'
-         STOP
-      ENDIF
-      
-      IF (rland_ref < .5) rland_ref=2.
-
-      IF (rland_ref > 1.5) THEN
-         lu_index=16.
-         CALL landuse_init(lu_index, snowc, Albedo, Albbck, Mavail, &
-              &Emiss, Znt,Z0,Thc,Xland, julday, cent_lat, iswater, &
-              &mminlu, &
-              ids, ide, jds, jde, kds, kde,                       &
-              ims, ime, jms, jme, kms, kme,                       &
-              its, ite, jts, jte, kts, kte                       )
-      ELSE
-         xland=rland_ref
-         z0=zo_ref 
-         znt=z0
-         thc=thc_ref
-         emiss=emiss_ref
-         albedo=albedo_ref      
-         albbck=albedo_ref
-      ENDIF
-
-      seamask=xland-1.
-      landmask_input=1.-seamask
-
       time=timeo
       
-      CALL mysoil(rland_ref,ts_ref,ps_ref,dtamplitude_ref,&
-           &mavail_ref,time,Tsoil,Qsoil)
-      
-      tsk=tsoil
-      qsfc=qsoil
-      tmn=tmn_ref
-      sst_input=tsk
-      
-      IF (surface_physics=='SIMPLESCHEME') THEN
+      CALL init_soil_ideal(julday, lu_index, ivgtyp, &
+                           isltyp, vegfra, iswater, &
+                           cent_lat, cor, mminlu, rland_ref, &
+                           snowc, albedo, albbck,  mavail, emiss, &
+                           maxm,minm,erate,&
+                           znt, z0, thc, cs, xland, xice, seamask, &
+                           snow, snowh, canwat, smstav, smstot, &
+                           sfcrunoff, udrunoff, acsnow, acsnom, &
+                           fndsoilw, fndsnowh, smfr3d,  &
+                           landmask_input, time, tsoil, qsoil, &
+                           tsk, qsfc, tmn, tslb, smois, sh2o, &
+                           sst_input, flag_sst, &
+                           num_soil_layers,  num_st_levels_input , &
+                           num_sm_levels_input, &
+                           st_levels_input, sm_levels_input, &
+                           zs, dzs, st_input, sm_input, keepfr3dflag, &
+                           smcmin, smcmax, restart, &
+                           ids, ide, jds, jde, kds, kde, &
+                           ims, ime, jms, jme, kms, kme, &
+                           its, ite, jts, jte, kts, kte )
 
-         num_soil_layers=1
-         tslb=tsoil
-         smois=0.
-         sh2o = 0.
-         
-      ELSEIF (surface_physics=='SLABSCHEME') THEN
-
-         num_soil_layers=5
-        CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
-         CALL init_soil_1_real ( tsk , tmn , tslb , zs , dzs , &
-           &num_soil_layers , 0 , &
-           landmask_input , sst_input , flag_sst , &
-           ids , ide , jds , jde , kds , kde , &
-           ims , ime , jms , jme , kms , kme , &
-           its , ite , jts , jte , kts , kte )
-         smois=0.
-         sh2o = 0.
-         
-      ELSEIF (surface_physics=='LSMSCHEME') THEN
-         
-         num_soil_layers=4
-         
-         CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
-         
-         st_levels_input(1)=5
-         st_levels_input(2)=250
-         sm_levels_input(1)=5
-         sm_levels_input(2)=250
-         
-         st_input(:,:,2)=tsk
-         st_input(:,:,3)=tmn
-
-         CALL getsmlsm (mminlu, isltyp(1,1), ivgtyp(1,1), &
-              &Smcmin, Smcmax)
-         
-         sm_input(:,:,2)=MAX(MIN(mavail_ref,smcmax),smcmin)
-         sm_input(:,:,3)=&
-              &MAX(deep_soil_moisture*smcmax,smcmin)
-
-         CALL init_soil_2_real ( tsk , tmn , smois , tslb , &
-              st_input , sm_input , landmask_input , sst_input , &
-              zs , dzs , &
-              st_levels_input , sm_levels_input , &
-              num_soil_layers , num_st_levels_input , &
-              &num_sm_levels_input , &
-              flag_sst , &
-              ids , ide , jds , jde , kds , kde , &
-              ims , ime , jms , jme , kms , kme , &
-              its , ite , jts , jte , kts , kte )
-         
-         CALL LSMINIT(VEGFRA,SNOW,SNOWC,SNOWH,CANWAT,SMSTAV,  &
-              SMSTOT, SFCRUNOFF,UDRUNOFF,ACSNOW,        &
-              ACSNOM,IVGTYP,ISLTYP,TSLB,SMOIS,SH2O,ZS,DZS, &
-              FNDSOILW, FNDSNOWH,                       &
-              num_soil_layers, restart,                 &
-              ids,ide, jds,jde, kds,kde,                &
-              ims,ime, jms,jme, kms,kme,                &
-              its,ite, jts,jte, kts,kte                 )
-
-      ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
-         
-         num_soil_layers=6
-         
-         CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
-         
-         st_levels_input(1)=0
-         st_levels_input(2)=300
-         sm_levels_input(1)=0
-         sm_levels_input(2)=300
-         st_input(:,:,1)=tsk
-         st_input(:,:,2)=tmn
-
-         CALL getsmruclsm (mminlu,isltyp(1,1), ivgtyp(1,1), &
-              &Smcmin, Smcmax)
-
-         sm_input(:,:,1)=MAX(MIN(mavail_ref,smcmax),smcmin)-smcmin
-         sm_input(:,:,2)=&
-              &MAX(deep_soil_moisture*smcmax,smcmin)-smcmin
-
-
-         CALL init_soil_3_real ( tsk , tmn , smois , tslb , &
-              st_input , sm_input , landmask_input , sst_input , &
-              zs , dzs , &
-              st_levels_input , sm_levels_input , &
-              num_soil_layers , num_st_levels_input , &
-              &num_sm_levels_input , &
-              flag_sst , &
-              ids , ide , jds , jde , kds , kde , &
-              ims , ime , jms , jme , kms , kme , &
-              its , ite , jts , jte , kts , kte )
-         
-         CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,&
-              num_soil_layers, restart,                 &
-              ids,ide, jds,jde, kds,kde,                &
-              ims,ime, jms,jme, kms,kme,                &
-              its,ite, jts,jte, kts,kte                 )
-         
-      ENDIF
-
-      xice = 0.
-      snow = 0.
-      snowc = 0.
-      canwat = 0.
-      KEEPFR3DFLAG=0.
-      SMFR3D=0.
-      sh2o = 0.
-      
 ! initialize soil end
 
 ! initialize atmosphere begin
@@ -545,276 +598,159 @@ SUBROUTINE INIT_WRF(wrf_rnd_seed)
 
 ! initialize atmosphere end
 
-      start_seconds = 0
+!      start_seconds = 0
 
 !! allocate and assign soil, surface and atmosphere for ideal end
    
    ELSE  ! will use WRF input instead
       
-!! allocate and assign soil, surface and atmosphere for init_gen begin
+!! allocate and assign soil, surface and atmosphere for init_f begin
 
       idum = wrf_rnd_seed
       
-      CALL genctrl(bamex,nz_gen,ns_gen,ntimes_gen,Ninputtimes, &
-           &Dx,Cent_lat,Cent_lon,Truelat1,Truelat2,Mminlu,Julday,&
-           &Sw_corner_lon,Sw_corner_lat,Projcode,&
-           &Z_gen,Z_gen_stag,T_init_gen,U_init_gen,V_init_gen,&
-           &Q_init_gen,P_init_gen,&
-           &Th2_init_gen,Tsk_init_gen,&
-           &U10_init_gen,V10_init_gen,     &
-           &Q2_init_gen,Glw_init_gen,Gsw_init_gen,Qsfc_init_gen,&
-           &Tslb_init_gen,Smois_init_gen,Tmn_init_gen,&
-           &Vegfra_gen,Isltyp_gen,Lu_index_gen,Ivgtyp_gen,&
-           &Lat,Lon,Cor,Times_gen,idum, &
-           &start_hour_wrf, hour_interval_wrf, start_forecast,&
-           &forecast_length,&
-           &Control_index1,Control_index2,Control_w,init_gen_file)
+!! get all we need from the input files (model)
+!! these are already selected for time, but no interpolation
+      SELECT CASE (init_f_type)
+
+         CASE('WRF')
+            CALL wrf_init_and_bc(ncid_f,nz_f, ns_f, nt_f, &
+                    z_f,z_f_stag,t_init_f,u_init_f,v_init_f,&
+                    q_init_f,p_init_f,&
+                    th2_init_f,t2_init_f,tsk_init_f,&
+                    u10_init_f,v10_init_f,     &
+                    q2_init_f,glw_init_f,gsw_init_f,qsfc_init_f,&
+                    tslb_init_f,smois_init_f,tmn_init_f,&
+                    precip_init_f, &
+                    vegfra_f,isltyp_f,lu_index_f,ivgtyp_f,&
+                    times_f,times_f_flux,times_f_soil,times_f_smos,idum)
+
+         CASE('OBS')
+            CALL snd_init_and_bc(ncid_f, ncid_flux, ncid_soil, ncid_smos, &
+                    nz_f, ns_f, nt_f, nt_f_flux, nt_f_soil, nt_f_smos,&
+                    z_f,t_init_f,u_init_f,v_init_f,&
+                    q_init_f,p_init_f,&
+                    th2_init_f,t2_init_f,tsk_init_f,&
+                    u10_init_f,v10_init_f,     &
+                    q2_init_f, precip_init_f, &
+                    glw_init_f,glw_up_init_f,gsw_init_f,qsfc_init_f,&
+                    zs_f, &
+                    tslb_init_f,smois_init_f,tmn_init_f,&
+                    vegfra_f,isltyp_f,lu_index_f,ivgtyp_f,&
+                    times_f,times_f_flux,times_f_soil,times_f_smos,idum)
+
+            WHERE ( gsw_init_f < 0.0 ) gsw_init_f = 0.0
+            WHERE ( glw_init_f < 0.0 ) glw_init_f = 0.0
+
+         CASE DEFAULT
+            print*,'Do not know how to initialize from type ',init_f_type
+            stop 'module_wrf'
+
+      END SELECT
 
       wrf_rnd_seed = idum
-      start_seconds = start_forecast * 3600
+!      start_seconds = start_forecast
   
-! initialize soil begin
+! initialize soil 
+! this is in a separate block for now because it will undoubtedly change
+      SELECT CASE (init_f_type)
 
-      lu_index=  REAL(lu_index_gen(itime_gen))
-      vegfra =   vegfra_gen(itime_gen)
-      ivgtyp =   ivgtyp_gen(itime_gen)
-      isltyp =   isltyp_gen(itime_gen)
+         CASE('WRF')
+             CALL init_soil_real_wrf(julday, lu_index, ivgtyp, &
+                           isltyp, vegfra, iswater, &
+                           cent_lat, cor, mminlu, &
+                           snowc, albedo, albbck,  mavail, emiss, &
+                           maxm,minm,erate,&
+                           znt, z0, thc, cs,xland, xice, seamask, &
+                           snow, snowh, canwat, smstav, smstot, &
+                           sfcrunoff, udrunoff, acsnow, acsnom, &
+                           fndsoilw, fndsnowh, smfr3d,  &
+                           landmask_input, time, &
+                           tsk, qsfc, tmn, tslb, smois, sh2o, &
+                           sst_input, flag_sst, &
+                           num_soil_layers,  num_st_levels_input , &
+                           num_sm_levels_input, &
+                           st_levels_input, sm_levels_input, &
+                           zs, dzs, st_input, sm_input, keepfr3dflag, &
+                           smcmin, smcmax, restart, &
+                           ns_f, zs_f, dzs_f, &
+                           itime_f, vegfra_f, ivgtyp_f, isltyp_f, &
+                           lu_index_f, &
+                           tsk_init_f, tmn_init_f, qsfc_init_f, &
+                           smois_init_f, tslb_init_f, &
+                           ids, ide, jds, jde, kds, kde, &
+                           ims, ime, jms, jme, kms, kme, &
+                           its, ite, jts, jte, kts, kte )
 
-      IF (mminlu=='USGS') THEN
-         iswater=16
-      ELSE IF (mminlu(1:3)=='OLD') THEN
-         iswater=7
-      ELSE IF (mminlu(1:3)=='SiB') THEN
-         iswater=15
-      ELSE IF (mminlu=='LW12') THEN
-         iswater=2
-      ELSE
-         PRINT *,'Unknown Landuse Category',mminlu
-         PRINT *,'Stopping'
-         STOP
-      ENDIF
+         CASE('OBS')
 
-      CALL landuse_init(lu_index, snowc, Albedo, Albbck, Mavail, &
-           &Emiss,  &
-           Znt,Z0,Thc,Xland, julday, cent_lat, iswater, mminlu, &
-           ids, ide, jds, jde, kds, kde,                       &
-           ims, ime, jms, jme, kms, kme,                       &
-           its, ite, jts, jte, kts, kte                       )
+            CALL init_soil_real_snd(julday, lu_index, ivgtyp, &
+                 isltyp, vegfra, iswater, &
+                 cent_lat, cor, mminlu, &
+                 snowc, albedo, albbck,  mavail, emiss, &
+                 maxm,minm,erate,&
+                 znt, z0, thc, cs, xland, xice, seamask, &
+                 snow, snowh, canwat, smstav, smstot, &
+                 sfcrunoff, udrunoff, acsnow, acsnom, &
+                 fndsoilw, fndsnowh, smfr3d,  &
+                 landmask_input, time, &
+                 tsk, qsfc, tmn, tslb, smois, sh2o, &
+                 sst_input, flag_sst, &
+                 num_soil_layers,  num_st_levels_input , &
+                 num_sm_levels_input, &
+                 st_levels_input, sm_levels_input, &
+                 zs, dzs, st_input, sm_input, keepfr3dflag, &
+                 smcmin, smcmax, restart, &
+                 ns_f, zs_f, &
+                 itime_f, vegfra_f, ivgtyp_f, isltyp_f, &
+                 lu_index_f, &
+                 tsk_init_f, tmn_init_f, qsfc_init_f, &
+                 smois_init_f, tslb_init_f, &
+                 ids, ide, jds, jde, kds, kde, &
+                 ims, ime, jms, jme, kms, kme, &
+                 its, ite, jts, jte, kts, kte )
 
-      seamask=xland-1.
-      landmask_input=1.-seamask
+         CASE DEFAULT
+            print*,'Do not know how to initialize from type ',init_f_type
+            stop 'module_wrf'
 
-      tsk=tsk_init_gen(itime_gen)
-      tmn=tmn_init_gen(itime_gen)
-      qsfc=qsfc_init_gen(itime_gen)
-      sst_input=tsk_init_gen(itime_gen)
-
-      IF (bamex) THEN
-         CALL init_soil_depth_2 ( zs_gen , dzs_gen , ns_gen )
-      ELSE
-         CALL init_soil_depth_1 ( zs_gen , dzs_gen , ns_gen )
-      ENDIF
-
-      IF (surface_physics=='SIMPLESCHEME') THEN
-
-         PRINT *,'SIMPLESCHEME cannot be run with init_gen = .TRUE.'
-         PRINT *, 'Stopping'
-         STOP
-
-      ELSEIF (surface_physics=='SLABSCHEME') THEN
-
-         num_soil_layers=5
-
-         CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
-
-         IF (bamex) THEN
-            CALL init_soil_1_real ( tsk , tmn , tslb , zs , dzs , &
-                 &num_soil_layers , 1 , &
-                 landmask_input , sst_input , flag_sst , &
-                 ids , ide , jds , jde , kds , kde , &
-                 ims , ime , jms , jme , kms , kme , &
-                 its , ite , jts , jte , kts , kte )
-            smois=0.
-         ELSE
-            DO k=1,num_soil_layers
-               tslb(:,k,:)=tslb_init_gen(k,itime_gen)
-            ENDDO
-            smois=0.
-         ENDIF
-
-
-         keepfr3dflag=0.
-         smfr3d=0.
-         xice = 0.
-         snow = 0.
-         snowc = 0.
-         canwat = 0.
-         sh2o = 0.
-
-      ELSEIF (surface_physics=='LSMSCHEME') THEN
-         
-         num_soil_layers=4
-         
-         CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
-
-
-         IF (bamex) THEN
-
-            DO k=1,num_soil_layers
-               tslb(:,k,:)=tslb_init_gen(k,itime_gen)
-               smois(:,k,:)=smois_init_gen(k,itime_gen)
-            ENDDO
-
-         ELSE
-
-            st_levels_input(1)=NINT(zs_gen(ns_gen-2)*100.)
-            st_levels_input(2)=NINT(zs_gen(ns_gen)*100.)
-            sm_levels_input(1)=NINT(zs_gen(ns_gen-2)*100.)
-            sm_levels_input(2)=NINT(zs_gen(ns_gen)*100.)
-            
-            st_input(1,1,2)=tslb_init_gen(ns_gen-2,itime_gen)
-            st_input(1,1,3)=tslb_init_gen(ns_gen,itime_gen)
-            
-            CALL getsmlsm (mminlu, isltyp(1,1), ivgtyp(1,1), &
-                 &Smcmin, Smcmax)
-            
-            sm_input(:,:,2)=MAX(MIN(mavail,smcmax),smcmin)
-            sm_input(:,:,3)=&
-                 &MAX(deep_soil_moisture*smcmax,smcmin)
-            
-            CALL init_soil_2_real ( tsk , tmn , smois , tslb , &
-                 st_input , sm_input , landmask_input , sst_input , &
-                 zs , dzs , &
-                 st_levels_input , sm_levels_input , &
-                 num_soil_layers , num_st_levels_input , &
-                 &num_sm_levels_input , &
-                 flag_sst , &
-                 ids , ide , jds , jde , kds , kde , &
-                 ims , ime , jms , jme , kms , kme , &
-                 its , ite , jts , jte , kts , kte )
-         
-         ENDIF
-
-         keepfr3dflag=0.
-         smfr3d=0.
-         xice = 0.
-         snow = 0.
-         snowc = 0.
-         canwat = 0.
-         sh2o = 0.
-
-         CALL LSMINIT(VEGFRA,SNOW,SNOWC,SNOWH,CANWAT,SMSTAV,  &
-              SMSTOT, SFCRUNOFF,UDRUNOFF,ACSNOW,        &
-              ACSNOM,IVGTYP,ISLTYP,TSLB,SMOIS,SH2O,ZS,DZS, &
-              FNDSOILW, FNDSNOWH,                       &
-              num_soil_layers, restart,                 &
-              ids,ide, jds,jde, kds,kde,                &
-              ims,ime, jms,jme, kms,kme,                &
-              its,ite, jts,jte, kts,kte                 )
-
-      ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
-         
-         num_soil_layers=6
-         
-         CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
-         
-         IF (bamex) THEN
-
-            st_levels_input(1)=0
-            st_levels_input(2)=300
-            st_input(:,:,1)=tsk
-            st_input(:,:,2)=tmn
-
-            CALL getsmruclsm (mminlu,isltyp(1,1), ivgtyp(1,1), &
-                 &Smcmin, Smcmax)
-
-            sm_levels_input(1)=zs_gen(1)*100.
-            sm_levels_input(2)=300.
-
-            sm_input(:,:,1)=MAX(MIN(&
-                 &smois_init_gen(1,itime_gen),smcmax),smcmin)-smcmin
-            sm_input(:,:,2)=MAX(MIN(&
-                 &smois_init_gen(ns_gen,itime_gen),smcmax),smcmin)-smcmin
-
-         ELSE
-
-            st_levels_input(1)=0
-            st_levels_input(2)=300
-            sm_levels_input(1)=0
-            sm_levels_input(2)=300
-            st_input(:,:,1)=tsk
-            st_input(:,:,2)=tmn
-
-            CALL getsmruclsm (mminlu,isltyp(1,1), ivgtyp(1,1), &
-                 &Smcmin, Smcmax)
-            
-            sm_input(:,:,1)=MAX(MIN(mavail,smcmax),smcmin)-smcmin
-            sm_input(:,:,2)=&
-                 &MAX(deep_soil_moisture*smcmax,smcmin)-smcmin
-
-         ENDIF
-
-         CALL init_soil_3_real ( tsk , tmn , smois , tslb , &
-              st_input , sm_input , landmask_input , sst_input , &
-              zs , dzs , &
-              st_levels_input , sm_levels_input , &
-              num_soil_layers , num_st_levels_input , &
-              &num_sm_levels_input , &
-              flag_sst , &
-              ids , ide , jds , jde , kds , kde , &
-              ims , ime , jms , jme , kms , kme , &
-              its , ite , jts , jte , kts , kte )
-
-         IF (bamex) THEN
-            smois(:,1,:)=(smois(:,2,:)-smois(:,3,:)*zs_gen(2)/zs_gen(3))/&
-                 &(1.-zs_gen(2)/zs_gen(3))
-         ENDIF
-
-         keepfr3dflag=0.
-         smfr3d=0.
-         xice = 0.
-         snow = 0.
-         snowc = 0.
-         canwat = 0.
-         sh2o = 0.
-
-         CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,&
-              num_soil_layers, restart,                 &
-              ids,ide, jds,jde, kds,kde,                &
-              ims,ime, jms,jme, kms,kme,                &
-              its,ite, jts,jte, kts,kte                 )
-         
-      ENDIF
+      END SELECT
 
 ! initialize soil end
       
      DO i=1,nsplinetimes
-         splinetimes(i)=times_gen(1)+(i-1)*splineinterval
-      ENDDO
+         splinetimes(i)=times_f(1)+(i-1)*splineinterval
+     ENDDO
+     DO i=1,nsplinetimes_flux
+         splinetimes_flux(i)=times_f(1)+(i-1)*splineinterval_flux
+     ENDDO
+     DO i=1,nsplinetimes_smos
+         splinetimes_smos(i)=times_f(1)+(i-1)*splineinterval_smos
+     ENDDO
 
-      CALL initgen(bamex,&
-           &u_init_gen(:,itime_gen),v_init_gen(:,itime_gen),&
-           &t_init_gen(:,itime_gen),q_init_gen(:,itime_gen),&
-           &u_init_gen(:,1:ninputtimes),v_init_gen(:,1:ninputtimes),&
-           &glw_init_gen(1:ninputtimes),gsw_init_gen(1:ninputtimes),&
-           &p_init_gen(:,1:ninputtimes),&
-           &th2_init_gen(itime_gen),q2_init_gen(itime_gen),&
-           &u10_init_gen(itime_gen),v10_init_gen(itime_gen),&
-           &tsk_init_gen(itime_gen),qsfc_init_gen(itime_gen),&
-           &z_gen(:,1:ninputtimes),nz_gen,z_g,ninputtimes,&
-           &times_gen(1:ninputtimes),&
-           &nsplinetimes,splinetimes,&
-           &pblh_ref,Stepbl,Lowlyr,Ht,Pblh,&
-           &Th_phy,T_phy,Moist,U_phy,V_phy,Tke_myj,&
-           &U_g_gen,V_g_gen,Glw_gen,Gsw_gen,P_gen,P8w_gen,&
-           &Z,Z8w,Dz8w,&
-           &n_moist,P_QV,ims,ime,jms,jme,kms,kme)
+     CALL initf(u_init_f(:,itime_f),v_init_f(:,itime_f),&
+           t_init_f(:,itime_f),q_init_f(:,itime_f),&
+           u_init_f(:,1:nt_f),v_init_f(:,1:nt_f),&
+           glw_init_f(1:nt_f_flux),gsw_init_f(1:nt_f_flux),&
+           precip_init_f(1:nt_f_smos),&
+           p_init_f(:,1:nt_f),&
+           th2_init_f(itime_f),q2_init_f(itime_f),&
+           u10_init_f(itime_f),v10_init_f(itime_f),&
+           tsk_init_f(itime_f),qsfc_init_f(itime_f),&
+           z_f(:,1:nt_f),nz_f,z_g,nt_f,nt_f_flux,nt_f_smos,&
+           times_f(1:nt_f),times_f_flux(1:nt_f_flux),&
+           times_f_smos(1:nt_f_smos),&
+           nsplinetimes,splinetimes,&
+           nsplinetimes_flux,splinetimes_flux,&
+           nsplinetimes_smos,splinetimes_smos,&
+           pblh_ref,stepbl,lowlyr,ht,pblh,&
+           th_phy,t_phy,moist,u_phy,v_phy,tke_myj,&
+           u_g_f,v_g_f,glw_f,gsw_f,precip_f,p_f,p8w_f,&
+           z,z8w,dz8w,&
+           n_moist,P_QV,ims,ime,jms,jme,kms,kme)
 
-      zl2=z(:,2,:)
+     zl2=z(:,2,:)
 
-!! allocate and assign soil, surface and atmosphere for init_gen end
-   
-   ENDIF
+   ENDIF ! end if init ideal or real
 
    k_t=0.
    k_m=0.
@@ -843,7 +779,7 @@ SUBROUTINE INIT_WRF(wrf_rnd_seed)
            ids, ide, jds, jde, kds, kde,         &
            ims, ime, jms, jme, kms, kme,         &
            its, ite, jts, jte, kts, kte          )
-      
+     
    ELSEIF (pbltype=='YSUPBLSCHEME') THEN
 
       OPEN(isfcunit,file=TRIM(outdir)//'/ysusfc.txt')
@@ -884,6 +820,7 @@ SUBROUTINE WRF(dart_seconds,dart_days)
    INTEGER, INTENT(IN) :: dart_days, dart_seconds
    LOGICAL             :: debug1, debug2, debug3, debug4, debug5
 
+
    debug1 = .false.  ! before sfc
    debug2 = .false.  ! before pbl
    debug3 = .false.  ! after sfc
@@ -899,40 +836,61 @@ SUBROUTINE WRF(dart_seconds,dart_days)
    e=1.+.25*dt**2*cor**2
 
 !  here we compute the time step to keep pace with dart
-   itimestep = (dart_days * 86400 + dart_seconds - start_seconds) / dt + 1
+   itimestep = (dart_days * 86400 + dart_seconds) / dt + 1
 
 !   DO itimestep=1,ntime+1
 
-      time=timeo+REAL(itimestep-1)*dt
+      time=start_forecast+REAL(itimestep-1)*dt
      
-      IF (init_gen) THEN
+!   error checking to make sure DART does not over shoot the forcing
+      IF ( time > start_forecast + forecast_length ) THEN
+         print*,"You do not have a long enough forcing series to "
+         print*,"and make sure the invervals are correct."
+         stop "module_wrf"
+      ENDIF
+      IF (init_f) THEN
 
-         ihour=INT(time/3600.+epsilon)
-         imin=ihour+1-start_forecast
+         imin = 1+INT(REAL(time-start_forecast)/REAL(splineinterval))
+         imin = MIN(imin,nsplinetimes)
+         imax = MIN(imin+1,nsplinetimes)
+         fract = (time-splinetimes(imin))/REAL(splineinterval)
 
-         imax=MIN(ihour+2-start_forecast,nsplinetimes)
-         fract=MOD(REAL(itimestep-1)*dt,3600.)/3600.
-         glw=glw_gen(imin)+(glw_gen(imax)-glw_gen(imin))*fract
-         gsw=gsw_gen(imin)+(gsw_gen(imax)-gsw_gen(imin))*fract
+         imin_flux=1+INT(REAL(time-start_forecast)/REAL(splineinterval_flux))
+         imin_flux = MIN(imin_flux,nsplinetimes_flux)
+         imax_flux = MIN(imin_flux+1,nsplinetimes_flux)
+         fract_flux = (time-splinetimes_flux(imin_flux))/REAL(splineinterval_flux)
+
+         glw=glw_f(imin_flux)+(glw_f(imax_flux)-glw_f(imin_flux))*fract_flux
+         gsw=gsw_f(imin_flux)+(gsw_f(imax_flux)-gsw_f(imin_flux))*fract_flux
+
+         imin_smos=1+INT(REAL(time-start_forecast)/REAL(splineinterval_smos))
+         imin_smos = min(imin_smos,nsplinetimes_smos)
+         imax_smos = min(imin_smos+1,nsplinetimes_smos)
+
+         raincv=0.
+         rainncv=precip_f(imax_smos)*dt/REAL(splineinterval_smos)
+
          DO i=ims,ime
             DO j=jms,jme
-               p_phy(i,:,j)=p_gen(:,imin)+&
-                    &(p_gen(:,imax)-p_gen(:,imin))*fract
-               p8w(i,:,j)=p8w_gen(:,imin)+&
-                    &(p8w_gen(:,imax)-p8w_gen(:,imin))*fract
+               p_phy(i,:,j)=p_f(:,imin)+&
+                    &(p_f(:,imax)-p_f(:,imin))*fract
+               p8w(i,:,j)=p8w_f(:,imin)+&
+                    &(p8w_f(:,imax)-p8w_f(:,imin))*fract
                PSFC(I,J)=p8w(I,kts,J)
                pi_phy(i,:,j)=(p_phy(i,:,j)/p1000mb)**rcp
             ENDDO
          ENDDO
 
-         u_g(:)=u_g_gen(:,imin)+&
-              &(u_g_gen(:,imax)-u_g_gen(:,imin))*fract
-         v_g(:)=v_g_gen(:,imin)+&
-              &(v_g_gen(:,imax)-v_g_gen(:,imin))*fract
+         u_g(:)=u_g_f(:,imin)+&
+              &(u_g_f(:,imax)-u_g_f(:,imin))*fract
+         v_g(:)=v_g_f(:,imin)+&
+              &(v_g_f(:,imax)-v_g_f(:,imin))*fract
 
       ELSE
          glw=glwfunc(time)
          gsw=gswfunc(time,albedo(1,1))
+         raincv=0.
+         rainncv=prate_ref*dt
       ENDIF
 
       IF ( debug1 ) then
@@ -961,7 +919,9 @@ SUBROUTINE WRF(dart_seconds,dart_days)
          write(65,*)'l18',SMFR3D(1,1,1),KEEPFR3DFLAG(1,1,1)                    
          write(65,*)'l19',PSFC                                                 
          write(65,*)'l20',POTEVP,SNOPCX,SOILTB
+         call flush(65)
       ENDIF
+
       rho=p_phy/(r_d*t_phy*(1.+SVP1*moist(:,:,:,P_QV)))
 
       CALL surface_driver(sfctype,surface_physics,pbltype&
@@ -987,6 +947,7 @@ SUBROUTINE WRF(dart_seconds,dart_days)
            &,flqc,flhc,qsg,qvg,qcg,soilt1,tsnav                   &
            &,SMFR3D,KEEPFR3DFLAG                                  &
            &,PSFC                                                 &
+           &,bucket_model,maxm,minm,erate&
            &,ids,ide,jds,jde,kds,kde                              &
            &,ims,ime,jms,jme,kms,kme                              &
            &,i_start,i_end,j_start,j_end,kts,kte,num_tiles        &
@@ -1018,8 +979,8 @@ SUBROUTINE WRF(dart_seconds,dart_days)
          write(75,*)'l18',SMFR3D(1,1,1),KEEPFR3DFLAG(1,1,1)                    
          write(75,*)'l19',PSFC                                                 
          write(75,*)'l20',POTEVP,SNOPCX,SOILTB
+         call flush(75)
       ENDIF
-      
 
       IF (debug3 ) then
          write(66,*)'BEFORE PBL'
@@ -1153,9 +1114,10 @@ SUBROUTINE output_wrf_profiles()
 
   IMPLICIT NONE
   
-  IF (init_gen) THEN
-     IF (MOD(time,outgeninterval) < epsilon) THEN
+  IF (init_f) THEN
+     IF (MOD(time-start_forecast,outfinterval) < epsilon) THEN
         WRITE(ncunit,'(20f16.7)')time/3600.
+        print*,'Writing output ',time
         DO k=kts,kte-1
            WRITE(ncunit,'(20f16.7)')z(1,k,1),u_phy(1,k,1),&
                 &v_phy(1,k,1),th_phy(1,k,1),moist(1,k,1,P_QV)

@@ -28,6 +28,9 @@ CONTAINS
      &          ,FLQC,FLHC,QSG,QVG,QCG,SOILT1,TSNAV                   & 
      &          ,SMFR3D,KEEPFR3DFLAG                                  &
      &          ,PSFC                                                 &
+!mp@ begin
+     &          ,bucket_model,maxm,minm,erate&
+!mp@ end
      &          ,ids,ide,jds,jde,kds,kde                              &
      &          ,ims,ime,jms,jme,kms,kme                              &
      &          ,i_start,i_end,j_start,j_end,kts,kte,num_tiles        &
@@ -49,6 +52,8 @@ CONTAINS
 
    USE module_sf_slab
 !
+   USE module_sf_force_restore
+
    USE module_sf_sfcdiags
 !
 
@@ -185,7 +190,7 @@ CONTAINS
 !******************************************************************
 !------------------------------------------------------------------ 
 
-   CHARACTER(len=15) :: sfctype,surface_physics,pbltype
+   CHARACTER(len=15) :: sfctype,surface_physics,pbltype, bucket_model
 
    REAL ::   ts_ref,ps_ref,dtamplitude_ref,mavail_ref,time
    INTEGER :: P_QV,P_QC
@@ -226,6 +231,7 @@ CONTAINS
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   VEGFRA
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   XICE
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   XLAND
+   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   maxm,minm,erate
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   MAVAIL
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   EMISS
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   SNOALB
@@ -340,6 +346,8 @@ CONTAINS
                                                             CQS2
 
    REAL    :: DTMIN,DTBL
+
+
 !
    INTEGER :: i,J,K,NK,jj,ij
    LOGICAL :: radiation
@@ -450,7 +458,7 @@ CONTAINS
      CASE DEFAULT
         
         WRITE( * , * ) 'The surface option does not exist: &
-             &bl_surface_physics = ', surface_physics
+             &bl_surface_physics = ', sfctype
         STOP
 
      END SELECT sfclay_select
@@ -498,6 +506,7 @@ CONTAINS
                      ids,ide, jds,jde, kds,kde,                    &
                      ims,ime, jms,jme, kms,kme,                    &
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
 
 #if ( NMM_CORE == 1 )
      CASE ('NMMLSMSCHEME')
@@ -586,6 +595,43 @@ CONTAINS
                      ims,ime, jms,jme, kms,kme,                    &
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
+
+     CASE ('FRSCHEME')
+    
+           DO j=j_start(ij),j_end(ij)
+           DO i=i_start(ij),i_end(ij)
+!          CQS2 ACCOUNTS FOR MAVAIL FOR SFCDIAGS 2M Q
+              CQS2(I,J)= CQS2(I,J)*MAVAIL(I,J)
+           ENDDO
+           ENDDO
+        CALL wrf_debug(100,'in force_restore')
+          CALL fr(t_phy,moist(ims,kms,jms,P_QV),p_phy,FLHC,FLQC,  &
+             PSFC,XLAND,TMN,HFX,QFX,LH,TSK,QSFC,CHKLOWQ,          &
+             GSW,GLW,CAPG,THC,SNOWC,EMISS,MAVAIL,                 &
+             raincv,rainncv,rainbl,bucket_model,maxm,minm,erate,&
+             DTBL,RCP,XLV,DTMIN,IFSNOW,                           &
+             SVP1,SVP2,SVP3,SVPT0,EP_2,KARMAN,EOMEG,STBOLT,       &
+             TSLB,ZS,DZS,num_soil_layers,radiation,               &
+             ids,ide, jds,jde, kds,kde,                           &
+             ims,ime, jms,jme, kms,kme,                           &
+             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+
+!           DO j=j_start(ij),j_end(ij)
+!           DO i=i_start(ij),i_end(ij)
+!              CHKLOWQ(I,J)= 1.0
+!           ENDDO
+!           ENDDO
+
+
+        CALL wrf_debug(100,'in SFCDIAGS')
+          CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
+                     PSFC,CP,R_d,RCP,                              &
+                     ids,ide, jds,jde, kds,kde,                    &
+                     ims,ime, jms,jme, kms,kme,                    &
+             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+
       CASE ('SIMPLESCHEME')
 
          CALL mysoil(xland(ims,jms),ts_ref,ps_ref,dtamplitude_ref,&
@@ -603,6 +649,8 @@ CONTAINS
               ids,ide, jds,jde, kds,kde,                    &
               ims,ime, jms,jme, kms,kme,                    &
               i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+
 
 
 

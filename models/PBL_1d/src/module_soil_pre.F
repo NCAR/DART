@@ -331,6 +331,43 @@ endif
 
    END SUBROUTINE adjust_soil_temp_3
 
+   SUBROUTINE init_soil_depth_0 ( zs, dzs, num_soil_layers, thc, cs )
+
+! for force restore - depth based on depth of diurnal variation
+! dependent on soil parameters
+! d=2/.95 * cg/cs
+! cg is thermal capacity (see Garrat p. 227-229)
+! cs is volumetric heat capacity
+! thc is thermal intertia from the namelist
+! alpha is magic number= 3.288e6 converting thermal inertia to thermal capacity
+! taken from routine slab
+! cg= alpha*thc
+     
+
+      IMPLICIT NONE
+
+      REAL, DIMENSION(:,:), INTENT(IN) :: thc, cs
+   
+      INTEGER, INTENT(IN) :: num_soil_layers
+   
+      REAL, DIMENSION(1:num_soil_layers), INTENT(OUT)  ::  zs, dzs
+   
+      INTEGER                   ::      l
+
+      REAL :: cg, alpha=3.288e6
+
+      cg=alpha*thc(1,1)
+
+      IF ( num_soil_layers .NE. 1 ) THEN
+         PRINT '(A)','Usually, force restore diffusion uses 1 layer.  Change this in the namelist.'
+         STOP 'force restore in module_soil_pre.F'
+      END IF
+   
+      dzs(1)=2.11*cg/cs(1,1)
+      zs(1)=.5*dzs(1)
+
+   END SUBROUTINE init_soil_depth_0
+
    SUBROUTINE init_soil_depth_1 ( zs , dzs , num_soil_layers )
 
       IMPLICIT NONE
@@ -425,6 +462,63 @@ endif
       END IF
 
    END SUBROUTINE init_soil_depth_3
+
+   SUBROUTINE init_soil_0_real ( tsk , tmn , tslb_init_f, zs , dzs , zs_f, &
+        num_soil_layers, ns_f, real_data_init_type , &
+        landmask_input , sst_input , flag_sst , &
+        ids , ide , jds , jde , kds , kde , &
+        ims , ime , jms , jme , kms , kme , &
+        its , ite , jts , jte , kts , kte )
+     
+     IMPLICIT NONE
+     
+     INTEGER , INTENT(IN) :: num_soil_layers , ns_f,real_data_init_type , &
+          ids , ide , jds , jde , kds , kde , &
+          ims , ime , jms , jme , kms , kme , &
+          its , ite , jts , jte , kts , kte 
+     
+     LOGICAL , INTENT(IN) :: flag_sst
+     
+     REAL , DIMENSION(:,:) , INTENT(IN) :: landmask_input , sst_input
+     REAL , DIMENSION(ims:ime,jms:jme) :: tsk , tmn
+     REAL , DIMENSION(ns_f) ::  tslb_init_f
+     REAL , DIMENSION(num_soil_layers) :: zs , dzs
+     REAL , DIMENSION(ns_f) :: zs_f
+     
+     INTEGER :: i , j , l
+     
+! deep soil linearly interpolated form input data possible
+     
+     DO j = 1 , jte
+        DO i = 1 , ite
+           IF ( ( real_data_init_type .EQ. 1 ) .AND. landmask_input(i,j) .GT. 0.5 ) THEN
+              IF (zs(1) <= zs_f(1)) THEN
+                 tmn(i,j)=tsk(i,j) + (tslb_init_f(1)-tsk(i,j))/zs_f(1)*zs(1)
+              ELSEIF (zs(1) > zs_f(ns_f)) THEN
+                 tmn(i,j)=tslb_init_f(ns_f)
+              ELSE
+                 DO l = 1 , ns_f
+                    IF (zs_f(l) >= zs(1)) EXIT
+                 ENDDO
+                 IF (ABS(tslb_init_f(l)-tslb_init_f(l-1)) < .01) THEN 
+                 tmn(i,j)=tslb_init_f(l-1)
+              ELSE
+                 tmn(i,j)=tslb_init_f(l-1)+(zs(1)-zs_f(l-1))/(zs_f(l)-zs_f(l-1))*&
+                      &(tslb_init_f(l)-tslb_init_f(l-1))
+              ENDIF
+              
+           ENDIF
+           
+        ELSE
+           IF ( ( real_data_init_type .EQ. 1 ) .AND. ( flag_sst ) ) THEN
+              tmn(i,j)= sst_input(i,j)
+           END IF
+        END IF
+     END DO
+  END DO
+  
+END SUBROUTINE init_soil_0_real
+
 
    SUBROUTINE init_soil_1_real ( tsk , tmn , tslb , zs , dzs , &
                                  num_soil_layers , real_data_init_type , &

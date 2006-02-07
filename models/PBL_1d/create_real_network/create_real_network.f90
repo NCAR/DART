@@ -23,7 +23,7 @@ use        types_mod, only : r8, missing_r8, missing_i
 use    utilities_mod, only : timestamp, register_module, open_file, &
                              close_file, find_namelist_in_file, &
                              error_handler, check_namelist_read, &
-                             initialize_utilities
+                             initialize_utilities, E_ERR
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time,&
                              get_obs_kind, get_obs_name

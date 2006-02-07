@@ -45,6 +45,7 @@ CONTAINS
 !
 !  b = diagonal, d = offdiagonal, c = right hand side.
 !
+print*,x(2),x(1)
     d(1) = x(2) - x(1)
     c(2) = (y(2) - y(1))/d(1)
     DO  i = 2, nm1
@@ -168,9 +169,19 @@ CONTAINS
     INTEGER :: i,n
     REAL :: x(n),y(n)
     REAL :: xi
-    INTEGER :: j
+    INTEGER :: j, nx
 
-    DO i=2,n
+    IF ( n > 1 ) THEN
+       i = 1
+       DO WHILE ( x(i) <= xi ) 
+         i = i+1
+       ENDDO
+       nx = i + 1
+    ELSE
+       nx = n
+    ENDIF
+
+    DO i=2,nx
        IF (x(i) < x(i-1)) THEN
           IF (ABS(x(i)-x(i-1)) < 1.e-4) THEN
              x(i)=x(i-1)+1.e-4
@@ -188,19 +199,23 @@ CONTAINS
     ENDIF
     
     IF (xi < x(1)) THEN
-       PRINT *,'need to extrapolate 99999. assigned'
+       PRINT *,'need to extrapolate, -9999. assigned'
        PRINT *, 'xi less than x(1) ',xi,x(1)
-       linear=99999.
-       STOP
-       GOTO 1000
+       PRINT*
+       PRINT *,'NOTE: This will cause the model to crash and is only ',&
+               'appropriate for outputting the analyis'
+       PRINT*
+!       PRINT *,'Stopping in linear'
+       linear = -9999.0
+       RETURN
+!       STOP
     ENDIF
     
-    IF (xi > x(n)) THEN
-       PRINT *,'need to extrapolate 99999. assigned'
+    IF (xi > x(nx)) THEN
+!       PRINT *,'need to extrapolate 99999. assigned'
        PRINT *, 'xi greater than x(n) ',xi,x(n)
-       linear=99999.
+       PRINT *,'Stopping in linear'
        STOP
-       GOTO 1000
     ENDIF
     
     j=1

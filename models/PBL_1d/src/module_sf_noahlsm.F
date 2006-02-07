@@ -2840,6 +2840,7 @@ CONTAINS
                END IF                                                            
                IF (VEGTYP .gt. LUCATS) THEN                                      
                      WRITE (*,*) 'Warning: too many input landuse types'         
+                     WRITE (*,*) VEGTYP, LUCATS
                      CALL wrf_error_fatal ( 'Warning: too many input landuse types' )
                END IF                                                            
                IF (SLOPETYP .gt. SLPCATS) THEN                                   

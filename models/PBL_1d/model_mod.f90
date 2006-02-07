@@ -13,9 +13,10 @@ module model_mod
 
 use        types_mod, only : r8, missing_r8
 use time_manager_mod, only : time_type, set_time, get_time, &
-                             increment_time, print_time, &
-                             set_calendar_type, NO_CALENDAR, &
-                             operator(==), operator(<=)
+                             increment_time, print_time, set_date, &
+                             set_calendar_type, GREGORIAN, &
+                             operator(==), operator(<=), &
+                             operator(-), operator(+)
 use     location_mod, only : location_type, get_dist, set_location, &
                              get_location, query_location, &
                              LocationDims, LocationName, LocationLName, &
@@ -77,8 +78,7 @@ revdate  = "$Date$"
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
-type(time_type) :: time_step
-type(time_type) :: last_advance_time
+type(time_type) :: time_step, initialization_time
 
 ! Private definition of model variable types
 
@@ -87,21 +87,23 @@ integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_QV  = 7,   TYPE_QC  = 8,  TYPE_QR = 9,  &
                       TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
                       TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
-                      TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18, &
+                      TYPE_Q2  = 16,  TYPE_PSFC= 17, TYPE_TSLB = 18, &
                       TYPE_TSK = 19,  TYPE_TH = 20,  TYPE_TKE = 21 , &
                       TYPE_P   = 22
 
 ! additional "far away" types that will not be part of the assimilation
 ! GROUP THESE BY SIZE OF ARRAYS!  this will make life easier below
-integer, parameter :: TYPE_GSWGEN  = 100,    TYPE_GLWGEN = 101, & !1D       
-                      TYPE_UGEN = 102,       TYPE_VGEN = 103, &   !2D...
-                      TYPE_PGEN = 104,       TYPE_P8WGEN = 105, & 
-                      TYPE_TGEN_UA = 106,    TYPE_TGEN_VA = 107, & 
-                      TYPE_QGEN_UA = 108,    TYPE_QGEN_VA = 109, & 
-                      TYPE_UGEN_UA = 110,    TYPE_UGEN_VA = 111, & 
-                      TYPE_VGEN_UA = 112,    TYPE_VGEN_VA = 113, & 
-                      TYPE_UGEN_WA = 114,    TYPE_VGEN_WA = 115, & 
-                      TYPE_TGEN_WA = 116,    TYPE_QGEN_WA = 117
+integer, parameter :: TYPE_GSWF  = 100,    TYPE_GLWF = 101, & !1D       
+                      TYPE_PRECIPF = 102
+
+integer, parameter :: TYPE_UF = 103,       TYPE_VF = 104, &   !2D...
+                      TYPE_PF = 105,       TYPE_P8WF = 106, & 
+                      TYPE_TF_UA = 107,    TYPE_TF_VA = 108, & 
+                      TYPE_QF_UA = 109,    TYPE_QF_VA = 110, & 
+                      TYPE_UF_UA = 111,    TYPE_UF_VA = 112, & 
+                      TYPE_VF_UA = 113,    TYPE_VF_VA = 114, & 
+                      TYPE_UF_WA = 115,    TYPE_VF_WA = 116, & 
+                      TYPE_TF_WA = 117,    TYPE_QF_WA = 118
 
 ! far away types that we may want to add to the state vector at some
 ! point
@@ -120,7 +122,9 @@ integer, parameter :: TYPE_UZ0 = 300,        TYPE_VZ0 = 301, &   !scalars
                       TYPE_FLQC = 318,       TYPE_Q10 = 319, &
                       TYPE_UDRUNOFF = 320,   TYPE_ACSNOM = 321, &
                       TYPE_ACSNOW = 322,     TYPE_UST = 323, &
-                      TYPE_PBLH = 324,       TYPE_TMN = 325
+                      TYPE_PBLH = 324,       TYPE_TMN = 325, &
+                      TYPE_CS = 326,         TYPE_ERATE = 327, &
+                      TYPE_MAXM = 328,       TYPE_MINM = 329
 
 ! parameter section - first some strange ones
 integer, parameter :: TYPE_VEGFRA = 400
@@ -132,12 +136,11 @@ integer, parameter :: TYPE_RHO = 500, TYPE_U_G  = 501, &
 
 ! parameter section - some out of state (constant) and are far away
 ! others are in-state and will be assigned a true location
-! bad list because it might change in the model: ALBEDO, 
 integer, parameter ::  TYPE_EMISS = 600, TYPE_ALBEDO = 601, &
                        TYPE_Z0    = 602, TYPE_THC    = 603, &
                        TYPE_MAVAIL= 604
 
-integer, parameter :: calendar_type = NO_CALENDAR
+integer, parameter :: calendar_type = GREGORIAN
 integer            :: internal_ensemble_counter = 0
 integer            :: number_ensemble_members = 0
 
@@ -149,19 +152,19 @@ integer, parameter  ::   number_of_soil_variables = 1
 integer, parameter  ::   number_of_profile_variables =     8 
                          ! (U, V, Z, T, QV, TH, TKE,P)
 ! screen height vars in state vector to dart
-integer, parameter  ::   number_of_scalars =               5      
-                         ! (U10, V10, T2, Q2, TSK) 
+integer, parameter  ::   number_of_scalars =               6      
+                         ! (U10, V10, T2, Q2, TSK, PSFC) 
 ! external forcing
-integer, parameter  ::   number_of_2d_gen =               16 
-                         !(UGEN, VGEN, PGEN, P8WGEN,
-                         ! TGEN_UA, TGEN_VA,
-                         ! QGEN_UA, QGEN_VA,
-                         ! UGEN_UA, UGEN_VA,
-                         ! VGEN_UA, VGEN_VA,
-                         ! UGEN_WA, VGEN_WA,
-                         ! TGEN_WA, QGEN_WA)
-integer, parameter  ::   number_of_1d_gen =                2
-                         ! (GSWGEN, GLWGEN)
+integer, parameter  ::   number_of_2d_f =               16 
+                         !(UF, VF, PF, P8WF,
+                         ! TF_UA, TF_VA,
+                         ! QF_UA, QF_VA,
+                         ! UF_UA, UF_VA,
+                         ! VF_UA, VF_VA,
+                         ! UF_WA, VF_WA,
+                         ! TF_WA, QF_WA)
+integer, parameter  ::   number_of_1d_f =                3
+                         ! (GSWF, GLWF)
 ! profile variables NOT in state vector to dart
 integer, parameter  ::   number_noassim_profiles =         3
                          ! RHO, U_G, V_G
@@ -170,7 +173,7 @@ integer, parameter  ::   number_noassim_soil_vars =        4
                          ! (SMOIS, KEEPFR3DFLAG, 
                          !  SMFR3D, SH2O)
 ! scalars NOT in state vector to dart
-integer, parameter  ::   number_noassim_scalars = 26
+integer, parameter  ::   number_noassim_scalars = 30
                          ! (UZ0, VZ0, THZ0, QZ0, 
                          !  QVG, QSG, QCG, QSFC, 
                          ! AKMS, AKHS, HOL, MOL, 
@@ -197,8 +200,8 @@ TYPE state_vector_meta_data
 ! screen height vars in state vector to dart
    integer             ::   number_of_scalars         
 ! external forcing
-   integer             ::   number_of_2d_gen 
-   integer             ::   number_of_1d_gen 
+   integer             ::   number_of_2d_f 
+   integer             ::   number_of_1d_f 
 ! profile variables NOT in state vector to dart
    integer             ::   number_noassim_profiles
 ! soil variables NOT in state vector to dart
@@ -216,6 +219,8 @@ TYPE state_vector_meta_data
    integer, dimension(:), allocatable :: est_param_types
    real(r8),dimension(:), allocatable :: pert_init_sd
    real(r8),dimension(:), allocatable :: pert_param_sd
+   real(r8),dimension(:), allocatable :: pert_param_min
+   real(r8),dimension(:), allocatable :: pert_param_max
    character(len=4),dimension(:), allocatable :: dist_shape
 
    integer, dimension(:), allocatable :: var_type
@@ -284,16 +289,14 @@ allocate_wrf = .false.
 ! initialize some timing stuff
 time_step = set_time(int(dt), 0)
 call set_calendar_type(calendar_type)
-
-! initialize the last time
-last_advance_time = set_time(start_forecast*3600,0)
+call init_time(initialization_time)
 
 ! numbers
 wrf_meta%number_of_scalars = number_of_scalars
 wrf_meta%number_of_profile_variables = number_of_profile_variables
 wrf_meta%number_of_soil_variables = number_of_soil_variables
-wrf_meta%number_of_1d_gen = number_of_1d_gen
-wrf_meta%number_of_2d_gen = number_of_2d_gen
+wrf_meta%number_of_1d_f = number_of_1d_f
+wrf_meta%number_of_2d_f = number_of_2d_f
 wrf_meta%number_noassim_profiles = number_noassim_profiles
 wrf_meta%number_noassim_soil_vars = number_noassim_soil_vars
 wrf_meta%number_noassim_scalars = number_noassim_scalars
@@ -308,8 +311,8 @@ wrf_meta%number_independent_params = number_total_params - num_est_params
 wrf_meta%model_size = num_soil_layers * wrf_meta%number_of_soil_variables  &
                     + nz              * wrf_meta%number_of_profile_variables &
                     + 1               * wrf_meta%number_of_scalars &
-                    + nz*nsplinetimes * wrf_meta%number_of_2d_gen &
-                    + nsplinetimes    * wrf_meta%number_of_1d_gen &
+                    + nz*nsplinetimes * wrf_meta%number_of_2d_f &
+                    + n1dsplines                                & 
                     + nz              * wrf_meta%number_noassim_profiles &
                     + num_soil_layers * wrf_meta%number_noassim_soil_vars &
                     + 1               * wrf_meta%number_noassim_scalars &
@@ -320,8 +323,8 @@ wrf_meta%model_size = num_soil_layers * wrf_meta%number_of_soil_variables  &
 wrf_meta%total_number_of_vars = wrf_meta%number_of_scalars &
                               + wrf_meta%number_of_profile_variables &
                               + wrf_meta%number_of_soil_variables &
-                              + wrf_meta%number_of_1d_gen &
-                              + wrf_meta%number_of_2d_gen &
+                              + wrf_meta%number_of_1d_f &
+                              + wrf_meta%number_of_2d_f &
                               + wrf_meta%number_noassim_profiles &
                               + wrf_meta%number_noassim_soil_vars &
                               + wrf_meta%number_noassim_scalars &
@@ -331,6 +334,8 @@ wrf_meta%total_number_of_vars = wrf_meta%number_of_scalars &
 allocate(wrf_meta%est_param_types(wrf_meta%number_state_params))
 allocate(wrf_meta%pert_init_sd(wrf_meta%number_state_params))
 allocate(wrf_meta%pert_param_sd(wrf_meta%number_state_params))
+allocate(wrf_meta%pert_param_min(wrf_meta%number_state_params))
+allocate(wrf_meta%pert_param_max(wrf_meta%number_state_params))
 allocate(wrf_meta%dist_shape(wrf_meta%number_state_params))
 
 allocate(wrf_meta%var_type(wrf_meta%total_number_of_vars))
@@ -343,6 +348,8 @@ do i = 1, wrf_meta%number_state_params
   wrf_meta%est_param_types(i) = est_param_types(i)
   wrf_meta%pert_init_sd(i) = pert_init_sd(i)
   wrf_meta%pert_param_sd(i) = pert_param_sd(i)
+  wrf_meta%pert_param_min(i) = pert_param_min(i)
+  wrf_meta%pert_param_max(i) = pert_param_max(i)
   wrf_meta%dist_shape(i) = dist_shape(i)
 enddo
 
@@ -473,6 +480,13 @@ state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,-1)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
+wrf_meta%var_type(var_cnt) = TYPE_PSFC
+wrf_meta%var_size(var_cnt) = 1
+wrf_meta%var_index(var_cnt) = dart_index
+state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,-1)
+dart_index = dart_index + wrf_meta%var_size(var_cnt)
+var_cnt = var_cnt + 1
+
 wrf_meta%var_type(var_cnt) = TYPE_TSLB
 wrf_meta%var_size(var_cnt) = num_soil_layers
 wrf_meta%var_index(var_cnt) = dart_index
@@ -503,10 +517,20 @@ enddo
 
 ! all the stuff that we need to carry but don't want to affect
 ! THE ORDER IS IMPORTANT - make sure loop variables are correct
-! 1D GEN vars
-do vcnt = 1, wrf_meta%number_of_1d_gen
-  wrf_meta%var_type(var_cnt) = 100 + vcnt - 1 !TYPE_GSWGEN ... TYPE_GLWGEN
-  wrf_meta%var_size(var_cnt) = nsplinetimes
+! 1D F vars
+do vcnt = 1, wrf_meta%number_of_1d_f
+  wrf_meta%var_type(var_cnt) = 100 + vcnt - 1 !TYPE_GSWF ... TYPE_PRECIPF
+  select case ( wrf_meta%var_type(var_cnt) )
+    case ( TYPE_GSWF )
+      wrf_meta%var_size(var_cnt) = nsplinetimes_flux
+    case ( TYPE_GLWF )
+      wrf_meta%var_size(var_cnt) = nsplinetimes_flux
+    case ( TYPE_PRECIPF )
+      wrf_meta%var_size(var_cnt) = nsplinetimes_smos
+    case default
+      call error_handler(E_ERR, 'static_init_model', &
+       'cannot size 1-d forcing type', source, revision, revdate)
+  end select
   wrf_meta%var_index(var_cnt) = dart_index
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
@@ -517,9 +541,9 @@ do vcnt = 1, wrf_meta%number_of_1d_gen
   var_cnt = var_cnt + 1
 enddo
 
-! 2d GEN vars (nz,nsplinetimes)
-do vcnt = 1, wrf_meta%number_of_2d_gen
-  wrf_meta%var_type(var_cnt) = 102 + vcnt - 1 !TYPE_UGEN ... TYPE_QGEN_WA
+! 2d F vars (nz,nsplinetimes)
+do vcnt = 1, wrf_meta%number_of_2d_f
+  wrf_meta%var_type(var_cnt) = 100 + wrf_meta%number_of_1d_f + vcnt - 1 !TYPE_UF ... TYPE_QF_WA
   wrf_meta%var_size(var_cnt) = nsplinetimes*nz
   wrf_meta%var_index(var_cnt) = dart_index
   bot = wrf_meta%var_index(var_cnt)
@@ -561,7 +585,7 @@ enddo
 
 ! scalars (might want these in the assimilation vector)
 do vcnt = 1, wrf_meta%number_noassim_scalars
-  wrf_meta%var_type(var_cnt) = 300 + vcnt - 1 !TYPE_UZ0 ... TYPE_TMN
+  wrf_meta%var_type(var_cnt) = 300 + vcnt - 1 !TYPE_UZ0 ... TYPE_MINM
   wrf_meta%var_size(var_cnt) = 1
   wrf_meta%var_index(var_cnt) = dart_index
   state_loc(dart_index) = set_location(long_far,column%latitude,10000.0_r8,-1)
@@ -583,11 +607,22 @@ enddo
 
 call map_init(my_projection)
 
-call get_projection(projcode,sw_corner_lat, sw_corner_lon, center_i, center_j, &
-     dx, stdlon, truelat1, truelat2)
+select case (init_f_type)
 
-CALL map_set(projcode, sw_corner_lat, sw_corner_lon, center_i, center_j, &
-     dx, stdlon, truelat1, truelat2, my_projection)
+   case ('WRF')
+      call get_projection(projcode,sw_corner_lat, sw_corner_lon,&
+           center_i, center_j, &
+           dx, stdlon, truelat1, truelat2)
+
+      call map_set(projcode, sw_corner_lat, sw_corner_lon, center_i, center_j, &
+                   dx, stdlon, truelat1, truelat2, my_projection)
+
+   case ('OBS')
+      print*,'Map information set to trivial for init type ',init_f_type
+      my_projection%code = PROJ_LATLON
+      
+   case default
+end select
 
 END SUBROUTINE static_init_model
 
@@ -606,7 +641,9 @@ subroutine init_conditions(x)
   call wrf_to_vector(x)
 
 ! initialize any parameter distributions
-  if ( wrf_meta%number_state_params > 0 ) call init_params(x)
+  if ( wrf_meta%number_state_params > 0 ) then
+     call init_params(x)
+  endif
 
 ! count the ensemble members
   internal_ensemble_counter = internal_ensemble_counter + 1
@@ -723,6 +760,11 @@ subroutine wrf_to_vector(x)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 
+! psfc
+  x(wrf_meta%var_index(var_cnt)) = psfc(1,1)
+  dart_index = dart_index + wrf_meta%var_size(var_cnt)
+  var_cnt = var_cnt + 1
+
 ! tslb
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
@@ -739,6 +781,8 @@ subroutine wrf_to_vector(x)
 
 ! parameters
   do vcnt = 1, wrf_meta%number_state_params
+    if ( wrf_meta%dist_shape(vcnt) == 'logn' ) &
+         x(wrf_meta%var_index(var_cnt)) = dexp(x(wrf_meta%var_index(var_cnt)))
     select case (wrf_meta%est_param_types(vcnt))
       case (TYPE_EMISS)
         x(wrf_meta%var_index(var_cnt)) = emiss(1,1)
@@ -754,21 +798,25 @@ subroutine wrf_to_vector(x)
         call error_handler(E_ERR, 'wrf_to_vector', &
          'problem with est_param unroll', source, revision, revdate)
     end select
+    if ( wrf_meta%dist_shape(vcnt) == 'logn' ) &
+         x(wrf_meta%var_index(var_cnt)) = dlog(x(wrf_meta%var_index(var_cnt)))
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
 
 ! all the far away ones
-! gsw_gen...glw_gen
-  do vcnt = 1, wrf_meta%number_of_1d_gen
+! gsw_f...glw_f
+  do vcnt = 1, wrf_meta%number_of_1d_f
     bot = wrf_meta%var_index(var_cnt)
     top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
     do k = bot,top
       select case (wrf_meta%var_type(var_cnt))
-        case (TYPE_GSWGEN) 
-          x(k) = gsw_gen(k-bot+1) 
-        case (TYPE_GLWGEN)
-          x(k) = glw_gen(k-bot+1) 
+        case (TYPE_GSWF) 
+          x(k) = gsw_f(k-bot+1) 
+        case (TYPE_GLWF)
+          x(k) = glw_f(k-bot+1) 
+        case (TYPE_PRECIPF)
+          x(k) = precip_f(k-bot+1) 
         case default
           call error_handler(E_ERR, 'wrf_to_vector', &
            'problem with 1d gen unroll', source, revision, revdate)
@@ -778,46 +826,46 @@ subroutine wrf_to_vector(x)
     var_cnt = var_cnt + 1
   enddo
 
-! u_g_gen...qgen_wa
-  do vcnt = 1, wrf_meta%number_of_2d_gen
+! u_g_f...qgen_wa
+  do vcnt = 1, wrf_meta%number_of_2d_f
     bot = wrf_meta%var_index(var_cnt)
     top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
     ispline = 1
     iz      = 1
     do k = bot,top
       select case (wrf_meta%var_type(var_cnt))
-        case (TYPE_UGEN)
-          x(k) = u_g_gen(iz,ispline) 
-        case (TYPE_VGEN)
-          x(k) = v_g_gen(iz,ispline) 
-        case (TYPE_PGEN)
-          x(k) = p_gen(iz,ispline) 
-        case (TYPE_P8WGEN)
-          x(k) = p8w_gen(iz,ispline) 
-        case (TYPE_TGEN_UA)
-          x(k) = t_gen_uadv(iz,ispline) 
-        case (TYPE_TGEN_VA)
-          x(k) = t_gen_vadv(iz,ispline) 
-        case (TYPE_QGEN_UA)
-          x(k) = q_gen_uadv(iz,ispline) 
-        case (TYPE_QGEN_VA)
-          x(k) = q_gen_vadv(iz,ispline) 
-        case (TYPE_UGEN_UA)
-          x(k) = u_gen_uadv(iz,ispline) 
-        case (TYPE_UGEN_VA)
-          x(k) = u_gen_vadv(iz,ispline) 
-        case (TYPE_VGEN_UA)
-          x(k) = v_gen_uadv(iz,ispline) 
-        case (TYPE_VGEN_VA)
-          x(k) = v_gen_vadv(iz,ispline) 
-        case (TYPE_UGEN_WA)
-          x(k) = u_gen_wadv(iz,ispline) 
-        case (TYPE_VGEN_WA)
-          x(k) = v_gen_wadv(iz,ispline) 
-        case (TYPE_TGEN_WA)
-          x(k) = t_gen_wadv(iz,ispline) 
-        case (TYPE_QGEN_WA)
-          x(k) = q_gen_wadv(iz,ispline) 
+        case (TYPE_UF)
+          x(k) = u_g_f(iz,ispline) 
+        case (TYPE_VF)
+          x(k) = v_g_f(iz,ispline) 
+        case (TYPE_PF)
+          x(k) = p_f(iz,ispline) 
+        case (TYPE_P8WF)
+          x(k) = p8w_f(iz,ispline) 
+        case (TYPE_TF_UA)
+          x(k) = t_f_uadv(iz,ispline) 
+        case (TYPE_TF_VA)
+          x(k) = t_f_vadv(iz,ispline) 
+        case (TYPE_QF_UA)
+          x(k) = q_f_uadv(iz,ispline) 
+        case (TYPE_QF_VA)
+          x(k) = q_f_vadv(iz,ispline) 
+        case (TYPE_UF_UA)
+          x(k) = u_f_uadv(iz,ispline) 
+        case (TYPE_UF_VA)
+          x(k) = u_f_vadv(iz,ispline) 
+        case (TYPE_VF_UA)
+          x(k) = v_f_uadv(iz,ispline) 
+        case (TYPE_VF_VA)
+          x(k) = v_f_vadv(iz,ispline) 
+        case (TYPE_UF_WA)
+          x(k) = u_f_wadv(iz,ispline) 
+        case (TYPE_VF_WA)
+          x(k) = v_f_wadv(iz,ispline) 
+        case (TYPE_TF_WA)
+          x(k) = t_f_wadv(iz,ispline) 
+        case (TYPE_QF_WA)
+          x(k) = q_f_wadv(iz,ispline) 
         case default
           call error_handler(E_ERR, 'wrf_to_vector', &
            'problem with 2d gen unroll', source, revision, revdate)
@@ -876,7 +924,7 @@ subroutine wrf_to_vector(x)
     var_cnt = var_cnt + 1
   enddo
 
-! uz0...tmn
+! uz0...minm
   do vcnt = 1,wrf_meta%number_noassim_scalars
     select case (wrf_meta%var_type(var_cnt))
       case (TYPE_UZ0)
@@ -927,10 +975,18 @@ subroutine wrf_to_vector(x)
         x(wrf_meta%var_index(var_cnt)) = acsnow(1,1)
       case (TYPE_UST)
         x(wrf_meta%var_index(var_cnt)) = ust(1,1)
-      case (TYPE_TMN)
-        x(wrf_meta%var_index(var_cnt)) = tmn(1,1)
       case (TYPE_PBLH)
         x(wrf_meta%var_index(var_cnt)) = pblh(1,1)
+      case (TYPE_TMN)
+        x(wrf_meta%var_index(var_cnt)) = tmn(1,1)
+      case (TYPE_CS)
+        x(wrf_meta%var_index(var_cnt)) = cs(1,1)
+      case (TYPE_ERATE)
+        x(wrf_meta%var_index(var_cnt)) = erate(1,1)
+      case (TYPE_MAXM)
+        x(wrf_meta%var_index(var_cnt)) = maxm(1,1)
+      case (TYPE_MINM)
+        x(wrf_meta%var_index(var_cnt)) = minm(1,1)
       case default
         call error_handler(E_ERR, 'wrf_to_vector', &
          'problem with noassim_scalar unroll', source, revision, revdate)
@@ -974,30 +1030,26 @@ subroutine adv_1step(x, dart_time)
    real(r8), intent(inout) :: x(:)
    type(time_type), intent(inout) :: dart_time
 
+   type(time_type)          :: time_into_forecast
    integer                  :: dart_seconds,dart_days
 
-! count ensemble member if needed (not now)
-   if ( dart_time <= last_advance_time ) then
-     internal_ensemble_counter = internal_ensemble_counter + 1
-   endif
-   if ( internal_ensemble_counter > number_ensemble_members ) then
-     internal_ensemble_counter = 1
-   endif
+! perturb the parameters at every time step
+   call pert_params_time(x)
+
+   call impose_param_limits(x)
 
    call vector_to_wrf(x)
 
-   call get_time(dart_time,dart_seconds,dart_days)
+   time_into_forecast = dart_time - initialization_time
+   call get_time(time_into_forecast,dart_seconds,dart_days)
 
+! figure out what time step we are at
    call wrf(dart_seconds,dart_days)
 
 !   print*,t2,t_phy(1,1,1),t_phy(1,10,1),t_phy(1,20,1)
 
    call wrf_to_vector(x)
 
-! perturb the parameters at every time step
-   call pert_params_time(x)
-
-   last_advance_time = dart_time
 
 end subroutine adv_1step
 
@@ -1007,7 +1059,7 @@ subroutine vector_to_wrf(x)
 !---------------------------------------------------------
   implicit none
 
-  real(r8), intent(in)  :: x(:)
+  real(r8), intent(inout)  :: x(:)
 
   integer               :: dart_index, var_cnt, bot, top
   integer               :: ispline, iz, vcnt
@@ -1111,6 +1163,12 @@ subroutine vector_to_wrf(x)
   var_cnt = var_cnt + 1
   where (q2 < 0.0_r8) q2 = 0.0_r8
 
+! psfc
+  psfc(1,1) = x(wrf_meta%var_index(var_cnt))
+  dart_index = dart_index + wrf_meta%var_size(var_cnt)
+  var_cnt = var_cnt + 1
+  where (q2 < 0.0_r8) q2 = 0.0_r8
+
 ! tslb
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
@@ -1127,6 +1185,8 @@ subroutine vector_to_wrf(x)
 
 ! parameters
   do vcnt = 1, wrf_meta%number_state_params
+    if ( wrf_meta%dist_shape(vcnt) == 'logn' ) &
+         x(wrf_meta%var_index(var_cnt)) = dexp(x(wrf_meta%var_index(var_cnt)))
     select case (wrf_meta%est_param_types(vcnt))
       case (TYPE_EMISS)
         emiss(1,1) = x(wrf_meta%var_index(var_cnt)) 
@@ -1142,21 +1202,25 @@ subroutine vector_to_wrf(x)
         call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with est_param roll', source, revision, revdate)
     end select
+    if ( wrf_meta%dist_shape(vcnt) == 'logn' ) &
+         x(wrf_meta%var_index(var_cnt)) = dlog(x(wrf_meta%var_index(var_cnt)))
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
 
 ! all the far away ones
-! gsw_gen...glw_gen
-  do vcnt = 1, wrf_meta%number_of_1d_gen
+! gsw_f...precip_f
+  do vcnt = 1, wrf_meta%number_of_1d_f
     bot = wrf_meta%var_index(var_cnt)
     top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
     do k = bot,top
       select case (wrf_meta%var_type(var_cnt))
-        case (TYPE_GSWGEN) 
-          gsw_gen(k-bot+1) = x(k)
-        case (TYPE_GLWGEN)
-          glw_gen(k-bot+1) = x(k)
+        case (TYPE_GSWF) 
+          gsw_f(k-bot+1) = x(k)
+        case (TYPE_GLWF)
+          glw_f(k-bot+1) = x(k)
+        case (TYPE_PRECIPF)
+          precip_f(k-bot+1) = x(k)
         case default
           call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with 1d gen roll', source, revision, revdate)
@@ -1166,49 +1230,49 @@ subroutine vector_to_wrf(x)
     var_cnt = var_cnt + 1
   enddo
 
-! u_g_gen...qgen_wa
-  do vcnt = 1, wrf_meta%number_of_2d_gen
+! u_g_f...qgen_wa
+  do vcnt = 1, wrf_meta%number_of_2d_f
     bot = wrf_meta%var_index(var_cnt)
     top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
     ispline = 1
     iz      = 1
     do k = bot,top
       select case (wrf_meta%var_type(var_cnt))
-        case (TYPE_UGEN)
-          u_g_gen(iz,ispline) = x(k)
-        case (TYPE_VGEN)
-          v_g_gen(iz,ispline) = x(k)
-        case (TYPE_PGEN)
-          p_gen(iz,ispline) = x(k)
-        case (TYPE_P8WGEN)
-          p8w_gen(iz,ispline) = x(k)
-        case (TYPE_TGEN_UA)
-          t_gen_uadv(iz,ispline) = x(k)
-        case (TYPE_TGEN_VA)
-          t_gen_vadv(iz,ispline) = x(k)
-        case (TYPE_QGEN_UA)
-          q_gen_uadv(iz,ispline) = x(k)
-        case (TYPE_QGEN_VA)
-          q_gen_vadv(iz,ispline) = x(k)
-        case (TYPE_UGEN_UA)
-          u_gen_uadv(iz,ispline) = x(k)
-        case (TYPE_UGEN_VA)
-          u_gen_vadv(iz,ispline) = x(k)
-        case (TYPE_VGEN_UA)
-          v_gen_uadv(iz,ispline) = x(k)
-        case (TYPE_VGEN_VA)
-          v_gen_vadv(iz,ispline) = x(k)
-        case (TYPE_UGEN_WA)
-          u_gen_wadv(iz,ispline) = x(k)
-        case (TYPE_VGEN_WA)
-          v_gen_wadv(iz,ispline) = x(k)
-        case (TYPE_TGEN_WA)
-          t_gen_wadv(iz,ispline) = x(k)
-        case (TYPE_QGEN_WA)
-          q_gen_wadv(iz,ispline) = x(k)
+        case (TYPE_UF)
+          u_g_f(iz,ispline) = x(k)
+        case (TYPE_VF)
+          v_g_f(iz,ispline) = x(k)
+        case (TYPE_PF)
+          p_f(iz,ispline) = x(k)
+        case (TYPE_P8WF)
+          p8w_f(iz,ispline) = x(k)
+        case (TYPE_TF_UA)
+          t_f_uadv(iz,ispline) = x(k)
+        case (TYPE_TF_VA)
+          t_f_vadv(iz,ispline) = x(k)
+        case (TYPE_QF_UA)
+          q_f_uadv(iz,ispline) = x(k)
+        case (TYPE_QF_VA)
+          q_f_vadv(iz,ispline) = x(k)
+        case (TYPE_UF_UA)
+          u_f_uadv(iz,ispline) = x(k)
+        case (TYPE_UF_VA)
+          u_f_vadv(iz,ispline) = x(k)
+        case (TYPE_VF_UA)
+          v_f_uadv(iz,ispline) = x(k)
+        case (TYPE_VF_VA)
+          v_f_vadv(iz,ispline) = x(k)
+        case (TYPE_UF_WA)
+          u_f_wadv(iz,ispline) = x(k)
+        case (TYPE_VF_WA)
+          v_f_wadv(iz,ispline) = x(k)
+        case (TYPE_TF_WA)
+          t_f_wadv(iz,ispline) = x(k)
+        case (TYPE_QF_WA)
+          q_f_wadv(iz,ispline) = x(k)
         case default
           call error_handler(E_ERR, 'vector_to_wrf', &
-           'problem with 2d gen roll', source, revision, revdate)
+           'problem with 2d f roll', source, revision, revdate)
       end select
       iz = iz + 1
       if ( iz > nz ) then
@@ -1315,10 +1379,18 @@ subroutine vector_to_wrf(x)
         acsnow(1,1) = x(wrf_meta%var_index(var_cnt))
       case (TYPE_UST)
         ust(1,1) = x(wrf_meta%var_index(var_cnt))
-      case (TYPE_TMN)
-        tmn(1,1) = x(wrf_meta%var_index(var_cnt))
       case (TYPE_PBLH)
         pblh(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_TMN)
+        tmn(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_CS)
+        cs(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_ERATE)
+        erate(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_MAXM)
+        maxm(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_MINM)
+        minm(1,1) = x(wrf_meta%var_index(var_cnt))
       case default
         call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with noassim_scalar roll', source, revision, revdate)
@@ -1373,10 +1445,23 @@ subroutine init_time(time)
 type(time_type), intent(out) :: time
 
 integer                      :: start_seconds
+character(len=129)  :: errstring
 
-start_seconds = start_forecast * 3600
 ! based on namelist
-time = set_time(start_seconds, 0)
+select case ( init_f_type ) 
+   case ('WRF')
+      time = set_date(start_year_f, start_month_f,&
+                      start_day_f, start_hour_f+int(start_forecast/3600), &
+                      start_minute_f,0)
+   case ('OBS')
+      time = set_date(start_year_f, start_month_f,&
+                      start_day_f, start_hour_f, &
+                      start_minute_f,0)
+   case default
+      write(errstring,*) "Do not know how to initialize ",init_f_type
+      call error_handler(E_ERR,'init_time', errstring, &
+           source, revision, revdate)
+end select
 
 end subroutine init_time
 
@@ -2427,7 +2512,7 @@ SUBROUTINE get_projection(projcode,sw_corner_lat, sw_corner_lon, &
    center_j = -999.
 
    ! get the rest from the file
-   call check(nf90_open(trim(indir)//'/'//init_gen_file,NF90_NOWRITE,ncID))
+   call check(nf90_open(trim(indir)//'/'//init_f_file,NF90_NOWRITE,ncID))
  
    call check(nf90_get_att(ncid,NF90_GLOBAL,'MAP_PROJ',projcode))
    call check(nf90_get_att(ncid,NF90_GLOBAL,'SW_LAT',sw_corner_lat))
@@ -2463,30 +2548,17 @@ subroutine init_params(x)
    character(len=129)    :: errstring
    real(r8)              :: logP, logS
 
-!  Right now we perturb everything in log so as not to get negatives
+!  if it is in the state vector and is a logn distribution, x should
+!  already be log(x))
    do iP = 1, wrf_meta%number_state_params
 
       xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
     
-      if ( wrf_meta%dist_shape(iP) == 'norm' ) then
-
-         x(xloc) = x(xloc)*random_gaussian(param_ran_seq,1.0,wrf_meta%pert_init_sd(iP))
-
-      elseif ( wrf_meta%dist_shape(iP) == 'logn' ) then
-
-         logP = dlog(x(xloc))
-         logP = logP+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_init_sd(iP))
-         x(xloc) = dexp(logP)
-
-      else
-
-         call error_handler (E_ERR,'init_params',&
-              'do not know distribution '//wrf_meta%dist_shape(iP), &
-              source, revision, revdate)
-
-      endif
+         x(xloc) = x(xloc)+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_init_sd(iP))
 
    enddo   
+
+   call impose_param_limits(x)
 
 end subroutine init_params
 
@@ -2495,7 +2567,7 @@ end subroutine init_params
 subroutine pert_params_time(x)
 ! Adds a little noise to any stoch parameters
 ! This is separate in case we want a different distribution from the
-! initial perturbations.  This should be called during assimilation only.
+! initial perturbations.  
 
    real(r8), intent(inout)  :: x(:)
  
@@ -2507,27 +2579,7 @@ subroutine pert_params_time(x)
 
       xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
 
-      if ( wrf_meta%dist_shape(iP) == 'norm' ) then
-
-         x(xloc) = x(xloc)*random_gaussian(param_ran_seq,1.0,wrf_meta%pert_param_sd(iP))
-
-     elseif ( wrf_meta%dist_shape(iP) == 'logn' ) then
-
-if ( x(xloc) < 0.0 ) then
-  print*,x(xloc)
-  stop
-endif
-        logP = dlog(x(xloc))
-        logP = logP+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_param_sd(iP))
-        x(xloc) = dexp(logP)
-
-      else
-  
-         call error_handler (E_ERR,'pert_params_time',&
-              'do not know distribution '//wrf_meta%dist_shape(iP), &
-              source, revision, revdate)
-
-      endif
+         x(xloc) = x(xloc)+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_param_sd(iP))
 
    enddo
 
@@ -2537,6 +2589,7 @@ end subroutine pert_params_time
 subroutine adjust_param_spread(ens, nens)
 ! given the ensemble, find the parameters and adjust the spread to the initial
 ! values
+! NOTE: this is not currently called (Iceland release)
    integer, intent(in) :: nens
    real(r8), intent(inout) :: ens(:,:)
    integer :: iP, xloc, iEns
@@ -2553,58 +2606,15 @@ subroutine adjust_param_spread(ens, nens)
          xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
          std_new = wrf_meta%pert_init_sd(iP)
 
-         if ( wrf_meta%dist_shape(iP) == 'norm' ) then
-
             mean = sum(ens(:,xloc))/nens
             std = sqrt(sum((ens(:,xloc)-mean)**2) / (nens-1))
             ens(:,xloc) = (ens(:,xloc)-mean) * (std_new/std) + mean
          
-         elseif ( wrf_meta%dist_shape(iP) == 'logn' ) then
-
-            logP(:) = dlog(ens(:,xloc))
-            mean = sum(logP)/nens
-            std = sqrt(sum((logP-mean)**2) / (nens-1))
-            logP = (logP-mean) * (std_new/std) + mean
-            ens(:,xloc) = dexp(logP)
- 
-         else
-
-            call error_handler (E_ERR,'adjust_param_spread',&
-                 'do not know distribution '//wrf_meta%dist_shape(iP), &
-                 source, revision, revdate)
-
-         endif
-
          if ( minval(ens(:,xloc)) < 0.0 ) stop 'bad'
 
-         ! constrain some parameters to [0,1]
+         ! constrain parameters 
          do iEns = 1, nens
-            if ( ens(iEns,xloc) > 1.0_r8 ) then
-               select case (wrf_meta%est_param_types(iP))
-                  case (TYPE_EMISS)
-                     ens(iEns,xloc) = 1.0_r8
-                  case (TYPE_ALBEDO)
-                     ens(iEns,xloc) = 1.0_r8
-                  case (TYPE_MAVAIL)
-                     ens(iEns,xloc) = 1.0_r8
-                  case default
-               end select
-            endif 
-            if ( ens(iEns,xloc) < 0.0_r8 ) then
-               select case (wrf_meta%est_param_types(iP))
-                  case (TYPE_EMISS)
-                     ens(iEns,xloc) = 0.000001_r8
-                  case (TYPE_ALBEDO)
-                     ens(iEns,xloc) = 0.000001_r8
-                  case (TYPE_THC)
-                     ens(iEns,xloc) = 0.000001_r8
-                  case (TYPE_Z0)
-                     ens(iEns,xloc) = 0.000001_r8
-                  case (TYPE_MAVAIL)
-                     ens(iEns,xloc) = 0.000001_r8
-                  case default
-               end select
-            endif 
+            call impose_param_limits(ens(iEns,:)) 
          enddo
          print*,'*****MIN/MAX after adjust*****',minval(ens(:,xloc)),maxval(ens(:,xloc))
       enddo
@@ -2614,6 +2624,36 @@ subroutine adjust_param_spread(ens, nens)
     endif
 
 end subroutine adjust_param_spread
+
+!---------------------------------------------------------------------
+subroutine impose_param_limits(x)
+! Imposes max/min specified parameter limits.
+! 
+   real(r8), intent(inout) :: x(:)
+   integer :: iP, xloc
+
+   
+   do iP = 1, wrf_meta%number_state_params
+
+      xloc = get_wrf_index(1,wrf_meta%est_param_types(iP))
+
+      ! constrain some parameters to [0,1]
+      select case (wrf_meta%dist_shape(iP) )
+         case ('norm')
+           x(xloc) = min(x(xloc),wrf_meta%pert_param_max(iP))
+           x(xloc) = max(x(xloc),wrf_meta%pert_param_min(iP))
+         case ('logn')
+           x(xloc) = min(x(xloc),dlog(wrf_meta%pert_param_max(iP)))
+           x(xloc) = max(x(xloc),dlog(wrf_meta%pert_param_min(iP)))
+         case default
+            call error_handler (E_ERR,'pert_params_time',&
+                 'do not know distribution '//wrf_meta%dist_shape(iP), &
+                 source, revision, revdate)
+      end select
+
+   enddo
+
+end subroutine impose_param_limits
 
 !-----------------------------------------------------------------
 

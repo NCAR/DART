@@ -1,6 +1,36 @@
 PROGRAM driver
 
-! program to drive wrf1d for compatibility with DART
+! Dec 2005
+
+! 1d WRF incorporates original WRF PBL routines for idealized runs.
+! It can be initialized with idealized profiles of wind, temperature,
+! and mixing ratio or with profiles derived from 3d WRF runs.
+! All input is driven by parameters specified in wrf1d_namelist.input
+! file. This code is compatible with DART software used for Data
+! Assimilatiuon studies.
+
+! The code currently has a problem when compiled with ifc
+! as it crashes when calculating MINVAL of an array for unknown reason.
+! It runs OK when compiled with pgf90
+
+
+! The code is available as is but had been checked quite thoroughlly.
+! It is of course free to use and modify but I would appreciate
+! if you let me know your interest, acknowledge the authorship,
+! and, even better if you contribute
+! to the development and make the modifications available.
+
+! File README gives more details on input parameters in the namelist.
+! File PBLcolumn.pdf gives some general information on the model
+! and its coupling with DART.
+
+! 1d WRF was originally developed by Mariusz Pagowski 
+! NOAA/GSD/CIRA, Boulder, CO, Mariusz.Pagowski@noaa.gov
+! Josh Hacker,NCAR/RAL, hacker@ucar.edu
+! contributed reading routines to real data and 3dWRF output and 
+! interface to DART and made the code more flexible
+
+! Based on WRFV2.0.3.1
 
   USE module_wrf
 
@@ -36,20 +66,20 @@ PROGRAM driver
 
   CLOSE(unit_log)
   
-  CALL static_init_wrf()
+  CALL static_init_wrf(allocate_wrf)
   
   wrf_rnd_seed = rnd_seed_val
-
-  CALL init_wrf(allocate_wrf,wrf_rnd_seed)
-  
   allocate_wrf=.FALSE.
 
-  IF (init_gen) THEN 
-     OPEN(ncunit,file=out_gen_file)
+  CALL init_wrf(wrf_rnd_seed)
+  
+
+  IF (init_f) THEN 
+     OPEN(ncunit,file=out_f_file)
   ENDIF
 
   DO itime=1,ntime+1
-     IF (init_gen) THEN
+     IF (init_f) THEN
         dart_days=INT(REAL(REAL(itime-1)*dt+start_seconds)/86400.)
         dart_seconds=NINT(REAL(itime-1)*dt-REAL(dart_days*86400))+&
              &start_seconds
@@ -57,8 +87,9 @@ PROGRAM driver
         dart_days=0
         dart_seconds=(itime-1)*dt
      ENDIF
-     CALL wrf(dart_seconds,dart_days)
      CALL output_wrf_profiles()
+     if ( forecast_length == 0 ) stop '0 time steps'
+     CALL wrf(dart_seconds,dart_days)
   ENDDO
   
 END PROGRAM driver

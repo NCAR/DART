@@ -6,80 +6,117 @@ MODULE module_initialize
   
 CONTAINS
   
-  SUBROUTINE initgen(bamex,&
-       &u_init,v_init,t_init,q_init,&
-       &u_g_init,v_g_init,&
-       &glw_init,gsw_init,&
-       &p_init,th2_init,q2_init,u10_init,v10_init,&
-       &tsk_init,qsfc_init,z_gen,nz_gen,z_g,ntimes,times,&
-       &nsplinetimes,splinetimes,&
-       &pblh_ref,Stepbl,Lowlyr,Ht,Pblh,&
-       &Th_phy,T_phy,Moist,U_phy,V_phy,Tke_myj,&
-       &U_g_gen,V_g_gen,Glw_gen,Gsw_gen,P_gen,P8w_gen,&
-       &Z,Z8w,Dz8w,&
-       &n_moist,P_QV,ims,ime,jms,jme,kms,kme)
+  SUBROUTINE initf(u_init,v_init,t_init,q_init,&
+       u_g_init,v_g_init,&
+       glw_init,gsw_init,&
+       precip_init,&
+       p_init,th2_init,q2_init,u10_init,v10_init,&
+       tsk_init,qsfc_init,z_f,nz_f,z_g,&
+       ntimes,ntimes_flux,ntimes_smos,times,times_flux,times_smos,&
+       nsplinetimes,splinetimes,&
+       nsplinetimes_flux,splinetimes_flux,&
+       nsplinetimes_smos,splinetimes_smos,&
+       pblh_ref,stepbl,lowlyr,ht,pblh,&
+       th_phy,t_phy,moist,u_phy,v_phy,tke_myj,&
+       u_g_f,v_g_f,glw_f,gsw_f,precip_f,p_f,p8w_f,&
+       z,z8w,dz8w,&
+       n_moist,P_QV,ims,ime,jms,jme,kms,kme)
 
     IMPLICIT NONE
 
-    LOGICAL, INTENT(IN) :: bamex
-    INTEGER, INTENT(IN) :: nz_gen,ntimes,nsplinetimes
+    INTEGER, INTENT(IN) :: nz_f,ntimes,ntimes_flux, ntimes_smos,&
+                           nsplinetimes,nsplinetimes_flux,&
+                           &nsplinetimes_smos
     INTEGER, INTENT(IN) :: n_moist,P_QV,ims,ime,jms,jme,kms,kme
     INTEGER, INTENT(out) :: stepbl
 
-    REAL, DIMENSION(1:nz_gen), INTENT(IN) :: &
-         &u_init,v_init,t_init,q_init
-    REAL, DIMENSION(1:nz_gen,ntimes), INTENT(IN) :: &
-         &u_g_init,v_g_init
-    REAL, DIMENSION(1:nz_gen,ntimes), INTENT(IN) :: &
-         z_gen,p_init
-    REAL, DIMENSION(ntimes) :: glw_init,gsw_init
+    REAL, DIMENSION(1:nz_f), INTENT(IN) :: u_init,v_init,t_init,q_init
+
+    REAL, DIMENSION(1:nz_f,ntimes), INTENT(IN) :: u_g_init,v_g_init, &
+                                                  z_f,p_init
+
+    REAL, DIMENSION(ntimes_flux) :: glw_init,gsw_init
+    REAL, DIMENSION(ntimes_smos) :: precip_init 
+
     REAL, DIMENSION(ntimes), INTENT(IN) :: times
+    REAL, DIMENSION(ntimes_flux), INTENT(IN) :: times_flux
+    REAL, DIMENSION(ntimes_smos), INTENT(IN) :: times_smos
+
     REAL, DIMENSION(nsplinetimes), INTENT(IN) :: splinetimes    
+    REAL, DIMENSION(nsplinetimes_flux), INTENT(IN) :: splinetimes_flux    
+    REAL, DIMENSION(nsplinetimes_smos), INTENT(IN) :: splinetimes_smos    
+
     REAL, DIMENSION(kms:kme,nsplinetimes), INTENT(OUT) :: &
-         &U_g_gen,V_g_gen,P_gen,P8w_gen
-    REAL, DIMENSION(nsplinetimes), INTENT(OUT) :: &
-         &Glw_gen,Gsw_gen
+         u_g_f,v_g_f,p_f,p8w_f
+
+    REAL, DIMENSION(nsplinetimes_flux), INTENT(OUT) :: &
+         glw_f,gsw_f
+
+    REAL, DIMENSION(nsplinetimes_smos), INTENT(OUT) :: precip_f
 
     REAL, INTENT(IN) :: tsk_init,qsfc_init,&
-         &th2_init,q2_init,u10_init,v10_init
+         th2_init,q2_init,u10_init,v10_init
 
     REAL, INTENT(IN) :: pblh_ref,z_g
 
     INTEGER, DIMENSION(IMS:IME,JMS:JME), INTENT(OUT) :: lowlyr
 
     REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT) ::   &
-         &ht,pblh
+         ht,pblh
 
     REAL, DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(OUT) ::&
-         &t_phy,th_phy,u_phy,v_phy,tke_myj,&
-         &z,dz8w
+         t_phy,th_phy,u_phy,v_phy,tke_myj,&
+         z,dz8w
     
     REAL, DIMENSION(ims:ime, kms:kme+1, jms:jme) :: z8w
 
-
     REAL, DIMENSION( ims:ime, kms:kme, jms:jme, n_moist), INTENT(OUT) :: &
-         &moist
+         moist
 
-    INTEGER :: nz 
+! local
+    INTEGER :: nz, near_sfc_num, skip_sfc_f
     REAL :: p2,psfc,t2,dtdz
-    REAL, DIMENSION(nz_gen+2) :: z_var, var,atmp,btmp,ctmp
+    REAL, DIMENSION(nz_f+2) :: z_var, var,atmp,btmp,ctmp
     REAL, DIMENSION(ntimes) :: aatmp,bbtmp,cctmp
+    REAL, DIMENSION(ntimes_flux) :: aatmp_flux,bbtmp_flux,cctmp_flux
     REAL, DIMENSION(kms:kme,ntimes) :: ptmp,p8wtmp,utmp,vtmp
     INTEGER :: i,j,k,kk
 
 ! do temporal spline on gsw, glw
 
-    CALL spline(ntimes,times,glw_init,aatmp,bbtmp,cctmp)
-    DO i=1,nsplinetimes
-       glw_gen(i)=seval(ntimes,splinetimes(i),times,glw_init,&
-            &aatmp,bbtmp,cctmp)
-    ENDDO
+    IF ( ntimes_flux > 1 ) THEN
+       CALL spline(ntimes_flux,times_flux,glw_init,aatmp_flux,bbtmp_flux,cctmp_flux)
+       DO i=1,nsplinetimes_flux
+          glw_f(i)=seval(ntimes_flux,splinetimes_flux(i),times_flux,glw_init,&
+               &aatmp_flux,bbtmp_flux,cctmp_flux)
+!print*,i,splinetimes_flux(i),glw_f(i)
+       ENDDO
 
-    CALL spline(ntimes,times,gsw_init,aatmp,bbtmp,cctmp)
-    DO i=1,nsplinetimes
-       gsw_gen(i)=MAX(0.,seval(ntimes,splinetimes(i),times,gsw_init,&
-            &aatmp,bbtmp,cctmp))
-    ENDDO
+       CALL spline(ntimes_flux,times_flux,gsw_init,aatmp_flux,bbtmp_flux,cctmp_flux)
+       DO i=1,nsplinetimes_flux
+          gsw_f(i)=MAX(0.,seval(ntimes_flux,splinetimes_flux(i),times_flux,gsw_init,&
+               &aatmp_flux,bbtmp_flux,cctmp_flux))
+       ENDDO
+
+    ELSE
+
+       gsw_f(1) = gsw_init(1)
+       glw_f(1) = glw_init(1)
+
+    ENDIF
+
+! do temporal linear on precip
+    IF ( ntimes_smos > 1 ) THEN
+       DO i=1,nsplinetimes_smos
+          precip_f(i)=linear(times_smos,precip_init,ntimes_smos,&
+               &splinetimes_smos(i))
+       ENDDO
+
+    ELSE
+
+       precip_f(1) = precip_init(1)
+
+    ENDIF
 
     nz = kme
 
@@ -103,77 +140,81 @@ CONTAINS
 
 
     DO i=1,ntimes
-       DO k=1,nz_gen
-          z_var(k)=z_gen(k,i)
+       DO k=1,nz_f
+          z_var(k)=z_f(k,i)
           var(k)=p_init(k,i)
        ENDDO
 
-       CALL spline(nz_gen,z_var,var,atmp,btmp,ctmp)
+       CALL spline(nz_f,z_var,var,atmp,btmp,ctmp)
        
        DO k=1,nz
           ptmp(k,i)=&
-!            &linear(z_var,var,nz_gen,z(i,k,j))
-               &seval(nz_gen,z(1,k,1),z_var,var,atmp,btmp,ctmp)
+!            &linear(z_var,var,nz_f,z(i,k,j))
+               &seval(nz_f,z(1,k,1),z_var,var,atmp,btmp,ctmp)
           p8wtmp(k,i)=&
-!            &linear(z_var,var,nz_gen,z(i,k,j))
-               &seval(nz_gen,z8w(1,k,1),z_var,var,atmp,btmp,ctmp)
+!            &linear(z_var,var,nz_f,z(i,k,j))
+               &seval(nz_f,z8w(1,k,1),z_var,var,atmp,btmp,ctmp)
           
           IF (i==1) THEN
-             p2=seval(nz_gen,2.,z_var,var,atmp,btmp,ctmp)
-             psfc=seval(nz_gen,0.,z_var,var,atmp,btmp,ctmp)
+             p2=seval(nz_f,2.,z_var,var,atmp,btmp,ctmp)
+             psfc=seval(nz_f,0.,z_var,var,atmp,btmp,ctmp)
           ENDIF
        ENDDO
-
 
     ENDDO
 
     DO k=1,nz
-!       CALL spline(ntimes,times,p_init(k,:),aatmp,bbtmp,cctmp)
        DO i=1,nsplinetimes
-          p_gen(k,i)=&
-!               &seval(ntimes,splinetimes(i),times,ptmp(k,:),&
-!               &aatmp,bbtmp,cctmp)
+          p_f(k,i)=&
                &linear(times,ptmp(k,:),ntimes,splinetimes(i))
-          p8w_gen(k,i)=&
-!               &seval(ntimes,splinetimes(i),times,p8wtmp(k,:),&
-!               &aatmp,bbtmp,cctmp)
+          p8w_f(k,i)=&
                &linear(times,p8wtmp(k,:),ntimes,splinetimes(i))
        ENDDO
     ENDDO
 
 ! do linear interpolation t
+    near_sfc_num = 0
+! first fills in lowest level with tsk, then if available subs in th2 
 
-    IF (bamex) THEN
-       t2=th2_init
-    ELSE
-       t2=th2_init*(p2/p1000mb)**rcp
+    z_var(1:2) = z_f(1:2,1)
+    IF ( tsk_init > -273 ) THEN
+       near_sfc_num = near_sfc_num+1
+       z_var(near_sfc_num)=0.
+       var(near_sfc_num)=tsk_init
     ENDIF
 
-    z_var(1)=0.
-    var(1)=tsk_init
-    z_var(2)=2.
-    var(2)=t2
+    IF ( th2_init > -273 ) THEN
+       IF ( z_var(near_sfc_num+1) > 2.0001 ) THEN
+          near_sfc_num = near_sfc_num+1
+          t2=th2_init
+          var(near_sfc_num)=t2
+          z_var(near_sfc_num)=2.
+       ELSE
+          t2=th2_init
+          var(near_sfc_num+1)=t2
+          z_var(near_sfc_num+1)=2.
+       ENDIF
+    ENDIF
 
-    DO k=1,nz_gen
-       z_var(k+2)=z_gen(k,1)
-       var(k+2)=t_init(k)
+    DO k=1,nz_f
+       z_var(k+near_sfc_num)=z_f(k,1)
+       var(k+near_sfc_num)=t_init(k)
     ENDDO
-
-!    CALL spline(nz_gen+2,z_var,var,atmp,btmp,ctmp)
 
     DO i=ims,ime
        DO j=jms,jme
           DO k=kms,kme
              t_phy(i,k,j)=&
-                  &linear(z_var,var,nz_gen+2,z(i,k,j))
-!                  &seval(nz_gen+2,z(i,k,j),z_var,var,atmp,btmp,ctmp)
-             
-             th_phy(i,k,j)=t_phy(i,k,j)*(p1000mb/p_gen(k,1))**rcp
+                  &linear(z_var,var,nz_f+near_sfc_num,z(i,k,j))
+             th_phy(i,k,j)=t_phy(i,k,j)*(p1000mb/p_f(k,1))**rcp
           ENDDO
        ENDDO
     ENDDO
 
-!    DO k=1,nz_gen+2
+! replace missing value in th
+    WHERE ( th_phy < -273 ) th_phy = -9999.0 
+
+!    DO k=1,nz_f+2
 !       WRITE(150,*)var(k),z_var(k)
 !    ENDDO
 !    DO k=1,nz
@@ -183,94 +224,116 @@ CONTAINS
    
 
 ! do linear interpolation q
+! use qsfc if we have it
 
-    IF (bamex) THEN
-
-       z_var(1)=2.
-       var(1)=q2_init
-       
-       DO k=1,nz_gen
-          z_var(k+1)=z_gen(k,1)
-          var(k+1)=q_init(k)
-       ENDDO
-
-    ELSE
-
-       z_var(1)=0.
-       var(1)=qsfc_init
-       z_var(2)=2.
-       var(2)=q2_init
-       
-       DO k=1,nz_gen
-          z_var(k+2)=z_gen(k,1)
-          var(k+2)=q_init(k)
-       ENDDO
-       
+    z_var(1:2) = z_f(1:2,1)
+    near_sfc_num = 0
+    IF ( qsfc_init > 0.0 ) THEN
+       near_sfc_num = near_sfc_num+1
+       z_var(near_sfc_num)=0.
+       var(near_sfc_num)=qsfc_init
     ENDIF
 
-!    CALL spline(nz_gen+2,z_var,var,atmp,btmp,ctmp)
-       
+    IF ( q2_init > 0.0 ) THEN 
+       IF ( z_var(near_sfc_num+1) > 2.0001 ) THEN
+          near_sfc_num = near_sfc_num+1
+          var(near_sfc_num)=q2_init
+          z_var(near_sfc_num)=2.
+       ELSE
+          var(near_sfc_num+1)=q2_init
+          z_var(near_sfc_num+1)=2.
+       ENDIF
+    ENDIF
+
+    DO k=1,nz_f
+       z_var(k+near_sfc_num)=z_f(k,1)
+       var(k+near_sfc_num)=q_init(k)
+    ENDDO
+
     moist=0.
     DO i=ims,ime
        DO j=jms,jme
           DO k=kms,kme
              moist(i,k,j,P_QV)=&
-                  &linear(z_var,var,nz_gen+2,z(i,k,j))
-!                  &seval(nz_gen+2,z(i,k,j),z_var,var,atmp,btmp,ctmp)
+                  &linear(z_var,var,nz_f+near_sfc_num,z(i,k,j))
           ENDDO
        ENDDO
     ENDDO
 
 ! do linear interpolation u
 
+    z_var(1:2) = z_f(1:2,1)
+    near_sfc_num = 1
     z_var(1)=0.
     var(1)=0.
-    z_var(2)=10.
-    var(2)=u10_init
 
-    DO k=1,nz_gen
-       z_var(k+2)=z_gen(k,1)
-       var(k+2)=u_init(k)
+    IF ( u10_init > -500 ) THEN
+       IF ( z_var(near_sfc_num+1) > 10.0001 ) THEN
+          near_sfc_num = near_sfc_num+1
+          var(near_sfc_num)=u10_init
+          z_var(near_sfc_num)=10.0
+       ELSE
+          var(near_sfc_num+1)=u10_init
+          z_var(near_sfc_num+1)=10.0
+       ENDIF
+    ENDIF
+ 
+    skip_sfc_f = 0
+ !TJH   IF ( z_f(1) == 2.0 ) skip_sfc_f = 1
+    IF ( z_f(1,1) == 2.0 ) skip_sfc_f = 1
+ 
+    DO k=1,nz_f-skip_sfc_f
+       z_var(k+near_sfc_num)=z_f(k+skip_sfc_f,1)
+       var(k+near_sfc_num)=u_init(k+skip_sfc_f)
     ENDDO
-
-
-!    CALL spline(nz_gen+2,z_var,var,atmp,btmp,ctmp)
 
     DO i=ims,ime
        DO j=jms,jme
           DO k=kms,kme
              u_phy(i,k,j)=&
-                  &linear(z_var,var,nz_gen+2,z(i,k,j))
-!                  &seval(nz_gen+2,z(i,k,j),z_var,var,atmp,btmp,ctmp)
+                  &linear(z_var,var,nz_f+near_sfc_num,z(i,k,j))
           ENDDO
        ENDDO
     ENDDO
 
+
 ! do linear interpolation v
 
+    z_var(1:2) = z_f(1:2,1)
+    near_sfc_num = 1
     z_var(1)=0.
     var(1)=0.
-    z_var(2)=10.
-    var(2)=v10_init
 
-    DO k=1,nz_gen
-       z_var(k+2)=z_gen(k,1)
-       var(k+2)=v_init(k)
+    IF ( v10_init > -500 ) THEN
+       IF ( z_var(near_sfc_num+1) > 10.0001 ) THEN
+          near_sfc_num = near_sfc_num+1
+          var(near_sfc_num)=v10_init
+          z_var(near_sfc_num)=10.0
+       ELSE
+          var(near_sfc_num+1)=v10_init
+          z_var(near_sfc_num+1)=10.0
+       ENDIF
+    ENDIF
+
+    skip_sfc_f = 0
+  !TJH  IF ( z_f(1) == 2.0 ) skip_sfc_f = 1
+    IF ( z_f(1,1) == 2.0 ) skip_sfc_f = 1
+ 
+    DO k=1,nz_f-skip_sfc_f
+       z_var(k+near_sfc_num)=z_f(k+skip_sfc_f,1)
+       var(k+near_sfc_num)=v_init(k+skip_sfc_f)
     ENDDO
-
-!    CALL spline(nz_gen+2,z_var,var,atmp,btmp,ctmp)
 
     DO i=ims,ime
        DO j=jms,jme
           DO k=kms,kme
              v_phy(i,k,j)=&
-                  &linear(z_var,var,nz_gen+2,z(i,k,j))
-!                  &seval(nz_gen+2,z(i,k,j),z_var,var,atmp,btmp,ctmp)
+                  &linear(z_var,var,nz_f+near_sfc_num,z(i,k,j))
           ENDDO
        ENDDO
     ENDDO
 
-!    DO k=1,nz_gen+2
+!    DO k=1,nz_f+2
 !       WRITE(150,*)var(k),z_var(k)
 !    ENDDO
 !    DO k=1,nz
@@ -283,17 +346,15 @@ CONTAINS
        kk=kk+1
     ENDDO
 
-!u_g 
-
     DO i=1,ntimes
-       DO k=1,nz_gen
-          z_var(k)=z_gen(k,i)
+       DO k=1,nz_f
+          z_var(k)=z_f(k,i)
           var(k)=u_g_init(k,i)
        ENDDO
 
        DO k=kk,nz
           utmp(k,i)=&
-               &linear(z_var,var,nz_gen,z(1,k,1))
+               &linear(z_var,var,nz_f,z(1,k,1))
        ENDDO
 
        utmp(1:kk-1,i)=utmp(kk,i)
@@ -302,7 +363,7 @@ CONTAINS
 
     DO k=1,nz
        DO i=1,nsplinetimes
-          u_g_gen(k,i)=&
+          u_g_f(k,i)=&
                &linear(times,utmp(k,:),ntimes,splinetimes(i))
        ENDDO
     ENDDO
@@ -310,14 +371,14 @@ CONTAINS
 ! v_g
 
     DO i=1,ntimes
-       DO k=1,nz_gen
-          z_var(k)=z_gen(k,i)
+       DO k=1,nz_f
+          z_var(k)=z_f(k,i)
           var(k)=v_g_init(k,i)
        ENDDO
 
        DO k=kk,nz
           vtmp(k,i)=&
-               &linear(z_var,var,nz_gen,z(1,k,1))
+               &linear(z_var,var,nz_f,z(1,k,1))
        ENDDO
 
        vtmp(1:kk-1,i)=vtmp(kk,i)
@@ -326,7 +387,7 @@ CONTAINS
 
     DO k=1,nz
        DO i=1,nsplinetimes
-          v_g_gen(k,i)=&
+          v_g_f(k,i)=&
                &linear(times,vtmp(k,:),ntimes,splinetimes(i))
        ENDDO
     ENDDO
@@ -348,7 +409,7 @@ CONTAINS
        ENDDO
     ENDDO
     
-  END SUBROUTINE initgen
+  END SUBROUTINE initf
 
 
   SUBROUTINE initgrid(U,U_g,V_g,V,T,TH,Exn,Q,P,P8w,Rho,Z,Z8w,Zo,&
