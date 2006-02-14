@@ -156,14 +156,14 @@ if(start_from_inflate_restart) then
    endif
    ! Open the file
    restart_unit = get_unit()
-   open(unit = restart_unit, file = inflate_in_file_name, action = 'read', form = 'unformatted')
-   read(restart_unit) restart_model_size
+   open(unit = restart_unit, file = inflate_in_file_name, action = 'read', form = 'formatted')
+   read(restart_unit, *) restart_model_size
    if(restart_model_size /= required_size) then
       write(errstring, *) 'Size of state space restart file is incorrect'
       call error_handler(E_ERR, 'adaptive_inflate_init', &
          errstring, source, revision, revdate)
    endif
-   read(restart_unit) ss_inflate, ss_inflate_sd, ss_sd_lower_bound 
+   read(restart_unit, *) ss_inflate, ss_inflate_sd, ss_sd_lower_bound 
    close(restart_unit)
 else
    ! Get initial values from namelist
@@ -203,15 +203,15 @@ else
       ! Open the file
       restart_unit = get_unit()
       open(unit = restart_unit, file = inflate_in_file_name, action = 'read', &
-         form = 'unformatted')
-      read(restart_unit) restart_num_domains
+         form = 'formatted')
+      read(restart_unit, *) restart_num_domains
       ! Number of domains in restart file must match
       if(restart_num_domains /= num_domains) then
          write(errstring, *) 'Number of domains in restart not same as number of domains'
          call error_handler(E_ERR, 'adaptive_inflate_obs_init', &
             errstring, source, revision, revdate)
       endif
-      read(restart_unit) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
+      read(restart_unit, *) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
       close(restart_unit)
    else
       ! Get initial values from namelist
@@ -234,16 +234,16 @@ integer :: restart_unit
 if(output_restart) then
    ! Open the file
    restart_unit = get_unit()
-   open(unit = restart_unit, file = inflate_out_file_name, action = 'write', form = 'unformatted')
+   open(unit = restart_unit, file = inflate_out_file_name, action = 'write', form = 'formatted')
 
    if(do_obs_inflate) then
       ! Write the size to allow for error check on input
-      write(restart_unit) size(obs_inflate)
-      write(restart_unit) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
+      write(restart_unit, *) size(obs_inflate)
+      write(restart_unit, *) obs_inflate, obs_inflate_sd, obs_sd_lower_bound
    else if(do_varying_ss_inflate .or. do_single_ss_inflate) then
       ! Write the size to allow for error check on input
-      write(restart_unit) size(ss_inflate)
-      write(restart_unit) ss_inflate, ss_inflate_sd, ss_sd_lower_bound
+      write(restart_unit, *) size(ss_inflate)
+      write(restart_unit, *) ss_inflate, ss_inflate_sd, ss_sd_lower_bound
    endif
 endif
 
@@ -374,12 +374,15 @@ real(r8) :: new_inflate, new_inflate_sd
 ! A lower bound on the updated inflation sd and an upper bound
 ! on the inflation itself are provided. 
 
-call bayes_cov_inflate(prior_mean, prior_var, obs, obs_var, &
-   inflate, inflate_sd, gamma, new_inflate, new_inflate_sd, sd_lower_bound)
+!!!call bayes_cov_inflate(prior_mean, prior_var, &
+! Above is incorrect. Not taking account of fact that stuff has
+! Already been inflated in physical space. What are implications
+! for observation space inflation?
+call bayes_cov_inflate(prior_mean, prior_var / (1.0_r8 + gamma*(sqrt(inflate) - 1.0_r8))**2, &
+   obs, obs_var, inflate, inflate_sd, gamma, new_inflate, new_inflate_sd, sd_lower_bound)
 
 ! Make sure inflate satisfies constraints
 inflate = new_inflate
-!!!if(new_inflate < 0.0_r8) new_inflate = 0.0_r8
 ! Should we continue to enforce > 1.0 on inflate?
 if(inflate < 1.0_r8) inflate = 1.0_r8
 if(inflate > inf_upper_bound) inflate = inf_upper_bound
@@ -589,28 +592,37 @@ endif
 
 ! Given like_bar and like_prime can find mode of product of linear likelihood and prior
 ! Get a quadratic for lambda to find estimated mode
-a = -1.0_r8 * like_prime / lambda_sd_2
-b = 2.0_r8 * like_prime * lambda_mean / lambda_sd_2  - like_bar / lambda_sd_2
-c = like_prime + like_bar * lambda_mean / lambda_sd_2 - like_prime * lambda_mean**2 / lambda_sd_2
+!!!a = -1.0_r8 * like_prime / lambda_sd_2
+!!!b = 2.0_r8 * like_prime * lambda_mean / lambda_sd_2  - like_bar / lambda_sd_2
+!!!c = like_prime + like_bar * lambda_mean / lambda_sd_2 - like_prime * lambda_mean**2 / lambda_sd_2
+
+a = 1.0_r8
+b = like_bar / like_prime - 2.0_r8 * lambda_mean
+c = lambda_mean**2 -lambda_sd_2 - like_bar * lambda_mean / like_prime
 
 ! Find the roots using quadratic formula
-disc = b**2 - 4.0_r8 * a * c
+!!!disc = b**2 - 4.0_r8 * a * c
+disc = b**2 - 4.0_r8 * c
 if(disc < 0.0_r8) then
    write(*, *) 'disc is negative in linear_bayes: An algorithmic failure', disc
    stop
 endif   
 
-plus_root = (-1.0*b + sqrt(disc)) / (2.0_r8 * a)
-minus_root = (-1.0*b - sqrt(disc)) / (2.0_r8 * a)
+!!!plus_root = (-1.0*b + sqrt(disc)) / (2.0_r8 * a)
+!!!minus_root = (-1.0*b - sqrt(disc)) / (2.0_r8 * a)
+plus_root = (-1.0*b + sqrt(disc)) / 2.0_r8
+minus_root = (-1.0*b - sqrt(disc)) / 2.0_r8
 
 ! Always pick the minus root???
 ! Do a check to pick closest root
 if(abs(minus_root - lambda_mean) < abs(plus_root - lambda_mean)) then
    new_cov_inflate = minus_root
+   !write(*, *) 'minus root selected in linear_bayes: This is unexpected but probably ok'
+   !stop
 else
    new_cov_inflate = plus_root
-   write(*, *) 'plus root selected in linear_bayes: This is unexpected but probably ok'
-   stop
+   !write(*, *) 'plus root selected in linear_bayes: This is unexpected but probably ok'
+   !stop
 endif
 
 
