@@ -1059,11 +1059,12 @@ subroutine vector_to_wrf(x)
 !---------------------------------------------------------
   implicit none
 
-  real(r8), intent(inout)  :: x(:)
+  real(r8), intent(in)  :: x(:)
 
   integer               :: dart_index, var_cnt, bot, top
   integer               :: ispline, iz, vcnt
   character(len=129)    :: errstring
+  real(r8)              :: wrfparam
 
   dart_index = 1
   var_cnt = 1
@@ -1185,25 +1186,28 @@ subroutine vector_to_wrf(x)
 
 ! parameters
   do vcnt = 1, wrf_meta%number_state_params
+
+    wrfparam = x(wrf_meta%var_index(var_cnt))
+
     if ( wrf_meta%dist_shape(vcnt) == 'logn' ) &
-         x(wrf_meta%var_index(var_cnt)) = dexp(x(wrf_meta%var_index(var_cnt)))
+       wrfparam = dexp(x(wrf_meta%var_index(var_cnt)))
+
     select case (wrf_meta%est_param_types(vcnt))
       case (TYPE_EMISS)
-        emiss(1,1) = x(wrf_meta%var_index(var_cnt)) 
+        emiss(1,1)  = wrfparam
       case (TYPE_ALBEDO)
-        albedo(1,1) = x(wrf_meta%var_index(var_cnt)) 
+        albedo(1,1) = wrfparam
       case (TYPE_Z0)
-        z0(1,1) = x(wrf_meta%var_index(var_cnt)) 
+        z0(1,1)     = wrfparam
       case (TYPE_THC)
-        thc(1,1) = x(wrf_meta%var_index(var_cnt)) 
+        thc(1,1)    = wrfparam
       case (TYPE_MAVAIL)
-        mavail(1,1) = x(wrf_meta%var_index(var_cnt)) 
+        mavail(1,1) = wrfparam
       case default
         call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with est_param roll', source, revision, revdate)
     end select
-    if ( wrf_meta%dist_shape(vcnt) == 'logn' ) &
-         x(wrf_meta%var_index(var_cnt)) = dlog(x(wrf_meta%var_index(var_cnt)))
+
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
