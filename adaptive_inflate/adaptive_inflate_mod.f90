@@ -374,12 +374,8 @@ real(r8) :: new_inflate, new_inflate_sd
 ! A lower bound on the updated inflation sd and an upper bound
 ! on the inflation itself are provided. 
 
-!!!call bayes_cov_inflate(prior_mean, prior_var, &
-! Above is incorrect. Not taking account of fact that stuff has
-! Already been inflated in physical space. What are implications
-! for observation space inflation?
-call bayes_cov_inflate(prior_mean, prior_var / (1.0_r8 + gamma*(sqrt(inflate) - 1.0_r8))**2, &
-   obs, obs_var, inflate, inflate_sd, gamma, new_inflate, new_inflate_sd, sd_lower_bound)
+call bayes_cov_inflate(prior_mean, prior_var, obs, obs_var, inflate, &
+   inflate_sd, gamma, new_inflate, new_inflate_sd, sd_lower_bound)
 
 ! Make sure inflate satisfies constraints
 inflate = new_inflate
