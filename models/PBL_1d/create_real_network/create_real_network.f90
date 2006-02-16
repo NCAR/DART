@@ -78,6 +78,7 @@ real(r8)                :: this_obs_val, this_qc_val
 real(r8), dimension(:), allocatable :: obs_vals, qc_vals
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
+integer                 :: wrf_rnd_seed = -1
 
 ! namelist variables with default values
 integer :: seconds_start = 43200 ! seconds in day to actually start the obs sequence
@@ -213,7 +214,7 @@ call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
 ! 1.  pressure and vapor pressure are used to get mixing ratio
 ! 2.  T and winds are in correct units (K and m/s)
 
-call init_wrf(-1)
+call init_wrf(wrf_rnd_seed)
 !do i = 1,num_times
 !  print*,t2_init_f(i),u10_init_f(i),v10_init_f(i),q2_init_f(i)
 !enddo
