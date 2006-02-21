@@ -30,11 +30,14 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
    aoutput_diagnostics, aread_state_restart, &
    pert_model_state, open_restart_read, close_restart
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use  assim_tools_mod, only : assim_tools_init, filter_assim, assim_tools_end
+use  assim_tools_mod, only : assim_tools_init, filter_assim
 use    obs_model_mod, only : move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, get_ensemble_member, &
    put_ensemble_member, update_ens_mean_spread, end_ensemble_manager, &
    ensemble_type, is_ens_in_core, get_ensemble_time
+use adaptive_inflate_mod, only : adaptive_inflate_ss_init, ss_inflate, ss_inflate_sd, &
+   ss_sd_lower_bound, adaptive_inflate_end, do_varying_ss_inflate, do_single_ss_inflate, &
+   inflate_ens, deterministic_inflate, output_inflate_diagnostics
 
 
 !-----------------------------------------------------------------------------------------
@@ -59,7 +62,6 @@ integer :: i, j, iunit, io, days, secs
 integer :: time_step_number
 integer :: num_obs_in_set, ierr, num_qc, last_key_used, model_size
 type(netcdf_file_type) :: PriorStateUnit, PosteriorStateUnit
-integer :: grp_size, grp_bot, grp_top, group
 
 integer, allocatable :: keys(:)
 integer :: key_bounds(2)
@@ -84,7 +86,6 @@ logical, allocatable :: compute_obs(:)
 ! Namelist input with default values
 !
 integer  :: async = 0, ens_size = 20
-real(r8) :: cov_inflate = 1.0_r8
 logical  :: start_from_restart = .false., output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -113,7 +114,7 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! advance_ens.csh is currently written to handle both batch submissions (qsub) and
 !                 non-batch executions.
 
-namelist /filter_nml/async, adv_ens_command, ens_size, cov_inflate, &
+namelist /filter_nml/async, adv_ens_command, ens_size, &
    start_from_restart, output_restart, &
    obs_sequence_in_name, obs_sequence_out_name, restart_in_file_name, restart_out_file_name, &
    init_time_days, init_time_seconds, output_state_ens_mean, &
@@ -150,6 +151,9 @@ call filter_setup_obs_sequence()
 ! Allocate model size storage
 model_size = get_model_size()
 allocate(ens_mean(model_size), temp_ens(model_size))
+
+! Initialize the adaptive inflation module
+call adaptive_inflate_ss_init(model_size)
 
 ! Initialize the output sequences and state files and set their meta data
 call filter_generate_copy_meta_data()
@@ -188,8 +192,9 @@ AdvanceTime : do
 
    ! Get all the keys associated with this set of observations
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
-   ! Inflate each of the groups if required
-   if(cov_inflate > 1.0_r8) call filter_ensemble_inflate()
+
+
+   if(do_varying_ss_inflate .or. do_single_ss_inflate) call filter_ensemble_inflate()
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) then 
@@ -204,8 +209,10 @@ AdvanceTime : do
       num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
       prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index)
 
-   call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, num_obs_in_set, &
-         num_groups, seq, keys, obs_sequence_in_name)
+   call filter_assim(ens_handle, ens_obs, compute_obs, ens_size, model_size, &
+      num_obs_in_set, num_groups, ss_inflate, ss_inflate_sd, ss_sd_lower_bound, &
+         seq, keys, obs_sequence_in_name)
+
    ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
@@ -234,8 +241,8 @@ call write_obs_seq(seq, obs_sequence_out_name)
 ! Output a restart file if requested
 call filter_output_restart()
 
-! Output the restart for the assim_tools inflation parameters
-call assim_tools_end()
+! Output the restart for the adaptive inflation parameters
+call adaptive_inflate_end()
 
 write(logfileunit,*)'FINISHED filter.'
 write(logfileunit,*)
@@ -262,7 +269,8 @@ subroutine filter_generate_copy_meta_data()
 ! output file which contains both prior and posterior data.
 
 character(len=129) :: prior_meta_data, posterior_meta_data, msgstring
-character(len=129) :: state_meta(num_output_state_members + 2)
+! The 4 is for mean, spread plus mean and spread of inflation
+character(len=129) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset
 
 ! Ensemble mean goes first 
@@ -300,6 +308,13 @@ if(output_state_ens_spread) ensemble_offset = ensemble_offset + 1
 do i = 1, num_output_state_members
    write(state_meta(i + ensemble_offset), '(a15, 1x, i6)') 'ensemble member', i
 end do
+
+! If spatially varying state space inflation
+if(do_varying_ss_inflate) then
+   num_state_copies = num_state_copies + 2
+   state_meta(num_state_copies -1) = 'inflation mean'
+   state_meta(num_state_copies) = 'inflation sd'
+endif
 
 ! Set up diagnostic output for model state, if output is desired
 if(  output_state_ens_spread .or. output_state_ens_mean .or. &
@@ -365,7 +380,7 @@ subroutine filter_initialize_modules_used()
 
 call initialize_utilities('Filter')
 call register_module(source,revision,revdate)
-call assim_tools_init()
+call assim_tools_init(dont_read_restart = .false.)
 
 ! Initialize the obs sequence module
 call static_init_obs_sequence()
@@ -509,32 +524,61 @@ end subroutine filter_read_restart
 
 subroutine filter_ensemble_inflate()
 
+real(r8) :: s_ens_mean(model_size)
+integer :: j, group, grp_bot, grp_top, grp_size
+
+! WARNING: THIS COULD BE A HUGE EFFICIENCY ISSUE FOR OUT-OF-CORE; MAKE IT BETTER
+
 ! Inflate each group separately;  Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
 
 do group = 1, num_groups
    grp_bot = (group - 1) * grp_size + 1
    grp_top = grp_bot + grp_size - 1
-   ens_mean = 0.0_r8
+   s_ens_mean = 0.0_r8
+   ! Begin by computing mean for this group: efficiency note, look at single group case
    do j = grp_bot, grp_top
-   if(is_ens_in_core(ens_handle)) then
-      !ens_mean = ens_mean + ens_direct(j, :)
-      ens_mean = ens_mean + ens_handle%ens(j, :)
-   else
-      call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
-      ens_mean = ens_mean + temp_ens
-   endif
+      if(is_ens_in_core(ens_handle)) then
+         s_ens_mean = s_ens_mean + ens_handle%ens(j, :)
+      else
+         call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
+            s_ens_mean = s_ens_mean + temp_ens(:)
+      endif
    end do
-   ens_mean = ens_mean / grp_size
-   do j = grp_bot, grp_top
+   s_ens_mean = s_ens_mean / grp_size
+
    if(is_ens_in_core(ens_handle)) then
-      ens_handle%ens(j, :) = ens_mean + sqrt(cov_inflate) * (ens_handle%ens(j, :) - ens_mean)
+      if(do_varying_ss_inflate) then
+         do j = 1, model_size
+            call inflate_ens(ens_handle%ens(grp_bot:grp_top, j), s_ens_mean(j), ss_inflate(j))
+         end do
+      else if(do_single_ss_inflate) then
+         do j = 1, model_size
+            call inflate_ens(ens_handle%ens(grp_bot:grp_top, j), s_ens_mean(j), ss_inflate(1))
+         end do
+      endif
    else
-      call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
-      temp_ens = ens_mean + sqrt(cov_inflate) * (temp_ens - ens_mean)
-      call put_ensemble_member(ens_handle, j, temp_ens, temp_time)
+      ! For out of core, have to read each ensemble member in sequentially
+      ! This is inconsistent with non-deterministic inflation algorithm requirements
+      ! Would need to do some sort of regional transpose for ensembles to do non-deterministic
+      if(.not. deterministic_inflate) then
+         write(msgstring, *) 'deterministic_inflate and out of core ensemble storage incompatible '
+         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source,revision,revdate)
+      endif
+      do j = grp_bot, grp_top
+         call get_ensemble_member(ens_handle, j, temp_ens, temp_time)
+         if(do_varying_ss_inflate) then
+            do i = 1, model_size
+               call inflate_ens(temp_ens(i:i), s_ens_mean(i), ss_inflate(i)) 
+            end do
+         else if(do_single_ss_inflate) then
+            do i = 1, model_size
+               call inflate_ens(temp_ens(j:j), s_ens_mean(j), ss_inflate(1)) 
+            end do
+         endif
+         call put_ensemble_member(ens_handle, j, temp_ens, temp_time)
+      end do
    endif
-   end do
 end do
 
 end subroutine filter_ensemble_inflate
@@ -588,6 +632,19 @@ do j = 1, num_output_state_members
       call aoutput_diagnostics( out_unit, temp_time, temp_ens, ens_offset + j)
    endif
 end do
+
+! Output the spatially varying inflation if used
+if(do_varying_ss_inflate) then
+   call aoutput_diagnostics(out_unit, temp_time, ss_inflate, &
+      ens_offset + num_output_state_members + 1)
+   call aoutput_diagnostics(out_unit, temp_time, ss_inflate_sd, &
+      ens_offset + num_output_state_members + 2)
+endif
+
+! This may not be the best place to output obs_space inflate diagnostics
+! but it is A place.
+! temp_time will have been set by one of the code sections above
+call output_inflate_diagnostics(temp_time)
 
 end subroutine filter_state_space_diagnostics
 
@@ -644,9 +701,8 @@ logical,  intent(in) :: do_qc
 logical,  intent(in) :: output_ens_mean, output_ens_spread
 
 integer :: j, k, istatus, ens_offset
-real(r8) :: qc(num_obs_in_set)
-real(r8) :: obs_mean(1), obs_spread(1)
-real(r8) :: error, diff_sd, ratio
+real(r8) :: qc(num_obs_in_set), ens_obs_mean(1), ens_obs_var
+real(r8) :: error, diff_sd, ratio, obs_spread(1)
 type(obs_type) :: observation
 logical :: evaluate_this_ob, assimilate_this_ob
 
@@ -695,26 +751,27 @@ do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation)
    ! Compute ensemble mean and spread, zero if qc problem occurred
    if(qc(j) < 1000.0_r8) then
-      obs_mean(1) = sum(ens_obs(:, j)) / ens_size
-      obs_spread(1) = sqrt(sum((ens_obs(:, j) - obs_mean(1))**2) / (ens_size - 1))
+      ens_obs_mean(1) = sum(ens_obs(:, j)) / ens_size
+      ens_obs_var = sum((ens_obs(:, j) - ens_obs_mean(1))**2) / (ens_size - 1)
    else
-      obs_mean(1) = missing_r8
-      obs_spread(1) = 0.0_r8
+      ens_obs_mean(1) = missing_r8
+      ens_obs_var = 0.0_r8
    endif
 
    ! This is efficient place to do observation space quality control
    ! For now just looking for outliers from prior
    ! Need to get the observation value for this
    if((outlier_threshold > 0.0_r8) .and. do_qc .and. (qc(j) < 1000.0_r8)) then
-      error = obs_mean(1) - obs(j)
-      diff_sd = sqrt(obs_spread(1)**2 + obs_err_var(j))
+      error = ens_obs_mean(1) - obs(j)
+      diff_sd = sqrt(ens_obs_var + obs_err_var(j))
       ratio = abs(error / diff_sd)
       if(ratio > outlier_threshold) qc(j) = qc(j) + 2**prior_post * 100
    endif
 
    ! If requested output the ensemble mean
-   if(output_ens_mean) call set_obs_values(observation, obs_mean, ens_mean_index)
+   if(output_ens_mean) call set_obs_values(observation, ens_obs_mean, ens_mean_index)
    ! If requested output the ensemble spread
+   obs_spread(1) = sqrt(ens_obs_var)
    if(output_ens_spread) call set_obs_values(observation, obs_spread, ens_spread_index)
 
    ! Compute base location for output of ensemble members
@@ -731,6 +788,8 @@ do j = 1, num_obs_in_set
 
    ! Store the observation into the sequence
    call set_obs(seq, observation, keys(j))
+
+   !!!if(prior_post == 0) write(80, *) (ens_obs_mean(1) - obs(j))**2, ens_obs_var + obs_err_var(j)
 end do
 
 call destroy_obs(observation)
