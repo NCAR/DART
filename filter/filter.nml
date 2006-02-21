@@ -2,7 +2,6 @@
    async = 0,
    adv_ens_command = "./advance_ens.csh",
    ens_size = 20, 
-   cov_inflate = 1.0,
    start_from_restart = .false.,
    output_restart = .false.,
    obs_sequence_in_name = "obs_seq.out",
