@@ -511,7 +511,7 @@ function compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_s
 real(r8) :: compute_new_density
 real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda
 
-real(r8) :: likelihood_prob, theta_2, theta, prior_prob
+real(r8) :: theta_2, theta
 real(r8) :: exponent_prior, exponent_likelihood
 
 
@@ -543,8 +543,8 @@ real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2
 real(r8), intent(in) :: gamma, sd_lower_bound_in
 real(r8), intent(inout) :: new_cov_inflate, new_cov_inflate_sd
 
-real(r8) :: theta_bar_2, u_bar, like_exp_bar, v_bar, like_bar, like_prime
-real(r8) :: like_plus, like_minus, delta_lambda, theta_bar
+real(r8) :: theta_bar_2, u_bar, like_exp_bar, v_bar, like_bar, like_prime, theta_bar
+!!!real(r8) :: like_plus, like_minus, delta_lambda
 real(r8) :: a, b, c, disc, plus_root, minus_root, dtheta_dlambda
 
 ! Compute value of theta at current lambda_mean
