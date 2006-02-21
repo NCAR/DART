@@ -30,7 +30,7 @@ revdate  = "$Date$"
 ! Need to initialize modules used as appropriate
 call initialize_utilities('assim_region')
 call register_module(source, revision, revdate)
-call assim_tools_init(.true.)
+call assim_tools_init(dont_read_restart = .true.)
 call static_init_obs_sequence()
 call static_init_assim_model()
 
