@@ -75,18 +75,18 @@ character(len = 129) :: inflate_in_file_name       = "inflate_ics"
 character(len = 129) :: inflate_out_file_name      = "inflate_restart"
 real(r8)             :: obs_inf_initial            = 1.0_r8
 real(r8)             :: obs_inf_sd_initial         = 0.0_r8
-real(r8)             :: obs_inf_upper_bound        = 1000000_r8
 real(r8)             :: obs_sd_lower_bound         = 0.0_r8
+real(r8)             :: obs_inf_upper_bound        = 1000000_r8
 real(r8)             :: ss_inf_initial             = 1.0_r8
 real(r8)             :: ss_inf_sd_initial          = 0.0_r8
-real(r8)             :: ss_inf_upper_bound         = 1000000_r8
 real(r8)             :: ss_sd_lower_bound          = 0.0_r8
+real(r8)             :: ss_inf_upper_bound         = 1000000_r8
 character(len = 129) :: diagnostic_file_name       = "inflate_diag"
 
 namelist / adaptive_inflate_nml / do_obs_inflate, do_varying_ss_inflate, &
    do_single_ss_inflate, start_from_inflate_restart, inflate_in_file_name, &
    output_restart, deterministic_inflate, inflate_out_file_name, obs_inf_initial, &
-   obs_inf_sd_initial, obs_inf_upper_bound, obs_sd_lower_bound, ss_inf_initial, &
+   obs_inf_sd_initial, obs_sd_lower_bound, obs_inf_upper_bound, ss_inf_initial, &
    ss_inf_upper_bound, ss_inf_sd_initial, ss_sd_lower_bound, diagnostic_file_name
 
 !============================================================================
