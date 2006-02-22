@@ -2,46 +2,56 @@
    async = 2,
    adv_ens_command = "./advance_ens.csh",
    ens_size = 84,
-   cov_inflate = 1.0,
    start_from_restart = .true.,
    output_restart = .true.,
    obs_sequence_in_name = "obs_seq.out",
    obs_sequence_out_name = "obs_seq.final",
    restart_in_file_name = "filter_restart",
-   restart_out_file_name = "filter_restart",
+   restart_out_file_name = "filter_restart", 
    init_time_days = 146834,
    init_time_seconds = 0,
    output_state_ens_mean = .true.,
    output_state_ens_spread = .true.,
    output_obs_ens_mean = .true.,
-   output_obs_ens_spread = .true.,
+   output_obs_ens_spread = .true., 
    num_output_state_members = 0,
    num_output_obs_members = 0,
    output_interval = 1,
    num_groups = 1,
    outlier_threshold = -1.0,
-/
-
+                       /
+   
 
 &assim_tools_nml
    filter_kind = 1,
    cutoff = 0.1,
    sort_obs_inc = .false.,
-   cov_inflate = -1.0,
-   cov_inflate_sd = 0.05,
-   sd_lower_bound = 0.05, 
-   deterministic_cov_inflate = .false.,
-   start_from_assim_restart = .false.,
-   assim_restart_in_file_name = 'assim_tools_ics'
-   assim_restart_out_file_name = 'assim_tools_restart'
    do_parallel = 0,
    num_domains = 1,
    parallel_command = "./assim_filter.csh",
    spread_restoration = .false.,
-   cov_inflate_upper_bound = 10000000.0,
-   internal_outlier_threshold = -1.0
-/
+   internal_outlier_threshold = -1.0, 
+   sampling_error_correction = .false.,
+   num_close_threshold = 10000000 /
 
+&adaptive_inflate_nml
+   do_obs_inflate = .false.,
+   do_varying_ss_inflate = .false.,
+   do_single_ss_inflate = .false.,
+   start_from_inflate_restart = .false.,
+   output_restart = .true., 
+   deterministic_inflate = .true.,
+   inflate_in_file_name = "inflate_ics",
+   inflate_out_file_name = "inflate_restart",
+   obs_inf_initial = 1.0,
+   obs_inf_sd_initial = 0.0,
+   obs_sd_lower_bound = 0.0,
+   obs_inf_upper_bound = 1000000.0,
+   ss_inf_initial = 1.0,
+   ss_inf_sd_initial = 0.0,
+   ss_sd_lower_bound = 0.0,
+   ss_inf_upper_bound = 1000000.0,
+   diagnostic_file_name = "inflate_diag" /
 
 &cov_cutoff_nml
    select_localization = 1
@@ -135,7 +145,7 @@
 # Acceptable longitudes range from [  0, 360]
 
 &obs_diag_nml
-   obs_sequence_name = 'obs_seq.final', 
+   obs_sequence_name = 'obs_seq.final',
    first_bin_center =  2003, 1, 1, 0, 0, 0 ,
    last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
    bin_separation   =     0, 0, 0,12, 0, 0 ,
