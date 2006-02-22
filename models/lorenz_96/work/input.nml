@@ -66,12 +66,12 @@ Remember that namelists must be listed even if only defaults are to be used
    inflate_out_file_name = "inflate_restart",
    obs_inf_initial = 1.0,
    obs_inf_sd_initial = 0.0,
-   obs_inf_upper_bound = 1000000.0,
    obs_sd_lower_bound = 0.0,
+   obs_inf_upper_bound = 1000000.0,
    ss_inf_initial = 1.0,
    ss_inf_sd_initial = 0.0,
-   ss_inf_upper_bound = 1000000.0,
    ss_sd_lower_bound = 0.0,
+   ss_inf_upper_bound = 1000000.0,
    diagnostic_file_name = "inflate_diag" /
 
 &cov_cutoff_nml
