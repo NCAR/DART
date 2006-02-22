@@ -102,7 +102,8 @@ assim_model_mod
 random_seq_mod
 assim_tools_mod
 obs_model_mod
-ensemble_manager
+ensemble_manager_mod
+adaptive_inflate_mod
 </PRE>
 
 
@@ -116,7 +117,7 @@ ensemble_manager
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / filter_nml / </em> &
-      async, adv_ens_command, ens_size, cov_inflate, 
+      async, adv_ens_command, ens_size, 
       start_from_restart, output_restart, 
       obs_sequence_in_name, obs_sequence_out_name, 
       restart_in_file_name, restart_out_file_name, 
@@ -151,10 +152,6 @@ ensemble_manager
     <!--  type  --><TD valign=top>integer                         </TD>
     <!--descript--><TD>Number of ensemble members to be integrated. 
                        Default is 20.</TD></TR>  
-<TR><!--contents--><TD valign=top>cov_inflate                  </TD>
-    <!--  type  --><TD valign=top>real(r8)                     </TD>
-    <!--descript--><TD>Covariance inflation factor applied to prior estimate before each
-                       assimilation step. Default is 1.0 (no inflation).</TD></TR> 
 <TR><!--contents--><TD valign=top>start_from_restart           </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Should initial ensemble states come from (a) restart file(s). 
