@@ -27,7 +27,7 @@ private
 public :: update_inflation, adaptive_inflate_ss_init, ss_inflate, ss_inflate_sd, &
    ss_sd_lower_bound, adaptive_inflate_end, do_obs_inflate, do_varying_ss_inflate, &
    do_single_ss_inflate, adaptive_inflate_obs_init, deterministic_inflate, &
-   obs_inflate, obs_inflate_sd, obs_sd_lower_bound, obs_inf_upper_bound, bayes_cov_inflate, &
+   obs_inflate, obs_inflate_sd, obs_sd_lower_bound, obs_inf_upper_bound, &
    ss_inf_upper_bound, inflate_ens, output_inflate_diagnostics
 
 character(len = 129) :: errstring
