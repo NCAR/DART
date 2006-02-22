@@ -88,6 +88,7 @@ reg_factor_mod
 location_mod (model dependent choice)
 time_manager_mod
 ensemble_manager_mod
+adaptive_inflate_mod
 </PRE>
 
 <!--==================================================================-->
@@ -104,7 +105,6 @@ ensemble_manager_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">update_from_obs_inc (Now Private)</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">filter_assim       </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">async_assim_region </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">assim_tools_end    </A></TD></TR>
 </TABLE>
 
 <BR>
@@ -344,22 +344,6 @@ to out_file_name.
      <TD>File where output from filter_assim_region is to be put</TD></TR>
  </TABLE>
  <BR>
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="yyyroutine7"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call assim_tools_end() </em>
- <pre>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Called to terminate use of assim_tools_mod. Writes out the assim_tools
-restart file. This file contains the observation space covariance
-inflation parameter and the standard deviation of the covariance
-inflation.
- </P>
- <BR>
- <!--================================================================-->
 
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 
@@ -370,10 +354,10 @@ inflation.
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
 <em class=call>namelist / assim_tools_nml / </em> &#38;
-filter_kind, cutoff, sort_obs_inc, cov_inflate, cov_inflate_sd, sd_lower_bound, &#38;
-deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, &#38; 
-assim_restart_out_file_name, do_parallel, num_domains, parallel_command, &#38;
-spread_restoration, cov_inflate_upper_bound, internal_outlier_threshold 
+filter_kind, cutoff, sort_obs_inc, &#38;
+do_parallel, num_domains, parallel_command, &#38;
+spread_restoration, internal_outlier_threshold, &#38;
+sampling_error_correction, num_close_threshold 
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -402,55 +386,6 @@ spread_restoration, cov_inflate_upper_bound, internal_outlier_threshold
                         as possible. This minimizes regression errors when
                         non-deterministic filter or error correction algorithms
                         are applied. Default: false.</TD></TR>
-<TR><!--contents--><TD valign=top>cov_inflate </TD>
-    <!--  type  --><TD valign=top>real(r8)    </TD>
-    <!--descript--><TD>Initial mean value of the observation space covariance 
-                       inflation factor. If start_from_assim_restart is true, this is 
-                       overwritten by the value for each region (the first of each pair
-                       in the restart file). If the value is less than 0, no observation 
-                       space covariance inflation is applied. Default value is -1
-                       (no inflation).</TD></TR>
-<TR><!--contents--><TD valign=top>cov_inflate_sd </TD>
-    <!--  type  --><TD valign=top>real(r8)       </TD>
-    <!--descript--><TD> Initial value of the standard deviation of the 
-                        observation space covariance inflation factor. If
-                        start_from_assim_restart is true, this is overwritten
-                        by the value for each region (the second value of each pair
-                        in the restart file). If this value
-                        is less than 0.0, the mean value stays constant in 
-                        time. If the value is greater than the sd_lower_bound (see
-                        below), an adjustment of this value takes place at
-                        each assimilation step. Default value is 0.05.  </TD></TR>
-<TR><!--contents--><TD valign=top>sd_lower_bound </TD>
-    <!--  type  --><TD valign=top>real(r8)       </TD>
-    <!--descript--><TD> Smallest value allowed for cov_inflate_sd during a run (it
-                        can be set to values smaller than cov_inflate_sd initially).
-                        Once cov_inflate_sd is reduced to this value, the 
-                        systematic error correction algorithm will keep the
-                        cov_inflate_sd fixed at this value. Default value is 0.05.</TD></TR>
-<TR><!--contents--><TD valign=top>deterministic_cov_inflate </TD>
-    <!--  type  --><TD valign=top>logical                   </TD>
-    <!--descript--><TD> Selects manner in which uncertainty is added to prior
-                        obs space distribution for obs space covariance inflation.
-                        If this is true, ensemble members are just moved out
-                        by increasing the distance between each ensemble member
-                        and the mean by this factor. If false, a random draw 
-                        from a gaussian is added to each ensemble member. Default
-                        is true.</TD></TR>
-<TR><!--contents--><TD valign=top>start_from_assim_restart </TD>
-    <!--  type  --><TD valign=top>logical                  </TD>
-    <!--descript--><TD>If true, values of cov_inflate and cov_inflate_sd for each region
-                       are read from a file. Default: false.</TD></TR>
-<TR><!--contents--><TD valign=top>assim_restart_in_file_name </TD>
-    <!--  type  --><TD valign=top>character(len=129)         </TD>
-    <!--descript--><TD>Name of file from which to read in cov_inflate and 
-                       cov_inflate_sd override values. Default:
-                       "assim_tools_ics".</TD></TR>
-<TR><!--contents--><TD valign=top>assim_restart_out_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)         </TD>
-    <!--descript--><TD>Name of file to which to write cov_inflate and 
-                       cov_inflate_sd final values for possible restart.
-                       Default: "assim_tools_restart".</TD></TR>
  <TR><!--contents--><TD valign=top>do_parallel</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_command; 
@@ -466,11 +401,6 @@ spread_restoration, cov_inflate_upper_bound, internal_outlier_threshold
  <!--descript--><TD> True turns on algorithm to restore amount of spread that would be
              expected to be lost if underlying obs/state variable correlation were really
              0.  Default: false </TD></TR>
- <TR><!--contents--><TD valign=top>cov_inflate_upper_bound</TD>
-     <!--  type  --><TD valign=top>real</TD>
- <!--descript--><TD> Upper bound on values allowed for adaptive covariance inflation. Default
-    is very large number so limit never comes into play. If the covariance inflation value
-    exceeds this, it is set to this value.  Default: 10000000</TD></TR>
  <TR><!--contents--><TD valign=top>internal_outlier_threshold</TD>
      <!--  type  --><TD valign=top>real</TD>
  <!--descript--><TD> Like the global outlier threshold in the filter, except it
@@ -479,6 +409,27 @@ spread_restoration, cov_inflate_upper_bound, internal_outlier_threshold
     deviations of the expected value, the observation is not used. It will still 
     appear in the diagnostic output since this is generated in the filter before the
     sequential phase begins.  Default: -1.0</TD></TR>
+
+ <TR><!--contents--><TD valign=top>sampling_error_correction</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+ <!--descript--><TD> True uses special input files generated by correl_error.f90
+     in system_simulation to reduce errors in the regression step. Special input
+     files corresponding with the ensemble size being used are required. This 
+     option is not yet fully supported. Contact the DART developers group if you 
+     have questions. 
+               Default: false </TD></TR>
+
+ <TR><!--contents--><TD valign=top>num_close_threshold</TD>
+     <!--  type  --><TD valign=top>real</TD>
+ <!--descript--><TD> Exploratory algorithm for thinning observations, designed
+         for models on sphere. If the number of observations within the radius
+         of influence of a given observation is greater than num_close_threshold,
+         the radius of influence will be reduced for this observation in an 
+         attempt to limit its impact to the num_close_threshold nearest observations.
+         Basically, it is assumed that observations are located uniformly in a
+         two-dimensional horizontal cylinder. 
+              Default: 1000000 </TD></TR>
+
 </TABLE>
 
 <!--==================================================================-->
@@ -491,8 +442,6 @@ spread_restoration, cov_inflate_upper_bound, internal_outlier_threshold
 <UL><LI>input.nml
 <LI>assim_tools_ics:  Default name for file containing initial values of 
                       cov_inflate and cov_inflate_sd.
-<LI>assim_tools_restart:  Default name for file containing restart values of 
-                      cov_inflate and cov_inflate_sd for each region.
 <LI>filter_assim_region__in####:  Contains ensemble state for region.
 <LI>filter_assim_region_out####:  Contains updated state for region.
 <LI>assim_region_control:  Used to provide number of regions to shell execution.
