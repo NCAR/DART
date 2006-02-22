@@ -1,5 +1,6 @@
 filter/filter.f90
 assim_tools/assim_tools_mod.f90
+adaptive_inflate/adaptive_inflate_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 sort/sort_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
