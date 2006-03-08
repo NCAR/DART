@@ -909,7 +909,7 @@ Observations : do jjj = 1, num_obs_in_set
    ! Just skip observations that have failed prior qc ( >3 for now)
    if(qc(j) > 3.01_r8 .or. obs(j) == missing_r8) cycle Observations
 
-   ! Obsevational density thinning of observations
+   ! Observational density thinning of observations
    ! Get a list of obs that are close to the ob being processed
    call get_close_obs(j, num_obs_in_set, obs_loc, 2.0_r8*cutoff, obs_box, &
       num_close, close_ind, close_dist)
@@ -1524,10 +1524,12 @@ subroutine comp_correl(ens, n, correl)
 implicit none
 
 integer, intent(in) :: n
-double precision, intent(in) :: ens(2, n)
-double precision, intent(out) :: correl
-double precision :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
+real(r8), intent(in) :: ens(2, n)
+real(r8), intent(out) :: correl
+real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2, denom_2
 
+! There is an efficiency issue with the regression being computed
+! independently from this. Should be addressed.
 
 sum_x = sum(ens(2, :))
 sum_y = sum(ens(1, :))
@@ -1537,12 +1539,17 @@ sum_x2 = sum(ens(2, :) * ens(2, :))
 ! Computation of correlation
 sum_y2 = sum(ens(1, :) * ens(1, :))
 
-correl = (n * sum_xy - sum_x * sum_y) / &
-   sqrt((n * sum_x2 - sum_x**2) * (n * sum_y2 - sum_y**2))
+! Avoid overflow for no variance and illegal values from round-off
+denom_2 = (n * sum_x2 - sum_x**2) * (n * sum_y2 - sum_y**2)
+if(denom_2 <= 0.0_r8) then
+   correl = 0.0_r8
+else
+   correl = (n * sum_xy - sum_x * sum_y) / sqrt(denom_2)
+   if(correl >  1.0_r8) correl =  1.0_r8
+   if(correl < -1.0_r8) correl = -1.0_r8
+endif
 
 end subroutine comp_correl
-
-
 
 
 !------------------------------------------------------------------------
