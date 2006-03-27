@@ -12,18 +12,22 @@
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
 #
 # NETCDF and LIBS needs to be customized for your site
-#     fisher    NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
+#     fisher    NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
+#     dart      NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
+#     coral     NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64
 #     lightning NETCDF = /gpfs/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort8.1-64
-#     dart      NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
 #     bangkok   NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046_pe050.1
 #
-# FFLAGS   used all the time
+# FFLAGS   use when you like, if you must
 #     -fpp     run Fortran preprocessor on source files prior to compilation
+#     -free    interpret source as free-format, regardless of file extension
+#     -r8      specify default real size ...
 #
 # FFLAGS   useful for debugging
 #     -C       (paritally) enable extensive runtime error checking
 #     -g       include symbol table
-#     -check all
+#     -check all       [bounds,overflow,format,args]
+#     -check noarg_temp_created   turns off this one
 #     -[no]warn <keywords>
 #           specifies the level of warning messages issued.
 #           keywords:  [no]alignments, [no]argument_checking, [no]declarations,
@@ -38,23 +42,29 @@
 #
 # FFLAGS   useful for production
 #     -O2      optimize
+#     -mp      maintain precision in the face of optimization
 #
-# Compiler Information (ifort -V):  [dart, ghotiol]
-#    Intel(R) Fortran Compiler for 32-bit applications, Version 8.0   
-#    Build 20040412Z Package ID: l_fc_pc_8.0.046 
-#    Copyright (C) 1985-2004 Intel Corporation.  All rights reserved.
+# Compiler Information (ifort -V):  [dart, fisher]
+#    Intel(R) Fortran Compiler for 32-bit applications, Version 9.0
+#    Build 20051201Z Package ID: l_fc_c_9.0.031
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
 #    FOR NON-COMMERCIAL USE ONLY
+#
+# Compiler Information (ifort -V):  [coral]
+#    Intel(R) Fortran Compiler for Intel(R) EM64T-based applications, Version 9.0
+#    Build 20051020 
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
 #
 # Compiler Information (ifort -V):  [lightning]
 #    Intel(R) Fortran Compiler for Intel(R) EM64T-based applications, Version 8.1
 #    Build 20050406 Package ID: l_fce_pc_8.1.027
 #    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
+#
 
 FC = ifort
 LD = ifort
-NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046
+NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64
 INCS = -I$(NETCDF)/include
-#FFLAGS = -r8 -CU -pc64 -O0 -free $(INCS)
-FFLAGS = -CU -pc64 -O0 $(INCS)
 LIBS = -L$(NETCDF)/lib -lnetcdf
-LDFLAGS = $(INCS) $(LIBS)
+FFLAGS = -C -pc64 -mp -O0 $(INCS)
+LDFLAGS =         -mp -O0 $(INCS) $(LIBS)
