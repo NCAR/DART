@@ -1,7 +1,8 @@
-# template for Intel 8.x Fortran Compiler on a Fedora Core 2 Intel architecture
+# template for Intel 9.x Fortran Compiler on linux clusters
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004, 2005, 2006, Data Assimilation Initiative, 
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next two lines are maintained by CVS, please do not edit>
@@ -11,7 +12,8 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
 #
-# NETCDF and LIBS needs to be customized for your site
+# NETCDF and LIBS needs to be customized for your site -- CORAL note:
+# coral uses the modules environment, which sets a NETCDF environment variable. Use it.
 #     fisher    NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
 #     dart      NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
 #     coral     NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64
