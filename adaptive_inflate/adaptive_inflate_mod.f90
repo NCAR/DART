@@ -368,6 +368,10 @@ real(r8), intent(in)    :: sd_lower_bound, inf_upper_bound
 
 real(r8) :: new_inflate, new_inflate_sd
 
+! If the inflate_sd is negative, just keep everything the same
+if(inflate_sd < 0.0_r8) return
+   
+
 ! Updates the distribution of inflation given prior mean and sd
 ! plus the prior mean and variance and obs value and variance.
 ! gamma is the 'correlation * localization' limiting factor.
@@ -404,6 +408,7 @@ integer :: i, mlambda_index(1)
 real(r8) :: new_1_sd, new_max, ratio, lambda_sd_2
 real(r8) :: dist_2, b, c, d, Q, R, disc, alpha, beta, cube_root_alpha, cube_root_beta, x
 real(r8) :: rrr, cube_root_rrr, angle, mx(3), sep(3), mlambda(3)
+
 
 ! If gamma is 0, nothing happens
 if(gamma <= 0.0_r8) then
