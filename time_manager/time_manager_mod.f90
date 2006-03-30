@@ -2416,7 +2416,7 @@ subroutine time_manager_init ( )
 ! this routine should be called, even though all it does is write
 ! the version information to the log file
 
-   if ( .not. module_initialized ) return  ! silent return if already called
+   if ( module_initialized ) return  ! silent return if already called
 
    call register_module (source, revision, revdate)
    module_initialized  = .true.
