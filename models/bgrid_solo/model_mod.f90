@@ -49,9 +49,6 @@ use              fms_mod, only: file_exist, open_namelist_file, &
                                 fms_init,        &
                                 open_restart_file
 
-use utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
-                          find_namelist_in_file, check_namelist_read
-
 
 ! routines used by subroutine bgrid_physics
 use bgrid_change_grid_mod, only: vel_to_mass, mass_to_vel
@@ -70,7 +67,12 @@ use          location_mod, only: location_type, get_location, set_location, &
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
-use         utilities_mod, only: error_handler, E_ERR, logfileunit, register_module
+! combined duplicate use lines for utilities_mod; the intel 8.x compiler
+! was unhappy about the repetition.  nsc 11apr06
+use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
+                                 logfileunit, register_module, &
+                                 find_namelist_in_file, check_namelist_read
+
 use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                                  KIND_SURFACE_PRESSURE, KIND_TEMPERATURE
 
@@ -157,7 +159,11 @@ integer, parameter :: TYPE_PS = 0, TYPE_T = 1, TYPE_U = 2, TYPE_V = 3, TYPE_TRAC
 !---- private data ----
 
 type (bgrid_dynam_type) :: Dynam
-type    (prog_var_type) :: Var_dt
+! added global_Var here and removed several local instances of Var
+! which had space allocated to the data arrays inside Var but were
+! then never deallocated (and possibly reallocated each time).
+! (Var_dt was already here as a module global variable.)  nsc 31mar06
+type    (prog_var_type) :: global_Var, Var_dt
 
 integer                            :: model_size
 !real                               :: dt_atmos
@@ -187,39 +193,41 @@ logical :: first_call = .true.
 contains
 
 
-!#######################################################################
-
- subroutine atmosphere (Var, mTime)
-
-
- type (time_type), intent(in) :: mTime
- type (prog_var_type), intent(inout) :: Var
-
-  type(time_type) :: Time_prev, Time_next
-!-----------------------------------------------------------------------
-
-   Time_prev = mTime                       ! two time-level scheme
-   Time_next = mTime + Time_step_atmos
-
-!---- dynamics -----
-
-   call bgrid_core_driver ( Time_next, Var, Var_dt, Dynam, omega )
-
-!---- call physics -----
-
-   call bgrid_physics ( physics_window, 1.0_r8 * dt_atmos, Time_next,  &
-                        Dynam%Hgrid,   Dynam%Vgrid,    Dynam,             &
-                        Var,     Var_dt                       )
-
-!---- time differencing and diagnostics -----
-
-   call bgrid_core_time_diff ( omega, Time_next, Dynam, Var, Var_dt )
-
-!-----------------------------------------------------------------------
-
- end subroutine atmosphere
-
-!#######################################################################
+!!!#######################################################################
+!! this subroutine appears to be unused (was originally from the atmos_solo
+!!  driver program).  nsc 31mar06
+!!
+!! subroutine atmosphere (Var, mTime)
+!!
+!!
+!! type (time_type), intent(in) :: mTime
+!! type (prog_var_type), intent(inout) :: Var
+!!
+!!  type(time_type) :: Time_prev, Time_next
+!!!-----------------------------------------------------------------------
+!!
+!!   Time_prev = mTime                       ! two time-level scheme
+!!   Time_next = mTime + Time_step_atmos
+!!
+!!!---- dynamics -----
+!!
+!!   call bgrid_core_driver ( Time_next, Var, Var_dt, Dynam, omega )
+!!
+!!!---- call physics -----
+!!
+!!   call bgrid_physics ( physics_window, 1.0_r8 * dt_atmos, Time_next,  &
+!!                        Dynam%Hgrid,   Dynam%Vgrid,    Dynam,             &
+!!                        Var,     Var_dt                       )
+!!
+!!!---- time differencing and diagnostics -----
+!!
+!!   call bgrid_core_time_diff ( omega, Time_next, Dynam, Var, Var_dt )
+!!
+!!!-----------------------------------------------------------------------
+!!
+!! end subroutine atmosphere
+!!
+!!!#######################################################################
 
 subroutine adv_1step(x, mTime)
 
@@ -232,27 +240,29 @@ real(r8), intent(inout) :: x(:)
 ! Time is needed for more general models like this; need to add in to 
 ! low-order models
 type(time_type), intent(in) :: mTime
-!!!type(prog_var_type), intent(inout) :: Var
+! removed local instance of Var (since it contains pointers which are
+! then left hanging if Var goes out of scope), and replaced all references
+! to Var with global_Var below.    nsc 31mar06
+!type(prog_var_type), intent(inout) :: Var
 
-type(prog_var_type) :: Var
 type(time_type) :: Time_next
 
 !!!integer :: i, j, k
 
 ! Convert the vector to a B-grid native state representation
-call vector_to_prog_var(x, get_model_size(), Var)
+call vector_to_prog_var(x, get_model_size(), global_Var)
 
 ! Compute the end of the time interval
 Time_next = mTime + Time_step_atmos
 
 ! Do dynamics
 ! Dynam, Var_dt and omega currently in static storage, is that where they should stay?
-call bgrid_core_driver(Time_next, Var, Var_dt, Dynam, omega)
+call bgrid_core_driver(Time_next, global_Var, Var_dt, Dynam, omega)
 
 ! Call physics; physics_window is also in global static storage
 ! dt_atmos is seconds for time step from namelist for now
 call bgrid_physics(physics_window, 1.0_r8 * dt_atmos, Time_next, &
-   Dynam%Hgrid, Dynam%Vgrid, Dynam, Var, Var_dt)
+   Dynam%Hgrid, Dynam%Vgrid, Dynam, global_Var, Var_dt)
 
 !!!write(*, *) 'max tendency ', maxval(abs(Var_dt%t))
 !!!write(*, *) 'mean tendency ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
@@ -281,10 +291,10 @@ endif
 !!!write(*, *) 'mean tendency with noise ' , sum(abs(Var_dt%t)) / (size(Var_dt%t))
 
 ! Time differencing and diagnostics
-call bgrid_core_time_diff(omega, Time_next, Dynam, Var, Var_dt)
+call bgrid_core_time_diff(omega, Time_next, Dynam, global_Var, Var_dt)
 
 ! Convert back to vector form
-call prog_var_to_vector(Var, x, get_model_size())
+call prog_var_to_vector(global_Var, x, get_model_size())
 
 end subroutine adv_1step
 
@@ -326,15 +336,19 @@ subroutine init_conditions(x)
 ! Following changed to intent(inout) for ifc compiler;should be like this
 real(r8), intent(inout) :: x(:)
 
-type(prog_var_type) :: Var
-real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: fis, res
+! removed local instance of Var (since it contains pointers which are
+! then left hanging if Var goes out of scope), and replaced all references
+! to Var with global_Var below.    nsc 31mar06
+!type(prog_var_type) :: Var
+real(r8), dimension(Dynam%Hgrid%ilb:Dynam%Hgrid%iub, &
+                    Dynam%Hgrid%jlb:Dynam%Hgrid%jub) :: fis, res
 real(r8), allocatable, dimension(:) :: eta, peta
 integer :: ix, jx, kx
 ! Havana no longer distinguishes prognostic tracers
 !!!integer :: ix, jx, kx, nt, ntp
 
 ! Need to initialize var???
-call init_model_instance(Var)
+call init_model_instance(global_Var)
 
 ! FOR NOW, TRY TO READ IN CURRENT ICS via read_prog_var
 call open_prog_var_file(ix, jx, kx)
@@ -346,11 +360,11 @@ allocate(eta(kx + 1), peta(kx + 1))
 
 !!! WARNING; MAY BE DANGEROUS TO USE Dynam%Hgrid here, it could get changed
 !!! inappropriately???
-call read_prog_var(Dynam%Hgrid, Var, eta, peta, fis, res)
+call read_prog_var(Dynam%Hgrid, global_Var, eta, peta, fis, res)
 
 deallocate(eta, peta)
 
-call prog_var_to_vector(Var, x, get_model_size())
+call prog_var_to_vector(global_Var, x, get_model_size())
 
 ! Probably need to release allocated storage from Var, too???
 
@@ -493,8 +507,10 @@ end subroutine init_conditions
 
  type (time_type),     intent(in)    :: Time_init, mTime, Time_step
 
-!!! WARNING: This PROG_VAR_TYPE MAY HOG STORAGE FOREVER, NEED TO DEALLOCATE
- type(prog_var_type) :: Var
+! removed local instance of Var (since it contains pointers which are
+! then left hanging if Var goes out of scope), and replaced all references
+! to Var with global_Var below.    nsc 31mar06
+!type(prog_var_type) :: Var
 
  integer :: i, iunit, sec, io
  integer :: tnlon, tnlat, vnlon, vnlat
@@ -523,7 +539,7 @@ call check_namelist_read(iunit, io, "atmosphere_nml")
 
 !----- initialize dynamical core -----
    call bgrid_core_driver_init ( Time_init, mTime, Time_step,    &
-                                 Var, Var_dt, Dynam, atmos_axes )
+                                 global_Var, Var_dt, Dynam, atmos_axes )
 
 !----- initialize storage needed for vert motion ----
 
@@ -555,13 +571,13 @@ model_size = 2 * num_levels * v_horiz_size
 ! T and PS for size
 model_size = model_size + (1 + num_levels) * t_horiz_size
 ! Tracers for size
-model_size = model_size + Var%ntrace * num_levels * t_horiz_size
+model_size = model_size + global_Var%ntrace * num_levels * t_horiz_size
 write(*, *) 'model_size ', model_size
 
 ! Also static store the number of levels, ntracers, and prognostic tracers
-ntracers = Var%ntrace
+ntracers = global_Var%ntrace
 ! Havana no longer distinguishes prognostic tracers
-!!!nprognostic = Var%ntprog
+!!!nprognostic = global_Var%ntprog
 
 ! Get the lats and lons of the actual grid points; keep in static store
 allocate(t_lons(tnlon), t_lats(tnlat), v_lons(vnlon), v_lats(vnlat))
@@ -588,63 +604,65 @@ deallocate(t_lon_bnds, t_lat_bnds, v_lon_bnds, v_lat_bnds)
 
  end subroutine atmosphere_init
 
-!#######################################################################
-
- subroutine atmosphere_end(Var)
-
- type(prog_var_type), intent(in) :: Var
-
-    call bgrid_core_driver_end ( Var, Dynam )
-
- end subroutine atmosphere_end
-
-!#######################################################################
-!    returns the number of longitude and latitude grid points
-!    for either the local PEs grid (default) or the global grid
-
- subroutine atmosphere_resolution (nlon, nlat, global)
-
-  integer, intent(out)          :: nlon, nlat
-  logical, intent(in), optional :: global
-
-!---- return the size of the grid used for physics computations ----
-
-    call get_horiz_grid_size (Dynam % Hgrid, TGRID, nlon, nlat, global)
-
- end subroutine atmosphere_resolution
-
-!#######################################################################
-!    returns the longitude and latitude grid box edges
-!    for either the local PEs grid (default) or the global grid
-
- subroutine atmosphere_boundary (blon, blat, global)
-
-    real(r8),    intent(out)          :: blon(:), blat(:)
-    logical, intent(in), optional :: global
-
-!----- return the longitudinal and latitudinal grid box edges ----------
-
-    call get_horiz_grid_bound (Dynam % Hgrid, TGRID, blon, blat, global)
-
- end subroutine atmosphere_boundary
-
-!#######################################################################
-!    returns the axis indices associated with the coupling grid
-
- subroutine get_atmosphere_axes ( axes )
-
-   integer, intent(out) :: axes (:)
-
-!----- returns the axis indices for the atmospheric (mass) grid -----
-
-     if ( size(axes) < 0 .or. size(axes) > 4 ) call error_mesg (    &
-                    'get_atmosphere_axes in atmosphere_mod', &
-                           'size of argument is incorrect', FATAL   )
-
-     axes (1:size(axes)) = atmos_axes (1:size(axes))
-
- end subroutine get_atmosphere_axes
-
+!!!#######################################################################
+!! the following subroutines appears to be unused (were originally from 
+!!  the atmos_solo driver program).  nsc 31mar06
+!!
+!! subroutine atmosphere_end(Var)
+!!
+!! type(prog_var_type), intent(in) :: Var
+!!
+!!    call bgrid_core_driver_end ( Var, Dynam )
+!!
+!! end subroutine atmosphere_end
+!!
+!!!#######################################################################
+!!!    returns the number of longitude and latitude grid points
+!!!    for either the local PEs grid (default) or the global grid
+!!
+!! subroutine atmosphere_resolution (nlon, nlat, global)
+!!
+!!  integer, intent(out)          :: nlon, nlat
+!!  logical, intent(in), optional :: global
+!!
+!!!---- return the size of the grid used for physics computations ----
+!!
+!!    call get_horiz_grid_size (Dynam % Hgrid, TGRID, nlon, nlat, global)
+!!
+!! end subroutine atmosphere_resolution
+!!
+!!!#######################################################################
+!!!    returns the longitude and latitude grid box edges
+!!!    for either the local PEs grid (default) or the global grid
+!!
+!! subroutine atmosphere_boundary (blon, blat, global)
+!!
+!!    real(r8),    intent(out)          :: blon(:), blat(:)
+!!    logical, intent(in), optional :: global
+!!
+!!!----- return the longitudinal and latitudinal grid box edges ----------
+!!
+!!    call get_horiz_grid_bound (Dynam % Hgrid, TGRID, blon, blat, global)
+!!
+!! end subroutine atmosphere_boundary
+!!
+!!!#######################################################################
+!!!    returns the axis indices associated with the coupling grid
+!!
+!! subroutine get_atmosphere_axes ( axes )
+!!
+!!   integer, intent(out) :: axes (:)
+!!
+!!!----- returns the axis indices for the atmospheric (mass) grid -----
+!!
+!!     if ( size(axes) < 0 .or. size(axes) > 4 ) call error_mesg (    &
+!!                    'get_atmosphere_axes in atmosphere_mod', &
+!!                           'size of argument is incorrect', FATAL   )
+!!
+!!     axes (1:size(axes)) = atmos_axes (1:size(axes))
+!!
+!! end subroutine get_atmosphere_axes
+!!
 !#######################################################################
 
 subroutine bgrid_physics ( window, dt_phys, mTime, Hgrid, Vgrid, &
@@ -2123,9 +2141,12 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 real(r8), dimension(SIZE(statevec)) :: x
-type(prog_var_type) :: Var
+! removed local instance of Var (since it contains pointers which are
+! then left hanging if Var goes out of scope), and replaced all references
+! to Var with global_Var below.    nsc 31mar06
+!type(prog_var_type) :: Var
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, psVarID, tVarID, rVarID, uVarID, vVarID
@@ -2184,29 +2205,29 @@ else
    x = statevec ! Unfortunately, have to explicity cast it ...
                 ! the filter uses a type=double,
                 ! the vector_to_prog_var function expects a single.
-   call vector_to_prog_var(x, get_model_size(), Var)
+   call vector_to_prog_var(x, get_model_size(), global_Var)
    
    
    call check(NF90_inq_varid(ncFileID, "ps", psVarID))
-   call check(nf90_put_var( ncFileID, psVarID, Var%ps(tis:tie, tjs:tje), &
+   call check(nf90_put_var( ncFileID, psVarID, global_Var%ps(tis:tie, tjs:tje), &
                             start=(/ 1, 1, copyindex, timeindex /) ))
 
    call check(NF90_inq_varid(ncFileID,  "t",  tVarID))
-   call check(nf90_put_var( ncFileID,  tVarID, Var%t( tis:tie, tjs:tje, klb:kub ), &
+   call check(nf90_put_var( ncFileID,  tVarID, global_Var%t( tis:tie, tjs:tje, klb:kub ), &
                             start=(/ 1, 1, 1, copyindex, timeindex /) ))
 
    call check(NF90_inq_varid(ncFileID,  "u",  uVarID))
-   call check(nf90_put_var( ncFileID,  uVarId, Var%u( vis:vie, vjs:vje, klb:kub ), &
+   call check(nf90_put_var( ncFileID,  uVarId, global_Var%u( vis:vie, vjs:vje, klb:kub ), &
                             start=(/ 1, 1, 1, copyindex, timeindex /) ))
 
    call check(NF90_inq_varid(ncFileID,  "v",  vVarID))
-   call check(nf90_put_var( ncFileID,  vVarId, Var%v( vis:vie, vjs:vje, klb:kub ), &
+   call check(nf90_put_var( ncFileID,  vVarId, global_Var%v( vis:vie, vjs:vje, klb:kub ), &
                             start=(/ 1, 1, 1, copyindex, timeindex /) ))
 
    if ( ntracer > 0 ) then
       call check(NF90_inq_varid(ncFileID,  "r",  rVarID))
       call check(nf90_put_var( ncFileID,  rVarID, &
-                    Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
+                    global_Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
                    start=(/   1,       1,       1,     1,    copyindex, timeindex /) ))
    endif
 endif
