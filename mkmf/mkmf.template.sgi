@@ -1,7 +1,7 @@
 # Makefile template for SGI MIPSpro f90
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004, 2005, 2006, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next two lines automatically updated by CVS, do not edit>
@@ -13,96 +13,21 @@
 #
 # NETCDF and LIBS needs to be customized for your site
 #
-# WARNING -- this is untested with the DART software (no access to a platform)
+# WARNING -- This file is intended for an SGI running the IRIX system on 
+#   MIPS processors.   This will not work on an SGI Altix cluster running
+#   the Intel compilers. 
+#
+# Compiler Information [f90 -version]:
+#    MIPSpro Compilers: Version 7.4.3m
+#
 #
 FC = f90
 LD = f90
-CPPFLAGS = -macro_expand
-LIST = -listing
-FFLAGS = -d8 -64 -i4 -r8 -mips4 -O2 -OPT:Olimit=0 -woff1670 #optimized
-# FFLAGS = -64 -i4 -r8 -mips4 -woff1670 -DEBUG:conform_check=YES:subscript_check=ON:trap_uninitialized=ON:verbose_runtime=ON -g #for debugging
-
-#to debug shmem codes, you need the dbfork library
-#TOTALVIEW = -L/opt/totalview/4.1.0-3/irix6-mips/lib -ldbfork_n64
-#TOTALVIEW = -ldbfork_n64
-#TOTALVIEW = -L/sw/mel/totalview/lib -ldbfork_n64
-
-#LIBS must be customized for your site
-LIBS = $(TOTALVIEW) -L/usr/local/lib -lnetcdf -ludunits -lmpi -lsma -lexc -lscs
-LDFLAGS = -64 -mips4 -dont_warn_unused $(LIBS)
-
-#---------------------------------------------------------------------------
-# you should never need to change any lines below.
-
-# see the MIPSPro F90 manual for more details on some of the file extensions
-# discussed here.
-# this makefile template recognizes fortran sourcefiles with extensions
-# .f, .f90, .F, .F90. Given a sourcefile <file>.<ext>, where <ext> is one of
-# the above, this provides a number of default actions:
-
-# make <file>.T		create a CIF file
-# make <file>.L		create a compiler listing
-# make <file>.o		create an object file
-# make <file>.s		create an assembly listing
-# make <file>.x		create an executable file, assuming standalone
-#			source
-
-# make <file>.i		create a preprocessed file (only for .F and .F90
-#			extensions)
-
-# The macro TMPFILES is provided to slate files like the above for removal.
-
-RM = rm -f
-SHELL = /bin/csh
-TMPFILES = .*.m *.B *.L *.i *.l *.s *.mod
-
-.SUFFIXES: .F .F90 .H .L .T .f .f90 .h .i .o .s .x
-
-.f.L:
-	$(FC) $(FFLAGS) -c $(LIST) $*.f
-.f.T:
-	$(FC) $(FFLAGS) -c -cif $*.f
-.f.o:
-	$(FC) $(FFLAGS) -c $*.f
-.f.s:
-	$(FC) $(FFLAGS) -S $*.f
-.f.x:
-	$(FC) $(FFLAGS) -o $*.x $*.f *.o $(LDFLAGS)
-.f90.L:
-	$(FC) $(FFLAGS) -c $(LIST) $*.f90
-.f90.T:
-	$(FC) $(FFLAGS) -c -cif $*.f90
-.f90.o:
-	$(FC) $(FFLAGS) -c $*.f90
-.f90.s:
-	$(FC) $(FFLAGS) -c -S $*.f90
-.f90.x:
-	$(FC) $(FFLAGS) -o $*.x $*.f90 *.o $(LDFLAGS)
-.F.L:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $(LIST) $*.F
-.F.T:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c -cif $*.F
-.F.f:
-	$(CPP) $(CPPDEFS) $(CPPFLAGS) $*.F > $*.f
-.F.i:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) -P $*.F
-.F.o:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $*.F
-.F.s:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c -S $*.F
-.F.x:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -o $*.x $*.F *.o $(LDFLAGS)
-.F90.L:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $(LIST) $*.F90
-.F90.T:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c -cif $*.F90
-.F90.f90:
-	$(CPP) $(CPPDEFS) $(CPPFLAGS) $*.F90 > $*.f90
-.F90.i:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) -P $*.F90
-.F90.o:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c $*.F90
-.F90.s:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c -S $*.F90
-.F90.x:
-	$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -o $*.x $*.F90 *.o $(LDFLAGS)
+# NETCDF is location of include (header) files, 
+# NETCDFLIB is location of modules and libs
+NETCDF = /usr/local
+NETCDFLIB = /usr/local/lib64/r4i4
+INCS = -I$(NETCDF)/include -I$(NETCDFLIB)
+FFLAGS = -64 -i4 -r8 -O0 $(INCS)
+LIBS = -L$(NETCDFLIB) -lnetcdf
+LDFLAGS = -64 -dont_warn_unused $(INCS) $(LIBS)
