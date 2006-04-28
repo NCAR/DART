@@ -39,11 +39,12 @@
 # FFLAGS   useful for production
 #     -O2      optimize
 
-
 FC = /contrib/2.6/intel/9.0/bin/ifort
 LD = /contrib/2.6/intel/9.0/bin/ifort
 NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort9.0.025
 INCS = -I$(NETCDF)/include
-FFLAGS = -pc64 -O0 -warn all $(INCS)
+#FFLAGS = -pc64 -O0 -warn all $(INCS)
+#FFLAGS = -free -C -r8 -pc64 -O0 -warn all $(INCS)
+FFLAGS = -pc64 -O0 -warn all -check all $(INCS)
 LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(INCS) $(LIBS)
