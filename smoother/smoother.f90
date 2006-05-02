@@ -911,7 +911,7 @@ endif
 ! Print of initial model time
 call get_ensemble_time(ens_handle(si), 0, ensemble_valid_time)
 call get_time(ensemble_valid_time,secs,days)
-write(msgstring,100),si,days,secs
+write(msgstring,100) si,days,secs
 call error_handler(E_MSG,'smoother_read_restart',msgstring,source,revision,revdate)
 
 100 format('ensemble member ',i4,' (days,seconds) = ',i4,1x,i4)
