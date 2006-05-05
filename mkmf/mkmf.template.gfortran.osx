@@ -1,0 +1,30 @@
+# Template for GNU gfortran and Mac OSX
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, 2006, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next two lines are maintained by CVS, please do not edit>
+# $Id$
+# $Name$
+#
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# NETCDF and LIBS needs to be customized for your site
+#    The netcdf 3.6.1 lib had to be compiled with such that all the routines
+#    were lower-case symbols with no trailing underscores.  The 3.6.2 release
+#    should have this as the default.
+#
+# This is the GNU fortran compiler which is part of the GCC 4.0 distribution.
+# (there is a separate g95 project which is distributing a different fortran
+#  compiler.)  Any flags of interest will be documented here.
+
+FC = gfortran
+LD = gfortran
+NETCDF = /usr/local
+INCS = ${NETCDF}/include
+FFLAGS = -I$(INCS) -g
+LIBS = -L${NETCDF}/lib -lnetcdf
+LDFLAGS = -g -I$(INCS) $(LIBS)
+
