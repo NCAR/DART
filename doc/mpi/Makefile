@@ -38,6 +38,14 @@ ifeq ($(DART_TARGET),)
  ifeq ($(HOST),coral.ucar.edu)
    DART_TARGET=Linux_coral
  endif
+ ifeq ($(HOST),cr0125en)
+   DART_TARGET=Linux_coral
+ endif
+ ifeq ($(HOST),cr0122en)
+   DART_TARGET=Linux_coral
+ endif
+
+
 
  ifeq ($(HOST),bangkok.cgd.ucar.edu)
    DART_TARGET=Linux_bangkok
@@ -74,6 +82,9 @@ endif
 # if you want to know what we selected.  if this is annoying, comment it out.
 $(warning "using $(DART_TARGET) for DART_TARGET")
 
+# set default to be run on current node.  in the machine specific sections
+# below, set which kind of batch queue system is on this machine.
+BATCH = "interactive"
 
 # mac laptop with absoft fortran (e.g. cloud)
 ifeq ($(DART_TARGET),Darwin_Absoft_Lam)
@@ -231,43 +242,67 @@ commtest_mod.o: commtest_mod.f90
 # ----------------------------------------------------------------------------
 
 # lam or mpich w/ or w/o batch system
+#
+# these rules are complicated by the fact that Makefiles run shell commands
+# with sh syntax (because csh/tcsh cannot deal with multiline commands).
+# but running bsub from sh inherits the sh environment and i have not
+# been able to convince it to change to csh and read my .cshrc to get
+# the modules and environment set up right before executing the program.
+#
+# now i am trying to make a csh shell script which invokes bsub -- but somehow
+# it still is not working.  i do not like this approach because it because 
+# adds yet another layer of indirection onto an already confusing setup, but
+# it does work successfully.   this works fine from the command line, but not
+# from inside the makefile.  
+#
+# batch systems are evil.
+#
+
 run_ct: commtest
 	if [ '$(BATCH)' = 'lsf' ] ; then \
 	    bsub < runme_lsf_ct ;\
+	    echo 'job submitted to LSF batch queue.' ;\
 	elif [ '$(BATCH)' = 'pbs' ]; then \
 	    qsub runme_pbs_ct ;\
+	    echo 'job submitted to PBS batch queue.' ;\
 	elif [ '$(BATCH)' = 'nobatch' ]; then \
-	    mpirun -v -np 4 -nolocal -machinefile ~/machinefile ./commtest >& out_ct ;\
+	    mpirun -v -np 4 -nolocal -machinefile ~/machinefile ./commtest > out_ct 2>&1 ;\
+	    echo 'done. output in file out_ct' ;\
 	else \
-	    mpirun -np 4 ./commtest >& out_ct  ;\
-	fi ;\
-	echo 'done. output in file out_ct' ;\
+	    mpirun -np 4 ./commtest > out_ct 2>&1  ;\
+	    echo 'done. output in file out_ct' ;\
+	fi 
 	
-
 run_f: ftest_mpi
 	if [ '$(BATCH)' = 'lsf' ] ; then \
-	    bsub < runme_lsf_f ;\
+	    ( /bin/tcsh -x -c < ./runme_lsf_f ) ;\
+	    echo 'job submitted to LSF batch queue.' ;\
 	elif [ '$(BATCH)' = 'pbs' ]; then \
 	    qsub runme_pbs_f ;\
+	    echo 'job submitted to PBS batch queue.' ;\
 	elif [ '$(BATCH)' = 'nobatch' ]; then \
-	    mpirun -v -np 2 -nolocal -machinefile ~/machinefile ./ftest_mpi >& out_f ;\
+	    mpirun -v -np 2 -nolocal -machinefile ~/machinefile ./ftest_mpi > out_f 2>&1 ;\
+	    echo 'done. output in file out_f' ;\
 	else \
-	    mpirun -np 2 ./ftest_mpi >& out_f ;\
-	fi ;\
-	echo 'done. output in file out_f' ;\
+	    mpirun -np 2 ./ftest_mpi > out_f 2>&1 ;\
+	    echo 'done. output in file out_f' ;\
+	fi
 	
 
 run_c: ctest_mpi
 	if [ '$(BATCH)' = 'lsf' ] ; then \
 	    bsub < runme_lsf_c ;\
+	    echo 'job submitted to LSF batch queue.' ;\
 	elif [ '$(BATCH)' = 'pbs' ]; then \
 	    qsub runme_pbs_c ;\
+	    echo 'job submitted to PBS batch queue.' ;\
 	elif [ '$(BATCH)' = 'nobatch' ]; then \
-	    mpirun -v -np 2 -nolocal -machinefile ~/machinefile ./ctest >& out_c ;\
+	    mpirun -v -np 2 -nolocal -machinefile ~/machinefile ./ctest > out_c 2>&1 ;\
+	    echo 'done. output in file out_c' ;\
 	else \
-	    mpirun -np 2 ./ctest >& out_c ;\
-	fi ;\
-	echo 'done. output in file out_c' ;\
+	    mpirun -np 2 ./ctest > out_c 2>&1 ;\
+	    echo 'done. output in file out_c' ;\
+	fi 
 	
 
 # ----------------------------------------------------------------------------
