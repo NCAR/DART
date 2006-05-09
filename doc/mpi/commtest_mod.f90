@@ -770,10 +770,10 @@ subroutine broadcast_increments(index, obs_count, index_list, ensemble_size, &
 
    if (algorithm == 1) then
       call broadcast1a(index, obs_count, index_list, ensemble_size)
-   !else if (algorithm == 2) then
-   !   call broadcast2a(index, obs_count, index_list, ensemble_size)
-   !else if (algorithm == 3) then
-   !   call broadcast3a(index, obs_count, index_list, ensemble_size)
+   else if (algorithm == 2) then
+      call broadcast2a(index, obs_count, index_list, ensemble_size)
+   else if (algorithm == 3) then
+      call broadcast3a(index, obs_count, index_list, ensemble_size)
    else
      print *, "bad value for broadcast algorithm selection, ", algorithm
      print *, "stopping on error"
@@ -803,7 +803,7 @@ subroutine broadcast1a(index, obs_count, index_list, ensemble_size)
 
    ! if my observation, i am root
    root = index_list(index)
-   print *, "index = ", index, "list = ", index_list(index), "root = ", root
+   print *, "b1a: index = ", index, "list = ", index_list(index), "root = ", root
 
    if (root == myrank) then
       single_increment_vals(:) = (myrank+1) * 1.1
@@ -816,7 +816,7 @@ subroutine broadcast1a(index, obs_count, index_list, ensemble_size)
    ! TODO: this moves the right number of bytes, but does not have an
    ! offset or multiple arrays for each set of increments.
    do i=1,ens_per_task
-      print *, myrank, &
+      print *, "b1a: ",  myrank, &
                "calling broadcast for increments and distribution, root = ", &
                root
       call MPI_Bcast(single_increment_vals, ens_size, &
@@ -825,12 +825,293 @@ subroutine broadcast1a(index, obs_count, index_list, ensemble_size)
    
       call MPI_Bcast(single_prior_distrib_vals, ens_size, &
                      MPI_DOUBLE_PRECISION, root, my_local_comm, errcode)
-      print *, myrank, "back from broadcast"
+      print *, "b1a: ", myrank, "back from broadcast"
       if (errcode /= MPI_SUCCESS) stop
 
    enddo
 
 end subroutine broadcast1a
+
+!-----------------------------------------------------------------------------
+! in this version, everyone has the index list and so everyone knows who
+! the next root is, but everyone is also computing at the same time.  so to
+! maximize the compute/communication overlap time, each "not next root" will
+! post a receive and then continue on computing until the "next root" has the
+! value ready and sends it to everyone else.   everyone should know if they
+! are the "next root" and expedite sending the values.
+!-----------------------------------------------------------------------------
+subroutine broadcast2a(index, obs_count, index_list, ensemble_size)
+   integer, intent(in) :: index, obs_count, ensemble_size
+   ! intent(in)
+   integer, pointer :: index_list(:)
+
+   integer :: i, j, k, errcode, root
+   logical :: iam_root, done, tag
+   integer :: req(ens_size*2)
+   integer :: status_array(MPI_STATUS_SIZE, ens_size*2)
+
+   print *, ""
+   print *, "in broadcast2a, iam ", myrank
+
+
+   ! can put timing loop here if needed
+   k = 0
+
+   ! if my observation, i am root
+   root = index_list(index)
+   print *, "b2a: index = ", index, "list = ", index_list(index), "root = ", root
+
+   if (root == myrank) then
+      single_increment_vals(:) = (myrank+1) * 1.1
+      single_prior_distrib_vals(:) = 0.5
+      iam_root = .TRUE.
+   else
+      single_increment_vals(:) = -1
+      single_prior_distrib_vals(:) = -1
+      iam_root = .FALSE.
+   endif
+
+   ! we aren't using the tags right now but generate something which would
+   ! be unique if it turns out to be necessary.  the 2 below is number of
+   ! messages each send generates; if that changes it needs to be bumped up.
+   tag = index * 2 * total_tasks
+
+   ! if i am not root, post a receive and go about computing things.
+   if (.not.iam_root) then
+
+      ! these are non-blocking so they return immediately; they do not
+      ! wait until the data arrives.
+      do i=1,ens_per_task
+         print *, "b2a: ", myrank, &
+                  "calling irecv for increments and distribution, root = ", &
+                  root
+         call MPI_Irecv(single_increment_vals, ens_size, &
+                        MPI_DOUBLE_PRECISION, root, MPI_ANY_TAG, &
+                        my_local_comm, req((2*i)-1), errcode)
+         if (errcode /= MPI_SUCCESS) stop
+      
+         call MPI_Irecv(single_prior_distrib_vals, ens_size, &
+                        MPI_DOUBLE_PRECISION, root, MPI_ANY_TAG, &
+                        my_local_comm, req(2*i), errcode)
+         print *, "b2a: ", myrank, "back from irecvs"
+         if (errcode /= MPI_SUCCESS) stop
+
+      enddo
+    
+      done = .FALSE.
+      do while (.not.done)
+         ! alternate computing and checking to see if the next value is here
+
+         ! compute here
+         k = k + 2
+
+         ! test to see if the data is back but if not, do not wait.  keep
+         ! computing until you have to wait.  this version of the routine
+         ! waits on the next value (which requires 2 receives).   if we 
+         ! want to wait on multiple values, we can use Testsome() instead
+         ! of Testall() and process them as they arrive.
+         call MPI_Testall(ens_per_task, req, done, status_array, errcode)
+
+         ! if all done, testall sets 'done' flag to true
+         if (done) print *, "b2a: ", myrank, "all increments received"
+
+         ! but prevent an infinite loop here on error
+         if (errcode /= MPI_SUCCESS) done = .TRUE.
+
+      enddo
+
+   else  
+      ! i am root this time -- compute my values and send them to the others.
+      ! this is using a sync send -- it will not return until everyone
+      ! else has received the data.  but since they should have already
+      ! posted async receives, this should return quickly.
+
+      ! TODO: this moves the right number of bytes, but does not have an
+      ! offset or multiple arrays for each set of increments.
+      do i=1,ens_per_task
+         print *, "b2a: ", myrank, &
+                  "calling send for increments and distribution, root = ", &
+                  root
+         do j=0,total_tasks-1
+            ! skip ourselves
+            if (j == myrank) cycle
+
+            call MPI_Send(single_increment_vals, ens_size, &
+                           MPI_DOUBLE_PRECISION, j, tag, my_local_comm, errcode)
+            if (errcode /= MPI_SUCCESS) stop
+         
+            call MPI_Send(single_prior_distrib_vals, ens_size, &
+                         MPI_DOUBLE_PRECISION, j, tag+1, my_local_comm, errcode)
+            print *, "b2a: ", myrank, "back from sends"
+            if (errcode /= MPI_SUCCESS) stop
+
+            tag = tag + 2
+         enddo
+   
+      enddo
+   endif
+
+
+end subroutine broadcast2a
+
+!-----------------------------------------------------------------------------
+! in this version, everyone has the index list and so everyone knows who
+! the next root is, but everyone is also computing at the same time. 
+! to maximize the compute/communication overlap time, each "not next root" will
+! post a receive and then continue on computing until the "next root" has the
+! value ready and sends it to everyone else.   everyone should know if they
+! are the "next root" and expedite sending the values.  this differs from 2a
+! above in that it tries to allow multiple outstanding receives per ensemble,
+! so the send is async as well and this routine can return without the comms
+! being done.  (this is a bit awkward in that the index number comes in as an
+! argument instead of looping inside this routine -- that may have to change.)
+!-----------------------------------------------------------------------------
+subroutine broadcast3a(index, obs_count, index_list, ensemble_size)
+   integer, intent(in) :: index, obs_count, ensemble_size
+   ! intent(in)
+   integer, pointer :: index_list(:)
+
+   integer :: i, j, k, errcode, root
+   logical :: iam_root, done, tag, nextindex
+   integer :: max_reqs, inuse
+   integer, allocatable :: req(:)
+   integer, allocatable :: status_array(:, :)
+
+   print *, ""
+   print *, "in broadcast3a, iam ", myrank
+
+   ! get the right amount of space for pending requests
+   ! max_reqs = ens_size * 2 * obs_count
+   ! will be that, but for now use:
+   max_reqs = ens_size * 2 * total_tasks
+   allocate(req(max_reqs), status_array(MPI_STATUS_SIZE, max_reqs), &
+            stat=errcode)
+   if (errcode /= 0) stop
+
+   ! can put timing loop here if needed
+   k = 0
+
+   ! if my observation, i am root
+   root = index_list(index)
+   print *, "b3a: index = ", index, "list = ", index_list(index), "root = ", root
+
+   if (root == myrank) then
+      single_increment_vals(:) = (myrank+1) * 1.1
+      single_prior_distrib_vals(:) = 0.5
+      iam_root = .TRUE.
+   else
+      single_increment_vals(:) = -1
+      single_prior_distrib_vals(:) = -1
+      iam_root = .FALSE.
+   endif
+
+   ! we aren't using the tags right now but generate something which would
+   ! be unique if it turns out to be necessary.  the 2 below is number of
+   ! messages each send generates; if that changes it needs to be bumped up.
+   tag = index * 2 * total_tasks
+
+   ! if i am not root, post a receive and go about computing things.
+   if (.not.iam_root) then
+
+      nextindex = 0
+
+      ! these are non-blocking so they return immediately; they do not
+      ! wait until the data arrives.
+      do i=1,ens_per_task
+         print *, "b3a: ", myrank, &
+                  "calling irecv for increments and distribution, root = ", &
+                  root
+         nextindex = nextindex + 1
+         call MPI_Irecv(single_increment_vals, ens_size, &
+                        MPI_DOUBLE_PRECISION, root, MPI_ANY_TAG, &
+                        my_local_comm, req(nextindex), errcode)
+         if (errcode /= MPI_SUCCESS) stop
+      
+         nextindex = nextindex + 1
+         call MPI_Irecv(single_prior_distrib_vals, ens_size, &
+                        MPI_DOUBLE_PRECISION, root, MPI_ANY_TAG, &
+                        my_local_comm, req(nextindex), errcode)
+         print *, "b3a: ", myrank, "back from irecvs"
+         if (errcode /= MPI_SUCCESS) stop
+
+      enddo
+    
+      inuse = nextindex
+
+      done = .FALSE.
+      do while (.not.done)
+         ! alternate computing and checking to see if the next value is here
+
+         ! compute here
+         k = k + 2
+
+         ! test to see if the data is back but if not, do not wait.  keep
+         ! computing until you have to wait.  this version of the routine
+         ! waits on the next value (which requires 2 receives).   if we 
+         ! want to wait on multiple values, we can use Testsome() instead
+         ! of Testall() and process them as they arrive.
+         call MPI_Testall(inuse, req, done, status_array, errcode)
+
+         ! if all done, testall sets 'done' flag to true
+         if (done) print *, "b3a: ", myrank, "testall says all receives done"
+
+         ! but prevent an infinite loop here on error
+         if (errcode /= MPI_SUCCESS) done = .TRUE.
+
+      enddo
+
+   else  
+      ! i am root this time -- compute my values and send them to the others.
+      ! this is using a sync send -- it will not return until everyone
+      ! else has received the data.  but since they should have already
+      ! posted async receives, this should return quickly.
+
+      nextindex = 0
+
+      ! TODO: this moves the right number of bytes, but does not have an
+      ! offset or multiple arrays for each set of increments.
+      do i=1,ens_per_task
+         print *, "b3a: ", myrank, &
+                  "calling send for increments and distribution, root = ", &
+                  root
+         do j=0,total_tasks-1
+            ! don't send to ourselves
+            if (j == myrank) cycle
+
+            nextindex = nextindex + 1
+            call MPI_Isend(single_increment_vals, ens_size, &
+                           MPI_DOUBLE_PRECISION, j, tag, my_local_comm, &
+                           req(nextindex), errcode)
+            if (errcode /= MPI_SUCCESS) stop
+         
+            nextindex = nextindex + 1
+            call MPI_Isend(single_prior_distrib_vals, ens_size, &
+                          MPI_DOUBLE_PRECISION, j, tag+1, my_local_comm, &
+                          req(nextindex), errcode)
+            print *, "b3a: ", myrank, "back from isends"
+            if (errcode /= MPI_SUCCESS) stop
+
+            tag = tag + 2
+         enddo
+   
+      enddo
+
+      inuse = nextindex
+
+      ! now wait here -- if we move the index loop into this routine, then
+      ! we can keep looping and overlap more.
+      call MPI_Waitall(inuse, req, status_array, errcode)
+      if (errcode /= MPI_SUCCESS) stop
+
+      print *, "b3a: ", myrank, "waitall says all sends done"
+
+   endif
+
+   ! get rid of temp space
+   deallocate(req, status_array, stat=errcode)
+   if (errcode /= 0) stop
+
+end subroutine broadcast3a
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
