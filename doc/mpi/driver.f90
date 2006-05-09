@@ -82,6 +82,7 @@ namelist /commtest_nml/ &
       ! multiple possible algorithm choices here.
       call transpose_ensemb_compl(M, N, L, P, QC, ensemble_complete_algorithm)
 
+      ! this loop might have to drop down into the broadcast routine.
       AssimLoop: do j=1, K
 
          ! each owner computes and sends in turn the increments
