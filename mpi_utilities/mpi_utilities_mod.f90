@@ -35,7 +35,9 @@ module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 ! 
 ! these do not exist - i believe a single transpose will work.  but if not,
-! they can be separated into these two:
+! they can be separated into these two, which can either work on a real
+! 2D array or a single linearized array which is logically 2D but in reality
+! stored in a 1D fortran array:
 !
 !      transpose_row_major()  Subroutine which transposes a logical 2D array
 !                             from column-major to row-major.  The source and
@@ -112,7 +114,21 @@ contains
 
 subroutine initialize_mpi_utilities()
 
+! Initialize MPI and query it for global information.  Make a duplicate
+! communicator so that any user code which wants to call MPI will not 
+! interfere with any outstanding asynchronous requests, accidental tag
+! matches, etc.  This routine must be called before any other routine in
+! this file, and it should not be called more than once (but it does have
+! defensive code in case that happens.)
+
 integer :: errcode
+
+if ( module_initialized ) then
+   ! return without calling the code below multiple times
+   write(errstring, *) 'initialize_mpi_utilities has already been called'
+   call error_handler(E_WARN,'initialize_mpi_utilities', errstring, source, revision, revdate)
+   return
+endif
 
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities
@@ -123,7 +139,7 @@ endif
 errcode = -999
 call MPI_Init(errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Init returned error, code = ', errcode
+   write(errstring, '(a, i8)') 'MPI_Init returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
@@ -156,6 +172,14 @@ end subroutine initialize_mpi_utilities
 
 subroutine finalize_mpi_utilities
 
+! Shut down MPI cleanly.  This must be done before the program exits; on
+! some implementations of MPI the final I/O flushes are not done until this
+! is called.  We may need to offer an option for us to release our
+! communicator but not finalize the entire MPI library if the user is also
+! using MPI.  Possible solutions are either to add a flag to this routine
+! or to instruct users to not call anything which calls this until their
+! code is also done with MPI.
+
 integer :: errcode
 
 if ( .not. module_initialized ) then
@@ -183,10 +207,10 @@ end subroutine finalize_mpi_utilities
 
 function task_count
 
-! returns total number of MPI tasks.  e.g. if the number of tasks is 4,
-! it returns 4.  the actual task numbers are 0-3.
-
 integer :: task_count
+
+! Return the total number of MPI tasks.  e.g. if the number of tasks is 4,
+! it returns 4.  (The actual task numbers are 0-3.)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -204,6 +228,9 @@ function my_task_id
 
 integer :: my_task_id
 
+! Return my unique task id.  Values run from 0 to N-1 (where N is the
+! total number of MPI tasks.
+
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'my_task_id', errstring, source, revision, revdate)
@@ -218,6 +245,7 @@ end function my_task_id
 
 subroutine transpose_array
 
+! not implemented here yet.  will have arguments -- several of them.
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
