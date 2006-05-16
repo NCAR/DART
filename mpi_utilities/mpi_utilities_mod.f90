@@ -16,22 +16,36 @@ module mpi_utilities_mod
 !   A collection of interfaces to the MPI (Message Passing Interface)
 !   multi-processor communication library routines.
 !
-!      initialize_mpi_utilities()  Subroutine that initializes MPI and sets
+!  *** initialize_mpi_utilities()  Subroutine that initializes MPI and sets
 !                                  local values needed later.  Must be called
 !                                  before any other routine here.
 !
-!      finalize_mpi_utilities()  Subroutine that shuts down MPI cleanly.
+!  *** finalize_mpi_utilities()  Subroutine that shuts down MPI cleanly.
 !                                Must be called before program exits, and no
 !                                other routines here can be used afterwards.
 !
-!      task_count()    Function that returns the total number of MPI tasks.
+!  *** task_count()    Function that returns the total number of MPI tasks.
 !
-!      my_task_id()    Function that returns my task number.  Note that
+!  *** my_task_id()    Function that returns my task number.  Note that
 !                      in the MPI world task numbers run from 0 to N-1.
 !
-!      transpose_array()  Subroutine which transposes a 2D array
+!    * transpose_array()  Subroutine that transposes a 2D array
 !                         from column-major to row-major or back.
+!
+!  *** task_sync()        Subroutine that only returns after every task has
+!                         reached this same location in the code.
 !        
+!  *** array_broadcast()  Subroutine that sends a copy of the entire data 
+!                         array to all other tasks. 
+!                
+!   ** array_distribute() Subroutine that distributes a data array across the
+!                         other tasks, so each task gets a non-overlapping 
+!                         subset of the data.
+!                
+! *** both code and interface are done (but untested so far)
+!  ** interface with proposed arguments exists but code not complete
+!   * interface name only; no arg list devised yet 
+!
 !-----------------------------------------------------------------------------
 ! 
 ! these do not exist - i believe a single transpose will work.  but if not,
@@ -58,7 +72,7 @@ use utilities_mod, only : register_module, error_handler, &
 !
 ! Some MPI installations have an MPI module; if one is present, use that.
 ! If not, there will be an MPI include file which defines the parameters.
-! Use one but not both.  For more help on compiling a module which uses MPI
+! Use one but not both.  For help on compiling a module which uses MPI
 ! see the $DART/doc/mpi directory.
 
 !use mpi
@@ -74,7 +88,7 @@ include "mpif.h"
 integer :: myrank          ! my mpi number
 integer :: total_tasks     ! total mpi tasks/procs
 integer :: my_local_comm   ! duplicate communicator private to this file
-!!integer :: comm_size     ! if ens count < tasks, only the first N participate
+integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 !!! probably not needed; most of these are in the ensemble_handle.  but i just
 !!! copied them all over from my test program "in case".  delete as it is clear
@@ -91,7 +105,8 @@ integer :: my_local_comm   ! duplicate communicator private to this file
 
 
 public :: total_tasks, my_task_id, transpose_array, &
-          initialize_mpi_utilities, finalize_mpi_utilities
+          initialize_mpi_utilities, finalize_mpi_utilities, &
+          task_sync, array_broadcast, array_distribute
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -122,6 +137,7 @@ subroutine initialize_mpi_utilities()
 ! defensive code in case that happens.)
 
 integer :: errcode
+logical :: already
 
 if ( module_initialized ) then
    ! return without calling the code below multiple times
@@ -136,33 +152,51 @@ if ( .not. module_initialized ) then
    module_initialized = .true.
 endif
 
-errcode = -999
-call MPI_Init(errcode)
+! allow for the possibility that the user code has already initialized
+! the MPI libs and do not try to call initialize again.
+
+call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Init returned error code ', errcode
+   write(errstring, '(a, i8)') 'MPI_Initialized returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
+! generally this will be the first use of mpi and this code will be executed.
+if (.not.already) then
+   errcode = -999
+   call MPI_Init(errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a, i8)') 'MPI_Init returned error code ', errcode
+      call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
+   endif
+endif
+
 ! duplicate the world communicator to isolate us from any other user
-! calls to MPI.  All subsequent mpi calls will use the local communicator
-! and not world.
+! calls to MPI.  All subsequent mpi calls here will use the local communicator
+! and not the global world comm.
 call MPI_Comm_dup(MPI_COMM_WORLD, my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a, i8)') 'MPI_Comm_dup returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
+! find out who we are (0 to N-1).
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a, i8)') 'MPI_Comm_rank returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
+! number of tasks (if 10, returns 10.  task id numbers go from 0-9)
 call MPI_Comm_size(my_local_comm, total_tasks, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a, i8)') 'MPI_Comm_size returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
+
+! TODO: if there are fewer ensembles than tasks, all the collective routines
+! need to take that into account and not participate if they are > comm_size.
+comm_size = total_tasks
 
 ! MPI successfully initialized.
 
@@ -170,33 +204,50 @@ end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------
 
-subroutine finalize_mpi_utilities
+subroutine finalize_mpi_utilities(callfinalize)
+ logical, intent(in), optional :: callfinalize
 
 ! Shut down MPI cleanly.  This must be done before the program exits; on
 ! some implementations of MPI the final I/O flushes are not done until this
-! is called.  We may need to offer an option for us to release our
-! communicator but not finalize the entire MPI library if the user is also
-! using MPI.  Possible solutions are either to add a flag to this routine
-! or to instruct users to not call anything which calls this until their
-! code is also done with MPI.
+! is called.  The optional argument can prevent us from calling MPI_Finalize,
+! so that user code can continue to use MPI after this returns.  For good
+! coding practice you should not call any other routines in this file
+! after calling this routine.
 
 integer :: errcode
+logical :: dofinalize
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
+! Release the private communicator we created at init time.
 call MPI_Comm_free(my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a, i8)') 'MPI_Comm_free returned error code ', errcode
    call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
-call MPI_Finalize(errcode)
-if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Finalize returned error code ', errcode
-   call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
+! If the optional argument is not given, or is given and is true, 
+! shut down mpi.  Only if the argument is specified and is false do we
+! skip the finalization.
+if (.not.present(callfinalize)) then
+   dofinalize = .TRUE.
+else if (callfinalize) then
+   dofinalize = .TRUE.
+else
+   dofinalize = .FALSE.
+endif
+
+! Normally we shut down MPI here.  If the user tells us not to shut down MPI
+! they must call this routine from their own code before exiting.
+if (dofinalize) then
+   call MPI_Finalize(errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a, i8)') 'MPI_Finalize returned error code ', errcode
+      call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
+   endif
 endif
 
 
@@ -205,12 +256,12 @@ end subroutine finalize_mpi_utilities
 
 !-----------------------------------------------------------------------------
 
-function task_count
-
-integer :: task_count
+function task_count()
 
 ! Return the total number of MPI tasks.  e.g. if the number of tasks is 4,
 ! it returns 4.  (The actual task numbers are 0-3.)
+
+integer :: task_count
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -224,12 +275,12 @@ end function task_count
 
 !-----------------------------------------------------------------------------
 
-function my_task_id
-
-integer :: my_task_id
+function my_task_id()
 
 ! Return my unique task id.  Values run from 0 to N-1 (where N is the
 ! total number of MPI tasks.
+
+integer :: my_task_id
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -242,6 +293,32 @@ end function my_task_id
 
 
 !-----------------------------------------------------------------------------
+
+subroutine task_sync()
+
+! Synchronize all tasks.  This subroutine does not return until all tasks
+! execute this line of code.
+
+integer :: errcode
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
+endif
+
+call MPI_Barrier(my_local_comm, errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a, i8)') 'MPI_Barrier returned error code ', errcode
+   call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
+endif
+
+end subroutine task_sync
+
+
+!-----------------------------------------------------------------------------
+! TODO: do i need to overload this for both integer and real?
+!       do i need to handle 1D, 2D, 3D inputs?
+
 
 subroutine transpose_array
 
@@ -256,6 +333,175 @@ write(errstring, *) 'not implemented yet'
 call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
 
 end subroutine transpose_array
+
+
+!-----------------------------------------------------------------------------
+! TODO: do i need to overload this for both integer and real?
+!       do i need to handle 2D inputs?
+
+subroutine array_broadcast(array, root)
+ real(r8), intent(inout) :: array(:)
+ integer, intent(in) :: root
+
+! The data array values on the root task will be broadcast to every other
+! task.  When this routine returns, all tasks will have the contents of the
+! root array in their own arrays.  Thus 'array' is intent(in) on root, and
+! intent(out) on all other tasks.
+
+integer :: itemcount, datasize, errcode
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+!!write(errstring, *) 'not implemented yet'
+!!call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+
+! simple idiotproofing
+if ((root < 0) .or. (root >= total_tasks)) then
+   write(errstring, '(i8, a, i8)') root, "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+itemcount = size(array)
+print *, "kind = ", kind(array(1))
+print *, "digits = ", digits(array(1))
+! TODO: FIX THIS based on what kind and digits say
+datasize = MPI_DOUBLE_PRECISION
+
+call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a, i8)') 'MPI_Bcast returned error code ', errcode
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+end subroutine array_broadcast
+
+
+!-----------------------------------------------------------------------------
+! TODO: do i need to overload this for both integer and real?
+!       do i need to handle 2D inputs?
+
+subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
+ real(r8), intent(in) :: srcarray(:)
+ integer, intent(in) :: root
+ real(r8), intent(out) :: dstarray(:)
+ integer, intent(out) :: dstcount
+ integer, intent(in) :: how
+ integer, intent(out) :: which(:)
+
+! 'srcarray' on the root task will be distributed across all the tasks
+! into 'dstarray'.  dstarray must be large enough to hold each task's share
+! of the data.  The actual number of values returned on each task will be
+! passed back in the 'count' argument.  'how' is a flag to select how to
+! distribute the data (round-robin, contiguous chunks, etc).  'which' is an
+! integer index array which lists which of the original values were selected
+! and put into 'dstarray'.
+
+real(r8), allocatable :: localchunk(:)
+integer :: srccount, datasize, leftover
+integer :: i, tag, errcode
+logical :: iamroot
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'array_distribute', errstring, source, revision, revdate)
+endif
+
+!!write(errstring, *) 'not implemented yet'
+!!call error_handler(E_ERR,'array_distribute', errstring, source, revision, revdate)
+
+! simple idiotproofing
+if ((root < 0) .or. (root >= total_tasks)) then
+   write(errstring, '(i8, a, i8)') root, "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+iamroot = (root == myrank)
+tag = 1
+
+srccount = size(srcarray)
+print *, "kind = ", kind(srcarray(1))
+print *, "digits = ", digits(srcarray(1))
+! TODO: FIX THIS based on what kind and digits say
+datasize = MPI_DOUBLE_PRECISION
+
+! TODO: right now this code does contig chunks only
+! TODO: it should select on the 'how' argument
+dstcount = srccount / total_tasks
+leftover = srccount - (dstcount * total_tasks)
+if (myrank == total_tasks-1) dstcount = dstcount + leftover
+
+
+! idiotproofing, continued...
+if (size(dstarray) < dstcount) then
+   write(errstring, '(a, i8, a, i8)') "size of dstarray is", size(dstarray), & 
+                      " but must be >= ", dstcount
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+if (size(which) < dstcount) then
+   write(errstring, '(a, i8, a, i8)') "size of which is", size(which), & 
+                      " but must be >= ", dstcount
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+! TODO: this code is separate from the 'dstcount' computation because we
+! need to test to be sure the user has passed us in arrays large enough to
+! hold the data, but then this section needs to have a select (how) and set
+! the corresponding index numbers accordingly.
+which(1:dstcount) = (/ (i, i= myrank *dstcount, (myrank+1)*dstcount - 1) /)
+if (size(which) > dstcount) which(dstcount+1:) = -1
+   
+
+if (.not.iamroot) then
+
+   ! my task is receiving data.
+   call MPI_Recv(dstarray, dstcount, datasize, root, MPI_ANY_TAG, &
+	          my_local_comm, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a, i8)') 'MPI_Recv returned error code ', errcode
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
+
+else
+   ! my task must send to everyone else and copy to myself.
+   allocate(localchunk(dstcount), stat=errcode)  
+   if (errcode /= 0) then
+      write(errstring, *) 'allocation error of allocatable array'
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
+
+   do i=0, total_tasks-1
+      ! copy correct data from srcarray to localchunk for each destination
+      if (i == myrank) then
+         ! this is my task, so do a copy from localchunk to dstarray
+         dstarray(1:dstcount) = localchunk(1:dstcount)
+      else
+         ! call MPI to send the data to the remote task
+         call MPI_Send(localchunk, dstcount, datasize, i, tag, &
+   	               my_local_comm, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a, i8)') 'MPI_Send returned error code ', errcode
+            call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+         endif
+      endif
+      tag = tag + 1
+   enddo
+
+   deallocate(localchunk, stat=errcode)  
+   if (errcode /= 0) then
+      write(errstring, *) 'deallocation error of allocatable array'
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
+endif
+   
+! set any additional space which wasn't filled with zeros.
+if (size(dstarray) > dstcount) dstarray(dstcount+1:) = 0.0
+
+
+
+end subroutine array_distribute
 
 
 !-----------------------------------------------------------------------------
