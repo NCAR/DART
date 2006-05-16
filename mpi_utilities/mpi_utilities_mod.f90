@@ -24,17 +24,23 @@ module mpi_utilities_mod
 !                                Must be called before program exits, and no
 !                                other routines here can be used afterwards.
 !
-!  *** task_count()    Function that returns the total number of MPI tasks.
+!  *** task_count()       Function that returns the total number of MPI tasks.
 !
-!  *** my_task_id()    Function that returns my task number.  Note that
-!                      in the MPI world task numbers run from 0 to N-1.
+!  *** my_task_id()       Function that returns my task number.  Note that
+!                         in the MPI world task numbers run from 0 to N-1.
 !
-!    * transpose_array()  Subroutine that transposes a 2D array
-!                         from column-major to row-major or back.
+!  *** send_to()          Subroutine which sends a 1D slice of a 2D array
+!                         synchronously to another task (point-to-point).
+!
+!  *** receive_from()     Subroutine which receives a 1D slice of a 2D array
+!                         synchronously from another task (point-to-point).
 !
 !  *** task_sync()        Subroutine that only returns after every task has
 !                         reached this same location in the code.
 !        
+!    * transpose_array()  Subroutine that transposes a 2D array
+!                         from column-major to row-major or back.
+!
 !  *** array_broadcast()  Subroutine that sends a copy of the entire data 
 !                         array to all other tasks. 
 !                
@@ -68,6 +74,7 @@ module mpi_utilities_mod
 use types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG
+use time_manager_mod, only : time_type, get_time, set_time
 
 !
 ! Some MPI installations have an MPI module; if one is present, use that.
@@ -106,7 +113,8 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: total_tasks, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          task_sync, array_broadcast, array_distribute
+          task_sync, array_broadcast, array_distribute, &
+          send_to, receive_from
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -157,7 +165,7 @@ endif
 
 call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Initialized returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Initialized returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
@@ -166,7 +174,7 @@ if (.not.already) then
    errcode = -999
    call MPI_Init(errcode)
    if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a, i8)') 'MPI_Init returned error code ', errcode
+      write(errstring, '(a,i8)') 'MPI_Init returned error code ', errcode
       call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
    endif
 endif
@@ -176,21 +184,21 @@ endif
 ! and not the global world comm.
 call MPI_Comm_dup(MPI_COMM_WORLD, my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Comm_dup returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Comm_dup returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
 ! find out who we are (0 to N-1).
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Comm_rank returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Comm_rank returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
 ! number of tasks (if 10, returns 10.  task id numbers go from 0-9)
 call MPI_Comm_size(my_local_comm, total_tasks, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Comm_size returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Comm_size returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
@@ -225,7 +233,7 @@ endif
 ! Release the private communicator we created at init time.
 call MPI_Comm_free(my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Comm_free returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Comm_free returned error code ', errcode
    call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
@@ -245,7 +253,7 @@ endif
 if (dofinalize) then
    call MPI_Finalize(errcode)
    if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a, i8)') 'MPI_Finalize returned error code ', errcode
+      write(errstring, '(a,i8)') 'MPI_Finalize returned error code ', errcode
       call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
    endif
 endif
@@ -308,11 +316,148 @@ endif
 
 call MPI_Barrier(my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Barrier returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Barrier returned error code ', errcode
    call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
 endif
 
 end subroutine task_sync
+
+
+!-----------------------------------------------------------------------------
+
+subroutine send_to(dest_id, local_index, srcarray, time)
+ integer, intent(in) :: dest_id
+ integer, intent(in) :: local_index
+ real(r8), intent(in) :: srcarray(:,:)
+ type(time_type), intent(in), optional :: time
+
+! Send a slice of srcarray to the destination id.  local_index selects which
+! slice to send.  If time is specified, it is also sent in a separate 
+! communications call.  This is a synchronous call; it will not return
+! until the destination has called receive to accept the data.  If the
+! send_to/recieve_from calls are not paired correctly the code will hang.
+
+integer :: i, tag, errcode
+integer :: datasize
+integer :: itime(2)
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+endif
+
+!!write(errstring, *) 'not implemented yet'
+!!call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+
+! simple idiotproofing
+if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "destination task id ", dest_id, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+endif
+if ((local_index <= 0) .or. (local_index > size(srcarray, 1))) then
+   write(errstring, '(a,i8,a,i8)') "local_index ", local_index, &
+                                   "must be > 0 and <= ", size(srcarray, 1)
+   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+endif
+
+!print *, "kind = ", kind(srcarray(1))
+!print *, "digits = ", digits(srcarray(1))
+! TODO: FIX THIS based on what kind and digits say
+datasize = MPI_DOUBLE_PRECISION
+
+! use my task id as the tag; unused at this point.
+tag = myrank
+
+! call MPI to send the data to the remote task
+call MPI_Send(srcarray(local_index, :), size(srcarray, 1), datasize, &
+              dest_id, tag, my_local_comm, errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
+   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+endif
+
+! if time specified, call MPI again to send the 2 time ints.
+if (present(time)) then
+   call get_time(time, itime(1), itime(2))
+   call MPI_Send(itime, 2, MPI_INTEGER, dest_id, tag*2, my_local_comm, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
+      call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+   endif
+endif
+
+
+end subroutine send_to
+
+
+!-----------------------------------------------------------------------------
+
+subroutine receive_from(src_id, local_index, destarray, time)
+ integer, intent(in) :: src_id
+ integer, intent(in) :: local_index
+ real(r8), intent(inout) :: destarray(:,:)
+ type(time_type), intent(out), optional :: time
+
+! Receive a slice from the src id and put it into destarray.  local_index
+! selects which slice to replace.  If time is specified in the matching
+! send_to() call it must also be specified here and the time is received
+! and put into time.  This is a synchronous call; it will not return
+! until the src data have been received. If the send_to/receive_from
+! calls are not paired correctly the code will hang.
+
+integer :: i, tag, errcode
+integer :: datasize
+integer :: itime(2)
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+endif
+
+!!write(errstring, *) 'not implemented yet'
+!!call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+
+! simple idiotproofing
+if ((src_id < 0) .or. (src_id >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "source task id ", src_id, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+endif
+if ((local_index <= 0) .or. (local_index > size(destarray, 1))) then
+   write(errstring, '(a,i8,a,i8)') "local_index ", local_index, &
+                                   "must be > 0 and <= ", size(destarray, 1)
+   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+endif
+
+!print *, "kind = ", kind(destarray(1))
+!print *, "digits = ", digits(destarray(1))
+! TODO: FIX THIS based on what kind and digits say
+datasize = MPI_DOUBLE_PRECISION
+
+! send_to uses its own id as the tag.
+tag = src_id
+
+! call MPI to receive the data from the remote task
+call MPI_Recv(destarray(local_index, :), size(destarray, 1), datasize, &
+              src_id, tag, my_local_comm, errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+endif
+
+! if time specified, call MPI again to send the 2 time ints.
+if (present(time)) then
+   call MPI_Recv(itime, 2, MPI_INTEGER, src_id, tag*2, my_local_comm, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+      call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+   endif
+   time = set_time(itime(1), itime(2))
+endif
+
+
+end subroutine receive_from
 
 
 !-----------------------------------------------------------------------------
@@ -360,7 +505,8 @@ endif
 
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
-   write(errstring, '(i8, a, i8)') root, "must be >= 0 and < ", total_tasks
+   write(errstring, '(a,i8,a,i8)') "root task id ", root, &
+                                   "must be >= 0 and < ", total_tasks
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
@@ -372,7 +518,7 @@ datasize = MPI_DOUBLE_PRECISION
 
 call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a, i8)') 'MPI_Bcast returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Bcast returned error code ', errcode
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
@@ -414,7 +560,8 @@ endif
 
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
-   write(errstring, '(i8, a, i8)') root, "must be >= 0 and < ", total_tasks
+   write(errstring, '(a,i8,a,i8)') "root task id ", root, &
+                                   "must be >= 0 and < ", total_tasks
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
@@ -436,12 +583,12 @@ if (myrank == total_tasks-1) dstcount = dstcount + leftover
 
 ! idiotproofing, continued...
 if (size(dstarray) < dstcount) then
-   write(errstring, '(a, i8, a, i8)') "size of dstarray is", size(dstarray), & 
+   write(errstring, '(a,i8,a,i8)') "size of dstarray is", size(dstarray), & 
                       " but must be >= ", dstcount
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 if (size(which) < dstcount) then
-   write(errstring, '(a, i8, a, i8)') "size of which is", size(which), & 
+   write(errstring, '(a,i8,a,i8)') "size of which is", size(which), & 
                       " but must be >= ", dstcount
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
@@ -460,7 +607,7 @@ if (.not.iamroot) then
    call MPI_Recv(dstarray, dstcount, datasize, root, MPI_ANY_TAG, &
 	          my_local_comm, errcode)
    if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a, i8)') 'MPI_Recv returned error code ', errcode
+      write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
       call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
    endif
 
@@ -482,7 +629,7 @@ else
          call MPI_Send(localchunk, dstcount, datasize, i, tag, &
    	               my_local_comm, errcode)
          if (errcode /= MPI_SUCCESS) then
-            write(errstring, '(a, i8)') 'MPI_Send returned error code ', errcode
+            write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
             call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
          endif
       endif
