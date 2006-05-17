@@ -111,7 +111,7 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 !!integer :: max_print     ! limit for value dumps
 
 
-public :: total_tasks, my_task_id, transpose_array, &
+public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
           task_sync, array_broadcast, array_distribute, &
           send_to, receive_from
