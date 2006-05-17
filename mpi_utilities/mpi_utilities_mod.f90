@@ -29,10 +29,10 @@ module mpi_utilities_mod
 !  *** my_task_id()       Function that returns my task number.  Note that
 !                         in the MPI world task numbers run from 0 to N-1.
 !
-!  *** send_to()          Subroutine which sends a 1D slice of a 2D array
+!  *** send_to()          Subroutine which sends a 1D data array
 !                         synchronously to another task (point-to-point).
 !
-!  *** receive_from()     Subroutine which receives a 1D slice of a 2D array
+!  *** receive_from()     Subroutine which receives a 1D data array
 !                         synchronously from another task (point-to-point).
 !
 !  *** task_sync()        Subroutine that only returns after every task has
@@ -325,17 +325,16 @@ end subroutine task_sync
 
 !-----------------------------------------------------------------------------
 
-subroutine send_to(dest_id, local_index, srcarray, time)
+subroutine send_to(dest_id, srcarray, time)
  integer, intent(in) :: dest_id
- integer, intent(in) :: local_index
- real(r8), intent(in) :: srcarray(:,:)
+ real(r8), intent(in) :: srcarray(:)
  type(time_type), intent(in), optional :: time
 
-! Send a slice of srcarray to the destination id.  local_index selects which
-! slice to send.  If time is specified, it is also sent in a separate 
-! communications call.  This is a synchronous call; it will not return
-! until the destination has called receive to accept the data.  If the
-! send_to/recieve_from calls are not paired correctly the code will hang.
+! Send the srcarray to the destination id.
+! If time is specified, it is also sent in a separate communications call.  
+! This is a synchronous call; it will not return until the destination has 
+! called receive to accept the data.  If the send_to/receive_from calls are 
+! not paired correctly the code will hang.
 
 integer :: i, tag, errcode
 integer :: datasize
@@ -355,11 +354,6 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
                                    "must be >= 0 and < ", total_tasks
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
-if ((local_index <= 0) .or. (local_index > size(srcarray, 1))) then
-   write(errstring, '(a,i8,a,i8)') "local_index ", local_index, &
-                                   "must be > 0 and <= ", size(srcarray, 1)
-   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
-endif
 
 !print *, "kind = ", kind(srcarray(1))
 !print *, "digits = ", digits(srcarray(1))
@@ -370,8 +364,8 @@ datasize = MPI_DOUBLE_PRECISION
 tag = myrank
 
 ! call MPI to send the data to the remote task
-call MPI_Send(srcarray(local_index, :), size(srcarray, 1), datasize, &
-              dest_id, tag, my_local_comm, errcode)
+call MPI_Send(srcarray, size(srcarray), datasize, dest_id, tag, &
+              my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
@@ -393,18 +387,16 @@ end subroutine send_to
 
 !-----------------------------------------------------------------------------
 
-subroutine receive_from(src_id, local_index, destarray, time)
+subroutine receive_from(src_id, destarray, time)
  integer, intent(in) :: src_id
- integer, intent(in) :: local_index
- real(r8), intent(inout) :: destarray(:,:)
+ real(r8), intent(inout) :: destarray(:)
  type(time_type), intent(out), optional :: time
 
-! Receive a slice from the src id and put it into destarray.  local_index
-! selects which slice to replace.  If time is specified in the matching
-! send_to() call it must also be specified here and the time is received
-! and put into time.  This is a synchronous call; it will not return
-! until the src data have been received. If the send_to/receive_from
-! calls are not paired correctly the code will hang.
+! Receive data into the destination array from the src task.
+! If time is specified, it is received in a separate communications call.  
+! This is a synchronous call; it will not return until the source has 
+! sent the data.  If the send_to/receive_from calls are not paired correctly 
+! the code will hang.
 
 integer :: i, tag, errcode
 integer :: datasize
@@ -424,11 +416,6 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
                                    "must be >= 0 and < ", total_tasks
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
-if ((local_index <= 0) .or. (local_index > size(destarray, 1))) then
-   write(errstring, '(a,i8,a,i8)') "local_index ", local_index, &
-                                   "must be > 0 and <= ", size(destarray, 1)
-   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
-endif
 
 !print *, "kind = ", kind(destarray(1))
 !print *, "digits = ", digits(destarray(1))
@@ -439,8 +426,8 @@ datasize = MPI_DOUBLE_PRECISION
 tag = src_id
 
 ! call MPI to receive the data from the remote task
-call MPI_Recv(destarray(local_index, :), size(destarray, 1), datasize, &
-              src_id, tag, my_local_comm, errcode)
+call MPI_Recv(destarray, size(destarray), datasize, src_id, tag, &
+              my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
