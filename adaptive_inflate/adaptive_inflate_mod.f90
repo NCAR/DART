@@ -139,11 +139,14 @@ integer :: restart_unit, restart_model_size, required_size
 call adaptive_inflate_init()
 
 ! If spatially varying state space, allocate storage
-if(do_varying_ss_inflate) allocate(ss_inflate(model_size), ss_inflate_sd(model_size))
-if(do_single_ss_inflate) allocate(ss_inflate(1), ss_inflate_sd(1))
-
-! Only do state space initialization here
-if(do_obs_inflate) return
+if(do_varying_ss_inflate) then
+   allocate(ss_inflate(model_size), ss_inflate_sd(model_size))
+else if(do_single_ss_inflate) then
+   allocate(ss_inflate(1), ss_inflate_sd(1))
+else
+   ! either do_obs_inflation or no inflation 
+   return
+endif
 
 ! Read in initial values from file OR get from namelist as requested
 ! Initially, file is binary only
@@ -230,6 +233,10 @@ subroutine adaptive_inflate_end
 
 integer :: restart_unit
 
+! if no inflation, no restart file
+if(.not.do_obs_inflate .and. .not.do_varying_ss_inflate .and. &
+   .not.do_single_ss_inflate) return
+
 ! Write restart files if requested
 if(output_restart) then
    ! Open the file
@@ -247,7 +254,7 @@ if(output_restart) then
    endif
 endif
 
-if(do_varying_ss_inflate) then
+if(do_varying_ss_inflate .or. do_single_ss_inflate) then
    deallocate(ss_inflate, ss_inflate_sd)
 else if(do_obs_inflate) then
    deallocate(obs_inflate, obs_inflate_sd)
