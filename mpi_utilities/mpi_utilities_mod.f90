@@ -364,19 +364,19 @@ datasize = MPI_DOUBLE_PRECISION
 tag = myrank
 
 ! call MPI to send the data to the remote task
-call MPI_Send(srcarray, size(srcarray), datasize, dest_id, tag, &
+call MPI_Ssend(srcarray, size(srcarray), datasize, dest_id, tag, &
               my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
+   write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
 
 ! if time specified, call MPI again to send the 2 time ints.
 if (present(time)) then
    call get_time(time, itime(1), itime(2))
-   call MPI_Send(itime, 2, MPI_INTEGER, dest_id, tag*2, my_local_comm, errcode)
+   call MPI_Ssend(itime, 2, MPI_INTEGER, dest_id, tag*2, my_local_comm, errcode)
    if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
+      write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
       call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
    endif
 endif
@@ -389,7 +389,7 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time)
  integer, intent(in) :: src_id
- real(r8), intent(inout) :: destarray(:)
+ real(r8), intent(out) :: destarray(:)
  type(time_type), intent(out), optional :: time
 
 ! Receive data into the destination array from the src task.
@@ -401,6 +401,8 @@ subroutine receive_from(src_id, destarray, time)
 integer :: i, tag, errcode
 integer :: datasize
 integer :: itime(2)
+real(r8), pointer :: temparray(:)
+integer :: status(MPI_STATUS_SIZE)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -426,8 +428,8 @@ datasize = MPI_DOUBLE_PRECISION
 tag = src_id
 
 ! call MPI to receive the data from the remote task
-call MPI_Recv(destarray, size(destarray), datasize, src_id, tag, &
-              my_local_comm, errcode)
+call MPI_Recv(destarray, size(destarray), datasize, src_id, MPI_ANY_TAG, &
+              my_local_comm, status, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
@@ -435,7 +437,8 @@ endif
 
 ! if time specified, call MPI again to send the 2 time ints.
 if (present(time)) then
-   call MPI_Recv(itime, 2, MPI_INTEGER, src_id, tag*2, my_local_comm, errcode)
+   call MPI_Recv(itime, 2, MPI_INTEGER, src_id, tag*2, &
+                 my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
       call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
@@ -536,6 +539,7 @@ real(r8), allocatable :: localchunk(:)
 integer :: srccount, datasize, leftover
 integer :: i, tag, errcode
 logical :: iamroot
+integer :: status(MPI_STATUS_SIZE)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -592,7 +596,7 @@ if (.not.iamroot) then
 
    ! my task is receiving data.
    call MPI_Recv(dstarray, dstcount, datasize, root, MPI_ANY_TAG, &
-	          my_local_comm, errcode)
+	          my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
       call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
@@ -613,10 +617,10 @@ else
          dstarray(1:dstcount) = localchunk(1:dstcount)
       else
          ! call MPI to send the data to the remote task
-         call MPI_Send(localchunk, dstcount, datasize, i, tag, &
+         call MPI_Ssend(localchunk, dstcount, datasize, i, tag, &
    	               my_local_comm, errcode)
          if (errcode /= MPI_SUCCESS) then
-            write(errstring, '(a,i8)') 'MPI_Send returned error code ', errcode
+            write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
             call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
          endif
       endif
