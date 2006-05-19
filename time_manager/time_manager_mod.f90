@@ -2574,7 +2574,7 @@ SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
       write(file_unit) secs, days
    CASE DEFAULT
-      write(file_unit,'(i,1x,i)') secs, days
+      write(file_unit,'(i6,1x,i10)') secs, days
 END SELECT
 
 end subroutine write_time

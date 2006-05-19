@@ -678,19 +678,19 @@ if (sum(obs_used_in_epoch) == 0 ) then
 endif
 
 iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
-write(iunit,'(''iskip_days     = '',i,'';'')')iskip_days
-write(iunit,'(''obs_select     = '',i,'';'')')obs_select
-write(iunit,'(''rat_cri        = '',f,'';'')')rat_cri
-write(iunit,'(''qc_threshold   = '',f,'';'')')qc_threshold
-write(iunit,'(''bin_width_seconds = '',i,'';'')')bin_width_seconds
-write(iunit,'(''t1             = '',f,'';'')')epoch_center(1)
-write(iunit,'(''tN             = '',f,'';'')')epoch_center(Nepochs)
+write(iunit,'(''iskip_days     = '',i6,'';'')')iskip_days
+write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
+write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
+write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
+write(iunit,'(''bin_width_seconds = '',i5,'';'')')bin_width_seconds
+write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
+write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
 do iregion=1,Nregions
-   write(iunit,'(''lonlim1('',i,'') = '',f,'';'')')iregion, lonlim1(iregion)
-   write(iunit,'(''lonlim2('',i,'') = '',f,'';'')')iregion, lonlim2(iregion)
+   write(iunit,'(''lonlim1('',i3,'') = '',f9.2,'';'')')iregion, lonlim1(iregion)
+   write(iunit,'(''lonlim2('',i3,'') = '',f9.2,'';'')')iregion, lonlim2(iregion)
    write(iunit,47)iregion,trim(adjustl(reg_names(iregion)))
 enddo
-47 format('Regions(',i4,') = {''',a,'''};')
+47 format('Regions(',i3,') = {''',a,'''};')
 
 do iepoch = 1, Nepochs
    write(msgstring,'(''num obs used in epoch '',i5,'' = '',i8)') iepoch, obs_used_in_epoch(iepoch)
