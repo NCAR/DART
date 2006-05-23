@@ -67,7 +67,7 @@ subroutine setup(state_vector_size, ensemble_size, observation_size)
    integer, intent(in) :: state_vector_size, ensemble_size, observation_size
    integer :: errcode
 
-   print *, ""
+   print *, " "
    print *, "in setup"
  
    errcode = -999
@@ -115,7 +115,7 @@ subroutine setup(state_vector_size, ensemble_size, observation_size)
    endif
 
    print *, "MPI initialization completed successfully."
-   print *, ""
+   print *, " "
    
    ! end of mpi setup.  now copy values into local variables for later.
    state_size = state_vector_size
@@ -210,7 +210,7 @@ subroutine setup(state_vector_size, ensemble_size, observation_size)
    max_print = 100
 
    ! for the log, print out the values used.
-   print *, ""
+   print *, " "
    print *, "debug dump: "
    print *, "myrank = ", myrank
    print *, "total_tasks = ", total_tasks
@@ -225,7 +225,7 @@ subroutine setup(state_vector_size, ensemble_size, observation_size)
    print *, "ec_total_size = ", ec_total_size
    print *, "sc_total_size = ", sc_total_size
    print *, "max_print = ", max_print
-   print *, ""
+   print *, " "
 
    ! now allocate the proper amount of space and use the same buffers
    ! for all the subsequent routines.
@@ -250,7 +250,7 @@ subroutine setup(state_vector_size, ensemble_size, observation_size)
 
    ! all the interesting values are now precomputed.
    print *, "setup finished successfully: i am", myrank, "of", total_tasks
-   print *, ""
+   print *, " "
 
 end subroutine setup
 
@@ -260,7 +260,7 @@ end subroutine setup
 subroutine takedown
    integer :: errcode
 
-   print *, ""
+   print *, " "
    print *, "in takedown, iam ", myrank
   
    errcode = -999
@@ -296,7 +296,7 @@ subroutine takedown
    deallocate(single_prior_distrib_vals, stat=errcode)
    if (errcode /= 0) stop
 
-   print *, ""
+   print *, " "
 
 end subroutine takedown
 
@@ -309,7 +309,7 @@ subroutine broadcast_obs(observation_size)
 
    integer :: errcode, root
 
-   print *, ""
+   print *, " "
    print *, "in broadcast_obs, iam ", myrank
   
    root = 0
@@ -328,7 +328,7 @@ subroutine broadcast_obs(observation_size)
       stop
    endif
 
-   print *, ""
+   print *, " "
 
 end subroutine broadcast_obs
 
@@ -369,7 +369,7 @@ subroutine select1(state_vector_size, index_list, obs_size)
  
    integer :: i, errcode, region
 
-   print *, ""
+   print *, " "
    print *, "in select_1, iam ", myrank
 
    allocate(index_list(obs_size), stat=errcode)
@@ -385,7 +385,7 @@ subroutine select1(state_vector_size, index_list, obs_size)
    
    ! L contains the index values 
    print *, "Filled L with blocks of index values"
-   print *, ""
+   print *, " "
 
 end subroutine select1
 
@@ -400,7 +400,7 @@ subroutine select2(state_vector_size, index_list, obs_size)
 
    integer :: i, errcode
 
-   print *, ""
+   print *, " "
    print *, "in select_2, iam ", myrank
 
    allocate(index_list(obs_size), stat=errcode)
@@ -414,7 +414,7 @@ subroutine select2(state_vector_size, index_list, obs_size)
    
    ! L contains the index values 
    print *, "Filled L with cycling index values"
-   print *, ""
+   print *, " "
 
 end subroutine select2
 
@@ -469,7 +469,7 @@ subroutine transpose1(state_vector_size, ensemble_size, index_list, priors, qc)
    integer :: i, req(total_tasks)
    integer :: status(MPI_STATUS_SIZE)
 
-   print *, ""
+   print *, " "
    print *, "in transpose_1, iam ", myrank
 
    ! the 9.0 intel compiler does not recognize real() as an intrinsic?
@@ -521,7 +521,7 @@ subroutine transpose2(state_vector_size, ensemble_size, index_list, priors, qc)
    integer :: i, req(total_tasks*2)
    integer :: status_array(MPI_STATUS_SIZE, total_tasks*2)
 
-   print *, ""
+   print *, " "
    print *, "in transpose_2, iam ", myrank
 
    sc_vals = myrank * 1.0
@@ -571,7 +571,7 @@ subroutine transpose3(state_vector_size, ensemble_size, index_list, priors, qc)
    integer :: status_array(MPI_STATUS_SIZE, ens_size*2)
    integer :: stridetype, stride, region_size, base, offset
 
-   print *, ""
+   print *, " "
    print *, "in transpose_3, iam ", myrank
 
    stride = ens_size
@@ -633,7 +633,7 @@ subroutine transpose3(state_vector_size, ensemble_size, index_list, priors, qc)
    call MPI_Type_free(stridetype, errcode)
    if (errcode /= MPI_SUCCESS) stop
 
-   print *, ""
+   print *, " "
 
 end subroutine transpose3
 
@@ -688,7 +688,7 @@ subroutine transpose3a(state_vector_size, ensemble_size, index_list, priors, qc)
    integer :: status_array(MPI_STATUS_SIZE, ens_size*2)
    integer :: stridetype, stride, region_size, base, offset
 
-   print *, ""
+   print *, " "
    print *, "in transpose_3a, iam ", myrank
 
    stride = ens_size
@@ -750,7 +750,7 @@ subroutine transpose3a(state_vector_size, ensemble_size, index_list, priors, qc)
    call MPI_Type_free(stridetype, errcode)
    if (errcode /= MPI_SUCCESS) stop
 
-   print *, ""
+   print *, " "
 
 end subroutine transpose3a
 
@@ -795,7 +795,7 @@ subroutine broadcast1a(index, obs_count, index_list, ensemble_size)
 
    integer :: i, errcode, root
 
-   print *, ""
+   print *, " "
    print *, "in broadcast1a, iam ", myrank
 
 
@@ -846,11 +846,11 @@ subroutine broadcast2a(index, obs_count, index_list, ensemble_size)
    integer, pointer :: index_list(:)
 
    integer :: i, j, k, errcode, root
-   logical :: iam_root, done, tag
-   integer :: req(ens_size*2)
+   logical :: iam_root, done
+   integer :: req(ens_size*2), tag
    integer :: status_array(MPI_STATUS_SIZE, ens_size*2)
 
-   print *, ""
+   print *, " "
    print *, "in broadcast2a, iam ", myrank
 
 
@@ -972,12 +972,12 @@ subroutine broadcast3a(index, obs_count, index_list, ensemble_size)
    integer, pointer :: index_list(:)
 
    integer :: i, j, k, errcode, root
-   logical :: iam_root, done, tag, nextindex
-   integer :: max_reqs, inuse
+   logical :: iam_root, done
+   integer :: max_reqs, inuse, tag, nextindex
    integer, allocatable :: req(:)
    integer, allocatable :: status_array(:, :)
 
-   print *, ""
+   print *, " "
    print *, "in broadcast3a, iam ", myrank
 
    ! get the right amount of space for pending requests
@@ -1204,7 +1204,7 @@ subroutine array_print(label, iarray, darray)
       to_print = max_print
    endif
 
-   print *, ""
+   print *, " "
    print *, "iam ", myrank, label
    if (present(iarray)) then
       print "(10i7 /)", (iarray(i),i=1,to_print)
@@ -1213,7 +1213,7 @@ subroutine array_print(label, iarray, darray)
    else
       print *, "<no data>"
    endif
-   print *, ""
+   print *, " "
 
 end subroutine array_print
 
