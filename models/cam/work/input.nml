@@ -163,3 +163,8 @@
    print_mismatched_locs = .false.,
    verbose = .false.  /
 
+&merge_obs_seq_nml
+   filename_seq1 = 'obs_seq.one',
+   filename_seq2 = 'obs_seq.two',
+   filename_out  = 'obs_seq.merged'   /
+

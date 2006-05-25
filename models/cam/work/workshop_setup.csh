@@ -85,3 +85,5 @@ csh mkmf_trans_sv_pv
 make         || exit 13 
 csh mkmf_trans_time
 make         || exit 14
+csh mkmf_merge_obs_seq
+make         || exit 15
