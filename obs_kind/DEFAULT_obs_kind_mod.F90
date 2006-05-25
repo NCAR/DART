@@ -225,8 +225,8 @@ do i = 1, max_obs_kinds
 end do
 
 ! Error, didn't find this obs_def_index in the map
-write(err_string, *) 'Couldnt find obs_def_index ', obs_def_index, ' in obs_kind map'
-call error_handler(E_ERR, 'maps_def_index', err_string, source, revision, revdate)
+write(err_string, *) 'Could not find obs_def_index ', obs_def_index, ' in obs_kind map'
+call error_handler(E_ERR, 'map_def_index', err_string, source, revision, revdate)
 
 end function map_def_index
 
