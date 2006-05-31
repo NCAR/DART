@@ -48,6 +48,48 @@ module mpi_utilities_mod
 !                         other tasks, so each task gets a non-overlapping 
 !                         subset of the data.
 !                
+!   MPI cover routines more specific for DART and hopefully more useful.
+!
+!  *** iam_task0()        Function which returns .TRUE. if task id is 0,
+!                         .FALSE. for anything else.
+!
+!  *** broadcast_send()   Subroutine which takes two r8 arrays and broadcasts
+!                         them to all other tasks.  If sending ID is not the
+!                         same as the local task ID, an error is returned.
+!                         Does not return until all other tasks have called
+!                         recv to pick up the data.
+!
+!  *** broadcast_recv()   Subroutine which receives two r8 arrays from the 
+!                         sending task ID.  If the sending ID is the same as
+!                         the local task ID, an error is returned.  All other
+!                         tasks must call recv before this routine returns.
+!
+!   Lower level utility routines which interact with the utilities_mod.f90 
+!   code to open a named pipe per MPI task, read and write from them, and
+!   close and/or remove them.
+!
+!    * make_pipe()        Function that creates a named pipe (fifo), opens it,
+!                         and returns the unit number.  Ok to call if the pipe
+!                         already exists or is already open; it will skip
+!                         those steps and just return the unit number.  The 
+!                         name argument is used as a base and a filename
+!                         in the form 'base.NNNN' is generated, where the N's
+!                         are the MPI rank number, 0 padded.
+!
+!    * destroy_pipe()     The unit number is closed and the pipe file is 
+!                         removed.
+!
+!    * read_pipe()        The character string is read from the pipe.
+!                         (Can be overloaded to read ints if time or status
+!                         info is useful to exchange between processes.) 
+!                         This routine blocks until data is available.
+!
+!    * write_pipe()       The character string is written to the pipe.
+!                         (Can be overloaded to write ints if time or status
+!                         info is useful to exchange between processes.) 
+!                         This routine writes and returns immediately.
+!
+!
 ! *** both code and interface are done (but untested so far)
 !  ** interface with proposed arguments exists but code not complete
 !   * interface name only; no arg list devised yet 
@@ -114,7 +156,7 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
           task_sync, array_broadcast, array_distribute, &
-          send_to, receive_from
+          send_to, receive_from, iam_task0, broadcast_send, broadcast_recv
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -133,6 +175,8 @@ character(len = 129) :: errstring
 
 contains
 
+!-----------------------------------------------------------------------------
+! mpi cover routines
 !-----------------------------------------------------------------------------
 
 subroutine initialize_mpi_utilities()
@@ -345,9 +389,6 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
 
-!!write(errstring, *) 'not implemented yet'
-!!call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
-
 ! simple idiotproofing
 if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    write(errstring, '(a,i8,a,i8)') "destination task id ", dest_id, &
@@ -408,9 +449,6 @@ if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
-
-!!write(errstring, *) 'not implemented yet'
-!!call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 
 ! simple idiotproofing
 if ((src_id < 0) .or. (src_id >= total_tasks)) then
@@ -490,9 +528,6 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
-!!write(errstring, *) 'not implemented yet'
-!!call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
-
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
    write(errstring, '(a,i8,a,i8)') "root task id ", root, &
@@ -501,8 +536,8 @@ if ((root < 0) .or. (root >= total_tasks)) then
 endif
 
 itemcount = size(array)
-print *, "kind = ", kind(array(1))
-print *, "digits = ", digits(array(1))
+!print *, "kind = ", kind(array(1))
+!print *, "digits = ", digits(array(1))
 ! TODO: FIX THIS based on what kind and digits say
 datasize = MPI_DOUBLE_PRECISION
 
@@ -545,9 +580,6 @@ if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'array_distribute', errstring, source, revision, revdate)
 endif
-
-!!write(errstring, *) 'not implemented yet'
-!!call error_handler(E_ERR,'array_distribute', errstring, source, revision, revdate)
 
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
@@ -637,11 +669,119 @@ endif
 ! set any additional space which wasn't filled with zeros.
 if (size(dstarray) > dstcount) dstarray(dstcount+1:) = 0.0
 
-
-
 end subroutine array_distribute
 
+!-----------------------------------------------------------------------------
+! DART-specific cover utilities
+!-----------------------------------------------------------------------------
 
+function iam_task0()
+
+! Return .TRUE. if my local task id is 0, .FALSE. otherwise.
+! (Task numbers in MPI start at 0, contrary to the rules of polite fortran.)
+
+logical :: iam_task0
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'iam_task0', errstring, source, revision, revdate)
+endif
+
+iam_task0 = (myrank == 0)
+
+end function iam_task0
+
+!-----------------------------------------------------------------------------
+subroutine broadcast_send(from, array1, array2)
+ integer, intent(in) :: from
+ ! really only intent(in) here, but must match array_broadcast() call.
+ real(r8), intent(inout) :: array1(:), array2(:)
+
+! cover routine for array broadcast.  one additional sanity check -- make 
+! sure the 'from' matches my local task id.  also, these arrays are
+! intent(in) here, but they call a routine which is intent(inout) so they
+! must be the same here.
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
+endif
+
+! simple idiotproofing
+if (from /= myrank) then
+   write(errstring, '(a,i8,a,i8)') "'from' task id ", from, &
+                                   "must be same as current task id ", myrank
+   call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
+endif
+
+! this must be paired with broadcast_recv() on all other tasks. 
+! it will not return until all tasks in the communications group have
+! made the call.
+call array_broadcast(array1, from)
+call array_broadcast(array2, from)
+
+end subroutine broadcast_send
+
+!-----------------------------------------------------------------------------
+subroutine broadcast_recv(from, array1, array2)
+ integer, intent(in) :: from
+ ! really only intent(out) here, but must match array_broadcast() call.
+ real(r8), intent(inout) :: array1(:), array2(:)
+
+! cover routine for array broadcast.  one additional sanity check -- make 
+! sure the 'from' is not the same as my local task id.  these arrays are
+! intent(out) here, but they call a routine which is intent(inout) so they
+! must be the same here.
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
+endif
+
+! simple idiotproofing
+if (from == myrank) then
+   write(errstring, '(a,i8,a,i8)') "'from' task id ", from, &
+                                   "cannot be same as current task id ", myrank
+   call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
+endif
+
+! this must be paired with a single broadcast_send() on the 'from' task.
+! it will not return until all tasks in the communications group have
+! made the call.
+call array_broadcast(array1, from)
+call array_broadcast(array2, from)
+
+end subroutine broadcast_recv
+
+
+!-----------------------------------------------------------------------------
+! pipe utilities
+!-----------------------------------------------------------------------------
+!    * make_pipe()        Function that creates a named pipe (fifo), opens it,
+!                         and returns the unit number.  Ok to call if the pipe
+!                         already exists or is already open; it will skip
+!                         those steps and just return the unit number.  The 
+!                         name argument is used as a base and a filename
+!                         in the form 'base.NNNN' is generated, where the N's
+!                         are the MPI rank number, 0 padded.
+!
+!-----------------------------------------------------------------------------
+!    * destroy_pipe()     The unit number is closed and the pipe file is 
+!                         removed.
+!
+!-----------------------------------------------------------------------------
+!    * read_pipe()        The character string is read from the pipe.
+!                         (Can be overloaded to read ints if time or status
+!                         info is useful to exchange between processes.) 
+!                         This routine blocks until data is available.
+!
+!-----------------------------------------------------------------------------
+!    * write_pipe()       The character string is written to the pipe.
+!                         (Can be overloaded to write ints if time or status
+!                         info is useful to exchange between processes.) 
+!                         This routine writes and returns immediately.
+!
+!-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
 end module mpi_utilities_mod
