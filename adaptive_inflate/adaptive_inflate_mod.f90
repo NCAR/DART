@@ -1,5 +1,6 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section, 
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module adaptive_inflate_mod
@@ -163,7 +164,7 @@ if(start_from_inflate_restart) then
    read(restart_unit, *) restart_model_size
    if(restart_model_size /= required_size) then
       write(errstring, *) 'Size of state space restart file is incorrect'
-      call error_handler(E_ERR, 'adaptive_inflate_init', &
+      call error_handler(E_ERR, 'adaptive_inflate_ss_init', &
          errstring, source, revision, revdate)
    endif
    read(restart_unit, *) ss_inflate, ss_inflate_sd, ss_sd_lower_bound 
