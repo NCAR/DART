@@ -22,6 +22,9 @@ switch ( $#argv )
       echo " "
       echo "This script compiles 'filter' for a wide range of models and then does"
       echo "relatively extensive tests of the L96 programs with a variety of options."
+      echo "The L96 tests are best run from a 'clean' starting point - i.e. one that"
+      echo "is as close to the distribution state as possible. Picking up in the middle"
+      echo "is not particularly easy. I always run the script end-to-end. TJH"
       echo " "
       echo "This must be run from the top-level 'DART' directory."
       echo " "
@@ -46,15 +49,25 @@ endif
 echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 
 #----------------------------------------------------------------------
+# See if some necessary environment variables are set.
+#----------------------------------------------------------------------
+if ( ! $?host) then
+   set thishost = `uname -n`
+   setenv host $thishost:ar
+endif
+
+echo "Running DART test on $host"
+
+#----------------------------------------------------------------------
 # Compile 'filter' for a wide range of models.
 #----------------------------------------------------------------------
 
-@ makenum  = 1
-@ modelnum = 101
+@ modelnum = 31
 
+if ( 1 == 1 ) then
 foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     lorenz_04 forced_lorenz_96 bgrid_solo cam wrf pe2lyr ) 
-#   null_model PBL_1d rose MITgcm_annulus sccm)
+    # null_model PBL_1d rose MITgcm_annulus sccm )
 
     echo "=================================================================="
     echo "Compiling $MODEL at "`date`
@@ -66,6 +79,8 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     \rm -fv ../../../obs_kind/obs_kind_mod.f90
     \rm -fv preprocess
     \rm -f  *.o *.mod
+
+    @ makenum  = 1
 
     csh mkmf_preprocess
     make || exit 1
@@ -89,22 +104,45 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 
    @ modelnum = $modelnum + 1
 end
+endif
 
 #----------------------------------------------------------------------
 # Lots of tests for L96
 #----------------------------------------------------------------------
 
-# If matlab does not exist, we simply archive some output.
-# If it does, we generate some plots. This just checks to
-# see if matlab exists and creates the archives if need be.
+cd ${DARTHOME}
+
+# If matlab and the netcdf functions exist, generate figures on-the-fly.
+# If not, simply archive output to test directories for later.
 
 which matlab > /dev/null
 set MatlabExists=$status
+
+if ( $MatlabExists == 0 ) then
+
+   set fname = dart.matlabcheck.$$
+
+   \rm -f batchscript.m
+   echo "fname = '"$fname"';"         > batchscript.m
+   echo "addpath ${DARTHOME}/matlab" >> batchscript.m 
+   echo "ChecknetCDFuse(fname);"     >> batchscript.m
+   echo "quit"                       >> batchscript.m
+   matlab -nosplash -nojvm -r batchscript
+   \rm -f batchscript.m
+
+   set MatlabResult = `tail -1 $fname`
+
+   if ($MatlabResult != 0) then
+      set MatlabExists = -1
+      echo "Matlab can not be run, see $fname"
+   endif
+
+endif
+
 if ( $MatlabExists != 0 ) then
    mkdir -p ${DARTHOME}/Test1; # directory for output
    mkdir -p ${DARTHOME}/Test2; # directory for output
 endif
-
 
 echo ""
 echo "=================================================================="
@@ -115,43 +153,51 @@ echo ""
 cd ${DARTHOME}/models/lorenz_96/work
 
 # Make sure that all .o, .mod and executables are gone
-rm -rf *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
-rm -rf integrate_model perfect_model_obs ../../../obs_kind/obs_kind_mod.f90
-rm -rf ../../../obs_def/obs_def_mod.f90
+\rm -rf *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
+\rm -rf integrate_model perfect_model_obs ../../../obs_kind/obs_kind_mod.f90
+\rm -rf merge_obs_seq obs_diag smoother ../../../obs_def/obs_def_mod.f90
 
 # Begin by compiling all programs; need to stop if an error is detected
-csh mkmf_preprocess               || exit 96
-make                              || exit 97
-./preprocess                      || exit 98
+csh mkmf_preprocess               || exit   1
+make                              || exit   2
+./preprocess                      || exit   3
 # Preprocess must be done before rest of makes
-csh mkmf_assim_region             || exit 99
-make                              || exit 100
-csh mkmf_create_fixed_network_seq || exit 101
-make                              || exit 102
-csh mkmf_create_obs_sequence      || exit 103
-make                              || exit 104
-csh mkmf_filter                   || exit 105
-make                              || exit 106
-csh mkmf_integrate_model          || exit 107
-make                              || exit 108
-csh mkmf_perfect_model_obs        || exit 109
-make                              || exit 110
-
+csh mkmf_assim_region             || exit   4
+make                              || exit   5
+csh mkmf_create_fixed_network_seq || exit   6
+make                              || exit   7
+csh mkmf_create_obs_sequence      || exit   8
+make                              || exit   9
+csh mkmf_filter                   || exit  10
+make                              || exit  11
+csh mkmf_integrate_model          || exit  12
+make                              || exit  13
+csh mkmf_perfect_model_obs        || exit  14
+make                              || exit  15
+csh mkmf_merge_obs_seq            || exit  16
+make                              || exit  17
+csh mkmf_obs_diag                 || exit  18
+make                              || exit  19
+csh mkmf_smoother                 || exit  20
+make                              || exit  21
 
 
 echo ""
 echo "=================================================================="
-echo "Setup appropriate namelists for a 1000-step test run."
+echo "Setup appropriate namelists for a 4x20 1000-step test run."
 echo "=================================================================="
 echo ""
 
-echo "input.nml is "
+cp input.nml input.nml.previous
+echo "input.nml initially contains:"
 cat input.nml
+echo " "
+echo "END of initial input.nml"
 echo " "
 
 # Create an obs_sequence file
-rm -rf obs_seq.in obs_seq.out obs_seq.final
-./create_obs_sequence < ../random_obs.input || exit 111
+\rm -rf obs_seq.in obs_seq.out obs_seq.final
+./create_obs_sequence < ../random_obs.input || exit 30
 echo 'set_def.out'		> temp_input
 echo '1'                       >> temp_input
 echo '1000'                    >> temp_input
@@ -163,7 +209,7 @@ echo "create_fixed_network_seq input is "
 cat temp_input
 echo " "
 
-./create_fixed_network_seq < temp_input      || exit 112
+./create_fixed_network_seq < temp_input      || exit 31
 
 # Need to modify rest of input.nml for test run
 echo ':0'                              > vi_script
@@ -171,49 +217,75 @@ echo '/ens_size'                      >> vi_script
 echo ':s/20/80/'                      >> vi_script
 echo '/num_groups'                    >> vi_script
 echo ':s/1/4/'                        >> vi_script
-echo '/assim_tools_nml'               >> vi_script
-echo '/cov_inflate'                   >> vi_script
-echo ':s/-1.0/1.05/'                  >> vi_script
-echo '/cov_inflate_sd'                >> vi_script
-echo ':s/-0.05/0.05'                  >> vi_script
-echo '/sd_lower_bound'                >> vi_script
-echo ':s/-0.05/0.05'                  >> vi_script
+#echo '/assim_tools_nml'               >> vi_script
+#echo '/cov_inflate'                   >> vi_script
+#echo ':s/-1.0/1.05/'                  >> vi_script
+#echo '/cov_inflate_sd'                >> vi_script
+#echo ':s/-0.05/0.05'                  >> vi_script
+#echo '/sd_lower_bound'                >> vi_script
+#echo ':s/-0.05/0.05'                  >> vi_script
 echo ':wq'                            >> vi_script
-vi -s vi_script input.nml
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
+cat input.nml
+echo " "
+echo "END of input.nml"
 
 # Run the perfect model and the filter
-./perfect_model_obs  || exit 113
-./filter             || exit 114
+./perfect_model_obs  || exit 32
+./filter             || exit 33
+
+ls -lrt | tail -30    # TJH debug
 
 # Determine if the run was correct.
 if ( $MatlabExists == 0 ) then
+   \rm -f batchscript.m
    echo "plot_total_err"              > batchscript.m
    echo "print -dpsc DART_fig1.ps"   >> batchscript.m
    echo "quit"                       >> batchscript.m
    matlab -nosplash -nojvm -r batchscript
+   \rm -f batchscript.m
 else
    echo "Matlab does not exist in your PATH ... archiving output"
    \cp -pv input.nml           ${DARTHOME}/Test1
-   \cp -pv filter_restart      ${DARTHOME}/Test1
-   \cp -pv assim_tools_restart ${DARTHOME}/Test1
+   \cp -pv True_State.nc       ${DARTHOME}/Test1
    \cp -pv obs_seq.out         ${DARTHOME}/Test1
+   \cp -pv perfect_restart     ${DARTHOME}/Test1
+
+   \cp -pv Prior_Diag.nc       ${DARTHOME}/Test1
+   \cp -pv Posterior_Diag.nc   ${DARTHOME}/Test1
    \cp -pv obs_seq.final       ${DARTHOME}/Test1
-   \cp -pv *.nc                ${DARTHOME}/Test1
+   \cp -pv inflate_restart     ${DARTHOME}/Test1
+   \cp -pv filter_restart      ${DARTHOME}/Test1
+   \cp -pv reg_diagnostics     ${DARTHOME}/Test1
 endif
 
+mv -v perfect_restart       perfect_ics.spun_up
+mv -v True_State.nc          True_State.spun_up.nc
 
+mv -v     Prior_Diag.nc      Prior_Diag.spun_up.nc
+mv -v Posterior_Diag.nc  Posterior_Diag.spun_up.nc
+mv -v   obs_seq.final     obs_seq.final.spun_up
+mv -v inflate_restart   inflate_restart.spun_up    # zero size
+mv -v  filter_restart        filter_ics.spun_up
+mv -v reg_diagnostics   reg_diagnostics.spun_up
 
 echo ""
-echo "=================================================================="
+echo "------------------------------------------------------------------"
 echo "Prepare to set up a sequence of 10 hour runs for testing"
+echo "------------------------------------------------------------------"
 echo "In first case, just do 10 hours and output filter restarts in both"
 echo "the single file and multiple file format for later testing"
+echo "To reproduce across a variety of options, need num_domains >= 2"
+echo "and binary restart files to be written."
 echo "=================================================================="
 echo ""
 
 # Create an obs_sequence file for 10 hour tests
-rm -rf obs_seq.in obs_seq.out obs_seq.final
-./create_obs_sequence < ../random_obs.input  || exit 115
+\rm -f obs_seq.in obs_seq.out obs_seq.final
+./create_obs_sequence < ../random_obs.input  || exit 40
 echo 'set_def.out'              > temp_input
 echo '1'                       >> temp_input
 echo '10'                      >> temp_input
@@ -226,21 +298,17 @@ echo "create_fixed_network_seq input is "
 cat temp_input
 echo " "
 
-./create_fixed_network_seq < temp_input      || exit
-
-echo "Need to start from binary at end of previous long run"
-mv perfect_restart  perfect_ics.spun_up
-mv  filter_restart   filter_ics.spun_up
-
-
+./create_fixed_network_seq < temp_input      || exit 41
 
 echo " "
 echo "=================================================================="
 echo "To reproduce across a variety of options, need num_domains 2 or greater"
-echo "and binary restart files to be written."
-echo "Start from previous restart and create new restart."
+echo "and binary restart files. Start from previous restart and create "
+echo "single  previous restart and create new restart."
 echo "=================================================================="
 echo " "
+
+\cp input.nml input.nml.previous
 
 echo ':0'                                  > vi_script
 echo '/num_domains'                       >> vi_script
@@ -254,11 +322,13 @@ echo ':s/filter_ics/filter_ics.spun_up'   >> vi_script
 echo '/write_binary_restart_files'        >> vi_script
 echo ':s/.false./.true./'                 >> vi_script
 echo ':wq'                                >> vi_script
-vi -s vi_script input.nml
-
-echo "input.nml is "
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
-
+echo " "
+echo "END of input.nml"
 
 
 echo ""
@@ -268,13 +338,20 @@ echo "perfect_ics.10hour and filter_ics.10hour"
 echo "=================================================================="
 echo ""
 
-./perfect_model_obs   || exit
-./filter              || exit
+./perfect_model_obs   || exit 42
+./filter              || exit 43
 
-mv perfect_restart  perfect_ics.10hour
-mv  filter_restart   filter_ics.10hour
+ls -lrt | tail -30    # TJH debug
 
+\cp -pv   obs_seq.out       obs_seq.out.10hour
+mv -v perfect_restart       perfect_ics.10hour
+mv -v  filter_restart        filter_ics.10hour
+mv -v inflate_restart       inflate_ics.10hour    # zero size
+mv -v reg_diagnostics   reg_diagnostics.10hour
 
+mv -v     True_State.nc      True_State.10hour.nc
+mv -v     Prior_Diag.nc      Prior_Diag.10hour.nc
+mv -v Posterior_Diag.nc  Posterior_Diag.10hour.nc
 
 echo ""
 echo "=================================================================="
@@ -283,20 +360,23 @@ echo "filter_restart.01"
 echo "=================================================================="
 echo ""
 
+cp input.nml input.nml.previous
+
 echo ':0'                                 > vi_script
 echo '/single_restart_file_out'          >> vi_script
 echo ':s/true/false/'                    >> vi_script
 echo ':wq'                               >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is "
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./filter  || exit
+./filter  || exit 53
 
-
+ls -lrt | tail -30    # TJH debug
 
 echo " "
 echo "=================================================================="
@@ -304,6 +384,8 @@ echo "Now do a second 10 hour run from the end of the first 10 hour"
 echo "Also change the filter back to only produce single restart file"
 echo "=================================================================="
 echo " "
+
+cp input.nml input.nml.previous
 
 echo ':0'                                          > vi_script
 echo '/restart_in_file_name'                      >> vi_script
@@ -314,24 +396,31 @@ echo ':s/filter_ics.spun_up/filter_ics.10hour'    >> vi_script
 echo '/single_restart_file_out'                   >> vi_script
 echo ':s/false/true/'                             >> vi_script
 echo ':wq'                                        >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is "
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./perfect_model_obs  || exit
-./filter             || exit
+./perfect_model_obs  || exit 62
+./filter             || exit 63
 
+ls -lrt | tail -30    # TJH debug
 
 # Do some tests on perfect_model_obs options first
 # Set up baseline output file
-mv perfect_restart  perfect_restart.baseline
-mv obs_seq.out          obs_seq.out.baseline
-mv True_State.nc      True_State.nc.baseline
 
-
+mv -v     True_State.nc      True_State.baseline.nc
+mv -v     obs_seq.out       obs_seq.out.baseline
+mv -v perfect_restart   perfect_restart.baseline
+mv -v     Prior_Diag.nc      Prior_Diag.baseline.nc
+mv -v Posterior_Diag.nc  Posterior_Diag.baseline.nc
+mv -v   obs_seq.final     obs_seq.final.baseline
+mv -v  filter_restart    filter_restart.baseline
+mv -v inflate_restart   inflate_restart.baseline    # zero size
+mv -v reg_diagnostics   reg_diagnostics.baseline
 
 
 echo ""
@@ -340,46 +429,52 @@ echo "Test storing the ensemble on disk instead of in core"
 echo "=================================================================="
 echo ""
 
+cp input.nml input.nml.previous
+
 echo ':0'                              > vi_script
 echo '/ensemble_manager'              >> vi_script
 echo '/in_core'                       >> vi_script
 echo ':s/true/false/'                 >> vi_script
 echo ':wq'                            >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is "
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./perfect_model_obs  || exit
+./perfect_model_obs  || exit 72
 
-mv perfect_restart  perfect_restart.out_of_core
-mv obs_seq.out          obs_seq.out.out_of_core
-mv True_State.nc      True_State.nc.out_of_core
+ls -lrt | tail -30    # TJH debug
 
-echo "diff of perfect_restart:"
-diff perfect_restart.out_of_core  perfect_restart.baseline || exit
-echo "diff of obs_seq.out:"
-diff obs_seq.out.out_of_core      obs_seq.out.baseline     || exit
-#diff True_State.nc.out_of_core    True_State.nc.baseline   ||exit
+mv -v True_State.nc      True_State.nc.out_of_core
+mv -v perfect_restart  perfect_restart.out_of_core
+mv -v obs_seq.out          obs_seq.out.out_of_core
+mv -v ens_manager_ens_file.0001.0001 ens_manager_ens_file.0001.0001.out_of_core
 
-
+diff perfect_restart.out_of_core  perfect_restart.baseline || exit 74
+diff     obs_seq.out.out_of_core      obs_seq.out.baseline || exit 75
+#diff  True_State.nc.out_of_core    True_State.nc.baseline || exit 76
 
 echo ""
 echo "=================================================================="
-echo "Test the two async options"
-echo "Change to async 2 and go back to in_core for ensemble"
+echo "Test two async options"
+echo "async == 0 == model advance by subroutine"
+echo "async == 2 == model advance with F90 calls to shell script"
+echo "async == 3 == model advance when signalled by semaphore file"
+echo "Change to async=2 and in_core=true for perfect model."
 echo "=================================================================="
 echo ""
 
 # Need to get the scripts (problem here because script names are machine dependent)
 #-----------------------------------------------------------------------
-cp -p ../shell_scripts/*.csh .
-cp -p ${DARTHOME}/shell_scripts/advance_ens_fisher.csh     advance_ens.csh
-cp -p ${DARTHOME}/shell_scripts/assim_filter_fisher.csh   assim_filter.csh
-cp -p ${DARTHOME}/shell_scripts/filter_server_fisher.csh filter_server.csh
+\cp -pv ../shell_scripts/*.csh .
+\cp -pv ${DARTHOME}/shell_scripts/advance_ens.csh      advance_ens.csh
+\cp -pv ${DARTHOME}/shell_scripts/assim_filter.csh    assim_filter.csh
+\cp -pv ${DARTHOME}/shell_scripts/filter_server.csh  filter_server.csh
 
+cp input.nml input.nml.previous
 
 echo ':0'                             > vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
@@ -388,55 +483,80 @@ echo ':s/0/2/'                       >> vi_script
 echo '/in_core'                      >> vi_script
 echo ':s/false/true/'                >> vi_script
 echo ':wq'                           >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is "
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./perfect_model_obs  || exit
+./perfect_model_obs  || exit 82
 
-mv perfect_restart  perfect_restart.2
-mv obs_seq.out          obs_seq.out.2
-mv True_State.nc      True_State.nc.2
+ls -lrt | tail -30    # TJH debug
 
-diff perfect_restart.2  perfect_restart.baseline  || exit
-diff obs_seq.out.2      obs_seq.out.baseline      || exit
-#diff True_State.nc.2    True_State.nc.baseline    || exit
+# This run result in:
+# True_State.nc, obs_seq.out, perfect_restart
+# assim_model_state_ic1
+# filter_control
+# assim_model_state_ud1
+# integrate_model_out_temp1
 
+mv -v True_State.nc       True_State.nc.2
+mv -v obs_seq.out           obs_seq.out.2
+mv -v perfect_restart   perfect_restart.2
 
+diff perfect_restart.2  perfect_restart.baseline || exit 84
+diff     obs_seq.out.2      obs_seq.out.baseline || exit 85
+#diff  True_State.nc.2    True_State.nc.baseline || exit 86
 
 echo ""
 echo "=================================================================="
-echo "Now try async == 3 with filter_server"
+echo "Now try async == 3 (filter_server.csh driving the model advance)"
 echo "=================================================================="
 echo ""
+
+cp input.nml input.nml.previous
 
 echo ':0'                             > vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
 echo '/async'                        >> vi_script
 echo ':s/2/3/'                       >> vi_script
 echo ':wq'                           >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is"
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
+
+# TJH debug as CAM implements it ... filter_server.csh is terminated by the
+# existence of go_end_filter_server ... created by filter.csh ... which is
+# not part of the standard scripts ...
 
 ./filter_server.csh &
-./perfect_model_obs || exit
+./perfect_model_obs || exit 92
 
-mv perfect_restart       perfect_restart.3
-mv obs_seq.out               obs_seq.out.3
-cp True_State.nc           True_State.nc.3
-
-diff perfect_restart.3   perfect_restart.baseline  || exit
-diff     obs_seq.out.3       obs_seq.out.baseline  || exit
-#diff True_State.nc.3    True_State.nc.baseline    || exit
+ls -lrt | tail -30    # TJH debug
+echo "If you get stuck here, filter_server is not terminating when it should."
+wait
 
 
+# This run result in:
+# True_State.nc, obs_seq.out, perfect_restart
+# assim_model_state_ic1
+# filter_control
+# assim_model_state_ud1
+# integrate_model_out_temp1
+
+mv -v perfect_restart   perfect_restart.3
+mv -v obs_seq.out           obs_seq.out.3
+\cp -pv True_State.nc     True_State.nc.3
+
+diff perfect_restart.3  perfect_restart.baseline || exit 94
+diff     obs_seq.out.3      obs_seq.out.baseline || exit 95
+#diff  True_State.nc.3    True_State.nc.baseline || exit 96
 
 echo ""
 echo "=================================================================="
@@ -445,36 +565,41 @@ echo "Begin by checking single versus multiple restarts"
 echo "=================================================================="
 echo ""
 
-cp -p obs_seq.out.baseline obs_seq.out
+\cp -pv obs_seq.out.baseline obs_seq.out
 
-./filter  || exit
+./filter  || exit 73
 
-mv obs_seq.final              obs_seq.final.baseline
-mv filter_restart            filter_restart.baseline
-mv assim_tools_restart  assim_tools_restart.baseline
-cp Prior_Diag.nc              Prior_Diag.nc.baseline
-cp Posterior_Diag.nc      Posterior_Diag.nc.baseline
+ls -lrt | tail -30    # TJH debug
+
+mv -v obs_seq.final              obs_seq.single.final
+mv -v filter_restart            filter_restart.single
+mv -v inflate_restart          inflate_restart.single   # zero length
+mv -v reg_diagnostics          reg_diagnostics.single
+\cp -pv   Prior_Diag.nc          Prior_Diag.single.nc
+mv -v Posterior_Diag.nc      Posterior_Diag.single.nc
 
 # Determine if the run was correct.
 # can fire off a matlab batch job if matlab exists.
 if ( $MatlabExists == 0 ) then
+   \rm -f batchscript.m
    echo "plot_total_err"              > batchscript.m
    echo "print -dpsc DART_fig2.ps"   >> batchscript.m
    echo "quit"                       >> batchscript.m
    matlab -nosplash -nojvm -r batchscript
+   \rm -f batchscript.m
 else
    echo "Matlab does not exist in your PATH ... archiving output"
    \cp -pv input.nml  ${DARTHOME}/Test2
    \cp -pv *.baseline ${DARTHOME}/Test2
 endif
 
-
-
 echo ""
 echo "=================================================================="
 echo "Now use multiple input files (named filter_restart.00xx)"
 echo "=================================================================="
 echo ""
+
+cp input.nml input.nml.previous
 
 echo ':0'                                     > vi_script
 echo '/filter_nml'                           >> vi_script
@@ -483,28 +608,29 @@ echo ':s/filter_ics.10hour/filter_restart/'  >> vi_script
 echo '/single_restart_file_in'               >> vi_script
 echo ':s/true/false/'                        >> vi_script
 echo ':wq'                                   >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is"
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./filter  || exit
+./filter  || exit 83
 
-mv obs_seq.final              obs_seq.final.in_files
-mv filter_restart            filter_restart.in_files
-mv assim_tools_restart  assim_tools_restart.in_files
-mv Prior_Diag.nc              Prior_Diag.nc.in_files
-mv Posterior_Diag.nc      Posterior_Diag.nc.in_files
+ls -lrt | tail -30    # TJH debug
 
-diff       obs_seq.final.in_files        obs_seq.final.baseline || exit
-diff      filter_restart.in_files       filter_restart.baseline || exit
-diff assim_tools_restart.in_files  assim_tools_restart.baseline || exit
-#diff Prior_Diag.nc.in_files        Prior_Diag.nc.baseline
-#diff Posterior_Diag.nc.in_files    Posterior_Diag.nc.baseline
+mv -v     Prior_Diag.nc        Prior_Diag.in_files.nc
+mv -v Posterior_Diag.nc    Posterior_Diag.in_files.nc
+mv -v obs_seq.final               obs_seq.in_files.final
+mv -v  filter_restart      filter_restart.in_files
+mv -v reg_diagnostics     reg_diagnostics.in_files
 
-
+diff       obs_seq.in_files.final        obs_seq.single.final || exit 87
+diff      filter_restart.in_files       filter_restart.single || exit 88
+#diff    reg_diagnostics.in_files      reg_diagnostics.single || exit 89
+#diff      Prior_Diag.nc.in_files        Prior_Diag.single.nc
+#diff  Posterior_Diag.nc.in_files    Posterior_Diag.single.nc
 
 echo ""
 echo "=================================================================="
@@ -512,26 +638,28 @@ echo "Next switch the number of domains from 3 to 5"
 echo "=================================================================="
 echo ""
 
+cp input.nml input.nml.previous
+
 echo ':0'                                      > vi_script
 echo '/num_domains'                           >> vi_script
 echo ':s/3/5/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is"
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./filter  || exit
+./filter  || exit 93
 
-diff obs_seq.final         obs_seq.final.baseline       || exit
-diff filter_restart       filter_restart.baseline       || exit
-#diff assim_tools_restart  assim_tools_restart.baseline  || exit
-#diff Prior_Diag.nc        Prior_Diag.nc.baseline
-#diff Posterior_Diag.nc    Posterior_Diag.nc.baseline
+ls -lrt | tail -30    # TJH debug
 
-
+diff obs_seq.final                  obs_seq.single.final || exit 97
+diff filter_restart          filter_restart.single       || exit 98
+#diff      Prior_Diag.nc         Prior_Diag.single.nc
+#diff  Posterior_Diag.nc     Posterior_Diag.single.nc
 
 echo ""
 echo "=================================================================="
@@ -539,28 +667,43 @@ echo "Next switch the number of domains back to 3; try parallel option 2"
 echo "=================================================================="
 echo ""
 
+cp input.nml input.nml.previous
+
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/0/2/'                                >> vi_script
 echo '/num_domains'                           >> vi_script
 echo ':s/5/3/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is"
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./filter || exit
+./filter || exit 103
 
-diff obs_seq.final              obs_seq.final.baseline  || exit
-diff filter_restart            filter_restart.baseline  || exit
-diff assim_tools_restart  assim_tools_restart.baseline  || exit
-#diff Prior_Diag.nc        Prior_Diag.nc.baseline        || exit
-#diff Posterior_Diag.nc    Posterior_Diag.nc.baseline    || exit
+ls -lrt | tail -30    # TJH debug
 
+# This run results in the following:
+# filter_assim_obs_seq
+# filter_assim_region__in1
+# filter_assim_region__in2
+# filter_assim_region__in3
+# filter_assim_region_out1
+# filter_assim_region_out2
+# filter_assim_region_out3
+# assim_region_control
+# assim_region_out_temp1
+# assim_region_out_temp2
+# assim_region_out_temp3
 
+diff obs_seq.final                   obs_seq.single.final || exit 107
+diff filter_restart           filter_restart.single       || exit 108
+#diff     Prior_Diag.nc           Prior_Diag.single.nc    || exit 384
+#diff Posterior_Diag.nc       Posterior_Diag.single.nc    || exit 385
 
 echo ""
 echo "=================================================================="
@@ -568,28 +711,41 @@ echo "Try parallel option 3"
 echo "=================================================================="
 echo ""
 
+cp input.nml input.nml.previous
+
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/2/3/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is"
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-csh ./filter_server.csh &
-./filter  || exit
+./filter_server.csh &
+./filter  || exit 113
 
-diff obs_seq.final        obs_seq.final.baseline        || exit
-diff filter_restart       filter_restart.baseline       || exit
-diff assim_tools_restart  assim_tools_restart.baseline  || exit
-#diff Prior_Diag.nc        Prior_Diag.nc.baseline
-#diff Posterior_Diag.nc    Posterior_Diag.nc.baseline
+ls -lrt | tail -30    # TJH debug
+echo "If you get stuck here, filter_server is not terminating when it should."
+wait
 
+# This run results in the following output files:
+# obs_seq.final, filter_restart, Prior_Diag.nc, Posterior_Diag.nc
+# filter_assim_obs_seq
+# assim_region_control
+# filter_server.log
+# filter_assim_region__in?   [1,3]
+# filter_assim_region_out?   [1,3]
+# assim_region_out_temp?     [1,3]
 
-
+diff       obs_seq.final              obs_seq.single.final || exit 117
+diff      filter_restart       filter_restart.single       || exit 118
+#diff assim_tools_restart assim_tools_restart.single       || exit 119
+#diff      Prior_Diag.nc           Prior_Diag.single.nc
+#diff  Posterior_Diag.nc       Posterior_Diag.single.nc
 
 echo ""
 echo "=================================================================="
@@ -597,24 +753,33 @@ echo "Go back to parallel option 0 and proceed"
 echo "=================================================================="
 echo ""
 
+cp input.nml input.nml.previous
+
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/3/0/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-vi -s vi_script input.nml
-
-echo " "
-echo "input.nml is"
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
 cat input.nml
 echo " "
+echo "END of input.nml"
 
-./filter  || exit
+./filter  || exit 123
 
-diff obs_seq.final              obs_seq.final.baseline  || exit
-diff filter_restart            filter_restart.baseline  || exit
-diff assim_tools_restart  assim_tools_restart.baseline  || exit
-#diff Prior_Diag.nc        Prior_Diag.nc.baseline
-#diff Posterior_Diag.nc    Posterior_Diag.nc.baseline
+ls -lrt | tail -30    # TJH debug
+
+# This run results in the following output files:
+# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
+# reg_diagnostics
+
+diff obs_seq.final                    obs_seq.single.final || exit 127
+diff filter_restart            filter_restart.single       || exit 128
+#diff assim_tools_restart assim_tools_restart.single       || exit 129
+#diff     Prior_Diag.nc            Prior_Diag.single.nc
+#diff Posterior_Diag.nc        Posterior_Diag.single.nc
 
 echo ""
 echo "Testing complete  at "`date`
