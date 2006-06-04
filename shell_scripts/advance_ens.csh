@@ -48,7 +48,7 @@
 #BSUB -o adv_ens.%J.log
 #BSUB -P 86850054
 #BSUB -q regular
-#BSUB -n 16
+#BSUB -n 8
 
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system 
@@ -73,7 +73,7 @@
 #PBS -e advance_ens.err
 #PBS -o advance_ens.log
 #PBS -q medium
-#PBS -l nodes=10:ppn=2
+#PBS -l nodes=4:ppn=2
 
 
 # A common strategy for the beginning is to check for the existence of
