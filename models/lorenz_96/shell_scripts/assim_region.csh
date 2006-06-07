@@ -28,6 +28,9 @@ endif
 if ( ! $?CPFLAGS ) then
    set CPFLAGS = '-p'
 endif
+if ( ! $?MVFLAGS ) then
+   set MVFLAGS = ''
+endif
 
 # Standard script for use in assimilation applications
 # where regions are to be assimilated by separate executables.
@@ -56,7 +59,7 @@ cp ${CPFLAGS} ${WORKDIR}/filter_assim_obs_seq .
 cat assim_region_out_temp >> $WORKDIR/assim_region_out_temp$element
 
 # Move the updated region state to the working directory
-mv -v filter_assim_region_out $WORKDIR/filter_assim_region_out$element
+mv ${MVFLAGS} filter_assim_region_out $WORKDIR/filter_assim_region_out$element
 
 # Change back to working directory and get rid of temporary directory
 cd $WORKDIR

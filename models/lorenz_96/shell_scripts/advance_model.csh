@@ -28,6 +28,9 @@ endif
 if ( ! $?CPFLAGS ) then
    set CPFLAGS = '-p'
 endif
+if ( ! $?MVFLAGS ) then
+   set MVFLAGS = ''
+endif
 
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
@@ -53,7 +56,7 @@ cp ${CPFLAGS} ${WORKDIR}/integrate_model .
 cat integrate_model_out_temp >> $WORKDIR/integrate_model_out_temp$element
 
 # Move the updated state vector to the working directory
-mv -v temp_ud $WORKDIR/assim_model_state_ud$element
+mv ${MVFLAGS} temp_ud $WORKDIR/assim_model_state_ud$element
 
 # Change back to working directory and get rid of temporary directory
 cd $WORKDIR
