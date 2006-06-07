@@ -56,6 +56,8 @@ if ( ! $?host) then
    setenv host $thishost:ar
 endif
 
+set RMFLAGS = '-rfv'
+
 echo "Running DART test on $host"
 
 #----------------------------------------------------------------------
@@ -75,9 +77,9 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 
     cd ${DARTHOME}/models/${MODEL}/work
 
-    \rm -fv ../../../obs_def/obs_def_mod.f90 
-    \rm -fv ../../../obs_kind/obs_kind_mod.f90
-    \rm -fv preprocess
+    \rm ${RMFLAGS} ../../../obs_def/obs_def_mod.f90 
+    \rm ${RMFLAGS} ../../../obs_kind/obs_kind_mod.f90
+    \rm ${RMFLAGS} preprocess
     \rm -f  *.o *.mod
 
     @ makenum  = 1
@@ -89,14 +91,14 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     foreach PROG ( create_obs_sequence create_fixed_network_seq \
                    perfect_model_obs filter )
 
-       rm -f  ${PROG} Makefile input.nml.${PROG}_default .cppdefs
+       \rm -f  ${PROG} Makefile input.nml.${PROG}_default .cppdefs
 
        csh mkmf_${PROG}  || exit $modelnum
        make              || exit $makenum
 
        @ makenum  = $makenum  + 1
 
-       rm -fv ${PROG} Makefile input.nml.${PROG}_default .cppdefs
+       rm ${RMFLAGS} ${PROG} Makefile input.nml.${PROG}_default .cppdefs
 
     end
 
@@ -153,9 +155,9 @@ echo ""
 cd ${DARTHOME}/models/lorenz_96/work
 
 # Make sure that all .o, .mod and executables are gone
-\rm -rf *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
-\rm -rf integrate_model perfect_model_obs ../../../obs_kind/obs_kind_mod.f90
-\rm -rf merge_obs_seq obs_diag smoother ../../../obs_def/obs_def_mod.f90
+\rm ${RMFLAGS} *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
+\rm ${RMFLAGS} integrate_model perfect_model_obs ../../../obs_kind/obs_kind_mod.f90
+\rm ${RMFLAGS} merge_obs_seq obs_diag smoother ../../../obs_def/obs_def_mod.f90
 
 # Begin by compiling all programs; need to stop if an error is detected
 csh mkmf_preprocess               || exit   1
@@ -196,7 +198,7 @@ echo "END of initial input.nml"
 echo " "
 
 # Create an obs_sequence file
-\rm -rf obs_seq.in obs_seq.out obs_seq.final
+\rm ${RMFLAGS} obs_seq.in obs_seq.out obs_seq.final temp_input vi_script
 ./create_obs_sequence < ../random_obs.input || exit 30
 echo 'set_def.out'		> temp_input
 echo '1'                       >> temp_input
@@ -284,7 +286,7 @@ echo "=================================================================="
 echo ""
 
 # Create an obs_sequence file for 10 hour tests
-\rm -f obs_seq.in obs_seq.out obs_seq.final
+\rm -f obs_seq.in obs_seq.out obs_seq.final temp_input
 ./create_obs_sequence < ../random_obs.input  || exit 40
 echo 'set_def.out'              > temp_input
 echo '1'                       >> temp_input
@@ -309,6 +311,7 @@ echo "=================================================================="
 echo " "
 
 \cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                  > vi_script
 echo '/num_domains'                       >> vi_script
@@ -361,6 +364,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                 > vi_script
 echo '/single_restart_file_out'          >> vi_script
@@ -386,6 +390,7 @@ echo "=================================================================="
 echo " "
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                          > vi_script
 echo '/restart_in_file_name'                      >> vi_script
@@ -430,6 +435,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                              > vi_script
 echo '/ensemble_manager'              >> vi_script
@@ -475,6 +481,7 @@ echo ""
 \cp -pv ${DARTHOME}/shell_scripts/filter_server.csh  filter_server.csh
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                             > vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
@@ -517,6 +524,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                             > vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
@@ -600,6 +608,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                     > vi_script
 echo '/filter_nml'                           >> vi_script
@@ -639,6 +648,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                      > vi_script
 echo '/num_domains'                           >> vi_script
@@ -668,6 +678,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
@@ -712,6 +723,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
@@ -754,6 +766,7 @@ echo "=================================================================="
 echo ""
 
 cp input.nml input.nml.previous
+\rm -f vi_script
 
 echo ':0'                                      > vi_script
 echo '/do_parallel'                           >> vi_script
