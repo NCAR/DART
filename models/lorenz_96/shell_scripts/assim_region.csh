@@ -1,7 +1,8 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section, 
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -30,16 +31,16 @@ mkdir -p $temp_dir
 cd       $temp_dir
 
 # Copy the initial condition file to the temp directory
-cp -v ${WORKDIR}/filter_assim_region__in$element filter_assim_region_in
+cp -pv ${WORKDIR}/filter_assim_region__in$element filter_assim_region_in
 
 # Copy the DART namelist to the temp directory
-cp -v ${WORKDIR}/input.nml .
+cp -pv ${WORKDIR}/input.nml .
 
 # Copy the assim_region executable to the temporary directory
-cp -v ${WORKDIR}/assim_region .
+cp -pv ${WORKDIR}/assim_region .
 
 # Copy the observation sequence file to the temporary directory
-cp -v ${WORKDIR}/filter_assim_obs_seq .
+cp -pv ${WORKDIR}/filter_assim_obs_seq .
 
 # Assimilate the region, saving standard out
 ./assim_region > assim_region_out_temp

@@ -1,7 +1,8 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section 
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -30,13 +31,13 @@ mkdir -p $temp_dir
 cd       $temp_dir
 
 # Copy the initial condition file to the temp directory
-cp -v ${WORKDIR}/assim_model_state_ic$element temp_ic
+cp -pv ${WORKDIR}/assim_model_state_ic$element temp_ic
 
 # Copy the DART namelist to the temp directory
-cp -v ${WORKDIR}/input.nml .
+cp -pv ${WORKDIR}/input.nml .
 
 # Copy the integrate_model executable to the temporary directory
-cp -v ${WORKDIR}/integrate_model .
+cp -pv ${WORKDIR}/integrate_model .
 
 # Advance the model, saving standard out
 ./integrate_model > integrate_model_out_temp
