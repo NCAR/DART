@@ -59,7 +59,7 @@
 #BSUB -e filter_server.%J.err
 #BSUB -P 86850054
 #BSUB -q regular
-#BSUB -n 20
+#BSUB -n 8
 #
 #
 ##=============================================================================
@@ -85,7 +85,7 @@
 #PBS -e filter_server.err
 #PBS -o filter_server.log
 #PBS -q medium
-#PBS -l nodes=10:ppn=2
+#PBS -l nodes=4:ppn=2
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -138,6 +138,10 @@ else                                    # interactive
    set REMOTECMD = csh
    set SCRATCHDIR = /tmp/${user}/filter_server
    
+endif
+
+if ( ! $?RMFLAGS ) then
+  set RMFLAGS = '-rf'
 endif
 
 # The scratch directory will be used as the run-time directory for both the
@@ -384,7 +388,7 @@ while (1 == 1)
       # Finished with advance_model (hopefully) so remove the go_advance_model file.
       # This signals 'filter' to proceed with the assimilation.
 
-      \rm -fv go_advance_model
+      \rm ${RMFLAGS} go_advance_model
 
       echo "$JOBNAME - Completed this advance at " `date`  >> $MASTERLOG
       echo "$JOBNAME - Completed this advance at " `date`
@@ -560,7 +564,7 @@ while (1 == 1)
       # Finished with assim_region (hopefully) so remove the go_assim_regions file.
       # This signals 'filter' to proceed with the assimilation.
 
-      \rm -f go_assim_regions
+      \rm ${RMFLAGS} go_assim_regions
 
       # Removing 'go_assim_regions' is the signal to filter.csh to continue
       echo "$JOBNAME - Completed this assimilation at " `date` >> $MASTERLOG
@@ -585,7 +589,7 @@ while (1 == 1)
    if(-e go_end_filter ) then
       echo "$JOBNAME - terminating normally at " `date`  >> $MASTERLOG
       echo "$JOBNAME - terminating normally at " `date`
-      \rm -f go_end_filter
+      \rm ${RMFLAGS} go_end_filter
       exit 0
    else
       # No files found, wait and check again
