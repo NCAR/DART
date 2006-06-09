@@ -2,6 +2,7 @@
 ! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+module obs_def_gps_mod
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! GPSRO_REFRACTIVITY,  KIND_GPSRO
@@ -36,7 +37,6 @@
 !       ! call interactive_gpsro_ref(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-module obs_def_gps_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
