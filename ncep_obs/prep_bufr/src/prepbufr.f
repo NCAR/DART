@@ -94,7 +94,7 @@ C
         ii = 1
         found = .false.
         DO WHILE  ( ( .not. found ) .and. ( ii .le. NFILO ) )
-          IF( subset(1:6) .eq. filo ( ii ) )  THEN
+           IF( subset(1:6) .eq. filo ( ii ) )  THEN
                 found = .true.
                 iuno = iunso ( ii )
 
@@ -111,7 +111,8 @@ c       print*, 'idate= ', idate, idate00, hour01, time0
          hour01 =  hour01 + time0
 c  07/06/2004 for output of exact time
 
-c   modified 04/07/2005
+C     This is a block of diagnostic output that Hui likes.
+      if ( 1 == 2 ) then
       if(hdr(6) .eq. 120.0 .or. hdr(6) .eq. 130.0 .or. 
      &   hdr(6) .eq. 131.0 .or. hdr(6) .eq. 132.0 .or. 
      &   hdr(6) .eq. 133.0 .or. 
@@ -122,19 +123,17 @@ c   modified 04/07/2005
      &   hdr(6) .eq. 245.0 .or. hdr(6) .eq. 246.0 .or.
      &   hdr(6) .eq. 252.0 .or. hdr(6) .eq. 253.0 .or. 
      &   hdr(6) .eq. 255.0 ) then   
-c
-c liu
-c       WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
-c       WRITE  ( UNIT = iuno, FMT = '("#", A3,6x,a6,1x,a6,3x,
-c    +             a5,5x,a4,3x,a5,4x,a4,3x,a4,1x,a3,1x,a3,2x,a6,
-c    +             6x,a3,6x,a3,4x,a5,1x,a8,2x,a7,6x,a3 )' )
-c    +           'SID', 'XOB', 'YOB','DHR','ELV','TYP','T29','ITP',
-c    +           'lev','var','OB','qm', 'pc', 'rc', 'fc', 'an', 'err'
+ 
+        WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
+        WRITE  ( UNIT = iuno, FMT = '("#", A3,6x,a6,1x,a6,3x,
+     +             a5,5x,a4,3x,a5,4x,a4,3x,a4,1x,a3,1x,a3,2x,a6,
+     +             6x,a3,6x,a3,4x,a5,1x,a8,2x,a7,6x,a3 )' )
+     +           'SID', 'XOB', 'YOB','DHR','ELV','TYP','T29','ITP',
+     +           'lev','var','OB','qm', 'pc', 'rc', 'fc', 'an', 'err'
 
-c       WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
-c liu
-       endif
-c liu
+        WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
+      endif
+      endif
 
          ELSE
                 ii = ii + 1
