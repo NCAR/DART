@@ -80,13 +80,13 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
 integer :: num_def_obs_kinds = 0
 integer :: num_kind_assimilate, num_kind_evaluate
 
-! Map from values of kind in obs_def to the fixed values in the list above
-! Initially, these are undefined and have values -1
+! Map from values of kind in obs_def to the fixed values in the list above.
+! Initially, these are undefined and have values -1.
 ! For the first index 1, the value is the index in the input obs_sequence file.
 ! The first index 2 is the value of the corresponding index in this kind module.
 integer :: map(2, max_obs_kinds) = -1
 
-! An observation kind type links together all the information required
+! An observation kind type links together all the information required.
 ! An integer index that is also associated with the parameter above,
 ! A character string that has the same string as the parameter above,
 ! an integer that indicates what kind of variable type this is (for
