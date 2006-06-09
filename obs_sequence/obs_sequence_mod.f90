@@ -1084,7 +1084,7 @@ integer :: ios
 ! 1. Formatted, I-release format
 ! 2. Formatted, Hawaii-release format
 ! 3. Unformatted, I-release format
-! 4. Formatted, Hawaii-release format
+! 4. Unformatted, Hawaii-release format
 !
 ! Also return the num_copies, num_qc, num_obs and max_num_obs along
 ! with the read_format (formatted or unformatted) and release version
