@@ -120,11 +120,11 @@ type(obs_def_type), intent(in) :: obs_def2
 
 if ( .not. module_initialized ) call initialize_module
 
-obs_def1%location = obs_def2%location
-obs_def1%kind = obs_def2%kind
-obs_def1%time = obs_def2%time
+obs_def1%location       = obs_def2%location
+obs_def1%kind           = obs_def2%kind
+obs_def1%time           = obs_def2%time
 obs_def1%error_variance = obs_def2%error_variance
-obs_def1%key = obs_def2%key
+obs_def1%key            = obs_def2%key
 !deallocate(obs_def1%platform_qc)
 !allocate(obs_def1%platform_qc(size(obs_def2%platform_qc))
 ! Should this be pointer assignment or regular
