@@ -10,7 +10,7 @@
 set -eua
  
 #  ------------------------------------------------------------------------
-#  CPLAT - platform type (linux, sgi,aix,sun)
+#  CPLAT - platform type (linux, sgi, aix, sun, macosx)
 #  ------------------------------------------------------------------------
  
 CPLAT=linux
