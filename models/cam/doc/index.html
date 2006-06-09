@@ -79,9 +79,12 @@
 <H2>DART-CAM OVERVIEW</H2>
 
 <P>
-These scripts are those executed using the async = 3 option in the namelist input.nml.
+These scripts are executed using the async = 3 and do_parallel = 3
+options in the namelist file input.nml.
+These will advance the ensemble of models states on a set of processors,
+and then divide the globe into regions and assimilate each region on a processor.
 They are designed for use on a multi-processor machine, and have been tested for
-a batch submission environment (PBS/qsub).
+a batch submission environments PBS and LSF on Linux clusters.
 
 <BR><BR>
 
@@ -114,7 +117,8 @@ The calling tree for these scripts (and fortran executables) is:
     <!--location--><TD>experiment central directory where I/O and execution is organized.</TD></TR>
 <TR><!-- script --><TD valign=top><pre>   -> qsub filter.csh</pre></TD>
     <!-- domain --><TD valign=top>filter version </TD>
-    <!--location--><TD>local disc on a compute node/processor.</TD></TR>
+    <!--location--><TD>local disc on a compute node/processor, or a work directory
+                       in the central directory.</TD></TR>
 <TR><!-- script --><TD valign=top><pre>      -> filter executable</pre></TD>
     <!-- domain --><TD valign=top>  </TD>
     <!--location--><TD></TD></TR>
@@ -123,7 +127,8 @@ The calling tree for these scripts (and fortran executables) is:
     <!--location--><TD>central directory </TD></TR>
 <TR><!-- script --><TD valign=top><pre>      -> advance_model.csh</pre></TD>
     <!-- domain --><TD valign=top> model </TD>
-    <!--location--><TD>each ens member on a separate *node* using local disc there.</TD></TR>
+    <!--location--><TD>each ens member on a separate *node* using local disc there,
+                       or pre-existing work subdirectory of the central directory.</TD></TR>
 <TR><!-- script --><TD valign=top><pre>         -> trans_time executable</pre></TD>
     <!-- domain --><TD valign=top>  </TD>
     <!--location--><TD></TD></TR>
@@ -132,8 +137,8 @@ The calling tree for these scripts (and fortran executables) is:
     <!--location--><TD></TD></TR>
 <TR><!-- script --><TD valign=top><pre>         -> run_pc.csh</pre></TD>
     <!-- domain --><TD valign=top> model </TD>
-    <!--location--><TD>part of model package </TD></TR>
-<TR><!-- script --><TD valign=top><pre>            -> mpirun of forecast model</pre></TD>
+    <!--location--><TD>part of model package, not DART </TD></TR>
+<TR><!-- script --><TD valign=top><pre>            -> advance of forecast model</pre></TD>
     <!-- domain --><TD valign=top>  </TD>
     <!--location--><TD></TD></TR>
 <TR><!-- script --><TD valign=top><pre>         -> trans_pv_sv executable</pre></TD>
@@ -380,15 +385,22 @@ Instructions for setting up a DART-CAM assimilation using these scripts.
       </OL>
    <LI>DART
       <OL TYPE="1">
-         <LI>Get DART sandbox, modify to suit, compile;
-      filter, assim_region, trans_sv_pv, trans_pv_sv, trans_time
-      (and trans_pv_sv_time0 if you need to create filter_ic) and copy them to Central.</LI>
-         <LI>If you need to make up synthetic observations get create_obs_sequence, create_fixed_network_seq
-      and perfect_model_obs.  Otherwise, use the obs_seq.out files provided by raeder@ncar.ucar.edu. </LI>
-         <LI>Script DART/models/cam/work/makeall can facilitate compiling the package and moving
-             programs to the Central directory.</LI>
+         <LI>Get DART sandbox, modify to suit:
+             Edit ...DART/models/cam/work/input.nml:preprocess_nml to choose obs_def and obs_kind
+             source code files to load via the preprocessor.  The default files will give 
+             observations from NCEP reanalysis BUFR files.
+             In .../DART/mkmf link or copy (or make one of your own) the mkmf.template.xxxx 
+             which is appropriate for your computer to mkmf.template.
+         <LI>Script DART/models/cam/work/workshop_setup.csh is recommended for compiling 
+             the package and moving programs to the Central directory.
+             Compile; filter, assim_region, trans_sv_pv, trans_pv_sv, trans_time
+             (and trans_pv_sv_time0 if you need to create filter_ic) and copy them to Central.</LI>
+         <LI>If you need to make up synthetic observations get create_obs_sequence, 
+             create_fixed_network_seq and perfect_model_obs.  Otherwise, use the obs_seq.out 
+             files provided by raeder@ncar.ucar.edu. </LI>
    
-         <LI>Concatenate the DART namelist files (DART/models/cam/work/input.nml.[not trans_XX]_default)
+         <LI>Concatenate the DART namelist files 
+             (DART/models/cam/work/input.nml.[not trans_XX]_default)
    into one called "input.nml" (which all the DART executables want to see)
    This may require some inspection and manual editing to be sure that all the needed namelists
    are in it, and there are no redundancies.</LI>
@@ -421,7 +433,11 @@ Instructions for setting up a DART-CAM assimilation using these scripts.
           </LI>
    
           <LI>Edit filter_server.csh to set the number of nodes and/or processors to use,
-   and change other machine specific aspects.</LI>
+              and change other machine specific aspects.  
+              Note that the subdirectories in which the ensemble members will advance 
+              (and assimilation of regions will be done) must exist before the job is run.  
+              The default names are `pwd`/filter_server/member_# (# = 1,...,num_ens)
+              and .../region_# (# = 1,...,num_domains). </LI>
    
           <LI>Edit advance_model  ?</LI>
    
