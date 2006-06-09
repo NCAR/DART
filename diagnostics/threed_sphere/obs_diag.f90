@@ -1020,7 +1020,11 @@ OneLevel : do ivar=1,max_obs_kinds
    ! Create data files for all observation kinds we have used
    !--------------------------------------------------------------------
 
-   if( all (num_in_level(:, :, ivar) == 0) ) cycle OneLevel
+   if( all (num_in_level(:, :, ivar) == 0) ) then
+     if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
+     cycle OneLevel
+   endif
+     
 
    ivarcount = ivarcount + 1
 
@@ -1105,7 +1109,10 @@ AllLevels : do ivar=1,max_obs_kinds
    ! Create data files for all observation kinds we have used
    !--------------------------------------------------------------------
 
-   if( all (num_ver(:,:,ivar) == 0) ) cycle AllLevels
+   if( all (num_ver(:,:,ivar) == 0) ) then
+     if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
+     cycle AllLevels
+   endif
 
    ivarcount = ivarcount + 1
 
