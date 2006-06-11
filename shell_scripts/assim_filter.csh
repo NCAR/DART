@@ -124,6 +124,10 @@ else                                    # interactive
 
 endif
 
+if ( ! $?REMOVE ) then
+  set REMOVE = 'rm -rf'
+endif
+
 # This job's working directory; must cd to it, or it may run in /home...
 
 cd $CENTRALDIR
@@ -181,4 +185,4 @@ all_elements_done:
 wait
 
 # signal to filter_assim to continue
-rm -f $CENTRALDIR/batchflag
+${REMOVE} $CENTRALDIR/batchflag

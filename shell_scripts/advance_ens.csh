@@ -152,8 +152,8 @@ else                                    ;# interactive
 
 endif
 
-if ( ! $?RMFLAGS ) then
-  set RMFLAGS = '-rf'
+if ( ! $?REMOVE ) then
+  set REMOVE = 'rm -rf'
 endif
 
 # This job's working directory; must cd to it, or it may run in /home...
@@ -346,7 +346,7 @@ pwd
 ls -lt assim_model_state_ud*
 
 # signal async_filter.csh (if async=1) or Aadvance_state (if async=2) to continue
-\rm ${RMFLAGS} $BATCHFLAG
+${REMOVE} $BATCHFLAG
 
 exit 0
 
@@ -388,7 +388,7 @@ while($batch <= $nbatch)
 end
 all_elements_checked:
 
-\rm ${RMFLAGS} blown_*.out
+${REMOVE} blown_*.out
 
 if ($nrerun > 0) then
    echo "$nrerun members will be rerun"
@@ -431,4 +431,4 @@ mkdir -p FAILURES
 mv blown_*.out FAILURES/
 
 # signal async_filter.csh (if async=1) or Aadvance_state (if async=2) to continue
-\rm ${RMFLAGS} $BATCHFLAG
+${REMOVE} $BATCHFLAG
