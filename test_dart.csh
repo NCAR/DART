@@ -56,7 +56,7 @@ echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 #----------------------------------------------------------------------
 
 if ( ! $?host) then
-   set host = `uname -n`
+   setenv host `uname -n`
 endif
 
 setenv REMOVE 'rm -rfv'
