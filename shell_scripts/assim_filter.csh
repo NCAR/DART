@@ -85,7 +85,7 @@ if ($?LS_SUBCWD) then                   # LSF
    set JOBNAME = $LSB_JOBNAME
    set PROCNAMES = ($LSB_HOSTS)
    set REMOTECMD = ssh
-   set SCRATCH_PREFIX = /ptmp/${user}
+   set SCRATCHDIR = /ptmp/${user}
 
 else if ($?PBS_O_WORKDIR) then          # PBS
 
@@ -95,7 +95,7 @@ else if ($?PBS_O_WORKDIR) then          # PBS
    set JOBNAME = $PBS_JOBNAME
    set PROCNAMES = `cat $PBS_NODEFILE`
    set REMOTECMD = rsh
-   set SCRATCH_PREFIX = /scratch/local/${user}
+   set SCRATCHDIR = /scratch/local/${user}
 
 else if ($?OCOTILLO_NODEFILE) then      # ocotillo
 
@@ -112,7 +112,7 @@ else if ($?OCOTILLO_NODEFILE) then      # ocotillo
    set JOBNAME = assim_filter
    set PROCNAMES = `cat $OCOTILLO_NODEFILE`
    set REMOTECMD = rsh
-   set SCRATCH_PREFIX = /var/tmp/${user}
+   set SCRATCHDIR = /var/tmp/${user}
 
 else                                    # interactive
 
@@ -120,7 +120,7 @@ else                                    # interactive
    set JOBNAME = interactive_assim_filter
    set PROCNAMES = "$host $host $host $host"
    set REMOTECMD = csh
-   set SCRATCH_PREFIX = /tmp/${user}
+   set SCRATCHDIR = /tmp/${user}
 
 endif
 
@@ -144,45 +144,177 @@ echo "This job runs on the following nodes:"
 echo $PROCNAMES
 echo " "
 
-# First line of assim_region_control should have number of regions to be assimilated.
-# Given the number of ensemble members and processors, determine the number
-# of 'batches' necessary using primitive shell commands.
+#------------------------------------------------------------------------------
+# This block is exactly the same as 'section 2' of filter_server.csh, with only
+# one exception. There is no dedicated logfile for this block, so we just tack
+# information onto the semaphor file 'batchflag'. If this dies prematurely,
+# batchflag still exists and might contain something useful.
+#------------------------------------------------------------------------------
 
-set nregions = `head -1 assim_region_control`
-@ nbatch = $nregions / $NPROCS
-if ($nregions % $NPROCS != 0 ) @ nbatch++
-echo "$nbatch batches of regions will be executed."
+set MASTERLOG = ${CENTRALDIR}/batchflag
 
-# Send jobs to nodes. Each job is done in the 'background'.
-set element = 0
-set batch = 1
-while($batch <= $nbatch)
-   foreach proc ( $PROCNAMES )
-      @ element++
-      if ($element > $nregions) goto all_elements_done
+      # First line of assim_region_control is the number of regions to be assimilated
+      set nregions = `head -1 assim_region_control`
+      echo "$JOBNAME - assimilating $nregions regions at " `date` >> $MASTERLOG
+      echo "$JOBNAME - assimilating $nregions regions at " `date`
 
-      if ($REMOTECMD == 'csh') then
-         set proc = " "
+      # figure # batches of model runs to do, from # regions and # processors
+      @ nbatch = $nregions / $NPROCS
+      if ($nregions % $NPROCS != 0 ) @ nbatch++
+
+      # Create a directory for each member to run in for namelists
+      set element = 0
+      set batch = 1
+      while ($batch <= $nbatch)
+         foreach proc ( $PROCNAMES )
+            @ element++
+            if ($element > $nregions) goto some_regions_done
+
+            set ELEMENTDIR = $SCRATCHDIR/region_$element 
+
+            if ($REMOTECMD == 'csh') then  # interactive
+               set proc = " "
+            endif
+
+      echo "$REMOTECMD $proc  $CENTRALDIR/assim_region.csh $CENTRALDIR $element $ELEMENTDIR" >> $MASTERLOG
+      echo "$REMOTECMD $proc  $CENTRALDIR/assim_region.csh $CENTRALDIR $element $ELEMENTDIR"
+            $REMOTECMD $proc  $CENTRALDIR/assim_region.csh $CENTRALDIR $element $ELEMENTDIR &
+
+         end
+
+         echo "$JOBNAME - waiting to finish regional batch $batch of $nbatch " `date`   >> $MASTERLOG
+         echo "$JOBNAME - waiting to finish regional batch $batch of $nbatch " `date`
+         wait
+
+         @ batch++
+      end
+      some_regions_done:
+
+      # Make sure all (background) processes complete before continuing
+      wait
+
+      # Count all the ?full-size? filter_assim_region_out* files to see if there
+      # are any regional assimilations that need to be rerun. If the file is zero
+      # length, or not present -- we assume an assimilation failed for some reason.
+      # We will try again ... once ... and give up if that does not work.
+
+      echo "Entering assim_region rerun block at "`date`
+      echo "Entering assim_region rerun block at "`date` >> $MASTERLOG
+      echo " " >> $MASTERLOG
+
+      set n = 0
+      set nrerun = 0
+      while ($n < $nregions)
+         @ n++
+
+         ls -l filter_assim_region_out$n
+
+         if (-z filter_assim_region_out$n || ! -e filter_assim_region_out$n) then
+            @ nrerun++
+            @ procnum = $n % $NPROCS
+
+            echo "$JOBNAME - assim_region - failed procnum is $procnum"
+            echo "$JOBNAME - assim_region - failed procnum is $procnum" >> $MASTERLOG
+
+            if ($procnum == 0) set procnum = $NPROCS
+
+            if ($nrerun == 1) then
+               set rerun = ($n)
+               set badprocs = ($PROCNAMES[$procnum])
+            else
+               set rerun = ($rerun $n)
+               set badprocs = ($badprocs $PROCNAMES[$procnum])
+            endif
+            echo "nrerun, rerun = $nrerun $rerun on $PROCNAMES[$procnum]" >> $MASTERLOG
+            echo "nrerun, rerun = $nrerun $rerun on $PROCNAMES[$procnum]"
+         else
+            echo "filter_assim_region_out$n is fine" >> $MASTERLOG
+            echo "filter_assim_region_out$n is fine"
+         endif
+      end
+
+      # If there were some bad regional assimilations, we must find the processors
+      # that worked, and log ones that didn't.  We will resubmit to just the
+      # list of good processors.
+
+      if ($nrerun > 0) then
+
+         set ngood = 0
+         set goodprocs = ' '
+         foreach proc ($PROCNAMES)
+            set is_good = 'true'
+            foreach bad ($badprocs)
+               if ($proc == $bad) set is_good = 'false'
+            end
+            if ($is_good == 'true') then
+               @ ngood++
+               if ($ngood == 1 ) then
+                  set goodprocs = ($proc)
+               else
+                  set goodprocs = ($goodprocs $proc)
+               endif
+            endif
+         end
+         echo ' '                                      >> $MASTERLOG
+         echo "Regions; nrerun rerun = $nrerun $rerun" >> $MASTERLOG
+         echo "      good processors = $goodprocs"     >> $MASTERLOG
+         echo ' '                                      >> $MASTERLOG
       endif
 
-      echo "$REMOTECMD $proc $CENTRALDIR/assim_region.csh $CENTRALDIR $element ${SCRATCH_PREFIX}/tmp$element" 
-            $REMOTECMD $proc $CENTRALDIR/assim_region.csh $CENTRALDIR $element ${SCRATCH_PREFIX}/tmp$element &
+      # The number of batches and nodes limit how many bad nodes can be handled; 
+      # 4 bad processors (=2 bad nodes) x 4 batches = 16 members to redo on 16 procs
+      # Give up if the number to redo is greater than the number of processors.
 
-   end
+      if ($nrerun > 0) then
+         set element = 0
+         foreach proc ( $goodprocs )
+            @ element++
+            if ($element > $nrerun) goto all_regions_done
 
-   # One way to monitor progress.  batchflag has other info to start,
-   # so this echo can be removed and scripts will still work.
-   echo "waiting to finish assim batch $batch of $nbatch"
-   echo "waiting to finish assim batch $batch of $nbatch" >> $CENTRALDIR/batchflag
+            set ELEMENTDIR = $SCRATCHDIR/region_$rerun[$element] 
 
-   wait
+            if ($REMOTECMD == 'csh') then # interactive
+               set proc = " "
+            endif
 
-   @ batch++
-end
-all_elements_done:
+            echo "$REMOTECMD $proc  $CENTRALDIR/assim_region.csh $CENTRALDIR $rerun[$element] $ELEMENTDIR"
+            echo "$REMOTECMD $proc  $CENTRALDIR/assim_region.csh $CENTRALDIR $rerun[$element] $ELEMENTDIR" >> $MASTERLOG
+                  $REMOTECMD $proc  $CENTRALDIR/assim_region.csh $CENTRALDIR $rerun[$element] $ELEMENTDIR  &
 
-# Wait for all *background* processes to finish up ... just in case.
-wait
+         end
+         all_regions_done:
+
+         echo "$JOBNAME - waiting to finish regions rerun "`date`  >> $MASTERLOG
+         echo "$JOBNAME - waiting to finish regions rerun "`date`
+         wait
+      endif
+
+      # OK, we tried. If the ones we needed to rerun are not done now ... give up.
+
+      set n = 0
+      while ($n < $nregions)
+         @ n++
+         if (-z filter_assim_region_out$n || ! -e filter_assim_region_out$n) then
+            echo "MISSING filter_assim_region_out$n and aborting" >> $MASTERLOG
+            echo "MISSING filter_assim_region_out$n and aborting" >> $MASTERLOG
+            echo "MISSING filter_assim_region_out$n and aborting"
+            echo "MISSING filter_assim_region_out$n and aborting"
+            exit 2
+         endif
+      end
+
+#------------------------------------------------------------------------------
+# At this point, we differ from the async = 3 scenario of filter_server.csh.
+# filter_server.csh communicates by removing a file 'go_assim_regions'.
+#
+# This script is invoked when (async = 2) and signals that it has completed
+# by removing the semaphor file '${CENTRALDIR}/batchflag'
+#------------------------------------------------------------------------------
+
+echo "$JOBNAME - Completed this assimilation at " `date`
+echo "---------"
+pwd
+ls -lt filter_assim_region_out*
 
 # signal to filter_assim to continue
-${REMOVE} $CENTRALDIR/batchflag
+${REMOVE} ${CENTRALDIR}/batchflag
