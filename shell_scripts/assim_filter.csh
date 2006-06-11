@@ -312,9 +312,9 @@ set MASTERLOG = ${CENTRALDIR}/batchflag
 #------------------------------------------------------------------------------
 
 echo "$JOBNAME - Completed this assimilation at " `date`
-echo "---------"
+echo "$JOBNAME - ---------"
 pwd
 ls -lt filter_assim_region_out*
 
-# signal to filter_assim to continue
+# signal to assim_tools_mod:filter_assim() (if async==2) to continue
 ${REMOVE} ${CENTRALDIR}/batchflag
