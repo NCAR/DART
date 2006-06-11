@@ -381,11 +381,11 @@ while (1 == 1)
    # TJH should just use the goodprocs ... not all the procs ... if it was bad for
    # the model advance, it is probably still bad now ... 
    #--------------------------------------------------------------------------------
-   # Check to see if the go_advance_regions file exists
+   # Check to see if the go_assim_regions file exists
    #------------------------------------------------------------------------------------ 
    if( -e go_assim_regions ) then
 
-      # First line of filter_control should have number of regions to be assimilated
+      # First line of assim_region_control is the number of regions to be assimilated
       set nregions = `head -1 assim_region_control`
       echo "$JOBNAME - assimilating $nregions regions at " `date` >> $MASTERLOG
       echo "$JOBNAME - assimilating $nregions regions at " `date`
