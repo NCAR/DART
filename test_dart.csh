@@ -52,15 +52,11 @@ echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 #----------------------------------------------------------------------
 # See if some necessary environment variables are set.
 # We'd like to have a short hostname but uname can be configured very
-# differently from host to host. The first 'setenv host' will always 
-# work -- if the second one works (this is actually a tcsh syntax)
-# great -- if not, 'host' is still set from the previous line.
+# differently from host to host.
 #----------------------------------------------------------------------
 
 if ( ! $?host) then
-   set thishost = `uname -n`
-   setenv host $thishost
-   setenv host $thishost:ar
+   set host = `uname -n`
 endif
 
 setenv REMOVE 'rm -rfv'
