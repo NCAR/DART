@@ -22,32 +22,26 @@ set WORKDIR = $1
 set element = $2
 set temp_dir = $3
 
-if ( ! $?RMFLAGS ) then
-  set RMFLAGS = '-rf'
-endif
-if ( ! $?CPFLAGS ) then
-   set CPFLAGS = '-p'
-endif
-if ( ! $?MVFLAGS ) then
-   set MVFLAGS = ''
-endif
+set REMOVE = 'rm -rf'
+set   COPY = 'cp -p'
+set   MOVE = 'mv'
 
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
 
 # Create a clean temporary directory and go there
-\rm ${RMFLAGS}  $temp_dir
-mkdir -p $temp_dir
-cd       $temp_dir
+${REMOVE} $temp_dir
+mkdir -p  $temp_dir
+cd        $temp_dir
 
 # Copy the initial condition file to the temp directory
-cp ${CPFLAGS} ${WORKDIR}/assim_model_state_ic$element temp_ic
+${COPY} ${WORKDIR}/assim_model_state_ic$element temp_ic
 
 # Copy the DART namelist to the temp directory
-cp ${CPFLAGS} ${WORKDIR}/input.nml .
+${COPY} ${WORKDIR}/input.nml .
 
 # Copy the integrate_model executable to the temporary directory
-cp ${CPFLAGS} ${WORKDIR}/integrate_model .
+${COPY} ${WORKDIR}/integrate_model .
 
 # Advance the model, saving standard out
 ./integrate_model > integrate_model_out_temp
@@ -56,8 +50,8 @@ cp ${CPFLAGS} ${WORKDIR}/integrate_model .
 cat integrate_model_out_temp >> $WORKDIR/integrate_model_out_temp$element
 
 # Move the updated state vector to the working directory
-mv ${MVFLAGS} temp_ud $WORKDIR/assim_model_state_ud$element
+${MOVE} temp_ud $WORKDIR/assim_model_state_ud$element
 
 # Change back to working directory and get rid of temporary directory
 cd $WORKDIR
-\rm ${RMFLAGS} temp_dir
+${REMOVE} temp_dir

@@ -140,8 +140,8 @@ else                                    # interactive
    
 endif
 
-if ( ! $?RMFLAGS ) then
-  set RMFLAGS = '-rf'
+if ( ! $?REMOVE ) then
+  set REMOVE = '\rm -rf'
 endif
 
 # The scratch directory will be used as the run-time directory for both the
@@ -220,31 +220,6 @@ while (1 == 1)
       set element = 0
       set batch = 1
       while ($batch <= $nbatch)
-
-         ## don't wait for all the initial files, just the last one for this batch
-         #@ last_num = $batch * $NPROCS 
-         #set exist_secs = 1
-         #while (! -e assim_model_state_ic${last_num})
-         #   echo "waiting for assim_model_state_ic${last_num} to exist" >> run_job.log
-         #   sleep $exist_secs
-         #   if ($exist_secs < 8) @ exist_secs = 2 * $exist_secs
-         #end
-
-         ## Ensure that the last batch does not start until its files are the right size.
-         ## read size of assim_model_state_ic from file written by perfect.csh or filter.csh
-         ## running on a compute node.  Compare size currently in CENTRALDIR with the whole
-         ## file size.
-
-         #set size = `cat assim_size`
-         #set list = `ls -l assim_model_state_ic${last_num}`
-         #set size_secs = 1
-         #while ($list[5] != $size)
-         #   echo "waiting for assim_model_state_ic${last_num} size $size list $list[5]"  \
-         #        >> $MASTERLOG 
-         #   sleep $size_secs
-         #   if ($size_secs < 8) @ size_secs = 2 * $size_secs
-         #   set list = `ls -l assim_model_state_ic${last_num}`
-         #end
 
          # Advance the model for each ensemble member
          # advance_model has an additional optional arg for mpi "machines"
@@ -388,7 +363,7 @@ while (1 == 1)
       # Finished with advance_model (hopefully) so remove the go_advance_model file.
       # This signals 'filter' to proceed with the assimilation.
 
-      \rm ${RMFLAGS} go_advance_model
+      ${REMOVE} go_advance_model
 
       echo "$JOBNAME - Completed this advance at " `date`  >> $MASTERLOG
       echo "$JOBNAME - Completed this advance at " `date`
@@ -496,7 +471,6 @@ while (1 == 1)
 
       if ($nrerun > 0) then
 
-
          set ngood = 0
          set goodprocs = ' '
          foreach proc ($PROCNAMES)
@@ -564,7 +538,7 @@ while (1 == 1)
       # Finished with assim_region (hopefully) so remove the go_assim_regions file.
       # This signals 'filter' to proceed with the assimilation.
 
-      \rm ${RMFLAGS} go_assim_regions
+      ${REMOVE} go_assim_regions
 
       # Removing 'go_assim_regions' is the signal to filter.csh to continue
       echo "$JOBNAME - Completed this assimilation at " `date` >> $MASTERLOG
@@ -589,7 +563,7 @@ while (1 == 1)
    if(-e go_end_filter ) then
       echo "$JOBNAME - terminating normally at " `date`  >> $MASTERLOG
       echo "$JOBNAME - terminating normally at " `date`
-      \rm ${RMFLAGS} go_end_filter
+      ${REMOVE} go_end_filter
       exit 0
    else
       # No files found, wait and check again
