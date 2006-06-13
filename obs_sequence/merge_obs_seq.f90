@@ -120,8 +120,6 @@ else
     'BAD news - first obs_seq is neverending ...', source,revision,revdate) 
 endif
 
-!call print_time(last_time, 'last time of sequence 1 is ')   ! TJH debug
-
 !-------------------------------------------------------------
 ! Start to insert obs from sequence 2 into sequence 1
 !
@@ -137,10 +135,11 @@ if ( is_there_one )  then
 
    call        get_obs_def(new_obs, obs_def)
    this_time = get_obs_def_time(obs_def)
+
    if ( this_time > last_time ) then
-      call append_obs_to_seq(seq1, new_obs)
+    ! call append_obs_to_seq(seq1, new_obs) TJH fails on bluevista
+      call insert_obs_in_seq(seq1, new_obs)
       last_time = this_time
-      !call print_time(last_time, 'last time of sequence 1 is ')   ! TJH debug
    else
       call insert_obs_in_seq(seq1, new_obs)
    endif
@@ -162,9 +161,9 @@ if ( is_there_one )  then
       this_time = get_obs_def_time(obs_def)
 
       if ( this_time > last_time ) then
-         call append_obs_to_seq(seq1, new_obs)
+       ! call append_obs_to_seq(seq1, new_obs) TJH fails on bluevista
+         call insert_obs_in_seq(seq1, new_obs)
          last_time = this_time
-         !call print_time(last_time, 'last time of sequence 1 is ')   ! TJH debug
       else
          call insert_obs_in_seq(seq1, new_obs)
       endif
@@ -178,9 +177,11 @@ else
    call error_handler(E_MSG,'merge_obs_seq', msgstring, source, revision, revdate)
 endif
 
-print*, 'Number of obs to be inserted :          ', size_seq2
-print*, 'Number of inserted obs:                 ', num_inserted
-print*, 'Total number of obs in the new seq file:', get_num_obs(seq1)
+print*, 'Number of obs in first file   :          ', size_seq
+print*, 'Number of obs to be  inserted :          ', size_seq2
+print*, 'Number of obs really inserted :          ', num_inserted
+print*, 'Target number of obs in the new seq file:', size_seq + num_inserted
+print*, 'Actual number of obs in the new seq file:', get_num_obs(seq1)
 
 call write_obs_seq(seq1, filename_out)
 
