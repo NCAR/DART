@@ -81,6 +81,7 @@ real(r8) ::                  rfict(max_gpsro_obs) ! local curvature radius
 real(r8) ::              step_size(max_gpsro_obs)
 real(r8) ::                ray_top(max_gpsro_obs)
 integer  :: ii
+integer  :: keycount = 0
 
 contains
 
@@ -165,10 +166,16 @@ end subroutine write_gpsro_ref
 !---------------------------------------------------------------------------------
 !subroutine read_gpsro_ref(key, ifile, fform)
 !
+! Every GPS observation has its own (metadata) key.
+! When you read two gps observation sequence files, it is necessary to track the
+! total number of metadata keys read ... not just the number in the current file.
+! 
 
 integer,          intent(out)          :: key
 integer,          intent(in)           :: ifile
 character(len=*), intent(in), optional :: fform
+
+integer             :: keyin    ! the metadata key in the current obs sequence
 
 character(len=8)    :: header
 character(len=32)   :: fileformat
@@ -178,16 +185,26 @@ if ( .not. module_initialized ) call initialize_module
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
 
+keycount = keycount + 1    ! the total metadata key count from all sequences
+key = keycount             ! copied to the output variable
+
+if(key > max_gpsro_obs) then
+   write(*, *) 'key (',key,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
+   call error_handler(E_ERR,'read_gpsro_ref', &
+        'Increase max_gpsro_obs.', source, revision, revdate)
+endif
+
 ! Read the character identifier for verbose formatted output
 SELECT CASE (fileformat)
    CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-    read(ifile) key
+
+    read(ifile) keyin          ! read and throw away
     read(ifile) rfict(key), step_size(key), ray_top(key), &
                (ray_direction(ii, key), ii=1, 3), gpsro_ref_form(key)
     continue
 
    CASE DEFAULT
-      read(ifile, FMT='(a8, i8)') header, key
+      read(ifile, FMT='(a8, i8)') header, keyin    ! throw away keyin
       if(header /= 'gpsroref') then
        call error_handler(E_ERR,'read_gpsro_ref', &
             'Expected header "gpsroref" in input file', source, revision, revdate)
@@ -198,9 +215,9 @@ SELECT CASE (fileformat)
 END SELECT
 
 if(key > max_gpsro_obs) then
-   write(*, *) 'key (',key,') exceed max_gpsro_obs (',max_gpsro_obs,')'
+   write(*, *) 'key count (',key,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
    call error_handler(E_ERR,'read_gpsro_ref', &
-        'Increase max_gpsro_obs.', source, revision, revdate)
+        'Increase max_gpsro_obs ', source, revision, revdate)
 endif
 
 end subroutine read_gpsro_ref
