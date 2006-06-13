@@ -137,8 +137,7 @@ if ( is_there_one )  then
    this_time = get_obs_def_time(obs_def)
 
    if ( this_time > last_time ) then
-    ! call append_obs_to_seq(seq1, new_obs) TJH fails on bluevista
-      call insert_obs_in_seq(seq1, new_obs)
+      call append_obs_to_seq(seq1, new_obs)
       last_time = this_time
    else
       call insert_obs_in_seq(seq1, new_obs)
@@ -161,8 +160,7 @@ if ( is_there_one )  then
       this_time = get_obs_def_time(obs_def)
 
       if ( this_time > last_time ) then
-       ! call append_obs_to_seq(seq1, new_obs) TJH fails on bluevista
-         call insert_obs_in_seq(seq1, new_obs)
+         call append_obs_to_seq(seq1, new_obs)
          last_time = this_time
       else
          call insert_obs_in_seq(seq1, new_obs)
