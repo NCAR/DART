@@ -9,16 +9,16 @@ use        types_mod, only : r8
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, logfileunit
-use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
-                             get_num_obs, init_obs_sequence, get_first_obs, &
-                             write_obs_seq, set_copy_meta_data, get_obs_def, &
-                             set_obs_def, append_obs_to_seq, get_next_obs, &
-                             insert_obs_in_seq, init_obs, assignment(=), &
-                             static_init_obs_sequence, get_num_copies, get_num_qc, &
+use time_manager_mod, only : time_type, operator(>), print_time
+use      obs_def_mod, only : obs_def_type, get_obs_def_time
+use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
+                             init_obs, init_obs_sequence, static_init_obs_sequence, &
+                             read_obs_seq_header, read_obs_seq, assignment(=), &
+                             get_num_obs, get_first_obs, get_last_obs, get_next_obs, &
+                             insert_obs_in_seq, get_num_copies, get_num_qc, &
                              get_copy_meta_data, get_qc_meta_data, set_qc_meta_data, &
-                             destroy_obs, destroy_obs_sequence
-
-! use obs_def_gps_mod
+                             destroy_obs, destroy_obs_sequence, get_obs_def, &
+                             append_obs_to_seq
 
 implicit none
 
@@ -30,18 +30,25 @@ revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq1, seq2
 type(obs_type)          :: obs, next_obs, new_obs
+type(obs_def_type)      :: obs_def
+type(time_type)         :: last_time, this_time
 logical                 :: is_there_one, is_this_last
-integer                 :: num_copies, num_qc
-integer                 :: size_seq1, size_seq2
+integer                 :: size_seq1, num_copies1, num_qc1
+integer                 :: size_seq2, num_copies2, num_qc2
+integer                 :: size_seq,  num_copies,  num_qc
+integer                 :: add_copies = 0, add_qc = 0
 integer                 :: num_inserted, iunit, io
+integer                 :: max_num_obs, file_id
+character(len = 129)    :: read_format
+logical                 :: pre_I_format
 character(len = 129)    :: msgstring
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 
-character(len = 129) :: filename_seq1 = "obs_seq.out",    &
-                        filename_seq2 = "obs_seq.final",  &
-                        filename_out  = 'filter_ics'
+character(len = 129) :: filename_seq1 = "obs_seq.one",  &
+                        filename_seq2 = "obs_seq.two",  &
+                        filename_out  = 'obs_seq.merged'
 
 namelist /merge_obs_seq_nml/ filename_seq1, filename_seq2, filename_out
 
@@ -50,10 +57,8 @@ namelist /merge_obs_seq_nml/ filename_seq1, filename_seq2, filename_out
 ! This routine basically opens the second observation sequence file
 ! and 'inserts' itself into the first observation sequence file.
 ! Each observation in the second file is independently inserted 
-! into the first file. This takes time ... Might want to throw
-! in some checking to see if the observations in the second file 
-! are AFTER the last time of the first file ... appending would
-! be a lot faster -- less searching and comparing dates.
+! or appended into the first file.
+! Inserting takes time, appending is much faster when possible.
 !----------------------------------------------------------------
 
 call merge_obs_seq_modules_used()
@@ -68,20 +73,33 @@ call error_handler(E_MSG,'merge_obs_seq','merge_obs_seq_nml values are',' ',' ',
 write(logfileunit, nml=merge_obs_seq_nml)
 write(     *     , nml=merge_obs_seq_nml)
 
-! Read 2nd obs seq first, and find out its num_obs
-call read_obs_seq(filename_seq2, 0, 0, 0, seq2)
-size_seq2 = get_num_obs(seq2)
+! Read header information for the sequences to see if we need
+! to accomodate additional copies or qc values from sequence two.
+
+call read_obs_seq_header(filename_seq1, num_copies1, num_qc1, size_seq1, &
+   max_num_obs, file_id, read_format, pre_I_format, close_the_file = .true.)
+
+call read_obs_seq_header(filename_seq2, num_copies2, num_qc2, size_seq2, &
+   max_num_obs, file_id, read_format, pre_I_format, close_the_file = .true.)
+
+add_copies = 0
+add_qc     = 0
+
+if (num_copies2 > num_copies1) add_copies = num_copies2 - num_copies1
+if (    num_qc2 >     num_qc1) add_qc     =     num_qc2 -     num_qc1
 
 ! Read 1st obs seq, expand its size for insertion
-call read_obs_seq(filename_seq1, 0, 0, size_seq2, seq1)
-size_seq1 = get_num_obs(seq1)
+call read_obs_seq(filename_seq1, add_copies, add_qc, size_seq2, seq1)
+size_seq    = get_num_obs(seq1)      ! does not include size_seq2
+num_copies  = get_num_copies(seq1)   ! already includes add_copies
+num_qc      = get_num_qc(seq1)       ! already includes add_qc
+
+! Read 2nd obs seq
+call read_obs_seq(filename_seq2, 0, 0, 0, seq2)
 
 ! Compare metadata between the observation sequences.
 ! If it is compatible, keep going, if not ... it will terminate here.
- call compare_metadata(seq1, seq2)
-
-num_copies  = get_num_copies(seq1)   ! By this time, num_copies, num_qc are
-num_qc      = get_num_qc(seq1)       ! the same for both seq1 and seq2
+call compare_metadata(seq1, seq2)
 
 call error_handler(E_MSG,'merge_obs_seq', &
     'Good news - observation sequence files compatible ...', source,revision,revdate)
@@ -90,6 +108,19 @@ call error_handler(E_MSG,'merge_obs_seq', &
 call init_obs(     obs, num_copies, num_qc)
 call init_obs( new_obs, num_copies, num_qc)
 call init_obs(next_obs, num_copies, num_qc)
+
+! Getting the time of the last observation in the first sequence to see
+! if we can append instead of insert. Appending is MUCH faster.
+is_there_one = get_last_obs(seq1, obs)
+if ( is_there_one ) then
+   call get_obs_def(obs, obs_def)
+   last_time = get_obs_def_time(obs_def)
+else
+   call error_handler(E_ERR,'merge_obs_seq', &
+    'BAD news - first obs_seq is neverending ...', source,revision,revdate) 
+endif
+
+!call print_time(last_time, 'last time of sequence 1 is ')   ! TJH debug
 
 !-------------------------------------------------------------
 ! Start to insert obs from sequence 2 into sequence 1
@@ -103,7 +134,17 @@ is_there_one = get_first_obs(seq2, obs)
 if ( is_there_one )  then
 
    new_obs = obs    ! using interface procedure
-   call insert_obs_in_seq(seq1, new_obs)
+
+   call        get_obs_def(new_obs, obs_def)
+   this_time = get_obs_def_time(obs_def)
+   if ( this_time > last_time ) then
+      call append_obs_to_seq(seq1, new_obs)
+      last_time = this_time
+      !call print_time(last_time, 'last time of sequence 1 is ')   ! TJH debug
+   else
+      call insert_obs_in_seq(seq1, new_obs)
+   endif
+
    num_inserted = num_inserted + 1
    
    call get_next_obs(seq2, obs, next_obs, is_this_last)
@@ -113,9 +154,21 @@ if ( is_there_one )  then
          print*, 'inserted number ',num_inserted,' of ',size_seq2
       endif
 
-      obs = next_obs
+      obs     = next_obs
       new_obs = obs
-      call insert_obs_in_seq(seq1, new_obs)
+
+      ! If this obs is later than the last obs, we can append ... much faster
+      call        get_obs_def(obs, obs_def)
+      this_time = get_obs_def_time(obs_def)
+
+      if ( this_time > last_time ) then
+         call append_obs_to_seq(seq1, new_obs)
+         last_time = this_time
+         !call print_time(last_time, 'last time of sequence 1 is ')   ! TJH debug
+      else
+         call insert_obs_in_seq(seq1, new_obs)
+      endif
+
       num_inserted = num_inserted + 1
       call get_next_obs(seq2, obs, next_obs, is_this_last)
    enddo ObsLoop
@@ -127,7 +180,7 @@ endif
 
 print*, 'Number of obs to be inserted :          ', size_seq2
 print*, 'Number of inserted obs:                 ', num_inserted
-print*, 'Total number of obs in the new seq file:', num_inserted+size_seq1
+print*, 'Total number of obs in the new seq file:', get_num_obs(seq1)
 
 call write_obs_seq(seq1, filename_out)
 
@@ -163,7 +216,7 @@ end subroutine merge_obs_seq_modules_used
 ! This subroutine compares the metadata for two different observation
 ! sequences and terminates the program if they are not conformable.
 ! In order to be merged, the two observation sequences must have the same
-! 'observation types' header.  
+! number of qc values, the same number of copies ... 
 !
 ! The messages might be a bit misleading 'warning', 'warning', 'error' ...
 !
