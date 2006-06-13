@@ -7,9 +7,9 @@
    output_restart = .false.,
    restart_in_file_name = "perfect_ics",
    restart_out_file_name = "perfect_restart",
-   init_time_days = 0,
+   init_time_days = 148074,
    init_time_seconds = 43200,
-   output_interval = 1 /
+   output_interval = 1  /
 
 &filter_nml
    async = 0,
@@ -21,13 +21,13 @@
    obs_sequence_out_name = "obs_seq.final",
    restart_in_file_name = "filter_ics",
    restart_out_file_name = "filter_restart", 
-   init_time_days = 0,
+   init_time_days = 148074,
    init_time_seconds = 43200,
    output_state_ens_mean = .true.,
    output_state_ens_spread = .true.,
    output_obs_ens_mean = .true.,
    output_obs_ens_spread = .true., 
-   num_output_state_members = 0,
+   num_output_state_members = 10,
    num_output_obs_members = 0,
    output_interval = 1,
    num_groups = 1,
@@ -135,3 +135,18 @@
    reg_names  = 'global',
    print_mismatched_locs = .false.  /
 
+&model_nml
+   num_est_params = 0,
+   est_param_types = 604,
+   pert_init_sd = 0.01,
+   pert_param_sd = 0.0,
+   pert_init_beta_1 = -1,
+   pert_init_beta_2 = -1,
+   pert_param_min = 0.00000001,
+   pert_param_max = 0.99999999,
+   maintain_initial_spread = .false.,
+   dist_shape = 'beta', 
+   real_obs_period = 1800, 
+   start_real_obs = 1800  /
+
+ 

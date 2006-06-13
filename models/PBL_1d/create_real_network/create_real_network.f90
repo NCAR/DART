@@ -36,11 +36,11 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                              get_num_copies, get_num_qc, &
                              get_copy_meta_data, get_qc_meta_data, &
                              set_qc_meta_data, read_obs_seq_header, &
-                             set_obs_values, set_qc
+                             set_obs_values, set_qc, get_qc
 use time_manager_mod, only : time_type, operator(*), operator(+), set_time, &
                              set_date, increment_time, get_time, print_time, &
                              operator(==), operator(/), operator(<), operator(-)
-use        model_mod, only : static_init_model
+use        model_mod, only : static_init_model, real_obs_period, start_real_obs
 use        module_wrf, only : static_init_wrf, init_wrf, nt_f_smos, &
                               start_year_f, start_month_f,start_day_f, &
                               start_hour_f, start_minute_f, &
@@ -75,25 +75,16 @@ integer                 :: additional_qc, additional_copies
 integer                 :: last_key_used, time_step_number
 integer                 :: num_obs, obs_kind_ind
 real(r8)                :: this_obs_val, this_qc_val
-real(r8), dimension(:), allocatable :: obs_vals, qc_vals
+real(r8), dimension(:), allocatable :: obs_vals, qc_vals, qc_sequence
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
 integer                 :: wrf_rnd_seed = -1
-
-! namelist variables with default values
-integer :: seconds_start = 43200 ! seconds in day to actually start the obs sequence
-integer :: obs_period = 3600 ! if positive, over-rides the native obs frequency in the input file
-
-namelist /create_real_network/ seconds_start, obs_period
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('Create_real_network_seq')
 call register_module(source,revision,revdate)
 
-! read the namelist
-call find_namelist_in_file("input.nml","create_real_network",iunit)
-read(iunit,nml=create_real_network,iostat=io)
-call check_namelist_read(iunit,io,"create_real_network")
+! The only necessary namelist variables come from the model
 
 ! Call the underlying model's static initialization for calendar info
 call static_init_model()
@@ -131,24 +122,18 @@ call init_obs(new_obs, num_copies, num_qc)
    init_time = increment_time(init_time,start_forecast,0)
    flen_time = set_time(forecast_length,0) 
    end_time  = init_time + flen_time
-   obs_period = max(obs_period,interval_smos)
+   real_obs_period = max(real_obs_period,interval_smos)
 
    call get_time(init_time,seconds,days)
 
-   start_seq_time = increment_time(init_time,seconds_start-seconds,0)
-   obs_seq_period = set_time(obs_period, 0)
+   start_seq_time = increment_time(init_time,start_real_obs,0)
+   obs_seq_period = set_time(real_obs_period, 0)
    obs_list_period = set_time(interval_smos, 0)
 
-   if ( seconds_start < seconds ) then
-     call error_handler(E_ERR, 'create_real_network', &
-        'Cannot start obs before the time specified in wrf1d namelist', &
-        source, revision, revdate)
-   endif
-
-   if ( interval_smos >= obs_period ) then
+   if ( interval_smos >= real_obs_period ) then
       num_times = (end_time - start_seq_time) / set_time(interval_smos,0) + 1
    else
-      num_times = (end_time - start_seq_time) / set_time(obs_period,0) + 1
+      num_times = (end_time - start_seq_time) / set_time(real_obs_period,0) + 1
    endif
 
    ! time information comes from the wrf1d_namelist.input
@@ -174,6 +159,7 @@ call init_obs(new_obs, num_copies, num_qc)
    end do
 
    ! while looping through the times, generate a list of obs times
+   ! and qc values
    do j = 1, num_times
       write(*, *) j
       ob_time = start_seq_time + (j - 1) * obs_seq_period
@@ -265,9 +251,13 @@ copy_meta_data(1) = 'observations'
 copy_meta_data(2) = 'truth'
 call set_copy_meta_data(seq_out, 1, copy_meta_data(1))
 call set_copy_meta_data(seq_out, 2, copy_meta_data(2))
+do i = 1, num_qc
+  call set_qc_meta_data(seq_out, i, get_qc_meta_data(seq, i))
+end do
 
 ! simply look through obs one-by-one and pull from the proper vector
 allocate(obs_vals(num_copies), qc_vals(num_qc))
+allocate(qc_sequence(num_obs))
 
 is_there_one = get_first_obs(seq, obs)
 if ( is_there_one ) then
@@ -283,6 +273,8 @@ if ( is_there_one ) then
 
      this_obs_val = get_obs_from_input(ob_time,obs_kind_ind,num_times)
      this_qc_val  = get_qc_from_obs(obs_kind_ind,this_obs_val)
+     call get_qc(new_obs,qc_sequence(i:i),1)
+     this_qc_val = max(this_qc_val,qc_sequence(i))
 
      ! for input, all copies are the same
      obs_vals = this_obs_val
