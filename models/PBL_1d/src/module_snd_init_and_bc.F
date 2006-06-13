@@ -1,5 +1,6 @@
 MODULE module_snd_init_and_bc
 
+  USE types_mod,             only: r8
   USE time_manager_mod,      only: time_type, GREGORIAN, &
                                    set_calendar_type, print_time, &
                                    print_date, set_date, set_time, &
@@ -16,7 +17,8 @@ MODULE module_snd_init_and_bc
                                    ivgtyp_ref, lu_index_ref, vegfra_ref, &
                                    lat_ref, lon_ref, julday_ref, mminlu_ref,&
                                    init_flux_file, init_soil_file, &
-                                   rnd_init, start_forecast, init_smos_file
+                                   rnd_init, start_forecast, init_smos_file, &
+                                   force_uvg
   USE module_interpolations, only: linear
 
   IMPLICIT NONE
@@ -59,7 +61,6 @@ MODULE module_snd_init_and_bc
   REAL,    DIMENSION(nsmosvars)  :: missingSMOSVals ! associated netCDF missing flags 
   INTEGER               :: nrecords, nflux_file, nsoil_file, nsmos_file
 
-  REAL                  :: terrain
 
   INTEGER, DIMENSION(2)               :: control_index
 
@@ -74,7 +75,7 @@ CONTAINS
                         nz, nt, nt_flux, nt_smos, &
                         ns, nt_soil, &
                         mminlu,julday,&
-                        lat, lon, cor)
+                        lat, lon, cor, terrain)
    IMPLICIT NONE
    INCLUDE 'netcdf.inc'
 
@@ -83,18 +84,20 @@ CONTAINS
    INTEGER, INTENT(inout):: ncid, ncid_flux, ncid_soil, ncid_smos
    INTEGER, INTENT(out)  :: nz, ns, nt, nt_flux, nt_soil, nt_smos
    INTEGER, INTENT(out)  :: julday
-   REAL, INTENT(out)     :: lat,lon,cor
+   REAL, INTENT(out)     :: lat,lon,cor, terrain
    CHARACTER(len=4), INTENT(out) :: mminlu
 
 ! local
    INTEGER              :: ierr
 
 ! some error checking on the namelist choices
+   IF ( .not. force_uvg ) THEN
    IF (mod(forecast_length,interval_f) /= 0) THEN
       print*,'Please choose forecast_length and hour_inteval such that'
       print*,'a profile is available at both init and end times'
       stop 'snd_init_and_bc'
    ENDIF 
+   ENDIF
 
 ! some timing info
    nt = NINT(1+(REAL(forecast_length)) / REAL(interval_f))
@@ -222,6 +225,11 @@ CONTAINS
 
    ierr=nf_inq_varid(ncid_smos,'time',smtid(1))
 
+   ierr=nf_close(ncid)
+   ierr=nf_close(ncid_soil)
+   ierr=nf_close(ncid_flux)
+   ierr=nf_close(ncid_smos)
+
    END SUBROUTINE snd_f_dims
 
 !**********************************************
@@ -272,12 +280,13 @@ CONTAINS
     REAL, ALLOCATABLE, DIMENSION(:,:,:)   :: work_flux, work_smos
     INTEGER, ALLOCATABLE, DIMENSION(:):: time_snd, time_list, days_list, &
                                          secs_list
+    INTEGER                           :: timediff
     REAL, ALLOCATABLE, DIMENSION(:)   :: time_flux, time_soil, time_smos
     REAL, ALLOCATABLE, DIMENSION(:,:) :: offset_snd
     REAL, ALLOCATABLE, DIMENSION(:,:) :: invrho,p_r,p_l,p_u,p_d
     REAL, ALLOCATABLE, DIMENSION(:,:) :: z
 
-    LOGICAL                           :: got_all_soundings = .false.
+    LOGICAL                           :: got_all_soundings 
 
     INTEGER                                    :: requested_snd_index,&
                                                   requested_flux_index, &
@@ -298,17 +307,37 @@ CONTAINS
     TYPE(time_type)                            :: req_soil_time
     TYPE(time_type)                            :: req_smos_time
 
-! open forcing file
-!   ierr = nf_open(init_f_file, 0, ncid)
-!   IF ( ierr /= NF_NOERR ) THEN
-!      PRINT*,"Problem opening forcing file, aborting!"
-!      STOP
-!   ENDIF
-
 ! set up calendar and time tolerance
    call set_calendar_type(calendar_type)
    time_tolerance = set_time(600,0)                   ! 10 mins either way
    epoch_time     = set_date(EPOCH_DATE(1),EPOCH_DATE(2),EPOCH_DATE(3))
+
+! open forcing file
+   ierr = nf_open(init_f_file, 0, ncid)
+   IF ( ierr /= NF_NOERR ) THEN
+      PRINT*,"Problem opening forcing file, aborting!"
+      STOP
+   ENDIF
+! open soil file
+   ierr = nf_open(init_soil_file, 0, ncid_soil)
+   IF ( ierr /= NF_NOERR ) THEN
+      PRINT*,"Problem opening soil file, aborting!"
+      STOP
+   ENDIF
+! open flux file
+   ierr = nf_open(init_flux_file, 0, ncid_flux)
+   IF ( ierr /= NF_NOERR ) THEN
+      PRINT*,"Problem opening flux file, aborting!"
+      STOP
+   ENDIF
+! open smos file
+   ierr = nf_open(init_smos_file, 0, ncid_smos)
+   IF ( ierr /= NF_NOERR ) THEN
+      PRINT*,"Problem opening smos file, aborting!"
+      STOP
+   ENDIF
+
+
 
 ! get the times
    ALLOCATE(time_list(nrecords), days_list(nrecords), secs_list(nrecords))
@@ -338,6 +367,8 @@ CONTAINS
 ! same time of day, otherwise the specified sounding
 
    IF ( rnd_init ) THEN
+print*, 'CANNOT CHOOSE RANDOM OBS YET!'
+stop 'snd_init_and_bc'
       nmix = 2
    ELSE
       nmix = 1
@@ -361,34 +392,35 @@ CONTAINS
          call print_date(requested_snd_time)
          stop 'module_snd_init_and_bc'
       ENDIF
+      IF ( .not. force_uvg ) THEN
       do i = 0, nt-2
-        IF (time_list(requested_snd_index+i+1) - &
-            time_list(requested_snd_index+i) &
-            > interval_f + 600 .or. &
-            time_list(requested_snd_index+i+1) - &
-            time_list(requested_snd_index+i) &
-            < interval_f - 600 ) THEN
+        timediff = time_list(requested_snd_index+i+1) - &
+            time_list(requested_snd_index+i)
+        IF (timediff > interval_f + 600) THEN
          print*
          print*,'The interval in the sounding file does not agree with ',&
                 'your namelist interval_f: ',interval_f
-         print*,time_list(requested_snd_index+1)-time_list(requested_snd_index)
-         print*,'This could be caused by either a missing sounding or the ', &
+         print*,timediff
+         print*,'This could be caused by either a missing sounding or ', &
                 'an incorrect namelist value'
          stop 'module_snd_init_and_bc'
          ENDIF
       enddo
+      ENDIF
       IF ( time_list(requested_snd_index) == missingVal ) THEN
          print*
          print*,'Requested input sounding is missing in the input file: '
          call print_date(requested_snd_time)
          stop 'module_snd_init_and_bc'
       ENDIF
+      IF ( .not. force_uvg ) THEN
       IF ( minval(time_list(requested_snd_index:requested_snd_index+nt-1)) &
                   < 0 ) THEN
          print*
          print*,'A missing sounding prevents a simulation of ',&
                  forecast_length,' seconds'
          stop 'module_snd_init_and_bc'
+      ENDIF
       ENDIF
 
       print*,'Getting requested sounding valid at date: '
@@ -515,6 +547,8 @@ CONTAINS
    lenfl = (/nt_flux/)
    lensl = (/ns,nt_soil/)
    lensm = (/nt_smos/)
+   got_all_soundings = .FALSE.
+print*,'got them all? ',got_all_soundings
    DO WHILE ( .not. got_all_soundings ) 
 
       got_all_soundings = .true.  ! default is good
@@ -583,10 +617,17 @@ CONTAINS
 
       ! for now, be satisfied only if we have no missing values
       DO i = 1, npvars
-         IF ( minval(work(i,1:nmix,:,:)) == missingVals(i) ) THEN
+         IF ( minval(work(i,1:nmix,:,1)) == missingVals(i) ) THEN
             got_all_soundings = .false.
          ENDIF
       ENDDO
+      IF ( .not. force_uvg ) THEN
+      DO i = 1, npvars
+         IF ( minval(work(i,1:nmix,:,2:)) == missingVals(i) ) THEN
+            got_all_soundings = .false.
+         ENDIF
+      ENDDO
+      ENDIF
       DO i = 1, nfluxvars
          IF ( minval(work_flux(i,1:nmix,:)) == missingFluxVals(i) ) THEN
             got_all_soundings = .false.
@@ -615,6 +656,7 @@ CONTAINS
    END DO  ! still searching for soundings
    PRINT*,"Getting profile from times ",control_index
    PRINT*,"with alpha ", control_w
+   PRINT*,"mixing ", nmix
 
 ! do grid differencing and weighing of profiles
 
@@ -636,17 +678,13 @@ CONTAINS
 ! don't fill th2 for now - creates problems later because the sounding
 ! is AGL, and the first height is 0.0.  Probably want to replace
          th2(1:nt_smos) = t2(1:nt_smos) * &
-                          (p1000mb/(work_smos(5,1,1:nt_smos)*1000.0))**rcp 
+                          (p1000mb/(work_smos(5,1,1:nt_smos)*1000.0_r8))**rcp 
          DO i = 1,nt_smos
             call get_uv(work_smos(2,1,i),work_smos(3,1,i),u10(i),v10(i))
             q2(i) = get_qv(work_smos(5,1,i),work_smos(6,1,i))
          ENDDO
 
       CASE (2)
-
-print*, 'CANNOT CHOOSE RANDOM OBS YET!'
-stop 'snd_init_and_bc'
-
          CALL blend_snd(z,p,t,q,u,v,work,gsw,glw,glw_up,work_flux,&
                         tslb, smois, work_soil, &
                         precip, work_smos, &
@@ -658,12 +696,17 @@ stop 'snd_init_and_bc'
 ! move z to z_agl and set first level to screen
    DO i = 1, nt
      z_agl(:,i) = z(:,i) - z(1,i)
-     z_agl(1,i) = 2.0
-     if ( z_agl(2,i) == 2.0 ) z_agl(2,i) = 3.0
+     z_agl(1,i) = 2.0_r8
+     if ( z_agl(2,i) == 2.0_r8 ) z_agl(2,i) = 3.0_r8
    ENDDO
 
 ! store soil depth
    z_s = work_soil(1,1,:,1)
+
+   ierr=nf_close(ncid)
+   ierr=nf_close(ncid_soil)
+   ierr=nf_close(ncid_flux)
+   ierr=nf_close(ncid_smos)
 
    DEALLOCATE(work)
    DEALLOCATE(time_snd,offset_snd,time_list,days_list,secs_list)
@@ -674,23 +717,20 @@ stop 'snd_init_and_bc'
    DEALLOCATE(work_smos)
    DEALLOCATE(time_smos)
 
-! don't worry about soil for now, use init_soil_ideal
-   print*,'WARNING: initializing ideal soil'
-
 ! finally, forecast times  --- these are matched to the profile!
-! The soil may be offset.
+! The soil may be offset.  Start_forecast = 0 but put here for consistency
 
    DO i=1,nt
-      times(i)=(i-1)*interval_f 
+      times(i)=(i-1)*interval_f+start_forecast 
    ENDDO
    DO i=1,nt_flux
-      times_flux(i)=(i-1)*interval_flux 
+      times_flux(i)=(i-1)*interval_flux+start_forecast 
    ENDDO
    DO i=1,nt_soil
-      times_soil(i)=(i-1)*interval_soil 
+      times_soil(i)=(i-1)*interval_soil+start_forecast 
    ENDDO
    DO i=1,nt_smos
-      times_smos(i)=(i-1)*interval_smos 
+      times_smos(i)=(i-1)*interval_smos+start_forecast 
    ENDDO
 
 !   ierr = nf_close(ncid)

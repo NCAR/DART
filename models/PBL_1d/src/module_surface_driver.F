@@ -2,48 +2,59 @@
 !
 MODULE module_surface_driver
 
-  USE module_ideal
+USE module_ideal
 
 CONTAINS
 
-   SUBROUTINE surface_driver(sfctype,surface_physics,pbltype,&
-        &ts_ref,ps_ref,dtamplitude_ref,mavail_ref,time,p_qc,p_qv&
-     &          ,ACSNOM,ACSNOW,AKHS,AKMS,ALBEDO,BR,CANWAT,CAPG        &
-     &          ,CHKLOWQ,DT,DX,DZ8W,DZS,EMISS,GLW        &
-     &          ,GRDFLX,GSW,GZ1OZ0,HFX,HOL,HT,IFSNOW,ISFFLX           &
-     &          ,ISLTYP,ITIMESTEP,IVGTYP,LOWLYR,MAVAIL,MOIST,MOL      &
-     &          ,NUM_SOIL_LAYERS,N_MOIST,P8W,PBLH,PI_PHY,PSHLTR,PSIH  &
-     &          ,PSIM,&
-!mp@ begin
-                     &psimfac,psihfac,psiqfac,zl2,&
-!mp@ end
-     &P_PHY,Q10,Q2,QFX,QSFC,QSHLTR,QZ0,RAINBL         &
-     &          ,RAINCV,RAINNCV,REGIME,RHO,SFCEVP,SFCEXC,SFCRUNOFF    &
-     &          ,SMOIS,SMSTAV,SMSTOT,SNOALB,SNOW,SNOWC,SNOWH,STEPBL   &
-     &          ,T2,TH10,TH2,THC,THZ0,TH_PHY,TMN,TSHLTR,TSK,TSLB      &
-     &          ,T_PHY,U10,UDRUNOFF,UST,UZ0,U_FRAME,U_PHY,V10,VEGFRA  &
-     &          ,VZ0,V_FRAME,V_PHY,WARM_RAIN,WSPD,XICE,XLAND,Z,ZNT,ZS &
-     &          ,CT,TKE_MYJ                                           &
-     &          ,ALBBCK,LH,SH2O,SHDMAX,SHDMIN,Z0                      &
-     &          ,FLQC,FLHC,QSG,QVG,QCG,SOILT1,TSNAV                   & 
-     &          ,SMFR3D,KEEPFR3DFLAG                                  &
-     &          ,PSFC                                                 &
-!mp@ begin
-     &          ,bucket_model,maxm,minm,erate&
-!mp@ end
-     &          ,ids,ide,jds,jde,kds,kde                              &
-     &          ,ims,ime,jms,jme,kms,kme                              &
-     &          ,i_start,i_end,j_start,j_end,kts,kte,num_tiles        &
-     &          ,POTEVP,SNOPCX,SOILTB                                 ) ! optional args
+   SUBROUTINE surface_driver(                                         &
+     &           acsnom,acsnow,akhs,akms,albedo,br,canwat             &
+     &          ,chklowq,dt,dx,dz8w,dzs,glw                           &
+     &          ,grdflx,gsw,gz1oz0,hfx,ht,ifsnow,isfflx               &
+     &          ,isltyp,itimestep,ivgtyp,lowlyr,mavail,rmol           &
+     &          ,num_soil_layers,p8w,pblh,pi_phy,pshltr,psih          &
+     &          ,psim,p_phy,q10,q2,qfx,qsfc,qshltr,qz0                &
+     &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff                   &
+     &          ,smois,smstav,smstot,snoalb,snow,snowc,snowh,stepbl   &
+     &          ,th10,th2,thz0,th_phy,tmn,tshltr,tsk,tslb             &
+     &          ,t_phy,u10,udrunoff,ust,uz0,u_frame,u_phy,v10,vegfra  &
+     &          ,vz0,v_frame,v_phy,warm_rain,wspd,xice,xland,z,znt,zs &
+     &          ,ct,tke_myj                                           &
+     &          ,albbck,lh,sh2o,shdmax,shdmin,z0                      &
+     &          ,flqc,flhc,psfc,sst,sst_update                        &
+     &          ,sf_sfclay_physics,sf_surface_physics,ra_lw_physics   &
+     &,bl_pbl_physics&
+     &          , ids,ide,jds,jde,kds,kde                             &
+     &          , ims,ime,jms,jme,kms,kme                             &
+     &          , i_start,i_end,j_start,j_end,kts,kte,num_tiles       &
+             !  Optional moisture tracers
+     &           ,qv_curr, qc_curr, qr_curr                           &
+     &           ,qi_curr, qs_curr, qg_curr                           &
+             !  Optional moisture tracer flags
+     &           ,f_qv,f_qc,f_qr                                      &
+     &           ,f_qi,f_qs,f_qg                                      &
+             !  Other optionals (more or less em specific)
+     &          ,capg,emiss,hol,mol                                   &
+     &          ,rainncv,rainbl,regime,t2,thc                         &
+     &          ,qsg,qvg,qcg,soilt1,tsnav                             &
+     &          ,smfr3d,keepfr3dflag                                  &
+             !  Other optionals (more or less nmm specific)
+     &          ,potevp,snopcx,soiltb,sr,                              &
 
-!   USE module_bc
-!   USE module_state_description
+     &ts_ref,ps_ref,dtamplitude_ref,mavail_ref,time,&
+     &bucket_model,maxm,minm,erate,&
+     &calc_ust,z_o,z_t,z_q&
+     &)
+
+
    USE module_model_constants
-
 ! *** add new modules of schemes here
 
    USE module_sf_sfclay
+   USE module_sf_sfclay_fluxforce
    USE module_sf_myjsfc
+   USE module_sf_myjsfc_fluxforce
+   USE module_sf_gfs
+   USE module_sf_gfs_fluxforce
    USE module_sf_noahlsm
    USE module_sf_ruclsm
 #if ( NMM_CORE == 1 )
@@ -51,9 +62,9 @@ CONTAINS
 #endif
 
    USE module_sf_slab
-!
    USE module_sf_force_restore
 
+!
    USE module_sf_sfcdiags
 !
 
@@ -156,18 +167,13 @@ CONTAINS
 !-- DX            horizontal space interval (m)
 !-- DT            time step (second)
 !-- PSFC          pressure at the surface (Pa)
+!-- SST           sea-surface temperature (K)
 !-- TSLB          
 !-- ZS
 !-- DZS
 !-- num_soil_layers number of soil layer
 !-- IFSNOW      ifsnow=1 for snow-cover effects
 !
-!-- P_QV          species index for water vapor
-!-- P_QC          species index for cloud water
-!-- P_QR          species index for rain water
-!-- P_QI          species index for cloud ice
-!-- P_QS          species index for snow
-!-- P_QG          species index for graupel
 !-- ids           start index for i in domain
 !-- ide           end index for i in domain
 !-- jds           start index for j in domain
@@ -190,10 +196,12 @@ CONTAINS
 !******************************************************************
 !------------------------------------------------------------------ 
 
-   CHARACTER(len=15) :: sfctype,surface_physics,pbltype, bucket_model
+   CHARACTER(len=15) :: sf_sfclay_physics,sf_surface_physics,bucket_model
+   CHARACTER(len=15) :: bl_pbl_physics
+
+   INTEGER, INTENT(IN) :: ra_lw_physics,sst_update
 
    REAL ::   ts_ref,ps_ref,dtamplitude_ref,mavail_ref,time
-   INTEGER :: P_QV,P_QC
 
 
 
@@ -201,6 +209,7 @@ CONTAINS
      &           ids,ide,jds,jde,kds,kde                              &
      &          ,ims,ime,jms,jme,kms,kme                              &
      &          ,kts,kte,num_tiles
+
 
    INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                       &
      &           i_start,i_end,j_start,j_end
@@ -212,47 +221,41 @@ CONTAINS
    INTEGER, INTENT(IN )::   ISFFLX
    INTEGER, INTENT(IN )::   ITIMESTEP
    INTEGER, INTENT(IN )::   NUM_SOIL_LAYERS
-   INTEGER, INTENT(IN )::   N_MOIST
    INTEGER, INTENT(IN )::   STEPBL
    LOGICAL, INTENT(IN )::   WARM_RAIN
+   REAL :: z_o,z_t,z_q
+   LOGICAL, INTENT(IN )::   calc_ust
    REAL , INTENT(IN )::   U_FRAME
    REAL , INTENT(IN )::   V_FRAME
    REAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ), INTENT(INOUT)::   SMOIS
    REAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ), INTENT(INOUT)::   TSLB
-   REAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ), INTENT(INOUT)::   SMFR3D
-   REAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ), INTENT(INOUT)::   KEEPFR3DFLAG
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   GLW
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   GSW
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   HT
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   RAINCV
-   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   RAINNCV
-   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   THC
+   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   SST
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   TMN
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   VEGFRA
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   XICE
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   XLAND
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   maxm,minm,erate
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   MAVAIL
-   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   EMISS
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   SNOALB
-   REAL, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT)::   T2
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   ACSNOW
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   AKHS
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   AKMS
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   ALBEDO
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   CANWAT
-   REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   CAPG
+
+
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   GRDFLX
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   HFX
-   REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   HOL
-   REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   MOL
+   REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   RMOL
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   PBLH
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   Q2
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   QFX
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   QSFC
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   QZ0
-   REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   RAINBL
-   REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   REGIME
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   SFCRUNOFF
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   SMSTAV
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   SMSTOT
@@ -268,22 +271,12 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   VZ0
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   WSPD
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   ZNT
-   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   POTEVP ! NMM LSM
-   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   SNOPCX ! NMM LSM
-   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   SOILTB ! NMM LSM
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   BR
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   CHKLOWQ
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   GZ1OZ0
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   PSHLTR
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   PSIH
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   PSIM
-
-!mp@ begin
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT):: &
-                     &psimfac,psihfac,psiqfac
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(IN):: zl2
-!mp@ end
-
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   Q10
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   QSHLTR
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   TH10
@@ -296,11 +289,6 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   SFCEXC
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   FLHC
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   FLQC
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   QSG
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   QVG
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   QCG
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   SOILT1
-   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   TSNAV
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT) ::   CT
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN )::   DZ8W
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN )::   P8W
@@ -313,7 +301,6 @@ CONTAINS
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN )::   V_PHY
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN )::   Z
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) ::   TKE_MYJ
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme, n_moist ) , INTENT(IN )::   MOIST
    REAL, DIMENSION(1:num_soil_layers), INTENT(IN)::   DZS
    REAL, DIMENSION(1:num_soil_layers), INTENT(IN)::   ZS
    REAL, INTENT(IN )::   DT
@@ -327,6 +314,52 @@ CONTAINS
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   SHDMAX
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   SHDMIN
    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN )::   Z0
+
+!
+! Optional
+!
+!
+! Flags relating to the optional tendency arrays declared above
+! Models that carry the optional tendencies will provdide the
+! optional arguments at compile time; these flags all the model
+! to determine at run-time whether a particular tracer is in
+! use or not.
+!
+   LOGICAL, INTENT(IN), OPTIONAL ::                             &
+                                                      f_qv      &
+                                                     ,f_qc      &
+                                                     ,f_qr      &
+                                                     ,f_qi      &
+                                                     ,f_qs      &
+                                                     ,f_qg
+
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                 &
+         OPTIONAL, INTENT(INOUT) ::                              &
+                      ! optional moisture tracers
+                      ! 2 time levels; if only one then use CURR
+                      qv_curr, qc_curr, qr_curr                  &
+                     ,qi_curr, qs_curr, qg_curr
+
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   capg
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   emiss
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   hol
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   mol
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   regime
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(IN )::     rainncv
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   RAINBL
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   t2
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(IN )::     thc
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   qsg
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   qvg
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   qcg
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   soilt1
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   tsnav
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   potevp ! NMM LSM
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   snopcx ! NMM LSM
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   soiltb ! NMM LSM
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(IN)::      sr ! NMM LSM
+   REAL, DIMENSION( ims:ime, 1:num_soil_layers, jms:jme ), OPTIONAL, INTENT(INOUT)::   smfr3d
+   REAL, DIMENSION( ims:ime, 1:num_soil_layers, jms:jme ), OPTIONAL, INTENT(INOUT)::   keepfr3dflag
 
 !  LOCAL  VAR
 
@@ -346,15 +379,16 @@ CONTAINS
                                                             CQS2
 
    REAL    :: DTMIN,DTBL
-
-
 !
    INTEGER :: i,J,K,NK,jj,ij
    LOGICAL :: radiation
+   CHARACTER*256 :: message
 !
 !
 !------------------------------------------------------------------
 !
+
+  if (sf_sfclay_physics=='') return
 
   v_phytmp = 0.
   u_phytmp = 0.
@@ -371,20 +405,49 @@ CONTAINS
 
 ! RAINBL in mm (Accumulation between PBL calls)
 
-  !$OMP PARALLEL DO   &
-  !$OMP PRIVATE ( ij, i, j, k )
-  DO ij = 1 , num_tiles
-    DO j=j_start(ij),j_end(ij)
-    DO i=i_start(ij),i_end(ij)
-       RAINBL(i,j) = RAINBL(i,j) + RAINCV(i,j) + RAINNCV(i,j) 
+  IF ( PRESENT( rainncv ) .AND. PRESENT( rainbl ) ) THEN
+    !$OMP PARALLEL DO   &
+    !$OMP PRIVATE ( ij, i, j, k )
+    DO ij = 1 , num_tiles
+      DO j=j_start(ij),j_end(ij)
+      DO i=i_start(ij),i_end(ij)
+         RAINBL(i,j) = RAINBL(i,j) + RAINCV(i,j) + RAINNCV(i,j) 
+         RAINBL(i,j) = MAX (RAINBL(i,j), 0.0) 
+      ENDDO
+      ENDDO
     ENDDO
+    !$OMP END PARALLEL DO
+  ELSE IF ( PRESENT( rainbl ) ) THEN
+    !$OMP PARALLEL DO   &
+    !$OMP PRIVATE ( ij, i, j, k )
+    DO ij = 1 , num_tiles
+      DO j=j_start(ij),j_end(ij)
+      DO i=i_start(ij),i_end(ij)
+         RAINBL(i,j) = RAINBL(i,j) + RAINCV(i,j)
+         RAINBL(i,j) = MAX (RAINBL(i,j), 0.0)
+      ENDDO
+      ENDDO
     ENDDO
-  ENDDO
-  !$OMP END PARALLEL DO
+    !$OMP END PARALLEL DO
+  ENDIF
+! Update SST
+  IF (sst_update .EQ. 1) THEN
+    !$OMP PARALLEL DO   &
+    !$OMP PRIVATE ( ij, i, j, k )
+    DO ij = 1 , num_tiles
+      DO j=j_start(ij),j_end(ij)
+      DO i=i_start(ij),i_end(ij)
+        IF(XLAND(i,j) .GT. 1.5)TSK(i,j)=SST(i,j)
+      ENDDO
+      ENDDO
+    ENDDO
+    !$OMP END PARALLEL DO
+  ENDIF
 
   IF (itimestep .eq. 1 .or. mod(itimestep,STEPBL) .eq. 0) THEN
 
-  radiation = .true.
+  radiation = .false.
+  IF (ra_lw_physics .gt. 0) radiation = .true.
 
 !---- 
 ! CALCULATE CONSTANT
@@ -419,50 +482,105 @@ CONTAINS
 
      !$OMP PARALLEL DO   &
      !$OMP PRIVATE ( ij, i, j, k )
+
+     IF (.NOT. sf_surface_physics=='FLUXFORCE') THEN
+
      DO ij = 1 , num_tiles
-     sfclay_select: SELECT CASE(sfctype)
+     sfclay_select: SELECT CASE(sf_sfclay_physics)
 
      CASE ('SFCLAYSCHEME')
-       CALL wrf_debug( 100, 'in SFCLAY' )
-         CALL SFCLAY(u_phytmp,v_phytmp,t_phy,moist(ims,kms,jms,P_QV),&
-               p_phy,dz8w,CP,G,RCP,R_d,XLV,PSFC,CHS,CHS2,CQS2,CPM, &
-               ZNTOLD,USTOLD,PBLH,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH, &
-!mp@ begin
-                     &psimfac,psihfac,psiqfac,zl2,&
-!mp@ end
-                XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,QGH,QSFC,            &
-               U10,V10,TH2,T2,Q2,                                  &
-               GZ1OZ0,WSPD,BR,ISFFLX,DX,                           &
-               SVP1,SVP2,SVP3,SVPT0,EP_1,EP_2,KARMAN,EOMEG,STBOLT, &
+#if (NMM_CORE != 1)
+! DX varies spatially in NMM, therefore, SFCLAY cannot be called
+! because it takes a scalar DX. NMM passes in a dummy value for this
+! scalar.  NEEDS FURTHER ATTENTION. JM 20050215
+       IF (PRESENT(qv_curr)                            .AND.    &
+           PRESENT(mol)        .AND.  PRESENT(regime)  .AND.    &
+                                                      .TRUE. ) THEN
+         CALL wrf_debug( 100, 'in SFCLAY' )
+         CALL SFCLAY(u_phytmp,v_phytmp,t_phy,qv_curr,&
+               p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
+               zntold,ustold,pblh,mavail,zol,mol,regime,psim,psih, &
+               xland,hfx,qfx,lh,tsk,flhc,flqc,qgh,qsfc,rmol,       &
+               u10,v10,th2,t2,q2,                                  &
+               gz1oz0,wspd,br,isfflx,dx,                           &
+               svp1,svp2,svp3,svpt0,ep_1,ep_2,karman,eomeg,stbolt, &
+               z_o,z_t,z_q,&
                ids,ide, jds,jde, kds,kde,                          &
                ims,ime, jms,jme, kms,kme,                          &
                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-      CASE ('MYJSFCSCHEME')
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for SFCLAY in surface driver')
+       ENDIF
 
-          CALL wrf_debug(100,'in MYJSFC')
-            CALL MYJSFC(itimestep,ht,dz8w,                         &
+! SET NEW VALUES
+
+       DO j=j_start(ij),j_end(ij)
+       DO i=i_start(ij),i_end(ij)
+          UST(i,j)=USTOLD(i,j)
+          ZNT(i,j)=ZNTOLD(i,j)
+       ENDDO
+       ENDDO
+#else
+       CALL wrf_error_fatal('SFCLAY cannot be used with NMM')
+#endif
+      CASE ('MYJSFCSCHEME')
+       IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
+                                                      .TRUE. ) THEN
+            CALL wrf_debug(100,'in MYJSFC')
+            CaLL MYJSFC(itimestep,ht,dz8w,                         &
               p_phy,p8w,th_phy,t_phy,                              &
-              moist(ims,kms,jms,P_QV),moist(ims,kms,jms,P_QC),     &
+              qv_curr,qc_curr,                                     &
               u_phy,v_phy,tke_myj,                                 &
-              TSK,QSFC,THZ0,QZ0,UZ0,VZ0,                           &
-              LOWLYR,                                              &
-              XLAND,                                               &
-              UST,ZNT,PBLH,MAVAIL,                                 &
-              AKHS,AKMS,                                           &
-              CHS,CHS2,CQS2,HFX,QFX,LH,FLHC,FLQC,QGH,CPM,CT,       &
-              U10,V10,TSHLTR,TH10,QSHLTR,Q10,PSHLTR,               &
+              tsk,qsfc,thz0,qz0,uz0,vz0,                           &
+              lowlyr,                                              &
+              xland,                                               &
+              ust,znt,pblh,mavail,rmol,                            &
+              akhs,akms,                                           &
+              chs,chs2,cqs2,hfx,qfx,lh,flhc,flqc,qgh,cpm,ct,       &
+              u10,v10,tshltr,th10,qshltr,q10,pshltr,               &
+              z_o,z_t,z_q,&
               ids,ide, jds,jde, kds,kde,                           &
               ims,ime, jms,jme, kms,kme,                           &
               i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
+
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for MYJSFC in surface driver')
+       ENDIF
+
+     CASE ('GFSSFCSCHEME')
+       IF (PRESENT(qv_curr) .AND. .TRUE. ) THEN
+       CALL wrf_debug( 100, 'in GFSSFC' )
+         CALL SF_GFS(u_phytmp,v_phytmp,t_phy,qv_curr,              &
+               p_phy,CP,RCP,R_d,XLV,PSFC,CHS,CHS2,CQS2,CPM,        &
+!               ZNTOLD,USTOLD,PSIM,PSIH,                           &
+               ZNT,UST,PSIM,PSIH,                                  &
+               XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,                     &
+               QGH,QSFC,U10,V10,                                   &
+               GZ1OZ0,WSPD,BR,ISFFLX,                              &
+               EP_1,EP_2,KARMAN,&
+               z_o,z_t,z_q,&
+               &itimestep,                         &
+               ids,ide, jds,jde, kds,kde,                          &
+               ims,ime, jms,jme, kms,kme,                          &
+               i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+        CALL wrf_debug(100,'in SFCDIAGS')
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for SF_GFS in surface driver')
+       ENDIF
+
      CASE DEFAULT
         
-        WRITE( * , * ) 'The surface option does not exist: &
-             &bl_surface_physics = ', sfctype
-        STOP
+       WRITE( message , * )                                &
+   'The sfclay option does not exist: sf_sfclay_physics = ', &
+   &sf_sfclay_physics
+       CALL wrf_error_fatal ( message )
 
      END SELECT sfclay_select
      ENDDO
+
+     ENDIF ! end if (.NOT .sf_surface_physics=='FLUXFORCE')
+
      !$OMP END PARALLEL DO
 
      IF (ISFFLX.EQ.0 ) GOTO 430
@@ -470,29 +588,160 @@ CONTAINS
      !$OMP PRIVATE ( ij, i, j, k )
      DO ij = 1 , num_tiles
 
-     sfc_select: SELECT CASE(surface_physics)
+     sfc_select: SELECT CASE(sf_surface_physics)
 
      CASE ('SLABSCHEME')
-    
 
+       IF (PRESENT(qv_curr)                            .AND.    &
+           PRESENT(capg)       .AND.  PRESENT(emiss )  .AND.    &
+           PRESENT(t2  )                               .AND.    &
+                                                      .TRUE. ) THEN
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
 !          CQS2 ACCOUNTS FOR MAVAIL FOR SFCDIAGS 2M Q
               CQS2(I,J)= CQS2(I,J)*MAVAIL(I,J)
            ENDDO
            ENDDO
+
         CALL wrf_debug(100,'in SLAB')
-          CALL SLAB(t_phy,moist(ims,kms,jms,P_QV),p_phy,FLHC,FLQC,  &
-             PSFC,XLAND,TMN,HFX,QFX,LH,TSK,QSFC,CHKLOWQ,          &
-             GSW,GLW,CAPG,THC,SNOWC,EMISS,MAVAIL,                 &
-             DTBL,RCP,XLV,DTMIN,IFSNOW,                           &
-             SVP1,SVP2,SVP3,SVPT0,EP_2,KARMAN,EOMEG,STBOLT,       &
-             TSLB,ZS,DZS,num_soil_layers,radiation,               &
+          CALL SLAB(t_phy,qv_curr,p_phy,flhc,flqc,  &
+             psfc,xland,tmn,hfx,qfx,lh,tsk,qsfc,chklowq,          &
+             gsw,glw,capg,thc,snowc,emiss,mavail,                 &
+             dtbl,rcp,xlv,dtmin,ifsnow,                           &
+             svp1,svp2,svp3,svpt0,ep_2,karman,eomeg,stbolt,       &
+             tslb,zs,dzs,num_soil_layers,radiation,               &
              ids,ide, jds,jde, kds,kde,                           &
              ims,ime, jms,jme, kms,kme,                           &
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
+        CALL wrf_debug(100,'in SFCDIAGS')
+          CALL SFCDIAGS(hfx,qfx,tsk,qsfc,chs2,cqs2,t2,th2,q2,      &
+                     psfc,cp,r_d,rcp,                              &
+                     ids,ide, jds,jde, kds,kde,                    &
+                     ims,ime, jms,jme, kms,kme,                    &
+             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for SLAB in surface driver')
+       ENDIF
+
+#if ( NMM_CORE == 1 )
+     CASE (NMMLSMSCHEME)
+       IF (PRESENT(qv_curr)    .AND.  PRESENT(rainbl)  .AND.    &
+           PRESENT(potevp)     .AND.  PRESENT(snopcx)  .AND.    &
+           PRESENT(soiltb)     .AND.  PRESENT(sr)      .AND.    &
+                                                      .TRUE. ) THEN
+           CALL wrf_debug(100,'in NMM LSM')
+           CALL nmmlsm(dz8w,qv_curr,p8w,rho,                    &
+                t_phy,th_phy,tsk,chs,                           &
+                hfx,qfx,qgh,gsw,glw,lh,rmol,                    &
+                smstav,smstot,sfcrunoff,                        &
+                udrunoff,ivgtyp,isltyp,vegfra,sfcevp,potevp,    &
+                grdflx,sfcexc,acsnow,acsnom,snopcx,             &
+                albbck,tmn,xland,xice,qz0,                      &
+                th2,q2,snowc,cqs2,qsfc,soiltb,chklowq,rainbl,   &
+                num_soil_layers,dtbl,dzs,itimestep,             &
+                smois,tslb,snow,canwat,cpm,rcp,sr,              &    !tslb
+                albedo,snoalb,sh2o,snowh,                       &
+                ids,ide, jds,jde, kds,kde,                      &
+                ims,ime, jms,jme, kms,kme,                      &
+                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte )
+          CALL wrf_debug(100,'back from NMM LSM')
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for NMMLSM in surface driver')
+       ENDIF
+#endif
+
+     CASE ('LSMSCHEME')
+
+       IF (PRESENT(qv_curr)    .AND.  PRESENT(rainbl)  .AND.    &
+           PRESENT(emiss)      .AND.  PRESENT(t2)      .AND.    &
+                                                      .TRUE. ) THEN
+!------------------------------------------------------------------
+         CALL wrf_debug(100,'in NOAH LSM')
+           CALL lsm(dz8w,qv_curr,p8w,t_phy,tsk,                 &
+                hfx,qfx,lh,grdflx,qgh,gsw,glw,smstav,smstot,    &
+                sfcrunoff,udrunoff,ivgtyp,isltyp,vegfra,        &
+                albedo,albbck,znt,z0, tmn,xland,xice, emiss,    &
+                snowc,qsfc,rainbl,                              & 
+                num_soil_layers,dtbl,dzs,itimestep,             &
+                smois,tslb,snow,canwat,                         &
+                chs, chs2, cqs2, cpm,rcp,                       &    
+                sh2o,snowh,                                     & !h  
+                snoalb,shdmin,shdmax,                           & !i
+                acsnom,acsnow,                                  & !o 
+                ids,ide, jds,jde, kds,kde,                      &
+                ims,ime, jms,jme, kms,kme,                      &
+                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+           DO j=j_start(ij),j_end(ij)
+           DO i=i_start(ij),i_end(ij)
+              CHKLOWQ(I,J)= 1.0
+           ENDDO
+           ENDDO
+
+
+          CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
+                     PSFC,CP,R_d,RCP,                              &
+                     ids,ide, jds,jde, kds,kde,                    &
+                     ims,ime, jms,jme, kms,kme,                    &
+             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+
+!------------------------------------------------------------------
+
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for LSM in surface driver')
+       ENDIF
+
+     CASE ('RUCLSMSCHEME')
+       IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
+           PRESENT(emiss)      .AND.  PRESENT(t2)      .AND.    &
+           PRESENT(qsg)        .AND.  PRESENT(qvg)     .AND.    &
+           PRESENT(qcg)        .AND.  PRESENT(soilt1)  .AND.    &
+           PRESENT(tsnav)      .AND.  PRESENT(smfr3d)  .AND.    &
+           PRESENT(keepfr3dflag) .AND. PRESENT(rainbl) .AND.    &
+                                                      .TRUE. ) THEN
+           CALL wrf_debug(100,'in RUC LSM')
+           IF (bl_pbl_physics=='MYJPBLSCHEME') THEN
+              CALL LSMRUC(dtbl,itimestep,num_soil_layers,          &
+                   zs,rainbl,snow,snowh,snowc,sr,                  &
+                   dz8w,p8w,t_phy,qv_curr,qc_curr,rho,             & !p8w in [pa]
+                   glw,gsw,emiss,chklowq,                          &
+                   flqc,flhc,mavail,canwat,vegfra,albedo,znt,      &
+                   qsfc,qsg,qvg,qcg,soilt1,tsnav,                  &
+                   tmn,ivgtyp,isltyp,xland,xice,                   &
+                   cp,g,xlv,stbolt,                                &
+                   smois,smstav,smstot,tslb,tsk,hfx,qfx,lh,        &
+                   sfcrunoff,udrunoff,sfcexc,                      &
+                   sfcevp,grdflx,acsnow,                           &
+                   smfr3d,keepfr3dflag,                            &
+                   .TRUE., &
+                   ids,ide, jds,jde, kds,kde,                      &
+                   ims,ime, jms,jme, kms,kme,                      &
+                   i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
+
+           ELSE
+
+              CALL LSMRUC(dtbl,itimestep,num_soil_layers,          &
+                   zs,rainbl,snow,snowh,snowc,sr,                  &
+                   dz8w,p8w,t_phy,qv_curr,qc_curr,rho,             & !p8w in [pa]
+                   glw,gsw,emiss,chklowq,                          &
+                   flqc,flhc,mavail,canwat,vegfra,albedo,znt,      &
+                   qsfc,qsg,qvg,qcg,soilt1,tsnav,                  &
+                   tmn,ivgtyp,isltyp,xland,xice,                   &
+                   cp,g,xlv,stbolt,                                &
+                   smois,smstav,smstot,tslb,tsk,hfx,qfx,lh,        &
+                   sfcrunoff,udrunoff,sfcexc,                      &
+                   sfcevp,grdflx,acsnow,                           &
+                   smfr3d,keepfr3dflag,                            &
+                   .FALSE., &
+                   ids,ide, jds,jde, kds,kde,                      &
+                   ims,ime, jms,jme, kms,kme,                      &
+                   i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
+
+           ENDIF
+              
 !           DO j=j_start(ij),j_end(ij)
 !           DO i=i_start(ij),i_end(ij)
 !              CHKLOWQ(I,J)= 1.0
@@ -500,104 +749,18 @@ CONTAINS
 !           ENDDO
 
 
-        CALL wrf_debug(100,'in SFCDIAGS')
-          CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
-                     PSFC,CP,R_d,RCP,                              &
-                     ids,ide, jds,jde, kds,kde,                    &
-                     ims,ime, jms,jme, kms,kme,                    &
-             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-
-
-#if ( NMM_CORE == 1 )
-     CASE ('NMMLSMSCHEME')
-!         IF ( config_flags%dyn_opt .EQ. DYN_NMM ) THEN
-           CALL wrf_debug(100,'in NMM LSM')
-           CALL nmmlsm(dz8w,moist(ims,kms,jms,P_QV),p8w,rho,       &
-                t_phy,th_phy,TSK,CHS,                           &
-                HFX,QFX,QGH,GSW,GLW,LH,                         &
-                SMSTAV,SMSTOT,SFCRUNOFF,                        &
-                UDRUNOFF,IVGTYP,ISLTYP,VEGFRA,SFCEVP,POTEVP,    &
-                GRDFLX,SFCEXC,ACSNOW,ACSNOM,SNOPCX,             &
-                ALBBCK,TMN,XLAND,XICE,QZ0,                      &
-                th2,q2,SNOWC,CQS2,QSFC,SOILTB,CHKLOWQ,RAINBL,   &
-                num_soil_layers,DTBL,DZS,itimestep,             &
-                SMOIS,TSLB,SNOW,CANWAT,CPM,RCP,                 &    !TSLB
-                ALBEDO,SNOALB,SH2O,SNOWH,                       &
-                ids,ide, jds,jde, kds,kde,                      &
-                ims,ime, jms,jme, kms,kme,                      &
+           CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
+                PSFC,CP,R_d,RCP,                              &
+                ids,ide, jds,jde, kds,kde,                    &
+                ims,ime, jms,jme, kms,kme,                    &
                 i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-!          ELSE
-!            CALL wrf_error_fatal( 'Must specify NMM core with NMM LSM' )
-!          ENDIF
-          CALL wrf_debug(100,'back from NMM LSM')
-#endif
-
-     CASE ('LSMSCHEME')
-
-!------------------------------------------------------------------
-         CALL wrf_debug(100,'in NOAH LSM')
-           CALL lsm(dz8w,moist(ims,kms,jms,P_QV),p8w,t_phy,TSK,  &
-                HFX,QFX,LH,GRDFLX,QGH,GSW,GLW,SMSTAV,SMSTOT,    &
-                SFCRUNOFF,UDRUNOFF,IVGTYP,ISLTYP,VEGFRA,        &
-                ALBEDO,ALBBCK,ZNT,Z0, TMN,XLAND,XICE, EMISS,    &
-                SNOWC,QSFC,RAINBL,                              & 
-                num_soil_layers,DTBL,DZS,itimestep,             &
-                SMOIS,TSLB,SNOW,CANWAT,CHS, CPM,RCP,            &    
-                SH2O,SNOWH,                                     & !H  
-                SNOALB,SHDMIN,SHDMAX,                           & !I
-                ACSNOW,ACSNOW,                                  & !O 
-                ids,ide, jds,jde, kds,kde,                      &
-                ims,ime, jms,jme, kms,kme,                      &
-                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-
-           DO j=j_start(ij),j_end(ij)
-           DO i=i_start(ij),i_end(ij)
-              CHKLOWQ(I,J)= 1.0
-           ENDDO
-           ENDDO
-         
-
-          CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CQS2,CQS2,T2,TH2,Q2,      &
-                     PSFC,CP,R_d,RCP,                              &
-                     ids,ide, jds,jde, kds,kde,                    &
-                     ims,ime, jms,jme, kms,kme,                    &
-             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-!------------------------------------------------------------------
-
-     CASE ('RUCLSMSCHEME')
-         CALL wrf_debug(100,'in RUC LSM')
-           CALL LSMRUC(DTBL,itimestep,num_soil_layers,          &
-                ZS,RAINBL,SNOW,SNOWC,                           &
-                dz8w,P8W,T_PHY,moist(ims,kms,jms,p_qv),         & !p8W in [PA]
-                moist(ims,kms,jms,P_QC),RHO,                    &
-                GLW,GSW,EMISS,CHKLOWQ,                          &
-                FLQC,FLHC,MAVAIL,CANWAT,VEGFRA,ALBEDO,ZNT,      &
-                QSFC,QSG,QVG,QCG,SOILT1,TSNAV,                  &
-                TMN,IVGTYP,ISLTYP,XLAND,XICE,                   &
-                CP,G,XLV,STBOLT,                                &
-                SMOIS,SMSTAV,SMSTOT,TSLB,TSK,HFX,QFX,LH,        &
-                SFCRUNOFF,UDRUNOFF,SFCEXC,                      &
-                SFCEVP,GRDFLX,ACSNOW,                           &
-                SMFR3D,KEEPFR3DFLAG,                            &
-                ids,ide, jds,jde, kds,kde,                      &
-                ims,ime, jms,jme, kms,kme,                      &
-                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-
-           DO j=j_start(ij),j_end(ij)
-           DO i=i_start(ij),i_end(ij)
-              CHKLOWQ(I,J)= 1.0
-           ENDDO
-           ENDDO
-
-          CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
-                     PSFC,CP,R_d,RCP,                              &
-                     ids,ide, jds,jde, kds,kde,                    &
-                     ims,ime, jms,jme, kms,kme,                    &
-             i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-
-
+           
+       ELSE
+         CALL wrf_error_fatal('Lacking arguments for RUCLSM in surface driver')
+       ENDIF
+       
      CASE ('FRSCHEME')
-    
+
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
 !          CQS2 ACCOUNTS FOR MAVAIL FOR SFCDIAGS 2M Q
@@ -605,7 +768,7 @@ CONTAINS
            ENDDO
            ENDDO
         CALL wrf_debug(100,'in force_restore')
-          CALL fr(t_phy,moist(ims,kms,jms,P_QV),p_phy,FLHC,FLQC,  &
+          CALL fr(t_phy,qv_curr,p_phy,FLHC,FLQC,  &
              PSFC,XLAND,TMN,HFX,QFX,LH,TSK,QSFC,CHKLOWQ,          &
              GSW,GLW,CAPG,THC,SNOWC,EMISS,MAVAIL,                 &
              raincv,rainncv,rainbl,bucket_model,maxm,minm,erate,&
@@ -616,12 +779,12 @@ CONTAINS
              ims,ime, jms,jme, kms,kme,                           &
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
-
 !           DO j=j_start(ij),j_end(ij)
 !           DO i=i_start(ij),i_end(ij)
 !              CHKLOWQ(I,J)= 1.0
 !           ENDDO
 !           ENDDO
+          
 
 
         CALL wrf_debug(100,'in SFCDIAGS')
@@ -651,39 +814,154 @@ CONTAINS
               i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
 
+      CASE ('FLUXFORCE')
+
+! here code  calculations for all the schemes of necessary parameteres
+! needed for the BL codes
+
+         IF (bl_pbl_physics=='MRFPBLSCHEME' .OR. &
+              &bl_pbl_physics=='YSUPBLSCHEME') THEN
+
+            CALL SFCLAY_fluxforce(u_phytmp,v_phytmp,t_phy,qv_curr,&
+               p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
+               zntold,ustold,pblh,mavail,zol,mol,regime,psim,psih, &
+               xland,hfx,qfx,lh,tsk,flhc,flqc,qgh,qsfc,rmol,       &
+               u10,v10,th2,t2,q2,                                  &
+               gz1oz0,wspd,br,isfflx,dx,                           &
+               svp1,svp2,svp3,svpt0,ep_1,ep_2,karman,eomeg,stbolt, &
+               calc_ust,z_o,z_t,z_q, &
+               ids,ide, jds,jde, kds,kde,                          &
+               ims,ime, jms,jme, kms,kme,                          &
+               i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+         ELSEIF (bl_pbl_physics=='GFSPBLSCHEME') THEN
+            CALL SF_GFS_fluxforce(u_phytmp,v_phytmp,t_phy,qv_curr,   &
+                 p_phy,CP,RCP,R_d,XLV,PSFC,CHS,CHS2,CQS2,CPM,        &
+!               ZNTOLD,USTOLD,PSIM,PSIH,                           &
+                 ZNT,UST,PSIM,PSIH,                                  &
+                 XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,                     &
+                 QGH,QSFC,U10,V10,                                   &
+                 GZ1OZ0,WSPD,BR,ISFFLX,                              &
+                 EP_1,EP_2,KARMAN,&
+                 &calc_ust,z_o,z_t,z_q,&
+                 &itimestep,                         &
+                 ids,ide, jds,jde, kds,kde,                          &
+                 ims,ime, jms,jme, kms,kme,                          &
+                 i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
+
+         ELSEIF (bl_pbl_physics=='MYJPBLSCHEME') THEN
+
+            IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
+                 .TRUE. ) THEN
+
+               CALL MYJSFC_fluxforce(itimestep,ht,dz8w,              &
+                    p_phy,p8w,th_phy,t_phy,                              &
+                    qv_curr,qc_curr,                                     &
+                    u_phy,v_phy,tke_myj,                                 &
+                    tsk,qsfc,thz0,qz0,uz0,vz0,                           &
+                    lowlyr,                                              &
+                    xland,                                               &
+                    ust,znt,pblh,mavail,rmol,                            &
+                    akhs,akms,                                           &
+                    chs,chs2,cqs2,hfx,qfx,lh,flhc,flqc,qgh,cpm,ct,       &
+                    u10,v10,tshltr,th10,qshltr,q10,pshltr,               &
+                    calc_ust,z_o,z_t,z_q,&
+                    ids,ide, jds,jde, kds,kde,                           &
+                    ims,ime, jms,jme, kms,kme,                           &
+                    i_start(ij),i_end(ij), j_start(ij),j_end(ij),kts,kte&
+                    &    )
+
+            ELSE
+               CALL wrf_error_fatal('Lacking arguments for MYJSFC in &
+                    surface driver')
+            ENDIF
 
 
+         ENDIF
+         
+         DO j=j_start(ij),j_end(ij)
+            DO i=i_start(ij),i_end(ij)
+               CHKLOWQ(I,J)= 1.0
+            ENDDO
+         ENDDO
 
+         CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,     &
+              PSFC,CP,R_d,RCP,                              &
+              ids,ide, jds,jde, kds,kde,                    &
+              ims,ime, jms,jme, kms,kme,                    &
+              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+         
+      CASE DEFAULT
 
-     CASE DEFAULT
-
-        WRITE( * , * ) 'The surface option does not exist: &
-             &bl_surface_physics = ', surface_physics
-        STOP
-
-     END SELECT sfc_select
-     ENDDO
-     !$OMP END PARALLEL DO
+         WRITE( message , * ) &
+              'The surface option does not exist: sf_surface_physics = ',&
+              &sf_surface_physics
+         CALL wrf_error_fatal ( message )
+         
+      END SELECT sfc_select
+   ENDDO
+!$OMP END PARALLEL DO
 
  430 CONTINUE
 
 
 ! Reset RAINBL in mm (Accumulation between PBL calls)
 
-     !$OMP PARALLEL DO   &
-     !$OMP PRIVATE ( ij, i, j, k )
-     DO ij = 1 , num_tiles
-       DO j=j_start(ij),j_end(ij)
-       DO i=i_start(ij),i_end(ij)
-          RAINBL(i,j) = 0.
+     IF ( PRESENT( rainbl ) ) THEN
+       !$OMP PARALLEL DO   &
+       !$OMP PRIVATE ( ij, i, j, k )
+       DO ij = 1 , num_tiles
+         DO j=j_start(ij),j_end(ij)
+         DO i=i_start(ij),i_end(ij)
+            RAINBL(i,j) = 0.
+         ENDDO
+         ENDDO
        ENDDO
-       ENDDO
-     ENDDO
-     !$OMP END PARALLEL DO
+       !$OMP END PARALLEL DO
+     ENDIF
 
    ENDIF
 
    END SUBROUTINE surface_driver
 
-END MODULE module_surface_driver
+   SUBROUTINE calcsfc(hfx,flhc,qfx,flqc,th,qv,psfc,&
+        &tsk,qsfc,bl_pbl_physics)
+
+     USE module_model_constants
+     
+     IMPLICIT NONE
+     
+     REAL, INTENT(inout):: hfx,flhc,qfx,flqc,th,qv,psfc
+     
+     REAL, INTENT(inout) :: tsk,qsfc
+     
+     CHARACTER(len=15) :: bl_pbl_physics
+     
+     REAL :: tvsk,rhox
+     
+     IF (bl_pbl_physics=='MYJPBLSCHEME') RETURN
+     
+     IF (ABS(flhc) > 1.e-7) THEN
+!      tvsk=tsk*(1.+svp1*qsfc)
+!      rhox=psfc/(r_d*tvsk)
+!      PRINT *,'1',th-tsk*(p1000mb/psfc)**rcp
+        tsk=(th+hfx/flhc)*(psfc/p1000mb)**rcp
+!   ELSE
+!      tsk=th*(psfc/p1000mb)**rcp
+     ENDIF
+     
+
+!      PRINT *,qfx,flqc
+     
+!     IF (bl_pbl_physics=='MYJPBLSCHEME') RETURN
+     
+     IF (ABS(flqc) > 1.e-9) THEN
+        qsfc=MIN(qv+qfx/flqc,qsat(psfc,tsk))
+     ELSE
+!         qsfc=qv
+     ENDIF
+     
+   END SUBROUTINE calcsfc
+   
+ END MODULE module_surface_driver
 

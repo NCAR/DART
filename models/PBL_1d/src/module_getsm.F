@@ -10,7 +10,7 @@ CONTAINS
     INTEGER :: isltyp, ivgtyp
     REAL :: smcmin,smcmax
     
-    INTEGER :: LUMATCH, IINDEX, LC, NUM_SLOPE 
+    INTEGER :: LUMATCH, IINDEX, LC
     
     CHARACTER*4 :: MMINLU, MMINSL
     CHARACTER*4 SLTYPE

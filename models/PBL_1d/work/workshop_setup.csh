@@ -81,7 +81,7 @@ make         || exit 7
 # We're hardcoding that here. Clearly suboptimal.
 
 csh mkmf_obs_diag
-make         || exit 10
+#make         || exit 10
 csh mkmf_create_real_network_seq
 make         || exit 11
 csh mkmf_driver

@@ -45,7 +45,6 @@ CONTAINS
 !
 !  b = diagonal, d = offdiagonal, c = right hand side.
 !
-print*,x(2),x(1)
     d(1) = x(2) - x(1)
     c(2) = (y(2) - y(1))/d(1)
     DO  i = 2, nm1
@@ -173,10 +172,10 @@ print*,x(2),x(1)
 
     IF ( n > 1 ) THEN
        i = 1
-       DO WHILE ( x(i) <= xi ) 
+       DO WHILE ( x(i) < xi .and. i < n ) 
          i = i+1
        ENDDO
-       nx = i + 1
+       nx = i! + 1
     ELSE
        nx = n
     ENDIF

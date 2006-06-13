@@ -1,38 +1,40 @@
+!-----------------------------------------------------------------------
 !
-MODULE MODULE_BL_MYJPBL
+      MODULE MODULE_BL_MYJPBL
 !
-USE MODULE_MODEL_CONSTANTS
+!-----------------------------------------------------------------------
+!
+      USE MODULE_MODEL_CONSTANTS
 !
 !-----------------------------------------------------------------------
 !
 ! REFERENCES:  Janjic (2001), NCEP Office Note 437
 !              Mellor and Yamada (1982), Rev. Geophys. Space Phys.
-!              Mellor and Yamada (1974), J. Atmos. Sci.
 !
 ! ABSTRACT:
-!     MYJ updates the turbulent kinetic energy with the production/
-!     dissipation term and the vertical diffusion term
-!     (using an implicit formulation) from Mellor-Yamada
-!     Level 2.5 as extended by Janjic.  Exchange coefficients for
-!     the surface and for all layer interfaces are computed from
-!     Monin-Obukhov theory.
-!     The turbulent vertical exchange is then executed.
+!     MYJ UPDATES THE TURBULENT KINETIC ENERGY WITH THE PRODUCTION/
+!     DISSIPATION TERM AND THE VERTICAL DIFFUSION TERM
+!     (USING AN IMPLICIT FORMULATION) FROM MELLOR-YAMADA
+!     LEVEL 2.5 AS EXTENDED BY JANJIC.  EXCHANGE COEFFICIENTS FOR
+!     THE SURFACE AND FOR ALL LAYER INTERFACES ARE COMPUTED FROM
+!     MONIN-OBUKHOV THEORY.
+!     THE TURBULENT VERTICAL EXCHANGE IS THEN EXECUTED.
 !
 !-----------------------------------------------------------------------
 !
       INTEGER :: ITRMX=5 ! Iteration count for mixing length computation
 !
 !     REAL,PARAMETER :: G=9.81,PI=3.1415926,R_D=287.04,R_V=461.6        &
-!                      ,VKARMAN=0.4
-      REAL,PARAMETER :: PI=3.1415926                                    &
-                       ,VKARMAN=0.4
+!    &                 ,VKARMAN=0.4
+      REAL,PARAMETER :: PI=3.1415926,VKARMAN=0.4
 !     REAL,PARAMETER :: CP=7.*R_D/2.
       REAL,PARAMETER :: CAPA=R_D/CP
       REAL,PARAMETER :: RLIVWV=XLS/XLV,ELOCP=2.72E6/CP
       REAL,PARAMETER :: EPS1=1.E-12,EPS2=0.
       REAL,PARAMETER :: EPSL=0.10,EPSRU=1.E-7,EPSRS=1.E-7               &
-                       ,EPSTRB=1.E-24
-      REAL,PARAMETER :: EPSA=1.E-8,EPSIT=1.E-4,EPSU2=1.E-4,EPSUST=0.07 
+     &                 ,EPSTRB=1.E-24
+      REAL,PARAMETER :: EPSA=1.E-8,EPSIT=1.E-4,EPSU2=1.E-4,EPSUST=0.07  &
+     &                 ,FH=1.01
       REAL,PARAMETER :: ALPH=0.30,BETA=1./273.,EL0MAX=1000.,EL0MIN=1.   &
      &                 ,ELFC=0.23*0.5,GAM1=0.2222222222222222222        &
      &                 ,PRT=1.
@@ -126,28 +128,28 @@ USE MODULE_MODEL_CONSTANTS
       CONTAINS
 !
 !----------------------------------------------------------------------
-      SUBROUTINE MYJPBL(surface_physics,DT,STEPBL,HT,DZ                &
-                       ,PMID,PINT,TH,T,EXNER,QV,CWM,U,V,RHO            &
-                       ,TSK,QSFC,CHKLOWQ,THZ0,QZ0,UZ0,VZ0              &
-                       ,LOWLYR,XLAND,SICE,SNOW                         &
-                       ,TKE_MYJ,USTAR,ZNT,PBLH,KPBL,CT                 &
-                       ,AKHS,AKMS,ELFLX                                &
-                       ,RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,RQCBLTEN     &
-                       ,uflux,vflux,hflux,qflux,k_m,k_t&
-                       ,IDS,IDE,JDS,JDE,KDS,KDE                        &
-                       ,IMS,IME,JMS,JME,KMS,KME                        &
-                       ,ITS,ITE,JTS,JTE,KTS,KTE)
+      SUBROUTINE MYJPBL(sf_surface_physics,DT,STEPBL,HT,DZ            &
+     &                 ,PMID,PINT,TH,T,EXNER,QV,CWM,U,V,RHO            &
+     &                 ,TSK,QSFC,CHKLOWQ,THZ0,QZ0,UZ0,VZ0              &
+     &                 ,LOWLYR,XLAND,SICE,SNOW                         &
+     &                 ,TKE_MYJ,EXCH_H,USTAR,ZNT,EL_MYJ,PBLH,KPBL,CT   &
+     &                 ,AKHS,AKMS,ELFLX                                &
+     &                 ,RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,RQCBLTEN     &
+     &     ,uflux,vflux,hflux,qflux,k_m,k_t&
+     &,calc_ust&
+     &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
+     &                 ,IMS,IME,JMS,JME,KMS,KME                        &
+     &                 ,ITS,ITE,JTS,JTE,KTS,KTE)
 !----------------------------------------------------------------------
 !
       IMPLICIT NONE
 !
 !----------------------------------------------------------------------
-
-      CHARACTER(len=15) :: surface_physics
+      CHARACTER(len=15) :: sf_surface_physics
 
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-                           ,IMS,IME,JMS,JME,KMS,KME                    &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE
 !
       INTEGER,INTENT(IN) :: STEPBL
 
@@ -156,53 +158,54 @@ USE MODULE_MODEL_CONSTANTS
       INTEGER,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT) :: KPBL
 !
       REAL,INTENT(IN) :: DT
+
+      LOGICAL :: calc_ust
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: HT,SICE,SNOW       &
-                                                   ,TSK,XLAND
+     &                                             ,TSK,XLAND
 !
       REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(IN) :: CWM,DZ     &
-                                                           ,EXNER      &
-                                                           ,PMID,PINT  &
-                                                           ,QV,RHO     &
-                                                           ,T,TH,U,V   
+     &                                                     ,EXNER      &
+     &                                                     ,PMID,PINT  &
+     &                                                     ,QV,RHO     &
+     &                                                     ,T,TH,U,V   
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT) :: PBLH
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: AKHS,AKMS
 !
       REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME)                          &
-          ,INTENT(OUT) ::                      RQCBLTEN,RQVBLTEN       &
-                                              ,RTHBLTEN                &
-                                              ,RUBLTEN,RVBLTEN        
+     &    ,INTENT(OUT) ::                      EL_MYJ                  &
+     &                                        ,RQCBLTEN,RQVBLTEN       &
+     &                                        ,RTHBLTEN                &
+     &                                        ,RUBLTEN,RVBLTEN        
 !
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: QSFC,QZ0,THZ0   &
-                                                      ,USTAR           &
-                                                      ,UZ0,VZ0,ZNT
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: CT,QSFC,QZ0     &
+     &                                                ,THZ0,USTAR      &
+     &                                                ,UZ0,VZ0,ZNT
 !
       REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME)                          &
-          ,INTENT(INOUT) ::                    TKE_MYJ
+     &    ,INTENT(INOUT) ::                    EXCH_H,TKE_MYJ
 
       REAL,     DIMENSION(kts:kte) , INTENT(out) :: &
            &uflux,vflux,hflux,qflux, k_t,k_m
 
 
-
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: CHKLOWQ,ELFLX
-!
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: CT
 !
 !----------------------------------------------------------------------
 !***
 !***  LOCAL VARIABLES
 !***
-      INTEGER :: I,J,K,KFLIP,LLOW,LMH
+      INTEGER :: I,J,K,KFLIP,LLOW,LMH,LMXL
 !
       INTEGER,DIMENSION(ITS:ITE,JTS:JTE) :: LPBL
 !
-      REAL :: APEX,DCDT,DQDT,DTDIF,DTDT,DTTURBL,DUDT,DVDT,EXNSFC,FFSK  &
-             ,PLOW,PSFC,PTOP,QFC1,QLOW,QOLD,RATIOMX,RDTTURBL,RG,RWMSK  &
-             ,SEAMASK,THNEW,THOLD,TX,ULOW,VLOW,WMSK
+      REAL :: APEX,DCDT,DELTAZ,DQDT,DTDIF,DTDT,DTTURBL,DUDT,DVDT       &
+     &       ,EXNSFC,FFSK,PLOW,PSFC,PTOP,QFC1,QLOW,QOLD                &
+     &       ,RATIOMX,RDTTURBL,RG,RWMSK,SEAMASK,THNEW,THOLD,TX         &
+     &       ,ULOW,VLOW,WMSK
 !
       REAL,DIMENSION(KTS:KTE) :: CWMK,PK,Q2K,QK,THEK,TK,UK,VK
 !
@@ -219,12 +222,13 @@ USE MODULE_MODEL_CONSTANTS
       REAL,DIMENSION(ITS:ITE,KTS:KTE-1,JTS:JTE) :: AKH,AKM
 !
       REAL,DIMENSION(ITS:ITE,KTS:KTE+1,JTS:JTE) :: ZINT
+!
 
       REAL :: rdz
       INTEGER :: ktmp
 
 
-!
+
 !----------------------------------------------------------------------
 !**********************************************************************
 !----------------------------------------------------------------------
@@ -280,6 +284,7 @@ USE MODULE_MODEL_CONSTANTS
       ENDDO
 !
 !----------------------------------------------------------------------
+      EL_MYJ = 0.
         setup_integration:  DO J=JTS,JTE
 !----------------------------------------------------------------------
 !
@@ -326,11 +331,11 @@ USE MODULE_MODEL_CONSTANTS
 !***  FIND THE MIXING LENGTH
 !***
           CALL MIXLEN(LMH,UK,VK,TK,THEK,QK,CWMK                        &
-                     ,Q2K,ZHK,GM,GH,EL                                 &
-                     ,PBLH(I,J),LPBL(I,J),CT(I,J)                      &
-                     ,IDS,IDE,JDS,JDE,KDS,KDE                          &
-                     ,IMS,IME,JMS,JME,KMS,KME                          &
-                     ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &               ,Q2K,ZHK,GM,GH,EL                                 &
+     &               ,PBLH(I,J),LPBL(I,J),LMXL,CT(I,J)                 &
+     &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
+     &               ,IMS,IME,JMS,JME,KMS,KME                          &
+     &               ,ITS,ITE,JTS,JTE,KTS,KTE)
 !
 !----------------------------------------------------------------------
 !***
@@ -339,9 +344,9 @@ USE MODULE_MODEL_CONSTANTS
 !***
 !
           CALL PRODQ2(LMH,DTTURBL,USTAR(I,J),GM,GH,EL,Q2K              &
-                     ,IDS,IDE,JDS,JDE,KDS,KDE                          &
-                     ,IMS,IME,JMS,JME,KMS,KME                          &
-                     ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
+     &               ,IMS,IME,JMS,JME,KMS,KME                          &
+     &               ,ITS,ITE,JTS,JTE,KTS,KTE)
 !
 !----------------------------------------------------------------------
 !*** THE MODEL LAYER (COUNTING UPWARD) CONTAINING THE TOP OF THE PBL
@@ -353,22 +358,26 @@ USE MODULE_MODEL_CONSTANTS
 !***
 !***  FIND THE EXCHANGE COEFFICIENTS IN THE FREE ATMOSPHERE
 !***
-          CALL DIFCOF(LMH,LPBL(I,J),GM,GH,EL,TK,Q2K,ZHK,AKMK,AKHK      &
-                     ,IDS,IDE,JDS,JDE,KDS,KDE                          &
-                     ,IMS,IME,JMS,JME,KMS,KME                          &
-                     ,ITS,ITE,JTS,JTE,KTS,KTE)
+          CALL DIFCOF(LMH,LMXL,GM,GH,EL,TK,Q2K,ZHK,AKMK,AKHK           &
+     &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
+     &               ,IMS,IME,JMS,JME,KMS,KME                          &
+     &               ,ITS,ITE,JTS,JTE,KTS,KTE)
+!
+!***  COUNTING DOWNWARD FROM THE TOP, THE EXCHANGE COEFFICIENTS AKH 
+!***  ARE DEFINED ON THE BOTTOMS OF THE LAYERS KTS TO KTE-1.  COUNTING 
+!***  COUNTING UPWARD FROM THE BOTTOM, THOSE SAME COEFFICIENTS EXCH_H
+!***  ARE DEFINED ON THE TOPS OF THE LAYERS KTS TO KTE-1.
 !
           DO K=KTS,KTE-1
+            KFLIP=KTE-K
             AKH(I,K,J)=AKHK(K)
             AKM(I,K,J)=AKMK(K)
+            DELTAZ=0.5*(ZHK(KFLIP)-ZHK(KFLIP+2))
+            EXCH_H(I,K,J)=AKHK(KFLIP)*DELTAZ
+            k_t(k)=EXCH_H(I,K,J)
+            k_m(k)=AKMK(KFLIP)*DELTAZ
           ENDDO
 
-          DO k=kts,kte-1
-             KFLIP=KTE-K
-             RDZ=-.5*(Zint(i,Kflip+2,j)-Zint(i,Kflip,j))
-             k_t(k)=AKHK(Kflip)*rdz
-             k_m(k)=AKMK(Kflip)*rdz
-          ENDDO
 
 
 
@@ -380,16 +389,17 @@ USE MODULE_MODEL_CONSTANTS
 !***
 !
           CALL VDIFQ(LMH,DTDIF,Q2K,EL,ZHK                              &
-                    ,IDS,IDE,JDS,JDE,KDS,KDE                           &
-                    ,IMS,IME,JMS,JME,KMS,KME                           &
-                    ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &              ,IDS,IDE,JDS,JDE,KDS,KDE                           &
+     &              ,IMS,IME,JMS,JME,KMS,KME                           &
+     &              ,ITS,ITE,JTS,JTE,KTS,KTE)
 !
-!***  SAVE THE NEW TKE
+!***  SAVE THE NEW TKE AND MIXING LENGTH.
 !
           DO K=KTS,KTE
             KFLIP=KTE+1-K
             Q2K(KFLIP)=AMAX1(Q2K(KFLIP),EPSQ2)
             TKE_MYJ(I,K,J)=0.5*Q2K(KFLIP)
+            IF ( K .LT. KTE ) EL_MYJ(I,K,J)=EL(K)   ! EL IS NOT DEFINED AT KTE
           ENDDO
 !
 !
@@ -437,38 +447,49 @@ USE MODULE_MODEL_CONSTANTS
           ZHK(KTE+1)=ZINT(I,KTE+1,J)
 !
           SEAMASK=XLAND(I,J)-1.
-          THZ0(I,J)=(1.-SEAMASK)*THSK(I,J)+SEAMASK*THZ0(I,J)
+
+          IF (sf_surface_physics /= 'FLUXFORCE') THEN
+             THZ0(I,J)=(1.-SEAMASK)*THSK(I,J)+SEAMASK*THZ0(I,J)
+          ENDIF
 !
-          IF(SEAMASK.LT.0.5)THEN
+          IF(SEAMASK<0.5)THEN
             LLOW=LOWLYR(I,J)
             PLOW=PMID(I,LLOW,J)
             QLOW=QK(KTE+1-LLOW)
             FFSK=AKHS(I,J)*PLOW/                                       &
-                 ((QLOW*P608-CWM(I,LLOW,J)+1.)*T(I,LLOW,J)*R_D)
+     &           ((QLOW*P608-CWM(I,LLOW,J)+1.)*T(I,LLOW,J)*R_D)
             QFC1=FFSK*XLV
             QFC1=QFC1*CHKLOWQ(I,J)
 !
-            IF(SNOW(I,J).GT.0..OR.SICE(I,J).GT.0.5)THEN
+            IF(SNOW(I,J)>0..OR.SICE(I,J)>0.5)THEN
               QFC1=QFC1*RLIVWV
             ENDIF
 !
+            IF(QFC1>0.)THEN
+
 !mp@
-            IF(QFC1.GT.0.)THEN
-               IF (surface_physics/='SIMPLESCHEME') THEN
+               IF ((sf_surface_physics /= 'SIMPLESCHEME')) THEN
                   QSFC(I,J)=QLOW+ELFLX(I,J)/QFC1
                ENDIF
 
-              QSFC(I,J)=QLOW+ELFLX(I,J)/QFC1
             ENDIF
 !
-          ELSE
             PSFC=PINT(I,LOWLYR(I,J),J)
             EXNSFC=(1.E5/PSFC)**CAPA
-            QSFC(I,J)=PQ0SEA/PSFC                                      &
-               *EXP(A2*(THSK(I,J)-A3*EXNSFC)/(THSK(I,J)-A4*EXNSFC))
+
+         ELSE
+            PSFC=PINT(I,LOWLYR(I,J),J)
+            EXNSFC=(1.E5/PSFC)**CAPA
+
+            QSFC(I,J)=PQ0SEA/PSFC            &
+                 & *EXP(A2*(THSK(I,J)-A3*EXNSFC)/(THSK(I,J)-A4*EXNSFC))
+         ENDIF
+         
+          IF (sf_surface_physics /= 'FLUXFORCE') THEN
+             QZ0 (I,J)=(1.-SEAMASK)*QSFC(I,J)+SEAMASK*QZ0 (I,J)
           ENDIF
-!
-          QZ0 (I,J)=(1.-SEAMASK)*QSFC(I,J)+SEAMASK*QZ0 (I,J)
+
+
 !
 !***  LOWEST LAYER ABOVE GROUND MUST BE FLIPPED
 !
@@ -479,12 +500,27 @@ USE MODULE_MODEL_CONSTANTS
 !***  TEMPERATURE AND WATER VAPOR
 !----------------------------------------------------------------------
 !
-          CALL VDIFH(DTDIF,LMH,THZ0(I,J),QZ0(I,J)                      &
-                    ,AKHS(I,J),CHKLOWQ(I,J),CT(I,J)                    &
-                    ,THEK,QK,CWMK,AKHK,ZHK                             &
-                    ,IDS,IDE,JDS,JDE,KDS,KDE                           &
-                    ,IMS,IME,JMS,JME,KMS,KME                           &
-                    ,ITS,ITE,JTS,JTE,KTS,KTE)
+
+          IF (sf_surface_physics == 'FLUXFORCE') THEN
+             
+             CALL VDIFH_fluxforce(DTDIF,LMH,THZ0(I,J),QZ0(I,J)   &
+                  &              ,AKHS(I,J),CHKLOWQ(I,J),CT(I,J) &
+                  &              ,THEK,QK,CWMK,AKHK,ZHK,exnsfc   &
+                  &              ,IDS,IDE,JDS,JDE,KDS,KDE        &
+                  &              ,IMS,IME,JMS,JME,KMS,KME        &
+                  &              ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+
+          ELSE
+
+             CALL VDIFH(DTDIF,LMH,THZ0(I,J),QZ0(I,J)             &
+                  &              ,AKHS(I,J),CHKLOWQ(I,J),CT(I,J) &
+                  &              ,THEK,QK,CWMK,AKHK,ZHK          &
+                  &              ,IDS,IDE,JDS,JDE,KDS,KDE        &
+                  &              ,IMS,IME,JMS,JME,KMS,KME        &
+                  &              ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+
+          ENDIF
+
 !----------------------------------------------------------------------
 !***
 !***  COMPUTE PRIMARY VARIABLE TENDENCIES
@@ -521,6 +557,8 @@ USE MODULE_MODEL_CONSTANTS
         ENDDO
 
 
+
+
         DO I=ITS,ITE
 !
 !***  FILL 1-D VERTICAL ARRAYS
@@ -545,10 +583,10 @@ USE MODULE_MODEL_CONSTANTS
 !----------------------------------------------------------------------
 !
           CALL VDIFV(LMH,DTDIF,UZ0(I,J),VZ0(I,J)                       &
-                    ,AKMS(I,J),UK,VK,AKMK,ZHK                          &
-                    ,IDS,IDE,JDS,JDE,KDS,KDE                           &
-                    ,IMS,IME,JMS,JME,KMS,KME                           &
-                    ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &              ,AKMS(I,J),UK,VK,AKMK,ZHK                          &
+     &              ,IDS,IDE,JDS,JDE,KDS,KDE                           &
+     &              ,IMS,IME,JMS,JME,KMS,KME                           &
+     &              ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
 !
 !----------------------------------------------------------------------
 !***
@@ -564,6 +602,7 @@ USE MODULE_MODEL_CONSTANTS
 !
         ENDDO
 
+
 !mp@
 
         i=its
@@ -578,7 +617,6 @@ USE MODULE_MODEL_CONSTANTS
                 &v(I,k+1,J)+RVBLTEN(I,k+1,J)*dt-&
                 &v(I,k,J)+RVBLTEN(I,k,J)*dt)*rdz
         ENDDO
-
 
 
 !----------------------------------------------------------------------
@@ -600,18 +638,18 @@ USE MODULE_MODEL_CONSTANTS
 !   *                                                                *
 !   ******************************************************************
 !
-      (LMH,U,V,T,THE,Q,CWM,Q2,Z,GM,GH,EL,PBLH,LPBL,CT                  &
-      ,IDS,IDE,JDS,JDE,KDS,KDE                                         &
-      ,IMS,IME,JMS,JME,KMS,KME                                         &
-      ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &(LMH,U,V,T,THE,Q,CWM,Q2,Z,GM,GH,EL,PBLH,LPBL,LMXL,CT             &
+     &,IDS,IDE,JDS,JDE,KDS,KDE                                         &
+     &,IMS,IME,JMS,JME,KMS,KME                                         &
+     &,ITS,ITE,JTS,JTE,KTS,KTE)
 !----------------------------------------------------------------------
 !
       IMPLICIT NONE
 !
 !----------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-                           ,IMS,IME,JMS,JME,KMS,KME                    &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE
 !
       INTEGER,INTENT(IN) :: LMH
 !
@@ -630,18 +668,35 @@ USE MODULE_MODEL_CONSTANTS
 !***
 !***  LOCAL VARIABLES
 !***
-      INTEGER :: K,LPBLM
+      INTEGER :: K,LMXL,LPBLM
 !
-      REAL :: A,ADEN,B,BDEN,AUBR,BUBR,EL0,ELOQ2X,GHL,GML               &
-             ,QOL2ST,QOL2UN,QDZL,RDZ,SQ,SZQ,TEM,THM,VKRMZ
+      REAL :: A,ADEN,B,BDEN,AUBR,BLMX,BUBR,EL0,ELOQ2X,GHL,GML          &
+     &       ,QOL2ST,QOL2UN,QDZL,RDZ,SQ,SREL,SZQ,TEM,THM,VKRMZ
 !
       REAL,DIMENSION(KTS:KTE) :: Q1
 !
-      REAL,DIMENSION(KTS:KTE-1) :: DTH,ELM
+      REAL,DIMENSION(KTS:KTE-1) :: DTH,ELM,REL
 !
 !----------------------------------------------------------------------
 !**********************************************************************
 !----------------------------------------------------------------------
+!--------------FIND THE HEIGHT OF THE PBL-------------------------------
+!----------------------------------------------------------------------
+      LPBL=LMH
+!
+      DO K=LMH-1,1,-1
+        IF(Q2(K)<=EPSQ2*FH)THEN
+          LPBL=K
+          GO TO 110
+        ENDIF
+      ENDDO
+!
+      LPBL=1
+!----------------------------------------------------------------------
+!--------------THE HEIGHT OF THE PBL------------------------------------
+!----------------------------------------------------------------------
+  110 PBLH=Z(LPBL)-Z(LMH+1)
+!-----------------------------------------------------------------------
 !
       DO K=KTS,LMH
         Q1(K)=0.
@@ -652,13 +707,13 @@ USE MODULE_MODEL_CONSTANTS
       ENDDO
 !
       DO K=LMH-2,1,-1
-        IF(DTH(K).GT.0..AND.DTH(K+1).LE.0.)THEN
+        IF(DTH(K)>0..AND.DTH(K+1)<=0.)THEN
           DTH(K)=DTH(K)+CT
-          GO TO 20
+          EXIT
         ENDIF
       ENDDO
 !
-   20 CT=0.
+      CT=0.
 !----------------------------------------------------------------------
       DO K=KTS,LMH-1
         RDZ=2./(Z(K)-Z(K+2))
@@ -671,11 +726,11 @@ USE MODULE_MODEL_CONSTANTS
         A=THM*P608
         B=(ELOCP/TEM-1.-P608)*THM
 !
-        GHL=(DTH(K)*((Q(K)+Q(K+1))*(0.5*P608)+1.)                      &
-           +(Q(K)-Q(K+1))*A                                            &
-           +(CWM(K)-CWM(K+1))*B)*RDZ
+        GHL=(DTH(K)*((Q(K)+Q(K+1)+CWM(K)+CWM(K+1))*(0.5*P608)+1.)      &
+     &     +(Q(K)-Q(K+1)+CWM(K)-CWM(K+1))*A                            &
+     &     +(CWM(K)-CWM(K+1))*B)*RDZ
 !
-        IF(ABS(GHL).LE.EPSGH)GHL=EPSGH
+        IF(ABS(GHL)<=EPSGH)GHL=EPSGH
         GH(K)=GHL
       ENDDO
 !
@@ -683,16 +738,16 @@ USE MODULE_MODEL_CONSTANTS
 !***  FIND MAXIMUM MIXING LENGTHS AND THE LEVEL OF THE PBL TOP
 !----------------------------------------------------------------------
 !
-      LPBL=LMH
+      LMXL=LMH
 !
       DO K=KTS,LMH-1
         GML=GM(K)
         GHL=GH(K)
 !
-        IF(GHL.GE.EPSGH)THEN
-          IF(GML/GHL.LE.REQU)THEN
+        IF(GHL>=EPSGH)THEN
+          IF(GML/GHL<=REQU)THEN
             ELM(K)=EPSL
-            LPBL=K
+            LMXL=K
           ELSE
             AUBR=(AUBM*GML+AUBH*GHL)*GHL
             BUBR= BUBM*GML+BUBH*GHL
@@ -709,13 +764,13 @@ USE MODULE_MODEL_CONSTANTS
         ENDIF
       ENDDO
 !
-      IF(ELM(LMH-1).EQ.EPSL)LPBL=LMH
+      IF(ELM(LMH-1)==EPSL)LMXL=LMH
 !
 !----------------------------------------------------------------------
-!***  THE HEIGHT OF THE PBL
+!***  THE HEIGHT OF THE MIXED LAYER
 !----------------------------------------------------------------------
 !
-      PBLH=Z(LPBL)-Z(LMH+1)
+      BLMX=Z(LMXL)-Z(LMH+1)
 !
 !----------------------------------------------------------------------
       DO K=LPBL,LMH
@@ -739,23 +794,32 @@ USE MODULE_MODEL_CONSTANTS
       EL0=MAX(EL0            ,EL0MIN)
 !
 !----------------------------------------------------------------------
-!***  INSIDE THE PBL
-!----------------------------------------------------------------------
-!
-      DO K=KTS,LMH-1
-        VKRMZ=(Z(K+1)-Z(LMH+1))*VKARMAN
-        EL(K)=MIN(VKRMZ/(VKRMZ/EL0+1.),ELM(K))
-      ENDDO
-!
-!----------------------------------------------------------------------
-!***  CORRECTION ABOVE THE PBL TOP
+!***  ABOVE THE PBL TOP
 !----------------------------------------------------------------------
 !
       LPBLM=MAX(LPBL-1,1)
-!
-      DO K=1,LPBLM
+      DO K=KTS,LPBLM
         EL(K)=MIN((Z(K)-Z(K+2))*ELFC,ELM(K))
+        REL(K)=EL(K)/ELM(K)
       ENDDO
+!
+!----------------------------------------------------------------------
+!***  INSIDE THE PBL
+!----------------------------------------------------------------------
+!
+      IF(LPBL<LMH)THEN
+        DO K=LPBL,LMH-1
+          VKRMZ=(Z(K+1)-Z(LMH+1))*VKARMAN
+          EL(K)=MIN(VKRMZ/(VKRMZ/EL0+1.),ELM(K))
+          REL(K)=EL(K)/ELM(K)
+        ENDDO
+      ENDIF
+!
+      DO K=LPBL+1,LMH-2
+        SREL=MIN(((REL(K-1)+REL(K+1))*0.5+REL(K))*0.5,REL(K))
+        EL(K)=MAX(SREL*ELM(K),EPSL)
+      ENDDO
+!
 !----------------------------------------------------------------------
       END SUBROUTINE MIXLEN
 !----------------------------------------------------------------------
@@ -769,18 +833,18 @@ USE MODULE_MODEL_CONSTANTS
 !   *                                                                *
 !   ******************************************************************
 !
-      (LMH,DTTURBL,USTAR,GM,GH,EL,Q2                                   &
-      ,IDS,IDE,JDS,JDE,KDS,KDE                                         &
-      ,IMS,IME,JMS,JME,KMS,KME                                         &
-      ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &(LMH,DTTURBL,USTAR,GM,GH,EL,Q2                                   &
+     &,IDS,IDE,JDS,JDE,KDS,KDE                                         &
+     &,IMS,IME,JMS,JME,KMS,KME                                         &
+     &,ITS,ITE,JTS,JTE,KTS,KTE)
 !----------------------------------------------------------------------
 !
       IMPLICIT NONE
 !
 !----------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-                           ,IMS,IME,JMS,JME,KMS,KME                    &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE
 !
       INTEGER,INTENT(IN) :: LMH
 !
@@ -797,9 +861,9 @@ USE MODULE_MODEL_CONSTANTS
       INTEGER :: K
 !
       REAL :: ADEN,AEQU,ANUM,ARHS,BDEN,BEQU,BNUM,BRHS,CDEN,CRHS        &
-             ,DLOQ1,ELOQ11,ELOQ12,ELOQ13,ELOQ21,ELOQ22,ELOQ31,ELOQ32   &
-             ,ELOQ41,ELOQ42,ELOQ51,ELOQ52,ELOQN,EQOL2,GHL,GML          &
-             ,RDEN1,RDEN2,RHS2,RHSP1,RHSP2,RHST2
+     &       ,DLOQ1,ELOQ11,ELOQ12,ELOQ13,ELOQ21,ELOQ22,ELOQ31,ELOQ32   &
+     &       ,ELOQ41,ELOQ42,ELOQ51,ELOQ52,ELOQN,EQOL2,GHL,GML          &
+     &       ,RDEN1,RDEN2,RHS2,RHSP1,RHSP2,RHST2
 !
 !----------------------------------------------------------------------
 !**********************************************************************
@@ -826,9 +890,9 @@ USE MODULE_MODEL_CONSTANTS
 !***  IS THERE PRODUCTION/DISSIPATION ?
 !----------------------------------------------------------------------
 !
-        IF((GML+GHL*GHL.LE.EPSTRB)                                     &
-         .OR.(GHL.GE.EPSGH.AND.GML/GHL.LE.REQU)                        &
-         .OR.(EQOL2.LE.EPS2))THEN
+        IF((GML+GHL*GHL<=EPSTRB)                                       &
+     &   .OR.(GHL>=EPSGH.AND.GML/GHL<=REQU)                            &
+     &   .OR.(EQOL2<=EPS2))THEN
 !
 !----------------------------------------------------------------------
 !***  NO TURBULENCE
@@ -899,7 +963,7 @@ USE MODULE_MODEL_CONSTANTS
 !----------------------------------------------------------------------
 !
           ELOQ12=ELOQ11+(DLOQ1-ELOQ11)*EXP(RHSP1*DTTURBL)
-          ELOQ12=AMAX1(ELOQ12,EPS1)
+          ELOQ12=MAX(ELOQ12,EPS1)
 !
 !----------------------------------------------------------------------
 !***  SECOND ITERATION FOR L/Q
@@ -932,11 +996,17 @@ USE MODULE_MODEL_CONSTANTS
 !
           ELOQN=ELOQ13
 !
-          IF(ELOQN.GT.EPS1)THEN
+          IF(ELOQN>EPS1)THEN
             Q2(K)=EL(K)*EL(K)/(ELOQN*ELOQN)
             Q2(K)=AMAX1(Q2(K),EPSQ2)
+!
+            IF(Q2(K)==EPSQ2)THEN
+              EL(K)=EPSL
+            ENDIF
+!
           ELSE
             Q2(K)=EPSQ2
+            EL(K)=EPSL
           ENDIF
 !
 !----------------------------------------------------------------------
@@ -968,20 +1038,20 @@ USE MODULE_MODEL_CONSTANTS
 !   *                LEVEL 2.5 DIFFUSION COEFFICIENTS                *
 !   *                                                                *
 !   ******************************************************************
-      (LMH,LPBL,GM,GH,EL,T,Q2,Z,AKM,AKH                                &
-      ,IDS,IDE,JDS,JDE,KDS,KDE                                         &
-      ,IMS,IME,JMS,JME,KMS,KME                                         &
-      ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &(LMH,LMXL,GM,GH,EL,T,Q2,Z,AKM,AKH                                &
+     &,IDS,IDE,JDS,JDE,KDS,KDE                                         &
+     &,IMS,IME,JMS,JME,KMS,KME                                         &
+     &,ITS,ITE,JTS,JTE,KTS,KTE)
 !----------------------------------------------------------------------
 !
       IMPLICIT NONE
 !
 !----------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-                           ,IMS,IME,JMS,JME,KMS,KME                    &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE
 !
-      INTEGER,INTENT(IN) :: LMH,LPBL
+      INTEGER,INTENT(IN) :: LMH,LMXL
 !
       REAL,DIMENSION(KTS:KTE),INTENT(IN) :: Q2,T
       REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: EL,GH,GM
@@ -995,7 +1065,7 @@ USE MODULE_MODEL_CONSTANTS
       INTEGER :: K,KINV
 !
       REAL :: ADEN,AKMIN,BDEN,BESH,BESM,CDEN,D2T,ELL,ELOQ2,ELOQ4,ELQDZ &
-             ,ESH,ESM,GHL,GML,Q1L,RDEN,RDZ
+     &       ,ESH,ESM,GHL,GML,Q1L,RDEN,RDZ
 !
 !----------------------------------------------------------------------
 !**********************************************************************
@@ -1060,20 +1130,24 @@ USE MODULE_MODEL_CONSTANTS
 !***  INVERSIONS
 !----------------------------------------------------------------------
 !
-      IF(LPBL.EQ.LMH)THEN
-        DO K=KTS+1,LMH-1
-          D2T=T(K-1)-2.*T(K)+T(K+1)
-          IF(D2T.LT.0.)KINV=K
-        ENDDO
-        IF(KINV.LT.LMH)THEN
-          DO K=KINV-1,LMH-1
-            RDZ=2./(Z(K)-Z(K+2))
-            AKMIN=0.5*RDZ
-            AKM(K)=MAX(AKM(K),AKMIN)
-            AKH(K)=MAX(AKH(K),AKMIN)
-          ENDDO
-        ENDIF
-      ENDIF
+!     IF(LMXL==LMH-1)THEN
+!
+!       KINV=LMH
+!       DO K=LMH/2,LMH-1
+!         D2T=T(K-1)-2.*T(K)+T(K+1)
+!         IF(D2T<0.)KINV=K
+!       ENDDO
+!
+!       IF(KINV<LMH)THEN
+!         DO K=KINV-1,LMH-1
+!           RDZ=2./(Z(K)-Z(K+2))
+!           AKMIN=0.5*RDZ
+!           AKM(K)=MAX(AKM(K),AKMIN)
+!           AKH(K)=MAX(AKH(K),AKMIN)
+!         ENDDO
+!       ENDIF
+!
+!     ENDIF
 !----------------------------------------------------------------------
 !
       END SUBROUTINE DIFCOF
@@ -1087,18 +1161,18 @@ USE MODULE_MODEL_CONSTANTS
 !   *               VERTICAL DIFFUSION OF Q2 (TKE)                   *
 !   *                                                                *
 !   ******************************************************************
-      (LMH,DTDIF,Q2,EL,Z                                               &
-      ,IDS,IDE,JDS,JDE,KDS,KDE                                         &
-      ,IMS,IME,JMS,JME,KMS,KME                                         &
-      ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &(LMH,DTDIF,Q2,EL,Z                                               &
+     &,IDS,IDE,JDS,JDE,KDS,KDE                                         &
+     &,IMS,IME,JMS,JME,KMS,KME                                         &
+     &,ITS,ITE,JTS,JTE,KTS,KTE)
 !----------------------------------------------------------------------
 !
       IMPLICIT NONE
 !
 !----------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-                           ,IMS,IME,JMS,JME,KMS,KME                    &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE
 !
       INTEGER,INTENT(IN) :: LMH
 !
@@ -1115,7 +1189,7 @@ USE MODULE_MODEL_CONSTANTS
       INTEGER :: K
 !
       REAL :: ADEN,AKQS,BDEN,BESH,BESM,CDEN,CF,DTOZS,ELL,ELOQ2,ELOQ4   &
-             ,ELQDZ,ESH,ESM,ESQHF,GHL,GML,Q1L,RDEN,RDZ
+     &       ,ELQDZ,ESH,ESM,ESQHF,GHL,GML,Q1L,RDEN,RDZ
 !
       REAL,DIMENSION(KTS:KTE-2) :: AKQ,CM,CR,DTOZ,RSQ2
 !----------------------------------------------------------------------
@@ -1130,7 +1204,7 @@ USE MODULE_MODEL_CONSTANTS
       DO K=KTS,LMH-2
         DTOZ(K)=(DTDIF+DTDIF)/(Z(K)-Z(K+2))
         AKQ(K)=SQRT((Q2(K)+Q2(K+1))*0.5)*(EL(K)+EL(K+1))*ESQHF         &
-              /(Z(K+1)-Z(K+2))
+     &        /(Z(K+1)-Z(K+2))
         CR(K)=-DTOZ(K)*AKQ(K)
       ENDDO
 !
@@ -1145,12 +1219,12 @@ USE MODULE_MODEL_CONSTANTS
 !
       DTOZS=(DTDIF+DTDIF)/(Z(LMH-1)-Z(LMH+1))
       AKQS=SQRT((Q2(LMH-1)+Q2(LMH))*0.5)*(EL(LMH-1)+ELZ0)*ESQHF        &
-          /(Z(LMH)-Z(LMH+1))
+     &    /(Z(LMH)-Z(LMH+1))
 !
       CF=-DTOZS*AKQ(LMH-2)/CM(LMH-2)
 !
       Q2(LMH-1)=(DTOZS*AKQS*Q2(LMH)-RSQ2(LMH-2)*CF+Q2(LMH-1))          &
-              /((AKQ(LMH-2)+AKQS)*DTOZS-CR(LMH-2)*CF+1.)
+     &        /((AKQ(LMH-2)+AKQS)*DTOZS-CR(LMH-2)*CF+1.)
 !
       DO K=LMH-2,KTS,-1
         Q2(K)=(-CR(K)*Q2(K+1)+RSQ2(K))/CM(K)
@@ -1162,11 +1236,123 @@ USE MODULE_MODEL_CONSTANTS
 !----------------------------------------------------------------------
 !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 !---------------------------------------------------------------------
+      SUBROUTINE VDIFH_fluxforce(DTDIF,LMH,THZ0,QZ0,AKHS,CHKLOWQ,CT   &
+     &                ,THE,Q,CWM,AKH,Z,exnsfc                         &
+     &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
+     &                ,IMS,IME,JMS,JME,KMS,KME                        &
+     &                ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+!     ***************************************************************
+!     *                                                             *
+!     *         VERTICAL DIFFUSION OF MASS VARIABLES                *
+!     *                                                             *
+!     ***************************************************************
+!---------------------------------------------------------------------
+!
+        USE module_ideal, only : qsat
+
+      IMPLICIT NONE
+!
+!---------------------------------------------------------------------
+      INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
+!
+      INTEGER,INTENT(IN) :: LMH
+!
+      REAL,INTENT(IN) :: AKHS,CHKLOWQ,CT,DTDIF,QZ0,THZ0
+!
+      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: AKH
+      REAL,DIMENSION(KTS:KTE+1),INTENT(IN) :: Z
+      REAL,DIMENSION(KTS:KTE),INTENT(INOUT) :: CWM,Q,THE
+      real :: exnsfc
+! 
+!----------------------------------------------------------------------
+!***
+!***  LOCAL VARIABLES
+!***
+      INTEGER :: K
+!
+      REAL :: AKHH,AKQS,CF,CMB,CMCB,CMQB,CMTB,CTHF,DTOZL,DTOZS         &
+     &       ,RCML,RSCB,RSQB,RSTB
+!
+      REAL,DIMENSION(KTS:KTE-1) :: AKCT,CM,CR,DTOZ,RSC,RSQ,RST
+
+
+      REAL :: z1,tsk,psfc
+!
+!----------------------------------------------------------------------
+!**********************************************************************
+!----------------------------------------------------------------------
+      CTHF=0.5*CT
+!
+
+      DO K=KTS,LMH-1
+        DTOZ(K)=DTDIF/(Z(K)-Z(K+1))
+        CR(K)=-DTOZ(K)*AKH(K)
+        AKCT(K)=AKH(K)*(Z(K)-Z(K+2))*CTHF
+      ENDDO
+!
+      CM(KTS)=DTOZ(KTS)*AKH(KTS)+1.
+!----------------------------------------------------------------------
+      RST(KTS)=-AKCT(KTS)*DTOZ(KTS)+THE(KTS)
+      RSQ(KTS)=Q(KTS)
+      RSC(KTS)=CWM(KTS)
+!----------------------------------------------------------------------
+      DO K=KTS+1,LMH-1
+        DTOZL=DTOZ(K)
+        CF=-DTOZL*AKH(K-1)/CM(K-1)
+        CM(K)=-CR(K-1)*CF+(AKH(K-1)+AKH(K))*DTOZL+1.
+        RST(K)=-RST(K-1)*CF+(AKCT(K-1)-AKCT(K))*DTOZL+THE(K)
+        RSQ(K)=-RSQ(K-1)*CF+Q(K)
+        RSC(K)=-RSC(K-1)*CF+CWM(K)
+      ENDDO
+!
+      DTOZS=DTDIF/(Z(LMH)-Z(LMH+1))
+      AKHH=AKH(LMH-1)
+!
+      CF=-DTOZS*AKHH/CM(LMH-1)
+      AKQS=AKHS*CHKLOWQ
+!
+      CMB=CR(LMH-1)*CF
+      CMTB=-CMB+AKHH*DTOZS+1.
+!      CMTB=-CMB+(AKHH+AKHS)*DTOZS+1.
+      CMQB=-CMB+AKHH*DTOZS+1.
+!      CMQB=-CMB+(AKHH+AKQS)*DTOZS+1.
+      CMCB=-CMB+(AKHH     )*DTOZS+1.
+!
+      z1=z(lmh)*.5
+!      RSTB=-RST(LMH-1)*CF+(AKCT(LMH-1)-AKHS*CT*z1)*DTOZS+THE(LMH)
+      RSTB=-RST(LMH-1)*CF+AKCT(LMH-1)*DTOZS+THE(LMH)
+      RSQB=-RSQ(LMH-1)*CF+Q(LMH)
+      RSCB=-RSC(LMH-1)*CF+CWM(LMH)
+!----------------------------------------------------------------------
+!      THE(LMH)=(DTOZS*AKHS*THZ0+RSTB)/CMTB
+!      PRINT *,AKHS*(THZ0-THE(LMH)),'222',thz0
+!      PRINT *,AKHS*(QZ0-Q(LMH)),'222',qz0
+      THE(LMH)=(DTOZS*AKHS*(THZ0-THE(LMH))+RSTB)/CMTB
+      psfc=p1000mb/EXNSFC**(1./rcp)
+      tsk=THE(LMH)/exnsfc
+      Q(LMH)=(DTOZS*AKQS*(QZ0-Q(LMH)) +RSQB)/CMQB
+!      Q(LMH)=MIN((DTOZS*AKQS*(QZ0-Q(LMH)) +RSQB)/CMQB,&
+!           &qsat(psfc,tsk))
+!      Q(LMH)  =(DTOZS*AKQS*QZ0 +RSQB)/CMQB
+      CWM(LMH)=(                RSCB)/CMCB
+!----------------------------------------------------------------------
+      DO K=LMH-1,KTS,-1
+        RCML=1./CM(K)
+        THE(K)=(-CR(K)*THE(K+1)+RST(K))*RCML
+        Q(K)  =(-CR(K)*  Q(K+1)+RSQ(K))*RCML
+        CWM(K)=(-CR(K)*CWM(K+1)+RSC(K))*RCML
+      ENDDO
+!----------------------------------------------------------------------
+!
+    END SUBROUTINE VDIFH_FLUXFORCE
+
       SUBROUTINE VDIFH(DTDIF,LMH,THZ0,QZ0,AKHS,CHKLOWQ,CT             &
-                      ,THE,Q,CWM,AKH,Z                                &
-                      ,IDS,IDE,JDS,JDE,KDS,KDE                        &
-                      ,IMS,IME,JMS,JME,KMS,KME                        &
-                      ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &                ,THE,Q,CWM,AKH,Z                                &
+     &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
+     &                ,IMS,IME,JMS,JME,KMS,KME                        &
+     &                ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
 !     ***************************************************************
 !     *                                                             *
 !     *         VERTICAL DIFFUSION OF MASS VARIABLES                *
@@ -1178,8 +1364,8 @@ USE MODULE_MODEL_CONSTANTS
 !
 !---------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-                           ,IMS,IME,JMS,JME,KMS,KME                    &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
 !
       INTEGER,INTENT(IN) :: LMH
 !
@@ -1196,7 +1382,7 @@ USE MODULE_MODEL_CONSTANTS
       INTEGER :: K
 !
       REAL :: AKHH,AKQS,CF,CMB,CMCB,CMQB,CMTB,CTHF,DTOZL,DTOZS         &
-             ,RCML,RSCB,RSQB,RSTB
+     &       ,RCML,RSCB,RSQB,RSTB
 !
       REAL,DIMENSION(KTS:KTE-1) :: AKCT,CM,CR,DTOZ,RSC,RSQ,RST
 !
@@ -1237,7 +1423,8 @@ USE MODULE_MODEL_CONSTANTS
       CMQB=-CMB+(AKHH+AKQS)*DTOZS+1.
       CMCB=-CMB+(AKHH     )*DTOZS+1.
 !
-      RSTB=-RST(LMH-1)*CF+(AKCT(LMH-1)-AKHS*CT)*DTOZS+THE(LMH)
+!      RSTB=-RST(LMH-1)*CF+(AKCT(LMH-1)-AKHS*CT)*DTOZS+THE(LMH)
+      RSTB=-RST(LMH-1)*CF+AKCT(LMH-1)*DTOZS+THE(LMH)
       RSQB=-RSQ(LMH-1)*CF+Q(LMH)
       RSCB=-RSC(LMH-1)*CF+CWM(LMH)
 !----------------------------------------------------------------------
@@ -1255,13 +1442,15 @@ USE MODULE_MODEL_CONSTANTS
 !
       END SUBROUTINE VDIFH
 
+
+
 !---------------------------------------------------------------------
 !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 !---------------------------------------------------------------------
       SUBROUTINE VDIFV(LMH,DTDIF,UZ0,VZ0,AKMS,U,V,AKM,Z               &
-                      ,IDS,IDE,JDS,JDE,KDS,KDE                        &
-                      ,IMS,IME,JMS,JME,KMS,KME                        &
-                      ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
+     &                ,IMS,IME,JMS,JME,KMS,KME                        &
+                      ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
 !     ***************************************************************
 !     *                                                             *
 !     *        VERTICAL DIFFUSION OF VELOCITY COMPONENTS            *
@@ -1273,8 +1462,8 @@ USE MODULE_MODEL_CONSTANTS
 !
 !---------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                   &
-                           ,IMS,IME,JMS,JME,KMS,KME                   &
-                           ,ITS,ITE,JTS,JTE,KTS,KTE
+     &                     ,IMS,IME,JMS,JME,KMS,KME                   &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
 !
       INTEGER,INTENT(IN) :: LMH
 !
@@ -1336,19 +1525,20 @@ USE MODULE_MODEL_CONSTANTS
 !
 !=======================================================================
       SUBROUTINE MYJPBLINIT(RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,          &
-     &                      TKE_MYJ,RESTART,allowed_to_read,            &
+     &                      TKE_MYJ,EXCH_H,RESTART,ALLOWED_TO_READ,     &
      &                      IDS,IDE,JDS,JDE,KDS,KDE,                    &
      &                      IMS,IME,JMS,JME,KMS,KME,                    &
      &                      ITS,ITE,JTS,JTE,KTS,KTE                 )
 !-----------------------------------------------------------------------
       IMPLICIT NONE
 !-----------------------------------------------------------------------
-      LOGICAL,INTENT(IN) :: RESTART,allowed_to_read
+      LOGICAL,INTENT(IN) :: ALLOWED_TO_READ,RESTART
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE,                    &
      &                      IMS,IME,JMS,JME,KMS,KME,                    &
      &                      ITS,ITE,JTS,JTE,KTS,KTE
 
-      REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(OUT) ::   RUBLTEN, &
+      REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(OUT) ::    EXCH_H, &
+     &                                                         RUBLTEN, &
      &                                                         RVBLTEN, &
      &                                                        RTHBLTEN, &
      &                                                        RQVBLTEN, &
@@ -1365,11 +1555,12 @@ USE MODULE_MODEL_CONSTANTS
         DO J=JTS,JTF
         DO K=KTS,KTF
         DO I=ITS,ITF
-          TKE_MYJ(I,K,J)=EPSQ2
+          TKE_MYJ(I,K,J)=.5*EPSQ2
           RUBLTEN(I,K,J)=0.
           RVBLTEN(I,K,J)=0.
           RTHBLTEN(I,K,J)=0.
           RQVBLTEN(I,K,J)=0.
+          EXCH_H(I,K,J)=0.
         ENDDO
         ENDDO
         ENDDO
@@ -1377,5 +1568,7 @@ USE MODULE_MODEL_CONSTANTS
 
       END SUBROUTINE MYJPBLINIT
 !-----------------------------------------------------------------------
-
+!
       END MODULE MODULE_BL_MYJPBL
+!
+!-----------------------------------------------------------------------

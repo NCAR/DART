@@ -1,3 +1,4 @@
+#define LSMRUC_DBG_LVL 3000
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_ruclsm
@@ -8,7 +9,7 @@ CONTAINS
 !-----------------------------------------------------------------
     SUBROUTINE LSMRUC(                                           &
                    DT,KTAU,NSL,ZS,                               &
-                   RAINBL,SNOW,SNOWC,                            &
+                   RAINBL,SNOW,SNOWH,SNOWC,FRZFRAC,              &
                    Z3D,P8W,T3D,QV3D,QC3D,RHO3D,                  & !p8W in [PA]
                    GLW,GSW,EMISS,CHKLOWQ,                         & 
                    FLQC,FLHC,MAVAIL,CANWAT,VEGFRA,ALB,ZNT,       &
@@ -20,6 +21,7 @@ CONTAINS
                    SFCRUNOFF,UDRUNOFF,SFCEXC,                    &
                    SFCEVP,GRDFLX,ACSNOW,                         &
                    SMFR3D,KEEPFR3DFLAG,                          &
+                   myj,                                          &
                    ids,ide, jds,jde, kds,kde,                    &
                    ims,ime, jms,jme, kms,kme,                    &
                    its,ite, jts,jte, kts,kte                     )
@@ -35,6 +37,7 @@ CONTAINS
 !-- RAINBL    - accumulated rain in [mm] between the PBL calls
 !-- RAINNCV         one time step grid scale precipitation (mm/step)
 !        SNOW - snow water equivalent [mm]
+!        FRAZFRAC - fraction of frozen precipitation
 !-- SNOWC       flag indicating snow coverage (1 for snow cover)
 !-- Z3D         heights (m)
 !-- P8W         3D pressure (Pa)
@@ -86,6 +89,7 @@ CONTAINS
    INTEGER,     PARAMETER            ::     nvegclas=24
 
    REAL,       INTENT(IN   )    ::     DT
+   LOGICAL,    INTENT(IN   )    ::     myj
    INTEGER,    INTENT(IN   )    ::     ktau, nsl,                 &
                                        ims,ime, jms,jme, kms,kme, &
                                        ids,ide, jds,jde, kds,kde, &
@@ -117,12 +121,17 @@ CONTAINS
    REAL,       DIMENSION( ims:ime , jms:jme ),                   &
                INTENT(INOUT)    ::                               &
                                                            SNOW, & !new
+                                                          SNOWH, &
                                                           SNOWC, &
                                                          CANWAT, & ! new
                                                             ALB, &
                                                          MAVAIL, & 
                                                          SFCEXC, &
                                                             ZNT
+
+   REAL,       DIMENSION( ims:ime , jms:jme ),                   &
+               INTENT(IN   )    ::                               &
+                                                        FRZFRAC
 
    INTEGER,    DIMENSION( ims:ime , jms:jme ),                   &
                INTENT(IN   )    ::                       IVGTYP, &
@@ -172,6 +181,7 @@ CONTAINS
                                                          SUBLIM, &
                                                           EVAPL, &
                                                           PRCPL, &
+                                                          XICED, &
                                                         INFILTR
 
 !--- soil/snow properties
@@ -191,6 +201,7 @@ CONTAINS
                                                             REF, &
                                                            WILT, &
                                                         CANWATR, &
+                                                          SNHEI, &
                                                            SNWE
 
    REAL                                      ::              CN, &
@@ -225,16 +236,19 @@ CONTAINS
                                                      SNHEIPRINT
 
    REAL                           ::                     PRCPMS, &
+                                                        NEWSNMS, &
                                                            PATM, &
                                                            TABS, &
                                                           QVATM, &
                                                           QCATM, &
+                                                          Q2SAT, &
+                                                         SATFLG, &
                                                          CONFLX, &
                                                             RHO, &
                                                            QKMS, &
                                                            TKMS, &
                                                        INFILTRP
-   REAL      ::  cq,r61,r273,arp,brp,x
+   REAL      ::  cq,r61,r273,arp,brp,x,evs,eis
 
    INTEGER   ::  NROOT
    INTEGER   ::  ILAND,ISOIL
@@ -252,19 +266,33 @@ CONTAINS
 
 !---- table TBQ is for resolution of balance equation in VILKA
         CQ=173.15-.05
-        R61=6.1/1.61
         R273=1./273.15
-        ARP=77455.*41.9/460.
-        BRP=64.*41.9/460.
+        R61=6.1153*0.62198
+        ARP=77455.*41.9/461.525
+        BRP=64.*41.9/461.525
+
         DO K=1,4001
           CQ=CQ+.05
-          TBQ(K)=R61*EXP(ARP*(R273-1./CQ)-BRP*LOG(CQ*R273))
+!          TBQ(K)=R61*EXP(ARP*(R273-1./CQ)-BRP*LOG(CQ*R273))
+        EVS=EXP(17.67*(CQ-273.15)/(CQ-29.65))
+        EIS=EXP(22.514-6.15E3/CQ)
+        if(CQ.ge.273.15) then
+! tbq is in mb
+        tbq(k) = R61*evs
+        else
+        tbq(k) = R61*eis
+        endif
+
         END DO
 
 !--- Initialize soil/vegetation parameters
 !--- This is temporary until SI is added to mass coordinate ---!!!!!
 
+#if ( NMM_CORE == 1 )
+     if(ktau+1.eq.1) then
+#else
      if(ktau.eq.1) then
+#endif
      DO J=jts,jte
          DO i=its,ite
             do k=1,nsl
@@ -279,7 +307,7 @@ CONTAINS
            QSG  (i,j) = QSN(SOILT(i,j),TBQ)/PATM
            qvg  (i,j) = QSG(i,j)*mavail(i,j)
 !           qvg  (i,j) =qv3d(i,kms,j)
-           qsfc(i,j) = qvg(i,j)/(1.+qvg(i,j))
+           qsfc(i,j) = qsg(i,j)/(1.+qsg(i,j))
            SMELT(i,j) = 0.
            SNOM (i,j) = 0.
            SNFLX(i,j) = 0.
@@ -289,7 +317,9 @@ CONTAINS
            RUNOFF1(i,j) = 0.
            RUNOFF2(i,j) = 0.
            emissl (i,j) = 0.
-           lmavail(i,j) = mavail(i,j)
+! Temporarily!!!
+!            canwat(i,j)=0.
+
 ! For RUC LSM CHKLOWQ needed for MYJPBL should 
 ! 1 because is actual specific humidity at the surface, and
 ! not the saturation value
@@ -321,10 +351,11 @@ CONTAINS
 
       DO i=its,ite
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
       print *,' IN LSMRUC ','ims,ime,jms,jme,its,ite,jts,jte,nzs,zsmain,zshalf', &
                 ims,ime,jms,jme,its,ite,jts,jte,nzs,zsmain,zshalf
       print *,' IVGTYP, ISLTYP ', ivgtyp(i,j),isltyp(i,j)
+      print *,' MAVAIL ', mavail(i,j)
       print *,' SOILT,QVG,P8w',soilt(i,j),qvg(i,j),p8w(i,1,j)
       print *, 'LSMRUC, I,J,xland, QFX,HFX from SFCLAY',i,j,xland(i,j), &
                   qfx(i,j),hfx(i,j)
@@ -332,10 +363,10 @@ CONTAINS
       print *, 'SOILT, TSO start of time step =',soilt(i,j),(tso(i,k,j),k=1,nsl)
       print *, 'SOILMOIS start of time step =',(soilmois(i,k,j),k=1,nsl)
       print *, 'SMFROZEN start of time step =',(smfr3d(i,k,j),k=1,nsl)
-      print *, ' I,J=, after SFCLAY FLQC,FLHC ',i,j,flqc(i,j),flhc(i,j),mavail(i,j)
-      print *, 'LSMRUC, IVGTYP,ISLTYP,ZNT,ALB = ', ivgtyp(i,j),isltyp(i,j),znt(i,j),alb(i,j)
+      print *, ' I,J=, after SFCLAY FLQC,FLHC ',i,j,flqc(i,j),flhc(i,j)
+      print *, 'LSMRUC, IVGTYP,ISLTYP,ZNT,ALB = ', ivgtyp(i,j),isltyp(i,j),znt(i,j),alb(i,j),i,j
       print *, 'LSMRUC  I,J,DT,RAINBL =',I,J,dt,RAINBL(i,j)
-      print *, 'XLAND ---->',xland(i,j)
+      print *, 'XLAND ---->, ivgtype,isoiltyp,i,j',xland(i,j),ivgtyp(i,j),isltyp(i,j),i,j
     ENDIF
 
 
@@ -352,7 +383,8 @@ CONTAINS
 !         CONFLX    = 5.
          RHO       = RHO3D(I,kms,J)
 !--- 1*e-3 is to convert from mm/s to m/s
-         PRCPMS    = RAINBL(i,j)/DT*1.e-3
+         PRCPMS    = (RAINBL(i,j)/DT*1.e-3)*(1-FRZFRAC(I,J))
+         NEWSNMS  = (RAINBL(i,j)/DT*1.e-3)*FRZFRAC(I,J)
 !--- rooting depth is 5 levels for forests
         if(iforest(ivgtyp(i,j)).eq.1) nroot=5
 !--- convert exchange coeff to [m/s]
@@ -360,6 +392,7 @@ CONTAINS
          TKMS=FLHC(I,J)/RHO/CP
 !--- convert incoming snow and canwat from mm to m
          SNWE=SNOW(I,J)*1.E-3
+         SNHEI=SNOWH(I,J)
          CANWATR=CANWAT(I,J)*1.E-3
 
 !-----
@@ -371,7 +404,7 @@ CONTAINS
           enddo
 
 !-----
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
          print *,' ZS, ZSMAIN, ZSHALF, CONFLX --->', zs,zsmain,zshalf,conflx
     ENDIF
 
@@ -380,7 +413,7 @@ CONTAINS
 !-------------------------------------------------------------
         NZS1=NZS-1
 !-----
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
          print *,' DT,NZS1, ZSMAIN, ZSHALF --->', dt,nzs1,zsmain,zshalf
     ENDIF
 
@@ -418,19 +451,26 @@ CONTAINS
         NROOT= 4
 !           ! rooting depth
 
+       if(SNOWH(i,j).gt.0.) then
+        RHOSN = SNOW(i,j)/SNOWH(i,j)
+       else
         RHOSN = 200.
+       endif
 
 !--- initializing soil and surface properties
      CALL SOILVEGIN  ( ILAND,ISOIL,IFOREST,                     &
-                     EMISSL(I,J),PC(i,j),ZNTL(I,J),QWRTZ,       &
+                     EMISSL(I,J),PC(i,j),ZNT(I,J),QWRTZ,       &
+!                     EMISSL(I,J),PC(i,j),ZNTL(I,J),QWRTZ,       &
                      RHOCS,BCLH,DQM,KSAT,PSIS,QMIN,REF,WILT     )
 
 !*** SET ZERO-VALUE FOR SOME OUTPUT DIAGNOSTIC ARRAYS
+
+
         IF((XLAND(I,J)-1.5).GE.0.)THEN
 !-- Water point
            SMAVAIL(I,J)=1.0
              SMMAX(I,J)=1.0
-              SNOW(I,J)=0.0
+!              SNOW(I,J)=0.0
            LMAVAIL(I,J)=1.0
 
            ILAND=16
@@ -439,20 +479,32 @@ CONTAINS
            patm=P8w(i,kms,j)*1.e-2
            qvg  (i,j) = QSN(SOILT(i,j),TBQ)/PATM
            qsfc(i,j) = qvg(i,j)/(1.+qvg(i,j))
-           chklowq(i,j) = 1.
+           CHKLOWQ(I,J)=1.
+           Q2SAT=QSN(TABS,TBQ)/PATM
 
             DO K=1,NZS
               SOILMOIS(I,K,J)=1.0
               TSO(I,K,J)= SOILT(I,J)
             ENDDO
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
               PRINT*,'  water point, I=',I,                      &
               'J=',J, 'SOILT=', SOILT(i,j)
     ENDIF
-         IF(XICE(I,J).EQ.1.)THEN
+!--- decide if this water point is ice:
+!       if(tabs.le.271.) then
+       if(xice(i,j).gt.0.5) then
+!       if(soilt(i,j).le.271.or.xice(i,j).eq.1.) then
+!       if(tabs.le.271.or.xice(i,j).eq.1.) then
+           XICED(i,j)=1.
+       else
+           XICED(i,j)=0.
+       endif
+
+         IF(XICED(I,J).NE.1.)  SNOW(I,J)=0.
+         IF(XICED(I,J).GT.0.5)THEN
 !-- Sea-ice case
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
               PRINT*,' sea-ice at water point, I=',I,            &
               'J=',J
     ENDIF
@@ -461,7 +513,8 @@ CONTAINS
 
             SMAVAIL(I,J)=1.0
             SMMAX(I,J)=1.0
-            SOILT(I,J) = MIN(273.15,SOILT(I,J))
+            LMAVAIL(I,J)=1.0
+!            SOILT(I,J) = MIN(273.15,SOILT(I,J))
 
             DO K=1,NZS
               SOILMOIS(I,K,J)=1.0
@@ -469,16 +522,37 @@ CONTAINS
             ENDDO
           ENDIF
 
+! for MYJ surface and PBL scheme
+      if (myj) then
+        IF((QVATM.GE.Q2SAT*0.95).AND.QVATM.LT.qvg(I,J))THEN
+!        IF((QVATM.GE.Q2SAT*0.95).AND.QVATM.LT.qsg(I,J))THEN
+          SATFLG=0.
+        ELSE
+          SATFLG=1.0
+        ENDIF
+      else
+          SATFLG=1.0
+      endif
+          QFX(I,J)=QFX(I,J)*SATFLG
+
+
            ELSE
 
 !-- Land point
+!  Attention!!!!  RUC LSM uses soil moisture content minus residual (minimum
+!     soil moisture content for a given soil type) as a state variable.
+!     If the WRF model is initialized from the RUC background model, then the 
+!     soil moisture variable is consistent with the RUC LSM.
+!     If the WRF model is initialized from another background model (ETA, GFS...)
+!     then the residual value should be subtracted when the 1-d array of soil
+!     moisture is initialized before the call to SFCTMP, and after SFCTMP qmin
+!     should be added back in.
+!
+!              soilm1d (k) = min(max(0.,soilmois(i,k,j)-qmin(i,j)),dqm(i,j))
 
-!              soilm1d (1) = min(max(0.,soilmois(i,1,j)-qmin(i,j)),dqm(i,j))
-! soil moisture minus residual is nitialized from RUC background
 
            DO k=1,nzs
-!              soilm1d (k) = min(max(0.,soilmois(i,k-1,j)-qmin(i,j)),dqm(i,j))
-! soil moisture minus residual is nitialized from RUC background
+! soilm1d - soil moisture content minus residual [m**3/m**3]
               soilm1d (k) = min(max(0.,soilmois(i,k,j)),dqm)
               tso1d   (k) = tso(i,k,j)
            ENDDO 
@@ -488,9 +562,9 @@ CONTAINS
               keepfr  (k) = keepfr3dflag(i,k,j)
            enddo
 
-              LMAVAIL(I,J)=min(dqm,soilmois(i,1,j))/DQM
+              LMAVAIL(I,J)=max(0.00001,min(1.,soilmois(i,1,j)/DQM))
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
    print *,'LAND, i,j,tso1d,soilm1d,PATM,TABS,QVATM,QCATM,RHO',  &
                   i,j,tso1d,soilm1d,PATM,TABS,QVATM,QCATM,RHO
    print *,'CONFLX =',CONFLX 
@@ -502,7 +576,7 @@ CONTAINS
 !--- input variables
                 nzs,nddzs,nroot,                                 &
                 iland,isoil,xland(i,j),ivgtyp(i,j),              &  
-                PRCPMS,SNWE,RHOSN,                               &
+                PRCPMS,NEWSNMS,SNWE,SNHEI,RHOSN,                         &
                 PATM,TABS,QVATM,QCATM,RHO,                       &
                 GLW(I,J),GSW(I,J),EMISSL(I,J),                   &
                 QKMS,TKMS,PC(I,J),LMAVAIL(I,J),                  &
@@ -522,7 +596,7 @@ CONTAINS
                 qvg(I,J),qsg(I,J),qcg(I,J),SMELT(I,J),           &
                 SNOH(I,J),SNFLX(I,J),SNOM(I,J),ACSNOW(I,J),      &
                 edir(I,J),ec(I,J),ett(I,J),sfcevp(I,J),          &
-                qfx(I,J),hfx(I,J),grdflx(I,J),sublim(I,J),       &
+                lh(I,J),hfx(I,J),grdflx(I,J),sublim(I,J),       &
                 evapl(I,J),prcpl(I,J),runoff1(I,J),              &
                 runoff2(I,J),soilice,soiliqw,infiltrp)
 !-----------------------------------------------------------------
@@ -551,23 +625,45 @@ CONTAINS
         SMAVAIL  (I,J) = SMAVAIL(I,J) * 1000.
         SMMAX    (I,J) = SMMAX(I,J) * 1000.
         SFCEXC   (I,J) = TKMS
-        QSFC(I,J) = QVG(I,J)/(1.+QVG(I,J))
-        CHKLOWQ(I,J) = 1.
+! MYJSFC expects QSFC as saturation specific humidity at surface
+        QSFC(I,J) = QSG(I,J)/(1.+QSG(I,J))
+!        QSFC(I,J) = QVG(I,J)/(1.+QVG(I,J))
+        Q2SAT=QSN(TABS,TBQ)/PATM
+! for MYJ surface and PBL scheme
+      if (myj) then
+        IF((QVATM.GE.Q2SAT*0.95).AND.QVATM.LT.qvg(I,J))THEN
+!        IF((QVATM.GE.Q2SAT*0.95).AND.QVATM.LT.qsg(I,J))THEN
+          CHKLOWQ(I,J)=0.
+        ELSE
+          CHKLOWQ(I,J)=1.
+        ENDIF
+      else
+          CHKLOWQ(I,J)=1.
+      endif
+
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
+      if(CHKLOWQ(I,J).eq.0.) then
+   print *,'i,j,CHKLOWQ',  &
+                  i,j,CHKLOWQ(I,J)
+      endif
+    ENDIF
+
         MAVAIL (i,j) = LMAVAIL(I,J)  
 ! SNOW is in [mm], SNWE is in [m]; CANWAT is in mm, CANWATR is in m
         SNOW   (i,j) = SNWE*1000.
+        SNOWH  (I,J) = SNHEI 
         CANWAT (I,J) = CANWATR*1000.
 
-    IF ( wrf_at_debug_level(500) ) THEN
-       print *,' LAND, I=,J=, QFX, HFX after SFCTMP', i,j,QFX(i,j),hfx(i,j)
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
+       print *,' LAND, I=,J=, QFX, HFX after SFCTMP', i,j,lh(i,j),hfx(i,j)
     ENDIF
-        LH       (I,J) = QFX(I,J)
-        QFX      (I,J) = QFX(I,J)/LV
-    IF ( wrf_at_debug_level(500) ) THEN
-       print *,' QFX after change', i,j, QFX(i,j)
+        QFX    (I,J) = LH(I,J)/LV
+
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
+       print *,' QFX after change, LH ', i,j, QFX(i,j),LH(I,J)
     ENDIF
 !--- SNOWC snow cover flag
-        IF(SNOW(I,J).GT.10.0)THEN
+        IF(SNOWH(I,J).GT.0.02)THEN
             SNOWC(I,J)=1.0
         ELSE
             SNOWC(I,J)=0.0
@@ -576,16 +672,16 @@ CONTAINS
         INFILTR(I,J) = INFILTRP
 
 !--- get 3d soil fields
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
    print *,'LAND, i,j,tso1d,soilm1d - end of time step',         &
                   i,j,tso1d,soilm1d
     ENDIF
 
         do k=1,nzs
-! soil moisture minus residual is in soilmois initialized from RUC
-!             soilmois(i,k,j) = (soilm1d(k+1)+qmin(i,j))
 
              soilmois(i,k,j) = soilm1d(k)
+! If not initialized from the RUC model then add qmion back.
+!             soilmois(i,k,j) = (soilm1d(k)+qmin(i,j))
                   tso(i,k,j) = tso1d(k)
         enddo
 
@@ -610,7 +706,7 @@ CONTAINS
 !--- input variables
                 nzs,nddzs,nroot,                                 &
                 ILAND,ISOIL,XLAND,IVGTYP,                        &
-                PRCPMS,SNWE,RHOSN,                               &
+                PRCPMS,NEWSNMS,SNWE,SNHEI,RHOSN,                 &
                 PATM,TABS,QVATM,QCATM,rho,                       &
                 GLW,GSW,EMISS,QKMS,TKMS,PC,                      &
                 MAVAIL,CST,VEGFRA,ALB,ZNT,                       &
@@ -729,6 +825,7 @@ CONTAINS
                                                         RUNOFF2, &
                                                          ACSNOW, &
                                                            SNWE, &
+                                                          SNHEI, &
                                                           SMELT, &
                                                            SNOM, &
                                                            SNOH, &
@@ -749,8 +846,8 @@ CONTAINS
 
    INTEGER ::  K,ILNB
 
-   REAL    ::  BSN, XSN, RHONEWSN, SNHEI                       , &
-               RAINF, SNTH, NEWSN, PRCPMS                      , &
+   REAL    ::  BSN, XSN, RHONEWSN                              , &
+               RAINF, SNTH, NEWSN, PRCPMS, NEWSNMS             , &
                T3, UPFLUX, XINET
    REAL    ::  alb_snow,alb_snow_free,snhei_crit               , &
                keep_snow_albedo
@@ -761,7 +858,7 @@ CONTAINS
 !-----------------------------------------------------------------
         integer,   parameter      ::      ilsnow=99 
         
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         print *,' in SFCTMP',i,j,nzs,nddzs,nroot,                 &
                  SNWE,RHOSN,SNOM,SMELT,TS1D
     ENDIF
@@ -784,23 +881,23 @@ CONTAINS
         INFILTR=0.
         VEGFRAC=0.01*VEGFRA
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         print *,'I,J,KTAU,QKMS,TKMS', i,j,ktau,qkms,tkms
         print *,'GSW, GLW, SOILT, STBOLT, EMISS',           &
                  GSW, GLW, SOILT, STBOLT, EMISS
     ENDIF
 
 
-        SNHEI   = SNWE * 1000. / RHOSN
+         SNHEI   = SNWE * 1000. / RHOSN
 !--------------
-        T3      = STBOLT*SOILT*SOILT*SOILT
-        UPFLUX  = T3 *SOILT
-        XINET   = EMISS*(GLW-UPFLUX)
-        RNET    = GSW + XINET
+         T3      = STBOLT*SOILT*SOILT*SOILT
+         UPFLUX  = T3 *SOILT
+         XINET   = EMISS*(GLW-UPFLUX)
+         RNET    = GSW + XINET
 
-!*** Calculate the amount (m) of fresh snow
+!Calculate the amount (m) of fresh snow
 
-      if(snhei.gt.0.0081*1.e3/rhosn) then
+	      if(snhei.gt.0.0081*1.e3/rhosn) then
 !*** Correct snow density for current temperature (Koren et al. 1999)
         BSN=delt/3600.*c1sn*exp(0.08*tsnav-c2sn*rhosn*1.e-3)
        if(bsn*snwe*100..lt.1.e-4) goto 777
@@ -813,17 +910,19 @@ CONTAINS
         rhonewsn  =100.
       endif
 
-         IF(TABS.LE.273.15)THEN
+!         IF(TABS.LE.273.15)THEN
 
-           newsn=prcpms*delt
-!--- ACSNOW - accumulation of snow water [m]
+           newsn=newsnms*delt
+!--- consider for now that all  PRCPMS went into snow
+!           prcpms = 0.
+!---- ACSNOW - accumulation of snow water [m]
            acsnow=acsnow+newsn
 
        IF(NEWSN.GE.1.E-8) THEN
 !*** Calculate fresh snow density (t > -15C, else MIN value)
 !*** Eq. 10 from Koren et al. (1999)
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
       print *, 'THERE IS NEW SNOW, newsn', newsn
     ENDIF
         if(tabs.lt.258.15) then
@@ -850,13 +949,13 @@ CONTAINS
          NEWSN=NEWSN*1.E3/rhosn
         endif
 
-         ELSE
+!         ELSE
 !--- TABS is above freezing. Needed precip rates from microphysics
 !--- to do a better job with mixed phase precip.
 
-        NEWSN = 0.
-
-         ENDIF
+!        NEWSN = 0.
+!
+!         ENDIF
 
        IF(PRCPMS.NE.0.) THEN
 
@@ -888,7 +987,7 @@ CONTAINS
 ! depth. For now commented out.
          alb_snow_free=0.2
          alb_snow=0.70
-         SNHEI_CRIT=0.1
+         SNHEI_CRIT=0.05
          KEEP_SNOW_ALBEDO = 0.
       IF (NEWSN.GT.0.) KEEP_SNOW_ALBEDO = 1.
 
@@ -1989,7 +2088,7 @@ CONTAINS
 ! SOILTEMP soilves heat budget and diffusion eqn. in soil
 !**************************************************************
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
 print *, 'TSO before calling SNOWTEMP: ', tso
     ENDIF
         CALL SNOWTEMP(                                        &
@@ -2384,7 +2483,7 @@ print *, 'TSO before calling SNOWTEMP: ', tso
         AA1=AA+CC
         PP=PATM*1.E3
         AA1=AA1/PP
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         PRINT *,' VILKA-1'
         print *,'D10,TABS,R21,TN,QVATM,FKQ,UMVEG,VEGFRAC,CAN',        &
                  D10,TABS,R21,TN,QVATM,FKQ,UMVEG,VEGFRAC,CAN
@@ -2408,8 +2507,7 @@ print *, 'TSO before calling SNOWTEMP: ', tso
         GOTO 200
   100   BB=BB-AA*TX2
         AA=(AA*H+CC)/PP
-    IF ( wrf_at_debug_level(500) ) THEN
-!      if(i.eq.1.and.j.eq.57) then
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         PRINT *,' VILKA-2'
         print *,'D10,TABS,R21,TN,QVATM,FKQ,UMVEG,VEGFRAC,CAN',        &
                  D10,TABS,R21,TN,QVATM,FKQ,UMVEG,VEGFRAC,CAN
@@ -2640,7 +2738,7 @@ print *, 'TSO before calling SNOWTEMP: ', tso
           rhtso    (k)=0.
        enddo
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
 print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt 
     ENDIF
         XLMELT=3.335E+5
@@ -2819,7 +2917,7 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
         R22SN = R22
         D1SN = D1
         D2SN = D2
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         print *,' SNHEI = 0, D9SN,R22SN,D1SN,D2SN: ',D9SN,R22SN,D1SN,D2SN
     ENDIF
       ENDIF
@@ -2844,7 +2942,7 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
         AA1=AA+CC
         PP=PATM*1.E3
         AA1=AA1/PP
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         print *,'VILKA-SNOW'
         print *,'tn,aa1,bb,pp,umveg,fkq,r210,vegfrac',               &
                  tn,aa1,bb,pp,umveg,fkq,r210,vegfrac
@@ -2862,7 +2960,7 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
 !--- SOILT - skin temperature
         SOILT=TS1
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
         print *,' AFTER VILKA-SNOW'
         print *,' TS1,QS1: ', ts1,qs1
     ENDIF
@@ -3055,7 +3153,7 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
                     +VEGFRAC*cst
         snheiprint=snweprint*1.E3 / RHOSN
 
-    IF ( wrf_at_debug_level(500) ) THEN
+    IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
 print *, 'snweprint : ',snweprint
 print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
     ENDIF
@@ -3365,8 +3463,9 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
            END IF
           END DO
 
+!           MAVAIL=min(1.,SOILMOIS(1)/(REF-QMIN))
            MAVAIL=min(1.,SOILMOIS(1)/DQM)
-          if (MAVAIL.EQ.0.) MAVAIL=.000001
+          if (MAVAIL.EQ.0.) MAVAIL=.00001
 
 !        RETURN
 !        END
@@ -3916,10 +4015,11 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
         DATA LEMI/.88,4*.92,.93,.92,.88,.9,.92,.93,.94,                 &
                   .95,.95,.94,.98,.95,.95,.85,.92,.93,.92,.85,.95/
 !-- Roughness length is changed for forests and some others
-        DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.8,.85,       &
-                  2.0,1.0,.563,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
-!        DATA LROU/.5,.15,.15,.15,.14,.2,.12,.1,.11,.15,.5,.5,
-!                  .5,.5,.5,.0001,.2,.4,.1,.1,.3,.15,.1,.05/
+!        DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.8,.85,       &
+!                  2.0,1.0,.563,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+         DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.5,.5,           & 
+                   .5,.5,.5,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+
         DATA LMOI/.1,.3,.5,.25,.25,.35,.15,.1,.15,.15,.3,.3,            &
                   .5,.3,.3,1.,.6,.35,.02,.5,.5,.5,.02,.95/
 !
@@ -3977,7 +4077,11 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 
 
         EMISS = LEMI(IVGTYP)
-        ZNT   = LROU(IVGTYP)
+! When MYJ sfc scheme is used - better use recommended in MYJSFCINIT
+! values of roughness length, and not redefine it here.
+! The table in this routine is the one we use in RUC with RUC LSM.
+
+!        ZNT   = LROU(IVGTYP)
         PC     = LPC (IVGTYP)
 
           RHOCS  = LRHC(ISLTYP)*1.E6
@@ -4028,8 +4132,17 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
         DATA LEMI/.88,4*.92,.93,.92,.88,.9,.92,.93,.94,                 &
                   .95,.95,.94,.98,.95,.95,.85,.92,.93,.92,.85,.95/
 !-- Roughness length is changed for forests and some others
-        DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.8,.85,       &
-                  2.0,1.0,.563,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+!        DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.8,.85,       &
+!                  2.0,1.0,.563,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+
+! With MYJSFC better use the table from MYJSFCINIT
+        DATA LROU/1.0,.07,.07,.07,.07,.15,.08,.03,.05,.86,.8,.85,       &
+                  2.65,1.09,.8,.001,.04,.05,.01,.04,.06,.05,.03,.001/
+
+! next 2 lines - table from RUC
+!         DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.5,.5,           &
+!                   .5,.5,.5,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+
 
 !--------------------------------------------------------------------------
 
@@ -4043,8 +4156,9 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 !--------------------------------------------------------------------------
    END SUBROUTINE SNOWFREE
 
-  SUBROUTINE LSMRUCINIT( SMFR3D,TSLB,SMOIS,ISLTYP,                 &
+  SUBROUTINE LSMRUCINIT( SMFR3D,TSLB,SMOIS,ISLTYP,mavail,          &
                      nzs, restart,                                 &
+                     allowed_to_read ,                             &
                      ids,ide, jds,jde, kds,kde,                    &
                      ims,ime, jms,jme, kms,kme,                    &
                      its,ite, jts,jte, kts,kte                     )
@@ -4057,23 +4171,26 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
                                     its,ite, jts,jte, kts,kte,  &
                                     nzs
 
-   REAL, DIMENSION( ims:ime, 1:nzs, jms:jme )                  , &
-            INTENT(IN)    ::                               TSLB, &
-                                                          SMOIS
+   REAL, DIMENSION( ims:ime, 1:nzs, jms:jme )                    , &
+            INTENT(IN)    ::                                 TSLB, &
+                                                            SMOIS
 
-   INTEGER, DIMENSION( ims:ime, jms:jme )                     , &
-            INTENT(INOUT)    ::                         ISLTYP
+   INTEGER, DIMENSION( ims:ime, jms:jme )                        , &
+            INTENT(INOUT)    ::                            ISLTYP
 
-   REAL, DIMENSION( ims:ime, 1:nzs, jms:jme )                  , &
-            INTENT(INOUT)    ::                          SMFR3D
+   REAL, DIMENSION( ims:ime, 1:nzs, jms:jme )                    , &
+            INTENT(INOUT)    ::                            SMFR3D
 
-   REAL, DIMENSION ( 1:nzs )  ::                        soiliqw
+   REAL, DIMENSION( ims:ime, jms:jme )                           , &
+            INTENT(INOUT)    ::                            MAVAIL
 
-   LOGICAL , INTENT(IN) :: restart
+   REAL, DIMENSION ( 1:nzs )  ::                           SOILIQW
+
+   LOGICAL , INTENT(IN) :: restart, allowed_to_read 
 
 !
   INTEGER ::  I,J,L,itf,jtf
-  REAL    ::  RIW,XLMELT,TLN,DQM,PSIS,QMIN,BCLH
+  REAL    ::  RIW,XLMELT,TLN,DQM,REF,PSIS,QMIN,BCLH
 
    itf=min0(ite,ide-1)
    jtf=min0(jte,jde-1)
@@ -4085,11 +4202,18 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
    DO J=jts,jtf
        DO I=its,itf
 
-     CALL SOILIN     ( ISLTYP(I,J), DQM,  PSIS, QMIN, BCLH )
+     CALL SOILIN     ( ISLTYP(I,J), DQM, REF, PSIS, QMIN, BCLH )
+
 
 !--- Computation of volumetric content of ice in soil
+!--- and initialize MAVAIL
 
      IF (.not.restart) THEN
+    if(isltyp(i,j).ne.14) then
+           mavail(i,j) = max(0.00001,min(1.,smois(i,1,j)/dqm))
+    else
+           mavail(i,j) = 1.
+    endif
          DO L=1,NZS
     if(isltyp(i,j).ne.14) then
 !-- for land points initialize soil ice
@@ -4119,7 +4243,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 
   END SUBROUTINE lsmrucinit
 
-  SUBROUTINE SOILIN (ISLTYP, DQM, PSIS, QMIN, BCLH )
+  SUBROUTINE SOILIN (ISLTYP, DQM, REF, PSIS, QMIN, BCLH )
 
 !---    soiltyp classification according to STATSGO(nclasses=16)
 !
@@ -4149,9 +4273,9 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
          integer,   parameter      ::      nsoilclas=19
 
          integer, intent ( in)  ::                          isltyp
-         real,    intent ( out) ::                  dqm, qmin,psis
+         real,    intent ( out) ::               dqm,ref,qmin,psis
 
-         REAL  LQMA(nsoilclas),LBCL(nsoilclas),                      &
+         REAL  LQMA(nsoilclas),LREF(nsoilclas),LBCL(nsoilclas),       &
                LPSI(nsoilclas),LQMI(nsoilclas)
 
 !-- LQMA Rawls et al.[1982]
@@ -4162,6 +4286,11 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
      DATA LQMA /0.395, 0.410, 0.435, 0.485, 0.485, 0.451, 0.420,      &
                 0.477, 0.476, 0.426, 0.492, 0.482, 0.451, 1.0,        &
                 0.20,  0.435, 0.468, 0.200, 0.339/
+
+!-- Clapp et al. [1978]
+        DATA LREF /0.174, 0.179, 0.249, 0.369, 0.369, 0.314, 0.299,   &
+                   0.357, 0.391, 0.316, 0.409, 0.400, 0.314, 1.,      &
+                   0.1,   0.249, 0.454, 0.17,  0.236/
 
 !-- Carsel and Parrish [1988]
         DATA LQMI/0.045, 0.057, 0.065, 0.067, 0.034, 0.078, 0.10,     &
@@ -4181,6 +4310,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 
           DQM    = LQMA(ISLTYP)-                               &
                    LQMI(ISLTYP)
+          REF    = LREF(ISLTYP)
           PSIS   = - LPSI(ISLTYP)
           QMIN   = LQMI(ISLTYP)
           BCLH   = LBCL(ISLTYP)

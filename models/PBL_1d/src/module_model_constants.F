@@ -16,8 +16,14 @@
 ! JM NOTE -- can we name this grav instead?
    REAL    , PARAMETER :: g = 9.81  ! acceleration due to gravity (m {s}^-2)
 
+#if ( NMM_CORE == 1 )
+   REAL    , PARAMETER :: r_d          = 287.04
+   REAL    , PARAMETER :: cp           = 1004.6
+#else
    REAL    , PARAMETER :: r_d          = 287.
    REAL    , PARAMETER :: cp           = 7.*r_d/2.
+#endif
+
    REAL    , PARAMETER :: r_v          = 461.6
    REAL    , PARAMETER :: cv           = cp-r_d
    REAL    , PARAMETER :: cpv          = 4.*r_v
@@ -72,19 +78,58 @@
 
                                       ! proportionality constants for eddy viscosity coefficient calc
    REAL    , PARAMETER ::  c_s = .25  ! turbulence parameterization constant, for smagorinsky
-   REAL    , PARAMETER ::  c_k = .25  ! turbulence parameterization constant, for TKE
-   REAL    , PARAMETER ::  prandtl = 3.0
+   REAL    , PARAMETER ::  c_k = .15  ! turbulence parameterization constant, for TKE
+   REAL    , PARAMETER ::  prandtl = 1./3.0
                                          ! constants for w-damping option
    REAL    , PARAMETER ::  w_alpha = 0.3 ! strength m/s/s
    REAL    , PARAMETER ::  w_beta  = 1.0 ! activation cfl number
 
        REAL , PARAMETER ::  pq0=379.90516
-       REAL , PARAMETER ::  epsq2=0.2
+!      REAL , PARAMETER ::  epsq2=0.2
+       REAL , PARAMETER ::  epsq2=0.02
        REAL , PARAMETER ::  a2=17.2693882
        REAL , PARAMETER ::  a3=273.16
        REAL , PARAMETER ::  a4=35.86
        REAL , PARAMETER ::  epsq=1.e-12
        REAL , PARAMETER ::  p608=rvovrd-1.
+!#if ( NMM_CORE == 1 )
+       REAL , PARAMETER ::  climit=1.e-20
+       REAL , PARAMETER ::  cm1=2937.4
+       REAL , PARAMETER ::  cm2=4.9283
+       REAL , PARAMETER ::  cm3=23.5518
+!       REAL , PARAMETER ::  defc=8.0
+!       REAL , PARAMETER ::  defm=32.0
+       REAL , PARAMETER ::  defc=0.0
+       REAL , PARAMETER ::  defm=99999.0
+       REAL , PARAMETER ::  epsfc=1./1.05
+       REAL , PARAMETER ::  epswet=0.0
+       REAL , PARAMETER ::  fcdif=1./3.
+!       REAL , PARAMETER ::  fcm=0.003
+       REAL , PARAMETER ::  fcm=0.0
+       REAL , PARAMETER ::  gma=-r_d*(1.-rcp)*0.5
+       REAL , PARAMETER ::  p400=40000.0
+       REAL , PARAMETER ::  phitp=15000.0
+       REAL , PARAMETER ::  pi2=2.*3.1415926
+       REAL , PARAMETER ::  plbtm=105000.0
+       REAL , PARAMETER ::  plomd=64200.0
+       REAL , PARAMETER ::  pmdhi=35000.0
+       REAL , PARAMETER ::  q2ini=0.50
+       REAL , PARAMETER ::  rfcp=0.25/cp
+       REAL , PARAMETER ::  rhcrit_land=0.75
+       REAL , PARAMETER ::  rhcrit_sea=0.80
+       REAL , PARAMETER ::  rlag=14.8125
+       REAL , PARAMETER ::  rlx=0.90
+       REAL , PARAMETER ::  scq2=50.0
+       REAL , PARAMETER ::  slopht=0.001
+       REAL , PARAMETER ::  tlc=2.*0.703972477
+       REAL , PARAMETER ::  wa=0.15
+       REAL , PARAMETER ::  wght=0.35
+       REAL , PARAMETER ::  wpc=0.075
+       REAL , PARAMETER ::  z0land=0.10
+       REAL , PARAMETER ::  z0max=0.01
+       REAL , PARAMETER ::  z0sea=0.001
+!#endif
+
 
  CONTAINS
    SUBROUTINE init_module_model_constants

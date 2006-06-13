@@ -127,9 +127,6 @@ endif
                                             sm000010_input , sm010040_input , sm040100_input , sm100200_input , &
                                             sm010200_input 
 
-      INTEGER :: i , j , l , dominant_index , num_soil_cat , num_veg_cat
-      REAL :: dominant_value
-
       !  Initialize the soil depth, and the soil temperature and moisture.
    
       IF      ( ( bl_surface_physics .EQ. 1 ) .AND. ( num_soil_layers .GT. 1 ) ) THEN
@@ -352,8 +349,6 @@ endif
    
       REAL, DIMENSION(1:num_soil_layers), INTENT(OUT)  ::  zs, dzs
    
-      INTEGER                   ::      l
-
       REAL :: cg, alpha=3.288e6
 
       cg=alpha*thc(1,1)
@@ -451,8 +446,6 @@ endif
    
       REAL, DIMENSION(1:num_soil_layers), INTENT(OUT)  ::  zs,dzs
    
-      INTEGER                   ::      l
-
       zs  = (/ 0.00 , 0.05 , 0.20 , 0.40 , 1.60 , 3.00 /)
       dzs = (/ 0.00 , 0.125, 0.175 , 0.70 , 1.30 , 1.40 /)
 
@@ -846,9 +839,9 @@ END SUBROUTINE init_soil_0_real
                smois(i,3,j)=0.10
                smois(i,4,j)=0.10
       
-               tslb(i,1,j)=295. 	  
-               tslb(i,2,j)=297. 	 
-               tslb(i,3,j)=293. 	
+               tslb(i,1,j)=295.
+               tslb(i,2,j)=297.
+               tslb(i,3,j)=293.
                tslb(i,4,j)=293. 
 
             ENDDO

@@ -32,18 +32,27 @@ MODULE module_sf_noahlsm
                  REFKDT_DATA,FRZK_DATA,ZBOT_DATA,  SMLOW_DATA,SMHIGH_DATA,        &
                         CZIL_DATA
 
+        CHARACTER*256  :: err_message
+
 !
 CONTAINS
 !
 
+
+  LOGICAL FUNCTION wrf_dm_on_monitor()
+    wrf_dm_on_monitor = .TRUE.
+  END FUNCTION wrf_dm_on_monitor
+
+
 !----------------------------------------------------------------
    SUBROUTINE lsm(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
                   HFX,QFX,LH,GRDFLX, QGH,GSW,GLW,SMSTAV,SMSTOT, &
-                  SFCRUNOFF, UDRUNOFF,IVGTYP,ISLTYP,VEGFRA,     & 
+                  SFCRUNOFF, UDRUNOFF,IVGTYP,ISLTYP,VEGFRA,     &          
                   ALBEDO,ALBBCK,ZNT,Z0,TMN,XLAND,XICE, EMISS,   & 
                   SNOWC,QSFC,RAINBL,                            &
                   num_soil_layers,DT,DZS,ITIMESTEP,             &
-                  SMOIS,TSLB,SNOW,CANWAT,CHS,CPM,ROVCP,         & !H   
+                  SMOIS,TSLB,SNOW,CANWAT,                       &
+                  CHS,CHS2,CQS2,CPM,ROVCP,                      & !H   
                   SH2O,SNOWH,                                   & !H 
                   SNOALB,SHDMIN,SHDMAX,                         & !I
                   ACSNOM,ACSNOW,                                & !O  
@@ -79,6 +88,8 @@ CONTAINS
 !-- ALBEDO      time-varying surface albedo including snow effect (unitless fraction)
 !-- ALBBCK      background surface albedo (unitless fraction)
 !-- CHS          surface exchange coefficient for heat and moisture (m s-1);
+!-- CHS2        2m surface exchange coefficient for heat  (m s-1);
+!-- CQS2        2m surface exchange coefficient for moisture (m s-1);
 ! --- soil variables
 !-- num_soil_layers   the number of soil layers
 !-- ZS          depths of centers of soil layers   (m)
@@ -130,7 +141,8 @@ CONTAINS
 !-- FLX2        freezing rain latent heat flux (W m-2)
 !-- FLX3        phase-change heat flux from snowmelt (W m-2)
 ! ----------------------------------------------------------------------
-!-- ACSNOW      snow melt (m) (water equivalent)
+!-- ACSNOM      snow melt (mm) (water equivalent)
+!-- ACSNOW      accumulated snow fall (mm) (water equivalent)
 ! ----------------------------------------------------------------------
 !-- RUNOFF1     surface runoff (m s-1), not infiltrating the surface
 !-- RUNOFF2     subsurface runoff (m s-1), drainage out bottom of last
@@ -226,6 +238,8 @@ CONTAINS
                                                             LH, &
                                                         GRDFLX, &
                                                           QSFC,&     
+                                                          CQS2,&     
+                                                          CHS2,&     
                                                           SNOW, & 
                                                          SNOWC, & 
                                                          SNOWH, & !new
@@ -297,6 +311,7 @@ CONTAINS
       SLOPETYP=2
 !      SHDMIN=0.00           
 
+
       NSOIL=num_soil_layers
 
      DO NS=1,NSOIL
@@ -344,7 +359,6 @@ CONTAINS
       ENDIF                                                               ! end of initialization over ocean
 
 !-----------------------------------------------------------------------
-
       DO 100 I=its,ite                                                    
         SFCPRS=P8w3D(i,1,j)
         Q2K=QV3D(i,1,j)
@@ -352,9 +366,8 @@ CONTAINS
         SFCTMP=T3D(i,1,j)
         ZLVL=0.5*DZ8W(i,1,j)
         TH2=SFCTMP+(0.0097545*ZLVL)
-        LWDN=GLW(I,J)
         EMISSI = EMISS(I,J)
-
+        LWDN=GLW(I,J)*EMISSI
         SOLDN=GSW(I,J)/(1.0-albedo(i,j))
         PRCP=RAINBL(i,j)/DT 
         VEGTYP=IVGTYP(I,J)                                            
@@ -370,8 +383,8 @@ CONTAINS
 !        SNOWHK=SNOWH(I,J)*0.001     ! check the unit of snowh which is assumed to be mm for now
         SNOWHK=SNOWH(I,J)     ! check the unit of snowh which is assumed to be m for now
         
-!***                                                                    
 
+!***                                                                    
         IF((XLAND(I,J)-1.5).GE.0.)THEN                 
 ! Open water points
 !CC     Q2SAT=PQ0/SFCPRS*EXP(A2*(TGDSA(I)-A3)/(TGDSA(I)-A4))
@@ -422,13 +435,11 @@ CONTAINS
         Z0BRD=Z0(I,J)
 !FEI: temporaray arrays above need to be changed later by using SI
       
-          DO 70 NS=1,NSOIL
-
+          DO 70 NS=1,NSOIL                                              
             SMC(NS)=SMOIS(I,NS,J)                                       
             STC(NS)=TSLB(I,NS,J)                                          !STEMP
             SWC(NS)=SH2O(I,NS,J)
    70     CONTINUE                                                      
-
 !
           if ( (SNEQV.ne.0..AND.SNOWHK.eq.0.).or.(SNOWHK.le.SNEQV) )THEN
             SNOWHK= 5.*SNEQV
@@ -505,8 +516,7 @@ CONTAINS
           'SOILM',SOILM,'Q1',Q1,'SMCWLT',SMCWLT,'SMCDRY',SMCDRY,&
           'SMCREF',SMCREF,'SMCMAX',SMCMAX,'NROOT',NROOT
            endif
-
-
+ 
 !***  UPDATE STATE VARIABLES 
           CANWAT(I,J)=CMC                                                
           SNOW(I,J)=SNEQV*1000.
@@ -520,14 +530,20 @@ CONTAINS
           LH(I,J)=ETA
           GRDFLX(I,J)=SSOIL
           SNOWC(I,J)=SNCOVR
+          CHS2(I,J)=CQS2(I,J)
+!      prevent diagnostic ground q (q1) from being greater than qsat(tsk)
+!      as happens over snow cover where the cqs2 value also becomes irrelevant
+!      by setting cqs2=chs in this situation the 2m q should become just qv(k=1)
+          IF (Q1 .GT. QSFC(I,J)) THEN
+            CQS2(I,J) = CHS(I,J)
+          ENDIF
           QSFC(I,J)=Q1
 !                                                                       
           DO 80 NS=1,NSOIL                                              
            SMOIS(I,NS,J)=SMC(NS)                                       
            TSLB(I,NS,J)=STC(NS)                                        !  STEMP
            SH2O(I,NS,J)=SWC(NS)
-   80     CONTINUE
-
+   80     CONTINUE                                                      
 !       ENDIF                                                           
 
 !***  DIAGNOSTICS                                                       
@@ -558,6 +574,7 @@ CONTAINS
                      ACSNOM,IVGTYP,ISLTYP,TSLB,SMOIS,SH2O,ZS,DZS, & 
                      FNDSOILW, FNDSNOWH,                       &
                      num_soil_layers, restart,                 &
+                     allowed_to_read ,                         &
                      ids,ide, jds,jde, kds,kde,                &
                      ims,ime, jms,jme, kms,kme,                &
                      its,ite, jts,jte, kts,kte                 )
@@ -568,7 +585,7 @@ CONTAINS
 
    INTEGER, INTENT(IN)       ::     num_soil_layers
 
-   LOGICAL , INTENT(IN) :: restart
+   LOGICAL , INTENT(IN) :: restart , allowed_to_read
 
    REAL,    DIMENSION( num_soil_layers), INTENT(INOUT) :: ZS, DZS
 
@@ -601,20 +618,33 @@ CONTAINS
    REAL                      :: BX, SMCMAX, PSISAT, FREE
    REAL, PARAMETER           :: BLIM = 5.5, HLICE = 3.335E5,    &
                                 GRAV = 9.81, T0 = 273.15
+   INTEGER                   :: errflag
 
 !
 
 
 ! initialize three Noah LSM related tables
-   print*, 'INITIALIZE THREE Noah LSM RELATED TABLES'
-   CALL  LSM_PARM_INIT
-
+   IF ( allowed_to_read ) THEN
+     CALL wrf_message( 'INITIALIZE THREE Noah LSM RELATED TABLES' )
+     CALL  LSM_PARM_INIT
+   ENDIF
+   
    IF(.not.restart)THEN
 
-   itf=min0(ite,ide)
-   jtf=min0(jte,jde)
+   itf=min0(ite,ide-1)
+   jtf=min0(jte,jde-1)
 
-   IF ( MINVAL ( ISLTYP( its:itf, jts:jtf ) ) .LT. 1 ) THEN
+   errflag = 0
+   DO j = jts,jtf
+     DO i = its,itf
+       IF ( ISLTYP( i,j ) .LT. 1 ) THEN
+         errflag = 1
+         WRITE(err_message,*)"module_sf_noahlsm.F: lsminit: out of range ISLTYP ",i,j,ISLTYP( i,j )
+         CALL wrf_message(err_message)
+       ENDIF
+     ENDDO
+   ENDDO
+   IF ( errflag .EQ. 1 ) THEN
       CALL wrf_error_fatal( "module_sf_noahlsm.F: lsminit: out of range value of ISLTYP. Is this field in the input?" )
    ENDIF
 
@@ -673,7 +703,7 @@ CONTAINS
 
         IF(.NOT.FNDSNOWH)THEN
 ! If no SNOWH do the following
-          PRINT *,'SNOW HEIGHT NOT FOUND - VALUE DEFINED IN LSMINIT'
+          CALL wrf_message( 'SNOW HEIGHT NOT FOUND - VALUE DEFINED IN LSMINIT' ) 
           DO J = jts,jtf
           DO I = its,itf
             SNOWH(I,J)=SNOW(I,J)*0.005               ! SNOW in mm and SNOWH in m
@@ -721,8 +751,12 @@ CONTAINS
         IMPLICIT NONE                                                        
 
         integer :: LUMATCH, IINDEX, LC, NUM_SLOPE 
+        integer :: ierr
+        INTEGER , PARAMETER :: OPEN_OK = 0
 
         character*4 :: MMINLU, MMINSL
+        character*128 :: mess , message
+!        LOGICAL, external :: wrf_dm_on_monitor
  
 
 !-----SPECIFY VEGETATION RELATED CHARACTERISTICS :
@@ -749,9 +783,17 @@ CONTAINS
 !-----READ IN VEGETAION PROPERTIES FROM VEGPARM.TBL 
 !                                                                       
 
-        OPEN(19, FILE='VEGPARM.TBL',FORM='FORMATTED',STATUS='OLD')  
+       IF ( wrf_dm_on_monitor() ) THEN
 
-      PRINT *, 'INPUT LANDUSE = ',MMINLU                                
+        OPEN(19, FILE='VEGPARM.TBL',FORM='FORMATTED',STATUS='OLD',IOSTAT=ierr)  
+        IF(ierr .NE. OPEN_OK ) THEN
+          WRITE(message,FMT='(A)') &
+          'module_sf_noahlsm.F: soil_veg_gen_parm: failure opening VEGPARM.TBL'
+          CALL wrf_error_fatal ( message ) 
+        END IF
+
+        WRITE ( mess, * ) 'INPUT LANDUSE = ',MMINLU                                 
+        CALL wrf_message( mess )
 
         LUMATCH=0                                                       
 
@@ -761,8 +803,9 @@ CONTAINS
  2000   FORMAT (A4) 
 
         IF(LUTYPE.EQ.MMINLU)THEN                                        
-            PRINT *, 'LANDUSE TYPE = ',LUTYPE,' FOUND',           &                 
+          WRITE( mess , * ) 'LANDUSE TYPE = ',LUTYPE,' FOUND',           &                 
                   LUCATS,' CATEGORIES'
+          CALL wrf_message( mess )
           LUMATCH=1                                                     
         ENDIF                                                           
 
@@ -787,15 +830,43 @@ CONTAINS
 !
  2002   CONTINUE                                                        
 
-      CLOSE (19)                                                        
+        CLOSE (19)                                                        
+      ENDIF
+
+!      CALL wrf_dm_bcast_string  ( LUTYPE  , 4 )
+!      CALL wrf_dm_bcast_integer ( LUCATS  , 1 )
+!      CALL wrf_dm_bcast_integer ( IINDEX  , 1 )
+!      CALL wrf_dm_bcast_integer ( LUMATCH , 1 )
+!      CALL wrf_dm_bcast_real    ( ALBTBL  , NLUS )
+!      CALL wrf_dm_bcast_real    ( Z0TBL   , NLUS )
+!      CALL wrf_dm_bcast_real    ( SHDTBL  , NLUS )
+!      CALL wrf_dm_bcast_real    ( NROTBL  , NLUS )
+!      CALL wrf_dm_bcast_real    ( RSTBL   , NLUS )
+!      CALL wrf_dm_bcast_real    ( RGLTBL  , NLUS )
+!      CALL wrf_dm_bcast_real    ( HSTBL   , NLUS )
+!      CALL wrf_dm_bcast_real    ( SNUPTBL , NLUS )
+!      CALL wrf_dm_bcast_real    ( LAITBL  , NLUS )
+!      CALL wrf_dm_bcast_real    ( MAXALB  , NLUS )
+!      CALL wrf_dm_bcast_real    ( TOPT_DATA    , 1 )
+!      CALL wrf_dm_bcast_real    ( CMCMAX_DATA  , 1 )
+!      CALL wrf_dm_bcast_real    ( CFACTR_DATA  , 1 )
+!      CALL wrf_dm_bcast_real    ( RSMAX_DATA  , 1 )
+!      CALL wrf_dm_bcast_integer ( BARE    , 1 )
 
 !                                                                       
 !-----READ IN SOIL PROPERTIES FROM SOILPARM.TBL
 !                                                                       
-        OPEN(19, FILE='SOILPARM.TBL',FORM='FORMATTED',STATUS='OLD') 
+      IF ( wrf_dm_on_monitor() ) THEN
+        OPEN(19, FILE='SOILPARM.TBL',FORM='FORMATTED',STATUS='OLD',IOSTAT=ierr) 
+        IF(ierr .NE. OPEN_OK ) THEN
+          WRITE(message,FMT='(A)') &
+          'module_sf_noahlsm.F: soil_veg_gen_parm: failure opening SOILPARM.TBL'
+          CALL wrf_error_fatal ( message ) 
+        END IF
 
-      MMINSL='STAS'                       !oct2
-      PRINT *, 'INPUT SOIL TEXTURE CLASSIFICAION = ',MMINSL
+        MMINSL='STAS'                       !oct2
+        WRITE(mess,*) 'INPUT SOIL TEXTURE CLASSIFICAION = ',MMINSL
+        CALL wrf_message( mess )
 
         LUMATCH=0                                                       
 
@@ -803,8 +874,9 @@ CONTAINS
         READ (19,2000,END=2003)SLTYPE
         READ (19,*)SLCATS,IINDEX                                        
         IF(SLTYPE.EQ.MMINSL)THEN                                        
-            PRINT *, 'SOIL TEXTURE CLASSIFICATION = ',SLTYPE,' FOUND', &                 
+            WRITE( mess , * ) 'SOIL TEXTURE CLASSIFICATION = ',SLTYPE,' FOUND', &                 
                   SLCATS,' CATEGORIES'
+            CALL wrf_message ( mess )
           LUMATCH=1                                                     
         ENDIF                                                           
             IF(SLTYPE.EQ.MMINSL)THEN                                    
@@ -817,18 +889,41 @@ CONTAINS
 
  2003   CONTINUE                                                        
 
-      CLOSE (19)                                                        
+        CLOSE (19)                                                        
+      ENDIF
 
-        IF(LUMATCH.EQ.0)THEN                                            
-          PRINT *,'SOIl TEXTURE IN INPUT FILE DOES NOT '
-          PRINT *, 'MATCH SOILPARM TABLE'        
+!      CALL wrf_dm_bcast_integer ( LUMATCH , 1 )
+!      CALL wrf_dm_bcast_string  ( SLTYPE  , 4 )
+!      CALL wrf_dm_bcast_string  ( MMINSL  , 4 )  ! since this is reset above, see oct2 ^
+!      CALL wrf_dm_bcast_integer ( SLCATS  , 1 )
+!      CALL wrf_dm_bcast_integer ( IINDEX  , 1 )
+!      CALL wrf_dm_bcast_real    ( BB      , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( DRYSMC  , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( F11     , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( MAXSMC  , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( REFSMC  , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( SATPSI  , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( SATDK   , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( SATDW   , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( WLTSMC  , NSLTYPE )
+!      CALL wrf_dm_bcast_real    ( QTZ     , NSLTYPE )
+
+      IF(LUMATCH.EQ.0)THEN                                            
+          CALL wrf_message( 'SOIl TEXTURE IN INPUT FILE DOES NOT ' )
+          CALL wrf_message( 'MATCH SOILPARM TABLE'                 )
           CALL wrf_error_fatal ( 'INCONSISTENT OR MISSING SOILPARM FILE' )
-        ENDIF                                                           
+      ENDIF                                                           
 
 !
 !-----READ IN GENERAL PARAMETERS FROM GENPARM.TBL 
 !                                                                       
-        OPEN(19, FILE='GENPARM.TBL',FORM='FORMATTED',STATUS='OLD') 
+      IF ( wrf_dm_on_monitor() ) THEN
+        OPEN(19, FILE='GENPARM.TBL',FORM='FORMATTED',STATUS='OLD',IOSTAT=ierr) 
+        IF(ierr .NE. OPEN_OK ) THEN
+          WRITE(message,FMT='(A)') &
+          'module_sf_noahlsm.F: soil_veg_gen_parm: failure opening GENPARM.TBL'
+          CALL wrf_error_fatal ( message ) 
+        END IF
 
         READ (19,*)
         READ (19,*)
@@ -862,9 +957,25 @@ CONTAINS
           READ (19,*)SMLOW_DATA
           READ (19,*)
           READ (19,*)SMHIGH_DATA
-      CLOSE (19)                                                        
-
-
+        CLOSE (19)                                                        
+      ENDIF
+      
+!      CALL wrf_dm_bcast_integer ( NUM_SLOPE    ,  1 )
+!      CALL wrf_dm_bcast_integer ( SLPCATS      ,  1 )
+!      CALL wrf_dm_bcast_real    ( SLOPE_DATA   ,  NSLOPE )
+!      CALL wrf_dm_bcast_real    ( SBETA_DATA   ,  1 )
+!      CALL wrf_dm_bcast_real    ( FXEXP_DATA   ,  1 )
+!      CALL wrf_dm_bcast_real    ( CSOIL_DATA   ,  1 )
+!      CALL wrf_dm_bcast_real    ( SALP_DATA    ,  1 )
+!      CALL wrf_dm_bcast_real    ( REFDK_DATA   ,  1 )
+!      CALL wrf_dm_bcast_real    ( REFKDT_DATA  ,  1 )
+!      CALL wrf_dm_bcast_real    ( FRZK_DATA    ,  1 )
+!      CALL wrf_dm_bcast_real    ( ZBOT_DATA    ,  1 )
+!      CALL wrf_dm_bcast_real    ( CZIL_DATA    ,  1 )
+!      CALL wrf_dm_bcast_real    ( SMLOW_DATA   ,  1 )
+!      CALL wrf_dm_bcast_real    ( SMHIGH_DATA  ,  1 )
+!
+!
 !-----------------------------------------------------------------
       END SUBROUTINE SOIL_VEG_GEN_PARM
 !-----------------------------------------------------------------
@@ -1009,7 +1120,7 @@ CONTAINS
 ! NECESSARY.  OTHER APPLICATIONS MAY REQUIRE DIFFERENT OUTPUT VARIABLES.         
 !   ETA        ACTUAL LATENT HEAT FLUX (W m-2: NEGATIVE, IF UP FROM              
 !              SURFACE)                                                          
-!  ETA_KINEMATIC atctual latent heat flux in Kg m s-1                            
+!  ETA_KINEMATIC atctual latent heat flux in Kg m-2 s-1                            
 !   SHEAT      SENSIBLE HEAT FLUX (W M-2: NEGATIVE, IF UPWARD FROM               
 !              SURFACE)                                                          
 !   FDOWN      Radiation forcing at the surface (W m-2) = SOLDN*(1-alb)+LWDN     
@@ -1199,7 +1310,6 @@ CONTAINS
          ELSE                                                                    
             SNDENS = SNEQV / SNOWH                                               
             IF(SNDENS > 1.0) THEN                                               
-             write(*,*)'Physical snow depth is less than snow water equiv.'           
              CALL wrf_error_fatal ( 'Physical snow depth is less than snow water equiv.' )
             ENDIF                                                                
             CALL CSNOW (SNCOND,SNDENS)                                           
@@ -2114,7 +2224,7 @@ CONTAINS
       DDZ = 1.0 / ( -0.5 * ZSOIL (2) )                                           
       AI (1) = 0.0                                                               
       CI (1) = (DF1 * DDZ) / (ZSOIL (1) * HCPCT)                                 
-
+                                                                                 
 ! ----------------------------------------------------------------------         
 ! CALCULATE THE VERTICAL SOIL TEMP GRADIENT BTWN THE 1ST AND 2ND SOIL            
 ! LAYERS.  THEN CALCULATE THE SUBSURFACE HEAT FLUX. USE THE TEMP                 
@@ -2127,14 +2237,15 @@ CONTAINS
       SSOIL = DF1 * (STC (1) - YY) / (0.5 * ZSOIL (1) * ZZ1)                     
 !      RHSTS(1) = (DF1 * DTSDZ - SSOIL) / (ZSOIL(1) * HCPCT)                     
       DENOM = (ZSOIL (1) * HCPCT)                                                
+                                                                                 
 ! ----------------------------------------------------------------------         
 ! NEXT CAPTURE THE VERTICAL DIFFERENCE OF THE HEAT FLUX AT TOP AND               
 ! BOTTOM OF FIRST SOIL LAYER FOR USE IN HEAT FLUX CONSTRAINT APPLIED TO          
 ! POTENTIAL SOIL FREEZING/THAWING IN ROUTINE SNKSRC.                             
 ! ----------------------------------------------------------------------         
 !      QTOT = SSOIL - DF1*DTSDZ                                                  
-      RHSTS (1) = (DF1 * DTSDZ - SSOIL) / DENOM                           
-
+      RHSTS (1) = (DF1 * DTSDZ - SSOIL) / DENOM                                  
+                                                                                 
 ! ----------------------------------------------------------------------         
 ! CALCULATE FROZEN WATER CONTENT IN 1ST SOIL LAYER.                              
 ! ----------------------------------------------------------------------         
@@ -2635,7 +2746,7 @@ CONTAINS
 ! SHFLX BELOW) FOR USE IN COMPUTING SUBSURFACE HEAT FLUX IN HRT                  
 ! ----------------------------------------------------------------------         
 !      YYNUM = FDOWN - SIGMA * T24                                                
-      YYNUM = FDOWN - EMISSI*SIGMA * T1**4
+      YYNUM = FDOWN - EMISSI*SIGMA * T24
       YY = SFCTMP + (YYNUM / RCH + TH2- SFCTMP - BETA * EPSCA) / RR              
                                                                                  
       ZZ1 = DF1 / ( -0.5 * ZSOIL (1) * RCH * RR ) + 1.0                          
@@ -2835,16 +2946,12 @@ CONTAINS
 ! ----------------------------------------------------------------------         
 !                                                                                
                IF (SOILTYP .gt. SLCATS) THEN                                     
-                        WRITE (*,*) 'Warning: too many input soil types'         
                         CALL wrf_error_fatal ( 'Warning: too many input soil types' )
                END IF                                                            
                IF (VEGTYP .gt. LUCATS) THEN                                      
-                     WRITE (*,*) 'Warning: too many input landuse types'         
-                     WRITE (*,*) VEGTYP, LUCATS
                      CALL wrf_error_fatal ( 'Warning: too many input landuse types' )
                END IF                                                            
                IF (SLOPETYP .gt. SLPCATS) THEN                                   
-                     WRITE (*,*) 'Warning: too many input slope types'           
                      CALL wrf_error_fatal ( 'Warning: too many input slope types' )
                END IF                                                            
                                                                                  
@@ -2905,8 +3012,9 @@ CONTAINS
                                                                                  
                IF (VEGTYP .eq. BARE) SHDFAC = 0.0                                
                IF (NROOT .gt. NSOIL) THEN                                        
-                  WRITE (*,*) 'Warning: too many root layers'                    
-                  CALL wrf_error_fatal ( 'Warning: too many root layers' )
+                  WRITE (err_message,*) 'Error: too many root layers ',  &
+                                                 NSOIL,NROOT
+                  CALL wrf_error_fatal ( err_message )
 ! ----------------------------------------------------------------------         
 ! CALCULATE ROOT DISTRIBUTION.  PRESENT VERSION ASSUMES UNIFORM                  
 ! DISTRIBUTION BASED ON SOIL LAYER DEPTHS.                                       
@@ -3529,7 +3637,7 @@ CONTAINS
 !      write(*,*) 'T12A,T12AX=',T12A,T12AX                                       
 !Place for emiss, snow emiss=0.90
 !      T12A = ( (FDOWN - FLX1- FLX2- SIGMA * T24)/ RCH                   &        
-      T12A = ( (FDOWN - FLX1- FLX2- EMISSI_S*SIGMA * T1**4)/ RCH            &
+      T12A = ( (FDOWN - FLX1- FLX2- EMISSI_S*SIGMA * T24)/ RCH            &
      &       + TH2- SFCTMP - ETANRG / RCH ) / RR                                 
       T12B = DF1 * STC (1) / (DTOT * RR * RCH)                                   
                                                                                  
@@ -3913,7 +4021,11 @@ CONTAINS
 ! ADJUSTMENT OF SNOW DENSITY DEPENDING ON NEW SNOWFALL                           
 ! ----------------------------------------------------------------------         
       HNEWC = NEWSNC / DSNEW                                                     
-      SNDENS = (SNOWHC * SNDENS + HNEWC * DSNEW)/ (SNOWHC + HNEWC)               
+      IF (SNOWHC + HNEWC .LT. 1.0E-3) THEN
+         SNDENS = MAX(DSNEW,SNDENS)
+      ELSE
+         SNDENS = (SNOWHC * SNDENS + HNEWC * DSNEW)/ (SNOWHC + HNEWC)               
+      ENDIF
       SNOWHC = SNOWHC + HNEWC                                                    
       SNOWH = SNOWHC *0.01                                                       
                                                                                  

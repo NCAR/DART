@@ -412,11 +412,6 @@ CONTAINS
 !     IF(ISOIL.EQ.1)THEN                                                         
       IF(num_soil_layers .gt. 1)THEN                                                         
         NSOIL=1+IFIX(SOILFAC*4*DIFSL/DZS(1)*DELTSM/DZS(1))   
-
-!mp@ start
-!        nsoil=10
-!mp@ end
-
         RNSOIL=1./FLOAT(NSOIL)                                                   
 !                                                                                
 !     SOIL SUB-TIMESTEP                                                          
@@ -464,8 +459,7 @@ CONTAINS
           ENDDO                                                                  
         ENDDO                                                                    
       ENDIF                                                                      
-!           
-
+!                                                                                
       DO 80 I=its,ite
         IF(XLD1(I).LT.0.5) GOTO 80                                                
         TSKX=TG0(I)+DELTSM*DTHGDT(I)                                             

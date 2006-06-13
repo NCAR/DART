@@ -1,17 +1,20 @@
 !WRF:MODEL_LAYER:PHYSICS
 !
-MODULE module_sf_sfclay
+MODULE module_sf_sfclay_fluxforce
+
+  USE module_ideal
 
  REAL    , PARAMETER ::  VCONVC=1.
  REAL    , PARAMETER ::  CZO=0.0185
  REAL    , PARAMETER ::  OZO=1.59E-5
+ REAL    , PARAMETER ::  epsilonmol=1.e-7
 
  REAL,   DIMENSION(0:1000 ),SAVE          :: PSIMTB,PSIHTB
 
 CONTAINS
 
 !-------------------------------------------------------------------
-   SUBROUTINE SFCLAY(U3D,V3D,T3D,QV3D,P3D,dz8w,                    &
+   SUBROUTINE SFCLAY_fluxforce(U3D,V3D,T3D,QV3D,P3D,dz8w,         &
                      CP,G,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,      &
                      ZNT,UST,PBLH,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH, &
                      XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,QGH,QSFC,RMOL, &
@@ -19,7 +22,7 @@ CONTAINS
                      GZ1OZ0,WSPD,BR,ISFFLX,DX,                     &
                      SVP1,SVP2,SVP3,SVPT0,EP1,EP2,                 &
                      KARMAN,EOMEG,STBOLT,                          &
-                     z_o,z_t,z_q,&
+                     calc_ust,z_o,z_t,z_q,&
                      ids,ide, jds,jde, kds,kde,                    &
                      ims,ime, jms,jme, kms,kme,                    &
                      its,ite, jts,jte, kts,kte                     )
@@ -99,9 +102,11 @@ CONTAINS
                                         its,ite, jts,jte, kts,kte
 !                                                               
       INTEGER,  INTENT(IN )   ::        ISFFLX
+      REAL :: z_o,z_t,z_q
       REAL,     INTENT(IN )   ::        SVP1,SVP2,SVP3,SVPT0
       REAL,     INTENT(IN )   ::        EP1,EP2,KARMAN,EOMEG,STBOLT
-      REAL :: z_o,z_t,z_q
+
+      LOGICAL :: calc_ust
 !
       REAL,     DIMENSION( ims:ime, kms:kme, jms:jme )           , &
                 INTENT(IN   )   ::                           dz8w
@@ -112,17 +117,20 @@ CONTAINS
                                                               T3D
 
       REAL,     DIMENSION( ims:ime, jms:jme )                    , &
+                INTENT(INOUT)               ::               QSFC
+
+      REAL,     DIMENSION( ims:ime, jms:jme )                    , &
                 INTENT(IN   )               ::             MAVAIL, &
                                                              PBLH, &
                                                             XLAND, &
                                                               TSK
+
       REAL,     DIMENSION( ims:ime, jms:jme )                    , &
                 INTENT(OUT  )               ::                U10, &
                                                               V10, &
                                                               TH2, &
                                                                T2, &
-                                                               Q2, &
-                                                             QSFC
+                                                               Q2
 !
       REAL,     DIMENSION( ims:ime, jms:jme )                    , &
                 INTENT(INOUT)               ::             REGIME, &
@@ -188,7 +196,7 @@ CONTAINS
            T1D(i) =T3D(i,1,j)
         ENDDO
 
-        CALL SFCLAY1D(J,U1D,V1D,T1D,QV1D,P1D,dz8w1d,               &
+        CALL SFCLAY1D_fluxforce(J,U1D,V1D,T1D,QV1D,P1D,dz8w1d,      &
                 CP,G,ROVCP,R,XLV,PSFC(ims,j),CHS(ims,j),CHS2(ims,j),&
                 CQS2(ims,j),CPM(ims,j),PBLH(ims,j), RMOL(ims,j),   &
                 ZNT(ims,j),UST(ims,j),MAVAIL(ims,j),ZOL(ims,j),    &
@@ -199,18 +207,18 @@ CONTAINS
                 QSFC(ims,j),LH(ims,j),                             &
                 GZ1OZ0(ims,j),WSPD(ims,j),BR(ims,j),ISFFLX,DX,     &
                 SVP1,SVP2,SVP3,SVPT0,EP1,EP2,KARMAN,EOMEG,STBOLT,  &
-                z_o,z_t,z_q,&
+                calc_ust,z_o,z_t,z_q,&
                 ids,ide, jds,jde, kds,kde,                         &
                 ims,ime, jms,jme, kms,kme,                         &
                 its,ite, jts,jte, kts,kte                          )
       ENDDO
 
 
-   END SUBROUTINE SFCLAY
+    END SUBROUTINE SFCLAY_FLUXFORCE
 
 
 !-------------------------------------------------------------------
-   SUBROUTINE SFCLAY1D(J,UX,VX,T1D,QV1D,P1D,dz8w1d,                &
+   SUBROUTINE SFCLAY1D_fluxforce(J,UX,VX,T1D,QV1D,P1D,dz8w1d,       &
                      CP,G,ROVCP,R,XLV,PSFCPA,CHS,CHS2,CQS2,CPM,PBLH,RMOL, &
                      ZNT,UST,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH,      &
                      XLAND,HFX,QFX,TSK,                            &
@@ -218,7 +226,7 @@ CONTAINS
                      QSFC,LH,GZ1OZ0,WSPD,BR,ISFFLX,DX,             &
                      SVP1,SVP2,SVP3,SVPT0,EP1,EP2,                 &
                      KARMAN,EOMEG,STBOLT,                          &
-                     z_o,z_t,z_q,&
+                     calc_ust,z_o,z_t,z_q,&
                      ids,ide, jds,jde, kds,kde,                    &
                      ims,ime, jms,jme, kms,kme,                    &
                      its,ite, jts,jte, kts,kte                     )
@@ -229,7 +237,6 @@ CONTAINS
       REAL,     PARAMETER     ::        PRT=1.
 
       REAL :: z_o,z_t,z_q
-
       INTEGER,  INTENT(IN )   ::        ids,ide, jds,jde, kds,kde, &
                                         ims,ime, jms,jme, kms,kme, &
                                         its,ite, jts,jte, kts,kte, &
@@ -238,6 +245,7 @@ CONTAINS
       INTEGER,  INTENT(IN )   ::        ISFFLX
       REAL,     INTENT(IN )   ::        SVP1,SVP2,SVP3,SVPT0
       REAL,     INTENT(IN )   ::        EP1,EP2,KARMAN,EOMEG,STBOLT
+      LOGICAL :: calc_ust
 
 !
       REAL,     DIMENSION( ims:ime )                             , &
@@ -319,6 +327,13 @@ CONTAINS
       REAL    ::  ZL,TSKV,DTHVDZ,DTHVM,VCONV,RZOL,RZOL2,RZOL10,ZOL2,ZOL10
       REAL    ::  DTG,PSIX,USTM,DTTHX,PSIX10,PSIT,PSIT2,PSIQ,PSIQ2
       REAL    ::  FLUXC,VSGD
+
+      REAL :: zeta,zeta2,zeta10, molength,x,y
+      REAL, PARAMETER :: alphastable= 5., alphaunstable=16.,&
+           &a_stable = 1.,b_stable = 2./3.,c_stable = 5., d_stable = .35
+
+
+
 !-------------------------------------------------------------------
       KL=kte
 
@@ -367,7 +382,7 @@ CONTAINS
    30 CONTINUE                                                                 
 !                                                                                
       DO I=its,ite
-         QGH(I)=0.                                                                
+!         QGH(I)=0.                                                                
          FLHC(I)=0.                                                               
          FLQC(I)=0.                                                               
          CPM(I)=CP                                                                
@@ -383,7 +398,7 @@ CONTAINS
 !                                                                                
       DO 60 I=its,ite
         E1=SVP1*EXP(SVP2*(TGDSA(I)-SVPT0)/(TGDSA(I)-SVP3))                       
-        QSFC(I)=EP2*E1/(PSFC(I)-E1)                                                 
+!        QSFC(I)=EP2*E1/(PSFC(I)-E1)                                                 
 ! QGH CHANGED TO USE LOWEST-LEVEL AIR TEMP CONSISTENT WITH MYJSFC CHANGE
 ! Q2SAT = QGH IN LSM
         E1=SVP1*EXP(SVP2*(T1D(I)-SVPT0)/(T1D(I)-SVP3))                       
@@ -424,7 +439,6 @@ CONTAINS
         ELSE                                                                     
           ZL=0.01                                                                
         ENDIF                                                                    
-       
         WSPD(I)=SQRT(UX(I)*UX(I)+VX(I)*VX(I))                        
 
         TSKV=THGB(I)*(1.+EP1*QSFC(I)*MAVAIL(I))                     
@@ -447,7 +461,6 @@ CONTAINS
         VSGD = 0.32 * (max(dx/5000.-1.,0.))**.33
         WSPD(I)=SQRT(WSPD(I)*WSPD(I)+VCONV*VCONV+vsgd*vsgd)
         WSPD(I)=AMAX1(WSPD(I),0.1)
-!print*,VCONV,WSPD,PBLH,FLUXC
         BR(I)=GOVRTH(I)*ZA(I)*DTHVDZ/(WSPD(I)*WSPD(I))                        
 !  IF PREVIOUSLY UNSTABLE, DO NOT LET INTO REGIMES 1 AND 2
         IF(MOL(I).LT.0.)BR(I)=AMIN1(BR(I),0.0)
@@ -578,14 +591,76 @@ CONTAINS
         PSIM(I)=AMIN1(PSIM(I),0.9*GZ1OZ0(I))
         PSIH2(I)=AMIN1(PSIH2(I),0.9*GZ2OZ0(I))
         PSIM10(I)=AMIN1(PSIM10(I),0.9*GZ10OZ0(I))
-
   320 CONTINUE                                                                   
 !                                                                                
 !-----COMPUTE THE FRICTIONAL VELOCITY:                                           
 !     ZA(1982) EQS(2.60),(2.61).                                                 
-!                                                                                
+!                                                                         
+
+
+!        PRINT *,'11'
+
       DO 330 I=its,ite
-        DTG=THX(I)-THGB(I)                                                   
+         tskv=THGB(I)*(1.+EP1*QSFC(I)*mavail(i))
+         molength=-ust(i)**3*THX(I)/&
+              &(karman*g*(hfx(i)/(cp*rhox(i))+ep1*tskv*qfx(i)/rhox(i)))
+         IF (ABS(molength) < epsilonmol) THEN
+            molength=SIGN(1.,molength)*epsilonmol
+         ENDIF
+
+         zeta=ZA(I)/molength
+         zeta2=2./molength
+         zeta10=10./molength
+
+!        DTG=THX(I)-THGB(I)                                                   
+! alternatively correct psim,psih 
+
+!        IF (DTG < 0.) THEN
+        IF (zeta <  0.) THEN
+           x=1./SQRT(1./SQRT(1.-alphaunstable*zeta))
+           psim(i)= 2.*LOG(.5*(1.+x))+LOG(.5*(1.+x*x))-2.*ATAN(x)+.5*pi
+           y = SQRT(1.-alphaunstable*zeta)
+           psih(i)= 2.*LOG(.5*(1.+y))
+           
+           x=1./SQRT(1./SQRT(1.-alphaunstable*zeta2))
+           psim2(i)=2.*LOG(.5*(1.+x))+LOG(.5*(1.+x*x))-2.*ATAN(x)+.5*pi
+           y = SQRT(1.-alphaunstable*zeta2)
+           psih2(i)=2.*LOG(.5*(1.+y))
+           
+           x=1./SQRT(1./SQRT(1.-alphaunstable*zeta10))
+           psim10(i)=2.*LOG(.5*(1.+x))+LOG(.5*(1.+x*x))-2.*ATAN(x)+.5*pi
+           y = SQRT(1.-alphaunstable*zeta10)
+           psih10(i)=2.*LOG(.5*(1.+y))
+        ELSE
+           psim(i)=-b_stable*(zeta-c_stable/d_stable)*&
+                &EXP(-d_stable*zeta)-&
+                &a_stable*zeta-b_stable*c_stable/d_stable
+           
+           psih(i)=-b_stable*(zeta-c_stable/d_stable)*&
+                &EXP(-d_stable*zeta)-&
+                &(SQRT(1.+a_stable*b_stable*zeta))**3-&
+                &b_stable*c_stable/d_stable+1.
+           psim2(i)=-b_stable*(zeta2-c_stable/d_stable)*&
+                &EXP(-d_stable*zeta2)-&
+                &a_stable*zeta2-b_stable*c_stable/d_stable
+           psih2(i)=-b_stable*(zeta2-c_stable/d_stable)*&
+                &EXP(-d_stable*zeta2)-&
+                &(SQRT(1.+a_stable*b_stable*zeta2))**3-&
+                &b_stable*c_stable/d_stable+1.
+
+           psim10(i)=-b_stable*(zeta10-c_stable/d_stable)*&
+                &EXP(-d_stable*zeta10)-&
+                &a_stable*zeta10-b_stable*c_stable/d_stable
+
+           psih10(i)=-b_stable*(zeta10-c_stable/d_stable)*&
+                &EXP(-d_stable*zeta10)-&
+                &(SQRT(1.+a_stable*b_stable*zeta10))**3-&
+                &b_stable*c_stable/d_stable+1.
+        ENDIF
+
+!
+!        PRINT *,'2'
+
         PSIX=GZ1OZ0(I)-PSIM(I)                                                   
         PSIX10=GZ10OZ0(I)-PSIM10(I)
 !     LOWER LIMIT ADDED TO PREVENT LARGE FLHC IN SOIL MODEL
@@ -596,16 +671,29 @@ CONTAINS
           ZL=ZNT(I)                                                            
         ELSE                                                                     
           ZL=0.01                                                                
-        ENDIF                                                                    
-        z_o=znt(i)
-        z_t=znt(i)
-        z_q=1./(KARMAN*UST(I)/XKA+1./ZL)
+       ENDIF
+
+       z_o=znt(i)
+       z_t=znt(i)
+       z_q=1./(KARMAN*UST(I)/XKA+1./ZL)
+
+
+       br(i)=zeta*(LOG(za(i)/z_t)-psih(i))/(LOG(za(i)/z_o)-psim(i))**2
+       
+
+!       PRINT *,'22'
 
         PSIQ=ALOG(KARMAN*UST(I)*ZA(I)/XKA+ZA(I)/ZL)-PSIH(I)   
+
+
         PSIT2=GZ2OZ0(I)-PSIH2(I)                                     
         PSIQ2=ALOG(KARMAN*UST(I)*2./XKA+2./ZL)-PSIH2(I)                                   
 ! TO PREVENT OSCILLATIONS AVERAGE WITH OLD VALUE 
-        UST(I)=0.5*UST(I)+0.5*KARMAN*WSPD(I)/PSIX                                             
+
+        IF (calc_ust) THEN
+           UST(I)=0.5*UST(I)+0.5*KARMAN*WSPD(I)/PSIX  
+        ENDIF
+
         U10(I)=UX(I)*PSIX10/PSIX                                    
         V10(I)=VX(I)*PSIX10/PSIX                                   
         TH2(I)=THGB(I)+DTG*PSIT2/PSIT                                
@@ -617,12 +705,17 @@ CONTAINS
 !       VA10(I,J) = V10(I)                                     
 !       write(*,1002)UST(I),KARMAN*WSPD(I),PSIX,KARMAN*WSPD(I)/PSIX
 !                                                                                
-        USTM=AMAX1(UST(I),0.1)                                                 
-        IF((XLAND(I)-1.5).GE.0)THEN                                            
-          UST(I)=UST(I)                                                      
-        ELSE                                                                     
-          UST(I)=USTM                                                          
-        ENDIF                                                                    
+        IF (calc_ust) THEN
+
+           USTM=AMAX1(UST(I),0.1)                                                 
+           IF((XLAND(I)-1.5).GE.0)THEN                                            
+              UST(I)=UST(I)                                                      
+           ELSE                                                                     
+              UST(I)=USTM                                                          
+           ENDIF
+
+        ENDIF
+
 !       write(*,1002)UST(I),USTM,I,J
  1002   format(f15.12,2x,f15.12,2x,f15.12,2x,f15.12,2x,f15.12)
         MOL(I)=KARMAN*DTG/PSIT/PRT                              
@@ -632,17 +725,17 @@ CONTAINS
                                                                                   
 !-----COMPUTE THE SURFACE SENSIBLE AND LATENT HEAT FLUXES:                       
                                                                                  
-      DO i=its,ite
-        QFX(i)=0.                                                              
-        HFX(i)=0.                                                              
-      ENDDO
+!      DO i=its,ite
+!        QFX(i)=0.                                                              
+!        HFX(i)=0.                                                              
+!      ENDDO
 
       IF (ISFFLX.EQ.0) GOTO 410                                                
                                                                                  
 !-----OVER WATER, ALTER ROUGHNESS LENGTH (ZNT) ACCORDING TO WIND (UST).          
                                                                                  
       DO 360 I=its,ite
-        IF((XLAND(I)-1.5).GE.0)THEN                                            
+         IF((XLAND(I)-1.5).GE.0)THEN                                            
           ZNT(I)=CZO*UST(I)*UST(I)/G+OZO                                   
         ENDIF                                                                    
         IF((XLAND(I)-1.5).GE.0)THEN                                            
@@ -650,17 +743,35 @@ CONTAINS
         ELSE                                                                     
           ZL=0.01                                                                
         ENDIF                                                                    
-        FLQC(I)=RHOX(I)*MAVAIL(I)*UST(I)*KARMAN/(   & 
-                ALOG(KARMAN*UST(I)*ZA(I)/XKA+ZA(I)/ZL)-PSIH(I))          
+
+        DTTHX=ABS(qsfc(i)-qx(i))
+
+        IF(DTTHX.GT.1.E-7 .and. ABS(qfx(i)) > 1.e-8)THEN
+           FLQC(I)=qfx(i)/(qsfc(i)-qx(i))
+        ELSE
+           FLQC(I)=0.
+        ENDIF
+
+        DTTHX=ABS(THX(I)-THGB(I))
+
+        IF(DTTHX.GT.1.E-5 .AND. ABS(hfx(i)) >= 1.e-2)THEN
+           FLHC(I)=hfx(i)/(thgb(i)-thx(i))
+!           PRINT *,hfx,thgb(i)-thx(i),flhc(i),'111'
+        ELSE
+           FLHC(I)=0.
+        ENDIF
+
+!        FLQC(I)=RHOX(I)*MAVAIL(I)*UST(I)*KARMAN/(   & 
+!                ALOG(KARMAN*UST(I)*ZA(I)/XKA+ZA(I)/ZL)-PSIH(I))          
         DTTHX=ABS(THX(I)-THGB(I))                                            
-        IF(DTTHX.GT.1.E-5)THEN                                                   
-          FLHC(I)=CPM(I)*RHOX(I)*UST(I)*MOL(I)/(THX(I)-THGB(I))          
+!        IF(DTTHX.GT.1.E-5)THEN                                                   
+!          FLHC(I)=CPM(I)*RHOX(I)*UST(I)*MOL(I)/(THX(I)-THGB(I))          
 !         write(*,1001)FLHC(I),CPM(I),RHOX(I),UST(I),MOL(I),THX(I),THGB(I),I
  1001   format(f8.5,2x,f12.7,2x,f12.10,2x,f12.10,2x,f13.10,2x,f12.8,f12.8,2x,i3)
-        ELSE                                                                     
-          FLHC(I)=0.                                                             
-        ENDIF                                                                    
-  360 CONTINUE                                                                   
+!        ELSE                                                                     
+!          FLHC(I)=0.                                                             
+!        ENDIF                                                                    
+360     CONTINUE                                                                   
 
 !                                                                                
 !-----COMPUTE SURFACE MOIST FLUX:                                                
@@ -668,8 +779,8 @@ CONTAINS
 !     IF(IDRY.EQ.1)GOTO 390                                                
 !                                                                                
       DO 370 I=its,ite
-        QFX(I)=FLQC(I)*(QSFC(I)-QX(I))                                     
-        QFX(I)=AMAX1(QFX(I),0.)                                            
+!        QFX(I)=FLQC(I)*(QSFC(I)-QX(I))                                     
+!        QFX(I)=AMAX1(QFX(I),0.)                                            
         LH(I)=XLV*QFX(I)
   370 CONTINUE                                                                 
                                                                                 
@@ -678,9 +789,9 @@ CONTAINS
   390 CONTINUE                                                                 
       DO 400 I=its,ite
         IF(XLAND(I)-1.5.GT.0.)THEN                                           
-          HFX(I)=FLHC(I)*(THGB(I)-THX(I))                                
+!          HFX(I)=FLHC(I)*(THGB(I)-THX(I))                                
         ELSEIF(XLAND(I)-1.5.LT.0.)THEN                                       
-          HFX(I)=FLHC(I)*(THGB(I)-THX(I))                                
+!          HFX(I)=FLHC(I)*(THGB(I)-THX(I))                                
           HFX(I)=AMAX1(HFX(I),-250.)                                       
         ENDIF                                                                  
   400 CONTINUE                                                                 
@@ -714,10 +825,10 @@ CONTAINS
 !jdf
 
 !                                                                                
-   END SUBROUTINE SFCLAY1D
+    END SUBROUTINE SFCLAY1D_fluxforce
 
 !====================================================================
-   SUBROUTINE sfclayinit( allowed_to_read )         
+   SUBROUTINE sfclayinit_fluxforce( allowed_to_read )         
 
    LOGICAL , INTENT(IN)      ::      allowed_to_read
    INTEGER                   ::      N
@@ -732,8 +843,9 @@ CONTAINS
       PSIHTB(N)=2*ALOG(0.5*(1+Y))
    ENDDO
 
-   END SUBROUTINE sfclayinit
+ END SUBROUTINE sfclayinit_fluxforce
 
 !-------------------------------------------------------------------          
+ 
+END MODULE module_sf_sfclay_fluxforce
 
-END MODULE module_sf_sfclay

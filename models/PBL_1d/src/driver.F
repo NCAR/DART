@@ -30,7 +30,7 @@ PROGRAM driver
 ! contributed reading routines to real data and 3dWRF output and 
 ! interface to DART and made the code more flexible
 
-! Based on WRFV2.0.3.1
+! Based on WRFV2.1.2
 
   USE module_wrf
 
@@ -74,9 +74,10 @@ PROGRAM driver
   CALL init_wrf(wrf_rnd_seed)
   
 
-  IF (init_f) THEN 
-     OPEN(ncunit,file=out_f_file)
-  ENDIF
+! now this is done in init_wrf
+!  IF (init_f) THEN 
+!     OPEN(ncunit,file=out_f_file)
+!  ENDIF
 
   DO itime=1,ntime+1
      IF (init_f) THEN
@@ -87,9 +88,9 @@ PROGRAM driver
         dart_days=0
         dart_seconds=(itime-1)*dt
      ENDIF
-     CALL output_wrf_profiles()
      if ( forecast_length == 0 ) stop '0 time steps'
      CALL wrf(dart_seconds,dart_days)
+     CALL output_wrf_profiles()
   ENDDO
   
 END PROGRAM driver

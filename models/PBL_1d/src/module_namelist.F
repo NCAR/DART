@@ -5,9 +5,10 @@ MODULE module_namelist
   IMPLICIT NONE
 
 ! record 1
-  LOGICAL :: init_f, rnd_init
+  LOGICAL :: init_f, rnd_init, rnd_force
   CHARACTER(len=3)  :: init_f_type
-  CHARACTER(len=15) :: pbltype,sfctype,surface_physics,bucket_model
+  CHARACTER(len=15) :: bl_pbl_physics,sf_sfclay_physics,sf_surface_physics,&
+       &bucket_model
   REAL :: dt,deep_soil_moisture
   INTEGER :: nz
   INTEGER :: n_moist,P_QV,P_QC,P_QR,P_QI,P_QS,P_QG
@@ -17,13 +18,17 @@ MODULE module_namelist
 
 ! record 2
   CHARACTER(len=120) :: init_f_file,out_f_file,init_soil_file,&
-                        init_flux_file, init_smos_file
-  LOGICAL :: output_state_vector
+                        init_flux_file, init_smos_file, uvg_file,&
+                        &sfc_file
+  LOGICAL :: output_state_vector, force_uvg, force_flux, calc_sfc, &
+             calc_ust, t_advection, qv_advection 
   INTEGER :: start_year_f, start_month_f, start_day_f, &
              start_hour_f, interval_f, interval_flux, &
-             interval_soil, interval_smos, start_minute_f, &
-             start_forecast, forecast_length
-  INTEGER :: splineinterval, splineinterval_flux, splineinterval_smos
+             interval_soil, interval_smos, interval_sfc,&
+             &start_minute_f, &
+             start_forecast, forecast_length, interval_uvg
+  INTEGER :: splineinterval, splineinterval_flux, splineinterval_smos,&
+       &splineinterval_sfc, splineinterval_advection
   REAL :: outfinterval
   INTEGER :: rnd_seed_val
   REAL :: z_g
@@ -40,17 +45,8 @@ MODULE module_namelist
 
   REAL :: vegfra_ref,zo_ref,emiss_ref,thc_ref,cs_ref,albedo_ref,&
        &maxm_ref,minm_ref,erate_ref,&
-       ts_ref,tmn_ref,ps_ref,prate_ref,lat_ref,lon_ref
-
-! record 4 - parameter estimation
-  INTEGER                :: num_est_params
-  INTEGER, dimension(10) :: est_param_types
-  REAL   , dimension(10) :: pert_init_sd
-  REAL   , dimension(10) :: pert_param_sd
-  REAL   , dimension(10) :: pert_param_min
-  REAL   , dimension(10) :: pert_param_max
-  LOGICAL                :: maintain_initial_spread
-  CHARACTER(len=4), dimension(10) :: dist_shape
+       ts_ref,tmn_ref,ps_ref,prate_ref,lat_ref,lon_ref,&
+       &hflux_ref,qvflux_ref
 
 ! additional variables
 
@@ -64,21 +60,25 @@ CONTAINS
     
     INTEGER, INTENT(IN)  :: logfileunit, unit_nml
     
-    NAMELIST /RECORD1/ init_f,init_f_type,pbltype,sfctype,surface_physics,&
+    NAMELIST /RECORD1/ init_f,init_f_type,bl_pbl_physics,&
+         &sf_sfclay_physics,sf_surface_physics,&
          bucket_model,&
          dt,deep_soil_moisture,P_QV,P_QC,P_QR,P_QI,P_QS,P_QG,&
-         ifsnow,isfflx,pblh_ref,indir,outdir, nz, rnd_init
+         ifsnow,isfflx,pblh_ref,indir,outdir, nz, rnd_init, rnd_force
     
     NAMELIST /RECORD2/ init_f_file,out_f_file,init_soil_file,&
-                        init_flux_file, init_smos_file, &
-                        output_state_vector,&
+                        init_flux_file, init_smos_file, uvg_file, &
+                        sfc_file,output_state_vector, force_uvg, &
+                        &calc_sfc, calc_ust, t_advection, qv_advection, &
                         start_year_f, start_month_f, start_day_f, &
                         start_hour_f, start_minute_f, &
                         interval_f, interval_flux, interval_soil, &
-                        interval_smos, &
+                        interval_smos, interval_uvg, &
+                        &interval_sfc,&
                         start_forecast,forecast_length, &
                         splineinterval,splineinterval_flux, &
-                        splineinterval_smos,&
+                        splineinterval_smos,splineinterval_sfc,&
+                        splineinterval_advection, &
                         outfinterval,&
                         rnd_seed_val,z_g
 
@@ -89,46 +89,37 @@ CONTAINS
          emiss_ref,thc_ref,cs_ref,albedo_ref,&
          &maxm_ref,minm_ref,erate_ref,&
          &ts_ref,tmn_ref,ps_ref,prate_ref,&
-         lat_ref,lon_ref
+         hflux_ref,qvflux_ref,lat_ref,lon_ref
     
-    NAMELIST /RECORD4/ num_est_params, est_param_types, pert_param_sd, &
-         pert_init_sd, maintain_initial_spread, dist_shape, pert_param_min, &
-         pert_param_max
-
 ! Local variables.
     
     LOGICAL :: is_it_there = .FALSE.
     
-    
-! Does the file exist?
-    
+! Any defaults?  Should be a long list but starting here...
+       force_uvg = .true.
+       t_advection = .false.
+       qv_advection = .false.
+       calc_sfc = .false.
+       calc_ust = .false.
+       splineinterval = 3600.0
+       splineinterval_advection = 3600.0
+       splineinterval_flux = 3600.0
+       splineinterval_smos = 3600.0
+       splineinterval_sfc = 3600.0
        
-!  The file exists, get a unit number.
-       
-!       OPEN ( FILE   = namelistfile     , UNIT   =  unit_nml        ,&
-!            & STATUS = 'OLD'            , FORM   = 'FORMATTED'      ,&
-!            & ACTION = 'READ'           , ACCESS = 'SEQUENTIAL'     )
-       
-!  A couple of defaults
-
-       rnd_init = .false.
-       num_est_params = 0
-       est_param_types(:) = 0
-       pert_init_sd(:) = 0.0
-       pert_param_sd(:) = 0.0
-       pert_param_min(:) = 0.0
-       pert_param_max(:) = 0.0
-       maintain_initial_spread = .false.
-       dist_shape(:) = 'norm'
-
 !  File is opened, so read it.
        
        READ (unit_nml , RECORD1 )
        READ (unit_nml , RECORD2 )
        READ (unit_nml , RECORD3 )
-       READ (unit_nml , RECORD4 )
-       
+
        n_moist=MAX(P_QV,P_QC,P_QR,P_QI,P_QS,P_QG)
+
+       IF  (sf_surface_physics=='FLUXFORCE') THEN
+          force_flux=.TRUE.
+       ELSE
+          force_flux=.FALSE.
+       ENDIF
 
        IF (init_f) THEN
           timeo=start_forecast
@@ -141,23 +132,42 @@ CONTAINS
 
        prate_ref=prate_ref/3600. ! convert hours to secs
 
+
 ! Silly error checking - don't know where else to put it
     IF ( init_f_type == 'OBS' .and. start_forecast > 0 ) THEN
        print*,'OBS init must be with start_forecast = 0'
        stop 'module_namelist'
+    ENDIF
+
+    IF ( splineinterval_smos > interval_smos ) THEN
+       PRINT *,'Missing precip accumulated at ',interval_smos,&
+            &'intervals.'
+       PRINT *,'Reset splineinterval_smos =< interval_smos ',&
+            &'in the namelist. Stopping'
+       STOP
+    ENDIF
+
+    IF ( init_f_type /= 'WRF' .and. t_advection ) then
+       PRINT*, 'If including T advection, only WRF initialization valid'
+       STOP
+    ENDIF
+    IF ( init_f_type /= 'WRF' .and. qv_advection ) then
+       PRINT*, 'If including QV advection, only WRF initialization valid'
+       STOP
     ENDIF
     
 ! Record the namelist to the logfile
     write(logfileunit,nml=record1)
     write(logfileunit,nml=record2)
     write(logfileunit,nml=record3)
-    write(logfileunit,nml=record4)
 
     init_f_file=TRIM(indir)//'/'//init_f_file
     out_f_file=TRIM(outdir)//'/'//out_f_file
     init_soil_file=TRIM(indir)//'/'//init_soil_file
     init_flux_file=TRIM(indir)//'/'//init_flux_file
     init_smos_file=TRIM(indir)//'/'//init_smos_file
+    uvg_file=TRIM(indir)//'/'//uvg_file
+    sfc_file=TRIM(indir)//'/'//sfc_file
 
   END SUBROUTINE do_namelist_wrf1d
 

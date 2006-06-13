@@ -180,7 +180,7 @@ CONTAINS
     CHARACTER(len=4), INTENT(IN)        :: mminlu
 
     INTEGER  :: LUCATS,LUSEAS
-    INTEGER  :: LS, LC, LI, LUN, NSN=0,LUMATCH
+    INTEGER  :: LC, LI, LUN, NSN=0,LUMATCH
     CHARACTER(len=4) ::lutype
     INTEGER :: i,j,itf,jtf,is
 

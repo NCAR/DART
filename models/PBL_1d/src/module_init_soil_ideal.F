@@ -5,7 +5,7 @@ MODULE module_init_soil_ideal
 
 USE module_getsm,           only: getsmlsm, getsmruclsm
 
-USE module_ideal,           only: mysoil
+USE module_ideal,           ONLY: mysoil,qsat
 
 USE module_luse_init,       ONLY: landuse_init,bucket_init
 
@@ -16,7 +16,7 @@ USE module_namelist,        only: lat_ref, julday_ref, mminlu_ref, &
                                   vegfra_ref, rland_ref, albedo_ref, &
                                   zo_ref, thc_ref, cs_ref, emiss_ref, ts_ref, &
                                   ps_ref, dtamplitude_ref, mavail_ref, &
-                                  surface_physics, tmn_ref, deep_soil_moisture,&
+                                  sf_surface_physics, tmn_ref, deep_soil_moisture,&
                                   &Maxm_ref,Minm_ref,Erate_ref, bucket_model
 
 USE module_soil_pre,        only: init_soil_depth_1, init_soil_depth_2, &
@@ -148,13 +148,21 @@ SUBROUTINE init_soil_ideal(julday, lu_index, ivgtyp, &
    tmn=tmn_ref
    sst_input=tsk
  
-   IF (surface_physics=='SIMPLESCHEME') THEN
-
+   IF (sf_surface_physics=='SIMPLESCHEME') THEN 
+      
       tslb=tsoil
       smois=0.
       sh2o = 0.
 
-  ELSEIF (surface_physics=='FRSCHEME') THEN
+   ELSEIF (sf_surface_physics=='FLUXFORCE') THEN
+
+      tslb=tsoil
+      smois=qsfc(1,1)/qsat(ps_ref,tsk(1,1))
+      
+      CALL init_soil_depth_0 ( zs , dzs , num_soil_layers,thc,cs)
+      
+
+   ELSEIF (sf_surface_physics=='FRSCHEME') THEN
 
       CALL init_soil_depth_0 ( zs, dzs, num_soil_layers, thc, cs )
 
@@ -167,7 +175,7 @@ SUBROUTINE init_soil_ideal(julday, lu_index, ivgtyp, &
          sh2o = 0.
       ENDIF
       
-   ELSEIF (surface_physics=='SLABSCHEME') THEN
+   ELSEIF (sf_surface_physics=='SLABSCHEME') THEN
 
       CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
       CALL init_soil_1_real ( tsk , tmn , tslb , zs , dzs , &
@@ -179,7 +187,7 @@ SUBROUTINE init_soil_ideal(julday, lu_index, ivgtyp, &
        smois=0.
        sh2o = 0.
 
-   ELSEIF (surface_physics=='LSMSCHEME') THEN
+   ELSEIF (sf_surface_physics=='LSMSCHEME') THEN
 
       CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
 
@@ -211,12 +219,13 @@ SUBROUTINE init_soil_ideal(julday, lu_index, ivgtyp, &
            SMSTOT, SFCRUNOFF,UDRUNOFF,ACSNOW,        &
            ACSNOM,IVGTYP,ISLTYP,TSLB,SMOIS,SH2O,ZS,DZS, &
            FNDSOILW, FNDSNOWH,                       &
-           num_soil_layers, restart,                 &
+           num_soil_layers, .FALSE.,                 &
+           .TRUE., &
            ids,ide, jds,jde, kds,kde,                &
            ims,ime, jms,jme, kms,kme,                &
            its,ite, jts,jte, kts,kte                 )
 
-      ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
+      ELSEIF (sf_surface_physics=='RUCLSMSCHEME') THEN
 
          CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
 
@@ -244,8 +253,10 @@ SUBROUTINE init_soil_ideal(julday, lu_index, ivgtyp, &
               ims , ime , jms , jme , kms , kme , &
               its , ite , jts , jte , kts , kte )
 
-         CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,&
-              num_soil_layers, restart,                 &
+        mavail=mavail_ref
+
+         CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,mavail,&
+              num_soil_layers, .FALSE.,.TRUE.,                 &
               ids,ide, jds,jde, kds,kde,                &
               ims,ime, jms,jme, kms,kme,                &
               its,ite, jts,jte, kts,kte                 )

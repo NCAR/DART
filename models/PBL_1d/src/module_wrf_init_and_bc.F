@@ -10,7 +10,8 @@ MODULE module_wrf_init_and_bc
                                    start_day_f, start_minute_f, &
                                    init_f_file, isltyp_ref, &
                                    ivgtyp_ref, lu_index_ref, vegfra_ref, &
-                                   rnd_init
+                                   rnd_init, rnd_force, t_advection, &
+                                   qv_advection
 
   IMPLICIT NONE
   private
@@ -111,7 +112,7 @@ CONTAINS
     ierr=nf_inq_dimlen(ncid,pdimid(5),pdimlen(5))
     nrecords = pdimlen(5)
 
-!   abort if not enough times in the file
+!   abort if not enough times in the file 
     IF ( wrf_end_ind > nt_wrfin ) THEN
        print*,"Not enough times in the wrf input file for this forecast"
        print*,nt_wrfin - wrf_ind + 1, &
@@ -208,11 +209,14 @@ CONTAINS
 !**********************************************
 
   SUBROUTINE wrf_init_and_bc(ncid,nz, ns, nt, &
-       z_agl,z_agl_stag,t,u,v,q,p,&
+       z_agl,z_agl_stag,t,u,v,q,p, &
+       t_ups_x, t_ups_y, &
+       q_ups_x, q_ups_y, &
+       tau_u, tau_v,&
        th2,t2,tsk,u10,v10,     &
        q2,glw,gsw,qsfc,tslb,smois,tmn,&
        precip, &
-       vegfra,isltyp,lu_index,ivgtyp,&
+       vegfra,isltyp,lu_index,ivgtyp, terrain, dx, &
        times,times_flux,times_soil,times_smos,idum)
 
     USE module_nr_procedures
@@ -231,8 +235,13 @@ CONTAINS
          th2,t2,tsk,u10,v10,q2,glw,gsw,qsfc, precip, &
          tmn,vegfra,times,times_flux, times_soil, times_smos
     INTEGER, DIMENSION(:), INTENT(out) :: isltyp,ivgtyp,lu_index
+    REAL, INTENT(out)                  :: terrain
+    REAL, INTENT( in)                  :: dx
 
     REAL, DIMENSION(:,:), INTENT(out) :: t,u,v,q,p,tslb,smois
+    REAL, DIMENSION(:,:), INTENT(out)   :: tau_u, tau_v
+    REAL, DIMENSION(:,:), INTENT(out) :: t_ups_x, t_ups_y
+    REAL, DIMENSION(:,:), INTENT(out) :: q_ups_x, q_ups_y
     
 ! local
     INTEGER :: i,k,kkl,kkr,imem, itran1, itran2
@@ -333,6 +342,12 @@ CONTAINS
     v = -9999.
     q = -9999.
     p = -9999.
+    t_ups_x = -9999.
+    t_ups_y = -9999.
+    q_ups_x = -9999.
+    q_ups_y = -9999.
+    tau_u = -9999.
+    tau_v = -9999.
     th2 = -9999.
     t2 = -9999.
     tsk = -9999.
@@ -482,6 +497,7 @@ CONTAINS
     ENDIF
 
     ierr=nf_get_vara_double(ncid,fid(12),stter,lenter,ter2d)
+    terrain = ter2d(2,2,1)
 
 ! do grid differencing and weighing of profiles
 
@@ -526,6 +542,34 @@ CONTAINS
             z3d2(midx,midy,k+1,wrf_ind:wrf_end_ind))*&
             (1.0-control_w))-ter2d(midx,midy,1)
     ENDDO
+
+! upstream values and tau, as defined in Gahn et al. 1999 equation 2
+    IF ( t_advection ) then
+    t_ups_x(:,1:nt) = &
+         t3d1(midx-1,midy,:,wrf_ind:wrf_end_ind)*control_w + &
+         t3d2(midx-1,midy,:,wrf_ind:wrf_end_ind)*(1.0-control_w)
+    t_ups_y(:,1:nt) = &
+         t3d1(midx,midy-1,:,wrf_ind:wrf_end_ind)*control_w + &
+         t3d2(midx,midy-1,:,wrf_ind:wrf_end_ind)*(1.0-control_w)
+    ENDIF
+    IF ( qv_advection ) then
+    q_ups_x(:,1:nt) = &
+         q3d1(midx-1,midy,:,wrf_ind:wrf_end_ind)*control_w + &
+         q3d2(midx-1,midy,:,wrf_ind:wrf_end_ind)*(1.0-control_w)
+    q_ups_y(:,1:nt) = &
+         q3d1(midx,midy-1,:,wrf_ind:wrf_end_ind)*control_w + &
+         q3d2(midx,midy-1,:,wrf_ind:wrf_end_ind)*(1.0-control_w)
+    ENDIF
+    IF ( t_advection .or. qv_advection ) THEN
+    tau_u(:,1:nt) = &
+        u3d1(midx,midy,:,wrf_ind:wrf_end_ind)*control_w + &
+        u3d2(midx,midy,:,wrf_ind:wrf_end_ind)*(1.0-control_w)
+    tau_u = dx / tau_u
+    tau_v(:,1:nt) = &
+        v3d1(midx,midy,:,wrf_ind:wrf_end_ind)*control_w + &
+        v3d2(midx,midy,:,wrf_ind:wrf_end_ind)*(1.0-control_w)
+    tau_v = dx / tau_v
+    ENDIF
 
 ! screen 
     sts = (/1,1,1,1,itran1/)
@@ -710,5 +754,6 @@ CONTAINS
  
   END SUBROUTINE wrf_init_and_bc
 
+!
 END MODULE module_wrf_init_and_bc
 

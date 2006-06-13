@@ -283,7 +283,8 @@ CONTAINS
    REAL,    DIMENSION( ims:ime )                              , &
         INTENT(INOUT   )    ::                        RAINBL,mavail
 
-   CHARACTER(len=15) :: sfctype,surface_physics,pbltype, bucket_model
+   CHARACTER(len=15) :: sf_sfclay_physics,sf_surface_physics,&
+        &bucket_model
 
    REAL :: runoff,precip,avail,xmm,evap
 !

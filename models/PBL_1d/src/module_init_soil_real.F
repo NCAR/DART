@@ -16,7 +16,7 @@ USE module_namelist,        ONLY: lat_ref,mminlu_ref, &
                                   vegfra_ref, rland_ref, albedo_ref, &
                                   zo_ref, thc_ref, cs_ref,emiss_ref, ts_ref, &
                                   ps_ref, dtamplitude_ref, mavail_ref, &
-                                  surface_physics, tmn_ref, &
+                                  sf_surface_physics, tmn_ref, &
                                   deep_soil_moisture,&
                                   &Maxm_ref,Minm_ref,Erate_ref, bucket_model
 
@@ -97,7 +97,7 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
    REAL, DIMENSION(:,:,:), INTENT(out) :: tslb, smois, sh2o, st_input, &
                                           sm_input, smfr3d, keepfr3dflag
    REAL, DIMENSION(:),     INTENT(out) :: zs, dzs
-   CHARACTER(len=4), INTENT(out) :: mminlu
+   CHARACTER(len=4), INTENT(inout) :: mminlu
    LOGICAL,  INTENT(in)         :: flag_sst, fndsoilw, fndsnowh, restart
 
 ! local
@@ -163,12 +163,12 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
          stop 'module_init_soil_real'
    END SELECT
 
-   IF (surface_physics=='SIMPLESCHEME') THEN
+   IF (sf_surface_physics=='SIMPLESCHEME') THEN
       PRINT *,'SIMPLESCHEME cannot be run with init_f = .TRUE.'
       PRINT *, 'Stopping'
       STOP
 
-   ELSEIF (surface_physics=='FRSCHEME') THEN
+   ELSEIF (sf_surface_physics=='FRSCHEME') THEN
       
       CALL init_soil_depth_0 ( zs , dzs , num_soil_layers,thc,cs)
       
@@ -189,7 +189,7 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
       ENDIF
 
       
-   ELSEIF (surface_physics=='SLABSCHEME') THEN
+   ELSEIF (sf_surface_physics=='SLABSCHEME') THEN
 
       CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
 
@@ -228,7 +228,7 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
       canwat = 0.
       sh2o = 0.
 
-   ELSEIF (surface_physics=='LSMSCHEME') THEN
+   ELSEIF (sf_surface_physics=='LSMSCHEME') THEN
 
       CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
 
@@ -284,7 +284,8 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
            SMSTOT, SFCRUNOFF,UDRUNOFF,ACSNOW,        &
            ACSNOM,IVGTYP,ISLTYP,TSLB,SMOIS,SH2O,ZS,DZS, &
            FNDSOILW, FNDSNOWH,                       &
-           num_soil_layers, restart,                 &
+           num_soil_layers,                  &
+           .FALSE.,.TRUE., &
            ids,ide, jds,jde, kds,kde,                &
            ims,ime, jms,jme, kms,kme,                &
            its,ite, jts,jte, kts,kte                 )
@@ -293,7 +294,7 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
          qsfc(1,1)=qsat(ps_ref,tsk(1,1))*smois(1,1,1)
       ENDIF
       
-   ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
+   ELSEIF (sf_surface_physics=='RUCLSMSCHEME') THEN
 
       CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
 
@@ -360,8 +361,8 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
       canwat = 0.
       sh2o = 0.
 
-      CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,&
-           num_soil_layers, restart,                 &
+      CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,mavail,&
+           num_soil_layers, .FALSE.,.TRUE., &
            ids,ide, jds,jde, kds,kde,                &
            ims,ime, jms,jme, kms,kme,                &
            its,ite, jts,jte, kts,kte                 )
@@ -433,7 +434,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
    REAL, DIMENSION(:,:,:), INTENT(out) :: tslb, smois, sh2o, st_input, &
                                           sm_input, smfr3d, keepfr3dflag
    REAL, DIMENSION(:),     INTENT(out) :: zs, dzs
-   CHARACTER(len=4), INTENT(out) :: mminlu
+   CHARACTER(len=4), INTENT(inout) :: mminlu
    LOGICAL,  INTENT(in)         :: flag_sst, fndsoilw, fndsnowh, restart
 
 ! local
@@ -531,12 +532,12 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
    
    sst_input=tsk_init_f(itime_f)
 
-   IF (surface_physics=='SIMPLESCHEME') THEN
+   IF (sf_surface_physics=='SIMPLESCHEME') THEN
       PRINT *,'SIMPLESCHEME cannot be run with init_f = .TRUE.'
       PRINT *, 'Stopping'
       STOP
 
-  ELSEIF (surface_physics=='FRSCHEME') THEN
+  ELSEIF (sf_surface_physics=='FRSCHEME') THEN
       
       CALL init_soil_depth_0 ( zs , dzs , num_soil_layers,thc,cs)
       
@@ -557,7 +558,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
          sh2o = 0.
       ENDIF
 
-   ELSEIF (surface_physics=='SLABSCHEME') THEN
+   ELSEIF (sf_surface_physics=='SLABSCHEME') THEN
       
       CALL init_soil_depth_1 ( zs , dzs , num_soil_layers )
 
@@ -586,7 +587,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
          qsfc(1,1)=qsat(ps_ref,tsk(1,1))*mavail(1,1)
       ENDIF
 
-   ELSEIF (surface_physics=='LSMSCHEME') THEN
+   ELSEIF (sf_surface_physics=='LSMSCHEME') THEN
 
       CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
 
@@ -606,7 +607,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
 
       sm_levels_input(1)=NINT(zs_f(1))
       sm_levels_input(2)=NINT(zs_f(kns_f_m))
-      
+
       CALL getsmlsm (mminlu, isltyp(1,1), ivgtyp(1,1), &
            Smcmin, Smcmax)
 
@@ -649,7 +650,8 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
            SMSTOT, SFCRUNOFF,UDRUNOFF,ACSNOW,        &
            ACSNOM,IVGTYP,ISLTYP,TSLB,SMOIS,SH2O,ZS,DZS, &
            FNDSOILW, FNDSNOWH,                       &
-           num_soil_layers, restart,                 &
+           num_soil_layers, .FALSE.,                 &
+           .TRUE., &
            ids,ide, jds,jde, kds,kde,                &
            ims,ime, jms,jme, kms,kme,                &
            its,ite, jts,jte, kts,kte                 )
@@ -658,7 +660,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
          qsfc(1,1)=qsat(ps_ref,tsk(1,1))*smois(1,1,1)
       ENDIF
 
-   ELSEIF (surface_physics=='RUCLSMSCHEME') THEN
+   ELSEIF (sf_surface_physics=='RUCLSMSCHEME') THEN
 
       CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
 
@@ -726,8 +728,8 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
       canwat = 0.
       sh2o = 0.
 
-      CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,&
-           num_soil_layers, restart,                 &
+      CALL LSMRUCINIT(SMFR3D,TSLB,SMOIS,ISLTYP,mavail,&
+           num_soil_layers,  .FALSE.,.TRUE.,                 &
            ids,ide, jds,jde, kds,kde,                &
            ims,ime, jms,jme, kms,kme,                &
            its,ite, jts,jte, kts,kte                 )

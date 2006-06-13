@@ -1,127 +1,20 @@
 !----------------------------------------------------------------------
 !
-      MODULE MODULE_SF_MYJSFC
+MODULE MODULE_SF_MYJSFC_fluxforce
 !
 !----------------------------------------------------------------------
 !
       USE MODULE_MODEL_CONSTANTS
-!      USE MODULE_DM, ONLY : WRF_DM_MAXVAL
-!
-!----------------------------------------------------------------------
-!
-! REFERENCES:  Janjic (2001), NCEP Office Note 437
-!              Mellor and Yamada (1982), Rev. Geophys. Space Phys.
-!              Mellor and Yamada (1974), J. Atmos. Sci.
-!
-! ABSTRACT:
-!     MYJSFC GENERATES THE SURFACE EXCHANGE COEFFICIENTS FOR VERTICAL
-!     TURBULENT EXCHANGE BASED UPON MONIN_OBUKHOV THEORY WITH
-!     VARIOUS REFINEMENTS.
-!
-!----------------------------------------------------------------------
-!
-      INTEGER :: ITRMX=5 ! Iteration count for sfc layer computations
-!
-      REAL,PARAMETER :: VKARMAN=0.4
-      REAL,PARAMETER :: CAPA=R_D/CP,ELOCP=2.72E6/CP,RCAP=1./CAPA
-      REAL,PARAMETER :: GOCP02=G/CP*2.,GOCP10=G/CP*10.
-      REAL,PARAMETER :: EPSL=0.10,EPSRU=1.E-7,EPSRS=1.E-7 
-      REAL,PARAMETER :: EPSU2=1.E-4,EPSUST=0.07,EPSZT=1.E-5
-      REAL,PARAMETER :: A1=0.659888514560862645                        &
-     &                 ,A2x=0.6574209922667784586                      &
-     &                 ,B1=11.87799326209552761                        &
-     &                 ,B2=7.226971804046074028                        &
-     &                 ,C1=0.000830955950095854396
-      REAL,PARAMETER :: A2S=17.2693882,A3S=273.16,A4S=35.86
-      REAL,PARAMETER :: SEAFC=0.98,PQ0SEA=PQ0*SEAFC
-      REAL,PARAMETER :: BETA=1./273.,CZIL=0.1,EXCML=0.001,EXCMS=0.001  &
-     &                 ,GLKBR=10.,GLKBS=30.,PI=3.1415926               &
-     &                 ,QVISC=2.1E-5,RIC=0.505,SMALL=0.35              &
-     &                 ,SQPR=0.84,SQSC=0.84,SQVISC=258.2,TVISC=2.1E-5  &
-     &                 ,USTC=0.7,USTR=0.225,VISC=1.5E-5                &
-     &                 ,WWST=1.2,ZTFC=1.
-!
-      REAL,PARAMETER :: BTG=BETA*G,CZIV=SMALL*GLKBS                    &
-!    &                 ,EP_1=R_V/R_D-1.,GRRS=GLKBR/GLKBS               &
-     &                 ,GRRS=GLKBR/GLKBS               &
-     &                 ,RB1=1./B1,RTVISC=1./TVISC,RVISC=1./VISC        &
-     &                 ,ZQRZT=SQSC/SQPR
-!
-      REAL,PARAMETER :: ADNH= 9.*A1*A2x*A2x*(12.*A1+3.*B2)*BTG*BTG     &                  
-     &                 ,ADNM=18.*A1*A1*A2x*(B2-3.*A2x)*BTG             & 
-     &                 ,ANMH=-9.*A1*A2x*A2x*BTG*BTG                    &
-     &                 ,ANMM=-3.*A1*A2x*(3.*A2x+3.*B2*C1+18.*A1*C1-B2) &
-     &                                *BTG                             &   
-     &                 ,BDNH= 3.*A2x*(7.*A1+B2)*BTG                    &
-     &                 ,BDNM= 6.*A1*A1                                 &
-     &                 ,BEQH= A2x*B1*BTG+3.*A2x*(7.*A1+B2)*BTG         &
-     &                 ,BEQM=-A1*B1*(1.-3.*C1)+6.*A1*A1                &
-     &                 ,BNMH=-A2x*BTG                                  &     
-     &                 ,BNMM=A1*(1.-3.*C1)                             &
-     &                 ,BSHH=9.*A1*A2x*A2x*BTG                         &
-     &                 ,BSHM=18.*A1*A1*A2x*C1                          &
-     &                 ,BSMH=-3.*A1*A2x*(3.*A2x+3.*B2*C1+12.*A1*C1-B2) &
-     &                                *BTG                             &
-     &                 ,CESH=A2x                                       &
-     &                 ,CESM=A1*(1.-3.*C1)                             &
-     &                 ,CNV=EP_1*G/BTG                                 &
-     &                 ,ELFCS=VKARMAN*BTG                              &
-     &                 ,FZQ1=RTVISC*QVISC*ZQRZT                        &
-     &                 ,FZQ2=RTVISC*QVISC*ZQRZT                        &
-     &                 ,FZT1=RVISC *TVISC*SQPR                         &
-     &                 ,FZT2=CZIV*GRRS*TVISC*SQPR                      &
-     &                 ,FZU1=CZIV*VISC                                 &
-     &                 ,PIHF=0.5*PI                                    &
-     &                 ,RQVISC=1./QVISC                                &
-     &                 ,RRIC=1./RIC                                    &
-     &                 ,USTFC=0.018/G                                  &
-     &                 ,WWST2=WWST*WWST                                &
-     &                 ,ZILFC=-CZIL*VKARMAN*SQVISC
-!
-!
-!----------------------------------------------------------------------
-!***  FREE TERM IN THE EQUILIBRIUM EQUATION FOR (L/Q)**2
-!----------------------------------------------------------------------
-!
-      REAL,PARAMETER :: AEQH=9.*A1*A2x*A2x*B1*BTG*BTG                  &
-     &                      +9.*A1*A2x*A2x*(12.*A1+3.*B2)*BTG*BTG      &
-     &                 ,AEQM=3.*A1*A2x*B1*(3.*A2x+3.*B2*C1+18.*A1*C1-B2) &
-     &                      *BTG+18.*A1*A1*A2x*(B2-3.*A2x)*BTG
-!
-!----------------------------------------------------------------------
-!***  FORBIDDEN TURBULENCE AREA
-!----------------------------------------------------------------------
-!
-      REAL,PARAMETER :: REQU=-AEQH/AEQM                                &
-     &                 ,EPSGH=1.E-9,EPSGM=REQU*EPSGH
-!----------------------------------------------------------------------
-!***  NEAR ISOTROPY FOR SHEAR TURBULENCE, WW/Q2 LOWER LIMIT
-!----------------------------------------------------------------------
-!
-      REAL,PARAMETER :: UBRYL=(18.*REQU*A1*A1*A2x*B2*C1*BTG            &
-     &                         +9.*A1*A2x*A2x*B2*BTG*BTG)              &
-     &                        /(REQU*ADNM+ADNH)                        &
-     &                 ,UBRY=(1.+EPSRS)*UBRYL,UBRY3=3.*UBRY
-!
-      REAL,PARAMETER :: AUBH=27.*A1*A2x*A2x*B2*BTG*BTG-ADNH*UBRY3      &
-     &                 ,AUBM=54.*A1*A1*A2x*B2*C1*BTG -ADNM*UBRY3       &
-     &                 ,BUBH=(9.*A1*A2x+3.*A2x*B2)*BTG-BDNH*UBRY3      &
-     &                 ,BUBM=18.*A1*A1*C1           -BDNM*UBRY3        &
-     &                 ,CUBR=1.                     -     UBRY3        &
-     &                 ,RCUBR=1./CUBR
-!----------------------------------------------------------------------
-      INTEGER, PARAMETER :: KZTM=10001,KZTM2=KZTM-2
-!
-      REAL :: DZETA1,DZETA2,FH01,FH02,ZTMAX1,ZTMAX2,ZTMIN1,ZTMIN2
-!
-      REAL,DIMENSION(KZTM) :: PSIH1,PSIH2,PSIM1,PSIM2
+      use module_sf_myjsfc
+
+! removed paraneters from module_sf_myjsfc
 !
 !----------------------------------------------------------------------
 !
 CONTAINS
 !
 !----------------------------------------------------------------------
-  SUBROUTINE MYJSFC(ITIMESTEP,HT,DZ                                & 
+  SUBROUTINE MYJSFC_fluxforce(ITIMESTEP,HT,DZ                     & 
      &                 ,PMID,PINT,TH,T,QV,QC,U,V,Q2                    &
      &                 ,TSK,QSFC,THZ0,QZ0,UZ0,VZ0                      &
      &                 ,LOWLYR,XLAND                                   &
@@ -130,7 +23,7 @@ CONTAINS
      &                 ,CHS,CHS2,CQS2,HFX,QFX,FLX_LH,FLHC,FLQC         &
      &                 ,QGH,CPM,CT                                     &
      &                 ,U10,V10,TSHLTR,TH10,QSHLTR,Q10,PSHLTR          &
-     &     ,z_o,z_t,z_q&
+     &     ,calc_ust,z_o,z_t,z_q&
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
      &                 ,ITS,ITE,JTS,JTE,KTS,KTE)
@@ -147,18 +40,24 @@ CONTAINS
 !
       INTEGER,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: LOWLYR
 !
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: HT,XLAND,TSK,MAVAIL
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: HT,XLAND, MAVAIL
 !
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(inout) :: TSK
+
+      LOGICAL :: calc_ust
+
       REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(IN) :: DZ         &
      &                                                     ,PMID,PINT  &
      &                                                     ,Q2,QC,QV   &
      &                                                     ,T,TH       &
      &                                                     ,U,V   
 !
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT) :: FLX_LH,HFX,PSHLTR &
-     &                                              ,QFX,Q10,QSHLTR    &
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT) :: FLX_LH,PSHLTR &
+     &                                              ,Q10,QSHLTR    &
      &                                              ,TH10,TSHLTR       &
      &                                              ,U10,V10
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(in) :: HFX,QFX
+
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: AKHS,AKMS       &
      &                                                ,PBLH,QSFC
@@ -199,6 +98,8 @@ CONTAINS
 !
 !----------------------------------------------------------------------
 !**********************************************************************
+      REAL :: rlow
+
 !----------------------------------------------------------------------
 !
 !***  MAKE PREPARATIONS
@@ -262,6 +163,8 @@ CONTAINS
 !----------------------------------------------------------------------
 !
         DO I=ITS,ITE
+
+
 !
 !***  LOWEST LAYER ABOVE GROUND MUST BE FLIPPED
 !
@@ -371,6 +274,7 @@ CONTAINS
 !***  FIND THE SURFACE EXCHANGE COEFFICIENTS
 !***
 !----------------------------------------------------------------------
+
           PLOW=PK(LMH)
           TLOW=TK(LMH)
           THLOW=THK(LMH)
@@ -382,8 +286,9 @@ CONTAINS
           ZSL=(ZHK(LMH)-ZHK(LMH+1))*0.5
           APESFC=(PSFC*1.E-5)**CAPA
           TZ0=THZ0(I,J)*APESFC
-!
-          CALL SFCDIF(NTSD,SEAMASK,THSK(I,J),QSFC(I,J),PSFC            &
+
+
+          CALL SFCDIF_fluxforce(NTSD,SEAMASK,THSK(I,J),QSFC(I,J),PSFC  &
      &               ,UZ0(I,J),VZ0(I,J),TZ0,THZ0(I,J),QZ0(I,J)         &
      &               ,USTAR(I,J),ZNT(I,J),CT(I,J),RMOL(I,J)            &
      &               ,AKMS(I,J),AKHS(I,J),PBLH(I,J),MAVAIL(I,J)        &
@@ -394,13 +299,17 @@ CONTAINS
      &               ,ZSL,PLOW                                         &
      &               ,U10(I,J),V10(I,J),TSHLTR(I,J),TH10(I,J)          &
      &               ,QSHLTR(I,J),Q10(I,J),PSHLTR(I,J)                 &
-     &,z_o,z_t,z_q&
+     &,calc_ust,z_o,z_t,z_q&
      &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
      &               ,IMS,IME,JMS,JME,KMS,KME                          &
      &               ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+
 !
 !***  REMOVE SUPERATURATION AT 2M AND 10M
 !
+
+          tsk(i,j)=thsk(i,j)*(psfc/p1000mb)**rcp
+
           RAPA=APESFC
           TH02P=TSHLTR(I,J)
           TH10P=TH10(I,J)
@@ -427,17 +336,17 @@ CONTAINS
       ENDDO setup_integration
 !----------------------------------------------------------------------
  
-      END SUBROUTINE MYJSFC
+    END SUBROUTINE MYJSFC_fluxforce
 !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 !----------------------------------------------------------------------
-      SUBROUTINE SFCDIF(NTSD,SEAMASK,THS,QS,PSFC                       &
+   SUBROUTINE SFCDIF_fluxforce(NTSD,SEAMASK,THS,QS,PSFC              &
      &                 ,UZ0,VZ0,TZ0,THZ0,QZ0                           &
      &                 ,USTAR,Z0,CT,RLMO,AKMS,AKHS,PBLH,WETM           &
      &                 ,CHS,CHS2,CQS2,HFX,QFX,FLX_LH,FLHC,FLQC,QGH,CPM &
      &                 ,ULOW,VLOW,TLOW,THLOW,THELOW,QLOW,CWMLOW        &
      &                 ,ZSL,PLOW                                       &
      &                 ,U10,V10,TH02,TH10,Q02,Q10,PSHLTR               &
-     &                 ,z_o,z_t,z_q&
+     &                 ,calc_ust,z_o,z_t,z_q&
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
      &                 ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
@@ -447,21 +356,32 @@ CONTAINS
 !     *                                                              *
 !     ****************************************************************
 !----------------------------------------------------------------------
+     USE module_ideal, ONLY : qsat
+
 !
       IMPLICIT NONE
 !
 !----------------------------------------------------------------------
+
+
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
      &                     ,IMS,IME,JMS,JME,KMS,KME                    &
      &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
 !
       INTEGER,INTENT(IN) :: NTSD
 !
+
+      LOGICAL :: calc_ust
+
       REAL,INTENT(IN) :: CWMLOW,PBLH,PLOW,QLOW,PSFC,SEAMASK            &
-     &                  ,THELOW,THLOW,THS,TLOW,TZ0,ULOW,VLOW,WETM,ZSL
+     &                  ,THELOW,THLOW,TLOW,TZ0,ULOW,VLOW,WETM,ZSL
 !
-      REAL,INTENT(OUT) :: CHS,CHS2,CPM,CQS2,CT,FLHC,FLQC,FLX_LH,HFX    &
-     &                   ,PSHLTR,Q02,Q10,QFX,QGH,RLMO,TH02,TH10,U10,V10
+      REAL,INTENT(inOUT) :: THS
+
+      REAL,INTENT(OUT) :: CHS,CHS2,CPM,CQS2,CT,FLHC,FLQC,FLX_LH    &
+     &                   ,PSHLTR,Q02,Q10,QGH,RLMO,TH02,TH10,U10,V10
+
+      REAL,INTENT(in) :: HFX,QFX
 !
       REAL,INTENT(INOUT) :: AKHS,AKMS,QZ0,THZ0,USTAR,UZ0,VZ0,Z0,QS
 
@@ -491,6 +411,15 @@ CONTAINS
 !----------------------------------------------------------------------
 !**********************************************************************
 !----------------------------------------------------------------------
+
+      REAL :: tskv,thskv,rhox,molength,zeta,zeta2,zeta10,yy,psih,xx,psim,&
+           &hvflx
+
+      REAL, PARAMETER :: alphastable= 5., alphaunstable=16.,&
+           &a_stable = 1.,b_stable = 2./3.,c_stable = 5., d_stable = .35,&
+           &epsilonmol=1.e-7
+
+
       RDZ=1./ZSL
       CXCHL=EXCML*RDZ
       CXCHS=EXCMS*RDZ
@@ -503,6 +432,9 @@ CONTAINS
       ELSE
         BTGH=BTGX*1000.
       ENDIF
+
+
+
 !
 !----------------------------------------------------------------------
 !
@@ -526,25 +458,30 @@ CONTAINS
             IF(USTAR<USTR)THEN
 !
               IF(NTSD==1)THEN
-                AKMS=CXCHS
-                AKHS=CXCHS
-                QS=QLOW
+                 AKMS=CXCHS
+                 AKHS=CXCHS
              ENDIF
 !
+
               ZU=FZU1*SQRT(SQRT(Z0*USTAR*RVISC))/USTAR
               WGHT=AKMS*ZU*RVISC
               RWGH=WGHT/(WGHT+1.)
               UZ0=(ULOW*RWGH+UZ0)*0.5
               VZ0=(VLOW*RWGH+VZ0)*0.5
+
+              z_o=zu
 !
               ZT=FZT1*ZU
               ZQ=FZQ1*ZT
+              z_t=zt
+              z_q=zq
               WGHTT=AKHS*ZT*RTVISC
               WGHTQ=AKHS*ZQ*RQVISC
+
 !
               IF(NTSD>1)THEN
-                THZ0=((WGHTT*THLOW+THS)/(WGHTT+1.)+THZ0)*0.5
-                QZ0=((WGHTQ*QLOW+QS)/(WGHTQ+1.)+QZ0)*0.5
+!                THZ0=((WGHTT*THLOW+THS)/(WGHTT+1.)+THZ0)*0.5
+!                QZ0=((WGHTQ*QLOW+QS)/(WGHTQ+1.)+QZ0)*0.5
               ELSE
                 THZ0=(WGHTT*THLOW+THS)/(WGHTT+1.)
                 QZ0=(WGHTQ*QLOW+QS)/(WGHTQ+1.)
@@ -552,19 +489,23 @@ CONTAINS
 !
            ENDIF
 !
-            IF(USTAR>=USTR.AND.USTAR<USTC)THEN
+
+           IF(USTAR>=USTR.AND.USTAR<USTC)THEN
               ZU=Z0
               UZ0=0.
               VZ0=0.
+              z_o=zu
 !
               ZT=FZT2*SQRT(SQRT(Z0*USTAR*RVISC))/USTAR
               ZQ=FZQ2*ZT
+              z_t=zt
+              z_q=zq
               WGHTT=AKHS*ZT*RTVISC
               WGHTQ=AKHS*ZQ*RQVISC
 !
               IF(NTSD>1)THEN
-                THZ0=((WGHTT*THLOW+THS)/(WGHTT+1.)+THZ0)*0.5
-                QZ0=((WGHTQ*QLOW+QS)/(WGHTQ+1.)+QZ0)*0.5
+!                THZ0=((WGHTT*THLOW+THS)/(WGHTT+1.)+THZ0)*0.5
+!                QZ0=((WGHTQ*QLOW+QS)/(WGHTQ+1.)+QZ0)*0.5
               ELSE
                 THZ0=(WGHTT*THLOW+THS)/(WGHTT+1.)
                 QZ0=(WGHTQ*QLOW+QS)/(WGHTQ+1.)
@@ -579,46 +520,52 @@ CONTAINS
             VZ0=0.
 !
             ZT=Z0
-            THZ0=THS
+            IF(NTSD>1)THEN
+            ELSE
+               THZ0=THS
+               QZ0=QS
+            ENDIF
 !
             ZQ=Z0
-            QZ0=QS
+!            QZ0=QS
+
+            z_o=zu
+            z_t=zt
+            z_q=zq
+            
 !----------------------------------------------------------------------
          ENDIF
 !----------------------------------------------------------------------
-          TEM=(TLOW+TZ0)*0.5
-          THM=(THELOW+THZ0)*0.5
-!
-          A=THM*P608
-          B=(ELOCP/TEM-1.-P608)*THM
-!
-          DTHV=((THELOW-THZ0)*((QLOW+QZ0+CWMLOW)*(0.5*P608)+1.)        &
-     &        +(QLOW-QZ0+CWMLOW)*A+CWMLOW*B)
-!
-          DU2=MAX((ULOW-UZ0)**2+(VLOW-VZ0)**2,EPSU2)
-          RIB=BTGX*DTHV*ZSL/DU2
-!----------------------------------------------------------------------
-!         IF(RIB>=RIC)THEN
-!----------------------------------------------------------------------
-!           AKMS=MAX( VISC*RDZ,CXCHS)
-!           AKHS=MAX(TVISC*RDZ,CXCHS)
-!----------------------------------------------------------------------
-!         ELSE  !  turbulent branch
-!----------------------------------------------------------------------
-            ZSLU=ZSL+ZU
-            ZSLT=ZSL+ZT
-!
-            RZSU=ZSLU/ZU
-            RZST=ZSLT/ZT
-!
-            RLOGU=LOG(RZSU)
-            RLOGT=LOG(RZST)
+
+         IF (ITR==1) THEN
+            RLOW=PLOW/(R_D*TLOW)
+            HSFLX=-HFX/(rlow*cp)
+         ENDIF
+         
+            z_t=zt
+            z_q=z_t
+
+         tskv=tlow*(1.+p608*qlow)
+         rhox= psfc / (r_d * tskv)
+!         rhox=rlow
+         thskv=thlow*(1.+p608*qlow)
+
+         hvflx=hfx/(cp*rhox)+p608*thskv*qfx/rhox
+         molength=-ustar**3*thlow/&
+              &(vkarman*g*hvflx)
+         IF (ABS(molength) < epsilonmol) THEN
+            molength=SIGN(1.,molength)*epsilonmol
+         ENDIF
+
+         rlmo=1./molength
+
+
 !
 !----------------------------------------------------------------------
 !***  1./MONIN-OBUKHOV LENGTH
 !----------------------------------------------------------------------
 !
-            RLMO=ELFC*AKHS*DTHV/USTAR**3
+!            RLMO=ELFC*AKHS*DTHV/USTAR**3
 !
             ZETALU=ZSLU*RLMO
             ZETALT=ZSLT*RLMO
@@ -669,13 +616,21 @@ CONTAINS
             USTARK=USTAR*VKARMAN
             AKMS=MAX(USTARK/SIMM,CXCHS)
             AKHS=MAX(USTARK/SIMH,CXCHS)
+
+
+
 !
 !----------------------------------------------------------------------
 !***  BELJAARS CORRECTION FOR USTAR
 !----------------------------------------------------------------------
 !
-            WSTAR2=WWST2*ABS(BTGH*AKHS*DTHV)**(2./3.)
-            USTAR=MAX(SQRT(AKMS*SQRT(DU2+WSTAR2)),EPSUST)
+            IF (hvflx > 0) THEN !- why not
+               WSTAR2=WWST2*ABS(BTGH*hvflx)**(2./3.)
+            ELSE
+               WSTAR2=0.
+            ENDIF
+
+
 !----------------------------------------------------------------------
 !         ENDIF  !  End of turbulent branch
 !----------------------------------------------------------------------
@@ -692,40 +647,37 @@ CONTAINS
 !
 !----------------------------------------------------------------------
 !
-        IF(NTSD==1)THEN
-          QS=QLOW
-        ENDIF
+
+        
 !
         ZU=Z0
         UZ0=0.
         VZ0=0.
 !
         ZT=ZU*ZTFC
-        THZ0=THS
-        QZ0=QS
-!----------------------------------------------------------------------
-        TEM=(TLOW+TZ0)*0.5
-        THM=(THELOW+THZ0)*0.5
+
+        IF(NTSD>1)THEN
+        ELSE
+           THZ0=THS
+           QZ0=QS
+        ENDIF
 !
-        A=THM*P608
-        B=(ELOCP/TEM-1.-P608)*THM
-!
-        DTHV=((THELOW-THZ0)*((QLOW+QZ0+CWMLOW)*(0.5*P608)+1.)          &
-     &       +(QLOW-QZ0+CWMLOW)*A+CWMLOW*B)
-!
-        DU2=MAX((ULOW-UZ0)**2+(VLOW-VZ0)**2,EPSU2)
-        RIB=BTGX*DTHV*ZSL/DU2
-!----------------------------------------------------------------------
-!       IF(RIB>=RIC)THEN
-!         AKMS=MAX( VISC*RDZ,CXCHL)
-!         AKHS=MAX(TVISC*RDZ,CXCHL)
-!----------------------------------------------------------------------
-!       ELSE  !  Turbulent branch
-!----------------------------------------------------------------------
-          ZSLU=ZSL+ZU
-          RZSU=ZSLU/ZU
-          RLOGU=LOG(RZSU)
-          ZSLT=ZSL+ZU
+!        THZ0=THS
+!        QZ0=QS
+
+        z_o=zu
+        z_t=zt
+        z_q=zq
+        
+        RLOW=PLOW/(R_D*TLOW)
+!        HSFLX=-HFX/(rlow*cp)
+
+
+        ZSLU=ZSL+ZU
+        RZSU=ZSLU/ZU
+        RLOGU=LOG(RZSU)
+        ZSLT=ZSL+ZU
+
 !----------------------------------------------------------------------
 !
           DO ITR=1,ITRMX
@@ -738,16 +690,36 @@ CONTAINS
 !zj         ZT=EXP(ZILFC*SQRT(USTAR*ZU))*ZU
             RZST=ZSLT/ZT
             RLOGT=LOG(RZST)
-!
+
+            z_t=zt
+            z_q=z_t
+
+         tskv=tlow*(1.+p608*qlow)
+         rhox= psfc / (r_d * tskv)
+!         rhox=rlow
+         thskv=thlow*(1.+p608*qlow)
+
+         hvflx=hfx/(cp*rhox)+p608*thskv*qfx/rhox
+
+         molength=-ustar**3*thlow/&
+              &(vkarman*g*hvflx)
+         IF (ABS(molength) < epsilonmol) THEN
+            molength=SIGN(1.,molength)*epsilonmol
+         ENDIF
+
+         rlmo=1./molength
+
 !----------------------------------------------------------------------
 !***  1./MONIN-OBUKHOV LENGTH-SCALE
 !----------------------------------------------------------------------
 !
-            RLMO=ELFC*AKHS*DTHV/USTAR**3
+!            RLMO=ELFC*AKHS*DTHV/USTAR**3
+
             ZETALU=ZSLU*RLMO
             ZETALT=ZSLT*RLMO
             ZETAU=ZU*RLMO
             ZETAT=ZT*RLMO
+
 !
             ZETALU=MIN(MAX(ZETALU,ZTMIN2),ZTMAX2)
             ZETALT=MIN(MAX(ZETALT,ZTMIN2),ZTMAX2)
@@ -793,16 +765,24 @@ CONTAINS
             USTARK=USTAR*VKARMAN
             AKMS=MAX(USTARK/SIMM,CXCHL)
             AKHS=MAX(USTARK/SIMH,CXCHL)
-!
+            
+
 !----------------------------------------------------------------------
 !***  BELJAARS CORRECTION FOR USTAR
 !----------------------------------------------------------------------
 !
-            WSTAR2=WWST2*ABS(BTGH*AKHS*DTHV)**(2./3.)
+
+            IF (hvflx > 0) THEN !- why not
+               WSTAR2=WWST2*ABS(BTGH*hvflx)**(2./3.)
+            ELSE
+               WSTAR2=0.
+            ENDIF
+               
             USTAR=MAX(SQRT(AKMS*SQRT(DU2+WSTAR2)),EPSUST)
+            
 !
 !----------------------------------------------------------------------
-          ENDDO  !  End of iteration for land points
+         ENDDO  !  End of iteration for land points
 !----------------------------------------------------------------------
 !
 !       ENDIF  !  End of turbulant branch over land
@@ -811,20 +791,20 @@ CONTAINS
 !
        ENDIF  !  End of land/sea branch
 
-       z_o=z0
-       z_t=zt
-       z_q=z_t
-!
+!no need to recalculate skin temp for water
+
+
 !----------------------------------------------------------------------
 !***  COUNTERGRADIENT FIX
 !----------------------------------------------------------------------
-      HV=-AKHS*DTHV
+      HV=hvflx
       IF(HV>0.)THEN
         FCT=-10.*(BTGX)**(-1./3.)
         CT=FCT*(HV/(PBLH*PBLH))**(2./3.)
       ELSE
         CT=0.
       ENDIF
+
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 !***  THE FOLLOWING DIAGNOSTIC BLOCK PRODUCES 2-m and 10-m VALUES
@@ -838,10 +818,29 @@ CONTAINS
 !
       UMFLX=AKMS*(ULOW -UZ0 )
       VMFLX=AKMS*(VLOW -VZ0 )
-      HSFLX=AKHS*(THLOW-THZ0)
-      HLFLX=AKHS*(QLOW -QZ0 )
+      HSFLX=-HFX/(rhox*cp)
+      HLFLX=-QFX/rhox
+      
+      AKHS=HSFLX/(THLOW-THZ0)
+      qz0=qlow-HLFLX/akhs
+      if (qlow==qsat(plow,tlow)) qz0=qlow
+!      PRINT *,AKHS*(THLOW-THZ0),'111',thz0
+!      PRINT *,AKHS*(qlow-qz0),'111',qz0
+
+!      thz0=thlow-HSFLX/AKHS
+!      ths=thz0
+!      PRINT *,thz0,akhs,'111'
+!      ths=THLOW-HSFLX/akhs
+!      thz0=THLOW-HSFLX/akhs
+!      dthv=HLFLX/akhs
+!      ths=(thlow*(1.+p608*qlow)-dthv)/(1.+p608*qlow)
+
+!      PRINT *,HSFLX,'111'
+!      HSFLX=AKHS*(THLOW-THZ0)
+!      PRINT *,HSFLX,'222'
+!      HLFLX=AKHS*(QLOW -QZ0 )
 !----------------------------------------------------------------------
-!     IF(RIB>=RIC)THEN
+!     IF(RIB>=RI)CTHEN
 !----------------------------------------------------------------------
 !       IF(SEAMASK>0.5)THEN
 !         AKMS10=MAX( VISC/10.,CXCHS)
@@ -998,7 +997,7 @@ CONTAINS
         U10E=UMFLX/EKMS10+UZ0
         V10E=VMFLX/EKMS10+VZ0
 !
-      ENDIF
+     ENDIF
 !
       U10=U10E
       V10=V10E
@@ -1007,15 +1006,24 @@ CONTAINS
 !***  SET OTHER WRF DRIVER ARRAYS
 !----------------------------------------------------------------------
 !
-      RLOW=PLOW/(R_D*TLOW)
+
+
+
+
       CHS=AKHS
       CHS2=AKHS02
       CQS2=AKHS02
-      HFX=-RLOW*CP*HSFLX
-      QFX=-RLOW*HLFLX*WETM
+!      HFX=-RLOW*CP*HSFLX
+!      QFX=-RLOW*HLFLX*WETM
+
+!no diagnostics for 2 and 10m for now
+1000  CONTINUE
+
       FLX_LH=XLV*QFX
-      FLHC=RLOW*CP*AKHS
-      FLQC=RLOW*AKHS*WETM
+!      FLHC=RLOW*CP*AKHS
+      FLHC=rhox*CP*AKHS
+!      FLQC=RLOW*AKHS*WETM
+      FLQC=rhox*AKHS*WETM
 !!!   QGH=PQ0/PSHLTR*EXP(A2S*(TSK-A3S)/(TSK-A4S))
       QGH=((1.-SEAMASK)*PQ0+SEAMASK*PQ0SEA)                            &
      &     /PLOW*EXP(A2S*(TLOW-A3S)/(TLOW-A4S))
@@ -1033,240 +1041,12 @@ CONTAINS
       ENDIF
 !----------------------------------------------------------------------
 !
-      END SUBROUTINE SFCDIF
-!
-!----------------------------------------------------------------------
-      SUBROUTINE MYJSFCINIT(LOWLYR,USTAR,Z0                            &
-     &                     ,SEAMASK,XICE,IVGTYP,RESTART                &
-     &                     ,ALLOWED_TO_READ                            &
-     &                     ,IDS,IDE,JDS,JDE,KDS,KDE                    &
-     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
-     &                     ,ITS,ITE,JTS,JTE,KTS,KTE)
-!----------------------------------------------------------------------
-      IMPLICIT NONE
-!----------------------------------------------------------------------
-      LOGICAL,INTENT(IN) :: RESTART,ALLOWED_TO_READ
-!
-      INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
-     &                     ,ITS,ITE,JTS,JTE,KTS,KTE
-!
-      INTEGER,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: IVGTYP
-!
-      INTEGER,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: LOWLYR
-!
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: SEAMASK,XICE
-!
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: USTAR,Z0
-!
-      REAL,DIMENSION(0:30) :: VZ0TBL
-      REAL,DIMENSION(0:30) :: VZ0TBL_24
-!
-      INTEGER :: I,IDUM,IRECV,J,JDUM,K,ITF,JTF,KTF,MAXGBL_IVGTYP       &
-     &,          MAXLOC_IVGTYP,MPI_COMM_COMP
-!
-!     INTEGER :: MPI_INTEGER,MPI_MAX
-!
-      REAL :: SM,X,ZETA1,ZETA2,ZRNG1,ZRNG2
-!
-      REAL :: PIHF=3.1415926/2.,EPS=1.E-6
-!----------------------------------------------------------------------
-      VZ0TBL=                                                          &
-     &  (/0.,                                                          &
-     &    2.653,0.826,0.563,1.089,0.854,0.856,0.035,0.238,0.065,0.076  &
-     &   ,0.011,0.035,0.011,0.000,0.000,0.000,0.000,0.000,0.000,0.000  &
-     &   ,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000/)
-
-      VZ0TBL_24= (/0.,                                                 &
-     &            1.00,  0.07,  0.07,  0.07,  0.07,  0.15,             &
-     &            0.08,  0.03,  0.05,  0.86,  0.80,  0.85,             &
-     &            2.65,  1.09,  0.80,  0.001, 0.04,  0.05,             &
-     &            0.01,  0.04,  0.06,  0.05,  0.03,  0.001,            &
-     &            0.000, 0.000, 0.000, 0.000, 0.000, 0.000/)
-
-!----------------------------------------------------------------------
-!
-      JTF=MIN0(JTE,JDE-1)
-      KTF=MIN0(KTE,KDE-1)
-      ITF=MIN0(ITE,IDE-1)
-!
-!
-!***  FOR NOW, ASSUME SIGMA MODE FOR LOWEST MODEL LAYER
-!
-      DO J=JTS,JTF
-      DO I=ITS,ITF
-        LOWLYR(I,J)=1
-!       USTAR(I,J)=EPSUST
-      ENDDO
-      ENDDO
-!----------------------------------------------------------------------
-#if (NMM_CORE == 1)
-!
-      IF(.NOT.RESTART)THEN
-!       CALL WRF_GET_DM_COMMUNICATOR(MPI_COMM_COMP)
-!       MAXLOC_IVGTYP=MAXVAL(IVGTYP)
-!       CALL MPI_ALLREDUCE(MAXLOC_IVGTYP,MAXGBL_IVGTYP,1,MPI_INTEGER   &
-!    &,                    MPI_MAX,MPI_COMM_COMP,IRECV)
-        MAXGBL_IVGTYP=MAXVAL(IVGTYP)
-        CALL WRF_DM_MAXVAL(MAXGBL_IVGTYP,IDUM,JDUM)
-!
-        IF (MAXGBL_IVGTYP<13) THEN
-          DO J=JTS,JTE
-          DO I=ITS,ITE
-            SM=SEAMASK(I,J)-1.
-            IF(SM+XICE(I,J)<0.5)THEN
-              Z0(I,J)=Z0(I,J)+VZ0TBL(IVGTYP(I,J))
-            ENDIF
-          ENDDO
-          ENDDO
-!
-        ELSE
-!
-          DO J=JTS,JTE
-          DO I=ITS,ITE
-            SM=SEAMASK(I,J)-1.
-            IF(SM+XICE(I,J)<0.5)THEN
-              Z0(I,J)=Z0(I,J)+VZ0TBL_24(IVGTYP(I,J))
-            ENDIF
-          ENDDO
-          ENDDO
-!
-        ENDIF ! Vegtype check
-!
-      ENDIF ! Restart check
-#endif
-!----------------------------------------------------------------------
-      IF(.NOT.RESTART)THEN
-        DO J=JTS,JTE
-        DO I=ITS,ITF
-          USTAR(I,J)=0.1
-        ENDDO
-        ENDDO
-      ENDIF
-!----------------------------------------------------------------------
-!
-!***  COMPUTE SURFACE LAYER INTEGRAL FUNCTIONS
-!
-!----------------------------------------------------------------------
-      FH01=1.
-      FH02=1.
-!
-!      ZTMIN1=-10.0
-!      ZTMAX1=2.0
-!      ZTMIN2=-10.0
-!      ZTMAX2=2.0
-      ZTMIN1=-5.0
-      ZTMAX1=1.0
-      ZTMIN2=-5.0
-      ZTMAX2=1.0
-!
-      ZRNG1=ZTMAX1-ZTMIN1
-      ZRNG2=ZTMAX2-ZTMIN2
-!
-      DZETA1=ZRNG1/(KZTM-1)
-      DZETA2=ZRNG2/(KZTM-1)
-!
-!----------------------------------------------------------------------
-!***  FUNCTION DEFINITION LOOP
-!----------------------------------------------------------------------
-!
-      ZETA1=ZTMIN1
-      ZETA2=ZTMIN2
-!
-      DO K=1,KZTM
-!
-!----------------------------------------------------------------------
-!***  UNSTABLE RANGE
-!----------------------------------------------------------------------
-!
-        IF(ZETA1<0.)THEN
-!
-!----------------------------------------------------------------------
-!***  PAULSON 1970 FUNCTIONS
-!----------------------------------------------------------------------
-          X=SQRT(SQRT(1.-16.*ZETA1))
-!
-          PSIM1(K)=-2.*LOG((X+1.)/2.)-LOG((X*X+1.)/2.)+2.*ATAN(X)-PIHF
-          PSIH1(K)=-2.*LOG((X*X+1.)/2.)
-!
-!----------------------------------------------------------------------
-!***  STABLE RANGE
-!----------------------------------------------------------------------
-!
-        ELSE
-!
-!----------------------------------------------------------------------
-!***  PAULSON 1970 FUNCTIONS
-!----------------------------------------------------------------------
-!
-!         PSIM1(K)=5.*ZETA1
-!         PSIH1(K)=5.*ZETA1
-!----------------------------------------------------------------------
-!***   HOLTSLAG AND DE BRUIN 1988
-!----------------------------------------------------------------------
-!
-          PSIM1(K)=0.7*ZETA1+0.75*ZETA1*(6.-0.35*ZETA1)*EXP(-0.35*ZETA1)
-          PSIH1(K)=0.7*ZETA1+0.75*ZETA1*(6.-0.35*ZETA1)*EXP(-0.35*ZETA1)
-!----------------------------------------------------------------------
-!
-        ENDIF
-!
-!----------------------------------------------------------------------
-!***  UNSTABLE RANGE
-!----------------------------------------------------------------------
-!
-        IF(ZETA2<0.)THEN
-!
-!----------------------------------------------------------------------
-!***  PAULSON 1970 FUNCTIONS
-!----------------------------------------------------------------------
-!
-          X=SQRT(SQRT(1.-16.*ZETA2))
-!
-          PSIM2(K)=-2.*LOG((X+1.)/2.)-LOG((X*X+1.)/2.)+2.*ATAN(X)-PIHF
-          PSIH2(K)=-2.*LOG((X*X+1.)/2.)
-!----------------------------------------------------------------------
-!***  STABLE RANGE
-!----------------------------------------------------------------------
-!
-        ELSE
-!
-!----------------------------------------------------------------------
-!***  PAULSON 1970 FUNCTIONS
-!----------------------------------------------------------------------
-!
-!         PSIM2(K)=5.*ZETA2
-!         PSIH2(K)=5.*ZETA2
-!
-!----------------------------------------------------------------------
-!***  HOLTSLAG AND DE BRUIN 1988
-!----------------------------------------------------------------------
-!
-          PSIM2(K)=0.7*ZETA2+0.75*ZETA2*(6.-0.35*ZETA2)*EXP(-0.35*ZETA2)
-          PSIH2(K)=0.7*ZETA2+0.75*ZETA2*(6.-0.35*ZETA2)*EXP(-0.35*ZETA2)
-!----------------------------------------------------------------------
-!
-       ENDIF
-!
-!----------------------------------------------------------------------
-        IF(K==KZTM)THEN
-          ZTMAX1=ZETA1
-          ZTMAX2=ZETA2
-       ENDIF
-!
-        ZETA1=ZETA1+DZETA1
-        ZETA2=ZETA2+DZETA2
-!----------------------------------------------------------------------
-      ENDDO
-!----------------------------------------------------------------------
-      ZTMAX1=ZTMAX1-EPS
-      ZTMAX2=ZTMAX2-EPS
-!----------------------------------------------------------------------
-!
-      END SUBROUTINE MYJSFCINIT
+    END SUBROUTINE SFCDIF_FLUXFORCE
 !
 !----------------------------------------------------------------------
 !
-      END MODULE MODULE_SF_MYJSFC
+!----------------------------------------------------------------------
+!
+    END MODULE MODULE_SF_MYJSFC_FLUXFORCE
 !
 !----------------------------------------------------------------------
