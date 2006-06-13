@@ -25,11 +25,14 @@ type(time_type)         :: time1
 real(r8), allocatable   :: ens(:)
 character(len=129)      :: restart_out_file_name = "member1_ics"
 
+logical                         :: allocate_wrf = .true.
+
 ! Some static initialization
 call gen_init_modules_used
 
 ! Initialize the model now that obs_sequence is all set up
 model_size = get_model_size()
+
 ! Allocate storage for doing advance with ensemble based tools
 allocate(ens(model_size))
 
