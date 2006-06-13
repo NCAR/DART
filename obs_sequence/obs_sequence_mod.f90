@@ -23,7 +23,7 @@ module obs_sequence_mod
 
 use        types_mod, only : r8, DEG2RAD, earth_radius, t_kelvin, es_alpha, es_beta, &
                              es_gamma, gas_constant_v, &
-                             gas_constant, L_over_Rv, missing_r8, ps0
+                             gas_constant, L_over_Rv, MISSING_R8, ps0
 use     location_mod, only : location_type, interactive_location
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, &
@@ -151,7 +151,7 @@ subroutine init_obs_sequence(seq, num_copies, num_qc, &
 type(obs_sequence_type), intent(out) :: seq
 integer, intent(in) :: num_copies, num_qc, expected_max_num_obs
 
-integer :: i
+integer :: i,j
 
 seq%num_copies  = num_copies
 seq%num_qc      = num_qc
@@ -170,9 +170,15 @@ do i = 1, seq%num_qc
    seq%qc_meta_data(i) = 'QC metadata not initialized'
 end do
 
-! Initialize the pointers to allocated but pointing to zero space???
+! Initialize the pointers to allocated and initialize to something benign
 do i = 1, seq%max_num_obs
    allocate(seq%obs(i)%values(num_copies), seq%obs(i)%qc(num_qc))
+   do j = 1, num_copies
+      seq%obs(i)%values(j) = MISSING_R8
+   enddo
+   do j = 1, num_qc
+      seq%obs(i)%qc(j) = 0.0_r8
+   enddo
 end do
 seq%first_time = -1
 seq%last_time  = -1
