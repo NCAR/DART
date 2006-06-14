@@ -71,9 +71,7 @@
    calendar_type = 3,
    surf_obs = .true.,
    h_diab = .false.,
-   adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe",
-   assim_time_window_days = 0,
-   assim_time_window_seconds =  3600  /
+   adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe"  /
 
 &utilities_nml
    TERMLEVEL = 1
