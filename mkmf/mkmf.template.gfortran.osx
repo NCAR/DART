@@ -43,18 +43,17 @@
 #     make install
 # 
 #    The claim is that the upcoming 3.6.2 version will build without setting 
-#    any flags other than the compiler names. (If you build the netCDF libs
+#    any flags other than the compiler names.  If you build the netCDF libs
 #    without the {F90,F,CPP}FLAGS the library will build ok, but when you try
 #    to link applications with it symbols will not be found because of
-#    a mismatch with trailing underscores on the subroutine names.)
+#    a mismatch with trailing underscores on the subroutine names.
 # 
 # 
-# 3. (Optional) For the upcoming MPI-enabled version of DART, a version of 
-#    the MPI library.  I have successfully used the LAM version, but MPICH and 
-#    OpenMPI are also options.  For LAM-MPI, see: http://www.lam-mpi.org
-# 
-#    Follow the download and build instructions.  I used no special flags to
-#    build the library other than specifying the FC=gfortran compiler.
+# Notes:
+#  The bgrid_solo model does not compile at this time with version 4.2.0
+#  of gfortran.  The model code uses the 'transfer' intrinsic which is
+#  not yet working in gfortran.  All other dart code compiled cleanly.
+#
 # 
 # 
 
