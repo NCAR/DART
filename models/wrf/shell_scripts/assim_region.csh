@@ -1,7 +1,8 @@
 #!/bin/csh -f
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -19,26 +20,31 @@ set WORKDIR = $1
 set element = $2
 set temp_dir = $3
 
-rm -rf   $temp_dir
-mkdir -p $temp_dir
-cd       $temp_dir
+set REMOVE = 'rm -rf'
+set   COPY = 'cp -p'
+set   MOVE = 'mv -f'
 
-# Copy the executable, initial condition file, and other inputs to the temp directory
+${REMOVE} $temp_dir
+mkdir -p  $temp_dir
+cd        $temp_dir
 
-cp -pv ${WORKDIR}/assim_region .
-mv -v  ${WORKDIR}/filter_assim_region__in$element filter_assim_region_in
-cp -pv ${WORKDIR}/input.nml .
-cp -pv ${WORKDIR}/filter_assim_obs_seq .
-cp -pv ${WORKDIR}/wrfinput_d0? .
-                   # Provides auxilliary info not avail. from DART state vector
-cp -pv ${WORKDIR}/namelist.input .
+# Copy the executable, initial condition file, and other inputs to the temp directory.
+# wrfinput_d0? provides auxilliary info not available from DART state vector.
+
+${COPY} ${WORKDIR}/assim_region .
+${MOVE} ${WORKDIR}/filter_assim_region__in$element filter_assim_region_in
+${COPY} ${WORKDIR}/input.nml .
+${COPY} ${WORKDIR}/filter_assim_obs_seq .
+${COPY} ${WORKDIR}/wrfinput_d0? .
+${COPY} ${WORKDIR}/namelist.input .
 
 ./assim_region >& assim_region.out
+
 # writes out filter_assim_region_out
 # for filter...assim_tools_mod/filter_assim() to read in with
 # ensemble member #s tacked onto the end
 
-mv -v filter_assim_region_out $WORKDIR/filter_assim_region_out$element
+${MOVE} filter_assim_region_out $WORKDIR/filter_assim_region_out$element
 
 cd $WORKDIR
-#rm -rf $temp_dir
+#${REMOVE} $temp_dir

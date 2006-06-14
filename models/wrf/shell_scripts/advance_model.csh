@@ -1,7 +1,8 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section, 
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -32,13 +33,15 @@ set WORKDIR = $1
 set element = $2
 set temp_dir = $3
 
+set REMOVE = 'rm -rf'
+set   COPY = 'cp -p'
+set   MOVE = 'mv -f'
+
 # Shell script to run the WRF model from DART input.
 
-# set verbose
-
-\rm -rf  $temp_dir
-mkdir -p $temp_dir
-cd       $temp_dir
+${REMOVE} $temp_dir
+mkdir -p  $temp_dir
+cd        $temp_dir
 
 # Copy or link the required files to the temp directory
 
@@ -56,25 +59,25 @@ ln -s ${WORKDIR}/gribmap.txt .
 # nfile is machine specific; ideally, it should be
 # constructed by the script advance_ens.csh
 
-hostname > nfile
+hostname >! nfile
 hostname >> nfile
 ###ln -s  ${WORKDIR}/nfile$element nfile
-cp -pv ${WORKDIR}/wrfinput_d0? .
+${COPY} ${WORKDIR}/wrfinput_d0? .
                    # Provides auxilliary info not avail. from DART state vector
 
 if (  -e ${WORKDIR}/assim_model_state_ic_mean ) then
    ln -s ${WORKDIR}/assim_model_state_ic_mean dart_wrf_vector
    echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
-   cp -pv wrfinput_d01 wrfinput_mean
+   ${COPY} wrfinput_d01 wrfinput_mean
 endif
 
-mv -v ${WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
+${MOVE} ${WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
 
 # Convert DART to wrfinput
 
 echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
 
-\rm dart_wrf_vector
+${REMOVE} dart_wrf_vector
 
 # The program dart_tf_wrf has created the file wrf.info.
 # Time information is extracted from wrf.info.
@@ -191,10 +194,11 @@ while ( $wrfkey < $targkey )
    set iday = `echo "$keys[$ifile] / 86400" | bc`
    set isec = `echo "$keys[$ifile] % 86400" | bc`
 
-# Copy the boundary condition file to the temp directory.
-   cp -pv ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+   # Copy the boundary condition file to the temp directory.
 
-   cp -pv ${WORKDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
+   ${COPY} ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+
+   ${COPY} ${WORKDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
 
    if ( $targkey > $keys[$ifile] ) then
       set INTERVAL_SS = `echo "$keys[$ifile] - $wrfkey" | bc`
@@ -226,16 +230,18 @@ while ( $wrfkey < $targkey )
       if ($END_MONTH > 12 ) then
          set END_MONTH = 1
          @ END_YEAR ++
-if ( `expr $END_YEAR \% 4` == 0 ) then
-   set days_in_month[2] = 29
-endif
-if ( `expr $END_YEAR \% 100` == 0 ) then
-   if ( `expr $END_YEAR \% 400` == 0 ) then
-      set days_in_month[2] = 29
-   else
-      set days_in_month[2] = 28
-   endif
-endif
+
+         if ( `expr $END_YEAR \% 4` == 0 ) then
+            set days_in_month[2] = 29
+         endif
+         if ( `expr $END_YEAR \% 100` == 0 ) then
+            if ( `expr $END_YEAR \% 400` == 0 ) then
+               set days_in_month[2] = 29
+            else
+               set days_in_month[2] = 28
+            endif
+         endif
+
       endif
    end
 
@@ -254,7 +260,7 @@ endif
 # Update time control entries in the WRF namelist.input:
 #-----------------------------------------------------------------------
 
-\rm -f script.sed
+${REMOVE} script.sed
 cat > script.sed << EOF
  /run_hours/c\
  run_hours                  = ${RUN_HOURS}
@@ -299,7 +305,7 @@ EOF
    echo $infl | ${WORKDIR}/update_wrf_bc >& out.update_wrf_bc
 
    if ( -e rsl.out.integration ) then
-      \rm -f rsl.*
+      ${REMOVE} rsl.*
    endif
 
    ${ADV_MOD_COMMAND} >>& rsl.out.integration
@@ -315,20 +321,20 @@ if ( -e ${WORKDIR}/extract ) then
    if ( $element == 1 ) then
       ls wrfout_d0${MY_NUM_DOMAINS}_* > wrfout.list
       if ( -e ${WORKDIR}/psfc.nc ) then
-         cp -pv ${WORKDIR}/psfc.nc .
+         ${COPY} ${WORKDIR}/psfc.nc .
       endif
       echo `cat wrfout.list | wc -l` | ${WORKDIR}/extract
-      mv -v psfc.nc ${WORKDIR}/.
+      ${MOVE} psfc.nc ${WORKDIR}/.
    endif
 endif
 
    set dn = 1
    while ( $dn <= $MY_NUM_DOMAINS )
-      mv -f wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
+      ${MOVE} wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
       @ dn ++
    end
 
-   \rm -f wrfout*
+   ${REMOVE} wrfout*
 
    set START_YEAR  = $END_YEAR
    set START_MONTH = $END_MONTH
@@ -348,9 +354,9 @@ end
 # create new input to DART (taken from "wrfinput")
 echo ".false." | ${WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
 
-mv -f dart_wrf_vector $WORKDIR/assim_model_state_ud$element
+${MOVE} dart_wrf_vector $WORKDIR/assim_model_state_ud$element
 
 cd $WORKDIR
-#\rm -rf $temp_dir
+#${REMOVE} $temp_dir
 
 exit
