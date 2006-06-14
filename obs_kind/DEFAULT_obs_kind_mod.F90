@@ -33,7 +33,8 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
           KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, &
           KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
-          KIND_GPSRO
+          KIND_GPSRO, &
+          KIND_VORTEX_LON, KIND_VORTEX_LAT, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 
 ! Public access to the observation types is provided here
 ! This is constructed by the preprocessor
@@ -71,6 +72,10 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
                       KIND_SNOW_MIXING_RATIO           = 15, &
                       KIND_GPSRO                       = 16
 
+integer, parameter :: KIND_VORTEX_LON                  = 81, &
+                      KIND_VORTEX_LAT                  = 82, &
+                      KIND_VORTEX_PMIN                 = 83, &
+                      KIND_VORTEX_WMAX                 = 84
 
 ! Index values associated with each observation kind string are defined
 ! by the preprocessor and inserted here. The total number of obs_kinds
