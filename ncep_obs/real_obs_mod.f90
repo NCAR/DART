@@ -88,23 +88,22 @@ type(obs_sequence_type) :: real_obs_sequence
 
 
 type(obs_type) :: obs, prev_obs
-integer :: i, num_copies, num_qc, dfile
+integer :: i, num_copies, num_qc
 integer :: days, seconds
-integer :: day0, sec0, day_plus
+integer :: day0, sec0
 integer :: hour, imin, sec
-integer :: year2, month2, day2, hour2, min2, sec2
 integer :: obs_num, calender_type, iskip
 type(time_type) :: current_day, next_day
 
-integer :: obs_unit, obs_unit2
+integer :: obs_unit
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
 real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, rcount, zob2
 real (r8) :: vloc, obs_value, lon01, lat01, aqc, var2
 
 real (r8) :: bin_beg, bin_end
 
-character(len = 8 ) :: obsdate, obsdate2
-character(len = 80) :: obsfile, obsfile2
+character(len = 8 ) :: obsdate
+character(len = 80) :: obsfile
 character(len = 129) :: copy_meta_data, qc_meta_data
 character(len = 6 ) :: subset
 logical :: pass
@@ -149,10 +148,7 @@ call get_time(current_day, sec0, day0)
 !   output the day and sec.
      print*, 'day, sec= ', sec0, day0
 
-
-day_plus = day0 + 1
-
-! define observation data file name for the current day
+! define observation data file name for the day
 ! open NCEP observation file
 
 write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
@@ -162,63 +158,28 @@ open(unit = obs_unit, file = obsfile, form='formatted', status='old')
 print*, 'file opened= ', obsfile
 rewind (obs_unit)
 
-! define observation data file name for the next day
-
-next_day = set_time(sec0, day_plus)
-call get_date(next_day, year2, month2, day2, hour2, min2, sec2)
-
-write(obsdate2, '(i4.4,i2.2,i2.2)') year2, month2, day2
-
-print*, 'ncep obsdates = ', obsdate, ' - ',  obsdate2
+print*, 'ncep obsdates = ', obsdate
 
 obs_num = 0
 iskip   = 0
 
-! input file index for the first day
-dfile = 1  
+! input file index for the day
 !-----------------------------------------------------------
 !   Observations loop. read in the daily files (from 03-27Z)
 !-----------------------------------------------------------
 obsloop:  do
 
-   if(dfile ==1) then
-      read(obs_unit,880,end=100) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
+      read(obs_unit,880,end=200) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
                                   obstype, iqc, subset, pc
-   endif
-   go to 102 
-
-100 dfile = 2
-   close(obs_unit)
-
-   ! read in the next day to get the obs at exact 03Z as well. 
-   obs_unit2 = get_unit()
-   obsfile2  = trim(adjustl(ObsBase))//obsdate2
-   open(unit = obs_unit2, file = obsfile2, form='formatted', status='old')
-   print*, 'next day file opened= ', obsfile2
-   rewind (obs_unit2)
-
-102 continue
-
-   ! input file index for the next day
-   if(dfile ==2) then
-      read(obs_unit2,880,end=200) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
-                                   obstype, iqc, subset, pc
-      time = time + 24.0_r8
-   endif
 
  880 format(f4.2,2f7.3,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
 !880 format(f4.2, 2f7.3, e12.5, f7.2, f7.2, f9.0, f7.3, f5.0, i3)
 
    !------------------------------------------------------------------------
    ! A 'day' is from 03:01Z of one day through 03Z of the next.
-   ! skip the observations at exact 03Z of the first day
-   if(time == 3.0_r8 .and. dfile == 1) then
+   ! skip the observations at exact 03Z of the beginning of the day
+   if(time == 3.0_r8 ) then
       iskip = iskip + 1
-      cycle obsloop 
-   endif 
-
-   ! skip the observations not at exact 00Z of the next day
-   if(time > 27.0_r8 .and. dfile == 2) then
       cycle obsloop 
    endif 
 
@@ -319,8 +280,7 @@ obsloop:  do
       cycle obsloop 
    endif
 
-!    if(dfile == 1) print*, 'obs= ', trim(obsfile), time, dfile
-!    if(dfile == 2) print*, 'obs= ', trim(obsfile1), time, dfile
+!     print*, 'obs= ', trim(obsfile), time
 !---------------------------------------------------------------
 
    obs_num = obs_num + 1
@@ -414,9 +374,9 @@ end do obsloop
 
 200 continue
 
-close(obs_unit2)
+close(obs_unit)
 
-print*, 'obs_num= ',obs_num,' skipped= ',obsdate,iskip,obsdate2
+print*, 'obs_num= ',obs_num,' skipped= ',obsdate,iskip
 
 end function real_obs_sequence
 
