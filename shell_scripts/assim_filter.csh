@@ -44,7 +44,7 @@
 #BSUB -J assim_filter
 #BSUB -o assim_filter.%J.o
 #BSUB -q regular
-#BSUB -n 9
+#BSUB -n 8
 
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system 
@@ -69,7 +69,7 @@
 #PBS -e assim_filter.err
 #PBS -o assim_filter.log
 #PBS -q medium
-#PBS -l nodes=5:ppn=2
+#PBS -l nodes=4:ppn=2
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -77,7 +77,7 @@
 # and can set 'queue-independent' variables for use for the remainder 
 # of the script.
 
-if ($?LS_SUBCWD) then                   # LSF
+if ($?LS_SUBCWD) then
 
    # LSF has a list of processors already in a variable (LSB_HOSTS)
 
@@ -87,7 +87,7 @@ if ($?LS_SUBCWD) then                   # LSF
    set REMOTECMD = ssh
    set SCRATCHDIR = /ptmp/${user}
 
-else if ($?PBS_O_WORKDIR) then          # PBS
+else if ($?PBS_O_WORKDIR) then
 
    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
 
@@ -97,7 +97,7 @@ else if ($?PBS_O_WORKDIR) then          # PBS
    set REMOTECMD = rsh
    set SCRATCHDIR = /scratch/local/${user}
 
-else if ($?OCOTILLO_NODEFILE) then      # ocotillo
+else if ($?OCOTILLO_NODEFILE) then
 
    # ocotillo is a 'special case'. It is the only cluster I know of with
    # no queueing system.  You must generate a list of processors in a 
@@ -116,11 +116,15 @@ else if ($?OCOTILLO_NODEFILE) then      # ocotillo
 
 else                                    # interactive
 
+   if ( ! $?host) then
+      setenv host `uname -n`
+   endif
+
    set CENTRALDIR = `pwd`
    set JOBNAME = interactive_assim_filter
    set PROCNAMES = "$host $host $host $host"
    set REMOTECMD = csh
-   set SCRATCHDIR = /tmp/${user}
+   set SCRATCHDIR = `pwd`
 
 endif
 
@@ -134,13 +138,14 @@ cd $CENTRALDIR
 
 set NPROCS = `echo $PROCNAMES | wc -w`
 
-# Output to confirm job characteristics
 
+# Output to confirm job characteristics
+echo " "
 echo "Running $JOBNAME on host "`hostname`
 echo "Time is "`date`
-echo "Directory is $CENTRALDIR"
+echo "(central) directory is $CENTRALDIR"
 echo "This job has allocated $NPROCS processors."
-echo "This job runs on the following nodes:"
+echo "They are:"
 echo $PROCNAMES
 echo " "
 
@@ -154,7 +159,11 @@ echo " "
 set MASTERLOG = ${CENTRALDIR}/batchflag
 
       # First line of assim_region_control is the number of regions to be assimilated
-      set nregions = `head -1 assim_region_control`
+      if ( -e assim_region_control) then
+         set nregions = `head -1 assim_region_control`
+      else
+         set nregions = 1
+      endif
       echo "$JOBNAME - assimilating $nregions regions at " `date` >> $MASTERLOG
       echo "$JOBNAME - assimilating $nregions regions at " `date`
 
@@ -198,8 +207,8 @@ set MASTERLOG = ${CENTRALDIR}/batchflag
       # length, or not present -- we assume an assimilation failed for some reason.
       # We will try again ... once ... and give up if that does not work.
 
-      echo "Entering assim_region rerun block at "`date`
-      echo "Entering assim_region rerun block at "`date` >> $MASTERLOG
+      echo "$JOBNAME - Entering assim_region rerun block at "`date`
+      echo "$JOBNAME - Entering assim_region rerun block at "`date` >> $MASTERLOG
       echo " " >> $MASTERLOG
 
       set n = 0
@@ -225,11 +234,11 @@ set MASTERLOG = ${CENTRALDIR}/batchflag
                set rerun = ($rerun $n)
                set badprocs = ($badprocs $PROCNAMES[$procnum])
             endif
-            echo "nrerun, rerun = $nrerun $rerun on $PROCNAMES[$procnum]" >> $MASTERLOG
-            echo "nrerun, rerun = $nrerun $rerun on $PROCNAMES[$procnum]"
+            echo "$JOBNAME - nrerun, rerun = $nrerun $rerun on $PROCNAMES[$procnum]" >> $MASTERLOG
+            echo "$JOBNAME - nrerun, rerun = $nrerun $rerun on $PROCNAMES[$procnum]"
          else
-            echo "filter_assim_region_out$n is fine" >> $MASTERLOG
-            echo "filter_assim_region_out$n is fine"
+            echo "$JOBNAME - filter_assim_region_out$n is fine" >> $MASTERLOG
+            echo "$JOBNAME - filter_assim_region_out$n is fine"
          endif
       end
 

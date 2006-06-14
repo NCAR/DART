@@ -66,7 +66,7 @@
 ## This block of directives constitutes the preamble for the LSF queuing system 
 ## LSF is used on the IBM   Linux cluster 'lightning'
 ## LSF is used on the IMAGe Linux cluster 'coral'
-## LSF is used on the IBM   'bluevista'
+## LSF is used on the IBM   cluster 'bluevista'
 ## The queues on lightning and bluevista are supposed to be similar.
 ##
 ## the normal way to submit to the queue is:    bsub < advance_ens_LSF_PBS.csh
@@ -78,7 +78,6 @@
 ##=============================================================================
 #BSUB -J advance_ens
 #BSUB -o adv_ens.%J.log
-#BSUB -P 86850054
 #BSUB -q regular
 #BSUB -n 8
 
@@ -106,7 +105,6 @@
 #PBS -o advance_ens.log
 #PBS -q medium
 #PBS -l nodes=4:ppn=2
-
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -151,38 +149,17 @@ else if ($?OCOTILLO_NODEFILE) then
    set REMOTECMD = rsh
    set SCRATCHDIR = /var/tmp/${user}
 
-else
+else                                    # interactive
 
-   # interactive
+   if ( ! $?host) then
+      setenv host `uname -n`
+   endif
 
    set CENTRALDIR = `pwd`
    set JOBNAME = interactive_advance_ens
    set PROCNAMES = "$host $host $host $host"
    set REMOTECMD = csh
-   set SCRATCHDIR = /tmp/${user}
    set SCRATCHDIR = `pwd`
-
-   # This is for those ocotillo users who do not have a favorite set
-   # of processors stashed in the $OCOTILLO_NODEFILE
-   if ( 1 == 2 ) then
-      set nensemble = `head -1 filter_control`
-      set NPROCS = 28
-      set startnode = 1
-      set endnode = 14
-      set inode = $startnode
-      set iproc = 1
-      set PROCNAMES = ""
-      while($iproc <= $NPROCS & $iproc <= $nensemble)
-         set PROCNAMES = ($PROCNAMES node$inode)
-         if ($inode == $endnode) then
-            set inode = $startnode
-         else
-            @ inode ++
-         endif
-         @ iproc ++
-      end
-      set SCRATCHDIR = /var/tmp/${user}
-   endif
 
 endif
 
