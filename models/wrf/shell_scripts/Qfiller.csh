@@ -4,31 +4,33 @@
 # Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-#set echo
+set echo
 
 set queue = regular
 set project_number = 86850054
 
 set exp = rad
-set exp_dir = jan_rad8
+set exp_dir = test
+mkdir -p ../${exp_dir}/${exp}
 
 set month = 01
 set chunk1 = 1
-set chunkn = 31
+set chunkn = 3
 
 set seconds = 0
 set days = 146827  
 
 set restart_in_file_name = filter_ics
 
-set script_dir = /ptmp/$user/work
+#set script_dir = /ptmp/$user/work
+setenv script_dir  `pwd`
+echo $script_dir 
 
-# -------------------------------------------------------------------------
+rm *.log *.err *.out
+
+# ----------------------------------------
 # Have an overall outer loop for the days
-#  can this loop divided into several scripts and these
-#  scripts submitted at the same time but run sequentially?
-# thanks alot.
-#---------------------------
+#-----------------------------------------
 set i = $chunk1
 while($i <= $chunkn)
 
@@ -43,6 +45,7 @@ while($i <= $chunkn)
    rm -f ${script_filename}
 
 cat > ${script_filename} << EOF_HEAD
+#!/bin/csh
 #### LSF options for BSUB
 ### -J      job name    (master script job.csh presumes filter.xxxx.log)
 ### -o      output listing filename 
@@ -53,6 +56,9 @@ cat > ${script_filename} << EOF_HEAD
 ### -R "span[ptile=(num procs you want on each node)]"
 #
 #BSUB -J ${exp}_${job_step}
+#BSUB -x                                # exclusive use of node
+#BSUB -n 1                              # sum of number of tasks
+#BSUB -R "span[ptile=1]"                # number of processes per node
 #BSUB -W 06:00                          # run time limit
 EOF_HEAD
 
@@ -70,11 +76,14 @@ EOF_DEPENDENCY
    endif
 
 cat >> ${script_filename} << EOF_TAIL
-#BSUB -o ${exp}_${job_step}.log
+#BSUB -o ${exp}_${job_step}.out
+#BSUB -e ${exp}_${job_step}.err
 #BSUB -P ${project_number}
 #BSUB -q ${queue}
 #BSUB -B
 #BSUB -N
+
+set echo
 
    echo ' '
    echo starting iteration ${day}
@@ -82,16 +91,26 @@ cat >> ${script_filename} << EOF_TAIL
 
    cd ${script_dir}
 
-   set work_dir = /ptmp/$user/${exp_dir}/${exp}/${month}_${day}
+rm -f  *.nc  
+rm -rf /ptmp/hliu/wrfrun*
 
-   if(!-d \${work_dir}) then
-     mkdir -p \${work_dir}
+rm -f assim_model_state_ud*
+rm -f assim_model_state_ic*
+
+rm -f WRF namelist.input 
+
+
+   set out_dir = /ptmp/$user/${exp_dir}/${exp}/${month}_${day}
+
+   if(! -d \${out_dir}) then
+     mkdir -p \${out_dir}
    endif
 
-   cd \${work_dir}
+#  ln -s   /ptmp/hliu/WRF_bdy_2003jan   WRF
+#  ln -sf  namelist.input_50km   namelist.input
 
-   ln -sf  /ptmp/hliu/WRF_bdy_2003jan   WRF
-   ln -sf  namelist.input_50km   namelist.input
+   ln -s   /ptmp/hliu/WRF_bdy_200km   WRF
+   ln -sf  namelist.input_200km   namelist.input
 
 # Prepare observation file.
 # for excess
@@ -116,19 +135,20 @@ cat >> ${script_filename} << EOF_TAIL
    ${script_dir}/filter >& fff.${day}
 
 # Move the netcdf files to an output directory
-#  mv -v  Prior_Diag.nc Posterior_Diag.nc obs_seq.final ../${exp_dir}/${exp}/${month}_${day}
-   mv input.nml run.input.nml
-   cp ${exp}_${job_step}.log .
+   mv -v  Prior_Diag.nc Posterior_Diag.nc obs_seq.final \${out_dir}/.
+   mv input.nml \${out_dir}/run.input.nml
+#  cp ${exp}_${job_step}.log .
 
 # Move along to next iteration
    echo ' '
    echo ending iteration ${day}
    echo ' '
+
 EOF_TAIL
 
    set restart_in_file_name = filter_restart
 
-   echo bsub < ${script_filename}
+   bsub < ${script_filename}
 
    @ i ++
    @ days ++
