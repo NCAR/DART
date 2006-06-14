@@ -85,3 +85,9 @@ make         || exit 13
 #./perfect_model_obs || exit 14
 #./filter            || exit 15
 \rm -f go_end_filter
+csh mkmf_merge_obs_seq
+make         || exit 16
+csh mkmf_convertdate
+make         || exit 17
+csh mkmf_pert_wrf_bc
+make         || exit 18
