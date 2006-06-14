@@ -181,7 +181,7 @@ MODULE map_utils
   IMPLICIT NONE
   private
 
-  public :: proj_info, map_init, map_set, latlon_to_ij, &
+  public :: proj_info, map_init, map_set, latlon_to_ij, ij_to_latlon, &
        PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, gridwind_to_truewind
 
 ! CVS Generated file description for error handling, do not edit
