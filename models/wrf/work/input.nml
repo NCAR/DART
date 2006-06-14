@@ -18,9 +18,7 @@
    num_output_obs_members = 0,
    output_interval = 1,
    num_groups = 1,
-   outlier_threshold = -1.0,
-                       /
-   
+   outlier_threshold = -1.0  /
 
 &assim_tools_nml
    filter_kind = 1,
@@ -32,7 +30,7 @@
    spread_restoration = .false.,
    internal_outlier_threshold = -1.0, 
    sampling_error_correction = .false.,
-   num_close_threshold = 10000000 /
+   num_close_threshold = 10000000  /
 
 &adaptive_inflate_nml
    do_obs_inflate = .false.,
@@ -51,26 +49,20 @@
    ss_inf_sd_initial = 0.0,
    ss_sd_lower_bound = 0.0,
    ss_inf_upper_bound = 1000000.0,
-   diagnostic_file_name = "inflate_diag" /
+   diagnostic_file_name = "inflate_diag"  /
 
 &cov_cutoff_nml
-   select_localization = 1
-/
-
+   select_localization = 1  /
 
 &assim_model_nml
-   write_binary_restart_files = .true.
-/
-
+   write_binary_restart_files = .true.  /
 
 &location_nml
    horiz_dist_only = .true.,
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height = 6370000.0,
    vert_normalization_level = 20.0,
-   approximate_distance = .false.
-/
-
+   approximate_distance = .false.  /
 
 &model_nml
    output_state_vector = .false.,
@@ -79,35 +71,27 @@
    calendar_type = 3,
    surf_obs = .true.,
    h_diab = .false.,
-   adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe"
-/
-
+   adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe",
+   assim_time_window_days = 0,
+   assim_time_window_seconds =  3600  /
 
 &utilities_nml
    TERMLEVEL = 1
-   logfilename = 'dart_log.out'
-/
-
+   logfilename = 'dart_log.out'  /
 
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics'
-/
-
+   reg_diagnostics_file = 'reg_diagnostics'  /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.
-/
-
+   write_binary_obs_sequence = .false.  /
 
 &ensemble_manager_nml
    in_core = .true.,
    single_restart_file_in = .true.,
-   single_restart_file_out = .true.
-/
-
+   single_restart_file_out = .true.  /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -117,9 +101,9 @@
    input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
                               '../../../obs_def/obs_def_radar_mod.f90',
                               '../../../obs_def/obs_def_metar_mod.f90',
-                              '../../../obs_def/obs_def_dew_point_mod.f90'
-/
-
+                              '../../../obs_def/obs_def_dew_point_mod.f90',
+                              '../../../obs_def/obs_def_gps_mod.f90',
+                              '../../../obs_def/obs_def_vortex_mod.f90'  /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
@@ -130,10 +114,14 @@
                                 'RADIOSONDE_V_WIND_COMPONENT',
                                 'RADIOSONDE_SPECIFIC_HUMIDITY',
                                 'DOPPLER_RADIAL_VELOCITY',
-                                'DEW_POINT_2_METER'
-     evaluate_these_obs_types = 'RADAR_REFLECTIVITY'
-
-/
+                                'DEW_POINT_2_METER',
+                                'SAT_U_WIND_COMPONENT',
+                                'SAT_V_WIND_COMPONENT',
+                                'VORTEX_LON',
+                                'VORTEX_LAT',
+                                'VORTEX_PMIN',
+                                'GPSRO_REFRACTIVITY',
+     evaluate_these_obs_types = 'RADAR_REFLECTIVITY'  /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -163,4 +151,9 @@
    latlim1    =  20.0, -80.0, -20.0,  25.0,
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'   /
+
+&merge_obs_seq_nml
+   filename_seq1 = 'obs_seq.gps1',
+   filename_seq2 = 'obs_seq.gps2',
+   filename_out  = 'obs_seq.merged'  /
 
