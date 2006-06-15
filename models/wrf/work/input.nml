@@ -71,6 +71,7 @@
    calendar_type = 3,
    surf_obs = .true.,
    h_diab = .false.,
+   assimilation_period_seconds = 21600,
    adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe"  /
 
 &utilities_nml

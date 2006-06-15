@@ -5,5 +5,6 @@
    calendar_type = 3,
    surf_obs = .false.,
    h_diab = .false.,
+   assimilation_period_seconds = 21600,
    adv_mod_command = 'wrf.exe'  /
 

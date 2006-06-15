@@ -82,14 +82,14 @@ logical :: output_state_vector  = .false.     ! output prognostic variables
 integer :: num_moist_vars       = 0
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
+integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .false.
 logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
-                     adv_mod_command
-
+                     adv_mod_command, assimilation_period_seconds
 !-----------------------------------------------------------------------
 
 ! Private definition of domain map projection use by WRF
@@ -691,14 +691,23 @@ function get_model_time_step()
 ! Returns the time step of the model. In the long run should be replaced
 ! by a more general routine that returns details of a general time-stepping
 ! capability.
+!
+! toward that end ... we are now reading a namelist variable for the
+! width of the assimilation time window.
 
 type(time_type) :: get_model_time_step
+integer :: model_dt, assim_dt
 
-! Need to translate from wrf model timestep (in seconds) to
-! DART time increment
+! We need to coordinate the desired assimilation window to be a 
+! multiple of the model time step (which has no precision past integer seconds).
 
-!!$get_model_time_step = set_time(nint(wrf%dom(1)%dt), 0)
-get_model_time_step = set_time(21600, 0)
+model_dt = nint(wrf%dom(1)%dt)
+
+! The integer arithmetic does its magic.
+assim_dt = (assimilation_period_seconds / model_dt) * model_dt
+
+get_model_time_step = set_time(assim_dt)
+
 
 end function get_model_time_step
 
