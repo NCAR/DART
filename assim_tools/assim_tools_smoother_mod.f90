@@ -81,7 +81,7 @@ logical :: spread_restoration = .false.
 real(r8) :: cov_inflate_upper_bound = 10000000.0_r8
 real(r8) :: internal_outlier_threshold = -1.0_r8
 
-namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, cov_inflate, &
+namelist / assim_tools_smoother_nml / filter_kind, cutoff, sort_obs_inc, cov_inflate, &
    cov_inflate_sd, sd_lower_bound, deterministic_cov_inflate, &
    start_from_assim_restart, assim_restart_in_file_name, &
    assim_restart_out_file_name, do_parallel, num_domains, parallel_command, &
@@ -103,15 +103,15 @@ integer :: iunit, io, restart_unit, i, res_num_domains
 call register_module(source, revision, revdate)
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "assim_tools_nml", iunit)
-read(iunit, nml = assim_tools_nml, iostat = io)
-call check_namelist_read(iunit, io, "assim_tools_nml")
+call find_namelist_in_file("input.nml", "assim_tools_smoother_nml", iunit)
+read(iunit, nml = assim_tools_smoother_nml, iostat = io)
+call check_namelist_read(iunit, io, "assim_tools_smoother_nml")
 
 ! Write the namelist values to the log file
 
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
-write(logfileunit, nml=assim_tools_nml)
-write(     *     , nml=assim_tools_nml)
+write(logfileunit, nml=assim_tools_smoother_nml)
+write(     *     , nml=assim_tools_smoother_nml)
 
 ! Check for illegal combination of parallel with single region (doesn't make sense)
 if(do_parallel /= 0 .and. num_domains == 1) then
@@ -1017,6 +1017,7 @@ Observations : do jjj = 1, num_obs_in_set
       cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff)
       if(cov_factor <= 0.0_r8) cycle CLOSE_STATE
 
+      ! note: we're using the same close states for the lagged state estimation
       LAGLOOP: do si = 0, lag
 
       ! Get the ensemble elements for this state variable and do regression
@@ -1049,7 +1050,7 @@ Observations : do jjj = 1, num_obs_in_set
       ! Do the final update for this state variable
          ens(:, inv_indices(ind), si) = ens(:, inv_indices(ind), si) + reg_factor * ens_inc(:)
       
-         !print *, ens(1, 1, 1), ens(1, 1, 2)
+         
       
       end do LAGLOOP
 
