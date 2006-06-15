@@ -1544,7 +1544,7 @@
       if (ifax(i+1) .gt. 5 .or. n .le. 4) ifax(1) = -99
       if (ifax(1) .le. 0 ) then 
         write(6,*) ' set99 -- invalid n'
-        stop'set99'
+        stop
       endif
       call fftrig (trigs, n, mode)
 
