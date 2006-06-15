@@ -59,6 +59,7 @@
 <A NAME="OVERVIEW"></A>
 <HR>
 <H2>OVERVIEW</H2>
+<P>
 Provides definitions of observation types and generic variable kinds and
 tools for determining how to use observations available in an observation 
 sequence file.
@@ -72,6 +73,7 @@ defined via an integer parameter statement at the start of this module. As
 new generic kinds are needed, they can be added to this list. Generic kind
 integer parameters are required to start with KIND_ and observation types
 are NOT allowed to start with KIND_.
+</P>
 
 
 <P>
@@ -85,6 +87,7 @@ obs_def modules (such as obs_def_1d_state_mod.f90 or obs_def_reanalyis_bufr_mod.
 which are also documented in the obs_def directory. If no special obs_def files are 
 included in the preprocessor namelist, a minimal obs_kind_mod.f90 is created which
 can only support identity forward observation operators.
+</P>
 
 <P>
 The obs_kind module contains a table, the obs_kind_info table, that 
@@ -99,6 +102,7 @@ observation type is to be assimilated, evaluated only (forward operator is
 computed but not assimilated), or ignored entirely. These logicals can be
 set via the namelist and have defaults values that cause an observation
 type to be ignored.
+</P>
 
 <P>
 <BR>
@@ -173,6 +177,7 @@ utilities_mod
      <TD>An integer index into the obs_kind_info table.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
  <A NAME="assimilate_this_obs_kind"></A>
@@ -199,6 +204,7 @@ utilities_mod
      <TD>An integer index into the obs_kind_info table.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
@@ -225,6 +231,7 @@ utilities_mod
      <TD>An integer index into the obs_kind_info table.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
@@ -252,6 +259,7 @@ utilities_mod
      <TD>An integer index into the obs_kind_info table.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
@@ -279,6 +287,7 @@ utilities_mod
      <TD>Name of observation type to be found in obs_kind_info table.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -305,6 +314,7 @@ appear in the header of an obs_sequence file.
      <TD>Optional format for file. Default is ascii.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -338,6 +348,7 @@ in the file correspond to the storage order of the obs_kind_info table
      <TD>Optional format for file. Default is ascii.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
@@ -357,6 +368,7 @@ in the file correspond to the storage order of the obs_kind_info table
      <TD>Integer index of observation type.</TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
@@ -384,9 +396,10 @@ in the file correspond to the storage order of the obs_kind_info table
  R>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
 
-<!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
+ <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
 <A NAME="max_obs_kinds"></A>
 <P></P><HR><P></P>
@@ -427,7 +440,6 @@ All generic kinds available are public parameters that begin with KIND_.
 
 <!--================================================================-->
 
-
 <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
 <A NAME="OBSERVATION_TYPES"></A>
@@ -449,8 +461,7 @@ in the obs_kind_info table.
 
 <BR>
 
-<!--================================================================-->
-
+ <!--================================================================-->
 
  <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
@@ -468,14 +479,15 @@ in the obs_kind_info table.
  <P>
  Controls what observation types are to be assimilated, evaluated, or
  ignored. For each entry, a list of observation type names can be
- specified. Any name in the obs_kind_info table is eligble. Specifying
+ specified. Any name in the obs_kind_info table is eligible. Specifying
  a name that is not in the table results in an error. Specifying the
  same name for both namelist entries also results in an error.
  Observation types specified in the list for assimilate_these_obs_types
- are assimilated. Those in the evluate_these_obs_types list have
-their forward operators computed and included in diagnostic files but
-are not assimilated. An observation type that is specified in neither
-list is ignored.
+ are assimilated. Those in the evaluate_these_obs_types list have
+ their forward operators computed and included in diagnostic files but
+ are not assimilated. An observation type that is specified in neither
+ list is ignored.  Identity observations, however, are always assimilated
+ if present in the obs_seq.out file.
  </em>
  </P>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
@@ -493,8 +505,8 @@ list is ignored.
  </TD></TR>
  </TABLE>
  <P>
+ </P>
  <!--================================================================-->
-
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
