@@ -828,8 +828,11 @@ Here, all we need is a sequence that takes observations over a
 long period of time - indicated by entering a 1.
 Although the L63 system normally is defined as having a non-dimensional 
 time step, the DART system arbitrarily defines the model 
-timestep as being 3600 seconds. By declaring we have 1000 observations
-taken once per day, we create an observation sequence definition 
+timestep as being 3600 seconds. 
+If we declare that we have one observation per day for 1000 days, 
+<!-- 
+By declaring we have 1000 observations
+taken once per day, --> we create an observation sequence definition 
 spanning 24000 'model' timesteps; sufficient to spin-up the model 
 onto the attractor. Finally, enter a name for the 
 'observation sequence definition' file. Note again: there are no observation
