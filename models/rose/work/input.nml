@@ -33,7 +33,11 @@
    num_output_obs_members = 10,
    output_interval = 1,
    num_groups = 1,
-   outlier_threshold = -1.0/
+   outlier_threshold = -1.0 /
+
+Remember that namelists must be listed even if only defaults are to be used
+&integrate_model_nml
+                       /
    
 
 &ensemble_manager_nml
@@ -77,7 +81,9 @@
 
 &reg_factor_nml
    select_regression = 1,
-   input_reg_file = "time_mean_reg"  /
+   input_reg_file = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics'  /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
@@ -92,7 +98,9 @@
    horiz_dist_only = .true.,
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height = 10000.0,
-   vert_normalization_level = 20.0 /
+   vert_normalization_level = 20.0,
+   approximate_distance = .true. /
+
 
 &utilities_nml
    TERMLEVEL = 1,
@@ -107,4 +115,9 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE'   /
+
+&merge_obs_seq_nml
+   filename_seq1 = 'obs_seq.one',
+   filename_seq2 = 'obs_seq.two',
+   filename_out  = 'obs_seq.merged'  /
 

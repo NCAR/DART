@@ -83,6 +83,10 @@ csh mkmf_assim_region
 make         || exit 13
 csh mkmf_filter
 make         || exit 14
+
 #./perfect_model_obs || exit 15
 #./filter            || exit 16
 \rm -f go_end_filter
+
+csh mkmf_merge_obs_seq
+make         || exit 17
