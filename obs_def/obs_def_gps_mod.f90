@@ -214,12 +214,6 @@ SELECT CASE (fileformat)
 
 END SELECT
 
-if(key > max_gpsro_obs) then
-   write(*, *) 'key count (',key,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
-   call error_handler(E_ERR,'read_gpsro_ref', &
-        'Increase max_gpsro_obs ', source, revision, revdate)
-endif
-
 end subroutine read_gpsro_ref
 
 
