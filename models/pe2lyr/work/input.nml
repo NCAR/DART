@@ -33,6 +33,11 @@
    num_groups = 1,
    outlier_threshold = -1.0 /
 
+Remember that namelists must be listed even if only defaults are to be used
+&integrate_model_nml
+                       /
+   
+
 &ensemble_manager_nml
    in_core = .true.,
    single_restart_file_in = .true.,
@@ -53,7 +58,7 @@
 &adaptive_inflate_nml
    do_obs_inflate = .false.,
    do_varying_ss_inflate = .false.,
-   do_single_ss_inflate = .false.,
+   do_single_ss_inflate = .true.,
    start_from_inflate_restart = .false.,
    output_restart = .true., 
    deterministic_inflate = .true.,
@@ -63,9 +68,9 @@
    obs_inf_sd_initial = 0.0,
    obs_sd_lower_bound = 0.0,
    obs_inf_upper_bound = 1000000.0,
-   ss_inf_initial = 1.0,
-   ss_inf_sd_initial = 0.0,
-   ss_sd_lower_bound = 0.0,
+   ss_inf_initial = 1.05,
+   ss_inf_sd_initial = 0.05,
+   ss_sd_lower_bound = 0.05,
    ss_inf_upper_bound = 1000000.0,
    diagnostic_file_name = "inflate_diag" /
 
@@ -74,7 +79,7 @@
 
 &reg_factor_nml
    select_regression = 1,
-   input_reg_file = "time_mean_reg" 
+   input_reg_file = "time_mean_reg",
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = 'reg_diagnostics'  /
 
@@ -107,7 +112,6 @@
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
 
-
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
 # year   month   day   hour   minute   second
@@ -135,4 +139,9 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America', 
    print_mismatched_locs = .false.   /
+
+&merge_obs_seq_nml
+   filename_seq1 = 'obs_seq.one',
+   filename_seq2 = 'obs_seq.two',
+   filename_out  = 'obs_seq.merged'  /
 
