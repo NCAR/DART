@@ -1673,8 +1673,20 @@
 
     subroutine vpassm (a,b,c,d,trigs,inc1,inc2,inc3,inc4,lot,n,ifac,la)
     integer, intent(in)  :: inc1, inc2, inc3, inc4, lot, n, ifac, la
-    real,    intent(in)  :: a(n),b(n),trigs(n)
-    real,    intent(out) :: c(n),d(n)
+    real,    intent(in)  :: a(*),b(*),trigs(*)
+    real,    intent(out) :: c(*),d(*)
+!
+! the following two lines are the original declarations of the
+! first 5 arguments.  this routine is called in at least one place
+! with arrays which are larger in size than n, and in this subroutine
+! indices larger than n are generated.  this causes bounds warnings
+! on some compilers and core dumps on others.  when i changed the arrays
+! to be assumed shape (*) the problem went away, and the results look ok.
+! n. collins  15jun06
+!
+!   real,    intent(in)  :: a(n),b(n),trigs(n)
+!   real,    intent(out) :: c(n),d(n)
+
 !
 !     subroutine "vpassm" - multiple version of "vpassa"
 !     performs one pass through data
