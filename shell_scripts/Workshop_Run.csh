@@ -74,7 +74,10 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     \rm -fv obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
     \rm -fv assim_region integrate_model
 
-#   cvs update
+    \rm -fv input.nml obs_seq.in obs_seq.out obs_seq.final \
+            perfect_ics fitler_ics \
+            True_State.nc Prior_Diag.nc Posterior_Diag.nc
+    cvs update
 
     csh workshop_setup.csh
 
@@ -114,12 +117,12 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 end
 
 #----------------------------------------------------------------------
-# Run the full suite of lorenz_96 tests
+# Run the full suite of lorenz_96 tests and compile much 
 #----------------------------------------------------------------------
 
 cd ${DARTHOME}
 
-# ./test_dart.csh
+./test_dart.csh
 
 echo ""
 echo "Testing complete  at "`date`
