@@ -70,6 +70,10 @@ csh mkmf_filter
 make         || exit 6
 csh mkmf_obs_diag
 make         || exit 7
+
 ./perfect_model_obs || exit 8
 ./filter            || exit 9
 \rm -f go_end_filter
+
+csh mkmf_merge_obs_seq
+make         || exit 10
