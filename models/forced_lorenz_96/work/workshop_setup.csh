@@ -78,7 +78,7 @@ make                || exit 7
 # Use vi to change value of reset_forcing in namelist.
 #----------------------------------------------------------------------
 
-echo ':0'                         > vi_script
+echo ':0'                        >! vi_script
 echo '/reset_forcing'            >> vi_script
 echo ':s/true/false/'            >> vi_script
 echo ':wq'                       >> vi_script
@@ -86,3 +86,6 @@ vi -s vi_script input.nml
 
 ./filter || exit 9
 \rm -f go_end_filter vi_script
+
+csh mkmf_merge_obs_seq
+make                || exit 10
