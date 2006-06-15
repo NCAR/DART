@@ -2,21 +2,21 @@
    year = 2003,
    month = 1,
    day = 1,
-   tot_days = 1,
-   max_num = 700000,
-   ObsBase = '/project/dart/home/hliu/ncepobs/April05/temp_obs.'
+   tot_days = 31,
+   max_num = 800000,
    select_obs  = 0,
-   ADPUPA = .true., 
+   ObsBase = 'ncepobs/April05/temp_obs.'
+   ADPUPA = .false., 
    AIRCAR = .false., 
    AIRCFT = .false., 
    SATEMP = .false., 
    SFCSHP = .false., 
    ADPSFC = .false., 
    SATWND = .false.,
-   obs_U  = .true., 
+   obs_U  = .false., 
    obs_V  = .false., 
    obs_T  = .false.,
    obs_PS = .false.,
    obs_QV = .false.,
-   daily_file = .true./
+   daily_file = .true.  /
 
