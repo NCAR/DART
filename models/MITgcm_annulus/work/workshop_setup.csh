@@ -74,6 +74,10 @@ csh mkmf_MITgcm_to_dart
 make         || exit 8
 csh mkmf_perfect_ics
 make         || exit 9
+
 ./perfect_model_obs || exit 10
 ./filter            || exit 11
 \rm -f go_end_filter
+
+csh mkmf_merge_obs_seq
+make         || exit 12
