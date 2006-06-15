@@ -290,23 +290,23 @@ z_indxmax = 6*nlats*nlons
 
 !! interface height obs type = 901 
 !! ( a big number so no conflict in future ))
-if(indx < u_indxmax) then
-   lev_index = indx/(nlats*nlons) +1
-   lat_index = ((indx - ((lev_index-1)*nlats*nlons))/nlons +1)
-   lon_index = indx - (lev_index-1)*nlats*nlons - (lat_index-1)*nlons  
+if(indx <= u_indxmax) then
+   lev_index =  (indx-1)/(nlats*nlons) +1
+   lat_index = ((indx-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
+   lon_index =  (indx-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
    if(present(var_type)) var_type = TYPE_u
-else if(indx<v_indxmax) then
-   lev_index = (indx - u_indxmax)/(nlats*nlons) +1
-   lat_index = ((indx -u_indxmax- ((lev_index-1)*nlats*nlons))/nlons +1)
-   lon_index = indx -u_indxmax - (lev_index-1)*nlats*nlons - (lat_index-1)*nlons  
+else if(indx <= v_indxmax) then
+   lev_index =  (indx-u_indxmax-1)/(nlats*nlons) +1
+   lat_index = ((indx-u_indxmax-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
+   lon_index =  (indx-u_indxmax-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
    if(present(var_type)) var_type = TYPE_v
 else
-   lev_index = (indx - v_indxmax)/(nlats*nlons) +1
-   lat_index = ((indx -v_indxmax- ((lev_index-1)*nlats*nlons))/nlons +1)
-   lon_index = indx -v_indxmax - (lev_index-1)*nlats*nlons - (lat_index-1)*nlons  
+   lev_index =  (indx-v_indxmax-1)/(nlats*nlons) +1
+   lat_index = ((indx-v_indxmax-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
+   lon_index =  (indx-v_indxmax-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
    if(present(var_type)) var_type = TYPE_z
 endif 
-
+ 
 ! With the threed_sphere location module ... you specify that the 
 ! vertical coordinate is a 'level' by 'which_vert' == 1
 
