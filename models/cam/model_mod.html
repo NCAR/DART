@@ -58,7 +58,7 @@
 
 <A NAME="OVERVIEW"></A>
 <HR>
-<H2>OVERVIEW</H2>
+<H2 class=indent2>OVERVIEW</H2>
 
 <P>
 The 13 public interfaces in model_mod
@@ -83,11 +83,32 @@ In principle any
 variable in the initial file can be included in the definition of the
 state vector via model_mod namelist entries.   This may include quantities
 the model considers to be parameters, although ongoing research is
-being conducted to learn about the difficulties and meaning of 
+being conducted into the difficulties and meaning of 
 assimilating model parameters of various kinds.
-The CLM incorporated in the stand-alone CAM is currently (1/15/2005)
+The CLM incorporated in the stand-alone CAM is currently (6/16/2006)
 treated as a parameterization.  That is, none of its variables
 are incorporated into the DART state vector.
+</P>
+
+<P>
+Expected observations on pressure, height or model levels can be requested from model_interpolate.
+Surface observations can not yet be interpolated, due to the difference
+between the model surface and the earth's surface where the observations are made.
+Model_interpolate can be queried for any (non-surface) variable in the state vector, 
+which are variables native to CAM, plus pressure on height levels.  
+The default state vector is (PS), T, U, V, Q, CLDLIQ, CLDICE.
+Other variables can be added, but minor modifications to model_mod.f90 will be necessary.
+Use the existing code for the current state variables as a template.
+In particular add the TYPE_s in the declarations at the beginning of the module,
+and see subroutines <em class=code>order_state_fields and obs_field_location</em>, 
+where those TYPE_s are used.
+Modify CAM to write the new fields to the initial files, 
+and modify the <em class=code>model_mod_nml</em>
+(in <em class=file>input.nml</em>) to include the new state vector components.
+In the namelist the vertical coordinate type of the new fields must also be specified.
+See <em class=code>which_vert</em> in 
+<A HREF="../../location/threed_sphere/location_mod.html"> location_mod </A>
+
 </P>
 
 <P>
@@ -96,9 +117,9 @@ Links to information about
 using CAM and parallel architecture computers, including:
 <UL>
     <LI> script and executable calling tree </LI>
-    <LI> script and executable flow chart</LI>
+    <LI> script and executable flow chart parallel mode 3</LI>
     <LI> file contents and purposes</LI>
-    <LI> output director structure</LI>
+    <LI> output directory structure for use by obs_diag</LI>
     <LI> experiment set-up</LI>
     <LI> helpful hints</LI>
     <LI> space requirements of various CAM resolutions</LI>
@@ -249,11 +270,11 @@ of ways is provided. </TD></TR>
 <A NAME="yyyroutine3"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call model_interpolate(x, location, type, interp_val, istatus)</em>
+<em class=call> call model_interpolate(x, location, obs_type, interp_val, istatus)</em>
 <pre>
 real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
 type(location_type),      intent(in)  :: <em class=code> location </em>
-integer,                  intent(in)  :: <em class=code> type </em>
+integer,                  intent(in)  :: <em class=code> obs_type </em>
 real(r8),                 intent(out) :: <em class=code> interp_val </em>
 integer,                  intent(out) :: <em class=code> istatus </em>
 </pre></div>
@@ -263,8 +284,13 @@ integer,                  intent(out) :: <em class=code> istatus </em>
 <P>
 Given model state, returns the value of observation type interpolated to a given 
 location by a method of the model's choosing. 
-Currently only observation types KIND_U, KIND_V, KIND_T, (? KIND_PS, KIND_QV) defined in
-obs_kind_mod are supported. 
+Currently observation types: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,
+KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
+are supported, but others can be added.
+KIND_PRESSURE does not have a corresponding field on CAM initial files,
+but is routinely calculated in CAM using its own subroutines.
+Interpolation of this field has been incorporated in order to facilitate
+assimilations of observations which require it, such as GPS radio occultation.
 If the interpolation is valid, istatus = 0. 
 In the case where the observational operator is not
 defined at the given location (e.g. the observation is below the lowest model level
@@ -286,7 +312,7 @@ performed in subroutine get_val_pressure.
 <TR><TD valign=top><em class=code>location</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
-<TR><TD valign=top><em class=code>type</em></TD>
+<TR><TD valign=top><em class=code>obs_type</em></TD>
     <TD>Integer indexing which type of observation is to be interpolated.</TD></TR>
 
 <TR><TD valign=top><em class=code>interp_val</em></TD>
@@ -422,8 +448,10 @@ parallelization, surface pressure points from other regions become unavailable.
 The (temporary) fix is to hard-wire the surface pressure to be 100000 Pa.
 
 Due to the damping at high levels (see model_interpolate) there is also code 
-which reduces the influence of observations on model points above some level,
-currently namelist variable highest_obs_pressure_mb The influence declines 
+which reduces the influence of observations on model points above some altitude.
+Currently namelist variables highest_obs_{pressure_mb,height_m,level} control this 
+for observations with pressure, height, and level vertical coordinates, respectively.
+The influence declines 
 to 0 above model level 6 for highest_obs_pressure_mb = 150.
 </P>
 
@@ -677,12 +705,13 @@ state is always to be provided from input files.
 <div class=namelist>
 <pre>
 <em class=call>namelist / model_nml / </em> &
-                      output_state_vector , model_version , model_config_file         &  
-                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d    &
-                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d  &
-                                     ,which_vert_1d  ,which_vert_2d  ,which_vert_3d   &
-                     ,state_names_pert ,state_names_sd                                &
-                     ,highest_obs_pressure_mb ,Time_step_seconds ,Time_step_days
+                      output_state_vector , model_version , model_config_file          &  
+                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d     &
+                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d   &
+                                     ,which_vert_1d  ,which_vert_2d  ,which_vert_3d    &
+		     ,state_names_pert ,state_names_sd ,max_obs_lat_degree             &
+		     ,highest_obs_pressure_mb ,highest_obs_height_m ,highest_obs_level &
+                     ,Time_step_seconds ,Time_step_days
 
     
 </pre>
@@ -693,7 +722,7 @@ state is always to be provided from input files.
 
 <P class=indent2>
 This namelist is read in a file called <em class=file>input.nml</em>
-The specification of numbers and lists of names for the various dimensions 
+The specification of lists of names and numbers for the various dimensions 
 enables the very flexible definition of the state vector.  It can be
 done via the namelist, instead of recompiling DART for each different set.
 One hurdle that still remains is that distinct filter_ics are
@@ -735,33 +764,47 @@ file field names.
     <!--  type  --><TD valign=top>character(len=128)                        </TD>
     <!--descript--><TD>CAM initial file used to provide configuration information.
                        Default 'caminput.nc'.</TD></TR>
-<TR><!--contents--><TD valign=top>state_num_#d #=0,1,2,3             </TD>
+<TR><!--contents--><TD valign=top>state_num_#d, #=0,1,2,3             </TD>
     <!--  type  --><TD valign=top>integer                        </TD>
     <!--descript--><TD>Numbers of fields of various dimensions to put into the state vector.
                        Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
-<TR><!--contents--><TD valign=top>state_names_#d #=0,1,2,3             </TD>
+<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3             </TD>
     <!--  type  --><TD valign=top>character(len=8), dimension(20)                        </TD>
     <!--descript--><TD>Names of fields of various dimensions to put into the state vector.  Defaults <BR>
          <PRE>state_names_0d='        ', state_names_1d='        ', </PRE>
          <PRE>state_names_2d='PS      ' </PRE>
-         <PRE>state_names_1d='T       ','U       ','V       ','Q       '  </PRE>
+         <PRE>state_names_3d='T       ','U       ','V       ','Q       '  </PRE>
      </TD></TR>
-<TR><!--contents--><TD valign=top>which_vert_#d #=1,2,3             </TD>
+<TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3             </TD>
     <!--  type  --><TD valign=top>integer, dimension(20)                       </TD>
-    <!--descript--><TD>Vertical location types of fields in state_names_#d.Defaults 
+    <!--descript--><TD>Vertical location types of fields in state_names_#d.  Defaults 
                        <UL><LI>which_vert_1d = state_num_1d*-2, 
                            <LI> which_vert_2d = state_num_2d*-1, 
                            <LI> which_vert_3d = state_num_3d* 1 </UL>
      </TD></TR>
 <TR><!--contents--><TD valign=top>state_names_pert             </TD>
     <!--  type  --><TD valign=top>character(len=8)  dimension(20)                      </TD>
-    <!--descript--><TD>Names of the state vector fields to perturb.
-                  <PRE>Defaults state_names_pert='        ' </PRE></TD></TR>
+    <!--descript--><TD>Names of the state vector fields to perturb.  Defaults <BR>
+                      <PRE>state_names_pert='        ' </PRE></TD></TR>
+<TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
+    <!--  type  --><TD valign=top>real(r8)  </TD>
+    <!--descript--><TD>Observations closer to the poles than this latitude will be ignored.
+                       Default 90 degrees </TD></TR>
 <TR><!--contents--><TD valign=top>highest_obs_pressure_mb             </TD>
     <!--  type  --><TD valign=top>real(r8)  </TD>
     <!--descript--><TD>Observations higher than this pressure are ignored.
                        Influence of all obs on model points higher than this is reduced.
                        Default  30. hPa </TD></TR>
+<TR><!--contents--><TD valign=top>highest_obs_height_m             </TD>
+    <!--  type  --><TD valign=top>real(r8)  </TD>
+    <!--descript--><TD>Observations higher than this height are ignored.
+                       Influence of all obs on model points higher than this is reduced.
+                       Default  30000 m </TD></TR>
+<TR><!--contents--><TD valign=top>highest_obs_level             </TD>
+    <!--  type  --><TD valign=top>integer  </TD>
+    <!--descript--><TD>Observations higher than this level are ignored.
+                       Influence of all obs on model points higher than this is reduced.
+                       Default  11 </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_seconds        </TD>
     <!--  type  --><TD valign=top>real(r8)  </TD>
     <!--descript--><TD>Forecast duration (the part < 1 day)
@@ -874,9 +917,17 @@ in model_interpolate and model_get_close_states.
 <BR><HR><BR>
 <H2 class=indent2>FUTURE PLANS</H2>
 <P class=indent2>
-Handle 1D variables with several different dimensions (nlats, nlons, and/or nlevs)
-Incorporate CLM variables in to state vector.
-Remove limit on the number of fields which can be put into the state vector.
+<UL>
+<LI> Merge Eulerian DART-CAM with finite volume DART-CAM.
+     This will include the ability to specify a unique set of dimension sizes
+     for each state vector component, and will enable easier transition to future
+     CAMs which may have non-rectangular grids. </LI>
+<LI> Adapt to the "single executable" mode of CCSM when it becomes available, 
+     in which CAM will be run as a subroutine. </LI>
+<LI> Change istat values to mesh with qc values in filter, which will be based
+     on NCEP BUFR values. </LI>
+<LI> Incorporate CLM variables in to state vector. </LI>
+</UL>
 </P>
 
 <!--==================================================================-->
@@ -902,6 +953,8 @@ Remove limit on the number of fields which can be put into the state vector.
 <TR><TD>&nbsp;</TD><TD><A HREF="#end_model_instance">end_model_instance</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#plevs_cam">plevs_cam </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_val_pressure">get_val_pressure</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_val_height">get_val_height</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_val_level">get_val_level</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_val">get_val</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#grid_close_states2">grid_close_states2</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#lon_search">lon_search</A></TD></TR>
@@ -910,6 +963,11 @@ Remove limit on the number of fields which can be put into the state vector.
 <TR><TD>&nbsp;</TD><TD><A HREF="#order_state_fields">order_state_fields</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#size_coord">size_coord</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#obs_field_location">obs_field_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_heights">model_heights</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#dcz2">dcz2</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#gravity">gravity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#gph2gmh">gph2gmh</A></TD></TR>
+
 </TABLE>
 
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -1198,8 +1256,8 @@ Remove limit on the number of fields which can be put into the state vector.
  Gets the vertically interpolated value on pressure for variable obs_kind
  at the lon_index, lat_index horizontal grid point.  Some quality control of
  observations is done here, but may be moved later.  For now, observations
- above the lower of highest_pressure_obs_mb and the models highest level,
- and below the lowest model level are excluded.  So are PS and Q observations.
+ above the lower of highest_obs_pressure_mb and the model's highest level,
+ and below the lowest model level are excluded.  
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
@@ -1221,7 +1279,91 @@ Remove limit on the number of fields which can be put into the state vector.
  <P>
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_val_pressure"></A>
+ <A NAME="get_val_height"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_val_height(val,x,lon_index,lat_index,height,
+                 obs_kind,istatus) </em>
+ <pre>
+ real(r8), intent(out)                           :: <em class=code>val</em>
+ real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+ integer, intent(in)                             :: <em class=code>lon_index</em>
+ integer, intent(in)                             :: <em class=code>lat_index</em>
+ real(r8), intent(in)                            :: <em class=code>height</em>
+ integer, intent(in)                             :: <em class=code>obs_kind</em>
+ integer, intent(out)                            :: <em class=code>istatus</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Gets the vertically interpolated value on height for variable obs_kind
+ at the lon_index, lat_index horizontal grid point.  Some quality control of
+ observations is done here, but may be moved later.  For now, observations
+ above the lower of highest_obs_height_m and the model's highest level,
+ and below the lowest model level are excluded.  So are PS and Q observations.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
+     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
+ <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
+     <TD>DART state vector.</TD></TR>
+ <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
+     <TD>Index of longitude of this val.</TD></TR>
+ <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
+     <TD>Index of latitude of this val.</TD></TR>
+ <TR><TD valign=top><em class=code>height&nbsp; &nbsp; </em></TD>
+     <TD>The height to which this obs_kind must be interpolated.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+ <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
+     <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
+ interpolate, 2=can interpolate but don't use the value.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_val_level"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_val_level(val,x,lon_index,lat_index,level,
+                 obs_kind,istatus) </em>
+ <pre>
+ real(r8), intent(out)                           :: <em class=code>val</em>
+ real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+ integer, intent(in)                             :: <em class=code>lon_index</em>
+ integer, intent(in)                             :: <em class=code>lat_index</em>
+ integer, intent(in)                             :: <em class=code>level</em>
+ integer, intent(in)                             :: <em class=code>obs_kind</em>
+ integer, intent(out)                            :: <em class=code>istatus</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Gets the value on the model level for variable obs_kind
+ at the lon_index, lat_index horizontal grid point.  Some quality control of
+ observations is done here, but may be moved later.  For now, observations
+ above the lower of highest_obs_level and the models highest level,
+ and below the lowest model level are excluded.  So are PS and Q observations.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
+     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
+ <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
+     <TD>DART state vector.</TD></TR>
+ <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
+     <TD>Index of longitude of this val.</TD></TR>
+ <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
+     <TD>Index of latitude of this val.</TD></TR>
+ <TR><TD valign=top><em class=code>level&nbsp; &nbsp; </em></TD>
+     <TD>The level for which this obs_kind must be retrieved.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+ <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
+     <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
+ interpolate, 2=can interpolate but don't use the value.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_val"></A>
  <P></P><HR><P></P>
  <div class=routine>
  <em class=call> call get_val(val,x,lon_index,lat_index,level,obs_kind,istatus) </em>
@@ -1232,9 +1374,9 @@ Remove limit on the number of fields which can be put into the state vector.
  >
  integer, intent(in)                             :: <em class=code>lat_index</em
  >
- integer, intent(in)                            :: <em class=code>level</em>
+ integer, intent(in)                             :: <em class=code>level</em>
  integer, intent(in)                             :: <em class=code>obs_kind</em>
- integer0, intent(out)                           :: <em class=code>istatus</em>
+ integer, intent(out)                            :: <em class=code>istatus</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -1487,6 +1629,155 @@ Remove limit on the number of fields which can be put into the state vector.
  </TABLE>
  <P>
  <!--================================================================-->
+NEW
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="model_heights"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+    <em class=call> call model_heights( x,lon_index,lat_index,model_h,istatus) </em>
+ <pre>
+ real(r8), dimension(:), intent(in)              :: <em class=code>x</em>
+ integer, intent(in)                             :: <em class=code>lon_index</em>
+ integer, intent(in)                             :: <em class=code>lat_index</em>
+ real(r8), intent(out)                           :: <em class=code>model_h</em>
+ integer, intent(out)                            :: <em class=code>istatus</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ This routine calculates geometrical height (m) at mid-layers of the CAM model
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
+     <TD>DART state vector.</TD></TR>
+ <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
+     <TD>Index of longitude of this val.</TD></TR>
+ <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
+     <TD>Index of latitude of this val.</TD></TR>
+ <TR><TD valign=top><em class=code>model_h&nbsp; &nbsp; </em></TD>
+     <TD>geometrical height at midlayer (m).</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="dcz2"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+    <em class=call> call dcz2(ps,phis0,tv,hprb,hyba,hybb,kmax,idim,imax,pmln, &
+                            hypdln,hyalph,pterm,z2) </em>
+ <pre>
+ real(r8), dimension(idim,kmax), intent(out)     :: <em class=code>z2</em>
+ real(r8), dimension(idim), intent(in)           :: <em class=code>ps</em>
+ real(r8), dimension(idim), intent(in)           :: <em class=code>phis0</em>
+ real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>tv</em>
+ real(r8), intent(in)                            :: <em class=code>hprb</em>
+ real(r8), dimension(2,kmax+1), intent(in)      :: <em class=code>hyba</em>
+ real(r8), dimension(2,kmax+1), intent(in)      :: <em class=code>hybb</em>
+ integer, intent(in)                             :: <em class=code>kmax</em>
+ integer, intent(in)                             :: <em class=code>idim</em>
+ integer, intent(in)                             :: <em class=code>imax</em>
+ real(r8), dimension(idim,kmax+1), intent(in)      :: <em class=code>pmln</em>
+ real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>hypdln</em>
+ real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>hyalph</em>
+ real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>pterm</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ To compute geopotential height for a CCM2 hybrid coordinate
+ vertical slice.  Since the vertical integration matrix is a
+ function of latitude and longitude, it is not explicitly
+ computed as for sigma coordinates.  The integration algorithm
+ is derived from Boville's mods in the ibm file hybrid 1mods
+ (6/17/88).  All vertical slice arrays are oriented top to
+ bottom as in CCM2.  This field is on full model levels (aka
+ "midpoints") not half levels.  See code for more history.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>z2&nbsp; &nbsp; </em></TD>
+     <TD>Geopotential height, top to bottom.</TD></TR>
+ <TR><TD valign=top><em class=code>ps&nbsp; &nbsp; </em></TD>
+     <TD>Surface pressure (pascals).</TD></TR>
+ <TR><TD valign=top><em class=code>phis0&nbsp; &nbsp; </em></TD>
+ <TD> Surface geoptential.</TD></TR>
+ <TR><TD valign=top><em class=code>tv&nbsp; &nbsp; </em></TD>
+     <TD>Virtual temperature, top to bottom.</TD></TR>
+ <TR><TD valign=top><em class=code>hprb&nbsp; &nbsp; </em></TD>
+     <TD>Hybrid base pressure (pascals).</TD></TR>
+ <TR><TD valign=top><em class=code>hyba&nbsp; &nbsp; </em></TD>
+     <TD>Hybrid coord coeffs for base pressure.</TD></TR>
+ <TR><TD valign=top><em class=code>hybb&nbsp; &nbsp; </em></TD>
+     <TD>Hybrid coord coeffs for surf pressure (in same format as hyba).</TD></TR>
+ <TR><TD valign=top><em class=code>kmax&nbsp; &nbsp; </em></TD>
+     <TD>Number of vertical levels.</TD></TR>
+ <TR><TD valign=top><em class=code>idim&nbsp; &nbsp; </em></TD>
+     <TD>Longitude dimension.</TD></TR>
+ <TR><TD valign=top><em class=code>imax&nbsp; &nbsp; </em></TD>
+     <TD>Num of longitude points to compute.</TD></TR>
+ <TR><TD valign=top><em class=code>pmln&nbsp; &nbsp; </em></TD>
+     <TD>Vertical slice scratch space used to hold logs of midpoint pressures.</TD></TR>
+ <TR><TD valign=top><em class=code>hpdln&nbsp; &nbsp; </em></TD>
+     <TD>Vertical slice scratch space used to hold log p layer thickness.</TD></TR>
+ <TR><TD valign=top><em class=code>hyalph&nbsp; &nbsp; </em></TD>
+     <TD>Vertical slice scratch space used to hold distance from interface to level during 
+         vertical integration.</TD></TR>
+ <TR><TD valign=top><em class=code>pterm&nbsp; &nbsp; </em></TD>
+     <TD>Vertical scratch space.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="gph2gmh"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> gph2gmh = gph2gmh(h, lat) </em>
+ <pre>
+ real(r8), intent(out)                           :: <em class=code>gph2gmh</em>
+ real(r8), intent(in)                            :: <em class=code>h</em>
+ real(r8), intent(in)                            :: <em class=code>lat</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Convert a geopotential altitude to mean sea level altitude.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gph2gmh&nbsp; &nbsp; </em></TD>
+     <TD>MSL altitude, in km.</TD></TR>
+ <TR><TD valign=top><em class=code>h&nbsp; &nbsp; </em></TD>
+     <TD>geopotential altitude (in km).</TD></TR>
+ <TR><TD valign=top><em class=code>lat&nbsp; &nbsp; </em></TD>
+     <TD>latitude in degrees.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="gravity"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call gravity (xlat,alt,galt) </em>
+ <pre>
+ real(r8), intent(out)                           :: <em class=code>galt</em>
+ real(r8), intent(in)                            :: <em class=code>xlat</em>
+ real(r8), intent(in)                            :: <em class=code>alt</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ This subroutine computes the Earth's gravity at any altitude
+ and latitude.  The model assumes the Earth is an oblate 
+ spheriod rotating at a the Earth's spin rate.  The model
+ was taken from "Geophysical Geodesy, Kurt Lambeck, 1988".
+ Compute acceleration due to the Earth's gravity at any latitude/altitude
+ author     Bill Schreiner   5/95
+
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>galt&nbsp; &nbsp; </em></TD>
+     <TD>gravity at the given lat and alt, cm/sec.</TD></TR>
+ <TR><TD valign=top><em class=code>xlat&nbsp; &nbsp; </em></TD>
+     <TD>latitude in radians.</TD></TR>
+ <TR><TD valign=top><em class=code>alt&nbsp; &nbsp; </em></TD>
+     <TD>altitude above the reference ellipsiod, km.</TD></TR>
+ </TABLE>
+ <P>
 
 <HR>
 </BODY>
