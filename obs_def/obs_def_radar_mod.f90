@@ -1,6 +1,9 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+module obs_def_radar_mod
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
@@ -41,8 +44,6 @@
 !         continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-module obs_def_radar_mod
-
 ! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
 ! $Revision$
@@ -74,14 +75,13 @@ revdate  = "$Date$"
 logical, save :: module_initialized = .false.
 
 ! Storage for the special information required for observations of this type
-integer, parameter  :: max_rad_vel_obs = 300000
-type(location_type) :: rad_loc(max_rad_vel_obs)
-real(r8)            :: direction(3,max_rad_vel_obs)
-
 real(r8), parameter :: dief = 0.224_r8
-
 real(r8), parameter :: n0r = 8.0e6_r8, n0g = 4.0e4_r8, n0s = 3.0e6_r8
 real(r8), parameter :: rho_r = 1000.0_r8, rho_g = 917.0_r8, rho_s = 100.0_r8
+integer,  parameter :: max_rad_vel_obs = 300000
+type(location_type) :: rad_loc(max_rad_vel_obs)
+real(r8)            :: direction(3,max_rad_vel_obs)
+integer :: keycount = 0 ! cumulative index into rad_loc,direction
 
 contains
 
@@ -126,9 +126,17 @@ END SELECT
 
 end subroutine write_rad_vel
 
-!----------------------------------------------------------------------
 
-subroutine read_rad_vel(key, ifile, fform)
+
+ subroutine read_rad_vel(key, ifile, fform)
+!----------------------------------------------------------------------
+!subroutine read_rad_vel(key, ifile, fform)
+!
+! There is a whopping great list of metadata for each GPS obs.
+! if you read multiple obs_sequence files, you need to keep
+! appending into the (module) storage for 'rad_loc(:)' and 
+! 'direction(:)' metadata streams. This is the difference
+! between 'key' and 'keycount'
 
 integer,          intent(out)          :: key
 integer,          intent(in)           :: ifile
@@ -149,7 +157,7 @@ SELECT CASE (fileformat)
       location = read_location(ifile, fileformat)
       orientation = read_orientation(ifile, fileformat)
       ! Read in the key for this particular observation
-      read(ifile) key
+      read(ifile) key  ! basically, read and throw away
    CASE DEFAULT
       ! Read the character identifier for verbose formatted output
       read(ifile, FMT='(a8)') header
@@ -161,11 +169,14 @@ SELECT CASE (fileformat)
       location = read_location(ifile, fileformat)
       orientation = read_orientation(ifile, fileformat)
       ! Read in the key for this particular observation
-      read(ifile, *) key
+      read(ifile, *) key ! basically, read and throw away
 END SELECT
 
+keycount = keycount + 1    ! the total metadata key count from all sequences
+key = keycount             ! copied to the output variable
+
 if(key > max_rad_vel_obs) then
-   write(*, *) 'key (',key,') exceed max_rad_vel_obs (',max_rad_vel_obs,')'
+   write(*, *) 'key (',key,') exceeds max_rad_vel_obs (',max_rad_vel_obs,')'
    call error_handler(E_ERR,'read_rad_vel', &
               'Increase max_rad_vel_obs.', source, revision, revdate)
 endif
@@ -209,8 +220,8 @@ if ( .not. module_initialized ) call initialize_module
 
 ! Make sure there's enough space, if not die for now (clean later)
 if(key >= max_rad_vel_obs) then
-   ! PUT IN ERROR HANDLER CALL
-   stop
+   call error_handler(E_ERR,'interactive_rad_vel', &
+              'not ready to use', source, revision, revdate)
 endif
 
 ! Increment the index
