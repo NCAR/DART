@@ -135,6 +135,11 @@
    reg_names  = 'global',
    print_mismatched_locs = .false.  /
 
+&merge_obs_seq_nml
+   filename_seq1 = 'obs_seq.one',
+   filename_seq2 = 'obs_seq.two',
+   filename_out  = 'obs_seq.merged'  /
+
 &model_nml
    num_est_params = 0,
    est_param_types = 604,
@@ -148,5 +153,4 @@
    dist_shape = 'beta', 
    real_obs_period = 1800, 
    start_real_obs = 1800  /
-
  

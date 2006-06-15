@@ -95,6 +95,8 @@ csh mkmf_create_real_network_seq
 make         || exit 11
 csh mkmf_driver
 make         || exit 12
+csh mkmf_merge_obs_seq
+make         || exit 13
 
 if (! -d 06_01) then
    mkdir 06_01
@@ -106,4 +108,4 @@ endif
 
 \cp -p obs_seq.final 06_01/obs_seq.final
 
-./obs_diag   || exit 13
+./obs_diag   || exit 99
