@@ -49,6 +49,15 @@
 # resulting source file is used by all the remaining programs, 
 # so this MUST be run first.
 #----------------------------------------------------------------------
+#
+# If you get a ton of compile ERRORS (not warnings) read on ...
+#
+# Since a lot of the code is inherited from wrf, it comes with a .F 
+# extension even though it is free-format. This makes it necessary to
+# compile with flags that force interpretation of free-format.
+# They also rely on the autopromotion flag ... arghhh ... -r8
+# Intel   -free -r8
+#----------------------------------------------------------------------
 
 csh mkmf_preprocess
 make         || exit 1
