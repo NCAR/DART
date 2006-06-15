@@ -2,7 +2,7 @@
 ! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-program smoother
+program  smoother
 
 ! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
@@ -82,6 +82,8 @@ character(len = 129), allocatable :: smoother_restart_file(:)
 logical :: interf_provided
 logical, allocatable :: compute_obs(:)
 
+! an integer for writing a file to keep track of step number
+integer :: sfile_unit_number 
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -122,10 +124,10 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 
 namelist /smoother_nml/async, adv_ens_command, ens_size, cov_inflate, &
    start_from_smoother_restart, output_smoother_restart, &
-   start_from_restart, &
-   obs_sequence_in_name, obs_sequence_out_name, &
-   restart_in_file_name, &
    smoother_restart_in_base, smoother_restart_out_base, &
+   start_from_restart, &
+   restart_in_file_name, &  
+   obs_sequence_in_name, obs_sequence_out_name, &    
    init_time_days, init_time_seconds, output_state_ens_mean, &
    output_state_ens_spread, output_obs_ens_mean, output_obs_ens_spread, &
    num_output_state_members, num_output_obs_members, output_interval, &
@@ -207,6 +209,8 @@ AdvanceTime : do
    write(*, *) 'starting advance time loop;'
    time_step_number = time_step_number + 1
 
+
+
    ! Get the model to a good time to use a next set of observations
    call move_ahead(ens_handle(0), ens_size, model_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
@@ -215,12 +219,15 @@ AdvanceTime : do
    if (start_from_smoother_restart) then
    else  
       ! not starting from smoother restart
+      ! and we're on the first step, therefore need to 
+      ! copy the forecast ensemble
       if (time_step_number == 1) then
          do i = 1, lag
             call copy_ens(ens_handle(0), ens_handle(i), .true.)
          enddo
       endif
    endif
+
 
    ! Allocate storage for the ensemble priors for this number of observations
    allocate(keys(num_obs_in_set), obs_err_var(num_obs_in_set), obs(num_obs_in_set), &
@@ -233,8 +240,11 @@ AdvanceTime : do
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
    ! Inflate each of the groups if required
-   ! Uses ens_handle(0)
+   ! Uses ens_handle(0) which implies we're only inflating the filtering
+   ! solution - in future applications of smoothers it may be prudent
+   ! to inflate smoother states ie. in model error cases.
    if(cov_inflate > 1.0_r8) call filter_ensemble_inflate()
+
 
    ! Do prior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) then 
@@ -257,6 +267,7 @@ AdvanceTime : do
    ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call filter_state_space_diagnostics(PosteriorStateUnit)
+      ! above call still generates the usual filter state in same netcdf format
 
    ! Do the smoother copies if we have non-zero lag
    if (lag > 0) then
