@@ -70,8 +70,12 @@ csh mkmf_filter
 make                || exit 6
 csh mkmf_obs_diag
 make                || exit 7
+csh mkmf_merge_obs_seq
+make                || exit 8
+csh mkmf_smoother
+make                || exit 9
 
-./perfect_model_obs || exit 8
+./perfect_model_obs || exit 20
 
 #----------------------------------------------------------------------
 # For forced L96, we want to allow filter to assimilate forcing.
@@ -82,10 +86,8 @@ echo ':0'                        >! vi_script
 echo '/reset_forcing'            >> vi_script
 echo ':s/true/false/'            >> vi_script
 echo ':wq'                       >> vi_script
-vi -s vi_script input.nml
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
 
-./filter || exit 9
+./filter || exit 21
 \rm -f go_end_filter vi_script
 
-csh mkmf_merge_obs_seq
-make                || exit 10

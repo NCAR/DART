@@ -54,8 +54,10 @@ csh mkmf_preprocess
 make         || exit 1
 \rm -f ../../../obs_def/obs_def_mod.f90 
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-\rm -f perfect_model_obs
-\rm -f filter
+\rm -f perfect_model_obs set_def_stdin pressure_col_rand ps_rand_local
+\rm -f filter column_rand create_obs_sequence create_fixed_network_seq
+\rm -f integrate_model perfect_model_obs assim_region obs_diag smoother
+\rm -f merge_obs_diag
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
@@ -89,3 +91,6 @@ make         || exit 13
 
 csh mkmf_merge_obs_seq
 make         || exit 16
+csh mkmf_smoother
+make         || exit 17
+
