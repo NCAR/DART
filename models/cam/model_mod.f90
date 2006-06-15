@@ -2,6 +2,41 @@
 ! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+module model_mod
+
+! ISSUE: In model_get_close_states the P on levels is calculated for each column within
+!        radius of the ob location.  So P is recalculated for the same columns many times
+!        for the many obs.  It's not strictly correct, but this calculation could be moved
+!        up front (static_init_model?) and done only once for all columns.
+!        Same for obs on heights.
+!        I'll do this for the J release, not post-I, to be sure that at least the obs on P
+!        still works.
+
+! ISSUE: Ave's FV code had a bug in the model_get_close states handling of V; fix during
+!        merge.
+
+! ISSUE: read_cam_init  may no longer be an acceptable name to DART; see web documentation
+
+! ISSUE: Should get_val_xxxx return MISSING_VALUE instead of 0 for istat = 1 cases?
+
+! ISSUE; tapering becomes more complicated/ambiguous for obs with height vert coord:
+!        I've specified a new namelist entry to filter out obs above a certain height,
+!        but state vector components tapering is controlled by highest_obs_press (not 
+!        height) which is not connected with highest_obs_height_m.
+!        highest_obs_level also added to accomodate obs on pressure levels.
+
+! ISSUE: The CCM code (and Hui's packaging) for geopotentials and heights  use different
+!        values of the physical constants than DARTS.  In one case Shea changed g from
+!        9.81 to 9.80616, to get agreement with CCM(?...), so it may be important.
+!        Also, matching with Hui's tests may require using his values;  change to DART
+!        after verifying?
+
+! 'height' marks changes to add interpolation in height to model_interpolate
+!  ? ? ? Need a section in model_get_close_states to handle obs_loc which have height
+!        as vert coord?
+
+! "Pobs" marks changes for providing expected obs of P
+!        break from past philosophy; P is not a native CAM variable (but is already calced here)
 
 ! vars_3d still has order of variables; lon,lev,lat,field in some(?) routines
 !  (use vars_3d as a search tag if I decide to change over to all lon,lat,lev)
@@ -19,10 +54,6 @@
 !          This may cause problems if the component is size num_lats or num_levs
 ! FIX  or HOOK (see more below)
 !!!!!!!!!!!!!!!!!!!!!!
-
-
-
-module model_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
 ! $Source$
@@ -68,17 +99,23 @@ module model_mod
 !         Later;?
 !         Also; read field attributes from netcdf file and write them out 
 !         from nc_write_model_atts, instead of hard-coded there.
+!
+! augmented; Kevin Raeder (code from Hui Liu and CAM) 4/2006 to add vertical interpolation
+!         in height.  Also add checks of requested fields for interpolation.
 !----------------------------------------------------------------------
 
 use netcdf
 use        types_mod, only : r8
+! height
+! add after verification against Hui's tests;  gas_constant_v,gas_constant,ps0,PI,DEG2RAD
+
 use time_manager_mod, only : time_type, set_time, print_time, set_calendar_type, &
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use    utilities_mod, only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, file_exist, E_ERR, E_MSG, logfileunit
-use     location_mod, only : location_type, get_location, set_location, &
-                             get_dist, vert_is_level, query_location, &
-                             LocationDims, LocationName, LocationLName, &
+                             register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG, logfileunit
+use     location_mod, only : location_type, get_location, set_location, query_location, &
+                             LocationDims, LocationName, LocationLName, get_dist, &
+                             vert_is_level, vert_is_pressure, vert_is_height, &
                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
@@ -96,7 +133,8 @@ public :: model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
    get_state_meta_data, get_model_time_step, model_interpolate, &
    init_conditions, init_time, adv_1step, end_model, &
    model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, pert_model_state
+   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ, pert_model_state, &
+   TYPE_PHIS, TYPE_SGH, TYPE_PBLH, TYPE_TBOT, TYPE_TS, TYPE_TSOCN, TYPE_LCWAT, TYPE_QCWAT
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -113,7 +151,8 @@ revdate  = "$Date$"
 ! Values will be defined in order_state_fields
 ! All fields will have entries in the TYPE_xD corresponding to their orders
 !   in state_names_Xd.  The explicitly named TYPE_s are for convenience
-integer :: TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
+integer :: TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ     &
+          ,TYPE_PHIS, TYPE_SGH, TYPE_PBLH, TYPE_TBOT, TYPE_TS, TYPE_TSOCN, TYPE_LCWAT, TYPE_QCWAT 
 integer, allocatable :: TYPE_1D(:), TYPE_2D(:), TYPE_3D(:)
 
 ! CAM3; additional types, or can TRACER handle the new ones?
@@ -155,8 +194,12 @@ logical :: output_state_vector = .false.
 character(len = 128) :: model_config_file = 'caminput.nc', &
                         model_version = '3.0'
 
-! Define highest pressure for which obserations are used in mb
+! Define location restrictions on which observations are assimilated
+! (values are calculated anyway, but istatus is set to 2)
 real(r8) :: highest_obs_pressure_mb = 30.0_r8
+real(r8) :: highest_obs_height_m    = 30000.0_r8
+integer  :: highest_obs_level       = 11
+real(r8) :: max_obs_lat_degree      = 90.0_r8
 
 ! Namelist variables for defining state vector, and default values
 ! read in sizes from first namelist, allocate, set default values, then get values from
@@ -171,11 +214,13 @@ integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
 ! make these allocatable?  Where would I define the default values?
 integer :: iii
-character (len=8),dimension(20) :: state_names_0d = (/('        ',iii=1,20)/)
-character (len=8),dimension(20) :: state_names_1d = (/('        ',iii=1,20)/)
-character (len=8),dimension(20) :: state_names_2d = (/'PS      ',('        ',iii=1,19)/)
-character (len=8),dimension(20) :: state_names_3d =  &
-          (/'T       ','U       ','V       ','Q       ',('        ',iii=1,16)/)
+character (len=8),dimension(1000) :: state_names_0d = (/('        ',iii=1,1000)/)
+character (len=8),dimension(1000) :: state_names_1d = (/('        ',iii=1,1000)/)
+character (len=8),dimension(1000) :: state_names_2d = (/'PS      ',('        ',iii=1,999)/)
+
+character (len=8),dimension(1000) :: state_names_3d =  &
+          (/'T       ','U       ','V       ', &
+            'Q       ', ('        ',iii=1,996)/)
 
 ! NOVERT  need (a) namelist parameter(s) to define which_vert for each 2D (xD?) field
 !         There's a danger of having a mismatch with the state_names_Xd; should this
@@ -184,9 +229,9 @@ character (len=8),dimension(20) :: state_names_3d =  &
 
 ! Are these defaults good? or should they all be 0?
 
-integer , dimension(20) :: which_vert_1d = (/(-2,iii=1,20)/)
-integer , dimension(20) :: which_vert_2d = (/(-1,iii=1,20)/)
-integer , dimension(20) :: which_vert_3d = (/( 1,iii=1,20)/)
+integer , dimension(1000) :: which_vert_1d = (/(-2,iii=1,1000)/)
+integer , dimension(1000) :: which_vert_2d = (/(-1,iii=1,1000)/)
+integer , dimension(1000) :: which_vert_3d = (/( 1,iii=1,1000)/)
 
 
 ! Is there a way to exclude stat_nums from namelist and have those filled in 
@@ -195,8 +240,8 @@ integer , dimension(20) :: which_vert_3d = (/( 1,iii=1,20)/)
 
 ! list of fields which trans_pv_sv_pert0 needs to perturb because they're
 ! constant valued model parameters and show no spread when start_from_restart = .true.
-character (len=8),dimension(20) :: state_names_pert = (/('        ',iii=1,20)/)
-real(r8), dimension(20) :: state_names_sd = (/(0.,iii=1,20)/)
+character (len=8),dimension(1000) :: state_names_pert = (/('        ',iii=1,1000)/)
+real(r8), dimension(1000) :: state_names_sd = (/(0.,iii=1,1000)/)
 
 
 ! Specify shortest time step that the model will support
@@ -209,7 +254,9 @@ namelist /model_nml/ output_state_vector , model_version , model_config_file &
                      ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d &
                      ,                which_vert_1d  ,which_vert_2d  ,which_vert_3d &
                      ,state_names_pert ,state_names_sd &
-                     ,highest_obs_pressure_mb ,Time_step_seconds ,Time_step_days
+                     ,highest_obs_pressure_mb , highest_obs_height_m, highest_obs_level &
+                     ,max_obs_lat_degree ,Time_step_seconds ,Time_step_days 
+                     
 
 !---- namelist (saved in file input.nml) ----
 !----------------------------------------------------------------------
@@ -225,6 +272,10 @@ real(r8), allocatable :: hyai(:), hybi(:), hyam(:), hybm(:)
 !reference pressure for pressure calculations using hybrid coeff 
 ! should be read from same file as hybrid coeffs?
 real(r8):: P0               ! reference pressure
+
+! height
+!surface potential; used for calculation of geometric heights
+real(r8), allocatable :: phis(:, :)
 
 ! from ncdump of CAM standard configuration initial file:
 !   P0 ; lat = 64 ; lon = 128 ; lev = 26 ; time
@@ -263,7 +314,7 @@ character (len=128), allocatable :: state_units(:)
 ! array for the linking of obs_kinds (KIND_) to model field TYPE_s
 ! It's filled in obs_field_location
 ! The max size of KIND_ should come from obs_kind_mod
-integer, dimension(100) :: obs_loc_in_sv = (/(0,iii=1,100)/)
+integer, dimension(100) :: obs_loc_in_sv = (/(-999,iii=1,100)/)
 !
 !-----------------------------------------------------------------------
 
@@ -541,6 +592,42 @@ contains
 
 end subroutine nc_read_model_atts
 
+
+! height
+subroutine read_cam_horiz(var, dim1, dim2, cfield)
+!======================================================
+! should be called with cfield = a 2D record variable  (time,lat,lon):
+
+implicit none                                                                                         
+!------------------------------------------------------
+integer :: i, j, ifld             ! grid indices
+integer :: ncfileid, ncfldid, dim1, dim2
+
+
+!------------------------------------------------------
+real(r8), dimension(dim1, dim2), intent(out) :: var
+character (len=8), intent(in)  :: cfield             
+
+! read CAM 'initial' file domain info
+  call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
+           ncid = ncfileid))                                                                          
+! read CAM 'initial' file field desired
+  call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid))
+  call check(nf90_get_var(ncfileid, ncfldid, var,start=(/1,1,1/) ,count=(/dim1, dim2, 1/)))
+
+  PRINT*,'reading ',cfield,' using id ',ncfldid, dim1, dim2
+
+contains
+
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+   integer, intent ( in) :: istatus
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_horiz', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+   end subroutine check
+
+end subroutine read_cam_horiz
 
 
   subroutine read_cam_coord(var, idim, cfield)
@@ -947,8 +1034,10 @@ model_size = state_num_0d + num_lons * (state_num_1d + num_lats *  &
 
 ! Allocate space for longitude and latitude global arrays
 ! and Allocate space for hybrid vertical coord coef arrays
+! height; phis
 allocate(lons(num_lons), lats(num_lats), gw(num_lats), hyai(num_levs+1), &
-   hybi(num_levs+1), hyam(num_levs), hybm(num_levs))
+         hybi(num_levs+1), hyam(num_levs), hybm(num_levs), &
+         phis(num_lons, num_lats) )
 
 ! values for num_lons and num_lats should come from netcdf file in read_cam_init_size
 call read_cam_coord(lons, num_lons, 'lon     ')
@@ -961,6 +1050,11 @@ call read_cam_coord(hybi, num_levs+1, 'hybi    ')
 call read_cam_coord(hyam, num_levs  , 'hyam    ')
 call read_cam_coord(hybm, num_levs  , 'hybm    ')
 call read_cam_scalar(P0, 'P0      ')    ! thats a p-zero
+
+! height
+! Read surface geopotential for use in vertical interpolation in height
+! Coordinate order not affected by CAM model version.
+call read_cam_horiz (phis, num_lons, num_lats, 'PHIS    ')
 
 write(*, *) 'CAM size initialized as ', model_size
 
@@ -1094,6 +1188,8 @@ lat = lats(lat_index + 1)
 ! bottom and hybrid in-between, we are just referring to
 ! the LEVEL index for the vertical. The coefficients to reconstruct
 ! pressure, height, etc. are available in the netCDF files.
+! Currently (6/1/06) pressures on the levels are obtained in model_get_close_states, 
+! which calls this routine.
 
 ! same test as 'if (col_elem <= state_num_2d) then', but more efficient
 ! NOVERT
@@ -1127,38 +1223,48 @@ end subroutine get_state_meta_data
 
 
 
-  subroutine model_interpolate(x, location, type, interp_val, istatus)
+  subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 !=======================================================================
 !
 
 real(r8),           intent(out) :: interp_val
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer,             intent(in) :: type
+integer,             intent(in) :: obs_type
 integer,            intent(out) :: istatus
 
 integer :: lon_below, lon_above, lat_below, lat_above, i, vstatus
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
-real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
+real(r8) :: lon, lat, lon_lat_lev(3), level, pressure, height
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
 ! As opposed to the stripped state vector. YES. This would give time interp.
 ! capability here; do we really want this or should it be pushed up?
 
+! istatus   meaning                  return expected obs?   assimilate?
+! 0         obs and model are fine;  yes                    yes
+! 1         fatal problem;           no                     no
+! 2         exclude valid obs        yes                    no
+! 3         unfamiliar obs type      no                     no
+
 ! Start with no errors in 
 istatus = 0
 vstatus = 0
+val = 0.0_r8
 
+! check whether model_mod can interpolate the requested variable
+if (obs_loc_in_sv(obs_type) == -999 .and. obs_type .ne. KIND_PRESSURE) then
+   istatus = 3
+   interp_val = 0._r8
+! check
+   write(*,*) 'Wrong type of obs = ', obs_type
+   return
+endif
 
-! Get the position, determine if it is model level or pressure in vertical
+! Get the horizontal position, in degrees 
 lon_lat_lev = get_location(location)
 lon = lon_lat_lev(1); lat = lon_lat_lev(2);
-if(vert_is_level(location)) then
-   level = lon_lat_lev(3)
-else
-   pressure = lon_lat_lev(3)
-endif
 
 ! Get lon and lat grid specs, num_lons, num_lats are globally defined for cam
    bot_lon = lons(1)
@@ -1188,6 +1294,7 @@ endif
 ! Next, compute neighboring lat rows
 ! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE MAY BE WRONG
 ! Inefficient search used for latitudes in Gaussian grid. Might want to speed up.
+   
 if(lat >= bot_lat .and. lat <= top_lat) then
 
    do i = 2, num_lats
@@ -1213,44 +1320,210 @@ endif
 
 20 continue
 
-! Case 1: model level specified in vertical
-if(vert_is_level(location)) then
 ! Now, need to find the values for the four corners
-   call get_val(val(1, 1), x, lon_below, lat_below, nint(level), type, vstatus)
-   if (vstatus /= 1) call get_val(val(1, 2), x, lon_below, lat_above, nint(level), type, vstatus)
-   if (vstatus /= 1) call get_val(val(2, 1), x, lon_above, lat_below, nint(level), type, vstatus)
-   if (vstatus /= 1) call get_val(val(2, 2), x, lon_above, lat_above, nint(level), type, vstatus)
+! determine the vertical coordinate: model level, pressure, or height
+if(vert_is_level(location)) then
+   ! Case 1: model level specified in vertical
+   ! Pobs
+   level = lon_lat_lev(3)
+      call get_val_level(val(1, 1), x, lon_below, lat_below, nint(level), obs_type, vstatus)
+   if (vstatus /= 1) &
+      call get_val_level(val(1, 2), x, lon_below, lat_above, nint(level), obs_type, vstatus)
+   if (vstatus /= 1) &
+      call get_val_level(val(2, 1), x, lon_above, lat_below, nint(level), obs_type, vstatus)
+   if (vstatus /= 1) &
+      call get_val_level(val(2, 2), x, lon_above, lat_above, nint(level), obs_type, vstatus)
+   ! Pobs end
 
-else
-! Case of pressure specified in vertical
-   call get_val_pressure(val(1, 1), x, lon_below, lat_below, pressure, type, vstatus)
-   if (vstatus /= 1) call get_val_pressure(val(1, 2), x, lon_below, lat_above, pressure, type, vstatus)
-   if (vstatus /= 1) call get_val_pressure(val(2, 1), x, lon_above, lat_below, pressure, type, vstatus)
-   if (vstatus /= 1) call get_val_pressure(val(2, 2), x, lon_above, lat_above, pressure, type, vstatus)
+elseif (vert_is_pressure(location)) then
+   ! which_vert is pressure for this obs
+   pressure = lon_lat_lev(3)
+                     call get_val_pressure(val(1,1),x,lon_below,lat_below,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(val(1,2),x,lon_below,lat_above,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(val(2,1),x,lon_above,lat_below,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(val(2,2),x,lon_above,lat_above,pressure,obs_type,vstatus)
+
+elseif (vert_is_height(location)) then
+   ! which_vert is height for this obs
+   height = lon_lat_lev(3)
+                     call get_val_height(val(1, 1), x, lon_below, lat_below, height, obs_type, vstatus)
+   if (vstatus /= 1) call get_val_height(val(1, 2), x, lon_below, lat_above, height, obs_type, vstatus)
+   if (vstatus /= 1) call get_val_height(val(2, 1), x, lon_above, lat_below, height, obs_type, vstatus)
+   if (vstatus /= 1) call get_val_height(val(2, 2), x, lon_above, lat_above, height, obs_type, vstatus)
+! check
+   write(*,*) 'height, 4 nearby values = ',height, val
+
 endif
 
 ! if (pflag > 0) write(53,'(A,2F7.2/)') '  subsurface obs lat, lon = ',lat,lon
 
 ! Do the weighted average for interpolation
 !write(*, *) 'fracts ', lon_fract, lat_fract
-! kdr Guam;
-! istatus   meaning                  return expected obs?   assimilate?
-! 0         obs and model are fine;  yes                    yes
-! 1         fatal problem;           no                     no
-! 2         exclude valid obs        yes                    no
 !
-istatus = vstatus
+! lat is already converted to degrees by get_location
+if (abs(lat) > max_obs_lat_degree .and. vstatus /= 1) then
+   istatus = 2
+! check
+   write(*,*) 'lat > max_obs_lat_degree ',lat ,max_obs_lat_degree
+else
+   istatus = vstatus
+endif
+
 if(istatus /= 1) then
    do i = 1, 2
       a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
    end do
    interp_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
 else
-   interp_val = 0.
+   interp_val = 0.0_r8
 endif
+
+! check
+write(*,*) 'model_interpolate; at end interp_val = ',interp_val
 
 end subroutine model_interpolate
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+! Pobs
+subroutine get_val_level(val, x, lon_index, lat_index, level, obs_kind, istatus)
+!=======================================================================
+!
+! Gets the value on level for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! written by Kevin Raeder, based on code from Hui Liu 4/28/2006 and get_val_pressure
+!         from Jeff Anderson
+!
+! This version excludes observations below lowest level and above
+! highest level.
+
+
+real(r8), intent(out) :: val
+real(r8), intent(in) :: x(:)
+integer, intent(in) :: lon_index, lat_index, level, obs_kind 
+integer, intent(out) :: istatus
+
+real(r8) :: ps(1), pfull(1, num_levs), model_h(num_levs), frac
+integer  :: top_lev, bot_lev, i, vstatus
+real(r8) :: bot_val, top_val
+
+! No errors to start with
+istatus = 0
+vstatus = 0
+
+! Interpolate in vertical to get two bounding levels
+if(level > num_levs .or. level < 1) then
+   ! Exclude obs below the model's lowest level and above the highest level
+   istatus = 1
+   val = 0._r8
+! check
+   write(*,*) 'get_val_level; level, bottom and top levels = ',level, num_levs, 1
+else 
+   if(level < highest_obs_level) then
+      ! Exclude from assimilation the obs above a user specified level
+      ! but still calculate the expected obs.
+      istatus = 2
+   else
+      istatus = 0
+   endif
+
+   if (obs_kind == KIND_PRESSURE) then
+
+      ! Need to get the surface pressure at this point for Pobs. Easy for A-grid.
+      call get_val(ps(1), x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
+      if (vstatus > 0) then
+         val = 0._r8
+         istatus = 1
+         return
+      endif
+      ! Next, get the values on the levels for this ps
+      call plevs_cam (1, 1, ps, pfull)
+
+      val = pfull(1,level)
+   else 
+       call get_val(val, x, lon_index, lat_index, level, obs_kind, vstatus)
+   endif
+
+   if (vstatus /= 0) then
+      istatus = 1
+      val = 0._r8
+   endif
+endif
+
+end subroutine get_val_level
+! Pobs end
 
 
 subroutine get_val_pressure(val, x, lon_index, lat_index, pressure, obs_kind, istatus)
@@ -1268,9 +1541,10 @@ real(r8), intent(in) :: x(:), pressure
 integer, intent(in) :: lon_index, lat_index, obs_kind 
 integer, intent(out) :: istatus
 
-real(r8) :: ps(1), pfull(1, num_levs), fraction
+real(r8) :: ps(1), pfull(1, num_levs), frac
 integer  :: top_lev, bot_lev, i, vstatus
 real(r8) :: bot_val, top_val
+character(len=129) :: errstring
 
 ! No errors to start with
 istatus = 0
@@ -1279,7 +1553,7 @@ vstatus = 0
 ! Need to get the surface pressure at this point. Easy for A-grid.
 call get_val(ps(1), x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
 if (vstatus > 0) then
-   val = 0.
+   val = 0.0_r8
    istatus = 1
    return
 endif
@@ -1289,12 +1563,12 @@ call plevs_cam (1, 1, ps, pfull)
 !write(*, *) 'surface pressure is ', ps(1)
 !write(*, *) 'pressure levs in model are ', pfull
 
-! Interpolate in vertical to get two bounding levels
 if(pressure <= pfull(1, 1) .or. pressure >= pfull(1, num_levs)) then
    ! Exclude obs below the model's lowest level and above the highest level
    istatus = 1
-   val = 0.
+   val = 0._r8
 else 
+   ! Interpolate in vertical to get two bounding levels
    if(pressure < highest_obs_pressure_mb * 100.0_r8) then
       ! Exclude from assimilation the obs above a user specified level
       ! but still calculate the expected obs.
@@ -1307,7 +1581,7 @@ else
       if(pressure < pfull(1, i)) then
          top_lev = i -1
          bot_lev = i
-         fraction = (pfull(1, i) - pressure) / &
+         frac = (pfull(1, i) - pressure) / &
             (pfull(1, i) - pfull(1, i - 1))
          goto 21
       endif
@@ -1315,18 +1589,142 @@ else
 
 21 continue
 
-   call get_val(bot_val, x, lon_index, lat_index, bot_lev, obs_kind, vstatus)
-   if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, obs_kind, vstatus)
-   if (vstatus == 0) then
-      val = (1.0_r8 - fraction) * bot_val + fraction * top_val
-   else
-     istatus = 1
-      val = 0.
+   ! Pobs
+   if (obs_kind == KIND_PRESSURE) then
+      ! This is called for 4 different columns, which will have different pfulls for each
+      bot_val = pfull(1,bot_lev)
+      top_val = pfull(1,top_lev)
+      val = (1.0_r8 - frac) * bot_val + frac * top_val
+      if (abs(val - pressure) > 1.0E-12) then
+         write(errstring, *) 'val /= pressure = ',val,pressure,' when val is a P obs '
+         call error_handler(E_WARN, 'get_val_pressure', errstring, source, revision, revdate)
+      endif
+   else 
+   ! Pobs end
+                        call get_val(bot_val, x, lon_index, lat_index, bot_lev, obs_kind, vstatus)
+      if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, obs_kind, vstatus)
+      if (vstatus == 0) then
+         val = (1.0_r8 - frac) * bot_val + frac * top_val
+      else
+         istatus = 1
+         val = 0._r8
+      endif
    endif
-end if
+   ! Pobs
+
+endif
 
 end subroutine get_val_pressure
 
+
+
+subroutine get_val_height(val, x, lon_index, lat_index, height, obs_kind, istatus)
+!=======================================================================
+!
+! Gets the vertically interpolated value on height for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! written by Kevin Raeder, based on code from Hui Liu 4/28/2006 and get_val_pressure
+!         from Jeff Anderson
+!
+! This version excludes observations below lowest level height and above
+! highest level height.
+! 
+! THIS WILL NEED MODIFICATION FOR FV; PS NEEDED AT STAGGERED GRID, NEED ITS HEIGHT?
+
+
+real(r8), intent(out) :: val
+real(r8), intent(in) :: x(:), height
+integer, intent(in) :: lon_index, lat_index, obs_kind 
+integer, intent(out) :: istatus
+
+real(r8) :: pfull(1,num_levs), model_h(num_levs), frac
+integer  :: top_lev, bot_lev, i, vstatus
+integer  :: idim = 1
+real(r8) :: bot_val, top_val
+real(r8), allocatable :: ps(:)
+
+! No errors to start with
+istatus = 0
+vstatus = 0
+
+
+! Need to get the surface pressure at this point for dcz2. 
+allocate (ps(idim))
+call get_val(ps(idim), x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
+
+! Next, get the heights on the levels for this ps
+
+call model_heights(x, ps, lon_index, lat_index, model_h, idim, vstatus)
+
+! check
+write(*, *) 'height is ', height
+write(*, *) 'heights in model are ', model_h
+
+! Interpolate in vertical to get two bounding levels
+if(height >= model_h(1) .or. height <= model_h(num_levs)) then
+   ! Exclude obs below the model's lowest level and above the highest level
+   istatus = 1
+   val = 0._r8
+! check
+   write(*,*) 'get_val_height; height, bottom and top heights = ',height, model_h(num_levs), model_h(1)
+else 
+   if(height > highest_obs_height_m ) then
+      ! Exclude from assimilation the obs above a user specified level
+      ! but still calculate the expected obs.
+      istatus = 2
+! check
+      write(*,*) 'get_val_height; height, highest_obs_height_m = ',height, highest_obs_height_m
+   else
+      istatus = 0
+   endif
+   ! Search down through heights
+   do i = 2, num_levs 
+      if(height > model_h(i)) then
+         top_lev = i -1
+         bot_lev = i
+         frac = (model_h(i) - height      ) / &
+                (model_h(i) - model_h(i-1))
+! check
+   write(*,*) 'get_val_height; height, bot_lev, frac = ',height, i, frac
+         goto 21
+      endif
+   end do
+
+21 continue
+
+   ! Pobs
+   if (obs_kind == KIND_PRESSURE) then
+      ! This is called for 4 different columns, which will have different pfulls for each
+
+      ! Need to get the surface pressure at this point for Pobs. Easy for A-grid.
+      call get_val(ps(1), x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
+      if (vstatus > 0) then
+         val = 0.0_r8
+         istatus = 1
+         return
+      endif
+      ! Next, get the values on the levels for this ps
+      call plevs_cam (1, 1, ps, pfull)
+
+      bot_val = pfull(1,bot_lev)
+      top_val = pfull(1,top_lev)
+   else 
+   ! Pobs end
+                        call get_val(bot_val, x, lon_index, lat_index, bot_lev, obs_kind, vstatus)
+      if (vstatus == 0) call get_val(top_val, x, lon_index, lat_index, top_lev, obs_kind, vstatus)
+   ! Pobs
+   endif
+
+   if (vstatus == 0) then
+      val = (1.0_r8 - frac) * bot_val + frac * top_val
+   else
+      istatus = 1
+      val = 0._r8
+   endif
+end if
+
+end subroutine get_val_height
 
 
 
@@ -1370,7 +1768,7 @@ field_type = obs_loc_in_sv(obs_kind)
 
 if (field_type <= 0) then
    istatus = 1
-   val = 0.
+   val = 0.0_r8
    return
 else if (field_type <= state_num_2d) then
    indx = indx + field_type
@@ -1380,7 +1778,7 @@ else if (field_type <= state_num_2d + state_num_3d) then
                + (field_type - state_num_2d)
 else
    istatus = 1
-   val = 0.
+   val = 0.0_r8
    return
 end if
 
@@ -1458,10 +1856,13 @@ real(r8),            intent(out) :: dist(:)
 real(r8),            intent(in)  :: x(:)
 
 type(location_type) :: s_loc
-real(r8) :: loc_array(3), sloc_array(3), ps(1)
-real(r8) :: pfull(1, num_levs), m_press, t_dist
-integer  :: num, max_size, i, j
-integer  :: hsize, num_per_col, col_base_index, which_vert
+real(r8) :: loc_array(3), sloc_array(3)
+integer  :: idim = 1
+real(r8), allocatable :: ps(:)
+real(r8) :: pfull(1, num_levs), m_press, m_height, t_dist, surf_lev
+real(r8) :: model_h(num_levs)
+integer  :: num, max_size, i, j, vstatus
+integer  :: num_per_col, col_base_index, which_vert, o_which_vert
 !integer  :: istatus
 integer,  allocatable :: lon_ind(:), lat_ind(:)
 real(r8), allocatable :: close_dist(:)
@@ -1476,12 +1877,13 @@ endif
 
 !write(*, *) 'in model_get_close_states', radius
 loc_array = get_location(o_loc)
+o_which_vert = nint(query_location(o_loc))
 !write(*, *) 'oloc is ', loc_array(:)
 
 ! Number found starts at 0
 nfound  = 0
 indices = 0
-dist    = 0.
+dist    = 0._r8
 
 ! Assume that grid size is known from static initialized storage
 
@@ -1491,36 +1893,28 @@ num = 0
 ! to make this smaller at some point for big models.
 max_size = num_lons * num_lats
 allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
+allocate (ps(idim))
 
 ! Look for close grid points in horizontal only
-call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
-   num, lon_ind, lat_ind, close_dist)
+   call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
+                           num, lon_ind, lat_ind, close_dist)
 ! kdr write(*, *) 'back from grid_close_states num = ', num
 
-! Compute size of grid storage for full levels
-hsize = num_lons * num_lats
 ! FIX; would 0d and 1d fields need to go in here?
 num_per_col = num_levs * state_num_3d + state_num_2d
 
-! For vertical localization need the vertical pressure structure for this column
+! Vertical localization 
 do i = 1, num
    col_base_index = ((lon_ind(i) - 1) * num_lats + lat_ind(i) - 1) * num_per_col
 
+! Need the vertical pressure structure for this column
 ! Compute the ps from the state for this column
 ! DOES NOT WORK FOR > 1 REGION
 !   call get_val(ps(1), x, lon_ind(i), lat_ind(i), -1, 3, istatus)
 ! TEMP FIX
     ps(1) = 100000.
 !   write(*, *) 'ps in model_get_close_states is ', i, ps(1)
-! Next get the values on the levels for this ps
-   call plevs_cam(1, 1, ps, pfull)
 
-   do j = 1, num_per_col
-
-! Added for vertical localization, 17 May, 2004
-      call get_state_meta_data(col_base_index + j, s_loc) 
-      sloc_array = get_location(s_loc)
-      which_vert = nint(query_location(s_loc))
 
 ! Surface pressure has ps as vertical, others have their level's pressure
 ! Put the appropriate pressure into a location type for computing distance
@@ -1529,33 +1923,95 @@ do i = 1, num
 ! integer, parameter :: VERTISLEVEL    =  1 ! by level
 ! integer, parameter :: VERTISPRESSURE =  2 ! by pressure
 ! integer, parameter :: VERTISHEIGHT   =  3 ! by height
-      if (which_vert == VERTISUNDEF) then
-         ! NOVERT; field with no vertical location; get_dist will calculate 
-         ! horiz dist only based on which_vert of s_loc
-      else if(which_vert == VERTISSURFACE ) then       
-         ! surface field; change which_vert for the distance calculation
-         s_loc = set_location(sloc_array(1), sloc_array(2), ps(1), 2)
-      else if(which_vert == VERTISLEVEL ) then
-         m_press = pfull(1, int(sloc_array(3)))
-         s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
+
+! What about VERTISPRESSURE VERTISHEIGHT ?
+! These are vert coords of model state variables, not obs.
+   do j = 1, num_per_col
+
+      call get_state_meta_data(col_base_index + j, s_loc) 
+      sloc_array = get_location(s_loc)
+      which_vert = nint(query_location(s_loc))
+
+! THESE IF TESTS COULD BE TURNED INSIDE OUT, AND MAYBE SAVE SOME LINES OF CODE?
+! ALSO, COULD THE t_dist MODIFICATION BE ROLLED INTO THIS LOGIC?
+
+      if (o_which_vert == VERTISPRESSURE) then
+         if (which_vert == VERTISUNDEF) then
+            ! NOVERT; field with no vertical location; get_dist will calculate 
+            ! horiz dist only based on which_vert of s_loc
+         else if(which_vert == VERTISSURFACE ) then       
+            ! surface field; change which_vert for the distance calculation
+            s_loc = set_location(sloc_array(1), sloc_array(2), ps(1), 2)
+         else if(which_vert == VERTISLEVEL ) then
+            ! Next get the values on the levels for this ps
+               call plevs_cam(1, 1, ps, pfull)
+            ! OR do this for all columns in static_init_mod, which would make PS (and P) globally 
+            ! available for all regions?
+            m_press = pfull(1, int(sloc_array(3)))
+            s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
+         else
+            write(errstring, *) 'model which_vert = ',which_vert, &
+                                ' not handled in model_get_close_states '
+            call error_handler(E_ERR, 'model_get_close_states', errstring,source,revision,revdate)
+         endif
+      elseif (o_which_vert == VERTISLEVEL) then
+         if (which_vert == VERTISUNDEF) then
+         else if(which_vert == VERTISSURFACE ) then
+            ! surface field; change which_vert for the distance calculation
+            ! Use bottom model level, which is not quite correct.
+            ! What else to use?  add a half level?
+            surf_lev = real(num_levs)+.5
+            s_loc = set_location(sloc_array(1), sloc_array(2), surf_lev, 1)
+         else if(which_vert == VERTISLEVEL ) then
+            ! s_loc already has levels for vert coord
+         else
+            write(errstring, *) 'model which_vert = ',which_vert, &
+                                ' not handled in model_get_close_states '
+            call error_handler(E_ERR, 'model_get_close_states', errstring,source,revision,revdate)
+         endif
+      elseif (o_which_vert == VERTISHEIGHT) then
+         if (which_vert == VERTISUNDEF) then
+         else if(which_vert == VERTISSURFACE ) then
+            ! surface field; change which_vert for the distance calculation
+            ! Use bottom model level, which is not quite correct.
+            ! What else to use?  add a half level?
+            s_loc = set_location(sloc_array(1), sloc_array(2), &
+                            phis(sloc_array(1), sloc_array(2)), 1)
+         else if(which_vert == VERTISLEVEL ) then
+
+         ! Next, get the heights on the levels for this ps
+            call model_heights(x, ps, lon_ind(i), lat_ind(i), model_h, idim, vstatus)
+            m_height = model_h(sloc_array(3))
+            s_loc = set_location(sloc_array(1), sloc_array(2), m_height, 3)
+         else
+            write(errstring, *) 'model which_vert = ',which_vert, &
+                                ' not handled in model_get_close_states '
+            call error_handler(E_ERR, 'model_get_close_states', errstring,source,revision,revdate)
+         endif
       else
-         write(errstring, *) 'which_vert = ',which_vert,' not handled in model_get_close_states '
-         call error_handler(E_ERR, 'model_get_close_states', errstring, source, revision, revdate)
+         write(errstring, *) ' obs which_vert = ',o_which_vert, &
+                             ' not handled in model_get_close_states '
+         call error_handler(E_ERR, 'model_get_close_states', errstring,source,revision,revdate)
       endif
 
       t_dist = get_dist(s_loc, o_loc)
 
 ! kdr
-! reduce influence of obs on points obove 150 hPa, which is cap of obs too
+! reduce influence of obs on points obove some pressure, which is cap of obs too
 ! linear with pressure
-! ERROR; PS model points have no m_press, so they may be included in this;
-!        add which_vert condition
-      if (which_vert == VERTISLEVEL .and. m_press < (highest_obs_pressure_mb*100._r8)) then
-!         WRITE(*,*) 'model_get_close_states; increasing t_dist from ',t_dist
-         t_dist = t_dist / (m_press/(highest_obs_pressure_mb*100._r8))
-!         WRITE(*,'(2(A,F10.4),A,3F10.4)') '   to ',t_dist,' for m_press = ',m_press, &
+
+      if (which_vert == VERTISLEVEL ) then
+         if (o_which_vert == VERTISPRESSURE .and. m_press < (highest_obs_pressure_mb*100._r8)) then
+!           WRITE(*,*) 'model_get_close_states; increasing t_dist from ',t_dist
+            t_dist = t_dist / (m_press/(highest_obs_pressure_mb*100._r8))
+!           WRITE(*,'(2(A,F10.4),A,3F10.4)') '   to ',t_dist,' for m_press = ',m_press, &
 !                    ' and o_loc = ',(loc_array(i),i=1,3)
-!         if (t_dist > radius) WRITE(*,*) '   Point ',col_base_index+j,' should be excluded'
+         else if (o_which_vert == VERTISLEVEL .and. sloc_array(3) < highest_obs_level) then
+            t_dist = t_dist / (sloc_array(3)/highest_obs_level)
+         else if (o_which_vert == VERTISHEIGHT .and. m_height > highest_obs_height_m) then
+            t_dist = t_dist / ((model_h(1)-m_height)/(model_h(1)-highest_obs_level))
+         endif
+
       endif
 ! kdr end
 
@@ -1697,7 +2153,6 @@ do j = 0, nlon - 1
    if(glon <   0.0_r8) glon =   0.0_r8
 
    ! Use same vertical "philosophy" as the existing location object.
-   ! As of April, 2004 -- the vertical is (still) ignored in get_dist.
    which_vert = nint(query_location(o_loc))
    ! Only looking for horizontal distance here, use same level as obs.
    olev = query_location(o_loc, 'VLOC')  
@@ -1732,7 +2187,6 @@ do j = 1, nlon - 1 - max_pos
    if(glon <   0.0_r8) glon =   0.0_r8
 
    ! Use same vertical "philosophy" as the existing location object.
-   ! As of April, 2004 -- the vertical is (still) ignored in get_dist.
    which_vert = nint(query_location(o_loc))
    ! Only looking for horizontal distance here, use same level as obs.
    olev = query_location(o_loc, 'VLOC')  
@@ -2358,7 +2812,13 @@ do i=1,state_num_2d
    nfld = nfld + 1
    cflds(nfld)(:) = state_names_2d(i)
    TYPE_2D(i) = nfld
-   if (state_names_2d(i) == 'PS      ') TYPE_PS = nfld
+   if (state_names_2d(i) == 'PS      ') TYPE_PS    = nfld
+   if (state_names_2d(i) == 'PHIS    ') TYPE_PHIS  = nfld
+   if (state_names_2d(i) == 'SGH     ') TYPE_SGH   = nfld
+   if (state_names_2d(i) == 'PBLH    ') TYPE_PBLH  = nfld
+   if (state_names_2d(i) == 'TBOT    ') TYPE_TBOT  = nfld
+   if (state_names_2d(i) == 'TS      ') TYPE_TS    = nfld
+   if (state_names_2d(i) == 'TSOCN   ') TYPE_TSOCN = nfld
 end do
 
 ! 3D fields (including q)
@@ -2370,6 +2830,11 @@ do i=1,state_num_3d
    if (state_names_3d(i) == 'U       ') TYPE_U = nfld
    if (state_names_3d(i) == 'V       ') TYPE_V = nfld
    if (state_names_3d(i) == 'Q       ') TYPE_Q = nfld
+   if (state_names_3d(i) == 'CLDICE  ') TYPE_CLDICE = nfld
+   if (state_names_3d(i) == 'CLDLIQ  ') TYPE_CLDLIQ = nfld
+   if (state_names_3d(i) == 'LCWAT   ') TYPE_LCWAT  = nfld
+   if (state_names_3d(i) == 'QCWAT   ') TYPE_QCWAT  = nfld
+
 end do
 
 if (nfld .ne. nflds) then
@@ -2412,9 +2877,8 @@ end subroutine order_state_fields
 
 ! use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
 
-integer, intent(out) :: obs_loc_in_sv(:)
-
 integer :: i
+integer, intent(out) :: obs_loc_in_sv(:)
 
 ! 2D fields
 obs_loc_in_sv(KIND_SURFACE_PRESSURE) = TYPE_PS
@@ -2424,10 +2888,14 @@ obs_loc_in_sv(KIND_TEMPERATURE) = TYPE_T
 obs_loc_in_sv(KIND_U_WIND_COMPONENT) = TYPE_U
 obs_loc_in_sv(KIND_V_WIND_COMPONENT) = TYPE_V
 obs_loc_in_sv(KIND_SPECIFIC_HUMIDITY) = TYPE_Q
+! obs_loc_in_sv(KIND_SURFACE_TEMPERATURE  ?  ) = TYPE_TS
+! obs_loc_in_sv(KIND_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
+! obs_loc_in_sv(KIND_CLOUD_WATER  ?  ) = TYPE_LCWAT
+
 
 write(*,*) 'OBS_KIND   FIELD_TYPE'
 do i=1,100
-   if (obs_loc_in_sv(i) /= 0) write(*,'(2I8)') i, obs_loc_in_sv(i)
+   if (obs_loc_in_sv(i) /= -999) write(*,'(2I8)') i, obs_loc_in_sv(i)
 enddo
 
 ! In the future, if fields are not ordered nicely, or if users are specifying
@@ -2441,6 +2909,390 @@ enddo
 return
 
 end subroutine obs_field_location
+
+
+! height
+!===============================================================================
+   subroutine model_heights(x,ps,lon_index,lat_index,model_h,idim,istatus)
+!===============================================================================
+! This routine calculates geometrical height (m) at mid-layers of the CAM model
+!
+! was Hui's dcz2ccm1
+!    has globally defined inputs:
+!          hyam(num_levs),hybm(num_levs),hyai(num_levs),hybi(num_levs) - 
+!          hybrid vertical coefficients, top to bottom. (P = P0*hyam + ps*hybm)
+!             P0 - Hybrid base pressure (pascals)
+! Kevin Raeder converted to single column version 4/28/2006
+
+implicit none
+
+real(r8), intent(in)  :: x(:)
+integer,  intent(in)  :: lon_index, lat_index
+integer,  intent(out) :: istatus
+
+! OUTPUT: geometrical height at midlayer (m)  hui liu /03/29/2004 added.
+real(r8),      intent(out) ::  model_h(num_levs)
+
+! local variables; ps must be dimensioned as an array because dcz2 has it that way
+integer  :: idim 
+real (r8):: phi(num_levs), tv(num_levs), q(num_levs), t(num_levs), rd, rv, rr_factor
+real (r8):: ps(idim)
+
+real (r8):: pmln(num_levs+1), hypdln(num_levs), hyalph(num_levs), &
+            hyba(2,num_levs+1), hybb(2,num_levs+1), pterm(num_levs), &
+            gmh, ht_tmp
+integer :: k, vstatus
+
+! Scratch arrays
+
+rd = 287.05_r8
+rv = 461.51_r8
+rr_factor = (rv/rd) - 1.0_r8
+
+DO k = 1,num_levs
+   model_h(k) = 0.0_r8
+   HYPDLN(k)  = 0.0_r8
+   HYALPH(k)  = 0.0_r8
+   phi(k)     = 0.0_r8
+   PTERM(k)   = 0.0_r8
+END DO
+
+DO k = 1,num_levs + 1
+   HYBA(1:2,k) = 0.0_r8
+   HYBB(1:2,k) = 0.0_r8
+END DO
+! copy to temporary arrays
+
+!    All arrays except hyba, hybb are oriented top to bottom
+!    modified to be consistent with CAM3.0 where hyai, hyam are top to bottom
+!    H Liu, 04/05/2004
+
+! interface=1
+do k = 1,num_levs + 1
+   hyba(1,k) = hyai(num_levs+2 - k)
+   hybb(1,k) = hybi(num_levs+2 - k)
+end do
+
+! mid-points=2
+do k = 1,num_levs
+   hyba(2,k+1) = hyam(num_levs+1 - k)
+   hybb(2,k+1) = hybm(num_levs+1 - k)
+end do
+
+! Calculate tv for this column, for use by dcz2
+do k = 1, num_levs
+   if (vstatus == 0) call get_val(q(k), x, lon_index, lat_index, k, KIND_SPECIFIC_HUMIDITY, vstatus)
+   if (vstatus == 0) call get_val(t(k), x, lon_index, lat_index, k, KIND_TEMPERATURE      , vstatus)
+   if (vstatus == 0) tv(k) = t(k)*(1.0_r8 + rr_factor*q(k))
+enddo
+
+if (vstatus > 0) then
+   istatus = 1
+   return
+endif
+
+! "vertical slice"(mlon,klev)  here is only 1 element wide ; a column
+!  phis read in by static_init_model
+
+call dcz2(ps,phis(lon_index,lat_index), tv,P0 ,hyba,hybb,num_levs,1, &
+          1,pmln,hypdln,hyalph,pterm,phi)
+! used; hybb, hyba, hprb
+! calced in dcz2;  pmln, pterm , zslice
+! unused;          hypdln, hyalph
+
+do k = 1,num_levs
+   ht_tmp = phi(k) * 0.001        ! convert to km for following call only
+   model_h(k) = gph2gmh (ht_tmp, lats(lat_index)) * 1000.0           ! convert back to m
+end do
+
+end subroutine  model_heights
+
+! 
+! height
+!=====================================================================
+      subroutine dcz2(ps,phis0,tv,hprb,hyba,hybb,kmax,idim,imax,pmln, &
+                     hypdln,hyalph,pterm,z2)
+!=====================================================================
+!       Purpose:
+!         To compute geopotential height for a CCM2 hybrid coordinate
+!         vertical slice.  Since the vertical integration matrix is a
+!         function of latitude and longitude, it is not explicitly
+!         computed as for sigma coordinates.  The integration algorithm
+!         is derived from Boville's mods in the ibm file hybrid 1mods
+!         (6/17/88).  All vertical slice arrays are oriented top to
+!         bottom as in CCM2.  This field is on full model levels (aka
+!         "midpoints") not half levels.
+!
+!       Equation references are to "Hybrid Coordinates for CCM1"
+!
+!----------------------------Code History-------------------------------
+!       Original: Jun 25 1991  L Buja
+!       Upgrades: Apr 21 1993  L Buja
+!                     Truesdale reports difference from CCM2 Z2.
+!                     - Make pterm a scratch array (was automatic)
+!                     - Make g0=9.80616 (was 9.81).  This appears to
+!                        affect only the lowest layer.
+!       Change  : Feb    1999: D Shea
+!                     NCL changes + error
+!                     - The "Invert vertical loop" has to have
+!                        the argument checked for >0.0
+!-----------------------------------------------------------------------
+      implicit none
+!-----------------------------Parameters--------------------------------
+      real(r8) :: r,g0,rbyg
+      parameter (r=287.04_r8,g0=9.80616_r8,rbyg=r/g0)
+!-----------------------------Arguments---------------------------------
+! Input
+!
+! Longitude dimension
+      integer idim
+
+! Number of vertical levels
+      integer kmax
+
+! Surface pressure           (pascals)
+      real(r8) :: ps(idim)
+
+! Surface geoptential
+      real(r8) :: phis0(idim)
+
+! Virtual temperature, top to bottom
+      real(r8) TV(IDIM,KMAX)
+
+! Hybrid base pressure       (pascals)
+      real(r8) :: HPRB
+
+! Hybrid coord coeffs for base pressure
+      real(r8) :: HYBA(2,KMAX+1)
+
+!       All arrays except hyba, hybb are oriented top to bottom
+!  ground to top, first subscript:
+
+!  = 1 for layer interfaces 
+!  = 2 for layer midpoints 
+!  Lowest level is ground for both layer locations
+
+! Hybrid coord coeffs for surf pressure (in same format as hyba)
+      real(r8) ::  hybb(2,kmax+1)
+
+! Num of longitude points to compute
+      integer imax
+! vertical slice scratch space used to
+!   hold logs of midpoint pressures
+      real(r8) ::  pmln(idim,kmax+1)
+
+! Vertical slice scratch space used to
+!   hold log p layer thickness
+      real(r8)::   hypdln(idim,kmax)
+
+! Vertical slice scratch space used to
+! hold distance from interface to level during vertical integration
+      real(r8)::   hyalph(idim,kmax)
+
+! Note: These scratch vertical slices are used to improve computaional efficiency
+
+! Vertical scratch space.
+      real(r8)::   pterm(idim,kmax)
+! temporary
+      real(r8)::   arg
+!
+! Output ---------------------------------
+!
+! Geopotential height, top to bottom
+      real(r8)::   Z2(IDIM,KMAX)
+!
+!--------------------------Local variables------------------------------
+! indexes
+      integer i,k,l,num
+!-----------------------------------------------------------------------
+!
+      DATA NUM/0/
+
+      NUM = NUM + 1
+!
+
+!       Compute intermediate quantities using scratch space
+!       pmln(i,k+1) is pressure at the midpoint of layer k
+
+      DO I = 1,IMAX
+          PMLN(I,1) = DLOG(HPRB*HYBA(2,KMAX)+PS(I)*HYBB(1,KMAX))
+          PMLN(I,KMAX+1) = DLOG(HPRB*HYBA(2,1)+PS(I)*HYBB(1,1))
+      END DO
+
+!       Invert vertical loop
+!       Compute top only if top interface pressure is nonzero.
+!       Implemented by setting loop limit klim
+!
+!       hyba, hybb are bottom to top, starting at ground.
+!       pmln(i,k) is the mid-point pressure of layer k.
+!       SHEA MODIFICATION
+
+      DO K = KMAX + 1,1,-1
+          DO I = 1,IMAX
+! DJS     pmln(i,k) = alog(hprb*hyba(2,kmax-k+2)+ps(i)*hybb(2,kmax-k+2))
+              ARG = HPRB*HYBA(2,KMAX-K+2) + PS(I)*HYBB(2,KMAX-K+2)
+              IF (ARG.GT.0.0_r8) THEN
+                  PMLN(I,K) = DLOG(ARG)
+              ELSE
+                  PMLN(I,K) = 0.0_r8
+              END IF
+          END DO
+      END DO
+!
+!       Initialize Z2 to sum of ground height and thickness of
+!        top half-layer  (i.e. (phi)sfc in equation 1.14)
+!       (Z2(i,1)=top  ->  Z2(i,kmax)=bottom
+!       Eq 3.a.109.2  where l=K,k<K  h(k,l) = 1/2 * ln [  p(k+1) / p(k) ]
+
+      DO K = 2,KMAX - 1
+          DO I = 1,IMAX
+              pterm(i,k) = rbyg*tv(i,k)*0.5_r8* (pmln(i,k+1)-pmln(i,k-1))
+          END DO
+      END DO
+
+! 
+      DO K = 1,KMAX - 1
+          DO I = 1,IMAX
+              z2(i,k) = phis0(i)/g0 + rbyg*tv(i,k)*0.5_r8* &
+                        (PMLN(I,K+1)-PMLN(I,K))
+          END DO
+      END DO
+
+!       Eq 3.a.109.5  where l=K,k=K  h(k,l) = ln [ pi / (p(k)) ]
+
+      K = KMAX
+!
+      DO I = 1,IMAX
+          z2(I,K) = phis0(i)/g0 + rbyg*tv(i,k)* &
+                    (dlog(ps(i)*hybb(1,1))-pmln(i,k))
+
+      END DO
+
+!       Eq 3.a.109.4  where l=K,k<K  h(k,l) = 1/2*ln[pi*pi/(p(k-1)*p(k))
+
+! 
+      do k = 1,kmax - 1
+          l = kmax
+          do i = 1,imax
+              z2(i,k) = z2(i,k) + rbyg*tv(i,l)* &
+                        (dlog(ps(i)*hybb(1,1))-0.5_r8* &
+                        (pmln(i,l-1)+pmln(i,l)))
+          end do
+      end do
+
+!       Add thickness of the remaining full layers
+!        (i.e., integrate from ground to highest layer interface)
+
+!       Eqs 1.14 & 3.a.109.3 where l>K, k<K
+!                                h(k,l) = 1/2 * ln [ p(l+1)/p(l-1) ]
+
+! 
+      DO K = 1,KMAX - 2
+          DO L = K + 1,KMAX - 1
+              DO I = 1,IMAX
+                  Z2(I,K) = Z2(I,K) + PTERM(I,L)
+              END DO
+          END DO
+      END DO
+
+      RETURN
+ end subroutine dcz2
+
+! height
+!/**----------------------------------------------------------------------    
+! name       gph2gmh
+!  Convert a list of geopotential altitudes to mean sea level altitude.
+! 
+!  input:    h   -- geopotential altitude (in km)
+!            lat -- latitude  of profile in degrees.
+!  output:   z   -- MSL altitude, in km.
+! -----------------------------------------------------------------------*/
+      function gph2gmh (h, lat)
+      implicit none
+      
+      real(r8) ::  h, lat, gph2gmh  
+      real(r8) ::  be, ae, pi, G, g0, r0, latr
+      
+      be = 6356.7516_r8             ! min earth radius, km
+      ae = 6378.1363_r8             ! max earth radius, km
+
+      pi = 3.14159265358979_r8
+      latr = lat * (pi/180.0_r8)           ! in radians
+
+  ! These are the equations for g0 and r0 in Chris Rocken's paper.
+  ! I am not using them because they imply a standard ellipsoid which
+  ! is quite different from our standard ellipsoid. D. Hunt 10/28/96
+  !G = 0.0098
+  !g0 = 0.001 * 9.780356 * (1+0.0052885 * (sin(lat))**2 - 5.9e-6 * (sin(2*lat))**2)
+  !r0 = (2*g0)/(3.085462e-6 + 2.27e-9 * cos(2*lat) - 2e-12*cos(4*lat))
+
+      G = 0.00980665_r8          ! WMO reference g value, km/s**2, at 45.542N(S)
+
+      g0 = 0.0_r8
+      call gravity (latr, 0.0_r8, g0)
+! liu    g0 = g0 * 0.00001_r8             ! convert to km/s**2
+
+! compute local earth's radius using ellipse equation
+!
+      r0 = dsqrt ( ae**2 * dcos(latr)**2 + be**2 * dsin(latr)**2)
+
+!     if (h.eq.-999.0_r8) then
+!        z = -999.0_r8
+!     else 
+! Compute altitude above sea level
+
+         gph2gmh = (r0 * h) / (((g0*r0)/G) - h)
+!     endif
+      
+end function gph2gmh
+
+! height
+!=============================================================
+      subroutine gravity(xlat,alt,galt)
+!=============================================================
+! This subroutine computes the Earth's gravity at any altitude
+! and latitude.  The model assumes the Earth is an oblate 
+! spheriod rotating at a the Earth's spin rate.  The model
+! was taken from "Geophysical Geodesy, Kurt Lambeck, 1988".
+!
+!  input:    xlat, latitude in radians
+!            alt,  altitude above the reference ellipsiod, km
+!  output:   galt, gravity at the given lat and alt, cm/sec
+!
+! Compute acceleration due to the Earth's gravity at any latitude/altitude
+! author     Bill Schreiner   5/95
+! ------------------------------------------------------------------------
+
+  implicit none
+  real (r8) :: xmu, ae, f, w, xm, f2, f4, ge, g, galt, xlat,alt
+!
+      xmu = 398600.4415_r8       ! km^3/s^2
+      ae = 6378.1363_r8          ! km
+      f = 1.0_r8/298.2564_r8
+      w = 7.292115d-05          ! rad/s
+      xm = 0.003468_r8           !
+!     f2 = -f + 5.0/2.0*xm - 17.0/14.0*f*xm + 15.0/4.0*xm**2
+!     f4 = -f**2/2.0 + 5.0/2.0*f*xm
+      f2 = 5.3481622134089D-03    
+      f4 = 2.3448248012911D-05
+!
+! compute gravity at the equator, km/s2
+!
+      ge = xmu/ae**2/(1.0_r8 - f + 1.5_r8*xm - 15.0/14.0*xm*f)
+!
+! compute gravity at any latitude, km/s2
+!
+      g = ge*(1.0_r8 + f2*(dsin(xlat))**2 - 1.0/4.0*f4*(dsin(2.0*xlat))**2)
+!
+! compute gravity at any latitude and at any height, km/s2
+!
+      galt = g - 2.0*ge*alt/ae*(1.0 + f + xm + (-3.0*f + 5.0/2.0*xm)*  &
+                             (dsin(xlat))**2) + 3.0*ge*alt**2/ae**2
+!
+!liu     galt = galt*1.0d5		! convert from km/s2 to cm/s2
+!
+end subroutine gravity
+
 
 !#######################################################################
 ! end of cam model_mod
