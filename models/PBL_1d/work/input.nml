@@ -116,11 +116,11 @@
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
-   first_bin_center =  1601, 1, 1, 0, 0, 0,
-   last_bin_center  =  1601, 1, 2, 0, 0, 0,
+   first_bin_center =  2006, 6, 1, 0, 0, 0,
+   last_bin_center  =  2006, 6, 2, 0, 0, 0,
    bin_separation   =     0, 0, 0, 1, 0, 0,
    bin_width        =     0, 0, 0, 1, 0, 0,
-   time_to_skip     =     0, 0, 0,12, 0, 0,
+   time_to_skip     =     0, 0, 0, 0, 0, 0,
    max_num_bins  = 1000,
    plevel     = 500,
    hlevel     = 5000,

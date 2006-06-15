@@ -71,8 +71,8 @@ csh mkmf_perfect_model_obs
 make         || exit 6
 csh mkmf_filter
 make         || exit 7
-#./perfect_model_obs  || exit 8
-#./filter             || exit 9
+./perfect_model_obs  || exit 8
+./filter             || exit 9
 
 #----------------------------------------------------------------------
 # The observation-space diagnostics program is not fully developed yet.
@@ -81,23 +81,20 @@ make         || exit 7
 # We're hardcoding that here. Clearly suboptimal.
 
 csh mkmf_obs_diag
-#make         || exit 10
+make         || exit 10
 csh mkmf_create_real_network_seq
 make         || exit 11
 csh mkmf_driver
 make         || exit 12
 
-exit
-
-if (! -d 01_01) then
-   mkdir 01_01
+if (! -d 06_01) then
+   mkdir 06_01
 endif
 
-if ( -e 01_01/obs_seq.final ) then
-     mv -v 01_01/obs_seq.final 01_01/obs_seq.final.old
+if ( -e 06_01/obs_seq.final ) then
+     mv -v 06_01/obs_seq.final 06_01/obs_seq.final.old
 endif
 
-mv -v obs_seq.final 01_01
+\cp -p obs_seq.final 06_01/obs_seq.final
 
 ./obs_diag   || exit 13
-
