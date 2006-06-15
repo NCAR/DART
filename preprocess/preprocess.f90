@@ -65,7 +65,7 @@ character(len = 129) ::   input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs
 character(len = 129) ::  output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
 character(len = 129) ::  input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
 character(len = 129) :: output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
-character(len = 129) :: input_files(max_input_files) = '../../../obs_def/null'
+character(len = 129) :: input_files(max_input_files) = 'null'
 
 namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file, &
    output_obs_def_mod_file, output_obs_kind_mod_file, input_files
