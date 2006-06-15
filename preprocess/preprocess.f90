@@ -61,11 +61,11 @@ integer :: obs_def_in_unit, obs_def_out_unit, obs_kind_in_unit, obs_kind_out_uni
 ! and these files are used to fill in observation kind details in
 ! DEFAULT_obs_def_mod.f90 and DEFAULT_obs_kind_mod.f90.
 integer, parameter   :: max_input_files = 1000
-character(len = 129) :: input_obs_def_mod_file = 'null'
-character(len = 129) :: input_obs_kind_mod_file = 'null'
-character(len = 129) :: output_obs_def_mod_file = 'null'
-character(len = 129) :: output_obs_kind_mod_file = 'null'
-character(len = 129) :: input_files(max_input_files) = 'null'
+character(len = 129) ::   input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90'
+character(len = 129) ::  output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
+character(len = 129) ::  input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
+character(len = 129) :: output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
+character(len = 129) :: input_files(max_input_files) = '../../../obs_def/null'
 
 namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file, &
    output_obs_def_mod_file, output_obs_kind_mod_file, input_files
