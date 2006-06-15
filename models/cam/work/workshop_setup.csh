@@ -69,8 +69,11 @@ csh mkmf_filter
 make         || exit 6
 csh mkmf_obs_diag
 make         || exit 7
+
 #./perfect_model_obs
 #./filter
+rm -f go_end_filter
+
 csh mkmf_assim_region
 make         || exit 8
 csh mkmf_column_rand
