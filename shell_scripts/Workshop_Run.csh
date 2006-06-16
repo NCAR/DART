@@ -30,7 +30,7 @@ else
       echo "This is a pretty verbose process, so if you are logging the output,"
       echo "make sure you have plenty of space:"
       echo " "
-      echo "./$SNAME:t |& tee DART_test.log"
+      echo "./$SNAME:t archdir |& tee DART_test.log"
       echo " "
       echo "can easily result in a 750 Kb log file"
       echo " "
@@ -53,14 +53,19 @@ endif
 
 echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 
+set REMOVE = 'rm -fv'
+set   MOVE = 'mv -f'
+
 #----------------------------------------------------------------------
 # Run the workshop_setup demo for a wide range of models.
 #----------------------------------------------------------------------
 
 @ makenum  = 1
 @ modelnum = 101
-foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
-   forced_lorenz_96 lorenz_04 bgrid_solo pe2lyr )
+foreach MODEL ( 9var cam MITgcm_annulus bgrid_solo forced_lorenz_96 \
+                lorenz_04 lorenz_63 lorenz_84 lorenz_96 \
+                lorenz_96_2scale null_model pe2lyr rose sccm wrf )
+# PBL_1d   needs special compile flags
 
     echo "----------------------------------------------------------"
     echo "Running $MODEL at "`date`
@@ -68,13 +73,13 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 
     cd ${DARTHOME}/models/${MODEL}/work
 
-    \rm -fv ../../../obs_def/obs_def_mod.f90
-    \rm -fv ../../../obs_kind/obs_kind_mod.f90
-    \rm -fv *.o *.mod Makefile .cppdefs input.nml*default 
-    \rm -fv obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
-    \rm -fv assim_region integrate_model
+    ${REMOVE} ../../../obs_def/obs_def_mod.f90
+    ${REMOVE} ../../../obs_kind/obs_kind_mod.f90
+    ${REMOVE} *.o *.mod Makefile .cppdefs input.nml*default 
+    ${REMOVE} obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
+    ${REMOVE} assim_region integrate_model
 
-    \rm -fv input.nml obs_seq.in obs_seq.out obs_seq.final \
+    ${REMOVE} input.nml obs_seq.in obs_seq.out obs_seq.final \
             perfect_ics fitler_ics \
             True_State.nc Prior_Diag.nc Posterior_Diag.nc
     cvs update
@@ -91,26 +96,26 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 
     mkdir -pv ${ARCHIVEDIR}/${MODEL}/work
 
-    mv -v dart_log.out        ${ARCHIVEDIR}/${MODEL}/work
-    mv -v True_State.nc       ${ARCHIVEDIR}/${MODEL}/work
-    mv -v perfect_restart     ${ARCHIVEDIR}/${MODEL}/work
-    mv -v obs_seq.out         ${ARCHIVEDIR}/${MODEL}/work
-    mv -v Prior_Diag.nc       ${ARCHIVEDIR}/${MODEL}/work
-    mv -v Posterior_Diag.nc   ${ARCHIVEDIR}/${MODEL}/work
-    mv -v obs_seq.final       ${ARCHIVEDIR}/${MODEL}/work
-    mv -v filter_restart      ${ARCHIVEDIR}/${MODEL}/work
-    mv -v assim_tools_restart ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} dart_log.out        ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} True_State.nc       ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} perfect_restart     ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} obs_seq.out         ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} Prior_Diag.nc       ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} Posterior_Diag.nc   ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} obs_seq.final       ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} filter_restart      ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} assim_tools_restart ${ARCHIVEDIR}/${MODEL}/work
 
-    mv -v *ges_times*dat      ${ARCHIVEDIR}/${MODEL}/work
-    mv -v *anl_times*dat      ${ARCHIVEDIR}/${MODEL}/work
-    mv -v ObsDiagAtts.m       ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} *ges_times*dat      ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} *anl_times*dat      ${ARCHIVEDIR}/${MODEL}/work
+    ${MOVE} ObsDiagAtts.m       ${ARCHIVEDIR}/${MODEL}/work
 
     #------------------------------------------------------------------
     # clean up and move on
     #------------------------------------------------------------------
-    \rm -fv *.o *.mod Makefile .cppdefs input.nml*default 
-    \rm -fv obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
-    \rm -fv assim_region integrate_model preprocess
+    ${REMOVE} *.o *.mod Makefile .cppdefs input.nml*default 
+    ${REMOVE} obs_diag filter perfect_model_obs create_fixed_network_seq create_obs_sequence 
+    ${REMOVE} assim_region integrate_model preprocess
 
    @ makenum  = $makenum  + 1
    @ modelnum = $modelnum + 1
