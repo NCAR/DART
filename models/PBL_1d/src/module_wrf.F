@@ -550,7 +550,7 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
 ! get the necessary dimensions from the input forcing file
 ! times are computed from the namelist
 
-   IF (init_f == .TRUE.) THEN
+   IF (init_f .EQV. .TRUE.) THEN
       SELECT CASE (init_f_type)
          
       CASE('WRF')
