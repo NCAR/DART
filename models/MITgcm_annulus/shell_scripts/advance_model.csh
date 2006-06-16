@@ -1,7 +1,8 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next five lines automatically updated by CVS, do not edit>
@@ -19,9 +20,10 @@
 # The script advance_ens.csh passes a working directory, an ensemble
 # member number, and a temp directory.  First thing to do is place those
 # passed values into variables
-set PBS_O_WORKDIR = $1
-set element = $2
-set temp_dir = $3
+
+set  CENTRALDIR = $1
+set     element = $2
+set    temp_dir = $3
 
 # Lots of logging
 #set verbose
@@ -40,25 +42,25 @@ if ($element == 9) set ensdir = 09
 if ($element >  9) set ensdir = $element
 
 # Set the path to where the MITgcm works its magic, and go to that directory
-set MITGCM = ${PBS_O_WORKDIR}/MITgcm/verification/osse/da/${ensdir}/assimilate
+set MITGCM = ${CENTRALDIR}/MITgcm/verification/osse/da/${ensdir}/assimilate
 cd $MITGCM
 
 # Move the dart initial condition file to the MITgcm directory
-mv ${PBS_O_WORKDIR}/assim_model_state_ic$element dart_vector
+mv ${CENTRALDIR}/assim_model_state_ic$element dart_vector
 
 # Link in the input.nml namelist for use by translation programs
-ln -s ${PBS_O_WORKDIR}/input.nml .
+ln -s ${CENTRALDIR}/input.nml .
 
 # Do a byteswap on the old restart files so can be read by trans code
-${PBS_O_WORKDIR}/byteswap pickup.in pickup.in.s -w 8
-${PBS_O_WORKDIR}/byteswap pickup_nh.in pickup_nh.in.s -w 8
+${CENTRALDIR}/byteswap pickup.in pickup.in.s -w 8
+${CENTRALDIR}/byteswap pickup_nh.in pickup_nh.in.s -w 8
 
 # Convert the dart initial condition file to a MITgcm pickup file
-${PBS_O_WORKDIR}/trans_dart_to_MITgcm
+${CENTRALDIR}/trans_dart_to_MITgcm
 
 # Do a byteswap on the new restart files so MITgcm can read them
-${PBS_O_WORKDIR}/byteswap pickup.out.s pickup.out -w 8
-${PBS_O_WORKDIR}/byteswap pickup_nh.out.s pickup_nh.out -w 8
+${CENTRALDIR}/byteswap pickup.out.s pickup.out -w 8
+${CENTRALDIR}/byteswap pickup_nh.out.s pickup_nh.out -w 8
 
 # Run the MITgcm
 sleep 0.05
@@ -68,18 +70,18 @@ echo $element
 sleep 0.05
 
 # Do a byteswap on the new restart files so can be read by trans code
-${PBS_O_WORKDIR}/byteswap pickup.in pickup.in.s -w 8
-${PBS_O_WORKDIR}/byteswap pickup_nh.in pickup_nh.in.s -w 8
+${CENTRALDIR}/byteswap pickup.in pickup.in.s -w 8
+${CENTRALDIR}/byteswap pickup_nh.in pickup_nh.in.s -w 8
 
 # Remove the old dart_vector file
-rm dart_vector
+\rm -f dart_vector
 
 # Convert the resulting MITgcm pickup file to a dart file
-${PBS_O_WORKDIR}/trans_MITgcm_to_dart
+${CENTRALDIR}/trans_MITgcm_to_dart
 
 # Move the dart file back to the working directory
 sleep 0.05
-mv dart_vector $PBS_O_WORKDIR/assim_model_state_ud$element
+mv dart_vector ${CENTRALDIR}/assim_model_state_ud$element
 sleep 0.05
 
 exit

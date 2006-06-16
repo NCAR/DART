@@ -20,9 +20,10 @@
 # This script copies the necessary files into the temporary directory
 # and then executes the fortran program integrate_model.
 
-set  WORKDIR = $1
-set  element = $2
-set temp_dir = $3
+set      myname = $0
+set  CENTRALDIR = $1
+set     element = $2
+set    temp_dir = $3
 
 set REMOVE = 'rm -rf'
 set   COPY = 'cp -p'
@@ -31,20 +32,24 @@ set   MOVE = 'mv -f'
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
 
+echo "starting ${myname} for ens member $element at "`date`
+echo "CENTRALDIR is ${CENTRALDIR}"
+echo "temp_dir is ${temp_dir}"
+
 # Create a clean temporary directory and go there
-${REMOVE} $temp_dir
-mkdir -p  $temp_dir
-cd        $temp_dir
+${REMOVE} ${temp_dir}
+mkdir -p  ${temp_dir}
+cd        ${temp_dir}
 
 # Copy the initial condition file to the temp directory
-${COPY} ${WORKDIR}/assim_model_state_ic$element dart_file_in
+${COPY} ${CENTRALDIR}/assim_model_state_ic$element dart_file_in
 
 # Copy the DART namelist to the temp directory
-${COPY} ${WORKDIR}/input.nml .
+${COPY} ${CENTRALDIR}/input.nml .
 
 # Copy the trans executables to the temporary directory
-${COPY} ${WORKDIR}/trans_dart_to_sccm .
-${COPY} ${WORKDIR}/trans_sccm_to_dart .
+${COPY} ${CENTRALDIR}/trans_dart_to_sccm .
+${COPY} ${CENTRALDIR}/trans_sccm_to_dart .
 
 # Yuqiong PLEASE COPY YOUR MODEL PROGRAM, SCRIPTS and ANY NEEDED
 # FILES TO THIS TEMPORARY DIRETORY HERE
@@ -63,8 +68,8 @@ ${COPY} ${WORKDIR}/trans_sccm_to_dart .
 ./trans_sccm_to_dart
 
 # Move the updated state vector to the working directory
-${MOVE} dart_file_out $WORKDIR/assim_model_state_ud$element
+${MOVE} dart_file_out ${CENTRALDIR}/assim_model_state_ud$element
 
 # Change back to working directory and get rid of temporary directory
-cd $WORKDIR
-#${REMOVE} $temp_dir
+cd ${CENTRALDIR}
+#${REMOVE} ${temp_dir}
