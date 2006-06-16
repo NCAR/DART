@@ -12,7 +12,7 @@
    output_interval = 1 /
 
 &filter_nml
-   async = 0,
+   async = 2,
    adv_ens_command = "./advance_ens.csh",
    ens_size = 20, 
    start_from_restart = .true.,
@@ -33,10 +33,54 @@
    num_groups = 1,
    outlier_threshold = -1.0 /
 
+&smoother_nml
+   async = 0,
+   adv_ens_command = "./advance_ens.csh",
+   ens_size = 20, 
+   cov_inflate = 1.04,
+   start_from_smoother_restart = .false.,
+   output_smoother_restart = .true.,
+   smoother_restart_in_base  = 'smoother_ics',
+   smoother_restart_out_base = 'smoother_restart',
+   start_from_restart = .true.,
+   restart_in_file_name = "filter_ics",
+   obs_sequence_in_name = "obs_seq.out",
+   obs_sequence_out_name = "obs_seq.final",
+   init_time_days = 0,
+   init_time_seconds = 0,
+   output_state_ens_mean = .true.,
+   output_state_ens_spread = .true.,
+   output_obs_ens_mean = .false.,
+   output_obs_ens_spread = .false., 
+   num_output_state_members = 0,
+   num_output_obs_members = 0,
+   output_interval = 1,
+   num_groups = 1,
+   outlier_threshold = -1.0,
+   lag = 3 /
+
+&assim_tools_smoother_nml
+   filter_kind = 1,
+   cutoff = 0.4,
+   sort_obs_inc = .false.,
+   cov_inflate = -1.0,
+   cov_inflate_sd = -0.05,
+   sd_lower_bound = -0.05, 
+   deterministic_cov_inflate = .true.,
+   start_from_assim_restart = .false.,
+   assim_restart_in_file_name = 'assim_tools_ics',
+   assim_restart_out_file_name = 'assim_tools_restart',
+   do_parallel = 0,
+   num_domains = 1,
+   parallel_command = "./assim_filter.csh",
+   spread_restoration = .false.,
+   cov_inflate_upper_bound = 2.0,
+   internal_outlier_threshold = -1.0  /
+
+
 Remember that namelists must be listed even if only defaults are to be used
 &integrate_model_nml
                        /
-   
 
 &ensemble_manager_nml
    in_core = .true.,
@@ -47,8 +91,8 @@ Remember that namelists must be listed even if only defaults are to be used
    filter_kind = 1,
    cutoff = 1000000.0,
    sort_obs_inc = .true.,
-   do_parallel = 0,
-   num_domains = 1,
+   do_parallel = 2,
+   num_domains = 2,
    parallel_command = "./assim_filter.csh",
    spread_restoration = .false.,
    internal_outlier_threshold = -1.0, 
@@ -108,7 +152,8 @@ Remember that namelists must be listed even if only defaults are to be used
    input_files              = '../../../obs_def/obs_def_1d_state_mod.f90'  /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'   /
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
+                                'RAW_STATE_1D_INTEGRAL'  /
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
