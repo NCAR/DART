@@ -1,0 +1,210 @@
+<HTML>
+<TITLE>DART POST-Iceland revisions</TITLE>
+<link rel=stylesheet type=text/css href=doc.css>
+<BODY>
+
+<BR>
+<H1>DART "POST Iceland release" summary of changes.</H1>
+<img src = "Dartboard4.gif"></img>
+
+<P>
+The DART POST Iceland release (16 June 2006) is an intermediate
+release designed to provide error fixes required for a number
+of users and to provide enhanced support for the CAM, WRF, and
+PBL_1D_models.  It also provides several
+new assimilation algorithm options that are already widely
+used by CAM implementations. The most important are 
+additional methods for doing adaptive inflation. The previously
+existing observation space inflation is retained and two
+new options for adaptive state space inflation are introduced.
+One option has a value of inflation that is constant across 
+all state variables but varies in time. The second has an
+inflation factor for EACH state variable and these can each
+vary in time. An initial version of an algorithm to do 
+adaptive localization is also introduced. The local density
+of observations is measured by computing the number of 
+observations from a set at a given time that is close to the
+observation being assimilated. If the density is such that
+more than a given threshold number of observations is close
+to the current observation, the localization radius is adjusted
+so that the expected number of observations in the adjusted
+radius is equal to the threshold value. This will decrease
+the localization radius in areas with dense observations.
+
+Another important new capability is provided by a 
+merge_obs_sequence program that can combine most existing
+observation sequences into a single sequence.
+
+An initial version of an ensemble smoother was added to DART
+and implemented with the low-order models and the bgrid model.
+The smoother continues to use the OLD inflation options and an
+old version of the assim_tools_mod module.
+
+</P>
+
+
+<h2>Changes</h2>
+A summary list of changes occurring in each DART directory follows:
+
+<TABLE width=95%>
+
+<TR><TD valign=top>test_dart.csh</TD>
+<TD> This testing script in the main DART directory has been updated
+to test the new inflation options with the new scripts.
+</TD></TR>
+
+<TR><TD valign=top>adaptive_inflate</TD>
+<TD> This new module now handles all the computations for the 
+adaptive inflation computations. It has the code that was previously
+in assim_tools to do the Bayesian update of observation space
+inflation. It also provides the additional algorithms required to
+do state space inflation. Documentation is provided in the module and 
+in several papers on the DART home page.
+</TD></TR>
+
+
+<TR><TD valign=top>assim_tools</TD>
+<TD>
+Uses adaptive inflation module. Namelist modified (see below). Storage
+for obs space inflation for regions no longer needed. No longer an
+assim_restart file; all restart info is now done in adaptive_inflate.
+Routine update_inflation replaces bayes_cov_inflate which has been moved
+to adaptive_inflate_mod. Correlation is now passed out of update_from_obs_inc
+for use with adaptive inflation updates. Ability to do
+sampling_error_correction from a file using correl_error.f90 in system_simulation.
+This is turned on by namelist parameter sampling_error_correction and requires
+appropriate error correction files for a given ensemble size (this is still
+in preliminary testing phase). The inflation values are now passed into
+filter_assim_region. The mean and variance of the observation space priors
+are computed up front in filter_assim_region for use with adaptive inflation
+algorithm. Observational density thinning controlled by namelist parameter
+num_close_threshold implemented. If number of observations close to a given
+observation is larger than the cutoff, the localization cutoff is adjusted
+to try to make the number close the same as the cutoff. This is a fundamentally
+two-d algorithm in this naive implementation. Update computations for
+spatial inflation are included in filter_assim_region. Routine filter_assim
+also gets the inflation values as arguments. Copying of these inflation
+values for the shell driven files is added. Previously commented
+print_regional_results is deleted (produced errors with absoft compilers).
+Routine comp_correl added to compute correlations. Routine
+get_correction_from_file added to support sampling_error_correction. No
+longer need routine assim_tools_end since there is no longer a restart
+requirement.
+An error in the correlation computation for assimilation was removed. If
+all prior values of an observation were identical, a NaN could result
+from the old correlation computation.
+The assim_tools_nml was modified as follows: Removed cov_inflate, 
+cov_inflate_sd, sd_lower_bound, deterministic_cov_inflate,
+start_from_assim_restart, assim_restart_in_file_name, assim_restart_out_file_name,
+cov_inflate_upper_bound. Added sampling_error_correction and
+num_close_threshold.
+</TD></TR>
+
+<TR><TD valign=top>assim_tools_smoother</TD>
+<TD> The smoother is still using the previous version of inflation and the
+corresponding assim_tools module which has been renamed as assim_tools_smoother.
+Additional routines have been added to support the updates required to do 
+smoothing (see documentation in smoother directory).
+</TD></TR>
+
+<TR><TD valign=top>diagnostics</TD>
+<TD> Observation space diagnostics were modified to support observations on model
+levels??? TIM???
+</TD></TR>
+
+<TR><TD valign=top>ensemble_manager</TD>
+<TD> Modified to be able to handle multiple ensembles at one time to support
+the smoother which has an ensemble for each lag-time in the smoothing.
+</TD></TR>
+
+<TR><TD valign=top>filter</TD>
+<TD>
+The adaptive_inflate module is now used and the namelist entry
+cov_inflate has been removed from filter_nml. Inflation
+is now done with filter_ensemble_inflate only if constant
+or varying spatial inflation is selected in the adaptive_inflate
+namelist. Information about state space inflation is passed
+to filter_assim as arguments. The call to assim_tools_end has
+been replace by adaptive_inflate_end which creates restarts for
+adaptive inflation. For spatially varying state inflation, two
+extra fields are tacked onto the state space diagnostic netcdf
+files to record the inflation mean and standard deviation. At
+present, inflation is done for the whole state at once; this may
+be very inefficient and should be examined.
+The entry cov_inflate was removed from the namelist.
+</TD></TR>
+
+<TR><TD valign=top>obs_sequence/merge_obs_seq</TD>
+<TD> Tim??? please summarize capabilities.</TD></TR>
+
+<TR><TD valign=top>mkmf</TD>
+<TD>New templates provided to support corral and lightning at NCAR.</TD></TR>
+
+<TR><TD valign=top>models</TD>
+<TD> All models work with merge obs. sequence and adaptive inflation options.</TD></TR>
+ 
+<TR><TD valign=top>models/PBL_1d</TD>
+<TD>Tim summarize please ??? .</TD></TR>
+
+<TR><TD valign=top>models/cam</TD>
+<TD>Now able to handle observations with height as a vertical coordinate. 
+Can return interpolated values of pressure for use with GPS observation
+forward operators.</TD></TR>
+
+<TR><TD valign=top>models/wrf</TD>
+<TD> Now guarantees that assimilation_period is an integer multiple of the
+underlying wrf model timestep. Added support for gps observations and
+observations of vortex position.
+</TD></TR>
+
+<TR><TD valign=top>ncep_obs</TD>
+<TD> Made changes to improve translation from prep_bufr. Data from up to 3:00
+UTC of the next day is included in the file with the current days date. 
+</TD></TR>
+
+<TR><TD valign=top>obs_def_gps_mod.f90</TD>
+<TD>Modified to allow merging of two gps observation sequences. </TD></TR>
+
+<TR><TD valign=top>obs_def_radar_mod.f90</TD>
+<TD> Added ability to merge multiple observation sequences.
+</TD></TR>
+
+<TR><TD valign=top>obs_def_vortex_mod.f90</TD>
+<TD>  Provides observation types for position of vortex center.
+</TD></TR>
+
+<TR><TD valign=top>obs_model_mod.f90</TD>
+<TD> Modified to be compatible with smoother use of multiple ensemble handles.
+</TD></TR>
+
+
+<TR><TD valign=top>obs_sequence_mod.f90</TD>
+<TD> Added initialization for observation sequence in init_obs_sequence; prevents
+possible access to uninitialized pointer.
+ </TD></TR>
+
+<TR><TD valign=top>preprocess.f90</TD>
+<TD> Changed defaults for input and output files to standard values rather 
+than null.
+</TD></TR>
+
+<TR><TD valign=top>smoother</TD>
+<TD> A main program to do fixed-lag ensemble smoothing has been added and is
+documented in the smoother directory. This program still uses the previous
+version of the inflation and assim_tools.
+</TD></TR>
+
+<TR><TD valign=top>time_manager_mod.f90</TD>
+<TD> Corrected problems with module initialization which was not being done at
+the proper times.
+</TD></TR>
+
+<TR><TD valign=top>tutorial</TD>
+<TD> Modified section 12 to give accurate discussion of new implementation
+of observation space inflation and a brief overview of the state space inflation
+options.
+</TD></TR>
+
+
+
+
