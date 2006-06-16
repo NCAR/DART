@@ -235,18 +235,18 @@ TYPE state_vector_meta_data
    integer             ::   number_state_params
 
 ! list of parameter types and properties to estimate
-   integer,    dimension(:), allocatable :: est_param_types
-   real(r8),   dimension(:), allocatable :: pert_init_sd
-   real(r8),   dimension(:), allocatable :: pert_param_sd
-   real(r8),   dimension(:), allocatable :: pert_param_min
-   integer,    dimension(:), allocatable :: pert_init_beta_1
-   integer,    dimension(:), allocatable :: pert_init_beta_2
-   real(r8),   dimension(:), allocatable :: pert_param_max
-   character(len=4),dimension(:), allocatable :: dist_shape
+   integer,    dimension(:), pointer :: est_param_types
+   real(r8),   dimension(:), pointer :: pert_init_sd
+   real(r8),   dimension(:), pointer :: pert_param_sd
+   real(r8),   dimension(:), pointer :: pert_param_min
+   integer,    dimension(:), pointer :: pert_init_beta_1
+   integer,    dimension(:), pointer :: pert_init_beta_2
+   real(r8),   dimension(:), pointer :: pert_param_max
+   character(len=4),dimension(:), pointer :: dist_shape
 
-   integer, dimension(:), allocatable :: var_type
-   integer, dimension(:), allocatable :: var_size
-   integer, dimension(:), allocatable :: var_index
+   integer, dimension(:), pointer :: var_type
+   integer, dimension(:), pointer :: var_size
+   integer, dimension(:), pointer :: var_index
 end TYPE state_vector_meta_data
 
 TYPE domain_static_data
