@@ -141,7 +141,7 @@ else                                    # interactive
 endif
 
 if ( ! $?REMOVE ) then
-  set REMOVE = '\rm -rf'
+  set REMOVE = 'rm -rf'
 endif
 
 # The scratch directory will be used as the run-time directory for both the
