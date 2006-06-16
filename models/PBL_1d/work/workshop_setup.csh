@@ -1,7 +1,8 @@
 #!/bin/csh
 
 # Data Assimilation Research Testbed -- DART
-# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -59,16 +60,17 @@
 # Intel   -free -r8
 #----------------------------------------------------------------------
 
+\rm -f preprocess gen_init create_obs_sequence create_fixed_network_seq
+\rm -f perfect_model_obs filter obs_diag create_real_network_seq 
+\rm -f driver.x merge_obs_seq
+
 csh mkmf_preprocess
 make         || exit 1
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-\rm -f perfect_model_obs
-\rm -f filter
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
-
 
 csh mkmf_gen_init
 make         || exit 3
@@ -80,23 +82,23 @@ csh mkmf_perfect_model_obs
 make         || exit 6
 csh mkmf_filter
 make         || exit 7
-./perfect_model_obs  || exit 8
-./filter             || exit 9
+csh mkmf_obs_diag
+make         || exit 8
+csh mkmf_create_real_network_seq
+make         || exit 9
+csh mkmf_driver
+make         || exit 10
+csh mkmf_merge_obs_seq
+make         || exit 11
+
+./perfect_model_obs  || exit 20
+./filter             || exit 21
 
 #----------------------------------------------------------------------
 # The observation-space diagnostics program is not fully developed yet.
 # In order to match the bahavior of the other models that use the threed_sphere
 # location module, the obs_diag.final  file must exist in a directory.
 # We're hardcoding that here. Clearly suboptimal.
-
-csh mkmf_obs_diag
-make         || exit 10
-csh mkmf_create_real_network_seq
-make         || exit 11
-csh mkmf_driver
-make         || exit 12
-csh mkmf_merge_obs_seq
-make         || exit 13
 
 if (! -d 06_01) then
    mkdir 06_01
