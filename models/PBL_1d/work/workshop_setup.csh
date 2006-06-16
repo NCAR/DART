@@ -57,7 +57,10 @@
 # extension even though it is free-format. This makes it necessary to
 # compile with flags that force interpretation of free-format.
 # They also rely on the autopromotion flag ... arghhh ... -r8
-# Intel   -free -r8
+# Intel     -free -r8
+# gfortran  -ffree-form -fdefault-real-8
+# pathscale -freeform -r8
+# pgi       -Mfree -Mr8
 #----------------------------------------------------------------------
 
 \rm -f preprocess gen_init create_obs_sequence create_fixed_network_seq
