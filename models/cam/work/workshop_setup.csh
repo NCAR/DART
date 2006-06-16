@@ -1,7 +1,8 @@
 #!/bin/csh
 
 # Data Assimilation Research Testbed -- DART
-# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -50,11 +51,15 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
+\rm -f preprocess create_obs_sequence create_fixed_network_seq
+\rm -f perfect_model_obs filter obs_diag assim_region column_rand
+\rm -f trans_date_to_dart trans_pv_sv trans_pv_sv_time0 trans_sv_pv
+\rm -f trans_time merge_obs_seq
+
 csh mkmf_preprocess
 make         || exit 1
-\rm -f ../../../obs_def/obs_def_mod.f90 ../../../obs_kind/obs_kind_mod.f90
-#\rm -f perfect_model_obs
-#\rm -f filter
+\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_kind/obs_kind_mod.f90
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
@@ -69,11 +74,6 @@ csh mkmf_filter
 make         || exit 6
 csh mkmf_obs_diag
 make         || exit 7
-
-#./perfect_model_obs
-#./filter
-rm -f go_end_filter
-
 csh mkmf_assim_region
 make         || exit 8
 csh mkmf_column_rand
@@ -90,3 +90,7 @@ csh mkmf_trans_time
 make         || exit 14
 csh mkmf_merge_obs_seq
 make         || exit 15
+
+#./perfect_model_obs || exit 20
+#./filter            || exit 21
+rm -f go_end_filter

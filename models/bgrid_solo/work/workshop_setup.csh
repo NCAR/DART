@@ -1,7 +1,8 @@
 #!/bin/csh
 
 # Data Assimilation Research Testbed -- DART
-# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -50,14 +51,15 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
+\rm -f preprocess id_set_def_stdin pressure_col_rand ps_rand_local
+\rm -f column_rand create_obs_sequence create_fixed_network_seq
+\rm -f integrate_model perfect_model_obs assim_region filter 
+\rm -f obs_diag merge_obs_diag smoother
+
 csh mkmf_preprocess
 make         || exit 1
 \rm -f ../../../obs_def/obs_def_mod.f90 
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-\rm -f perfect_model_obs set_def_stdin pressure_col_rand ps_rand_local
-\rm -f filter column_rand create_obs_sequence create_fixed_network_seq
-\rm -f integrate_model perfect_model_obs assim_region obs_diag smoother
-\rm -f merge_obs_diag
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
@@ -84,13 +86,12 @@ csh mkmf_filter
 make         || exit 12
 csh mkmf_obs_diag
 make         || exit 13
-
-./perfect_model_obs || exit 14
-./filter            || exit 15
-\rm -f go_end_filter
-
 csh mkmf_merge_obs_seq
-make         || exit 16
+make         || exit 14
 csh mkmf_smoother
-make         || exit 17
+make         || exit 15
+
+./perfect_model_obs || exit 20
+./filter            || exit 21
+\rm -f go_end_filter
 

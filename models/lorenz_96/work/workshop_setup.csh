@@ -1,7 +1,8 @@
 #!/bin/csh
 
 # Data Assimilation Research Testbed -- DART
-# Copyright 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
@@ -50,12 +51,14 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
+\rm -f preprocess create_obs_sequence create_fixed_network_seq
+\rm -f perfect_model_obs filter obs_diag assim_region integrate_model
+\rm -f merge_obs_seq smoother
+
 csh mkmf_preprocess
 make         || exit 1
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-\rm -f perfect_model_obs
-\rm -f filter
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
@@ -75,7 +78,10 @@ make         || exit 8
 csh mkmf_integrate_model
 make         || exit 9
 csh mkmf_merge_obs_seq
-make         || exit 9
-./perfect_model_obs || exit 10
-./filter            || exit 11
+make         || exit 10
+csh mkmf_smoother
+make         || exit 11
+
+./perfect_model_obs || exit 20
+./filter            || exit 21
 \rm -f go_end_filter
