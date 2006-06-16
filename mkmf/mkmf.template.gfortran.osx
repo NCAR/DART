@@ -38,7 +38,7 @@
 #    The 3.6.1 version needed to be configured and compiled like this:
 # 
 #     ./configure --prefix=/usr/local CC=gcc FC=gfortran F90FLAGS=-ff2c \
-#                                     FFLAGS=-ff2c CPPFLAGS=-Df2cFortran
+#                 FFLAGS="-ff2c -fsecond-underscore" CPPFLAGS=-Df2cFortran
 #     make
 #     make install
 # 
@@ -54,6 +54,14 @@
 #  of gfortran.  The model code uses the 'transfer' intrinsic which is
 #  not yet working in gfortran.  All other dart code compiled cleanly.
 #
+# Possibly useful flags:
+#
+# -ffree-form          forces input file to be read as free format regardless 
+#                      of what file extension is has.
+#
+# -fdefault-real-8     force all real variables to be real*8.
+#
+# -fsecond-underscore  match external symbols in the netcdf libraries
 # 
 # 
 
@@ -62,7 +70,7 @@ FC = gfortran
 LD = gfortran
 NETCDF = /usr/local
 INCS = ${NETCDF}/include
-FFLAGS = -I$(INCS)
+FFLAGS = -I$(INCS) -fsecond-underscore
 LIBS = -L${NETCDF}/lib -lnetcdf
 LDFLAGS = -I$(INCS) $(LIBS)
 
