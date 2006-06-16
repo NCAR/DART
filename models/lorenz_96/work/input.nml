@@ -12,7 +12,7 @@
    output_interval = 1 /
 
 &filter_nml
-   async = 2,
+   async = 0,
    adv_ens_command = "./advance_ens.csh",
    ens_size = 20, 
    start_from_restart = .true.,
