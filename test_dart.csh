@@ -800,6 +800,131 @@ diff filter_restart            filter_restart.single       || exit 128
 #diff     Prior_Diag.nc            Prior_Diag.single.nc
 #diff Posterior_Diag.nc        Posterior_Diag.single.nc
 
+
+echo ""
+echo "=================================================================="
+echo "Test the observation space inflation option"
+echo "=================================================================="
+echo ""
+
+${COPY} input.nml input.nml.previous
+${REMOVE} vi_script
+
+echo ':0'                                     >! vi_script
+echo '/ens_size'                              >> vi_script
+echo ':s/80/20/'                              >> vi_script
+echo '/num_groups'                            >> vi_script
+echo ':s/4/1/'                                >> vi_script
+echo '/cutoff'                                >> vi_script
+echo ':s/1000000\.0/0\.2/'                    >> vi_script
+echo '/num_domains'                           >> vi_script
+echo ':s/3/1/'                                >> vi_script
+echo '/do_obs_inflate'                        >> vi_script
+echo ':s/false/true/'                         >> vi_script
+echo '/obs_inf_sd_initial'                    >> vi_script
+echo ':s/0\.0/0\.1/'                          >> vi_script
+echo ':wq'                                    >> vi_script
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
+cat input.nml
+echo " "
+echo "END of input.nml"
+
+./filter  || exit 123
+
+ls -lrt | tail -30    # TJH debug
+
+# This run results in the following output files:
+# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
+# inflate_restart, inflate_diag
+
+diff obs_seq.final                    obs_seq.single.final || exit 127
+diff filter_restart            filter_restart.single       || exit 128
+#diff assim_tools_restart assim_tools_restart.single       || exit 129
+#diff     Prior_Diag.nc            Prior_Diag.single.nc
+#diff Posterior_Diag.nc        Posterior_Diag.single.nc
+
+
+echo ""
+echo "=================================================================="
+echo "Test the spatially varying state inflation option"
+echo "=================================================================="
+echo ""
+
+${COPY} input.nml input.nml.previous
+${REMOVE} vi_script
+
+echo ':0'                                     >! vi_script
+echo '/do_obs_inflate'                        >> vi_script
+echo ':s/true/false/'                         >> vi_script
+echo '/do_varying_ss_inflate'                 >> vi_script
+echo ':s/false/true/'                         >> vi_script
+echo '/ss_inf_sd_initial'                     >> vi_script
+echo ':s/0\.0/0\.1/'                          >> vi_script
+echo ':wq'                                    >> vi_script
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
+cat input.nml
+echo " "
+echo "END of input.nml"
+
+./filter  || exit 123
+
+ls -lrt | tail -30    # TJH debug
+
+# This run results in the following output files:
+# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
+# inflate_restart
+
+diff obs_seq.final                    obs_seq.single.final || exit 127
+diff filter_restart            filter_restart.single       || exit 128
+#diff assim_tools_restart assim_tools_restart.single       || exit 129
+#diff     Prior_Diag.nc            Prior_Diag.single.nc
+#diff Posterior_Diag.nc        Posterior_Diag.single.nc
+
+
+echo ""
+echo "=================================================================="
+echo "Test the single state space inflation option"
+echo "=================================================================="
+echo ""
+
+${COPY} input.nml input.nml.previous
+${REMOVE} vi_script
+
+echo ':0'                                     >! vi_script
+echo '/do_varying_ss_inflate'                 >> vi_script
+echo ':s/true/false/'                         >> vi_script
+echo '/do_single_ss_inflate'                  >> vi_script
+echo ':s/false/true/'                         >> vi_script
+echo ':wq'                                    >> vi_script
+(vi -s vi_script -e input.nml > /dev/null) || exit 98
+echo "input.nml differences from previous run:"
+diff input.nml input.nml.previous
+echo "input.nml now contains:"
+cat input.nml
+echo " "
+echo "END of input.nml"
+
+./filter  || exit 123
+
+ls -lrt | tail -30    # TJH debug
+
+# This run results in the following output files:
+# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
+# inflate_restart, inflate_diag 
+
+diff obs_seq.final                    obs_seq.single.final || exit 127
+diff filter_restart            filter_restart.single       || exit 128
+#diff assim_tools_restart assim_tools_restart.single       || exit 129
+#diff     Prior_Diag.nc            Prior_Diag.single.nc
+#diff Posterior_Diag.nc        Posterior_Diag.single.nc
+
+
 echo ""
 echo "Testing complete  at "`date`
 echo "=================================================================="
