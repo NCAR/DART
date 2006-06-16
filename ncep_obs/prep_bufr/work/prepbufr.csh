@@ -1,5 +1,23 @@
 #!/bin/csh
 
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2006, Data Assimilation Research Section, 
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id$
+# $Source$
+# $Name$
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+#
+#  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
+#  NCEP reanalysis PREPBUFR text/ascii data.
+#
+#--------------------------------------------------------------
+
 #BSUB -o prepbufr.out
 #BSUB -e prepbufr.err
 #BSUB -J prepbufr
@@ -7,32 +25,22 @@
 #BSUB -P 86850054
 #BSUB -n 1
 
-#
-#--------------------------------------------------------------
-#
-#  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
-#  NCEP reanalysis PREPBUFR text/ascii data.
-#
 #--------------------------------------------------------------
 # USER SET PARAMETERS
 
 # set echo
 
-# Convert from big-endian BUFR files to little-endian for Intel chip systems.  ('yes' or whatever)
-set convert = yes
-
-# year
-set year = 1997
-#
-# month
-set month = 12      
-#
-# begin day
+# Convert from big-endian BUFR files to little-endian for Intel chip systems.
+# ('yes' or whatever)
+set  convert = yes 
+set     year = 1997
+set    month = 12      
 set beginday = 30
 #
 # end day (up to and including the last day of the month.  Leap year Februaries are OK.
 #          Remember that the prepqm###### file for hour 0 of the first day of the next
 #          month is necessary for endday = last day of a month.)
+#
 set endday = 31
 
 # END USER SET PARAMETERS
