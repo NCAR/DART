@@ -873,7 +873,7 @@ CONTAINS
 
             ELSE
                CALL wrf_error_fatal('Lacking arguments for MYJSFC in &
-                    surface driver')
+                    &surface driver')
             ENDIF
 
 
