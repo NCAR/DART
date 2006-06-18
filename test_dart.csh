@@ -14,28 +14,44 @@ set SNAME = $0
 set clobber
 
 switch ( $#argv )
-   case 0:
-      # supplying no arguments -- echo usage not
+   case 1:
+      # supplying one argument -- the base output directory.
+      # The results of each run-time test will be stored in this directory.
+      # This will facilitate checks across platforms.
+
       breaksw
    default:
       echo " "
-      echo "usage: $SNAME:t"
+      echo "usage: $SNAME:t OutputDirectory"
       echo " "
-      echo "This script compiles 'filter' for a wide range of models and then does"
-      echo "relatively extensive tests of the L96 programs with a variety of options."
+      echo "This script compiles several program units for a wide range of models and then"
+      echo "does relatively extensive tests of the L96 programs with a variety of options."
       echo "The L96 tests are best run from a 'clean' starting point - i.e. one that"
       echo "is as close to the distribution state as possible. Picking up in the middle"
       echo "is not particularly easy. I always run the script end-to-end. TJH"
       echo " "
+      echo "An attempt is made to preserve the state of the input.nml, obs_seq.xx?, and"
+      echo "some initial conditions files. If the script completes without errors, your"
+      echo "original files are reinstated. If not, your lorenz_96/work directory is a mess."
+      echo " "
       echo "This must be run from the top-level 'DART' directory."
+      echo " "
+      echo "The OutputDirectory will contain the output of the L96 runs and is "
+      echo "intended to be useful for comparing results from multiple compilers/platforms."
+      echo "If the directory exists, it is guaranteed that the contents will be removed ..."
+      echo "If you specify a relative filename for the directory, look in "
+      echo "DART/models/lorenz_96/work/ ..."
+      echo " "
+      echo "Some of the tests should be bit-wise reproducible -- if this fails ... "
+      echo "$SNAME:t will abort."
       echo " "
       echo "This is a pretty verbose process, so if you are logging the output,"
       echo "make sure you have plenty of space:"
       echo " "
-      echo "./$SNAME:t |& tee DART_test.log"
+      echo "./$SNAME:t TestDir |& tee DART_test.log"
       echo " "
       echo "can easily result in a 750 Kb log file"
-      exit 1
+      exit 0
       breaksw
 endsw
 
@@ -120,7 +136,6 @@ endif
 cd ${DARTHOME}
 
 # If matlab and the netcdf functions exist, generate figures on-the-fly.
-# If not, simply archive output to test directories for later.
 
 which matlab > /dev/null
 set MatlabExists=$status
@@ -145,11 +160,6 @@ if ( $MatlabExists == 0 ) then
 
 endif
 
-if ( $MatlabExists != 0 ) then
-   mkdir -p ${DARTHOME}/Test1  # directory for output
-   mkdir -p ${DARTHOME}/Test2  # directory for output
-endif
-
 echo ""
 echo "=================================================================="
 echo "Testing lorenz_96 (L96) at "`date`
@@ -157,6 +167,30 @@ echo "=================================================================="
 echo ""
 
 cd ${DARTHOME}/models/lorenz_96/work
+
+# Save the 'original' files so we can reinstate them later
+
+${COPY} input.nml     input.nml.$$
+${COPY} obs_seq.in   obs_seq.in.$$
+${COPY} obs_seq.out obs_seq.out.$$
+${COPY} perfect_ics perfect_ics.$$
+${COPY} filter_ics   filter_ics.$$
+
+# The results of each run-time test will be stored in this directory.
+
+set BASEOUTPUTDIR = $1
+if ( ! -d ${BASEOUTPUTDIR} ) then
+   mkdir -p ${BASEOUTPUTDIR}
+endif
+
+foreach TEST ( spun_up 10hour 10hour.mres baseline out_of_core async2 \
+               async3 Fasync0 async0mres3dom async0mres5dom \
+               async2mres3dom async3mres3dom async0mres0prll \
+               osi svsi sssi )
+   echo -n "Cleaning out ${BASEOUTPUTDIR}/${TEST} ... "
+   ${REMOVE} ${BASEOUTPUTDIR}/${TEST}
+   echo "done."
+end
 
 # Make sure that all .o, .mod and executables are gone
 ${REMOVE} *.o *.mod assim_region create_fixed_network_seq create_obs_seq filter
@@ -187,12 +221,19 @@ make                              || exit  19
 csh mkmf_smoother                 || exit  20
 make                              || exit  21
 
-
 echo ""
 echo "=================================================================="
 echo "Setup appropriate namelists for a 4x20 1000-step test run."
 echo "=================================================================="
 echo ""
+
+set EXP = ${BASEOUTPUTDIR}/spun_up
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
 echo "input.nml initially contains:"
@@ -223,13 +264,6 @@ echo '/ens_size'                      >> vi_script
 echo ':s/20/80/'                      >> vi_script
 echo '/num_groups'                    >> vi_script
 echo ':s/1/4/'                        >> vi_script
-#echo '/assim_tools_nml'               >> vi_script
-#echo '/cov_inflate'                   >> vi_script
-#echo ':s/-1.0/1.05/'                  >> vi_script
-#echo '/cov_inflate_sd'                >> vi_script
-#echo ':s/-0.05/0.05'                  >> vi_script
-#echo '/sd_lower_bound'                >> vi_script
-#echo ':s/-0.05/0.05'                  >> vi_script
 echo ':wq'                            >> vi_script
 (vi -s vi_script -e input.nml > /dev/null) || exit 98
 echo "input.nml differences from previous run:"
@@ -243,40 +277,46 @@ echo "END of input.nml"
 ./perfect_model_obs  || exit 32
 ./filter             || exit 33
 
-ls -lrt | tail -30    # TJH debug
-
 # Establish baseline for the run.
 if ( $MatlabExists == 0 ) then
    ${REMOVE} batchscript.m
-   echo "plot_total_err"              > batchscript.m
+   echo "plot_total_err"             >! batchscript.m
    echo "print -dpsc DART_fig1.ps"   >> batchscript.m
    echo "quit"                       >> batchscript.m
    matlab -nosplash -nojvm -r batchscript
    ${REMOVE} batchscript.m
-else
-   echo "Matlab does not exist in your PATH ... archiving output"
-   ${COPY} input.nml           ${DARTHOME}/Test1
-   ${COPY} True_State.nc       ${DARTHOME}/Test1
-   ${COPY} obs_seq.out         ${DARTHOME}/Test1
-   ${COPY} perfect_restart     ${DARTHOME}/Test1
-
-   ${COPY} Prior_Diag.nc       ${DARTHOME}/Test1
-   ${COPY} Posterior_Diag.nc   ${DARTHOME}/Test1
-   ${COPY} obs_seq.final       ${DARTHOME}/Test1
-   ${COPY} inflate_restart     ${DARTHOME}/Test1
-   ${COPY} filter_restart      ${DARTHOME}/Test1
-   ${COPY} reg_diagnostics     ${DARTHOME}/Test1
+   ${MOVE} DART_fig1.ps ${EXP}
 endif
 
-${MOVE} perfect_restart       perfect_ics.spun_up
-${MOVE} True_State.nc          True_State.spun_up.nc
+# These are needed for comparison to other configurations.
 
-${MOVE}     Prior_Diag.nc      Prior_Diag.spun_up.nc
-${MOVE} Posterior_Diag.nc  Posterior_Diag.spun_up.nc
-${MOVE}   obs_seq.final     obs_seq.final.spun_up
-${MOVE} inflate_restart   inflate_restart.spun_up    # zero size
-${MOVE}  filter_restart        filter_ics.spun_up
-${MOVE} reg_diagnostics   reg_diagnostics.spun_up
+${COPY} perfect_restart       perfect_ics.spun_up
+${COPY}  filter_restart        filter_ics.spun_up
+
+# Now, just save 'everything'
+
+${COPY} input.nml                  ${EXP}
+${MOVE} obs_seq.out                ${EXP}
+${MOVE} True_State.nc              ${EXP}
+${MOVE} perfect_restart            ${EXP}
+
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart             ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+# Even the stuff from the spinup
+
+${MOVE} obs_seq.in  ${EXP}
+
+# General cleanup
+
+${REMOVE} temp_input vi_script go_end_filter
+
+ls -lrt | tail -30    # TJH debug
 
 echo ""
 echo "------------------------------------------------------------------"
@@ -290,7 +330,6 @@ echo "=================================================================="
 echo ""
 
 # Create an obs_sequence file for 10 hour tests
-${REMOVE} obs_seq.in obs_seq.out obs_seq.final temp_input
 ./create_obs_sequence < ../random_obs.input  || exit 40
 echo 'set_def.out'             >! temp_input
 echo '1'                       >> temp_input
@@ -313,6 +352,14 @@ echo "and binary restart files. Start from previous restart and create "
 echo "single  previous restart and create new restart."
 echo "=================================================================="
 echo " "
+
+set EXP = ${BASEOUTPUTDIR}/10hour
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
 ${REMOVE} vi_script
@@ -337,7 +384,6 @@ cat input.nml
 echo " "
 echo "END of input.nml"
 
-
 echo ""
 echo "=================================================================="
 echo "Run the perfect model and the filter to produce single restart files:"
@@ -348,17 +394,29 @@ echo ""
 ./perfect_model_obs   || exit 42
 ./filter              || exit 43
 
+# These are needed for comparison to other configurations.
+
+${COPY} perfect_restart       perfect_ics.10hour
+${COPY}  filter_restart        filter_ics.10hour
+
+# Now, just save 'everything'
+
+${COPY} input.nml                  ${EXP}
+${COPY} obs_seq.out                ${EXP}
+${MOVE} True_State.nc              ${EXP}
+${MOVE} perfect_restart            ${EXP}
+
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart             ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script temp_input go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-${COPY}     obs_seq.out       obs_seq.out.10hour
-${MOVE} perfect_restart       perfect_ics.10hour
-${MOVE}  filter_restart        filter_ics.10hour
-${MOVE} inflate_restart       inflate_ics.10hour    # zero size
-${MOVE} reg_diagnostics   reg_diagnostics.10hour
-
-${MOVE}     True_State.nc      True_State.10hour.nc
-${MOVE}     Prior_Diag.nc      Prior_Diag.10hour.nc
-${MOVE} Posterior_Diag.nc  Posterior_Diag.10hour.nc
 
 echo ""
 echo "=================================================================="
@@ -366,9 +424,16 @@ echo "Now run the filter again to produce multiple restart files:"
 echo "filter_restart.01"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/10hour.mres
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
+set MULTIRESTART = $EXP
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                >! vi_script
 echo '/single_restart_file_out'          >> vi_script
@@ -384,17 +449,36 @@ echo "END of input.nml"
 
 ./filter  || exit 53
 
+${COPY} input.nml                  ${EXP} 
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart.*           ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
 
 echo " "
 echo "=================================================================="
 echo "Now do a second 10 hour run from the end of the first 10 hour"
 echo "Also change the filter back to only produce single restart file"
+echo "This is the configuration that sets the standard."
 echo "=================================================================="
 echo " "
+set EXP = ${BASEOUTPUTDIR}/baseline
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+set BASELINE = ${EXP}
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                         >! vi_script
 echo '/restart_in_file_name'                      >> vi_script
@@ -416,30 +500,37 @@ echo "END of input.nml"
 ./perfect_model_obs  || exit 62
 ./filter             || exit 63
 
+${COPY} input.nml                  ${EXP}
+${MOVE} obs_seq.out                ${EXP}
+${MOVE} True_State.nc              ${EXP}
+${MOVE} perfect_restart            ${EXP}
+
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart             ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-# Do some tests on perfect_model_obs options first
-# Set up baseline output file
-
-${MOVE}     True_State.nc      True_State.baseline.nc
-${MOVE}     obs_seq.out       obs_seq.out.baseline
-${MOVE} perfect_restart   perfect_restart.baseline
-${MOVE}     Prior_Diag.nc      Prior_Diag.baseline.nc
-${MOVE} Posterior_Diag.nc  Posterior_Diag.baseline.nc
-${MOVE}   obs_seq.final     obs_seq.final.baseline
-${MOVE}  filter_restart    filter_restart.baseline
-${MOVE} inflate_restart   inflate_restart.baseline    # zero size
-${MOVE} reg_diagnostics   reg_diagnostics.baseline
-
 
 echo ""
 echo "=================================================================="
 echo "Test storing the ensemble on disk instead of in core"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/out_of_core
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                             >! vi_script
 echo '/ensemble_manager'              >> vi_script
@@ -456,16 +547,29 @@ echo "END of input.nml"
 
 ./perfect_model_obs  || exit 72
 
+ diff perfect_restart             ${BASELINE}/perfect_restart  || exit 74
+ diff     obs_seq.out             ${BASELINE}/obs_seq.out      || exit 75
+#diff  True_State.nc.out_of_core  ${BASELINE}/True_State.nc    || exit 76
+
+${COPY} input.nml                      ${EXP}
+${MOVE} obs_seq.out                    ${EXP}
+${MOVE} True_State.nc                  ${EXP}
+${MOVE} perfect_restart                ${EXP}
+${MOVE} ens_manager_ens_file.0001.0001 ${EXP}
+${MOVE} configuration_being_tested     ${EXP}
+${MOVE} dart_log.out                   ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
 
-${MOVE} True_State.nc      True_State.nc.out_of_core
-${MOVE} perfect_restart  perfect_restart.out_of_core
-${MOVE} obs_seq.out          obs_seq.out.out_of_core
-${MOVE} ens_manager_ens_file.0001.0001 ens_manager_ens_file.0001.0001.out_of_core
-
-diff perfect_restart.out_of_core  perfect_restart.baseline || exit 74
-diff     obs_seq.out.out_of_core      obs_seq.out.baseline || exit 75
-#diff  True_State.nc.out_of_core    True_State.nc.baseline || exit 76
+#-----------------------------------------------------------------------
+# Need to get the scripts 
+#-----------------------------------------------------------------------
+${COPY} ../shell_scripts/*.csh .
+${COPY} ${DARTHOME}/shell_scripts/advance_ens.csh      advance_ens.csh
+${COPY} ${DARTHOME}/shell_scripts/assim_filter.csh    assim_filter.csh
+${COPY} ${DARTHOME}/shell_scripts/filter_server.csh  filter_server.csh
 
 echo ""
 echo "=================================================================="
@@ -476,17 +580,15 @@ echo "async == 3 == model advance when signalled by semaphore file"
 echo "Change to async=2 and in_core=true for perfect model."
 echo "=================================================================="
 echo ""
-
-#-----------------------------------------------------------------------
-# Need to get the scripts 
-#-----------------------------------------------------------------------
-${COPY} ../shell_scripts/*.csh .
-${COPY} ${DARTHOME}/shell_scripts/advance_ens.csh      advance_ens.csh
-${COPY} ${DARTHOME}/shell_scripts/assim_filter.csh    assim_filter.csh
-${COPY} ${DARTHOME}/shell_scripts/filter_server.csh  filter_server.csh
+set EXP = ${BASEOUTPUTDIR}/async2
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                            >! vi_script
 echo '/perfect_model_obs_nml'        >> vi_script
@@ -505,28 +607,37 @@ echo "END of input.nml"
 
 ./perfect_model_obs  || exit 82
 
+diff perfect_restart  ${BASELINE}/perfect_restart || exit 84
+diff     obs_seq.out  ${BASELINE}/obs_seq.out     || exit 85
+#diff  True_State.nc  ${BASELINE}/True_State.nc   || exit 86
+
+${COPY} input.nml                  ${EXP}
+${MOVE} obs_seq.out                ${EXP}
+${MOVE} True_State.nc              ${EXP}
+${MOVE} perfect_restart            ${EXP}
+${MOVE} assim_model_state_*        ${EXP}
+${MOVE} filter_control             ${EXP}
+${MOVE} integrate_model_out_temp1  ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} member_1                   ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-# This run result in:
-# True_State.nc, obs_seq.out, perfect_restart
-# assim_model_state_ic1
-# filter_control
-# assim_model_state_ud1
-# integrate_model_out_temp1
-
-${MOVE} True_State.nc       True_State.nc.2
-${MOVE} obs_seq.out           obs_seq.out.2
-${MOVE} perfect_restart   perfect_restart.2
-
-diff perfect_restart.2  perfect_restart.baseline || exit 84
-diff     obs_seq.out.2      obs_seq.out.baseline || exit 85
-#diff  True_State.nc.2    True_State.nc.baseline || exit 86
 
 echo ""
 echo "=================================================================="
 echo "Now try async == 3 (filter_server.csh driving the model advance)"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/async3
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
 ${REMOVE} vi_script
@@ -544,33 +655,31 @@ cat input.nml
 echo " "
 echo "END of input.nml"
 
-# TJH debug as CAM implements it ... filter_server.csh is terminated by the
-# existence of go_end_filter_server ... created by filter.csh ... which is
-# not part of the standard scripts ...
-
 ./filter_server.csh &
 ./perfect_model_obs || exit 92
 
-ls -lrt | tail -30    # TJH debug
 echo "If you're still here after 10 seconds or so ..."
 echo "filter_server is not terminating when it should."
 wait
 
+diff perfect_restart  ${BASELINE}/perfect_restart || exit 94
+diff     obs_seq.out  ${BASELINE}/obs_seq.out     || exit 95
+#diff  True_State.nc  ${BASELINE}/True_State.nc   || exit 96
 
-# This run result in:
-# True_State.nc, obs_seq.out, perfect_restart
-# assim_model_state_ic1
-# filter_control
-# assim_model_state_ud1
-# integrate_model_out_temp1
+${COPY} input.nml                  ${EXP}
+${MOVE} obs_seq.out                ${EXP}
+${MOVE} True_State.nc              ${EXP}
+${MOVE} perfect_restart            ${EXP}
+${MOVE} assim_model_state_*        ${EXP}
+${MOVE} filter_control             ${EXP}
+${MOVE} integrate_model_out_temp1  ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} run_job.log                ${EXP}
+${MOVE} dart_log.out               ${EXP}
 
-${MOVE} perfect_restart   perfect_restart.3
-${MOVE} obs_seq.out           obs_seq.out.3
-${COPY} True_State.nc       True_State.nc.3
+${REMOVE} vi_script go_end_filter
 
-diff perfect_restart.3  perfect_restart.baseline || exit 94
-diff     obs_seq.out.3      obs_seq.out.baseline || exit 95
-#diff  True_State.nc.3    True_State.nc.baseline || exit 96
+ls -lrt | tail -30    # TJH debug
 
 echo ""
 echo "=================================================================="
@@ -579,41 +688,65 @@ echo "Begin by checking single versus multiple restarts"
 echo "=================================================================="
 echo ""
 
-${COPY} obs_seq.out.baseline obs_seq.out
+set EXP = ${BASEOUTPUTDIR}/Fasync0
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
+
+${COPY} ${BASELINE}/obs_seq.out    .
 
 ./filter  || exit 73
 
-ls -lrt | tail -30    # TJH debug
-
-${MOVE} obs_seq.final              obs_seq.single.final
-${MOVE} filter_restart            filter_restart.single
-${MOVE} inflate_restart          inflate_restart.single   # zero length
-${MOVE} reg_diagnostics          reg_diagnostics.single
-${MOVE} Posterior_Diag.nc      Posterior_Diag.single.nc
-${COPY}     Prior_Diag.nc          Prior_Diag.single.nc
+diff      obs_seq.final  ${BASELINE}/obs_seq.final     || exit 10
+diff     filter_restart  ${BASELINE}/filter_restart    || exit 11
+diff    reg_diagnostics  ${BASELINE}/reg_diagnostics   || exit 12
 
 # Determine if the run was correct.
 # can fire off a matlab batch job if matlab exists.
 if ( $MatlabExists == 0 ) then
+
+   ${COPY} ${BASELINE}/True_State.nc  .
+
    echo "plot_total_err"             >! batchscript.m
    echo "print -dpsc DART_fig2.ps"   >> batchscript.m
    echo "quit"                       >> batchscript.m
    matlab -nosplash -nojvm -r batchscript
    ${REMOVE} batchscript.m
-else
-   echo "Matlab does not exist in your PATH ... archiving output"
-   ${COPY} input.nml  ${DARTHOME}/Test2
-   ${COPY} *.single.* ${DARTHOME}/Test2
+   ${MOVE} DART_fig2.ps ${EXP}
 endif
+
+${COPY} input.nml                  ${EXP}
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart             ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
+ls -lrt | tail -30    # TJH debug
 
 echo ""
 echo "=================================================================="
 echo "Now use multiple input files (named filter_restart.00xx)"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/async0mres3dom
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
+
+${COPY} ${MULTIRESTART}/filter_restart.*  .
 
 echo ':0'                                    >! vi_script
 echo '/filter_nml'                           >> vi_script
@@ -632,28 +765,39 @@ echo "END of input.nml"
 
 ./filter  || exit 83
 
+diff      obs_seq.final  ${BASELINE}/obs_seq.final     || exit 10
+diff     filter_restart  ${BASELINE}/filter_restart    || exit 11
+diff    reg_diagnostics  ${BASELINE}/reg_diagnostics   || exit 12
+#diff     Prior_Diag.nc  ${BASELINE}/Prior_Diag.nc
+#diff Posterior_Diag.nc  ${BASELINE}/Posterior_Diag.nc
+
+${COPY} input.nml                  ${EXP}
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart             ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-${MOVE}     Prior_Diag.nc        Prior_Diag.in_files.nc
-${MOVE} Posterior_Diag.nc    Posterior_Diag.in_files.nc
-${MOVE} obs_seq.final               obs_seq.in_files.final
-${MOVE}  filter_restart      filter_restart.in_files
-${MOVE} reg_diagnostics     reg_diagnostics.in_files
-
-diff       obs_seq.in_files.final        obs_seq.single.final || exit 87
-diff      filter_restart.in_files       filter_restart.single || exit 88
-#diff    reg_diagnostics.in_files      reg_diagnostics.single || exit 89
-#diff      Prior_Diag.nc.in_files        Prior_Diag.single.nc
-#diff  Posterior_Diag.nc.in_files    Posterior_Diag.single.nc
 
 echo ""
 echo "=================================================================="
 echo "Next switch the number of domains from 3 to 5"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/async0mres5dom
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/num_domains'                           >> vi_script
@@ -669,21 +813,36 @@ echo "END of input.nml"
 
 ./filter  || exit 93
 
-ls -lrt | tail -30    # TJH debug
+diff      obs_seq.final  ${BASELINE}/obs_seq.final     || exit 10
+diff     filter_restart  ${BASELINE}/filter_restart    || exit 11
 
-diff obs_seq.final                  obs_seq.single.final || exit 97
-diff filter_restart          filter_restart.single       || exit 98
-#diff      Prior_Diag.nc         Prior_Diag.single.nc
-#diff  Posterior_Diag.nc     Posterior_Diag.single.nc
+${COPY} input.nml                  ${EXP}
+${MOVE} Prior_Diag.nc              ${EXP}
+${MOVE} Posterior_Diag.nc          ${EXP}
+${MOVE} obs_seq.final              ${EXP}
+${MOVE} filter_restart             ${EXP}
+${MOVE} reg_diagnostics            ${EXP}
+${MOVE} configuration_being_tested ${EXP}
+${MOVE} dart_log.out               ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
+ls -lrt | tail -30    # TJH debug
 
 echo ""
 echo "=================================================================="
 echo "Next switch the number of domains back to 3; try parallel option 2"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/async2mres3dom
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/do_parallel'                           >> vi_script
@@ -701,34 +860,41 @@ echo "END of input.nml"
 
 ./filter || exit 103
 
+diff      obs_seq.final  ${BASELINE}/obs_seq.final     || exit 10
+diff     filter_restart  ${BASELINE}/filter_restart    || exit 11
+
+${COPY} input.nml                    ${EXP}
+${MOVE} Prior_Diag.nc                ${EXP}
+${MOVE} Posterior_Diag.nc            ${EXP}
+${MOVE} obs_seq.final                ${EXP}
+${MOVE} filter_restart               ${EXP}
+${MOVE} configuration_being_tested   ${EXP}
+${MOVE} filter_assim_region__in[123] ${EXP}
+${MOVE} filter_assim_region_out[123] ${EXP}
+${MOVE}   assim_region_out_temp[123] ${EXP}
+${MOVE} filter_assim_obs_seq         ${EXP}
+${MOVE} assim_region_control         ${EXP}
+${MOVE} region_[123]                 ${EXP}
+${MOVE} dart_log.out                 ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-# This run results in the following:
-# filter_assim_obs_seq
-# filter_assim_region__in1
-# filter_assim_region__in2
-# filter_assim_region__in3
-# filter_assim_region_out1
-# filter_assim_region_out2
-# filter_assim_region_out3
-# assim_region_control
-# assim_region_out_temp1
-# assim_region_out_temp2
-# assim_region_out_temp3
-
-diff obs_seq.final                   obs_seq.single.final || exit 107
-diff filter_restart           filter_restart.single       || exit 108
-#diff     Prior_Diag.nc           Prior_Diag.single.nc    || exit 384
-#diff Posterior_Diag.nc       Posterior_Diag.single.nc    || exit 385
 
 echo ""
 echo "=================================================================="
 echo "Try parallel option 3"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/async3mres3dom
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/do_parallel'                           >> vi_script
@@ -745,34 +911,45 @@ echo "END of input.nml"
 ./filter_server.csh &
 ./filter  || exit 113
 
-ls -lrt | tail -30    # TJH debug
 echo "If you're still here after 10 seconds or so ..."
 echo "filter_server is not terminating when it should."
 wait
 
-# This run results in the following output files:
-# obs_seq.final, filter_restart, Prior_Diag.nc, Posterior_Diag.nc
-# filter_assim_obs_seq
-# assim_region_control
-# filter_server.log
-# filter_assim_region__in?   [1,3]
-# filter_assim_region_out?   [1,3]
-# assim_region_out_temp?     [1,3]
+diff      obs_seq.final  ${BASELINE}/obs_seq.final     || exit 10
+diff     filter_restart  ${BASELINE}/filter_restart    || exit 11
 
-diff       obs_seq.final              obs_seq.single.final || exit 117
-diff      filter_restart       filter_restart.single       || exit 118
-#diff assim_tools_restart assim_tools_restart.single       || exit 119
-#diff      Prior_Diag.nc           Prior_Diag.single.nc
-#diff  Posterior_Diag.nc       Posterior_Diag.single.nc
+${COPY} input.nml                    ${EXP}
+${MOVE} Prior_Diag.nc                ${EXP}
+${MOVE} Posterior_Diag.nc            ${EXP}
+${MOVE} obs_seq.final                ${EXP}
+${MOVE} filter_restart               ${EXP}
+${MOVE} configuration_being_tested   ${EXP}
+${MOVE} filter_assim_region__in[123] ${EXP}
+${MOVE} filter_assim_region_out[123] ${EXP}
+${MOVE}   assim_region_out_temp[123] ${EXP}
+${MOVE} filter_assim_obs_seq         ${EXP}
+${MOVE} assim_region_control         ${EXP}
+${MOVE} run_job.log                  ${EXP}
+${MOVE} dart_log.out                 ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
+ls -lrt | tail -30    # TJH debug
 
 echo ""
 echo "=================================================================="
 echo "Go back to parallel option 0 and proceed"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/async0mres0prll
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/do_parallel'                           >> vi_script
@@ -788,27 +965,37 @@ echo "END of input.nml"
 
 ./filter  || exit 123
 
+diff      obs_seq.final  ${BASELINE}/obs_seq.final     || exit 10
+diff     filter_restart  ${BASELINE}/filter_restart    || exit 11
+diff    reg_diagnostics  ${BASELINE}/reg_diagnostics   || exit 12
+
+${COPY} input.nml                    ${EXP}
+${MOVE} Prior_Diag.nc                ${EXP}
+${MOVE} Posterior_Diag.nc            ${EXP}
+${MOVE} obs_seq.final                ${EXP}
+${MOVE} filter_restart               ${EXP}
+${MOVE} configuration_being_tested   ${EXP}
+${MOVE} reg_diagnostics              ${EXP}
+${MOVE} dart_log.out                 ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-# This run results in the following output files:
-# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
-# reg_diagnostics
-
-diff obs_seq.final                    obs_seq.single.final || exit 127
-diff filter_restart            filter_restart.single       || exit 128
-#diff assim_tools_restart assim_tools_restart.single       || exit 129
-#diff     Prior_Diag.nc            Prior_Diag.single.nc
-#diff Posterior_Diag.nc        Posterior_Diag.single.nc
-
 
 echo ""
 echo "=================================================================="
 echo "Test the observation space inflation option"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/osi
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/ens_size'                              >> vi_script
@@ -834,27 +1021,34 @@ echo "END of input.nml"
 
 ./filter  || exit 123
 
+${COPY} input.nml                    ${EXP}
+${MOVE} Prior_Diag.nc                ${EXP}
+${MOVE} Posterior_Diag.nc            ${EXP}
+${MOVE} obs_seq.final                ${EXP}
+${MOVE} filter_restart               ${EXP}
+${MOVE} configuration_being_tested   ${EXP}
+${MOVE} inflate_restart              ${EXP}
+${MOVE} inflate_diag                 ${EXP}
+${MOVE} dart_log.out                 ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-# This run results in the following output files:
-# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
-# inflate_restart, inflate_diag
-
-#diff obs_seq.final                    obs_seq.single.final || exit 127
-#diff filter_restart            filter_restart.single       || exit 128
-#diff assim_tools_restart assim_tools_restart.single       || exit 129
-#diff     Prior_Diag.nc            Prior_Diag.single.nc
-#diff Posterior_Diag.nc        Posterior_Diag.single.nc
-
 
 echo ""
 echo "=================================================================="
 echo "Test the spatially varying state inflation option"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/svsi
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/do_obs_inflate'                        >> vi_script
@@ -874,27 +1068,33 @@ echo "END of input.nml"
 
 ./filter  || exit 123
 
+${COPY} input.nml                    ${EXP}
+${MOVE} Prior_Diag.nc                ${EXP}
+${MOVE} Posterior_Diag.nc            ${EXP}
+${MOVE} obs_seq.final                ${EXP}
+${MOVE} filter_restart               ${EXP}
+${MOVE} configuration_being_tested   ${EXP}
+${MOVE} inflate_restart              ${EXP}
+${MOVE} dart_log.out                 ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
-
-# This run results in the following output files:
-# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
-# inflate_restart
-
-#diff obs_seq.final                    obs_seq.single.final || exit 127
-#diff filter_restart            filter_restart.single       || exit 128
-#diff assim_tools_restart assim_tools_restart.single       || exit 129
-#diff     Prior_Diag.nc            Prior_Diag.single.nc
-#diff Posterior_Diag.nc        Posterior_Diag.single.nc
-
 
 echo ""
 echo "=================================================================="
 echo "Test the single state space inflation option"
 echo "=================================================================="
 echo ""
+set EXP = ${BASEOUTPUTDIR}/sssi
+if (   -d    ${EXP} ) then
+   ${REMOVE} ${EXP}/*
+else
+   mkdir     ${EXP}
+endif
+echo $EXP >! configuration_being_tested
 
 ${COPY} input.nml input.nml.previous
-${REMOVE} vi_script
 
 echo ':0'                                     >! vi_script
 echo '/do_varying_ss_inflate'                 >> vi_script
@@ -912,19 +1112,37 @@ echo "END of input.nml"
 
 ./filter  || exit 123
 
+${COPY} input.nml                    ${EXP}
+${MOVE} Prior_Diag.nc                ${EXP}
+${MOVE} Posterior_Diag.nc            ${EXP}
+${MOVE} obs_seq.final                ${EXP}
+${MOVE} filter_restart               ${EXP}
+${MOVE} configuration_being_tested   ${EXP}
+${MOVE} inflate_restart              ${EXP}
+${MOVE} inflate_diag                 ${EXP}
+${MOVE} dart_log.out                 ${EXP}
+
+${REMOVE} vi_script go_end_filter
+
 ls -lrt | tail -30    # TJH debug
 
-# This run results in the following output files:
-# Prior_Diag.nc, Posterior_Diag.nc, obs_seq.final, filter_restart,
-# inflate_restart, inflate_diag 
+echo "=================================================================="
+echo "cleaning up ... and restoring original input.nml, ics ... "
 
-#diff obs_seq.final                    obs_seq.single.final || exit 127
-#diff filter_restart            filter_restart.single       || exit 128
-#diff assim_tools_restart assim_tools_restart.single       || exit 129
-#diff     Prior_Diag.nc            Prior_Diag.single.nc
-#diff Posterior_Diag.nc        Posterior_Diag.single.nc
+${REMOVE} filter_restart.*
+${REMOVE} input.nml perfect_ics perfect_ics.spun_up perfect_ics.10hour
+${REMOVE} obs_seq.in filter_ics  filter_ics.spun_up  filter_ics.10hour
+${REMOVE} obs_seq.out set_def.out  True_State.nc input.nml.previous
 
+# Reinstate the 'original' files so we can run this again if we need to.
 
+${MOVE}   input.nml.$$   input.nml
+${MOVE}  obs_seq.in.$$ obs_seq.in
+${MOVE} obs_seq.out.$$ obs_seq.out
+${MOVE} perfect_ics.$$ perfect_ics
+${MOVE}  filter_ics.$$  filter_ics
+
+echo "=================================================================="
 echo ""
 echo "Testing complete  at "`date`
 echo "=================================================================="
