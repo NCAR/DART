@@ -75,9 +75,51 @@ if ( ! $?host) then
    setenv host `uname -n`
 endif
 
-setenv REMOVE 'rm -rfv'
-setenv COPY   'cp -pv'
-setenv MOVE   'mv -v'
+#----------------------------------------------------------------------
+# Not all unix systems support the same subset of flags; try to figure
+# out what system we are running on and adjust accordingly.
+#----------------------------------------------------------------------
+set OSTYPE = `uname -s`
+switch ( ${OSTYPE} )
+   case IRIX64:
+      setenv REMOVE 'rm -rf'
+      setenv   COPY 'cp -p'
+      setenv   MOVE 'mv -f'
+      breaksw
+   case AIX:
+      setenv REMOVE 'rm -rf'
+      setenv   COPY 'cp -p'
+      setenv   MOVE 'mv -f'
+      breaksw
+   default:
+      setenv REMOVE 'rm -rvf'
+      setenv   COPY 'cp -vp'
+      setenv   MOVE 'mv -fv'
+      breaksw
+endsw
+
+#----------------------------------------------------------------------
+# We need to run the editor in batch mode.  If you have 'vim' it needs
+# one flag; if you have only the older vanilla 'vi' you need another.
+# On several systems 'vi' is a link to 'vim' and uses the newer syntax
+# so you cannot distinguish which flag will be needed based only on name.
+# First try to run 'vim' by full name and then back off to plain 'vi' 
+# if it is not found.  Punt if neither is found.
+#---------------------------------------------------------------------- 
+set VI_EXE = `which vim` 
+if ( -x ${VI_EXE} ) then
+   setenv VI 'vim -e'
+else
+   set VI_EXE = `which vi` 
+   if ( -x ${VI_EXE} ) then
+      setenv VI 'vi -s'
+   else
+      echo "Neither the vim nor the vi editor were found."
+      echo "This script needs to use one to format the test input files."
+      echo "We cannot continue."
+      exit 2
+   endif
+endif
 
 echo "Running DART test on $host"
 
@@ -265,7 +307,7 @@ echo ':s/20/80/'                      >> vi_script
 echo '/num_groups'                    >> vi_script
 echo ':s/1/4/'                        >> vi_script
 echo ':wq'                            >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -376,7 +418,7 @@ echo ':s/filter_ics/filter_ics.spun_up'   >> vi_script
 echo '/write_binary_restart_files'        >> vi_script
 echo ':s/.false./.true./'                 >> vi_script
 echo ':wq'                                >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -439,7 +481,7 @@ echo ':0'                                >! vi_script
 echo '/single_restart_file_out'          >> vi_script
 echo ':s/true/false/'                    >> vi_script
 echo ':wq'                               >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -489,7 +531,7 @@ echo ':s/filter_ics.spun_up/filter_ics.10hour'    >> vi_script
 echo '/single_restart_file_out'                   >> vi_script
 echo ':s/false/true/'                             >> vi_script
 echo ':wq'                                        >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -537,7 +579,7 @@ echo '/ensemble_manager'              >> vi_script
 echo '/in_core'                       >> vi_script
 echo ':s/true/false/'                 >> vi_script
 echo ':wq'                            >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -597,7 +639,7 @@ echo ':s/0/2/'                       >> vi_script
 echo '/in_core'                      >> vi_script
 echo ':s/false/true/'                >> vi_script
 echo ':wq'                           >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -647,7 +689,7 @@ echo '/perfect_model_obs_nml'        >> vi_script
 echo '/async'                        >> vi_script
 echo ':s/2/3/'                       >> vi_script
 echo ':wq'                           >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -755,7 +797,7 @@ echo ':s/filter_ics.10hour/filter_restart/'  >> vi_script
 echo '/single_restart_file_in'               >> vi_script
 echo ':s/true/false/'                        >> vi_script
 echo ':wq'                                   >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -803,7 +845,7 @@ echo ':0'                                     >! vi_script
 echo '/num_domains'                           >> vi_script
 echo ':s/3/5/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -850,7 +892,7 @@ echo ':s/0/2/'                                >> vi_script
 echo '/num_domains'                           >> vi_script
 echo ':s/5/3/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -900,7 +942,7 @@ echo ':0'                                     >! vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/2/3/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -955,7 +997,7 @@ echo ':0'                                     >! vi_script
 echo '/do_parallel'                           >> vi_script
 echo ':s/3/0/'                                >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -1011,7 +1053,7 @@ echo ':s/false/true/'                         >> vi_script
 echo '/obs_inf_sd_initial'                    >> vi_script
 echo ':s/0\.0/0\.1/'                          >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -1058,7 +1100,7 @@ echo ':s/false/true/'                         >> vi_script
 echo '/ss_inf_sd_initial'                     >> vi_script
 echo ':s/0\.0/0\.1/'                          >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
@@ -1102,7 +1144,7 @@ echo ':s/true/false/'                         >> vi_script
 echo '/do_single_ss_inflate'                  >> vi_script
 echo ':s/false/true/'                         >> vi_script
 echo ':wq'                                    >> vi_script
-(vi -s vi_script -e input.nml > /dev/null) || exit 98
+(${VI} input.nml < vi_script ) || exit 98
 echo "input.nml differences from previous run:"
 diff input.nml input.nml.previous
 echo "input.nml now contains:"
