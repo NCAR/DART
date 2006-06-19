@@ -168,12 +168,18 @@ set NPROCS = `echo $PROCNAMES | wc -w`
 # Set Variable for a 'master' logfile
 set MASTERLOG = ${CENTRALDIR}/run_job.log
 
+# Make it here ... once ... lest everyone fight over making it
+# when they each try to make their own sub-directory.
+if ( ! -d ${SCRATCHDIR} ) then
+   mkdir -p ${SCRATCHDIR} || exit 3
+endif
 
 ### Output to confirm job characteristics
-echo " "                                             >> $MASTERLOG
+echo " "                                             >! $MASTERLOG
 echo "Running $JOBNAME on host "`hostname`           >> $MASTERLOG
 echo "Initialized at "`date`                         >> $MASTERLOG
 echo "CENTRALDIR is "`pwd`                           >> $MASTERLOG
+echo "SCRATCHDIR is ${SCRATCHDIR}"                   >> $MASTERLOG
 echo "This job has allocated $NPROCS processors."    >> $MASTERLOG
 echo "they are: "                                    >> $MASTERLOG
 echo $PROCNAMES                                      >> $MASTERLOG
@@ -182,6 +188,7 @@ echo " "
 echo "Running $JOBNAME on host "`hostname`
 echo "Initialized at "`date`
 echo "CENTRALDIR is "`pwd`
+echo "SCRATCHDIR is ${SCRATCHDIR}"
 echo "This job has allocated $NPROCS processors."
 echo "they are: "
 echo $PROCNAMES
