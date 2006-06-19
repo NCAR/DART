@@ -119,11 +119,11 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 
        @ makenum  = $makenum  + 1
 
-       rm ${REMOVE} ${PROG} Makefile input.nml.${PROG}_default .cppdefs
+       ${REMOVE} ${PROG} Makefile input.nml.${PROG}_default .cppdefs
 
     end
 
-    rm -f *.o *.mod
+    ${REMOVE} *.o *.mod
 
    @ modelnum = $modelnum + 1
 end
