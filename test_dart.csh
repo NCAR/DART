@@ -107,16 +107,16 @@ endsw
 # if it is not found.  Punt if neither is found.
 #---------------------------------------------------------------------- 
 set VI_EXE = `which vim` 
-if ( -x ${VI_EXE} ) then
+if ( -x "${VI_EXE}" ) then
    setenv VI 'vim -e'
 else
    set VI_EXE = `which vi` 
-   if ( -x ${VI_EXE} ) then
+   if ( -x "${VI_EXE}" ) then
       setenv VI 'vi -s'
    else
-      echo "Neither the vim nor the vi editor were found."
-      echo "This script needs to use one to format the test input files."
-      echo "We cannot continue."
+      echo "Neither the vim nor the vi editor were found.  This script"
+      echo "cannot continue unless it can use one of them to update"
+      echo "the test input files."
       exit 2
    endif
 endif
