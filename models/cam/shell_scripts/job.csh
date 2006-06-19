@@ -10,7 +10,7 @@
 # $Source$
 # $Name$
 
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # job.csh ... Script to run whole assimilation experiment. Can easily run for 
 # days, given the number of observation sequence files, the size of the model, 
 # the number of observations, the number of regions, the number of ensemble
@@ -25,7 +25,7 @@
 #
 # The central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 #
 # BUG; when inflate_diag doesn't exist below 
 #      (when do_obs_inflate=F do_single_ss_inflate=F)
@@ -51,9 +51,34 @@
 ##=============================================================================
 #BSUB -J DARTCAM
 #BSUB -o DARTCAM.%J.log
-#BSUB -P 86850054
 #BSUB -q standby
 #BSUB -n 1
+#
+#
+##=============================================================================
+## This block of directives constitutes the preamble for the PBS queuing system 
+## PBS is used on the CGD   Linux cluster 'bangkok'
+## PBS is used on the CGD   Linux cluster 'calgary'
+##
+## the normal way to submit to the queue is:    qsub filter_server.csh
+##
+## an explanation of the most common directives follows:
+## -N     Job name
+## -r n   Declare job non-rerunable
+## -e <arg>  filename for standard error 
+## -o <arg>  filename for standard out 
+## -q <arg>   Queue name (small, medium, long, verylong)
+## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
+##                     and calgary, there is no way to 'share' the processors 
+##                     on the node with another job, so you might as well use 
+##                     them both.  (ppn == Processors Per Node)
+##=============================================================================
+#PBS -N DARTCAM
+#PBS -r n
+#PBS -e DARTCAM.err
+#PBS -o DARTCAM.log
+#PBS -q verylong
+#PBS -l nodes=1:ppn=2
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -70,7 +95,7 @@ if ($?LS_SUBCWD) then
    set PROCNAMES = ($LSB_HOSTS)
    set REMOTECMD = ssh
    set SCRATCHDIR = /ptmp/${user}/filter_server
-   set SUBMIT = "bsub < "
+   alias submit 'bsub < \!*'
    
 else if ($?PBS_O_WORKDIR) then
 
@@ -81,6 +106,7 @@ else if ($?PBS_O_WORKDIR) then
    set PROCNAMES = `cat $PBS_NODEFILE`
    set REMOTECMD = rsh
    set SCRATCHDIR = /scratch/local/${user}/filter_server
+   alias submit 'qsub \!*'
 
 else if ($?OCOTILLO_NODEFILE) then
 
@@ -98,16 +124,21 @@ else if ($?OCOTILLO_NODEFILE) then
    set PROCNAMES = `cat $OCOTILLO_NODEFILE`
    set REMOTECMD = rsh
    set SCRATCHDIR = /var/tmp/${user}/filter_server
+   alias submit 'rsh \!*'
    
 else
 
    # interactive
+   # you never really want to run filter_server.csh for a big job
+   # interactively, so I am aliasing the 'submit' command to
+   # use the LSF queueing system. Your mileage may vary.
 
    set CENTRALDIR = `pwd`
    set JOBNAME = interactive_filter_server
    set PROCNAMES = "$host $host $host $host"
    set REMOTECMD = csh
    set SCRATCHDIR = /tmp/${user}/filter_server
+   alias submit 'bsub < \!*'
    
 endif
 
@@ -398,7 +429,7 @@ while($i <= $obs_seq_n) ;# start i loop
    # We need to capture the batch job number to kill later if need be.
    #======================================================================
 
-   eval ${SUBMIT} filter_server.csh > batchsubmit$$
+   submit filter_server.csh > batchsubmit$$
    set STRING = "1,$ s#<##g"
    sed -e "$STRING" batchsubmit$$ > bill$$
    set STRING = "1,$ s#>##g"
@@ -409,7 +440,7 @@ while($i <= $obs_seq_n) ;# start i loop
 
    # runs filter, which integrates the results of model advances and region assims
    # This only uses 1 processor, so it could fit on a node with someone else.
-   eval ${SUBMIT} filter.csh  > batchsubmit$$
+   submit filter.csh  > batchsubmit$$
    set STRING = "1,$ s#<##g"
    sed -e "$STRING" batchsubmit$$ > bill$$
    set STRING = "1,$ s#>##g"
