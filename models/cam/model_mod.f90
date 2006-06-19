@@ -1897,8 +1897,8 @@ if (o_which_vert == VERTISPRESSURE .or. o_which_vert == VERTISHEIGHT &
    .or. o_which_vert == VERTISLEVEL) then
 !  proceed
 else
-   write(errstring,'(A,I4,A)') ' skipping obs with which_vert = ',o_which_vert, &
-                               '; unfamiliar vertical location '
+   write(errstring,'(''skipping obs at '',3(F9.5,1x),I2,'' vertical problem'')') &
+                   loc_array, o_which_vert
    call error_handler(E_MSG, 'model_get_close_states', errstring,source,revision,revdate)
    return
 endif
