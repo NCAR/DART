@@ -1897,8 +1897,8 @@ if (o_which_vert == VERTISPRESSURE .or. o_which_vert == VERTISHEIGHT &
    .or. o_which_vert == VERTISLEVEL) then
 !  proceed
 else
-   write(errstring, '(A,I4) ' skipping obs with which_vert = ',o_which_vert, &
-                       '; unfamiliar vertical location '
+   write(errstring,'(A,I4,A)') ' skipping obs with which_vert = ',o_which_vert, &
+                               '; unfamiliar vertical location '
    call error_handler(E_MSG, 'model_get_close_states', errstring,source,revision,revdate)
    return
 endif
