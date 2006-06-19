@@ -24,6 +24,9 @@ module model_mod
 !        but state vector components tapering is controlled by highest_obs_press (not 
 !        height) which is not connected with highest_obs_height_m.
 !        highest_obs_level also added to accomodate obs on pressure levels.
+!  FIX?: in model_get_close_states the distance from model points to the ob are
+!        increased according to the which_vert of the ob.  
+!        get_val_{pressure,height,level} handles excluding obs above the respective ceilings
 
 ! ISSUE: The CCM code (and Hui's packaging) for geopotentials and heights  use different
 !        values of the physical constants than DARTS.  In one case Shea changed g from
@@ -606,14 +609,15 @@ integer :: ncfileid, ncfldid, dim1, dim2
 
 !------------------------------------------------------
 real(r8), dimension(dim1, dim2), intent(out) :: var
-character (len=8), intent(in)  :: cfield             
+character (len=*), intent(in)  :: cfield             
 
 ! read CAM 'initial' file domain info
   call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
-           ncid = ncfileid))                                                                          
+           ncid = ncfileid),trim(model_config_file))                                                                          
 ! read CAM 'initial' file field desired
-  call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid))
-  call check(nf90_get_var(ncfileid, ncfldid, var,start=(/1,1,1/) ,count=(/dim1, dim2, 1/)))
+  call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid), cfield)
+  call check(nf90_get_var(ncfileid, ncfldid, var,start=(/1,1,1/), &
+             count=(/dim1, dim2, 1/)), cfield)
 
   PRINT*,'reading ',cfield,' using id ',ncfldid, dim1, dim2
 
@@ -621,10 +625,19 @@ contains
 
    ! Internal subroutine - checks error status after each netcdf, prints
    !                       text message each time an error code is returned.
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
+   subroutine check(istatus,string)
+   integer,                    intent(in) :: istatus
+   character(len=*), optional, intent(in) :: string
+   character(len=255) :: errstring
+
+   if (present(string)) then
+      write(errstring, *)trim(adjustl(string))//' '//trim(adjustl(nf90_strerror(istatus)))
+   else
+      write(errstring, *)trim(adjustl(nf90_strerror(istatus)))
+   endif
+      
    if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_horiz', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
+          errstring, source, revision, revdate)
    end subroutine check
 
 end subroutine read_cam_horiz
@@ -1880,6 +1893,16 @@ loc_array = get_location(o_loc)
 o_which_vert = nint(query_location(o_loc))
 !write(*, *) 'oloc is ', loc_array(:)
 
+if (o_which_vert == VERTISPRESSURE .or. o_which_vert == VERTISHEIGHT &
+   .or. o_which_vert == VERTISLEVEL) then
+!  proceed
+else
+   write(errstring, '(A,I4) ' skipping obs with which_vert = ',o_which_vert, &
+                       '; unfamiliar vertical location '
+   call error_handler(E_MSG, 'model_get_close_states', errstring,source,revision,revdate)
+   return
+endif
+
 ! Number found starts at 0
 nfound  = 0
 indices = 0
@@ -1896,8 +1919,8 @@ allocate(lon_ind(max_size), lat_ind(max_size), close_dist(max_size))
 allocate (ps(idim))
 
 ! Look for close grid points in horizontal only
-   call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
-                           num, lon_ind, lat_ind, close_dist)
+call grid_close_states2(o_loc, lons, lats, num_lons, num_lats, radius, &
+                        num, lon_ind, lat_ind, close_dist)
 ! kdr write(*, *) 'back from grid_close_states num = ', num
 
 ! FIX; would 0d and 1d fields need to go in here?
@@ -1912,7 +1935,7 @@ do i = 1, num
 ! DOES NOT WORK FOR > 1 REGION
 !   call get_val(ps(1), x, lon_ind(i), lat_ind(i), -1, 3, istatus)
 ! TEMP FIX
-    ps(1) = 100000.
+    ps(1) = 100000.0_r8
 !   write(*, *) 'ps in model_get_close_states is ', i, ps(1)
 
 
@@ -1944,10 +1967,10 @@ do i = 1, num
             s_loc = set_location(sloc_array(1), sloc_array(2), ps(1), 2)
          else if(which_vert == VERTISLEVEL ) then
             ! Next get the values on the levels for this ps
-               call plevs_cam(1, 1, ps, pfull)
+            call plevs_cam(1, 1, ps, pfull)
             ! OR do this for all columns in static_init_mod, which would make PS (and P) globally 
             ! available for all regions?
-            m_press = pfull(1, int(sloc_array(3)))
+            m_press = pfull(1, nint(sloc_array(3)))
             s_loc = set_location(sloc_array(1), sloc_array(2), m_press, 2)
          else
             write(errstring, *) 'model which_vert = ',which_vert, &
@@ -1975,29 +1998,25 @@ do i = 1, num
             ! surface field; change which_vert for the distance calculation
             ! Use bottom model level, which is not quite correct.
             ! What else to use?  add a half level?
-            s_loc = set_location(sloc_array(1), sloc_array(2), &
-                            phis(sloc_array(1), sloc_array(2)), 1)
+            s_loc = set_location(sloc_array(1), &
+                                 sloc_array(2), &
+                                 phis(lon_ind(i), lat_ind(i)), &
+                                 1 )
          else if(which_vert == VERTISLEVEL ) then
-
          ! Next, get the heights on the levels for this ps
             call model_heights(x, ps, lon_ind(i), lat_ind(i), model_h, idim, vstatus)
-            m_height = model_h(sloc_array(3))
+            m_height = model_h(nint(sloc_array(3)))
             s_loc = set_location(sloc_array(1), sloc_array(2), m_height, 3)
          else
             write(errstring, *) 'model which_vert = ',which_vert, &
                                 ' not handled in model_get_close_states '
             call error_handler(E_ERR, 'model_get_close_states', errstring,source,revision,revdate)
          endif
-      else
-         write(errstring, *) ' obs which_vert = ',o_which_vert, &
-                             ' not handled in model_get_close_states '
-         call error_handler(E_ERR, 'model_get_close_states', errstring,source,revision,revdate)
       endif
 
       t_dist = get_dist(s_loc, o_loc)
 
-! kdr
-! reduce influence of obs on points obove some pressure, which is cap of obs too
+! reduce influence of obs on points obove some pressure/height/level, which is cap of obs too
 ! linear with pressure
 
       if (which_vert == VERTISLEVEL ) then
@@ -2013,7 +2032,6 @@ do i = 1, num
          endif
 
       endif
-! kdr end
 
 ! radius is 2x cutoff 
 ! These distances are passed through, so recomputation without the tapering is not a problem.
