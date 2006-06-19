@@ -1,7 +1,7 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section, 
+# Copyright 2004-2006, Data Assimilation Research Section 
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
@@ -14,10 +14,10 @@
 # where the model advance is executed as a separate process.
 
 # This script copies the necessary files into the temporary directory
-# for a model run. It assumes that there is ${WORKDIR}/WRF directory
+# for a model run. It assumes that there is ${CENTRALDIR}/WRF directory
 # where boundary conditions files reside.
 
-# If the ensemble mean assim_model_state_ic_mean is present in the WORKDIR,
+# If the ensemble mean assim_model_state_ic_mean is present in the CENTRALDIR,
 # it is converted to a WRF netCDF format.
 # It is then used in update_wrf_bc the calculate the deviation from the mean.
 # This deviation from the mean is then added at the end of the interval to
@@ -29,31 +29,39 @@ set infl = 0.0
 
 set days_in_month = ( 31 28 31 30 31 30 31 31 30 31 30 31 )
 
-set WORKDIR = $1
-set element = $2
-set temp_dir = $3
+set      myname = $0
+set  CENTRALDIR = $1
+set     element = $2
+set    temp_dir = $3
 
 set REMOVE = 'rm -rf'
 set   COPY = 'cp -p'
 set   MOVE = 'mv -f'
 
 # Shell script to run the WRF model from DART input.
+# where the model advance is executed as a separate process.
 
-${REMOVE} $temp_dir
-mkdir -p  $temp_dir
-cd        $temp_dir
+echo "starting ${myname} for ens member $element at "`date`
+echo "CENTRALDIR is ${CENTRALDIR}"
+echo "temp_dir is ${temp_dir}"
+
+# Create a clean temporary directory and go there
+${REMOVE} ${temp_dir}
+mkdir -p  ${temp_dir}
+cd        ${temp_dir}
+
 
 # Copy or link the required files to the temp directory
 
-ln -s ${WORKDIR}/input.nml .
+ln -s ${CENTRALDIR}/input.nml .
 
-ln -s ${WORKDIR}/RRTM_DATA .
-ln -s ${WORKDIR}/LANDUSE.TBL .
-ln -s ${WORKDIR}/VEGPARM.TBL .
-ln -s ${WORKDIR}/SOILPARM.TBL .
-ln -s ${WORKDIR}/GENPARM.TBL .
-ln -s ${WORKDIR}/wrf.exe .
-ln -s ${WORKDIR}/gribmap.txt .
+ln -s ${CENTRALDIR}/RRTM_DATA .
+ln -s ${CENTRALDIR}/LANDUSE.TBL .
+ln -s ${CENTRALDIR}/VEGPARM.TBL .
+ln -s ${CENTRALDIR}/SOILPARM.TBL .
+ln -s ${CENTRALDIR}/GENPARM.TBL .
+ln -s ${CENTRALDIR}/wrf.exe .
+ln -s ${CENTRALDIR}/gribmap.txt .
 
 # nfile is required when using mpi to run wrf.exe
 # nfile is machine specific; ideally, it should be
@@ -61,21 +69,21 @@ ln -s ${WORKDIR}/gribmap.txt .
 
 hostname >! nfile
 hostname >> nfile
-###ln -s  ${WORKDIR}/nfile$element nfile
-${COPY} ${WORKDIR}/wrfinput_d0? .
+###ln -s  ${CENTRALDIR}/nfile$element nfile
+${COPY} ${CENTRALDIR}/wrfinput_d0? .
                    # Provides auxilliary info not avail. from DART state vector
 
-if (  -e ${WORKDIR}/assim_model_state_ic_mean ) then
-   ln -s ${WORKDIR}/assim_model_state_ic_mean dart_wrf_vector
-   echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
+if (  -e ${CENTRALDIR}/assim_model_state_ic_mean ) then
+   ln -s ${CENTRALDIR}/assim_model_state_ic_mean dart_wrf_vector
+   echo ".true." | ${CENTRALDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
    ${COPY} wrfinput_d01 wrfinput_mean
 endif
 
-${MOVE} ${WORKDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
+${MOVE} ${CENTRALDIR}/assim_model_state_ic$element dart_wrf_vector # ICs for run
 
 # Convert DART to wrfinput
 
-echo ".true." | ${WORKDIR}/dart_tf_wrf >& out.dart_to_wrf
+echo ".true." | ${CENTRALDIR}/dart_tf_wrf >& out.dart_to_wrf
 
 ${REMOVE} dart_wrf_vector
 
@@ -95,9 +103,9 @@ set wrfkey = `echo "$wrfdays * 86400 + $wrfsecs" | bc`
 # If model blew up in the previous cycle, the member is now likely an outlier.
 # Set infl = 0. to avoid further deterioration of the ensemble member.
 
-if ( -e $WORKDIR/blown_${wrfdays}_${wrfsecs}.out ) then
-   set MBLOWN = `cat $WORKDIR/blown_${wrfdays}_${wrfsecs}.out`
-   set NBLOWN = `cat $WORKDIR/blown_${wrfdays}_${wrfsecs}.out | wc -l`
+if ( -e ${CENTRALDIR}/blown_${wrfdays}_${wrfsecs}.out ) then
+   set MBLOWN = `cat ${CENTRALDIR}/blown_${wrfdays}_${wrfsecs}.out`
+   set NBLOWN = `cat ${CENTRALDIR}/blown_${wrfdays}_${wrfsecs}.out | wc -l`
    set BLOWN = 0
    set imem = 1
    while ( $imem <= $NBLOWN )
@@ -114,15 +122,15 @@ endif
 # Find all BC's file available and sort them with "keys".
 
 #--1st, check if LBCs are "specified" (in which case wrfbdy files are req'd)
-set SPEC_BC = `grep specified ${WORKDIR}/namelist.input | grep true | cat | wc -l`
+set SPEC_BC = `grep specified ${CENTRALDIR}/namelist.input | grep true | cat | wc -l`
 
 if ($SPEC_BC > 0) then
-   ls ${WORKDIR}/WRF/wrfbdy_*_$element > bdy.list
+   ls ${CENTRALDIR}/WRF/wrfbdy_*_$element > bdy.list
 else
-   echo ${WORKDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element > bdy.list
+   echo ${CENTRALDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element > bdy.list
 endif
 
-echo ${WORKDIR}/WRF/wrfbdy_ > str.name
+echo ${CENTRALDIR}/WRF/wrfbdy_ > str.name
 sed 's/\//\\\//g' < str.name > str.name2
 set STRNAME = `cat str.name2`
 set COMMAND = s/`echo ${STRNAME}`//
@@ -196,9 +204,9 @@ while ( $wrfkey < $targkey )
 
    # Copy the boundary condition file to the temp directory.
 
-   ${COPY} ${WORKDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
+   ${COPY} ${CENTRALDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
 
-   ${COPY} ${WORKDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
+   ${COPY} ${CENTRALDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
 
    if ( $targkey > $keys[$ifile] ) then
       set INTERVAL_SS = `echo "$keys[$ifile] - $wrfkey" | bc`
@@ -298,11 +306,11 @@ cat > script.sed << EOF
 EOF
 
  sed -f script.sed \
-    ${WORKDIR}/namelist.input > namelist.input
+    ${CENTRALDIR}/namelist.input > namelist.input
 
 # Update boundary conditions
 
-   echo $infl | ${WORKDIR}/update_wrf_bc >& out.update_wrf_bc
+   echo $infl | ${CENTRALDIR}/update_wrf_bc >& out.update_wrf_bc
 
    if ( -e rsl.out.integration ) then
       ${REMOVE} rsl.*
@@ -314,17 +322,17 @@ EOF
 
    set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
    if ($SUCCESS == 0) then
-      echo $element >> $WORKDIR/blown_${targdays}_${targsecs}.out
+      echo $element >> ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
    endif
 
-if ( -e ${WORKDIR}/extract ) then
+if ( -e ${CENTRALDIR}/extract ) then
    if ( $element == 1 ) then
       ls wrfout_d0${MY_NUM_DOMAINS}_* > wrfout.list
-      if ( -e ${WORKDIR}/psfc.nc ) then
-         ${COPY} ${WORKDIR}/psfc.nc .
+      if ( -e ${CENTRALDIR}/psfc.nc ) then
+         ${COPY} ${CENTRALDIR}/psfc.nc .
       endif
-      echo `cat wrfout.list | wc -l` | ${WORKDIR}/extract
-      ${MOVE} psfc.nc ${WORKDIR}/.
+      echo `cat wrfout.list | wc -l` | ${CENTRALDIR}/extract
+      ${MOVE} psfc.nc ${CENTRALDIR}/.
    endif
 endif
 
@@ -352,11 +360,10 @@ end
 ##############################################
 
 # create new input to DART (taken from "wrfinput")
-echo ".false." | ${WORKDIR}/dart_tf_wrf >& out.wrf_to_dart
+echo ".false." | ${CENTRALDIR}/dart_tf_wrf >& out.wrf_to_dart
 
-${MOVE} dart_wrf_vector $WORKDIR/assim_model_state_ud$element
+${MOVE} dart_wrf_vector ${CENTRALDIR}/assim_model_state_ud$element
 
-cd $WORKDIR
-#${REMOVE} $temp_dir
-
-exit
+# Change back to working directory and get rid of temporary directory
+cd ${CENTRALDIR}
+#${REMOVE} ${temp_dir}
