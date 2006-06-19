@@ -73,10 +73,10 @@
 ##                     on the node with another job, so you might as well use 
 ##                     them both.  (ppn == Processors Per Node)
 ##=============================================================================
-#PBS -N filter_server
+#PBS -N DARTCAM
 #PBS -r n
-#PBS -e filter_server.err
-#PBS -o filter_server.log
+#PBS -e DARTCAM.err
+#PBS -o DARTCAM.log
 #PBS -q medium
 #PBS -l nodes=4:ppn=2
 
@@ -89,13 +89,9 @@
 if ($?LS_SUBCWD) then
 
    # LSF has a list of processors already in a variable (LSB_HOSTS)
-   # the < needs a preceeding backslash to prevent premature interpretation
 
    set CENTRALDIR = $LS_SUBCWD
    set JOBNAME = $LSB_JOBNAME
-   set PROCNAMES = ($LSB_HOSTS)
-   set REMOTECMD = ssh
-   set SCRATCHDIR = /ptmp/${user}/filter_server
    alias submit 'bsub < \!*'
    
 else if ($?PBS_O_WORKDIR) then
@@ -104,9 +100,6 @@ else if ($?PBS_O_WORKDIR) then
 
    set CENTRALDIR = $PBS_O_WORKDIR
    set JOBNAME = $PBS_JOBNAME
-   set PROCNAMES = `cat $PBS_NODEFILE`
-   set REMOTECMD = rsh
-   set SCRATCHDIR = /scratch/local/${user}/filter_server
    alias submit 'qsub \!*'
 
 else if ($?OCOTILLO_NODEFILE) then
@@ -121,10 +114,7 @@ else if ($?OCOTILLO_NODEFILE) then
    # echo "node3" >> $OCOTILLO_NODEFILE
 
    set CENTRALDIR = `pwd`
-   set JOBNAME = interactive_filter_server
-   set PROCNAMES = `cat $OCOTILLO_NODEFILE`
-   set REMOTECMD = rsh
-   set SCRATCHDIR = /var/tmp/${user}/filter_server
+   set JOBNAME = DARTCAM
    alias submit 'csh \!*'
    
 else
@@ -134,10 +124,7 @@ else
    # system ... and set 'submit' accordingly.
 
    set CENTRALDIR = `pwd`
-   set JOBNAME = interactive_filter_server
-   set PROCNAMES = "$host"
-   set REMOTECMD = csh
-   set SCRATCHDIR = /tmp/${user}/filter_server
+   set JOBNAME = DARTCAM
    alias submit 'bsub < \!*'
    
 endif
@@ -361,6 +348,11 @@ ${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART
 ${MOVE} assim_model_state_ic[1-9]* ${experiment}/DART
 ${MOVE} inflate_ic_new             ${experiment}/DART
 ${MOVE} filter_control             ${experiment}/DART
+${MOVE} Posterior_Diag.nc          ${experiment}/DART
+${MOVE} Prior_Diag.nc              ${experiment}/DART
+${MOVE} obs_seq.final              ${experiment}/DART
+${MOVE} dart_log.out               ${experiment}/DART
+${MOVE} run_job.log                ${experiment}/DART   # filter_server runtime log
 
 ${COPY} namelistin                 ${experiment}
 ${MOVE} namelist                   ${experiment}
@@ -378,3 +370,11 @@ ${COPY} $myname                    ${experiment}
 ${REMOVE} ~/lnd.*.rpointer
 
 ls -lrt
+
+echo "Depending on when filter_server.csh finishes, you may wind up"
+echo "with a couple files called filter_server.xxxx.[log,err]"
+echo "You could/should move them to ${experiment}/DART"
+echo "filter_server.csh will also remove the semaphor file go_end_filter,"
+echo "so do not remove it. If it still exists after filter_server has completed"
+echo "something is wrong ..."
+echo "Cheers."
