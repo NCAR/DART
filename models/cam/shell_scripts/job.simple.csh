@@ -78,7 +78,7 @@
 #PBS -e DARTCAM.err
 #PBS -o DARTCAM.log
 #PBS -q medium
-#PBS -l nodes=4:ppn=2
+#PBS -l nodes=1:ppn=2
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
