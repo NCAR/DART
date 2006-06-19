@@ -168,7 +168,7 @@ set obs_seq_root = /ptmp/thoar/T21/obs_seq2003
 # output_root = xxx    xxx signifies the month OF THE OBS_SEQ_FIRST.
 set output_root = 01_
 
-set num_ens = 80
+set num_ens = 40
 
 
 # T21
@@ -181,10 +181,10 @@ set obs_seq_1_cam = /ptmp/raeder/CAM_init/T21x80/03-01-01/CAM/caminput_
 set obs_seq_1_clm = /ptmp/raeder/CAM_init/T21x80/03-01-01/CLM/clminput_
 set CAMsrc = /home/coral/raeder/Cam3/cam3.1/models/atm/cam/bld/T21-O2
 
-#${REMOVE} caminput.nc clminput.nc namelistin
-#ln -s caminput_T85.nc caminput.nc
-#ln -s clminput_T85.nc clminput.nc
-#ln -s namelistin_T85 namelistin
+${REMOVE} caminput.nc clminput.nc namelistin
+ln -s caminput_T85.nc caminput.nc
+ln -s clminput_T85.nc clminput.nc
+ln -s namelistin_T85 namelistin
 
 # Each obs_seq file gets its own input.nml ... 
 # the following variable helps set this up. 
@@ -418,10 +418,10 @@ while($i <= $obs_seq_n) ;# start i loop
    set FILTERBATCHID = $STRING[2]
    ${REMOVE} batchsubmit$$ bill$$
 
-   echo "filter_server spawned job $FILTERSERVERBATCHID at "`date`
-   echo "filter        spawned job $FILTERBATCHID at "`date`
-   echo "filter_server spawned job $FILTERSERVERBATCHID at "`date` >> $MASTERLOG
-   echo "filter        spawned job $FILTERBATCHID at "`date`       >> $MASTERLOG
+   echo "filter_server spawned as job $FILTERSERVERBATCHID at "`date`
+   echo "filter        spawned as job $FILTERBATCHID at "`date`
+   echo "filter_server spawned as job $FILTERSERVERBATCHID at "`date` >> $MASTERLOG
+   echo "filter        spawned as job $FILTERBATCHID at "`date`       >> $MASTERLOG
 
    set KILLCOMMAND = "bkill $FILTERSERVERBATCHID $FILTERBATCHID; touch BOMBED; exit"
 
@@ -617,7 +617,14 @@ while($i <= $obs_seq_n) ;# start i loop
       eval ${SUBMIT} ~/auto_re2ms_LSF.csh                                 >>& $MASTERLOG
       cd ../..
       echo "Backing up restart $j to mass store;  in separate batch job"  >> $MASTERLOG
+# Try this for Ave;  works
+        echo "Backing up restart $j to mass store;  in separate batch job"  >> $MASTERLOG
+   else
+        rm CAM/* CLM/* DART/filter*
    endif
+   cd ../..
+endif
+
 
 
    ${MOVE} cam_out_temp1       ${exp}/${output_dir}   ;# save a representative model advance
