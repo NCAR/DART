@@ -1248,7 +1248,7 @@ integer,            intent(out) :: istatus
 
 integer :: lon_below, lon_above, lat_below, lat_above, i, vstatus
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
-real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
+real(r8) :: lon_fract, lat_fract, vals(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, lon_lat_lev(3), level, pressure, height
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
@@ -1264,7 +1264,7 @@ real(r8) :: lon, lat, lon_lat_lev(3), level, pressure, height
 ! Start with no errors in 
 istatus = 0
 vstatus = 0
-val = 0.0_r8
+vals = 0.0_r8
 
 ! check whether model_mod can interpolate the requested variable
 if (obs_loc_in_sv(obs_type) == -999 .and. obs_type .ne. KIND_PRESSURE) then
@@ -1339,32 +1339,32 @@ if(vert_is_level(location)) then
    ! Case 1: model level specified in vertical
    ! Pobs
    level = lon_lat_lev(3)
-      call get_val_level(val(1, 1), x, lon_below, lat_below, nint(level), obs_type, vstatus)
+      call get_val_level(vals(1, 1), x, lon_below, lat_below, nint(level), obs_type, vstatus)
    if (vstatus /= 1) &
-      call get_val_level(val(1, 2), x, lon_below, lat_above, nint(level), obs_type, vstatus)
+      call get_val_level(vals(1, 2), x, lon_below, lat_above, nint(level), obs_type, vstatus)
    if (vstatus /= 1) &
-      call get_val_level(val(2, 1), x, lon_above, lat_below, nint(level), obs_type, vstatus)
+      call get_val_level(vals(2, 1), x, lon_above, lat_below, nint(level), obs_type, vstatus)
    if (vstatus /= 1) &
-      call get_val_level(val(2, 2), x, lon_above, lat_above, nint(level), obs_type, vstatus)
+      call get_val_level(vals(2, 2), x, lon_above, lat_above, nint(level), obs_type, vstatus)
    ! Pobs end
 
 elseif (vert_is_pressure(location)) then
    ! which_vert is pressure for this obs
    pressure = lon_lat_lev(3)
-                     call get_val_pressure(val(1,1),x,lon_below,lat_below,pressure,obs_type,vstatus)
-   if (vstatus /= 1) call get_val_pressure(val(1,2),x,lon_below,lat_above,pressure,obs_type,vstatus)
-   if (vstatus /= 1) call get_val_pressure(val(2,1),x,lon_above,lat_below,pressure,obs_type,vstatus)
-   if (vstatus /= 1) call get_val_pressure(val(2,2),x,lon_above,lat_above,pressure,obs_type,vstatus)
+                     call get_val_pressure(vals(1,1),x,lon_below,lat_below,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(vals(1,2),x,lon_below,lat_above,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(vals(2,1),x,lon_above,lat_below,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(vals(2,2),x,lon_above,lat_above,pressure,obs_type,vstatus)
 
 elseif (vert_is_height(location)) then
    ! which_vert is height for this obs
    height = lon_lat_lev(3)
-                     call get_val_height(val(1, 1), x, lon_below, lat_below, height, obs_type, vstatus)
-   if (vstatus /= 1) call get_val_height(val(1, 2), x, lon_below, lat_above, height, obs_type, vstatus)
-   if (vstatus /= 1) call get_val_height(val(2, 1), x, lon_above, lat_below, height, obs_type, vstatus)
-   if (vstatus /= 1) call get_val_height(val(2, 2), x, lon_above, lat_above, height, obs_type, vstatus)
+                     call get_val_height(vals(1, 1), x, lon_below, lat_below, height, obs_type, vstatus)
+   if (vstatus /= 1) call get_val_height(vals(1, 2), x, lon_below, lat_above, height, obs_type, vstatus)
+   if (vstatus /= 1) call get_val_height(vals(2, 1), x, lon_above, lat_below, height, obs_type, vstatus)
+   if (vstatus /= 1) call get_val_height(vals(2, 2), x, lon_above, lat_above, height, obs_type, vstatus)
 ! check
-   write(*,*) 'height, 4 nearby values = ',height, val
+   write(*,*) 'height, 4 nearby values = ',height, vals
 
 endif
 
@@ -1384,7 +1384,7 @@ endif
 
 if(istatus /= 1) then
    do i = 1, 2
-      a(i) = lon_fract * val(2, i) + (1.0_r8 - lon_fract) * val(1, i)
+      a(i) = lon_fract * vals(2, i) + (1.0_r8 - lon_fract) * vals(1, i)
    end do
    interp_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
 else
