@@ -663,7 +663,7 @@ state is always to be provided from input files.
 <TR><!--contents--><TD valign=top>output_state_vector          </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Controls the output to netCDF files. If .true., output
-    the raw dart state vector. Otherwise, output the prognostic flavor (grided
+    the raw dart state vector. Otherwise, output the prognostic flavor (gridded
 	    data) for easier plotting (recommended).</TD></TR>
 <TR><!--contents--><TD valign=top>num_moist_vars               </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
@@ -673,10 +673,17 @@ state is always to be provided from input files.
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Total number of WRF domains, including the
     nest.</TD></TR>
+
 <TR><!--contents--><TD valign=top>calendar_type                </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Calendar type. We recommend (GREGORIAN = 3) for
     WRF, which is the default.</TD></TR>
+
+<TR><!--contents--><TD valign=top>assimilation_period_seconds  </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
+    <!--descript--><TD>The time (in seconds) between assimilations. 
+                       This is modified if necessary to be an integer 
+		       multiple of the underlying model timestep.</TD></TR>
     
 <TR><!--contents--><TD valign=top>surf_obs                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
