@@ -122,6 +122,7 @@
    bin_width        =     0, 0, 0, 1, 0, 0,
    time_to_skip     =     0, 0, 0, 0, 0, 0,
    max_num_bins  = 1000,
+   mlevel     = 5,
    plevel     = 500,
    hlevel     = 5000,
    obs_select = 1,

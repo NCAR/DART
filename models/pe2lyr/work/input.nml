@@ -129,6 +129,7 @@ Remember that namelists must be listed even if only defaults are to be used
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 1, 0, 0, 0 ,
    max_num_bins  = 1000,
+   mlevel        = 2,
    plevel        = 1013,
    obs_select = 1,
    rat_cri       = 3.0,
