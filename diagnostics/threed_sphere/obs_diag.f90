@@ -233,6 +233,7 @@ character(len =  32) :: str1, str2, str3
 integer                      :: NwrongType = 0   ! namelist discrimination
 integer                      :: NbadQC     = 0   ! out-of-range QC values
 integer                      :: NbadLevel  = 0   ! out-of-range pressures
+integer                      :: Nidentity  = 0   ! identity observations
 
 integer, allocatable, dimension(:)   :: NbadW      ! V with no U, all days, regions
 integer, allocatable, dimension(:)   :: NbadWvert  ! V with no U, select days, all levels
@@ -648,12 +649,21 @@ ObsFileLoop : do ifile=1, Nepochs*4
          call get_obs_def(observation, obs_def)
          obs_time    = get_obs_def_time(obs_def)
          flavor      = get_obs_kind(obs_def)
+
+         ! Check to see if it is an identity observation.
+         ! If it is, we count them and skip them.
+         ! A more sensible feature would be to add a namelist
+         ! variable to ask which identity observation you would
+         ! like to track. Maybe tomorrow ...
+ 
+         if (flavor < 0) then
+            Nidentity = Nidentity + 1
+            cycle ObservationLoop
+         endif
+
          obs_err_var = get_obs_def_error_variance(obs_def) * &
                           scale_factor(get_obs_kind_var_type(flavor)) * &
                           scale_factor(get_obs_kind_var_type(flavor))
-
-         write(*,*)'obs ',obsindex,' is flavor ',flavor    ! TJH debug
-         cycle ObservationLoop                             ! TJH debug
 
          obs_loc = get_obs_def_location(obs_def)
          obsloc3 = get_location(obs_loc)
@@ -714,15 +724,15 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! (DEBUG) Summary of observation knowledge at this point
          !--------------------------------------------------------------
 
-           write(*,*)'observation # ',obsindex
-           write(*,*)'obs_flavor ',flavor
-           write(*,*)'obs_err_var ',obs_err_var
-           write(*,*)'lon0/lat0 ',lon0,lat0
-           write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
-           write(*,*)'qc ',qc
-           write(*,*)'obs(1) ',obs(1)
-           write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
-           write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
+         ! write(*,*)'observation # ',obsindex
+         ! write(*,*)'obs_flavor ',flavor
+         ! write(*,*)'obs_err_var ',obs_err_var
+         ! write(*,*)'lon0/lat0 ',lon0,lat0
+         ! write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
+         ! write(*,*)'qc ',qc
+         ! write(*,*)'obs(1) ',obs(1)
+         ! write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
+         ! write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
 
          !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
@@ -1212,6 +1222,7 @@ write(*,*) 'Rejected Observations summary.'
 write(*,*) '# NwrongType         : ',NwrongType
 write(*,*) '# NbadQC             : ',NbadQC
 write(*,*) '# NbadLevel          : ',NbadLevel
+write(*,*) '# Nidentity          : ',Nidentity
 write(*,'(a)')'Table of observations rejected by region for specified level'
 write(*,'(5a)')'                                       ',reg_names(1:Nregions)
 do ivar=1,max_obs_kinds
@@ -1228,6 +1239,7 @@ write(logfileunit,*) 'Rejected Observations summary.'
 write(logfileunit,*) '# NwrongType         : ',NwrongType
 write(logfileunit,*) '# NbadQC             : ',NbadQC
 write(logfileunit,*) '# NbadLevel          : ',NbadLevel
+write(logfileunit,*) '# Nidentity          : ',Nidentity
 write(logfileunit,'(a)')'Table of observations rejected by region for specified level'
 write(logfileunit,'(5a)')'                                       ',reg_names(1:Nregions)
 do ivar=1,max_obs_kinds
@@ -1236,6 +1248,18 @@ do ivar=1,max_obs_kinds
 enddo
 write(logfileunit,'(a,4i8)') ' # bad winds per region for specified level         : ',NbadW
 write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels              : ',NbadWvert
+
+if (Nidentity > 0) then
+   write(*,*)'There were identity observations in this observation sequence file.'
+   write(*,*)'At present, obs_diag does not support the analysis of identity '
+   write(*,*)'observations. In general, identity observation are explored with'
+   write(*,*)'state space diagnostics, i.e. take a peek in the matlab directory. '
+
+   write(logfileunit,*)'There were identity observations in this observation sequence file.'
+   write(logfileunit,*)'At present, obs_diag does not support the analysis of identity '
+   write(logfileunit,*)'observations. In general, identity observation are explored with'
+   write(logfileunit,*)'state space diagnostics, i.e. take a peek in the matlab directory'
+endif
 
 !-----------------------------------------------------------------------
 ! Really, really, done.
