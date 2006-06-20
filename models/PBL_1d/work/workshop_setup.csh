@@ -61,6 +61,7 @@
 # gfortran  -ffree-form -fdefault-real-8
 # pathscale -freeform -r8
 # pgi       -Mfree -Mr8
+# absoft    -ffree  (see the mkmf.template for absoft for more on r8)
 #----------------------------------------------------------------------
 
 \rm -f preprocess gen_init create_obs_sequence create_fixed_network_seq
@@ -93,6 +94,20 @@ csh mkmf_driver
 make         || exit 10
 csh mkmf_merge_obs_seq
 make         || exit 11
+
+#----------------------------------------------------------------------
+# check for the input data files.  they are large ( > 90Mb ) and
+# so are not part of the default distribution.  they need to be 
+# downloaded separately and put in $DART/models/PBL_1d/indata.
+
+if ( ! -f ../indata/wrfrt_2006.nc ) then
+    echo "Error:"
+    echo "This model requires some large data files as input which are"
+    echo "not packaged as part of the DART tarball.  To run this model"
+    echo "contact thoar at ucar dot edu for more information on how"
+    echo "to get a copy of the data."
+    exit 100
+endif
 
 ./perfect_model_obs  || exit 20
 ./filter             || exit 21
