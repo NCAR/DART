@@ -37,6 +37,25 @@ Another important new capability is provided by a
 combine most existing observation sequences into a single sequence.
 <BR>
 <BR>
+The <em>shell scripts</em> used to coordinate the execution of the model
+advances or regional assimilation have been modified to be more
+robust and easier to read. Furthermore, each script has been
+standardized to be much more machine/queueing system independent.
+Each script should now be able to be used interactively (in a debug scenario),
+with the LSF queueing system (as a batch job), or with the PBS queueing system. 
+The scripts have a block of logic that converts the system-specific variables
+to ones commonly used throughout the DART documentation. This has now
+made it possible to prepare a script that will conditionally execute
+a series of batch jobs wherein each batch job will process exactly one
+observation sequence file. Only upon successful completion of the 
+previous batch job with the subsequent batch job be started. Look for
+information on <em class=file>Qfiller.csh</em> on the DART www page.
+<BR>
+<BR>
+<em class=program>merge_obs_sequence</em> program that can 
+combine most existing observation sequences into a single sequence.
+<BR>
+<BR>
 An initial version of an ensemble smoother was added to DART
 and implemented with the low-order models and the bgrid model.
 The smoother continues to use the OLD inflation options and an
@@ -45,7 +64,7 @@ old version of the <em class=program>assim_tools_mod</em> module.
 
 
 <h2>Changes</h2>
-A summary list of changes occurring in each DART directory follows:
+A summary list of changes occurring in each DART directory/file follows:
 
 <TABLE width=95%>
 
@@ -68,7 +87,6 @@ algorithms required to do state space inflation.
 Documentation is provided in the module and in several 
 papers on the DART home page.
 </TD></TR>
-
 
 <TR><TD valign=top><em class=file>assim_tools_mod.f90</em></TD>
 <TD>
@@ -197,6 +215,18 @@ in fact, free-format. This necessitates setting the compiler flags to
 Can return interpolated values of pressure for use with GPS observation
 forward operators.</TD></TR>
 
+<TR><TD valign=top>cam/shell_scripts/<em class=file>job.simple.csh</em></TD>
+    <TD>is a new script that demonstrates the simplest possible (I think)
+        way to assimilate ONE observation sequence file with CAM. It requires
+        CAM restart files and the like, so it WILL need to be modified to
+        work for you. Hopefully, you can just change a couple of the directories
+        referenced in the script and be off ...
+        This is likely to be the underpinnings of the next generation
+        script that will flood the queue with conditionally executed batch jobs.
+        If the observation sequence file for 06Z completes normally, the batch job
+        for 12Z will start ... that sort of thing. 
+    </TD></TR>
+
 <TR><TD valign=top>models/wrf</TD>
 <TD>A new namelist variable, <em class=code>assimilation_period_seconds</em>, allows the
 specification of the desired assimilation period, which was previously hardwired in the
@@ -236,6 +266,24 @@ current days' date.
 <TR><TD valign=top><em class=file>preprocess.f90</em></TD>
     <TD>Changed defaults for input and output files to standard values rather 
         than null.
+    </TD></TR>
+
+<TR><TD valign=top>DART/shell_scripts (the machine-specific ones)</TD>
+    <TD><em class=file>filter_server.csh, assim_filter.csh</em>, and
+        <em class=file>advance_ens.csh</em> have been modified to use
+        'standard' language and can be used with multiple queuing systems
+        as well as interactively. Extensive commenting has been added to 
+        help explain the semaphore files. All the other scripts in this 
+        directory should be considered 'deprecated'. 
+    </TD></TR>
+
+<TR><TD valign=top>model/xxx/shell_scripts (the model-specific ones)</TD>
+    <TD><em class=file>advance_model.csh</em>, and
+        <em class=file>assim_region.csh</em> have been modified to use
+        'standard' language and can be used with multiple queuing systems
+        as well as interactively. Extensive commenting has been added to 
+        help explain the semaphore files. All the other scripts in this 
+        directory should be considered 'deprecated'. 
     </TD></TR>
 
 <TR><TD valign=top><em class=file>smoother</em></TD>
