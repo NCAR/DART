@@ -4,7 +4,7 @@
 <BODY>
 
 <BR>
-<H1>DART "Iceland release" Documentation</H1>
+<H1>DART "post-Iceland release" Documentation</H1>
 
 <img src = "../../images/Dartboard4.gif"></img>
 
@@ -64,10 +64,10 @@ results.
 </P>
 
 <P>
-<A HREF="/DAReS/DART/DART_download">The latest software release -- "Iceland".</A>
+<A HREF="/DAReS/DART/DART_download">The latest software release -- "post_iceland".</A>
 </P>
 
-<P>The <b>Iceland</b> release provides several new models and has a greatly expanded capability for 
+<P>The <b>post_iceland</b> release provides several new models and has a greatly expanded capability for 
 <b>real</b> observations which required a fundamentally
 different implementation of the low-level routines. It is now required to run a
 preprocessor on several of the program units to construct the source code files
@@ -82,7 +82,7 @@ generate meaningful error messages. HURRAY!
 </P>
 
 <P>
-The Iceland release has also been tested with more compilers in an attempt to 
+The post_iceland release has also been tested with more compilers in an attempt to 
 determine non-portable code elements. It is my experience that the largest
 impediment to portable code is the reliance on the compiler to autopromote
 <TT>real</TT> variables to one flavor or another. 
@@ -276,16 +276,16 @@ section.
 
 <P>
 The DART source code is distributed as a compressed tar file 
-<A HREF="/DAReS/DART/DART_download">from our distribution site</A>.
-When untarred, the source tree will begin with a 
+<A HREF="/DAReS/DART/DART_download">from our download site</A>.
+When gunzip'ed and untarred, the source tree will begin with a 
 directory named <em class=file>DART</em> and will be approximately 
-203 Mb. Compiling the code in this tree (as is usually the case) will
+189 Mb. Compiling the code in this tree (as is usually the case) will
 necessitate much more space.
 </P>
 
 <div class=unix>
-   gunzip <em class=file>DART_iceland.tar.gz</em><BR>
-   tar -xvf <em class=file>DART_iceland.tar</em><BR>
+   gunzip <em class=file>DART_post_iceland.tar.gz</em><BR>
+   tar -xvf <em class=file>DART_post_iceland.tar</em><BR>
 </div>
 
 <P>
@@ -1211,10 +1211,6 @@ perfect_model_obs
     <TD>Number of ensemble members. 
     100 is sufficient for most of the L63 exercises.</TD></TR>
 
-<TR><TD valign=top><em class=code>cutoff</em></TD>
-    <TD>to limit the impact of an observation, set to 0.0
-        (i.e. spin-up)</TD></TR>
-
 <TR><TD valign=top><em class=code>cov_inflate</em></TD>
     <TD>A value of 1.0 results in no inflation.(spin-up)</TD></TR>
 
@@ -1433,8 +1429,6 @@ Finally, <em class=program>filter</em> can be run with its namelist set to:
 </div>
 
 <P class=indent1>
-The large value for the cutoff allows each observation to 
-impact all other state variables (see Appendix V for localization). 
 <em class=program>filter</em> produces two output diagnostic files, 
 <em class=file>Prior_Diag.nc</em> which contains values of the 
 ensemble mean, ensemble spread, and ensemble members for 12- hour 

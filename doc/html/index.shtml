@@ -48,13 +48,67 @@
 
       <H1>DART tested platforms/models/compilers</H1>
       <P>
-      With the Hawaii release of DART, great strides have been made in portability.
+      With the Hawaii release of DART, great strides were made in portability.
       DART has now been compiled under several versions of the Intel Fortran Compiler,
       the Portland Group Fortran Compiler, the Lahey LF95 Compiler, the IBM XLF Compiler,  
       and the Absoft Pro Compiler for Mac OSX. 
-      DART has also been exercised on several platforms: Intel Xeon chips running Fedora Core 2,
-      Red Hat 9.0, and Red Hat 7.1; IBM AIX; and a G4 PowerBook running OSX 10.3.8. 
+      DART has also been exercised on several platforms: 
+      Intel Xeon chips running Fedora Core 2,
+      Red Hat 9.0, and Red Hat 7.1; IBM AIX; 
+      and a G4 PowerBook running OSX 10.3.8. 
+      <BR><BR>
+      The most current version of DART (post_iceland) has been tested on the following: 
       </P>
+      <TABLE border=0 cellpadding=2 width=100%>
+      <TR><TH align=left>hardware</TH>
+          <TH align=left>O/S</TH>
+          <TH align=left>F90 compiler</TH>
+      </TR>
+
+      <TR><TD>Intel cluster             </TD>
+          <TD>Red Hat Enterprise        </TD>
+          <TD>Intel 9.0 (build 20051201)</TD></TR>
+
+      <TR><TD>Intel iMac      </TD>
+          <TD>Mac OS X 10.4.6 </TD>
+          <TD>gfortran 4.2.0  </TD></TR>
+
+      <TR><TD>PowerPC PowerBook </TD>
+          <TD>Mac OS X 10.3.9   </TD>
+          <TD>gfortran 4.2.0    </TD></TR>
+
+      <TR><TD>PowerPC PowerBook      </TD>
+          <TD>Mac OS X 10.4.6        </TD>
+          <TD>Absoft Pro Fortran 9.0 </TD></TR>
+
+      <TR><TD>Intel cluster </TD>
+          <TD>Fedora Core 2 </TD>
+          <TD>PGI 5.2-4      </TD></TR>
+
+      <TR><TD>Intel cluster </TD>
+          <TD>Fedora Core 2 </TD>
+          <TD>Lahey 6.20c   </TD></TR>
+
+      <TR><TD>Intel cluster             </TD>
+          <TD>SUSE                      </TD>
+          <TD>Intel 9.0 (build 20051020)</TD></TR>
+
+      <TR><TD>Intel cluster </TD>
+          <TD>SUSE          </TD>
+          <TD>PGI 6.0-8     </TD></TR>
+
+      <TR><TD>IBM cluster (of opterons)</TD>
+          <TD>SUSE Enterprise 8        </TD>
+          <TD>Pathscale 2.4            </TD></TR>
+
+      <TR><TD>IBM Power 5 </TD>
+          <TD>AIX 5.1     </TD>
+          <TD>XLF 8.1.1   </TD></TR>
+
+      <TR><TD>SGI           </TD>
+          <TD>IRIX64 6.5    </TD>
+          <TD>MPISpro 7.4.3m</TD></TR>
+      </TABLE>
 
       <H1>DART code distributions</H1>
       <P>
@@ -74,6 +128,13 @@
           <TH align=left>instructions</TH>
           <TH align=left>most noteable change(s)</TH>
       </TR>
+
+      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">post_iceland</A></TD>
+          <!--   date--><TD valign=top>20&nbsp;Jun&nbsp;2006</TD>
+          <!--instruc--><TD valign=top><A HREF="Post_Iceland_release.html">[doc]</A></TD>
+          <!-- change--><TD>observation-space adaptive inflation, bug fixes,<BR>
+                            merge_obs_sequence support ...<BR>
+                            <A HREF="PostI_diffs_from_I.html">change log</A></TD></TR>
 
       <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">iceland</A></TD>
           <!--   date--><TD valign=top>23&nbsp;Nov&nbsp;2005</TD>
