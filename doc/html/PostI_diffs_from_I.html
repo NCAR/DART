@@ -30,16 +30,17 @@ to the current observation, the localization radius is adjusted
 so that the expected number of observations in the adjusted
 radius is equal to the threshold value. This will decrease
 the localization radius in areas with dense observations.
-
+<BR>
+<BR>
 Another important new capability is provided by a 
-merge_obs_sequence program that can combine most existing
-observation sequences into a single sequence.
-
+<em class=program>merge_obs_sequence</em> program that can 
+combine most existing observation sequences into a single sequence.
+<BR>
+<BR>
 An initial version of an ensemble smoother was added to DART
 and implemented with the low-order models and the bgrid model.
 The smoother continues to use the OLD inflation options and an
-old version of the assim_tools_mod module.
-
+old version of the <em class=program>assim_tools_mod</em> module.
 </P>
 
 
@@ -48,103 +49,148 @@ A summary list of changes occurring in each DART directory follows:
 
 <TABLE width=95%>
 
-<TR><TD valign=top>test_dart.csh</TD>
+<TR><TD valign=top><em class=file>test_dart.csh</em></TD>
 <TD> This testing script in the main DART directory has been updated
-to test the new inflation options with the new scripts.
+to test the new inflation options with the new scripts. An attempt has been
+made to preserve the input environment such that if you wanted to run it
+twice in a row, you could. It now stores all the run-time output of the lorenz_96
+tests in the <em class=file>lorenz_96/work/xxxx</em> directory, where xxx is
+now an argument to <em class=file>test_dart.csh</em>. Simply typing the file name
+will now echo usage notes.
 </TD></TR>
 
-<TR><TD valign=top>adaptive_inflate</TD>
+<TR><TD valign=top><em class=file>adaptive_inflate.f90</em></TD>
 <TD> This new module now handles all the computations for the 
 adaptive inflation computations. It has the code that was previously
-in assim_tools to do the Bayesian update of observation space
-inflation. It also provides the additional algorithms required to
-do state space inflation. Documentation is provided in the module and 
-in several papers on the DART home page.
+in <em class=program>assim_tools</em> to do the Bayesian update of 
+observation space inflation. It also provides the additional 
+algorithms required to do state space inflation. 
+Documentation is provided in the module and in several 
+papers on the DART home page.
 </TD></TR>
 
 
-<TR><TD valign=top>assim_tools</TD>
+<TR><TD valign=top><em class=file>assim_tools_mod.f90</em></TD>
 <TD>
-Uses adaptive inflation module. Namelist modified (see below). Storage
-for obs space inflation for regions no longer needed. No longer an
-assim_restart file; all restart info is now done in adaptive_inflate.
-Routine update_inflation replaces bayes_cov_inflate which has been moved
-to adaptive_inflate_mod. Correlation is now passed out of update_from_obs_inc
+Uses <em class=program>adaptive_inflation</em> module. 
+Namelist modified (see below). Storage
+for observation space inflation for regions no longer needed. No longer an
+<em class=file>assim_restart</em> file; all restart info is now stored in 
+<em class=program>adaptive_inflate</em>.
+Routine <em class=code>update_inflation</em> replaces 
+<em class=code>bayes_cov_inflate</em> which has been moved
+to <em class=code>adaptive_inflate_mod</em>. 
+Correlation is now passed out of <em class=code>update_from_obs_inc</em>
 for use with adaptive inflation updates. Ability to do
-sampling_error_correction from a file using correl_error.f90 in system_simulation.
-This is turned on by namelist parameter sampling_error_correction and requires
+sampling_error_correction from a file using <em class=file>correl_error.f90</em> 
+in <em class=code>system_simulation</em>.
+This is turned on by namelist parameter <em
+class=code>sampling_error_correction</em> and requires
 appropriate error correction files for a given ensemble size (this is still
 in preliminary testing phase). The inflation values are now passed into
-filter_assim_region. The mean and variance of the observation space priors
-are computed up front in filter_assim_region for use with adaptive inflation
+<em class=code>filter_assim_region</em>. The mean and variance of the observation space priors
+are computed up front in <em class=code>filter_assim_region</em> for use with adaptive inflation
 algorithm. Observational density thinning controlled by namelist parameter
-num_close_threshold implemented. If number of observations close to a given
+<em class=code>num_close_threshold</em> implemented. If number of observations close to a given
 observation is larger than the cutoff, the localization cutoff is adjusted
 to try to make the number close the same as the cutoff. This is a fundamentally
 two-d algorithm in this naive implementation. Update computations for
-spatial inflation are included in filter_assim_region. Routine filter_assim
+spatial inflation are included in <em class=code>filter_assim_region</em>. 
+Routine <em class=code>filter_assim</em>
 also gets the inflation values as arguments. Copying of these inflation
-values for the shell driven files is added. Previously commented
-print_regional_results is deleted (produced errors with absoft compilers).
-Routine comp_correl added to compute correlations. Routine
-get_correction_from_file added to support sampling_error_correction. No
-longer need routine assim_tools_end since there is no longer a restart
-requirement.
+values for the shell driven files is added. 
+Previously commented <em class=code>print_regional_results</em> is deleted 
+(produced errors with absoft compilers).
+Routine <em class=code>comp_correl</em> added to compute correlations. 
+Routine <em class=code>get_correction_from_file</em> added to support 
+<em class=code>sampling_error_correction</em>. 
+No longer need routine <em class=code>assim_tools_end</em> since there is no 
+longer a restart requirement.
 An error in the correlation computation for assimilation was removed. If
-all prior values of an observation were identical, a NaN could result
-from the old correlation computation.
-The assim_tools_nml was modified as follows: Removed cov_inflate, 
-cov_inflate_sd, sd_lower_bound, deterministic_cov_inflate,
-start_from_assim_restart, assim_restart_in_file_name, assim_restart_out_file_name,
-cov_inflate_upper_bound. Added sampling_error_correction and
-num_close_threshold.
+all prior values of an observation were identical, a <em class=code>NaN</em> 
+could result from the old correlation computation.
+The <em class=code>assim_tools_nml</em> was modified as follows: 
+Removed <em class=code>cov_inflate, cov_inflate_sd, sd_lower_bound, 
+deterministic_cov_inflate, start_from_assim_restart, assim_restart_in_file_name, 
+assim_restart_out_file_name, cov_inflate_upper_bound</em>.
+Added <em class=code>sampling_error_correction</em> and
+<em class=code>num_close_threshold</em>.
 </TD></TR>
 
-<TR><TD valign=top>assim_tools_smoother</TD>
+<TR><TD valign=top><em class=file>assim_tools_smoother.f90</em></TD>
 <TD> The smoother is still using the previous version of inflation and the
-corresponding assim_tools module which has been renamed as assim_tools_smoother.
+corresponding <em class=code>assim_tools module</em> which has been renamed 
+as <em class=code>assim_tools_smoother</em>.
 Additional routines have been added to support the updates required to do 
 smoothing (see documentation in smoother directory).
 </TD></TR>
 
 <TR><TD valign=top>diagnostics</TD>
-<TD> Observation space diagnostics were modified to support observations on model
-levels??? TIM???
+<TD> Observation space diagnostics <em class=program>obs_diag</em> were modified 
+to support observations on model
+levels. This is particularly useful for "perfect model" experiments. Direct
+observations of model variables (identity observations) are <em>not</em>
+supported, as this is an exploration of state-space, not observation-space.
+However, since the advent of <em class=program>merge_obs_sequence</em> (see below)
+an observation sequence file <em>may</em> contain synthetic and real observations.
+Any identity observations are skipped. All other observations may be considered.
 </TD></TR>
 
-<TR><TD valign=top>ensemble_manager</TD>
+<TR><TD valign=top><em class=program>ensemble_manager</em></TD>
 <TD> Modified to be able to handle multiple ensembles at one time to support
 the smoother which has an ensemble for each lag-time in the smoothing.
 </TD></TR>
 
-<TR><TD valign=top>filter</TD>
+<TR><TD valign=top><em class=file>filter.f90</em></TD>
 <TD>
-The adaptive_inflate module is now used and the namelist entry
-cov_inflate has been removed from filter_nml. Inflation
-is now done with filter_ensemble_inflate only if constant
-or varying spatial inflation is selected in the adaptive_inflate
-namelist. Information about state space inflation is passed
-to filter_assim as arguments. The call to assim_tools_end has
-been replace by adaptive_inflate_end which creates restarts for
+The <em class=code>adaptive_inflate</em> module is now used and the namelist entry
+<em class=code>cov_inflate</em> has been removed from <em class=code>filter_nml</em>. 
+Inflation is now done with <em class=code>filter_ensemble_inflate</em> only if 
+constant or varying spatial inflation is selected in the 
+<em class=code>adaptive_inflate </em>namelist. 
+Information about state space inflation is passed
+to <em class=code>filter_assim</em> as arguments. 
+The call to <em class=code>assim_tools_end</em> has
+been replace by <em class=code>adaptive_inflate_end</em> which creates restarts for
 adaptive inflation. For spatially varying state inflation, two
 extra fields are tacked onto the state space diagnostic netcdf
 files to record the inflation mean and standard deviation. At
 present, inflation is done for the whole state at once; this may
 be very inefficient and should be examined.
-The entry cov_inflate was removed from the namelist.
+The entry <em class=code>cov_inflate</em> was removed from the namelist.
 </TD></TR>
 
-<TR><TD valign=top>obs_sequence/merge_obs_seq</TD>
-<TD> Tim??? please summarize capabilities.</TD></TR>
+<TR><TD valign=top><em class=file>merge_obs_seq.f90</em></TD>
+<TD>This is a fundamentally new program to DART. This routine can combine any two
+observation sequence files that are compatible. The files are deemed compatible if
+the 'copies' of the observations and the QC fields are <em>identical</em> between
+the two sequences. If one observation sequence file has only an ensemble mean and
+spread, the other observation sequence file can have <em>only</em> an ensemble
+mean and spread -- it cannot additionally have the N ensemble member estimates of the
+observation. Most of the time, this routine is envisioned to be used to combine
+<em class=file>obs_seq.out</em> files (as opposed to 
+<em class=file>obs_seq.final</em> files). If the two sequences temporally overlap,
+it is faster to put the shorter sequence as <em class=code>filenam_seq2</em>, the
+insertion sort can get tedious. 
+A new namelist <em class=code>merge_obs_seq_nml</em> has been added. 
+</TD></TR>
 
 <TR><TD valign=top>mkmf</TD>
 <TD>New templates provided to support corral and lightning at NCAR.</TD></TR>
 
 <TR><TD valign=top>models</TD>
-<TD> All models work with merge obs. sequence and adaptive inflation options.</TD></TR>
+<TD> All models work with <em class=program>merge_obs_seq</em> and adaptive 
+inflation options.</TD></TR>
  
-<TR><TD valign=top>models/PBL_1d</TD>
-<TD>Tim summarize please ??? .</TD></TR>
+<TR><TD valign=top>PBL_1d</TD>
+<TD>The PBL_1d model has undergone extensive revisions as per the author's
+instructions. The DART portion of the code (i.e. those modules not directly
+imported from WRF) now compile cleanly with a variety of compilers. Note that 
+because of the WRF convention of naming modules with a <em class=file>.F</em>
+extension (instead of <em class=file>.F90</em> or <em class=file>.f90</em>)
+several compilers try to interpret this code as fixed-format code when it is,
+in fact, free-format. This necessitates setting the compiler flags to
+<em>force</em> the free-format interpretation. See your compiler for details.</TD></TR>
 
 <TR><TD valign=top>models/cam</TD>
 <TD>Now able to handle observations with height as a vertical coordinate. 
@@ -152,59 +198,64 @@ Can return interpolated values of pressure for use with GPS observation
 forward operators.</TD></TR>
 
 <TR><TD valign=top>models/wrf</TD>
-<TD> Now guarantees that assimilation_period is an integer multiple of the
-underlying wrf model timestep. Added support for gps observations and
-observations of vortex position.
+<TD>A new namelist variable, <em class=code>assimilation_period_seconds</em>, allows the
+specification of the desired assimilation period, which was previously hardwired in the
+code. The <em class=code>assimilation_period_seconds</em> is guaranteed to be 
+ an integer multiple of the underlying wrf model timestep. 
+Added support for gps observations and observations of vortex position.
 </TD></TR>
 
 <TR><TD valign=top>ncep_obs</TD>
-<TD> Made changes to improve translation from prep_bufr. Data from up to 3:00
-UTC of the next day is included in the file with the current days date. 
+<TD> Made changes to improve translation from <em class=program>prep_bufr</em>. 
+Data from up to 3:00 UTC of the next day is included in the file with the 
+current days' date. 
 </TD></TR>
 
-<TR><TD valign=top>obs_def_gps_mod.f90</TD>
-<TD>Modified to allow merging of two gps observation sequences. </TD></TR>
+<TR><TD valign=top><em class=file>obs_def_gps_mod.f90</em></TD>
+    <TD>Modified to allow merging of two gps observation sequences.
+    </TD></TR>
 
-<TR><TD valign=top>obs_def_radar_mod.f90</TD>
-<TD> Added ability to merge multiple observation sequences.
-</TD></TR>
+<TR><TD valign=top><em class=file>obs_def_radar_mod.f90</em></TD>
+    <TD>Added ability to merge multiple observation sequences.
+    </TD></TR>
 
-<TR><TD valign=top>obs_def_vortex_mod.f90</TD>
-<TD>  Provides observation types for position of vortex center.
-</TD></TR>
+<TR><TD valign=top><em class=file>obs_def_vortex_mod.f90</em></TD>
+    <TD>Provides observation types for position of vortex center.
+    </TD></TR>
 
-<TR><TD valign=top>obs_model_mod.f90</TD>
-<TD> Modified to be compatible with smoother use of multiple ensemble handles.
-</TD></TR>
+<TR><TD valign=top><em class=file>obs_model_mod.f90</em></TD>
+    <TD>Modified to be compatible with smoother use of multiple ensemble handles.
+    </TD></TR>
 
+<TR><TD valign=top><em class=file>obs_sequence_mod.f90</em></TD>
+    <TD>Added initialization for observation sequence in
+        <em class=code>init_obs_sequence</em>; 
+        prevents possible access to uninitialized pointer.
+    </TD></TR>
 
-<TR><TD valign=top>obs_sequence_mod.f90</TD>
-<TD> Added initialization for observation sequence in init_obs_sequence; prevents
-possible access to uninitialized pointer.
- </TD></TR>
+<TR><TD valign=top><em class=file>preprocess.f90</em></TD>
+    <TD>Changed defaults for input and output files to standard values rather 
+        than null.
+    </TD></TR>
 
-<TR><TD valign=top>preprocess.f90</TD>
-<TD> Changed defaults for input and output files to standard values rather 
-than null.
-</TD></TR>
+<TR><TD valign=top><em class=file>smoother</em></TD>
+    <TD>A main program to do fixed-lag ensemble smoothing has been added and 
+        is documented in the smoother directory. This program still uses the 
+        previous version of the inflation and <em class=code>assim_tools</em>,
+        which are available as 
+        <em class=file>assim_tools/assim_tools_smoother_mod.f90</em>.
+    </TD></TR>
 
-<TR><TD valign=top>smoother</TD>
-<TD> A main program to do fixed-lag ensemble smoothing has been added and is
-documented in the smoother directory. This program still uses the previous
-version of the inflation and assim_tools.
-</TD></TR>
-
-<TR><TD valign=top>time_manager_mod.f90</TD>
-<TD> Corrected problems with module initialization which was not being done at
-the proper times.
-</TD></TR>
+<TR><TD valign=top><em class=file>time_manager_mod.f90</em></TD>
+    <TD>Corrected problems with module initialization and modified print format
+        to strictly comply such that it now compiles with gfortran.
+    </TD></TR>
 
 <TR><TD valign=top>tutorial</TD>
-<TD> Modified section 12 to give accurate discussion of new implementation
-of observation space inflation and a brief overview of the state space inflation
-options.
-</TD></TR>
+    <TD>Modified section 12 to give accurate discussion of new implementation
+    of observation space inflation and a brief overview of the state space inflation
+    options.
+    </TD></TR>
 
-
-
-
+</BODY>
+</HTML>
