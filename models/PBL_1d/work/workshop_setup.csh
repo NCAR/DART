@@ -75,6 +75,13 @@ make         || exit 1
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
+echo ""
+echo "Building this model generally requires the fortran free-format flag and"
+echo "the real*8 override flag be added to the default mkmf.template rules."
+echo "If the following compile fails read the comments in the workshop_setup.csh"
+echo "script for more help."
+echo ""
+
 
 csh mkmf_gen_init
 make         || exit 3
