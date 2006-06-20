@@ -32,8 +32,12 @@ use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_
                              KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_SURFACE_PRESSURE, KIND_SPECIFIC_HUMIDITY
 use     location_mod, only : location_type, get_location, set_location_missing, &
-                             write_location, operator(/=), vert_is_surface, vert_is_pressure, &
-                             vert_is_height
+                             write_location, operator(/=),     &
+                             vert_is_undef,    VERTISUNDEF,    &
+                             vert_is_surface,  VERTISSURFACE,  &
+                             vert_is_level,    VERTISLEVEL,    &
+                             vert_is_pressure, VERTISPRESSURE, &
+                             vert_is_height,   VERTISHEIGHT
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, print_date, GREGORIAN, &
                              operator(*), operator(+), operator(-), &
@@ -106,6 +110,7 @@ integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: bin_width        = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: time_to_skip     = (/    0, 0, 1, 0, 0, 0 /)
 integer :: max_num_bins   = 1000000  ! maximum number of bins to consider
+integer :: mlevel         = 5        ! model level (integer index) [1,100]
 integer :: plevel         = 500      ! pressure level (hPa)
 integer :: hlevel         = 5000     ! height (meters)
 integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
@@ -129,7 +134,7 @@ character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
 
 namelist /obs_diag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
-                       plevel, hlevel, obs_select, Nregions, rat_cri, &
+                       plevel, hlevel, mlevel, obs_select, Nregions, rat_cri, &
                        qc_threshold, lonlim1, lonlim2, latlim1, latlim2, reg_names, &
                        print_mismatched_locs, verbose
 
@@ -138,38 +143,39 @@ real(r8) :: lon0, lat0, obsloc3(3)
 real(r8) :: speed_obs2, speed_ges2, speed_anl2
 
 !-----------------------------------------------------------------------
-! There are (at least) two types of vertical coordinates.
-! Observations may be on pressure levels, height levels, etc.
+! There are (at least) five types of vertical coordinates.
+! Observations may be :
+! vertically undefined  ... which_vert() == -2 ... VERTISUNDEF
+! at the surface        ... which_vert() == -1 ... VERTISSURFACE
+! on model levels,      ... which_vert() ==  1 ... VERTISLEVEL
+! on pressure levels,   ... which_vert() ==  2 ... VERTISPRESSURE  
+! on height levels,     ... which_vert() ==  3 ... VERTISHEIGHT
+!
 ! Since we calculate separate statistics for each observation type,
 ! we really don't care what kind of level they are on. BUT, since we
 ! are using one multidimensional array to accomodate all levels, each
-! array of levels must be the same length. 
+! array of levels must be the same length.  Since there may be many
+! model levels, there must be many (redundant) levels for the others.
 !
 ! The 'levels' array is a tricky beast.
-! Since which_vert() is 2 for pressure and 3 for height, we 
-! are designing an array to exploit that.
+! We will use which_vert() as an array that maps the observation kind
+! into the appropriate levels (column).
 !-----------------------------------------------------------------------
 
-integer, parameter :: nlev = 11
-integer  :: levels(nlev,3)            ! set to 'mean' surface pressure (hPa)
-integer  :: levels_int(nlev+1,3)      ! set to a bogus value ... never needed
+integer, parameter :: nlev = 100
+integer  :: levels(    nlev  , VERTISSURFACE:VERTISHEIGHT)
+integer  :: levels_int(nlev+1, VERTISPRESSURE:VERTISHEIGHT)
 integer  :: ivert
 integer  :: which_vert(max_obs_kinds) ! need to know which kind of level for each obs kind
 
 real(r8) :: scale_factor(max_obs_kinds)
 
 integer  :: ilev          ! counter
+integer  :: mlevel_index  ! index of model    level closest to input
 integer  :: plevel_index  ! index of pressure level closest to input
 integer  :: hlevel_index  ! index of height   level closest to input
 integer  :: level_index   ! generic level index
 
-data levels(:,1)     / 1013, 1013, 1013, 1013, 1013, 1013, 1013, 1013, 1013,  1013,  1013/ 
-data levels(:,2)     / 1000,  925,  850,  700,  500,  400,  300,  250,  200,   150,   100/ 
-data levels(:,3)     / 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000/
-
-data levels_int(:,1) / 1025, 1025, 1025, 1025, 1025, 1025, 1000, 1000, 1000,  1000, 1000,  1000/ 
-data levels_int(:,2) / 1025,  950,  900,  800,  600,  450,  350,  275,  225,  175,   125,    75/
-data levels_int(:,3) /    0, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500, 10500, 11500/
 
 !-----------------------------------------------------------------------
 ! Variables used to accumulate the statistics.
@@ -240,13 +246,23 @@ call initialize_utilities('obs_diag')
 call register_module(source,revision,revdate) 
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
+levels(:,VERTISSURFACE ) =  1013 ! set all surface levels to surface pressure
+levels(:,VERTISLEVEL)    = (/ (i,i=1,nlev) /)   ! set model levels to indices
+levels(:,VERTISPRESSURE) =   100 ! initialize all pressure values to max
+levels(:,VERTISHEIGHT  ) = 11100 ! initialize all height values to max height (meters)
 
-write(logfileunit,*)levels
-write(logfileunit,*)levels_int
+levels(1:11,VERTISPRESSURE) = (/ 1000,  925,  850,   700,   500,  400, &
+                                  300,  250,  200,   150,   100        /)
+levels(1:11,VERTISHEIGHT  ) = (/ 1000, 2000, 3000,  4000,  5000, 6000, &
+                                 7000, 8000, 9000, 10000, 11000        /)
 
+levels_int(1:12,VERTISPRESSURE) = (/ 1025,  950,  900,  800,   600,   450,  &
+                                      350,  275,  225,  175,   125,    75 /)
+levels_int(1:12,VERTISHEIGHT  ) = (/    0, 1500, 2500, 3500,  4500,  5500,  &
+                                     6500, 7500, 8500, 9500, 10500, 11500 /)
 
 scale_factor = 1.0_r8
-which_vert   = -2     ! set to 'undefined' value 
+which_vert   = VERTISUNDEF   ! set all of them to an 'undefined' value 
 
 ! The surface pressure in the obs_sequence is in Pa, we want to convert
 ! from Pa to hPa for plotting. The specific humidity is a similar thing.
@@ -301,8 +317,12 @@ NbadW      = 0
 NbadWvert  = 0
 Nrejected  = 0
 
-plevel_index = GetClosestLevel(plevel, 2)  ! Set desired input level to nearest actual
-hlevel_index = GetClosestLevel(hlevel, 3)  ! ditto for heights.
+! convert user input to nearest 'actual' level
+! If the user wanted 713 hPA height, tough luck. we have one at 700.
+
+mlevel_index = GetClosestLevel(mlevel, VERTISLEVEL   )
+plevel_index = GetClosestLevel(plevel, VERTISPRESSURE)
+hlevel_index = GetClosestLevel(hlevel, VERTISHEIGHT  )
 
 ! Determine temporal bin characteristics.
 ! The user input is not guaranteed to align on bin centers. 
@@ -632,26 +652,43 @@ ObsFileLoop : do ifile=1, Nepochs*4
                           scale_factor(get_obs_kind_var_type(flavor)) * &
                           scale_factor(get_obs_kind_var_type(flavor))
 
+         write(*,*)'obs ',obsindex,' is flavor ',flavor    ! TJH debug
+         cycle ObservationLoop                             ! TJH debug
+
          obs_loc = get_obs_def_location(obs_def)
          obsloc3 = get_location(obs_loc)
          lon0    = obsloc3(1) ! [  0, 360]
          lat0    = obsloc3(2) ! [-90,  90]
 
+         ! This block determines four things used for the rest of the loop.
+         ! 1) (target) level_index ... be it model, pressure, height ...
+         ! 2) ivert ... integer equivalent of the observation vertical coordinate
+         ! 3) which_vert(flavor) ... fills up mapping array to track obs level kind
+         ! 4) obslevel ... level closest to the observation
+
          if(vert_is_surface(obs_loc)) then    ! use closest height equivalent 
-            level_index        = 1            ! use 'surface' level
+            level_index        = 1
             ivert              = 1
-            which_vert(flavor) = 1
+            which_vert(flavor) = VERTISLEVEL
             obslevel           = 1
-         elseif(vert_is_pressure(obs_loc)) then
-            level_index        = plevel_index    ! compare to desired pressure level
-            ivert              = nint(0.01_r8 * obsloc3(3))  ! cvrt to hPa
-            which_vert(flavor) = 2               ! use pressure column of 'levels'
-            obslevel           = GetClosestLevel(ivert, which_vert(flavor))
-         elseif(vert_is_height(obs_loc)) then
-            level_index        = hlevel_index    ! compare to desired height level
+
+         elseif(vert_is_level(obs_loc)) then
+            level_index        = mlevel_index
             ivert              = nint(obsloc3(3)) 
-            which_vert(flavor) = 3               ! use height column of 'levels'
-            obslevel           = GetClosestLevel(ivert, which_vert(flavor))
+            which_vert(flavor) = VERTISHEIGHT
+            obslevel           = GetClosestLevel(ivert, VERTISHEIGHT)
+
+         elseif(vert_is_pressure(obs_loc)) then
+            level_index        = plevel_index
+            ivert              = nint(0.01_r8 * obsloc3(3))  ! cvrt to hPa
+            which_vert(flavor) = VERTISPRESSURE
+            obslevel           = GetClosestLevel(ivert, VERTISPRESSURE)
+
+         elseif(vert_is_height(obs_loc)) then
+            level_index        = hlevel_index
+            ivert              = nint(obsloc3(3)) 
+            which_vert(flavor) = VERTISHEIGHT
+            obslevel           = GetClosestLevel(ivert, VERTISHEIGHT)
          else
             call error_handler(E_ERR,'obs_diag','Vertical coordinate not recognized', &
                  source,revision,revdate)
@@ -677,15 +714,15 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! (DEBUG) Summary of observation knowledge at this point
          !--------------------------------------------------------------
 
-         ! write(*,*)'observation # ',obsindex
-         ! write(*,*)'obs_flavor ',flavor
-         ! write(*,*)'obs_err_var ',obs_err_var
-         ! write(*,*)'lon0/lat0 ',lon0,lat0
-         ! write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
-         ! write(*,*)'qc ',qc
-         ! write(*,*)'obs(1) ',obs(1)
-         ! write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
-         ! write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
+           write(*,*)'observation # ',obsindex
+           write(*,*)'obs_flavor ',flavor
+           write(*,*)'obs_err_var ',obs_err_var
+           write(*,*)'lon0/lat0 ',lon0,lat0
+           write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
+           write(*,*)'qc ',qc
+           write(*,*)'obs(1) ',obs(1)
+           write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
+           write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
 
          !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
@@ -957,18 +994,19 @@ write(iunit,'(''time_to_skip     = ['',6(1x,i5),''];'')')time_to_skip
 write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
 write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
 write(iunit,'(''Nepochs        = '',i6,'';'')')Nepochs
+write(iunit,'(''num_mlev       = '',i6,'';'')')nlev
+write(iunit,'(''mlevel         = '',i6,'';'')')mlevel
 write(iunit,'(''plevel         = '',i6,'';'')')plevel
 write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
-write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,2)
-write(iunit,'(''ptop           = '',i6,'';'')')levels_int(nlev+1,2)
-write(iunit,'(''hlevel         = '',i6,'';'')')hlevel
+write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,VERTISPRESSURE)
+write(iunit,'(''ptop           = '',i6,'';'')')levels_int(nlev+1,VERTISPRESSURE)
 write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
 write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
-write(iunit,'(''plev     = ['',11(1x,i5),''];'')')levels(:,2)
-write(iunit,'(''plev_int = ['',12(1x,i5),''];'')')levels_int(:,2)
-write(iunit,'(''hlev     = ['',11(1x,i5),''];'')')levels(:,3)
-write(iunit,'(''hlev_int = ['',12(1x,i5),''];'')')levels_int(:,3)
+write(iunit,'(''plev     = ['',11(1x,i5),''];'')')levels(:,VERTISPRESSURE)
+write(iunit,'(''plev_int = ['',12(1x,i5),''];'')')levels_int(:,VERTISPRESSURE)
+write(iunit,'(''hlev     = ['',11(1x,i5),''];'')')levels(:,VERTISPRESSURE)
+write(iunit,'(''hlev_int = ['',12(1x,i5),''];'')')levels_int(:,VERTISPRESSURE)
 write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
 write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
 write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
@@ -1265,7 +1303,7 @@ contains
 
    integer, dimension(nlev) :: dx
 
-   if (levind == 3) then   ! we have heights levels
+   if (levind == VERTISHEIGHT) then   ! we have heights levels
 
       if (level_in < levels_int(1,levind) ) then             ! below surface
          level_index_out = -1
@@ -1277,7 +1315,19 @@ contains
          level_index_out = a(1)
       endif
 
-     ! write(*,*)'level_in/column ',level_in,levind,' results in ',level_index_out
+   else if (levind == VERTISUNDEF) then
+
+         level_index_out = VERTISUNDEF    ! VERTISUNDEF == -2, a good bad value
+
+   else if (levind == VERTISLEVEL) then   ! we have heights levels
+
+      if (      level_in < 1    ) then
+         level_index_out = -1
+      else if ( level_in > nlev ) then
+         level_index_out = 100 + nlev
+      else
+         level_index_out = level_in
+      endif
 
    else  ! we have pressure levels (or surface obs ... also in pressure units)
 
