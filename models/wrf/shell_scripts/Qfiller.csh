@@ -1,10 +1,38 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section 
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id$
+# $Source$
+# $Name$
+#
+# DESCRIPTION:
+#
+# This script is designed to create a series of scripts that will be 
+# submitted to a queue. The batch job directives in each of the scripts
+# will ensure that the next script will start to execute only upon
+# successful completion of the previous script.
+#
+# The intent here is that an experiment usually consists of looping over
+# a series of observation sequence files. Each observation sequence file
+# will be 'processed' by one script. Each script will have to perform a
+# bit of work 'setting the table', etc. THIS script actually BUILDS the
+# other scripts. 
 
-set echo
+set myname = $0
+set REMOVE = 'rm -rf'
+set   COPY = 'cp -p'
+set   MOVE = 'mv -f'
+
+# Create a clean temporary directory and go there
+${REMOVE} $temp_dir
+mkdir -p  $temp_dir
+cd        $temp_dir
+
 
 set queue = regular
 set project_number = 86850054
