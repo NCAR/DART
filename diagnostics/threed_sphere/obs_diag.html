@@ -64,30 +64,45 @@
    Main program for evaluating filter performance in observation space. 
    That is, the models expected observations are compared against the actual
    observations in various ways.  
-
-   It produces matlab .dat files for each observation kind (i.e. RADIOSONDE, ACARS, ...)
-   for several variables (i.e. T, WIND, ...) containing:
+   <BR>
+   <BR>
+   Identity observations are already explored with state-space diagnostics,
+   so <em class=program>obs_diag </em> simply skips them.
+   <BR>
+   <BR>
+   It produces matlab-compatible text files for each observation kind 
+   (i.e. RADIOSONDE, ACARS, ...) for several variables (i.e. T, WIND, ...) containing:
 <UL>
     <LI> time series of RMS error and spread (at a specified vertical level) 
          for both Posterior fields and combined plots of Prior and Posterior fields,
-    <LI> vertical profiles of RMS error and bias averaged over most assimilation times,
+    <LI> vertical profiles of RMS error and bias averaged over specified assimilation times,
     <LI> time series and profiles of numbers of observations used,
-    <LI> All these are done for subdomains which can be specified in the obs_diag namelist.
+    <LI> All these are done for subdomains which can be specified in the 
+         <em class=code>obs_diag</em> namelist.
 </UL>
-   These .dat files can then be displayed using the Matlab&#174 scripts in .../DART/matlab
-   (or .../DART/diagnostics/matlab).
+   These data files can then be loaded and displayed using the Matlab&#174; scripts in 
+   <em class=file>.../DART/diagnostics/matlab</em>
+   (or, in some cases, <em class=file>.../DART/matlab</em>).
 </P>
 
-<P>
+<P>There are two versions of this program, one for high-order models that have
+   real observations and another for low-order models. Since this program
+   is fundamentally interested in the response as a function of region, the 
+   division was made if the model has a threed_sphere or a oned 
+   <em class=file>location_mod.f90</em>. It did not make sense to ask the 
+   <em class=program>lorenz_96</em> model what part of North America you'd like to
+   investigate.
    This program provides a number of options that are driven from its namelist. 
-   It was designed for use with global and regional models, rather than low-order models.
-   This documentation was created for the J-release of DART.
+   <BR><BR>
+   With the post-iceland release of DART, obs_diag can also handle observations
+   on model levels.
 </P>
 
 <P>
-   The obs_diag program performs an outlier test on observations, which can be more
+   The <em class=program>obs_diag</em> program performs an outlier test on observations, which can be more
    restrictive than the outlier test in the filter, but not less 
-   (see outlier_threshold in filter_nml and rat_cri here).
+   (see <em class=code>outlier_threshold</em> in <em class=code>filter_nml</em> and 
+   <em class=code>rat_cri</em> here).
 </P>
 
 <P>
@@ -132,7 +147,7 @@ utilities_mod
 <em class=call>namelist / obs_diag_nml / </em> &#38;
    obs_sequence_name, obs_select,
    max_num_bins, first_bin_center, last_bin_center, bin_separation, bin_width, time_to_skip,
-   plevel, hlevel, rat_cri, qc_threshold, print_mismatched_locs,
+   <em class=changed>mlevel</em>, plevel, hlevel, rat_cri, qc_threshold, print_mismatched_locs,
    Nregions, lonlim1, lonlim2, latlim1, latlim2, reg_names
 
 </pre></div>
@@ -142,7 +157,7 @@ utilities_mod
 <P>This namelist is read in a file called <em class=file>input.nml</em>. <BR>
 The date-time integer arrays in this namelist have the form (YYYY, MO, DA, HR, MIN, SEC). <BR>
 The regions boundaries allowable ranges are: latitude [-90.,90], longitude [0.,360.]
-</P>
+
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
@@ -153,41 +168,64 @@ The regions boundaries allowable ranges are: latitude [-90.,90], longitude [0.,3
     <!--  type  --><TD valign=top>   character         </TD>
     <!--descript--><TD>Name of the obs files in subdirectories. <BR>
                        Default 'obs_seq.final'</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   first_bin_center </TD>
-    <!--  type  --><TD valign=top>   date-time        </TD>
-    <!--descript--><TD>first timeslot of the first obs_seq.final file to process.</TD></TR>  
+    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
+    <!--descript--><TD>first timeslot of the first obs_seq.final file to process.
+                       The six integers are: year, month, day, hour, hour, minute,
+                       second -- in that order</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   last_bin_center  </TD>
-    <!--  type  --><TD valign=top>   date-time        </TD>
-    <!--descript--><TD>last timeslot to be processed.  <BR>
-                       (reminder: the last timeslot of day 1 is hour 0 of day 2).</TD></TR>  
-<TR><!--contents--><TD valign=top>   bin_separation   </TD>
-    <!--  type  --><TD valign=top>   date-time        </TD>
-    <!--descript--><TD>Time between assimilations (assumed constant).  <BR>
-                       Defined by obs_seq.out files.</TD></TR>  
+    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
+    <!--descript--><TD>last timeslot of interest.
+                       (reminder: the last timeslot of day 1 is hour 0 of day 2)
+                       The six integers are: year, month, day, hour, hour, minute,
+                       second -- in that order</TD></TR>  
+
+<TR><!--contents--><TD valign=top>   bin_separation       </TD>
+    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
+    <!--descript--><TD>Time between bin centers. 
+                       The year and month values <em>must</em> be zero.</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   bin_width        </TD>
-    <!--  type  --><TD valign=top>   date-time        </TD>
+    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
     <!--descript--><TD>Time span around bin centers in which obs will be compared.
-                       Usually = bin_separation.</TD></TR>  
+                       The year and month values <em>must</em> be zero.
+                       Frequently, but not required to be, the same as the
+                       values for bin_separation.</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   time_to_skip     </TD>
-    <!--  type  --><TD valign=top>   date-time        </TD>
+    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
     <!--descript--><TD>Time span at the beginning to skip when calculating 
-                       vertical profiles of rms error and bias.  Needed 
-                       because it takes some time for the assimilation to 
+                       vertical profiles of rms error and bias.  
+                       The year and month values <em>must</em> be zero.  
+                       Useful because it takes some time for the assimilation to 
                        settle down from the climatological spread at the start.</TD></TR>  
 <TR><!--contents--><TD valign=top>   max_num_bins  </TD>
     <!--  type  --><TD valign=top>   integer       </TD>
     <!--descript--><TD>For dimensioning arrays to accommodate your assimilation timeslots .</TD></TR>  
+
+<TR><!--contents--><TD valign=top>   mlevel     </TD>
+    <!--  type  --><TD valign=top>   integer    </TD>
+    <!--descript--><TD>Observations on model levels (perfect model observations) 
+                       at which the rms error, spread, and num_obs time series 
+                       will be calculated.</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   plevel     </TD>
     <!--  type  --><TD valign=top>   integer    </TD>
-    <!--descript--><TD>Pressure level (hPa) at which the rms error, spread,
-                       and num_obs time series will be figured/displayed.</TD></TR>  
+    <!--descript--><TD>Same as mlevel, but for observations with pressure (hPa) as the 
+                       vertical coordinate. Much more common.</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   hlevel     </TD>
     <!--  type  --><TD valign=top>   integer    </TD>
-    <!--descript--><TD>Same, but for models that have height(m) as vert coord.</TD></TR>  
+    <!--descript--><TD>Same, but for observations that have height(m) as the 
+                       vertical coordinate.</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   obs_select </TD>
     <!--  type  --><TD valign=top>   integer    </TD>
     <!--descript--><TD>Which obs subset to use; all(1), radiosonde only(2),
                        everything but radiosondes(3) .</TD></TR>  
+
 <TR><!--contents--><TD valign=top>   rat_cri    </TD>
     <!--  type  --><TD valign=top>   real       </TD>
     <!--descript--><TD>Critical ratio of distance of the value of observation from the
@@ -237,7 +275,7 @@ The regions boundaries allowable ranges are: latitude [-90.,90], longitude [0.,3
 <UL><LI>output observation space diagnostic file from filter_nml;obs_sequence_out_name
     <LI>model initial file
     <LI>obs_diag_nml in input.nml
-    <LI>Matlab&#174 input files; OBS-TYPE_VARIABLE_diagnostic.dat 
+    <LI>Matlab&#174; input files; OBS-TYPE_VARIABLE_diagnostic.dat 
     <LI>dart_log.out list directed output from the obs_diag.
 </UL>
 
@@ -273,9 +311,9 @@ The ##s that are used will be determined based on the time span specified in
 obs_seq_nml and the available obs_seq.final files.
 Obs_diag searches in these subdirectories for the obs_seq.final files  
 which contain dates and times corresponding to those specified in its namelist.  
-For obs_seq.final file numbers < 10 the subdirectory name will be padded with
+For obs_seq.final file numbers &#60; 10 the subdirectory name will be padded with
 a 0, to make it a 2 character number.
-The Iceland version of obs_diag won't handle ## > 99.
+The Iceland version of obs_diag won't handle ## &#62; 99.
 </P>
 
 <P>
