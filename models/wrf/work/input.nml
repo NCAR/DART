@@ -72,7 +72,9 @@
    surf_obs = .true.,
    h_diab = .false.,
    assimilation_period_seconds = 21600,
-   adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe"  /
+   adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe",
+   center_search_size = 25,
+   center_spline_grid_scale = 10  /
 
 &utilities_nml
    TERMLEVEL = 1
@@ -151,10 +153,6 @@
    latlim1    =  20.0, -80.0, -20.0,  25.0,
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'   /
-
-&center_track_nml
-   center_search_size = 25,
-   center_spline_grid_scale = 10  /
 
 &merge_obs_seq_nml
    filename_seq1 = 'obs_seq.gps1',

@@ -38,10 +38,12 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SPECIFIC_HUMIDITY, &
                               KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
                               KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
-                              KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO
+                              KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
+                              KIND_VORTEX_LAT, KIND_VORTEX_LON, &
+                              KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
-                              gridwind_to_truewind
+                              ij_to_latlon, gridwind_to_truewind
 use netcdf
 use typesizes
 
@@ -76,6 +78,9 @@ revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! Model namelist parameters with default values.
+!
+! center_search_size:  grid size for searching minimum pressure at grid point
+! center_spline_scale: coarse grid to spline interp. fine grid ratio
 !-----------------------------------------------------------------------
 
 logical :: output_state_vector  = .false.     ! output prognostic variables
@@ -86,10 +91,13 @@ integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .false.
 logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
+integer :: center_search_size       = 25
+integer :: center_spline_grid_scale = 10
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
                      adv_mod_command, assimilation_period_seconds
+
 !-----------------------------------------------------------------------
 
 ! Private definition of domain map projection use by WRF
@@ -708,7 +716,6 @@ assim_dt = (assimilation_period_seconds / model_dt) * model_dt
 
 get_model_time_step = set_time(assim_dt)
 
-
 end function get_model_time_step
 
 !#######################################################################
@@ -813,7 +820,12 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
+
+ subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
+!----------------------------------------------------------------------
+!subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
+!
+! modified 26 June 2006 to accomodate vortex attributes
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
@@ -832,6 +844,17 @@ character(len=129) :: errstring
 
 real(r8), dimension(2) :: fld
 real(r8), allocatable, dimension(:) :: v_h, v_p
+
+! local vars, used in finding sea-level pressure and vortex center
+real(r8), allocatable, dimension(:)   :: t1d, p1d, qv1d, z1d
+real(r8), allocatable, dimension(:,:) :: psea, pp, pd
+real(r8), allocatable, dimension(:)   :: x1d,y1d,xx1d,yy1d
+integer  :: xlen, ylen, xxlen, yylen, ii1, ii2
+real(r8) :: clat, clon, cxmin, cymin
+
+! center_track_*** used to define center search area
+integer :: center_track_xmin, center_track_ymin, &
+           center_track_xmax, center_track_ymax
 
 ! local vars, used in calculating density, pressure
 real(r8)            :: rho1 , rho2 , rho3, rho4
@@ -1345,6 +1368,122 @@ else if( obs_kind == KIND_SURFACE_PRESSURE) then
 
    endif
 
+!!-------------------------------------------------------------------------
+!! find vortex center location and with minimum sea level pressure
+!! steps: 1) define a search box centered at the obs. location (i,j)
+!!        2) compute sea-level pressure (slp)
+!!        3) spline-interpolation of slp within the refined search box 
+!!           -- by a factor of center_spline_grid_scale (default=10)
+!!        4) find the minimum slp and grid point location 
+!!           (default=1/10 precision)
+!!        5) return the minimum slp and lat/lon of this grid point
+!!-------------------------------------------------------------------------
+else if( obs_kind == KIND_VORTEX_LAT .or. &
+         obs_kind == KIND_VORTEX_LON .or. &
+         obs_kind == KIND_VORTEX_PMIN .or. &
+         obs_kind == KIND_VORTEX_WMAX) then
+
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+!!   define a search box bounded by center_track_***
+     center_track_xmin = max(1,i-center_search_size/2)
+     center_track_xmax = min(wrf%dom(id)%var_size(1,TYPE_MU),i+center_search_size/2)
+     center_track_ymin = max(1,j-center_search_size/2)
+     center_track_ymax = min(wrf%dom(id)%var_size(2,TYPE_MU),j+center_search_size/2)
+     if(center_track_xmin<1 .or. center_track_xmax>wrf%dom(id)%var_size(1,TYPE_MU) .or. &
+        center_track_ymin<1 .or. center_track_ymax>wrf%dom(id)%var_size(2,TYPE_MU) .or. &
+        center_track_xmin >= center_track_xmax .or. &
+        center_track_ymin >= center_track_ymax) then
+          print*,'i,j,center_search_size,center_track_xmin(max),center_track_ymin(max)'
+          print*,i,j,center_search_size,center_track_xmin,center_track_xmax,center_track_ymin,center_track_ymax
+         write(errstring,*)'Wrong setup in center_track_nml'
+         call error_handler(E_ERR,'model_interpolate', errstring, source, revision, revdate)
+     endif 
+
+!!   define spline interpolation box dimensions
+     xlen = center_track_xmax - center_track_xmin + 1
+     ylen = center_track_ymax - center_track_ymin + 1
+     xxlen = (center_track_xmax - center_track_xmin)*center_spline_grid_scale + 1
+     yylen = (center_track_ymax - center_track_ymin)*center_spline_grid_scale + 1
+     allocate(p1d(wrf%dom(id)%bt), t1d(wrf%dom(id)%bt))
+     allocate(qv1d(wrf%dom(id)%bt), z1d(wrf%dom(id)%bt))
+     allocate(psea(xlen,ylen))
+     allocate(pd(xlen,ylen))
+     allocate(pp(xxlen,yylen))
+     allocate(x1d(xlen))
+     allocate(y1d(ylen))
+     allocate(xx1d(xxlen))
+     allocate(yy1d(yylen))
+
+!!   compute sea-level pressure
+     do i1 = center_track_xmin, center_track_xmax
+     do i2 = center_track_ymin, center_track_ymax
+        do k = 1,wrf%dom(id)%var_size(3,TYPE_T)
+           p1d(k) = model_pressure_t(i1,i2,k,id,x)
+           t1d(k) = ts0 + x(wrf%dom(id)%dart_ind(i1,i2,k,TYPE_T))
+           qv1d(k)= x(wrf%dom(id)%dart_ind(i1,i2,k,TYPE_QV))
+           z1d(k) = ( x(wrf%dom(id)%dart_ind(i1,i2,k,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k) + &
+                      x(wrf%dom(id)%dart_ind(i1,i2,k+1,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k+1) &
+                    )*0.5_r8/gravity
+        enddo
+        call compute_seaprs(wrf%dom(id)%bt, z1d, t1d, p1d, qv1d, &
+                          psea(i1-center_track_xmin+1,i2-center_track_ymin+1),debug)
+     enddo
+     enddo
+
+!!   spline-interpolation
+     do i1 = 1,xlen
+        x1d(i1) = (i1-1)+center_track_xmin
+     enddo
+     do i2 = 1,ylen
+        y1d(i2) = (i2-1)+center_track_ymin
+     enddo
+     do ii1 = 1,xxlen
+        xx1d(ii1) = center_track_xmin+real(ii1-1,r8)*1_r8/real(center_spline_grid_scale,r8)
+     enddo
+     do ii2 = 1,yylen
+        yy1d(ii2) = center_track_ymin+real(ii2-1,r8)*1_r8/real(center_spline_grid_scale,r8)
+     enddo
+
+     call splie2(x1d,y1d,psea,xlen,ylen,pd)
+
+     pres1 = 1.e20
+     cxmin = -1
+     cymin = -1
+     do ii1=1,xxlen
+     do ii2=1,yylen
+        call splin2(x1d,y1d,psea,pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
+        if (pres1 .gt. pp(ii1,ii2)) then
+           pres1=pp(ii1,ii2)
+           cxmin=xx1d(ii1)
+           cymin=yy1d(ii2)
+        endif
+     enddo
+     enddo
+
+     call ij_to_latlon(wrf%dom(id)%proj, cxmin, cymin, clat, clon)
+
+     if( obs_kind == KIND_VORTEX_LAT ) then
+        fld(1) = clat
+     else if( obs_kind == KIND_VORTEX_LON ) then
+        fld(1) = clon
+     else if( obs_kind == KIND_VORTEX_PMIN ) then
+        fld(1) = pres1
+     else if( obs_kind == KIND_VORTEX_WMAX ) then
+        fld(1) = missing_r8
+        ! not implemented yet
+     endif
+
+     deallocate(p1d, t1d, qv1d, z1d)
+     deallocate(psea,pd,pp,x1d,y1d,xx1d,yy1d)
+
+
+   else
+
+      fld(1) = missing_r8
+
+   endif
 else
    write(errstring,*)'do not recognize obs kind ',obs_kind
    call error_handler(E_ERR,'model_interpolate', errstring, &
@@ -3829,5 +3968,270 @@ do id=1,num_domains
 enddo
 
 end subroutine read_dt_from_wrf_nml
+
+
+
+subroutine compute_seaprs ( nz, z, t, p , q ,          &
+                            sea_level_pressure, debug)
+!-------------------------------------------------------------------------
+! compute_seaprs    Estimate sea level pressure.
+!
+! This routines has been taken "as is" from wrf_user_fortran_util_0.f
+!
+! This routine assumes
+!    index order is (i,j,k)
+!    wrf staggering
+!    units: pressure (Pa), temperature(K), height (m), mixing ratio (kg kg{-1})
+!    availability of 3d p, t, and qv; 2d terrain; 1d half-level zeta string
+!    output units of SLP are Pa, but you should divide that by 100 for the
+!          weather weenies.
+!    virtual effects are included
+!
+! Dave
+!
+! cys: change to 1d
+! TJH: verified intent() qualifiers, declaration syntax, uses error_handler
+
+      IMPLICIT NONE
+      INTEGER,  intent(in)    :: nz
+      REAL(r8), intent(in)    :: z(nz), p(nz), q(nz)
+      REAL(r8), intent(inout) :: t(nz)
+      REAL(r8), intent(out)   :: sea_level_pressure
+      LOGICAL,  intent(in)    :: debug
+
+      INTEGER  :: level
+      REAL(r8) :: t_surf, t_sea_level
+
+!     Some required physical constants:
+
+      REAL(r8) :: R, G, GAMMA
+      PARAMETER (R=287.04_r8, G=9.81_r8, GAMMA=0.0065_r8)
+
+!     Specific constants for assumptions made in this routine:
+
+      REAL(r8) :: TC, PCONST
+      PARAMETER (TC=273.16_r8 + 17.5_r8, PCONST = 10000.0_r8)
+
+      LOGICAL  :: ridiculous_mm5_test
+      PARAMETER  (ridiculous_mm5_test = .TRUE.)
+!     PARAMETER  (ridiculous_mm5_test = .false.)
+
+!     Local variables:
+
+      character(len=129) :: errstring
+      INTEGER :: i, j, k
+      INTEGER :: klo, khi
+
+      REAL(r8) :: plo, phi, tlo, thi, zlo, zhi
+      REAL(r8) :: p_at_pconst, t_at_pconst, z_at_pconst
+      REAL(r8) :: z_half_lowest
+
+      REAL(r8), PARAMETER :: cp           = 7.0_r8*R/2.0_r8
+      REAL(r8), PARAMETER :: rcp          = R/cp
+      REAL(r8), PARAMETER :: p1000mb      = 100000.0_r8
+
+      LOGICAL ::  l1 , l2 , l3, found
+
+!     Find least zeta level that is PCONST Pa above the surface.  We later use this
+!     level to extrapolate a surface pressure and temperature, which is supposed
+!     to reduce the effect of the diurnal heating cycle in the pressure field.
+
+      t = t*(p/p1000mb)**rcp
+
+      level = -1
+
+      k = 1
+      found = .false.
+      do while( (.not. found) .and. (k.le.nz))
+         IF ( p(k) .LT. p(1)-PCONST ) THEN
+            level = k
+            found = .true.
+         END IF
+         k = k+1
+      END DO
+
+      IF ( level .EQ. -1 ) THEN
+         PRINT '(A,I4,A)','Troubles finding level ',   &
+               NINT(PCONST)/100,' above ground.'
+         print*, 'p=',p
+         print*, 't=',t
+         print*, 'z=',z
+         print*, 'q=',q
+         write(errstring,*)'Error_in_finding_100_hPa_up'
+         call error_handler(E_ERR,'compute_seaprs',errstring,' ',' ',' ')
+      END IF
+
+
+!     Get temperature PCONST Pa above surface.  Use this to extrapolate
+!     the temperature at the surface and down to sea level.
+
+      klo = MAX ( level - 1 , 1      )
+      khi = MIN ( klo + 1        , nz - 1 )
+
+      IF ( klo .EQ. khi ) THEN
+         PRINT '(A)','Trapping levels are weird.'
+         PRINT '(A,I3,A,I3,A)','klo = ',klo,', khi = ',khi, &
+               ': and they should not be equal.'
+         write(errstring,*)'Error_trapping_levels'
+         call error_handler(E_ERR,'compute_seaprs',errstring,' ',' ',' ')
+      END IF
+
+      plo = p(klo)
+      phi = p(khi)
+      tlo = t(klo)*(1. + 0.608 * q(klo) )
+      thi = t(khi)*(1. + 0.608 * q(khi) )
+!     zlo = zetahalf(klo)/ztop*(ztop-terrain(i,j))+terrain(i,j)
+!     zhi = zetahalf(khi)/ztop*(ztop-terrain(i,j))+terrain(i,j)
+      zlo = z(klo)
+      zhi = z(khi)
+
+      p_at_pconst = p(1) - pconst
+      t_at_pconst = thi-(thi-tlo)*LOG(p_at_pconst/phi)*LOG(plo/phi)
+      z_at_pconst = zhi-(zhi-zlo)*LOG(p_at_pconst/phi)*LOG(plo/phi)
+
+      t_surf = t_at_pconst*(p(1)/p_at_pconst)**(gamma*R/g)
+      t_sea_level = t_at_pconst+gamma*z_at_pconst
+
+
+!     If we follow a traditional computation, there is a correction to the sea level
+!     temperature if both the surface and sea level temnperatures are *too* hot.
+
+      IF ( ridiculous_mm5_test ) THEN
+         l1 = t_sea_level .LT. TC
+         l2 = t_surf      .LE. TC
+         l3 = .NOT. l1
+         IF ( l2 .AND. l3 ) THEN
+            t_sea_level = TC
+         ELSE
+            t_sea_level = TC - 0.005*(t_surf-TC)**2
+         END IF
+      END IF
+
+!     The grand finale: ta da!
+
+!     z_half_lowest=zetahalf(1)/ztop*(ztop-terrain(i,j))+terrain(i,j)
+      z_half_lowest=z(1)
+      sea_level_pressure = p(1) *              &
+                           EXP((2.*g*z_half_lowest)/   &
+                           (R*(t_sea_level+t_surf)))
+
+!        sea_level_pressure(i,j) = sea_level_pressure(i,j)*0.01
+
+    if (debug) then
+      print *,'slp=',sea_level_pressure
+    endif
+!      print *,'t=',t(10:15,10:15,1),t(10:15,2,1),t(10:15,3,1)
+!      print *,'z=',z(10:15,1,1),z(10:15,2,1),z(10:15,3,1)
+!      print *,'p=',p(10:15,1,1),p(10:15,2,1),p(10:15,3,1)
+!      print *,'slp=',sea_level_pressure(10:15,10:15),     &
+!         sea_level_pressure(10:15,10:15),sea_level_pressure(20,10:15)
+
+end subroutine compute_seaprs
+
+
+      
+SUBROUTINE splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
+      INTEGER m,n,NN
+      REAL(r8), intent(in) :: x1,x2,x1a(m),x2a(n),y2a(m,n),ya(m,n)
+      real(r8), intent(out) :: y
+      PARAMETER (NN=100)
+!     USES spline,splint
+      INTEGER j,k
+      REAL(r8) y2tmp(NN),ytmp(NN),yytmp(NN)
+      do 12 j=1,m
+        do 11 k=1,n
+          ytmp(k)=ya(j,k)
+          y2tmp(k)=y2a(j,k)
+11      continue
+        call splint(x2a,ytmp,y2tmp,n,x2,yytmp(j))
+12    continue
+      call spline(x1a,yytmp,m,1.e30_r8,1.e30_r8,y2tmp)
+      call splint(x1a,yytmp,y2tmp,m,x1,y)
+      return
+END subroutine splin2
+
+SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
+      INTEGER m,n,NN
+      REAL(r8), intent(in) :: x1a(m),x2a(n),ya(m,n)
+      REAL(r8), intent(out) :: y2a(m,n)
+      PARAMETER (NN=100)
+!     USES spline
+      INTEGER j,k
+      REAL(r8) y2tmp(NN),ytmp(NN)
+      do 13 j=1,m
+        do 11 k=1,n
+          ytmp(k)=ya(j,k)
+11      continue
+        call spline(x2a,ytmp,n,1.e30_r8,1.e30_r8,y2tmp)
+        do 12 k=1,n
+          y2a(j,k)=y2tmp(k)
+12      continue
+13    continue
+      return
+END subroutine splie2
+
+SUBROUTINE spline(x,y,n,yp1,ypn,y2)
+      INTEGER n,NMAX
+      REAL(r8), intent(in) :: yp1,ypn,x(n),y(n)
+      REAL(r8), intent(out) :: y2(n)
+      PARAMETER (NMAX=500)
+      INTEGER i,k
+      REAL(r8) p,qn,sig,un,u(NMAX)
+      if (yp1.gt..99e30) then
+        y2(1)=0.
+        u(1)=0.
+      else
+        y2(1)=-0.5
+        u(1)=(3./(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
+      endif
+      do 11 i=2,n-1
+        sig=(x(i)-x(i-1))/(x(i+1)-x(i-1))
+        p=sig*y2(i-1)+2.
+        y2(i)=(sig-1.)/p
+        u(i)=(6.*((y(i+1)-y(i))/(x(i+ &
+      1)-x(i))-(y(i)-y(i-1))/(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig* &
+      u(i-1))/p
+11    continue
+      if (ypn.gt..99e30) then
+        qn=0.
+        un=0.
+      else
+        qn=0.5
+        un=(3./(x(n)-x(n-1)))*(ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
+      endif
+      y2(n)=(un-qn*u(n-1))/(qn*y2(n-1)+1.)
+      do 12 k=n-1,1,-1
+        y2(k)=y2(k)*y2(k+1)+u(k)
+12    continue
+      return
+END subroutine spline
+
+
+SUBROUTINE splint(xa,ya,y2a,n,x,y)
+      INTEGER n
+      REAL(r8),intent(in) :: x,xa(n),y2a(n),ya(n)
+      REAL(r8),intent(out) :: y
+      INTEGER k,khi,klo
+      REAL(r8) a,b,h
+      klo=1
+      khi=n
+1     if (khi-klo.gt.1) then
+        k=(khi+klo)/2
+        if(xa(k).gt.x)then
+          khi=k
+        else
+          klo=k
+        endif
+      goto 1
+      endif
+      h=xa(khi)-xa(klo)
+      if (h.eq.0.) pause 'bad xa input in splint'
+      a=(xa(khi)-x)/h
+      b=(x-xa(klo))/h
+      y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
+      return
+END subroutine splint
+
+!cys_add_end
 
 end module model_mod
