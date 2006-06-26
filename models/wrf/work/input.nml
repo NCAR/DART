@@ -152,6 +152,10 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'   /
 
+&center_track_nml
+   center_search_size = 25,
+   center_spline_grid_scale = 10  /
+
 &merge_obs_seq_nml
    filename_seq1 = 'obs_seq.gps1',
    filename_seq2 = 'obs_seq.gps2',
