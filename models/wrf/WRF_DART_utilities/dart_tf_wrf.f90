@@ -1,5 +1,6 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Initiative
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 PROGRAM dart_tf_wrf
@@ -44,13 +45,14 @@ logical :: output_state_vector  = .true.  ! output prognostic variables
 integer :: num_moist_vars       = 0
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
+integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .false.
 logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
-                     adv_mod_command
+                     adv_mod_command, assimilation_period_seconds
 
 !-------------------------------------------------------------
 
