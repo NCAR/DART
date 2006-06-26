@@ -96,7 +96,8 @@ integer :: center_spline_grid_scale = 10
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
-                     adv_mod_command, assimilation_period_seconds
+                     adv_mod_command, assimilation_period_seconds, &
+                     center_search_size, center_spline_grid_scale
 
 !-----------------------------------------------------------------------
 

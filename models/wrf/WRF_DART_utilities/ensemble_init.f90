@@ -1,5 +1,6 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Initiative
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program ensemble_init
@@ -67,11 +68,16 @@ integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 logical :: surf_obs             = .false.
 logical :: h_diab               = .false.
-character(len = 72) :: adv_mod_command = 'wrf.exe'
+integer :: assimilation_period_seconds = 21600
+character(len = 72) :: adv_mod_command = './wrf.exe'
+integer :: center_search_size       = 25
+integer :: center_spline_grid_scale = 10
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
-                     adv_mod_command
+                     adv_mod_command, assimilation_period_seconds, &
+                     center_search_size, center_spline_grid_scale
+
 !-----------------------------------------------------------------------
 
 integer :: iunit, io, var_id, itime

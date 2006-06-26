@@ -49,10 +49,13 @@ integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .false.
 logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
+integer :: center_search_size       = 25
+integer :: center_spline_grid_scale = 10
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
-                     adv_mod_command, assimilation_period_seconds
+                     adv_mod_command, assimilation_period_seconds, &
+                     center_search_size, center_spline_grid_scale
 
 !-------------------------------------------------------------
 
