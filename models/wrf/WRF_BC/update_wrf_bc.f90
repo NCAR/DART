@@ -507,13 +507,13 @@ endif
       north_end=dims(2)+1
 
       select case(trim(var3d(n)))
-         case ('U') ;		! U
+         case ('U') ;           ! U
             full3d(:,:,:)=u(:,:,:)
             full3d_mean(:,:,:)=u_mean(:,:,:)
-         case ('V') ;		! V
+         case ('V') ;           ! V
             full3d(:,:,:)=v(:,:,:)
             full3d_mean(:,:,:)=v_mean(:,:,:)
-         case ('W') ;		! W
+         case ('W') ;           ! W
             full3d(:,:,:)=w(:,:,:)
             full3d_mean(:,:,:)=w_mean(:,:,:)
          case ('T', 'PH', 'QVAPOR', 'QCLOUD', 'QRAIN', 'QICE', 'QSNOW', 'QGRAUP', 'QNICE') ;
