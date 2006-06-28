@@ -575,7 +575,7 @@ endif
 
 !-----Add BC perturbation at second time level
          select case(trim(bdyname(m)))
-            case ('_BXS') ;		! West boundary
+            case ('_BXS') ;             ! West boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do j=1,dims(1)
@@ -584,7 +584,7 @@ endif
                enddo
                enddo
                enddo
-            case ('_BXE') ;		! East boundary
+            case ('_BXE') ;             ! East boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do j=1,dims(1)
@@ -593,7 +593,7 @@ endif
                enddo
                enddo
                enddo
-            case ('_BYS') ;		! South boundary
+            case ('_BYS') ;             ! South boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do i=1,dims(1)
@@ -602,7 +602,7 @@ endif
                enddo
                enddo
                enddo
-            case ('_BYE') ;		! North boundary
+            case ('_BYE') ;             ! North boundary
                do l=1,dims(3)
                do k=1,dims(2)
                do i=1,dims(1)

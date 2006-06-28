@@ -91,7 +91,7 @@ integer :: east_end, north_end
 
 logical, parameter :: debug = .true.
 
-real(r8) :: bdyfrq_old, bdyfrq, infl, dtnext
+real(r8) :: bdyfrq_old, bdyfrq, dtnext
 
 integer :: io, iunit
 

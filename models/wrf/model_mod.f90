@@ -4020,7 +4020,7 @@ subroutine compute_seaprs ( nz, z, t, p , q ,          &
 !     Local variables:
 
       character(len=129) :: errstring
-      INTEGER :: i, j, k
+      INTEGER :: k
       INTEGER :: klo, khi
 
       REAL(r8) :: plo, phi, tlo, thi, zlo, zhi
