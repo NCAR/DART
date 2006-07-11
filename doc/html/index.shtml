@@ -107,7 +107,7 @@
 
       <TR><TD>SGI           </TD>
           <TD>IRIX64 6.5    </TD>
-          <TD>MPISpro 7.4.3m</TD></TR>
+          <TD>MIPSpro 7.4.3m</TD></TR>
       </TABLE>
 
       <H1>DART code distributions</H1>
