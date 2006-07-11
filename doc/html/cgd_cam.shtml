@@ -84,10 +84,10 @@
        <BR>
        History has shown that it is a very good idea to make sure your 
        run-time environment has the following:
-       <em class=unix>
+       <pre>
        limit stacksize unlimited
        limit datasize unlimited
-       </em> 
+       </pre> 
        <BR>
        <BR>
        <A href="http://www.ccsm.ucar.edu/models/atm-cam/">The Community Atmosphere Model (CAM) Home Page</A>
