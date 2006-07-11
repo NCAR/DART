@@ -154,7 +154,7 @@ an observation sequence file <em>may</em> contain synthetic and real observation
 Any identity observations are skipped. All other observations may be considered.
 </TD></TR>
 
-<TR><TD valign=top><em class=program>ensemble_manager</em></TD>
+<TR><TD valign=top><em class=file>ensemble_manager_mod.f90</em></TD>
 <TD> Modified to be able to handle multiple ensembles at one time to support
 the smoother which has an ensemble for each lag-time in the smoothing.
 </TD></TR>
@@ -210,6 +210,11 @@ several compilers try to interpret this code as fixed-format code when it is,
 in fact, free-format. This necessitates setting the compiler flags to
 <em>force</em> the free-format interpretation. See your compiler for details.</TD></TR>
 
+<TR><TD valign=top>doc/html/cgd_cam.html</TD>
+<TD>New, more general information about using CAM and DART is 
+available in <a href="http://www.image.ucar.edu/DAReS/DART/cgd_cam.html">
+cgd_cam.html</A>.</TD></TR>
+
 <TR><TD valign=top>models/cam</TD>
 <TD>Now able to handle observations with height as a vertical coordinate. 
 Can return interpolated values of pressure for use with GPS observation
@@ -228,11 +233,12 @@ forward operators.</TD></TR>
     </TD></TR>
 
 <TR><TD valign=top>models/wrf</TD>
-<TD>A new namelist variable, <em class=code>assimilation_period_seconds</em>, allows the
-specification of the desired assimilation period, which was previously hardwired in the
-code. The <em class=code>assimilation_period_seconds</em> is guaranteed to be 
- an integer multiple of the underlying wrf model timestep. 
-Added support for gps observations and observations of vortex position.
+<TD>A new namelist variable, <em class=code>assimilation_period_seconds</em>, 
+    allows the specification of the desired assimilation period, which was 
+    previously hardwired in the code. 
+    The <em class=code>assimilation_period_seconds</em> is guaranteed to be 
+    an integer multiple of the underlying wrf model timestep.
+    Added support for gps observations and observations of vortex position.
 </TD></TR>
 
 <TR><TD valign=top>ncep_obs</TD>
@@ -286,9 +292,10 @@ current days' date.
         directory should be considered 'deprecated'. 
     </TD></TR>
 
-<TR><TD valign=top><em class=file>smoother</em></TD>
-    <TD>A main program to do fixed-lag ensemble smoothing has been added and 
-        is documented in the smoother directory. This program still uses the 
+<TR><TD valign=top>smoother</TD>
+    <TD>A main program (<em class=file>smoother.f90</em>) to do 
+        fixed-lag ensemble smoothing has been added and is documented 
+        in the smoother directory. This program still uses the 
         previous version of the inflation and <em class=code>assim_tools</em>,
         which are available as 
         <em class=file>assim_tools/assim_tools_smoother_mod.f90</em>.
