@@ -5,7 +5,7 @@
       <!-- $Id$ -->
       <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
       <title>Data Assimilation Research Testbed -- DART</title>
-      <link href="/styles/styles.css" rel="stylesheet" type="text/css">
+      <link href="doc.css" rel="stylesheet" type="text/css">
       <style type="text/css">
                 <!--
                 @import url(/styles/fontsizer.css);
@@ -43,7 +43,12 @@
       <H1>DART requirements</H1>
       <P>
       Minimally, you will need a Fortran90 compiler and the netCDF libraries 
-      built with the F90 interface. 
+      built with the F90 interface. History has shown that it is a very good
+      idea to make sure your run-time environment has the following:
+      <div class=unix>
+      limit stacksize unlimited<BR>
+      limit datasize unlimited
+      </div>
       </P>
 
       <H1>DART tested platforms/models/compilers</H1>
