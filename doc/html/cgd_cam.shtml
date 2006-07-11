@@ -73,13 +73,21 @@
 
        <BR>
        <BR>
-       In addition to the standard DART package there is a 
-       <A href:" ftp://ftp.ucar.edu/pub/image/raeder/DART/DAI">collection of files</A> 
+       In addition to the standard DART package there is a collection of file at
+       <A href="ftp://ftp.ucar.edu/pub/image/raeder/DAI"
+       >ftp://ftp.ucar.edu/pub/image/raeder/DAI</A> 
        either needed or helpful for interfacing CAM with DART and with 
        setting up assimilation experiments.
        More information and instructions are available in the 
        <em class=file>DART/models/cam/model_mod.html</em> documentation.
-
+       <BR>
+       <BR>
+       History has shown that it is a very good idea to make sure your 
+       run-time environment has the following:
+       <em class=unix>
+       limit stacksize unlimited
+       limit datasize unlimited
+       </em> 
        <BR>
        <BR>
        <A href="http://www.ccsm.ucar.edu/models/atm-cam/">The Community Atmosphere Model (CAM) Home Page</A>
