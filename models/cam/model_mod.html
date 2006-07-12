@@ -75,7 +75,9 @@ using the Eulerian dynamical core.
 It is designed to work for versions of CAM starting with 2.0.1,
 by specifying the version number in the model_mod namelist.
 This implementation of DART-CAM uses the CAM (and CLM) initial files for 
-transferring the model state to/from the filter/CAM.  
+transferring the model state to/from the filter/CAM. 
+The finite volume core is a separate model (<em class=file>models/cam-fv</em>).
+The two cores are intented to be integrated into one model in the future.
 </P>
 
 <P>
@@ -112,8 +114,7 @@ See <em class=code>which_vert</em> in
 </P>
 
 <P>
-Links to information about 
-<A HREF="doc/index.html" > setting up assimilation experiments </A> 
+Information about setting up assimilation experiments
 using CAM and parallel architecture computers, including:
 <UL>
     <LI> script and executable calling tree </LI>
@@ -123,7 +124,7 @@ using CAM and parallel architecture computers, including:
     <LI> experiment set-up</LI>
     <LI> helpful hints</LI>
     <LI> space requirements of various CAM resolutions</LI>
-</UL> 
+</UL> can be found in <A HREF="doc/index.html" >DART/models/cam/doc/index.html</A> 
 </P>
 
 <!--==================================================================-->
@@ -446,7 +447,12 @@ beneath a point in order to determine the point's vertical coordinate.
 When the model state vector is divided up among several regions during
 parallelization, surface pressure points from other regions become unavailable.
 The (temporary) fix is to hard-wire the surface pressure to be 100000 Pa.
-
+<BR><BR>
+<em class=routine>model_get_close_states</em> will return with a warning 
+message when the obs passed to it has an unrecognized vertical location; 
+only pressures, heights, and model levels are recognized so far.
+Previously, only pressure levels could be handled.
+<BR><BR>
 Due to the damping at high levels (see model_interpolate) there is also code 
 which reduces the influence of observations on model points above some altitude.
 Currently namelist variables highest_obs_{pressure_mb,height_m,level} control this 
@@ -701,19 +707,18 @@ state is always to be provided from input files.
 <BR><HR><BR>
 <H2 class=indent2>NAMELIST</H2>
 <P class=indent2>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+'&#38; and terminating with a slash '/'.
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &
-                      output_state_vector , model_version , model_config_file          &  
-                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d     &
-                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d   &
-                                     ,which_vert_1d  ,which_vert_2d  ,which_vert_3d    &
-		     ,state_names_pert ,state_names_sd ,max_obs_lat_degree             &
-		     ,highest_obs_pressure_mb ,highest_obs_height_m ,highest_obs_level &
+<em class=call>namelist / model_nml / </em> &#38;
+                      output_state_vector , model_version , model_config_file          &#38;  
+                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d     &#38;
+                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d   &#38;
+                                     ,which_vert_1d  ,which_vert_2d  ,which_vert_3d    &#38;
+		     ,state_names_pert ,state_names_sd ,max_obs_lat_degree             &#38;
+		     ,highest_obs_pressure_mb ,highest_obs_height_m ,highest_obs_level &#38;
                      ,Time_step_seconds ,Time_step_days
 
-    
 </pre>
 </div>
 </P>
@@ -768,24 +773,29 @@ file field names.
     <!--  type  --><TD valign=top>integer                        </TD>
     <!--descript--><TD>Numbers of fields of various dimensions to put into the state vector.
                        Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
-<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3             </TD>
-    <!--  type  --><TD valign=top>character(len=8), dimension(20)                        </TD>
-    <!--descript--><TD>Names of fields of various dimensions to put into the state vector.  Defaults <BR>
-         <PRE>state_names_0d='        ', state_names_1d='        ', </PRE>
-         <PRE>state_names_2d='PS      ' </PRE>
-         <PRE>state_names_3d='T       ','U       ','V       ','Q       '  </PRE>
+
+<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3          </TD>
+    <!--  type  --><TD valign=top>character(len=8), dimension(20)    </TD>
+    <!--descript--><TD>Names of fields of various dimensions to put into the state vector.
+                       Defaults:<BR>
+         <em class=code>state_names_0d='        ',</em><BR>
+         <em class=code>state_names_1d='        ',</em><BR>
+         <em class=code>state_names_2d='PS      ' </em><BR>
+         <em class=code>state_names_3d='T       ','U       ','V       ','Q       '  </em>
      </TD></TR>
+
 <TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3             </TD>
-    <!--  type  --><TD valign=top>integer, dimension(20)                       </TD>
-    <!--descript--><TD>Vertical location types of fields in state_names_#d.  Defaults 
-                       <UL><LI>which_vert_1d = state_num_1d*-2, 
-                           <LI> which_vert_2d = state_num_2d*-1, 
-                           <LI> which_vert_3d = state_num_3d* 1 </UL>
+    <!--  type  --><TD valign=top>integer, dimension(20)             </TD>
+    <!--descript--><TD>Vertical location types of fields in state_names_#d.
+                       Defaults :<BR>
+                       <em class=code>which_vert_1d = state_num_1d*-2, </em><BR>
+                       <em class=code>which_vert_2d = state_num_2d*-1, </em><BR>
+                       <em class=code>which_vert_3d = state_num_3d* 1</em>
      </TD></TR>
 <TR><!--contents--><TD valign=top>state_names_pert             </TD>
     <!--  type  --><TD valign=top>character(len=8)  dimension(20)                      </TD>
     <!--descript--><TD>Names of the state vector fields to perturb.  Defaults <BR>
-                      <PRE>state_names_pert='        ' </PRE></TD></TR>
+                      <em class=code>state_names_pert='        ' </em></TD></TR>
 <TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
     <!--  type  --><TD valign=top>real(r8)  </TD>
     <!--descript--><TD>Observations closer to the poles than this latitude will be ignored.
@@ -807,11 +817,11 @@ file field names.
                        Default  11 </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_seconds        </TD>
     <!--  type  --><TD valign=top>real(r8)  </TD>
-    <!--descript--><TD>Forecast duration (the part < 1 day)
+    <!--descript--><TD>Forecast duration (the part &#60; 1 day)
                        Default  21600 sec </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_days             </TD>
     <!--  type  --><TD valign=top>real(r8)  </TD>
-    <!--descript--><TD>Forecast duration (the part > 24*3600 sec)
+    <!--descript--><TD>Forecast duration (the part &#62; 24*3600 sec)
                        Default  0 days </TD></TR>
 </TABLE>
 
