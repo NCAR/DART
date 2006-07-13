@@ -1105,13 +1105,13 @@ timeindex = nc_get_tindex(ncFileID, model_time)
 if ( timeindex < 0 ) then
    call get_time(model_time,is1,id1)
    write(errstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
-   write(errstring,'(''model time (d,s) ('',i5,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+   write(errstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
           id1,is1,timeindex,ncFileID%ncid
    call error_handler(E_ERR,'aoutput_diagnostics', errstring, source, revision, revdate)
 endif
 
    call get_time(model_time,is1,id1)
-   write(errstring,'(''model time (d,s) ('',i5,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+   write(errstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
           id1,is1,timeindex,ncFileID%ncid
    call error_handler(E_DBG,'aoutput_diagnostics', errstring, source, revision, revdate)
 
