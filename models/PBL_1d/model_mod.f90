@@ -299,6 +299,11 @@ call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
+! Record the namelist values used for the run ...
+call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
+
 ! Begin by reading the namelist input
 if(file_exist('wrf1d_namelist.input')) then
    unit_nml = open_file(fname = 'wrf1d_namelist.input', action = 'read')
