@@ -45,9 +45,16 @@ ifeq ($(DART_TARGET),)
    DART_TARGET=Linux_coral
  endif
 
+ ifeq ($(HOST),bv1103en)
+   DART_TARGET=Linux_bluevista
+ endif
+ ifeq ($(HOST),bv1203en)
+   DART_TARGET=Linux_bluevista
+ endif
 
 
- ifeq ($(HOST),bangkok.cgd.ucar.edu)
+ #ifeq ($(HOST),bangkok.cgd.ucar.edu)
+ ifeq ($(HOST),bangkok)
    DART_TARGET=Linux_bangkok
  endif
 
@@ -144,7 +151,7 @@ MPIFC = mpif77
 MPI_HOME = /contrib/lam
 endif
 
-# bangkok
+# bangkok - linux cluster, PGI compiler
 #ifeq ($(DART_TARGET),Linux_PGI_9_Mpich)
 ifeq ($(DART_TARGET),Linux_bangkok)
 MPI_HOME = /usr/local/mpich-1.2.6-pgi-hpf-cc-5.2-4
@@ -153,13 +160,23 @@ FC = pgf90
 BATCH = pbs
 endif
 
-
 # lightning
 #ifeq ($(DART_TARGET),Linux_PGI_9_Mpich)
 ifeq ($(DART_TARGET),Linux_lightning)
 MPI_HOME = /usr/local/mpich
 MPIFC = $(MPI_HOME)/bin/mpif90
 FC = pgf90
+BATCH = lsf
+endif
+
+# bluevista
+#ifeq ($(DART_TARGET),Linux_IBM)
+ifeq ($(DART_TARGET),Linux_bluevista)
+MPI_HOME = /usr/lib
+MPIFC = mpxlf
+FC = xlf
+FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qfree=f90
+FMPIFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qfree=f90
 BATCH = lsf
 endif
 
@@ -177,7 +194,8 @@ SRC = ftest_f77.f ftest_f90.f90 ftest_mpi.f90 ctest.c ctest_mpi.c \
 ALLSRC = $(SRC) Makefile README *.nml runme_*
 
 EXE = ftest_f90 ftest_mpi commtest
-ALLEXE = $(EXE) ftest_f77 ctest ctest_mpi ftest_nml
+ALLEXE = $(EXE) ftest_f77 ctest ctest_mpi ftest_nml \
+         stest stest_mpi stest2a stest2b stest2a_mpi stest2b_mpi
 
 # ----------------------------------------------------------------------------
 
@@ -217,6 +235,29 @@ ftest_mpi: ftest_mpi.f90
 # very simple f90 test program with namelist input
 ftest_nml: ftest_nml.f90
 	$(FC) $(FFLAGS) ftest_nml.f90 -o $(FLIBS) ftest_nml
+
+# test of named pipe communication, no mpi 
+stest: stest.f90
+	$(FC) $(FFLAGS) stest.f90 -o $(FLIBS) stest
+
+# test of named pipe communication with mpi
+stest_mpi: stest_mpi.f90
+	$(MPIFC) $(FMPIFLAGS) stest_mpi.f90 -o $(FMPILIBS) stest_mpi
+
+# test of paired programs, no mpi
+stest2a: stest2a.f90
+	$(FC) $(FFLAGS) stest2a.f90 -o $(FLIBS) stest2a
+
+stest2b: stest2b.f90
+	$(FC) $(FFLAGS) stest2b.f90 -o $(FLIBS) stest2b
+
+# test of paired programs with mpi
+stest2a_mpi: stest2a_mpi.f90
+	$(MPIFC) $(FMPIFLAGS) stest2a_mpi.f90 -o $(FMPILIBS) stest2a_mpi
+
+stest2b_mpi: stest2b_mpi.f90
+	$(MPIFC) $(FMPIFLAGS) stest2b_mpi.f90 -o $(FMPILIBS) stest2b_mpi
+
 
 # very simple c program without mpi
 ctest: ctest.c
