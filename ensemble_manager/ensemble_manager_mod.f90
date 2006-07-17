@@ -86,10 +86,13 @@ integer              :: my_pe, num_pes
 ! different restart types.
 ! If true a single restart file containing all ensemble vars is read/written
 ! If false, one restart file is used for each ensemble member
-logical :: single_restart_file_in  = .true.
-logical :: single_restart_file_out = .true.
+logical  :: single_restart_file_in  = .true.
+logical  :: single_restart_file_out = .true.
+! Size of perturbations for creating ensembles when model won't do it
+real(r8) :: perturbation_amplitude  = 0.2_r8
 
-namelist / ensemble_manager_nml / single_restart_file_in, single_restart_file_out
+namelist / ensemble_manager_nml / single_restart_file_in, single_restart_file_out, &
+                                  perturbation_amplitude
 
 !-----------------------------------------------------------------
 
@@ -156,7 +159,7 @@ subroutine read_ensemble_restart(ens_handle, start_copy, end_copy, &
 type(ensemble_type),  intent(inout)           :: ens_handle
 integer,              intent(in)              :: start_copy, end_copy
 logical,              intent(in)              :: start_from_restart
-character(len = 129), intent(in)              :: file_name
+character(len = *),   intent(in)              :: file_name
 type(time_type),      intent(in),    optional :: init_time
 
 ! The ensemble being read from restart is stored in copies start_copy:end_copy
@@ -165,13 +168,20 @@ type(time_type),      intent(in),    optional :: init_time
 ! where other copies like mean, inflation, etc., are stored.
 
 ! Would like to avoid num_vars size storage
-real(r8)              :: ens(ens_handle%num_vars)
-integer               :: iunit, i, j, io, seq_unit
-character(len = 129)  :: this_file_name
-character(len = 4)    :: extension
-type(time_type)       :: ens_time
-integer               :: owner, owners_index, this_ens
-logical               :: interf_provided
+real(r8)                            :: ens(ens_handle%num_vars)
+integer                             :: iunit, i, j, io, seq_unit
+character(len = LEN(file_name))     :: this_file_name
+character(len = LEN(file_name) + 4) :: extension
+type(time_type)                     :: ens_time
+integer                             :: owner, owners_index, global_copy_index
+logical                             :: interf_provided
+
+! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
+if(.not. start_from_restart .and. .not. single_restart_file_in) then
+   write(errstring, *) 'start_from_restart in filter_nml and single_restart_file_in in &
+      ensemble_manager_nml cannot both be false'
+   call error_handler(E_ERR,'read_ensemble_restart', errstring, source, revision, revdate)
+endif
 
 !-------- Block for single restart file or single member  being perturbed -----
 
@@ -179,7 +189,7 @@ if(single_restart_file_in .or. .not. start_from_restart) then
    ! Single restart file is read only by master_pe and then distributed
    if(my_pe == 0) iunit = open_restart_read(file_name)
 
-   ! Loop to read in each requested ensemble member
+   ! Loop through the total number of copies
    do i = start_copy, end_copy
       ! Only master_pe does reading. Everybody can do their own perturbing
       if(my_pe == 0) then
@@ -190,7 +200,7 @@ if(single_restart_file_in .or. .not. start_from_restart) then
          if(present(init_time)) ens_time = init_time
       endif
 
-      ! Ship to where this ensemble index is being stored
+      ! Store this copy in the appropriate place on the appropriate process
       call put_copy(0, ens_handle, i, ens, ens_time)
 
    end do
@@ -201,14 +211,13 @@ if(single_restart_file_in .or. .not. start_from_restart) then
 else
 !----------- Block that follows is for multiple restart files -----------
    ! Loop to read in all my ensemble members
-   do i = 1, ens_handle%my_num_copies
+   READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
       ! Get global index for my ith ensemble
-      this_ens = ens_handle%my_copies(i)
+      global_copy_index = ens_handle%my_copies(i)
       ! If this global copy is in the range being read in, proceed
-      if(this_ens >= start_copy .and. this_ens <= end_copy) then
-         ! The file name has extension 1 for start_copy, etc.
-         write(extension, 99) this_ens - start_copy + 1
-         99 format(i4.4)
+      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
+         ! File name extension is the global index number for the copy
+         write(extension, '(i4.4)') global_copy_index - start_copy + 1
          this_file_name = trim(file_name) // '.' // extension
          iunit = open_restart_read(this_file_name)
 
@@ -219,30 +228,103 @@ else
          ! Close the restart file
          call close_restart(iunit)
       endif
-   end do
+   end do READ_MULTIPLE_RESTARTS
 endif
 
 !------------------- Block that follows perturbs single base restart --------
 if(.not. start_from_restart) then
-   do i = 1, ens_handle%my_num_copies
-      this_ens = ens_handle%my_copies(i)
+   PERTURB_MY_RESTARTS: do i = 1, ens_handle%my_num_copies
+      global_copy_index = ens_handle%my_copies(i)
       ! If this is one of the actual ensemble copies, then perturb
-      if(this_ens >= start_copy .and. this_ens <= end_copy) then
+      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
          ! See if model has an interface to perturb
          call pert_model_state(ens_handle%vars(:, i), ens_handle%vars(:, i), interf_provided)
-         ! If model does not provide a perturbing interface, do it here with uniform 0.2
+         ! If model does not provide a perturbing interface, do it here
          if(.not. interf_provided) then
             ! To reproduce for varying pe count, need  fixed sequence for each copy
-            call init_random_seq(random_seq, this_ens)
+            call init_random_seq(random_seq, global_copy_index)
             do j = 1, ens_handle%num_vars
-               ens_handle%vars(j, i) = random_gaussian(random_seq, ens_handle%vars(j, i), 0.2_r8)
+               ens_handle%vars(j, i) = random_gaussian(random_seq, ens_handle%vars(j, i), &
+                  perturbation_amplitude)
             end do
          endif
+      endif
+   end do PERTURB_MY_RESTARTS
+endif
+
+end subroutine read_ensemble_restart
+
+!-----------------------------------------------------------------
+
+subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy)
+
+type(ensemble_type),  intent(inout) :: ens_handle
+character(len = *),   intent(in)    :: file_name
+integer,              intent(in)    :: start_copy, end_copy
+
+! Large temporary storage to be avoided if possible
+real(r8)                            :: ens(ens_handle%num_vars)
+type(time_type)                     :: ens_time
+integer                             :: iunit, i, seq_unit, global_index
+integer                             :: owner, owners_index
+character(len = LEN(file_name))     :: this_file_name
+character(len = LEN(FILE_NAME) + 4) :: extension
+
+! For single file, need to send restarts to pe0 and it writes them out.
+!-------------- Block for single_restart file -------------
+if(single_restart_file_out) then
+
+   ! Single restart file is written only by the master_pe
+   if(my_pe == 0) then
+      iunit = open_restart_write(file_name)
+      
+      ! Loop to write each ensemble member
+      do i = start_copy, end_copy
+         ! Figure out where this ensemble member is being stored
+         call get_copy_owner_index(i, owner, owners_index)
+         ! If it's on the master pe, just write it
+         if(owner == 0) then
+            call awrite_state_restart(ens_handle%time(owners_index), &
+               ens_handle%vars(:, owners_index), iunit)
+         else
+            ! Get the ensemble from the owner and write it out
+            ! This communication assumes index numbers are monotonically increasing
+            ! and that communications is blocking so that there are not multiple 
+            ! outstanding messages from the same processors (also see send_to below).
+            call receive_from(owner, ens, ens_time)
+            call awrite_state_restart(ens_time, ens, iunit)
+         endif
+      end do
+      call close_restart(iunit)
+   else
+      ! If I'm not the master pe with a single restart, I must send my copies
+      ! to master pe for writing to file
+      do i = 1, ens_handle%my_num_copies
+         ! Figure out which global index this is
+         global_index = ens_handle%my_copies(i)
+         ! Ship this ensemble off to the master
+         if(global_index >= start_copy .and. global_index <= end_copy) &
+            call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
+      end do
+   endif
+
+else
+!-------------- Block for multiple restart files -------------
+   ! Everyone can just write their own files
+   do i = 1, ens_handle%my_num_copies
+      ! Figure out which global index this is
+      global_index = ens_handle%my_copies(i)
+      if(global_index >= start_copy .and. global_index <= end_copy) then
+         write(extension, '(i4.4)') ens_handle%my_copies(i)
+         this_file_name = trim(file_name) // '.' // extension
+         iunit = open_restart_write(this_file_name)
+         call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
+         call close_restart(iunit)
       endif
    end do
 endif
 
-end subroutine read_ensemble_restart
+end subroutine write_ensemble_restart
 
 !-----------------------------------------------------------------
 
@@ -405,95 +487,32 @@ end subroutine end_ensemble_manager
 
 !-----------------------------------------------------------------
 
-subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy)
-
-type(ensemble_type),  intent(inout) :: ens_handle
-character(len = 129), intent(in)    :: file_name
-integer,              intent(in)    :: start_copy, end_copy
-
-! Large temporary storage to be avoided if possible
-real(r8)             :: ens(ens_handle%num_vars)
-type(time_type)      :: ens_time
-integer              :: iunit, i, seq_unit, global_index
-integer              :: owner, owners_index
-character(len = 129) :: this_file_name
-character(len = 4)   :: extension
-
-! For single file, need to send restarts to pe0 and it writes them out.
-!-------------- Block for single_restart file -------------
-if(single_restart_file_out) then
-
-   ! Single restart file is written only by the master_pe
-   if(my_pe == 0) then
-      iunit = open_restart_write(file_name)
-      
-      ! Loop to write each ensemble member
-      do i = start_copy, end_copy
-         ! Figure out where this ensemble member is being stored
-         call get_copy_owner_index(i, owner, owners_index)
-         ! If it's on the master pe, just write it
-         if(owner == 0) then
-            call awrite_state_restart(ens_handle%time(owners_index), &
-               ens_handle%vars(:, owners_index), iunit)
-         else
-            ! Get the ensemble from the owner and write it out
-            call receive_from(owner, ens, ens_time)
-            call awrite_state_restart(ens_time, ens, iunit)
-         endif
-      end do
-      call close_restart(iunit)
-   else
-      ! Non-master pe, single_restart_file
-      do i = 1, ens_handle%my_num_copies
-         ! Figure out which global index this is
-         global_index = ens_handle%my_copies(i)
-         ! Ship this ensemble off to the master
-         if(global_index >= start_copy .and. global_index <= end_copy) &
-            call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
-      end do
-   endif
-
-else
-!-------------- Block for multiple restart files -------------
-   ! Everyone can just write their own files
-   do i = 1, ens_handle%my_num_copies
-      ! Figure out which global index this is
-      global_index = ens_handle%my_copies(i)
-      if(global_index >= start_copy .and. global_index <= end_copy) then
-         write(extension, 99) ens_handle%my_copies(i)
-         99 format(i4.4)
-         this_file_name = trim(file_name) // '.' // extension
-         iunit = open_restart_write(this_file_name)
-         call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-         call close_restart(iunit)
-      endif
-   end do
-endif
-
-end subroutine write_ensemble_restart
-
-!-----------------------------------------------------------------
-
-subroutine duplicate_ens(ens1, ens2, copy_time)
+subroutine duplicate_ens(ens1, ens2, duplicate_time)
 
 type(ensemble_type), intent(in)             :: ens1
 type(ensemble_type), intent(inout)          :: ens2
-logical,             intent(in)             :: copy_time
-
-real(r8)             :: ens(ens1%num_vars)
-type(time_type)      :: ens_time
-integer              :: i
+logical,             intent(in)             :: duplicate_time
 
 ! Name was changed from copy_ens to avoid confusion in naming.
-! If copy_time is true, also copies the time information from ens1 to ens2. 
-! If copy_time is false, the times in ens2 are left unchanged.
+! Should only be used if the ens%vars storage is current (each pe has subset of
+! copies of all vars).
+! If duplicate_time is true, also copies the time information from ens1 to ens2. 
+! If duplicate_time is false, the times in ens2 are left unchanged.
 
 ! Check to make sure that the ensembles are compatible
-if(ens1%num_copies /= ens2%num_copies .or. ens1%num_vars /= ens2%num_vars .or. &
-   ens1%distribution_type /= ens2%distribution_type) then
-   write(errstring, *) 'incompatible num_copies, num_vars or distribution_type', &
-      ens1%num_copies, ens2%num_copies, ens1%num_vars, ens2%num_vars, &
-      ens1%distribution_type, ens2%distribution_type
+if(ens1%num_copies /= ens2%num_copies) then
+   write(errstring, *) 'num_copies ', ens1%num_copies, ' and ', ens2%num_copies, &
+      'must be equal'
+   call error_handler(E_ERR,'duplicate_ens', errstring, source, revision, revdate)
+endif
+if(ens1%num_vars /= ens2%num_vars) then
+   write(errstring, *) 'num_vars ', ens1%num_vars, ' and ', ens2%num_vars, &
+      'must be equal'
+   call error_handler(E_ERR,'duplicate_ens', errstring, source, revision, revdate)
+endif
+if(ens1%distribution_type /= ens2%distribution_type) then
+   write(errstring, *) 'distribution_type ', ens1%distribution_type, ' and ', &
+      ens2%distribution_type, 'must be equal'
    call error_handler(E_ERR,'duplicate_ens', errstring, source, revision, revdate)
 endif
 
@@ -501,7 +520,7 @@ endif
 ens2%vars = ens1%vars
 
 ! Duplicate time if requested
-if(copy_time) ens2%time = ens1%time
+if(duplicate_time) ens2%time = ens1%time
 
 end subroutine duplicate_ens
 
@@ -531,7 +550,8 @@ type (ensemble_type), intent(in)  :: ens_handle
 integer,              intent(out) :: copies(:)
 
 if(size(copies) < ens_handle%my_num_copies) then
-   write(errstring, *) 'Argument copies has insufficient size'
+   write(errstring, *) 'Array copies only has size ', size(copies), &
+      ' but must be at least ', ens_handle%my_num_copies
    call error_handler(E_ERR, 'get_my_copies', errstring, source, revision, revdate)
 endif
 
@@ -565,7 +585,8 @@ type (ensemble_type), intent(in)  :: ens_handle
 integer,              intent(out) :: vars(:)
 
 if(size(vars) < ens_handle%my_num_vars) then
-   write(errstring, *) 'Arguement vars has insufficient size'
+   write(errstring, *) 'Array vars only has size ', size(vars), &
+      ' but must be at least ', ens_handle%my_num_vars
    call error_handler(E_ERR,'get_my_vars', errstring, source, revision, revdate)
 endif
 
@@ -633,6 +654,7 @@ end subroutine set_up_ens_distribution
 !-----------------------------------------------------------------
 
 subroutine get_copy_owner_index(copy_number, owner, owners_index)
+!!!subroutine get_copy_owner_index(copy_number, owner, owners_index, distribution_type)
 
 ! Given the copy number, returns which PE stores it when copy complete
 ! and its index in that pes local storage. Depends on distribution_type
@@ -640,6 +662,7 @@ subroutine get_copy_owner_index(copy_number, owner, owners_index)
 
 integer, intent(in)  :: copy_number
 integer, intent(out) :: owner, owners_index
+!!!integer, intent(in) :: distribution_type
 
 integer :: div
 
@@ -652,6 +675,7 @@ end subroutine get_copy_owner_index
 !-----------------------------------------------------------------
 
 subroutine get_var_owner_index(var_number, owner, owners_index)
+!!!subroutine get_var_owner_index(var_number, owner, owners_index, distribution_type)
 
 ! Given the var number, returns which PE stores it when var complete
 ! and its index in that pes local storage. Depends on distribution_type
@@ -659,6 +683,7 @@ subroutine get_var_owner_index(var_number, owner, owners_index)
 
 integer, intent(in)  :: var_number
 integer, intent(out) :: owner, owners_index
+!!!integer, intent(in) :: distribution_type
 
 integer :: div
 
@@ -671,6 +696,7 @@ end subroutine get_var_owner_index
 !-----------------------------------------------------------------
 
 function get_max_num_vars(num_vars)
+!!!function get_max_num_vars(num_vars, distribution_type)
 
 ! Returns the largest number of vars that are on any pe when copy complete.
 ! Depends on distribution_type with only option 1 currently implemented.
@@ -678,6 +704,7 @@ function get_max_num_vars(num_vars)
 
 integer             :: get_max_num_vars
 integer, intent(in) :: num_vars
+!!!integer, intent(in) :: distribution_type
 
 get_max_num_vars = num_vars / num_pes + 1
 
@@ -686,6 +713,7 @@ end function get_max_num_vars
 !-----------------------------------------------------------------
 
 function get_max_num_copies(num_copies)
+!!!function get_max_num_copies(num_copies, distribution_type)
 
 ! Returns the largest number of copies that are on any pe when var complete.
 ! Depends on distribution_type with only option 1 currently implemented.
@@ -693,6 +721,7 @@ function get_max_num_copies(num_copies)
 
 integer             :: get_max_num_copies
 integer, intent(in) :: num_copies
+!!!integer, intent(in) :: distribution_type
 
 get_max_num_copies = num_copies / num_pes + 1
 
@@ -701,6 +730,7 @@ end function get_max_num_copies
 !-----------------------------------------------------------------
 
 subroutine get_var_list(num_vars, pe, var_list, pes_num_vars)
+!!!subroutine get_var_list(num_vars, pe, var_list, pes_num_vars, distribution_type)
 
 ! Returns a list of the vars stored by process pe when copy complete
 ! and the number of these vars.
@@ -709,6 +739,7 @@ subroutine get_var_list(num_vars, pe, var_list, pes_num_vars)
 
 integer,   intent(in)     :: num_vars, pe
 integer,   intent(out)    :: var_list(:), pes_num_vars
+!!!integer, intent(in) :: distribution_type
 
 integer :: num_per_pe_below, num_left_over, i
 
@@ -731,6 +762,7 @@ end subroutine get_var_list
 !-----------------------------------------------------------------
 
 subroutine get_copy_list(num_copies, pe, copy_list, pes_num_copies)
+!!!subroutine get_copy_list(num_copies, pe, copy_list, pes_num_copies, distribution_type)
 
 ! Returns a list of the copies stored by process pe when var complete.
 ! copy_list must be dimensioned large enough to hold all copies.
@@ -738,6 +770,7 @@ subroutine get_copy_list(num_copies, pe, copy_list, pes_num_copies)
 
 integer,   intent(in)    :: num_copies, pe
 integer,   intent(out)   :: copy_list(:), pes_num_copies
+!!!integer, intent(in) :: distribution_type
 
 integer :: num_per_pe_below, num_left_over, i
 
@@ -929,7 +962,7 @@ end subroutine all_copies_to_all_vars
 
 subroutine compute_copy_mean(ens_handle, start_copy, end_copy, mean_copy)
 
-! Assumes ensemble complete.
+! Assumes that ens_handle%copies is current; each pe has all copies of subset of vars
 ! Computes the mean of ensemble copies start_copy:end_copy and stores
 ! the result in mean_copy
 
@@ -952,7 +985,7 @@ end subroutine compute_copy_mean
 
 subroutine compute_copy_mean_sd(ens_handle, start_copy, end_copy, mean_copy, sd_copy)
 
-! Assumes ensemble complete. 
+! Assumes that ens_handle%copies is current; each pe has all copies of subset of vars
 ! Computes the mean and sd of ensemble copies start_copy:end_copy and stores
 ! mean in copy mean_copy and sd in copy sd_copy.
 
