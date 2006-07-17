@@ -37,7 +37,8 @@ public :: location_type, get_dist, get_location, set_location, set_location_miss
           write_location, read_location, interactive_location, vert_is_undef, &
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
-          horiz_dist_only, alloc_get_close_obs, get_close_obs, &
+          horiz_dist_only, get_close_obs, get_close_type, &
+          get_close_maxdist_init, get_close_obs_init, &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
           VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
 
@@ -62,6 +63,16 @@ type location_type
    integer  :: which_vert     ! determines if by level, height, pressure, ...
 end type location_type
 
+! Type to facilitate efficient compuation of observations close to a given location
+type get_close_type
+   integer              :: num
+   real(r8)             :: maxdist 
+   integer, allocatable :: lon_offset(:, :)
+   integer, allocatable :: obs_box(:)
+   integer, allocatable :: count(:, :)
+   integer, allocatable :: start(:, :)
+end type get_close_type
+
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical,save :: module_initialized = .false.
@@ -75,20 +86,13 @@ character(len = 129), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, lev or pressure"
 
 ! Global storage for fast approximate sin and cosine lookups
+! PAR For efficiency for small cases might want to fill tables as needed
 real(r8) :: my_sin(-630:630), my_cos(-630:630), my_acos(-1000:1000)
 
-! Global storage for efficient get_close_obs search
-! WARNING: NLON MUST BE ODD
-integer, parameter :: nlon = 71, nlat = 36
-!integer, parameter :: nlon = 9, nlat = 10
+! If maxdist stays the same, don't need to do box distance calculations
+integer :: last_maxdist = -1.0
 
-! Permanent global storage for efficient get_close_obs
-integer :: count(nlon, nlat), lon_offset(nlat, nlat)
-integer :: cum_start, start(nlon, nlat)
-
-! If cutoff stays the same, don't need to do box distance calculations
-integer :: last_cutoff = -1.0
-
+character(len=129) :: errstring
 
 !-----------------------------------------------------------------
 ! Namelist with default values
@@ -102,12 +106,16 @@ integer :: last_cutoff = -1.0
 !                                to one radian in horizontal
 ! vert_normalization_level ->    Number of levels that give a distance equivalent
 !                                to one radian in horizontal
+! nlon ->                        Number of longitude boxes for get_close_obs MUST BE ODD
+! nlat ->                        Number of latitude boxes for get_close_obs
 
 logical  :: horiz_dist_only             = .true.
 real(r8) :: vert_normalization_pressure = 100000.0_r8
 real(r8) :: vert_normalization_height   = 10000.0_r8
 real(r8) :: vert_normalization_level    = 20.0_r8 
 logical  :: approximate_distance        = .false.
+integer  :: nlon                        = 71
+integer  :: nlat                        = 36
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level, approximate_distance
@@ -140,6 +148,12 @@ call check_namelist_read(iunit, io, "location_nml")
 call error_handler(E_MSG,'initialize_module','location_nml values',' ',' ',' ')
 write(logfileunit, nml=location_nml)
 write(     *     , nml=location_nml)
+
+! Make sure that the number of longitudes, nlon, for get_close_obs is odd
+if(nlon / 2 * 2 == nlon) then
+   call error_handler(E_ERR, 'initialize_module', 'nlon must be odd', &
+      errstring, source, revision, revdate)
+endif
 
 ! Copy the normalization factors in the vertical into an array
 vert_normalization(1) = vert_normalization_level
@@ -192,7 +206,6 @@ real(r8) :: lon_dif, vert_dist
 integer  :: lat1_ind, lat2_ind, lon_ind, temp  ! indexes into lookup tables
 logical  :: comp_h_only
 
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -473,8 +486,6 @@ type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat
 real(r8), intent(in) :: vert_loc
 integer,  intent(in) :: which_vert
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -786,66 +797,90 @@ contains
 
 end subroutine nc_write_location
 
-
 !----------------------------------------------------------------------------
 
-subroutine alloc_get_close_obs(num, obs, cutoff, obs_box)
+subroutine get_close_obs_init(gc, num, obs)
+
+! Initializes part of get_close accelerator that depends on the particular obs
 
 implicit none
 
-integer, intent(in) :: num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(out) :: obs_box(num)
+type(get_close_type), intent(inout) :: gc            
+integer,              intent(in)    :: num
+type(location_type),  intent(in)    :: obs(num)
 
-integer :: i, j, blat_ind, tlat_ind
-integer :: lon_box(num), lat_box(num), tstart(nlon, nlat)
-integer :: bot_tlat_ind, top_tlat_ind
-real(r8) :: base_lon, base_lat, target_lat, del_lon, cos_del_lon
+integer :: i, j, cum_start, lon_box(num), lat_box(num), tstart(nlon, nlat)
+
+! Allocate storage for obs number dependent part
+allocate(gc%obs_box(num))
+gc%obs_box(:) = -1
+
+! Set the value of num_obs in the structure
+gc%num = num
 
 ! Begin by computing the number of observations in each box in lat/lon
-count = 0
+gc%count = 0
 do i = 1, num
    lon_box(i) = int(nlon * obs(i)%lon / (2.0_r8 * PI)) + 1
    if(lon_box(i) > nlon) lon_box(i) = 1
    lat_box(i) = int(nlat * (obs(i)%lat + PI / 2.0_r8) / PI) + 1
    if(lat_box(i) > nlat) lat_box(i) = nlat
    if(lat_box(i) < 1) lat_box(i) = 1
-   count(lon_box(i), lat_box(i)) = count(lon_box(i), lat_box(i)) + 1
+   gc%count(lon_box(i), lat_box(i)) = gc%count(lon_box(i), lat_box(i)) + 1
 end do
 
 ! Figure out where storage for each boxes members should begin
 cum_start = 1
 do i = 1, nlon
    do j = 1, nlat
-      start(i, j) = cum_start
-      cum_start = cum_start + count(i, j)
+      gc%start(i, j) = cum_start
+      cum_start = cum_start + gc%count(i, j)
    end do
 end do
 
-tstart = start
 ! Now we know how many are in each box, get a list of which are in each box
+tstart = gc%start
 do i = 1, num
-   obs_box(tstart(lon_box(i), lat_box(i))) = i
+   gc%obs_box(tstart(lon_box(i), lat_box(i))) = i
    tstart(lon_box(i), lat_box(i)) = tstart(lon_box(i), lat_box(i)) + 1
 end do
 
-! Don't need to do the close box computation again if cutoff hasn't changed
-if(cutoff == last_cutoff) then
-   return
-else
-   last_cutoff = cutoff
-endif
+end subroutine get_close_obs_init
+
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_maxdist_init(gc, maxdist)
+
+implicit none
+
+type(get_close_type), intent(inout) :: gc
+real(r8),             intent(in)    :: maxdist
+
+integer :: i, j, blat_ind, tlat_ind
+integer :: bot_tlat_ind, top_tlat_ind
+real(r8) :: base_lon, base_lat, target_lat, del_lon, cos_del_lon
+
+! Allocate the storage for the grid dependent boxes
+allocate(gc%lon_offset(nlat, nlat), gc%count(nlon, nlat), gc%start(nlon, nlat))
+gc%lon_offset = -1
+gc%count      = -1
+gc%start      = -1
+
+! Set the maximum distance in the structure
+gc%maxdist = maxdist
+
+! MIGHT AVOID DOING THIS WITH A COPY ROUTINE: HAVE SAME BOXES OFTEN
 
 ! Figure out which boxes are close to a box on a given latitude circle
 do blat_ind = 1, nlat
    ! Search from east side of base block
    base_lon = 360.0_r8 /nlon
    ! Start searching out, have to look for closest point in box being checked
-   ! Only have to search latitude boxes that are within cutoff distance
-   bot_tlat_ind = blat_ind - int(cutoff * nlat / PI) - 1
+   ! Only have to search latitude boxes that are within maximum distance
+   bot_tlat_ind = blat_ind - int(maxdist * nlat / PI) - 1
    if(bot_tlat_ind < 1) bot_tlat_ind = 1
-   top_tlat_ind = blat_ind + int(cutoff * nlat / PI) + 1
+   top_tlat_ind = blat_ind + int(maxdist * nlat / PI) + 1
    if(top_tlat_ind > nlat) top_tlat_ind = nlat
    do tlat_ind = bot_tlat_ind, top_tlat_ind
       ! For lats north of me, search from NE corner as base to SW corner as target
@@ -863,7 +898,7 @@ do blat_ind = 1, nlat
       endif
 
       ! Compute the lon offset directly by inverting distance
-      cos_del_lon = (cos(cutoff) - sin(base_lat*DEG2RAD) * sin(target_lat*DEG2RAD)) / &
+      cos_del_lon = (cos(maxdist) - sin(base_lat*DEG2RAD) * sin(target_lat*DEG2RAD)) / &
          (cos(base_lat*DEG2RAD) * cos(target_lat*DEG2RAD))
       if(cos_del_lon < -1) then
          del_lon = PI
@@ -872,43 +907,40 @@ do blat_ind = 1, nlat
       else
          del_lon = acos(cos_del_lon)
       endif
-      lon_offset(blat_ind, tlat_ind) = int(del_lon * nlon / (2.0 * PI)) + 1
+      gc%lon_offset(blat_ind, tlat_ind) = int(del_lon * nlon / (2.0 * PI)) + 1
 
    end do
 end do
 
-end subroutine alloc_get_close_obs
-
+end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
+subroutine get_close_obs(gc, base_obs_loc, obs, num_close, close_ind, dist)
 
 !!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
 
 implicit none
 
-integer, intent(in) :: base_ob, num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(in) :: obs_box(num)
-integer, intent(out) :: num_close, close_ind(num)
-real(r8), intent(out) :: dist(num)
+type(get_close_type), intent(in)  :: gc
+type(location_type),  intent(in)  :: base_obs_loc, obs(:)
+integer,              intent(out) :: num_close, close_ind(:)
+real(r8),             intent(out) :: dist(:)
 
 integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind
 real(r8) :: this_dist
 
 ! Begin by figuring out which box the base_ob is in
-lon_box = int(nlon * obs(base_ob)%lon / (2.0_r8 * PI)) + 1
+lon_box = int(nlon * base_obs_loc%lon / (2.0_r8 * PI)) + 1
 if(lon_box > nlon) lon_box = 1
-lat_box = int(nlat * (obs(base_ob)%lat + PI / 2.0_r8) / PI) + 1
+lat_box = int(nlat * (base_obs_loc%lat + PI / 2.0_r8) / PI) + 1
 if(lat_box > nlat) lat_box = nlat
 
 num_close = 0
 
 ! Next, loop through to find each box that is close to this box
 do j = 1, nlat
-   n_lon = lon_offset(lat_box, j)
+   n_lon = gc%lon_offset(lat_box, j)
    if(n_lon > 0) then
       do i = -1 * (n_lon -1), n_lon - 1
          ! Search a box at this latitude j offset in longitude by i
@@ -916,20 +948,22 @@ do j = 1, nlat
          if(lon_ind > nlon) lon_ind = lon_ind - nlon
          if(lon_ind < 1) lon_ind = lon_ind + nlon
          ! Box to search is lon_ind, j
-         n_in_box = count(lon_ind, j)
-         st = start(lon_ind, j)
+         n_in_box = gc%count(lon_ind, j)
+         st = gc%start(lon_ind, j)
          ! Loop to check how close all obs in the box are; add those that are close
          do k = 1, n_in_box
+
+! SHOULD ADD IN OPTIONAL ARGUMENT FOR DOING THIS!!!
             ! Could avoid adding any that have nums lower than base_ob???
-            t_ind = obs_box(st - 1 + k)
+            t_ind = gc%obs_box(st - 1 + k)
             ! Can compute total distance here if verts are the same
-            if(obs(base_ob)%which_vert == obs(t_ind)%which_vert) then
-               this_dist = get_dist(obs(base_ob), obs(t_ind))
+            if(base_obs_loc%which_vert == obs(t_ind)%which_vert) then
+               this_dist = get_dist(base_obs_loc, obs(t_ind))
             else
             ! Otherwise can just get horizontal distance
-               this_dist = get_dist(obs(base_ob), obs(t_ind), no_vert = .true.)
+               this_dist = get_dist(base_obs_loc, obs(t_ind), no_vert = .true.)
             endif
-            if(this_dist <= cutoff) then
+            if(this_dist <= gc%maxdist) then
                ! Add this ob to the list
                num_close = num_close + 1
                close_ind(num_close) = t_ind
@@ -941,7 +975,6 @@ do j = 1, nlat
 end do
 
 end subroutine get_close_obs
-
 
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90
