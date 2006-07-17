@@ -44,23 +44,30 @@ contains
 
 !========================================================================
 
-subroutine init_random_seq(r)
+subroutine init_random_seq(r, seed)
 !----------------------------------------------------------------------
 ! You cannot generate any random numbers without calling this,
 ! so this is a sufficient entry point for initializing the module.
+! An integer seed can be used to get a particular repeatable sequence.
+
 !
 implicit none
 
 type(random_seq_type), intent(inout) :: r
+integer, optional,     intent(in)    :: seed
 
 if ( .not. module_initialized ) then
    call register_module(source, revision, revdate)
    module_initialized = .true.
 endif
 
-! Initialize the generator
-call init_ran1(r, seq_number)
-seq_number = seq_number - 1
+! Initialize the generator; use given seed if present, else sequence
+if(present(seed)) then
+   call init_ran1(r, seed)
+else
+   call init_ran1(r, seq_number)
+   seq_number = seq_number - 1
+endif
 
 end subroutine init_random_seq
 
