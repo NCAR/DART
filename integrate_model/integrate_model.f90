@@ -28,8 +28,14 @@ use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    write_state_restart, read_state_restart, open_restart_read, &
    open_restart_write, close_restart, awrite_state_restart, aread_state_restart
 
-use ensemble_manager_mod, only : init_ensemble_manager, put_ensemble_member, &
-   Aadvance_state, ensemble_type, get_ensemble_member
+use obs_model_mod, only : Aadvance_state
+
+use ensemble_manager_mod, only : init_ensemble_manager, put_copy, &
+   ensemble_type, get_copy
+
+use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
+                              task_count
+
 
 implicit none
 
@@ -57,6 +63,12 @@ namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
 
 !----------------------------------------------------------------
 
+! This program should only be run with a single process
+call initialize_mpi_utilities()
+if(task_count() > 1) &
+   call error_handler(E_ERR,'integrate_model','Only use single process', &
+   source,revision,revdate)
+
 call initialize_utilities('integrate_model')
 call register_module(source,revision,revdate)
 
@@ -73,33 +85,32 @@ write(     *     , nml=integrate_model_nml)
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
 model_size = get_model_size()
+allocate(x(model_size))
 
 !------------------- Read restart from file ----------------------
 iunit = open_restart_read(ic_file_name)
 ! Read in the target time
-allocate(x(model_size))
 call aread_state_restart(model_time, x, iunit, target_time)
 call close_restart(iunit)
 !-----------------  Restart read in --------------------------------
 
-! Put this into and ensemble_manager type
-call init_ensemble_manager(ens_handle, 1, model_size)
-call put_ensemble_member(ens_handle, 1, x, model_time)
+! Put this into an ensemble_manager type
+call init_ensemble_manager(ens_handle, 1, model_size, 1)
+call put_copy(0, ens_handle, 1, x, model_time)
 
 ! Advance this state to the target time (which comes from namelist)
 ! If the model time is past the obs set time, just need to skip
-!call print_time(target_time, 'target time is')
-!call print_time(model_time, 'model time is')
-if(model_time < target_time) then
-   call Aadvance_state(ens_handle, target_time, 0, adv_ens_command)
-endif
+if(model_time < target_time) &
+   call Aadvance_state(ens_handle, 1, target_time, 0, adv_ens_command)
 
 ! Output the restart file if requested
 iunit = open_restart_write(ud_file_name)
-call get_ensemble_member(ens_handle, 1, x, model_time)
+call get_copy(0, ens_handle, 1, x, model_time)
 call awrite_state_restart(model_time, x, iunit)
 call close_restart(iunit)
 
 call timestamp(source,revision,revdate,'end') ! closes the log file.
+
+call finalize_mpi_utilities()
 
 end program integrate_model
