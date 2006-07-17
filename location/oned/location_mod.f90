@@ -24,8 +24,8 @@ private
 
 public :: location_type, get_dist, get_location, set_location, set_location_missing, &
           write_location, read_location, interactive_location, query_location, &
-          LocationDims, LocationName, LocationLName, &
-          alloc_get_close_obs, get_close_obs, &
+          LocationDims, LocationName, LocationLName, get_close_obs, &
+          get_close_maxdist_init, get_close_obs_init, get_close_type, &
           operator(==), operator(/=)
 
 ! CVS Generated file description for error handling, do not edit
@@ -38,6 +38,12 @@ type location_type
    private
    real(r8) :: x
 end type location_type
+
+! Needed as stub but not used in this low-order model
+type get_close_type
+   integer  :: num
+   real(r8) :: maxdist
+end type get_close_type
 
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
@@ -336,49 +342,59 @@ end if
 
 end subroutine interactive_location
 
-
-
 !----------------------------------------------------------------------------
 
-subroutine alloc_get_close_obs(num, obs, cutoff, obs_box)
+subroutine get_close_obs_init(gc, num, obs)
+
+! Initializes part of get_close accelerator that depends on the particular obs
+! Currently not doing much in this oned location 
 
 implicit none
 
-integer, intent(in) :: num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(out) :: obs_box(num)
+type(get_close_type), intent(inout) :: gc
+integer,              intent(in)    :: num
+type(location_type),  intent(in)    :: obs(num)
 
-! This does pre-computing for close obs; no function needed in one dimension
+! Set the value of num_obs in the structure
+gc%num = num
 
-return
-
-end subroutine alloc_get_close_obs
-
+end subroutine 
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
+subroutine get_close_maxdist_init(gc, maxdist)
+
+implicit none
+
+type(get_close_type), intent(inout) :: gc
+real(r8),             intent(in)    :: maxdist
+
+! Set the maximum distance in the structure
+gc%maxdist = maxdist
+
+end subroutine get_close_maxdist_init
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs(gc, base_obs_loc, obs, num_close, close_ind, dist)
 
 ! Default version with no smarts; no need to be smart in 1D
 
 implicit none
 
-integer, intent(in) :: base_ob, num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(in) :: obs_box(num)
-integer, intent(out) :: num_close, close_ind(num)
-real(r8), intent(out) :: dist(num)
+type(get_close_type), intent(in) :: gc
+type(location_type), intent(in) :: base_obs_loc, obs(:)
+integer, intent(out) :: num_close, close_ind(:)
+real(r8), intent(out) :: dist(:)
 
 integer :: i
 real(r8) :: this_dist
 
-! Return list of obs that are within cutoff and their distances
+! Return list of obs that are within maxdist and their distances
 num_close = 0
-do i = 1, num
-   this_dist = get_dist(obs(base_ob), obs(i))
-   if(this_dist <= cutoff) then
+do i = 1, gc%num
+   this_dist = get_dist(base_obs_loc, obs(i))
+   if(this_dist <= gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
       close_ind(num_close) = i
