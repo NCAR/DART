@@ -4,6 +4,8 @@
 ! returns 0 as the error code, there is a good chance the compile and
 ! link phase did not succeed.
 
+namelist /x/ fred, bob
+
 program ftest_mpi
 
 ! most fortran MPI implementations provide either a fortran 90 module
@@ -29,6 +31,7 @@ integer :: ierror, myrank, totalprocs
 
    print *, "MPI initialized successfully"
 
+   write ( *, nml=x)
 
    myrank = -1
    call MPI_Comm_rank(MPI_COMM_WORLD, myrank, ierror)
