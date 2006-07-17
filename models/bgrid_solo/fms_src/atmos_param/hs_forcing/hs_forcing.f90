@@ -30,7 +30,7 @@ module hs_forcing_mod
 use types_mod, only : r8
 use     constants_mod, only: KAPPA, CP, GRAV
 
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 use           fms_mod, only: error_mesg, FATAL, file_exist,       &
                              open_namelist_file, &
                              close_file,     &
@@ -207,18 +207,22 @@ contains
    type(time_type), intent(in) :: Time
 
 !-----------------------------------------------------------------------
-   integer  unit, io, ierr
+   integer  unit, io, ierr, iunit
 
 !     ----- read namelist -----
+! fms replaced with dart, 8 June, 2006
+call find_namelist_in_file("input.nml", "hs_forcing_nml", iunit)
+read(iunit, nml = hs_forcing_nml, iostat = io)
+call check_namelist_read(iunit, io, "hs_forcing_nml")
 
-      if (file_exist('input.nml')) then
-         unit = open_namelist_file ( )
-         ierr=1; do while (ierr /= 0)
-            read  (unit, nml=hs_forcing_nml, iostat=io, end=10)
-            ierr = check_nml_error (io, 'hs_forcing_nml')
-         enddo
-  10     call close_file (unit)
-      endif
+!!!      if (file_exist('input.nml')) then
+!!!         unit = open_namelist_file ( )
+!!!         ierr=1; do while (ierr /= 0)
+!!!            read  (unit, nml=hs_forcing_nml, iostat=io, end=10)
+!!!            ierr = check_nml_error (io, 'hs_forcing_nml')
+!!!         enddo
+!!!  10     call close_file (unit)
+!!!      endif
 
 !     ----- write version info and namelist to log file -----
 

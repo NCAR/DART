@@ -42,7 +42,7 @@ use      time_manager_mod, only:  time_type, get_time, set_time,  &
                                   operator(==), operator(>=),     &
                                   operator(/=)
 
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 use         fms_mod, only: file_exist, open_namelist_file,        &
                            write_version_number, &
                            error_mesg, FATAL, NOTE, stdlog
@@ -385,22 +385,26 @@ contains
 
     type (time_type), intent(in) :: Time_init, Time
       
-    integer :: unit, io, ierr, seconds, nc
+    integer :: unit, io, ierr, seconds, nc, iunit
     type (time_type) :: Time_dif
 
 !-----------------------------------------------------------------------
 !       ----- read namelist -----
 !      ----- write namelist (to standard output) -----
+! Old fms version replaced with dart 8 June, 2006
+call find_namelist_in_file("input.nml", "bgrid_integrals_nml", iunit)
+read(iunit, nml = bgrid_integrals_nml, iostat = io)
+call check_namelist_read(iunit, io, "bgrid_integrals_nml")
 
-      if ( file_exist('input.nml')) then
-         unit = open_namelist_file ( )
-         ierr=1; do while (ierr /= 0)
-            read  (unit, nml=bgrid_integrals_nml, iostat=io, end=10)
-            ierr = check_nml_error (io, 'bgrid_integrals_nml')
-         enddo
-!  10     call mpp_close (unit)
-   10   close (unit)
-      endif
+!!!      if ( file_exist('input.nml')) then
+!!!         unit = open_namelist_file ( )
+!!!         ierr=1; do while (ierr /= 0)
+!!!            read  (unit, nml=bgrid_integrals_nml, iostat=io, end=10)
+!!!            ierr = check_nml_error (io, 'bgrid_integrals_nml')
+!!!         enddo
+!!!!  10     call mpp_close (unit)
+!!!   10   close (unit)
+!!!      endif
 
       call write_version_number (version,tag)
       write (stdlog(), nml=bgrid_integrals_nml)

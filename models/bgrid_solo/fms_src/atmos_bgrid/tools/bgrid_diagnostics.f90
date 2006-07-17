@@ -38,7 +38,6 @@ use bgrid_change_grid_mod, only: mass_to_vel
 !use      diag_manager_mod, only: diag_axis_init, register_diag_field, &
 !                                 register_static_field, send_data
 use      time_manager_mod, only: time_type
-use utilities_mod, only : check_nml_error
 use            fms_mod, only: file_exist, open_namelist_file,    &
                               error_mesg, NOTE, &
                               stdlog,       &

@@ -47,7 +47,7 @@ use      bgrid_horiz_mod, only: get_horiz_grid_size,        &
 
 use     time_manager_mod, only: time_type, get_time, operator(+)
 
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 use              fms_mod, only: file_exist, open_namelist_file, &
                                 error_mesg, FATAL,              &
                                 stdlog,        &
@@ -142,19 +142,23 @@ contains
 
  type (time_type),     intent(in)    :: Time_init, Time, Time_step
 
-  integer :: unit, sec, ierr, io
+  integer :: unit, sec, ierr, io, iunit
 
 !-----------------------------------------------------------------------
 !----- read namelist -----
+call find_namelist_in_file("input.nml", "atmosphere_nml", iunit)
+read(iunit, nml = atmosphere_nml, iostat = io)
+call check_namelist_read(iunit, io, "atmosphere_nml")
 
-    if (file_exist('input.nml')) then
-        unit = open_namelist_file ( )
-        ierr=1; do while (ierr /= 0)
-           read (unit, nml=atmosphere_nml, iostat=io, end=10)
-           ierr = check_nml_error (io, 'atmosphere_nml')
-        enddo
- 10     call close_file (unit)
-    endif
+
+!!!    if (file_exist('input.nml')) then
+!!!        unit = open_namelist_file ( )
+!!!        ierr=1; do while (ierr /= 0)
+!!!           read (unit, nml=atmosphere_nml, iostat=io, end=10)
+!!!           ierr = check_nml_error (io, 'atmosphere_nml')
+!!!        enddo
+!!! 10     call close_file (unit)
+!!!    endif
 
 !----- write version and namelist to log file -----
 

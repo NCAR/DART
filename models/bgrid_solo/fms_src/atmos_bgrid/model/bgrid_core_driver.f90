@@ -57,7 +57,7 @@ use bgrid_conserve_energy_mod, only: bgrid_conserve_energy_init, &
 use  field_manager_mod, only: MODEL_ATMOS
 use tracer_manager_mod, only: get_number_tracers
 use   time_manager_mod, only: time_type, get_time
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 use            fms_mod, only: error_mesg, FATAL, file_exist, open_namelist_file,  &
                               write_version_number,     &
                               close_file, stdlog
@@ -253,20 +253,24 @@ contains
  type(bgrid_dynam_type), intent(inout) :: Dynam
  integer,                intent(out)   :: phys_axes(4)
 
- integer :: unit, io, ierr
+ integer :: unit, io, ierr, iunit
  integer :: ix, jx, kx
  integer :: sec, ntrace, ntprog, ntdiag
 !-----------------------------------------------------------------------
 !  ----- read namelist -----
+! fms replaced with dart 8 June, 2006
+call find_namelist_in_file("input.nml", "bgrid_core_driver_nml", iunit)
+read(iunit, nml = bgrid_core_driver_nml, iostat = io)
+call check_namelist_read(iunit, io, "bgrid_core_driver_nml")
 
-    if (file_exist('input.nml')) then
-        unit = open_namelist_file ( )
-        ierr=1; do while (ierr /= 0)
-           read (unit, nml=bgrid_core_driver_nml, iostat=io, end=10)
-           ierr = check_nml_error (io, 'bgrid_core_driver_nml')
-        enddo
- 10     call close_file (unit)
-    endif
+!!!    if (file_exist('input.nml')) then
+!!!        unit = open_namelist_file ( )
+!!!        ierr=1; do while (ierr /= 0)
+!!!           read (unit, nml=bgrid_core_driver_nml, iostat=io, end=10)
+!!!           ierr = check_nml_error (io, 'bgrid_core_driver_nml')
+!!!        enddo
+!!! 10     call close_file (unit)
+!!!    endif
 
 !-----------------------------------------------------------------------
 !  ----- read restart header records and set up grid resolution -----

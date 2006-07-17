@@ -51,7 +51,7 @@ use  fms_mod, only: file_exist, open_namelist_file,  &
 
 use constants_mod, only: pi
 
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 
 implicit none
 private
@@ -267,19 +267,24 @@ end function get_gaussian_topog
 
 subroutine read_namelist
 
-   integer :: unit, ierr, io
+   integer :: unit, ierr, io, iunit
    real(r8)    :: dtr
 
 !  read namelist
 
-   if ( file_exist('input.nml')) then
-      unit = open_namelist_file ( )
-      ierr=1; do while (ierr /= 0)
-         read  (unit, nml=gaussian_topog_nml, iostat=io, end=10)
-         ierr = check_nml_error(io,'gaussian_topog_nml')
-      enddo
- 10   call close_file (unit)
-   endif
+! Replace with new dart code, 8 June, 2006
+call find_namelist_in_file("input.nml", "gaussian_topog_nml", iunit)
+read(iunit, nml = gaussian_topog_nml, iostat = io)
+call check_namelist_read(iunit, io, "gaussian_topog__nml")
+
+!!!   if ( file_exist('input.nml')) then
+!!!      unit = open_namelist_file ( )
+!!!      ierr=1; do while (ierr /= 0)
+!!!         read  (unit, nml=gaussian_topog_nml, iostat=io, end=10)
+!!!         ierr = check_nml_error(io,'gaussian_topog_nml')
+!!!      enddo
+!!! 10   call close_file (unit)
+!!!   endif
 
 !  write version and namelist to log file
 

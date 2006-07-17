@@ -29,7 +29,7 @@ use types_mod, only : r8
 use  bgrid_horiz_mod, only: horiz_grid_type, get_horiz_grid_bound, TGRID
 use   bgrid_halo_mod, only: update_halo, TEMP
 use   topography_mod, only: gaussian_topog_init, get_topog_mean
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 use          fms_mod, only: file_exist, open_namelist_file, open_restart_file, &
                             open_ieee32_file, close_file,     &
                             stdlog, error_mesg, FATAL, write_version_number
@@ -76,18 +76,23 @@ subroutine cold_start_resol ( nx, ny, nz )
 
       integer, intent(out) :: nx, ny, nz
 
-      integer :: unit, ierr, io
+      integer :: unit, ierr, io, iunit
 
 !-------------- read namelist --------------
+! Old fms version replaced with dart 8 June, 2006
+call find_namelist_in_file("input.nml", "bgrid_cold_start_nml", iunit)
+read(iunit, nml = bgrid_cold_start_nml, iostat = io)
+call check_namelist_read(iunit, io, "bgrid_cold_start_nml")
 
-   if ( file_exist('input.nml')) then
-      unit = open_namelist_file ( )
-      ierr=1; do while (ierr /= 0)
-         read  (unit, nml=bgrid_cold_start_nml, iostat=io, end=10)
-         ierr = check_nml_error(io,'bgrid_cold_start_nml')
-      enddo
- 10   call close_file (unit)
-   endif
+
+!!!   if ( file_exist('input.nml')) then
+!!!      unit = open_namelist_file ( )
+!!!      ierr=1; do while (ierr /= 0)
+!!!         read  (unit, nml=bgrid_cold_start_nml, iostat=io, end=10)
+!!!         ierr = check_nml_error(io,'bgrid_cold_start_nml')
+!!!      enddo
+!!! 10   call close_file (unit)
+!!!   endif
 
 !-------- write version and namelist to log file --------
 

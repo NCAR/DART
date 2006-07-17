@@ -125,7 +125,7 @@ module fms_mod
 use types_mod, only : r8
 use fms_io_mod, only : fms_io_init, fms_io_exit, &
                        open_ieee32_file, open_namelist_file, open_restart_file, close_file
-use utilities_mod, only : get_unit, check_nml_error
+use utilities_mod, only : get_unit, find_namelist_in_file, check_namelist_read
 
 implicit none
 private
@@ -253,7 +253,7 @@ contains
 
 subroutine fms_init ( )
 
- integer :: unit, ierr, io
+ integer :: unit, ierr, io, iunit
 
     if (module_is_initialized) return    ! return silently if already called
     module_is_initialized = .true.
@@ -267,14 +267,19 @@ subroutine fms_init ( )
 
 !    call nml_error_init  ! first initialize namelist iostat error codes
 
-    if (file_exist('input.nml')) then
-       unit = open_namelist_file ( )
-       ierr=1; do while (ierr /= 0)
-          read  (unit, nml=fms_nml, iostat=io, end=10)
-          ierr = check_nml_error(io,'fms_nml')  ! also initializes nml error codes
-       enddo
- 10    close (unit)
-    endif
+! 8 June, 2006 Switching to better namelist reading; original block should go away
+call find_namelist_in_file("input.nml", "fms_nml", iunit)
+read(iunit, nml=fms_nml, iostat = io)
+call check_namelist_read(iunit, io, "fms_nml")
+
+!!!    if (file_exist('input.nml')) then
+!!!       unit = open_namelist_file ( )
+!!!       ierr=1; do while (ierr /= 0)
+!!!          read  (unit, nml=fms_nml, iostat=io, end=10)
+!!!          ierr = check_nml_error(io,'fms_nml')  ! also initializes nml error codes
+!!!       enddo
+!!! 10    close (unit)
+!!!    endif
 
 !---- define mpp stack sizes if non-zero -----
 

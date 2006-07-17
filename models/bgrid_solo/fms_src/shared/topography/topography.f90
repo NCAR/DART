@@ -54,7 +54,7 @@ use types_mod, only : r8
 use gaussian_topog_mod, only: gaussian_topog_init, get_gaussian_topog
 use   horiz_interp_mod, only: horiz_interp
 
-use utilities_mod, only : check_nml_error
+use utilities_mod, only : find_namelist_in_file, check_namelist_read
 use            fms_mod, only: file_exist,               &
                               open_namelist_file, close_file, stdlog,    &
                               write_version_number, &
@@ -621,19 +621,24 @@ public :: topography_init,                 &
 
 subroutine read_namelist
 
-   integer :: unit, ierr, io
+   integer :: unit, ierr, io, iunit
    real(r8)    :: dtr, ght
 
 !  read namelist
 
-   if ( file_exist('input.nml')) then
-      unit = open_namelist_file ( )
-      ierr=1; do while (ierr /= 0)
-         read  (unit, nml=topography_nml, iostat=io, end=10)
-         ierr = check_nml_error(io,'topography_nml')
-      enddo
- 10   call close_file (unit)
-   endif
+call find_namelist_in_file("input.nml", "topography_nml", iunit)
+read(iunit, nml = topography_nml, iostat = io)
+call check_namelist_read(iunit, io, "topography_nml")
+
+! Old fms namelist read replace 8 June, 2006
+!!!   if ( file_exist('input.nml')) then
+!!!      unit = open_namelist_file ( )
+!!!      ierr=1; do while (ierr /= 0)
+!!!         read  (unit, nml=topography_nml, iostat=io, end=10)
+!!!         ierr = check_nml_error(io,'topography_nml')
+!!!      enddo
+!!! 10   call close_file (unit)
+!!!   endif
 
 !  write version and namelist to log file
 
