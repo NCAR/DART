@@ -16,59 +16,65 @@ module mpi_utilities_mod
 !   A collection of interfaces to the MPI (Message Passing Interface)
 !   multi-processor communication library routines.
 !
-!  *** initialize_mpi_utilities()  Subroutine that initializes MPI and sets
+!    # initialize_mpi_utilities()  Subroutine that initializes MPI and sets
 !                                  local values needed later.  Must be called
 !                                  before any other routine here.
 !
-!  *** finalize_mpi_utilities()  Subroutine that shuts down MPI cleanly.
+!    # finalize_mpi_utilities()  Subroutine that shuts down MPI cleanly.
 !                                Must be called before program exits, and no
 !                                other routines here can be used afterwards.
 !
-!  *** task_count()       Function that returns the total number of MPI tasks.
+!    # task_count()       Function that returns the total number of MPI tasks.
 !
-!  *** my_task_id()       Function that returns my task number.  Note that
+!    # my_task_id()       Function that returns my task number.  Note that
 !                         in the MPI world task numbers run from 0 to N-1.
 !
-!  *** send_to()          Subroutine which sends a 1D data array
+!    # send_to()          Subroutine which sends a 1D data array
 !                         synchronously to another task (point-to-point).
 !
-!  *** receive_from()     Subroutine which receives a 1D data array
+!    # receive_from()     Subroutine which receives a 1D data array
 !                         synchronously from another task (point-to-point).
 !
-!  *** task_sync()        Subroutine that only returns after every task has
+!    # task_sync()        Subroutine that only returns after every task has
 !                         reached this same location in the code.
 !        
+!    # array_broadcast()  Subroutine that sends a copy of the entire data 
+!                         array to all other tasks. 
+!                
 !    * transpose_array()  Subroutine that transposes a 2D array
 !                         from column-major to row-major or back.
 !
-!  *** array_broadcast()  Subroutine that sends a copy of the entire data 
-!                         array to all other tasks. 
-!                
 !   ** array_distribute() Subroutine that distributes a data array across the
 !                         other tasks, so each task gets a non-overlapping 
 !                         subset of the data.
 !                
 !   MPI cover routines more specific for DART and hopefully more useful.
 !
-!  *** iam_task0()        Function which returns .TRUE. if task id is 0,
+!    # iam_task0()        Function which returns .TRUE. if task id is 0,
 !                         .FALSE. for anything else.
 !
-!  *** broadcast_send()   Subroutine which takes two r8 arrays and broadcasts
+!    # broadcast_send()   Subroutine which takes two r8 arrays and broadcasts
 !                         them to all other tasks.  If sending ID is not the
 !                         same as the local task ID, an error is returned.
 !                         Does not return until all other tasks have called
 !                         recv to pick up the data.
 !
-!  *** broadcast_recv()   Subroutine which receives two r8 arrays from the 
+!    # broadcast_recv()   Subroutine which receives two r8 arrays from the 
 !                         sending task ID.  If the sending ID is the same as
 !                         the local task ID, an error is returned.  All other
 !                         tasks must call recv before this routine returns.
+!
+!    * sum_across_tasks() Subroutine which takes a single integer argument
+!                         from each task, and returns the sum of all integers
+!                         across all tasks back to all tasks.  All tasks must
+!                         call this routine before it can compute and return
+!                         the value.
 !
 !   Lower level utility routines which interact with the utilities_mod.f90 
 !   code to open a named pipe per MPI task, read and write from them, and
 !   close and/or remove them.
 !
-!    * make_pipe()        Function that creates a named pipe (fifo), opens it,
+!  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
 !                         already exists or is already open; it will skip
 !                         those steps and just return the unit number.  The 
@@ -76,7 +82,7 @@ module mpi_utilities_mod
 !                         in the form 'base.NNNN' is generated, where the N's
 !                         are the MPI rank number, 0 padded.
 !
-!    * destroy_pipe()     The unit number is closed and the pipe file is 
+!  *** destroy_pipe()     The unit number is closed and the pipe file is 
 !                         removed.
 !
 !    * read_pipe()        The character string is read from the pipe.
@@ -89,7 +95,22 @@ module mpi_utilities_mod
 !                         info is useful to exchange between processes.) 
 !                         This routine writes and returns immediately.
 !
+!   Wrappers for system functions.  Covers differences if you run with
+!   or without MPI.
 !
+!  *** shell_execute()    Use the system() command to execute a command string.
+!                         Will wait for the command to complete and returns an
+!                         error code unless you end the command with & to put
+!                         it into background.   Function which returns the rc
+!                         of the command, 0 being all is ok.
+!
+!  *** sleep_seconds()    Wrapper for the sleep command.  Argument is a real
+!                         in seconds.  Different systems have different lower
+!                         resolutions for the minimum time it will sleep.
+!                         Subroutine, no return value.
+!
+!
+!   # code done and tested
 ! *** both code and interface are done (but untested so far)
 !  ** interface with proposed arguments exists but code not complete
 !   * interface name only; no arg list devised yet 
@@ -115,7 +136,7 @@ module mpi_utilities_mod
 
 use types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, & 
-                          E_ERR, E_WARN, E_MSG, E_DBG
+                          E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file
 use time_manager_mod, only : time_type, get_time, set_time
 
 !
@@ -155,8 +176,10 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          task_sync, array_broadcast, array_distribute, &
-          send_to, receive_from, iam_task0, broadcast_send, broadcast_recv
+          make_pipe, destroy_pipe
+public :: task_sync, array_broadcast, array_distribute, &
+          send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
+          shell_execute, sleep_seconds, sum_across_tasks
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -167,6 +190,14 @@ revdate  = "$Date$"
 logical, save :: module_initialized = .false.
 
 character(len = 129) :: errstring
+
+! forward declaration of external function
+interface
+ function system(string)
+  character(len=*) :: string
+  integer :: system
+ end function system
+end interface
 
 
 ! Namelist input - placeholder for now.
@@ -481,7 +512,13 @@ if (present(time)) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
       call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
    endif
-   time = set_time(itime(1), itime(2))
+   if (itime(2) < 0) then
+      write(errstring, '(a,i8)') 'seconds in settime were < 0; using 0'
+      call error_handler(E_MSG,'receive_from', errstring, source, revision, revdate)
+      time = set_time(itime(1), 0)
+   else
+      time = set_time(itime(1), itime(2))
+   endif
 endif
 
 
@@ -753,6 +790,34 @@ call array_broadcast(array2, from)
 
 end subroutine broadcast_recv
 
+!-----------------------------------------------------------------------------
+subroutine sum_across_tasks(addend, sum)
+ integer, intent(in) :: addend
+ integer, intent(out) :: sum
+
+ integer :: errcode
+ integer :: localaddend(1), localsum(1)
+
+! cover routine for MPI all-reduce
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+endif
+
+localaddend(1) = addend
+
+call MPI_Allreduce(localaddend, localsum, 1, MPI_INTEGER, MPI_SUM, &
+                   my_local_comm, errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(errstring, '(a,i8)') 'MPI_Allreduce returned error code ', errcode
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+endif
+
+sum = localsum(1)
+
+end subroutine sum_across_tasks
+
 
 !-----------------------------------------------------------------------------
 ! pipe utilities
@@ -766,21 +831,252 @@ end subroutine broadcast_recv
 !                         are the MPI rank number, 0 padded.
 !
 !-----------------------------------------------------------------------------
+
+function make_pipe(pipename, exists) result (iunit)
+ character(len=*), intent(in) :: pipename
+ logical, intent(in), optional :: exists
+ integer :: iunit
+
+! Create, open, and return a fortran unit number for a named pipe.
+! The local MPI rank number will be appended to the given name to create
+! a file of the form 'base.NNNN', where N's are the MPI rank number, 0 padded.
+! TODO: based on the total number of tasks get extra style points for
+! creating the shortest name necessary; e.g. base.N, base.NN, base.NNN, etc.
+!
+! If the optional 'exists' flag is not present, then it is not an error
+! whether the pipe already exists or not.  It is made if it does not exist, 
+! it is opened if not already opened, and the fortran unit number is returned.
+! If 'exists' is present then it forces the issue of whether the pipe file
+! must exist already or not.  The error handler is called if things aren't 
+! as expected.  apologies to tim hoar for the intentional imitation of
+! the generic file utilities_mod.f90 code.
+
+logical :: open, there
+character(len=128) :: fname
+character(len=11) :: format
+integer :: rc
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'make_pipe', errstring, source, revision, revdate)
+endif
+
+write(fname, "(a,i4.4)") trim(pipename)//".", myrank
+print *, "fname now = ", trim(fname)
+
+! check to see if the pipe already exists; if so, we've got the unit number
+! (directly into the output value) and we're done.  otherwise, make it and
+! open it.
+inquire (file=fname, exist=there, opened=open, number=iunit, form=format)
+
+if (.not. open) then
+
+   if (.not. there) then
+      ! make pipe file; mkfifo should be standard on any unix/linux system.
+      rc = system('mkfifo '//trim(fname))
+
+      ! and check to be sure it was made
+      inquire (file=fname, exist=there)
+
+      if (.not. there) then
+        write(errstring, *) 'mkfifo command failed to create '//trim(fname)
+        call error_handler(E_ERR,'make_pipe', errstring, source, revision, revdate)
+      endif
+   endif
+
+   ! open pipe using an available unit number
+   iunit = get_unit()
+   open(unit=iunit, file=fname)
+
+endif
+
+! iunit contains the function return value.
+
+end function make_pipe
+
+
+!-----------------------------------------------------------------------------
 !    * destroy_pipe()     The unit number is closed and the pipe file is 
 !                         removed.
 !
+subroutine destroy_pipe(iunit)
+ integer, intent(in) :: iunit
+
+character(len=128) :: pipename
+integer :: ios, rc
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
+endif
+
+write(errstring, *) 'not implemented yet'
+call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
+
+
+! general idea is:
+
+! call inquire to get name
+inquire(unit=iunit, name=pipename, iostat=ios)
+if (ios /= 0) then
+   write(errstring, '(a,i4)') 'failure trying to inquire about unit ', iunit
+   call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
+endif
+
+call close_file(iunit)
+
+! remove echo when we trust this command.
+rc = system('echo rm -f '//trim(pipename))
+
+
+end subroutine destroy_pipe
+
 !-----------------------------------------------------------------------------
 !    * read_pipe()        The character string is read from the pipe.
 !                         (Can be overloaded to read ints if time or status
 !                         info is useful to exchange between processes.) 
 !                         This routine blocks until data is available.
 !
+subroutine read_pipe()
+end subroutine
+
 !-----------------------------------------------------------------------------
 !    * write_pipe()       The character string is written to the pipe.
 !                         (Can be overloaded to write ints if time or status
 !                         info is useful to exchange between processes.) 
 !                         This routine writes and returns immediately.
 !
+subroutine write_pipe()
+end subroutine
+
+
+!-----------------------------------------------------------------------------
+! general system util wrappers.
+!-----------------------------------------------------------------------------
+function shell_execute(execute_string, serialize)
+ character(len=*), intent(in) :: execute_string
+ logical, intent(in), optional :: serialize
+ integer :: shell_execute
+
+! Use the system() command to execute a command string.
+! Will wait for the command to complete and returns an
+! error code unless you end the command with & to put
+! it into background.   Function which returns the rc
+! of the command, 0 being all is ok.
+
+! on some platforms/mpi implementations, the system() call
+! does not seem to be reentrant.  if serialize is set and
+! is true, do each call serially.
+
+character(len=255) :: doit
+logical :: ripit
+integer :: i, errcode, dummy
+integer :: status(MPI_STATUS_SIZE)
+
+   ! default to everyone running concurrently, but if set and not true,
+   ! serialize the calls to system() so they do not step on each other.
+   if (present(serialize)) then
+      ripit = .not. serialize
+   else
+      ripit = .TRUE.
+   endif
+
+   print *, "in-string is: ", trim(execute_string)
+
+   !write(doit, "(a, 1x, a, 1x, a, a1)") "sh -c '", trim(execute_string), &
+   !            "' < /dev/null >> fred.out", char(0)
+
+   write(doit, "(a, 1x, a1)") trim(execute_string), char(0)
+
+   print *, "about to run: ", trim(doit)
+   print *, "input string length = ", len(trim(doit))
+
+   if (ripit) then
+      shell_execute = system(doit)
+      print *, "execution returns, rc = ", shell_execute
+   else
+      ! make each task wait for a message from the (N-1)th task.
+      if (myrank == 0) then
+
+         ! my turn to execute
+         shell_execute = system(doit)
+         print *, "execution returns, rc = ", shell_execute, "iam = ", myrank
+
+         call MPI_Send(dummy, 1, MPI_INTEGER, i+1, i+1, my_local_comm, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
+                                        errcode
+            call error_handler(E_ERR,'send_to', errstring, source, &
+                               revision, revdate)
+         endif
+
+      else if (myrank /= (total_tasks-1)) then
+         ! wait for a message from task (me-1) that i can continue.
+         call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
+                       my_local_comm, status, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+            call error_handler(E_ERR,'receive_from', errstring, source, &
+                               revision, revdate)
+         endif
+
+         ! my turn to execute
+         shell_execute = system(doit)
+         print *, "execution returns, rc = ", shell_execute, "iam = ", myrank
+
+	 ! send a message to the next task that it is good to go
+         ! (unless there is no "next task").
+         call MPI_Send(dummy, 1, MPI_INTEGER, i+1, i+1, my_local_comm, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
+                                        errcode
+            call error_handler(E_ERR,'send_to', errstring, source, &
+                               revision, revdate)
+         endif
+      else
+         ! last task, no one else to send to.
+         call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
+                       my_local_comm, status, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+            call error_handler(E_ERR,'receive_from', errstring, source, &
+                               revision, revdate)
+         endif
+
+         ! my turn to execute
+         shell_execute = system(doit)
+         print *, "execution returns, rc = ", shell_execute, "iam = ", myrank
+
+      endif
+       
+
+   endif
+
+   ! debug only.
+   !print *, "*** BYPASSING call to SYSTEM() *** "
+   !shell_execute = 0
+
+
+end function shell_execute
+
+!-----------------------------------------------------------------------------
+subroutine sleep_seconds(naplength)
+ real(r8), intent(in) :: naplength
+
+! Wrapper for the sleep command.  Argument is a real
+! in seconds.  Different systems have different lower
+! resolutions for the minimum time it will sleep.
+! Subroutine, no return value.
+
+ integer :: sleeptime
+
+ sleeptime = floor(naplength)
+ if (sleeptime <= 0) sleeptime = 1
+
+ call sleep(sleeptime)
+
+end subroutine sleep_seconds
+
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
