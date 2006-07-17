@@ -34,6 +34,12 @@ module utilities_mod
 !      print_version_number    Prints out a routine name and
 !                              version number to a specified unit
 !
+!      do_output        If called, set the status of printing to either
+!                       true or false.  Useful for multiprocess output
+!                       where only a single processor ought to write to
+!                       the log file.  Fatal errors will still write
+!                       to the log before halting.
+!
 !-----------------------------------------------------------------------
 
 use types_mod, only : r8
@@ -44,6 +50,7 @@ private
 !   ---- private data for check_nml_error ----
 
 integer, private :: num_nml_error_codes, nml_error_codes(5)
+logical, private :: do_output_flag = .true.
 
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
@@ -51,7 +58,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 public :: file_exist, get_unit, open_file, timestamp, &
        close_file, register_module, error_handler, logfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       find_namelist_in_file, check_namelist_read, &
+       find_namelist_in_file, check_namelist_read, do_output, &
        E_DBG, E_MSG, E_WARN, E_ERR, &
        DEBUG, MESSAGE, WARNING, FATAL
 
@@ -227,6 +234,7 @@ contains
    character(len=*), intent(in) :: src, rev, rdate
 
       if ( .not. module_initialized ) call initialize_utilities
+      if ( .not. do_output_flag) return
 
 
       write(logfileunit,*)
@@ -270,6 +278,7 @@ contains
       integer, dimension(8) :: values
 
       if ( .not. module_initialized ) call initialize_utilities
+      if ( .not. do_output_flag) return
 
       call DATE_AND_TIME(cdate, ctime, zone, values)
 
@@ -675,6 +684,7 @@ end subroutine error_handler
    character(len=8)  :: vers
 
    if ( .not. module_initialized ) call initialize_utilities
+   if ( .not. do_output_flag) return
 
      n = min(len(routine),20); name = adjustl(routine(1:n))
      n = min(len(version), 8); vers = adjustl(version(1:n))
@@ -693,6 +703,22 @@ end subroutine error_handler
 !              1x, 12('<'),/)
 
    end subroutine print_version_number
+
+!#######################################################################
+
+   subroutine do_output (doflag)
+
+! *** set whether output is written to a log file or simply ignored ***
+!
+!    in:  doflag  = whether to output log information or not
+
+   logical, intent(in) :: doflag
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   do_output_flag = doflag
+
+   end subroutine do_output
 
 !#######################################################################
 
