@@ -24,10 +24,6 @@ module utilities_mod
 !      error_handler    Print warning and error messages, 
 !                       terminates program for error messages.
 !
-!      check_nml_error  Checks the iostat returned when reading
-!                       namelists and determines if the error code
-!                       is valid, if not the program is terminated.
-!
 !      open_file        Opens a given file name for i/o and returns
 !                       a unit number.  If the file is already open
 !                       the unit number is returned.
@@ -48,13 +44,11 @@ private
 !   ---- private data for check_nml_error ----
 
 integer, private :: num_nml_error_codes, nml_error_codes(5)
-logical, private :: do_nml_error_init = .true.
-private  nml_error_init
 
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
-public :: file_exist, get_unit, check_nml_error, open_file, timestamp, &
+public :: file_exist, get_unit, open_file, timestamp, &
        close_file, register_module, error_handler, logfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
        find_namelist_in_file, check_namelist_read, &
@@ -588,73 +582,6 @@ if( level >= TERMLEVEL ) call exit( 99 )
 
 end subroutine error_handler
 
-!#######################################################################
-
-function check_nml_error (iostat, nml_name) result (error_code)
-
-   integer,          intent(in) :: iostat
-   character(len=*), intent(in) :: nml_name
-   integer   error_code, i
-   character(len=128) :: err_str
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   if (do_nml_error_init) call nml_error_init
-
-   error_code = iostat
-
-   do i = 1, num_nml_error_codes
-        if (error_code == nml_error_codes(i)) return
-   enddo
-
-!  ------ fatal namelist error -------
-   write (err_str,*) 'while reading namelist ',  &
-                     nml_name(1:len_trim(nml_name)),  &
-                     ', iostat = ',error_code
-
-   call error_handler(E_ERR, 'check_nml_error', &
-            err_str, source, revision, revdate)
-
-end function check_nml_error
-
-!-----------------------------------------------------------------------
-
-subroutine nml_error_init
-
-!   private routine for initializing allowable error codes
-
-   integer  iunit, io, ir
-   real(r8) ::  b=1.0_r8
-   namelist /b_nml/  b
-
-      if ( .not. module_initialized ) call initialize_utilities
-
-      nml_error_codes(1) = 0
-
-!     ---- create dummy namelist file ----
-      iunit=get_unit(); open (iunit, file='_read_error.nml')
-      write (iunit, 10)
-  10  format (' &a_nml  a=1.  /',  &
-             /'-------------------',  &
-             /' &b_nml  e=5.  &end')
-      close (iunit)
-
-!     ---- read namelist file and save error codes ----
-      iunit=get_unit(); open (iunit, file='_read_error.nml')
-      ir=1; io=1; do
-         read  (iunit, nml=b_nml, iostat=io, end=20)
-         if (io == 0) exit
-         ir=ir+1; nml_error_codes(ir)=io
-      enddo
-  20  close (iunit, status='delete')
-
-      num_nml_error_codes = ir
-!del  print *, 'nml_error_codes=', nml_error_codes(1:ir)
-      do_nml_error_init = .false.
-
-end subroutine nml_error_init
-
-!#######################################################################
 !#######################################################################
 
    function open_file (fname, form, action) result (iunit)
