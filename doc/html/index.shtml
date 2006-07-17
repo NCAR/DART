@@ -123,7 +123,8 @@
       with a TAR file.
       The CVS repository is on a filesystem in CGD, so to be able to read from it, you need
       a CGD account. Contact Tim Hoar if you need assistance with the CVS portion. Contact CGD
-      if you cannot remember your password.
+      if you cannot remember your password. The appropriate tag for the stable version 
+      of the code is '<tt>post_iceland_branch</tt>'.
       </P>
       <P>
       If you do not have a CGD account, you can download the tar file containing the 
