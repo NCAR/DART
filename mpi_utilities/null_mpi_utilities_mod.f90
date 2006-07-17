@@ -625,7 +625,7 @@ if (.not. open) then
 
    if (.not. there) then
       ! make pipe file; mkfifo should be standard on any unix/linux system.
-      rc = system('mkfifo '//trim(fname))
+      rc = system('mkfifo '//trim(fname)//' '//char(0))
 
       ! and check to be sure it was made
       inquire (file=fname, exist=there)
@@ -678,7 +678,7 @@ endif
 call close_file(iunit)
 
 ! remove echo when we trust this command.
-rc = system('echo rm -f '//trim(pipename))
+rc = system('echo rm -f '//trim(pipename)//' '//char(0))
 
 
 end subroutine destroy_pipe
@@ -725,9 +725,6 @@ logical :: ripit
 integer :: i, errcode
 
    !print *, "in-string is: ", trim(execute_string)
-
-   !write(doit, "(a, 1x, a, 1x, a, a1)") "sh -c '", trim(execute_string), &
-   !            "' < /dev/null >> fred.out", char(0)
 
    write(doit, "(a, 1x, a1)") trim(execute_string), char(0)
 
