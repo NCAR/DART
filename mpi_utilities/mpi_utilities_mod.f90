@@ -136,7 +136,8 @@ module mpi_utilities_mod
 
 use types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, & 
-                          E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file
+                          E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
+                          do_output
 use time_manager_mod, only : time_type, get_time, set_time
 
 !
@@ -160,19 +161,6 @@ integer :: total_tasks     ! total mpi tasks/procs
 integer :: my_local_comm   ! duplicate communicator private to this file
 integer :: comm_size       ! if ens count < tasks, only the first N participate
 
-!!! probably not needed; most of these are in the ensemble_handle.  but i just
-!!! copied them all over from my test program "in case".  delete as it is clear
-!!! that they aren't needed.
-!!integer :: state_size    ! number of state vars in a single model
-!!integer :: ens_size      ! number of models/ensembles running
-!!integer :: obs_size      ! number of observations available
-!!integer :: ens_per_task  ! if number of ensembles > tasks, how many per task
-!!integer :: states_per_task ! state vars generally > tasks; how many per task
-!!integer :: obs_per_task  ! not sure if this is needed; unused so far.
-!!integer :: ec_total_size ! total array size for ensemble-complete data
-!!integer :: sc_total_size ! total array size for state-complete data
-!!integer :: max_print     ! limit for value dumps
-
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
@@ -191,17 +179,7 @@ logical, save :: module_initialized = .false.
 
 character(len = 129) :: errstring
 
-! forward declaration of external function
-interface
- function system(string)
-  character(len=*) :: string
-  integer :: system
- end function system
-end interface
-
-
 ! Namelist input - placeholder for now.
-
 !namelist /mpi_utilities_nml/ x
 
 contains
@@ -281,6 +259,11 @@ endif
 ! need to take that into account and not participate if they are > comm_size.
 comm_size = total_tasks
 
+! Turn off non-critical log messages from all but task 0, for performance
+! TODO: this should be controlled by a namelist option, to enable selected
+!       mpi tasks to default to printing for debugging.
+if (myrank /= 0) call do_output(.FALSE.)
+
 ! MPI successfully initialized.
 
 end subroutine initialize_mpi_utilities
@@ -293,9 +276,8 @@ subroutine finalize_mpi_utilities(callfinalize)
 ! Shut down MPI cleanly.  This must be done before the program exits; on
 ! some implementations of MPI the final I/O flushes are not done until this
 ! is called.  The optional argument can prevent us from calling MPI_Finalize,
-! so that user code can continue to use MPI after this returns.  For good
-! coding practice you should not call any other routines in this file
-! after calling this routine.
+! so that user code can continue to use MPI after this returns.  Calling other
+! routines in this file after calling finalize will invalidate your warranty.
 
 integer :: errcode
 logical :: dofinalize
@@ -317,10 +299,8 @@ endif
 ! skip the finalization.
 if (.not.present(callfinalize)) then
    dofinalize = .TRUE.
-else if (callfinalize) then
-   dofinalize = .TRUE.
 else
-   dofinalize = .FALSE.
+   dofinalize = callfinalize
 endif
 
 ! Normally we shut down MPI here.  If the user tells us not to shut down MPI
@@ -830,12 +810,18 @@ end subroutine sum_across_tasks
 !                         in the form 'base.NNNN' is generated, where the N's
 !                         are the MPI rank number, 0 padded.
 !
-!-----------------------------------------------------------------------------
-
 function make_pipe(pipename, exists) result (iunit)
  character(len=*), intent(in) :: pipename
  logical, intent(in), optional :: exists
  integer :: iunit
+
+ ! forward declaration of external function
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
 
 ! Create, open, and return a fortran unit number for a named pipe.
 ! The local MPI rank number will be appended to the given name to create
@@ -873,7 +859,7 @@ if (.not. open) then
 
    if (.not. there) then
       ! make pipe file; mkfifo should be standard on any unix/linux system.
-      rc = system('mkfifo '//trim(fname))
+      rc = system('mkfifo '//trim(fname)//' '//char(0))
 
       ! and check to be sure it was made
       inquire (file=fname, exist=there)
@@ -902,6 +888,14 @@ end function make_pipe
 subroutine destroy_pipe(iunit)
  integer, intent(in) :: iunit
 
+ ! forward declaration of external function
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+
 character(len=128) :: pipename
 integer :: ios, rc
 
@@ -926,7 +920,7 @@ endif
 call close_file(iunit)
 
 ! remove echo when we trust this command.
-rc = system('echo rm -f '//trim(pipename))
+rc = system('echo rm -f '//trim(pipename)//' '//char(0))
 
 
 end subroutine destroy_pipe
@@ -958,14 +952,22 @@ function shell_execute(execute_string, serialize)
  logical, intent(in), optional :: serialize
  integer :: shell_execute
 
+ ! forward declaration of external function
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+
 ! Use the system() command to execute a command string.
 ! Will wait for the command to complete and returns an
 ! error code unless you end the command with & to put
 ! it into background.   Function which returns the rc
 ! of the command, 0 being all is ok.
 
-! on some platforms/mpi implementations, the system() call
-! does not seem to be reentrant.  if serialize is set and
+! allow code to test the theory that maybe the system call is
+! not reentrant on some platforms.  if serialize is set and
 ! is true, do each call serially.
 
 character(len=255) :: doit
