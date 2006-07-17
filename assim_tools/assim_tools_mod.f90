@@ -1,5 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section, 
+! Copyright 2004-2006, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
@@ -14,44 +14,51 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use      types_mod, only : r8, missing_r8, PI
+use      types_mod, only : r8
 use  utilities_mod, only : file_exist, get_unit, check_namelist_read, find_namelist_in_file, &
                            register_module, error_handler, E_ERR, E_MSG, logfileunit
 use       sort_mod, only : index_sort 
-use random_seq_mod, only : random_seq_type, random_gaussian, &
-                           init_random_seq, random_uniform
+use random_seq_mod, only : random_seq_type, random_gaussian, init_random_seq, random_uniform
 
-use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
-   init_obs, get_obs_from_key, get_obs_def, get_obs_values, get_qc, set_qc, &
-   set_obs, get_copy_meta_data, read_obs_seq, destroy_obs_sequence, get_num_obs, &
-   write_obs_seq, destroy_obs, get_expected_obs
+use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc,       &
+                             init_obs, get_obs_from_key, get_obs_def, get_obs_values,       &
+                             get_qc, set_qc, set_obs, get_copy_meta_data, read_obs_seq,     &
+                             destroy_obs_sequence, get_num_obs, write_obs_seq, destroy_obs, &
+                             get_expected_obs
    
 use          obs_def_mod, only : obs_def_type, get_obs_def_error_variance, &
                                  get_obs_def_location, get_obs_def_time
 use       cov_cutoff_mod, only : comp_cov_factor
-use        obs_model_mod, only : get_close_states
 use       reg_factor_mod, only : comp_reg_factor
-use         location_mod, only : location_type, get_dist, alloc_get_close_obs, &
-                                 get_close_obs
-use ensemble_manager_mod, only : ensemble_type, transpose_ens_to_regions, &
-                                 transpose_regions_to_ens, put_region_by_number, &
-                                 get_region_by_number, is_ens_in_core
-use adaptive_inflate_mod, only : adaptive_inflate_obs_init, &
-                                 deterministic_inflate, obs_inflate, obs_inflate_sd, &
-                                 obs_sd_lower_bound, do_obs_inflate, do_single_ss_inflate, &
-                                 do_varying_ss_inflate, &
-                                 obs_inf_upper_bound, update_inflation, ss_inf_upper_bound, &
-                                 inflate_ens
+use         location_mod, only : location_type, get_dist, get_close_maxdist_init, &
+                                 get_close_obs_init, get_close_obs, get_location, &
+                                 get_close_type
+use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars, &
+                                 compute_copy_mean_var, get_var_owner_index
+
+use mpi_utilities_mod, only : my_task_id, broadcast_send, broadcast_recv, &
+                              sum_across_tasks
+
+use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,  &
+                                 do_varying_ss_inflate, get_inflate, set_inflate, &
+                                 get_sd, set_sd, update_inflation,     &
+                                 inflate_ens, adaptive_inflate_type
+use time_manager_mod, only : time_type
+use assim_model_mod,  only : get_state_meta_data
 
 implicit none
 private
 
-public :: assim_tools_init, filter_assim, async_assim_region
+public :: filter_assim
+
+! Indicates if module initialization subroutine has been called yet
+logical :: module_initialized = .false.
 
 type (random_seq_type) :: inc_ran_seq
 logical :: first_inc_ran_call = .true.
 character(len = 129) :: errstring
 
+! Need to read in table for off-line based sampling correction and store it
 logical :: first_get_correction = .true.
 real(r8) :: exp_true_correl(200), alpha(200)                                                                      
 ! CVS Generated file description for error handling, do not edit
@@ -69,31 +76,26 @@ revdate  = "$Date$"
 !      2 = ENKF
 !      3 = Kernel filter
 !      4 = particle filter
-integer  :: filter_kind     = 1
-real(r8) :: cutoff = 0.2_r8
-logical  :: sort_obs_inc = .false.
-integer :: do_parallel = 0
-integer :: num_domains = 1
-character(len=129) :: parallel_command = './assim_filter.csh'
-logical :: spread_restoration = .false.
-real(r8) :: internal_outlier_threshold = -1.0_r8
-logical :: sampling_error_correction = .false.
-integer :: num_close_threshold = 10000000
+!      5 = random draw from posterior
+!      6 = deterministic draw from posterior with fixed kurtosis
+integer            :: filter_kind = 1
+real(r8)           :: cutoff = 0.2_r8
+logical            :: sort_obs_inc = .false.
+logical            :: spread_restoration = .false.
+logical            :: sampling_error_correction = .false.
+integer            :: adaptive_localization_threshold = 10000000
 
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
-   do_parallel, num_domains, parallel_command, spread_restoration, &
-   internal_outlier_threshold, sampling_error_correction, num_close_threshold
+   spread_restoration, sampling_error_correction, adaptive_localization_threshold
 
 !============================================================================
 
 contains
 
-subroutine assim_tools_init(dont_read_restart)
+subroutine assim_tools_init()
 !============================================================================
 ! subroutine assim_tools_init()
 !
-
-logical, intent(in), optional :: dont_read_restart
 
 integer :: iunit, io
 
@@ -110,31 +112,9 @@ call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' 
 write(logfileunit, nml=assim_tools_nml)
 write(     *     , nml=assim_tools_nml)
 
-! Check for illegal combination of parallel with single region (doesn't make sense)
-if(do_parallel /= 0 .and. num_domains == 1) then
-   write(errstring, *) 'do_parallel not 0 and num_domains 1 is not supported'
-   call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
-endif
-
-! Initialize the obs_space inflation storage in case it's needed
-call adaptive_inflate_obs_init(num_domains, dont_read_restart)
-
-! Look for an error in the do_parallel options
-if(do_parallel /= 0 .and. do_parallel /= 2 .and. do_parallel /= 3) then
-   write(errstring, *) 'do_parallel option ', do_parallel, ' not supported'
-   call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
-endif
-
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then
    write(errstring, *) 'cant combine spread_restoration and filter_kind ', filter_kind
-   call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
-endif
-
-! AT PRESENT, internal_outlier_threshold only works if adaptive cov_inflate is in use
-! Need to modify this in an efficient way in the future
-if(internal_outlier_threshold > 0.0_r8 .and. .not. do_obs_inflate) then
-   write(errstring, *) 'internal_outlier_threshold checking only works do_obs_inflate true at present'
    call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
 endif
 
@@ -142,21 +122,389 @@ end subroutine assim_tools_init
 
 !-------------------------------------------------------------
 
+subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys, &
+   ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
+   ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+   OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
+   OBS_PRIOR_VAR_END, inflate_only)
+
+type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
+type(obs_sequence_type),     intent(in)    :: obs_seq
+integer,                     intent(in)    :: keys(:)
+integer,                     intent(in)    :: ens_size, num_groups, obs_val_index
+type(adaptive_inflate_type), intent(inout) :: inflate
+integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, ENS_INF_COPY
+integer,                     intent(in)    :: ENS_INF_SD_COPY
+integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
+integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
+integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
+logical,                     intent(in)    :: inflate_only
+
+! Initial code entry for an mpi based assimilation module
+
+real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
+real(r8) :: my_cov_inflate, my_cov_inflate_sd, reg_factor
+real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
+real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
+real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
+real(r8) :: ss_inflate_base, obs_qc, cutoff_rev
+real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
+real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
+real(r8) :: close_obs_dist(obs_ens_handle%my_num_vars)
+real(r8) :: close_state_dist(ens_handle%my_num_vars)
+integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
+integer  :: my_obs(obs_ens_handle%my_num_vars), my_state(ens_handle%my_num_vars)
+integer  :: this_obs_key, obs_mean_index, obs_var_index
+integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
+integer  :: obs_box(obs_ens_handle%my_num_vars), close_obs_ind(obs_ens_handle%my_num_vars)
+integer  :: close_state_ind(ens_handle%my_num_vars)
+integer  :: num_close_obs, obs_index, num_close_states, state_index
+integer  :: total_num_close_obs
+type(location_type) :: my_obs_loc(obs_ens_handle%my_num_vars), base_obs_loc
+type(location_type) :: my_state_loc(ens_handle%my_num_vars)
+type(get_close_type) :: gc_obs, gc_state
+
+type(obs_type)     :: observation
+type(obs_def_type) :: obs_def
+type(time_type)    :: obs_time
+
+!PAR: THIS SHOULD COME FROM SOMEWHERE ELSE AND BE NAMELIST CONTOLLED
+real(r8) :: qc_threshold = 10.0_r8
+
+! Initialize assim_tools_module if needed
+if(.not. module_initialized) then
+   call assim_tools_init
+   module_initialized = .true.
+endif
+
+! Divide ensemble into num_groups groups
+grp_size = ens_size / num_groups
+do group = 1, num_groups
+   grp_beg(group) = (group - 1) * grp_size + 1
+   grp_end(group) = grp_beg(group) + grp_size - 1
+enddo
+
+! Put initial value of state space inflation in copy normally used for SD
+ens_handle%copies(ENS_SD_COPY, :) = ens_handle%copies(ENS_INF_COPY, :)
+
+! For single state or obs space inflation, the inflation is like a token
+! Gets passed from the processor with a given obs on to the next
+if(do_single_ss_inflate(inflate)) then
+   my_inflate = ens_handle%copies(ENS_INF_COPY, 1)
+   my_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, 1)
+end if
+
+! For obs space inflation, single value comes from storage in adaptive_inflate_mod
+if(do_obs_inflate(inflate)) then
+   my_inflate = get_inflate(inflate)
+   my_inflate_sd = get_sd(inflate)
+endif
+
+! Get info on my number and indices for obs
+my_num_obs = get_my_num_vars(obs_ens_handle)
+call get_my_vars(obs_ens_handle, my_obs)
+
+! Construct an observation temporary
+call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
+! Get the locations for all of my observations 
+Locations: do i = 1, obs_ens_handle%my_num_vars
+   this_obs_key = obs_ens_handle%copies(OBS_KEY_COPY, i)
+   call get_obs_from_key(obs_seq, this_obs_key, observation)
+   call get_obs_def(observation, obs_def)
+   my_obs_loc(i) = get_obs_def_location(obs_def)
+   ! Need the time for regression diagnostics potentially
+   if(i == 1) obs_time = get_obs_def_time(obs_def)
+end do Locations
+
+! Get info on my number and indices for state
+my_num_state = get_my_num_vars(ens_handle)
+call get_my_vars(ens_handle, my_state)
+! Get the location of all my state variables
+do i = 1, ens_handle%my_num_vars
+   call get_state_meta_data(my_state(i), my_state_loc(i))
+end do
+
+! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
+! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
+! BEFORE EACH INCREMENT.
+
+! Get mean and variance of each group's observation priors for adaptive inflation
+! These are transmitted with the prior obs dist and increments
+if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
+   do group = 1, num_groups
+      grp_bot = grp_beg(group)
+      grp_top = grp_end(group)
+      obs_mean_index = OBS_PRIOR_MEAN_START + group - 1
+      obs_var_index  = OBS_PRIOR_VAR_START  + group - 1
+         call compute_copy_mean_var(obs_ens_handle, grp_bot, grp_top, &
+           obs_mean_index, obs_var_index) 
+   end do
+endif
+
+! NOTE THESE COULD ONLY BE DONE ONCE PER RUN!!! FIGURE THIS OUT.
+! The computations in the two get_close_maxdist_init are redundant
+! Initialize the method for getting state variables close to a given ob on my process
+call get_close_maxdist_init(gc_state, 2.0_r8*cutoff)
+call get_close_obs_init(gc_state, my_num_state, my_state_loc)
+
+! Initialize the method for getting obs close to a given ob on my process
+call get_close_maxdist_init(gc_obs, 2.0_r8*cutoff)
+call get_close_obs_init(gc_obs, my_num_obs, my_obs_loc)
+
+! Loop through all the (global) observations sequentially
+SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
+
+   ! Every pe has information about obs sequence
+   call get_obs_from_key(obs_seq, keys(i), observation)
+   call get_obs_def(observation, obs_def)
+   base_obs_loc = get_obs_def_location(obs_def)
+   obs_err_var = get_obs_def_error_variance(obs_def)
+   ! Get the value of the observation
+   call get_obs_values(observation, obs, obs_val_index)
+
+   ! Find out who has this observation and where it is
+   call get_var_owner_index(i, owner, owners_index)
+   ! Following block is done only by the owner of this observation
+   !-----------------------------------------------------------------------
+   if(my_task_id() == owner) then
+      obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
+      !PAR NEED A QC THRESHOLD HERE SOMEWHERE
+      IF_QC_IS_OKAY: if(obs_qc < qc_threshold) then
+         obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
+         orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
+            OBS_PRIOR_MEAN_END, owners_index)
+         orig_obs_prior_var = obs_ens_handle%copies(OBS_PRIOR_VAR_START: &
+            OBS_PRIOR_VAR_END, owners_index)
+
+         ! Compute observation space increments for each group
+         do group = 1, num_groups
+            grp_bot = grp_beg(group)
+            grp_top = grp_end(group)
+            call obs_increment(obs_prior(grp_bot:grp_top), &
+               grp_size, obs(1), obs_err_var, obs_inc(grp_bot:grp_top), &
+               inflate, my_inflate, my_inflate_sd, net_a(group))
+         end do
+
+         ! Compute updated values for single state space inflation
+         if(do_single_ss_inflate(inflate)) then
+            ss_inflate_base = ens_handle%copies(ENS_SD_COPY, 1)
+            do group = 1, num_groups
+               if(my_inflate > 0.0_r8 .and. my_inflate_sd > 0.0_r8) then
+                  ! For case with single spatial inflation, use gamma = 1.0_r8
+                  gamma = 1.0_r8
+                  ! Deflate the inflated variance
+                  ens_obs_mean = orig_obs_prior_mean(group)
+                  ens_obs_var = orig_obs_prior_var(group)
+                  
+                  ens_var_deflate = ens_obs_var / &
+                     (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+                  call update_inflation(inflate, my_inflate, my_inflate_sd, &
+                     ens_obs_mean, ens_var_deflate, obs(1), obs_err_var, &
+                     gamma)
+               endif
+            end do
+         endif
+      endif IF_QC_IS_OKAY
+
+      !Broadcast the info from this obs
+      ! What gets broadcast depends on what kind of inflation is being done
+      if(do_varying_ss_inflate(inflate)) then
+         call my_broadcast_send1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
+            orig_obs_prior_var, obs_qc)
+      else if(do_single_ss_inflate(inflate) .or. do_obs_inflate(inflate)) then
+         call my_broadcast_send2(owner, obs_prior, obs_inc, my_inflate, &
+            my_inflate_sd, obs_qc)
+      else
+         call my_broadcast_send3(owner, obs_prior, obs_inc, obs_qc)
+      endif
+
+   ! Next block is done by processes that do NOT own this observation
+   !-----------------------------------------------------------------------
+   else
+      ! What gets broadcast depends on what kind of inflation is being done
+      ! I don't store this obs; receive the obs prior and increment from broadcast
+      if(do_varying_ss_inflate(inflate)) then
+         call my_broadcast_recv1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
+            orig_obs_prior_var, obs_qc)
+      else if(do_single_ss_inflate(inflate) .or. do_obs_inflate(inflate)) then
+         call my_broadcast_recv2(owner, obs_prior, obs_inc, my_inflate, &
+            my_inflate_sd, obs_qc)
+      else
+         call my_broadcast_recv3(owner, obs_prior, obs_inc, obs_qc)
+      endif
+   endif
+   !-----------------------------------------------------------------------
+
+   ! Everybody is doing this section, cycle if qc is bad
+   if(obs_qc > qc_threshold) cycle SEQUENTIAL_OBS
+
+   ! Now everybody updates their close states
+
+   ! Getting close states for each scalar observation for now
+   ! Need model state for some distance computations in sigma, have
+   ! to pick some state, only current ones are ensemble, just pass 1
+
+   ! PAR ALSO NEED A CALL TO SOMEPLACE THAT LETS PEOPLE MODIFY THE DISTANCES SOMEWHERE
+
+   !------------------------------------------------------
+   
+   ! Find observations on my process that are close to one being assimilated
+   ! Need to get obs density first in case of adaptive localization
+   call get_close_obs(gc_obs, base_obs_loc, my_obs_loc, num_close_obs, close_obs_ind, &
+      close_obs_dist)
+
+   ! For adaptive localization, need number of other obs close to the chosen observation
+   cutoff_rev = cutoff
+   if(adaptive_localization_threshold > 0) then
+      call sum_across_tasks(num_close_obs, total_num_close_obs)
+      ! Want expected number of close observations to be reduced to some threshold
+      if(total_num_close_obs > adaptive_localization_threshold) then
+         ! Change the cutoff radius to get the appropriate number in the circle
+         ! This is specific to models on sphere's
+         ! Need to get thinning out of assim_tools and into something about locations
+         ! Compute a new radius if the total_num_close is greater than the desired as
+         ! 2*cutoff_rev = sqrt(2*cutoff * adaptive_localization_threshold / total_num_close_obs)
+         cutoff_rev =  sqrt((2.0_r8*cutoff)**2 *adaptive_localization_threshold / &
+            total_num_close_obs) / 2.0_r8
+      endif
+   endif
+
+   call get_close_obs(gc_state, base_obs_loc, my_state_loc, num_close_states, close_state_ind, &
+      close_state_dist)
+
+   STATE_UPDATE: do j = 1, num_close_states
+      state_index = close_state_ind(j)
+     
+      ! Compute the distance and covariance factor 
+      cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev)
+      if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
+
+      do group = 1, num_groups
+         grp_bot = grp_beg(group)
+         grp_top = grp_end(group)
+         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_inc(grp_bot:grp_top), &
+            ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
+            increment(grp_bot:grp_top), reg_coef(group), correl(group), net_a(group))
+      end do
+
+      ! Compute an information factor for impact of this observation on this state
+      if(num_groups == 1) then
+          reg_factor = 1.0_r8
+      else
+         ! Pass the time along with the index for possible diagnostic output
+         ! Compute regression factor for this obs-state pair
+         reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, my_state(state_index))
+      endif
+
+      reg_factor = min(reg_factor, cov_factor)
+
+!PAR NEED TO TURN STUFF OFF MORE EFFICEINTLY
+      if(.not. inflate_only) then
+         ens_handle%copies(1:ens_size, state_index) = &
+            ens_handle%copies(1:ens_size, state_index) + reg_factor * increment
+      endif
+
+      ! Compute spatially-variing state space inflation
+      if(do_varying_ss_inflate(inflate)) then
+         ! base is the initial inflate value for this state variable
+         ss_inflate_base = ens_handle%copies(ENS_SD_COPY, state_index)
+         varying_ss_inflate = ens_handle%copies(ENS_INF_COPY, state_index)
+         varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
+         GroupInflate: do group = 1, num_groups
+            if(varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
+               gamma = reg_factor * abs(correl(group))
+               ! Deflate the inflated variance using the INITIAL state inflate
+               ! value (before these obs started gumming it up).
+               ens_obs_mean = orig_obs_prior_mean(group)
+               ens_obs_var =  orig_obs_prior_var(group)
+
+               ens_var_deflate = ens_obs_var / &
+                  (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+               ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
+               call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
+                  ens_obs_mean, ens_var_deflate, obs(1), obs_err_var, gamma)
+            endif
+            ! Copy updated values into ensemble obs storage
+            ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
+            ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
+         end do GroupInflate
+      endif
+
+   end do STATE_UPDATE
+   !------------------------------------------------------
+
+   ! Now everybody updates their obs priors (only ones after this one)
+   OBS_UPDATE: do j = 1, num_close_obs
+      obs_index = close_obs_ind(j)
+      ! Only have to update obs that have not yet been used
+      if(my_obs(obs_index) > i) then
+
+         ! Compute the distance and the covar_factor
+         cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev)
+         if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
+
+         do group = 1, num_groups
+            grp_bot = grp_beg(group)
+            grp_top = grp_end(group)
+            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_inc(grp_bot:grp_top), &
+                obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
+                increment(grp_bot:grp_top), reg_coef(group), correl(group), net_a(group))
+         end do
+
+         ! Compute an information factor for impact of this observation on this state
+         if(num_groups == 1) then
+             reg_factor = 1.0_r8
+         else
+            ! Pass the time along with the index for possible diagnostic output
+            ! Compute regression factor for this obs-state pair
+            ! Negative indicates that this is an observation index
+            reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, -1*my_obs(obs_index))
+         endif
+
+         reg_factor = min(reg_factor, cov_factor)
+
+         if(.not. inflate_only) then
+            obs_ens_handle%copies(1:ens_size, obs_index) = &
+              obs_ens_handle%copies(1:ens_size, obs_index) + reg_factor * increment
+         endif
+      endif
+   end do OBS_UPDATE
+end do SEQUENTIAL_OBS
+
+! Every pe needs to get the current my_inflate and my_inflate_sd back
+if(do_single_ss_inflate(inflate)) then
+   ens_handle%copies(ENS_INF_COPY, :) = my_inflate
+   ens_handle%copies(ENS_INF_SD_COPY, :) = my_inflate_sd
+end if
+
+! Everybody needs to store the latest value for obs_inflate
+if(do_obs_inflate(inflate)) then
+   call set_inflate(inflate, my_inflate)
+   call set_sd(inflate, my_inflate_sd)
+endif
+
+! Free up the storage
+call destroy_obs(observation)
+
+end subroutine filter_assim
+
+!-------------------------------------------------------------
+
 subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
-   my_cov_inflate, my_cov_inflate_sd, net_a)
+   inflate, my_cov_inflate, my_cov_inflate_sd, net_a)
 
 
-integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens_in(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
-real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
-real(r8), intent(out) :: net_a
+integer,                     intent(in)    :: ens_size
+real(r8),                    intent(in)    :: ens_in(ens_size), obs, obs_var
+real(r8),                    intent(out)   :: obs_inc(ens_size)
+type(adaptive_inflate_type), intent(inout) :: inflate
+real(r8),                    intent(inout) :: my_cov_inflate, my_cov_inflate_sd
+real(r8),                    intent(out)   :: net_a
 
 real(r8) :: ens(ens_size), inflate_inc(ens_size)
 real(r8) :: sum_x, prior_mean, prior_var
-real(r8) :: new_val(ens_size)
-integer :: i, ens_index(ens_size), new_index(ens_size)
-real(r8) :: a
+real(r8) :: new_val(ens_size), a
+integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
@@ -164,32 +512,20 @@ ens = ens_in
 ! If observation space inflation is being done, compute the initial 
 ! increments and update the inflation factor and its standard deviation
 ! as needed. my_cov_inflate < 0 means don't do any of this.
-if(do_obs_inflate) then
+if(do_obs_inflate(inflate)) then
    ! Compute prior variance and mean from sample
    sum_x      = sum(ens)
    prior_mean = sum_x / ens_size
    prior_var = sum((ens - prior_mean)**2) / (ens_size - 1)
 
-
    ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
    if(my_cov_inflate_sd > 0.0_r8) & 
       ! Gamma set to 1.0 because no distance for observation space
-      call update_inflation(my_cov_inflate, my_cov_inflate_sd, prior_mean, prior_var, &
-         obs, obs_var, 1.0_r8, obs_sd_lower_bound, obs_inf_upper_bound)
-
-   ! If internal_outlier_threshold is exceeded, don't use this observation
-   if(internal_outlier_threshold > 0.0_r8) then
-      if(abs(prior_mean - obs) / sqrt(my_cov_inflate * prior_var + obs_var) > &
-         internal_outlier_threshold) then
-         !!!write(*, *) 'QZ BOUND EXCEEDED: returning'
-         obs_inc = 0.0_r8
-         net_a = 1.0_r8
-         return
-      endif
-   endif
+      call update_inflation(inflate, my_cov_inflate, my_cov_inflate_sd, prior_mean, &
+         prior_var, obs, obs_var, 1.0_r8)
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
-   call inflate_ens(ens, prior_mean, my_cov_inflate, prior_var)
+   call inflate_ens(inflate, ens, prior_mean, my_cov_inflate, prior_var)
 
    ! Keep the increment due to inflation alone 
    inflate_inc = ens - ens_in
@@ -215,7 +551,7 @@ else
 endif
 
 ! Add in the extra increments if doing observation space covariance inflation
-if(do_obs_inflate) then
+if(do_obs_inflate(inflate)) then
    obs_inc = obs_inc + inflate_inc
 endif
 
@@ -238,7 +574,7 @@ if(sort_obs_inc) then
    end do
 end if
 
-if(do_obs_inflate) then
+if(do_obs_inflate(inflate)) then
    net_a = a * sqrt(my_cov_inflate)
 else
    net_a = a
@@ -774,752 +1110,6 @@ end subroutine update_from_obs_inc
 
 !========================================================================
 
-subroutine filter_assim_region(domain_size, ens_size, model_size, &
-   num_groups, num_obs_in_set, obs_val_index, &
-   ens, ens_obs_in, compute_obs, &
-   ss_inflate, ss_inflate_sd, ss_sd_lower_bound, seq, keys, my_state, &
-   my_cov_inflate, my_cov_inflate_sd)
-
-integer, intent(in) :: domain_size
-integer, intent(in) :: ens_size, model_size, num_groups, num_obs_in_set, keys(num_obs_in_set)
-real(r8), intent(inout) :: ens(ens_size, domain_size)
-real(r8), intent(in) :: ens_obs_in(ens_size, num_obs_in_set)
-real(r8), intent(inout) :: ss_inflate(:), ss_inflate_sd(:)
-real(r8), intent(in)    ::  ss_sd_lower_bound
-logical, intent(in) :: compute_obs(num_obs_in_set)
-integer, intent(in) :: obs_val_index
-type(obs_sequence_type), intent(inout) :: seq
-logical, intent(in) :: my_state(model_size)
-real(r8), intent(inout) :: my_cov_inflate, my_cov_inflate_sd
-
-!!!character(len=129) :: msgstring
-integer :: i, j, jjj, k, kkk, istatus, ind, grp_size, group, grp_bot, grp_top
-integer :: grp_beg(num_groups), grp_end(num_groups)
-integer :: num_close_ptr(1), indx
-type(obs_type) :: observation
-type(obs_def_type) :: obs_def
-real(r8) :: obs(num_obs_in_set), obs_err_var(num_obs_in_set), cov_factor, regress(num_groups)
-real(r8) :: correl(num_groups)
-real(r8) :: qc(num_obs_in_set), obs_inc(ens_size)
-real(r8) :: ens_inc(ens_size), ens_obs(ens_size, num_obs_in_set)
-integer :: first_num_close
-integer :: order(num_obs_in_set)
-integer, allocatable :: close_ptr(:, :)
-real(r8), allocatable :: dist_ptr(:, :)
-real(r8) :: swath(ens_size), reg_factor
-type(location_type) :: obs_loc(num_obs_in_set)
-real(r8) :: ens_obs_mean(num_obs_in_set, num_groups), ens_obs_var(num_obs_in_set, num_groups)
-real(r8) :: gamma, ens_var_deflate
-
-! Added for get_close obs
-integer :: obs_box(num_obs_in_set), close_ind(num_obs_in_set), num_close
-integer :: num_cant_recompute
-real(r8) :: close_dist(num_obs_in_set)
-integer :: inv_indices(model_size), inv_index
-real(r8) :: net_a(num_groups)
-logical :: evaluate_this_ob, assimilate_this_ob
-real(r8) :: cutoff_rev
-
-! Specify initial storage size for number of close states
-first_num_close = min(domain_size, 400000)
-
-! Divide ensemble into num_groups groups
-grp_size = ens_size / num_groups
-
-do group = 1, num_groups
-   grp_beg(group) = (group - 1) * grp_size + 1
-   grp_end(group) = grp_beg(group) + grp_size - 1
-enddo
-
-! Generate an array with the indices of my state variables
-inv_indices = 0
-indx = 1
-do i = 1, model_size
-   if(my_state(i)) then
-      inv_indices(i) = indx
-      indx = indx + 1
-   endif
-end do
-
-! Need copy of obs to be modified
-ens_obs = ens_obs_in
-
-! Need to compute mean and variance of prior obs before doing any sequential assimilation
-! For use with adaptive state space inflation algorithms. Should be able to avoid this
-! computation if adaptive state space is not in use.
-if(do_varying_ss_inflate .or. do_single_ss_inflate) then
-   do i = 1, num_obs_in_set
-      do j = 1, num_groups
-         ens_obs_mean(i, j) = sum(ens_obs(grp_beg(j):grp_end(j), i)) / grp_size
-         ens_obs_var(i, j) = &
-            sum((ens_obs(grp_beg(j):grp_end(j), i) - ens_obs_mean(i, j))**2) / (grp_size - 1)
-      end do
-   end do
-endif
-
-! Set an initial size for the close state pointers
-allocate(close_ptr(1, first_num_close), dist_ptr(1, first_num_close))
-
-! Construct an observation temporary
-call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
-
-! Get the locations for all of the observations
-Locations: do i = 1, num_obs_in_set
-   call get_obs_from_key(seq, keys(i), observation)
-   call get_obs_def(observation, obs_def)
-   obs_loc(i) = get_obs_def_location(obs_def)
-   ! Get the observation error variance
-   obs_err_var(i) = get_obs_def_error_variance(obs_def)
-   ! Get the value of the observation
-   call get_obs_values(observation, obs(i:i), obs_val_index)
-   ! Get the qc value set so far
-   call get_qc(observation, qc(i:i), 1)
-end do Locations
-
-! Reorder the observations to get rid of the ones that can't be recomputed first
-indx = 1
-do i = 1, num_obs_in_set
-   if(.not. compute_obs(i)) then
-      order(indx) = i
-      indx = indx + 1
-   endif
-end do
-
-num_cant_recompute = indx - 1
-
-! Then put in all the ones that can be recomputed
-do i = 1, num_obs_in_set
-   if(compute_obs(i)) then
-      order(indx) = i
-      indx = indx + 1
-   endif
-end do
-
-! If there are some that can't be recomputed, need to setup get close states
-! ONLY HAVE TO DO THIS FOR THOSE THAT CAN"T BE RECOMPUTED
-! ALWAYS NEED THIS FOR OBSERVATIONAL DENSITY THINNING
-!!!if(num_cant_recompute > 0) &
-   call alloc_get_close_obs(num_obs_in_set, obs_loc, 2.0_r8*cutoff, obs_box)
-
-
-!---------------------- Sequential filter section --------------------------
-! Loop through each observation in the set
-Observations : do jjj = 1, num_obs_in_set
-   j = order(jjj)
-
-   ! Just skip observations that have failed prior qc ( >3 for now)
-   if(qc(j) > 3.01_r8 .or. obs(j) == missing_r8) cycle Observations
-
-   ! Observational density thinning of observations
-   ! Get a list of obs that are close to the ob being processed
-   call get_close_obs(j, num_obs_in_set, obs_loc, 2.0_r8*cutoff, obs_box, &
-      num_close, close_ind, close_dist)
-
-   ! Want expected number of close observations to be reduced to some threshold
-   if(num_close > num_close_threshold) then
-      ! Change the cutoff radius to get the appropriate number in the circle
-      ! This is specific to models on sphere's
-      ! Need to get thinning out of assim_tools and into something about locations
-      ! Compute a new radius if the num_close is greater than the desired as
-      ! 2*cutoff_rev = sqrt(2*cutoff * num_close_threshold / num_close)
-      cutoff_rev =  sqrt((2.0_r8*cutoff)**2 * num_close_threshold / num_close) / 2.0_r8
-   else 
-      cutoff_rev = cutoff
-   endif
-
-   
-   ! Compute the ensemble prior for this ob if it can be computed here
-   if(compute_obs(j)) then
-      do k = 1, ens_size
-         ! Only compute forward operator if allowed
-         call get_expected_obs(seq, keys(j:j), ens(k, :), ens_obs(k:k, j), istatus, &
-              assimilate_this_ob, evaluate_this_ob)
-         ! If evaluating but not assimilating, just skip but don't change qc
-         if(evaluate_this_ob .and. .not. assimilate_this_ob) cycle Observations
-         ! Inability to compute forward operator implies skip this observation
-         ! Also skip on qc if not being used at all (NOT CLEAR THIS COULD EVER HAPPEN)
-         if (istatus > 0 .or. (.not. assimilate_this_ob .and. .not. evaluate_this_ob)) then
-            !!!write(msgstring, FMT='(a,i7,a,i7)') 'Skipping obs ',j
-            !!!call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
-            qc(j) = qc(j) + 200.0_r8
-            call get_obs_from_key(seq, keys(j), observation)
-            ! Write out the updated quality control for this observation
-            ! At present: THIS DOES NOT GO BACK TO FILE FOR MULTI-DOMAIN RUNS
-            call set_qc(observation, qc(j:j), 1)
-            call set_obs(seq, observation, keys(j))
-            cycle Observations
-         endif
-      end do
-   endif
-
-   ! Getting close states for each scalar observation for now
-   ! Need model state for some distance computations in sigma, have
-   ! to pick some state, only current ones are ensemble, just pass 1
-222 call get_close_states(seq, keys(j), 2.0_r8*cutoff_rev, num_close_ptr(1), &
-         close_ptr(1, :), dist_ptr(1, :), ens(1, :))
-   if(num_close_ptr(1) < 0) then
-      deallocate(close_ptr, dist_ptr)
-      allocate(close_ptr(1, -1 * num_close_ptr(1)), dist_ptr(1, -1 * num_close_ptr(1)))
-      goto 222
-   endif
-   
-   !!! These calls are useful for WRF but generate too much output for low-order models. 
-   !!!write(msgstring, FMT='(a,i7,a,i7)') 'Variables updated for obs ',j,' : ',num_close_ptr(1)
-   !!!call error_handler(E_MSG,'filter',msgstring,source,revision,revdate)
-
-   ! Determine if this observation is close to ANY state variable for this process
-   CLOSE_STATE1: do k = 1, num_close_ptr(1)
-      ind = close_ptr(1, k)
-      ! If this state variable is in the list to be updated for this PE, proceed
-      if(my_state(ind)) then
-         goto 777
-      endif
-   end do CLOSE_STATE1
-   ! Falling off end means no close states, skip this observation
-   cycle Observations
-
-   777 continue
-
-   Group1: do group = 1, num_groups
-      grp_bot = grp_beg(group)
-      grp_top = grp_end(group)
-
-      ! Call obs_increment to do observation space
-      call obs_increment(ens_obs(grp_bot:grp_top, j), grp_size, obs(j), &
-         obs_err_var(j), obs_inc(grp_bot:grp_top), my_cov_inflate, my_cov_inflate_sd, net_a(group))
-   end do Group1
-      
-
-
-   ! Spatially-varying state space inflation
-   if(do_single_ss_inflate) then
-      do group = 1, num_groups
-         if(ss_inflate(1) > 0.0_r8 .and. ss_inflate_sd(1) > 0.0_r8) &
-            ! For case with single spatial inflation, use gamma = 1.0_r8
-            gamma = 1.0_r8
-            ! Deflate the inflated variance
-            ! NOTE: Technically, the initial value of the inflation from the start
-            ! of the routine should be used instead of ss_inflate(1) which may have
-            ! been modified. In generaly, the ss_inflate value changes so little
-            ! during one observation set that this doesn't appear worth the cost.
-            ens_var_deflate = ens_obs_var(j, group) / &
-               (1.0_r8 + gamma*(sqrt(ss_inflate(1)) - 1.0_r8))**2
-            call update_inflation(ss_inflate(1), ss_inflate_sd(1), &
-               ens_obs_mean(j, group), ens_var_deflate, obs(j), obs_err_var(j), &
-               gamma, ss_sd_lower_bound, ss_inf_upper_bound)
-      end do
-   endif
-
-
-
-
-   ! Now loop through each close state variable for this observation
-   CLOSE_STATE: do k = 1, num_close_ptr(1)
-      ind = close_ptr(1, k)
-
-      ! If this state variable is not in the list to be updated for this PE, skip
-      if(.not. my_state(ind)) cycle CLOSE_STATE
-
-      ! Compute distance dependent envelope
-      cov_factor = comp_cov_factor(dist_ptr(1, k), cutoff_rev)
-      if(cov_factor <= 0.0_r8) cycle CLOSE_STATE
-
-      ! Get the ensemble elements for this state variable and do regression
-      inv_index = inv_indices(ind)
-      swath = ens(:, inv_index)
-
-      ! Loop through the groups
-      Group2: do group = 1, num_groups
-         grp_bot = grp_beg(group)
-         grp_top = grp_end(group)
-         call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
-            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), grp_size, &
-            ens_inc(grp_bot:grp_top), regress(group), correl(group), net_a(group))
-      end do Group2
-
-      ! Compute an information factor for impact of this observation on this state
-      if(num_groups == 1) then
-          reg_factor = 1.0_r8
-      else
-
-         ! Pass the time along with the index for possible diagnostic output
-         call get_obs_def(observation, obs_def)
-         ! Compute regression factor for this obs-state pair
-         reg_factor = comp_reg_factor(num_groups, regress, &
-            get_obs_def_time(obs_def), j, ind)
-      endif
-
-      ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
-      reg_factor = min(reg_factor, cov_factor)
-
-      ! Do the final update for this state variable
-      ens(:, inv_index) = ens(:, inv_index) + reg_factor * ens_inc(:)
-
-      ! Spatially-varying state space inflation
-      if(do_varying_ss_inflate) then
-         GroupInflate: do group = 1, num_groups
-            if(ss_inflate(inv_index) > 0.0_r8 .and. ss_inflate_sd(inv_index) > 0.0_r8) &
-               gamma = reg_factor * abs(correl(group))
-               ! Deflate the inflated variance
-               ! NOTE: Technically, the initial value of the inflation from the start
-               ! of the routine should be used instead of ss_inflate(1) which may have
-               ! been modified. In generaly, the ss_inflate value changes so little
-               ! during one observation set that this doesn't appear worth the cost.
-               ens_var_deflate = ens_obs_var(j, group) / &
-                  (1.0_r8 + gamma*(sqrt(ss_inflate(inv_index)) - 1.0_r8))**2
-               call update_inflation(ss_inflate(inv_index), ss_inflate_sd(inv_index), &
-                  ens_obs_mean(j, group), ens_var_deflate, obs(j), obs_err_var(j), &
-                  gamma, ss_sd_lower_bound, ss_inf_upper_bound)
-         end do GroupInflate
-      endif
-
-   end do CLOSE_STATE
-
-   ! Also need to update all obs variable priors that cannot be recomputed
-   ! If there are no obs that can't be recomputed can skip obs update section
-   if(num_cant_recompute == 0) cycle Observations
-
-   ! GET_CLOSE_OBS; get a list of obs that are close to the ob being processed
-   ! Done up front for observational density thinning
-   !!!call get_close_obs(j, num_obs_in_set, obs_loc, 2.0_r8*cutoff, obs_box, &
-   !!!   num_close, close_ind, close_dist)
-
-   ! Loop through the list of obs close to this one
-   UPDATE_OBS: do kkk = 1, num_close 
-      ! Get the index of the next close observation
-      k = order(close_ind(kkk))
-
-      ! Obs already used will never be used again, be careful not to do the jth one here!
-      if(k <= j) cycle UPDATE_OBS
-
-      ! Don't need to do this if qc is bad
-      if (qc(k) > 3.01_r8) cycle UPDATE_OBS
-
-      ! Don't need to do this if observation can be recomputed
-      if(compute_obs(k)) cycle UPDATE_OBS
-      ! Compute distance dependent envelope
-      cov_factor = comp_cov_factor(close_dist(kkk), cutoff_rev)
-      if(cov_factor <= 0.0_r8) cycle UPDATE_OBS
-
-      ! Get the ensemble elements for this state variable and do regression
-      swath = ens_obs(:, k)
-
-      ! Loop through the groups
-      Group3: do group = 1, num_groups
-         grp_bot = grp_beg(group)
-         grp_top = grp_end(group)
-         call update_from_obs_inc(ens_obs(grp_bot:grp_top, j), &
-            obs_inc(grp_bot:grp_top), swath(grp_bot:grp_top), grp_size, &
-            ens_inc(grp_bot:grp_top), regress(group), correl(group), net_a(group))
-      end do Group3
-
-      ! Compute an information factor for impact of this observation on this state
-      if(num_groups == 1) then
-          reg_factor = 1.0_r8
-      else
-         ! Pass the time along with the index for possible diagnostic output
-         call get_obs_def(observation, obs_def)
-         ! Compute regression factor for this obs-state pair
-         ! Negative final argument indicates that this is an obs-obs regression computation.
-         reg_factor = comp_reg_factor(num_groups, regress, &
-            get_obs_def_time(obs_def), j, -1*k)
-      endif
-
-      ! COV_FACTOR NOW COMES IN HERE FOR USE WITH GROUPS; JLA 11/19/03
-      reg_factor = min(reg_factor, cov_factor)
-
-      ! Do the final update for this obs. variable
-      ens_obs(:, k) = ens_obs(:, k) + reg_factor * ens_inc(:)
-
-   end do UPDATE_OBS
-
-!------------------
-
-end do Observations
-
-! Free up storage
-deallocate(close_ptr, dist_ptr)
-call destroy_obs(observation)
-
-end subroutine filter_assim_region
-
-
-!---------------------------------------------------------------------------
-
-subroutine filter_assim(ens_handle, ens_obs, compute_obs_in, &
-   ens_size, model_size, num_obs_in_set, num_groups, ss_inflate, ss_inflate_sd, &
-   ss_sd_lower_bound, seq, keys, obs_sequence_in_name)
-
-integer,                 intent(in) :: ens_size, model_size, num_groups, num_obs_in_set
-integer,                 intent(in) :: keys(num_obs_in_set)
-type(ensemble_type),     intent(inout) :: ens_handle
-real(r8),                intent(in) :: ens_obs(ens_size, num_obs_in_set)
-logical,                 intent(in) :: compute_obs_in(num_obs_in_set)
-real(r8),                intent(inout) :: ss_inflate(:), ss_inflate_sd(:)
-real(r8),                intent(in) :: ss_sd_lower_bound
-type(obs_sequence_type), intent(inout) :: seq
-character(len=*),        intent(in) :: obs_sequence_in_name
-
-integer :: i, j, indx, obs_val_index, iunit, control_unit
-integer :: base_size, remainder, domain_top, domain_bottom
-logical :: compute_obs(num_obs_in_set), my_state(model_size)
-
-real(r8), allocatable :: ens(:,:), my_ss_inf(:), my_ss_inf_sd(:)
-integer,  allocatable :: indices(:)
-
-character(len=28) :: in_file_name(num_domains), out_file_name(num_domains)
-character(len=129) :: temp_obs_seq_file, errstring
-
-integer :: which_domain(model_size), region_size(num_domains)
-
-compute_obs = compute_obs_in
-
-! Set compute obs to false for more than one region (can be modified later)
-if(num_domains /= 1) compute_obs = .false.
-
-! Determine which copy has actual obs
-do j = 1, get_num_copies(seq)
-   obs_val_index = j
-   ! Need to look for 'observation'
-   if(index(get_copy_meta_data(seq, j), 'observation') > 0) goto 444
-end do
-! Falling of end means 'observations' not found; die
-call error_handler(E_ERR,'filter_assim', &
-        'Did not find observation copy with metadata "observation"', &
-         source, revision, revdate)
-
-444 continue
-
-! Write out the most up-to-date obs_sequence file, too, which includes qc
-if(do_parallel == 2 .or. do_parallel == 3) then
-   temp_obs_seq_file = 'filter_assim_obs_seq'
-   call write_obs_seq(seq, temp_obs_seq_file)
-endif
-
-! Having more domains than state variables is silly
-if(num_domains > model_size) then
-call error_handler(E_ERR,'filter_assim', &
-        'Having more domains than state variables does not make sense', &
-         source, revision, revdate)
-endif
-
-
-base_size = model_size / num_domains
-remainder = model_size - base_size * num_domains
-domain_top = 0
-! TEMPORARY TEST OF ENSEMBLE TRANSPOSING
-do j = 1, num_domains
-   domain_bottom = domain_top + 1
-   region_size(j) = base_size
-   if(j <= remainder) region_size(j) = region_size(j) + 1
-   domain_top = domain_bottom + region_size(j) - 1
-   which_domain(domain_bottom : domain_top) = j
-end do
-
-! TRANSPOSE TO REGIONS
-call transpose_ens_to_regions(ens_handle, num_domains, which_domain, region_size)
-
-
-
-domain_top = 0
-do j = 1, num_domains
-   domain_bottom = domain_top + 1
-
-   ! Find out which state variables are in my domain
-   !call whats_in_my_domain(num_domains, j, my_state, region_size(j))
-   ! Temporarily just do the domain stuff here
-   domain_top = domain_bottom + region_size(j) - 1
-   my_state = .false.
-   my_state(domain_bottom : domain_top) = .true.
-
-   if(num_domains > 1 .or. .not. is_ens_in_core(ens_handle)) then
-      ! Generate an array with the indices of my state variables
-      ! Only need full size array for my_ss_inf's IF spatially varying ss inflate
-      if(do_varying_ss_inflate) then
-         allocate(ens(ens_size, region_size(j)), indices(region_size(j)), &
-            my_ss_inf(region_size(j)), my_ss_inf_sd(region_size(j)))
-      else 
-         allocate(ens(ens_size, region_size(j)), indices(region_size(j)), &
-            my_ss_inf(1), my_ss_inf_sd(1))
-      endif
-
-      ! For single inflate, copy the single value of the inflate and sd
-      if(do_single_ss_inflate) then
-         my_ss_inf(1) = ss_inflate(1)
-         my_ss_inf_sd(1) = ss_inflate_sd(1)
-      endif
-
-      indx = 1
-      do i = 1, model_size
-         if(my_state(i)) then
-            indices(indx) = i
-            ! If spatially varying inflate, need to copy over all values for domain
-            if(do_varying_ss_inflate) then
-               my_ss_inf(indx) = ss_inflate(i)
-               my_ss_inf_sd(indx) = ss_inflate_sd(i)
-            endif
-            indx = indx + 1
-         endif
-      end do
-
-      ! Get the ensemble (whole thing for now) from storage
-      call get_region_by_number(ens_handle, j, region_size(j), ens, indices)
-   endif
-
-   ! Do ensemble filter update for this region
-   if(do_parallel == 0) then
-      if(num_domains > 1 .or. .not. is_ens_in_core(ens_handle)) then
-         call filter_assim_region(region_size(j), ens_size, model_size, num_groups, &
-            num_obs_in_set, obs_val_index, &
-            ens, ens_obs, compute_obs, &
-            my_ss_inf, my_ss_inf_sd, ss_sd_lower_bound, seq, keys, my_state, &
-            obs_inflate(j), obs_inflate_sd(j))
-         ! Copy the inflation update back to standard vector
-         ! Only copy for last domain for single state space
-         if(do_single_ss_inflate .and. j == num_domains) then
-            ss_inflate(1) = my_ss_inf(1)
-            ss_inflate_sd(1) = my_ss_inf_sd(1)
-         endif
-
-         do i = 1, region_size(j)
-            indx = indices(i)
-            if(do_varying_ss_inflate) then
-               ss_inflate(indx) = my_ss_inf(i)
-               ss_inflate_sd(indx) = my_ss_inf_sd(i)
-               !!!??? Efficiency if single domain...
-            endif
-         end do
-
-      else
-! Single domain, in core for direct access to ensemble storage
-         call filter_assim_region(region_size(j), ens_size, model_size, num_groups, &
-            num_obs_in_set, obs_val_index, &
-            ens_handle%ens, ens_obs, compute_obs, &
-            ss_inflate, ss_inflate_sd, ss_sd_lower_bound, seq, keys, my_state, &
-            obs_inflate(j), obs_inflate_sd(j))
-      endif
-   else
-
-      ! Loop to write out arguments for each region
-      if(j < 10) then
-         write(in_file_name(j), 11) 'filter_assim_region__in', j
-         write(out_file_name(j), 11) 'filter_assim_region_out', j
-      else if(j < 100) then
-         write(in_file_name(j), 21) 'filter_assim_region__in', j
-         write(out_file_name(j), 21) 'filter_assim_region_out', j
-      else if(j < 1000) then
-         write(in_file_name(j), 31) 'filter_assim_region__in', j
-         write(out_file_name(j), 31) 'filter_assim_region_out', j
-      else if(j < 10000) then
-         write(in_file_name(j), 41) 'filter_assim_region__in', j
-         write(out_file_name(j), 41) 'filter_assim_region_out', j
-      else
-         write(errstring,*)'Trying to use ',ens_size,' model states -- too many.'
-         call error_handler(E_MSG,'filter_assim',errstring,source,revision,revdate)
-         call error_handler(E_ERR,'filter_assim','Use less than 10000 domains.',source,revision,revdate)
-      endif
-
- 11   format(a23, i1)
- 21   format(a23, i2)
- 31   format(a23, i3)
- 41   format(a23, i4)
-
-! Passing this interface by file in preparation for separate executables
-      iunit = get_unit()
-      open(unit = iunit, file = in_file_name(j), action = 'write', form = 'unformatted', &
-      !!!open(unit = iunit, file = in_file_name(j), action = 'write', form = 'formatted', &
-         status = 'replace')
-      write(iunit) num_domains, region_size(j), ens_size, model_size, num_groups, &
-         num_obs_in_set, obs_val_index, obs_sequence_in_name
-      write(iunit) ens, ens_obs, compute_obs, my_ss_inf, my_ss_inf_sd, ss_sd_lower_bound
-      write(iunit) keys, my_state, obs_inflate(j), obs_inflate_sd(j)
-      close(iunit)
-   endif
-
-   ! Put this region into storage for single executable which is now finished
-   if(do_parallel == 0 .and. (num_domains > 1 .or. .not. is_ens_in_core(ens_handle))) & 
-      call put_region_by_number(ens_handle, j, region_size(j), ens, indices)
-   ! Free up the storage allocated for the region
-   if(num_domains > 1 .or. .not. is_ens_in_core(ens_handle)) &
-      deallocate(ens, indices, my_ss_inf, my_ss_inf_sd)
-
-end do
-
-! All the files are out there, now need to spawn off jobs if parallel
-if(do_parallel == 2 .or. do_parallel == 3) then
-
-   ! Write out the file names to a control file
-   control_unit = get_unit()
-   open(unit = control_unit, file = 'assim_region_control')
-   write(control_unit, *) num_domains
-   do i = 1, num_domains
-      write(control_unit, '(a28)' ) in_file_name(i)
-      write(control_unit, '(a28)' ) out_file_name(i)
-   end do
-   close(control_unit)
-
-
-   ! Spawn the job to do parallel assims for do_parallel 2
-   if(do_parallel == 2) then
-      call system('echo go > batchflag; '//parallel_command//' ; sleep 1')
-
-      do
-         if(file_exist('batchflag')) then
-            call system('sleep 10')
-         else
-            exit
-         endif
-      end do
-   ! Do the continuously running script case
-   else if(do_parallel == 3) then
-      call system('echo a > go_assim_regions')
-      do
-         if(file_exist('go_assim_regions')) then
-            call system('sleep 1')
-         else
-            exit
-         endif
-      enddo
-
-   end if
-
-   domain_top = 0
-   do j = 1, num_domains
-   ! Find out which state variables are in my domain
-   !call whats_in_my_domain(num_domains, j, my_state, region_size(j))
-   ! Temporarily just do the domain stuff here
-      domain_bottom = domain_top + 1
-
-      domain_top = domain_bottom + region_size(j) - 1
-      my_state = .false.
-      my_state(domain_bottom : domain_top) = .true.
-
-      ! Generate an array with the indices of my state variables
-      ! Only need full size array for my_ss_inf's IF spatially varying ss inflate
-      if(do_varying_ss_inflate) then
-         allocate(ens(ens_size, region_size(j)), indices(region_size(j)), &
-            my_ss_inf(region_size(j)), my_ss_inf_sd(region_size(j)))
-      else 
-         allocate(ens(ens_size, region_size(j)), indices(region_size(j)), &
-            my_ss_inf(1), my_ss_inf_sd(1))
-      endif
-
-
-      indx = 1
-      do i = 1, model_size
-         if(my_state(i)) then
-            indices(indx) = i
-            indx = indx + 1
-         endif
-      end do
-
-      ! Read in the update ensemble region (also need the qc eventually)
-      iunit = get_unit()
-      open(unit = iunit, file = out_file_name(j), action = 'read', form = 'unformatted')
-      !!!open(unit = iunit, file = out_file_name(j), action = 'read', form = 'formatted')
-      read(iunit) ens, my_ss_inf, my_ss_inf_sd, obs_inflate(j), obs_inflate_sd(j)
-      close(iunit)
-  
-      ! Only one value to copy back if single state space inflation
-      ! Only copy single state space if this is the last domain
-      if(do_single_ss_inflate .and. j == num_domains) then
-         ss_inflate(1) = my_ss_inf(1)
-         ss_inflate_sd(1) = my_ss_inf_sd(1)
-      endif
-      
-
-      ! Copy the inflation update back to standard vector for varying state space inflate
-      if(do_varying_ss_inflate) then
-         do i = 1, region_size(j)
-            indx = indices(i)
-            ss_inflate(indx) = my_ss_inf(i)
-            ss_inflate_sd(indx) = my_ss_inf_sd(i)
-         end do
-      endif
-
-      call put_region_by_number(ens_handle, j, region_size(j), ens, indices)
-      deallocate(ens, indices, my_ss_inf, my_ss_inf_sd)
-   end do
-
-endif
-
-
-! UNTRANSPOSE TO REGIONS
-call transpose_regions_to_ens(ens_handle, num_domains, which_domain, region_size)
-
-end subroutine filter_assim
-
-
-
-!-----------------------------------------------------------------------
-
-subroutine async_assim_region(in_file_name, out_file_name)
-
-character(len = *), intent(in) :: in_file_name, out_file_name
-
-! DONT FORGET THE QC!!!
-! AND IN GENERAL NEED TO WORK ON REGSERIES STUFF!!!
-
-integer :: n_domains, domain_size, ens_size, model_size, num_groups
-integer :: num_obs_in_set, obs_val_index
-character(len = 129) :: obs_sequence_in_name
-real(r8), allocatable :: ens(:, :), ens_obs(:, :), my_ss_inf(:), my_ss_inf_sd(:)
-integer, allocatable :: keys(:)
-logical, allocatable :: my_state(:), compute_obs(:)
-real(r8) :: my_cov_inflate, my_cov_inflate_sd, ss_sd_lower_bound
-
-type(obs_sequence_type) :: seq2
-integer :: iunit
-
-! Read in all the arguments from the file
-iunit = get_unit()
-open(unit = iunit, file = in_file_name, action = 'read', form = 'unformatted')
-!!!open(unit = iunit, file = in_file_name, action = 'read', form = 'formatted')
-read(iunit) n_domains, domain_size, ens_size, model_size, num_groups, &
-   num_obs_in_set, obs_val_index, obs_sequence_in_name
-
-! Allocate storage; size of state space inflate is model_size only if spatially varying
-if(do_varying_ss_inflate) then
-   allocate(ens(ens_size, domain_size), ens_obs(ens_size, num_obs_in_set), &
-      compute_obs(num_obs_in_set), keys(num_obs_in_set), my_state(model_size), &
-      my_ss_inf(domain_size), my_ss_inf_sd(domain_size))
-else
-   allocate(ens(ens_size, domain_size), ens_obs(ens_size, num_obs_in_set), &
-      compute_obs(num_obs_in_set), keys(num_obs_in_set), my_state(model_size), &
-      my_ss_inf(1), my_ss_inf_sd(1))
-endif
-
-read(iunit) ens, ens_obs, compute_obs, my_ss_inf, my_ss_inf_sd, ss_sd_lower_bound
-read(iunit) keys, my_state, my_cov_inflate, my_cov_inflate_sd
-
-close(iunit)
-
-! Now need to open the obs sequence file to proceed with call to region assim
-obs_sequence_in_name = 'filter_assim_obs_seq'
-call read_obs_seq(obs_sequence_in_name, 0, 0, 0, seq2)
-
-! Do ensemble filter update for this region
-call filter_assim_region(domain_size, ens_size, model_size, num_groups, &
-   num_obs_in_set, obs_val_index, &
-   ens, ens_obs, compute_obs, my_ss_inf, my_ss_inf_sd, ss_sd_lower_bound, &
-   seq2, keys, my_state, my_cov_inflate, my_cov_inflate_sd)
-
-! Write out the updated ensemble region, need to do QC also
-iunit = get_unit()
-open(unit = iunit, file = out_file_name, action = 'write', form = 'unformatted', &
-!!!open(unit = iunit, file = out_file_name, action = 'write', form = 'formatted', &
-   status = 'replace')
-write(iunit) ens, my_ss_inf, my_ss_inf_sd, my_cov_inflate, my_cov_inflate_sd
-close(iunit)
-
-call destroy_obs_sequence(seq2)
-
-end subroutine async_assim_region
-
-
-!------------------------------------------------------------------
-
-
 subroutine comp_correl(ens, n, correl)
 
 implicit none
@@ -1646,7 +1236,119 @@ end subroutine get_correction_from_file
 
 !------------------------------------------------------------------------
 
+! Temporary testing stuff
 
+subroutine my_broadcast_send1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
+         orig_obs_prior_var, qc)
+
+integer, intent(in) :: owner
+real(r8), intent(inout) :: obs_prior(:), obs_inc(:), orig_obs_prior_mean(:)
+real(r8), intent(inout) :: orig_obs_prior_var(:), qc
+
+real(r8) :: temp(size(obs_inc) + size(orig_obs_prior_mean) + size(orig_obs_prior_var) + 1)
+
+! Pack stuff together into two arrays and use broadcast_send
+temp(1:size(obs_inc)) = obs_inc
+temp(size(obs_inc) + 1: size(obs_inc) + size(orig_obs_prior_mean)) = orig_obs_prior_mean
+temp(size(obs_inc) + size(orig_obs_prior_mean) + 1:size(temp) - 1) = orig_obs_prior_var
+temp(size(temp)) = qc
+call broadcast_send(owner, obs_prior, temp)
+
+end subroutine my_broadcast_send1
+
+!------------------------------------------------------------------------
+
+
+subroutine my_broadcast_recv1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
+         orig_obs_prior_var, qc)
+
+integer, intent(in) :: owner
+real(r8), intent(inout) :: obs_prior(:), obs_inc(:), orig_obs_prior_mean(:)
+real(r8), intent(inout) :: orig_obs_prior_var(:), qc
+
+real(r8) :: temp(size(obs_inc) + size(orig_obs_prior_mean) + size(orig_obs_prior_var) + 1)
+
+! Pack stuff together into two arrays and use broadcast_recv
+call broadcast_recv(owner, obs_prior, temp)
+obs_inc = temp(1:size(obs_inc))
+orig_obs_prior_mean = temp(size(obs_inc) + 1: size(obs_inc) + size(orig_obs_prior_mean))
+orig_obs_prior_var = temp(size(obs_inc) + size(orig_obs_prior_mean) + 1: size(temp) - 1)
+qc = temp(size(temp))
+
+end subroutine my_broadcast_recv1
+
+!------------------------------------------------------------------------
+
+subroutine my_broadcast_send2(owner, obs_prior, obs_inc, ss_inflate, ss_inflate_sd, qc)
+
+integer, intent(in) :: owner
+real(r8), intent(inout) :: obs_prior(:), obs_inc(:), ss_inflate, ss_inflate_sd, qc
+
+real(r8) :: temp(size(obs_inc) + 3)
+
+! Pack stuff together into two arrays and use broadcast_send
+temp(1:size(obs_inc)) = obs_inc
+temp(size(obs_inc) + 1) = ss_inflate
+temp(size(obs_inc) + 2) = ss_inflate_sd
+temp(size(temp)) = qc
+call broadcast_send(owner, obs_prior, temp)
+
+end subroutine my_broadcast_send2
+
+!------------------------------------------------------------------------
+
+subroutine my_broadcast_recv2(owner, obs_prior, obs_inc, ss_inflate, ss_inflate_sd, qc)
+
+integer, intent(in) :: owner
+real(r8), intent(inout) :: obs_prior(:), obs_inc(:), ss_inflate, ss_inflate_sd, qc
+
+real(r8) :: temp(size(obs_inc) + 3)
+
+call broadcast_recv(owner, obs_prior, temp)
+
+! Pack stuff together into two arrays and use broadcast_recv
+obs_inc = temp(1:size(obs_inc))
+ss_inflate = temp(size(obs_inc) + 1)
+ss_inflate_sd = temp(size(obs_inc) + 2)
+qc = temp(size(temp))
+
+end subroutine my_broadcast_recv2
+
+!------------------------------------------------------------------------
+
+subroutine my_broadcast_send3(owner, obs_prior, obs_inc, obs_qc)
+
+integer, intent(in) :: owner
+real(r8), intent(inout) :: obs_prior(:), obs_inc(:), obs_qc
+
+real(r8) :: temp(size(obs_inc) + 1)
+
+! Pack the increment and qc
+temp(1:size(obs_inc)) = obs_inc
+temp(size(temp)) = obs_qc
+
+call broadcast_send(owner, obs_prior, temp)
+
+end subroutine my_broadcast_send3
+
+!------------------------------------------------------------------------
+
+subroutine my_broadcast_recv3(owner, obs_prior, obs_inc, obs_qc)
+
+integer, intent(in) :: owner
+real(r8), intent(inout) :: obs_prior(:), obs_inc(:), obs_qc
+
+real(r8) :: temp(size(obs_inc) + 1)
+
+call broadcast_recv(owner, obs_prior, temp)
+
+! Extract the increment and qc
+obs_inc = temp(1:size(obs_inc))
+obs_qc = temp(size(temp))
+
+end subroutine my_broadcast_recv3
+
+!------------------------------------------------------------------------
 
 
 !========================================================================
