@@ -179,7 +179,7 @@ logical                             :: interf_provided
 ! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
 if(.not. start_from_restart .and. .not. single_restart_file_in) then
    write(errstring, *) 'start_from_restart in filter_nml and single_restart_file_in in &
-      ensemble_manager_nml cannot both be false'
+      &ensemble_manager_nml cannot both be false'
    call error_handler(E_ERR,'read_ensemble_restart', errstring, source, revision, revdate)
 endif
 
