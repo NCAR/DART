@@ -507,11 +507,15 @@ do i = 1, num_output_state_members
 end do
 
 ! Netcdf output diagnostics for inflation; inefficient for single spatial
-if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+!!! nsc - temporary fix.  for now always allow space in the netcdf file for
+!!! a single copy of the inflation values.  this should be changed to handle
+!!! prior, posterior, both, or neither inflation.  but it must match what is
+!!! written out in filter_state_space_diagnostics() below.
+!!!if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
    num_state_copies = num_state_copies + 2
    state_meta(num_state_copies -1) = 'inflation mean'
    state_meta(num_state_copies) = 'inflation sd'
-endif
+!!!endif
 
 ! Set up diagnostic output for model state, if output is desired
 if(  output_state_ens_spread .or. output_state_ens_mean .or. &
