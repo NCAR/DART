@@ -13,31 +13,30 @@ program perfect_model_obs
 
 ! Program to build an obs_sequence file from simulated observations.
 
-use        types_mod, only : r8
-use    utilities_mod, only : initialize_utilities, register_module, error_handler, &
-                             find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, E_DBG, logfileunit, timestamp
-use time_manager_mod, only : time_type, get_time
-use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
-   get_obs_from_key, set_copy_meta_data, get_copy_meta_data, get_obs_def, get_obs_time_range, &
-   get_time_range_keys, set_obs_values, set_qc, set_obs, write_obs_seq, get_num_obs, &
-   get_next_obs, get_num_times, init_obs, assignment(=), static_init_obs_sequence, &
-   get_num_qc, get_num_copies, read_obs_seq_header, set_qc_meta_data, get_expected_obs
+use        types_mod,     only : r8
+use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
+                                 find_namelist_in_file, check_namelist_read,           &
+                                 E_ERR, E_MSG, E_DBG, logfileunit, timestamp
+use time_manager_mod,     only : time_type, get_time
+use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
+                                 get_obs_from_key, set_copy_meta_data, get_obs_def,          &
+                                 get_time_range_keys, set_obs_values, set_qc, set_obs,       &
+                                 write_obs_seq, get_num_obs, init_obs, assignment(=),        &
+                                 static_init_obs_sequence, get_num_qc, read_obs_seq_header,  &
+                                 set_qc_meta_data, get_expected_obs
 
-use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance 
-use    obs_model_mod, only : move_ahead 
-use  assim_model_mod, only : static_init_assim_model, get_model_size, &
-   aget_initial_condition, get_model_state_vector, set_model_state_vector, &
-   set_model_time, get_model_time, netcdf_file_type, init_diag_output, &
-   aoutput_diagnostics, finalize_diag_output, init_assim_model, &
-   awrite_state_restart, open_restart_read, open_restart_write, close_restart
+use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance 
+use    obs_model_mod,     only : move_ahead 
+use  assim_model_mod,     only : static_init_assim_model, get_model_size,                      &
+                                 aget_initial_condition, netcdf_file_type, init_diag_output,   &
+                                 aoutput_diagnostics, finalize_diag_output
    
-use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
-                              task_count, task_sync
+use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
+                                 task_count, task_sync
 
-use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart, &
-   end_ensemble_manager, ensemble_type, read_ensemble_restart
+use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
+use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart,             &
+                                 end_ensemble_manager, ensemble_type, read_ensemble_restart
 
 implicit none
 
@@ -52,13 +51,11 @@ type(obs_type)          :: obs
 type(obs_def_type)      :: obs_def
 type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle
-type(time_type)         :: time1
+type(netcdf_file_type)  :: StateUnit
 
 integer                 :: j, iunit, time_step_number
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies
-
-type(netcdf_file_type)  :: StateUnit
 integer                 :: ierr, io, istatus, num_obs_in_set
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 integer, allocatable    :: keys(:)
@@ -72,32 +69,57 @@ integer                 :: obs_seq_file_id
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
-logical :: start_from_restart = .false., output_restart = .false.
-integer :: async = 0
+logical              ::    start_from_restart = .false.
+logical              ::        output_restart = .false.
+integer              ::                 async = 0
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1
+integer              ::        init_time_days = 0
+integer              ::     init_time_seconds = 0
+integer              ::       output_interval = 1
 character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
                         obs_seq_out_file_name = 'obs_seq.out',     &
-                        adv_ens_command       = './advance_ens.csh'
+                        adv_ens_command       = './advance_model.csh'
 
-
-! adv_ens_command  == 'qsub advance_ens.csh' -> system call advances ensemble by
-!                                               qsub submission of a batch job
-!                                               -l num_nodes can be inserted after qsub
-!                  == './advance_ens.csh'    -> advance ensemble using a script which
-!                                               explicitly distributes ensemble among nodes
-! advance_ens.csh is currently written to handle both batch submissions (qsub) and
-!                 non-batch executions.
-
-namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
-   obs_seq_out_file_name, start_from_restart, output_restart, &
-   restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &
-   output_interval
+namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,          &
+                                 init_time_days, init_time_seconds, output_interval, &
+                                 restart_in_file_name, restart_out_file_name,        &
+                                 obs_seq_in_file_name, obs_seq_out_file_name,        &
+                                 adv_ens_command
 
 !------------------------------------------------------------------------------
+
+! Doing this allows independent scoping for subroutines in main program file
+call perfect_main()
+
+!------------------------------------------------------------------------------
+
+contains
+
+subroutine perfect_main()
+
+type(obs_sequence_type) :: seq
+type(obs_type)          :: obs
+type(obs_def_type)      :: obs_def
+type(random_seq_type)   :: random_seq
+type(ensemble_type)     :: ens_handle
+type(netcdf_file_type)  :: StateUnit
+
+integer, allocatable    :: keys(:)
+integer                 :: j, iunit, time_step_number, obs_seq_file_id
+integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
+integer                 :: additional_qc, additional_copies
+integer                 :: ierr, io, istatus, num_obs_in_set
+integer                 :: model_size, key_bounds(2), num_qc, last_key_used
+
+real(r8)                :: true_obs(1), obs_value(1), qc(1)
+
+character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
+character(len=129)      :: msgstring
+
+logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -113,9 +135,11 @@ write(logfileunit, nml=perfect_model_obs_nml)
 write(     *     , nml=perfect_model_obs_nml)
 
 ! Don't let this run with more than one task; just a waste of resource
-if(task_count() > 1) &
-   call error_handler(E_ERR,'perfect_model_obs','only use one mpi process here', &
+if(task_count() > 1) then
+   write(msgstring, *) 'Only use one mpi process here: ', task_count(), ' were requested'
+   call error_handler(E_ERR, 'perfect_model_obs', msgstring,  &
       source, revision, revdate)
+endif
 call task_sync()
 
 ! Find out how many data copies are in the obs_sequence 
@@ -158,7 +182,7 @@ write(msgstring,*)'Model size = ',model_size
 call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
 
 ! Set up the ensemble storage and read in the restart file
-call perfect_read_restart()
+call perfect_read_restart(ens_handle, model_size)
 
 ! Set up output of truth for state
 StateUnit = init_diag_output('True_State', 'true state from control', 1, (/'true state'/))
@@ -268,7 +292,7 @@ call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
 
 call finalize_mpi_utilities()
 
-contains
+end subroutine perfect_main
 
 !=====================================================================
 
@@ -290,9 +314,13 @@ end subroutine perfect_initialize_modules_used
 
 !---------------------------------------------------------------------
 
-subroutine perfect_read_restart()
+subroutine perfect_read_restart(ens_handle, model_size)
 
-integer :: secs, days
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: model_size
+
+type(time_type) :: time1
+integer         :: secs, days
 
 ! First initialize the ensemble manager storage, only 1 copy for perfect
 call init_ensemble_manager(ens_handle, 1, model_size, 1)
