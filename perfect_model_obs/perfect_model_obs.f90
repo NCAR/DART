@@ -342,7 +342,7 @@ else
 endif
 
 ! Temporary print of initial model time
-call get_time(time1,secs,days)
+call get_time(ens_handle%time(1),secs,days)
 write(msgstring, *) 'initial model time of perfect_model member (days,seconds) ',days,secs
 call error_handler(E_DBG,'perfect_model_obs',msgstring,source,revision,revdate)
 
