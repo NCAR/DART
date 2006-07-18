@@ -16,8 +16,9 @@ module adaptive_inflate_mod
 use types_mod,            only : r8, PI
 use time_manager_mod,     only : time_type, get_time, set_time
 use utilities_mod,        only : file_exist, get_unit, register_module, &
-   error_handler, E_ERR, E_MSG, logfileunit
-use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, random_uniform
+                                 error_handler, E_ERR, E_MSG, logfileunit
+use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, &
+                                 random_uniform
 use ensemble_manager_mod, only : ensemble_type, all_vars_to_all_copies, all_copies_to_all_vars, &
                                  read_ensemble_restart, write_ensemble_restart
 
@@ -30,7 +31,6 @@ public :: update_inflation,           adaptive_inflate_end,          do_obs_infl
           get_sd,                     set_inflate,                   set_sd,             &
           output_inflate_diagnostics
 
-character(len = 129) :: errstring
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -48,13 +48,16 @@ revdate  = "$Date$"
 ! Type to keep track of information for inflation
 type adaptive_inflate_type
    ! Flavor can be 0:none, 1:obs_inflate, 2:varying_ss_inflate, 3:single_ss_inflate
-   integer :: inflation_flavor, obs_diag_unit
-   logical :: start_from_restart, output_restart, deterministic
-   character(len = 129) :: in_file_name, out_file_name, diag_file_name
-   real(r8) :: inflate, sd, sd_lower_bound, inf_upper_bound
-   ! Include a random sequence type in case non-deterministic is used
+   integer               :: inflation_flavor, obs_diag_unit
+   logical               :: start_from_restart, output_restart, deterministic
+   character(len = 129)  :: in_file_name, out_file_name, diag_file_name
+   real(r8)              :: inflate, sd, sd_lower_bound, inf_upper_bound
+   ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
 end type adaptive_inflate_type
+
+! Module storage for writing error messages
+character(len = 129) :: errstring
 
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
@@ -65,12 +68,14 @@ contains
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_init(inflate, inf_type, start_from_restart, &
+subroutine adaptive_inflate_init(inflate_handle, inf_type, start_from_restart, &
    output_restart, deterministic, in_file_name, out_file_name, diag_file_name, &
    inf_initial, sd_initial, inf_upper_bound, sd_lower_bound, &
    ens_handle, ss_inflate_index, ss_inflate_sd_index)
 
-type(adaptive_inflate_type), intent(inout) :: inflate
+! Initializes an adaptive_inflate_type 
+
+type(adaptive_inflate_type), intent(inout) :: inflate_handle
 integer,                     intent(in)    :: inf_type
 logical,                     intent(in)    :: start_from_restart
 logical,                     intent(in)    :: output_restart
@@ -87,24 +92,21 @@ integer :: iunit, io, true_count
 type(time_type) :: init_time
 integer :: restart_unit
 
-! Initializes the module by reading in the namelist and making sure namelist
-! settings are legal.
+! Load up the structure first to keep track of all details of this inflation type
+inflate_handle%inflation_flavor   = inf_type
+inflate_handle%start_from_restart = start_from_restart
+inflate_handle%output_restart     = output_restart
+inflate_handle%deterministic      = deterministic
+inflate_handle%in_file_name       = in_file_name
+inflate_handle%out_file_name      = out_file_name
+inflate_handle%diag_file_name     = diag_file_name
+inflate_handle%inflate            = inf_initial
+inflate_handle%sd                 = sd_initial
+inflate_handle%inf_upper_bound    = inf_upper_bound
+inflate_handle%sd_lower_bound     = sd_lower_bound
 
-! Load up the structure first
-inflate%inflation_flavor = inf_type
-inflate%start_from_restart = start_from_restart
-inflate%output_restart = output_restart
-inflate%deterministic = deterministic
-inflate%in_file_name = in_file_name
-inflate%out_file_name = out_file_name
-inflate%diag_file_name = diag_file_name
-inflate%inflate = inf_initial
-inflate%sd = sd_initial
-inflate%inf_upper_bound = inf_upper_bound
-inflate%sd_lower_bound = sd_lower_bound
-
-! Set obs_diag unit to -1 indicating it has not been initialized
-inflate%obs_diag_unit = -1
+! Set obs_diag unit to -1 indicating it has not been opened yet
+inflate_handle%obs_diag_unit = -1
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -113,41 +115,50 @@ if(.not. initialized) then
 endif
 
 ! If non-deterministic inflation is being done, need to initialize random sequence
-if(.not. deterministic) call init_random_seq(inflate%ran_seq)
+! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
+if(.not. deterministic) call init_random_seq(inflate_handle%ran_seq)
 
 !------ Block for state space inflation initialization ------
 
+! Types 2 and 3 are state space inflation types
 if(inf_type >= 2) then
    ! Initialize state space inflation, copies in ensemble are given
    ! by the inflate and inflate_sd indices. These should be contiguous.
 
    ! Verify that indices are contiguous
-   if(ss_inflate_sd_index /= ss_inflate_index + 1) &
+   if(ss_inflate_sd_index /= ss_inflate_index + 1) then
+      write(errstring, *) 'ss_inflate_index = ', ss_inflate_index, &
+         ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
       call error_handler(E_ERR, 'adaptive_inflate_init', &
-         'inflate and inflate sd indices must be contiguous', source, revision, revdate)
+         errstring, source, revision, revdate)
+   endif
 
    ! Read in initial values from file OR get from namelist as requested
    if(start_from_restart) then
       call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-         .true., in_file_name, init_time)
+         start_from_restart, in_file_name, init_time)
    else
-      ! Get initial values from namelist; requires copy complete
+      ! Get initial values from higher level; requires pe's to have all copies of some vars
       call all_vars_to_all_copies(ens_handle)
       ens_handle%copies(ss_inflate_index, :)    = inf_initial
-      ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
+      ens_handle%copies(ss_inflate_sd_index, :) =  sd_initial
       call all_copies_to_all_vars(ens_handle)
    endif
 
 !------ Block for obs. space inflation initialization ------
+
+! Type 1 is observation space inflation
 else if(inf_type == 1) then
 
-   ! Initializes observation space inflation values from restart files
+   ! Initialize observation space inflation values from restart files
+   ! Only values are inflation, inflation_sd, and inflation sd lower bound
+!?????? Should upper bound on sd be in the file, too????
    if(start_from_restart) then
       ! Open the file
       restart_unit = get_unit()
-      open(unit = restart_unit, file = in_file_name, action = 'read', &
-         form = 'formatted')
-      read(restart_unit, *) inflate%inflate, inflate%sd, inflate%sd_lower_bound
+      open(unit = restart_unit, file = in_file_name, action = 'read', form = 'formatted')
+      read(restart_unit, *) inflate_handle%inflate, inflate_handle%sd, &
+         inflate_handle%sd_lower_bound
       close(restart_unit)
    endif
 
@@ -157,29 +168,38 @@ end subroutine adaptive_inflate_init
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_end(inflate, ens_handle, ss_inflate_index, ss_inflate_sd_index)
+subroutine adaptive_inflate_end(inflate_handle, ens_handle, ss_inflate_index, &
+   ss_inflate_sd_index)
 
-type(adaptive_inflate_type), intent(in) :: inflate
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in)    :: ss_inflate_index, ss_inflate_sd_index
+type(adaptive_inflate_type), intent(in)    :: inflate_handle
+type(ensemble_type),         intent(inout) :: ens_handle
+integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 
 integer :: restart_unit
 
-
-if(inflate%output_restart) then
-   ! Use the ensemble manager to output restart for state space
-   if(inflate%inflation_flavor >=2) then
+if(inflate_handle%output_restart) then
+   ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
+   if(inflate_handle%inflation_flavor >=2) then
       ! Verify that indices are contiguous
-      if(ss_inflate_sd_index /= ss_inflate_index + 1) &
-         call error_handler(E_ERR, 'adaptive_inflate_init', &
-            'inflate and inflate sd indices must be contiguous', source, revision, revdate)
-      call write_ensemble_restart(ens_handle, inflate%out_file_name, &
+      if(ss_inflate_sd_index /= ss_inflate_index + 1) then
+         write(errstring, *) 'ss_inflate_index = ', ss_inflate_index, &
+            ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
+         call error_handler(E_ERR, 'adaptive_inflate_end', &
+            errstring, source, revision, revdate)
+      endif
+
+      ! Write the inflate and inflate_sd as two copies for a restart
+      call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
          ss_inflate_index, ss_inflate_sd_index)
-   else if(inflate%inflation_flavor == 1) then
-      ! Open the file
+
+   ! Flavor 1 is observation space, write its restart directly
+   else if(inflate_handle%inflation_flavor == 1) then
+      ! Open the restart file
       restart_unit = get_unit()
-      open(unit = restart_unit, file = inflate%out_file_name, action = 'write', form = 'formatted')
-      write(restart_unit, *) inflate%inflate, inflate%sd, inflate%sd_lower_bound
+      open(unit = restart_unit, file = inflate_handle%out_file_name, &
+         action = 'write', form = 'formatted')
+      write(restart_unit, *) inflate_handle%inflate, inflate_handle%sd, &
+         inflate_handle%sd_lower_bound
    endif
 endif
 
@@ -188,135 +208,151 @@ end subroutine adaptive_inflate_end
 
 !------------------------------------------------------------------
 
-function do_obs_inflate(inflate)
+function do_obs_inflate(inflate_handle)
 
-logical :: do_obs_inflate
-type(adaptive_inflate_type), intent(in) :: inflate
+! Returns true if this inflation type indicates observation space inflation
 
-do_obs_inflate = (inflate%inflation_flavor == 1)
+logical                                 :: do_obs_inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
+
+do_obs_inflate = (inflate_handle%inflation_flavor == 1)
 
 end function do_obs_inflate
 
 !------------------------------------------------------------------
 
-function do_varying_ss_inflate(inflate)
+function do_varying_ss_inflate(inflate_handle)
 
-logical :: do_varying_ss_inflate
-type(adaptive_inflate_type), intent(in) :: inflate
+! Returns true if this inflation type indicates varying state space inflation
 
-do_varying_ss_inflate = (inflate%inflation_flavor == 2)
+logical                                 :: do_varying_ss_inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
+
+do_varying_ss_inflate = (inflate_handle%inflation_flavor == 2)
 
 end function do_varying_ss_inflate
 
 !------------------------------------------------------------------
 
-function do_single_ss_inflate(inflate)
+function do_single_ss_inflate(inflate_handle)
 
-logical :: do_single_ss_inflate
-type(adaptive_inflate_type), intent(in) :: inflate
+! Returns true if this inflation type indicates fixed state space inflation
 
-do_single_ss_inflate = (inflate%inflation_flavor == 3)
+logical                                 :: do_single_ss_inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
+
+do_single_ss_inflate = (inflate_handle%inflation_flavor == 3)
 
 end function do_single_ss_inflate
 
-
 !------------------------------------------------------------------
 
-function get_inflate(inflate)
+function get_inflate(inflate_handle)
+
+! The single real value inflate contains the obs_space inflation value
+! when obs_space inflation is in use and this retrieves it.
 
 real(r8)                                :: get_inflate
-type(adaptive_inflate_type), intent(in) :: inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-get_inflate = inflate%inflate
+get_inflate = inflate_handle%inflate
 
 end function get_inflate
 
 !------------------------------------------------------------------
 
-function get_sd(inflate)
+function get_sd(inflate_handle)
+
+! The single real value inflate_sd contains the obs_space inflate_sd value
+! when obs_space inflation is in use and this retrieves it.
 
 real(r8)                                :: get_sd
-type(adaptive_inflate_type), intent(in) :: inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-get_sd = inflate%sd
+get_sd = inflate_handle%sd
 
 end function get_sd
 
 !------------------------------------------------------------------
 
-subroutine set_inflate(inf_type, inflate)
+subroutine set_inflate(inflate_handle, inflate)
 
-type(adaptive_inflate_type), intent(inout) :: inf_type
+! Sets the single inflation value in the type
+
+type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(in)    :: inflate
 
-inf_type%inflate = inflate
+inflate_handle%inflate = inflate
 
 end subroutine set_inflate
 
 !------------------------------------------------------------------
 
-subroutine set_sd(inf_type, sd)
+subroutine set_sd(inflate_handle, sd)
 
-type(adaptive_inflate_type), intent(inout) :: inf_type
+! Sets the single inflate_sd value in the type
+
+type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(in)    :: sd
 
-inf_type%sd = sd
+inflate_handle%sd = sd
 
 end subroutine set_sd
 
 !------------------------------------------------------------------
 
-subroutine output_inflate_diagnostics(inflate, time)
+subroutine output_inflate_diagnostics(inflate_handle, time)
 
-type(adaptive_inflate_type), intent(inout) :: inflate
-type(time_type), intent(in) :: time
+type(adaptive_inflate_type), intent(inout) :: inflate_handle
+type(time_type),             intent(in)    :: time
 
 integer :: days, seconds
 
-! Diagnostics for state space inflate are done by the filter on the state-space &
+! Diagnostics for state space inflate are done by the filter on the state-space
 ! netcdf diagnostic files. Here, need to do initial naive ascii dump for obs space.
 ! Values can come from storage in this module directly.
 
 ! Only need to do something if obs_space
-if(do_obs_inflate(inflate)) then
+if(do_obs_inflate(inflate_handle)) then
    ! If unit is -1, it hasn't been opened yet, do it.
-   if(inflate%obs_diag_unit == -1) then
+   if(inflate_handle%obs_diag_unit == -1) then
       ! Open the file
-      inflate%obs_diag_unit = get_unit()
-      open(unit = inflate%obs_diag_unit, file = inflate%diag_file_name, action = 'write', form = 'formatted')
+      inflate_handle%obs_diag_unit = get_unit()
+      open(unit = inflate_handle%obs_diag_unit, file = inflate_handle%diag_file_name, &
+         action = 'write', form = 'formatted')
    endif
 
    ! Get the time in days and seconds
    call get_time(time, seconds, days)
    ! Write out the time followed by the values
-   write(inflate%obs_diag_unit, *) days, seconds, inflate%inflate, inflate%sd
+   write(inflate_handle%obs_diag_unit, *) days, seconds, inflate_handle%inflate, &
+      inflate_handle%sd
 endif
 
 end subroutine output_inflate_diagnostics
 
 !------------------------------------------------------------------
 
-subroutine inflate_ens(inflate_type, ens, mean, inflate, var_in)
+subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in)
 
 ! Inflates subset of ensemble members given mean and inflate
-! Should select between deterministic and stochastic inflation
+! Selects between deterministic and stochastic inflation
 
-type(adaptive_inflate_type), intent(inout) :: inflate_type
-real(r8), intent(inout)          :: ens(:)
-real(r8), intent(in)             :: mean, inflate
-real(r8), intent(in),   optional :: var_in
+type(adaptive_inflate_type), intent(inout) :: inflate_handle
+real(r8),                    intent(inout) :: ens(:)
+real(r8),                    intent(in)    :: mean, inflate
+real(r8), optional,          intent(in)    :: var_in
 
 integer  :: i, ens_size
 real(r8) :: rand_sd, var
 
-if(inflate_type%deterministic) then
-   ! Just spread the ensemble out linearly
+if(inflate_handle%deterministic) then
+   ! Just spread the ensemble out linearly for deterministic
    ens = (ens - mean) * sqrt(inflate) + mean
 else
+   ! Use a stochastic algorithm to spread out.
    ens_size = size(ens)
 
-   ! Use a stochastic algorithm to spread out.
-   ! WARNING: This requires that the WHOLE ensemble is available here.
    ! If var is not present, go ahead and compute it here.
    if(.not. present(var_in)) then
       var = sum((ens - mean)**2) / (ens_size - 1)
@@ -324,23 +360,21 @@ else
       var = var_in
    endif
    
-   ! Another option at this point would be to add in random noise designed
    ! To increase the variance of the prior ensemble to the appropriate level
-   ! Would probably want to keep the mean fixed by shifting AND do a sort
+   ! probably want to keep the mean fixed by shifting AND do a sort
    ! on the final prior/posterior increment pairs to avoid large regression
    ! error as per stochastic filter algorithms. This might help to avoid
    ! problems with generating gravity waves in the Bgrid model, for instance.
-   ! If this is first time through, need to initialize the random sequence
    
     ! Figure out required sd for random noise being added
+    ! Don't allow covariance deflation in this version
     if(inflate > 1.0_r8) then
-       ! Don't allow covariance deflation in this version
        rand_sd = sqrt(inflate*var - var)
        ! Add random sample from this noise into the ensemble
        do i = 1, ens_size
-          ens(i) = random_gaussian(inflate_type%ran_seq, ens(i), rand_sd)
+          ens(i) = random_gaussian(inflate_handle%ran_seq, ens(i), rand_sd)
        end do
-       ! Adjust the mean
+       ! Adjust the mean back to the original value
        ens = ens - (sum(ens) / ens_size - mean)
    endif
 endif
@@ -349,38 +383,42 @@ end subroutine inflate_ens
 
 !------------------------------------------------------------------
 
-subroutine update_inflation(inflate_type, inflate, inflate_sd, prior_mean, prior_var, &
+subroutine update_inflation(inflate_handle, inflate, inflate_sd, prior_mean, prior_var, &
    obs, obs_var, gamma)
 
-type(adaptive_inflate_type), intent(in)    :: inflate_type
+! Given information from an inflate type, scalar values for inflate and inflate_sd,
+! the ensemble prior_mean and prior_var for an observation, and the obsered value
+! and observational error variance, computes updated values for the inflate and
+! inflate_sd values using the algorithms documented in ??? HOW TO REFERNCE???
+! The gamma paramter gives the localized prior correlation times the localization
+! which is computed in the assim_tools routine filter_assim. For single state
+! space inflation it is 1.0.
+
+type(adaptive_inflate_type), intent(in)    :: inflate_handle
 real(r8),                    intent(inout) :: inflate, inflate_sd
 real(r8),                    intent(in)    :: prior_mean, prior_var, obs, obs_var, gamma
 
 real(r8) :: new_inflate, new_inflate_sd
 
-!!!PROBLEM: Obs_inflate value storage is WHERE?
-
 ! If the inflate_sd is negative, just keep everything the same
 if(inflate_sd < 0.0_r8) return
 
-! Updates the distribution of inflation given prior mean and sd
-! plus the prior mean and variance and obs value and variance.
-! gamma is the 'correlation * localization' limiting factor.
 ! A lower bound on the updated inflation sd and an upper bound
-! on the inflation itself are provided. 
+! on the inflation itself are provided in the inflate_handle. 
 
+! Use bayes theorem to update
 call bayes_cov_inflate(prior_mean, prior_var, obs, obs_var, inflate, &
-   inflate_sd, gamma, new_inflate, new_inflate_sd, inflate_type%sd_lower_bound)
+   inflate_sd, gamma, new_inflate, new_inflate_sd, inflate_handle%sd_lower_bound)
 
 ! Make sure inflate satisfies constraints
 inflate = new_inflate
-! Should we continue to enforce > 1.0 on inflate?
+! Should we continue to enforce > 1.0 on inflate? Yes, for now.
 if(inflate < 1.0_r8) inflate = 1.0_r8
-if(inflate > inflate_type%inf_upper_bound) inflate = inflate_type%inf_upper_bound
+if(inflate > inflate_handle%inf_upper_bound) inflate = inflate_handle%inf_upper_bound
 
 ! Make sure sd satisfies constraints
 inflate_sd = new_inflate_sd
-if(inflate_sd < inflate_type%sd_lower_bound) inflate_sd = inflate_type%sd_lower_bound
+if(inflate_sd < inflate_handle%sd_lower_bound) inflate_sd = inflate_handle%sd_lower_bound
 
 end subroutine update_inflation
 
@@ -388,6 +426,8 @@ end subroutine update_inflation
 
 subroutine bayes_cov_inflate(x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd, &
    gamma, new_cov_inflate, new_cov_inflate_sd, sd_lower_bound_in)
+
+! Uses algorithms in ??? to update the distribution of inflation.
 
 real(r8), intent(in)  :: x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd, gamma
 real(r8), intent(in)  :: sd_lower_bound_in
@@ -474,7 +514,6 @@ else
    new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
       gamma, new_cov_inflate)
 
-
 ! Find value at a point one OLD sd above new mean value
    new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, &
       new_cov_inflate + lambda_sd)
@@ -501,6 +540,8 @@ end subroutine bayes_cov_inflate
 !------------------------------------------------------------------
 
 function compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda)
+
+! Used to update density by taking approximate gaussian product
 
 real(r8)             :: compute_new_density
 real(r8), intent(in) :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, lambda
