@@ -17,7 +17,7 @@ use        types_mod,     only : r8
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, logfileunit, timestamp
-use time_manager_mod,     only : time_type, get_time
+use time_manager_mod,     only : time_type, get_time, set_time
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,          &
                                  get_time_range_keys, set_obs_values, set_qc, set_obs,       &
@@ -332,6 +332,7 @@ else
 
    ! Read in initial conditions from restart file
    if(init_time_days >= 0) then
+      time1 = set_time(init_time_seconds, init_time_days)
       call read_ensemble_restart(ens_handle, 1, 1, &
          start_from_restart, restart_in_file_name, time1)
    else
