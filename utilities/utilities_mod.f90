@@ -512,6 +512,7 @@ contains
 
           select case (iabs(level))
              case (0)
+                if ( .not. do_output_flag) return
                 print *, ' MESSAGE from ',routine(1:len_trim(routine))
                 print *, ' ',message(1:len_trim(message))
              case (1)
@@ -542,9 +543,14 @@ character(len = *), intent(in), OPTIONAL :: aut
 
 if ( .not. module_initialized ) call initialize_utilities
 
+! current choice is to log all errors and warnings regardless
+! of setting of output flag.  messages only print from those
+! tasks which are allowed to print.
+
 select case(level)
    case (E_MSG)
 
+      if ( .not. do_output_flag) return
       write(     *     , *) trim(routine),' ', trim(text)
       write(logfileunit, *) trim(routine),' ', trim(text)
 
