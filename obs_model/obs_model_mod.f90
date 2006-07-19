@@ -11,28 +11,22 @@ module obs_model_mod
 ! $Author$
 ! $Name$
 
-use        types_mod, only : r8
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                             logfileunit, get_unit, file_exist
-use     location_mod, only : location_type
-use  assim_model_mod, only : aget_closest_state_time_to, &
-                             get_model_time_step, open_restart_write, &
-                             open_restart_read, awrite_state_restart, close_restart, &
-                             adv_1step, aread_state_restart
-use obs_sequence_mod, only : obs_sequence_type, obs_type, get_obs_from_key, &
-                             get_obs_def, init_obs, destroy_obs, get_num_copies, &
-                             get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
-use      obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time
-use time_manager_mod, only : time_type, operator(/=), operator(>), set_time, &
-                             get_time, write_time, &
-                             operator(-), operator(/), operator(+), print_time, operator(<), &
-                             operator(==)
-
-use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, &
-                                 get_my_num_copies, get_my_copies
-
-use mpi_utilities_mod, only : my_task_id
-
+use types_mod,            only : r8
+use utilities_mod,        only : register_module, error_handler, E_ERR, E_MSG, &
+                                 logfileunit, get_unit, file_exist
+use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
+                                 open_restart_write, open_restart_read,           &
+                                 awrite_state_restart, close_restart, adv_1step,  &
+                                 aread_state_restart
+use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_obs_from_key,      &
+                                 get_obs_def, init_obs, destroy_obs, get_num_copies, &
+                                 get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
+use obs_def_mod,          only : obs_def_type, get_obs_def_time
+use time_manager_mod,     only : time_type, operator(/=), operator(>), set_time, get_time, &
+                                 operator(-), operator(/), operator(+), print_time,        &
+                                 operator(<), operator(==)
+use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
+use mpi_utilities_mod,    only : my_task_id
 
 implicit none
 private
@@ -45,7 +39,6 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-
 logical, save :: module_initialized = .false.
 
 ! Module storage for writing error messages
@@ -57,8 +50,8 @@ contains
 
 subroutine initialize_module
 
-   call register_module(source, revision, revdate)
-   module_initialized = .true.
+call register_module(source, revision, revdate)
+module_initialized = .true.
 
 end subroutine initialize_module
 
@@ -67,9 +60,10 @@ end subroutine initialize_module
 subroutine move_ahead(ens_handle, ens_size, seq, last_key_used, &
    key_bounds, num_obs_in_set, async, adv_ens_command)
 
-! First version of this assumes that observations come in discrete chunks that are exactly
-! at times to which the model can advance as per historical filters. Variants should be
-! added and routine should be moved to a separate module, probably obs_model_mod.
+! Advances all ensemble copies of the state to the time appropriate for
+! the next unused observation in the observation sequence. Note that there
+! may be more than ens_size copies in the ens_handle storage. Copies other
+! than the ensemble copies need not be advanced in time.
 
 implicit none
 
@@ -78,18 +72,18 @@ integer,                 intent(in)    :: ens_size
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: last_key_used, async
 integer,                 intent(out)   :: key_bounds(2), num_obs_in_set
-character(len = 129),    intent(in)    :: adv_ens_command
+character(len = *),      intent(in)    :: adv_ens_command
 
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
 logical            :: is_this_last, is_there_one, out_of_range, i
 integer            :: sec, day
-character(len=13)  :: fmt
 
-! Violating the private boundaries on ens_handle
+! Violating the private boundaries on ens_handle by direct access
 ! If none of my copies are regular ensemble members no need to advance
 if(ens_handle%my_num_copies < 1) return
+! Next assumes that ensemble copies are in the first ens_size global copies of ensemble
 if(ens_handle%my_copies(1) > ens_size) return
 
 ! Initialize a temporary observation type to use
@@ -99,7 +93,7 @@ call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 if(last_key_used > 0) then
    call get_obs_from_key(seq, last_key_used, observation)
    call get_next_obs(seq, observation, observation, is_this_last)
-   ! The end of the observation sequence has been passed, return
+   ! If the end of the observation sequence has been passed, return
    if(is_this_last) then
       key_bounds(1:2) = -99
       return
@@ -116,17 +110,17 @@ endif
 call get_obs_def(observation, obs_def)
 next_time = get_obs_def_time(obs_def)
 
-
-! Get the time of the ensemble, assume consistent across all
+! Get the time of the ensemble, assume consistent across all ensemble copies
 call get_ensemble_time(ens_handle, 1, ens_time)
 
 ! Figure out time to which to advance model 
+! More control over time window use of observations would come in here
 time2 = aget_closest_state_time_to(ens_time, next_time)
 
 ! Compute the model time step and center a window around the closest time
 delta_time = get_model_time_step()
 ! WATCH OUT FOR USING BOUNDARY TIME OBS TWICE; add one second to bottom time
-! ALSO, avoid having a negative time for the start for low-order models
+! ALSO, avoid having a negative time for the start (for low-order models in general)
 if(delta_time / 2 > time2) then
    start_time = set_time(0, 0)
 else
@@ -135,7 +129,6 @@ endif
 end_time = time2 + delta_time / 2
 
 ! Output the start and end time at the message level
-
 call get_time(start_time, sec, day)
 if(my_task_id() == 0) then
    write (errstring, *) 'Start time of obs range day=', day, ', sec=', sec
@@ -148,17 +141,16 @@ endif
 ! If the next observation is not in the window, then have an error
 if(next_time < start_time .or. next_time > end_time) then
    ! Is this test still really needed?
-   call error_handler(E_ERR, 'move_ahead', 'next obs time not in model time window', &
-      source, revision, revdate)
+   write(errstring, *) 'next obs time not in model time window: day=', day, ', sec=', sec,
+   call error_handler(E_ERR, 'move_ahead', errstring, source, revision, revdate)
 endif
 
 ! WANT BETTER WINDOW CONTROL, TIME INTERPOLATION, TOO.
-
-! Get all the observations at exactly this time
+! Get all the observations that are in the observation window
 call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
-! Advance all ensembles (to the time of the first ensemble)
+! Advance all ensembles to the time for the assimilation
 if(time2 /= ens_time) call Aadvance_state(ens_handle, ens_size, time2, async, adv_ens_command)
 
 ! Release the storage associated with the observation temp variable
@@ -167,82 +159,71 @@ call destroy_obs(observation)
 end subroutine move_ahead
 
 
+!------------------------------------------------------------------------------
 
 subroutine Aadvance_state(ens_handle, ens_size, target_time, asynch, adv_ens_command) 
-!-----------------------------------------------------------------------
-!
-! Advances the model extended state until time is equal
-! to the target_time.
+
+! Advances the model extended state until time is equal to the target_time.
 
 implicit none
 
-type(ensemble_type),intent(inout) :: ens_handle
-type(time_type),    intent(in)    :: target_time
 ! ens_size is the number of ensembles that are model state and need to be advanced
-integer,            intent(in)    :: ens_size, asynch
-character(len=129), intent(in)    :: adv_ens_command
-
-! NEED TO COORDINATE STRING USAGE AND ALLOCATION THROUGHOUT!!!!
-
-type(time_type) :: time_step
-
+type(ensemble_type), intent(inout) :: ens_handle
+type(time_type),     intent(in)    :: target_time
+integer,             intent(in)    :: ens_size, asynch
+character(len=*),    intent(in)    :: adv_ens_command
 
 character(len = 26), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
 character(len = 20)                                   :: control_file_name
-character(len = 128)                                  :: input_string, system_string
-integer         :: is1, is2, id1, id2, my_num_state_copies
-integer         :: seconds, days, i, control_unit, ic_file_unit, ud_file_unit, this_ens
-type(time_type) :: smodel_time
+! WARNING: ARE THESE LENGTHS OKAY?
+character(len = 129)                                  :: system_string
+
+type(time_type) :: time_step
+integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
+integer         :: i, control_unit, ic_file_unit, ud_file_unit
 
 
 ! Determine model time_step
 time_step = get_model_time_step()
-call get_time(time_step, seconds, days)
 
 ! Loop through each model state and advance; Count number of copies that are state ensembles
 my_num_state_copies = 0
 ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
-   this_ens = ens_handle%my_copies(i)
+   global_ens_index = ens_handle%my_copies(i)
 
-   ! If this_ens is not one of the model state ensembles, don't need to advance
-   if(this_ens > ens_size) exit ENSEMBLE_MEMBERS
+   ! If globl_ens_index is not one of the model state ensembles, don't need to advance
+   ! Assumes that state ensemble copies have smallest global index and are stored 
+   ! contiguously on local processor
+   if(global_ens_index > ens_size) exit ENSEMBLE_MEMBERS
 
    ! Increment number of ensemble member copies I have
    my_num_state_copies = my_num_state_copies + 1
 
-   ! Get time of this ensemble
-   smodel_time = ens_handle%time(i)
    ! If no need to advance return
-   if(smodel_time == target_time) return
+   if(ens_handle%time(i) == target_time) return
 
    ! Check for time error
-   if(smodel_time > target_time) then
-      call get_time(smodel_time, is1, id1)
+   if(ens_handle%time(i) > target_time) then
+      call get_time(ens_handle%time(i), is1, id1)
       call get_time(target_time, is2, id2)
       write(errstring,*)'target time ',is2,id2,' is before model_time ',is1,id1
       call error_handler(E_ERR,'Aadvance_state', errstring, source, revision, revdate)
    endif
 
-   !------------- Block for single executable ----------------------------
-   ! At some point probably need to push the determination of the time back
-   ! into the model itself and out of assim_model
-
+   !------------- Block for subroutine callable adv_1step interface -----------
    if(asynch == 0) then
 
-      do while(smodel_time < target_time)
-         call adv_1step(ens_handle%vars(:, i), smodel_time)
-         smodel_time = smodel_time + time_step
+      do while(ens_handle%time(i) < target_time)
+         call adv_1step(ens_handle%vars(:, i), ens_handle%time(i))
+         ens_handle%time(i) = ens_handle%time(i) + time_step
       end do
 
-      ! Update the time in the ensemble storage
-      ens_handle%time(i) = smodel_time
-
-   !-------------- End single executable block ------------------------
+   !-------------- End single subroutine callable adv_1step interface ---------
    else
-   !-------------- Block for multiple asynch executables --------------
+   !-------------- Block for calling shell to advance model -------------------
 
       ! Can only handle up to 10000 ensemble members
-      if(this_ens > 10000) then
+      if(global_ens_index > 10000) then
          write(errstring,*)'Trying to use ', ens_size,' model states -- too many.'
          call error_handler(E_MSG,'Aadvance_state',errstring,source,revision,revdate)
          call error_handler(E_ERR,'Aadvance_state','Use less than 10000 member ensemble.', &
@@ -250,8 +231,8 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       endif
 
       ! Create file names for input and output state files for this copy
-      write(ic_file_name(i), 11) 'assim_model_state_ic', 100000 + this_ens
-      write(ud_file_name(i), 11) 'assim_model_state_ud', 100000 + this_ens
+      write(ic_file_name(i), 11) 'assim_model_state_ic', 100000 + global_ens_index
+      write(ud_file_name(i), 11) 'assim_model_state_ud', 100000 + global_ens_index
       11 format(a20, i6)
 
       ! Open a restart file and write state following a target time
@@ -261,7 +242,7 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
 
    endif
 
-   !-------------- End of multiple async executables block ------------
+   !-------------- End of block for calling shell to advance model -------------
 
 end do ENSEMBLE_MEMBERS
 
@@ -305,7 +286,7 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
          if(file_exist(control_file_name)) then
             ! Adjusting sleep time can modify performance
             ! Use shorter time for shorter expected model advances
-            ! Might want to add this to namelist if it's important
+            ! Might want to add this to namelist if it's important ???????
             call system ('sleep 0.1')
          else
             exit
