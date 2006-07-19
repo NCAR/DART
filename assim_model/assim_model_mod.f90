@@ -931,10 +931,6 @@ character(len = *), intent(in) :: file_name
 integer :: open_restart_write
 character(len=129) :: errstring
 
-write(   *     , *) 'the format for restart output writing is ', write_format
-write(errstring, *) 'The format for restart output writing is ', write_format
-call error_handler(E_MSG,'open_restart_write',errstring,source,revision,revdate)
-
 open_restart_write = get_unit()
 open(unit = open_restart_write, file = file_name, form = write_format)
 
@@ -971,7 +967,6 @@ temp_time = read_time(open_restart_read, read_format, ios_out)
 if(ios_out == 0) then 
    ! It appears to be formatted, proceed
    rewind open_restart_read
-   write(*, *) 'Detected a formatted file and opened successfully'
    return
 endif
 
@@ -993,7 +988,6 @@ temp_time = read_time(open_restart_read, read_format, ios_out)
 if(ios_out == 0) then 
    ! It appears to be unformatted, proceed
    rewind open_restart_read
-   write(*, *) 'Detected an unformatted file and opened successfully'
    return
 endif
 
