@@ -12,7 +12,7 @@ module obs_model_mod
 ! $Name$
 
 use types_mod,            only : r8
-use utilities_mod,        only : register_module, error_handler, E_ERR, E_MSG, &
+use utilities_mod,        only : register_module, error_handler, E_ERR, E_MSG, E_WARN, &
                                  logfileunit, get_unit, file_exist
 use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
                                  open_restart_write, open_restart_read,           &
@@ -141,7 +141,7 @@ endif
 ! If the next observation is not in the window, then have an error
 if(next_time < start_time .or. next_time > end_time) then
    ! Is this test still really needed?
-   write(errstring, *) 'next obs time not in model time window: day=', day, ', sec=', sec,
+   write(errstring, *) 'next obs time not in model time window: day=', day, ', sec=', sec
    call error_handler(E_ERR, 'move_ahead', errstring, source, revision, revdate)
 endif
 
@@ -173,10 +173,10 @@ type(time_type),     intent(in)    :: target_time
 integer,             intent(in)    :: ens_size, asynch
 character(len=*),    intent(in)    :: adv_ens_command
 
-character(len = 26), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
-character(len = 20)                                   :: control_file_name
+character(len = 129), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
+character(len = 129)                                   :: control_file_name
 ! WARNING: ARE THESE LENGTHS OKAY?
-character(len = 129)                                  :: system_string
+character(len = 129)                                   :: system_string
 
 type(time_type) :: time_step
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
@@ -225,18 +225,18 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       ! Can only handle up to 10000 ensemble members
       if(global_ens_index > 10000) then
          write(errstring,*)'Trying to use ', ens_size,' model states -- too many.'
-         call error_handler(E_MSG,'Aadvance_state',errstring,source,revision,revdate)
+         call error_handler(E_WARN,'Aadvance_state',errstring,source,revision,revdate)
          call error_handler(E_ERR,'Aadvance_state','Use less than 10000 member ensemble.', &
             source,revision,revdate)
       endif
 
       ! Create file names for input and output state files for this copy
-      write(ic_file_name(i), 11) 'assim_model_state_ic', 100000 + global_ens_index
-      write(ud_file_name(i), 11) 'assim_model_state_ud', 100000 + global_ens_index
-      11 format(a20, i6)
+      write(ic_file_name(i), '("assim_model_state_ic", i5.5)') global_ens_index
+      write(ud_file_name(i), '("assim_model_state_ud", i5.5)') global_ens_index
+
 
       ! Open a restart file and write state following a target time
-      ic_file_unit = open_restart_write(ic_file_name(i))
+      ic_file_unit = open_restart_write(trim(ic_file_name(i)))
       call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ic_file_unit, target_time)
       call close_restart(ic_file_unit)
 
@@ -260,28 +260,28 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
    ! Get a unique name for the control file; use process id
    if(my_task_id() > 10000) call error_handler(E_ERR, 'Aadvance_state', &
       'Can only have 10000 processes', source, revision, revdate)
-   write(control_file_name, 51) 'filter_control', 100000 + my_task_id()
-   51 format(a14, i6)
+   write(control_file_name, '("filter_control", i5.5)') my_task_id()
+
 
    ! Write the ic and ud file names to the control file
    control_unit = get_unit()
-   open(unit = control_unit, file = control_file_name)
+   open(unit = control_unit, file = trim(control_file_name))
    ! Write out the file names to a control file
    do i = 1, my_num_state_copies
-      write(control_unit, '(a26)' ) ic_file_name(i)
-      write(control_unit, '(a26)' ) ud_file_name(i)
+      write(control_unit, '(a)' ) trim(ic_file_name(i))
+      write(control_unit, '(a)' ) trim(ud_file_name(i))
    end do
    close(control_unit)
 
    if(asynch == 2) then
 
       ! Arguments to advance model script are unique id and number of copies
-      write(system_string, 61) my_task_id(), my_num_state_copies
-      61 format(1x, i10, 1x, i10, 1x)
+      write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
+     
       ! Issue a system command with arguments my_task, my_num_copies, and control_file
-      call system(adv_ens_command// system_string //control_file_name)
+      call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
  
-      do
+      FOREVER: do
          ! When control file is deleted we are free to proceed to read in updated state
          if(file_exist(control_file_name)) then
             ! Adjusting sleep time can modify performance
@@ -289,9 +289,9 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
             ! Might want to add this to namelist if it's important ???????
             call system ('sleep 0.1')
          else
-            exit
+            exit FOREVER
          endif
-      end do
+      end do FOREVER
 
    else
    ! Unsupported option for async error
@@ -301,7 +301,7 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
 
    ! All should be done, read in the states and proceed
    do i = 1, my_num_state_copies
-      ud_file_unit = open_restart_read(ud_file_name(i))
+      ud_file_unit = open_restart_read(trim(ud_file_name(i)))
       call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ud_file_unit)
       call close_restart(ud_file_unit)
    end do
