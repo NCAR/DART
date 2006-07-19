@@ -26,7 +26,7 @@ set num_states = $2
 set control_file = $3
 
 # Get unique name for temporary working directory for this process's stuff
-set temp_dir = 'advance_temp'$1
+set temp_dir = 'advance_temp'${process}
 
 # Create a clean temporary directory and go there
 \rm -rf  $temp_dir
@@ -43,25 +43,27 @@ set input_file_line = 1
 set output_file_line = 2
 while($state_copy <= $num_states)
    
-   set input_file = `head -$input_file_line ../$3 | tail -1`
-   set output_file = `head -$output_file_line ../$3 | tail -1`
+   set input_file = `head -$input_file_line ../$control_file | tail -1`
+   set output_file = `head -$output_file_line ../$control_file | tail -1`
    
    # Get the ics file for this state_copy
-   cp ../$input_file temp_ic
+   mv ../$input_file temp_ic
+
    # Advance the model saving standard out
+   # integrate_model is hardcoded to expect input in temp_ic and it creates
+   # temp_ud as output.
    ./integrate_model >! integrate_model_out_temp
 
    # Append the output from the advance to the file in the working directory
    #cat integrate_model_out_temp >> ../integrate_model_out_temp$process
 
    # Move the updated state vector back up
+   # (temp_ud was created by integrate_model.)
    mv temp_ud ../$output_file
 
    @ state_copy++
-   @ input_file_line++
-   @ input_file_line++
-   @ output_file_line++
-   @ output_file_line++
+   @ input_file_line = $input_file_line + 2
+   @ output_file_line = $output_file_line + 2
 end
 
 # Change back to original directory and get rid of temporary directory
@@ -70,4 +72,5 @@ cd ..
 
 # Remove the filter_control file to signal completeion
 # Is there a need for any sleeps to avoid trouble on completing moves here?
-\rm -rf $3
+\rm -rf $control_file
+
