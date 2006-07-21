@@ -1,8 +1,9 @@
 c     Data Assimilation Research Testbed -- DART
-c     Copyright 2004, 2005, 
-c     Data Assimilation Initiative, 
+c     Copyright 2004-2006, Data Assimilation Research Section
 c     University Corporation for Atmospheric Research
 c     Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+      program read_bufr
 
 c     <next four lines automatically updated by CVS, do not edit>
 c     $Source$

@@ -1,6 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+module obs_def_1d_state_mod
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE
@@ -39,8 +49,6 @@
 !      case(RAW_STATE_1D_INTEGRAL)
 !         call interactive_1d_integral(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
-
-module obs_def_1d_state_mod
 
 use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG

@@ -1,5 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
+
 ! BEGIN DART PREPROCESS KIND LIST
 !EVAL_U_WIND_COMPONENT,  KIND_U_WIND_COMPONENT
 !EVAL_V_WIND_COMPONENT,  KIND_V_WIND_COMPONENT

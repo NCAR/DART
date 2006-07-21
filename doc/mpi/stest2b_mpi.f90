@@ -1,3 +1,9 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+program fred
 
 ! second part of stest program; tests running with named pipes
 ! (files which act like command line pipes).  this program is expected
@@ -7,8 +13,12 @@
 ! this version expects to be able to read the task number from unit 5
 ! (so it must be started:  echo N | ./stest2b_mpi or the equiv)
 
-
-program fred
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 !!include "mpif.h"
 

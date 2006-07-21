@@ -1,4 +1,16 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program full_error
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 use types_mod
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          

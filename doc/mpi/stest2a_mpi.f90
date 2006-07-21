@@ -1,11 +1,21 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+program fred
 
 ! second version of test program; this is the main program which creates
 ! a named pipe (a file which act like a command line pipe).  this program 
 ! waits to read a line written by the 2b version of the program (which is
 ! started from here with a system() call.
 
-
-program fred
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 include "mpif.h"
 

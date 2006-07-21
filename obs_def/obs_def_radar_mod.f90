@@ -5,6 +5,13 @@
 
 module obs_def_radar_mod
 
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
+
 ! BEGIN DART PREPROCESS KIND LIST
 ! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
 ! RADAR_REFLECTIVITY, KIND_RADAR_REFLECTIVITY
@@ -44,12 +51,6 @@ module obs_def_radar_mod
 !         continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR

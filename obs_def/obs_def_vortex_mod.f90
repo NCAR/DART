@@ -1,6 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+module obs_def_vortex_mod
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! VORTEX_LAT, KIND_VORTEX_LAT
@@ -56,15 +66,6 @@
 !      case(VORTEX_WMAX)
 !         continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
-
-module obs_def_vortex_mod
-
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR

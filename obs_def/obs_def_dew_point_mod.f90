@@ -1,6 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+module obs_def_dew_point_mod
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DEW_POINT_TEMPERATURE, KIND_DEW_POINT_TEMPERATURE
@@ -32,15 +42,6 @@
 !         case(DEW_POINT_TEMPERATURE, DEW_POINT_2_METER)
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
-
-module obs_def_dew_point_mod
-
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8, missing_r8, t_kelvin, es_alpha, es_beta, es_gamma, &
                              gas_constant_v, gas_constant, L_over_Rv

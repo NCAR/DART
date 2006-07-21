@@ -1,8 +1,16 @@
-! Data Assimilatimn Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_def_gps_mod
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! GPSRO_REFRACTIVITY,  KIND_GPSRO
@@ -32,18 +40,12 @@ module obs_def_gps_mod
 !         call write_gpsro_ref(obs_def%key, ifile, fileformat)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
+
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !         case(GPSRO_REFRACTIVITY)
 !       ! call interactive_gpsro_ref(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &

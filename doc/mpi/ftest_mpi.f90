@@ -1,12 +1,24 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+namelist /x/ fred, bob
+
+program ftest_mpi
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
+
 ! simple MPI fortran program.  use to test running interactively
 ! with MPI parallel communication libraries.  warning -- this program
 ! may compile without obvious errors, but at runtime, unless MPI_Init()
 ! returns 0 as the error code, there is a good chance the compile and
 ! link phase did not succeed.
-
-namelist /x/ fred, bob
-
-program ftest_mpi
 
 ! most fortran MPI implementations provide either a fortran 90 module
 ! which defines the interfaces to the MPI library routines, or an include

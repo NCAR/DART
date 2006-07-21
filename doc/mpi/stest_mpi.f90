@@ -1,3 +1,9 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+program fred
 
 ! test of named pipes.   proposed way for 2 tasks to communicate
 ! they are ready to run, and finished running.  the read should
@@ -6,8 +12,12 @@
 !
 ! this version has mpi and creates a pipe per mpi task
 
-
-program fred
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 include "mpif.h"
 

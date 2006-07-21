@@ -1,11 +1,21 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+program fred
 
 ! second part of stest program; tests running with named pipes
 ! (files which act like command line pipes).  this program is expected
 ! to be launched by stest2a with a system call.  it writes to the pipe.
 ! the main program will read what this program writes.
 
-
-program fred
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 character(len=128) :: junk
 

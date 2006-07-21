@@ -1,4 +1,16 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 program gen_init
+
+! <next five lines automatically updated by CVS, do not edit>
+! $Source$
+! $Revision$
+! $Date$
+! $Author$
+! $Name$
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, get_time, print_time
@@ -8,8 +20,6 @@ use  assim_model_mod, only : static_init_assim_model, get_model_size, &
 use utilities_mod,    only : open_file, file_exist, get_unit, close_file, &
                              initialize_utilities, register_module, error_handler, &
                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, timestamp
-
-
 
 implicit none
 
