@@ -1,7 +1,7 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section 
+# Copyright 2004-2006, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
@@ -18,50 +18,59 @@
 # This script copies the necessary files into the temporary directory
 # and then executes the fortran program integrate_model.
 
-set      myname = $0
-set  CENTRALDIR = $1
-set     element = $2
-set    temp_dir = $3
+# Arguements are the process number of caller, the number of state copies
+# belonging to that process, and the name of the filter_control_file for
+# that process
+set process = $1
+set num_states = $2
+set control_file = $3
 
-set REMOVE = 'rm -rf'
-set   COPY = 'cp -p'
-set   MOVE = 'mv -f'
-
-# Standard script for use in assimilation applications
-# where the model advance is executed as a separate process.
-
-echo "starting ${myname} for ens member $element at "`date`
-echo "CENTRALDIR is ${CENTRALDIR}"
-echo "temp_dir is ${temp_dir}"
+# Get unique name for temporary working directory for this process's stuff
+set temp_dir = 'advance_temp'${process}
 
 # Create a clean temporary directory and go there
-${REMOVE} ${temp_dir}
-mkdir -p  ${temp_dir}
-cd        ${temp_dir}
+\rm -rf  $temp_dir
+mkdir -p $temp_dir
+cd       $temp_dir
 
-# Copy the initial condition file to the temp directory
-${COPY} ${CENTRALDIR}/assim_model_state_ic$element temp_ic
+# Get the program and input.nml
+cp ../integrate_model .
+cp ../input.nml .
 
-# Copy the DART namelist to the temp directory
-${COPY} ${CENTRALDIR}/input.nml .
+# Loop through each state
+set state_copy = 1
+set input_file_line = 1
+set output_file_line = 2
+while($state_copy <= $num_states)
+   
+   set input_file = `head -$input_file_line ../$control_file | tail -1`
+   set output_file = `head -$output_file_line ../$control_file | tail -1`
+   
+   # Get the ics file for this state_copy
+   mv ../$input_file temp_ic
 
-# Copy the integrate_model executable to the temporary directory
-${COPY} ${CENTRALDIR}/integrate_model .
+   # Advance the model saving standard out
+   # integrate_model is hardcoded to expect input in temp_ic and it creates
+   # temp_ud as output.
+   ./integrate_model >! integrate_model_out_temp
 
-# The original version of the bgrid model required the following. 
-# Hawaii and above versions without MPI do not.
-#${COPY} ${CENTRALDIR}/diag_table .
-#mkdir RESTART
+   # Append the output from the advance to the file in the working directory
+   #cat integrate_model_out_temp >> ../integrate_model_out_temp$process
 
-# Advance the model, saving standard out
-./integrate_model > integrate_model_out_temp
+   # Move the updated state vector back up
+   # (temp_ud was created by integrate_model.)
+   mv temp_ud ../$output_file
 
-# Append the output from the advance to the file in the working directory
-cat integrate_model_out_temp >> ${CENTRALDIR}/integrate_model_out_temp$element
+   @ state_copy++
+   @ input_file_line = $input_file_line + 2
+   @ output_file_line = $output_file_line + 2
+end
 
-# Move the updated state vector to the working directory
-${MOVE} temp_ud ${CENTRALDIR}/assim_model_state_ud$element
+# Change back to original directory and get rid of temporary directory
+cd ..
+\rm -rf $temp_dir
 
-# Change back to working directory and get rid of temporary directory
-cd ${CENTRALDIR}
-#${REMOVE} ${temp_dir}
+# Remove the filter_control file to signal completeion
+# Is there a need for any sleeps to avoid trouble on completing moves here?
+\rm -rf $control_file
+
