@@ -49,7 +49,7 @@ module obs_def_gps_mod
 
 use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, check_nml_error, logfileunit, close_file
+                             open_file, logfileunit, close_file
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
