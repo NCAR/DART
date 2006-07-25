@@ -22,3 +22,4 @@ random_nr/random_nr_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
