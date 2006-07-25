@@ -1,6 +1,6 @@
 &filter_nml
    async = 2,
-   adv_ens_command = "./advance_ens.csh",
+   adv_ens_command = "./advance_model.csh",
    ens_size = 84,
    start_from_restart = .true.,
    output_restart = .true.,
