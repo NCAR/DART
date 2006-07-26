@@ -16,37 +16,36 @@ module assim_model_mod
 ! add capabilities needed by the standard assimilation methods.
 
 use    types_mod, only : r8, digits12
-use location_mod, only : location_type, get_dist, read_location, &
+use location_mod,     only : location_type, read_location, &
                          LocationDims, LocationName, LocationLName
-! I've had a problem with putting in the only for time_manager on the pgf90 compiler (JLA).
 use time_manager_mod, only : time_type, get_time, read_time, write_time, get_calendar_type, &
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR, &
                              operator(<), operator(>), operator(+), operator(-), &
                              operator(/), operator(*), operator(==), operator(/=), print_time
-use utilities_mod, only : get_unit, close_file, &
-                          register_module, error_handler, E_ERR, E_WARN, E_MSG, E_DBG, &
-                          logfileunit, dump_unit_attributes, find_namelist_in_file, &
+use utilities_mod,     only : get_unit, close_file, register_module, error_handler, &
+                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit,             &
+                              dump_unit_attributes, find_namelist_in_file,          &
                           check_namelist_read
 
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
-           get_model_time_step, model_interpolate, init_conditions, init_time, adv_1step, &
-           end_model, model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-           pert_model_state
+                              get_model_time_step, model_interpolate, init_conditions, &
+                              init_time, adv_1step, end_model, nc_write_model_atts,    &
+                              nc_write_model_vars, pert_model_state
 
 implicit none
 private
 
-public :: static_init_assim_model, init_diag_output, get_model_size, get_closest_state_time_to, &
-   get_initial_condition, get_state_meta_data, get_close_states, get_num_close_states, &
+public :: static_init_assim_model, init_diag_output, get_model_size,                       &
+          get_closest_state_time_to, get_initial_condition, get_state_meta_data,           &
    get_model_time, get_model_state_vector, copy_assim_model, interpolate, &
    set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
-   output_diagnostics, end_assim_model, assim_model_type, init_diag_input, input_diagnostics, &
-   get_diag_input_copy_meta_data, init_assim_model, get_state_vector_ptr, &
-   finalize_diag_output, aoutput_diagnostics, aread_state_restart, aget_closest_state_time_to, &
-   awrite_state_restart, pert_model_state, &
-   netcdf_file_type, nc_append_time, nc_write_calendar_atts, nc_get_tindex, &
-   get_model_time_step, open_restart_read, open_restart_write, close_restart, adv_1step, &
-   aget_initial_condition
+          output_diagnostics, end_assim_model, assim_model_type, init_diag_input,          &
+          input_diagnostics, get_diag_input_copy_meta_data, init_assim_model,              &
+          finalize_diag_output, aoutput_diagnostics,                                       &
+          aread_state_restart, aget_closest_state_time_to, awrite_state_restart,           &
+          pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
+          nc_get_tindex, get_model_time_step, open_restart_read, open_restart_write,       &
+          close_restart, adv_1step, aget_initial_condition
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -55,14 +54,13 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 
-! Eventually need to be very careful to implement this to avoid state vector copies which
-! will be excruciatingly costly (storage at least) in big models. 
+! Type to keep model state and time together
 type assim_model_type
    private
    real(r8), pointer :: state_vector(:)
    type(time_type) :: time
-   integer :: model_size       ! TJH request
-   integer :: copyID           ! TJH request
+   integer                           :: model_size
+   integer                           :: copyID
 ! would like to include character string to indicate which netCDF variable --
 ! replace "state" in output_diagnostics ...
 end type assim_model_type
@@ -85,10 +83,11 @@ end type netcdf_file_type
 ! Permanent class storage for model_size
 integer :: model_size
 
-! Global storage for restart formats
+! Global storage for default restart formats
 character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
 
-type(time_type) :: time_step
+! Global storage for error string output
+character(len = 129)  :: msgstring
 
 !-------------------------------------------------------------
 ! Namelist with default values
@@ -206,7 +205,6 @@ character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 integer, OPTIONAL,intent(in) :: lagID
 type(netcdf_file_type)       :: ncFileID
 
-character(len=129)   :: msgstring
 integer             :: i, metadata_length
 
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
@@ -410,7 +408,7 @@ integer, intent(in) :: file_id, model_size_out, num_copies
 type(location_type), intent(out) :: location(model_size_out)
 character(len = *) :: meta_data_per_copy(num_copies)
 
-character(len=129) :: header, errstring
+character(len=129) :: header
 integer :: i, j
 
 ! Should have space checks, etc here
@@ -422,9 +420,9 @@ end do
 ! Will need other metadata, too; Could be as simple as writing locations
 read(file_id, *) header
 if(header /= 'locat') then
-   write(errstring,*)'expected to read "locat" got ',trim(adjustl(header))
+   write(msgstring,*)'expected to read "locat" got ',trim(adjustl(header))
    call error_handler(E_ERR,'get_diag_input_copy_meta_data', &
-        errstring, source, revision, revdate)
+        msgstring, source, revision, revdate)
 endif
 
 ! Read in the locations
@@ -447,9 +445,9 @@ function get_closest_state_time_to(assim_model, time)
 
 implicit none
 
+type(time_type)                    :: get_closest_state_time_to
 type(assim_model_type), intent(in) :: assim_model
 type(time_type), intent(in) :: time
-type(time_type) :: get_closest_state_time_to
 
 type(time_type) :: model_time
 
@@ -471,24 +469,15 @@ function aget_closest_state_time_to(model_time, time)
 
 implicit none
 
-type(time_type), intent(in) :: model_time, time
 type(time_type) :: aget_closest_state_time_to
+type(time_type), intent(in) :: model_time, time
 
 type(time_type) :: time_step
-
-!!!character(len=129) :: errstring
-!!!integer :: is1,is2,id1,id2
 
 ! Get the model time step capabilities
 time_step = get_model_time_step()
 
 if(model_time > time) then
-   !!! Used to be an error to have obs before model time; now let obs window handle this
-   !!!call get_time(model_time,is1,id1)
-   !!!call get_time(time,is2,id2)
-   !!!write(errstring, *)'model time (',is1,id1,') > time (',is2,id2,')'
-   !!!call error_handler(E_ERR,'aget_closest_state_time_to', errstring, source, revision, revdate)
-
    ! If model_time is past start of obs window, don't advance it
    aget_closest_state_time_to = model_time
    return
@@ -547,100 +536,6 @@ end subroutine aget_initial_condition
 
 
 
-
-subroutine get_close_states(location, radius, numinds, indices, dist, x)
-!---------------------------------------------------------------------
-! subroutine get_close_states(location, radius, numinds, indices)
-!
-! Returns a list of indices for model state vector points that are
-! within distance radius of the location. Might want to add an option
-! to return the distances, too. This is written in a model independent
-! form at present, hence it is in assim_model_mod. HOWEVER, for
-! efficiency in large models, this will have to be model specific at
-! some point. At that time, need a way to test to see if this 
-! generic form should be over loaded (how to do this in F90 ) by 
-! some model specific method.
-
-implicit none
-
-type(location_type), intent(in)  :: location
-real(r8),            intent(in)  :: radius
-integer,             intent(out) :: numinds, indices(:)
-real(r8),            intent(out) :: dist(:)
-real(r8),            intent(in)  :: x(:)
-
-type(location_type) :: state_loc
-integer :: indx, i
-real(r8) :: this_dist
-
-! If model provides a working get_close_states, use it; otherwise search
-! Direct use of model dependent stuff, needs to be automated (F90 can't do this
-call model_get_close_states(location, radius, numinds, indices, dist, x)
-
-! If numinds returns as -1, not implemented
-if(numinds == -1) then
-   indx = 0
-   model_size = get_model_size()
-   do i = 1, model_size
-      call get_state_meta_data(i, state_loc)
-      this_dist = get_dist(location, state_loc)
-      if(this_dist < radius) then
-         indx = indx + 1
-         if(indx <= size(indices)) indices(indx) = i
-         if(indx <= size(dist)) dist(indx) = this_dist
-      end if
-   end do
-   numinds = indx
-endif
-
-! If size has overflowed, indicate this with negative size return
-if(numinds > size(indices) .or. numinds > size(dist)) then
-   numinds = -1 * numinds
-end if
-
-end subroutine get_close_states
-
-
-
-function get_num_close_states(location, radius, x)
-!-----------------------------------------------------------------------
-!
-! Returns number of state vector points located within distance radius
-! of the location.
-
-implicit none
-
-integer :: get_num_close_states
-type(location_type), intent(in) :: location
-real(r8),            intent(in) :: radius
-real(r8),            intent(in) :: x(:)
-
-type(location_type) :: state_loc
-integer             :: i, indices(1)
-real(r8)            :: dist(1)
-
-
-! call direct model get close with storage that is too 
-! small and get size from this
-! model_get_close_states returns -1 if it is not implemented
-call model_get_close_states(location, radius, get_num_close_states, indices, dist, x)
-
-if(get_num_close_states == -1) then
-   ! Do exhaustive search
-   get_num_close_states = 0
-   do i = 1, model_size
-      call get_state_meta_data(i, state_loc)
-      ! INTERESTING NOTE: Because of floating point round-off in comps
-      ! this can give a 'variable' number of num close for certain obs, should fix
-      if(get_dist(location, state_loc) < radius) get_num_close_states= get_num_close_states + 1
-   end do
-
-endif
-   
-end function get_num_close_states
-
-
-
 function get_model_time(assim_model)
 !-----------------------------------------------------------------------
 !
@@ -654,22 +549,6 @@ type(assim_model_type), intent(in) :: assim_model
 get_model_time = assim_model%time
 
 end function get_model_time
-
-
-
-function get_state_vector_ptr(assim_model)
-!------------------------------------------------------------------------
-!
-! Returns a pointer directly into the assim_model state vector storage.
-
-implicit none
-
-real(r8), pointer :: get_state_vector_ptr(:)
-type(assim_model_type), intent(in) :: assim_model
-
-get_state_vector_ptr => assim_model%state_vector
-
-end function get_state_vector_ptr
 
 
 
@@ -756,13 +635,11 @@ implicit none
 type(assim_model_type), intent(inout) :: assim_model
 real(r8),               intent(in)    :: state(:)
 
-character(len=129) :: errstring
-
 ! Check the size for now
 if(size(state) /= get_model_size()) then
-   write(errstring,*)'state vector has length ',size(state), &
+   write(msgstring,*)'state vector has length ',size(state), &
                      ' model size (',get_model_size(),') does not match.'
-   call error_handler(E_ERR,'set_model_state_vector', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_model_state_vector', msgstring, source, revision, revdate)
 endif
 
 assim_model%state_vector = state
@@ -782,7 +659,7 @@ implicit none
 
 type (assim_model_type), intent(in)           :: assim_model
 integer,                 intent(in)           :: funit
-type(time_type), intent(in), optional         :: target_time
+type(time_type),         optional, intent(in) :: target_time
 
 if(present(target_time)) then
    call awrite_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
@@ -807,12 +684,16 @@ implicit none
 type(time_type), intent(in)           :: model_time
 real(r8),        intent(in)           :: model_state(:)
 integer,         intent(in)           :: funit
-type(time_type), intent(in), optional :: target_time
+type(time_type), optional, intent(in) :: target_time
 
 integer :: i
+character(len = 16) :: open_format
+
+! Figure out whether the file is opened FORMATTED or UNFORMATTED
+inquire(funit, FORM=open_format)
 
 ! Write the state vector
-SELECT CASE (write_format)
+SELECT CASE (open_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
       if(present(target_time)) call write_time(funit, target_time, "unformatted")
       call write_time(funit, model_time, "unformatted")
@@ -838,7 +719,7 @@ implicit none
 
 type(assim_model_type), intent(out)          :: assim_model
 integer,                intent(in)           :: funit
-type(time_type), intent(out), optional       :: target_time
+type(time_type),        optional, intent(out) :: target_time
 
 if(present(target_time)) then
    call aread_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
@@ -861,20 +742,17 @@ implicit none
 type(time_type), intent(out)            :: model_time
 real(r8),        intent(out)            :: model_state(:)
 integer,         intent(in)             :: funit
-type(time_type), intent(out), optional  :: target_time
+type(time_type), optional, intent(out) :: target_time
 
-character(len=129) :: errstring
-
+character(len = 16) :: open_format
 integer :: ios, int1, int2
 
 ios = 0
 
-! print *,'assim_model_mod:aread_state_restart ... reading from unit',funit
+! Figure out whether the file is opened FORMATTED or UNFORMATTED
+inquire(funit, FORM=open_format)
 
-! Read the time
-! Read the state vector
-
-SELECT CASE (read_format)
+SELECT CASE (open_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
       if(present(target_time)) target_time = read_time(funit, form = "unformatted")
       model_time = read_time(funit, form = "unformatted")
@@ -886,54 +764,50 @@ SELECT CASE (read_format)
 END SELECT  
 
 ! If the read fails ... dump diagnostics.
-
 if ( ios /= 0 ) then
-
-   write(errstring,*)'dimension of model state is ',size(model_state)
-   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+   write(msgstring,*)'dimension of model state is ',size(model_state)
+   call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
 
    if(present(target_time)) then
       call get_time(target_time, int1, int2)       ! time -> secs/days
-      write(errstring,*)'target_time (secs/days) : ',int1,int2
-      call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+      write(msgstring,*)'target_time (secs/days) : ',int1,int2
+      call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
    endif
 
    call get_time(model_time, int1, int2)       ! time -> secs/days
-   write(errstring,*)'model_time (secs/days) : ',int1,int2
-   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+   write(msgstring,*)'model_time (secs/days) : ',int1,int2
+   call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
 
-   write(errstring,'(''modl max/min/first is'',3(1x,E12.6) )') &
+   write(msgstring,'(''modl max/min/first is'',3(1x,E12.6) )') &
             maxval(model_state), minval(model_state), model_state(1)
-   call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
+   call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
 
    call dump_unit_attributes(funit)
 
-   write(errstring,*)'read error is : ',ios
-   call error_handler(E_ERR,'aread_state_restart',errstring,source,revision,revdate)
-
-! else  ! A DEBUG STATEMENT, REALLY
-
-!  write(errstring,'(''modl max/min/(1) is'',3(1x,E12.6) )') &
-!           maxval(model_state), minval(model_state), model_state(1)
-!  call error_handler(E_MSG,'aread_state_restart',errstring,source,revision,revdate)
-
+   write(msgstring,*)'read error is : ',ios
+   call error_handler(E_ERR,'aread_state_restart',msgstring,source,revision,revdate)
 endif
 
 end subroutine aread_state_restart
 
 
 
-function open_restart_write(file_name)
+function open_restart_write(file_name, override_write_format)
 !----------------------------------------------------------------------
 !
 ! Opens a restart file for writing
 
 character(len = *), intent(in) :: file_name
+character(len = *), optional, intent(in) :: override_write_format
+
 integer :: open_restart_write
-character(len=129) :: errstring
 
 open_restart_write = get_unit()
+if(present(override_write_format)) then
+   open(unit = open_restart_write, file = file_name, form = override_write_format)
+else
 open(unit = open_restart_write, file = file_name, form = write_format)
+endif
 
 end function open_restart_write
 
@@ -943,15 +817,14 @@ function open_restart_read(file_name)
 !
 ! Opens a restart file for reading
 
-character(len = *), intent(in) :: file_name
 integer :: open_restart_read
+character(len = *), intent(in) :: file_name
 
 integer :: ios, ios_out
-character(len=129) :: errstring
 type(time_type) :: temp_time
 
 
-! An experiment to try to autodetect format of restart file when opening
+! Autodetect format of restart file when opening
 ! Know that the first thing in here has to be a time, so try to read it.
 ! If it fails with one format, try the other. If it fails with both, punt.
 open_restart_read = get_unit()
@@ -994,10 +867,10 @@ endif
 
 ! Otherwise, neither format works. Have a fatal error.
 11 continue
-write(errstring, *) 'Problem opening file ',trim(adjustl(file_name))
-call error_handler(E_MSG,'open_restart_read',errstring,source,revision,revdate)
-write(errstring, *) 'OPEN status was ',ios
-call error_handler(E_ERR,'open_restart_read',errstring,source,revision,revdate)
+write(msgstring, *) 'Problem opening file ',trim(adjustl(file_name))
+call error_handler(E_MSG,'open_restart_read',msgstring,source,revision,revdate)
+write(msgstring, *) 'OPEN status was ',ios
+call error_handler(E_ERR,'open_restart_read',msgstring,source,revision,revdate)
 
 end function open_restart_read
 
@@ -1086,8 +959,6 @@ real(r8),          intent(in) :: model_state(:)
 integer, optional, intent(in) :: copy_index
 
 integer :: i, timeindex, copyindex
-
-character(len=129) :: errstring
 integer :: is1,id1
 
 if (.not. present(copy_index) ) then     ! we are dependent on the fact
@@ -1099,16 +970,16 @@ endif                                    ! have a backup plan
 timeindex = nc_get_tindex(ncFileID, model_time)
 if ( timeindex < 0 ) then
    call get_time(model_time,is1,id1)
-   write(errstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
-   write(errstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+   write(msgstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
+   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
           id1,is1,timeindex,ncFileID%ncid
-   call error_handler(E_ERR,'aoutput_diagnostics', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'aoutput_diagnostics', msgstring, source, revision, revdate)
 endif
 
    call get_time(model_time,is1,id1)
-   write(errstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
           id1,is1,timeindex,ncFileID%ncid
-   call error_handler(E_DBG,'aoutput_diagnostics', errstring, source, revision, revdate)
+   call error_handler(E_DBG,'aoutput_diagnostics', msgstring, source, revision, revdate)
 
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
 ! so we must pass the components.
@@ -1129,9 +1000,10 @@ subroutine input_diagnostics(file_id, state, copy_index)
 implicit none
 
 integer,                intent(in)    :: file_id
-! MAYBE SHOULDN'T use assim model type here, but just state and time ?
 type(assim_model_type), intent(inout) :: state
 integer,                intent(out)   :: copy_index
+
+! MAYBE SHOULDN'T use assim model type here, but just state and time ?
 
 call ainput_diagnostics(file_id, state%time, state%state_vector, copy_index)
 
@@ -1153,7 +1025,6 @@ real(r8),        intent(inout) :: model_state(:)
 integer,         intent(out)   :: copy_index
 
 character(len=5)   :: header
-character(len=129) :: errstring
 
 ! Read in the time
 model_time = read_time(file_id)
@@ -1161,8 +1032,8 @@ model_time = read_time(file_id)
 ! Read in the copy index
 read(file_id, *) header
 if(header /= 'fcopy')  then
-   write(errstring,*)'expected "copy", got ',header
-   call error_handler(E_ERR,'ainput_diagnostics', errstring, source, revision, revdate)
+   write(msgstring,*)'expected "copy", got ',header
+   call error_handler(E_ERR,'ainput_diagnostics', msgstring, source, revision, revdate)
 endif
 
 read(file_id, *) copy_index
@@ -1178,7 +1049,7 @@ end subroutine ainput_diagnostics
 subroutine end_assim_model()
 !--------------------------------------------------------------------
 !
-! Closes down assim_model; nothing to do for L96
+! Closes down assim_model. For now, only thing to do is tell model to end.
 
 implicit none
 
@@ -1348,13 +1219,10 @@ integer                     :: timeindex
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeVarID
 integer  :: xtype, ndims, nAtts, nTlen
+integer  :: secs, days, ncid, i
+
 character(len=NF90_MAX_NAME)          :: varname
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
-
-integer         :: i
-integer         :: secs, days, ncid
-
-character(len=129) :: msgstring
 
 timeindex = -1  ! assume bad things are going to happen
 
