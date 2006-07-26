@@ -94,18 +94,19 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 !                 non-batch executions.
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
-! inflation_type is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
-integer              :: inflation_type(2) = 0
+! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
+integer              :: inf_flavor(2)             = 0
 logical              :: inf_start_from_restart(2) = .false.
-logical              :: inf_output_restart(2) = .false.
-logical              :: inf_deterministic(2) = .true.
-character(len = 129) :: inf_in_file_name(2)   = 'not_initialized',    &
-                        inf_out_file_name(2)  = 'not_initialized',    &
-                        inf_diag_file_name(2) = 'not_initialized'
-real(r8)             :: inf_initial(2) = 1.0_r8
-real(r8)             :: inf_sd_initial(2) = 0.0_r8
-real(r8)             :: inf_upper_bound(2) = 1000000_r8
-real(r8)             :: inf_sd_lower_bound(2) = 0.0_r8
+logical              :: inf_output_restart(2)     = .false.
+logical              :: inf_deterministic(2)      = .true.
+character(len = 129) :: inf_in_file_name(2)       = 'not_initialized',    &
+                        inf_out_file_name(2)      = 'not_initialized',    &
+                        inf_diag_file_name(2)     = 'not_initialized'
+real(r8)             :: inf_initial(2)            = 1.0_r8
+real(r8)             :: inf_sd_initial(2)         = 0.0_r8
+real(r8)             :: inf_lower_bound(2)        = 1000000_r8
+real(r8)             :: inf_upper_bound(2)        = 1000000_r8
+real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -113,10 +114,10 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       init_time_seconds, output_state_ens_mean, output_state_ens_spread, &
                       output_obs_ens_mean, output_obs_ens_spread, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, &
-                      outlier_threshold, inflation_type, inf_start_from_restart, &
+                      outlier_threshold, inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
-                      inf_upper_bound, inf_sd_lower_bound
+                      inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
 
 !----------------------------------------------------------------
 
@@ -136,7 +137,7 @@ type(time_type)             :: time1
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 integer,    allocatable :: keys(:)
-integer                 :: iunit, io, time_step_number, num_obs_in_set
+integer                 :: i, iunit, io, time_step_number, num_obs_in_set
 integer                 :: ierr, last_key_used, model_size, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
 integer                 :: output_state_mean_index, output_state_spread_index
@@ -165,19 +166,33 @@ if (my_task_id() == 0) then
    write(     *     , nml=filter_nml)
 endif
 
+! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
+if(ens_size < 2) then
+   write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
+   call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+endif
+
+! Make sure inflation options are legal
+do i = 1, 2
+   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 3) then
+      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 '
+      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   endif
+end do
+
 ! Observation space inflation for posterior not currently supported
-if(inflation_type(2) == 1) call error_handler(E_ERR, 'filter', &
+if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter', &
    'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
 
 ! Setup the indices into the ensemble storage
-ENS_MEAN_COPY =        ens_size + 1
-ENS_SD_COPY =          ens_size + 2
-PRIOR_INF_COPY =       ens_size + 3
-PRIOR_INF_SD_COPY =    ens_size + 4
-POST_INF_COPY =        ens_size + 5
-POST_INF_SD_COPY =     ens_size + 6
-OBS_ERR_VAR_COPY =     ens_size + 1
-OBS_VAL_COPY =         ens_size + 2
+ENS_MEAN_COPY        = ens_size + 1
+ENS_SD_COPY          = ens_size + 2
+PRIOR_INF_COPY       = ens_size + 3
+PRIOR_INF_SD_COPY    = ens_size + 4
+POST_INF_COPY        = ens_size + 5
+POST_INF_SD_COPY     = ens_size + 6
+OBS_ERR_VAR_COPY     = ens_size + 1
+OBS_VAL_COPY         = ens_size + 2
 OBS_KEY_COPY         = ens_size + 3
 OBS_GLOBAL_QC_COPY   = ens_size + 4
 OBS_PRIOR_MEAN_START = ens_size + 5
@@ -209,14 +224,14 @@ call filter_set_initial_time(time1)
 call filter_read_restart(ens_handle, time1, model_size)
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inflation_type(1), inf_start_from_restart(1), &
+call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_start_from_restart(1), &
    inf_output_restart(1), inf_deterministic(1), inf_in_file_name(1), inf_out_file_name(1), &
-   inf_diag_file_name(1), inf_initial(1), inf_sd_initial(1), inf_upper_bound(1), &
-   inf_sd_lower_bound(1), ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call adaptive_inflate_init(post_inflate, inflation_type(2), inf_start_from_restart(2), &
+   inf_diag_file_name(1), inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), &
+   inf_upper_bound(1), inf_sd_lower_bound(1), ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_start_from_restart(2), &
    inf_output_restart(2), inf_deterministic(2), inf_in_file_name(2), inf_out_file_name(2), &
-   inf_diag_file_name(2), inf_initial(2), inf_sd_initial(2), inf_upper_bound(2), &
-   inf_sd_lower_bound(2), ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+   inf_diag_file_name(2), inf_initial(2), inf_sd_initial(2), inf_lower_bound(2), &
+   inf_upper_bound(2), inf_sd_lower_bound(2), ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 
 ! Initialize the output sequences and state files and set their meta data
 if(my_task_id() == 0) call filter_generate_copy_meta_data(seq, prior_inflate, &
@@ -842,7 +857,7 @@ type(obs_def_type) :: obs_def
 ! Assumed that both ensembles are var complete
 ! Each PE must loop to compute its copies of the forward operators
 ! May want to have bounds later, for now, assume that ensembles are in 1:ens_size
-! global copies.
+! global copies. IMPORTANT, ENSEMBLES COME FIRST>>>
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -916,7 +931,7 @@ logical        :: evaluate_this_ob, assimilate_this_ob, do_outlier
 ! Assume that mean and spread have been computed if needed???
 ! Assume that things are copy complete???
 
-! Getting the copies requires commication, so need to only do it
+! Getting the copies requires communication, so need to only do it
 ! once per copy. This puts the observation loop on the inside
 ! which may itself be expensive. Check out cost later.
 ! Need to add qc in eventually, too.
