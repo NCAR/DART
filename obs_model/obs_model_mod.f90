@@ -32,7 +32,7 @@ use mpi_utilities_mod,    only : my_task_id
 implicit none
 private
 
-public :: move_ahead, Aadvance_state
+public :: move_ahead, advance_state
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -40,7 +40,7 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-logical, save :: module_initialized = .false.
+logical :: module_initialized = .false.
 
 ! Module storage for writing error messages
 character(len = 129) :: errstring
@@ -81,10 +81,17 @@ type(obs_def_type) :: obs_def
 logical            :: is_this_last, is_there_one, out_of_range, i
 integer            :: sec, day
 
+! Initialize if needed
+if(.not. module_initialized) then
+   call initialize_module
+   module_initialized = .true.
+endif
+
 ! Violating the private boundaries on ens_handle by direct access
 ! If none of my copies are regular ensemble members no need to advance
 if(ens_handle%my_num_copies < 1) return
 ! Next assumes that ensemble copies are in the first ens_size global copies of ensemble
+! And that global indices are monotonically increasing in each pes local copies
 if(ens_handle%my_copies(1) > ens_size) return
 
 ! Initialize a temporary observation type to use
@@ -131,13 +138,11 @@ end_time = time2 + delta_time / 2
 
 ! Output the start and end time at the message level
 call get_time(start_time, sec, day)
-if(my_task_id() == 0) then
-   write (errstring, *) 'Start time of obs range day=', day, ', sec=', sec
-   call error_handler(E_MSG, 'move_ahead', errstring, '', '', '')
-   call get_time(end_time,   sec, day)
-   write (errstring, *) 'End time of obs range day=  ', day, ', sec=', sec
-   call error_handler(E_MSG, 'move_ahead', errstring, source, revision, revdate)
-endif
+write (errstring, *) 'Start time of obs range day=', day, ', sec=', sec
+call error_handler(E_MSG, 'move_ahead', errstring, '', '', '')
+call get_time(end_time,   sec, day)
+write (errstring, *) 'End time of obs range day=  ', day, ', sec=', sec
+call error_handler(E_MSG, 'move_ahead', errstring, source, revision, revdate)
 
 ! If the next observation is not in the window, then have an error
 if(next_time < start_time .or. next_time > end_time) then
@@ -152,7 +157,7 @@ call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
 ! Advance all ensembles to the time for the assimilation
-if(time2 /= ens_time) call Aadvance_state(ens_handle, ens_size, time2, async, adv_ens_command)
+if(time2 /= ens_time) call advance_state(ens_handle, ens_size, time2, async, adv_ens_command)
 
 ! Release the storage associated with the observation temp variable
 call destroy_obs(observation)
@@ -162,7 +167,7 @@ end subroutine move_ahead
 
 !------------------------------------------------------------------------------
 
-subroutine Aadvance_state(ens_handle, ens_size, target_time, asynch, adv_ens_command) 
+subroutine advance_state(ens_handle, ens_size, target_time, async, adv_ens_command) 
 
 ! Advances the model extended state until time is equal to the target_time.
 
@@ -171,7 +176,7 @@ implicit none
 ! ens_size is the number of ensembles that are model state and need to be advanced
 type(ensemble_type), intent(inout) :: ens_handle
 type(time_type),     intent(in)    :: target_time
-integer,             intent(in)    :: ens_size, asynch
+integer,             intent(in)    :: ens_size, async
 character(len=*),    intent(in)    :: adv_ens_command
 
 character(len = 129), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
@@ -183,6 +188,11 @@ type(time_type) :: time_step
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
 integer         :: i, control_unit, ic_file_unit, ud_file_unit
 
+! Initialize if needed
+if(.not. module_initialized) then
+   call initialize_module
+   module_initialized = .true.
+endif
 
 ! Determine model time_step
 time_step = get_model_time_step()
@@ -192,7 +202,7 @@ my_num_state_copies = 0
 ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
    global_ens_index = ens_handle%my_copies(i)
 
-   ! If globl_ens_index is not one of the model state ensembles, don't need to advance
+   ! If global_ens_index is not one of the model state ensembles, don't need to advance
    ! Assumes that state ensemble copies have smallest global index and are stored 
    ! contiguously on local processor
    if(global_ens_index > ens_size) exit ENSEMBLE_MEMBERS
@@ -208,11 +218,11 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       call get_time(ens_handle%time(i), is1, id1)
       call get_time(target_time, is2, id2)
       write(errstring,*)'target time ',is2,id2,' is before model_time ',is1,id1
-      call error_handler(E_ERR,'Aadvance_state', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
    endif
 
    !------------- Block for subroutine callable adv_1step interface -----------
-   if(asynch == 0) then
+   if(async == 0) then
 
       do while(ens_handle%time(i) < target_time)
          call adv_1step(ens_handle%vars(:, i), ens_handle%time(i))
@@ -226,8 +236,8 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       ! Can only handle up to 10000 ensemble members
       if(global_ens_index > 10000) then
          write(errstring,*)'Trying to use ', ens_size,' model states -- too many.'
-         call error_handler(E_WARN,'Aadvance_state',errstring,source,revision,revdate)
-         call error_handler(E_ERR,'Aadvance_state','Use less than 10000 member ensemble.', &
+         call error_handler(E_WARN,'advance_state',errstring,source,revision,revdate)
+         call error_handler(E_ERR,'advance_state','Use less than 10000 member ensemble.', &
             source,revision,revdate)
       endif
 
@@ -237,7 +247,8 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
 
 
       ! Open a restart file and write state following a target time
-      ic_file_unit = open_restart_write(trim(ic_file_name(i)))
+      ! Force writing to binary to have bit-wise reproducing advances
+      ic_file_unit = open_restart_write(trim(ic_file_name(i)), "unformatted")
       call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ic_file_unit, target_time)
       call close_restart(ic_file_unit)
 
@@ -256,10 +267,10 @@ end do ENSEMBLE_MEMBERS
 !call close_restart(ic_file_unit)
 
 
-! Following is for asynch options that use shell to advance model
-SHELL_ADVANCE_METHODS: if(asynch /= 0) then
+! Following is for async options that use shell to advance model
+SHELL_ADVANCE_METHODS: if(async /= 0) then
    ! Get a unique name for the control file; use process id
-   if(my_task_id() > 10000) call error_handler(E_ERR, 'Aadvance_state', &
+   if(my_task_id() > 10000) call error_handler(E_ERR, 'advance_state', &
       'Can only have 10000 processes', source, revision, revdate)
    write(control_file_name, '("filter_control", i5.5)') my_task_id()
 
@@ -274,7 +285,7 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
    end do
    close(control_unit)
 
-   if(asynch == 2) then
+   if(async == 2) then
 
       ! Arguments to advance model script are unique id and number of copies
       write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
@@ -283,7 +294,8 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
       call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
  
       FOREVER: do
-         ! When control file is deleted we are free to proceed to read in updated state
+         ! When control file is deleted by shell script (adv_ens_command) 
+         ! we are free to proceed to read in updated state
          if(file_exist(control_file_name)) then
             ! Adjusting sleep time can modify performance
             ! Use shorter time for shorter expected model advances
@@ -296,8 +308,8 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
 
    else
    ! Unsupported option for async error
-      write(errstring,*)'input.nml - async is ',asynch,' must be 0, or 2'
-      call error_handler(E_ERR,'Aadvance_state', errstring, source, revision, revdate)
+      write(errstring,*)'input.nml - async is ',async,' must be 0, or 2'
+      call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
    endif
 
    ! All should be done, read in the states and proceed
@@ -309,7 +321,7 @@ SHELL_ADVANCE_METHODS: if(asynch /= 0) then
 
 end if SHELL_ADVANCE_METHODS
 
-end subroutine Aadvance_state
+end subroutine advance_state
 
 !--------------------------------------------------------------------
 

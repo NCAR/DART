@@ -15,26 +15,19 @@ program integrate_model
 ! Program to integrate assimilation model forward for asynchronous filter
 ! execution.
 
-use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_time, print_time, operator(/=), &
-                             operator(>), operator(<), read_time
-use    utilities_mod, only : initialize_utilities, register_module, &
-                             error_handler, logfileunit, E_MSG, E_ERR, timestamp,&
-                             find_namelist_in_file, check_namelist_read
+use types_mod,           only : r8
+use time_manager_mod,    only : time_type, operator(<)
+use utilities_mod,       only : initialize_utilities, register_module,              &
+                                error_handler, logfileunit, E_MSG, E_ERR, timestamp
+                                
+use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
+                                open_restart_read, open_restart_write, close_restart, &
+                                awrite_state_restart, aread_state_restart
+use obs_model_mod,        only : advance_state
 
-use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
-   get_model_size, get_initial_condition, get_closest_state_time_to, &
-   set_model_time, get_model_time, init_diag_output, &
-   output_diagnostics, init_assim_model, get_state_vector_ptr, &
-   write_state_restart, read_state_restart, open_restart_read, &
-   open_restart_write, close_restart, awrite_state_restart, aread_state_restart
+use ensemble_manager_mod, only : init_ensemble_manager, put_copy, ensemble_type, get_copy
 
-use obs_model_mod, only : Aadvance_state
-
-use ensemble_manager_mod, only : init_ensemble_manager, put_copy, &
-   ensemble_type, get_copy
-
-use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
+use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                               task_count
 
 
@@ -47,7 +40,6 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 type(time_type)         :: target_time, model_time
-real(r8), allocatable   :: x(:)
 integer                 :: iunit, io, model_size
 type(ensemble_type)     :: ens_handle
 character (len=129)     :: adv_ens_command = ''
@@ -55,12 +47,7 @@ character (len=129)     :: adv_ens_command = ''
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
-integer :: target_time_days = -1, target_time_seconds = -1
-character(len = 129) :: ic_file_name = "temp_ic", &
-                        ud_file_name = 'temp_ud'
-
-namelist /integrate_model_nml/ target_time_days, target_time_seconds, &
-   ic_file_name, ud_file_name
+character(len = 7) :: ic_file_name = "temp_ic", ud_file_name = 'temp_ud'
 
 !----------------------------------------------------------------
 
@@ -73,41 +60,30 @@ if(task_count() > 1) &
 call initialize_utilities('integrate_model')
 call register_module(source,revision,revdate)
 
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "integrate_model_nml", iunit)
-read(iunit, nml = integrate_model_nml, iostat = io)
-call check_namelist_read(iunit, io, "integrate_model_nml")
-
-! Record the namelist values used for the run ...
-call error_handler(E_MSG,'integrate_model','integrate_model_nml values are',' ',' ',' ')
-write(logfileunit, nml=integrate_model_nml)
-write(     *     , nml=integrate_model_nml)
-
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
 model_size = get_model_size()
-allocate(x(model_size))
+
+! Initialize an ensemble manager type with a single copy
+call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size)
 
 !------------------- Read restart from file ----------------------
 iunit = open_restart_read(ic_file_name)
 ! Read in the target time
-call aread_state_restart(model_time, x, iunit, target_time)
+call aread_state_restart(ens_handle%time(1), ens_handle%vars(:, 1), iunit, target_time)
 call close_restart(iunit)
 !-----------------  Restart read in --------------------------------
 
-! Put this into an ensemble_manager type
-call init_ensemble_manager(ens_handle, 1, model_size, 1)
-call put_copy(0, ens_handle, 1, x, model_time)
-
 ! Advance this state to the target time (which comes from namelist)
 ! If the model time is past the obs set time, just need to skip
-if(model_time < target_time) &
-   call Aadvance_state(ens_handle, 1, target_time, 0, adv_ens_command)
+if(ens_handle%time(1) < target_time) &
+   call advance_state(ens_handle, ens_size=1, target_time=target_time, &
+      async=0, adv_ens_command=adv_ens_command)
 
-! Output the restart file if requested
-iunit = open_restart_write(ud_file_name)
-call get_copy(0, ens_handle, 1, x, model_time)
-call awrite_state_restart(model_time, x, iunit)
+! Output the restart file if requested; Force to binary for bitwise reproducing
+! use in filter and perfect_model obs with shell advance options
+iunit = open_restart_write(ud_file_name, "unformatted")
+call awrite_state_restart(ens_handle%time(1), ens_handle%vars(:, 1), iunit)
 call close_restart(iunit)
 
 call timestamp(source,revision,revdate,'end') ! closes the log file.
