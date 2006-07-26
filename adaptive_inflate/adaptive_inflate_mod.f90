@@ -1,6 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module adaptive_inflate_mod
@@ -48,11 +47,12 @@ revdate  = "$Date$"
 
 ! Type to keep track of information for inflation
 type adaptive_inflate_type
+   private
    ! Flavor can be 0:none, 1:obs_inflate, 2:varying_ss_inflate, 3:single_ss_inflate
    integer               :: inflation_flavor, obs_diag_unit
    logical               :: start_from_restart, output_restart, deterministic
    character(len = 129)  :: in_file_name, out_file_name, diag_file_name
-   real(r8)              :: inflate, sd, sd_lower_bound, inf_upper_bound
+   real(r8)              :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
 end type adaptive_inflate_type
@@ -69,15 +69,15 @@ contains
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_init(inflate_handle, inf_type, start_from_restart, &
+subroutine adaptive_inflate_init(inflate_handle, inf_flavor, start_from_restart, &
    output_restart, deterministic, in_file_name, out_file_name, diag_file_name, &
-   inf_initial, sd_initial, inf_upper_bound, sd_lower_bound, &
+   inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, sd_lower_bound, &
    ens_handle, ss_inflate_index, ss_inflate_sd_index)
 
 ! Initializes an adaptive_inflate_type 
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
-integer,                     intent(in)    :: inf_type
+integer,                     intent(in)    :: inf_flavor
 logical,                     intent(in)    :: start_from_restart
 logical,                     intent(in)    :: output_restart
 logical,                     intent(in)    :: deterministic
@@ -85,16 +85,16 @@ character(len = *),          intent(in)    :: in_file_name
 character(len = *),          intent(in)    :: out_file_name
 character(len = *),          intent(in)    :: diag_file_name
 real(r8),                    intent(in)    :: inf_initial, sd_initial
-real(r8),                    intent(in)    :: inf_upper_bound, sd_lower_bound
+real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
+real(r8),                    intent(in)    ::  sd_lower_bound
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 
-integer :: iunit, io, true_count
 type(time_type) :: init_time
 integer :: restart_unit
 
 ! Load up the structure first to keep track of all details of this inflation type
-inflate_handle%inflation_flavor   = inf_type
+inflate_handle%inflation_flavor   = inf_flavor
 inflate_handle%start_from_restart = start_from_restart
 inflate_handle%output_restart     = output_restart
 inflate_handle%deterministic      = deterministic
@@ -103,6 +103,7 @@ inflate_handle%out_file_name      = out_file_name
 inflate_handle%diag_file_name     = diag_file_name
 inflate_handle%inflate            = inf_initial
 inflate_handle%sd                 = sd_initial
+inflate_handle%inf_lower_bound    = inf_lower_bound
 inflate_handle%inf_upper_bound    = inf_upper_bound
 inflate_handle%sd_lower_bound     = sd_lower_bound
 
@@ -112,17 +113,23 @@ inflate_handle%obs_diag_unit = -1
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
    initialized = .true.
-   call register_module(source, revision, revdate)                                         
+   call register_module(source, revision, revdate)
 endif
 
 ! If non-deterministic inflation is being done, need to initialize random sequence
 ! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
 if(.not. deterministic) call init_random_seq(inflate_handle%ran_seq)
 
+! Cannot support non-determistic inflation and an inf_lower_bound < 1
+if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
+   write(errstring, *) 'Cannot have non-determinisitic inflation and inf_lower_bound < 1'
+   call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
+endif
+
 !------ Block for state space inflation initialization ------
 
 ! Types 2 and 3 are state space inflation types
-if(inf_type >= 2) then
+if(inf_flavor >= 2) then
    ! Initialize state space inflation, copies in ensemble are given
    ! by the inflate and inflate_sd indices. These should be contiguous.
 
@@ -134,7 +141,7 @@ if(inf_type >= 2) then
          errstring, source, revision, revdate)
    endif
 
-   ! Read in initial values from file OR get from namelist as requested
+   ! Read in initial values from file OR get from subroutine arguments
    if(start_from_restart) then
       call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
          start_from_restart, in_file_name, init_time)
@@ -149,17 +156,15 @@ if(inf_type >= 2) then
 !------ Block for obs. space inflation initialization ------
 
 ! Type 1 is observation space inflation
-else if(inf_type == 1) then
+else if(inf_flavor == 1) then
 
    ! Initialize observation space inflation values from restart files
-   ! Only values are inflation, inflation_sd, and inflation sd lower bound
-!?????? Should upper bound on sd be in the file, too????
+   ! Only values are inflation, inflation_sd
    if(start_from_restart) then
       ! Open the file
       restart_unit = get_unit()
       open(unit = restart_unit, file = in_file_name, action = 'read', form = 'formatted')
-      read(restart_unit, *) inflate_handle%inflate, inflate_handle%sd, &
-         inflate_handle%sd_lower_bound
+      read(restart_unit, *) inflate_handle%inflate, inflate_handle%sd
       close(restart_unit)
    endif
 
@@ -180,7 +185,7 @@ integer :: restart_unit
 
 if(inflate_handle%output_restart) then
    ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
-   if(inflate_handle%inflation_flavor >=2) then
+   if(do_varying_ss_inflate(inflate_handle) .or. do_single_ss_inflate(inflate_handle)) then
       ! Verify that indices are contiguous
       if(ss_inflate_sd_index /= ss_inflate_index + 1) then
          write(errstring, *) 'ss_inflate_index = ', ss_inflate_index, &
@@ -194,16 +199,19 @@ if(inflate_handle%output_restart) then
          ss_inflate_index, ss_inflate_sd_index)
 
    ! Flavor 1 is observation space, write its restart directly
-   else if(inflate_handle%inflation_flavor == 1) then
+   else if(do_obs_inflate(inflate_handle)) then
       ! Open the restart file
       restart_unit = get_unit()
       open(unit = restart_unit, file = inflate_handle%out_file_name, &
          action = 'write', form = 'formatted')
-      write(restart_unit, *) inflate_handle%inflate, inflate_handle%sd, &
-         inflate_handle%sd_lower_bound
+      write(restart_unit, *) inflate_handle%inflate, inflate_handle%sd
+      close(unit = restart_unit)
    endif
 endif
 
+! Need to close diagnostic files for observation space if in use
+if(inflate_handle%obs_diag_unit > -1) close(inflate_handle%obs_diag_unit)
+   
 end subroutine adaptive_inflate_end
 
 
@@ -291,7 +299,7 @@ end subroutine set_inflate
 
 subroutine set_sd(inflate_handle, sd)
 
-! Sets the single inflate_sd value in the type
+! Sets the single sd value in the type
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(in)    :: sd
@@ -390,7 +398,7 @@ subroutine update_inflation(inflate_handle, inflate, inflate_sd, prior_mean, pri
 ! Given information from an inflate type, scalar values for inflate and inflate_sd,
 ! the ensemble prior_mean and prior_var for an observation, and the obsered value
 ! and observational error variance, computes updated values for the inflate and
-! inflate_sd values using the algorithms documented in ??? HOW TO REFERNCE???
+! inflate_sd values using the algorithms documented on the DART website.
 ! The gamma paramter gives the localized prior correlation times the localization
 ! which is computed in the assim_tools routine filter_assim. For single state
 ! space inflation it is 1.0.
@@ -413,8 +421,7 @@ call bayes_cov_inflate(prior_mean, prior_var, obs, obs_var, inflate, &
 
 ! Make sure inflate satisfies constraints
 inflate = new_inflate
-! Should we continue to enforce > 1.0 on inflate? Yes, for now.
-if(inflate < 1.0_r8) inflate = 1.0_r8
+if(inflate < inflate_handle%inf_lower_bound) inflate = inflate_handle%inf_lower_bound
 if(inflate > inflate_handle%inf_upper_bound) inflate = inflate_handle%inf_upper_bound
 
 ! Make sure sd satisfies constraints
@@ -428,7 +435,7 @@ end subroutine update_inflation
 subroutine bayes_cov_inflate(x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd, &
    gamma, new_cov_inflate, new_cov_inflate_sd, sd_lower_bound_in)
 
-! Uses algorithms in ??? to update the distribution of inflation.
+! Uses algorithms in references on DART web site to update the distribution of inflation.
 
 real(r8), intent(in)  :: x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd, gamma
 real(r8), intent(in)  :: sd_lower_bound_in
