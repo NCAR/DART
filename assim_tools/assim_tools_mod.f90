@@ -15,36 +15,41 @@ module assim_tools_mod
 ! A variety of operations required by assimilation.
 
 use      types_mod, only : r8
-use  utilities_mod, only : file_exist, get_unit, check_namelist_read, find_namelist_in_file, &
-                           register_module, error_handler, E_ERR, E_MSG, logfileunit
-use       sort_mod, only : index_sort 
-use random_seq_mod, only : random_seq_type, random_gaussian, init_random_seq, random_uniform
+use  utilities_mod,       only : file_exist, get_unit, check_namelist_read,             &
+                                 find_namelist_in_file, register_module, error_handler, &
+                                 E_ERR, E_MSG, logfileunit
+use       sort_mod,       only : index_sort 
+use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, &
+                                 random_uniform
 
-use obs_sequence_mod, only : obs_sequence_type, obs_type, get_num_copies, get_num_qc,       &
-                             init_obs, get_obs_from_key, get_obs_def, get_obs_values,       &
-                             get_qc, set_qc, set_obs, get_copy_meta_data, read_obs_seq,     &
-                             destroy_obs_sequence, get_num_obs, write_obs_seq, destroy_obs, &
-                             get_expected_obs
+use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_num_copies, get_num_qc, &
+                                 init_obs, get_obs_from_key, get_obs_def, get_obs_values, &
+                                 destroy_obs
    
-use          obs_def_mod, only : obs_def_type, get_obs_def_error_variance, &
-                                 get_obs_def_location, get_obs_def_time
+use          obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time, &
+                                 get_obs_def_error_variance
+
 use       cov_cutoff_mod, only : comp_cov_factor
+
 use       reg_factor_mod, only : comp_reg_factor
-use         location_mod, only : location_type, get_dist, get_close_maxdist_init, &
-                                 get_close_obs_init, get_close_obs, get_location, &
-                                 get_close_type
+
+use         location_mod, only : location_type, get_close_maxdist_init, &
+                                 get_close_obs_init, get_close_obs, get_close_type
+
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars, &
                                  compute_copy_mean_var, get_var_owner_index
 
-use mpi_utilities_mod, only : my_task_id, broadcast_send, broadcast_recv, &
-                              sum_across_tasks
+use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv, &
+                                 sum_across_tasks
 
-use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,  &
+use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,           &
                                  do_varying_ss_inflate, get_inflate, set_inflate, &
-                                 get_sd, set_sd, update_inflation,     &
-                                 inflate_ens, adaptive_inflate_type
-use time_manager_mod, only : time_type
-use assim_model_mod,  only : get_state_meta_data
+                                 get_sd, set_sd, update_inflation,                &
+                                 inflate_ens, adaptive_inflate_type, deterministic_inflate
+
+use time_manager_mod,     only : time_type
+
+use assim_model_mod,      only : get_state_meta_data
 
 implicit none
 private
@@ -52,15 +57,15 @@ private
 public :: filter_assim
 
 ! Indicates if module initialization subroutine has been called yet
-logical :: module_initialized = .false.
+logical                :: module_initialized = .false.
 
 type (random_seq_type) :: inc_ran_seq
-logical :: first_inc_ran_call = .true.
-character(len = 129) :: errstring
+logical                :: first_inc_ran_call = .true.
+character(len = 129)   :: errstring
 
 ! Need to read in table for off-line based sampling correction and store it
-logical :: first_get_correction = .true.
-real(r8) :: exp_true_correl(200), alpha(200)                                                                      
+logical                :: first_get_correction = .true.
+real(r8)               :: exp_true_correl(200), alpha(200)                                                                      
 ! CVS Generated file description for error handling, do not edit
 character(len=128), parameter :: &
 source   = "$Source$", &
@@ -78,12 +83,12 @@ revdate  = "$Date$"
 !      4 = particle filter
 !      5 = random draw from posterior
 !      6 = deterministic draw from posterior with fixed kurtosis
-integer            :: filter_kind = 1
-real(r8)           :: cutoff = 0.2_r8
-logical            :: sort_obs_inc = .false.
-logical            :: spread_restoration = .false.
-logical            :: sampling_error_correction = .false.
-integer            :: adaptive_localization_threshold = 10000000
+integer  :: filter_kind                     = 1
+real(r8) :: cutoff                          = 0.2_r8
+logical  :: sort_obs_inc                    = .false.
+logical  :: spread_restoration              = .false.
+logical  :: sampling_error_correction       = .false.
+integer  :: adaptive_localization_threshold = 10000000
 
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction, adaptive_localization_threshold
@@ -92,10 +97,9 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
 
 contains
 
+!-------------------------------------------------------------
+
 subroutine assim_tools_init()
-!============================================================================
-! subroutine assim_tools_init()
-!
 
 integer :: iunit, io
 
@@ -107,7 +111,6 @@ read(iunit, nml = assim_tools_nml, iostat = io)
 call check_namelist_read(iunit, io, "assim_tools_nml")
 
 ! Write the namelist values to the log file
-
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
 write(logfileunit, nml=assim_tools_nml)
 write(     *     , nml=assim_tools_nml)
@@ -122,10 +125,10 @@ end subroutine assim_tools_init
 
 !-------------------------------------------------------------
 
-subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys, &
+subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,           &
    ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-   ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-   OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
+   ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY,          &
+   OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,            &
    OBS_PRIOR_VAR_END, inflate_only)
 
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
@@ -140,7 +143,6 @@ integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_ME
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 logical,                     intent(in)    :: inflate_only
 
-! Initial code entry for an mpi based assimilation module
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
 real(r8) :: my_cov_inflate, my_cov_inflate_sd, reg_factor
@@ -150,8 +152,10 @@ real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
 real(r8) :: ss_inflate_base, obs_qc, cutoff_rev
 real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
+real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
 real(r8) :: close_obs_dist(obs_ens_handle%my_num_vars)
 real(r8) :: close_state_dist(ens_handle%my_num_vars)
+
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer  :: my_obs(obs_ens_handle%my_num_vars), my_state(ens_handle%my_num_vars)
 integer  :: this_obs_key, obs_mean_index, obs_var_index
@@ -160,13 +164,14 @@ integer  :: obs_box(obs_ens_handle%my_num_vars), close_obs_ind(obs_ens_handle%my
 integer  :: close_state_ind(ens_handle%my_num_vars)
 integer  :: num_close_obs, obs_index, num_close_states, state_index
 integer  :: total_num_close_obs
-type(location_type) :: my_obs_loc(obs_ens_handle%my_num_vars), base_obs_loc
-type(location_type) :: my_state_loc(ens_handle%my_num_vars)
+
+type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars), base_obs_loc
+type(location_type)  :: my_state_loc(ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
 
-type(obs_type)     :: observation
-type(obs_def_type) :: obs_def
-type(time_type)    :: obs_time
+type(obs_type)       :: observation
+type(obs_def_type)   :: obs_def
+type(time_type)      :: obs_time
 
 !PAR: THIS SHOULD COME FROM SOMEWHERE ELSE AND BE NAMELIST CONTOLLED
 real(r8) :: qc_threshold = 10.0_r8
@@ -338,6 +343,15 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Everybody is doing this section, cycle if qc is bad
    if(obs_qc > qc_threshold) cycle SEQUENTIAL_OBS
 
+   ! Can compute prior mean and variance of obs for each group just once here
+   do group = 1, num_groups
+      grp_bot = grp_beg(group)
+      grp_top = grp_end(group)
+      obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
+      obs_prior_var(group)  = sum(obs_prior(grp_bot:grp_top) * obs_prior(grp_bot:grp_top)) - &
+         grp_size * obs_prior_mean(group)**2
+   end do
+
    ! Now everybody updates their close states
 
    ! Getting close states for each scalar observation for now
@@ -382,9 +396,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       do group = 1, num_groups
          grp_bot = grp_beg(group)
          grp_top = grp_end(group)
-         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_inc(grp_bot:grp_top), &
-            ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
-            increment(grp_bot:grp_top), reg_coef(group), correl(group), net_a(group))
+         ! Do update of state, correl only needed for varying ss inflate
+         if(varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
+            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
+               increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
+         else
+            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+               ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
+               increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+         endif
       end do
 
       ! Compute an information factor for impact of this observation on this state
@@ -446,9 +469,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          do group = 1, num_groups
             grp_bot = grp_beg(group)
             grp_top = grp_end(group)
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_inc(grp_bot:grp_top), &
+            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                 obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
-                increment(grp_bot:grp_top), reg_coef(group), correl(group), net_a(group))
+                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
          end do
 
          ! Compute an information factor for impact of this observation on this state
@@ -493,6 +517,9 @@ end subroutine filter_assim
 subroutine obs_increment(ens_in, ens_size, obs, obs_var, obs_inc, &
    inflate, my_cov_inflate, my_cov_inflate_sd, net_a)
 
+! Given the ensemble prior for an observation, the observation, and
+! the observation error variance, computes increments and adjusts
+! observation space inflation values
 
 integer,                     intent(in)    :: ens_size
 real(r8),                    intent(in)    :: ens_in(ens_size), obs, obs_var
@@ -502,48 +529,58 @@ real(r8),                    intent(inout) :: my_cov_inflate, my_cov_inflate_sd
 real(r8),                    intent(out)   :: net_a
 
 real(r8) :: ens(ens_size), inflate_inc(ens_size)
-real(r8) :: sum_x, prior_mean, prior_var
-real(r8) :: new_val(ens_size), a
+real(r8) :: prior_mean, prior_var, new_val(ens_size)
 integer  :: i, ens_index(ens_size), new_index(ens_size)
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
 
+! Null value of net spread change factor is 1.0
+net_a = 0.0_r8
+
+! Compute prior variance and mean from sample
+prior_mean = sum(ens) / ens_size
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+
 ! If observation space inflation is being done, compute the initial 
 ! increments and update the inflation factor and its standard deviation
 ! as needed. my_cov_inflate < 0 means don't do any of this.
 if(do_obs_inflate(inflate)) then
-   ! Compute prior variance and mean from sample
-   sum_x      = sum(ens)
-   prior_mean = sum_x / ens_size
-   prior_var = sum((ens - prior_mean)**2) / (ens_size - 1)
-
    ! If my_cov_inflate_sd is <= 0, just retain current my_cov_inflate setting
    if(my_cov_inflate_sd > 0.0_r8) & 
       ! Gamma set to 1.0 because no distance for observation space
       call update_inflation(inflate, my_cov_inflate, my_cov_inflate_sd, prior_mean, &
-         prior_var, obs, obs_var, 1.0_r8)
+         prior_var, obs, obs_var, gamma = 1.0_r8)
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
    call inflate_ens(inflate, ens, prior_mean, my_cov_inflate, prior_var)
-
    ! Keep the increment due to inflation alone 
    inflate_inc = ens - ens_in
+
+   ! Need to recompute variance if non-deterministic inflation (mean is unchanged)
+   if(.not. deterministic_inflate(inflate)) &
+      prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
+
+! If both obs_var and prior_var are 0 don't know what to do
+if(obs_var == 0.0_r8 .and. prior_var == 0.0_r8) call error_handler(E_ERR,&
+   'obs_increment', 'Both obs_var and prior_var are zero. This is inconsistent', &
+           source, revision, revdate)
 
 ! Call the appropriate filter option to compute increments for ensemble
 if(filter_kind == 1) then
-   call     obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc, a)
+   call obs_increment_eakf(ens, ens_size, prior_mean, prior_var, &
+      obs, obs_var, obs_inc, net_a)
 else if(filter_kind == 2) then
-   call     obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc)
+   call obs_increment_enkf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 else if(filter_kind == 3) then
-   call   obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
+   call obs_increment_kernel(ens, ens_size, obs, obs_var, obs_inc)
 else if(filter_kind == 4) then
    call obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
 else if(filter_kind == 5) then
-   call obs_increment_ran_kf(ens, ens_size, obs, obs_var, obs_inc)
+   call obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 else if(filter_kind == 6) then
-   call obs_increment_det_kf(ens, ens_size, obs, obs_var, obs_inc)
+   call obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 else 
    call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind in assim_tools namelist [1-6 OK]', &
@@ -551,12 +588,8 @@ else
 endif
 
 ! Add in the extra increments if doing observation space covariance inflation
-if(do_obs_inflate(inflate)) then
-   obs_inc = obs_inc + inflate_inc
-endif
+if(do_obs_inflate(inflate)) obs_inc = obs_inc + inflate_inc
 
-
-! For random algorithm, may need to sort to have minimum increments
 ! To minimize regression errors, may want to sort to minimize increments
 ! This makes sense for any of the non-deterministic algorithms
 ! By doing it here, can take care of both standard non-deterministic updates
@@ -569,93 +602,71 @@ if(sort_obs_inc) then
    call index_sort(new_val, new_index, ens_size)
    do i = 1, ens_size
       obs_inc(ens_index(i)) = new_val(new_index(i)) - ens_in(ens_index(i))
-! The following erroneous line can provide improved results; understand why
+      ! The following line can provide improved results; understand why
       !!!obs_inc(ens_index(i)) = new_val(new_index(i)) - ens(ens_index(i))
    end do
 end if
 
-if(do_obs_inflate(inflate)) then
-   net_a = a * sqrt(my_cov_inflate)
-else
-   net_a = a
-endif
+! Get the net change in spread if obs space inflation was used
+if(do_obs_inflate(inflate)) net_a = net_a * sqrt(my_cov_inflate)
 
 end subroutine obs_increment
 
 
 
-subroutine obs_increment_eakf(ens, ens_size, obs, obs_var, obs_inc, a)
+subroutine obs_increment_eakf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc, a)
 !========================================================================
 !
 ! EAKF version of obs increment
 
-integer, intent(in)   :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), prior_mean, prior_var, obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 real(r8), intent(out) :: a
 
-real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: new_mean, var_ratio
 
-! Compute prior variance and mean from sample
-sum_x      = sum(ens)
-prior_mean = sum_x / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
-
+! Compute the new mean
 if (obs_var /= 0.0_r8) then
    var_ratio = obs_var / (prior_var + obs_var)
    new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+! If obs is a delta function, it becomes new value
 else
-   if (prior_var /= 0.0_r8) then
-      var_ratio = 0.0_r8
-      new_mean  = obs
-   else
-      call error_handler(E_ERR,'obs_increment_eakf', &
-           'Both obs_var and prior_var are zero. This is inconsistent', &
-           source, revision, revdate)
-   endif
+   var_ratio = 0.0_r8
+   new_mean  = obs
 endif
 
+! Compute sd ratio and shift ensemble
 a = sqrt(var_ratio)
-
 obs_inc = a * (ens - prior_mean) + new_mean - ens
 
 end subroutine obs_increment_eakf
 
 
-subroutine obs_increment_ran_kf(ens, ens_size, obs, obs_var, obs_inc)
+subroutine obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 !========================================================================
 !
 ! Forms a random sample of the Gaussian from the update equations.
 ! This is very close to what a true 'ENSEMBLE' Kalman Filter would 
 ! look like. Note that outliers, multimodality, etc., get tossed.
 
-integer, intent(in)   :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
-real(r8), intent(out) :: obs_inc(ens_size)
+integer,   intent(in)  :: ens_size
+real(r8),  intent(in)  :: prior_mean, prior_var
+real(r8),  intent(in)  :: ens(ens_size), obs, obs_var
+real(r8),  intent(out) :: obs_inc(ens_size)
 
-real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
+real(r8) :: new_mean, var_ratio
 real(r8) :: temp_mean, temp_var, new_ens(ens_size), new_var
-integer :: i
-
-! Compute prior variance and mean from sample
-sum_x      = sum(ens)
-prior_mean = sum_x / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+integer  :: i
 
 if (obs_var /= 0.0_r8) then
    var_ratio = obs_var / (prior_var + obs_var)
    new_var = var_ratio * prior_var
    new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
 else
-   if (prior_var /= 0.0_r8) then
-      var_ratio = 0.0_r8
-      new_var = var_ratio * prior_var
-      new_mean  = obs
-   else
-      call error_handler(E_ERR,'obs_increment_ran_kf', &
-           'Both obs_var and prior_var are zero. This is inconsistent', &
-           source, revision, revdate)
-   endif
+   var_ratio = 0.0_r8
+   new_var = var_ratio * prior_var
+   new_mean  = obs
 endif
 
 ! Now, just from a random sample from the updated distribution
@@ -686,24 +697,19 @@ end subroutine obs_increment_ran_kf
 
 
 
-subroutine obs_increment_det_kf(ens, ens_size, obs, obs_var, obs_inc)
+subroutine obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 !========================================================================
 !
 ! Does a deterministic ensemble layout for the updated Gaussian.
 ! Note that all outliers, multimodal behavior, etc. get tossed.
 
-integer, intent(in)   :: ens_size
+integer,  intent(in)   :: ens_size
+real(r8), intent(in)  :: prior_mean, prior_var
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: prior_mean, new_mean, prior_var, var_ratio, sum_x
-real(r8) :: temp_var, new_ens(ens_size), new_var
+real(r8) :: new_mean, var_ratio, temp_var, new_ens(ens_size), new_var
 integer :: i
-
-! Compute prior variance and mean from sample
-sum_x      = sum(ens)
-prior_mean = sum_x / ens_size
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
 if (obs_var /= 0.0_r8) then
    var_ratio = obs_var / (prior_var + obs_var)
@@ -793,17 +799,15 @@ end subroutine obs_increment_det_kf
 
 
 
-
-
 subroutine obs_increment_particle(ens, ens_size, obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
 !
 ! A observation space only particle filter implementation for a
 ! two step sequential update filter. Second version, 2 October, 2003.
 
-integer, intent(in)             :: ens_size
-real(r8), intent(in)            :: ens(ens_size), obs, obs_var
-real(r8), intent(out)           :: obs_inc(ens_size)
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 
 real(r8) :: a, weight(ens_size), rel_weight(ens_size), cum_weight(0:ens_size)
 real(r8) :: base, frac, new_val(ens_size), weight_sum
@@ -867,22 +871,19 @@ end subroutine obs_increment_particle
 
 
 
-subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc)
+subroutine obs_increment_enkf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 !========================================================================
 ! subroutine obs_increment_enkf(ens, ens_size, obs, obs_var, obs_inc)
 !
 
 ! ENKF version of obs increment
 
-integer, intent(in)             :: ens_size
-real(r8), intent(in)            :: ens(ens_size), obs, obs_var
-real(r8), intent(out)           :: obs_inc(ens_size)
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), prior_mean, prior_var, obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: a, obs_var_inv
-real(r8) :: prior_mean, prior_cov_inv, new_cov, new_mean(ens_size)
-real(r8) :: sx, s_x2, prior_cov
+real(r8) :: a, obs_var_inv, prior_var_inv, new_var, new_mean(ens_size), sx, s_x2
 real(r8) :: temp_mean, temp_obs(ens_size)
-
 integer  :: i
 
 ! The factor a is not defined for kernel filters
@@ -891,18 +892,8 @@ a = -1.0_r8
 ! Compute mt_rinv_y (obs error normalized by variance)
 obs_var_inv = 1.0_r8 / obs_var
 
-! Compute prior mean and covariance
-sx         = sum(ens)
-s_x2       = sum(ens * ens)
-prior_mean = sx / ens_size
-prior_cov  = sum((ens - prior_mean)**2) / (ens_size - 1)
-
-prior_cov_inv = 1.0_r8 / prior_cov
-new_cov       = 1.0_r8 / (prior_cov_inv + obs_var_inv)
-
-! Temporary for adjustment test
-!   var_ratio = obs_var / (prior_cov + obs_var)
-!   updated_mean  = var_ratio * (prior_mean  + prior_cov*obs / obs_var)
+prior_var_inv = 1.0_r8 / prior_var
+new_var       = 1.0_r8 / (prior_var_inv + obs_var_inv)
 
 ! If this is first time through, need to initialize the random sequence
 if(first_inc_ran_call) then
@@ -921,7 +912,7 @@ temp_obs(:) = temp_obs(:) - temp_mean + obs
 
 ! Loop through pairs of priors and obs and compute new mean
 do i = 1, ens_size
-   new_mean(i) = new_cov * (prior_cov_inv * ens(i) + temp_obs(i) / obs_var)
+   new_mean(i) = new_var * (prior_var_inv * ens(i) + temp_obs(i) / obs_var)
    obs_inc(i)  = new_mean(i) - ens(i)
 end do
 
@@ -929,8 +920,8 @@ end do
 !sx         = sum(new_mean)
 !s_x2       = sum(new_mean * new_mean)
 !temp_mean = sx / ens_size
-!temp_cov  = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
-!new_mean = (new_mean - temp_mean) * sqrt(new_cov / temp_cov) + updated_mean
+!temp_var  = (s_x2 - sx**2 / ens_size) / (ens_size - 1)
+!new_mean = (new_mean - temp_mean) * sqrt(new_var / temp_var) + updated_mean
 !obs_inc = new_mean - ens
 
 
@@ -1019,41 +1010,48 @@ end subroutine obs_increment_kernel
 
 
 
-subroutine update_from_obs_inc(obs, obs_inc, state, ens_size, &
-               state_inc, reg_coef, correl, net_a)
+subroutine update_from_obs_inc(obs, obs_prior_mean, obs_prior_var, obs_inc, &
+               state, ens_size, state_inc, reg_coef, net_a, correl_out)
 !========================================================================
 
 ! Does linear regression of a state variable onto an observation and
 ! computes state variable increments from observation increments
 
-integer, intent(in)             :: ens_size
-real(r8), intent(in)            :: obs(ens_size), obs_inc(ens_size)
-real(r8), intent(in)            :: state(ens_size)
-real(r8), intent(out)           :: state_inc(ens_size), reg_coef, correl
-real(r8), intent(inout)         :: net_a
+integer,            intent(in)    :: ens_size
+real(r8),           intent(in)    :: obs(ens_size), obs_inc(ens_size)
+real(r8),           intent(in)    :: obs_prior_mean, obs_prior_var
+real(r8),           intent(in)    :: state(ens_size)
+real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
+real(r8),           intent(inout) :: net_a
+real(r8), optional, intent(inout) :: correl_out
 
-real(r8) :: sum_x, t(ens_size), sum_t2, sum_ty, pair(2, ens_size)
-real(r8) :: restoration_inc(ens_size), state_mean
-real(r8) :: factor
-real(r8) :: exp_true_correl, mean_factor
+real(r8) :: t(ens_size), obs_state_cov
+real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
+real(r8) :: factor, exp_true_correl, mean_factor
 
-! For efficiency, just compute regression coefficient here
-sum_x  = sum(obs)
-t      = obs - sum_x/ens_size
-sum_t2 = sum(t * t)
-sum_ty = sum(t * state)
+! For efficiency, just compute regression coefficient here unless correl is needed
+t = obs - obs_prior_mean
+obs_state_cov = sum(t * state)
 
-if (sum_t2 /= 0.0_r8) then
-   reg_coef = sum_ty/sum_t2
+if (obs_prior_var /= 0.0_r8) then
+   reg_coef = obs_state_cov/obs_prior_var
 else
    reg_coef = 0.0_r8
 endif
 
-! Temporarily need correlation returned for use in adaptive state space
-! Computation of correlation                                                         
-pair(1, :) = state                                                                   
-pair(2, :) = obs                                                                     
-call comp_correl(pair, ens_size, correl)        
+! If correl_out is present, need correl for adaptive inflation
+! Also needed for file correction below
+if(present(correl_out) .or. sampling_error_correction) then
+   state_var = sum(state * state) - sum(state)**2 / ens_size
+   if(obs_prior_var * state_var < 0.0_r8) then
+      correl = 0.0_r8
+   else
+      correl = obs_state_cov / sqrt(obs_prior_var * state_var)
+   endif
+   if(correl >  1.0_r8) correl =  1.0_r8
+   if(correl < -1.0_r8) correl = -1.0_r8
+endif
+if(present(correl_out)) correl_out = correl
 
 
 ! BEGIN TEST OF CORRECTION FROM FILE +++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1076,12 +1074,6 @@ endif
 
 ! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
-
-
-
-
-
-
 
 
 ! Spread restoration algorithm option
@@ -1108,59 +1100,22 @@ endif
 
 end subroutine update_from_obs_inc
 
-!========================================================================
-
-subroutine comp_correl(ens, n, correl)
-
-implicit none
-
-integer, intent(in) :: n
-real(r8), intent(in) :: ens(2, n)
-real(r8), intent(out) :: correl
-real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2, denom_2
-
-! There is an efficiency issue with the regression being computed
-! independently from this. Should be addressed.
-
-sum_x = sum(ens(2, :))
-sum_y = sum(ens(1, :))
-sum_xy = sum(ens(2, :) * ens(1, :))
-sum_x2 = sum(ens(2, :) * ens(2, :))
-
-! Computation of correlation
-sum_y2 = sum(ens(1, :) * ens(1, :))
-
-! Avoid overflow for no variance and illegal values from round-off
-denom_2 = (n * sum_x2 - sum_x**2) * (n * sum_y2 - sum_y**2)
-if(denom_2 <= 0.0_r8) then
-   correl = 0.0_r8
-else
-   correl = (n * sum_xy - sum_x * sum_y) / sqrt(denom_2)
-   if(correl >  1.0_r8) correl =  1.0_r8
-   if(correl < -1.0_r8) correl = -1.0_r8
-endif
-
-end subroutine comp_correl
-
 
 !------------------------------------------------------------------------
 
 subroutine get_correction_from_file(ens_size, scorrel, mean_factor, expected_true_correl)
 
-integer, intent(in) :: ens_size
-real(r8), intent(in) :: scorrel
+integer,   intent(in) :: ens_size
+real(r8),  intent(in) :: scorrel
 real(r8), intent(out) :: mean_factor, expected_true_correl
 
 ! Reads in a regression error file for a give ensemble_size and uses interpolation
 ! to get correction factor into the file
 
-integer :: iunit, i
-real(r8) :: temp, temp2, correl
-real(r8) :: fract, low_correl, low_exp_correl, low_alpha
+integer  :: iunit, i, low_indx, high_indx
+real(r8) :: temp, temp2, correl, fract, low_correl, low_exp_correl, low_alpha
 real(r8) :: high_correl, high_exp_correl, high_alpha
-integer :: low_indx, high_indx
 character(len = 20) :: correction_file_name
-character(len = 129) :: errstring
 
 if(first_get_correction) then
    ! Compute the file name for this ensemble size
