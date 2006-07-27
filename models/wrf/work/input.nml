@@ -1,21 +1,21 @@
 &filter_nml
    async = 2,
    adv_ens_command = "./advance_model.csh",
-   ens_size = 84,
+   ens_size = 32,
    start_from_restart = .true.,
-   output_restart = .true.,
+   output_restart = .false.,
    obs_sequence_in_name = "obs_seq.out",
    obs_sequence_out_name = "obs_seq.final",
-   restart_in_file_name = "filter_restart",
+   restart_in_file_name = "filter_ics",
    restart_out_file_name = "filter_restart", 
-   init_time_days = 146834,
+   init_time_days = -1,
    init_time_seconds = 0,
    output_state_ens_mean = .true.,
    output_state_ens_spread = .true.,
    output_obs_ens_mean = .true.,
    output_obs_ens_spread = .true., 
-   num_output_state_members = 0,
-   num_output_obs_members = 0,
+   num_output_state_members = 1,
+   num_output_obs_members = 32,
    output_interval = 1,
    num_groups = 1,
    outlier_threshold = -1.0  /
@@ -24,13 +24,9 @@
    filter_kind = 1,
    cutoff = 0.1,
    sort_obs_inc = .false.,
-   do_parallel = 0,
-   num_domains = 1,
-   parallel_command = "./assim_filter.csh",
    spread_restoration = .false.,
-   internal_outlier_threshold = -1.0, 
    sampling_error_correction = .false.,
-   num_close_threshold = 10000000  /
+   adaptive_localization_threshold = -1 /
 
 &adaptive_inflate_nml
    do_obs_inflate = .false.,
@@ -71,9 +67,9 @@
    calendar_type = 3,
    surf_obs = .true.,
    h_diab = .false.,
-   assimilation_period_seconds = 21600,
+   assimilation_period_seconds =  3600,
    adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe",
-   center_search_size = 25,
+   center_search_size = 20,
    center_spline_grid_scale = 10  /
 
 &utilities_nml
@@ -90,7 +86,6 @@
    write_binary_obs_sequence = .false.  /
 
 &ensemble_manager_nml
-   in_core = .true.,
    single_restart_file_in = .true.,
    single_restart_file_out = .true.  /
 
