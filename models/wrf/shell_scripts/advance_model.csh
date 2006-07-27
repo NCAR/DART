@@ -25,14 +25,32 @@
 # at the end of the interval is controled by infl. The purpose is to increase
 # time correlation at the lateral boundaries.
 
+# Arguments are the process number of caller, the number of state copies
+# belonging to that process, and the name of the filter_control_file for
+# that process
+set process = $1
+set num_states = $2
+set control_file = $3
+
+set      myname = $0
+set  CENTRALDIR = ..
+@       element = $process + 1
+
+# Get unique name for temporary working directory for this process's stuff
+set temp_dir = 'advance_temp'${element}
+
+# give the filesystem time to collect itself
+sleep 5
+
+# Create a clean temporary directory and go there
+\rm -rf  $temp_dir
+mkdir -p $temp_dir
+cd       $temp_dir
+
+
 set infl = 0.0
 
 set days_in_month = ( 31 28 31 30 31 30 31 31 30 31 30 31 )
-
-set      myname = $0
-set  CENTRALDIR = $1
-set     element = $2
-set    temp_dir = $3
 
 set REMOVE = 'rm -rf'
 set   COPY = 'cp -p'
@@ -44,11 +62,6 @@ set   MOVE = 'mv -f'
 echo "starting ${myname} for ens member $element at "`date`
 echo "CENTRALDIR is ${CENTRALDIR}"
 echo "temp_dir is ${temp_dir}"
-
-# Create a clean temporary directory and go there
-${REMOVE} ${temp_dir}
-mkdir -p  ${temp_dir}
-cd        ${temp_dir}
 
 
 # Copy or link the required files to the temp directory
@@ -206,7 +219,7 @@ while ( $wrfkey < $targkey )
 
    ${COPY} ${CENTRALDIR}/WRF/wrfbdy_${iday}_${isec}_$element wrfbdy_d01
 
-   ${COPY} ${CENTRALDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
+   #${COPY} ${CENTRALDIR}/WRF/wrflowinp_d01_${iday}_${isec} wrflowinp_d01
 
    if ( $targkey > $keys[$ifile] ) then
       set INTERVAL_SS = `echo "$keys[$ifile] - $wrfkey" | bc`
@@ -367,3 +380,9 @@ ${MOVE} dart_wrf_vector ${CENTRALDIR}/assim_model_state_ud$element
 # Change back to working directory and get rid of temporary directory
 cd ${CENTRALDIR}
 #${REMOVE} ${temp_dir}
+
+# Remove the filter_control file to signal completeion
+# Is there a need for any sleeps to avoid trouble on completing moves here?
+\rm -rf $control_file
+
+
