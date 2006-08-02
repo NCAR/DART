@@ -33,7 +33,7 @@
    num_groups = 1,
    outlier_threshold = -1.0,
 
-   inflation_type = 		2, 			0,
+   inf_flavor = 		2, 			0,
    inf_start_from_restart = 	.false., 		.false.,
    inf_output_restart =		.true., 		.true.,
    inf_deterministic = 		.true., 		.true.,
@@ -201,6 +201,15 @@ Remember that namelists must be listed even if only defaults are to be used
      time_units = 'days',
      output_interval = 1.00   /
 
+&atmosphere_nml 
+                        /
+
+&topography_nml
+                        /
+
+&gaussian_topog_nml
+                        /
+
 &merge_obs_seq_nml
    filename_seq1 = 'obs_seq.one',
    filename_seq2 = 'obs_seq.two',
@@ -249,13 +258,4 @@ Remember that namelists must be listed even if only defaults are to be used
    spread_restoration = .false.,
    cov_inflate_upper_bound = 2.0,
    internal_outlier_threshold = -1.0  /
-
-&atmosphere_nml
-                        /
-
-&topography_nml
-                        /
-
-&gaussian_topog_nml
-                        /
 
