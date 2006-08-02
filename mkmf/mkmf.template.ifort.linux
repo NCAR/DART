@@ -49,6 +49,11 @@
 #
 #FFLAGS = -r8 -free $(INCS)   (pbl_1d flags)
 
+# dart has only lam-mpi which does not come with the standard mpif90 
+# wrapper; use the mpif77 instead, which does handle fortran 90 files.
+
+MPIFC = mpif77
+MPILD = mpif77
 FC = ifort
 LD = ifort
 NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
@@ -56,3 +61,4 @@ INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 FFLAGS = -CB -pc64 -mp -O0 $(INCS)
 LDFLAGS =          -mp -O0 $(INCS) $(LIBS)
+

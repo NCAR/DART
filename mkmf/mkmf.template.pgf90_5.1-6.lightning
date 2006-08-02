@@ -43,6 +43,9 @@
 #    Copyright 1989-2000, The Portland Group, Inc.  All Rights Reserved.
 #    Copyright 2000-2004, STMicroelectronics, Inc.  All Rights Reserved.
 
+MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pgi-5.1-64
+MPIFC=$MPI_HOME/bin/mpif90
+MPILD=$MPI_HOME/bin/mpif90
 FC = /opt/pgi/linux86-64/5.1/bin/pgf90
 LD = /opt/pgi/linux86-64/5.1/bin/pgf90
 CPPFLAGS =

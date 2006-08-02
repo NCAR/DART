@@ -35,6 +35,9 @@
 # If you use -Mprof=func for profiling information, you must add it to
 # both FFLAGS and LDFLAGS.
 #
+
+MPIFC = mpif90
+MPILD = mpif90
 FC = pgf90
 LD = pgf90
 CPPFLAGS =

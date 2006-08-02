@@ -63,6 +63,9 @@
 #    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
 #
 
+# if not using the default mpi wrappers, set MPI_HOME to the location
+MPIFC = mpif90
+MPILD = mpif90
 FC = ifort
 LD = ifort
 NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64

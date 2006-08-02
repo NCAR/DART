@@ -40,6 +40,10 @@
 #    Copyright 1989-2000, The Portland Group, Inc.  All Rights Reserved.
 #    Copyright 2000-2004, STMicroelectronics, Inc.  All Rights Reserved.
 
+# fisher has no mpi; replace mpi_utilities_mod.f90 with null_mpi_utilities_mod.f90
+# and use the standard compiler.
+MPIFC = pgf90
+MPILD = pgf90
 FC = pgf90
 LD = pgf90
 CPPFLAGS =

@@ -39,6 +39,9 @@
 # FFLAGS   useful for production
 #     -O2      optimize
 
+MPI_HOME = /contrib/mpich-gm/1.2.6..13b-intel-8.1-64
+MPIFC = $MPI_HOME/bin/mpif90
+MPILD = $MPI_HOME/bin/mpif90
 FC = /contrib/2.6/intel/9.0/bin/ifort
 LD = /contrib/2.6/intel/9.0/bin/ifort
 NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort9.0.025

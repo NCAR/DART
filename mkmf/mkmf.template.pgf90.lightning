@@ -35,14 +35,20 @@
 # If you add the -Mprof=func flag to get profiling information, you must
 # add it to both FFLAGS and LDFLAGS.
 #
-# Compiler Information (pgf90 -V)
+# Compiler Information (pgf90 -V):
+#  pgf90 6.0-1 64-bit target on x86-64 Linux 
+#  Copyright 1989-2000, The Portland Group, Inc.  All Rights Reserved.
+#  Copyright 2000-2005, STMicroelectronics, Inc.  All Rights Reserved.
 
-FC = /usr/local/pgi/linux86-64/5.2/bin/pgf90
-LD = /usr/local/pgi/linux86-64/5.2/bin/pgf90
+
+MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pgi-6.0-64
+MPIFC = $MPI_HOME/bin/mpif90
+MPILD = $MPI_HOME/bin/mpif90
+FC = /contrib/pgi6.0/linux86-64/6.0/bin/pgf90
+LD = /contrib/pgi6.0/linux86-64/6.0/bin/pgf90
 CPPFLAGS =
 LIST = -Mlist
-#NETCDF = /usr/local/netcdf/netcdf-3.5.1-pgi5.1-64b
-NETCDF = /contrib/netcdf/3.5.1-pgi5.1-64
+NETCDF = /contrib/netcdf/3.5.1-pgi6.0-64
 FFLAGS = -fast -Ktrap=fp -pc 64 -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(LIBS)
