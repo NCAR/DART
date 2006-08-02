@@ -23,12 +23,13 @@ use utilities_mod,       only : initialize_utilities, register_module,          
 use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
                                 open_restart_read, open_restart_write, close_restart, &
                                 awrite_state_restart, aread_state_restart
+
 use obs_model_mod,        only : advance_state
 
 use ensemble_manager_mod, only : init_ensemble_manager, put_copy, ensemble_type, get_copy
 
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
-                              task_count
+                                 task_count
 
 
 implicit none
@@ -45,7 +46,7 @@ type(ensemble_type)     :: ens_handle
 character (len=129)     :: adv_ens_command = ''
 
 !----------------------------------------------------------------
-! Namelist input with default values
+! Input and output filenames are hardcoded at this point.
 !
 character(len = 7) :: ic_file_name = "temp_ic", ud_file_name = 'temp_ud'
 
@@ -59,6 +60,7 @@ if(task_count() > 1) &
 
 call initialize_utilities('integrate_model')
 call register_module(source,revision,revdate)
+
 
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
@@ -74,7 +76,7 @@ call aread_state_restart(ens_handle%time(1), ens_handle%vars(:, 1), iunit, targe
 call close_restart(iunit)
 !-----------------  Restart read in --------------------------------
 
-! Advance this state to the target time (which comes from namelist)
+! Advance this state to the target time
 ! If the model time is past the obs set time, just need to skip
 if(ens_handle%time(1) < target_time) &
    call advance_state(ens_handle, ens_size=1, target_time=target_time, &
