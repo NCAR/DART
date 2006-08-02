@@ -51,37 +51,65 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag assim_region integrate_model
-\rm -f merge_obs_seq smoother
 
+echo mkmf_preprocess
 csh mkmf_preprocess
 make         || exit 1
+
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
 
+echo mkmf_create_obs_sequence
 csh mkmf_create_obs_sequence
 make         || exit 3
+
+echo mkmf_create_fixed_network_seq
 csh mkmf_create_fixed_network_seq
 make         || exit 4
+
+echo mkmf_perfect_model_obs
 csh mkmf_perfect_model_obs
 make         || exit 5
+
+# this one needs to be compiled with MPI.
+echo mkmf_filter
 csh mkmf_filter
+echo updating Makefile for MPI
+\cp -f Makefile Makefile.back
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
+\rm -f Makefile.back
 make         || exit 6
+
+echo mkmf_obs_diag
 csh mkmf_obs_diag
 make         || exit 7
-csh mkmf_assim_region
-make         || exit 8
+
+echo skipping mkmf_assim_region
+#csh mkmf_assim_region
+#make         || exit 8
+
+echo mkmf_integrate_model
 csh mkmf_integrate_model
 make         || exit 9
+
+echo mkmf_merge_obs_seq
 csh mkmf_merge_obs_seq
 make         || exit 10
-csh mkmf_smoother
-make         || exit 11
+
+echo skipping mkmf_smoother
+#csh mkmf_smoother
+#make         || exit 11
+
 
 ./perfect_model_obs || exit 20
-./filter            || exit 21
-\rm -f go_end_filter
+
+echo " "
+echo time to run filter here:
+echo ' for lsf run "bsub < runme_filter"'
+echo ' for pbs run "qsub runme_filter"'
+echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
+
+#\rm -f go_end_filter
