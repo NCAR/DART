@@ -259,14 +259,6 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
 end do ENSEMBLE_MEMBERS
 
 
-! Following block needed for WRF only : PLEASE CONFIRM IF THEY STILL NEED THIS
-! Write out the ensemble mean for the calculation of flow-dependent BC of WRF.
-!call update_ens_mean(ens_handle)
-!ic_file_unit = open_restart_write('assim_model_state_ic_mean')
-!call awrite_state_restart(smodel_time, ens_mean, ic_file_unit, target_time)
-!call close_restart(ic_file_unit)
-
-
 ! Following is for async options that use shell to advance model
 SHELL_ADVANCE_METHODS: if(async /= 0) then
    ! Get a unique name for the control file; use process id
@@ -279,7 +271,10 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
    control_unit = get_unit()
    open(unit = control_unit, file = trim(control_file_name))
    ! Write out the file names to a control file
+   ! Also write out the global ensemble member number for the script 
+   ! if it needs to create unique filenames for its own use.
    do i = 1, my_num_state_copies
+      write(control_unit, '(i5)') ens_handle%my_copies(i)
       write(control_unit, '(a)' ) trim(ic_file_name(i))
       write(control_unit, '(a)' ) trim(ud_file_name(i))
    end do
