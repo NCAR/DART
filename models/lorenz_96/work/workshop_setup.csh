@@ -51,6 +51,10 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
+\rm -f preprocess create_obs_sequence create_fixed_network_seq
+\rm -f perfect_model_obs filter obs_diag assim_region integrate_model
+\rm -f merge_obs_seq smoother
+
 
 echo mkmf_preprocess
 csh mkmf_preprocess
