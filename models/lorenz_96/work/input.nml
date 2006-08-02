@@ -33,7 +33,7 @@
    num_groups = 2,
    outlier_threshold = 1000.0 
 
-   inflation_type = 		2, 			0,
+   inf_flavor = 		2, 			0,
    inf_start_from_restart = 	.false., 		.false.,
    inf_output_restart =		.true., 		.true.,
    inf_deterministic = 		.true., 		.true.,
