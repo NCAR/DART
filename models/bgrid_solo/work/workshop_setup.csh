@@ -56,6 +56,7 @@
 \rm -f integrate_model perfect_model_obs assim_region filter 
 \rm -f obs_diag merge_obs_diag smoother
 
+echo making mkmf_preprocess
 csh mkmf_preprocess
 make         || exit 1
 \rm -f ../../../obs_def/obs_def_mod.f90 
@@ -64,34 +65,73 @@ make         || exit 1
 
 #----------------------------------------------------------------------
 
+echo making mkmf_id_set_def_stdin
 csh mkmf_id_set_def_stdin
 make         || exit 3
+
+echo making mkmf_pressure_col_rand
 csh mkmf_pressure_col_rand
 make         || exit 4
+
+echo making mkmf_ps_rand_local
 csh mkmf_ps_rand_local
 make         || exit 5
+
+echo making mkmf_column_rand
 csh mkmf_column_rand
 make         || exit 6
+
+echo making mkmf_create_obs_sequence
 csh mkmf_create_obs_sequence
 make         || exit 7
+
+echo making mkmf_create_fixed_network_seq
 csh mkmf_create_fixed_network_seq
 make         || exit 8
+
+echo making mkmf_integrate_model
 csh mkmf_integrate_model
 make         || exit 9
+
+echo making mkmf_perfect_model_obs
 csh mkmf_perfect_model_obs
 make         || exit 10
-csh mkmf_assim_region
-make         || exit 11
+
+echo skipping mkmf_assim_region
+#csh mkmf_assim_region
+#make         || exit 11
+
+echo making mkmf_filter
 csh mkmf_filter
+echo updating Makefile for MPI
+\cp -f Makefile Makefile.back
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
+\rm -f Makefile.back
 make         || exit 12
+
+echo making mkmf_obs_diag
 csh mkmf_obs_diag
 make         || exit 13
+
+echo making mkmf_merge_obs_seq
 csh mkmf_merge_obs_seq
 make         || exit 14
-csh mkmf_smoother
-make         || exit 15
 
+echo skipping mkmf_smoother
+#csh mkmf_smoother
+#make         || exit 15
+
+
+echo running perfect_model_obs here
 ./perfect_model_obs || exit 20
-./filter            || exit 21
-\rm -f go_end_filter
+
+
+
+echo " "
+echo time to run filter here:
+echo ' for lsf run "bsub < runme_filter"'
+echo ' for pbs run "qsub runme_filter"'
+echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
+
+#\rm -f go_end_filter
 
