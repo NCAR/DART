@@ -39,12 +39,14 @@ cp ../input.nml .
 
 # Loop through each state
 set state_copy = 1
-set input_file_line = 1
-set output_file_line = 2
+set ensemble_member_line = 1
+set input_file_line = 2
+set output_file_line = 3
 while($state_copy <= $num_states)
    
-   set input_file = `head -$input_file_line ../$control_file | tail -1`
-   set output_file = `head -$output_file_line ../$control_file | tail -1`
+   set ensemble_member = `head -$ensemble_member_line ../$control_file | tail -1`
+   set input_file      = `head -$input_file_line      ../$control_file | tail -1`
+   set output_file     = `head -$output_file_line     ../$control_file | tail -1`
    
    # Get the ics file for this state_copy
    mv ../$input_file temp_ic
@@ -62,8 +64,9 @@ while($state_copy <= $num_states)
    mv temp_ud ../$output_file
 
    @ state_copy++
-   @ input_file_line = $input_file_line + 2
-   @ output_file_line = $output_file_line + 2
+   @ ensemble_member_line = $ensemble_member_line + 3
+   @ input_file_line = $input_file_line + 3
+   @ output_file_line = $output_file_line + 3
 end
 
 # Change back to original directory and get rid of temporary directory
