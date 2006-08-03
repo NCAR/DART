@@ -19,24 +19,24 @@ use    utilities_mod,     only : initialize_utilities, register_module, error_ha
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, logfileunit, timestamp
 use time_manager_mod,     only : time_type, get_time, set_time
-use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
-                                 get_obs_from_key, set_copy_meta_data, get_obs_def,          &
-                                 get_time_range_keys, set_obs_values, set_qc, set_obs,       &
-                                 write_obs_seq, get_num_obs, init_obs, assignment(=),        &
-                                 static_init_obs_sequence, get_num_qc, read_obs_seq_header,  &
+use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
+                                 get_obs_from_key, set_copy_meta_data, get_obs_def,         &
+                                 get_time_range_keys, set_obs_values, set_qc, set_obs,      &
+                                 write_obs_seq, get_num_obs, init_obs, assignment(=),       &
+                                 static_init_obs_sequence, get_num_qc, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs
 
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance 
 use    obs_model_mod,     only : move_ahead 
-use  assim_model_mod,     only : static_init_assim_model, get_model_size,                      &
-                                 aget_initial_condition, netcdf_file_type, init_diag_output,   &
+use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
+                                 aget_initial_condition, netcdf_file_type, init_diag_output, &
                                  aoutput_diagnostics, finalize_diag_output
    
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                  task_count, task_sync
 
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
-use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart,             &
+use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart, &
                                  end_ensemble_manager, ensemble_type, read_ensemble_restart
 
 implicit none
@@ -47,25 +47,8 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
-type(obs_sequence_type) :: seq
-type(obs_type)          :: obs
-type(obs_def_type)      :: obs_def
-type(random_seq_type)   :: random_seq
-type(ensemble_type)     :: ens_handle
-type(netcdf_file_type)  :: StateUnit
-
-integer                 :: j, iunit, time_step_number
-integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
-integer                 :: additional_qc, additional_copies
-integer                 :: ierr, io, istatus, num_obs_in_set
-integer                 :: model_size, key_bounds(2), num_qc, last_key_used
-integer, allocatable    :: keys(:)
-real(r8)                :: true_obs(1), obs_value(1), qc(1)
-
-character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
-character(len=159)      :: msgstring
-logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
-integer                 :: obs_seq_file_id
+! Module storage for message output
+character(len=129) :: msgstring
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -118,7 +101,6 @@ integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
-character(len=129)      :: msgstring
 
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 
