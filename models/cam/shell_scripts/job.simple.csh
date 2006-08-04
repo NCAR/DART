@@ -9,29 +9,40 @@
 # $Id$
 # $Source$
 # $Name$
-
+#
 #-----------------------------------------------------------------------------
-# job.csh ... Script to run whole assimilation experiment. Can easily run for 
-# days, given the number of observation sequence files, the size of the model, 
-# the number of observations, the number of regions, the number of ensemble
-# members. Not to be taken lightly.
+# job.simple.csh ... Top level script to run a single assimilation experiment.
 #
-# Executes 'filter.csh' (locally) and submits 'filter_server.csh' as a batch job 
-# for each obs_seq.out file to be processed.
+#  Unlike the more complex job.csh, this script only processes a single 
+#  observation file.  Still fairly complex; requires a raft of
+#  data files and most of them are in hardcoded locations.
 #
-# Runs interactively on master node in the central directory or as a batch
-# job on a compute node (presuming the compute node has permission to submit
-# jobs to the batch queue).
+# You need to know which of several batch systems you are using.  The most
+# common one is LSF.   PBS is also common.  (POE is another but is
+# not supported directly by this script.  It is not recommended that you have a
+# parallel cluster without a batch system (it schedules which nodes are assigned
+# to which processes) but it is possible to run that way -- you have to do
+# more work to get the information about which nodes are involved to the 
+# parallel tasks -- but anyway, there is a section below that uses ssh and no
+# batch.
+#
+# How to submit this job:
+#  1. Look at the #BSUB or #PBS sections below and adjust any of the parameters
+#     on your cluster.  Queue names are very system specific; some systems 
+#     require wall-clock limits; some require an explicit charge code.
+#  2. Submit this script to the queue:
+#        LSF:   bsub < job.simple.csh
+#        PBS:   qsub job.simple.csh
+#       NONE:   job.simple.csh
+#
+# The script moves the necessary files to the current directory and then
+# starts 'filter' as a parallel job on all nodes; each of these tasks will 
+# call some a separate model_advance.csh when necessary.
 #
 # The central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
 #-----------------------------------------------------------------------------
-#
-# BUG; when inflate_diag doesn't exist below 
-#      (when do_obs_inflate=F do_single_ss_inflate=F)
-#      one of the processes (filter.csh) to kill doesn't exist.
-#      Then the bkill fails, and exit is not executed.
-#
+# 
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system 
 # LSF is used on the IBM   Linux cluster 'lightning'
@@ -39,19 +50,20 @@
 # LSF is used on the IBM   'bluevista'
 # The queues on lightning and bluevista are supposed to be similar.
 #
-# the normal way to submit to the queue is:    bsub < filter_server.csh
+# the normal way to submit to the queue is:    bsub < job.simple.csh
 #
 # an explanation of the most common directives follows:
-# -J Job name (master script job.csh presumes filter_server.xxxx.log)
+# -J Job name
 # -o STDOUT filename
 # -e STDERR filename
 # -P      account
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
 # -n number of processors  (really)
+# -W hr:mn   max wallclock time (required on some systems)
 ##=============================================================================
 #BSUB -J DARTCAM
 #BSUB -o DARTCAM.%J.log
-#BSUB -q debug
+#BSUB -q regular
 #BSUB -n 1
 #
 #
@@ -60,7 +72,7 @@
 ## PBS is used on the CGD   Linux cluster 'bangkok'
 ## PBS is used on the CGD   Linux cluster 'calgary'
 ##
-## the normal way to submit to the queue is:    qsub filter_server.csh
+## the normal way to submit to the queue is:    qsub job.simple.csh
 ##
 ## an explanation of the most common directives follows:
 ## -N     Job name
@@ -78,7 +90,7 @@
 #PBS -e DARTCAM.err
 #PBS -o DARTCAM.log
 #PBS -q medium
-#PBS -l nodes=1:ppn=2
+#PBS -l nodes=2:ppn=2
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -92,7 +104,7 @@ if ($?LS_SUBCWD) then
 
    set CENTRALDIR = $LS_SUBCWD
    set JOBNAME = $LSB_JOBNAME
-   alias submit 'bsub < \!*'
+   alias submit 'mpirun.lsf \!*'
    
 else if ($?PBS_O_WORKDIR) then
 
@@ -100,7 +112,7 @@ else if ($?PBS_O_WORKDIR) then
 
    set CENTRALDIR = $PBS_O_WORKDIR
    set JOBNAME = $PBS_JOBNAME
-   alias submit 'qsub \!*'
+   alias submit 'mpirun \!*'
 
 else if ($?OCOTILLO_NODEFILE) then
 
@@ -115,6 +127,11 @@ else if ($?OCOTILLO_NODEFILE) then
 
    set CENTRALDIR = `pwd`
    set JOBNAME = DARTCAM
+   # i think this is what we want, but csh will not let you do multiline
+   # executions; this argues for using ksh (line 2 below)...  (and maybe
+   # it needs a cd as well?)
+   #alias submit 'foreach i ($OCOTILLO_NODEFILE) ; ssh $i csh \!* ; end'
+   #alias submit='for i in $OCOTILLO_NODEFILE ; do ssh $i (cd $CENTRALDIR; csh $*) ; done'
    alias submit 'csh \!*'
    
 else
@@ -125,7 +142,7 @@ else
 
    set CENTRALDIR = `pwd`
    set JOBNAME = DARTCAM
-   alias submit 'bsub < \!*'
+   alias submit 'csh \!*'
    
 endif
 
@@ -167,27 +184,12 @@ echo "CENTRALDIR is "`pwd`
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set DARTDIR = /image/home/${user}/DART
+set DARTDIR = /home/coral/${user}/dart/DART
 set DARTCAMDIR = ${DARTDIR}/models/cam
-set CAMDATADIR = /image/home/${user}/CAMDATA
+set CAMDATADIR = /fs/image/home/${user}/CAMDATA
 
 #-----------------------------------------------------------------------------
-# Get the queueing-system (independent?) scripts
-#-----------------------------------------------------------------------------
-
-${COPY} ${DARTDIR}/shell_scripts/advance_ens.csh      .
-${COPY} ${DARTDIR}/shell_scripts/assim_filter.csh     .
-${COPY} ${DARTDIR}/shell_scripts/filter_server.csh    .
-
-#-----------------------------------------------------------------------------
-# Get the model-specific scripts
-#-----------------------------------------------------------------------------
-
-${COPY} ${DARTCAMDIR}/shell_scripts/assim_region.csh  .
-${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh .
-
-#-----------------------------------------------------------------------------
-# Get the DARTCAM executables
+# Get the DARTCAM executables and scripts
 #-----------------------------------------------------------------------------
 
 ${COPY} ${DARTCAMDIR}/work/filter                     .
@@ -197,6 +199,8 @@ ${COPY} ${DARTCAMDIR}/work/trans_pv_sv                .
 ${COPY} ${DARTCAMDIR}/work/trans_pv_sv_time0          .
 ${COPY} ${DARTCAMDIR}/work/trans_sv_pv                .
 ${COPY} ${DARTCAMDIR}/work/trans_time                 .
+${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh .
+${COPY} ${DARTCAMDIR}/shell_scripts/run-pc.csh        .
 
 #-----------------------------------------------------------------------------
 # Get the necessary data files -- this is the hard part.
@@ -278,6 +282,19 @@ if (! -e namelistin ) then
 endif
 
 #-----------------------------------------------------------------------------
+# get name of file containing PHIS from the CAM namelist.  This will be used by
+# static_init_model to read in the PHIS field, which is used for height obs.
+#-----------------------------------------------------------------------------
+   grep bnd_topo namelistin >! topo_file
+   set  STRING = "1,$ s#'##g"
+   set ensstring = `sed -e "$STRING" topo_file`
+   set topo_name = $ensstring[3]
+#   ln -s $topo_name topog_file.nc
+   cp $topo_name topog_file.nc
+   chmod 644 topog_file.nc
+   ${REMOVE} topo_file
+
+#-----------------------------------------------------------------------------
 # Some information about CAM must be made available to advance_model.csh
 # filter_server.csh spawns advance_ens.csh which spawns advance_model.csh
 # 'casemodel' is required (by advance_model.csh) to be in the Central directory
@@ -286,28 +303,12 @@ endif
 echo "${experiment} ${CAMsrc} ${CAMics} ${CLMics}" >! casemodel
 
 #-----------------------------------------------------------------------------
-# Run the filter in async=3 mode.
-# This is the central directory for whole filter job
-#    qsub jobs submitted from there
-#    semaphor files must (dis)appear there, 
-#    I/O between filter and advance_model and assim_region goes through there.
-#    Final output is put there
-# It's CENTRALDIR  in filter.csh and filter_server.csh
-# advances model and assims regions (do this first to grab whole nodes)
-# We need to capture the batch job number to kill later if need be.
-#-----------------------------------------------------------------------------
+# Runs filter which integrates the results of model advances  (async=2).
+#
 # A 20 member ensemble @ T21 can take anywhere between 10-30 minutes.
 #-----------------------------------------------------------------------------
 
-submit filter_server.csh
-
-#-----------------------------------------------------------------------------
-# Runs filter - IN THE FOREGROUND - which integrates the results of model 
-# advances and region assimilations.
-# This only uses 1 processor, so it easily runs on this node.
-#-----------------------------------------------------------------------------
-
-./filter || exit 23
+submit filter
 
 #-----------------------------------------------------------------------------
 # When filter.f90 finished, it creates a file  called 'go_end_filter' in this
@@ -346,13 +347,13 @@ ${MOVE} filter_ic_old*             ${experiment}/DART
 ${MOVE} filter_ic_new*             ${experiment}/DART
 ${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART
 ${MOVE} assim_model_state_ic[1-9]* ${experiment}/DART
-${MOVE} inflate_ic_new             ${experiment}/DART
-${MOVE} filter_control             ${experiment}/DART
+#${MOVE} inflate_ic_new             ${experiment}/DART
+#${MOVE} filter_control             ${experiment}/DART
+#${MOVE} run_job.log                ${experiment}/DART   # filter_server runtime log
 ${MOVE} Posterior_Diag.nc          ${experiment}/DART
 ${MOVE} Prior_Diag.nc              ${experiment}/DART
 ${MOVE} obs_seq.final              ${experiment}/DART
 ${MOVE} dart_log.out               ${experiment}/DART
-${MOVE} run_job.log                ${experiment}/DART   # filter_server runtime log
 
 ${COPY} namelistin                 ${experiment}
 ${MOVE} namelist                   ${experiment}
@@ -367,7 +368,7 @@ ${COPY} $myname                    ${experiment}
 # CAM leaves a bunch of remnants in your $HOME directory.
 # I have not figured out how to use them ... so I clean up.
 
-${REMOVE} ~/lnd.*.rpointer
+${REMOVE} ~/lnd.*.rpointer topog_file.nc
 
 ls -lrt
 
