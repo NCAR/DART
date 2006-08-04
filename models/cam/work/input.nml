@@ -1,5 +1,5 @@
 &perfect_model_obs_nml
-   async = 0,
+   async = 3,
    adv_ens_command = "./advance_ens.csh",
    obs_seq_in_file_name = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
@@ -12,9 +12,9 @@
    output_interval = 1  /
 
 &filter_nml
-   async = 3,
-   adv_ens_command = "./advance_ens.csh",
-   ens_size = 40, 
+   async = 2,
+   adv_ens_command = "./advance_model.csh",
+   ens_size = 20, 
    start_from_restart = .true.,
    output_restart = .true.,
    obs_sequence_in_name = "obs_seq.out",
@@ -30,44 +30,33 @@
    num_output_state_members = 0,
    num_output_obs_members = 0,
    output_interval = 1,
-   num_groups = 2,
-   outlier_threshold = 3.0 /
+   num_groups = 1,
+   outlier_threshold = 3.0,
+
+   inf_flavor =                 2,                      0,
+   inf_start_from_restart =     .false.,                .false.,
+   inf_output_restart =         .true.,                 .true.,
+   inf_deterministic =          .true.,                 .true.,
+   inf_in_file_name =           'prior_inf_ics',        'post_inf_ics',
+   inf_out_file_name =          'prior_inf_restart',    'post_inf_restart',
+   inf_diag_file_name =         'prior_inf_diag',       'post_inf_diag',
+   inf_initial =                1.02,                   1.00,
+   inf_sd_initial =             0.1,                    0.0,
+   inf_upper_bound =            1000000,                1000000,
+   inf_sd_lower_bound =         0.0,                    0.0
+/
 
 &ensemble_manager_nml
-   in_core = .true.,
    single_restart_file_in = .false.,
    single_restart_file_out = .false. /
 
 &assim_tools_nml
    filter_kind = 1,
-   cutoff = 0.2,
+   cutoff = 0.15,
    sort_obs_inc = .true.,
-   do_parallel = 0,
-   num_domains = 1,
-   parallel_command = "./assim_filter.csh",
    spread_restoration = .false.,
-   internal_outlier_threshold = 3.0,
    sampling_error_correction = .false.,
-   num_close_threshold = 10000000 /
-
-&adaptive_inflate_nml
-   do_obs_inflate = .false.,
-   do_varying_ss_inflate = .true.,
-   do_single_ss_inflate = .false.,
-   start_from_inflate_restart = .false.,
-   output_restart = .true., 
-   deterministic_inflate = .true.,
-   inflate_in_file_name = "inflate_ics",
-   inflate_out_file_name = "inflate_restart",
-   obs_inf_initial = 1.0,
-   obs_inf_sd_initial = 0.0,
-   obs_sd_lower_bound = 0.0,
-   obs_inf_upper_bound = 1000000.0,
-   ss_inf_initial = 1.0,
-   ss_inf_sd_initial = 0.1,
-   ss_sd_lower_bound = 0.1,
-   ss_inf_upper_bound = 1000000.0,
-   diagnostic_file_name = "inflate_diag" /
+   adaptive_localization_threshold = -1 /
 
 &cov_cutoff_nml
    select_localization = 1  /
@@ -76,7 +65,7 @@
    select_regression = 1,
    input_reg_file = "time_mean_reg" 
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics'  /
+   reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .true.  /
@@ -104,7 +93,7 @@
    Time_step_days = 0    /
 
 &location_nml
-   horiz_dist_only = .false.,
+   horiz_dist_only = .true.,
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height = 10000.0,
    vert_normalization_level = 20.0,
@@ -119,16 +108,16 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
-                                'ACARS_U_WIND_COMPONENT',
-                                'ACARS_V_WIND_COMPONENT',
                                 'ACARS_TEMPERATURE',
                                 'AIRCRAFT_TEMPERATURE'/
-                                'AIRCRAFT_U_WIND_COMPONENT',
-                                'AIRCRAFT_V_WIND_COMPONENT',
-                                'SAT_U_WIND_COMPONENT',
-                                'SAT_V_WIND_COMPONENT'
+#                                'RADIOSONDE_U_WIND_COMPONENT',
+#                                'RADIOSONDE_V_WIND_COMPONENT',
+#                                'AIRCRAFT_U_WIND_COMPONENT',
+#                                'AIRCRAFT_V_WIND_COMPONENT',
+#                                'ACARS_U_WIND_COMPONENT',
+#                                'ACARS_V_WIND_COMPONENT',
+#                                'SAT_U_WIND_COMPONENT',
+#                                'SAT_V_WIND_COMPONENT'
    evaluate_these_obs_types =   'RADIOSONDE_SURFACE_PRESSURE'  /
 
 &utilities_nml
@@ -152,7 +141,6 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins  = 1000,
-   mlevel     = 5,
    plevel     = 500,
    hlevel     = 5000,
    obs_select = 1,
@@ -167,8 +155,7 @@
    print_mismatched_locs = .false.,
    verbose = .false.  /
 
-&merge_obs_seq_nml
+&merge_obs_seq_nml 
    filename_seq1 = 'obs_seq.one',
    filename_seq2 = 'obs_seq.two',
    filename_out  = 'obs_seq.merged'   /
-
