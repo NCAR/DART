@@ -1,9 +1,17 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
+! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
+
+! ISSUE; PHIS is not put onto CAM initial files anymore, so calcs for heights can't
+!        get if from there.  It's now found on files like
+!        Cam3/cseg/csm/inputdata/T21_2005-4/atm/cam2/topo/topo-from-cami_0000-09-01_32x64_L26_c030918.nc
+!        How should this be specified in/to static_init_model (where PHIS is read)?
+!        How much of path will stay constant?  Safer to specify whole path somewhere.
+!        Can I read it from CAM namelistin?  YES; 
+!           ~/Cam3/cseg/csm/inputdata/T85/topo-from-cami_0000-09-01_128x256_L26_c040422.nc
+!           has PHIS on it.
 
 ! ISSUE: In model_get_close_states the P on levels is calculated for each column within
 !        radius of the ob location.  So P is recalculated for the same columns many times
@@ -12,11 +20,16 @@ module model_mod
 !        Same for obs on heights.
 !        I'll do this for the J release, not post-I, to be sure that at least the obs on P
 !        still works.
+!        Jeff says that model_get_close_states will disappear with MPI, so this won't be
+!        necessary?  still use it for get_val_heights, but not as much redundant comp there.
 
 ! ISSUE: Ave's FV code had a bug in the model_get_close states handling of V; fix during
 !        merge.
 
-! ISSUE: read_cam_init  may no longer be an acceptable name to DART; see web documentation
+! ISSUE; too many entities listed as public; should many be private, and only the ones
+!        in the model/template be public? read_cam_init  , etc
+!  FIX ; I had lots of private entities declared as public.  I've moved all of them to
+!        private to match the model_mod template and .html page.
 
 ! ISSUE: Should get_val_xxxx return MISSING_VALUE instead of 0 for istat = 1 cases?
 
@@ -25,9 +38,10 @@ module model_mod
 !        but state vector components tapering is controlled by highest_obs_press (not 
 !        height) which is not connected with highest_obs_height_m.
 !        highest_obs_level also added to accomodate obs on pressure levels.
-!  FIX?: in model_get_close_states the distance from model points to the ob are
+!  FIX : in model_get_close_states the distance from model points to the ob are
 !        increased according to the which_vert of the ob.  
 !        get_val_{pressure,height,level} handles excluding obs above the respective ceilings
+!  MERGE; into cam-fv
 
 ! ISSUE: The CCM code (and Hui's packaging) for geopotentials and heights  use different
 !        values of the physical constants than DARTS.  In one case Shea changed g from
@@ -49,6 +63,10 @@ module model_mod
 !      these are used for P{oste}rior_Diag.nc; don't change until I verify that
 !      assim_model/assim_model_mod.f90 doesn't rely on coordinate order.
 !    do we want to change that to a more standard?  nc_write_model_atts, trans_xxx...?
+
+! ISSUE; P[oste]rior_Diag.nc has 27 levels, when data is only on 26
+! FIX;   changed misperception of need to use interface levels to need to use mid-point levels
+! MERGE: into cam-fv
 
 ! NOVERT marks modifications for fields with no vertical location,
 ! i.e. GWD parameters.
@@ -129,15 +147,19 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 
 implicit none
-private
 
-public :: model_type, prog_var_to_vector, vector_to_prog_var, read_cam_init, &
-   read_cam_init_size, init_model_instance, end_model_instance, &
-   write_cam_init, get_model_size, static_init_model, &
-   get_state_meta_data, get_model_time_step, model_interpolate, &
-   init_conditions, init_time, adv_1step, end_model, &
+! The last three lines are for interfaces to CAM specific programs; transXXX, etc.
+public ::  &
+   static_init_model, get_model_size, get_model_time_step, &
+   pert_model_state, get_state_meta_data, model_interpolate, &
    model_get_close_states, nc_write_model_atts, nc_write_model_vars, &
-   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ, pert_model_state, &
+   init_conditions, init_time, adv_1step, end_model, &
+   model_type, prog_var_to_vector, vector_to_prog_var, &
+   read_cam_init, read_cam_init_size, &
+   init_model_instance, end_model_instance, write_cam_init
+
+private ::  &
+   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ,  &
    TYPE_PHIS, TYPE_SGH, TYPE_PBLH, TYPE_TBOT, TYPE_TS, TYPE_TSOCN, TYPE_LCWAT, TYPE_QCWAT
 
 !-----------------------------------------------------------------------
@@ -196,7 +218,9 @@ logical :: output_state_vector = .false.
 
 ! File where basic info about model configuration can be found
 character(len = 128) :: model_config_file = 'caminput.nc', &
-                        model_version = '3.0'
+                        model_version = '3.0', &
+                        topog_file = 'topog_file.nc'
+
 
 ! Define location restrictions on which observations are assimilated
 ! (values are calculated anyway, but istatus is set to 2)
@@ -238,7 +262,7 @@ integer , dimension(1000) :: which_vert_2d = (/(-1,iii=1,1000)/)
 integer , dimension(1000) :: which_vert_3d = (/( 1,iii=1,1000)/)
 
 
-! Is there a way to exclude stat_nums from namelist and have those filled in 
+! Is there a way to exclude state_nums from namelist and have those filled in 
 ! the  subroutine which sorts state_names?
 ! Yes, use two namelists model_nml_1 and model_nml_2 at future date
 
@@ -337,8 +361,9 @@ contains
 ! Gets the number of lons, lats and levels from a CAM init netcdf file
 ! in file_name
 
-character(len = *), intent(in) :: file_name
-integer, intent(out) :: num_lons, num_lats, num_levs
+character(len = *), intent(in)  :: file_name
+integer,            intent(out) :: num_lons, num_lats
+integer, optional,  intent(out) :: num_levs
 
 character (len=NF90_MAX_NAME) :: clon,clat,clev
 integer :: londimid, levdimid, latdimid, ncfileid
@@ -352,12 +377,16 @@ call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid)
 ! get dimension 'id's
 call check(nf90_inq_dimid(ncfileid, 'lon', londimid))
 call check(nf90_inq_dimid(ncfileid, 'lat', latdimid))
-call check(nf90_inq_dimid(ncfileid, 'lev', levdimid))
+if (present(num_levs)) then
+   call check(nf90_inq_dimid(ncfileid, 'lev', levdimid))
+endif
 
 ! get dimension sizes
 call check(nf90_inquire_dimension(ncfileid, londimid, clon , num_lons ))
 call check(nf90_inquire_dimension(ncfileid, latdimid, clat , num_lats ))
-call check(nf90_inquire_dimension(ncfileid, levdimid, clev , num_levs ))
+if (present(num_levs)) then
+   call check(nf90_inquire_dimension(ncfileid, levdimid, clev , num_levs ))
+endif
 
 contains 
 
@@ -370,7 +399,6 @@ contains
    end subroutine check
 
 end subroutine read_cam_init_size
-
 
   subroutine read_cam_init(file_name, var)
 !=======================================================================
@@ -598,7 +626,7 @@ end subroutine nc_read_model_atts
 
 
 ! height
-subroutine read_cam_horiz(var, dim1, dim2, cfield)
+subroutine read_cam_horiz(var, file_in, dim1, dim2, cfield)
 !======================================================
 ! should be called with cfield = a 2D record variable  (time,lat,lon):
 
@@ -610,11 +638,11 @@ integer :: ncfileid, ncfldid, dim1, dim2
 
 !------------------------------------------------------
 real(r8), dimension(dim1, dim2), intent(out) :: var
-character (len=*), intent(in)  :: cfield             
+character (len=*), intent(in)  :: cfield, file_in            
 
 ! read CAM 'initial' file domain info
-  call check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, &
-           ncid = ncfileid),trim(model_config_file))                                                                          
+  call check(nf90_open(path = trim(file_in), mode = nf90_nowrite, &
+           ncid = ncfileid),trim(file_in))                                                                          
 ! read CAM 'initial' file field desired
   call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid), cfield)
   call check(nf90_get_var(ncfileid, ncfldid, var,start=(/1,1,1/), &
@@ -634,7 +662,7 @@ contains
    if (present(string)) then
       write(errstring, *)trim(adjustl(string))//' '//trim(adjustl(nf90_strerror(istatus)))
    else
-      write(errstring, *)trim(adjustl(nf90_strerror(istatus)))
+      write(errstring, *)                            trim(adjustl(nf90_strerror(istatus)))
    endif
       
    if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_horiz', &
@@ -1014,7 +1042,7 @@ end function get_model_size
 ! be done once. For now, does this by reading info from a fixed
 ! name netcdf file. 
 
-integer :: iunit, io
+integer :: iunit, io, topog_lons, topog_lats
 ! calendar types listed in time_manager_mod.f90
 integer :: calendar_type = GREGORIAN
 
@@ -1045,6 +1073,7 @@ call print_time(Time_step_atmos)
 ! FIX for flexible 1D size; switch num_lons and num_lats depending on case
 model_size = state_num_0d + num_lons * (state_num_1d + num_lats *  &
             (state_num_2d + num_levs * state_num_3d) )
+write(*, *) 'CAM size initialized as ', model_size
 
 ! Allocate space for longitude and latitude global arrays
 ! and Allocate space for hybrid vertical coord coef arrays
@@ -1065,27 +1094,47 @@ call read_cam_coord(hyam, num_levs  , 'hyam    ')
 call read_cam_coord(hybm, num_levs  , 'hybm    ')
 call read_cam_scalar(P0, 'P0      ')    ! thats a p-zero
 
-! height
-! Read surface geopotential for use in vertical interpolation in height
-! Coordinate order not affected by CAM model version.
-call read_cam_horiz (phis, num_lons, num_lats, 'PHIS    ')
-
-write(*, *) 'CAM size initialized as ', model_size
+! # fields to read
+nflds = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
+write(*, *) '# of fields in state vector =  ', nflds, state_num_0d ,state_num_1d ,state_num_2d ,state_num_3d
 
 ! CAM3 subroutine to order the state vector parts into cflds 
-nflds = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
-! # fields to read
+! cflds is needed for reading attributes
 allocate (cflds(nflds))
 call order_state_fields (cflds, nflds)
-
-! GWD; array for the linking of obs_kinds (KIND_) to model field TYPE_s
-call obs_field_location(obs_loc_in_sv)
 
 ! CAM3 get field attributes needed by nc_write_model_atts from caminput.nc
 allocate (state_long_names(nflds), state_units(nflds))    ! , state_units_long_names(nflds))
 call nc_read_model_atts('long_name', state_long_names, nflds)
 call nc_read_model_atts('units', state_units, nflds)
 ! call nc_read_model_atts('units_long_name', state_units_long_names, nflds)
+
+! height
+! Get lons and _lats from a new netcdf file and test for consistency.
+! This subroutines also opens the file for reading fields.
+call read_cam_init_size(trim(topog_file), topog_lons, topog_lats)
+if (topog_lons /= num_lons .or. topog_lats /= num_lats) then
+   call error_handler(E_ERR, 'static_init_model', &
+        'horizontal dimensions mismatch of topog and initial files' , source, revision, revdate)
+endif
+! Read surface geopotential from topog_file for use in vertical interpolation in height.
+! Coordinate order not affected by CAM model version.
+call read_cam_horiz (phis, topog_file, num_lons, num_lats, 'PHIS    ')
+
+! array for the linking of obs_kinds (KIND_) to model field TYPE_s
+call obs_field_location(obs_loc_in_sv)
+
+contains 
+   ! Internal subroutine - checks error status after each netcdf, prints
+   !                       text message each time an error code is returned.
+   subroutine check(istatus)
+
+   integer, intent ( in) :: istatus
+
+   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'static_init_model', &
+          trim(nf90_strerror(istatus)), source, revision, revdate)
+
+   end subroutine check
 
 end subroutine static_init_model
 
@@ -2023,13 +2072,17 @@ do i = 1, num
       if (which_vert == VERTISLEVEL ) then
          if (o_which_vert == VERTISPRESSURE .and. m_press < (highest_obs_pressure_mb*100._r8)) then
 !           WRITE(*,*) 'model_get_close_states; increasing t_dist from ',t_dist
-            t_dist = t_dist / (m_press/(highest_obs_pressure_mb*100._r8))
+            t_dist = t_dist * ((highest_obs_pressure_mb*100._r8)/m_press)
 !           WRITE(*,'(2(A,F10.4),A,3F10.4)') '   to ',t_dist,' for m_press = ',m_press, &
 !                    ' and o_loc = ',(loc_array(i),i=1,3)
          else if (o_which_vert == VERTISLEVEL .and. sloc_array(3) < highest_obs_level) then
-            t_dist = t_dist / (sloc_array(3)/highest_obs_level)
+            t_dist = t_dist * (highest_obs_level/sloc_array(3))
          else if (o_which_vert == VERTISHEIGHT .and. m_height > highest_obs_height_m) then
-            t_dist = t_dist / ((model_h(1)-m_height)/(model_h(1)-highest_obs_level))
+            if ((model_h(1)-m_height) > 1.0_r8) then
+               t_dist = t_dist * ((model_h(1)-highest_obs_level)/(model_h(1)-m_height))
+            else
+               t_dist = t_dist * 100.0_r8
+            endif
          endif
 
       endif
@@ -2242,9 +2295,9 @@ integer              :: ierr          ! return value of function
 !-----------------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: lonDimID, latDimID, ilevDimID, ScalarDimID
+integer :: lonDimID, latDimID, levDimID, ScalarDimID
 integer :: MemberDimID, StateVarDimID, TimeDimID
-integer :: lonVarID, latVarID, ilevVarID, hyaiVarID, hybiVarID, P0VarID, gwVarID
+integer :: lonVarID, latVarID, levVarID, hyamVarID, hybmVarID, P0VarID, gwVarID
 integer :: xVarID,StateVarID, StateVarVarID 
 integer :: i, ifld
 character(len=129)    :: errstring 
@@ -2304,7 +2357,7 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
 call check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="lat",  len = num_lats,   dimid = latDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="lon",  len = num_lons,   dimid = lonDimID))
-call check(nf90_def_dim(ncid=ncFileID, name="ilev", len = num_levs+1, dimid = ilevDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="lev",  len = num_levs,   dimid = levDimID))
 
 !-------------------------------------------------------------------------------
 ! Create the (empty) Coordinate Variables and their attributes
@@ -2325,22 +2378,22 @@ call check(nf90_put_att(ncFileID, latVarID, "units", "degrees_north"))
 call check(nf90_put_att(ncFileID, latVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
 
 ! Hybrid grid levels
-call check(nf90_def_var(ncFileID, name="ilev", xtype=nf90_double, &
-                                                dimids=ilevDimID, varid=ilevVarID) )
-call check(nf90_put_att(ncFileID, ilevVarID, "long_name", "hybrid level at interfaces (1000*(A+B))"))
-call check(nf90_put_att(ncFileID, ilevVarID, "units", "level"))
-call check(nf90_put_att(ncFileID, ilevVarID, "positive", "down"))
-call check(nf90_put_att(ncFileID, ilevVarID, "standard_name", "atmosphere_hybrid_sigma_pressure_coordinate"))
-call check(nf90_put_att(ncFileID, ilevVarID, "formula_terms", "a: hyai b: hybi P0: P0 ps: PS"))
+call check(nf90_def_var(ncFileID, name="lev", xtype=nf90_double, &
+                                                dimids=levDimID, varid=levVarID) )
+call check(nf90_put_att(ncFileID, levVarID, "long_name", "hybrid level at midpoints (1000*(A+B))"))
+call check(nf90_put_att(ncFileID, levVarID, "units", "level"))
+call check(nf90_put_att(ncFileID, levVarID, "positive", "down"))
+call check(nf90_put_att(ncFileID, levVarID, "standard_name", "atmosphere_hybrid_sigma_pressure_coordinate"))
+call check(nf90_put_att(ncFileID, levVarID, "formula_terms", "a: hyam b: hybm P0: P0 ps: PS"))
 
 ! Hybrid grid level coefficients, parameters
-call check(nf90_def_var(ncFileID, name="hyai", xtype=nf90_double, &
-                                                dimids=ilevDimID, varid=hyaiVarID) )
-call check(nf90_put_att(ncFileID, hyaiVarID, "long_name", "hybrid A coefficient at layer interfaces" ))
+call check(nf90_def_var(ncFileID, name="hyam", xtype=nf90_double, &
+                                                dimids=levDimID, varid=hyamVarID) )
+call check(nf90_put_att(ncFileID, hyamVarID, "long_name", "hybrid A coefficient at layer midpoints" ))
 
-call check(nf90_def_var(ncFileID, name="hybi", xtype=nf90_double, &
-                                                dimids=ilevDimID, varid=hybiVarID) )
-call check(nf90_put_att(ncFileID, hybiVarID, "long_name", "hybrid B coefficient at layer interfaces"))
+call check(nf90_def_var(ncFileID, name="hybm", xtype=nf90_double, &
+                                                dimids=levDimID, varid=hybmVarID) )
+call check(nf90_put_att(ncFileID, hybmVarID, "long_name", "hybrid B coefficient at layer midpoints"))
 call check(nf90_def_var(ncFileID, name="P0", xtype=nf90_double, &
                                                 dimids=ScalarDimID, varid=P0VarID) )
 call check(nf90_put_att(ncFileID, P0VarID, "long_name", "reference pressure"))
@@ -2402,11 +2455,11 @@ else
    !character (len=8),dimension(nflds) :: cflds = &
    !       (/'PS      ','T       ','U       ','V       ','Q       ' /)
    !
-   ! cflds(1) ... PS ... (lon,     lat,time)
-   ! cflds(2) ... T  ... (lon,ilev,lat,time)
-   ! cflds(3) ... U  ... (lon,ilev,lat,time)
-   ! cflds(4) ... V  ... (lon,ilev,lat,time)
-   ! cflds(5) ... Q  ... (lon,ilev,lat,time)
+   ! cflds(1) ... PS ... (lon,    lat,time)
+   ! cflds(2) ... T  ... (lon,lev,lat,time)
+   ! cflds(3) ... U  ... (lon,lev,lat,time)
+   ! cflds(4) ... V  ... (lon,lev,lat,time)
+   ! cflds(5) ... Q  ... (lon,lev,lat,time)
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Variables and the Attributes
@@ -2454,7 +2507,7 @@ else
    do i = 1,state_num_3d
       ifld = ifld + 1
       call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-            dimids = (/ lonDimID, ilevDimID, latDimID, MemberDimID, unlimitedDimID /), &
+            dimids = (/ lonDimID, levDimID, latDimID, MemberDimID, unlimitedDimID /), &
             varid  = xVarID))
       call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
       call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
@@ -2470,11 +2523,11 @@ endif
 ! Fill the coordinate variables
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID,  ilevVarID, (/ (i,i=1, num_levs+1) /) ))
+call check(nf90_put_var(ncFileID,   levVarID, (/ (i,i=1, num_levs) /) ))
 call check(nf90_put_var(ncFileID,   latVarID, lats ))
 call check(nf90_put_var(ncFileID,   lonVarID, lons ))
-call check(nf90_put_var(ncFileID,  hyaiVarID, hyai ))
-call check(nf90_put_var(ncFileID,  hybiVarID, hybi ))
+call check(nf90_put_var(ncFileID,  hyamVarID, hyam ))
+call check(nf90_put_var(ncFileID,  hybmVarID, hybm ))
 call check(nf90_put_var(ncFileID,    gwVarID,   gw ))
 call check(nf90_put_var(ncFileID,    P0VarID,   P0 ))
 
@@ -2832,9 +2885,10 @@ do i=1,state_num_2d
    cflds(nfld)(:) = state_names_2d(i)
    TYPE_2D(i) = nfld
    if (state_names_2d(i) == 'PS      ') TYPE_PS    = nfld
-   if (state_names_2d(i) == 'PHIS    ') TYPE_PHIS  = nfld
-   if (state_names_2d(i) == 'SGH     ') TYPE_SGH   = nfld
-   if (state_names_2d(i) == 'PBLH    ') TYPE_PBLH  = nfld
+! These are on topog file, not initial file anymore
+!   if (state_names_2d(i) == 'PHIS    ') TYPE_PHIS  = nfld
+!   if (state_names_2d(i) == 'SGH     ') TYPE_SGH   = nfld
+!   if (state_names_2d(i) == 'PBLH    ') TYPE_PBLH  = nfld
    if (state_names_2d(i) == 'TBOT    ') TYPE_TBOT  = nfld
    if (state_names_2d(i) == 'TS      ') TYPE_TS    = nfld
    if (state_names_2d(i) == 'TSOCN   ') TYPE_TSOCN = nfld
