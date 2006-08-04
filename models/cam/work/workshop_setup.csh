@@ -56,41 +56,81 @@
 \rm -f trans_date_to_dart trans_pv_sv trans_pv_sv_time0 trans_sv_pv
 \rm -f trans_time merge_obs_seq
 
+# optional to really clean and start fresh
+\rm -f *.o *.mod
+
+echo mkmf_preprocess
 csh mkmf_preprocess
 make         || exit 1
+
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
 
+echo mkmf_create_obs_sequence
 csh mkmf_create_obs_sequence
 make         || exit 3
+
+echo mkmf_create_fixed_network_seq
 csh mkmf_create_fixed_network_seq
 make         || exit 4
+
+echo mkmf_perfect_model_obs
 csh mkmf_perfect_model_obs
 make         || exit 5
+
+# this one needs to be compiled with MPI.
+echo mkmf_filter
 csh mkmf_filter
+echo updating Makefile for MPI
+\cp -f Makefile Makefile.back
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' -e 's/(CC)/(MPICC)/' Makefile.back > Makefile
+\rm -f Makefile.back
 make         || exit 6
+
+echo mkmf_obs_diag
 csh mkmf_obs_diag
 make         || exit 7
-csh mkmf_assim_region
-make         || exit 8
+
+echo mkmf_column_rand
 csh mkmf_column_rand
 make         || exit 9
+
+echo mkmf_trans_date_to_dart
 csh mkmf_trans_date_to_dart
 make         || exit 10
+
+echo mkmf_trans_pv_sv
 csh mkmf_trans_pv_sv
 make         || exit 11
+
+echo mkmf_trans_pv_sv_time0
 csh mkmf_trans_pv_sv_time0
 make         || exit 12
+
+echo mkmf_trans_sv_pv
 csh mkmf_trans_sv_pv
 make         || exit 13 
+
+echo mkmf_trans_time
 csh mkmf_trans_time
 make         || exit 14
-csh mkmf_merge_obs_seq
-make         || exit 15
 
-#./perfect_model_obs || exit 20
-#./filter            || exit 21
-rm -f go_end_filter
+echo mkmf_merge_obs_seq
+csh mkmf_merge_obs_seq
+make         || exit 10
+
+echo skipping mkmf_smoother
+#csh mkmf_smoother
+#make         || exit 11
+
+echo " "
+echo time to run filter here:
+echo ' for lsf run "bsub < job.simple.csh"'
+echo ' for pbs run "qsub job.simple.csh"'
+echo ' for lam-mpi run "lamboot" once, then "job.simple.csh"'
+
+#\rm -f go_end_filter
+
