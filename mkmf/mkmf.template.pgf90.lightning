@@ -42,8 +42,8 @@
 
 
 MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pgi-6.0-64
-MPIFC = $MPI_HOME/bin/mpif90
-MPILD = $MPI_HOME/bin/mpif90
+MPIFC = $(MPI_HOME)/bin/mpif90
+MPILD = $(MPI_HOME)/bin/mpif90
 FC = /contrib/pgi6.0/linux86-64/6.0/bin/pgf90
 LD = /contrib/pgi6.0/linux86-64/6.0/bin/pgf90
 CPPFLAGS =
