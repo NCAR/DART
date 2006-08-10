@@ -14,7 +14,7 @@ module model_mod
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
-use     location_mod, only : location_type, get_dist, set_location, get_location, &
+use     location_mod, only : location_type, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
                              find_namelist_in_file, check_namelist_read
@@ -31,7 +31,6 @@ public :: get_model_size, &
           static_init_model, &
           init_time, &
           init_conditions, &
-          model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state
