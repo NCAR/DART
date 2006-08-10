@@ -14,8 +14,9 @@ module cov_cutoff_mod
 !
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,          &
                           logfileunit, find_namelist_in_file, check_namelist_read
+use location_mod,  only : location_type
 
 implicit none
 private
@@ -49,7 +50,8 @@ contains
 
 
 
-function comp_cov_factor(z_in, c, localization_override)
+function comp_cov_factor(z_in, c, obs_loc, obs_kind, target_loc, target_kind, &
+   localization_override)
 !----------------------------------------------------------------------
 ! function comp_cov_factor(z_in, c)
 !
@@ -65,15 +67,22 @@ function comp_cov_factor(z_in, c, localization_override)
 ! distance and then decreases linearly to 0 at twice the half-width 
 ! distance.
 
+! Additional information is passed in about the location and kind of the
+! observation and the location and kind of the variable being targeted for
+! increments. These can be used for more refined algorithms that want to 
+! make the cutoff a function of these additional arguments. 
+
 implicit none
 
-real(r8), intent(in) :: z_in, c
-real(r8)             :: comp_cov_factor
-integer, optional    :: localization_override
+real(r8),                      intent(in) :: z_in, c
+type(location_type), optional, intent(in) :: obs_loc, target_loc
+integer,             optional, intent(in) :: obs_kind, target_kind
+integer,             optional, intent(in) :: localization_override
+real(r8)                                  :: comp_cov_factor
 
-real(r8)           :: z, r
-integer            :: iunit, io
-integer            :: localization_type
+real(r8) :: z, r
+integer  :: iunit, io
+integer  :: localization_type
 
 !--------------------------------------------------------
 ! Initialize namelist if not already done
