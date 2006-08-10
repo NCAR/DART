@@ -27,7 +27,7 @@ use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_num_copies, ge
                                  destroy_obs
    
 use          obs_def_mod, only : obs_def_type, get_obs_def_location, get_obs_def_time, &
-                                 get_obs_def_error_variance
+                                 get_obs_def_error_variance, get_obs_kind
 
 use       cov_cutoff_mod, only : comp_cov_factor
 
@@ -143,7 +143,6 @@ integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_ME
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 logical,                     intent(in)    :: inflate_only
 
-
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
 real(r8) :: my_cov_inflate, my_cov_inflate_sd, reg_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
@@ -164,11 +163,12 @@ integer  :: obs_box(obs_ens_handle%my_num_vars), close_obs_ind(obs_ens_handle%my
 integer  :: close_state_ind(ens_handle%my_num_vars)
 integer  :: num_close_obs, obs_index, num_close_states, state_index
 integer  :: total_num_close_obs
+integer  :: base_obs_kind, my_obs_kind(obs_ens_handle%my_num_vars)
+integer  :: my_state_kind(ens_handle%my_num_vars)
 
 type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars), base_obs_loc
 type(location_type)  :: my_state_loc(ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
-
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time
@@ -217,6 +217,7 @@ Locations: do i = 1, obs_ens_handle%my_num_vars
    call get_obs_from_key(obs_seq, this_obs_key, observation)
    call get_obs_def(observation, obs_def)
    my_obs_loc(i) = get_obs_def_location(obs_def)
+   my_obs_kind(i) = get_obs_kind(obs_def)
    ! Need the time for regression diagnostics potentially
    if(i == 1) obs_time = get_obs_def_time(obs_def)
 end do Locations
@@ -226,7 +227,7 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state)
 ! Get the location of all my state variables
 do i = 1, ens_handle%my_num_vars
-   call get_state_meta_data(my_state(i), my_state_loc(i))
+   call get_state_meta_data(my_state(i), my_state_loc(i), my_state_kind(i))
 end do
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
@@ -264,6 +265,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call get_obs_def(observation, obs_def)
    base_obs_loc = get_obs_def_location(obs_def)
    obs_err_var = get_obs_def_error_variance(obs_def)
+   base_obs_kind = get_obs_kind(obs_def)
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
 
@@ -291,7 +293,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          end do
 
          ! Compute updated values for single state space inflation
-         if(do_single_ss_inflate(inflate)) then
+         SINGLE_SS_INFLATE: if(do_single_ss_inflate(inflate)) then
             ss_inflate_base = ens_handle%copies(ENS_SD_COPY, 1)
             do group = 1, num_groups
                if(my_inflate > 0.0_r8 .and. my_inflate_sd > 0.0_r8) then
@@ -308,7 +310,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                      gamma)
                endif
             end do
-         endif
+         endif SINGLE_SS_INFLATE
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs
@@ -364,8 +366,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    
    ! Find observations on my process that are close to one being assimilated
    ! Need to get obs density first in case of adaptive localization
-   call get_close_obs(gc_obs, base_obs_loc, my_obs_loc, num_close_obs, close_obs_ind, &
-      close_obs_dist)
+   call get_close_obs(gc_obs, base_obs_loc, base_obs_kind, my_obs_loc, my_obs_kind, &
+      num_close_obs, close_obs_ind, close_obs_dist)
 
    ! For adaptive localization, need number of other obs close to the chosen observation
    cutoff_rev = cutoff
@@ -383,21 +385,30 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
-   call get_close_obs(gc_state, base_obs_loc, my_state_loc, num_close_states, close_state_ind, &
-      close_state_dist)
+   call get_close_obs(gc_state, base_obs_loc, base_obs_kind, my_state_loc, my_state_kind, &
+      num_close_states, close_state_ind, close_state_dist)
 
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
+
+      ! Get the initial values of inflation for this variable if state varying inflation
+      if(do_varying_ss_inflate(inflate)) then
+         varying_ss_inflate = ens_handle%copies(ENS_INF_COPY, state_index)
+         varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
+      endif
      
       ! Compute the distance and covariance factor 
-      cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev)
+!PAR URGENT: MAKE SURE THIS INDEXING IS CORRECT; SAME FOR OTHER COMP_COV_FACTOR
+      cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
+         base_obs_loc, base_obs_kind, my_state_loc(state_index), my_state_kind(state_index))
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
       do group = 1, num_groups
          grp_bot = grp_beg(group)
          grp_top = grp_end(group)
          ! Do update of state, correl only needed for varying ss inflate
-         if(varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
+         if(do_varying_ss_inflate(inflate) .and. varying_ss_inflate > 0.0_r8 .and. &
+            varying_ss_inflate_sd > 0.0_r8) then
             call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
@@ -431,8 +442,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if(do_varying_ss_inflate(inflate)) then
          ! base is the initial inflate value for this state variable
          ss_inflate_base = ens_handle%copies(ENS_SD_COPY, state_index)
-         varying_ss_inflate = ens_handle%copies(ENS_INF_COPY, state_index)
-         varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
          GroupInflate: do group = 1, num_groups
             if(varying_ss_inflate > 0.0_r8 .and. varying_ss_inflate_sd > 0.0_r8) then
                gamma = reg_factor * abs(correl(group))
@@ -463,7 +472,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if(my_obs(obs_index) > i) then
 
          ! Compute the distance and the covar_factor
-         cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev)
+         cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev, &
+            base_obs_loc, base_obs_kind, my_obs_loc(obs_index), my_obs_kind(obs_index))
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
          do group = 1, num_groups
