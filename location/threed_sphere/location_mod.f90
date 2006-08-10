@@ -34,7 +34,7 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public :: location_type, get_dist, get_location, set_location, set_location_missing, &
+public :: location_type, get_location, set_location, set_location_missing, &
           write_location, read_location, interactive_location, vert_is_undef, &
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
@@ -183,7 +183,7 @@ end subroutine initialize_module
 
 
 
-function get_dist(loc1, loc2, no_vert)
+function get_dist(loc1, loc2, kind1, kind2, no_vert)
 !----------------------------------------------------------------------------
 
 implicit none
@@ -199,9 +199,12 @@ implicit none
 ! distance computation for incompatible vertical location types results in a fatal
 ! error.
 
+! The kinds are available if a more sophisticated distance computation is required
+
 type(location_type), intent(in) :: loc1, loc2
-real(r8) :: get_dist
-logical, optional :: no_vert
+integer,             intent(in) :: kind1, kind2
+real(r8)                        :: get_dist
+logical, optional,   intent(in)  :: no_vert
 
 real(r8) :: lon_dif, vert_dist
 integer  :: lat1_ind, lat2_ind, lon_ind, temp  ! indexes into lookup tables
@@ -917,14 +920,18 @@ end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(gc, base_obs_loc, obs, num_close, close_ind, dist)
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
+   num_close, close_ind, dist)
 
 !!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
+
+! The kinds are available to do more sophisticated distance computations if needed
 
 implicit none
 
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)
+integer,              intent(in)  :: base_obs_kind, obs_kind(:)
 integer,              intent(out) :: num_close, close_ind(:)
 real(r8),             intent(out) :: dist(:)
 
@@ -959,10 +966,11 @@ do j = 1, nlat
             t_ind = gc%obs_box(st - 1 + k)
             ! Can compute total distance here if verts are the same
             if(base_obs_loc%which_vert == obs(t_ind)%which_vert) then
-               this_dist = get_dist(base_obs_loc, obs(t_ind))
+               this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind))
             else
             ! Otherwise can just get horizontal distance
-               this_dist = get_dist(base_obs_loc, obs(t_ind), no_vert = .true.)
+               this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind), &
+                  no_vert = .true.)
             endif
             if(this_dist <= gc%maxdist) then
                ! Add this ob to the list
