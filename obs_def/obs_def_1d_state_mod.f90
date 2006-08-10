@@ -274,7 +274,8 @@ do i = 1, num_points(key)
    dist = abs(loc - x)
    if(dist > 0.5_r8) dist = 1.0_r8 - dist
 !write(*, *) 'dist ', i, dist
-   weight = comp_cov_factor(dist, half_width(key), localization_type(key))
+   weight = comp_cov_factor(dist, half_width(key), &
+      localization_override = localization_type(key))
 !write(*, *) 'weight ', i, weight
    sum = sum + weight * val
    weight_sum = weight_sum + weight
