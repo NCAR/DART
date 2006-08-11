@@ -66,12 +66,12 @@ end type location_type
 
 ! Type to facilitate efficient compuation of observations close to a given location
 type get_close_type
-   integer              :: num
-   real(r8)             :: maxdist 
-   integer, allocatable :: lon_offset(:, :)
-   integer, allocatable :: obs_box(:)
-   integer, allocatable :: count(:, :)
-   integer, allocatable :: start(:, :)
+   integer          :: num
+   real(r8)         :: maxdist 
+   integer, pointer :: lon_offset(:, :)
+   integer, pointer :: obs_box(:)
+   integer, pointer :: count(:, :)
+   integer, pointer :: start(:, :)
 end type get_close_type
 
 type(random_seq_type) :: ran_seq
