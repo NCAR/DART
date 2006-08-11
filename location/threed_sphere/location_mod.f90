@@ -38,7 +38,7 @@ public :: location_type, get_location, set_location, set_location_missing, &
           write_location, read_location, interactive_location, vert_is_undef, &
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
-          horiz_dist_only, get_close_obs, get_close_type, &
+          horiz_dist_only, get_close_obs, get_close_type, get_dist, &
           get_close_maxdist_init, get_close_obs_init, &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
           VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
