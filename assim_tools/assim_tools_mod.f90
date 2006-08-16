@@ -275,8 +275,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
    if(my_task_id() == owner) then
       obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
-      !PAR NEED A QC THRESHOLD HERE SOMEWHERE
-      IF_QC_IS_OKAY: if(obs_qc < qc_threshold) then
+      ! With new DART qc, only value of 0 for this field should be assimilated
+      IF_QC_IS_OKAY: if(nint(obs_qc) ==0) then
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
          orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
             OBS_PRIOR_MEAN_END, owners_index)
@@ -343,7 +343,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
-   if(obs_qc > qc_threshold) cycle SEQUENTIAL_OBS
+   if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
 
    ! Can compute prior mean and variance of obs for each group just once here
    do group = 1, num_groups
