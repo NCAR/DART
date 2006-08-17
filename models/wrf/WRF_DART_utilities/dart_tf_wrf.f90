@@ -405,7 +405,7 @@ do id=1,num_domains
       call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qs,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
       n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qs
    endif
-   if(wrf%dom(id)%n_moist == 6) then
+   if(wrf%dom(id)%n_moist >= 6) then
       in = n_values+1
       call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%qg,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt)
       n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! qg
