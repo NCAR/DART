@@ -679,14 +679,14 @@ ObsFileLoop : do ifile=1, Nepochs*4
          if(vert_is_surface(obs_loc)) then    ! use closest height equivalent 
             level_index        = 1
             ivert              = 1
-            which_vert(flavor) = VERTISLEVEL
+            which_vert(flavor) = VERTISSURFACE
             obslevel           = 1
 
          elseif(vert_is_level(obs_loc)) then
             level_index        = mlevel_index
             ivert              = nint(obsloc3(3)) 
-            which_vert(flavor) = VERTISHEIGHT
-            obslevel           = GetClosestLevel(ivert, VERTISHEIGHT)
+            which_vert(flavor) = VERTISLEVEL
+            obslevel           = GetClosestLevel(ivert, VERTISLEVEL)
 
          elseif(vert_is_pressure(obs_loc)) then
             level_index        = plevel_index
