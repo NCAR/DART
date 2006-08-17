@@ -1341,7 +1341,7 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
 
       timeindex = nc_append_time(ncFileID, statetime)
 
-      write(msgstring,'(''appending model time (d,s) ('',i5,i5,'') as index '',i6, '' in ncFileID '',i3)') &
+      write(msgstring,'(''appending model time (d,s) ('',i8,i5,'') as index '',i6, '' in ncFileID '',i3)') &
           days,secs,timeindex,ncid
       call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
 
