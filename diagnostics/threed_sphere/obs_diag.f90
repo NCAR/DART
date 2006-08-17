@@ -273,6 +273,9 @@ which_vert   = VERTISUNDEF   ! set all of them to an 'undefined' value
 scale_factor(KIND_SURFACE_PRESSURE)  =    0.01_r8  
 scale_factor(KIND_SPECIFIC_HUMIDITY) = 1000.0_r8
 
+! Somehow, we should plot statistics on the dBZ scale for these ...
+! scale_factor(KIND_RADAR_REFLECTIVITY) = 10log10(z)
+
 prior_mean(1)       = 0.0_r8
 prior_spread(1)     = 0.0_r8
 posterior_mean(1)   = 0.0_r8
