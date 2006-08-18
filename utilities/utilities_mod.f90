@@ -35,11 +35,15 @@ module utilities_mod
 !      print_version_number    Prints out a routine name and
 !                              version number to a specified unit
 !
-!      do_output        If called, set the status of printing to either
-!                       true or false.  Useful for multiprocess output
-!                       where only a single processor ought to write to
-!                       the log file.  Fatal errors will still write
-!                       to the log before halting.
+!      set_output       Set the status of printing.  Can be set on a per-task
+!                       basis if you are running with multiple tasks.
+!                       If set to false only warnings and fatal errors will 
+!                       write to the log.
+!
+!      do_output        Logical function which returns whether informational
+!                       messages should be output.  Controlled by the setting
+!                       made from set_output.  Useful for messages which cannot
+!                       go through the normal error handler (e.g. namelists).
 !
 !-----------------------------------------------------------------------
 
@@ -59,7 +63,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 public :: file_exist, get_unit, open_file, timestamp, &
        close_file, register_module, error_handler, logfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       find_namelist_in_file, check_namelist_read, do_output, &
+       find_namelist_in_file, check_namelist_read, do_output, set_output, &
        E_DBG, E_MSG, E_WARN, E_ERR, &
        DEBUG, MESSAGE, WARNING, FATAL
 
@@ -171,8 +175,8 @@ contains
          call register_module(source, revision, revdate)
 
          ! Echo the namelist values for this module using normal mechanism
-         write(logfileunit, nml=utilities_nml)
-         write(     *     , nml=utilities_nml)
+         if (do_output_flag) write(logfileunit, nml=utilities_nml)
+         if (do_output_flag) write(     *     , nml=utilities_nml)
 
       endif
 
@@ -713,7 +717,7 @@ end subroutine error_handler
 
 !#######################################################################
 
-   subroutine do_output (doflag)
+   subroutine set_output (doflag)
 
 ! *** set whether output is written to a log file or simply ignored ***
 !
@@ -725,7 +729,23 @@ end subroutine error_handler
 
    do_output_flag = doflag
 
-   end subroutine do_output
+   end subroutine set_output
+
+
+!#######################################################################
+
+   function do_output ()
+
+! *** return whether output should be written from this task ***
+!
+
+   logical :: do_output
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   do_output = do_output_flag
+
+   end function do_output
 
 !#######################################################################
 
