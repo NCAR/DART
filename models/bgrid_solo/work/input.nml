@@ -42,8 +42,9 @@
    inf_diag_file_name =		'prior_inf_diag',	'post_inf_diag',
    inf_initial =		1.02,			1.00,
    inf_sd_initial =		0.1,			0.0,
+   inf_lower_bound =		1.0,    		1.0,   
    inf_upper_bound =		1000000,		1000000,
-   inf_sd_lower_bound = 	0.0, 			0.0
+   inf_sd_lower_bound = 	0.05, 			0.0
 
 /
 
