@@ -31,7 +31,7 @@
    num_output_obs_members = 0,
    output_interval = 1,
    num_groups = 2,
-   outlier_threshold = 1000.0 
+   outlier_threshold = 1000.0,
 
    inf_flavor = 		2, 			0,
    inf_start_from_restart = 	.false., 		.false.,
@@ -42,8 +42,9 @@
    inf_diag_file_name =		'prior_inf_diag',	'post_inf_diag',
    inf_initial =		1.02,			1.00,
    inf_sd_initial =		0.1,			0.0,
+   inf_lower_bound =		1.00,                   1.0,
    inf_upper_bound =		1000000,		1000000,
-   inf_sd_lower_bound = 	0.0, 			0.0
+   inf_sd_lower_bound = 	0.05, 			0.0
 
    
 /
