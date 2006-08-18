@@ -23,7 +23,7 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time, get_cal
                              operator(<), operator(>), operator(+), operator(-), &
                              operator(/), operator(*), operator(==), operator(/=), print_time
 use utilities_mod,     only : get_unit, close_file, register_module, error_handler, &
-                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit,             &
+                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, do_output,  &
                               dump_unit_attributes, find_namelist_in_file,          &
                           check_namelist_read
 
@@ -151,8 +151,8 @@ call check_namelist_read(iunit, io, "assim_model_nml")
 
 ! Record the namelist values used for the run ... 
 call error_handler(E_MSG,'static_init_assim_model','assim_model_nml values are',' ',' ',' ')
-write(logfileunit, nml=assim_model_nml)
-write(     *     , nml=assim_model_nml)
+if (do_output()) write(logfileunit, nml=assim_model_nml)
+if (do_output()) write(     *     , nml=assim_model_nml)
 
 ! Set the write format for restart files
 if(write_binary_restart_files) then

@@ -24,7 +24,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>)
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                 initialize_utilities, logfileunit, timestamp,               &
+                                 initialize_utilities, logfileunit, timestamp, do_output,    &
                                  find_namelist_in_file, check_namelist_read
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
@@ -165,10 +165,8 @@ call check_namelist_read(iunit, io, "filter_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')
-if (my_task_id() == 0) then
-   write(logfileunit, nml=filter_nml)
-   write(     *     , nml=filter_nml)
-endif
+if (do_output()) write(logfileunit, nml=filter_nml)
+if (do_output()) write(     *     , nml=filter_nml)
 
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
 if(ens_size < 2) then

@@ -16,7 +16,7 @@ module assim_tools_smoother_mod
 
 use      types_mod, only : r8, missing_r8, PI
 use  utilities_mod, only : file_exist, get_unit, check_namelist_read, find_namelist_in_file, &
-                           register_module, error_handler, E_ERR, E_MSG, logfileunit
+                           register_module, error_handler, E_ERR, E_MSG, logfileunit, do_output
 use       sort_mod, only : index_sort 
 use random_seq_mod, only : random_seq_type, random_gaussian, &
                            init_random_seq, random_uniform
@@ -111,8 +111,8 @@ call check_namelist_read(iunit, io, "assim_tools_smoother_nml")
 ! Write the namelist values to the log file
 
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
-write(logfileunit, nml=assim_tools_smoother_nml)
-write(     *     , nml=assim_tools_smoother_nml)
+if (do_output()) write(logfileunit, nml=assim_tools_smoother_nml)
+if (do_output()) write(     *     , nml=assim_tools_smoother_nml)
 
 ! Check for illegal combination of parallel with single region (doesn't make sense)
 if(do_parallel /= 0 .and. num_domains == 1) then

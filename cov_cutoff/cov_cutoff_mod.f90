@@ -14,7 +14,7 @@ module cov_cutoff_mod
 !
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,          &
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, do_output, &
                           logfileunit, find_namelist_in_file, check_namelist_read
 use location_mod,  only : location_type
 
@@ -98,8 +98,8 @@ if(.not. namelist_initialized) then
    call check_namelist_read(iunit, io, "cov_cutoff_nml")
 
    call error_handler(E_MSG,'comp_cov_factor','cov_cutoff_nml values are',' ',' ',' ')
-   write(logfileunit,nml=cov_cutoff_nml)
-   write(     *     ,nml=cov_cutoff_nml)
+   if (do_output()) write(logfileunit,nml=cov_cutoff_nml)
+   if (do_output()) write(     *     ,nml=cov_cutoff_nml)
 
 endif
 !---------------------------------------------------------
