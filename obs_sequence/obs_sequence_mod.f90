@@ -33,7 +33,8 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=)
 use    utilities_mod, only : get_unit, close_file, find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_WARN, E_MSG, logfileunit
+                             register_module, error_handler, E_ERR, E_WARN, E_MSG, logfileunit, &
+                             do_output
 use     obs_kind_mod, only : write_obs_kind, read_obs_kind
 
 
@@ -134,8 +135,8 @@ read(iunit, nml = obs_sequence_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_sequence_nml")
 
 call error_handler(E_MSG,'static_init_obs_sequence','obs_sequence_nml values are',' ',' ',' ')
-write(logfileunit,nml=obs_sequence_nml)
-write(     *     ,nml=obs_sequence_nml)
+if (do_output()) write(logfileunit,nml=obs_sequence_nml)
+if (do_output()) write(     *     ,nml=obs_sequence_nml)
 
 end subroutine static_init_obs_sequence
 

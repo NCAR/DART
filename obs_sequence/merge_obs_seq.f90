@@ -15,7 +15,7 @@ program merge_obs_seq
 use        types_mod, only : r8
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             error_handler, E_ERR, E_MSG, logfileunit
+                             error_handler, E_ERR, E_MSG, logfileunit, do_output
 use time_manager_mod, only : time_type, operator(>), print_time
 use      obs_def_mod, only : obs_def_type, get_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
@@ -77,8 +77,8 @@ call check_namelist_read(iunit, io, "merge_obs_seq_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'merge_obs_seq','merge_obs_seq_nml values are',' ',' ',' ')
-write(logfileunit, nml=merge_obs_seq_nml)
-write(     *     , nml=merge_obs_seq_nml)
+if (do_output()) write(logfileunit, nml=merge_obs_seq_nml)
+if (do_output()) write(     *     , nml=merge_obs_seq_nml)
 
 ! Read header information for the sequences to see if we need
 ! to accomodate additional copies or qc values from sequence two.

@@ -13,8 +13,9 @@ module reg_factor_mod
 ! $Name$
 
 use     types_mod, only : r8
-use utilities_mod, only : get_unit, open_file, register_module, error_handler, E_ERR, &
-                          E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
+use utilities_mod, only : get_unit, open_file, register_module, error_handler, &
+                          E_ERR, E_MSG, logfileunit, find_namelist_in_file, &
+                          check_namelist_read, do_output
 
 use time_manager_mod, only : time_type, write_time, get_time
 
@@ -100,8 +101,8 @@ if(.not. namelist_initialized) then
 
    ! Record the namelist values used for the run ...
    call error_handler(E_MSG,'comp_reg_factor','reg_factor_nml values are',' ',' ',' ')
-   write(logfileunit, nml=reg_factor_nml)
-   write(     *     , nml=reg_factor_nml)
+   if (do_output()) write(logfileunit, nml=reg_factor_nml)
+   if (do_output()) write(     *     , nml=reg_factor_nml)
 
    ! See if diagnostic output is requested, if so, open file
    if(save_reg_diagnostics) then
