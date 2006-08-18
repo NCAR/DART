@@ -20,11 +20,13 @@
 # -P      account
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
 # -n number of processors  (really)
+# -W hh:mm  max execution time (required on some platforms)
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -q regular
 #BSUB -n 4
+#BSUB -W 0:30
 #
 #
 ##=============================================================================
@@ -63,7 +65,7 @@ if ($?LS_SUBCWD) then
    # LSF has a list of processors already in a variable (LSB_HOSTS)
    #  alias submit 'bsub < \!*'
 
-   mpirun.lsf filter
+   mpirun.lsf ./filter
    
 
 else if ($?PBS_O_WORKDIR) then
@@ -71,23 +73,25 @@ else if ($?PBS_O_WORKDIR) then
    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
    #  alias submit 'qsub \!*'
 
-   mpirun filter
+   mpirun ./filter
 
 else if ($?OCOTILLO_NODEFILE) then
 
    # ocotillo is a 'special case'. It is the only cluster I know of with
    # no queueing system.  You must generate a list of processors in a
-   # file whose name is in $OCOTILLO_NODEFILE.  For example ...
-   # setenv OCOTILLO_NODEFILE  my_favorite_processors
-   # echo "node1"  > $OCOTILLO_NODEFILE
-   # echo "node5" >> $OCOTILLO_NODEFILE
-   # echo "node7" >> $OCOTILLO_NODEFILE
-   # echo "node3" >> $OCOTILLO_NODEFILE
-   #  alias submit 'csh \!*'
+   # file whose name is given to the mpirun command, and the executable
+   # needs to be wrapped with a script that cds to the right directory.
+   setenv OCOTILLO_NODEFILE  ~/nodelist
+   echo "node7:2" > $OCOTILLO_NODEFILE
+   echo "node5:2" >> $OCOTILLO_NODEFILE
+   echo "node3:2" >> $OCOTILLO_NODEFILE
+   echo "node1:2" >> $OCOTILLO_NODEFILE
 
-   foreach i ( `cat $OCOTILLO_NODEFILE` )
-     ssh $i "cd `pwd`; ./filter"
-   end 
+cat > ./filterscript <<EOF
+ cd `pwd`
+ ./filter
+EOF
+   mpirun -np 4 -nolocal -machinefile $OCOTILLO_NODEFILE ./filterscript
 
 else
 
@@ -95,7 +99,7 @@ else
    # already run 'lamboot' once to start the lam server.
    # alias submit 'mpirun \!*'
 
-   mpirun -np 4 filter
+   mpirun -np 4 ./filter
 
 endif
 
