@@ -42,6 +42,10 @@ module mpi_utilities_mod
 !    # array_broadcast()  Subroutine that sends a copy of the entire data 
 !                         array to all other tasks. 
 !                
+!  *** exit_all()         Subroutine that substitutes for the intrinsic exit.
+!                         It calls MPI_Abort() to force other MPI tasks to
+!                         exit as well in case of error. 
+! 
 !    * transpose_array()  Subroutine that transposes a 2D array
 !                         from column-major to row-major or back.
 !
@@ -135,10 +139,10 @@ module mpi_utilities_mod
 !
 !-----------------------------------------------------------------------------
 
-use types_mod, only : r8
+use types_mod, only : r8, digits12
 use utilities_mod, only : register_module, error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
-                          do_output
+                          set_output
 use time_manager_mod, only : time_type, get_time, set_time
 
 !
@@ -161,11 +165,12 @@ integer :: myrank          ! my mpi number
 integer :: total_tasks     ! total mpi tasks/procs
 integer :: my_local_comm   ! duplicate communicator private to this file
 integer :: comm_size       ! if ens count < tasks, only the first N participate
+integer :: datasize        ! which MPI type corresponds to our r8 definition
 
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe
+          make_pipe, destroy_pipe, exit_all
 public :: task_sync, array_broadcast, array_distribute, &
           send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
           shell_execute, sleep_seconds, sum_across_tasks
@@ -263,7 +268,22 @@ comm_size = total_tasks
 ! Turn off non-critical log messages from all but task 0, for performance
 ! TODO: this should be controlled by a namelist option, to enable selected
 !       mpi tasks to default to printing for debugging.
-if (myrank /= 0) call do_output(.FALSE.)
+if (myrank /= 0) call set_output(.FALSE.)
+
+! Users have the option of redefining the DART r8 kind to be the same size
+! as r4.  But when we call the MPI routines we have to know what MPI type
+! to use.  The internal dart kind 'digits12' is always defined to be *8, so
+! if the parameters r8 and digits12 are the same value, use *8.  Otherwise
+! assume r4 and r8 were defined to be the same and use *4.  (Some users
+! do this to cut down on the space requirements.)
+
+if (r8 == digits12) then
+  datasize = MPI_REAL8
+  !print *, "using real * 8 for datasize of r8"
+else
+  datasize = MPI_REAL4
+  !print *, "using real * 4 for datasize of r8"
+endif
 
 ! MPI successfully initialized.
 
@@ -393,7 +413,6 @@ subroutine send_to(dest_id, srcarray, time)
 ! not paired correctly the code will hang.
 
 integer :: i, tag, errcode
-integer :: datasize
 integer :: itime(2)
 
 if ( .not. module_initialized ) then
@@ -407,11 +426,6 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
                                    "must be >= 0 and < ", total_tasks
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
-
-!print *, "kind = ", kind(srcarray(1))
-!print *, "digits = ", digits(srcarray(1))
-! TODO: FIX THIS based on what kind and digits say
-datasize = MPI_DOUBLE_PRECISION
 
 ! use my task id as the tag; unused at this point.
 tag = myrank
@@ -452,7 +466,6 @@ subroutine receive_from(src_id, destarray, time)
 ! the code will hang.
 
 integer :: i, tag, errcode
-integer :: datasize
 integer :: itime(2)
 real(r8), pointer :: temparray(:)
 integer :: status(MPI_STATUS_SIZE)
@@ -468,11 +481,6 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
                                    "must be >= 0 and < ", total_tasks
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
-
-!print *, "kind = ", kind(destarray(1))
-!print *, "digits = ", digits(destarray(1))
-! TODO: FIX THIS based on what kind and digits say
-datasize = MPI_DOUBLE_PRECISION
 
 ! send_to uses its own id as the tag.
 tag = src_id
@@ -504,6 +512,25 @@ endif
 
 
 end subroutine receive_from
+
+
+!-----------------------------------------------------------------------------
+
+subroutine exit_all(exit_code)
+ integer, intent(in) :: exit_code
+
+! In case of error, call this instead of the fortran intrinsic exit().
+! It will signal the other MPI tasks that something bad happened and they
+! should also exit.
+
+integer :: ierror
+
+! do not bother testing here if the init code was called; we are trying 
+! to exit in case of error and we want to take the other tasks down with us.
+
+   call MPI_Abort(my_local_comm, exit_code, ierror)
+
+end subroutine exit_all
 
 
 !-----------------------------------------------------------------------------
@@ -539,7 +566,7 @@ subroutine array_broadcast(array, root)
 ! root array in their own arrays.  Thus 'array' is intent(in) on root, and
 ! intent(out) on all other tasks.
 
-integer :: itemcount, datasize, errcode
+integer :: itemcount, errcode
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -554,10 +581,6 @@ if ((root < 0) .or. (root >= total_tasks)) then
 endif
 
 itemcount = size(array)
-!print *, "kind = ", kind(array(1))
-!print *, "digits = ", digits(array(1))
-! TODO: FIX THIS based on what kind and digits say
-datasize = MPI_DOUBLE_PRECISION
 
 call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
@@ -589,7 +612,7 @@ subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
 ! and put into 'dstarray'.
 
 real(r8), allocatable :: localchunk(:)
-integer :: srccount, datasize, leftover
+integer :: srccount, leftover
 integer :: i, tag, errcode
 logical :: iamroot
 integer :: status(MPI_STATUS_SIZE)
@@ -610,10 +633,6 @@ iamroot = (root == myrank)
 tag = 1
 
 srccount = size(srcarray)
-print *, "kind = ", kind(srcarray(1))
-print *, "digits = ", digits(srcarray(1))
-! TODO: FIX THIS based on what kind and digits say
-datasize = MPI_DOUBLE_PRECISION
 
 ! TODO: right now this code does contig chunks only
 ! TODO: it should select on the 'how' argument
