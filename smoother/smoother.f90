@@ -23,7 +23,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, &
 use obs_def_mod, only : obs_def_type, get_obs_def_error_variance
 use time_manager_mod, only : time_type, get_time, set_time, operator(/=), operator(>)
 use    utilities_mod, only :  get_unit, open_file, close_file, register_module, &
-                              file_exist, error_handler, &
+                              file_exist, error_handler, do_output, &
                               E_ERR, E_MSG, E_DBG, initialize_utilities, &
                               logfileunit, timestamp, find_namelist_in_file, check_namelist_read
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
@@ -150,8 +150,8 @@ call check_namelist_read(iunit, io, "smoother_nml")
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'smoother_nml','smoother_nml values are',' ',' ',' ')
-write(logfileunit, nml=smoother_nml)
-write(     *     , nml=smoother_nml)
+if (do_output()) write(logfileunit, nml=smoother_nml)
+if (do_output()) write(     *     , nml=smoother_nml)
 
 ! Can't output more ensemble members than exist
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
