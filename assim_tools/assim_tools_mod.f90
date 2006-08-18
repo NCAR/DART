@@ -15,7 +15,7 @@ module assim_tools_mod
 ! A variety of operations required by assimilation.
 
 use      types_mod, only : r8
-use  utilities_mod,       only : file_exist, get_unit, check_namelist_read,             &
+use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output, &
                                  find_namelist_in_file, register_module, error_handler, &
                                  E_ERR, E_MSG, logfileunit
 use       sort_mod,       only : index_sort 
@@ -112,8 +112,8 @@ call check_namelist_read(iunit, io, "assim_tools_nml")
 
 ! Write the namelist values to the log file
 call error_handler(E_MSG,'assim_tools_init','assim_tools namelist values',' ',' ',' ')
-write(logfileunit, nml=assim_tools_nml)
-write(     *     , nml=assim_tools_nml)
+if (do_output()) write(logfileunit, nml=assim_tools_nml)
+if (do_output()) write(     *     , nml=assim_tools_nml)
 
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then
@@ -173,6 +173,11 @@ type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time
 
+! for performance, local copies 
+logical :: local_single_ss_inflate
+logical :: local_varying_ss_inflate
+logical :: local_obs_inflate
+
 !PAR: THIS SHOULD COME FROM SOMEWHERE ELSE AND BE NAMELIST CONTOLLED
 real(r8) :: qc_threshold = 10.0_r8
 
@@ -181,6 +186,12 @@ if(.not. module_initialized) then
    call assim_tools_init
    module_initialized = .true.
 endif
+
+! For performance, make local copies of these settings which
+! are really in the inflate derived type.
+local_single_ss_inflate = do_single_ss_inflate(inflate)
+local_varying_ss_inflate = do_varying_ss_inflate(inflate)
+local_obs_inflate = do_obs_inflate(inflate)
 
 ! Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
@@ -194,13 +205,13 @@ ens_handle%copies(ENS_SD_COPY, :) = ens_handle%copies(ENS_INF_COPY, :)
 
 ! For single state or obs space inflation, the inflation is like a token
 ! Gets passed from the processor with a given obs on to the next
-if(do_single_ss_inflate(inflate)) then
+if(local_single_ss_inflate) then
    my_inflate = ens_handle%copies(ENS_INF_COPY, 1)
    my_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, 1)
 end if
 
 ! For obs space inflation, single value comes from storage in adaptive_inflate_mod
-if(do_obs_inflate(inflate)) then
+if(local_obs_inflate) then
    my_inflate = get_inflate(inflate)
    my_inflate_sd = get_sd(inflate)
 endif
@@ -236,7 +247,7 @@ end do
 
 ! Get mean and variance of each group's observation priors for adaptive inflation
 ! These are transmitted with the prior obs dist and increments
-if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
+if(local_varying_ss_inflate .or. local_single_ss_inflate) then
    do group = 1, num_groups
       grp_bot = grp_beg(group)
       grp_top = grp_end(group)
@@ -293,7 +304,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          end do
 
          ! Compute updated values for single state space inflation
-         SINGLE_SS_INFLATE: if(do_single_ss_inflate(inflate)) then
+         SINGLE_SS_INFLATE: if(local_single_ss_inflate) then
             ss_inflate_base = ens_handle%copies(ENS_SD_COPY, 1)
             do group = 1, num_groups
                if(my_inflate > 0.0_r8 .and. my_inflate_sd > 0.0_r8) then
@@ -315,10 +326,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       !Broadcast the info from this obs
       ! What gets broadcast depends on what kind of inflation is being done
-      if(do_varying_ss_inflate(inflate)) then
+      if(local_varying_ss_inflate) then
          call my_broadcast_send1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
             orig_obs_prior_var, obs_qc)
-      else if(do_single_ss_inflate(inflate) .or. do_obs_inflate(inflate)) then
+      else if(local_single_ss_inflate .or. local_obs_inflate) then
          call my_broadcast_send2(owner, obs_prior, obs_inc, my_inflate, &
             my_inflate_sd, obs_qc)
       else
@@ -330,10 +341,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    else
       ! What gets broadcast depends on what kind of inflation is being done
       ! I don't store this obs; receive the obs prior and increment from broadcast
-      if(do_varying_ss_inflate(inflate)) then
+      if(local_varying_ss_inflate) then
          call my_broadcast_recv1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
             orig_obs_prior_var, obs_qc)
-      else if(do_single_ss_inflate(inflate) .or. do_obs_inflate(inflate)) then
+      else if(local_single_ss_inflate .or. local_obs_inflate) then
          call my_broadcast_recv2(owner, obs_prior, obs_inc, my_inflate, &
             my_inflate_sd, obs_qc)
       else
@@ -392,7 +403,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       state_index = close_state_ind(j)
 
       ! Get the initial values of inflation for this variable if state varying inflation
-      if(do_varying_ss_inflate(inflate)) then
+      if(local_varying_ss_inflate) then
          varying_ss_inflate = ens_handle%copies(ENS_INF_COPY, state_index)
          varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
       endif
@@ -407,7 +418,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          grp_bot = grp_beg(group)
          grp_top = grp_end(group)
          ! Do update of state, correl only needed for varying ss inflate
-         if(do_varying_ss_inflate(inflate) .and. varying_ss_inflate > 0.0_r8 .and. &
+         if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. &
             varying_ss_inflate_sd > 0.0_r8) then
             call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
@@ -439,7 +450,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
       ! Compute spatially-variing state space inflation
-      if(do_varying_ss_inflate(inflate)) then
+      if(local_varying_ss_inflate) then
          ! base is the initial inflate value for this state variable
          ss_inflate_base = ens_handle%copies(ENS_SD_COPY, state_index)
          GroupInflate: do group = 1, num_groups
@@ -506,13 +517,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 end do SEQUENTIAL_OBS
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
-if(do_single_ss_inflate(inflate)) then
+if(local_single_ss_inflate) then
    ens_handle%copies(ENS_INF_COPY, :) = my_inflate
    ens_handle%copies(ENS_INF_SD_COPY, :) = my_inflate_sd
 end if
 
 ! Everybody needs to store the latest value for obs_inflate
-if(do_obs_inflate(inflate)) then
+if(local_obs_inflate) then
    call set_inflate(inflate, my_inflate)
    call set_sd(inflate, my_inflate_sd)
 endif
@@ -1053,7 +1064,7 @@ endif
 ! Also needed for file correction below
 if(present(correl_out) .or. sampling_error_correction) then
    state_var = sum(state * state) - sum(state)**2 / ens_size
-   if(obs_prior_var * state_var < 0.0_r8) then
+   if(obs_prior_var * state_var <= 0.0_r8) then
       correl = 0.0_r8
    else
       correl = obs_state_cov / sqrt(obs_prior_var * state_var)
