@@ -97,17 +97,17 @@ echo making mkmf_perfect_model_obs
 csh mkmf_perfect_model_obs
 make         || exit 10
 
-echo skipping mkmf_assim_region
-#csh mkmf_assim_region
-#make         || exit 11
-
 echo making mkmf_filter
 csh mkmf_filter
-echo updating Makefile for MPI
+echo Updating Makefile for MPI compile
 \cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
 \rm -f Makefile.back
+# some platforms prefer to compile all .o files with the wrapper
+# and after the compile remove all .o files and start again.
+\rm -f *.o *.mod
 make         || exit 12
+\rm -f *.o *.mod
 
 echo making mkmf_obs_diag
 csh mkmf_obs_diag
@@ -124,8 +124,6 @@ echo skipping mkmf_smoother
 
 echo running perfect_model_obs here
 ./perfect_model_obs || exit 20
-
-
 
 echo " "
 echo time to run filter here:

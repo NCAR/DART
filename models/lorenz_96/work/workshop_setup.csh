@@ -54,7 +54,7 @@
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
 \rm -f perfect_model_obs filter obs_diag assim_region integrate_model
 \rm -f merge_obs_seq smoother
-
+\rm -f *.o *.mod
 
 echo mkmf_preprocess
 csh mkmf_preprocess
@@ -83,17 +83,17 @@ echo mkmf_filter
 csh mkmf_filter
 echo updating Makefile for MPI
 \cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
 \rm -f Makefile.back
+echo remove all existing obj files and rebuild with MPI compile wrapper
+\rm -f *.o *.mod
 make         || exit 6
+echo remove all existing obj files and start clean
+\rm -f *.o *.mod
 
 echo mkmf_obs_diag
 csh mkmf_obs_diag
 make         || exit 7
-
-echo skipping mkmf_assim_region
-#csh mkmf_assim_region
-#make         || exit 8
 
 echo mkmf_integrate_model
 csh mkmf_integrate_model
