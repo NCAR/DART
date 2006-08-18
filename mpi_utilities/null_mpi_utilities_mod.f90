@@ -51,6 +51,10 @@ module mpi_utilities_mod
 !    # array_broadcast()  Subroutine that sends a copy of the entire data 
 !                         array to all other tasks. 
 !                
+!  *** exit_all()         Subroutine that substitutes for the intrinsic exit.
+!                         It calls MPI_Abort() to force other MPI tasks to
+!                         exit as well in case of error.
+!
 !    * transpose_array()  Subroutine that transposes a 2D array
 !                         from column-major to row-major or back.
 !
@@ -377,6 +381,18 @@ endif
 
 
 end subroutine receive_from
+
+
+!-----------------------------------------------------------------------------
+
+subroutine exit_all(exit_code)
+ integer, intent(in) :: exit_code
+
+! Call exit with the specified code.
+
+   call exit(exit_code)
+
+end subroutine exit_all
 
 
 !-----------------------------------------------------------------------------
