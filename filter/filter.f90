@@ -296,15 +296,12 @@ AdvanceTime : do
    call put_copy(0, obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)
  
    ! Compute mean and spread for inflation and state diagnostics
-   if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate) .or. &
-      output_state_ens_mean .or. output_state_ens_spread) then
-      ! Transform to compute mean (and spread)
-      call all_vars_to_all_copies(ens_handle)
-      if(output_state_ens_spread) then
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      else
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      endif
+   call all_vars_to_all_copies(ens_handle)
+   if(output_state_ens_spread) then
+      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   else if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate) .or. &
+      output_state_ens_mean) then
+         call compute_copy_mean(ens_handle, 1, ens_size, ENS_MEAN_COPY)
    end if
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
@@ -871,6 +868,7 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation)
    call get_obs_def(observation, obs_def)
    ! Check to see if this observation fails input qc test
+! PAR WARNING: WHAT IF THERE IS NO INPUT QC FIELD??? NEED TO BE PREPARED FOR THIS
    call get_qc(observation, input_qc, qc_indx = 1)
    ! If it is bad, set forward operator status value to -99 and return missing_r8 for obs_value
 
@@ -976,7 +974,6 @@ endif
 
 ! At this point can compute outlier test and consolidate forward operator qc
 do j = 1, obs_ens_handle%my_num_vars
-   ! Check to see if prior qc failed; if so, set ones digit to 1 and do something else
    forward_max = nint(maxval(forward_op_ens_handle%copies(1:ens_size, j)))
    forward_min = nint(minval(forward_op_ens_handle%copies(1:ens_size, j)))
    ! Now do a case statement to figure out what the qc result should be
@@ -996,7 +993,7 @@ do j = 1, obs_ens_handle%my_num_vars
         
       ! PAR: THIS SHOULD BE IN QC MODULE 
       ! Check on the outlier threshold quality control: move to QC module
-      if(do_outlier .and. obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < 4.0_r8) then
+      if(do_outlier .and. nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j)) < 4) then
          obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START, j)
          obs_prior_var = obs_ens_handle%copies(OBS_PRIOR_VAR_START, j)
          obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
