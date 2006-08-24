@@ -24,6 +24,7 @@
 # belonging to that process, and the name of the filter_control_file for
 # that process
 
+# OLD OLD OLD -- this is no longer true.
 # Has either 3 or 4 input arguments.
 # arg#1  is the name of the CENTRALDIR
 # arg#2  is the ensemble member number
@@ -56,10 +57,13 @@ if ( ! $?REMOVE ) then
   set REMOVE = 'rm -rf'
 endif
 if ( ! $?COPY ) then
-  set COPY = 'cp -p'
+  set COPY = 'cp -fp'
 endif
 if ( ! $?MOVE ) then
   set MOVE = 'mv -f'
+endif
+if ( ! $?LINK ) then
+  set LINK = 'ln -fs'
 endif
 
 echo "CENTRALDIR is ${CENTRALDIR}"                          >> cam_out_temp
@@ -90,17 +94,18 @@ set input_file_line = 2
 set output_file_line = 3
 while($state_copy <= $num_states)
 
+   # loop through the control file, extracting lines in groups of 3.
+   set ensemble_number = `head -$ensemble_number_line ../$control_file | tail -1`
+   set input_file      = `head -$input_file_line      ../$control_file | tail -1`
+   set output_file     = `head -$output_file_line     ../$control_file | tail -1`
+
    # the previous script used element instead of ensemble_number.  make them
    # the same for now.
-   set ensemble_number = `head -$ensemble_number_line ../$control_file | tail -1`
    set element = $ensemble_number
-   set input_file = `head -$input_file_line ../$control_file | tail -1`
-   set output_file = `head -$output_file_line ../$control_file | tail -1`
-
-   echo "starting ${myname} for ens member $element at "`date` >! cam_out_temp
+   echo "starting ${myname} for ens member $element at "`date` >> cam_out_temp
 
    # get model state initial conditions for this ensemble member
-   ln -s ${CENTRALDIR}/$input_file temp_ic
+   ${LINK} ${CENTRALDIR}/$input_file temp_ic
 
    # get filter namelists for use by cam
    ${COPY} ${CENTRALDIR}/input.nml input.nml
@@ -142,7 +147,7 @@ while($state_copy <= $num_states)
        ${COPY} ${clm_init}0.nc clminput.nc
    endif
    
-   ln -s ${CENTRALDIR}/topog_file.nc .
+   ${LINK} ${CENTRALDIR}/topog_file.nc .
 
    # create 'times' file for CAM from DART times in assim_model_state_ic#
    # This info is passed to CAM through the creation of its namelist
@@ -167,12 +172,13 @@ while($state_copy <= $num_states)
    
    # advance cam 
    # 'machine_file' is NOT USED by run-pc.csh in single-threaded executions 
-   if ($#argv == 4) then
-      set machine_file = $4
-      ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $machine_file >>& cam_out_temp
-   else
+   #if ($#argv == 4) then
+   #   set machine_file = $4
+   #   ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $machine_file >>& cam_out_temp
+   #else
+      echo executing: ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
       ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >>& cam_out_temp
-   endif
+   #endif
    
    echo "after run-pc.csh "`ncdump -h caminput.nc | grep -i phis`
    
@@ -202,11 +208,14 @@ while($state_copy <= $num_states)
       ${COPY} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
       mkdir $DEADDIR
       ${MOVE} * $DEADDIR
-      exit $element
+      exit -${element}
    endif
 
-   # advance to the next one to do
+   # if this process needs to advance more than one model, read the next set of
+   # filenames and ensemble number at the top of this loop.
+
    @ state_copy++
+   @ ensemble_number_line = $ensemble_number_line + 3
    @ input_file_line = $input_file_line + 3
    @ output_file_line = $output_file_line + 3
 end
@@ -217,7 +226,7 @@ cd ${CENTRALDIR}
 # it was more reliable if you just left the directory empty. It's bogus, but true.
 ${REMOVE} $temp_dir/*
 
-# Remove the filter_control file to signal completeion
+# Remove the filter_control file to signal completion
 # Is there a need for any sleeps to avoid trouble on completing moves here?
 \rm -rf $control_file
 
