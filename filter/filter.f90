@@ -22,7 +22,8 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance
-use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>)
+use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
+                                 assignment(=), print_time
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
                                  initialize_utilities, logfileunit, timestamp, do_output,    &
                                  find_namelist_in_file, check_namelist_read
@@ -36,7 +37,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  all_vars_to_all_copies, all_copies_to_all_vars,             &
                                  read_ensemble_restart, write_ensemble_restart,              &
                                  compute_copy_mean, compute_copy_mean_sd,                    &
-                                 compute_copy_mean_var
+                                 compute_copy_mean_var, duplicate_ens
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -81,6 +82,8 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: outlier_threshold = -1.0_r8
+integer  :: num_smoother_lags = 0
+logical  :: smoother_start_from_restart = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -117,7 +120,8 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       init_time_seconds, output_state_ens_mean, output_state_ens_spread, &
                       output_obs_ens_mean, output_obs_ens_spread, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, &
-                      outlier_threshold, inf_flavor, inf_start_from_restart, &
+                      outlier_threshold, num_smoother_lags, smoother_start_from_restart, &
+                      inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
@@ -136,8 +140,10 @@ subroutine filter_main()
 type(ensemble_type)         :: ens_handle, obs_ens_handle, forward_op_ens_handle
 type(obs_sequence_type)     :: seq
 type(netcdf_file_type)      :: PriorStateUnit, PosteriorStateUnit
+type(ensemble_type),       allocatable :: lag_handle(:)
+type(netcdf_file_type),    allocatable :: SmootherStateUnit(:)
 type(time_type)             :: time1
-type(adaptive_inflate_type) :: prior_inflate, post_inflate
+type(adaptive_inflate_type)            :: prior_inflate, post_inflate, lag_inflate
 
 integer,    allocatable :: keys(:)
 integer                 :: i, iunit, io, time_step_number, num_obs_in_set
@@ -146,15 +152,19 @@ integer                 :: in_obs_copy, obs_val_index
 integer                 :: output_state_mean_index, output_state_spread_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
 integer                 :: prior_obs_spread_index, posterior_obs_spread_index
+integer                 :: smoother_head = 1, num_current_lags = 0
 ! Global indices into ensemble storage
 integer                 :: ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY
 integer                 :: POST_INF_COPY, POST_INF_SD_COPY
 integer                 :: OBS_VAL_COPY, OBS_ERR_VAR_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer                 :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer                 :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END, TOTAL_OBS_COPIES
-integer                 :: input_qc_index, DART_qc_index
+integer                 :: input_qc_index, DART_qc_index, smoother_index
+integer                 :: smoother_state_mean_index, smoother_state_spread_index
 
 real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1)
+
+logical                 :: ds
 
 call filter_initialize_modules_used()
 
@@ -173,6 +183,9 @@ if(ens_size < 2) then
    write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
    call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
 endif
+
+! Set the logical for doing smoothing
+ds = num_smoother_lags > 0
 
 ! Make sure inflation options are legal
 do i = 1, 2
@@ -219,11 +232,18 @@ if(task_count() > model_size) call error_handler(E_ERR,'filter', &
 ! PAR Would like to get rid of model_size storage somehow
 allocate(temp_ens(model_size))
 
+! Allocate space for smoother ensemble and output file descriptor
+if(ds) allocate(lag_handle(num_smoother_lags), SmootherStateUnit(num_smoother_lags))
+
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(time1)
 
 ! Read in restart files and initialize the ensemble storage
 call filter_read_restart(ens_handle, time1, model_size)
+
+! Read in or initialize smoother restarts as needed
+if(ds) call smoother_read_restart(ens_handle, lag_handle, num_smoother_lags, &
+   model_size, time1, smoother_start_from_restart, num_current_lags)
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_start_from_restart(1), &
@@ -234,12 +254,23 @@ call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_start_from_restart(2
    inf_output_restart(2), inf_deterministic(2), inf_in_file_name(2), inf_out_file_name(2), &
    inf_diag_file_name(2), inf_initial(2), inf_sd_initial(2), inf_lower_bound(2), &
    inf_upper_bound(2), inf_sd_lower_bound(2), ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+! No inflation is done for the smoothers for now, so set inflation to null
+! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
+if(ds) call adaptive_inflate_init(lag_inflate, 0, .false., &
+   .false., .true., 'no_lag_inflate', 'no_lag_inflate', &
+   'no_lag_inflate', 1.0_r8, 0.0_r8, 1.0_r8, &
+!PAR WATCH OUT, DOES POST_INF_COPY AND POST_INF_SD_COPY GET USED???
+   1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 
 ! Initialize the output sequences and state files and set their meta data
-if(my_task_id() == 0) call filter_generate_copy_meta_data(seq, prior_inflate, &
+if(my_task_id() == 0) then
+   call filter_generate_copy_meta_data(seq, prior_inflate, &
    PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index)
+   if(ds) call smoother_generate_copy_meta_data(num_smoother_lags, SmootherStateUnit, &
+      smoother_state_mean_index, smoother_state_spread_index)
+endif
 
 ! Start out with no previously used observations
 last_key_used = -99
@@ -252,9 +283,16 @@ AdvanceTime : do
    if(my_task_id() == 0) write(*, *) 'starting advance time loop;'
    time_step_number = time_step_number + 1
 
+   ! Advance the lagged distribution
+   if(ds) call advance_smoother(lag_handle, smoother_head, num_smoother_lags, ens_handle)
+   ! Get the smoother fields to have the appropriate time
+   if(ds) call set_smoother_time(lag_handle, num_smoother_lags, num_current_lags, &
+      smoother_head, ens_handle)
+
    ! Get the model to a good time to use a next set of observations
    call move_ahead(ens_handle, ens_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
+
 
    ! Only processes with an ensemble copy know to exit; 
    ! For now, let process 0 broadcast it's value of key_bounds
@@ -341,23 +379,57 @@ AdvanceTime : do
       OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
       OBS_PRIOR_VAR_END, inflate_only = .false.)
 
+   ! PAR: PUT ALL THE SMOOTHER STUFF INTO A SUBROUTINE CALL???
+   ! Also do impact of obs on each smoother lag state
+   do i = 1, num_smoother_lags
+      call all_vars_to_all_copies(lag_handle(i))
+      ! NEED A LAG INFLATE TYPE THAT DOES NO INFLATION FOR NOW
+      call filter_assim(lag_handle(i), obs_ens_handle, seq, keys, ens_size, num_groups, &
+         obs_val_index, lag_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
+         PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+         OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
+         OBS_PRIOR_VAR_END, inflate_only = .false.)
+   end do
+
    ! Already transformed, so compute mean and spread for state diag as needed
    if(output_state_ens_mean .or. output_state_ens_spread) then
       if(output_state_ens_spread) then
          call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+         do i = 1, num_smoother_lags
+            call compute_copy_mean_sd(lag_handle(i), 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+         end do
       else
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+         call compute_copy_mean(ens_handle, 1, ens_size, ENS_MEAN_COPY)
+         do i = 1, num_smoother_lags
+            call compute_copy_mean(lag_handle(i), 1, ens_size, ENS_MEAN_COPY)
+         end do
       endif
    end if
 
    ! Now back to var complete for diagnostics
    call all_copies_to_all_vars(ens_handle)
+   do i = 1, num_smoother_lags
+      call all_copies_to_all_vars(lag_handle(i))
+   end do
 
    ! Do posterior state space diagnostic output as required
-   if(time_step_number / output_interval * output_interval == time_step_number) &
+   if(time_step_number / output_interval * output_interval == time_step_number) then
       call filter_state_space_diagnostics(PosteriorStateUnit, ens_handle, &
          output_state_mean_index, output_state_spread_index, ENS_MEAN_COPY, ENS_SD_COPY, &
          post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
+      ! Cyclic storage for lags with most recent pointed to by smoother_head
+      do i = 1, num_current_lags
+         smoother_index = smoother_head + i - 1
+         if(smoother_index > num_smoother_lags) smoother_index = smoother_index - num_smoother_lags 
+         call filter_state_space_diagnostics(SmootherStateUnit(i), &
+            lag_handle(smoother_index), smoother_state_mean_index, smoother_state_spread_index, &
+            ENS_MEAN_COPY, ENS_SD_COPY, lag_inflate, POST_INF_COPY, POST_INF_SD_COPY)
+         write(77, *) 'state space ', smoother_index
+      end do
+   endif
+
+   ! Increment the number of current lags if smoother set not yet fully spun up
+   if(num_current_lags < num_smoother_lags) num_current_lags = num_current_lags + 1
   
    ! Compute the ensemble of posterior observations, load up the obs_err_var and obs_values
    ! ens_size is the number of regular ensemble members, not the number of copies
@@ -442,6 +514,7 @@ call adaptive_inflate_end(post_inflate, ens_handle, POST_INF_COPY, POST_INF_SD_C
 ! Output a restart file if requested
 if(output_restart) &
    call write_ensemble_restart(ens_handle, restart_out_file_name, 1, ens_size)
+   if(ds) call write_smoother_restart(lag_handle, num_smoother_lags, smoother_head, 1, ens_size)
 call end_ensemble_manager(ens_handle)
 
 if(my_task_id() == 0) then 
@@ -458,6 +531,8 @@ if(my_task_id() == 0) call timestamp(source,revision,revdate,'end') ! That close
 call destroy_obs(observation)
 
 deallocate(temp_ens)
+if(ds) deallocate(lag_handle, SmootherStateUnit)
+
 
 end subroutine filter_main
 
@@ -1113,5 +1188,198 @@ endif
 end function input_qc_ok
 
 !-------------------------------------------------------------------------
+
+subroutine smoother_read_restart(ens_handle, lag_handle, num_smoother_lags, model_size, time1, &
+   start_from_restart, num_current_lags)
+
+type(ensemble_type), intent(inout) :: ens_handle, lag_handle(num_smoother_lags)
+integer,             intent(in)    :: num_smoother_lags, model_size
+type(time_type),     intent(inout) :: time1
+logical,             intent(in)    :: start_from_restart
+integer,             intent(out)   :: num_current_lags
+
+! Can either get restart by copying ensemble_ic into every lag or by reading from
+! restart files. If reading from restart, may want to override the times as indicated
+! by the filter namelist.
+integer             :: i
+character(len = 13) :: file_name
+
+! Initialize the storage space for the lag ensembles
+do i = 1, num_smoother_lags
+   ! Only need 2 extra copies but have 6 for now to comply with filter's needs
+   call init_ensemble_manager(lag_handle(i), ens_size + 6, model_size, 1)
+end do
+
+! If starting from restart, read these in
+if(start_from_restart) then
+   do i = 1, num_smoother_lags
+      write(file_name, '("lag_", i5.5, "_ics")') i
+      if(init_time_days >= 0) then
+         call read_ensemble_restart(lag_handle(i), 1, ens_size, &
+            start_from_restart, file_name, time1)
+      else
+         call read_ensemble_restart(lag_handle(i), 1, ens_size, &
+            start_from_restart, file_name)
+      endif
+   end do
+   ! All lags in restart are assumed to be current
+   num_current_lags = num_smoother_lags
+else
+   ! If not starting from restart, just copy the filter ics to all lags
+   do i = 1, num_smoother_lags
+      call duplicate_ens(ens_handle, lag_handle(i), .true.)
+   end do
+   ! None of these are current to start with
+   num_current_lags = 0
+endif
+
+end subroutine smoother_read_restart
+
+!-------------------------------------------------------------------------
+
+subroutine advance_smoother(lag_handle, smoother_head, num_smoother_lags, ens_handle)
+
+integer,             intent(inout) :: smoother_head
+integer,             intent(in)    :: num_smoother_lags
+type(ensemble_type), intent(inout) :: lag_handle(num_smoother_lags), ens_handle
+
+integer         :: smoother_tail
+
+! Copy the newest state from the ensemble over the oldest state
+! Storage is cyclic
+smoother_tail = smoother_head - 1
+if(smoother_tail == 0) smoother_tail = num_smoother_lags
+call duplicate_ens(ens_handle, lag_handle(smoother_tail), .true.)
+
+! Now make the head point to the latest
+smoother_head = smoother_tail
+ 
+end subroutine advance_smoother
+
+!-------------------------------------------------------------------------
+
+subroutine set_smoother_time(lag_handle, num_smoother_lags, num_current_lags, &
+   smoother_head, ens_handle)
+
+integer,             intent(in)    :: num_smoother_lags, smoother_head, num_current_lags
+type(ensemble_type), intent(inout) :: lag_handle(num_smoother_lags), ens_handle
+
+integer         :: j
+
+! Update time of lag1 to be the updated filter time;
+! Rest of times propagated back in the advance_smoother step
+if(num_current_lags > 0) then
+   do j = 1, ens_handle%my_num_copies
+      lag_handle(smoother_head)%time(j) = ens_handle%time(j)
+   end do
+endif
+
+end subroutine set_smoother_time 
+
+!-------------------------------------------------------------------------
+
+subroutine smoother_generate_copy_meta_data(num_lags, SmootherStateUnit, &
+   output_state_mean_index, output_state_spread_index)
+
+integer,                     intent(in)    :: num_lags
+type(netcdf_file_type),      intent(inout) :: SmootherStateUnit(num_lags)
+integer,                     intent(out)   :: output_state_mean_index, output_state_spread_index
+
+! Figures out the strings describing the output copies for the smoother state output files.
+! These are the prior and posterior state output files. 
+
+! The 2 is for mean and spread
+character(len = 129) :: state_meta(num_output_state_members + 4)
+character(len = 14)  :: file_name
+character(len = 15)  :: meta_data_string
+integer              :: i, ensemble_offset, num_state_copies
+
+! Ensemble mean goes first 
+num_state_copies = num_output_state_members
+if(output_state_ens_mean) then
+   num_state_copies = num_state_copies + 1
+   output_state_mean_index = 1
+   state_meta(output_state_mean_index) = 'ensemble mean'
+endif
+
+! Ensemble spread goes second
+if(output_state_ens_spread) then
+   num_state_copies = num_state_copies + 1
+   if(output_state_ens_mean) then
+      output_state_spread_index = 2
+   else
+      output_state_spread_index = 1
+   endif
+   state_meta(output_state_spread_index) = 'ensemble spread'
+endif
+
+! Check for too many output ensemble members
+if(num_output_state_members > 10000) then
+   write(msgstring, *)'output metadata in smoother needs state ensemble size < 10000, not ', &
+                      num_output_state_members
+   call error_handler(E_ERR,'smoother_generate_copy_meta_data',msgstring,source,revision,revdate)
+endif
+
+! Compute starting point for ensemble member output
+ensemble_offset = 0
+if(output_state_ens_mean)   ensemble_offset = ensemble_offset + 1
+if(output_state_ens_spread) ensemble_offset = ensemble_offset + 1
+
+! Set up the metadata for the output state diagnostic files
+do i = 1, num_output_state_members
+   write(state_meta(i + ensemble_offset), '(a15, 1x, i6)') 'ensemble member', i
+end do
+
+! Netcdf output diagnostics for inflation; inefficient for single spatial
+!!! nsc - temporary fix.  for now always allow space in the netcdf file for
+!!! a single copy of the inflation values.  this should be changed to handle
+!!! prior, posterior, both, or neither inflation.  but it must match what is
+!!! written out in filter_state_space_diagnostics() below.
+!!!if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+   num_state_copies = num_state_copies + 2
+   state_meta(num_state_copies -1) = 'inflation mean'
+   state_meta(num_state_copies) = 'inflation sd'
+!!!endif
+
+! Set up diagnostic output for model state, if output is desired
+if(  output_state_ens_spread .or. output_state_ens_mean .or. &
+    ( num_output_state_members > 0 )) then
+   do i = 1, num_lags
+      ! Generate file name and metadata for lag i output
+      write(file_name, '("Lag_", i5.5, "_Diag")') i
+      write(meta_data_string, '("lag ", i5.5, " state")') i
+      SmootherStateUnit(i) = init_diag_output(file_name, meta_data_string, &
+         num_state_copies, state_meta)
+   end do
+endif
+
+end subroutine smoother_generate_copy_meta_data
+
+!-----------------------------------------------------------
+
+subroutine write_smoother_restart(lag_handle, num_smoother_lags, head, start_copy, end_copy)
+
+integer,             intent(in)    :: num_smoother_lags, head, start_copy, end_copy
+type(ensemble_type), intent(inout) :: lag_handle(num_smoother_lags)
+
+! Write out each smoother lag to a restart file as requested
+! Single versus multiple file status is selected by ensemble manager
+! Names for file are set here
+
+character(len = 17) :: file_name
+integer             :: i, index
+
+! Write out restart to each lag in turn
+! Storage is cyclic with lag 1 pointed to by head
+do i = 1, num_smoother_lags
+   index = head + i - 1
+   if(index > num_smoother_lags) index = index - num_smoother_lags
+   write(file_name, '("lag_", i5.5, "_restart")') index
+   call write_ensemble_restart(lag_handle(index), file_name, start_copy, end_copy)
+end do
+
+end subroutine write_smoother_restart
+
+!-----------------------------------------------------------
 
 end program filter
