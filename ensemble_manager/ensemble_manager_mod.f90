@@ -151,13 +151,14 @@ end subroutine init_ensemble_manager
 !-------------------------------------------------------------------------------
 
 subroutine read_ensemble_restart(ens_handle, start_copy, end_copy, &
-   start_from_restart, file_name, init_time)
+   start_from_restart, file_name, init_time, force_single_file)
 
 type(ensemble_type),  intent(inout)           :: ens_handle
 integer,              intent(in)              :: start_copy, end_copy
 logical,              intent(in)              :: start_from_restart
 character(len = *),   intent(in)              :: file_name
 type(time_type),      intent(in),    optional :: init_time
+logical,              intent(in),    optional :: force_single_file
 
 ! The ensemble being read from restart is stored in copies start_copy:end_copy
 ! contiguously (by fiat). So if start_copy is 6, the first ensemble restart
@@ -182,7 +183,8 @@ endif
 
 !-------- Block for single restart file or single member  being perturbed -----
 
-if(single_restart_file_in .or. .not. start_from_restart) then 
+if(single_restart_file_in .or. .not. start_from_restart .or. &
+   (present(force_single_file) .and. force_single_file)) then 
    ! Single restart file is read only by master_pe and then distributed
    if(my_pe == 0) iunit = open_restart_read(file_name)
 
@@ -253,11 +255,13 @@ end subroutine read_ensemble_restart
 
 !-----------------------------------------------------------------
 
-subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy)
+subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy, &
+   force_single_file)
 
 type(ensemble_type),  intent(inout) :: ens_handle
 character(len = *),   intent(in)    :: file_name
 integer,              intent(in)    :: start_copy, end_copy
+logical, optional,    intent(in)    :: force_single_file
 
 ! Large temporary storage to be avoided if possible
 real(r8)                            :: ens(ens_handle%num_vars)
@@ -269,7 +273,9 @@ character(len = LEN(FILE_NAME) + 4) :: extension
 
 ! For single file, need to send restarts to pe0 and it writes them out.
 !-------------- Block for single_restart file -------------
-if(single_restart_file_out) then
+! Need to force single restart file for inflation files
+if(single_restart_file_out .or. present(force_single_file) .and. &
+   force_single_file) then
 
    ! Single restart file is written only by the master_pe
    if(my_pe == 0) then
