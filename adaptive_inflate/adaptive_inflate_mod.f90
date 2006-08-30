@@ -145,7 +145,7 @@ if(inf_flavor >= 2) then
    ! Read in initial values from file OR get from subroutine arguments
    if(start_from_restart) then
       call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-         start_from_restart, in_file_name, init_time)
+         start_from_restart, in_file_name, init_time,  force_single_file = .true.)
    else
       ! Get initial values from higher level; requires pe's to have all copies of some vars
       call all_vars_to_all_copies(ens_handle)
@@ -197,7 +197,7 @@ if(inflate_handle%output_restart) then
 
       ! Write the inflate and inflate_sd as two copies for a restart
       call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
-         ss_inflate_index, ss_inflate_sd_index)
+         ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
 
    ! Flavor 1 is observation space, write its restart directly
    else if(do_obs_inflate(inflate_handle)) then
