@@ -839,35 +839,39 @@ SENDING_PE_LOOP: do sending_pe = 0, num_pes - 1
       SEND_TO_EACH: do recv_pe = 0, num_pes - 1
          call get_var_list(num_vars, recv_pe, var_list, num_vars_to_send)
 
-         ! Loop to send these vars for each copy stored on my_pe
-         ALL_MY_COPIES: do k = 1, my_num_copies
-
-            ! Fill up the transfer array
-            do sv = 1, num_vars_to_send
-               transfer_temp(sv) = ens_handle%vars(var_list(sv), k)
-            end do
-
-            ! If sending_pe is receiving_pe, just copy
-            if(sending_pe == recv_pe) then
-               global_ens_index = ens_handle%my_copies(k)
-               ens_handle%copies(global_ens_index, :) = transfer_temp(1:num_vars_to_send)
-            else
-               ! Otherwise, ship this off
-               call send_to(recv_pe, transfer_temp(1:num_vars_to_send)) 
-            endif
-         end do ALL_MY_COPIES
+         if (num_vars_to_send > 0) then
+            ! Loop to send these vars for each copy stored on my_pe
+            ALL_MY_COPIES: do k = 1, my_num_copies
+   
+               ! Fill up the transfer array
+               do sv = 1, num_vars_to_send
+                  transfer_temp(sv) = ens_handle%vars(var_list(sv), k)
+               end do
+   
+               ! If sending_pe is receiving_pe, just copy
+               if(sending_pe == recv_pe) then
+                  global_ens_index = ens_handle%my_copies(k)
+                  ens_handle%copies(global_ens_index, :) = transfer_temp(1:num_vars_to_send)
+               else
+                  ! Otherwise, ship this off
+                  call send_to(recv_pe, transfer_temp(1:num_vars_to_send)) 
+               endif
+            end do ALL_MY_COPIES
+         endif
       end do SEND_TO_EACH
    else
       ! I'm not the sending PE, figure out what copies of my vars I'll receive from sending_pe
       call get_copy_list(num_copies, sending_pe, copy_list, num_copies_to_receive)
        
       do copy = 1, num_copies_to_receive
-         ! Have to  use temp because %copies section is not contiguous storage
-         call receive_from(sending_pe, transfer_temp(1:my_num_vars))
-         ! Figure out which global ensemble member this is
-         global_ens_index = copy_list(copy)
-         ! Store this chunk in my local storage
-         ens_handle%copies(global_ens_index, :) = transfer_temp(1:my_num_vars)
+         if (my_num_vars > 0) then
+            ! Have to  use temp because %copies section is not contiguous storage
+            call receive_from(sending_pe, transfer_temp(1:my_num_vars))
+            ! Figure out which global ensemble member this is
+            global_ens_index = copy_list(copy)
+            ! Store this chunk in my local storage
+            ens_handle%copies(global_ens_index, :) = transfer_temp(1:my_num_vars)
+         endif
       end do
       
    endif
@@ -933,13 +937,15 @@ RECEIVING_PE_LOOP: do recv_pe = 0, num_pes - 1
                   ens_handle%vars(var_list(sv), k) = ens_handle%copies(global_ens_index, sv)
                end do
             else
-               ! Otherwise, receive this part from the sending pe
-               call receive_from(sending_pe, transfer_temp(1:num_vars_to_receive)) 
-
-               ! Copy the transfer array to my local storage
-               do sv = 1, num_vars_to_receive
-                  ens_handle%vars(var_list(sv), k) = transfer_temp(sv)
-               end do
+               if (num_vars_to_receive > 0) then
+                  ! Otherwise, receive this part from the sending pe
+                  call receive_from(sending_pe, transfer_temp(1:num_vars_to_receive)) 
+   
+                  ! Copy the transfer array to my local storage
+                  do sv = 1, num_vars_to_receive
+                     ens_handle%vars(var_list(sv), k) = transfer_temp(sv)
+                  end do
+               endif
             endif
          end do ALL_MY_COPIES
       end do RECEIVE_FROM_EACH
@@ -948,9 +954,11 @@ RECEIVING_PE_LOOP: do recv_pe = 0, num_pes - 1
       call get_copy_list(num_copies, recv_pe, copy_list, num_copies_to_send)
        
       do copy = 1, num_copies_to_send
-         transfer_temp(1:my_num_vars) = ens_handle%copies(copy_list(copy), :)
-         ! Have to  use temp because %copies section is not contiguous storage
-         call send_to(recv_pe, transfer_temp(1:my_num_vars))
+         if (my_num_vars > 0) then
+            transfer_temp(1:my_num_vars) = ens_handle%copies(copy_list(copy), :)
+            ! Have to  use temp because %copies section is not contiguous storage
+            call send_to(recv_pe, transfer_temp(1:my_num_vars))
+         endif
       end do
       
    endif
