@@ -22,8 +22,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance
-use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
-                                 assignment(=), print_time
+use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>)
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
                                  initialize_utilities, logfileunit, timestamp, do_output,    &
                                  find_namelist_in_file, check_namelist_read
