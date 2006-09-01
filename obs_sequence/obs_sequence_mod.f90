@@ -733,6 +733,8 @@ else
    obs%prev_time = seq%last_time
    seq%obs(seq%last_time)%next_time = obs%key
    seq%last_time = obs%key
+! Appended is at end, put a -1 for the next
+   obs%next_time = -1
 
 ! Put this obs into the sequence's last slot
    seq%obs(seq%num_obs) = obs
@@ -765,21 +767,28 @@ integer :: prev, next
 prev = obs%prev_time
 next = obs%next_time
 
-! Previous should now point to next; if it deleted was first update sequence first_time
+! If only one obs, seq first_time and last_time to -1
+if(prev == -1 .and. next == -1) then
+  seq%first_time = -1
+  seq%last_time  = -1
+  return
+endif
+
+! Previous should now point to next; if deleted was first update sequence first_time
 if(prev /= -1) then
    seq%obs(prev)%next_time = next
 else
+   seq%obs(next)%prev_time = -1
    seq%first_time = next
 endif
 
-! Next should point to previous
-seq%obs(next)%prev_time = prev
-
-! If deleted obs was first, update first pointer in sequence
-if(prev == -1) seq%first_time = next
-
-! If deleted was last, update last pointer in sequence
-if(next == -1) seq%last_time = prev
+! Next should point to previous; if deleted is last, set previous next_time to -1
+if(next /= -1) then
+   seq%obs(next)%prev_time = prev
+else
+   seq%obs(prev)%next_time = -1
+   seq%last_time = prev
+endif
 
 end subroutine delete_obs_from_seq
 
