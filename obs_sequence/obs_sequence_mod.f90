@@ -826,7 +826,7 @@ type(obs_sequence_type), intent(in) :: seq
 type(obs_type),         intent(out) :: obs
 logical                             :: get_first_obs
 
-if(seq%num_obs == 0) then
+if(seq%num_obs == 0 .or. seq%first_time <= 0) then
    get_first_obs = .false.
 else
    get_first_obs = .true.
@@ -843,7 +843,7 @@ type(obs_sequence_type), intent(in) :: seq
 type(obs_type), intent(out) :: obs
 logical :: get_last_obs
 
-if(seq%num_obs == 0) then
+if(seq%num_obs == 0 .or. seq%last_time <=0) then
    get_last_obs = .false.
    return
 else
