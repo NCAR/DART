@@ -92,93 +92,84 @@ obs_sequence_mod
 obs_def_mod
 obs_model_mod
 assim_model_mod
+mpi_utilities_mod
 random_seq_mod
 ensemble_manager_mod
 </PRE>
 
 
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+ <!--============== DESCRIPTION OF A NAMELIST ========================-->
+ <A NAME="Namelist"></A>
+ <BR><HR><BR>
+ <P>We adhere to the F90 standard of starting a namelist with an ampersand
+ '&' and terminating with a slash '/'.
+ <div class=namelist><pre>
+ <em class=call>namelist / perfect_model_obs_nml / </em>
+ start_from_restart,output_restart,async,init_time_days,init_time_seconds,output
+ _interval,restart_in_file_name,restart_out_file_name,obs_seq_in_file_name,obs_s
+ eq_out_file_name,adv_ens_command
 
-<A NAME="Namelist"></A>
-<BR><HR><BR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
-<div class=namelist><pre>
-<em class=call>namelist / perfect_model_obs_nml / </em> &#38;
-      async, adv_ens_command, obs_seq_in_file_name, &#38;
-      obs_seq_out_file_name, start_from_restart, output_restart, &#38;
-      restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &#38;
-      output_interval
-</pre></div>
+ </pre></div>
+ <H3 class=indent1>Discussion</H3>
+ <P>
+Controls execution of synthetic observation generation
+ </em>
+ </P>
+ <P>This namelist is read in a file called <em class=file>input.nml</em>
+ </P>
+ <TABLE border=0 cellpadding=3 width=100%>
+ <TR><TH align=left>Contents    </TH>
+     <TH align=left>Type        </TH>
+     <TH align=left>Description </TH></TR>
+ <TR><!--contents--><TD valign=top>start_from_restart</TD>
+     <!--  type  --><TD>logical</TD>
+ <!--descript--><TD>True means start from a restart file, false means ask model
+ for an initial condition. Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>output_restart</TD>
+     <!--  type  --><TD>logical</TD>
+ <!--descript--><TD>True means output a restart file. Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>async</TD>
+     <!--  type  --><TD>integer</TD>
+ <!--descript--><TD>Controls method for advancing model: 0 is subroutine call, 2
+  is shell command. Default: 0</TD></TR>
+ <TR><!--contents--><TD valign=top>init_time_days</TD>
+     <!--  type  --><TD>integer</TD>
+ <!--descript--><TD>If negative, don't use. If non-negative, override the initia
+ l days read from restart. Default: 0</TD></TR>
+ <TR><!--contents--><TD valign=top>init_time_seconds</TD>
+     <!--  type  --><TD>integer</TD>
+ <!--descript--><TD>If negative don't use. If non-negative, override the initial
+  seconds read from restart. Default: 0</TD></TR>
+ <TR><!--contents--><TD valign=top>output_interval</TD>
+     <!--  type  --><TD>integer</TD>
+ <!--descript--><TD>Output state and observation diagnostics every nth assimilat
+ ion time, n is output interval. Default: 1</TD></TR>
+ <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
+     <!--  type  --><TD>perfect_ics</TD>
+ <!--descript--><TD>File containing state restart vector. Default: perfect_ics</
+ TD></TR>
+ <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
+     <!--  type  --><TD>perfect_restart</TD>
+ <!--descript--><TD>File to which to write state restart state vectors. Default:
+  perfect_restart</TD></TR>
+ <TR><!--contents--><TD valign=top>obs_seq_in_file_name</TD>
+     <!--  type  --><TD>obs_seq.in</TD>
+ <!--descript--><TD>File name from which to read an observation sequence. Defaul
+ t: obs_seq.in</TD></TR>
+ <TR><!--contents--><TD valign=top>obs_seq_out_file_name</TD>
+     <!--  type  --><TD>obs_seq.out</TD>
+ <!--descript--><TD>File name to which to write output observation sequence. Def
+ ault: obs_seq.out</TD></TR>
+<!--descript--><TD>File name to which to write output observation sequence. Def
+ ault: obs_seq.out</TD></TR>
+ <TR><!--contents--><TD valign=top>adv_ens_command</TD>
+     <!--  type  --><TD>.</TD>
+ <!--descript--><TD>Command sent to shell if async is 2. Default: .</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
 
-<H3 class=indent1>Discussion</H3>
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>async                        </TD>
-    <!--  type  --><TD valign=top>integer <em class="unit"></em></TD>
-    <!--descript--><TD>Controls whether models are advanced via a subroutine call or
-                       by writing initial condition files for ensemble members to 
-                       disk and having shellscripts advance the model. <BR>
-                       0 = advance by subroutine.  Default. <BR>
-                       1 = shell advance using shell script piped to filter <BR>
-                       2 = advance by F90 calls to shell to advance model, command to 
-                       be executed is found in adv_ens_command <BR>
-                       3 = advance by using an already running server process from
-                       filter_server.csh.
-                       </TD></TR>
-<TR><!--contents--><TD valign=top>adv_ens_command              </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>Character string containing command to be executed in order to
-                       advance the model. Default is './advance_ens.csh'.</TD></TR>
-<TR><!--contents--><TD valign=top>obs_sequence_in_file_name    </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name that contains an observation sequence definition
-                       file for input. Default is 'obs_seq.in'.</TD></TR>
-<TR><!--contents--><TD valign=top>obs_sequence_out_file_name   </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name for output observation sequence 
-                       file. Default is 'obs_seq.out'.         </TD></TR>
-<TR><!--contents--><TD valign=top>start_from_restart           </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Should initial ensemble states come from (a) restart file(s). 
-                       Default is .false.                      </TD></TR>
-<TR><!--contents--><TD valign=top>output_restart               </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Should (a) restart file(s) be written out for all ensemble 
-                       members? Default is .false.             </TD></TR>
-<TR><!--contents--><TD valign=top>restart_in_file_name         </TD>
-    <!--  type  --><TD valign=top>character(len=129)           </TD>
-    <!--descript--><TD>File name (root) for a file(s) containing restart state for all 
-                       ensemble members.  Multiple files have extensions ".####", 
-                       where #### is a 4 digit number representing the ensemble member. 
-                       Default is 'filter_ics'.                </TD></TR>
-<TR><!--contents--><TD valign=top>restart_out_file_name        </TD>
-    <!--  type  --><TD valign=top>character(len = 129)         </TD>
-    <!--descript--><TD>File name (root) for output restart file(s). 
-                       See restart_in_file_name for multiple file information.
-                       Default is 'filter_restart'.            </TD></TR>
-<TR><!--contents--><TD valign=top>init_time_days               </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Initial time of model (time is in days and seconds; see
-                       time_manager). If init_time_days and init_time_seconds are 
-                       less than 0, the initial time comes from the time in 
-                       the restart file. Default value is 0.   </TD></TR> 
-<TR><!--contents--><TD valign=top>init_time_seconds            </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Initial time of model in seconds. Default is 0.  </TD></TR>
-<TR><!--contents--><TD valign=top>output_interval              </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>The frequency with which output diagnostics are written.
-                       Default value is 1. </TD></TR>
-</TABLE>
-<BR>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -215,11 +206,9 @@ ensemble_manager_mod
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>perfect_model_obs</TD>
-    <!-- message --><TD VALIGN=top>Input obs_sequence file should not have any copies
-                                    of data associated with it</TD>
-    <!-- comment --><TD VALIGN=top>Perfect_model_obs just requires an observation 
-                                   definition, not any values.</TD>
+<TR><!-- routine --><TD VALIGN=top>perfect_main</TD>
+    <!-- message --><TD VALIGN=top>Only use one mpi process here: ### were requested</TD>
+    <!-- comment --><TD VALIGN=top> Don't use mpi for this.</TD>
 </TR>
 
 </TABLE>
