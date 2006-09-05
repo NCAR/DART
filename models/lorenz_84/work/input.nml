@@ -60,7 +60,7 @@
    perturbation_amplitude  = 0.2 /
 
 &assim_tools_nml
-   filter_kind = 6,
+   filter_kind = 1,
    cutoff = 10000000.0,
    sort_obs_inc = .true.,
    spread_restoration = .false.,
