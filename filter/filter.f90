@@ -165,7 +165,7 @@ read(iunit, nml = filter_nml, iostat = io)
 call check_namelist_read(iunit, io, "filter_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'filter','filter_nml values are',' ',' ',' ')
+call error_handler(E_MSG,'filter_main','filter_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=filter_nml)
 if (do_output()) write(     *     , nml=filter_nml)
 
@@ -187,7 +187,7 @@ do i = 1, 2
 end do
 
 ! Observation space inflation for posterior not currently supported
-if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter', &
+if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
    'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
 
 ! Setup the indices into the ensemble storage
@@ -217,7 +217,7 @@ call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, 
 model_size = get_model_size()
 
 ! Don't currently support number of processes > model_size
-if(task_count() > model_size) call error_handler(E_ERR,'filter', &
+if(task_count() > model_size) call error_handler(E_ERR,'filter_main', &
    'Number of processes > model size' ,source,revision,revdate)
 
 ! Set a time type for initial time if namelist inputs are not negative
@@ -779,7 +779,7 @@ if(my_task_id() == 0) then
    call get_time(time, secs, days)
    write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
 endif
-call error_handler(E_DBG,'filter',msgstring,source,revision,revdate)
+call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
 
 end subroutine filter_read_restart
 
