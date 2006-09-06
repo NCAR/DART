@@ -83,7 +83,7 @@
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE'   /
 
 &assim_model_nml
-   write_binary_restart_files = .true. /
+   write_binary_restart_files = .false. /
 
 &model_nml
    sigma  = 10.0, 
