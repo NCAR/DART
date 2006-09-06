@@ -1,85 +1,89 @@
 &perfect_model_obs_nml
-   async = 0,
-   adv_ens_command = "./advance_ens.csh",
-   obs_seq_in_file_name = "obs_seq.in",
+   start_from_restart    = .true.,
+   output_restart        = .true.,
+   async                 = 0,
+   init_time_days        = 0,
+   init_time_seconds     = 0,
+   output_interval       = 1,
+   restart_in_file_name  = "perfect_ics",
+   restart_out_file_name = "perfect_restart"
+   obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   start_from_restart = .true.,
-   output_restart = .true.,
-   restart_in_file_name = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_interval = 1  /
+   adv_ens_command       = "./advance_model.csh" /
 
 &filter_nml
-   async = 0,
-   adv_ens_command = "./advance_model.csh",
-   ens_size = 20, 
-   start_from_restart = .true.,
-   output_restart = .true.,
-   obs_sequence_in_name = "obs_seq.out",
-   obs_sequence_out_name = "obs_seq.final",
-   restart_in_file_name = "filter_ics",
-   restart_out_file_name = "filter_restart", 
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_state_ens_mean = .true.,
-   output_state_ens_spread = .true.,
-   output_obs_ens_mean = .true.,
-   output_obs_ens_spread = .true., 
+   async                    = 0,
+   adv_ens_command          = "./advance_model.csh",
+   ens_size                 = 40,
+   start_from_restart       = .true.,
+   output_restart           = .true.,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart",
+   init_time_days           = 0,
+   init_time_seconds        = 0,
+   output_state_ens_mean    = .true.,
+   output_state_ens_spread  = .true.,
+   output_obs_ens_mean      = .true.,
+   output_obs_ens_spread    = .true.,
    num_output_state_members = 20,
-   num_output_obs_members = 0,
-   output_interval = 1,
-   num_groups = 2,
-   outlier_threshold = 1000.0,
+   num_output_obs_members   = 20,
+   output_interval          = 1,
+   num_groups               = 1,
+   outlier_threshold        = -1.0
 
-   inf_flavor = 		2, 			0,
-   inf_start_from_restart = 	.false., 		.false.,
-   inf_output_restart =		.true., 		.true.,
-   inf_deterministic = 		.true., 		.true.,
-   inf_in_file_name =		'prior_inf_ics', 	'post_inf_ics',
-   inf_out_file_name =		'prior_inf_restart', 	'post_inf_restart',
-   inf_diag_file_name =		'prior_inf_diag',	'post_inf_diag',
-   inf_initial =		1.02,			1.00,
-   inf_sd_initial =		0.1,			0.0,
-   inf_lower_bound =		1.00,                   1.0,
-   inf_upper_bound =		1000000,		1000000,
-   inf_sd_lower_bound = 	0.05, 			0.0
-
-   
+   inf_flavor                 = 0,                      0,
+   inf_start_from_restart     = .false.,                .false.,
+   inf_output_restart         = .false.,                .false.,
+   inf_deterministic          = .true.,                 .true.,
+   inf_in_file_name           = 'not_initialized',      'not_initialized',
+   inf_out_file_name          = 'not_initialized',      'not_initialized',
+   inf_diag_file_name         = 'not_initialized',      'not_initialized',
+   inf_initial                = 1.0,                    1.0,
+   inf_sd_initial             = 0.0,                    0.0,
+   inf_lower_bound            = 1.0,                    1.0,
+   inf_upper_bound            = 1000000.0,              1000000.0,
+   inf_sd_lower_bound         = 0.0,                    0.0
 /
 
-Remember that namelists must be listed even if only defaults are to be used
-&integrate_model_nml
-                       /
-   
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart' /
 
 &ensemble_manager_nml
-   single_restart_file_in = .true.,
-   single_restart_file_out = .true. /
+   single_restart_file_in  = .true.,
+   single_restart_file_out = .true.,
+   perturbation_amplitude  = 0.2 /
 
 &assim_tools_nml
    filter_kind = 1,
-   cutoff = 0.2,
+   cutoff = 10000000,
    sort_obs_inc = .true.,
    spread_restoration = .false.,
    sampling_error_correction = .false.,
-   adaptive_localization_threshold = -1 /
+   adaptive_localization_threshold = 10000000 /
 
 &cov_cutoff_nml
    select_localization = 1  /
 
 &reg_factor_nml
    select_regression = 1,
-   input_reg_file = "time_mean_reg",
-   save_reg_diagnostics = .true.,
-   reg_diagnostics_file = 'reg_diagnostics'  /
+   input_reg_file = "time_mean_reg" 
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 
+&obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'   /
+
 &assim_model_nml
-   write_binary_restart_files = .false. /
+   write_binary_restart_files = .true. /
 
 &model_nml
    model_size = 40,
@@ -93,70 +97,21 @@ Remember that namelists must be listed even if only defaults are to be used
    logfilename = 'dart_log.out'  /
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_1d_state_mod.f90'  /
+    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90', 
+   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90', 
+   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90', 
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90', 
+               input_files = '../../../obs_def/obs_def_1d_state_mod.f90'  /
 
-&obs_kind_nml
-   assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
-                                'RAW_STATE_1D_INTEGRAL'  /
+&merge_obs_seq_nml
+   filename_seq1 = 'obs_seq.one',
+   filename_seq2 = 'obs_seq.two',
+   filename_out  = 'obs_seq.merged'   /
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
    iskip_days = 0,
    obs_select = 1,
    rat_cri    = 300.0,
-   qc_threshold = 4.0,
-   bin_width_seconds = 0   /
-
-&merge_obs_seq_nml
-   filename_seq1 = 'obs_seq.one',
-   filename_seq2 = 'obs_seq.two',
-   filename_out  = 'obs_seq.merged'  /
-
-&smoother_nml
-   async = 0,
-   adv_ens_command = "./advance_ens.csh",
-   ens_size = 20, 
-   cov_inflate = 1.04,
-   start_from_smoother_restart = .false.,
-   output_smoother_restart = .true.,
-   smoother_restart_in_base  = 'smoother_ics',
-   smoother_restart_out_base = 'smoother_restart',
-   start_from_restart = .true.,
-   restart_in_file_name = "filter_ics",
-   obs_sequence_in_name = "obs_seq.out",
-   obs_sequence_out_name = "obs_seq.final",
-   init_time_days = 0,
-   init_time_seconds = 0,
-   output_state_ens_mean = .true.,
-   output_state_ens_spread = .true.,
-   output_obs_ens_mean = .false.,
-   output_obs_ens_spread = .false., 
-   num_output_state_members = 0,
-   num_output_obs_members = 0,
-   output_interval = 1,
-   num_groups = 1,
-   outlier_threshold = -1.0,
-   lag = 3  /
-
-&assim_tools_smoother_nml
-   filter_kind = 1,
-   cutoff = 0.4,
-   sort_obs_inc = .false.,
-   cov_inflate = -1.0,
-   cov_inflate_sd = -0.05,
-   sd_lower_bound = -0.05, 
-   deterministic_cov_inflate = .true.,
-   start_from_assim_restart = .false.,
-   assim_restart_in_file_name = 'assim_tools_ics',
-   assim_restart_out_file_name = 'assim_tools_restart',
-   do_parallel = 0,
-   num_domains = 1,
-   parallel_command = "./assim_filter.csh",
-   spread_restoration = .false.,
-   cov_inflate_upper_bound = 2.0,
-   internal_outlier_threshold = -1.0  /
-
+   qc_threshold = 4.0, 
+   bin_width_seconds = 0 /
