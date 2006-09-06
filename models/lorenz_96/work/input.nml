@@ -14,7 +14,7 @@
 &filter_nml
    async                    = 0,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 40,
+   ens_size                 = 20,
    start_from_restart       = .true.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
@@ -28,7 +28,7 @@
    output_obs_ens_mean      = .true.,
    output_obs_ens_spread    = .true.,
    num_output_state_members = 20,
-   num_output_obs_members   = 20,
+   num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
    outlier_threshold        = -1.0
