@@ -51,85 +51,33 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess id_set_def_stdin pressure_col_rand ps_rand_local
-\rm -f column_rand create_obs_sequence create_fixed_network_seq
-\rm -f integrate_model perfect_model_obs assim_region filter 
-\rm -f obs_diag merge_obs_diag smoother
+\rm -f preprocess create_obs_sequence create_fixed_network_seq
+\rm -f perfect_model_obs filter obs_diag integrate_model
+\rm -f merge_obs_seq smoother
+\rm -f *.o *.mod
 
-echo making mkmf_preprocess
 csh mkmf_preprocess
 make         || exit 1
-\rm -f ../../../obs_def/obs_def_mod.f90 
+\rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
 
-echo making mkmf_id_set_def_stdin
-csh mkmf_id_set_def_stdin
-make         || exit 3
-
-echo making mkmf_pressure_col_rand
-csh mkmf_pressure_col_rand
-make         || exit 4
-
-echo making mkmf_ps_rand_local
-csh mkmf_ps_rand_local
-make         || exit 5
-
-echo making mkmf_column_rand
-csh mkmf_column_rand
-make         || exit 6
-
-echo making mkmf_create_obs_sequence
 csh mkmf_create_obs_sequence
-make         || exit 7
-
-echo making mkmf_create_fixed_network_seq
+make         || exit 3
 csh mkmf_create_fixed_network_seq
+make         || exit 4
+csh mkmf_perfect_model_obs
+make         || exit 5
+csh mkmf_filter
+make         || exit 6
+csh mkmf_obs_diag
+make         || exit 7
+csh mkmf_merge_obs_seq
 make         || exit 8
 
-echo making mkmf_integrate_model
-csh mkmf_integrate_model
-make         || exit 9
-
-echo making mkmf_perfect_model_obs
-csh mkmf_perfect_model_obs
-make         || exit 10
-
-echo making mkmf_filter
-csh mkmf_filter
-echo Updating Makefile for MPI compile
-\cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
-\rm -f Makefile.back
-# some platforms prefer to compile all .o files with the wrapper
-# and after the compile remove all .o files and start again.
-\rm -f *.o *.mod
-make         || exit 12
-\rm -f *.o *.mod
-
-echo making mkmf_obs_diag
-csh mkmf_obs_diag
-make         || exit 13
-
-echo making mkmf_merge_obs_seq
-csh mkmf_merge_obs_seq
-make         || exit 14
-
-echo skipping mkmf_smoother
-#csh mkmf_smoother
-#make         || exit 15
-
-
-echo running perfect_model_obs here
 ./perfect_model_obs || exit 20
-
-echo " "
-echo time to run filter here:
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-
-#\rm -f go_end_filter
+./filter            || exit 21
+\rm -f go_end_filter
 
