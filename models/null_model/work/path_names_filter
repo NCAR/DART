@@ -1,4 +1,5 @@
 filter/filter.f90
+smoother/smoother_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 assim_tools/assim_tools_mod.f90
 adaptive_inflate/adaptive_inflate_mod.f90
@@ -18,3 +19,4 @@ random_nr/random_nr_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
 obs_kind/obs_kind_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
