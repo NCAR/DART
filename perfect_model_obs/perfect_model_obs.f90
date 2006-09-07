@@ -113,14 +113,14 @@ read(iunit, nml = perfect_model_obs_nml, iostat = io)
 call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'perfect_model_obs','perfect_model_obs_nml values are',' ',' ',' ')
+call error_handler(E_MSG,'perfect_main','perfect_model_obs_nml values are',' ',' ',' ')
 write(logfileunit, nml=perfect_model_obs_nml)
 write(     *     , nml=perfect_model_obs_nml)
 
 ! Don't let this run with more than one task; just a waste of resource
 if(task_count() > 1) then
    write(msgstring, *) 'Only use one mpi process here: ', task_count(), ' were requested'
-   call error_handler(E_ERR, 'perfect_model_obs', msgstring,  &
+   call error_handler(E_ERR, 'perfect_main', msgstring,  &
       source, revision, revdate)
 endif
 call task_sync()
@@ -162,7 +162,7 @@ call set_copy_meta_data(seq, 2, copy_meta_data(2))
 ! Initialize the model now that obs_sequence is all set up
 model_size = get_model_size()
 write(msgstring,*)'Model size = ',model_size
-call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
+call error_handler(E_MSG,'perfect_main',msgstring,source,revision,revdate)
 
 ! Set up the ensemble storage and read in the restart file
 call perfect_read_restart(ens_handle, model_size)
@@ -175,11 +175,11 @@ call init_random_seq(random_seq)
 
 ! Get the time of the first observation in the sequence
 write(msgstring, *) 'number of obs in sequence is ', get_num_obs(seq)
-call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
+call error_handler(E_MSG,'perfect_main',msgstring,source,revision,revdate)
 
 num_qc = get_num_qc(seq)
 write(msgstring, *) 'number of qc values is ',num_qc
-call error_handler(E_MSG,'perfect_model_obs',msgstring,source,revision,revdate)
+call error_handler(E_MSG,'perfect_main',msgstring,source,revision,revdate)
 
 ! Start out with no previously used observations
 last_key_used = -99
@@ -208,7 +208,7 @@ AdvanceTime: do
 
    ! How many observations in this set
    write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
-   call error_handler(E_DBG,'perfect_model_obs',msgstring,source,revision,revdate)
+   call error_handler(E_DBG,'perfect_main',msgstring,source,revision,revdate)
 
    ! Compute the forward observation operator for each observation in set
    do j = 1, num_obs_in_set
@@ -263,12 +263,13 @@ call write_obs_seq(seq, obs_seq_out_file_name)
 
 ! Output a restart file if requested
 if(output_restart) &
-   call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1)
+   call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1, &
+      force_single_file = .true.)
 
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
 
-call error_handler(E_MSG,'perfect_model_obs','FINISHED',source,revision,revdate)
+call error_handler(E_MSG,'perfect_main','FINISHED',source,revision,revdate)
 
 ! closes the log file.
 call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
@@ -317,17 +318,17 @@ else
    if(init_time_days >= 0) then
       time1 = set_time(init_time_seconds, init_time_days)
       call read_ensemble_restart(ens_handle, 1, 1, &
-         start_from_restart, restart_in_file_name, time1)
+         start_from_restart, restart_in_file_name, time1, force_single_file = .true.)
    else
       call read_ensemble_restart(ens_handle, 1, 1, &
-         start_from_restart, restart_in_file_name)
+         start_from_restart, restart_in_file_name, force_single_file = .true.)
    endif
 endif
 
 ! Temporary print of initial model time
 call get_time(ens_handle%time(1),secs,days)
 write(msgstring, *) 'initial model time of perfect_model member (days,seconds) ',days,secs
-call error_handler(E_DBG,'perfect_model_obs',msgstring,source,revision,revdate)
+call error_handler(E_DBG,'perfect_read_restart',msgstring,source,revision,revdate)
 
 end subroutine perfect_read_restart
 
