@@ -354,8 +354,10 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time)
  integer, intent(in) :: src_id
- real(r8), intent(out) :: destarray(:)
- type(time_type), intent(out), optional :: time
+! Setting next two to intent(in) avoids compiler warnings
+! Intent is inconsistent with real mpi module, but this is not a problem
+ real(r8), intent(in) :: destarray(:)
+ type(time_type), intent(in), optional :: time
 
 ! Receive data into the destination array from the src task.
 ! If time is specified, it is received in a separate communications call.  
@@ -453,10 +455,11 @@ end subroutine array_broadcast
 subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
  real(r8), intent(in) :: srcarray(:)
  integer, intent(in) :: root
- real(r8), intent(out) :: dstarray(:)
- integer, intent(out) :: dstcount
+! Setting dstarray, dstcount and which to intent(in) avoids compiler warnings
+ real(r8), intent(in) :: dstarray(:)
+ integer, intent(in) :: dstcount
  integer, intent(in) :: how
- integer, intent(out) :: which(:)
+ integer, intent(in) :: which(:)
 
 ! 'srcarray' on the root task will be distributed across all the tasks
 ! into 'dstarray'.  dstarray must be large enough to hold each task's share
