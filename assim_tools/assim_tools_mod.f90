@@ -88,7 +88,7 @@ real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .false.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
-integer  :: adaptive_localization_threshold = 10000000
+integer  :: adaptive_localization_threshold = -1
 
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction, adaptive_localization_threshold
