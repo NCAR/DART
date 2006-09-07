@@ -95,6 +95,7 @@ real(r8)            :: U_pr_mean     = 0.0_r8
 real(r8)            :: U_pr_sprd     = 0.0_r8
 real(r8)            :: U_po_mean     = 0.0_r8
 real(r8)            :: U_po_sprd     = 0.0_r8
+real(r8)            :: U_qc          = 0.0_r8
 
 integer :: obs_index, prior_mean_index, posterior_mean_index
 integer :: prior_spread_index, posterior_spread_index
@@ -120,7 +121,7 @@ integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: bin_width        = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: time_to_skip     = (/    0, 0, 1, 0, 0, 0 /)
 integer :: max_num_bins   = 1000000  ! maximum number of bins to consider
-integer :: mlevel         = 5        ! model level (integer index) [1,100]
+integer :: mlevel         = 5        ! model level (integer index) [1,11]
 integer :: plevel         = 500      ! pressure level (hPa)
 integer :: hlevel         = 5000     ! height (meters)
 integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
@@ -172,7 +173,7 @@ real(r8) :: speed_obs2, speed_ges2, speed_anl2
 ! into the appropriate levels (column).
 !-----------------------------------------------------------------------
 
-integer, parameter :: nlev = 100
+integer, parameter :: nlev = 11
 integer  :: levels(    nlev  , VERTISSURFACE:VERTISHEIGHT)
 integer  :: levels_int(nlev+1, VERTISPRESSURE:VERTISHEIGHT)
 integer  :: ivert
@@ -782,7 +783,9 @@ ObsFileLoop : do ifile=1, Nepochs*4
                  source,revision,revdate)
          endif
 
+         !--------------------------------------------------------------
          ! Convert the DART QC data to an integer and create histogram 
+         !--------------------------------------------------------------
 
          call get_qc(observation, qc)
 
@@ -796,19 +799,15 @@ ObsFileLoop : do ifile=1, Nepochs*4
             qc_integer = 0
          endif
 
+         !--------------------------------------------------------------
          ! retrieve observation prior and posterior means and spreads
+         !--------------------------------------------------------------
 
          call get_obs_values(observation,              obs,              obs_index)
          call get_obs_values(observation,       prior_mean,       prior_mean_index)
          call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
          call get_obs_values(observation,     prior_spread,     prior_spread_index)
          call get_obs_values(observation, posterior_spread, posterior_spread_index)
-
-         obs(1)  = obs(1)             *scale_factor(flavor)
-         pr_mean = prior_mean(1)      *scale_factor(flavor)
-         po_mean = posterior_mean(1)  *scale_factor(flavor)
-         pr_sprd = prior_spread(1)    *scale_factor(flavor)
-         po_sprd = posterior_spread(1)*scale_factor(flavor)
 
          !--------------------------------------------------------------
          ! (DEBUG) Summary of observation knowledge at this point
@@ -850,11 +849,15 @@ ObsFileLoop : do ifile=1, Nepochs*4
             cycle ObservationLoop
          endif
 
+         !--------------------------------------------------------------
          ! update the histogram of the magnitude of the innovation,
          ! where each bin is a single standard deviation. This is 
-         ! a one-sided histogram.
+         ! a one-sided histogram. The innovation can only be calculated
+         ! if the prior_mean is valid.
+         !--------------------------------------------------------------
 
-         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
+         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var, qc(dart_qc_index))
+
          indx         = min(int(ratio), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
 
@@ -869,6 +872,16 @@ ObsFileLoop : do ifile=1, Nepochs*4
          endif
 
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
+
+         !--------------------------------------------------------------
+         ! Scale the quantities so they plot sensibly.
+         !--------------------------------------------------------------
+
+         obs(1)  = obs(1)             *scale_factor(flavor)
+         pr_mean = prior_mean(1)      *scale_factor(flavor)
+         po_mean = posterior_mean(1)  *scale_factor(flavor)
+         pr_sprd = prior_spread(1)    *scale_factor(flavor)
+         po_sprd = posterior_spread(1)*scale_factor(flavor)
 
          !--------------------------------------------------------------
          ! If it is a U wind component, all we need to do is save it.
@@ -892,6 +905,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             U_pr_sprd     = pr_sprd
             U_po_mean     = po_mean
             U_po_sprd     = po_sprd
+            U_qc          = qc(dart_qc_index)
 
             cycle ObservationLoop
 
@@ -936,7 +950,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                   ! since we don't have the necessary covariance between U,V
                   ! we will reject if either univariate z score is bad 
 
-                  ratioU = GetRatio(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var)
+                  ratioU = GetRatio(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc)
 
                   if( (ratio > rat_cri) .or. (ratioU > rat_cri) )  then
                      Nrejected(iregion,flavor) = Nrejected(iregion,flavor) + 1
@@ -1084,7 +1098,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                ! Since we are treating wind as a vector quantity, the ratio
                ! calculation is a bit different.
 
-               ratioU = GetRatio(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var)
+               ratioU = GetRatio(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc)
 
                WRatioTest: if( (ratio <= rat_cri) .and. (ratioU <= rat_cri) )  then
 
@@ -1564,18 +1578,27 @@ call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
 contains
 
-   Function GetRatio(obsval, prmean, prspred, errcov) result (ratio)
-   real(r8), intent(in) :: obsval, prmean, prspred, errcov
+   Function GetRatio(obsval, prmean, prspred, errcov, qcval ) result (ratio)
+
+   ! This function tries to get a handle on the magnitude of the innovations.
+   ! If the ratio of the observation to the prior mean is 'big', it is an outlier. 
+   ! If the prior mean cannot be calculated (i.e. is missing) we give it a HUGE
+   ! innovation.
+
+   real(r8), intent(in) :: obsval, prmean, prspred, errcov, qcval
    real(r8)             :: ratio
 
    real(r8) :: numer, denom
 
-   numer = abs(prmean- obsval)
-   denom = sqrt( prspred**2 + errcov )
-   ratio = numer / denom
+   if ( qcval < QC_MAX_PRIOR ) then
+      numer = abs(prmean - obsval)
+      denom = sqrt( prspred**2 + errcov )
+      ratio = numer / denom
+   else
+      ratio = huge(ratio)
+   endif
 
    end Function GetRatio
-
 
 
    Function CheckMate(flavor1, flavor2, obsloc1, obsloc2) result (ierr)
