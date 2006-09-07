@@ -36,7 +36,6 @@ public :: get_model_size, &
           static_init_model, &
           init_time, &
           init_conditions, &
-          model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state
@@ -211,37 +210,6 @@ subroutine end_model()
 ! INTERFACE if the model has no need to clean up storage, etc.
 
 end subroutine end_model
-
-
-
-subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
-!------------------------------------------------------------------
-! 
-! Computes a list of model state variable indices that are within 
-! distance radius of a given location, o_loc. The units of the radius
-! and the metric for computing distances is defined by the location module
-! that is in  use. The number of state variables that are within radius
-! of o_loc is returned in inum. The indices of each of these is 
-! returned in indices and the corresponding distance in dist. The model
-! state is available in x because it is sometimes required to determine
-! the distance (for instance, the current model surface pressure field
-! is required to compute the location of state variables in a sigma
-! vertical coordinate model). A model can choose to do no computation
-! here and return a value of -1 in inum. If this happens, the filter
-! will do a naive search through ALL state variables for close states.
-! This can work fine in low-order models, but can be far too expensive
-! in large models.
-
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: inum, indices(:)
-real(r8), intent(out) :: dist(:)
-real(r8), intent(in) :: x(:)
-
-! Simplest interface just sets inum to -1 and returns
-inum = -1
-
-end subroutine model_get_close_states
 
 
 
