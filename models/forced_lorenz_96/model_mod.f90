@@ -14,7 +14,7 @@ module model_mod
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
-use     location_mod, only : location_type, get_dist, set_location, get_location, &
+use     location_mod, only : location_type, set_location, get_location, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
                              find_namelist_in_file, check_namelist_read
@@ -405,8 +405,9 @@ subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
 
 type(location_type), intent(in) :: o_loc
 real(r8), intent(in) :: radius
-integer, intent(out) :: inum, indices(:)
-real(r8), intent(out) :: dist(:)
+integer, intent(out) :: inum
+integer, intent(in)  :: indices(:)
+real(r8), intent(in) :: dist(:)
 real(r8), intent(in) :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
@@ -717,7 +718,7 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! small independent perturbations.
 
 real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
+real(r8), intent(in)  :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
