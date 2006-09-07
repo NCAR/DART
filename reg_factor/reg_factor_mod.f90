@@ -140,7 +140,7 @@ if(select_regression == 1) then
       if(save_reg_diagnostics) then
        
 ! DATA REDUCTION FOR WORKSHOP PURPSOSES
-         if(obs_index <= 4) then
+         if(obs_index <= 4 .and. state_index > 0) then
 
          call get_time(obs_time, secs, days)
          write(diag_unit, 22) days, secs, obs_index, state_index, comp_reg_factor
