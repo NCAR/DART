@@ -31,26 +31,26 @@
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
-   outlier_threshold        = -1.0
+   outlier_threshold        = -1.0, 
 
-   inf_flavor                 = 0,                      0,
-   inf_start_from_restart     = .false.,                .false.,
-   inf_output_restart         = .false.,                .false.,
-   inf_deterministic          = .true.,                 .true.,
-   inf_in_file_name           = 'not_initialized',      'not_initialized',
-   inf_out_file_name          = 'not_initialized',      'not_initialized',
-   inf_diag_file_name         = 'not_initialized',      'not_initialized',
-   inf_initial                = 1.0,                    1.0,
-   inf_sd_initial             = 0.0,                    0.0,
-   inf_lower_bound            = 1.0,                    1.0,
-   inf_upper_bound            = 1000000.0,              1000000.0,
-   inf_sd_lower_bound         = 0.0,                    0.0
+   inf_flavor                 = 0,                       0,
+   inf_start_from_restart     = .false.,                 .false.,
+   inf_output_restart         = .true.,                  .true.,
+   inf_deterministic          = .true.,                  .true.,
+   inf_in_file_name           = 'prior_inflate_ics',     'post_inflate_ics',
+   inf_out_file_name          = 'prior_inflate_restart', 'post_inflate_restart',
+   inf_diag_file_name         = 'prior_inflate_diag',    'post_inflate_diag',
+   inf_initial                = 1.0,                     1.0,
+   inf_sd_initial             = 0.0,                     0.0,
+   inf_lower_bound            = 1.0,                     1.0,
+   inf_upper_bound            = 1000000.0,               1000000.0,
+   inf_sd_lower_bound         = 0.0,                     0.0
 /
 
 &smoother_nml
    num_lags              = 0
    start_from_restart    = .false.
-   output_restart        = .false.
+   output_restart        = .true.
    restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart' /
 
@@ -65,7 +65,7 @@
    sort_obs_inc = .true.,
    spread_restoration = .false.,
    sampling_error_correction = .false.,
-   adaptive_localization_threshold = 10000000 /
+   adaptive_localization_threshold = -1 /
 
 &cov_cutoff_nml
    select_localization = 1  /
