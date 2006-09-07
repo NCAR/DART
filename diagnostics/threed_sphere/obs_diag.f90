@@ -26,7 +26,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_next_obs, get_num_times, get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, read_obs_seq_header, & 
-                             get_last_obs, destroy_obs
+                             get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_kind, get_obs_name
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name, &
@@ -66,12 +66,21 @@ type(location_type)     :: obs_loc
 !---------------------
 integer :: obsindex, i, j, iunit, ierr, io, ivarcount
 character(len = 129) :: obs_seq_in_file_name
-character(len =  40) :: generic_obs_name   ! 8 longer than length of obs_def_mod:get_obs_name 
+character(len =  40) :: obs_kind_names   ! 8 longer than length of obs_def_mod:get_obs_name 
 
 ! Storage with fixed size for observation space diagnostics
 real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_spread
 real(r8) :: pr_mean, po_mean ! same as above, without useless dimension 
 real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
+
+! variables associated with quality control
+integer             :: qc_index, dart_qc_index
+integer             :: qc_integer
+integer, parameter  :: QC_MAX = 7
+integer, parameter  :: QC_MAX_PRIOR     = 3
+integer, parameter  :: QC_MAX_POSTERIOR = 1
+integer, dimension(0:QC_MAX) :: qc_counter = 0
+real(r8), allocatable :: qc(:)
 
 !-----------------------------------------------------------------------
 ! We are treating winds as a vector pair, but we are handling the
@@ -94,7 +103,7 @@ integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
 
-real(r8), dimension(1) :: obs, qc
+real(r8), dimension(1) :: obs
 real(r8) :: obs_err_var
 
 integer,  allocatable :: keys(:)
@@ -175,23 +184,22 @@ integer  :: ilev          ! counter
 integer  :: mlevel_index  ! index of model    level closest to input
 integer  :: plevel_index  ! index of pressure level closest to input
 integer  :: hlevel_index  ! index of height   level closest to input
-integer  :: level_index   ! generic level index
-
+integer  ::  level_index  ! generic level index
 
 !-----------------------------------------------------------------------
 ! Variables used to accumulate the statistics.
 ! Dimension 1 is temporal, actually - these are time-by-region-by-var
 !-----------------------------------------------------------------------
 
-integer,  allocatable, dimension(:,:,:) :: num_in_level, num_ver
-
 ! statistics by time, for a particular level:  time-region-variable
+integer,  allocatable, dimension(:,:,:) :: ges_level_N, anl_level_N
 real(r8), allocatable, dimension(:,:,:) :: rms_ges_mean   ! prior mean - obs
 real(r8), allocatable, dimension(:,:,:) :: rms_ges_spread ! prior spread     
 real(r8), allocatable, dimension(:,:,:) :: rms_anl_mean   ! posterior mean - obs
 real(r8), allocatable, dimension(:,:,:) :: rms_anl_spread ! posterior spread
 
 ! statistics by level, averaged over time :  level-region-variable
+integer,  allocatable, dimension(:,:,:) :: ges_num_ver, anl_num_ver
 real(r8), allocatable, dimension(:,:,:) ::  rms_ges_ver   ! prior mean - obs
 real(r8), allocatable, dimension(:,:,:) :: bias_ges_ver   ! prior mean - obs (L1 norm)
 real(r8), allocatable, dimension(:,:,:) ::  rms_anl_ver   ! posterior mean - obs
@@ -231,14 +239,16 @@ character(len =  32) :: str1, str2, str3
 ! Some variables to keep track of who's rejected why ...
 !-----------------------------------------------------------------------
 
-integer                      :: NwrongType = 0   ! namelist discrimination
-integer                      :: NbadQC     = 0   ! out-of-range QC values
-integer                      :: NbadLevel  = 0   ! out-of-range pressures
-integer                      :: Nidentity  = 0   ! identity observations
+integer  :: NwrongType = 0   ! namelist discrimination
+integer  :: NbadLevel  = 0   ! out-of-range pressures
+integer  :: Nidentity  = 0   ! identity observations
+integer  :: NbadQC     = 0   ! rejected by original NCEP quality control
 
 integer, allocatable, dimension(:)   :: NbadW      ! V with no U, all days, regions
 integer, allocatable, dimension(:)   :: NbadWvert  ! V with no U, select days, all levels
-integer, allocatable, dimension(:,:) :: Nrejected  ! all days, each region, one layer
+integer, allocatable, dimension(:,:) :: Nrejected,Ntemp  ! all days, each region, one layer
+integer, allocatable, dimension(:,:,:,:) :: NbadQClevel ! each epoch, each region, one layer
+integer, allocatable, dimension(:,:,:,:) :: NbadQC_ver  ! out-of-range QC values
 
 !=======================================================================
 ! Get the party started
@@ -271,11 +281,27 @@ which_vert   = VERTISUNDEF   ! set all of them to an 'undefined' value
 ! In the obs_sequence file, the units are kg/kg, we want to plot
 ! in the g/kg world...
 
-scale_factor(KIND_SURFACE_PRESSURE)  =    0.01_r8  
-scale_factor(KIND_SPECIFIC_HUMIDITY) = 1000.0_r8
+!If kind_surface_pressure or ... does not exist, we are in trouble here.
+!the scale_factor should be defined to reflect the type, which are not
+!guaranteed to be numbered sequentially ... vortices 81, for example
+
+do ivar = 1,max_obs_kinds
+
+   obs_kind_names = get_obs_kind_name(ivar)
+
+   if ( index(obs_kind_names,'SURFACE_PRESSURE') > 0 ) &
+             scale_factor(ivar) = 0.01_r8
+
+   if ( index(obs_kind_names,'SPECIFIC_HUMIDITY') > 0 ) &
+             scale_factor(ivar) = 1000.0_r8
 
 ! Somehow, we should plot statistics on the dBZ scale for these ...
 ! scale_factor(KIND_RADAR_REFLECTIVITY) = 10log10(z)
+
+   write(     *     ,*)'scaling of ',scale_factor(ivar),obs_kind_names
+   write(logfileunit,*)'scaling of ',scale_factor(ivar),obs_kind_names
+
+enddo
 
 prior_mean(1)       = 0.0_r8
 prior_spread(1)     = 0.0_r8
@@ -305,22 +331,31 @@ write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio   
 !----------------------------------------------------------------------
 
 allocate(rms_ges_ver(nlev, Nregions, max_obs_kinds), &
-         rms_anl_ver(nlev, Nregions, max_obs_kinds), &
         bias_ges_ver(nlev, Nregions, max_obs_kinds), &
+         ges_num_ver(nlev, Nregions, max_obs_kinds), &
+         rms_anl_ver(nlev, Nregions, max_obs_kinds), &
         bias_anl_ver(nlev, Nregions, max_obs_kinds), &
-             num_ver(nlev, Nregions, max_obs_kinds))
+         anl_num_ver(nlev, Nregions, max_obs_kinds), &
+          NbadQC_ver(nlev, Nregions, max_obs_kinds, 2))
 
  rms_ges_ver = 0.0_r8
- rms_anl_ver = 0.0_r8
 bias_ges_ver = 0.0_r8
+ ges_num_ver = 0
+
+ rms_anl_ver = 0.0_r8
 bias_anl_ver = 0.0_r8
-num_ver      = 0
+ anl_num_ver = 0
+  NbadQC_ver = 0
 
-allocate(NbadW(Nregions), NbadWvert(Nregions), Nrejected(Nregions, max_obs_kinds))
+allocate(NbadW(Nregions), &
+     NbadWvert(Nregions), &
+     Nrejected(Nregions, max_obs_kinds), &
+     Ntemp(    Nregions, max_obs_kinds))
 
-NbadW      = 0
-NbadWvert  = 0
-Nrejected  = 0
+NbadW       = 0
+NbadWvert   = 0
+Nrejected   = 0
+Ntemp       = 0
 
 ! convert user input to nearest 'actual' level
 ! If the user wanted 713 hPA height, tough luck. we have one at 700.
@@ -398,15 +433,19 @@ endif
 
 allocate(rms_ges_mean(  Nepochs, Nregions, max_obs_kinds), &
          rms_ges_spread(Nepochs, Nregions, max_obs_kinds), &
+         ges_level_N(   Nepochs, Nregions, max_obs_kinds), &
          rms_anl_mean(  Nepochs, Nregions, max_obs_kinds), &
          rms_anl_spread(Nepochs, Nregions, max_obs_kinds), &
-         num_in_level(  Nepochs, Nregions, max_obs_kinds) )
+         anl_level_N(   Nepochs, Nregions, max_obs_kinds), &
+         NbadQClevel(   Nepochs, Nregions, max_obs_kinds, 2))
 
 rms_ges_mean   = 0.0_r8
 rms_anl_mean   = 0.0_r8
 rms_ges_spread = 0.0_r8
 rms_anl_spread = 0.0_r8
-num_in_level   = 0
+ges_level_N    = 0
+anl_level_N    = 0
+NbadQClevel    = 0
 
 !-----------------------------------------------------------------------
 ! We must assume the observation sequence files span an unknown amount
@@ -450,7 +489,15 @@ ObsFileLoop : do ifile=1, Nepochs*4
              obs_seq_file_id, obs_seq_read_format, pre_I_format, &
              close_the_file = .true.)
 
-   if ( verbose ) then
+   ! Initialize some (individual) observation variables
+
+   call init_obs(       obs1, num_copies, num_qc)   ! First obs in sequence
+   call init_obs(       obsN, num_copies, num_qc)   ! Last  obs in sequence
+   call init_obs(observation, num_copies, num_qc)   ! current obs
+   call init_obs(   next_obs, num_copies, num_qc)   ! duh ...
+   allocate( qc(num_qc) )
+
+   if ( 1 == 2 ) then
       write(logfileunit,*)'num_copies          is ',num_copies
       write(logfileunit,*)'num_qc              is ',num_qc
       write(logfileunit,*)'num_obs             is ',num_obs
@@ -464,13 +511,6 @@ ObsFileLoop : do ifile=1, Nepochs*4
       write(    *      ,*)'obs_seq_read_format is ',trim(adjustl(obs_seq_read_format))
       write(    *      ,*)'pre_I_format        is ',pre_I_format
    endif
-
-   ! Initialize some (individual) observation variables
-
-   call init_obs(       obs1, num_copies, num_qc)   ! First obs in sequence
-   call init_obs(       obsN, num_copies, num_qc)   ! Last  obs in sequence
-   call init_obs(observation, num_copies, num_qc)   ! current obs
-   call init_obs(   next_obs, num_copies, num_qc)   ! duh ...
 
    ! Read in the entire observation sequence
 
@@ -510,6 +550,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call destroy_obs(observation)
       call destroy_obs(next_obs)
       call destroy_obs_sequence(seq)
+      deallocate( qc )
       cycle ObsFileLoop
    else
       if (verbose) write(*,*)'seqTN > TimeMin ... using ',trim(adjustl(obs_seq_in_file_name))
@@ -526,6 +567,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call destroy_obs(observation)
       call destroy_obs(next_obs)
       call destroy_obs_sequence(seq)
+      deallocate( qc )
       exit ObsFileLoop
    else
       if (verbose) write(*,*)'seqT1 < TimeMax ... using ',trim(adjustl(obs_seq_in_file_name))
@@ -540,6 +582,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
    posterior_mean_index   = -1
    prior_spread_index     = -1
    posterior_spread_index = -1
+   qc_index               = -1
+   dart_qc_index          = -1
 
    MetaDataLoop : do i=1, get_num_copies(seq)
       if(index(get_copy_meta_data(seq,i), 'observation'              ) > 0) &
@@ -553,6 +597,18 @@ ObsFileLoop : do ifile=1, Nepochs*4
       if(index(get_copy_meta_data(seq,i), 'posterior ensemble spread') > 0) &
              posterior_spread_index = i
    enddo MetaDataLoop
+
+   ! Hmnnn ... sometimes the first QC field is 'Quality Control' or 'NCEP QC index'
+   ! to me ... they mean the same thing.
+
+   QCMetaDataLoop : do i=1, get_num_qc(seq)
+      if(index(  get_qc_meta_data(seq,i), 'Quality Control'          ) > 0) &
+                           qc_index = i
+      if(index(  get_qc_meta_data(seq,i), 'NCEP QC index'            ) > 0) &
+                           qc_index = i
+      if(index(  get_qc_meta_data(seq,i), 'DART quality control'     ) > 0) &
+                      dart_qc_index = i
+   enddo QCMetaDataLoop
 
    !--------------------------------------------------------------------
    ! Make sure we find an index for each of them.
@@ -578,10 +634,18 @@ ObsFileLoop : do ifile=1, Nepochs*4
       write(msgstring,*)'metadata:posterior ensemble spread not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate) 
    endif
-   if ( any( (/obs_index, prior_mean_index, posterior_mean_index, & 
+   if (               qc_index < 0 ) then 
+      write(msgstring,*)'metadata:Quality Control not found' 
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
+   if ( any( (/obs_index, prior_mean_index, posterior_mean_index, qc_index, & 
                prior_spread_index, posterior_spread_index /) < 0) ) then
       write(msgstring,*)'metadata incomplete'
       call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+   endif
+   if (          dart_qc_index < 0 ) then 
+      write(msgstring,*)'metadata:DART quality control not found' 
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    !--------------------------------------------------------------------
@@ -607,6 +671,16 @@ ObsFileLoop : do ifile=1, Nepochs*4
    write(msgstring,'(''posterior spread index '',i2,'' metadata '',a)') &
         posterior_spread_index, trim(adjustl(get_copy_meta_data(seq,posterior_spread_index)))
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+
+   write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
+        qc_index,      trim(adjustl(get_qc_meta_data(seq,     qc_index)))
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+
+   if (dart_qc_index > 0 ) then
+   write(msgstring,'(''DART quality control index '',i2,'' metadata '',a)') &
+        dart_qc_index, trim(adjustl(get_qc_meta_data(seq,dart_qc_index)))
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
 
    !====================================================================
    EpochLoop : do iepoch = 1, Nepochs
@@ -666,8 +740,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
          endif
 
          obs_err_var = get_obs_def_error_variance(obs_def) * &
-                          scale_factor(get_obs_kind_var_type(flavor)) * &
-                          scale_factor(get_obs_kind_var_type(flavor))
+                       scale_factor(flavor) * &
+                       scale_factor(flavor)
 
          obs_loc = get_obs_def_location(obs_def)
          obsloc3 = get_location(obs_loc)
@@ -708,35 +782,48 @@ ObsFileLoop : do ifile=1, Nepochs*4
                  source,revision,revdate)
          endif
 
-         call get_qc(observation, qc, 1)
-         call get_obs_values(observation, obs, obs_index)
-         obs(1) = obs(1)*scale_factor(get_obs_kind_var_type(flavor))
+         ! Convert the DART QC data to an integer and create histogram 
 
-         ! get interpolated values of prior and posterior ensemble mean
+         call get_qc(observation, qc)
 
+         if (dart_qc_index > 0) then
+            qc_integer = min( nint(qc(dart_qc_index)), QC_MAX )
+            qc_counter(qc_integer) = qc_counter(qc_integer) + 1  ! histogram
+         else
+            ! Provide backwards compatibility. If no dart_qc in obs_seq,
+            ! put qc_integer to 0 to replicate logic to be unable to treat 
+            ! prior and posterior separately. 
+            qc_integer = 0
+         endif
+
+         ! retrieve observation prior and posterior means and spreads
+
+         call get_obs_values(observation,              obs,              obs_index)
          call get_obs_values(observation,       prior_mean,       prior_mean_index)
          call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
          call get_obs_values(observation,     prior_spread,     prior_spread_index)
          call get_obs_values(observation, posterior_spread, posterior_spread_index)
 
-         pr_mean = prior_mean(1)      *scale_factor(get_obs_kind_var_type(flavor))
-         po_mean = posterior_mean(1)  *scale_factor(get_obs_kind_var_type(flavor))
-         pr_sprd = prior_spread(1)    *scale_factor(get_obs_kind_var_type(flavor))
-         po_sprd = posterior_spread(1)*scale_factor(get_obs_kind_var_type(flavor))
+         obs(1)  = obs(1)             *scale_factor(flavor)
+         pr_mean = prior_mean(1)      *scale_factor(flavor)
+         po_mean = posterior_mean(1)  *scale_factor(flavor)
+         pr_sprd = prior_spread(1)    *scale_factor(flavor)
+         po_sprd = posterior_spread(1)*scale_factor(flavor)
 
          !--------------------------------------------------------------
          ! (DEBUG) Summary of observation knowledge at this point
          !--------------------------------------------------------------
-
-         ! write(*,*)'observation # ',obsindex
-         ! write(*,*)'obs_flavor ',flavor
-         ! write(*,*)'obs_err_var ',obs_err_var
-         ! write(*,*)'lon0/lat0 ',lon0,lat0
-         ! write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
-         ! write(*,*)'qc ',qc
-         ! write(*,*)'obs(1) ',obs(1)
-         ! write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
-         ! write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
+         if ( 1 == 2 ) then
+            write(*,*)'observation # ',obsindex
+            write(*,*)'obs_flavor ',flavor
+            write(*,*)'obs_err_var ',obs_err_var
+            write(*,*)'lon0/lat0 ',lon0,lat0
+            write(*,*)'ivert,which_vert,closestlevel ',ivert,which_vert(flavor),obslevel
+            write(*,*)'qc ',qc
+            write(*,*)'obs(1) ',obs(1)
+            write(*,*)'pr_mean,po_mean ',pr_mean,po_mean
+            write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
+         endif
 
          !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
@@ -749,17 +836,17 @@ ObsFileLoop : do ifile=1, Nepochs*4
             cycle ObservationLoop
          endif
 
-         if( qc(1) >= qc_threshold ) then
-         !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(1)
-            NbadQC = NbadQC + 1
-            cycle ObservationLoop
-         endif
-
          if ( obslevel < 1 .or. obslevel > nlev )   then
          !  write(*,*)'obs ',obsindex,' rejected. Uninteresting level ',obslevel
          !  write(*,*)'obs ',obsindex,' rejected. ivert was ',ivert,&
          !                            ' for which_vert ',which_vert(flavor)
             NbadLevel = NbadLevel + 1
+            cycle ObservationLoop
+         endif
+
+         if( qc(qc_index) >= qc_threshold ) then
+         !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(qc_index)
+            NbadQC = NbadQC + 1
             cycle ObservationLoop
          endif
 
@@ -834,7 +921,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
             DesiredLevel: if ( obslevel == level_index ) then
 
-               if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
+               ObsIsWind: if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
                   ! The big assumption is that the U wind component has
                   ! immediately preceeded the V component and has been saved.
                   ! We check for compatibility and proceed.  
@@ -851,53 +938,128 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
                   ratioU = GetRatio(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var)
 
-                  if( (ratio <= rat_cri) .and. (ratioU <= rat_cri) )  then
-                     num_in_level(iepoch,iregion,flavor) = &
-                     num_in_level(iepoch,iregion,flavor) + 1
+                  if( (ratio > rat_cri) .or. (ratioU > rat_cri) )  then
+                     Nrejected(iregion,flavor) = Nrejected(iregion,flavor) + 1
+                     cycle ObservationLoop
+                  endif
 
-                     rms_ges_mean(iepoch,iregion,flavor) = &
-                     rms_ges_mean(iepoch,iregion,flavor) + &
-                     (pr_mean - obs(1))**2 + (U_pr_mean - U_obs)**2
+                  if ( qc_integer > QC_MAX_PRIOR ) then  ! prior and posterior failed
 
-                     rms_anl_mean(iepoch,iregion,flavor) = &
-                     rms_anl_mean(iepoch,iregion,flavor) + &
-                     (po_mean - obs(1))**2 + (U_po_mean - U_obs)**2
+                     NbadQClevel(iepoch,iregion,flavor, 1) = &
+                     NbadQClevel(iepoch,iregion,flavor, 1) + 1
+                     NbadQClevel(iepoch,iregion,flavor, 2) = &
+                     NbadQClevel(iepoch,iregion,flavor, 2) + 1
+
+                  else if ( qc_integer > QC_MAX_POSTERIOR ) then
+
+                     ! Then at least the prior (A.K.A. guess) is good
+
+                     ges_level_N(   iepoch,iregion,flavor) = &
+                     ges_level_N(   iepoch,iregion,flavor) + 1
+
+                     rms_ges_mean(  iepoch,iregion,flavor) = &
+                     rms_ges_mean(  iepoch,iregion,flavor) + &
+                              (pr_mean - obs(1))**2 + (U_pr_mean - U_obs)**2
 
                      ! these are wrong, but we don't have the off-diagonal
                      ! terms of the covariance matrix ... 
                      rms_ges_spread(iepoch,iregion,flavor) = &
                      rms_ges_spread(iepoch,iregion,flavor) + pr_sprd**2 + U_pr_sprd**2
 
+                     ! However, the posterior is bad
+                     NbadQClevel(iepoch,iregion,flavor, 2) = &
+                     NbadQClevel(iepoch,iregion,flavor, 2) + 1
+
+                  else
+
+                     ! The prior is good
+
+                     ges_level_N(   iepoch,iregion,flavor) = &
+                     ges_level_N(   iepoch,iregion,flavor) + 1
+
+                     rms_ges_mean(  iepoch,iregion,flavor) = &
+                     rms_ges_mean(  iepoch,iregion,flavor) + &
+                              (pr_mean - obs(1))**2 + (U_pr_mean - U_obs)**2
+
+                     rms_ges_spread(iepoch,iregion,flavor) = &
+                     rms_ges_spread(iepoch,iregion,flavor) + pr_sprd**2 + U_pr_sprd**2
+
+                     ! The posterior is good
+
+                     anl_level_N(   iepoch,iregion,flavor) = &
+                     anl_level_N(   iepoch,iregion,flavor) + 1
+   
+                     rms_anl_mean(  iepoch,iregion,flavor) = &
+                     rms_anl_mean(  iepoch,iregion,flavor) + &
+                              (po_mean - obs(1))**2 + (U_po_mean - U_obs)**2
+
                      rms_anl_spread(iepoch,iregion,flavor) = &
                      rms_anl_spread(iepoch,iregion,flavor) + po_sprd**2 + U_po_sprd**2
-                  else
-                     Nrejected(iregion,flavor) = Nrejected(iregion,flavor) + 1
+
                   endif
 
-               else
+               else ObsIsWind
 
-                  if(ratio <= rat_cri ) then
-                     num_in_level(iepoch,iregion,flavor) = &
-                     num_in_level(iepoch,iregion,flavor) + 1
+                  if( ratio > rat_cri ) then
+                     Nrejected(iregion,flavor) = Nrejected(iregion,flavor) + 1
+                     cycle ObservationLoop
+                  endif
 
-                     rms_ges_mean(iepoch,iregion,flavor) = &
-                     rms_ges_mean(iepoch,iregion,flavor) + (pr_mean-obs(1))**2
+                  if ( qc_integer > QC_MAX_PRIOR ) then  ! prior and posterior failed
 
-                     rms_anl_mean(iepoch,iregion,flavor) = &
-                     rms_anl_mean(iepoch,iregion,flavor) + (po_mean-obs(1))**2
+                     NbadQClevel(iepoch,iregion,flavor, 1) = &
+                     NbadQClevel(iepoch,iregion,flavor, 1) + 1
+                     NbadQClevel(iepoch,iregion,flavor, 2) = &
+                     NbadQClevel(iepoch,iregion,flavor, 2) + 1
+
+                  else if ( qc_integer > QC_MAX_POSTERIOR ) then
+
+                     ! Then at least the prior (A.K.A. guess) is good
+
+                     ges_level_N(   iepoch,iregion,flavor) = &
+                     ges_level_N(   iepoch,iregion,flavor) + 1
+
+                     rms_ges_mean(  iepoch,iregion,flavor) = &
+                     rms_ges_mean(  iepoch,iregion,flavor) + (pr_mean-obs(1))**2
 
                      rms_ges_spread(iepoch,iregion,flavor) = &
                      rms_ges_spread(iepoch,iregion,flavor) + pr_sprd**2
 
+                     ! However, the posterior is bad
+
+                     NbadQClevel(iepoch,iregion,flavor, 2) = &
+                     NbadQClevel(iepoch,iregion,flavor, 2) + 1
+
+                  else
+
+                     ! The prior is good
+
+                     ges_level_N(   iepoch,iregion,flavor) = &
+                     ges_level_N(   iepoch,iregion,flavor) + 1
+
+                     rms_ges_mean(  iepoch,iregion,flavor) = &
+                     rms_ges_mean(  iepoch,iregion,flavor) + (pr_mean-obs(1))**2
+
+                     rms_ges_spread(iepoch,iregion,flavor) = &
+                     rms_ges_spread(iepoch,iregion,flavor) + pr_sprd**2
+
+                     ! The posterior is good
+
+                     anl_level_N(   iepoch,iregion,flavor) = &
+                     anl_level_N(   iepoch,iregion,flavor) + 1
+
+                     rms_anl_mean(  iepoch,iregion,flavor) = &
+                     rms_anl_mean(  iepoch,iregion,flavor) + (po_mean-obs(1))**2
+
                      rms_anl_spread(iepoch,iregion,flavor) = &
                      rms_anl_spread(iepoch,iregion,flavor) + po_sprd**2
-                  else
-                     Nrejected(iregion,flavor) = Nrejected(iregion,flavor) + 1
+
                   endif
 
-               endif
+               endif ObsIsWind  
 
             endif DesiredLevel
+
 
             if (vert_is_surface(obs_loc)) cycle Areas
 
@@ -914,9 +1076,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                ierr = CheckMate(KIND_V_WIND_COMPONENT, U_type, obs_loc, U_obs_loc)
 
                if ( ierr /= 0 ) then
-
                   !  write(*,*)'vertical ... V with no matching U ...'
-
                   NbadWvert(iregion) = NbadWvert(iregion) + 1
                   cycle ObservationLoop
                endif
@@ -926,38 +1086,130 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
                ratioU = GetRatio(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var)
 
-               if( (ratio <= rat_cri) .and. (ratioU <= rat_cri) )  then
+               WRatioTest: if( (ratio <= rat_cri) .and. (ratioU <= rat_cri) )  then
+
                   speed_ges2 = sqrt( U_pr_mean**2 + pr_mean**2 )
                   speed_anl2 = sqrt( U_po_mean**2 + po_mean**2 )
-                  speed_obs2 = sqrt( U_obs**2 + obs(1)**2 )
+                  speed_obs2 = sqrt(     U_obs**2 +  obs(1)**2 )
 
-                  num_ver(obslevel,iregion,flavor) =      num_ver(obslevel,iregion,flavor) + 1
+                  if ( qc_integer > QC_MAX_PRIOR ) then  ! prior and posterior failed
 
-                  rms_ges_ver(obslevel,iregion,flavor) =  rms_ges_ver(obslevel,iregion,flavor) + &
-                       (pr_mean-obs(1))**2 + (U_pr_mean- U_obs)**2
+                     NbadQC_ver(obslevel, iregion, flavor, 1) = &
+                     NbadQC_ver(obslevel, iregion, flavor, 1) + 1
+                     NbadQC_ver(obslevel, iregion, flavor, 2) = &
+                     NbadQC_ver(obslevel, iregion, flavor, 2) + 1
+                     
+                  else if ( qc_integer > QC_MAX_POSTERIOR ) then
 
-                  rms_anl_ver(obslevel,iregion,flavor) =  rms_anl_ver(obslevel,iregion,flavor) + &
-                       (po_mean-obs(1))**2 + (U_po_mean- U_obs)**2
+                     ! Then prior A.K.A. guess (at least) is good
 
-                  bias_ges_ver(obslevel,iregion,flavor) = bias_ges_ver(obslevel,iregion,flavor) + &
-                       speed_ges2 - speed_obs2
+                     ges_num_ver(obslevel,iregion,flavor) = &
+                     ges_num_ver(obslevel,iregion,flavor) + 1
 
-                  bias_anl_ver(obslevel,iregion,flavor) = bias_anl_ver(obslevel,iregion,flavor) + &
-                       speed_anl2 - speed_obs2
-               endif
+                     rms_ges_ver(obslevel,iregion,flavor) = &
+                     rms_ges_ver(obslevel,iregion,flavor) + &
+                         (pr_mean-obs(1))**2 + (U_pr_mean- U_obs)**2
+
+                     bias_ges_ver(obslevel,iregion,flavor) = &
+                     bias_ges_ver(obslevel,iregion,flavor) + &
+                               speed_ges2 - speed_obs2
+
+                     ! However, the posterior is bad
+                     NbadQC_ver(obslevel, iregion, flavor, 2) = &
+                     NbadQC_ver(obslevel, iregion, flavor, 2) + 1
+
+                  else
+
+                     ! The prior is good
+
+                     ges_num_ver(obslevel,iregion,flavor) = &
+                     ges_num_ver(obslevel,iregion,flavor) + 1
+
+                     rms_ges_ver(obslevel,iregion,flavor) = &
+                     rms_ges_ver(obslevel,iregion,flavor) + &
+                         (pr_mean-obs(1))**2 + (U_pr_mean- U_obs)**2
+
+                     bias_ges_ver(obslevel,iregion,flavor) = &
+                     bias_ges_ver(obslevel,iregion,flavor) + &
+                               speed_ges2 - speed_obs2
+
+                     ! The posterior is good
+
+                     anl_num_ver(obslevel,iregion,flavor) = &
+                     anl_num_ver(obslevel,iregion,flavor) + 1
+
+                     rms_anl_ver(obslevel,iregion,flavor) = &
+                     rms_anl_ver(obslevel,iregion,flavor) + &
+                            (po_mean-obs(1))**2 + (U_po_mean- U_obs)**2
+
+                     bias_anl_ver(obslevel,iregion,flavor) = &
+                     bias_anl_ver(obslevel,iregion,flavor) + &
+                               speed_anl2 - speed_obs2
+
+                  endif
+
+               endif WRatioTest
 
             else
 
                if(ratio <= rat_cri )  then
-                      num_ver(obslevel,iregion,flavor) =      num_ver(obslevel,iregion,flavor) + 1
-                  rms_ges_ver(obslevel,iregion,flavor) =  rms_ges_ver(obslevel,iregion,flavor) + &
-                       (pr_mean - obs(1))**2
-                  rms_anl_ver(obslevel,iregion,flavor) =  rms_anl_ver(obslevel,iregion,flavor) + &
-                       (po_mean - obs(1))**2
-                  bias_ges_ver(obslevel,iregion,flavor) = bias_ges_ver(obslevel,iregion,flavor) + &
-                       pr_mean - obs(1)
-                  bias_anl_ver(obslevel,iregion,flavor) = bias_anl_ver(obslevel,iregion,flavor) + &
-                       po_mean - obs(1)
+
+                  if ( qc_integer > QC_MAX_PRIOR ) then  ! prior and posterior failed
+
+                     NbadQC_ver(obslevel, iregion, flavor, 1) = &
+                     NbadQC_ver(obslevel, iregion, flavor, 1) + 1
+                     NbadQC_ver(obslevel, iregion, flavor, 2) = &
+                     NbadQC_ver(obslevel, iregion, flavor, 2) + 1
+
+                  else if ( qc_integer > QC_MAX_POSTERIOR ) then
+
+                     ! Then prior A.K.A. guess (at least) is good
+
+                     ges_num_ver(obslevel,iregion,flavor) = &
+                     ges_num_ver(obslevel,iregion,flavor) + 1
+
+                     rms_ges_ver(obslevel,iregion,flavor) = &
+                     rms_ges_ver(obslevel,iregion,flavor) + &
+                                (pr_mean - obs(1))**2
+
+                     bias_ges_ver(obslevel,iregion,flavor) = &
+                     bias_ges_ver(obslevel,iregion,flavor) + &
+                                 pr_mean - obs(1)
+
+                     ! However, the posterior is bad
+                     NbadQC_ver(obslevel, iregion, flavor, 2) = &
+                     NbadQC_ver(obslevel, iregion, flavor, 2) + 1
+
+                  else
+
+                     ! The prior is good
+
+                     ges_num_ver(obslevel,iregion,flavor) = &
+                     ges_num_ver(obslevel,iregion,flavor) + 1
+
+                     rms_ges_ver(obslevel,iregion,flavor) = &
+                     rms_ges_ver(obslevel,iregion,flavor) + &
+                                (pr_mean - obs(1))**2
+
+                     bias_ges_ver(obslevel,iregion,flavor) = &
+                     bias_ges_ver(obslevel,iregion,flavor) + &
+                                 pr_mean - obs(1)
+
+                     ! The posterior is good
+
+                     anl_num_ver(obslevel,iregion,flavor) = &
+                     anl_num_ver(obslevel,iregion,flavor) + 1
+
+                     rms_anl_ver(obslevel,iregion,flavor) = &
+                     rms_anl_ver(obslevel,iregion,flavor) + &
+                                (po_mean - obs(1))**2
+
+                     bias_anl_ver(obslevel,iregion,flavor) = &
+                     bias_anl_ver(obslevel,iregion,flavor) + &
+                                 po_mean - obs(1)
+
+                  endif
+
                endif
 
             endif
@@ -986,6 +1238,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
    call destroy_obs(observation)
    call destroy_obs(next_obs)
    call destroy_obs_sequence(seq)
+   deallocate( qc )
 
 enddo ObsFileLoop
 
@@ -1046,25 +1299,27 @@ OneLevel : do ivar=1,max_obs_kinds
 
    do iregion=1, Nregions
       do iepoch = 1, Nepochs
-         if ( num_in_level(iepoch, iregion, ivar) == 0) then
+         if (  ges_level_N(iepoch, iregion, ivar) == 0) then
               rms_ges_mean(iepoch, iregion, ivar) = -99.0_r8
-              rms_anl_mean(iepoch, iregion, ivar) = -99.0_r8
             rms_ges_spread(iepoch, iregion, ivar) = -99.0_r8
+         else
+              rms_ges_mean(iepoch, iregion, ivar) =   sqrt(rms_ges_mean(iepoch, iregion, ivar) / &
+                                                            ges_level_N(iepoch, iregion, ivar) )
+            rms_ges_spread(iepoch, iregion, ivar) = sqrt(rms_ges_spread(iepoch, iregion, ivar) / &
+                                                            ges_level_N(iepoch, iregion, ivar) )
+         endif
+
+         if (  anl_level_N(iepoch, iregion, ivar) == 0) then
+              rms_anl_mean(iepoch, iregion, ivar) = -99.0_r8
             rms_anl_spread(iepoch, iregion, ivar) = -99.0_r8
          else
-
-         !  write(logfileunit,*)'e,r,v #',iepoch,iregion,ivar,num_in_level(iepoch,iregion,ivar)
-         !  write(     *     ,*)'e,r,v #',iepoch,iregion,ivar,num_in_level(iepoch,iregion,ivar)
-
-              rms_ges_mean(iepoch, iregion, ivar) =   sqrt(rms_ges_mean(iepoch, iregion, ivar) / &
-                                                           num_in_level(iepoch, iregion, ivar) )
               rms_anl_mean(iepoch, iregion, ivar) =   sqrt(rms_anl_mean(iepoch, iregion, ivar) / &
-                                                           num_in_level(iepoch, iregion, ivar) )
-            rms_ges_spread(iepoch, iregion, ivar) = sqrt(rms_ges_spread(iepoch, iregion, ivar) / &
-                                                           num_in_level(iepoch, iregion, ivar) )
+                                                            anl_level_N(iepoch, iregion, ivar) )
             rms_anl_spread(iepoch, iregion, ivar) = sqrt(rms_anl_spread(iepoch, iregion, ivar) / &
-                                                           num_in_level(iepoch, iregion, ivar) )
+                                                            anl_level_N(iepoch, iregion, ivar) )
          endif
+
+
       enddo
    enddo
 
@@ -1072,38 +1327,41 @@ OneLevel : do ivar=1,max_obs_kinds
    ! Create data files for all observation kinds we have used
    !--------------------------------------------------------------------
 
-   if( all (num_in_level(:, :, ivar) == 0) ) then
+   obs_kind_names = ProcessName(get_obs_name(ivar))
+   write(gesName,'(a,''_ges_times.dat'')') trim(adjustl(obs_kind_names))
+   write(anlName,'(a,''_anl_times.dat'')') trim(adjustl(obs_kind_names))
+
+
+   if( all (ges_level_N(:, :, ivar) == 0) ) then
      if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
-     cycle OneLevel
-   endif
-     
-
-   ivarcount = ivarcount + 1
-
-   generic_obs_name = ProcessName(get_obs_name(ivar))
-
-   write(gesName,'(a,''_ges_times.dat'')') trim(adjustl(generic_obs_name))
-   write(anlName,'(a,''_anl_times.dat'')') trim(adjustl(generic_obs_name))
-   gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
-   anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
-
-   if (verbose) then
-      write(logfileunit,*)'Creating '//trim(adjustl(anlName))
-      write(     *     ,*)'Creating '//trim(adjustl(gesName))
+   else
+     if (verbose) write(*,*)'Creating '//trim(adjustl(gesName))
+      gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
+      do i = 1, Nepochs
+         call get_time(bincenter(i), seconds, days)
+         write(gesUnit,91) days, seconds, &
+           (rms_ges_mean(i,j,ivar),rms_ges_spread(i,j,ivar),ges_level_N(i,j,ivar),j=1,Nregions)
+      enddo
+      close(gesUnit)
    endif
 
-   do i=1, Nepochs
-      call get_time(bincenter(i),seconds,days)
-      write(gesUnit,91) days, seconds, &
-        (rms_ges_mean(i,j,ivar),rms_ges_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
-      write(anlUnit,91) days, seconds, &
-        (rms_anl_mean(i,j,ivar),rms_anl_spread(i,j,ivar),num_in_level(i,j,ivar),j=1,Nregions)
-   enddo
-   close(gesUnit)
-   close(anlUnit)
+   if( all (anl_level_N(:, :, ivar) == 0) ) then
+     if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
+   else
+      write(*,*)'Creating '//trim(adjustl(anlName))
+      anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
+      do i = 1, Nepochs
+         call get_time(bincenter(i),seconds,days)
+         write(anlUnit,91) days, seconds, &
+           (rms_anl_mean(i,j,ivar),rms_anl_spread(i,j,ivar),anl_level_N(i,j,ivar),j=1,Nregions)
+      enddo
+      close(anlUnit)
+   endif
 
-   write(iunit,95) ivarcount, trim(adjustl(generic_obs_name))
-
+   if ( any(ges_level_N(:,:,ivar) > 0) .or. any(anl_level_N(:,:,ivar) > 0) ) then
+      ivarcount = ivarcount + 1
+      write(iunit,95) ivarcount, trim(adjustl(obs_kind_names))
+   endif
 
 enddo OneLevel
 
@@ -1119,7 +1377,7 @@ enddo
 
 deallocate(rms_ges_mean, rms_ges_spread, &
            rms_anl_mean, rms_anl_spread, &
-           num_in_level)
+           ges_level_N,  anl_level_N)
 
 !-----------------------------------------------------------------------
 ! temporal average of the vertical statistics
@@ -1135,80 +1393,89 @@ AllLevels : do ivar=1,max_obs_kinds
 
    do iregion=1, Nregions
       do ilev=1, nlev
-         if(     num_ver(ilev,iregion,ivar) == 0) then
+         if( ges_num_ver(ilev,iregion,ivar) == 0) then
              rms_ges_ver(ilev,iregion,ivar) = -99.0_r8
-             rms_anl_ver(ilev,iregion,ivar) = -99.0_r8
             bias_ges_ver(ilev,iregion,ivar) = -99.0_r8
+         else
+             rms_ges_ver(ilev,iregion,ivar) = sqrt(  rms_ges_ver(ilev,iregion,ivar) / &
+                                                     ges_num_ver(ilev,iregion,ivar))
+            bias_ges_ver(ilev,iregion,ivar) =       bias_ges_ver(ilev,iregion,ivar) / &
+                                                     ges_num_ver(ilev,iregion,ivar)
+         endif
+
+         if( anl_num_ver(ilev,iregion,ivar) == 0) then
+             rms_anl_ver(ilev,iregion,ivar) = -99.0_r8
             bias_anl_ver(ilev,iregion,ivar) = -99.0_r8
          else
-
-         !  write(logfileunit,*)'l,r,v #',ilev,iregion,ivar,num_ver(ilev,iregion,ivar)
-         !  write(     *     ,*)'l,r,v #',ilev,iregion,ivar,num_ver(ilev,iregion,ivar)
-
-             rms_ges_ver(ilev,iregion,ivar) = sqrt(  rms_ges_ver(ilev,iregion,ivar) / &
-                                                         num_ver(ilev,iregion,ivar))
              rms_anl_ver(ilev,iregion,ivar) = sqrt(  rms_anl_ver(ilev,iregion,ivar) / &
-                                                         num_ver(ilev,iregion,ivar))
-            bias_ges_ver(ilev,iregion,ivar) =       bias_ges_ver(ilev,iregion,ivar) / &
-                                                         num_ver(ilev,iregion,ivar)
+                                                     anl_num_ver(ilev,iregion,ivar))
             bias_anl_ver(ilev,iregion,ivar) =       bias_anl_ver(ilev,iregion,ivar) / &
-                                                         num_ver(ilev,iregion,ivar)
+                                                     anl_num_ver(ilev,iregion,ivar)
          endif
+
       enddo
    enddo
 
    !--------------------------------------------------------------------
    ! Create data files for all observation kinds we have used
    !--------------------------------------------------------------------
+   obs_kind_names = ProcessName(get_obs_name(ivar))
 
-   if( all (num_ver(:,:,ivar) == 0) ) then
-     if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
-     cycle AllLevels
+   if( all (ges_num_ver(:,:,ivar) == 0) ) then
+      if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
+   else
+
+      write(gesName,'(a,''_ges_ver_ave.dat'')') trim(adjustl(obs_kind_names))
+      if (verbose) write(*,*)'Creating '//trim(adjustl(gesName))
+      gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
+
+      do ilev = nlev, 1, -1
+         write(gesUnit, 610) levels(ilev,which_vert(ivar)), &
+              (rms_ges_ver(ilev,iregion,ivar), ges_num_ver(ilev,iregion,ivar), iregion=1, Nregions)
+      enddo
+      close(gesUnit)
+
+      write(gesName,'(a,''_ges_ver_ave_bias.dat'')') trim(adjustl(obs_kind_names))
+      gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
+      if (verbose) write(*,*)'Creating '//trim(adjustl(gesName))
+
+      do ilev = nlev, 1, -1
+         write(gesUnit, 610) levels(ilev,which_vert(ivar)), &
+              (bias_ges_ver(ilev,iregion,ivar), ges_num_ver(ilev,iregion,ivar), iregion=1, Nregions)
+      enddo
+      close(gesUnit)
    endif
 
-   ivarcount = ivarcount + 1
 
-   generic_obs_name = ProcessName(get_obs_name(ivar))
+   if( all (anl_num_ver(:,:,ivar) == 0) ) then
+      if (verbose) write(*,*)'skipping obs type ',ivar,' because all levels = 0'
+   else
 
-   write(gesName,'(a,''_ges_ver_ave.dat'')') trim(adjustl(generic_obs_name))
-   write(anlName,'(a,''_anl_ver_ave.dat'')') trim(adjustl(generic_obs_name))
-   gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
-   anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
+      write(anlName,'(a,''_anl_ver_ave.dat'')') trim(adjustl(obs_kind_names))
+      if (verbose) write(*,*)'Creating '//trim(adjustl(anlName))
+      anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
 
-   if (verbose) then
-      write(logfileunit,*)'Creating '//trim(adjustl(anlName))
-      write(     *     ,*)'Creating '//trim(adjustl(gesName))
+      do ilev = nlev, 1, -1
+         write(anlUnit, 610) levels(ilev,which_vert(ivar)), &
+              (rms_anl_ver(ilev,iregion,ivar), anl_num_ver(ilev,iregion,ivar), iregion=1, Nregions) 
+      enddo
+      close(anlUnit)
+
+      write(anlName,'(a,''_anl_ver_ave_bias.dat'')') trim(adjustl(obs_kind_names))
+      anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
+      if (verbose) write(*,*)'Creating '//trim(adjustl(anlName))
+
+      do ilev = nlev, 1, -1
+         write(anlUnit, 610) levels(ilev,which_vert(ivar)), &
+             (bias_anl_ver(ilev,iregion,ivar), anl_num_ver(ilev,iregion,ivar), iregion=1, Nregions) 
+      enddo
+      close(anlUnit)
    endif
 
-   do ilev = nlev, 1, -1
-      write(gesUnit, 610) levels(ilev,which_vert(ivar)), &
-           (rms_ges_ver(ilev,iregion,ivar), num_ver(ilev,iregion,ivar), iregion=1, Nregions)
-      write(anlUnit, 610) levels(ilev,which_vert(ivar)), &
-           (rms_anl_ver(ilev,iregion,ivar), num_ver(ilev,iregion,ivar), iregion=1, Nregions) 
-   enddo
-   close(gesUnit)
-   close(anlUnit)
-
-   write(gesName,'(a,''_ges_ver_ave_bias.dat'')') trim(adjustl(generic_obs_name))
-   write(anlName,'(a,''_anl_ver_ave_bias.dat'')') trim(adjustl(generic_obs_name))
-   gesUnit = open_file(trim(adjustl(gesName)),form='formatted',action='rewind')
-   anlUnit = open_file(trim(adjustl(anlName)),form='formatted',action='rewind')
-
-   if (verbose) then
-      write(logfileunit,*)'Creating '//trim(adjustl(anlName))
-      write(     *     ,*)'Creating '//trim(adjustl(gesName))
+   if ( any(ges_num_ver(:,:,ivar) > 0) .or. any(anl_num_ver(:,:,ivar) > 0) ) then
+      ivarcount = ivarcount + 1
+      write(iunit,96) ivarcount, trim(adjustl(obs_kind_names))
    endif
-
-   do ilev = nlev, 1, -1
-      write(gesUnit, 610) levels(ilev,which_vert(ivar)), &
-           (bias_ges_ver(ilev,iregion,ivar), num_ver(ilev,iregion,ivar), iregion=1, Nregions)
-      write(anlUnit, 610) levels(ilev,which_vert(ivar)), &
-           (bias_anl_ver(ilev,iregion,ivar), num_ver(ilev,iregion,ivar), iregion=1, Nregions) 
-   enddo
-   close(gesUnit)
-   close(anlUnit)
-
-   write(iunit,96) ivarcount, trim(adjustl(generic_obs_name))
 
 enddo AllLevels
 
@@ -1227,14 +1494,24 @@ write(*,*) '# NwrongType         : ',NwrongType
 write(*,*) '# NbadQC             : ',NbadQC
 write(*,*) '# NbadLevel          : ',NbadLevel
 write(*,*) '# Nidentity          : ',Nidentity
-write(*,'(a)')'Table of observations rejected by region for specified level'
-write(*,'(5a)')'                                       ',reg_names(1:Nregions)
+write(*,*) '# Njejected   (ratio): ',sum(Nrejected)
+write(*,*) '# NbadQClevel (prior): ',sum(NbadQClevel(:,:,:,1))
+write(*,*) '# NbadQClevel (post) : ',sum(NbadQClevel(:,:,:,2))
+write(*,*) '# NbadQC_ver  (prior): ',sum(NbadQC_ver(:,:,:,1))
+write(*,*) '# NbadQC_ver  (post) : ',sum(NbadQC_ver(:,:,:,2))
+write(*,'(a)')'Table of observations rejected by region for the one specified level:'
+write(*,'(5a)')'       ',reg_names(1:Nregions)
 do ivar=1,max_obs_kinds
-   generic_obs_name = ProcessName(get_obs_name(ivar))
-   write(*,'(3a,4i8)') ' # ',generic_obs_name,'         : ',Nrejected(:,ivar)
+   obs_kind_names = ProcessName(get_obs_name(ivar))
+   write(*,'(3a,4i8)') ' # ',obs_kind_names,' (ratio) : ',Nrejected(:,ivar)
+   Ntemp = sum(NbadQClevel(:,:,:,1),1)    ! sum over all times for prior
+   write(*,'(3a,4i8)') ' # ',obs_kind_names,' (prior) : ',Ntemp(:,ivar)
+   Ntemp = sum(NbadQClevel(:,:,:,2),1)    ! sum over all times for posterior
+   write(*,'(3a,4i8)') ' # ',obs_kind_names,' (post)  : ',Ntemp(:,ivar)
+   write(*,*)''
 enddo
-write(*,'(a,4i8)') ' # bad winds per region for specified level         : ',NbadW
-write(*,'(a,4i8)') ' # bad winds per region for all levels              : ',NbadWvert
+write(*,'(a,4i8)') ' # unmatched winds per region for specified level   : ',NbadW
+write(*,'(a,4i8)') ' # unmatched winds per region for all levels        : ',NbadWvert
 write(*,*)''
 
 write(logfileunit,*) ''
@@ -1244,14 +1521,24 @@ write(logfileunit,*) '# NwrongType         : ',NwrongType
 write(logfileunit,*) '# NbadQC             : ',NbadQC
 write(logfileunit,*) '# NbadLevel          : ',NbadLevel
 write(logfileunit,*) '# Nidentity          : ',Nidentity
-write(logfileunit,'(a)')'Table of observations rejected by region for specified level'
+write(logfileunit,*) '# Njejected   (ratio): ',sum(Nrejected)
+write(logfileunit,*) '# NbadQClevel (prior): ',sum(NbadQClevel(:,:,:,1))
+write(logfileunit,*) '# NbadQClevel (post) : ',sum(NbadQClevel(:,:,:,2))
+write(logfileunit,*) '# NbadQC_ver  (prior): ',sum(NbadQC_ver(:,:,:,1))
+write(logfileunit,*) '# NbadQC_ver  (post) : ',sum(NbadQC_ver(:,:,:,2))
+write(logfileunit,'(a)')'Table of observations rejected by region for the one specified level:'
 write(logfileunit,'(5a)')'                                       ',reg_names(1:Nregions)
 do ivar=1,max_obs_kinds
-   generic_obs_name = ProcessName(get_obs_name(ivar))
-   write(logfileunit,'(3a,4i8)') ' # ',generic_obs_name,'         : ',Nrejected(:,ivar)
+   obs_kind_names = ProcessName(get_obs_name(ivar))
+   write(logfileunit,'(3a,4i8)') ' # ',obs_kind_names,' (ratio) : ',Nrejected(:,ivar)
+   Ntemp = sum(NbadQClevel(:,:,:,1),1)    ! sum over all times for prior
+   write(logfileunit,'(3a,4i8)') ' # ',obs_kind_names,' (prior) : ',Ntemp(:,ivar)
+   Ntemp = sum(NbadQClevel(:,:,:,2),1)    ! sum over all times for posterior
+   write(logfileunit,'(3a,4i8)') ' # ',obs_kind_names,' (post)  : ',Ntemp(:,ivar)
+   write(logfileunit,*)''
 enddo
-write(logfileunit,'(a,4i8)') ' # bad winds per region for specified level         : ',NbadW
-write(logfileunit,'(a,4i8)') ' # bad winds per region for all levels              : ',NbadWvert
+write(logfileunit,'(a,4i8)') ' # unmatched winds per region for specified level   : ',NbadW
+write(logfileunit,'(a,4i8)') ' # unmatched winds per region for all levels        : ',NbadWvert
 
 if (Nidentity > 0) then
    write(*,*)'There were identity observations in this observation sequence file.'
@@ -1270,7 +1557,7 @@ endif
 !-----------------------------------------------------------------------
 
 deallocate(rms_ges_ver, rms_anl_ver, bias_ges_ver, bias_anl_ver, &
-           num_ver, NbadW, NbadWvert, Nrejected, & 
+           ges_num_ver, anl_num_ver, NbadW, NbadWvert, Nrejected, & 
            epoch_center, bincenter, obs_used_in_epoch)
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
@@ -1405,7 +1692,7 @@ contains
    end Function CheckObsType
 
 
-   Function ProcessName(obs_name) result(generic_obs_name)
+   Function ProcessName(obs_name) result(obs_kind_names)
    ! Just an effort to replace "_V_WIND_COMPONENT" with
    ! _HORIZONTAL_WIND_VELOCITY
    !
@@ -1414,7 +1701,7 @@ contains
    ! The intput string length is determined by the get_obs_name routine.
 
    character(len=*), intent(in) :: obs_name
-   character(len=40)            :: generic_obs_name
+   character(len=40)            :: obs_kind_names
 
    integer :: indx1,indxN
 
@@ -1422,9 +1709,9 @@ contains
    indxN = len_trim(obs_name)
 
    if (indx1 > 0) then
-      generic_obs_name = obs_name(1:indx1)//'_HORIZONTAL_WIND_VELOCITY'//obs_name(indx1+18:indxN)
+      obs_kind_names = obs_name(1:indx1)//'_HORIZONTAL_WIND_VELOCITY'//obs_name(indx1+18:indxN)
    else
-      generic_obs_name = obs_name
+      obs_kind_names = obs_name
    endif
 
    end Function ProcessName
