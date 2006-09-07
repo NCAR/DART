@@ -344,11 +344,12 @@ subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
 ! 
 ! Stub for computation of get close states
 
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: inum, indices(:)
-real(r8), intent(out) :: dist(:)
-real(r8), intent(in) :: x(:)
+type(location_type), intent(in)  :: o_loc
+real(r8),            intent(in)  :: radius
+integer,             intent(out) :: inum
+integer,             intent(in)  :: indices(:)
+real(r8),            intent(in)  :: dist(:)
+real(r8),            intent(in)  :: x(:)
 
 ! Because of F90 limits this stub must be here telling assim_model
 ! to do exhaustive search (inum = -1 return)
@@ -604,7 +605,7 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! small independent perturbations.
 
 real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
+real(r8), intent(in)  :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
