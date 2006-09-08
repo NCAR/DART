@@ -302,7 +302,7 @@ type(location_type) :: location
 assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
 evaluate_this_ob = evaluate_this_obs_kind(obs_kind_ind)
 
-! If not being assimilated or evaluated return with missing_r8 and istatus -99 ???
+! If not being assimilated or evaluated return with missing_r8 and istatus 0
 if(assimilate_this_ob .or. evaluate_this_ob) then
    location = get_obs_def_location(obs_def)
    ! Compute the forward operator;
@@ -321,7 +321,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
 else
    ! Not computing forward operator for this kind
    obs_val = missing_r8
-   istatus = -99
+   istatus = 0
 endif
 
 end subroutine get_expected_obs_from_def
