@@ -230,8 +230,7 @@ size descriptions in the ensemble_type are initialized.
  <TR><TD valign=top><em class=code>num_vars&nbsp; &nbsp; </em></TD>
      <TD>Number of variables in the vector.</TD></TR>
  <TR><TD valign=top><em class=code>distribution_type_in&nbsp; &nbsp; </em></TD>
-     <TD>Controls layout of storage on pe's. Currently only option 1 is supporte
- d.</TD></TR>
+     <TD>Controls layout of storage on pe's. Currently only option 1 is supported.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -256,8 +255,8 @@ the local storage index for this variable on that process.
  <TR><TD valign=top><em class=code>var_number&nbsp; &nbsp; </em></TD>
      <TD>Global index of a variable in the vector from an ensemble.</TD></TR>
  <TR><TD valign=top><em class=code>owner&nbsp; &nbsp; </em></TD>
-     <TD>Process (0 to num_processes) that stores this variable when each has al
- l copies of subset of variables.</TD></TR>
+     <TD>Process (0 to num_processes) that stores this variable when each has all 
+          copies of subset of variables.</TD></TR>
  <TR><TD valign=top><em class=code>owners_index&nbsp; &nbsp; </em></TD>
      <TD>Local storage index for this variable on the owning process.</TD></TR>
  </TABLE>
@@ -288,8 +287,7 @@ times of ens2.
  <TR><TD valign=top><em class=code>ens2&nbsp; &nbsp; </em></TD>
      <TD>Ensemble handle of ensemble into which ens1 is copied.</TD></TR>
  <TR><TD valign=top><em class=code>duplicate_time&nbsp; &nbsp; </em></TD>
-     <TD>If true, copy the times from ens1 into ens2, else leave ens2 times unch
- anged.</TD></TR>
+     <TD>If true, copy the times from ens1 into ens2, else leave ens2 times unchanged.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -310,8 +308,8 @@ variables for a subset of copies.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>get_my_num_copies&nbsp; &nbsp; </em></TD>
-     <TD>Returns the number of copies stored by this process when storing all va
- riables for a subset of copies. </TD></TR>
+     <TD>Returns the number of copies stored by this process when storing all 
+         variables for a subset of copies. </TD></TR>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
      <TD>Handle for an ensemble.</TD></TR>
  </TABLE>
@@ -396,8 +394,7 @@ of a subset of variables.
  <A NAME="compute_copy_mean"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call compute_copy_mean(ens_handle,start_copy,end_copy,mean_c
- opy,sd_copy) </em>
+ <em class=call> call compute_copy_mean(ens_handle,start_copy,end_copy,mean_copy,sd_copy) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>start_copy</em>
@@ -419,7 +416,6 @@ Mean is written to mean_copy.
      <TD>Global index of last copy in mean and sd computation.</TD></TR>
  <TR><TD valign=top><em class=code>mean_copy&nbsp; &nbsp; </em></TD>
      <TD>Global index of copy into which mean is written.</TD></TR>
- >
  </TABLE>
  <P>
  <!--================================================================-->
@@ -428,8 +424,7 @@ Mean is written to mean_copy.
  <A NAME="compute_copy_mean_sd"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call compute_copy_mean_sd(ens_handle,start_copy,end_copy,mean_c
- opy,sd_copy) </em>
+ <em class=call> call compute_copy_mean_sd(ens_handle,start_copy,end_copy,mean_copy,sd_copy) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>start_copy</em>
@@ -453,8 +448,7 @@ Mean is written to mean_copy and standard deviation to sd_copy.
  <TR><TD valign=top><em class=code>mean_copy&nbsp; &nbsp; </em></TD>
      <TD>Global index of copy into which mean is written.</TD></TR>
  <TR><TD valign=top><em class=code>sd_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which standard deviation is written.</TD></TR
- >
+     <TD>Global index of copy into which standard deviation is written.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -463,8 +457,7 @@ Mean is written to mean_copy and standard deviation to sd_copy.
  <A NAME="compute_copy_mean_var"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call compute_copy_mean_var(ens_handle,start_copy,end_copy,mean_c
- opy,sd_copy) </em>
+ <em class=call> call compute_copy_mean_var(ens_handle,start_copy,end_copy,mean_copy,sd_copy) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>start_copy</em>
@@ -488,8 +481,7 @@ Mean is written to mean_copy and variance to var_copy.
  <TR><TD valign=top><em class=code>mean_copy&nbsp; &nbsp; </em></TD>
      <TD>Global index of copy into which mean is written.</TD></TR>
  <TR><TD valign=top><em class=code>var_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which variance is written.</TD></TR
- >
+     <TD>Global index of copy into which variance is written.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -517,16 +509,14 @@ a single processor to do things with the entire state vector.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>receiving_pe&nbsp; &nbsp; </em></TD>
-     <TD>This process ends up with the requested copy of the state vector.</TD><
- /TR>
+     <TD>This process ends up with the requested copy of the state vector.</TD></TR>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
      <TD>Handle for ensemble.</TD></TR>
  <TR><TD valign=top><em class=code>copy&nbsp; &nbsp; </em></TD>
-     <TD>The global index of the copy of the state vector that is to be retreive
- d.</TD></TR>
+     <TD>The global index of the copy of the state vector that is to be retreived.</TD></TR>
  <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
-     <TD>One dimensional array in which the requested copy of the state vector i
- s returned.</TD></TR>
+     <TD>One dimensional array in which the requested copy of the state vector 
+          is returned.</TD></TR>
  <TR><TD valign=top><em class=code>mtime&nbsp; &nbsp; </em></TD>
      <TD>If present returns the time of the requested copy.</TD></TR>
  </TABLE>
@@ -558,16 +548,15 @@ process by this subroutine.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>sending_pe&nbsp; &nbsp; </em></TD>
-     <TD>This process sends the copy of the state vector.</TD><
- /TR>
+     <TD>This process sends the copy of the state vector.</TD></TR>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
      <TD>Handle for ensemble.</TD></TR>
  <TR><TD valign=top><em class=code>copy&nbsp; &nbsp; </em></TD>
      <TD>The global index of the copy of the state vector that is to be sent. 
  </TD></TR>
  <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
-     <TD>One dimensional array in which the requested copy of the state vector i
- s placed.</TD></TR>
+     <TD>One dimensional array in which the requested copy of the state vector 
+         is placed.</TD></TR>
  <TR><TD valign=top><em class=code>mtime&nbsp; &nbsp; </em></TD>
      <TD>If present send the time of the copy.</TD></TR>
  </TABLE>
@@ -656,11 +645,10 @@ the file names are generated by appending integers to the input file_name.
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
      <TD>Handle of ensemble.</TD></TR>
  <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first of continguous set of copies to be read.</TD></TR
- >
+     <TD>Global index of first of continguous set of copies to be read.</TD></TR>
  <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last of contiguous set of copies to be read, copies(sta
- rt_copy:end_copy).</TD></TR>
+     <TD>Global index of last of contiguous set of copies to be read, 
+        copies(start_copy:end_copy).</TD></TR>
  <TR><TD valign=top><em class=code>start_from_restart&nbsp; &nbsp; </em></TD>
      <TD>If true, read all copies from file. If false, read one copy and perturb
   to get required number.</TD></TR>
@@ -669,8 +657,8 @@ the file names are generated by appending integers to the input file_name.
  <TR><TD valign=top><em class=code>init_time&nbsp; &nbsp; </em></TD>
      <TD>If present, set time of all copies read to this value.</TD></TR>
  <TR><TD valign=top><em class=code>force_single_file&nbsp; &nbsp; </em></TD>
-     <TD>If present and true, force the read to be from a single file which cont
- ains all copies.</TD></TR>
+     <TD>If present and true, force the read to be from a single file which 
+       contains all copies.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -706,14 +694,13 @@ the file names are generated by appending integers to the input file_name.
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>Name of file from which to read.</TD></TR>
  <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first of continguous set of copies to be written.</TD></TR
- >
+     <TD>Global index of first of continguous set of copies to be written.</TD></TR>
  <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last of contiguous set of copies to be written, copies(sta
- rt_copy:end_copy).</TD></TR>
+     <TD>Global index of last of contiguous set of copies to be written, 
+           copies(start_copy:end_copy).</TD></TR>
  <TR><TD valign=top><em class=code>force_single_file&nbsp; &nbsp; </em></TD>
-     <TD>If present and true, force the write to be to a single file which cont
- ains all copies.</TD></TR>
+     <TD>If present and true, force the write to be to a single file which 
+      contains all copies.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -754,7 +741,7 @@ Frees up storage associated with an ensemble.
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
- put in general discussion ????????
+
  </em>
  </P>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
@@ -765,16 +752,16 @@ Frees up storage associated with an ensemble.
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>single_restart_file_in</TD>
      <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True if all copies read from a single file. False for one fi
- le per copy. Default: .true.</TD></TR>
+ <!--descript--><TD>True if all copies read from a single file. False for one 
+    file per copy. Default: .true.</TD></TR>
  <TR><!--contents--><TD valign=top>single_restart_file_out</TD>
      <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True if all copies written to a single file. False for one f
- ile per copy. Default: .true.</TD></TR>
+ <!--descript--><TD>True if all copies written to a single file. False for one
+      file per copy. Default: .true.</TD></TR>
  <TR><!--contents--><TD valign=top>perturbation_amplitude</TD>
      <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Perturbation standard deviation for generating ensemble memb
- ers if assim_model_mod will not do it. Default: 0.2_r8</TD></TR>
+ <!--descript--><TD>Perturbation standard deviation for generating ensemble 
+    members if assim_model_mod will not do it. Default: 0.2_r8</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->

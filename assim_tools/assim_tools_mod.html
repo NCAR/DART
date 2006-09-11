@@ -104,8 +104,6 @@ assim_model_mod
 <TABLE>
 <TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
                    <TD><A HREF="#yyyroutine1">filter_assim</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">obs_increment (Now Private)      </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">update_from_obs_inc (Now Private)</A></TD></TR>
 </TABLE>
 
 <BR>
@@ -224,108 +222,6 @@ inflation_only is true, otherwise the state is also updated.
  <P>
 
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine2"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> call obs_increment( ens_in, ens_size, obs, obs_var, obs_inc)</em>
-<pre>
-real(r8), intent(in), dimension(ens_size)  :: <em class=code>ens_in </em>
-integer, intent(in)                        :: <em class=code>ens_size </em>
-real(r8), intent(in)                       :: <em class=code>obs </em>
-real(r8), intent(in)                       :: <em class=code>obs_var </em>
-real(r8), intent(out), dimension(ens_size) :: <em class=code>obs_inc </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-   Does a scalar update of a prior ensemble in observation space and computes
-   the increments for each prior ensemble member. Four different ensemble filter
-   algorithms are selectable through a namelist arguement. The EAKF variant also
-   includes a capability to do an empirical systematic error correction. 
-   Obs_increment also implements the adaptive systematic error correction
-   algorithm using observation space covariance inflation. A number of 
-   options for this algorithm are selected through namelist parameters.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ens_in &nbsp; &nbsp; </em></TD>
-    <TD>The prior ensemble expected values for this observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>ens_size</em></TD>
-    <TD>Size of the prior ensemble.</TD></TR>
-
-<TR><TD valign=top><em class=code>obs</em></TD>
-    <TD>The observed value (from the instrument).</TD></TR>
-
-<TR><TD valign=top><em class=code>obs_var</em></TD>
-    <TD>The observational error variance (from the observing system).</TD></TR>
-
-<TR><TD valign=top><em class=code>obs_inc</em></TD>
-    <TD>The increments computed for the prior ensemble.</TD></TR>
-
-</TABLE>
-
-
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine3"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> call update_from_obs_inc(obs, obs_inc, state, ens_size,
-   state_inc, reg_coef,
-               <em class=optionalcode>[,correl_out]</em> )</em>
-<pre>
-real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs </em>
-real(r8), intent(in), dimension(ens_size)  :: <em class=code>obs_inc </em>
-real(r8), intent(in), dimension(ens_size)  :: <em class=code>state </em>
-integer, intent(in)                        :: <em class=code>ens_size </em>
-real(r8), intent(out), dimension(ens_size) :: <em class=code>state_inc </em>
-real(r8), intent(out)                      :: <em class=code>reg_coef </em>
-real(r8), OPTIONAL, intent(out)            :: <em class=optionalcode>correl_out </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-   Given the prior joint distribution of an observation and a state variable
-   along with computed increments for the observation ensemble members, uses
-   a linear regression to compute increments for the state variable ensemble.
-   An optional algorithm to do prior corrections of spread reduction is also
-   available for use with the EAKF variant of the filter. The increments and the
-   regression coefficient are returned and optionally the correlation between
-   the state and observation priors.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>obs &nbsp; &nbsp; </em></TD>
-    <TD>The prior ensemble expected values for this observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>obs_inc &nbsp; &nbsp; </em></TD>
-    <TD>The observation increments for the ensemble computed by
-        obs_increment.</TD></TR>
-
-<TR><TD valign=top><em class=code>state &nbsp; &nbsp; </em></TD>
-    <TD>The prior ensemble values for a state variable.</TD></TR>
-
-<TR><TD valign=top><em class=code>ens_size</em></TD>
-    <TD>Size of the ensemble.</TD></TR>
-
-<TR><TD valign=top><em class=code>state_inc</em></TD>
-    <TD>The increments computed for the state variable ensemble.</TD></TR>
-
-<TR><TD valign=top><em class=code>reg_coef</em></TD>
-    <TD> The regression coefficient between the observation and state variable
-         ensembles.</TD></TR>
-
-<TR><TD valign=top><em class=optionalcode>correl_out</em></TD>
-    <TD>Optional sample correlation between state and prior.</TD></TR>
-
-</TABLE>
 
 <!--==================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -435,9 +331,7 @@ to out_file_name.
 <div class=namelist><pre>
 <em class=call>namelist / assim_tools_nml / </em> &#38;
 filter_kind, cutoff, sort_obs_inc, &#38;
-do_parallel, num_domains, parallel_command, &#38;
-spread_restoration, internal_outlier_threshold, &#38;
-sampling_error_correction, num_close_threshold 
+spread_restoration, sampling_error_correction, adaptive_localization_threshold
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -466,29 +360,12 @@ sampling_error_correction, num_close_threshold
                         as possible. This minimizes regression errors when
                         non-deterministic filter or error correction algorithms
                         are applied. Default: false.</TD></TR>
- <TR><!--contents--><TD valign=top>do_parallel</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD>Execution control: 0 = single executable; 2 = parallel_command; 
-	     3 = use filter_server Default: 0</TD></TR>
- <TR><!--contents--><TD valign=top>num_domains</TD>
-     <!--  type  --><TD valign=top>integer</TD>
- <!--descript--><TD>Use this many subdomains; assimilate each independently Default: 1</TD></TR>
- <TR><!--contents--><TD valign=top>parallel_command</TD>
-     <!--  type  --><TD valign=top>character(len=129)</TD>
- <!--descript--><TD>Command to be executed for option 2.  Default: ./assim_filter.csh</TD></TR>
- <TR><!--contents--><TD valign=top>spread_restoration</TD>
+ 
+<TR><!--contents--><TD valign=top>spread_restoration</TD>
      <!--  type  --><TD valign=top>logical</TD>
  <!--descript--><TD> True turns on algorithm to restore amount of spread that would be
              expected to be lost if underlying obs/state variable correlation were really
              0.  Default: false </TD></TR>
- <TR><!--contents--><TD valign=top>internal_outlier_threshold</TD>
-     <!--  type  --><TD valign=top>real</TD>
- <!--descript--><TD> Like the global outlier threshold in the filter, except it
-    is applied during the sequential update phase. If the difference between the 
-    prior ensemble mean and the observed value is more than this many standard
-    deviations of the expected value, the observation is not used. It will still 
-    appear in the diagnostic output since this is generated in the filter before the
-    sequential phase begins.  Default: -1.0</TD></TR>
 
  <TR><!--contents--><TD valign=top>sampling_error_correction</TD>
      <!--  type  --><TD valign=top>logical</TD>
@@ -499,16 +376,17 @@ sampling_error_correction, num_close_threshold
      have questions. 
                Default: false </TD></TR>
 
- <TR><!--contents--><TD valign=top>num_close_threshold</TD>
-     <!--  type  --><TD valign=top>real</TD>
- <!--descript--><TD> Exploratory algorithm for thinning observations, designed
-         for models on sphere. If the number of observations within the radius
-         of influence of a given observation is greater than num_close_threshold,
-         the radius of influence will be reduced for this observation in an 
-         attempt to limit its impact to the num_close_threshold nearest observations.
-         Basically, it is assumed that observations are located uniformly in a
-         two-dimensional horizontal cylinder. 
-              Default: 1000000 </TD></TR>
+ <TR><!--contents--><TD valign=top>adaptive_localization_threshold</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+ <!--descript--><TD> Used to reduce the impact of observations in densely observed
+     regions. If the number of observations close to a given observation is greater
+     than the threshold number, the cutoff radius for localization is adjusted to
+     try to make the number of observations close to the given observation be
+     the threshold number. This should be dependent on the location module and
+     is tuned for a three_dimensional spherical implementation for numerical
+     weather prediction models at present.
+               Default: -1 </TD></TR>
+
 
 </TABLE>
 
@@ -520,13 +398,6 @@ sampling_error_correction, num_close_threshold
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>input.nml
-<LI>assim_tools_ics:  Default name for file containing initial values of 
-                      cov_inflate and cov_inflate_sd.
-<LI>filter_assim_region__in####:  Contains ensemble state for region.
-<LI>filter_assim_region_out####:  Contains updated state for region.
-<LI>assim_region_control:  Used to provide number of regions to shell execution.
-<LI>in_file_name, out_file_name: arguments to async_assim_region.
-<LI>filter_assim_obs_seq: Stores obs sequence on disk for async assimilation.
 <LI>assim_tools_mod.nml in input.nml
 </UL>
 
@@ -553,15 +424,14 @@ April 2003, MWR 131, pp 634-642
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>assim_tools_init</TD>
-    <!-- message --><TD VALIGN=top>do parallel option # not supported</TD>
-    <!-- comment --><TD VALIGN=top>Only the following are currently supported: <BR>
-                    0; assimilation not parallel <BR>
-                    2; assimilation parallel, use parallel_command from namelist <BR>
-                    3; assimilation parallel, separate script runs assimilation </TD>
+    <!-- message --><TD VALIGN=top>cant combine spread_restoration and filter_kind ###</TD>
+    <!-- comment --><TD VALIGN=top> Spread restoration only compatible with filter_kind 1 </TD>
+</TR>
+
 </TR>
 <TR><!-- routine --><TD VALIGN=top>obs_increment</TD>
     <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-4 OK]</TD>
-    <!-- comment --><TD VALIGN=top>Only 1-4 currently supported.</TD>
+    <!-- comment --><TD VALIGN=top>Only 1-6 currently supported.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>obs_increment_eakf <BR>
                                    obs_increment_ran_kf <BR>
@@ -570,18 +440,16 @@ April 2003, MWR 131, pp 634-642
     <!-- comment --><TD VALIGN=top>Product of two delta functions doesn't work.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>filter_assim</TD>
-    <!-- message --><TD VALIGN=top>Use less than 10000 domains.</TD>
-    <!-- comment --><TD VALIGN=top> Need to modify code for more than 10000 domains.</TD>
+<TR><!-- routine --><TD VALIGN=top>get_correction_from_file</TD>
+    <!-- message --><TD VALIGN=top>Use less than 10000 ensemble</TD>
+    <!-- comment --><TD VALIGN=top> File only works up to 9999 members.</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>filter_assim</TD>
-    <!-- message --><TD VALIGN=top>Did not find observation copy with metadata "observation"</TD>
-    <!-- comment --><TD VALIGN=top> In obs_sequence file, need to find copy that is observations.</TD>
+
+<TR><!-- routine --><TD VALIGN=top>get_correction_from_file</TD>
+    <!-- message --><TD VALIGN=top>Correction file ______ does not exist.</TD>
+    <!-- comment --><TD VALIGN=top> Couldn't find the correction file in the working directory.</TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>filter_assim</TD>
-    <!-- message --><TD VALIGN=top>Having more domains than state variables does not make sense</TD>
-    <!-- comment --><TD VALIGN=top> It doesn't.</TD>
-</TR>
+
 </TR>
 </TABLE>
 </div>
@@ -619,10 +487,6 @@ feature.
 
 <div class=routine>
 <pre>
-type location_type
-   private
-   real(r8) :: x
-end type location_type</pre>
 </div>
 
 <H3 class=indent1>Discussion</H3>

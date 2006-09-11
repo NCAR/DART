@@ -94,7 +94,6 @@ random_seq_mod
 <TABLE>
 <TR><TD><em class=code>use location_mod, only : </em></TD>
                    <TD><A HREF="#location_type">location_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_location">get_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location">set_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_location">write_location</A></TD></TR>
@@ -102,6 +101,10 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_location">interactive_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location_missing">set_location_missing</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#query_location">query_location</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_type">get_close_type</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationDims">LocationDims</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationName">LocationName</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationLName">LocationLName</A></TD></TR>
@@ -148,6 +151,35 @@ one-dimensional periodic domain.
     <TH align=left>Description </TH></TR>
 <TR><TD valign=top> x            </TD>
     <TD>Location has range 0 to 1</TD></TR>
+</TABLE>
+ <!--================================================================-->
+
+<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+
+<A NAME="get_close_type"></A>
+<BR><HR><BR>
+<div class=type><pre>
+type get_close_type
+   private
+   integer  :: num
+   real(r8) :: maxdist
+end type get_close_type
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P> Provides a structure for doing efficient computation of close locations.
+Doesn't do anything in the 1D implementation except provide appropriate
+stubs.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Component   </TH>
+    <TH align=left>Description </TH></TR>
+<TR><TD valign=top> num            </TD>
+    <TD>Number of observations in list</TD></TR>
+<TR><TD valign=top> maxdist            </TD>
+    <TD>Threshhold distance. Anything closer is close.</TD></TR>
 </TABLE>
  <!--================================================================-->
 
@@ -231,38 +263,6 @@ character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 
 <H3 class=indent1>Notes</H3>
 
-
-<!--===================================================================-->
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="get_dist"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> var = get_dist( loc1, loc2)</em>
-<pre>
-real(r8)                             :: <em class=code> get_dist </em>
-type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
-</pre></div>
-
-<H2 class=indent1>Description</H2>
-
-<P>
-   Returns the distance between two locations.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>loc1 &nbsp; &nbsp; </em></TD>
-    <TD>first location.</TD></TR>
-
-<TR><TD valign=top><em class=code>loc2</em></TD>
-    <TD>second location.</TD></TR>
-
-<TR><TD valign=top><em class=code>var</em></TD>
-    <TD>distance between loc1 and loc2.</TD></TR>
-
-</TABLE>
-<BR>
 
 <!--===================================================================-->
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
@@ -362,6 +362,102 @@ if attr = 'X' or if attr is not passed.
  <BR>
 
  <!--================================================================-->
+
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc,num,obs) </em>
+ <pre>
+ type(get_close_type),             intent(inout) :: <em class=code>gc</em>
+ integer,                          intent(in)    :: <em class=code>num</em>
+ type(location_type), dimension(:) intent(in)    :: <em class=code>obs</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Initialize storage for efficient identification of locations close
+to a given location. The oned implementation is minimal and just
+records the number of locations here.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>Structure that contains data to efficiently find locations close to a given location.</TD></TR>
+ <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
+     <TD>The number of locations in the list.</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>The locations of each element in the list, not used in 1D implementation.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc,base_obs_loc,base_obs_kind,obs,obs_kind,
+      num_close,close_ind,dist) </em>
+ <pre>
+ type(get_close_type), intent(in)              :: <em class=code>gc</em>
+ type(location_type), intent(in)               :: <em class=code>base_obs_loc</em>
+ integer, intent(in)                           :: <em class=code>base_obs_kind</em>
+ type(location_type), dimension(:), intent(in) :: <em class=code>obs</em>
+ integer, dimension(:), intent(in)             :: <em class=code>obs_kind</em>
+ integer, intent(out)                          :: <em class=code>num_close</em>
+ integer, dimension(:), intent(out)            :: <em class=code>close_ind</em>
+ real(r8), dimension(:), intent(out)           :: <em class=code>dist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Given a single location and a list of other locations, returns the indices
+of all the locations close to the single one along with the number of
+these and the distances for the close ones.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>Structure to allow efficient identification of locations close to a given location.</TD></TR>
+ <TR><TD valign=top><em class=code>base_obs_loc&nbsp; &nbsp; </em></TD>
+     <TD>Single given location.</TD></TR>
+ <TR><TD valign=top><em class=code>base_obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>Kind of the single location.</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>List of observations from which close ones are to be found.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>Kind associated with observations in obs list.</TD></TR>
+ <TR><TD valign=top><em class=code>num_close&nbsp; &nbsp; </em></TD>
+     <TD>Number of observations close to the given location.</TD></TR>
+ <TR><TD valign=top><em class=code>close_ind&nbsp; &nbsp; </em></TD>
+     <TD>Indices of those locations that are close.</TD></TR>
+ <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
+     <TD>Distance between given location and the close ones identified in close_ ind.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
+
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_maxdist_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc,maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ real(r8), intent(in)                :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Sets the threshhold distance. Anything closer that this is deemed
+to be close.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>Data for efficiently finding close locations.</TD></TR>
+ <TR><TD valign=top><em class=code>maxdist&nbsp; &nbsp; </em></TD>
+     <TD>Anything closer than this distance is a close location.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
+
  <!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
 <A NAME="LocationDims"></A>
 <P></P><HR><P></P>

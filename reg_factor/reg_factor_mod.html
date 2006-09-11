@@ -114,14 +114,13 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="yyyroutine1"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> var = comp_reg_factor(num_groups, regress, time_index, obs_index,
+<em class=call> var = comp_reg_factor(num_groups, regress, obs_index,
                state_index
 <em class=optionalcode>[, obs_state_ind, obs_state_max]</em>) </em>
 <pre>
 real(r8)                                      :: <em class=code> comp_reg_factor </em>
 integer, intent(in)                           :: <em class=code> num_groups </em>
 real(r8), intent(in), dimension(num_groups)   :: <em class=code> regress </em>
-integer, intent(in)                           :: <em class=code> time_index </em>
 integer, intent(in)                           :: <em class=code> obs_index </em>
 integer, intent(in)                           :: <em class=code> state_index </em>
 integer, intent(in), optional                 :: <em class=optionalcode> obs_state_ind </em>
@@ -145,10 +144,6 @@ integer, intent(in), optional                 :: <em class=optionalcode> obs_sta
 <TR><TD valign=top><em class=code>regress &nbsp; &nbsp; </em></TD>
     <TD>Regression factor from each group for a given state variable
         and observation variable pair.</TD></TR>
-
-<TR><TD valign=top><em class=code>time_index &nbsp; &nbsp; </em></TD>
-    <TD>Integer index of which time in observation file is being
-        processed by filter. Not used in currently released version.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_index &nbsp; &nbsp; </em></TD>
     <TD> Integer index of the observation being processed. Not used
@@ -179,7 +174,8 @@ integer, intent(in), optional                 :: <em class=optionalcode> obs_sta
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
-<em class=call>namelist / reg_factor_nml / </em> select_regression, input_reg_file
+<em class=call>namelist / reg_factor_nml / </em> select_regression, input_reg_file, 
+   save_reg_diagnostics, reg_diagnostics_file
 </pre></div>
 
 
@@ -200,6 +196,15 @@ integer, intent(in), optional                 :: <em class=optionalcode> obs_sta
     <!--  type  --><TD valign=top>character(len=129) <em class="unit"></em></TD>
     <!--descript--><TD>File name from which statistics are to be read for select_regression = 3.
                        Default is "time_mean_reg".  </TD></TR>
+
+<TR><!--contents--><TD valign=top>save_reg_diagnostics</TD>
+    <!--  type  --><TD valign=top>logical <em class="unit"></em></TD>
+    <!--descript--><TD> True if regression diagnostics should be computed.  Default is .false.</TD></TR>
+
+<TR><!--contents--><TD valign=top>reg_diagnostics_file </TD>
+    <!--  type  --><TD valign=top>character(len=129) <em class="unit"></em></TD>
+    <!--descript--><TD>File name to which to write diagnostics. Default is "reg_diagnostics"  </TD></TR>
+
 </TABLE>
 
 <!--==================================================================-->

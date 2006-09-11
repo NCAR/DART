@@ -76,12 +76,12 @@ observations and the model details are computed here.
 <PRE>
 types_mod
 utilities_mod
-location_mod (depends on model choice)
 assim_model_mod
 obs_sequence_mod
 obs_def_mod
 time_manager_mod
 ensemble_manager_mod
+mpi_utilities_mod
 </PRE>
 
 <!--==================================================================-->
@@ -93,7 +93,7 @@ ensemble_manager_mod
 
 <TABLE>
 <TR><TD><em class=call>use obs_model_mod, only : </em></TD>
-                   <TD><A HREF="#get_close_states">get_close_states</A></TD></TR>
+                   <TD><A HREF="#advance_state">advance_state</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#move_ahead">move_ahead</A></TD></TR>
 </TABLE>
 
@@ -111,57 +111,16 @@ ensemble_manager_mod
 <BR>
 
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_states"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_states(seq, key, radius, numinds, indices, dist, x) </em>
- <pre>
- type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
- integer, intent(in)                 :: <em class=code>key</em>
- real(r8), intent(in)                :: <em class=code>radius</em>
- integer, intent(out)                :: <em class=code>numinds</em>
- integer, dimension(:), intent(out)  :: <em class=code>indices</em>
- real(r8), dimension(:), intent(out) :: <em class=code>dist</em>
- real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Given an observation from an observation sequence, find the number
-of state variables that are within distance 'radius' of the observation
-location. Return the indices of the close states and the distances 
-between each and the observation. The model state vector is, 
-unfortunately, needed to compute locations of model state variables
-in many complex models.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
-     <TD>An observation sequence</TD></TR>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
-     <TD>Integer key identifying an observation in the sequence</TD></TR>
- <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>Find close states within this radius</TD></TR>
- <TR><TD valign=top><em class=code>numinds&nbsp; &nbsp; </em></TD>
-     <TD>Number of close states found</TD></TR>
- <TR><TD valign=top><em class=code>indices&nbsp; &nbsp; </em></TD>
-     <TD>Indices of the close state variables</TD></TR>
- <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
-     <TD>The distance between each close state and the observation</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>The model state vector, needed to compute distance in some models</TD></TR>
- </TABLE>
- <BR>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="move_ahead"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call move_ahead(ens_handle, ens_size, model_size, seq, 
+ <em class=call> call move_ahead(ens_handle, ens_size, seq, 
 	 last_key_used, key_bounds, num_obs_in_set, async, adv_ens_command) </em>
  <pre>
  type(ensemble_type),     intent(in)  :: <em class=code>ens_handle</em>
  integer,                 intent(in)  :: <em class=code>ens_size</em>
- integer,                 intent(in)  :: <em class=code>model_size</em>
  type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
  integer,                 intent(in)  :: <em class=code>last_key_used</em>
  integer, dimension(2),   intent(out) :: <em class=code>key_bounds</em>
@@ -189,8 +148,6 @@ and all observations in this window are added to the set to be assimilated.
      <TD>Identifies the model state ensemble</TD></TR>
  <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp; </em></TD>
      <TD>Number of ensemble members</TD></TR>
- <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
-     <TD>Size of model state vector</TD></TR>
  <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
      <TD>An observation sequence</TD></TR>
  <TR><TD valign=top><em class=code>last_key_used&nbsp; &nbsp; </em></TD>
@@ -206,6 +163,43 @@ and all observations in this window are added to the set to be assimilated.
  </TABLE>
  <BR>
 
+
+ <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="advance_state"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call advance_state(ens_handle,ens_size,target_time,async,adv_en
+ s_command) </em>
+ <pre>
+ type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+ integer, intent(in)                :: <em class=code>ens_size</em>
+ type(time_type), intent(in)        :: <em class=code>target_time</em>
+ integer, intent(in)                :: <em class=code>async</em>
+ character(len=*), intent(in)       :: <em class=code>adv_ens_command</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Advances all ensemble size copies of an ensemble stored in ens_handle to the
+target_time. If async=0 this is done by repeated calls to adv_1step
+subroutine. If async=2, a call to the shell with the command adv_ens_command
+is used.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
+     <TD>Structure for holding ensemble information and data</TD></TR>
+ <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble size.</TD></TR>
+ <TR><TD valign=top><em class=code>target_time&nbsp; &nbsp; </em></TD>
+     <TD>Time to which model is to be advanced.</TD></TR>
+ <TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
+     <TD>How to advance model: 0=subroutine adv_1step; 2=use shell of adv_ens_co
+ mmand.</TD></TR>
+ <TR><TD valign=top><em class=code>adv_ens_command&nbsp; &nbsp; </em></TD>
+     <TD>Command to be issued to shell to advance model if async=2.</TD></TR>
+ </TABLE>
+ <P>
+ <!--================================================================-->
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
@@ -213,7 +207,9 @@ and all observations in this window are added to the set to be assimilated.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>NONE
+<UL><LI>assim_model_state_ic#####<BR>
+<LI> assim_model_state_ud#####<BR>
+<LI> filter_control#####
 </UL>
 
 <!--==================================================================-->
@@ -239,6 +235,27 @@ and all observations in this window are added to the set to be assimilated.
 <TR><!-- routine --><TD VALIGN=top>move_ahead</TD>
     <!-- message --><TD VALIGN=top>next obs time not in model time window</TD>
     <!-- comment --><TD VALIGN=top>Error in algorithm to compute observation window</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>target time ###,### is before model_time ###,### </TD>
+    <!-- comment --><TD VALIGN=top>Target time must not be before current model time.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>Trying to use ### model states -- too many.
+            Use less than 10000 member ensemble.</TD>
+    <!-- comment --><TD VALIGN=top>Maximum of 9999 ensemble members is allowed.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>Can only have 10000 processes.</TD>
+    <!-- comment --><TD VALIGN=top> No more than 9999 processes can run.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>input.nml - async is #, must be 0, or 2.</TD>
+    <!-- comment --><TD VALIGN=top>Only 0 or 2 work for async.</TD>
 </TR>
 </TABLE>
 </div>

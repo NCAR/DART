@@ -106,8 +106,6 @@ model_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_closest_state_time_to</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">aget_initial_condition</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">get_close_states</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">get_num_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">get_model_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">get_model_state_vector</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">copy_assim_model</A></TD></TR>
@@ -122,7 +120,6 @@ model_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine23">input_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine24">get_diag_input_copy_meta_data</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine25">init_assim_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine26">get_state_vector_ptr</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine28">finalize_diag_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine29">aoutput_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine30">aread_state_restart</A></TD></TR>
@@ -399,76 +396,7 @@ SEE model_mod for arguments and description.
  <BR>
 
  <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="yyyroutine7"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_states(location,radius,numinds,indices,dist,x) </em>
- <pre>
- type(location_type), intent(in)     :: <em class=code>location</em>
- real(r8), intent(in)                :: <em class=code>radius</em>
- integer, intent(out)                :: <em class=code>numinds</em>
- integer, dimension(:), intent(out)  :: <em class=code>indices</em>
- real(r8), dimension(:), intent(out) :: <em class=code>dist</em>
- real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Returns the number of state variables within radius of location along with
-the distances. If a call to model_get_close_states returns -1, a naive search
-is done. Otherwise, the results from model_get_close_states are used.
-If the size of indices is too small to hold the number of close states,
-the number of states found is multiplied by -1 and returned in numinds. The
-model state vector is needed to determine state variable location in some
-cases, sigma models for instance, and is passed along.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>A location around which close model state variables are to be found</TD></TR>
- <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>Radius within which a model state is said to be close to location</TD></TR>
- <TR><TD valign=top><em class=code>numinds&nbsp; &nbsp; </em></TD>
-     <TD>Returns number of close states; number is multiplied by -1 if indices
- was too small</TD></TR>
- <TR><TD valign=top><em class=code>indices&nbsp; &nbsp; </em></TD>
-     <TD>Indices for the close states, not set if it is not big enough</TD></TR>
- <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
-     <TD>Distance to each close state from location, not set if it is not big 
- enough</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>Model state vector; needed to determine location in some cases</TD></TR>
- </TABLE>
- <BR>
-
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="yyyroutine8"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_num_close_states(location,radius,x) </em>
- <pre>
- integer                            :: <em class=code>get_num_close_states</em>
- type(location_type), intent(in)    :: <em class=code>location</em>
- real(r8), intent(in)               :: <em class=code>radius</em>
- real(r8), dimension(:), intent(in) :: <em class=code>x</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Finds number of model state variables within radius of location.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_num_close_states&nbsp; &nbsp; </em></TD>
-     <TD>Number of states variables close to location.</TD></TR>
- <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>Location around which to find close states</TD></TR>
- <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>Anything closer than radius is close</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>Model state, sometimes needed for computing locations</TD></TR>
- </TABLE>
- <BR>
-
- <!--================================================================-->
+ 
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine9"></A>
  <P></P><HR><P></P>
@@ -724,8 +652,7 @@ state diagnostics file.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>file_id&nbsp; &nbsp; </em></TD>
-     <TD>Integer descriptor (channel number) for a diagnostics file being read.<
- /TD></TR>
+     <TD>Integer descriptor (channel number) for a diagnostics file being read.</TD></TR>
  <TR><TD valign=top><em class=code>state&nbsp; &nbsp; </em></TD>
      <TD>Assim_model_type to read in data.</TD></TR>
  <TR><TD valign=top><em class=code>copy_index&nbsp; &nbsp; </em></TD>
@@ -762,8 +689,7 @@ number of data copies.
      <TD>Global metadata string from file.</TD></TR>
  <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
      <TD>Size of model.</TD></TR>
- <TR><TD valign=top><em class=code>copies_of_field_per_time&nbsp; &nbsp; </em></
- TD>
+ <TR><TD valign=top><em class=code>copies_of_field_per_time&nbsp; &nbsp; </em></TD>
      <TD>Number of copies of the state vector at each time.</TD></TR>
  </TABLE>
  <BR>
@@ -818,29 +744,6 @@ locations of each state variable and the text description of each copy.
      <TD>Returned locations for state vector</TD></TR>
  <TR><TD valign=top><em class=code>meta_data_per_copy&nbsp; &nbsp; </em></TD>
      <TD>Meta data describing what is in each copy of state vector</TD></TR>
- </TABLE>
- <BR>
-
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="yyyroutine26"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_state_vector_ptr(assim_model) </em>
- <pre>
- real(r8), pointer, dimension(:)    :: <em class=code>get_state_vector_ptr</em>
- type(assim_model_type), intent(in) :: <em class=code>assim_model</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Return a pointer to the state part of an assim_model_type. This routine is
-unlikely to be supported in the future.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_state_vector_ptr&nbsp; &nbsp; </em></TD>
-     <TD>A pointer to just the state vector of an assim_model_type.</TD></TR>
- <TR><TD valign=top><em class=code>assim_model&nbsp; &nbsp; </em></TD>
-     <TD>An assim_model_type whose state is to be pointed to.</TD></TR>
  </TABLE>
  <BR>
 
@@ -950,8 +853,7 @@ releases).
  <TR><TD valign=top><em class=code>model_state&nbsp; &nbsp; </em></TD>
      <TD>A model state vector to be output.</TD></TR>
  <TR><TD valign=top><em class=code>copy_index&nbsp; &nbsp; </em></TD>
-     <TD>Which copy of state vector is to be written, default is copy 1</TD></TR
- >
+     <TD>Which copy of state vector is to be written, default is copy 1</TD></TR>
  </TABLE>
  <BR>
 
@@ -1036,8 +938,7 @@ a coordinate variable AND it is the unlimited dimension.
  <div class=routine>
  <em class=call> var = nc_write_calendar_atts(ncFileID,TimeVarID) </em>
  <pre>
- integer                            :: <em class=code>nc_write_calendar_atts</em
- >
+ integer                            :: <em class=code>nc_write_calendar_atts</em>
  type(netcdf_file_type), intent(in) :: <em class=code>ncFileID</em>
  integer, intent(in)                :: <em class=code>TimeVarID</em>
  </pre></div>
@@ -1047,8 +948,7 @@ a coordinate variable AND it is the unlimited dimension.
 time manager an writes it to a netcdf file.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>nc_write_calendar_atts&nbsp; &nbsp; </em></TD
- >
+ <TR><TD valign=top><em class=code>nc_write_calendar_atts&nbsp; &nbsp; </em></TD>
      <TD>Returns a netcdf error code.</TD></TR>
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
      <TD>Netcdf file id pointing to a file open for writing.</TD></TR>
