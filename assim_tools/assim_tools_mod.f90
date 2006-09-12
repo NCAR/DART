@@ -406,6 +406,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       if(local_varying_ss_inflate) then
          varying_ss_inflate = ens_handle%copies(ENS_INF_COPY, state_index)
          varying_ss_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, state_index)
+      else
+         varying_ss_inflate    = 0.0_r8
+         varying_ss_inflate_sd = 0.0_r8
       endif
      
       ! Compute the distance and covariance factor 
