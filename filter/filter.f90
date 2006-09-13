@@ -45,10 +45,10 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilitie
                                  my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                  task_count
 use smoother_mod,         only : smoother_read_restart, advance_smoother,                    &
-                                 smoother_generate_copy_meta_data, smoother_write_restart,   &
+                                 smoother_gen_copy_meta_data, smoother_write_restart,        &
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
-                                 smoother_state_space_diagnostics, smoother_inc_lags,        &
+                                 smoother_ss_diagnostics, smoother_inc_lags,                 &
                                  smoother_end
 
 
@@ -245,7 +245,7 @@ if(my_task_id() == 0) then
    PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index)
-   if(ds) call smoother_generate_copy_meta_data(output_state_ens_mean, &
+   if(ds) call smoother_gen_copy_meta_data(output_state_ens_mean, &
       output_state_ens_spread, num_output_state_members)
 endif
 
@@ -381,7 +381,7 @@ AdvanceTime : do
          output_state_mean_index, output_state_spread_index, ENS_MEAN_COPY, ENS_SD_COPY, &
          post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
       ! Cyclic storage for lags with most recent pointed to by smoother_head
-      call smoother_state_space_diagnostics(model_size, output_state_ens_mean, &
+      call smoother_ss_diagnostics(model_size, output_state_ens_mean, &
          output_state_ens_spread, num_output_state_members, ENS_MEAN_COPY, ENS_SD_COPY, &
          POST_INF_COPY, POST_INF_SD_COPY)
    endif
@@ -652,10 +652,10 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
 
-real(r8)             :: qc(1)
+!!!real(r8)             :: qc(1)
 character(len = 129) :: qc_meta_data = 'DART quality control'
 character(len = 129) :: obs_seq_read_format
-integer              :: obs_seq_file_id, num_obs_copies, i
+integer              :: obs_seq_file_id, num_obs_copies
 integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc, num_qc
 logical              :: pre_I_format
 
