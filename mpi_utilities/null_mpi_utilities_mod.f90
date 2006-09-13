@@ -167,7 +167,7 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe
+          make_pipe, destroy_pipe, exit_all
 public :: task_sync, array_broadcast, array_distribute, &
           send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
           shell_execute, sleep_seconds, sum_across_tasks
@@ -210,9 +210,6 @@ subroutine initialize_mpi_utilities()
 ! this file, and it should not be called more than once (but it does have
 ! defensive code in case that happens.)
 
-integer :: errcode
-logical :: already
-
 if ( module_initialized ) then
    ! return without calling the code below multiple times
    write(errstring, *) 'initialize_mpi_utilities has already been called'
@@ -249,8 +246,6 @@ subroutine finalize_mpi_utilities(callfinalize)
 ! coding practice you should not call any other routines in this file
 ! after calling this routine.
 
-integer :: errcode
-logical :: dofinalize
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -306,8 +301,6 @@ subroutine task_sync()
 ! Synchronize all tasks.  This subroutine does not return until all tasks
 ! execute this line of code.
 
-integer :: errcode
-
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
@@ -330,10 +323,6 @@ subroutine send_to(dest_id, srcarray, time)
 ! called receive to accept the data.  If the send_to/receive_from calls are 
 ! not paired correctly the code will hang.
 
-integer :: i, tag, errcode
-integer :: datasize
-integer :: itime(2)
-
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
@@ -346,6 +335,10 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
 
+! this style cannot be easily simulated correctly with one task.
+! always throw an error.
+write(errstring, '(a)') "cannot call send_to() in the single process case"
+call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 
 end subroutine send_to
 
@@ -354,20 +347,14 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time)
  integer, intent(in) :: src_id
-! Setting next two to intent(in) avoids compiler warnings
-! Intent is inconsistent with real mpi module, but this is not a problem
- real(r8), intent(in) :: destarray(:)
- type(time_type), intent(in), optional :: time
+ real(r8), intent(out) :: destarray(:)
+ type(time_type), intent(out), optional :: time
 
 ! Receive data into the destination array from the src task.
 ! If time is specified, it is received in a separate communications call.  
 ! This is a synchronous call; it will not return until the source has 
 ! sent the data.  If the send_to/receive_from calls are not paired correctly 
 ! the code will hang.
-
-integer :: i, tag, errcode
-integer :: datasize
-integer :: itime(2)
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -381,6 +368,13 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
 
+! this style cannot be easily simulated correctly with one task.
+! always throw an error.
+write(errstring, '(a)') "cannot call receive_from() in the single process case"
+call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+
+destarray = 0
+if (present(time)) time = set_time(0, 0)
 
 end subroutine receive_from
 
@@ -430,8 +424,6 @@ subroutine array_broadcast(array, root)
 ! root array in their own arrays.  Thus 'array' is intent(in) on root, and
 ! intent(out) on all other tasks.
 
-integer :: itemcount, datasize, errcode
-
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
@@ -444,6 +436,7 @@ if ((root < 0) .or. (root >= total_tasks)) then
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
+! array already has the values, nothing to do.
 
 end subroutine array_broadcast
 
@@ -455,11 +448,10 @@ end subroutine array_broadcast
 subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
  real(r8), intent(in) :: srcarray(:)
  integer, intent(in) :: root
-! Setting dstarray, dstcount and which to intent(in) avoids compiler warnings
- real(r8), intent(in) :: dstarray(:)
- integer, intent(in) :: dstcount
+ real(r8), intent(out) :: dstarray(:)
+ integer, intent(out) :: dstcount
  integer, intent(in) :: how
- integer, intent(in) :: which(:)
+ integer, intent(out) :: which(:)
 
 ! 'srcarray' on the root task will be distributed across all the tasks
 ! into 'dstarray'.  dstarray must be large enough to hold each task's share
@@ -469,9 +461,7 @@ subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
 ! integer index array which lists which of the original values were selected
 ! and put into 'dstarray'.
 
-real(r8), allocatable :: localchunk(:)
-integer :: srccount, datasize, leftover
-integer :: i, tag, errcode
+integer :: i
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -485,7 +475,9 @@ if ((root < 0) .or. (root >= total_tasks)) then
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
-
+dstarray = srcarray
+dstcount = size(srcarray)
+which = (/ ((i), i=1,size(srcarray))  /)
 
 end subroutine array_distribute
 
@@ -576,9 +568,6 @@ subroutine sum_across_tasks(addend, sum)
  integer, intent(in) :: addend
  integer, intent(out) :: sum
 
- integer :: errcode
- integer :: localaddend(1), localsum(1)
-
 ! cover routine for MPI all-reduce
 
 if ( .not. module_initialized ) then
@@ -586,7 +575,7 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
 endif
 
-sum = 0
+sum = addend
 
 end subroutine sum_across_tasks
 
@@ -741,8 +730,6 @@ function shell_execute(execute_string, serialize)
 ! is true, do each call serially.
 
 character(len=255) :: doit
-logical :: ripit
-integer :: i, errcode
 
    !print *, "in-string is: ", trim(execute_string)
 
