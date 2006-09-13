@@ -167,11 +167,11 @@ logical,              intent(in),    optional :: force_single_file
 
 ! Would like to avoid num_vars size storage
 real(r8)                            :: ens(ens_handle%num_vars)
-integer                             :: iunit, i, j, io, seq_unit
+integer                             :: iunit, i, j
 character(len = LEN(file_name))     :: this_file_name
 character(len = LEN(file_name) + 4) :: extension
 type(time_type)                     :: ens_time
-integer                             :: owner, owners_index, global_copy_index
+integer                             :: global_copy_index
 logical                             :: interf_provided
 
 ! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
@@ -266,7 +266,7 @@ logical, optional,    intent(in)    :: force_single_file
 ! Large temporary storage to be avoided if possible
 real(r8)                            :: ens(ens_handle%num_vars)
 type(time_type)                     :: ens_time
-integer                             :: iunit, i, seq_unit, global_index
+integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
 character(len = LEN(file_name))     :: this_file_name
 character(len = LEN(FILE_NAME) + 4) :: extension
@@ -896,7 +896,7 @@ real(r8), allocatable :: transfer_temp(:)
 integer               :: num_copies, num_vars, my_num_vars, my_num_copies
 integer               :: max_num_vars, max_num_copies, num_vars_to_receive
 integer               :: sending_pe, recv_pe, k, sv, copy, num_copies_to_send
-integer               :: global_ens_index, owner, owners_index
+integer               :: global_ens_index
 
 ! Accelerated version for single process
 if(num_pes == 1) then

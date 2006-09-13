@@ -144,7 +144,7 @@ integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR
 logical,                     intent(in)    :: inflate_only
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
-real(r8) :: my_cov_inflate, my_cov_inflate_sd, reg_factor
+real(r8) :: reg_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
@@ -159,7 +159,7 @@ integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer  :: my_obs(obs_ens_handle%my_num_vars), my_state(ens_handle%my_num_vars)
 integer  :: this_obs_key, obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
-integer  :: obs_box(obs_ens_handle%my_num_vars), close_obs_ind(obs_ens_handle%my_num_vars)
+integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: close_state_ind(ens_handle%my_num_vars)
 integer  :: num_close_obs, obs_index, num_close_states, state_index
 integer  :: total_num_close_obs
@@ -906,7 +906,8 @@ integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size), prior_mean, prior_var, obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
-real(r8) :: a, obs_var_inv, prior_var_inv, new_var, new_mean(ens_size), sx, s_x2
+real(r8) :: a, obs_var_inv, prior_var_inv, new_var, new_mean(ens_size)
+! real(r8) :: sx, s_x2
 real(r8) :: temp_mean, temp_obs(ens_size)
 integer  :: i
 

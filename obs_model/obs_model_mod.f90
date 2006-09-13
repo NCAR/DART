@@ -78,7 +78,7 @@ character(len = *),      intent(in)    :: adv_ens_command
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
-logical            :: is_this_last, is_there_one, out_of_range, i
+logical            :: is_this_last, is_there_one, out_of_range
 integer            :: sec, day
 
 ! Initialize if needed
