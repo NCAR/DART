@@ -35,9 +35,9 @@ implicit none
 private
 
 public :: smoother_read_restart, advance_smoother,                          &
-   smoother_generate_copy_meta_data, smoother_write_restart, init_smoother, &
+   smoother_gen_copy_meta_data, smoother_write_restart, init_smoother, &
    do_smoothing, smoother_mean_spread, smoother_assim,                      &
-   filter_state_space_diagnostics, smoother_state_space_diagnostics,        &
+   filter_state_space_diagnostics, smoother_ss_diagnostics,        &
    smoother_end, smoother_inc_lags
 
 
@@ -188,7 +188,7 @@ end subroutine advance_smoother
 
 !-------------------------------------------------------------------------
 
-subroutine smoother_generate_copy_meta_data(output_state_ens_mean, output_state_ens_spread, &
+subroutine smoother_gen_copy_meta_data(output_state_ens_mean, output_state_ens_spread, &
    num_output_state_members)
 
 logical, intent(in) :: output_state_ens_mean, output_state_ens_spread
@@ -226,7 +226,7 @@ endif
 if(num_output_state_members > 10000) then
    write(errstring, *)'output metadata in smoother needs state ensemble size < 10000, not ', &
                       num_output_state_members
-   call error_handler(E_ERR,'smoother_generate_copy_meta_data',errstring,source,revision,revdate)
+   call error_handler(E_ERR,'smoother_gen_copy_meta_data',errstring,source,revision,revdate)
 endif
 
 ! Compute starting point for ensemble member output
@@ -262,7 +262,7 @@ if(  output_state_ens_spread .or. output_state_ens_mean .or. &
    end do
 endif
 
-end subroutine smoother_generate_copy_meta_data
+end subroutine smoother_gen_copy_meta_data
 
 !-----------------------------------------------------------
 
@@ -428,7 +428,7 @@ end subroutine filter_state_space_diagnostics
 
 !-----------------------------------------------------------
 
-subroutine smoother_state_space_diagnostics(model_size, output_state_ens_mean, &
+subroutine smoother_ss_diagnostics(model_size, output_state_ens_mean, &
    output_state_ens_spread, num_output_state_members, ENS_MEAN_COPY, ENS_SD_COPY, &
    POST_INF_COPY, POST_INF_SD_COPY)
 
@@ -448,7 +448,7 @@ do i = 1, num_current_lags
 end do
 
 
-end subroutine smoother_state_space_diagnostics
+end subroutine smoother_ss_diagnostics
 
 !-----------------------------------------------------------
 
