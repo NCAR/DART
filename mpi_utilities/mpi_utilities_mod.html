@@ -1,0 +1,839 @@
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<HTML>
+<TITLE>module xxxxxxx</TITLE>
+<link rel=stylesheet type=text/css href=doc.css>
+<BODY>
+
+<DIV ALIGN=CENTER>
+<A HREF="#Interface">INTERFACE</A> / 
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+</DIV>
+
+<!--==================================================================-->
+
+<H1>MODULE mpi_utilities_mod</H1>
+<A NAME="HEADER"></A>
+<TABLE summary="">
+   <TR><TD>Contact:       </TD><TD> Nancy Collins                </TD></TR>
+   <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
+   <TR><TD>Revision:      </TD><TD> $Revision$            </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                    </TD></TR>
+   <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+   <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+<A NAME="OVERVIEW"></A>
+<HR>
+<H2>OVERVIEW</H2>
+<P>
+This module provides subroutines which access the MPI 
+(message passing interface) parallel communications library.  
+To compile without using MPI substitute the
+<em class=module>null_mpi_utilities_mod.f90</em> for this one.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OTHER MODULES USED"></A>
+<BR><HR><BR>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+time_manager_mod
+mpi_mod
+</PRE>
+
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+
+<A NAME="Interface"></A>
+<BR><HR><BR>
+<H2>PUBLIC INTERFACE</H2>
+
+<TABLE>
+<TR><TD><em class=call>use mpi_utilities_mod, only : </em></TD>
+                   <TD><A HREF="#task_count">task_count</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#my_task_id ">my_task_id </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#transpose_array">transpose_array</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#initialize_mpi_utilities ">initialize_mpi_utilities </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#finalize_mpi_utilities">finalize_mpi_utilities</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#task_sync">task_sync</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#task_count">task_count</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#my_task_id">my_task_id</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#transpose_array">transpose_array</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#array_broadcast">array_broadcast</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#array_distribute">array_distribute</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#send_to">send_to</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#receive_from">receive_from</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#iam_task0">iam_task0</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#broadcast_send">broadcast_send</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#broadcast_recv">broadcast_recv</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#shell_execute">shell_execute</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#sleep_seconds">sleep_seconds</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#sum_across_tasks">sum_across_tasks</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#make_pipe">make_pipe</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#destroy_pipe">destroy_pipe</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#exit_all">exit_all</A></TD></TR>
+</TABLE>
+
+<H3 class=indent1>NOTES</H3>
+
+<P>
+No namelist interfaces are currently defined for this module,
+but at some point in the future an optional namelist interface 
+<A HREF="#Namelist"><em class=code>&#38;mpi_utilities_nml</em> </A>
+may be supported.  It would be read from file <em class=file>input.nml</em>.
+</P>
+
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+
+<A NAME="PublicEntities"></A>
+<BR><HR><BR>
+<H2>PUBLIC COMPONENTS</H2>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="initialize_mpi_utilities"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call initialize_mpi_utilities( )</em>
+<pre>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Initializes the MPI library, creates a private communicator, stores the
+total number of tasks and the local task number for later use, and
+registers this module.   On some implementations of MPI (in particular
+some variants of MPICH) it is best to initialize MPI before any I/O is
+done from any of the parallel tasks, so this routine should be
+called as close to the process startup as possible.
+</P>
+<P>
+It is not an error to try to initialize the MPI library more than once.
+It is still necessary to call this routine even if the application 
+itself has already initialized the MPI library.  Thise routine creates a 
+private communicator so internal communications are shielded from any other
+communication called outside the DART libraries.
+</P>
+<P>
+It is an error to call any of the other routines in this file before
+calling this routine.
+</P>
+
+<BR>
+<!-- <H3 class=indent1>Notes</H3> -->
+<!--                              -->
+<!-- <P>would go here             -->
+<!-- </P>                         -->
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="finalize_mpi_utilities"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call finalize_mpi_utilities(<em class=optionalcode>[callfinalize]</em>)</em>
+<pre>
+logical, intent(in), optional         :: <em class=optionalcode>callfinalize</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Frees the local communicator, and shuts down the MPI library unless
+<em class=code>callfinalize</em> is specified 
+and is <em class=code>.FALSE.</em>.
+On some hardware platforms it is problematic to try to call print or write
+from the parallel tasks after finalize has been executed, so this should
+only be called immediately before the process is ready to exit.
+If the application itself is using MPI, the <em class=code>callfinalize</em>
+argument can be used to defer closing the MPI library until the application
+does it itself.
+</P>
+<P>
+It is an error to call any of the other routines in this file after
+calling this routine.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>callfinalize&nbsp; &nbsp; </em></TD>
+    <TD>If false, do not call the <em class=code>MPI_Finalize()</em> routine.</TD></TR>
+</TABLE>
+<BR>
+
+<!-- <H3 class=indent1>Notes</H3> -->
+<!--                              -->
+<!-- <P>would go here             -->
+<!-- </P>                         -->
+
+<!--===================== DESCRIPTION OF FUNCTION =====================-->
+
+<A NAME="task_count"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> var = task_count()</em>
+<pre>
+integer                        :: <em class=code>task_count</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Returns the total number of MPI tasks this job was started with.
+Note that MPI task numbers start at 0, but this is a count.
+So a 4-task job would return 4 here, but the actual task numbers
+will be from 0 to 3.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>task_count &nbsp; &nbsp; </em></TD>
+    <TD>Total number of MPI tasks in this job.</TD></TR>
+</TABLE>
+<BR>
+
+<!--===================== DESCRIPTION OF FUNCTION =====================-->
+
+<A NAME="my_task_id"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> var = my_task_id()</em>
+<pre>
+integer                        :: <em class=code>my_task_id</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Returns the MPI task number. 
+This is one of the routines in which 
+all tasks can make the same function call but each returns
+a different value.  The return can be useful in creating unique
+filenames or otherwise distinguishing resources which are not shared
+amongst tasks.
+MPI task numbers start at 0, so valid task id numbers for a 
+4-task job would be 0 to 3.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>my_task_id &nbsp; &nbsp; </em></TD>
+    <TD>My unique MPI task id number.</TD></TR>
+</TABLE>
+<BR>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="task_sync"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call task_sync()</em>
+<pre>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Synchronize tasks.
+This call does not return until all tasks 
+have called this routine.  This ensures all 
+tasks have reached the same
+place in the code before proceeding.
+</P>
+
+<BR>
+
+<!-- <H3 class=indent1>Notes</H3> -->
+<!--                              -->
+<!-- <P>would go here             -->
+<!-- </P>                         -->
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="send_to"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call send_to(dest_id, srcarray
+                           <em class=optionalcode>[, time]</em>)</em>
+<pre>
+integer, intent(in)                   :: <em class=optionalcode>dest_id</em>
+real(r8), dimension(:), intent(in)    :: <em class=optionalcode>srcarray</em>
+type(time_type), intent(in), optional :: <em class=optionalcode>time</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Use the MPI library to send a copy of an array of data from one
+task to another task.
+The sending task makes this call; the receiving task must make a
+corresponding call to 
+<em class=code><A HREF="#receive_from">receive_from()</A></em>.
+</P>
+<P>
+If <em class=optionalcode>time</em> is specified, it is also sent to
+the receiving task.  The receiving call must match this sending call
+regarding this argument;
+if <em class=optionalcode>time</em> is specified here it must also be
+specified in the receive; if not given here it cannot be given in
+the receive.
+</P>
+<P>
+The current implementation uses <em class=code>MPI_Ssend()</em> which
+does a synchronous send.  That means this routine will not return until
+the receiving task has called the receive routine to accept the data.
+This may be subject to change; MPI has several other non-blocking options
+for send and receive.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>dest_id &nbsp; &nbsp; </em></TD>
+    <TD>The MPI task id of the receiver.</TD></TR>
+<TR><TD valign=top><em class=code>srcarray &nbsp; &nbsp; </em></TD>
+    <TD>The data to be copied to the receiver.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>time &nbsp; &nbsp; </em></TD>
+    <TD>If specified, send the time as well.</TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+The send and receive subroutines must be used with care.
+These calls must be used in pairs; the sending task and the receiving
+task must make corresponding calls or the tasks will hang.
+Calling them with different array sizes will result in either a
+run-time error or a core dump.
+The optional time argument must either be given in both calls
+or in neither or one of the tasks will hang.
+(Sense a trend here?)
+</P>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="receive_from"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call receive_from(src_id, destarray
+                           <em class=optionalcode>[, time]</em>)</em>
+<pre>
+integer, intent(in)                    :: <em class=optionalcode>src_id</em>
+real(r8), dimension(:), intent(out)    :: <em class=optionalcode>destarray</em>
+type(time_type), intent(out), optional :: <em class=optionalcode>time</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Use the MPI library to receive a copy of an array of data from another task.
+The receiving task makes this call; the sending task must make a
+corresponding call to <em class=code><A HREF="#send_to">send_to()</A></em>.
+Unpaired calls to these routines will result in the tasks hanging.
+</P>
+<P>
+If <em class=optionalcode>time</em> is specified, it is also received from
+the sending task.  The sending call must match this receiving call
+regarding this argument;
+if <em class=optionalcode>time</em> is specified here it must also be
+specified in the send; if not given here it cannot be given in
+the send.
+</P>
+<P>
+The current implementation uses <em class=code>MPI_Recv()</em> which
+does a synchronous receive.  That means this routine will not return until
+the data has arrived in this task.
+This may be subject to change; MPI has several other non-blocking options
+for send and receive.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>src_id &nbsp; &nbsp; </em></TD>
+    <TD>The MPI task id of the sender.</TD></TR>
+<TR><TD valign=top><em class=code>destarray &nbsp; &nbsp; </em></TD>
+    <TD>The location where the data from the sender is to be placed.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>time &nbsp; &nbsp; </em></TD>
+    <TD>If specified, receive the time as well.</TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+See the notes section
+of <em class=code><A HREF="#send_to">send_to()</A></em>.
+</P>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="exit_all"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call exit_all(exit_code)</em>
+<pre>
+integer, intent(in)                   :: <em class=code>exit_code</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+A replacement for calling the Fortran intrinsic <em class=code>exit</em>.
+This routine calls <em class=code>MPI_Abort()</em> to kill all MPI tasks
+associated with this job.  This ensures one task does not exit silently
+and leave the rest hanging.  This is not the same as calling 
+<em class=code><A HREF="#finalize_mpi_utilities">finalize_mpi_utilities()</A></em>
+which waits for the other tasks to finish, flushes all messages,
+closes log files cleanly, etc.  
+This call immediately and abruptly halts all tasks associated with this job.
+</P>
+<P>
+Depending on the MPI implementation and job control system,
+the exit code may or may not
+be passed back to the calling job script.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>exit_code &nbsp; &nbsp; </em></TD>
+    <TD> A numeric exit code.  </TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3> 
+<P>
+It would generally be helpful to write out some kind of
+message before calling this routine, to indicate where in
+the code it is dying.  This routine is called by the error
+handler in the utilities module after writing out the
+pending error message.
+</P>                      
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="transpose_array"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call transpose_array()</em>
+<pre>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Currently unimplemented; transposes are implemented with a series of calls to
+<em class=code><A HREF="#send_to">send_to()</A></em>
+and
+<em class=code><A HREF="#receive_from">receive_from()</A></em>.
+</P>
+
+<BR>
+
+<!-- <H3 class=indent1>Notes</H3> -->
+<!--                              -->
+<!-- <P>would go here             -->
+<!-- </P>                         -->
+
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="array_broadcast"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call array_broadcast(array, root)</em>
+<pre>
+real(r8), dimension(:), intent(inout) :: <em class=code>array</em>
+integer, intent(in)                   :: <em class=code>root</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+All tasks must make this call together, but the behavior in each task
+differs depending on whether it is the <em class=code>root</em> or not.
+On the task which has an ID equal 
+to <em class=code>root</em> the contents of the array will be 
+sent to all other tasks.  On any task which has an ID <em>not</em>
+equal to <em class=code>root</em> THE array is the location where
+the data is to be received into.  
+Thus <em class=code>array</em> 
+is intent(in) on root, and intent(out) on all other tasks.
+</P>
+<P>
+When this routine returns, all tasks will have the contents of the
+root array in their own arrays.  
+</P>
+
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>array &nbsp; &nbsp; </em></TD>
+    <TD> Array containing data to send to all other tasks, or 
+         the location in which to receive data. </TD></TR>
+<TR><TD valign=top><em class=code>root &nbsp; &nbsp; </em></TD>
+    <TD> Task ID which will be the data source.  All others are destinations.</TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3> 
+<P>
+This is another of the routines which must be called by all tasks.
+The MPI call used here is synchronous, so all tasks
+block here until everyone has called this routine.
+</P>                      
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="array_distribute"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call array_distribute(srcarray, root, dstarray, dstcount, how, which)</em>
+<pre>
+real(r8), dimension(:), intent(in)    :: <em class=code>srcarray</em>
+integer, intent(in)                   :: <em class=code>root</em>
+real(r8), dimension(:), intent(out)   :: <em class=code>dstarray</em>
+integer, intent(out)                  :: <em class=code>dstcount</em>
+integer, intent(in)                   :: <em class=code>how</em>
+integer, dimension(:), intent(out)    :: <em class=code>which</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Currently unimplemented.  Could be used to distribute proper subsets
+of an array across all tasks in a job.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>srcarray &nbsp; &nbsp; </em></TD>
+    <TD> Entire data array to be used as a data source. </TD></TR>
+<TR><TD valign=top><em class=code>root &nbsp; &nbsp; </em></TD>
+    <TD> Task ID with source array. </TD></TR>
+<TR><TD valign=top><em class=code>dstarray &nbsp; &nbsp; </em></TD>
+    <TD> Destination array where subset of data is to be placed. </TD></TR>
+<TR><TD valign=top><em class=code>root &nbsp; &nbsp; </em></TD>
+    <TD> Count of how many items are in the <em class=code>dstarray</em>.</TD></TR>
+<TR><TD valign=top><em class=code>how &nbsp; &nbsp; </em></TD>
+    <TD> Select different algorithms for doing the distribution. </TD></TR>
+<TR><TD valign=top><em class=code>which &nbsp; &nbsp; </em></TD>
+    <TD> Integer index array of which values were assigned to this task. </TD></TR>
+</TABLE>
+<BR>
+
+<!-- <H3 class=indent1>Notes</H3> -->
+<!--                              -->
+<!-- <P>would go here             -->
+<!-- </P>                         -->
+
+<!--===================== DESCRIPTION OF FUNCTION =====================-->
+
+<A NAME="iam_task0"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> var = iam_task0()</em>
+<pre>
+logical                        :: <em class=code>iam_task0</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Returns <em class=code>.TRUE.</em> if called from the task with
+MPI task id 0.  Returns <em class=code>.FALSE.</em> in all other tasks.
+It is frequently the case that some code should execute only on
+a single task.  This allows one to easily write a block surrounded
+by <em class=code>if (iam_task0()) then ... </em>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>iam_task0 &nbsp; &nbsp; </em></TD>
+    <TD> Convenience function to easily test and execute code blocks on 
+         task 0 only. </TD></TR>
+</TABLE>
+<BR>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="broadcast_send"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call broadcast_send(from, array1, array2)</em>
+<pre>
+integer, intent(in)                   :: <em class=code>from</em>
+real(r8), dimension(:), intent(inout) :: <em class=code>array1</em>
+real(r8), dimension(:), intent(inout) :: <em class=code>array2</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Cover routine for 
+<em class=code><A HREF="#array_broadcast">array_broadcast()</A></em>.
+This call must be matched with the companion call 
+<em class=code><A HREF="#broadcast_recv">broadcast_recv()</A></em>.
+This routine should only be called on the task 
+which is the root of the broadcast; 
+it will be the data source.  All other tasks must call 
+<em class=code>broadcast_recv()</em>.  This routine sends 2 data arrays
+because this is a common code pattern in the DART filter code. 
+This routine ensures that <em class=code>from</em> is the same
+as the current task ID.
+</P>
+
+<P>
+In reality the data arrays here are <em class=code>intent(in)</em> only but
+this routine
+will be calling <em class=code>array_broadcast()</em> internally and so
+must be <em class=code>intent(inout)</em> to match.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>from &nbsp; &nbsp; </em></TD>
+    <TD> Current task ID; the root task for the data broadcast. </TD></TR>
+<TR><TD valign=top><em class=code>array1 &nbsp; &nbsp; </em></TD>
+    <TD> First data array to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=code>array2 &nbsp; &nbsp; </em></TD>
+    <TD> Second data array to be broadcast. </TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3> 
+<P>
+This is another of the routines which must be called 
+consistently; only one task makes this call and all
+other tasks call the companion <em class=code>broadcast_recv</em> routine.
+The MPI call used here is synchronous, so all tasks
+block until everyone has called one of these two routines.
+</P>                      
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="broadcast_recv"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call broadcast_recv(from, array1, array2)</em>
+<pre>
+integer, intent(in)                   :: <em class=code>from</em>
+real(r8), dimension(:), intent(inout) :: <em class=code>array1</em>
+real(r8), dimension(:), intent(inout) :: <em class=code>array2</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Cover routine for 
+<em class=code><A HREF="#array_broadcast">array_broadcast()</A></em>.
+This call must be matched with the companion call
+<em class=code><A HREF="#broadcast_send">broadcast_send()</A></em>.
+This routine must be called on all tasks which are <em>not</em> the root of 
+the broadcast; the array arguments specify the location in which to
+receive data from the root. 
+(The root task should call <em class=code>broadcast_send()</em>.)
+This routine receives 2 data arrays
+because this is a common code pattern in the DART filter code.
+This routine ensures that <em class=code>from</em> is <em>not</em> the same
+as the current task ID.
+</P>
+<P>
+In reality the data arrays here are <em class=code>intent(out)</em> only but
+this routine
+will be calling <em class=code>array_broadcast()</em> internally and so
+must be <em class=code>intent(inout)</em> to match.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>from &nbsp; &nbsp; </em></TD>
+    <TD> The task ID for the data broadcast source. </TD></TR>
+<TR><TD valign=top><em class=code>array1 &nbsp; &nbsp; </em></TD>
+    <TD> First array location to receive data into. </TD></TR>
+<TR><TD valign=top><em class=code>array2 &nbsp; &nbsp; </em></TD>
+    <TD> Second array location to receive data into. </TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3> 
+<P>
+This is another of the routines which must be called 
+consistently; all tasks but one make this call and exactly one
+other task calls the companion <em class=code>broadcast_send</em> routine.
+The MPI call used here is synchronous, so all tasks
+block until everyone has called one of these two routines.
+</P>                      
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="sum_across_tasks"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call sum_across_tasks(addend, sum)</em>
+<pre>
+integer, intent(in)                   :: <em class=code>addend</em>
+integer, intent(out)                  :: <em class=code>sum</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+All tasks call this routine, each with their 
+own different <em class=code>addend</em>.
+The returned value in <em class=code>sum</em> is the 
+total of the values summed across all tasks, and is
+the same for each task.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>addend &nbsp; &nbsp; </em></TD>
+    <TD> Single input value per task to be summed up. </TD></TR>
+<TR><TD valign=top><em class=code>sum &nbsp; &nbsp; </em></TD>
+    <TD> The sum. </TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+This is another of those calls which must be made from each task,
+and the calls block until this is so.
+</P>                     
+
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand 
+'&#38;' and terminating with a slash '/'.
+</P>
+<P>
+This module currently has no namelist entries.  One expected addition
+would be a list of task numbers in which the default option is to print
+out all informational messages; the current default is that messages are
+only printed from task 0 and all others suppressed.  (Warnings and Errors
+print in all cases.)
+
+<H3 class=indent1>Discussion</H3>
+
+<P>This namelist would be read from a file called <em class=file>input.nml</em>
+</P>
+
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<BR><HR><BR>
+<H2>FILES</H2>
+<UL><LI>mpi module or</LI>
+    <LI>mpif.h</LI>
+</UL>
+<P>
+Depending on the implementation of MPI, the library routines are either defined
+in an include file (<em class=code>mpif.h</em>) or in a proper Fortran 90
+module (<em class=code>use mpi</em>).  If it is available the module is
+preferred; it allows for better argument checking and optional arguments
+support in the MPI library calls.  
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<BR><HR><BR>
+<H2>REFERENCES</H2>
+<UL>
+<LI>MPI: The Complete Reference; Snir, Otto, Huss-Lederman, Walker, Dongarra;
+MIT Press, 1996, ISBN 0-262-69184-1 </LI>
+<LI><A HREF="http://www-unix.mcs.anl.gov/mpi/">
+<em class=code>http://www-unix.mcs.anl.gov/mpi/</em></A> </LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>
+If MPI returns an error, the DART error handler is called
+with the numeric error code it received from MPI.
+See any of the MPI references for an up-to-date list of error codes.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<BR><HR><BR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+</P>
+
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>
