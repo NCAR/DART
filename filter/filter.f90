@@ -86,7 +86,7 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: outlier_threshold = -1.0_r8
-integer  :: ncep_qc_threshold = 4
+real(r8) :: ncep_qc_threshold = 4.0_r8
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -970,7 +970,7 @@ do j = 1, obs_ens_handle%my_num_vars
         
       ! PAR: THIS SHOULD BE IN QC MODULE 
       ! Check on the outlier threshold quality control: move to QC module
-      if(do_outlier .and. nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j)) < ncep_qc_threshold) then
+      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < ncep_qc_threshold)) then
          obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START, j)
          obs_prior_var = obs_ens_handle%copies(OBS_PRIOR_VAR_START, j)
          obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
