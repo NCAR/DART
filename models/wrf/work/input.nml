@@ -1,24 +1,56 @@
+&perfect_model_obs_nml
+   start_from_restart    = .true.,
+   output_restart        = .true.,
+   async                 = 2,
+   init_time_days        = 0,
+   init_time_seconds     = 0,
+   output_interval       = 1,
+   restart_in_file_name  = "perfect_ics",
+   restart_out_file_name = "perfect_restart"
+   obs_seq_in_file_name  = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   adv_ens_command       = "./advance_model.csh" /
+
 &filter_nml
-   async = 2,
-   adv_ens_command = "./advance_model.csh",
-   ens_size = 32,
-   start_from_restart = .true.,
-   output_restart = .false.,
-   obs_sequence_in_name = "obs_seq.out",
-   obs_sequence_out_name = "obs_seq.final",
-   restart_in_file_name = "filter_ics",
-   restart_out_file_name = "filter_restart", 
-   init_time_days = -1,
-   init_time_seconds = 0,
-   output_state_ens_mean = .true.,
-   output_state_ens_spread = .true.,
-   output_obs_ens_mean = .true.,
-   output_obs_ens_spread = .true., 
+   async                    = 2,
+   adv_ens_command          = "./advance_model.csh",
+   ens_size                 = 32,
+   start_from_restart       = .true.,
+   output_restart           = .false.,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart", 
+   init_time_days           = -1,
+   init_time_seconds        = 0,
+   output_state_ens_mean    = .true.,
+   output_state_ens_spread  = .true.,
+   output_obs_ens_mean      = .true.,
+   output_obs_ens_spread    = .true., 
    num_output_state_members = 1,
-   num_output_obs_members = 32,
-   output_interval = 1,
-   num_groups = 1,
-   outlier_threshold = -1.0  /
+   num_output_obs_members   = 32,
+   output_interval          = 1,
+   num_groups               = 1,
+   ncep_qc_threshold        = 4.0,
+   outlier_threshold        =-1.0,
+
+   inf_flavor               = 2,                      0,
+   inf_start_from_restart   = .false.,                .false.,
+   inf_output_restart       = .true.,                 .true.,
+   inf_deterministic        = .true.,                 .true.,
+   inf_in_file_name         = 'prior_inf_ics',        'post_inf_ics',
+   inf_out_file_name        = 'prior_inf_restart',    'post_inf_restart',
+   inf_diag_file_name       = 'prior_inf_diag',       'post_inf_diag',
+   inf_initial              = 1.02,                   1.00,
+   inf_sd_initial           = 0.1,                    0.0,
+   inf_lower_bound          = 1.0,                    1.0,
+   inf_upper_bound          = 1000000.0,              1000000.0,
+   inf_sd_lower_bound       = 0.0,                    0.0
+/
+
+&ensemble_manager_nml
+   single_restart_file_in = .false.,
+   single_restart_file_out = .false. /
 
 &assim_tools_nml
    filter_kind = 1,
@@ -27,25 +59,6 @@
    spread_restoration = .false.,
    sampling_error_correction = .false.,
    adaptive_localization_threshold = -1 /
-
-&adaptive_inflate_nml
-   do_obs_inflate = .false.,
-   do_varying_ss_inflate = .false.,
-   do_single_ss_inflate = .false.,
-   start_from_inflate_restart = .false.,
-   output_restart = .true., 
-   deterministic_inflate = .true.,
-   inflate_in_file_name = "inflate_ics",
-   inflate_out_file_name = "inflate_restart",
-   obs_inf_initial = 1.0,
-   obs_inf_sd_initial = 0.0,
-   obs_sd_lower_bound = 0.0,
-   obs_inf_upper_bound = 1000000.0,
-   ss_inf_initial = 1.0,
-   ss_inf_sd_initial = 0.0,
-   ss_sd_lower_bound = 0.0,
-   ss_inf_upper_bound = 1000000.0,
-   diagnostic_file_name = "inflate_diag"  /
 
 &cov_cutoff_nml
    select_localization = 1  /
@@ -142,12 +155,14 @@
    obs_select = 1,
    Nregions   = 1,
    rat_cri    = 5000.0,
-   qc_threshold = 1000.0,
+   ncep_qc_threshold = 4.0,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
    lonlim2    = 360.0, 360.0, 360.0, 295.0,
    latlim1    =  20.0, -80.0, -20.0,  25.0,
    latlim2    =  80.0, -20.0,  20.0,  55.0,
-   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'   /
+   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
+   print_mismatched_locs = .false.,
+   verbose = .false.  /
 
 &merge_obs_seq_nml
    filename_seq1 = 'obs_seq.gps1',
