@@ -31,6 +31,7 @@
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 2,
+   ncep_qc_threshold        =  4.0,
    outlier_threshold        = -1.0, 
 
    inf_flavor                 = 0,                       0,
@@ -40,7 +41,7 @@
    inf_in_file_name           = 'prior_inflate_ics',     'post_inflate_ics',
    inf_out_file_name          = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name         = 'prior_inflate_diag',    'post_inflate_diag',
-   inf_initial                = 1.00,                    1.00,
+   inf_initial                = 1.0,                     1.0,
    inf_sd_initial             = 0.0,                     0.0,
    inf_lower_bound            = 1.0,                     1.0,
    inf_upper_bound            = 1000000.0,               1000000.0,
@@ -61,7 +62,7 @@
 
 &assim_tools_nml
    filter_kind = 1,
-   cutoff = 10000000.0,
+   cutoff = 1000000.0,
    sort_obs_inc = .true.,
    spread_restoration = .false.,
    sampling_error_correction = .false.,
@@ -114,6 +115,11 @@
    obs_sequence_name = 'obs_seq.final',
    iskip_days = 0,
    obs_select = 1,
-   rat_cri    = 300.0,
-   qc_threshold = 4.0, 
-   bin_width_seconds = 0 /
+   rat_cri    = 14.0,
+   ncep_qc_threshold = 4.0, 
+   bin_width_seconds = 0,
+   lonlim1   = 0.0, 0.0, 0.5, -1.0,
+   lonlim2   = 1.0, 0.5, 1.5, -1.0,
+   reg_names = 'whole', 'yin', 'yang', 'bogus',
+   verbose   = .false.   /
+
