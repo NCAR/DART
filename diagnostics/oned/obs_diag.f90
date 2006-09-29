@@ -1,5 +1,6 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program obs_diag
@@ -86,9 +87,9 @@ integer, parameter :: MaxRegions = 4
 character(len = 129) :: obs_sequence_name = "obs_seq.final"
 integer :: iskip_days = 0        ! skip the first 'iskip' days
 integer :: obs_select = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
-real(r8):: rat_cri    = 3.0      ! QC ratio
-real(r8):: qc_threshold = 4.0    ! maximum NCEP QC factor
-integer :: bin_width_seconds  = 0         ! width of the bin seconds
+real(r8):: rat_cri    = 4.0      ! QC ratio
+real(r8):: ncep_qc_threshold = 4.0  ! maximum NCEP QC factor
+integer :: bin_width_seconds  = 0   ! width of the bin seconds
 logical :: verbose = .false.
 
 ! index 1 == region 1 == [0.0, 1.0) i.e. Entire domain
@@ -103,7 +104,7 @@ character(len=6), dimension(MaxRegions) :: reg_names = &
 
 namelist /obs_diag_nml/ obs_sequence_name, &
                        iskip_days, obs_select, rat_cri, &
-                       qc_threshold, bin_width_seconds, &
+                       ncep_qc_threshold, bin_width_seconds, &
                        lonlim1, lonlim2, reg_names, verbose
 
 !-----------------------------------------------------------------------
@@ -638,7 +639,7 @@ enddo FindNumRegions
             cycle ObservationLoop
          endif
 
-         if( qc(qc_index) >= qc_threshold ) then
+         if( qc(qc_index) >= ncep_qc_threshold ) then
          !  write(*,*)'obs ',obsindex,' rejected by qc ',qc
             NbadQC = NbadQC + 1
             cycle ObservationLoop 
@@ -785,7 +786,7 @@ iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
 write(iunit,'(''iskip_days     = '',i6,'';'')')iskip_days
 write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
-write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
+write(iunit,'(''qc_threshold   = '',f9.2,'';'')')ncep_qc_threshold
 write(iunit,'(''bin_width_seconds = '',i5,'';'')')bin_width_seconds
 write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
 write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
@@ -900,6 +901,8 @@ enddo OneLevel
 
 ! Print the histogram of innovations as a function of standard deviation. 
 write(*,*) ''
+write(*,*) 'Table to indicate how to choose rat_cri -- '
+write(*,*) 'How are the innovations distributed?'
 do i=0,100
    if(nsigma(i) /= 0) write(*,*)'innovations within ',i+1,' stdev = ',nsigma(i)
 enddo
