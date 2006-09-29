@@ -31,7 +31,7 @@
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
-   ncep_qc_threshold        = 4,
+   ncep_qc_threshold        =  4.0,
    outlier_threshold        = -1.0, 
 
    inf_flavor                 = 0,                       0,
@@ -62,7 +62,7 @@
 
 &assim_tools_nml
    filter_kind = 1,
-   cutoff = 10000000,
+   cutoff = 1000000.0,
    sort_obs_inc = .true.,
    spread_restoration = .false.,
    sampling_error_correction = .false.,

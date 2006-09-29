@@ -31,6 +31,7 @@
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
+   ncep_qc_threshold =  4.0,
    outlier_threshold        = -1.0, 
 
    inf_flavor                 = 0,                       0,
@@ -130,7 +131,8 @@
    hlevel     = 5000,
    obs_select = 1,
    rat_cri    = 3.0,
-   qc_threshold = 4.0,
+   ncep_qc_threshold = 4.0,
+   verbose = .true.,
    print_mismatched_locs = .false.   /
 
 
