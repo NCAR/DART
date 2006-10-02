@@ -146,6 +146,12 @@
           <TH align=left>most noteable change(s)</TH>
       </TR>
 
+      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">pre_j</A></TD>
+          <!--   date--><TD valign=top>02&nbsp;Oct&nbsp;2006</TD>
+          <!--instruc--><TD valign=top><A HREF="pre_j.html">[doc]</A></TD>
+	  <!-- change--><TD>contains an updated scalable filter algorithm<BR>
+                            </TD></TR>
+
       <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">post_iceland</A></TD>
           <!--   date--><TD valign=top>20&nbsp;Jun&nbsp;2006</TD>
           <!--instruc--><TD valign=top><A HREF="Post_Iceland_release.html">[doc]</A></TD>
