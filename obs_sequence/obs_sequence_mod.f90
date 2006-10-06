@@ -532,7 +532,7 @@ endif
 ! Check for all observations after the last time in the window
 call get_obs_def(seq%obs(current), obs_def)
 cur_time = get_obs_def_time(obs_def)
-if(cur_time >= time2) then
+if(cur_time > time2) then
    out_of_range = .true.
    return
 endif
