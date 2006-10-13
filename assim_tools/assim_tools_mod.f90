@@ -150,6 +150,7 @@ real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
 real(r8) :: ss_inflate_base, obs_qc, cutoff_rev
 real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
+real(r8) :: r_mean, r_var
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
 real(r8) :: close_obs_dist(obs_ens_handle%my_num_vars)
@@ -313,11 +314,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                   ! Deflate the inflated variance
                   ens_obs_mean = orig_obs_prior_mean(group)
                   ens_obs_var = orig_obs_prior_var(group)
-                  
                   ens_var_deflate = ens_obs_var / &
                      (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+                  
+                  ! If this is inflate only (i.e. posterior) remove impact of this obs.
+                  if(inflate_only) then
+                     r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+                     r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
+                  else
+                     r_mean = ens_obs_mean
+                     r_var = ens_var_deflate
+                  endif
+
                   call update_inflation(inflate, my_inflate, my_inflate_sd, &
-                     ens_obs_mean, ens_var_deflate, obs(1), obs_err_var, &
+                     r_mean, r_var, obs(1), obs_err_var, &
                      gamma)
                endif
             end do
@@ -466,9 +476,19 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
                ens_var_deflate = ens_obs_var / &
                   (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+                  
+                  ! If this is inflate only (i.e. posterior) remove impact of this obs.
+                  if(inflate_only) then
+                     r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+                     r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
+                  else
+                     r_mean = ens_obs_mean
+                     r_var = ens_var_deflate
+                  endif
+
                ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
-                  ens_obs_mean, ens_var_deflate, obs(1), obs_err_var, gamma)
+                  r_mean, r_var, obs(1), obs_err_var, gamma)
             endif
             ! Copy updated values into ensemble obs storage
             ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
