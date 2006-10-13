@@ -12,6 +12,7 @@ program correl_error
 ! $Author$
 ! $Name$
 
+
 use types_mod
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
    twod_gaussians, random_uniform
@@ -32,7 +33,7 @@ call init_random_seq(ran_id)
 do lji = 2, 2
 ens_size = 10 * 2**(lji - 1)
 
-ens_size = 80
+ens_size = 20
 
 
 allocate(pairs(2, ens_size), obs_inc(ens_size), unobs_inc(ens_size), new_unobs(ens_size))
@@ -105,9 +106,8 @@ do j = 0, 50
 end do
 deallocate(pairs)
 end do
-end program correl_error
 
-
+contains
 
 !-----------------------------------------------------
 
@@ -116,9 +116,9 @@ subroutine comp_correl(ens, n, correl)
 implicit none
 
 integer, intent(in) :: n
-double precision, intent(in) :: ens(2, n)
-double precision, intent(out) :: correl
-double precision :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
+real(r8), intent(in) :: ens(2, n)
+real(r8), intent(out) :: correl
+real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
 
 
 sum_x = sum(ens(2, :))
@@ -141,10 +141,10 @@ subroutine sample_mean_var(x, n, mean, var)
 implicit none
 
 integer, intent(in) :: n
-double precision, intent(in) :: x(n)
-double precision, intent(out) :: mean, var
+real(r8), intent(in) :: x(:)
+real(r8), intent(out) :: mean, var
 
-double precision :: sx, s_x2
+real(r8) :: sx, s_x2
 
 sx = sum(x)
 s_x2 = sum(x * x)
@@ -153,4 +153,5 @@ var = (s_x2 - sx**2 / n) / (n - 1)
 
 end subroutine sample_mean_var
 
+end program correl_error
 
