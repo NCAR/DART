@@ -1590,26 +1590,28 @@ nVelJ   = vje - vjs + 1
 ! and then put into define mode.
 !-------------------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(nf90_Redef(ncFileID))
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+           "inquire")
+call check(nf90_Redef(ncFileID),"redef")
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies 
 !-------------------------------------------------------------------------------
 
-call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
-call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
+call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID),"copy dimid")
+call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID),"time dimid")
 
 if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
+   write(errstring,*)"Time Dimension ID ",TimeDimID, &
+                     " should equal Unlimited Dimension ID",unlimitedDimID
+   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
 endif
 
 !-------------------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
 !-------------------------------------------------------------------------------
 call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size, dimid = StateVarDimID))
+                        len=model_size, dimid = StateVarDimID),"state def_dim")
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -1619,11 +1621,11 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","FMS_Bgrid"))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ),"creation put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ),"source put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),"revision put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ),"revdate put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","FMS_Bgrid"      ),"model put")
 
 ! how about namelist input? might be nice to save ...
 
@@ -1631,13 +1633,19 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","FMS_Bgrid"))
 ! Define the new dimensions IDs
 !-------------------------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="TmpI",   len = nTmpI,   dimid =   TmpIDimID)) 
-call check(nf90_def_dim(ncid=ncFileID, name="TmpJ",   len = nTmpJ,   dimid =   TmpJDimID)) 
-call check(nf90_def_dim(ncid=ncFileID, name="lev",    len = nlev,    dimid =    levDimID)) 
-call check(nf90_def_dim(ncid=ncFileID, name="VelI",   len = nVelI,   dimid =   VelIDimID)) 
-call check(nf90_def_dim(ncid=ncFileID, name="VelJ",   len = nVelJ,   dimid =   VelJDimID)) 
+call check(nf90_def_dim(ncid=ncFileID, name="TmpI", &
+                                      len = nTmpI, dimid = TmpIDimID),"TmpI def_dim") 
+call check(nf90_def_dim(ncid=ncFileID, name="TmpJ", &
+                                      len = nTmpJ, dimid = TmpJDimID),"TmpJ def_dim") 
+call check(nf90_def_dim(ncid=ncFileID, name="lev",  &
+                                      len = nlev,  dimid = levDimID), "lev  def_dim") 
+call check(nf90_def_dim(ncid=ncFileID, name="VelI", &
+                                      len = nVelI, dimid = VelIDimID),"VelI def_dim") 
+call check(nf90_def_dim(ncid=ncFileID, name="VelJ", &
+                                      len = nVelJ, dimid = VelJDimID),"VelJ def_dim") 
 if ( ntracer > 0 ) then
-   call check(nf90_def_dim(ncid=ncFileID, name="tracers",len = ntracer, dimid = tracerDimID)) 
+   call check(nf90_def_dim(ncid=ncFileID, name="tracers", &
+                                         len = ntracer, dimid = tracerDimID),"tracer def_dim") 
 endif
 
 ! should implement "trajectory-like" coordinate defn ... a'la section 5.4, 5.5 of CF standard
@@ -1649,50 +1657,55 @@ endif
 !-------------------------------------------------------------------------------
 
 ! Temperature Grid Longitudes
-call check(nf90_def_var(ncFileID, name="TmpI", xtype=nf90_double, &
-                                               dimids=TmpIDimID, varid=TmpIVarID) )
-call check(nf90_put_att(ncFileID, TmpIVarID, "long_name", "longitude"))
-call check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "X"))
-call check(nf90_put_att(ncFileID, TmpIVarID, "units", "degrees_east"))
-call check(nf90_put_att(ncFileID, TmpIVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
+call check(nf90_def_var(ncFileID, name="TmpI", &
+              xtype=nf90_double, dimids=TmpIDimID, varid=TmpIVarID),   "TmpI def_var")
+call check(nf90_put_att(ncFileID, TmpIVarID, "long_name", "longitude"),"TmpI long_name")
+call check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "X"),   "TmpI cartesian_axis")
+call check(nf90_put_att(ncFileID, TmpIVarID, "units", "degrees_east"), "TmpI units")
+call check(nf90_put_att(ncFileID, TmpIVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
+                                 "TmpI valid_range")
 
 ! Temperature Grid Latitudes
-call check(nf90_def_var(ncFileID, name="TmpJ", xtype=nf90_double, &
-                                               dimids=TmpJDimID, varid=TmpJVarID) )
-call check(nf90_put_att(ncFileID, TmpJVarID, "long_name", "latitude"))
-call check(nf90_put_att(ncFileID, TmpJVarID, "cartesian_axis", "Y"))
-call check(nf90_put_att(ncFileID, TmpJVarID, "units", "degrees_north"))
-call check(nf90_put_att(ncFileID, TmpJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
+call check(nf90_def_var(ncFileID, name="TmpJ", &
+              xtype=nf90_double, dimids=TmpJDimID, varid=TmpJVarID),   "TmpJ def_var" )
+call check(nf90_put_att(ncFileID, TmpJVarID, "long_name", "latitude"), "TmpJ long_name")
+call check(nf90_put_att(ncFileID, TmpJVarID, "cartesian_axis", "Y"),   "TmpJ cartesian_axis")
+call check(nf90_put_att(ncFileID, TmpJVarID, "units", "degrees_north"),"TmpJ units")
+call check(nf90_put_att(ncFileID, TmpJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
+                                 "TmpJ valid_range")
 
 ! (Common) grid levels
-call check(nf90_def_var(ncFileID, name="level", xtype=nf90_int, &
-                                                dimids=levDimID, varid=levVarID) )
-call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"))
-call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"))
-call check(nf90_put_att(ncFileID, levVarID, "units", "hPa"))
-call check(nf90_put_att(ncFileID, levVarID, "positive", "down"))
+call check(nf90_def_var(ncFileID, name="level", &
+              xtype=nf90_int, dimids=levDimID, varid=levVarID) ,    "level def_var")
+call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"),  "level long_name")
+call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"), "level cartesian_axis")
+call check(nf90_put_att(ncFileID, levVarID, "units", "hPa"),        "level units")
+call check(nf90_put_att(ncFileID, levVarID, "positive", "down"),    "level positive")
 
 ! Velocity Grid Longitudes
-call check(nf90_def_var(ncFileID, name="VelI", xtype=nf90_double, &
-                                               dimids=VelIDimID, varid=VelIVarID) )
-call check(nf90_put_att(ncFileID, VelIVarID, "long_name", "longitude"))
-call check(nf90_put_att(ncFileID, VelIVarID, "cartesian_axis", "X"))
-call check(nf90_put_att(ncFileID, VelIVarID, "units", "degrees_east"))
-call check(nf90_put_att(ncFileID, VelIVarID, "valid_range", (/ 0.0_r8, 360.1_r8 /)))
+call check(nf90_def_var(ncFileID, name="VelI", &
+              xtype=nf90_double, dimids=VelIDimID, varid=VelIVarID) ,  "VelI def_var")
+call check(nf90_put_att(ncFileID, VelIVarID, "long_name", "longitude"),"VelI long_name")
+call check(nf90_put_att(ncFileID, VelIVarID, "cartesian_axis", "X"),   "VelI cartesian_axis")
+call check(nf90_put_att(ncFileID, VelIVarID, "units", "degrees_east"), "VelI units")
+call check(nf90_put_att(ncFileID, VelIVarID, "valid_range", (/ 0.0_r8, 360.1_r8 /)), &
+                                 "VelI valid_range")
 
 ! Velocity Grid Latitudes
-call check(nf90_def_var(ncFileID, name="VelJ", xtype=nf90_double, &
-                                               dimids=VelJDimID, varid=VelJVarID) )
-call check(nf90_put_att(ncFileID, VelJVarID, "long_name", "latitude"))
-call check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "Y"))
-call check(nf90_put_att(ncFileID, VelJVarID, "units", "degrees_north"))
-call check(nf90_put_att(ncFileID, VelJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)))
+call check(nf90_def_var(ncFileID, name="VelJ", &
+              xtype=nf90_double, dimids=VelJDimID, varid=VelJVarID) , "VelJ def_var")
+call check(nf90_put_att(ncFileID, VelJVarID, "long_name", "latitude"),"VelJ long_name")
+call check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "Y"), "VelJ cartesian_axis")
+call check(nf90_put_att(ncFileID, VelJVarID, "units", "degrees_north"), "VelJ units")
+call check(nf90_put_att(ncFileID, VelJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
+                                 "VelJ valid_range")
 
 ! Number of Tracers
 if ( ntracer > 0 ) then
-   call check(nf90_def_var(ncFileID, name="tracers", xtype=nf90_int, &
-                                                  dimids=tracerDimID, varid=tracerVarID) )
-   call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"))
+   call check(nf90_def_var(ncFileID, name="tracers", &
+                 xtype=nf90_int, dimids=tracerDimID, varid=tracerVarID) , "tracers def_var")
+   call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"), &
+                                    "tracers long_name")
 endif
 
 if ( output_state_vector ) then
@@ -1703,26 +1716,35 @@ if ( output_state_vector ) then
 
   ! Define the state vector coordinate variable
    call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
+              dimids=StateVarDimID, varid=StateVarVarID), "statevariable def_var")
+   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"), &
+                                    "statevariable long_name")
+   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
+                                    "statevariable units")
+   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+                                    "statevariable valid_range")
 
    ! Define the actual state vector
    call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
-              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID))
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
-   call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","FMS-Bgrid"))
-   call check(nf90_put_att(ncFileID, StateVarId, "temperature_units","degrees Kelvin"))
-   call check(nf90_put_att(ncFileID, StateVarId, "pressure_units","Pa"))
-   call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"))
-   call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"))
+              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
+              varid=StateVarID), "state def_var")
+   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
+                                           "state long_name")
+   call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","FMS-Bgrid"), &
+                                           "state vector_to_prog_var")
+   call check(nf90_put_att(ncFileID, StateVarId, "temperature_units","degrees Kelvin"), &
+                                           "state temperature_units")
+   call check(nf90_put_att(ncFileID, StateVarId, "pressure_units","Pa"), &
+                                           "state pressure_units")
+   call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"),"state U_units")
+   call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"),"state V_units")
 
    ! Leave define mode so we can fill
-   call check(nf90_enddef(ncfileID))
+   call check(nf90_enddef(ncfileID),"state enddef")
 
    ! Fill the state variable coordinate variable
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
+   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
+                                    "state put_var")
 
 else
 
@@ -1740,40 +1762,45 @@ else
  
    call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_real, &
          dimids = (/ TmpIDimID, TmpJDimID, MemberDimID, unlimitedDimID /), &
-         varid  = psVarID))
-   call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"))
-   call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"))
-   call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"))
+         varid  = psVarID), "ps def_var")
+   call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"), &
+                                           "ps long_name")
+   call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"), &
+                                           "ps units")
+   call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"), &
+                                           "ps units_long_name")
 
 
    call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_real, &
          dimids = (/ TmpIDimID, TmpJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = tVarID))
-   call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"))
-   call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"))
+         varid  = tVarID), "t def_var")
+   call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"), "t long_name")
+   call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"), "t units")
 
 
    call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_real, &
          dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = uVarID))
-   call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"))
-   call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"))
+         varid  = uVarID), "u def_var")
+   call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
+                                           "u long_name")
+   call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), "u units")
 
 
    call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_real, &
          dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = vVarID))
-   call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"))
-   call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"))
+         varid  = vVarID), "v def_var")
+   call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
+                                           "v long_name")
+   call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), "v units")
 
    if ( ntracer > 0 ) then
       call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_real, &
       dimids = (/TmpIDimID, TmpJDimID, levDimID, tracerDimID, MemberDimID, unlimitedDimID/),&
-         varid  = rVarID))
-      call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"))
+         varid  = rVarID), "r def_var")
+      call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"), "r long_name")
    endif
 
-   call check(nf90_enddef(ncfileID))
+   call check(nf90_enddef(ncfileID), "prognostic enddef")
 
 endif
 
@@ -1781,19 +1808,19 @@ endif
 ! Fill the variables
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID,   TmpIVarID, t_lons(tis:tie) ))
-call check(nf90_put_var(ncFileID,   TmpJVarID, t_lats(tjs:tje) ))
-call check(nf90_put_var(ncFileID,   VelIVarID, v_lons(vis:vie) ))
-call check(nf90_put_var(ncFileID,   VelJVarID, v_lats(vjs:vje) ))
-call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   nlev) /) ))
+call check(nf90_put_var(ncFileID,   TmpIVarID, t_lons(tis:tie) ), "TmpI put_var")
+call check(nf90_put_var(ncFileID,   TmpJVarID, t_lats(tjs:tje) ), "TmpJ put_var")
+call check(nf90_put_var(ncFileID,   VelIVarID, v_lons(vis:vie) ), "VelI put_var")
+call check(nf90_put_var(ncFileID,   VelJVarID, v_lats(vjs:vje) ), "VelJ put_var")
+call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   nlev) /) ), "lev put_var")
 if ( ntracer > 0 ) then
-   call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ))
+   call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ), "tracer put_var")
 endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call check(nf90_sync(ncFileID))
+call check(nf90_sync(ncFileID),"atts sync")
 
 write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
 
@@ -1801,11 +1828,30 @@ contains
 
   ! Internal subroutine - checks error status after each netcdf, prints 
   !                       text message each time an error code is returned. 
-  subroutine check(istatus)
+  subroutine check(istatus, string1)
     integer, intent ( in) :: istatus
+    character(len=*), intent(in), optional :: string1
 
-    if(istatus /= nf90_noerr) call error_mesg ('nc_write_model_atts', &
-            trim(nf90_strerror(istatus)), FATAL)
+    character(len=20)  :: myname = 'nc_write_model_atts '
+    character(len=129) :: mystring
+    integer            :: indexN
+
+    if( istatus /= nf90_noerr) then
+
+       if (present(string1) ) then
+          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
+             mystring = myname // trim(adjustl(string1))
+          else
+             indexN = len(mystring) - len(myname)
+             mystring = myname // string1(1:indexN)
+          endif 
+       else
+          mystring = myname
+       endif
+
+       call error_mesg(mystring, trim(nf90_strerror(istatus)), FATAL)
+
+    endif
 
   end subroutine check
 
@@ -1887,13 +1933,14 @@ nVelJ   = vje - vjs + 1
 ! then get all the Variable ID's we need.
 !-------------------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+        "inquire")
 
 if ( output_state_vector ) then
 
-   call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
+   call check(NF90_inq_varid(ncFileID, "state", StateVarID), "state inq_varid" )
    call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)))                               
+                start=(/ 1, copyindex, timeindex /)), "state put_var")                               
 
 else
    
@@ -1912,27 +1959,27 @@ else
    call vector_to_prog_var(x, get_model_size(), global_Var)
    
    
-   call check(NF90_inq_varid(ncFileID, "ps", psVarID))
+   call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
    call check(nf90_put_var( ncFileID, psVarID, global_Var%ps(tis:tie, tjs:tje), &
-                            start=(/ 1, 1, copyindex, timeindex /) ))
+                            start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
 
-   call check(NF90_inq_varid(ncFileID,  "t",  tVarID))
+   call check(NF90_inq_varid(ncFileID,  "t",  tVarID), "t inq_varid")
    call check(nf90_put_var( ncFileID,  tVarID, global_Var%t( tis:tie, tjs:tje, klb:kub ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), "t put_var")
 
-   call check(NF90_inq_varid(ncFileID,  "u",  uVarID))
+   call check(NF90_inq_varid(ncFileID,  "u",  uVarID), "u inq_varid")
    call check(nf90_put_var( ncFileID,  uVarId, global_Var%u( vis:vie, vjs:vje, klb:kub ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), "u put_var")
 
-   call check(NF90_inq_varid(ncFileID,  "v",  vVarID))
+   call check(NF90_inq_varid(ncFileID,  "v",  vVarID), "v inq_varid")
    call check(nf90_put_var( ncFileID,  vVarId, global_Var%v( vis:vie, vjs:vje, klb:kub ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), "v put_var")
 
    if ( ntracer > 0 ) then
-      call check(NF90_inq_varid(ncFileID,  "r",  rVarID))
+      call check(NF90_inq_varid(ncFileID,  "r",  rVarID), "r inq_varid")
       call check(nf90_put_var( ncFileID,  rVarID, &
                     global_Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
-                   start=(/   1,       1,       1,     1,    copyindex, timeindex /) ))
+                   start=(/  1,   1,   1,   1, copyindex, timeindex /) ), "r put_var")
    endif
 endif
 
@@ -1941,18 +1988,37 @@ endif
 !-------------------------------------------------------------------------------
 
 ! write (*,*)'Finished filling variables ...'
-call check(nf90_sync(ncFileID))
+call check(nf90_sync(ncFileID), "sync")
 ! write (*,*)'netCDF file is synched ...'
 
 contains
 
   ! Internal subroutine - checks error status after each netcdf, prints 
   !                       text message each time an error code is returned. 
-  subroutine check(istatus)
+  subroutine check(istatus, string1)
     integer, intent ( in) :: istatus
+    character(len=*), intent(in), optional :: string1
 
-    if(istatus /= nf90_noerr) call error_mesg ('nc_write_model_vars', &
-            trim(nf90_strerror(istatus)), FATAL)
+    character(len=20)  :: myname = 'nc_write_model_vars '
+    character(len=129) :: mystring
+    integer            :: indexN
+
+    if( istatus /= nf90_noerr) then
+
+       if (present(string1) ) then
+          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
+             mystring = myname // trim(adjustl(string1))
+          else
+             indexN = len(mystring) - len(myname)
+             mystring = myname // string1(1:indexN)
+          endif 
+       else
+          mystring = myname
+       endif
+
+       call error_mesg(mystring, trim(nf90_strerror(istatus)), FATAL)
+
+    endif
 
   end subroutine check
 
