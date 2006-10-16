@@ -23,10 +23,6 @@
    restart_out_file_name    = "filter_restart",
    init_time_days           = 0,
    init_time_seconds        = 0,
-   output_state_ens_mean    = .true.,
-   output_state_ens_spread  = .true.,
-   output_obs_ens_mean      = .true.,
-   output_obs_ens_spread    = .true.,
    num_output_state_members = 20,
    num_output_obs_members   = 0,
    output_interval          = 1,
@@ -69,14 +65,9 @@ Remember that namelists must be listed even if only defaults are to be used
    filter_kind = 1,
    cutoff = 1000000.0,
    sort_obs_inc = .true.,
-   do_parallel = 0,
-   num_domains = 1,
-   parallel_command = "./assim_filter.csh",
    spread_restoration = .false.,
-   internal_outlier_threshold = -1.0, 
    sampling_error_correction = .false.,
-   num_close_threshold = 10000000 /
-
+   adaptive_localization_threshold = -1 /
 
 &cov_cutoff_nml
    select_localization = 1  /
@@ -97,7 +88,7 @@ Remember that namelists must be listed even if only defaults are to be used
    write_binary_restart_files = .false. /
 
 &model_nml
-   model_size = 1,
+   model_size = 2,
    delta_t    = 0.05,
    time_step_days = 0,
    time_step_seconds = 3600  /

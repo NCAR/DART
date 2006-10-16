@@ -21,7 +21,9 @@ module model_mod
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
-                             LocationDims, LocationName, LocationLName
+                             LocationDims, LocationName, LocationLName, &
+                             get_close_maxdist_init, get_close_obs_init, get_close_obs
+
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
                              find_namelist_in_file, check_namelist_read
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
@@ -45,7 +47,9 @@ public :: get_model_size, &
           model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
-          pert_model_state
+          pert_model_state, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -58,7 +62,7 @@ revdate  = "$Date$"
 !---------------------------------------------------------------
 ! Namelist with default values
 ! Model size can be as small as 1 here.
-integer  :: model_size = 1
+integer  :: model_size = 2
 real(r8) :: delta_t    = 0.05_r8
 integer  :: time_step_days = 0
 integer  :: time_step_seconds = 3600
@@ -133,13 +137,17 @@ if(first_ens_seq) then
    first_ens_seq = .false.
 end if
 
-do j = 1, model_size
+! Time tendency is linear growth only for 1st variable
+do j = 1, 1
    dt(j) =  x(j)
 
-
 ! ADDITION OF SOME NOISE
-   !!!dt(j) = 1.0 * random_gaussian(ens_seq, 0.0_r8, 1.0_r8)
+   dt(j) = dt(j) + 1.0 * random_gaussian(ens_seq, 0.0_r8, 1.0_r8)
 end do
+
+! Time tendency for non-linear variable isn't computed here. It is patched up 
+! in adv_1step
+dt(2) = 0.0_r8
 
 end subroutine comp_dt
 
@@ -157,6 +165,7 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
+! Both linear and non-linear variables start at 0
 x    = 0.0_r8
 
 end subroutine init_conditions
@@ -167,7 +176,7 @@ subroutine adv_1step(x, time)
 !------------------------------------------------------------------
 ! subroutine adv_1step(x, time)
 !
-! Does single time step advance for null model
+! Does single time step advance for nl null model
 ! using four-step rk time step
 ! The Time argument is needed for compatibility with more complex models
 ! that need to know the time to compute their time tendency and is not
@@ -207,6 +216,23 @@ x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
 ! IDEALIZED DISTRIBUTION TEST: Just draw from a random distribution
 !!!x = dx
 
+! The second state variable is just the first squared
+! THIS ONE EVENTUALLY BLOWS UP FOR ALL ENSEMBLE SIZES?
+!!!x(2) =  x(1) ** 2
+
+! Try less drastic non-linearity
+!!!x(2) = abs(x(1)) ** 1.5
+
+! THIS CASE HAS INCREASED ERROR WITH LARGER ENSEMBLES!
+! The second state variable is just sqrt(abs)) first time sign of first
+if(x(1) > 0) then
+   x(2) =  sqrt(abs(x(1)))
+else
+   x(2) =  -1.0 * sqrt(abs(x(1)))
+endif
+
+! The second state variable is just sqrt(abs)) first times sign of first
+!!!x(2) =  sqrt(abs(x(1)))
 
 end subroutine adv_1step
 
@@ -466,7 +492,7 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "null"))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Lorenz_96"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
 
 !--------------------------------------------------------------------
@@ -630,6 +656,18 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
+
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
 
 !===================================================================
 ! End of model_mod
