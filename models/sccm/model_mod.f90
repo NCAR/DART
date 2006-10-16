@@ -23,7 +23,9 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, get_time, get_date, &
                              set_date, operator(+), set_calendar_type, &
                              GREGORIAN
-use     location_mod, only : location_type, set_location, query_location
+use     location_mod, only : location_type, set_location, query_location, &
+                             get_close_maxdist_init, get_close_obs_init, get_close_obs
+
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
 
@@ -44,7 +46,9 @@ public :: get_model_size, &
           nc_write_model_vars, &
           pert_model_state, &
           write_sccm_state, &
-          read_sccm_state
+          read_sccm_state, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -1066,6 +1070,16 @@ read(file_id, *) temp_string, temp_string2, soil
 state(s_offset + msl*kpt : s_offset + 2*msl*kpt - 1) = soil
 
 end subroutine read_sccm_state
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
 
 
 !===================================================================

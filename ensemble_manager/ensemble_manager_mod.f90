@@ -50,7 +50,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,   &
           get_copy,                   put_copy,                 all_vars_to_all_copies, &
           all_copies_to_all_vars,     read_ensemble_restart,    write_ensemble_restart, &
-          compute_copy_mean_var
+          compute_copy_mean_var,      get_copy_owner_index
 
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL

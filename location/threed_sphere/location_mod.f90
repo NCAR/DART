@@ -41,7 +41,7 @@ public :: location_type, get_location, set_location, set_location_missing, &
           horiz_dist_only, get_close_obs, get_close_type, &
           get_close_maxdist_init, get_close_obs_init, &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
-          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
+          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

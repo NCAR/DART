@@ -28,7 +28,7 @@ use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, 
                                  find_namelist_in_file, check_namelist_read
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
-                                 aoutput_diagnostics
+                                 aoutput_diagnostics, ens_mean_for_model
 use assim_tools_mod,      only : filter_assim
 use obs_model_mod,        only : move_ahead
 use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
@@ -36,7 +36,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  all_vars_to_all_copies, all_copies_to_all_vars,             &
                                  read_ensemble_restart, write_ensemble_restart,              &
                                  compute_copy_mean, compute_copy_mean_sd,                    &
-                                 compute_copy_mean_var, duplicate_ens
+                                 compute_copy_mean_var, duplicate_ens, get_copy_owner_index
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -79,8 +79,6 @@ logical  :: start_from_restart = .false., output_restart = .false.
 integer  :: init_time_days    = 0
 integer  :: init_time_seconds = 0
 ! Control diagnostic output for state variables
-logical  :: output_state_ens_mean = .true., output_state_ens_spread = .true.
-logical  :: output_obs_ens_mean   = .true., output_obs_ens_spread   = .true.
 integer  :: num_output_state_members = 0
 integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
@@ -114,8 +112,7 @@ real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       output_restart, obs_sequence_in_name, obs_sequence_out_name, &
                       restart_in_file_name, restart_out_file_name, init_time_days, &
-                      init_time_seconds, output_state_ens_mean, output_state_ens_spread, &
-                      output_obs_ens_mean, output_obs_ens_spread, num_output_state_members, &
+                      init_time_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
                       ncep_qc_threshold, inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
@@ -153,8 +150,13 @@ integer                 :: OBS_VAL_COPY, OBS_ERR_VAR_COPY, OBS_KEY_COPY, OBS_GLO
 integer                 :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer                 :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END, TOTAL_OBS_COPIES
 integer                 :: input_qc_index, DART_qc_index
+integer                 :: mean_owner, mean_owners_index
 
-real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1)
+real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1), small_temp(1)
+
+! For now, have model_size real storage for the ensemble mean, don't really want this
+! in the long run
+real(r8), allocatable   :: ens_mean(:)
 
 logical                 :: ds
 
@@ -217,6 +219,9 @@ call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
 
+! Have ens_mean on all processors for distance computations, really don't want to do this
+allocate(ens_mean(model_size))
+
 ! Don't currently support number of processes > model_size
 if(task_count() > model_size) call error_handler(E_ERR,'filter_main', &
    'Number of processes > model size' ,source,revision,revdate)
@@ -246,8 +251,7 @@ if(my_task_id() == 0) then
    PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index)
-   if(ds) call smoother_gen_copy_meta_data(output_state_ens_mean, &
-      output_state_ens_spread, num_output_state_members)
+   if(ds) call smoother_gen_copy_meta_data(num_output_state_members)
 endif
 
 ! Start out with no previously used observations
@@ -310,38 +314,44 @@ AdvanceTime : do
  
    ! Compute mean and spread for inflation and state diagnostics
    call all_vars_to_all_copies(ens_handle)
-   if(output_state_ens_spread) then
-      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-   else if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate) .or. &
-      output_state_ens_mean) then
-         call compute_copy_mean(ens_handle, 1, ens_size, ENS_MEAN_COPY)
-   end if
+   call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
       ! Recompute the mean or the mean and spread as required for diagnostics
-      if(output_state_ens_spread) then
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      else
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      endif
+      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
    endif
 
+   ! Back to state space for diagnostics if required
+   call all_copies_to_all_vars(ens_handle) 
+
+   ! Ship the ensemble mean to the model; some models need this for computing distances
+   ! Who stores the ensemble mean copy
+   call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
+   ! Broadcast it to everybody else
+   if(my_task_id() == mean_owner) then
+      ens_mean = ens_handle%vars(:, mean_owners_index)
+      call broadcast_send(mean_owner, ens_mean, small_temp)
+   else
+      call broadcast_recv(mean_owner, ens_mean, small_temp)
+   endif
+
+   ! Now send the mean to the model in case it's needed
+   call ens_mean_for_model(ens_mean)
+
    ! Do prior state space diagnostic output as required
+   ! Use ens_mean which is declared model_size for temp storage in diagnostics
    if(time_step_number / output_interval * output_interval == time_step_number) then
-      ! Back to state space for diagnostics if required
-      if(output_state_ens_mean .or. output_state_ens_spread .or. num_output_state_members>0) &
-         call all_copies_to_all_vars(ens_handle) 
       call filter_state_space_diagnostics(PriorStateUnit, ens_handle, model_size, &
-         output_state_ens_mean, output_state_ens_spread, num_output_state_members, &
-         output_state_mean_index, output_state_spread_index, ENS_MEAN_COPY, ENS_SD_COPY, &
+         num_output_state_members, output_state_mean_index, output_state_spread_index, &
+         ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
    endif
   
    ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
-      PRIOR_DIAG, num_output_obs_members, in_obs_copy + 1, output_obs_ens_mean, &
-      prior_obs_mean_index, output_obs_ens_spread, prior_obs_spread_index, num_obs_in_set, &
+      PRIOR_DIAG, num_output_obs_members, in_obs_copy + 1, &
+      prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
       OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
       OBS_ERR_VAR_COPY, DART_qc_index)
   
@@ -361,30 +371,23 @@ AdvanceTime : do
       OBS_PRIOR_VAR_END)
 
    ! Already transformed, so compute mean and spread for state diag as needed
-   if(output_state_ens_mean .or. output_state_ens_spread) then
-      if(output_state_ens_spread) then
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      else
-         call compute_copy_mean(ens_handle, 1, ens_size, ENS_MEAN_COPY)
-      endif
-   end if
+   call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Now back to var complete for diagnostics
    call all_copies_to_all_vars(ens_handle)
 
-   if(ds) call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY, &
-      output_state_ens_mean, output_state_ens_spread)
+   if(ds) call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    ! Do posterior state space diagnostic output as required
    if(time_step_number / output_interval * output_interval == time_step_number) then
       call filter_state_space_diagnostics(PosteriorStateUnit, ens_handle, model_size, &
-         output_state_ens_mean, output_state_ens_spread, num_output_state_members, &
-         output_state_mean_index, output_state_spread_index, ENS_MEAN_COPY, ENS_SD_COPY, &
+         num_output_state_members, output_state_mean_index, output_state_spread_index, &
+         ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
       ! Cyclic storage for lags with most recent pointed to by smoother_head
-      call smoother_ss_diagnostics(model_size, output_state_ens_mean, &
-         output_state_ens_spread, num_output_state_members, ENS_MEAN_COPY, ENS_SD_COPY, &
-         POST_INF_COPY, POST_INF_SD_COPY)
+      ! ens_mean is passed to avoid extra temp storage in diagnostics
+      call smoother_ss_diagnostics(model_size, num_output_state_members, ens_mean, &
+         ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
    endif
 
    ! Increment the number of current lags if smoother set not yet fully spun up
@@ -397,8 +400,8 @@ AdvanceTime : do
 
    ! Do posterior observation space diagnostics
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
-      POSTERIOR_DIAG, num_output_obs_members, in_obs_copy + 2, output_obs_ens_mean, &
-      posterior_obs_mean_index, output_obs_ens_spread, posterior_obs_spread_index, &
+      POSTERIOR_DIAG, num_output_obs_members, in_obs_copy + 2, &
+      posterior_obs_mean_index, posterior_obs_spread_index, &
       num_obs_in_set, OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, &
        OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    
@@ -406,25 +409,14 @@ AdvanceTime : do
 !-------- Test of posterior inflate ----------------
  
    ! Compute mean and spread for inflation and state diagnostics
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate) .or. &
-      output_state_ens_mean .or. output_state_ens_spread) then
       ! Transform to compute mean (and spread) FOLLOWING LINE NOT NEEDED???
       call all_vars_to_all_copies(ens_handle)
-      if(output_state_ens_spread) then
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      else
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      endif
-   end if
+      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
       call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
       ! Recompute the mean or the mean and spread as required for diagnostics
-      if(output_state_ens_spread) then
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      else
-         call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      endif
+      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
       ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
       call all_vars_to_all_copies(obs_ens_handle)
@@ -518,23 +510,13 @@ character(len=129) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
 
 ! Ensemble mean goes first 
-num_state_copies = num_output_state_members
-if(output_state_ens_mean) then
-   num_state_copies = num_state_copies + 1
-   output_state_mean_index = 1
-   state_meta(output_state_mean_index) = 'ensemble mean'
-endif
+num_state_copies = num_output_state_members + 2
+output_state_mean_index = 1
+state_meta(output_state_mean_index) = 'ensemble mean'
 
 ! Ensemble spread goes second
-if(output_state_ens_spread) then
-   num_state_copies = num_state_copies + 1
-   if(output_state_ens_mean) then
-      output_state_spread_index = 2
-   else
-      output_state_spread_index = 1
-   endif
-   state_meta(output_state_spread_index) = 'ensemble spread'
-endif
+output_state_spread_index = 2
+state_meta(output_state_spread_index) = 'ensemble spread'
 
 ! Check for too many output ensemble members
 if(num_output_state_members > 10000) then
@@ -544,9 +526,7 @@ if(num_output_state_members > 10000) then
 endif
 
 ! Compute starting point for ensemble member output
-ensemble_offset = 0
-if(output_state_ens_mean)   ensemble_offset = ensemble_offset + 1
-if(output_state_ens_spread) ensemble_offset = ensemble_offset + 1
+ensemble_offset = 2
 
 ! Set up the metadata for the output state diagnostic files
 do i = 1, num_output_state_members
@@ -565,40 +545,33 @@ end do
 !!!endif
 
 ! Set up diagnostic output for model state, if output is desired
-if(  output_state_ens_spread .or. output_state_ens_mean .or. &
-    ( num_output_state_members > 0 ) ) then
-   PriorStateUnit     = init_diag_output('Prior_Diag', &
-                           'prior ensemble state', num_state_copies, state_meta)
-   PosteriorStateUnit = init_diag_output('Posterior_Diag', &
-                           'posterior ensemble state', num_state_copies, state_meta)
-endif
+PriorStateUnit     = init_diag_output('Prior_Diag', &
+                        'prior ensemble state', num_state_copies, state_meta)
+PosteriorStateUnit = init_diag_output('Posterior_Diag', &
+                        'posterior ensemble state', num_state_copies, state_meta)
 
 
 ! Set up the metadata for the output ensemble observations space file
 ! Set up ensemble mean if requested
 num_obs_copies = in_obs_copy
-if(output_obs_ens_mean) then
-   num_obs_copies = num_obs_copies + 1
-   prior_meta_data = 'prior ensemble mean'
-   call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
-   prior_obs_mean_index = num_obs_copies
-   num_obs_copies = num_obs_copies + 1
-   posterior_meta_data = 'posterior ensemble mean'
-   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
-   posterior_obs_mean_index = num_obs_copies 
-endif
+num_obs_copies = num_obs_copies + 1
+prior_meta_data = 'prior ensemble mean'
+call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+prior_obs_mean_index = num_obs_copies
+num_obs_copies = num_obs_copies + 1
+posterior_meta_data = 'posterior ensemble mean'
+call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+posterior_obs_mean_index = num_obs_copies 
 
 ! Set up ensemble spread if requested
-if(output_obs_ens_spread) then
-   num_obs_copies = num_obs_copies + 1
-   prior_meta_data = 'prior ensemble spread'
-   call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
-   prior_obs_spread_index = num_obs_copies
-   num_obs_copies = num_obs_copies + 1
-   posterior_meta_data = 'posterior ensemble spread'
-   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
-   posterior_obs_spread_index = num_obs_copies
-endif
+num_obs_copies = num_obs_copies + 1
+prior_meta_data = 'prior ensemble spread'
+call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+prior_obs_spread_index = num_obs_copies
+num_obs_copies = num_obs_copies + 1
+posterior_meta_data = 'posterior ensemble spread'
+call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+posterior_obs_spread_index = num_obs_copies
 
 ! Make sure there are not too many copies requested
 if(num_output_obs_members > 10000) then
@@ -662,9 +635,7 @@ logical              :: pre_I_format
 
 ! Determine the number of output obs space fields
 ! Prior and posterior values for all selected fields (so times 2)
-num_obs_copies = 2 * num_output_obs_members
-if(output_obs_ens_mean)   num_obs_copies = num_obs_copies + 2
-if(output_obs_ens_spread) num_obs_copies = num_obs_copies + 2
+num_obs_copies = 2 * num_output_obs_members + 4
 
 ! Input file can have one qc field or none, not prepared to have more
 ! The one that exists would be the NCEP and perfect_model_obs generated values in general
@@ -901,7 +872,7 @@ end subroutine get_obs_ens
 
 subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
    seq, keys, prior_post, num_output_members, members_index, &
-   output_ens_mean, ens_mean_index, output_ens_spread, ens_spread_index, num_obs_in_set, &
+   ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
    OBS_ERR_VAR_COPY, DART_qc_index)
 
@@ -913,7 +884,6 @@ integer,                 intent(in)    :: keys(num_obs_in_set), prior_post
 integer,                 intent(in)    :: num_output_members, members_index
 integer,                 intent(in)    :: ens_mean_index, ens_spread_index
 type(obs_sequence_type), intent(inout) :: seq
-logical,                 intent(in)    :: output_ens_mean, output_ens_spread
 integer,                 intent(in)    :: num_obs_in_set
 integer,                 intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
@@ -941,13 +911,9 @@ do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
 call all_vars_to_all_copies(obs_ens_handle)
 call all_vars_to_all_copies(forward_op_ens_handle)
 
-! Compute mean and spread, or only mean as needed
-if(output_ens_spread .or. do_outlier) then
-   call compute_copy_mean_var(obs_ens_handle, &
+! Compute mean and spread
+call compute_copy_mean_var(obs_ens_handle, &
       1, ens_size, OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START)
-else if(output_ens_mean) then
-   call compute_copy_mean(obs_ens_handle, 1, ens_size, OBS_PRIOR_MEAN_START)
-endif
 
 ! At this point can compute outlier test and consolidate forward operator qc
 do j = 1, obs_ens_handle%my_num_vars
@@ -999,43 +965,37 @@ enddo
 ! Is this next call really needed, or does it already exist on input???
 call all_copies_to_all_vars(obs_ens_handle)
 
-! If requested, output the ensemble mean
-if(output_ens_mean) then
-   ! Get this copy to process 0
-   call get_copy(0, obs_ens_handle, OBS_PRIOR_MEAN_START, obs_temp)
-   ! Only pe 0 gets to write the sequence
-   if(my_task_id() == 0) then
-      ! Loop through the observations for this time
-      do j = 1, obs_ens_handle%num_vars
-         call get_obs_from_key(seq, keys(j), observation)
-         call set_obs_values(observation, obs_temp(j:j), ens_mean_index)
-         ! Store the observation into the sequence
-         call set_obs(seq, observation, keys(j))
-      end do
-   endif
-endif
+! Output the ensemble mean
+! Get this copy to process 0
+call get_copy(0, obs_ens_handle, OBS_PRIOR_MEAN_START, obs_temp)
+! Only pe 0 gets to write the sequence
+if(my_task_id() == 0) then
+     ! Loop through the observations for this time
+     do j = 1, obs_ens_handle%num_vars
+        call get_obs_from_key(seq, keys(j), observation)
+        call set_obs_values(observation, obs_temp(j:j), ens_mean_index)
+        ! Store the observation into the sequence
+        call set_obs(seq, observation, keys(j))
+     end do
+  endif
 
 ! If requested, output the ensemble spread
-if(output_ens_spread) then
-   ! Get this copy to process 0
-   call get_copy(0, obs_ens_handle, OBS_PRIOR_VAR_START, obs_temp)
-   ! Only pe 0 gets to write the sequence
-   if(my_task_id() == 0) then
-      ! Loop through the observations for this time
-      do j = 1, obs_ens_handle%num_vars
-         call get_obs_from_key(seq, keys(j), observation)
-         call set_obs_values(observation, sqrt(obs_temp(j:j)), ens_spread_index)
-         ! Store the observation into the sequence
-         call set_obs(seq, observation, keys(j))
-      end do
-   endif
+! Get this copy to process 0
+call get_copy(0, obs_ens_handle, OBS_PRIOR_VAR_START, obs_temp)
+! Only pe 0 gets to write the sequence
+if(my_task_id() == 0) then
+   ! Loop through the observations for this time
+   do j = 1, obs_ens_handle%num_vars
+      call get_obs_from_key(seq, keys(j), observation)
+      call set_obs_values(observation, sqrt(obs_temp(j:j)), ens_spread_index)
+      ! Store the observation into the sequence
+      call set_obs(seq, observation, keys(j))
+   end do
 endif
 
 ! May be possible to only do this after the posterior call...
 ! Output any requested ensemble members
-ens_offset = members_index
-if(output_ens_mean) ens_offset = ens_offset + 2
-if(output_ens_spread) ens_offset = ens_offset + 2
+ens_offset = members_index + 4
 ! Output all of these ensembles that are required to sequence file
 do k = 1, num_output_members
    ! Get this copy on pe 0

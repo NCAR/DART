@@ -30,7 +30,8 @@ use utilities_mod,     only : get_unit, close_file, register_module, error_handl
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
                               get_model_time_step, model_interpolate, init_conditions, &
                               init_time, adv_1step, end_model, nc_write_model_atts,    &
-                              nc_write_model_vars, pert_model_state
+                              nc_write_model_vars, pert_model_state, get_close_maxdist_init, &
+                              get_close_obs_init, get_close_obs, ens_mean_for_model
 
 implicit none
 private
@@ -45,7 +46,8 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           aread_state_restart, aget_closest_state_time_to, awrite_state_restart,           &
           pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
           nc_get_tindex, get_model_time_step, open_restart_read, open_restart_write,       &
-          close_restart, adv_1step, aget_initial_condition
+          close_restart, adv_1step, aget_initial_condition, get_close_maxdist_init,        &
+          get_close_obs_init, get_close_obs, ens_mean_for_model
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &

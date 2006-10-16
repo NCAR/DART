@@ -33,8 +33,7 @@ use       cov_cutoff_mod, only : comp_cov_factor
 
 use       reg_factor_mod, only : comp_reg_factor
 
-use         location_mod, only : location_type, get_close_maxdist_init, &
-                                 get_close_obs_init, get_close_obs, get_close_type
+use         location_mod, only : location_type, get_close_type
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars, &
                                  compute_copy_mean_var, get_var_owner_index
@@ -49,7 +48,8 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 
 use time_manager_mod,     only : time_type
 
-use assim_model_mod,      only : get_state_meta_data
+use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init, &
+                                 get_close_obs_init, get_close_obs
 
 implicit none
 private

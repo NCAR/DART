@@ -188,10 +188,8 @@ end subroutine advance_smoother
 
 !-------------------------------------------------------------------------
 
-subroutine smoother_gen_copy_meta_data(output_state_ens_mean, output_state_ens_spread, &
-   num_output_state_members)
+subroutine smoother_gen_copy_meta_data( num_output_state_members)
 
-logical, intent(in) :: output_state_ens_mean, output_state_ens_spread
 integer, intent(in) :: num_output_state_members
 
 ! Figures out the strings describing the output copies for the smoother state output files.
@@ -204,23 +202,13 @@ character(len = 15)  :: meta_data_string
 integer              :: i, ensemble_offset, num_state_copies
 
 ! Ensemble mean goes first 
-num_state_copies = num_output_state_members
-if(output_state_ens_mean) then
-   num_state_copies = num_state_copies + 1
-   smoother_state_mean_index = 1
-   state_meta(smoother_state_mean_index) = 'ensemble mean'
-endif
+num_state_copies = num_output_state_members + 2
+smoother_state_mean_index = 1
+state_meta(smoother_state_mean_index) = 'ensemble mean'
 
 ! Ensemble spread goes second
-if(output_state_ens_spread) then
-   num_state_copies = num_state_copies + 1
-   if(output_state_ens_mean) then
-      smoother_state_spread_index = 2
-   else
-      smoother_state_spread_index = 1
-   endif
-   state_meta(smoother_state_spread_index) = 'ensemble spread'
-endif
+smoother_state_spread_index = 2
+state_meta(smoother_state_spread_index) = 'ensemble spread'
 
 ! Check for too many output ensemble members
 if(num_output_state_members > 10000) then
@@ -230,9 +218,7 @@ if(num_output_state_members > 10000) then
 endif
 
 ! Compute starting point for ensemble member output
-ensemble_offset = 0
-if(output_state_ens_mean)   ensemble_offset = ensemble_offset + 1
-if(output_state_ens_spread) ensemble_offset = ensemble_offset + 1
+ensemble_offset = 2
 
 ! Set up the metadata for the output state diagnostic files
 do i = 1, num_output_state_members
@@ -251,16 +237,13 @@ end do
 !!!endif
 
 ! Set up diagnostic output for model state, if output is desired
-if(  output_state_ens_spread .or. output_state_ens_mean .or. &
-    ( num_output_state_members > 0 )) then
-   do i = 1, num_lags
-      ! Generate file name and metadata for lag i output
-      write(file_name, '("Lag_", i5.5, "_Diag")') i
-      write(meta_data_string, '("lag ", i5.5, " state")') i
-      SmootherStateUnit(i) = init_diag_output(file_name, meta_data_string, &
-         num_state_copies, state_meta)
-   end do
-endif
+do i = 1, num_lags
+   ! Generate file name and metadata for lag i output
+   write(file_name, '("Lag_", i5.5, "_Diag")') i
+   write(meta_data_string, '("lag ", i5.5, " state")') i
+   SmootherStateUnit(i) = init_diag_output(file_name, meta_data_string, &
+      num_state_copies, state_meta)
+end do
 
 end subroutine smoother_gen_copy_meta_data
 
@@ -331,25 +314,15 @@ end function do_smoothing
 
 !-----------------------------------------------------------
 
-subroutine smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY, &
-   output_state_ens_mean, output_state_ens_spread)
+subroutine smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 integer, intent(in) :: ens_size, ENS_MEAN_COPY, ENS_SD_COPY
-logical, intent(in) :: output_state_ens_mean, output_state_ens_spread
 
 integer :: i
 
-if(output_state_ens_mean .or. output_state_ens_spread) then
-   if(output_state_ens_spread) then
-      do i = 1, num_lags
-         call compute_copy_mean_sd(lag_handle(i), 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      end do
-   else
-      do i = 1, num_lags
-         call compute_copy_mean(lag_handle(i), 1, ens_size, ENS_MEAN_COPY)
-      end do
-   endif
-end if
+do i = 1, num_lags
+   call compute_copy_mean_sd(lag_handle(i), 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+end do
 
 ! Now back to var complete for diagnostics
 do i = 1, num_lags
@@ -361,40 +334,33 @@ end subroutine smoother_mean_spread
 !-----------------------------------------------------------
 
 subroutine filter_state_space_diagnostics(out_unit, ens_handle, model_size, &
-   output_state_ens_mean, output_state_ens_spread, num_output_state_members, &
-   output_state_mean_index, &
-   output_state_spread_index, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
+   num_output_state_members, output_state_mean_index, output_state_spread_index, &
+   temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
 
 type(netcdf_file_type),      intent(inout) :: out_unit
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: model_size, num_output_state_members
-logical,                     intent(in)    :: output_state_ens_mean, output_state_ens_spread
 integer,                     intent(in)    :: output_state_mean_index, output_state_spread_index
+! temp_ens is passed from above to avoid extra storage
+real(r8),                    intent(out)   :: temp_ens(model_size)
 type(adaptive_inflate_type), intent(in)    :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
 
 type(time_type) :: temp_time
 integer         :: ens_offset, j
-real(r8)        :: temp_ens(model_size)
 
-! Assumes that mean and spread have already been computed as needed
+! Assumes that mean and spread have already been computed
 
-! Output ensemble mean if requested
-if(output_state_ens_mean) then
-   call get_copy(0, ens_handle, ENS_MEAN_COPY, temp_ens)
-   if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, output_state_mean_index)
-endif
+! Output ensemble mean
+call get_copy(0, ens_handle, ENS_MEAN_COPY, temp_ens)
+if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, output_state_mean_index)
 
-! Output ensemble spread if requested
-if(output_state_ens_spread) then
-   call get_copy(0, ens_handle, ENS_SD_COPY, temp_ens)
-   if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, output_state_spread_index)
-endif
+! Output ensemble spread
+call get_copy(0, ens_handle, ENS_SD_COPY, temp_ens)
+if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, output_state_spread_index)
 
 ! Compute the offset for copies of the ensemble
-ens_offset = 0
-if(output_state_ens_mean)   ens_offset = ens_offset + 1
-if(output_state_ens_spread) ens_offset = ens_offset + 1
+ens_offset = 2
 
 ! Output state diagnostics as required: NOTE: Prior has been inflated
 do j = 1, num_output_state_members
@@ -428,13 +394,12 @@ end subroutine filter_state_space_diagnostics
 
 !-----------------------------------------------------------
 
-subroutine smoother_ss_diagnostics(model_size, output_state_ens_mean, &
-   output_state_ens_spread, num_output_state_members, ENS_MEAN_COPY, ENS_SD_COPY, &
-   POST_INF_COPY, POST_INF_SD_COPY)
+subroutine smoother_ss_diagnostics(model_size, num_output_state_members, &
+   temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
 
-   integer, intent(in) :: model_size, num_output_state_members
-   logical, intent(in) :: output_state_ens_mean, output_state_ens_spread
-   integer, intent(in) :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
+   integer,  intent(in)  :: model_size, num_output_state_members
+   real(r8), intent(out) :: temp_ens(model_size)
+   integer,  intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 
 integer :: smoother_index, i
 
@@ -442,8 +407,8 @@ do i = 1, num_current_lags
    smoother_index = smoother_head + i - 1
    if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
    call filter_state_space_diagnostics(SmootherStateUnit(i), lag_handle(smoother_index), &
-      model_size, output_state_ens_mean, output_state_ens_spread, num_output_state_members, &
-      smoother_state_mean_index, smoother_state_spread_index, &
+      model_size, num_output_state_members, &
+      smoother_state_mean_index, smoother_state_spread_index, temp_ens, &
       ENS_MEAN_COPY, ENS_SD_COPY, lag_inflate, POST_INF_COPY, POST_INF_SD_COPY)
 end do
 

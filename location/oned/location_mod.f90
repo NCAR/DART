@@ -27,7 +27,7 @@ public :: location_type, get_location, set_location, set_location_missing, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, get_close_obs, &
           get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=)
+          operator(==), operator(/=), get_dist
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
