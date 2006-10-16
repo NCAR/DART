@@ -6,6 +6,11 @@ function PlotSawtooth( pinfo )
 % The only input argument is a structure with model-dependent
 % components.
 %
+% Both the prior and posterior estimates are plotted as a single
+% trajectory. If there is no change in the model state, this should
+% appear as a series of steps. This necessitates plotting the 'posterior'
+% first ... think about it ...
+%
 % USAGE: PlotSawtooth( pinfo );
 %
 % STRUCTURE COMPONENTS FOR low-order models
@@ -36,8 +41,9 @@ function PlotSawtooth( pinfo )
 % PlotSawtooth( pinfo )
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html 
+% Copyright 2004-2006, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 % <next three lines automatically updated by CVS, do not edit>
 % $Id$
@@ -108,9 +114,9 @@ metadata   = getnc(pinfo.prior_file,'CopyMetaData'); % get all the metadata
 
          % Now we paste them together in a clever way to show the effect of the assimilation
 
-	 ens_mean(  1,:) = pr_ens_mean;
-	 ens_mean(  2,:) = po_ens_mean;
-	 a = ens_mean(:);       % unrolls them prior, post, prior, post ...
+	 ens_mean(  1,:) = po_ens_mean;
+	 ens_mean(  2,:) = pr_ens_mean;
+	 a = ens_mean(:);       % unrolls them post, prior, post, prior, post ...
 
 	 % Plot the true trajectory if it exists; the ens mean; annotate
 
@@ -148,9 +154,9 @@ metadata   = getnc(pinfo.prior_file,'CopyMetaData'); % get all the metadata
 	    %str1 = sprintf('ensemble member %d',imem);
 	    str1 = deblank(metadata(imem,:));
 
-	    ens_member(1,:) = pr_series;
-	    ens_member(2,:) = po_series;
-	    b               = ens_member(:);     % unrolls them prior, post, prior, post ...
+	    ens_member(1,:) = po_series;
+	    ens_member(2,:) = pr_series;
+	    b               = ens_member(:);     % unrolls them post, prior, post, prior, post ...
 
    	    hold on; 
 	    memcolor = 1 + mod(nmem-1,ncolors); % cycles through colors [1,6]

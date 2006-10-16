@@ -5,13 +5,19 @@
 %              information ... the model types are determined and additional 
 %              user input may be queried.
 %
+% Both the prior and posterior estimates are plotted as a single
+% trajectory. If there is no change in the model state, this should
+% appear as a series of steps. This necessitates plotting the 'posterior'
+% first ... think about it ...
+
 % Ultimately, plot_sawtooth will be replaced by a GUI.
 %
 %
 % All the heavy lifting is done by PlotSawtooth.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004-2006, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 % <next three lines automatically updated by CVS, do not edit>
@@ -27,19 +33,19 @@ if (exist('truth_file') ~= 1)
    end
 end
 
-if (exist('prior_file') ~=1)
-   disp('Input name of prior diagnostics file;')
-   prior_file = input('<cr> for Prior_Diag.nc\n','s');
-   if isempty(prior_file)
-      prior_file = 'Prior_Diag.nc';
-   end
-end
-
 if (exist('posterior_file') ~=1)
    disp('Input name of posterior diagnostics file;')
    posterior_file = input('<cr> for Posterior_Diag.nc\n','s');
    if isempty(posterior_file)
       posterior_file = 'Posterior_Diag.nc';
+   end
+end
+
+if (exist('prior_file') ~=1)
+   disp('Input name of prior diagnostics file;')
+   prior_file = input('<cr> for Prior_Diag.nc\n','s');
+   if isempty(prior_file)
+      prior_file = 'Prior_Diag.nc';
    end
 end
 
