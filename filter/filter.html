@@ -123,16 +123,18 @@ smoother_mod
  <A NAME="Namelist"></A>
  <BR><HR><BR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / filter_nml / </em>
- async,adv_ens_command,ens_size,start_from_restart,output_restart,obs_sequence_i
- n_name,obs_sequence_out_name,restart_in_file_name,restart_out_file_name,init_ti
- me_days,init_time_seconds,output_state_ens_mean,output_state_ens_spread,output_
- obs_ens_mean,output_obs_ens_spread,num_output_state_members,num_output_obs_members,
-output_interval, inf_flavor, inf_start_from_restart, inf_output_restart,
-inf_deterministic, inf_in_file_name, inf_out_file_name, inf_diag_file_name,
-inf_initial, inf_sd_initial, inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
+ async, adv_ens_command, ens_size, start_from_restart, 
+ output_restart, obs_sequence_in_name, obs_sequence_out_name, 
+ restart_in_file_name, restart_out_file_name, init_time_days, 
+ init_time_seconds, num_output_state_members, 
+ num_output_obs_members, output_interval, num_groups, outlier_threshold,
+ ncep_qc_threshold, inf_flavor, inf_start_from_restart, 
+ inf_output_restart, inf_deterministic, inf_in_file_name, 
+ inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, 
+ inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
@@ -147,129 +149,200 @@ being for the posterior inflation.
  <TR><TH align=left>Contents    </TH>
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
+
  <TR><!--contents--><TD valign=top>async</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Controls method for advancing model: 0 is subroutine call, 2
-  is shell command. Default: 0</TD></TR>
+     <!--descript--><TD>Controls method for advancing model: 
+                        0&nbsp;is&nbsp;subroutine&nbsp;call, 
+                        2&nbsp;is&nbsp;shell&nbsp;command. 
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>adv_ens_command</TD>
-     <!--  type  --><TD>character(len</TD>
- <!--descript--><TD>Command sent to shell if async is 2. Default: .</TD></TR>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>Command sent to shell if async is 2. 
+                        Default: ./advance_model.csh</TD></TR>
+
  <TR><!--contents--><TD valign=top>ens_size</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Size of ensemble. Default: 20</TD></TR>
+     <!--descript--><TD>Size of ensemble.
+                        Default: 20</TD></TR>
+
  <TR><!--contents--><TD valign=top>start_from_restart</TD>
      <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means start from a restart file, false means perturb a
- single state vector in restart file. Default: .false.</TD></TR>
+     <!--descript--><TD>True means start from a restart file, false means 
+                        perturb a single state vector in restart file. 
+                        Default: .false.</TD></TR>
+
  <TR><!--contents--><TD valign=top>output_restart</TD>
      <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means output a restart file. Default: .false.</TD></TR>
+     <!--descript--><TD>True means output a restart file. 
+                        Default: .false.</TD></TR>
+
  <TR><!--contents--><TD valign=top>obs_sequence_in_name</TD>
      <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File name from which to read an observation sequence. 
-         Default: obs_seq.out</TD></TR>
+     <!--descript--><TD>File name from which to read an observation sequence. 
+                        Default: obs_seq.out</TD></TR>
+
  <TR><!--contents--><TD valign=top>obs_sequence_out_name</TD>
      <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File name to which to write output observation sequence. 
-              Default: obs_seq.final</TD></TR>
+     <!--descript--><TD>File name to which to write output observation sequence. 
+                        Default: obs_seq.final</TD></TR>
+
  <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
      <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File containing state restart vectors. Default: filter_ics</
- TD></TR>
+     <!--descript--><TD>File containing state restart vectors. 
+                        Default: filter_ics</TD></TR>
+
  <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
      <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File to which to write restart state vectors. 
-      Default: filter_restart</TD></TR>
+     <!--descript--><TD>File to which to write restart state vectors. 
+                        Default: filter_restart</TD></TR>
+
  <TR><!--contents--><TD valign=top>init_time_days</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>If negative, don't use. If non-negative, override the initial 
-     days read from state restart. Default: 0</TD></TR>
+     <!--descript--><TD>If negative, don't use. If non-negative, override the initial 
+                        days read from state restart. 
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>init_time_seconds</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>If negative don't use. If non-negative, override the initial
-  seconds read from state restart. Default: 0</TD></TR>
- <TR><!--contents--><TD valign=top>output_state_ens_mean</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True mean include ensemble mean in state diagnostic output.
- Default: .true.</TD></TR>
- <TR><!--contents--><TD valign=top>output_state_ens_spread</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means include ensemble spread in state diagnostic output. 
-     Default: .true.</TD></TR>
- <TR><!--contents--><TD valign=top>output_obs_ens_mean</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means include ensemble mean in output observation sequence file. 
-      Default: .true.</TD></TR>
- <TR><!--contents--><TD valign=top>output_obs_ens_spread</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means include ensemble spread in output observation 
-        sequence file. Default: .true.</TD></TR>
+     <!--descript--><TD>If negative don't use. If non-negative, override the initial
+                        seconds read from state restart. 
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>num_output_state_members</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Number of ensemble members to be included in the state 
-      diagnostic output. Default: 0</TD></TR>
+     <!--descript--><TD>Number of ensemble members to be included in the state 
+                        diagnostic output. Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>num_output_obs_members</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Number of ensemble members to be included in the observation
-  sequence file. Default: 0</TD></TR>
+     <!--descript--><TD>Number of ensemble members to be included in the 
+                        observation sequence file. Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>output_interval</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Output state and observation diagnostics every nth assimilation 
-      time, n is output_interval. Default: 1</TD></TR>
+     <!--descript--><TD>Output state and observation diagnostics every 'N'th 
+                        assimilation time, N is output_interval. Default: 1</TD></TR>
+
  <TR><!--contents--><TD valign=top>num_groups</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Number of groups for hierarchical filter. Default: 1</TD></TR>
+     <!--descript--><TD>Number of groups for hierarchical filter. Default: 1</TD></TR>
+
  <TR><!--contents--><TD valign=top>outlier_threshold</TD>
      <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Reject observation if prior mean is more than this many sd's
-  from observation. Negative means no check. Default: -1.0_r8</TD></TR>
+     <!--descript--><TD>Reject observation if prior mean is more than this many 
+                        sd's from observation. Negative means no check. 
+                        Default: -1.0_r8</TD></TR>
+
+ <TR><!--contents--><TD valign=top>ncep_qc_threshold</TD>
+     <!--  type  --><TD>real(r8)</TD>
+     <!--descript--><TD>Reject observation if incoming QC value exceeds
+                        'ncep_qc_threshold' value. Incoming observations have a
+                        QC value (usually set by NCEP). 
+                        Default: 4.0_r8</TD></TR>
+
+ <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br>
+                   The first element is for the prior, the second element is 
+                   for the posterior</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_flavor</TD>
-     <!--  type  --><TD>integer</TD>
- <!--descript--><TD>0=none, 1=obs_space, 2 = varying state space, 3 = fixed state_space. 
-     Default: 0</TD></TR>
+     <!--  type  --><TD>integer array (len=2)</TD>
+     <!--descript--><TD>Inflation flavor for [prior, posterior]<br>
+                        0&nbsp;=&nbsp;none,
+                        1&nbsp;=&nbsp;obs_space, 
+                        2&nbsp;=&nbsp;varying&nbsp;state&nbsp;space,
+                        3&nbsp;=&nbsp;fixed&nbsp;state&nbsp;space. 
+                        Default: (/0, 0/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_start_from_restart</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>If true, get initial values for inflation from restart file.
-  Default: .false.</TD></TR>
+     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--descript--><TD>If true, get initial values for inflation from restart file.
+                        Default: (/.false., .false /)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_output_restart</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>Output an inflation restart file if true. Default: .false.</TD></TR>
+     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--descript--><TD>Output an inflation restart file if true. 
+                        Default: (/.false., .false./)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_deterministic</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means determinstic inflation, false means stochastic. 
-      Default: .true.</TD></TR>
+     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--descript--><TD>True means determinstic inflation, false means stochastic. 
+                        Default: (/.true., .true./)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_in_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>Name from which to read inflation restart. 
-      Default: not_initialized</TD></TR>
+     <!--  type  --><TD>character(len=129) by two</TD>
+     <!--descript--><TD>Name from which to read inflation restart. 
+                        Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_out_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File to which to write inflation restart file. 
-       Default: not_initialized</TD></TR>
+     <!--  type  --><TD>character(len=129) by two</TD>
+     <!--descript--><TD>File to which to write inflation restart file. 
+                        Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_diag_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File to which to write output diagnostics for observation 
-       space inflation. Default: not_initialized</TD></TR>
+     <!--  type  --><TD>character(len=129) by two</TD>
+     <!--descript--><TD>File to which to write output diagnostics for observation 
+                        space inflation. 
+                        Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_initial</TD>
-    <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Initial value of inflation if not read from restart file. 
-      Default: 1.0_r8</TD></TR>
+     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--descript--><TD>Initial value of inflation if not read from restart file. 
+                        Default: (/1.0_r8, 1.0_r8/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_sd_initial</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Initial value of inflation standard deviation if not read 
-           from restart file. Default: 0.0_r8</TD></TR>
+     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--descript--><TD>Initial value of inflation standard deviation if not read 
+                        from restart file.
+                        Default: (/0.0_r8, 0.0_r8/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_lower_bound</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Lower bound for inflation value. Default: 1.0_r8</TD></TR>
+     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--descript--><TD>Lower bound for inflation value.
+                        Default: (/1.0_r8, 1.0_r8/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_upper_bound</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Upper bound on inflation value. Default: 1000000.0_r8</TD></
- TR>
+     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--descript--><TD>Upper bound on inflation value.
+                        Default: (/1000000.0_r8, 1000000.0_r8/)</TD></TR>
+
  <TR><!--contents--><TD valign=top>inf_sd_lower_bound</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Lower bound for inflation standard deviation. 
-     Default: 0.0_r8</TD></TR>
+     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--descript--><TD>Lower bound for inflation standard deviation. 
+                        Default: (/0.0_r8, 0.0_r8/)</TD></TR>
  </TABLE>
+
+ <H4 class=indent1>Deprecated or Defunct namlist variables</H4>
+ <P>The following table contains the deprecated or defunct namelist variables.
+    It is a FATAL ERROR to have these in the filter namelist.
+ </P>
+ <TABLE border=0 cellpadding=3 width=100%>
+ <TR><TH align=left>Contents    </TH>
+     <TH align=left>Type        </TH>
+     <TH align=left>Description </TH></TR>
+
+ <TR><!--contents--><TD valign=top>output_state_ens_mean</TD>
+     <!--  type  --><TD><b>defunct</b></TD>
+     <!--descript--><TD>The ensemble mean is now always in the 
+                        state diagnostic output.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_state_ens_spread</TD>
+     <!--  type  --><TD><b>defunct</b></TD>
+     <!--descript--><TD>The ensemble spread is now always in the
+                        state diagnostic output.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_obs_ens_mean</TD>
+     <!--  type  --><TD><b>defunct</b></TD>
+     <!--descript--><TD>The ensemble mean is now always in the 
+                        output observation sequence file.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_obs_ens_spread</TD>
+     <!--  type  --><TD><b>defunct</b></TD>
+     <!--descript--><TD>The ensemble spread is now always in the 
+                        output observation sequence file.</TD></TR>
+ </TABLE>
+
  <P>
  <!--================================================================-->
 
