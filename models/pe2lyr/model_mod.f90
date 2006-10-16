@@ -25,7 +25,8 @@ use    utilities_mod, only : file_exist, open_file, close_file, &
                              register_module, error_handler, E_ERR, E_MSG
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
-                             LocationDims, LocationName, LocationLName
+                             LocationDims, LocationName, LocationLName, &
+                             get_close_maxdist_init, get_close_obs_init, get_close_obs
 
 
 use  pe2lyr_mod, only : modelvars, modelvars_init, rk4
@@ -51,7 +52,9 @@ public :: get_model_size, &
           model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
-          pert_model_state
+          pert_model_state, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+
 
 !-----------------------------------------------------------------------
 ! let CVS fill strings ... DO NOT EDIT ...
@@ -727,6 +730,18 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
+
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
 
 
 !#######################################################################
