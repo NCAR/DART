@@ -22,7 +22,9 @@ use     location_mod, only : location_type, get_dist, set_location, &
                              get_location, query_location, &
                              LocationDims, LocationName, LocationLName, &
                              vert_is_surface, vert_is_pressure, &
-                             vert_is_level, vert_is_height
+                             vert_is_level, vert_is_height, &
+                             get_close_maxdist_init, get_close_obs_init, get_close_obs
+
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              find_namelist_in_file, check_namelist_read, &
                              register_module, error_handler, E_ERR, E_MSG, logfileunit
@@ -69,7 +71,9 @@ public :: get_model_size, &
           real_obs_period, &
           start_real_obs, &
           synchronize_mavail, &
-          ok_to_nudge
+          ok_to_nudge, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -2988,6 +2992,20 @@ function ok_to_nudge(obs_kind,state_index)
    if ( obs_kind == 26 .and. var_type == TYPE_QV  ) ok_to_nudge = .true.
    
 end function ok_to_nudge
+
+
+
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
 !===================================================================
 ! End of model_mod
 !===================================================================

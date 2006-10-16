@@ -30,7 +30,9 @@ use      location_mod, only : location_type, get_location, set_location, &
                               horiz_dist_only, &
                               LocationDims, LocationName, LocationLName, &
                               query_location, vert_is_undef, vert_is_surface, &
-                              vert_is_level, vert_is_pressure, vert_is_height
+                              vert_is_level, vert_is_pressure, vert_is_height, &
+                              get_close_maxdist_init, get_close_obs_init, get_close_obs
+
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
@@ -60,7 +62,9 @@ public ::  get_model_size,                    &
            static_init_model,                 &
            pert_model_state,                  &
            nc_write_model_atts,               &
-           nc_write_model_vars
+           nc_write_model_vars,               &
+           get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+
 
 !  public stubs 
 
@@ -3572,5 +3576,18 @@ SUBROUTINE splint(xa,ya,y2a,n,x,y)
 END subroutine splint
 
 !cys_add_end
+
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
+
 
 end module model_mod

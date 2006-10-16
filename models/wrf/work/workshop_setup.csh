@@ -80,15 +80,7 @@ make         || exit 5
 
 echo mkmf_filter
 csh mkmf_filter
-echo 'adding mpi directives to Makefile'
-\cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
-\rm -f Makefile.back
-# some compilers seem to need all the files compiled with the
-# mpi wrapper; others do not.  this seems to be the safest, if slower.
-rm *.o *.mod  
 make         || exit 6
-rm *.o *.mod 
 
 echo mkmf_obs_diag
 csh mkmf_obs_diag
