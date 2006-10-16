@@ -1,3 +1,6 @@
+% state_diag.m uses read_state.m
+%
+
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2006, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
