@@ -22,23 +22,30 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r8
 use time_manager_mod, only : time_type
-use     location_mod, only : location_type
+use     location_mod, only : location_type,      get_close_maxdist_init, &
+                             get_close_obs_init, get_close_obs
+
 
 implicit none
 private
 
-public :: get_model_size, &
-          adv_1step, &
-          get_state_meta_data, &
-          model_interpolate, &
-          get_model_time_step, &
-          end_model, &
-          static_init_model, &
-          init_time, &
-          init_conditions, &
-          nc_write_model_atts, &
-          nc_write_model_vars, &
-          pert_model_state
+public :: get_model_size,         &
+          adv_1step,              &
+          get_state_meta_data,    &
+          model_interpolate,i     &
+          get_model_time_step,    &
+          end_model,              &
+          static_init_model,      &
+          init_time,              &
+          init_conditions,        &
+          nc_write_model_atts,    &
+          nc_write_model_vars,    &
+          pert_model_state,       &
+          get_close_maxdist_init, &
+          get_close_obs_init,     &
+          get_close_obs,          &
+          ens_mean_for_model
+
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -306,6 +313,19 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
+
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
+
 
 !===================================================================
 ! End of model_mod
