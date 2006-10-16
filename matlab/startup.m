@@ -1,10 +1,19 @@
 % startup.m  IFF a $HOME/matlab/startup.m exists, it is executed automatically at matlab's startup.
-
-
+%
 % The netcdf toolbox is needed for any/all DART matlab diagnostics, so this
 % block tries to locate that particular startup script.
 % The beauty of addpath is that if the desired directory is already 
 % in your path, nothing happens, so there is no harm trying.
+
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2006, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+% <next three lines automatically updated by CVS, do not edit>
+% $Id$
+% $Source$
+% $Name$
 
 if ( exist('/contrib/matlab/ncstartup.m') == 2 ) 
    addpath  /contrib/matlab

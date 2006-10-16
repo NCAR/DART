@@ -21,7 +21,7 @@ function a = ReadBinaryObsSeq(fname,machineformat)
 %                           ordering and 64 bit long data type.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, 
+% Copyright 2004-2006, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 

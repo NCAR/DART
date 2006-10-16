@@ -3,7 +3,8 @@
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004-2006, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 % $Source$
