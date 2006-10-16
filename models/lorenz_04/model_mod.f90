@@ -15,7 +15,9 @@ module model_mod
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time, get_time
 use     location_mod, only : location_type, set_location, get_location, &
-                             LocationDims, LocationName, LocationLName
+                             LocationDims, LocationName, LocationLName, &
+                             get_close_maxdist_init, get_close_obs_init, get_close_obs
+
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
                              find_namelist_in_file, check_namelist_read
 
@@ -35,7 +37,8 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           nc_read_model_vars, &
-          pert_model_state
+          pert_model_state, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -884,6 +887,17 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
+
 
 !===================================================================
 ! End of model_mod
