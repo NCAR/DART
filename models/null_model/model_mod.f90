@@ -137,17 +137,13 @@ if(first_ens_seq) then
    first_ens_seq = .false.
 end if
 
-! Time tendency is linear growth only for 1st variable
-do j = 1, 1
+do j = 1, model_size
    dt(j) =  x(j)
 
-! ADDITION OF SOME NOISE
-   dt(j) = dt(j) + 1.0 * random_gaussian(ens_seq, 0.0_r8, 1.0_r8)
-end do
 
-! Time tendency for non-linear variable isn't computed here. It is patched up 
-! in adv_1step
-dt(2) = 0.0_r8
+! ADDITION OF SOME NOISE
+   !!!dt(j) = 1.0 * random_gaussian(ens_seq, 0.0_r8, 1.0_r8)
+end do
 
 end subroutine comp_dt
 
@@ -165,7 +161,6 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
-! Both linear and non-linear variables start at 0
 x    = 0.0_r8
 
 end subroutine init_conditions
@@ -176,7 +171,7 @@ subroutine adv_1step(x, time)
 !------------------------------------------------------------------
 ! subroutine adv_1step(x, time)
 !
-! Does single time step advance for nl null model
+! Does single time step advance for null model
 ! using four-step rk time step
 ! The Time argument is needed for compatibility with more complex models
 ! that need to know the time to compute their time tendency and is not
@@ -216,23 +211,6 @@ x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
 ! IDEALIZED DISTRIBUTION TEST: Just draw from a random distribution
 !!!x = dx
 
-! The second state variable is just the first squared
-! THIS ONE EVENTUALLY BLOWS UP FOR ALL ENSEMBLE SIZES?
-!!!x(2) =  x(1) ** 2
-
-! Try less drastic non-linearity
-!!!x(2) = abs(x(1)) ** 1.5
-
-! THIS CASE HAS INCREASED ERROR WITH LARGER ENSEMBLES!
-! The second state variable is just sqrt(abs)) first time sign of first
-if(x(1) > 0) then
-   x(2) =  sqrt(abs(x(1)))
-else
-   x(2) =  -1.0 * sqrt(abs(x(1)))
-endif
-
-! The second state variable is just sqrt(abs)) first times sign of first
-!!!x(2) =  sqrt(abs(x(1)))
 
 end subroutine adv_1step
 
@@ -492,7 +470,7 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "Lorenz_96"))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "null"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ))
 
 !--------------------------------------------------------------------
@@ -656,6 +634,8 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
+
+
 
 
 
