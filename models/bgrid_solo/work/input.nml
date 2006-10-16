@@ -23,10 +23,6 @@
    restart_out_file_name    = "filter_restart",
    init_time_days           = 0,
    init_time_seconds        = 0,
-   output_state_ens_mean    = .true.,
-   output_state_ens_spread  = .true.,
-   output_obs_ens_mean      = .true.,
-   output_obs_ens_spread    = .true.,
    num_output_state_members = 0,
    num_output_obs_members   = 0,
    output_interval          = 1,
@@ -49,7 +45,7 @@
 /
 
 &smoother_nml
-   num_lags              = 0
+   num_lags              = 0 
    start_from_restart    = .false.
    output_restart        = .true.
    restart_in_file_name  = 'smoother_ics'

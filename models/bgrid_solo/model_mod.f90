@@ -64,7 +64,9 @@ use        hs_forcing_mod, only: hs_forcing_init, hs_forcing
 use          location_mod, only: location_type, get_location, set_location, &
                                  vert_is_level, query_location, &
                                  LocationDims, LocationName, LocationLName, &
-                                 vert_is_pressure
+                                 vert_is_pressure, &
+                                 get_close_maxdist_init, get_close_obs_init, get_close_obs
+
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, pi
@@ -86,7 +88,9 @@ public  get_model_size, adv_1step, get_state_meta_data, model_interpolate, &
         get_model_time_step, end_model, static_init_model, init_time, &
         init_conditions, TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_TRACER, &
         nc_write_model_atts, nc_write_model_vars, &
-        pert_model_state
+        pert_model_state, &
+        get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -1973,6 +1977,18 @@ pert_state = 0.0
 interf_provided = .false.
 
 end subroutine pert_model_state
+
+
+
+
+
+subroutine ens_mean_for_model(ens_mean)
+!------------------------------------------------------------------
+! Not used in low-order models
+
+real(r8), intent(in) :: ens_mean(:)
+
+end subroutine ens_mean_for_model
 
 
 

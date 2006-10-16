@@ -23,10 +23,6 @@
    restart_out_file_name    = "filter_restart",
    init_time_days           = 0,
    init_time_seconds        = 0,
-   output_state_ens_mean    = .true.,
-   output_state_ens_spread  = .true.,
-   output_obs_ens_mean      = .true.,
-   output_obs_ens_spread    = .true.,
    num_output_state_members = 20,
    num_output_obs_members   = 0,
    output_interval          = 1,
@@ -92,7 +88,7 @@
    delta_t    = 0.05,
    time_step_days = 0,
    time_step_seconds = 3600,
-   reset_forcing = .true.,
+   reset_forcing = .false.,
    random_forcing_amplitude = 0.10  /
 
 &utilities_nml
