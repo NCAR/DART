@@ -1,0 +1,160 @@
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<HTML>
+<TITLE>PROGRAM convert_obs_sequence</TITLE>
+<link rel=stylesheet type=text/css href=../doc/html/doc.css>
+<BODY>
+
+<!--kdr INTERFACE, PUBLIC COMPONENTS, NAMELIST, ERRORS, PRIVATE COMPONENTS have no destinations -->
+<DIV ALIGN=CENTER>
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+</DIV>
+
+<!--==================================================================-->
+
+<H1>PROGRAM convert_obs_sequence</H1>
+<A NAME="HEADER"></A>
+<TABLE summary="">
+   <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
+   <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
+   <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
+   <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+   <TR><TD>Change history:</TD><TD> see CVS log </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+<A NAME="OVERVIEW"></A>
+<HR>
+<H2>OVERVIEW</H2>
+
+<P>
+This program can convert an existing observation sequence file from ascii
+into binary or the reverse.   
+An ascii (formatted) file is both machine-portable and human readable,
+but has a larger filesize, is subject to round-off errors, and takes longer
+to read and write.  A binary (unformatted) file is fast and precise to read
+and write, but cannot be moved from one machine to another if one is a 
+little-endian machine (e.g. intel CPU) and the other is a
+big-endian machine (e.g. IBM PowerPC, Sun Sparc, SGI MIPS, 
+Apple PowerPC Macs).   
+Note that the manufacturer alone is no longer sufficient to decide which 
+endian is correct; IBM and SGI now sell clusters using intel CPUs 
+(e.g. SGI Altix systems) and the new Apple Macs use intel CPUs.
+<HR>
+The input file format will automatically be detected (ascii/formatted 
+or binary/unformatted) at run time.
+The output file format is controlled by the namelist in file 
+<em class=code>input.nml</em>:
+<PRE>
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  /
+</PRE>
+A false setting will create an ascii/formatted output file.  
+A true setting will create a binary/unformatted output file.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OTHER MODULES USED"></A>
+<BR><HR><BR>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+utilities_mod
+obs_sequence_mod
+assim_model_mod
+</PRE>
+
+
+<!--==================================================================-->
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<BR><HR><BR>
+<H2>FILES</H2>
+<UL><LI>An existing file (obs_seq.out is common) containing the input sequence.
+<UL><LI>A newly created file containing the converted output sequence.
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<BR><HR><BR>
+<H2>REFERENCES</H2>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis converts a nice effect.         -->
+<!--==================================================================-->
+
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!--==================================================================-->
+
+
+<H3 class=indent1>Discussion</H3>
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>
