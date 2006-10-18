@@ -929,11 +929,14 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
 
 implicit none
 
-type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_obs_loc, obs(:)
-integer,              intent(in)  :: base_obs_kind, obs_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8),             intent(out) :: dist(:)
+type(get_close_type),             intent(in)  :: gc
+type(location_type),              intent(in)  :: base_obs_loc, obs(:)
+integer,                          intent(in)  :: base_obs_kind, obs_kind(:)
+integer,                          intent(out) :: num_close, close_ind(:)
+real(r8),             optional,   intent(out) :: dist(:)
+
+! If dist is NOT present, just find everybody in a box, put them in the list,
+! but don't compute any distances
 
 integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind
 real(r8) :: this_dist
@@ -965,15 +968,23 @@ do j = 1, nlat
             ! Could avoid adding any that have nums lower than base_ob???
             t_ind = gc%obs_box(st - 1 + k)
             ! Can compute total distance here if verts are the same
-            if(base_obs_loc%which_vert == obs(t_ind)%which_vert) then
-               this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind))
+            ! Only compute distance if dist is present
+            if(present(dist)) then
+               if(base_obs_loc%which_vert == obs(t_ind)%which_vert) then
+                  this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind))
+               else
+               ! Otherwise can just get horizontal distance
+                  this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind), &
+                     no_vert = .true.)
+               endif
             else
-            ! Otherwise can just get horizontal distance
-               this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind), &
-                  no_vert = .true.)
+               ! Dist isn't present; add this ob to list without computing distance
+               num_close = num_close + 1
+               close_ind(num_close) = t_ind
             endif
-            if(this_dist <= gc%maxdist) then
-               ! Add this ob to the list
+
+            ! If dist is present and this obs' distance is less than cutoff, add it in list
+            if(present(dist) .and. this_dist <= gc%maxdist) then
                num_close = num_close + 1
                close_ind(num_close) = t_ind
                dist(num_close) = this_dist
