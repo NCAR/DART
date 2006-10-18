@@ -28,7 +28,8 @@ use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), op
                                  operator(-)
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
                                  initialize_utilities, logfileunit, timestamp, do_output,    &
-                                 find_namelist_in_file, check_namelist_read
+                                 find_namelist_in_file, check_namelist_read, open_file,      &
+                                 close_file
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
                                  aoutput_diagnostics, ens_mean_for_model
@@ -94,6 +95,7 @@ integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: outlier_threshold = -1.0_r8
 real(r8) :: ncep_qc_threshold = 4.0_r8
+logical  :: output_forward_op_errors = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -124,7 +126,8 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       init_time_seconds, first_obs_days, first_obs_seconds, last_obs_days, &
                       last_obs_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
-                      ncep_qc_threshold, inf_flavor, inf_start_from_restart, &
+                      ncep_qc_threshold, output_forward_op_errors, inf_flavor, &
+                      inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
@@ -919,10 +922,11 @@ integer,                 intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_ST
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 
-integer        :: j, k, ens_offset, forward_min, forward_max
-real(r8)       :: error, diff_sd, ratio, obs_temp(num_obs_in_set)
-real(r8)       :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
-logical        :: do_outlier
+integer               :: j, k, ens_offset, forward_min, forward_max, forward_unit
+real(r8)              :: error, diff_sd, ratio, obs_temp(num_obs_in_set)
+real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
+real(r8), allocatable :: forward_temp(:)
+logical               :: do_outlier
 
 ! Assume that mean and spread have been computed if needed???
 ! Assume that things are copy complete???
@@ -936,6 +940,37 @@ logical        :: do_outlier
 ! Compute the ensemble total mean and sd if required for output
 ! Also compute the mean and spread if qc and outlier_threshold check requested
 do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
+
+! Do verbose forward operator output if requested
+if(output_forward_op_errors) then
+   ! Need to open a file for prior and posterior output
+   if(my_task_id() == 0) then
+      if(prior_post == PRIOR_DIAG) then
+         forward_unit = open_file('prior_forward_op_errors', 'formatted', 'append')
+      else
+         forward_unit = open_file('post_forward_op_errors', 'formatted', 'append')
+      endif
+   endif
+
+   allocate(forward_temp(num_obs_in_set))
+   do k = 1, ens_size
+      ! Get this copy to PE 0
+      call get_copy(0, forward_op_ens_handle, k, forward_temp)
+
+      ! Loop through each observation in set for this copy
+      ! Forward temp is a real representing an integer; values of 1 or greater get out
+      if(my_task_id() == 0) then
+         do j = 1, num_obs_in_set
+            if(nint(forward_temp(j)) > -1) write(forward_unit, *) keys(j), k, nint(forward_temp(j))
+         end do
+      endif
+   end do
+   ! PE 0 does the output for each copy in turn
+   deallocate(forward_temp)
+   if(my_task_id() == 0) then
+      call close_file(forward_unit)
+   endif
+endif
 
 !PAR DO THESE ALWAYS NEED TO BE DONE? SEE REVERSE ONES AT END, TOO
 call all_vars_to_all_copies(obs_ens_handle)

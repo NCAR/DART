@@ -37,6 +37,7 @@
    num_groups               = 1,
    ncep_qc_threshold        = 4.0,
    outlier_threshold        =-1.0,
+   output_forward_op_errors = .false.,
 
    inf_flavor               = 2,                      0,
    inf_start_from_restart   = .false.,                .false.,
