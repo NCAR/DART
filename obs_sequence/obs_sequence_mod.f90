@@ -31,7 +31,8 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              interactive_obs_def, copy_obs_def, get_obs_def_location, &
                              get_expected_obs_from_def, get_obs_kind
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
-                             operator(/=)
+                             operator(/=), set_time, operator(-), operator(+), &
+                             operator(==)
 use    utilities_mod, only : get_unit, close_file, find_namelist_in_file, check_namelist_read, &
                              register_module, error_handler, E_ERR, E_WARN, E_MSG, logfileunit, &
                              do_output
@@ -53,7 +54,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, &
    append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
    get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
-   get_expected_obs
+   get_expected_obs, delete_seq_head, delete_seq_tail
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -1212,6 +1213,155 @@ endif
 
 end subroutine read_obs_seq_header
 !-------------------------------------------------
+
+
+subroutine delete_seq_head(first_time, seq, all_gone)
+
+! Deletes all observations in the sequence with times before first_time. 
+! If no observations remain, return all_gone as .true.
+
+type(time_type),         intent(in)    :: first_time
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(out)   :: all_gone
+
+type(obs_def_type)   :: obs_def
+type(obs_type)       :: obs
+type(time_type)      :: pre_first_time, time0, seq_start_time
+integer              :: key_bounds(2), num_keys, i
+integer, allocatable :: keys(:)
+logical              :: out_of_range
+
+! Initialize an observation type with appropriate size
+call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
+
+! Set lowest possible time
+time0 = set_time(0, 0)
+
+! Get time of first observation in sequence; if there isn't one, return all_gone
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+   call destroy_obs(obs)
+   return
+else
+   call get_obs_def(obs, obs_def)
+   seq_start_time = get_obs_def_time(obs_def)
+endif
+
+! If first_time is lowest possible time no need to delete
+if(first_time == time0) then
+   all_gone = .false.
+   call destroy_obs(obs)
+   return
+end if
+
+! Get last possible time for observations that should NOT be used
+pre_first_time = first_time - set_time(1, 0)
+
+! Get bounds of keys in sequence that are before the first time
+call get_obs_time_range(seq, time0, pre_first_time, key_bounds, num_keys, out_of_range)
+
+! If it is out_of_range could be because all obs are after or all are before
+if(out_of_range) then
+   if(seq_start_time > pre_first_time) then
+      ! Whole sequence is after
+      all_gone = .false.
+   else
+      ! Whole sequence is before
+      all_gone = .true.
+   endif
+   ! Destroy temp storage and return
+   call destroy_obs(obs)
+   return
+endif
+
+! If here, then there are a set of observations that are not being used at beginning
+! Delete them from the sequence
+all_gone = .false.
+allocate(keys(num_keys))
+call get_time_range_keys(seq, key_bounds, num_keys, keys)
+
+! Loop through the keys and delete these observations
+do i = 1, num_keys
+   call get_obs_from_key(seq, keys(i), obs)
+   call delete_obs_from_seq(seq, obs)
+end do
+
+! Free up storage before returning
+deallocate(keys)
+call destroy_obs(obs)
+
+end subroutine delete_seq_head
+
+
+!-------------------------------------------------
+
+
+subroutine delete_seq_tail(last_time, seq, all_gone)
+
+! Delete all observations in the sequence with times after last_time.
+! If there are none before this time return that the sequence is all_gone.
+
+type(time_type),         intent(in)    :: last_time
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(out)   :: all_gone
+
+type(obs_def_type)   :: obs_def
+type(obs_type)       :: obs
+type(time_type)      :: post_last_time, end_of_seq_time
+integer              :: key_bounds(2), num_keys, i
+integer, allocatable :: keys(:)
+logical              :: out_of_range
+
+! Initialize an observation type with appropriate size
+call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
+
+! Get earliest time of observations that should be deleted
+post_last_time = last_time + set_time(1, 0)
+
+! Get time of last observation in sequence; if there are none, return all_gone
+if(.not. get_last_obs(seq, obs)) then
+   all_gone = .true.
+   call destroy_obs(obs)
+   return
+endif
+call get_obs_def(obs, obs_def)
+end_of_seq_time = get_obs_def_time(obs_def)
+
+! Get bounds of keys in sequence that are after the last_time
+call get_obs_time_range(seq, post_last_time, end_of_seq_time, &
+   key_bounds, num_keys, out_of_range)
+
+! If it is out_of_range could be because all obs are before or all are after (none left)
+if(out_of_range) then
+   if(end_of_seq_time < post_last_time) then
+      ! Whole sequence is after, start at beginning
+      all_gone = .false.
+   else
+      ! Whole sequence is before
+      all_gone = .true.
+   endif
+   ! Free storage and return
+   call destroy_obs(obs)
+   return
+endif
+
+! If here, then there are a set of observations that are not being used at the end
+! Delete them from the sequence
+allocate(keys(num_keys))
+call get_time_range_keys(seq, key_bounds, num_keys, keys)
+
+! Loop through the keys and delete these observations
+do i = 1, num_keys
+   call get_obs_from_key(seq, keys(i), obs)
+   call delete_obs_from_seq(seq, obs)
+end do
+
+! Free storage before ending
+deallocate(keys)
+call destroy_obs(obs)
+
+end subroutine delete_seq_tail
+
 
 
 !=================================================

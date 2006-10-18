@@ -20,9 +20,12 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
                                  assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
-                                 set_qc_meta_data, get_expected_obs
-use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance
-use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>)
+                                 set_qc_meta_data, get_expected_obs, get_first_obs,          &
+                                 get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
+                                 delete_seq_tail
+use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
+use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
+                                 operator(-)
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
                                  initialize_utilities, logfileunit, timestamp, do_output,    &
                                  find_namelist_in_file, check_namelist_read
@@ -78,6 +81,12 @@ logical  :: start_from_restart = .false., output_restart = .false.
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days    = 0
 integer  :: init_time_seconds = 0
+! Time of first and last observations to be used from obs_sequence
+! If negative, these are not used
+integer  :: first_obs_days    = -1
+integer  :: first_obs_seconds = -1
+integer  :: last_obs_days     = -1
+integer  :: last_obs_seconds  = -1
 ! Control diagnostic output for state variables
 integer  :: num_output_state_members = 0
 integer  :: num_output_obs_members   = 0
@@ -112,7 +121,8 @@ real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       output_restart, obs_sequence_in_name, obs_sequence_out_name, &
                       restart_in_file_name, restart_out_file_name, init_time_days, &
-                      init_time_seconds, num_output_state_members, &
+                      init_time_seconds, first_obs_days, first_obs_seconds, last_obs_days, &
+                      last_obs_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
                       ncep_qc_threshold, inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
@@ -133,7 +143,7 @@ subroutine filter_main()
 type(ensemble_type)         :: ens_handle, obs_ens_handle, forward_op_ens_handle
 type(obs_sequence_type)     :: seq
 type(netcdf_file_type)      :: PriorStateUnit, PosteriorStateUnit
-type(time_type)             :: time1
+type(time_type)             :: time1, first_obs_time, last_obs_time
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 integer,    allocatable :: keys(:)
@@ -158,7 +168,7 @@ real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1), small_temp(1)
 ! in the long run
 real(r8), allocatable   :: ens_mean(:)
 
-logical                 :: ds
+logical                 :: ds, all_gone
 
 call filter_initialize_modules_used(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 
@@ -254,8 +264,28 @@ if(my_task_id() == 0) then
    if(ds) call smoother_gen_copy_meta_data(num_output_state_members)
 endif
 
-! Start out with no previously used observations
+! Need to find first obs with appropriate time, delete all earlier ones
+if(first_obs_seconds > 0 .or. first_obs_days > 0) then
+   first_obs_time = set_time(first_obs_seconds, first_obs_days)
+   call delete_seq_head(first_obs_time, seq, all_gone)
+   if(all_gone) then
+      msgstring = 'All obs in sequence are before first_obs_days:first_obs_seconds'
+      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+   endif
+endif
+
+! Start assimilating at beginning of modified sequence
 last_key_used = -99
+
+! Also get rid of observations past the last_obs_time if requested
+if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
+   last_obs_time = set_time(last_obs_seconds, last_obs_days)
+   call delete_seq_tail(last_obs_time, seq, all_gone)
+   if(all_gone) then
+      msgstring = 'All obs in sequence are after last_obs_days:last_obs_seconds'
+      call error_handler(E_ERR,'filter_main',msgstring,source,revision,revdate)
+   endif
+endif
 
 ! Time step number is used to do periodic diagnostic output
 time_step_number = 0
@@ -1048,6 +1078,5 @@ endif
 end function input_qc_ok
 
 !-------------------------------------------------------------------------
-
 
 end program filter
