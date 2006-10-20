@@ -120,7 +120,7 @@ integer, dimension(6) :: last_bin_center  = (/ 2003, 1, 2, 0, 0, 0 /)
 integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: bin_width        = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: time_to_skip     = (/    0, 0, 1, 0, 0, 0 /)
-integer :: max_num_bins   = 1000000  ! maximum number of bins to consider
+integer :: max_num_bins   = 1000     ! maximum number of bins to consider
 integer :: mlevel         = 5        ! model level (integer index) [1,11]
 integer :: plevel         = 500      ! pressure level (hPa)
 integer :: hlevel         = 5000     ! height (meters)
@@ -145,9 +145,9 @@ character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
 
 namelist /obs_diag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
-                       plevel, hlevel, mlevel, obs_select, Nregions, rat_cri, &
-                       qc_threshold, lonlim1, lonlim2, latlim1, latlim2, reg_names, &
-                       print_mismatched_locs, verbose
+                       plevel, hlevel, mlevel, obs_select, rat_cri, qc_threshold, &
+                       Nregions, lonlim1, lonlim2, latlim1, latlim2, &
+                       reg_names, print_mismatched_locs, verbose
 
 integer  :: iregion, iepoch, ivar, ifile, num_obs_in_epoch
 real(r8) :: lon0, lat0, obsloc3(3)
