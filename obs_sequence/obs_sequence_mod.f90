@@ -627,30 +627,32 @@ obs_time = get_obs_def_time(obs%def)
 
 if(present(prev_obs)) then
     prev = prev_obs%key
+    current = prev
     next = prev_obs%next_time
 else
-
-! Have to search through the linked list to find last member
-! already in with a time less than or equal to obs time
+   ! Start search at beginning
    prev = -1
    current = -1
    next = seq%first_time
-   do while(next /= -1)
-      prev = current
-      current = next
-      next = seq%obs(current)%next_time
-      current_time = get_obs_def_time(seq%obs(current)%def)
+endif
+
+! Have to search through the linked list to find last member
+! already in with a time less than or equal to obs time
+do while(next /= -1)
+   prev = current
+   current = next
+   next = seq%obs(current)%next_time
+   current_time = get_obs_def_time(seq%obs(current)%def)
 ! If the time of the observation in the sequence is >, stop
-      if(current_time > obs_time) then 
+   if(current_time > obs_time) then 
 ! The observation that will follow the one being inserted is current
-         next = current
-         goto 10 
-      endif
-   end do
+      next = current
+      goto 10 
+   endif
+end do
 
 ! Falling off the end means that next is -1, so current should be previous for insertion
-   prev = current
-endif
+prev = current
 
 ! If the time check occured, previous is already pointing to previous
 10 continue
