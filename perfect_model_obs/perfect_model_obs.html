@@ -98,11 +98,13 @@ ensemble_manager_mod
 </PRE>
 
 
- <!--============== DESCRIPTION OF A NAMELIST ========================-->
+<!--================================================================-->
+<!--============== DESCRIPTION OF A NAMELIST ========================-->
+<!--================================================================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / perfect_model_obs_nml / </em>
  start_from_restart,output_restart,async,init_time_days,init_time_seconds,output
@@ -112,10 +114,10 @@ ensemble_manager_mod
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
-Controls execution of synthetic observation generation
- </em>
+ Controls execution of synthetic observation generation
  </P>
- <P>This namelist is read in a file called <em class=file>input.nml</em>
+ <P>
+ This namelist is read in a file called <em class=file>input.nml</em>
  </P>
  <TABLE border=0 cellpadding=3 width=100%>
  <TR><TH align=left>Contents    </TH>
@@ -123,52 +125,66 @@ Controls execution of synthetic observation generation
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>start_from_restart</TD>
      <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means start from a restart file, false means ask model
- for an initial condition. Default: .false.</TD></TR>
+     <!--descript--><TD>.true. means start from a restart file, 
+                        .false. means ask model for an initial condition.
+                        Default: .false.</TD></TR>
+
  <TR><!--contents--><TD valign=top>output_restart</TD>
      <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True means output a restart file. Default: .false.</TD></TR>
+     <!--descript--><TD>.true. means output a restart file.
+                        Default: .false.</TD></TR>
+
  <TR><!--contents--><TD valign=top>async</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Controls method for advancing model: 0 is subroutine call, 2
-  is shell command. Default: 0</TD></TR>
+     <!--descript--><TD>Controls method for advancing model:
+                        0&nbsp;==&nbsp;subroutine&nbsp;call,
+                        2&nbsp;==&nbsp;shell&nbsp;command.
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>init_time_days</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>If negative, don't use. If non-negative, override the initia
- l days read from restart. Default: 0</TD></TR>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, override the initial days read from restart.
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>init_time_seconds</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>If negative don't use. If non-negative, override the initial
-  seconds read from restart. Default: 0</TD></TR>
+     <!--descript--><TD>If negative don't use. 
+                        If non-negative, override the initial seconds read from restart.
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>output_interval</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Output state and observation diagnostics every nth assimilat
- ion time, n is output interval. Default: 1</TD></TR>
- <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
-     <!--  type  --><TD>perfect_ics</TD>
- <!--descript--><TD>File containing state restart vector. Default: perfect_ics</
- TD></TR>
- <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
-     <!--  type  --><TD>perfect_restart</TD>
- <!--descript--><TD>File to which to write state restart state vectors. Default:
-  perfect_restart</TD></TR>
- <TR><!--contents--><TD valign=top>obs_seq_in_file_name</TD>
-     <!--  type  --><TD>obs_seq.in</TD>
- <!--descript--><TD>File name from which to read an observation sequence. Defaul
- t: obs_seq.in</TD></TR>
- <TR><!--contents--><TD valign=top>obs_seq_out_file_name</TD>
-     <!--  type  --><TD>obs_seq.out</TD>
- <!--descript--><TD>File name to which to write output observation sequence. Def
- ault: obs_seq.out</TD></TR>
-<!--descript--><TD>File name to which to write output observation sequence. Def
- ault: obs_seq.out</TD></TR>
- <TR><!--contents--><TD valign=top>adv_ens_command</TD>
-     <!--  type  --><TD>.</TD>
- <!--descript--><TD>Command sent to shell if async is 2. Default: .</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+     <!--descript--><TD>Output state and observation diagnostics every nth 
+                        assimilation time, n is output_interval. Default: 1</TD></TR>
 
+ <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>File containing state restart vector. 
+                        Default: 'perfect_ics'</TD></TR>
+
+ <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>File to which to write state restart state vectors. 
+                        Default: 'perfect_restart'</TD></TR>
+
+ <TR><!--contents--><TD valign=top>obs_seq_in_file_name</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>File name from which to read an observation sequence.
+                        Default: 'obs_seq.in'</TD></TR>
+
+ <TR><!--contents--><TD valign=top>obs_seq_out_file_name</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>File name to which to write output observation sequence.
+                        Default: 'obs_seq.out'</TD></TR>
+
+ <TR><!--contents--><TD valign=top>adv_ens_command</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>Command sent to shell if async&nbsp;==&nbsp;2.
+                        Default: './advance_model.csh'</TD></TR>
+
+ </TABLE>
+ <BR><BR>
 
 
 <!--==================================================================-->
@@ -208,7 +224,7 @@ Controls execution of synthetic observation generation
 
 <TR><!-- routine --><TD VALIGN=top>perfect_main</TD>
     <!-- message --><TD VALIGN=top>Only use one mpi process here: ### were requested</TD>
-    <!-- comment --><TD VALIGN=top> Don't use mpi for this.</TD>
+    <!-- comment --><TD VALIGN=top>Don't use mpi for this.</TD>
 </TR>
 
 </TABLE>
