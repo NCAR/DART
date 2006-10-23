@@ -316,7 +316,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! program should provide code for all available kinds.
       case DEFAULT
          call error_handler(E_ERR, 'get_expected_obs_from_def', &
-            'Attempt to evaluate undefined obs_kind type.', source, revision, revdate)
+            'Attempt to evaluate or assimilate undefined obs_kind type.', source, revision, revdate)
    end select
 else
    ! Not computing forward operator for this kind
