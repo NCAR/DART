@@ -140,6 +140,10 @@
    verbose = .true.,
    print_mismatched_locs = .false.   /
 
+&merge_obs_seq_nml
+   num_input_files = 2,
+   filename_seq    = 'obs_seq.one', 'obs_seq.two',
+   filename_out    = 'obs_seq.merged'   /
 
 # Group of namelists required for bgrid model
 
@@ -220,7 +224,3 @@
 &gaussian_topog_nml
                         /
 
-&merge_obs_seq_nml
-   filename_seq1 = 'obs_seq.one',
-   filename_seq2 = 'obs_seq.two',
-   filename_out  = 'obs_seq.merged'   /
