@@ -118,7 +118,7 @@ Remember that namelists must be listed even if only defaults are to be used
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE'   /
 
 &merge_obs_seq_nml
-   filename_seq1 = 'obs_seq.one',
-   filename_seq2 = 'obs_seq.two',
-   filename_out  = 'obs_seq.merged'  /
+   num_input_files = 2,
+   filename_seq    = 'obs_seq.one', 'obs_seq.two',
+   filename_out    = 'obs_seq.merged'   /
 

@@ -146,6 +146,11 @@
    print_mismatched_locs = .false.,
    verbose = .false.  /
 
+&merge_obs_seq_nml
+   num_input_files = 2,
+   filename_seq    = 'obs_seq.one', 'obs_seq.two',
+   filename_out    = 'obs_seq.merged'   /
+
 &perfect_model_obs_nml
    async = 3,
    adv_ens_command = "./advance_ens.csh",

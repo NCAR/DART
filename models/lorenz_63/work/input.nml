@@ -111,9 +111,9 @@
                input_files = '../../../obs_def/obs_def_1d_state_mod.f90'  /
 
 &merge_obs_seq_nml
-   filename_seq1 = 'obs_seq.one',
-   filename_seq2 = 'obs_seq.two',
-   filename_out  = 'obs_seq.merged'   /
+   num_input_files = 2,
+   filename_seq    = 'obs_seq.one', 'obs_seq.two',
+   filename_out    = 'obs_seq.merged'   /
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
