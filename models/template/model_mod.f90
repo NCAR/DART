@@ -18,12 +18,13 @@ module model_mod
 ! are not required for minimal implementation (see the discussion of each
 ! interface and look for NULL INTERFACE). 
 
-
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r8
-use time_manager_mod, only : time_type
+use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
-                             get_close_obs_init, get_close_obs
+                             get_close_obs_init, get_close_obs, set_location
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit
+                           ! find_namelist_in_file, check_namelist_read
 
 
 implicit none
@@ -32,7 +33,7 @@ private
 public :: get_model_size,         &
           adv_1step,              &
           get_state_meta_data,    &
-          model_interpolate,i     &
+          model_interpolate,      &
           get_model_time_step,    &
           end_model,              &
           static_init_model,      &
@@ -53,6 +54,16 @@ source   = "$Source$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
+! EXAMPLE: define model parameters here
+integer, parameter               :: model_size = 3
+type(time_type)                  :: time_step
+type(location_type), allocatable :: state_loc(:)
+
+! EXAMPLE: perhaps a namelist here 
+logical  :: output_state_vector = .true.
+integer  :: time_step_days      = 0
+integer  :: time_step_seconds   = 3600
+!namelist /model_nml/ output_state_vector, time_step_days, time_step_seconds
 
 contains
 
@@ -68,6 +79,38 @@ subroutine static_init_model()
 ! In models that require pre-computed static data, for instance
 ! spherical harmonic weights, these would also be computed here.
 ! Can be a NULL INTERFACE for the simplest models.
+
+ real(r8) :: x_loc
+ integer  :: i
+!integer  :: iunit, io
+
+! Print module information to log file and stdout.
+call register_module(source, revision, revdate)
+
+! This is where you would read a namelist, for example.
+!call find_namelist_in_file("input.nml", "model_nml", iunit)
+!read(iunit, nml = model_nml, iostat = io)
+!call check_namelist_read(iunit, io, "model_nml")
+
+
+! Record the namelist values used for the run ...
+!call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+!write(logfileunit, nml=model_nml)
+!write(     *     , nml=model_nml)
+
+! Create storage for locations
+allocate(state_loc(model_size))
+
+! Define the locations of the model state variables
+! naturally, this can be done VERY differently for more complicated models.
+! set_location() is different for 1D vs. 3D models, not surprisingly.
+do i = 1, model_size
+   x_loc = (i - 1.0_r8) / model_size
+   state_loc(i) =  set_location(x_loc)
+end do
+
+! The time_step in terms of a time type must also be initialized.
+time_step = set_time(time_step_seconds, time_step_days)
 
 end subroutine static_init_model
 
@@ -110,8 +153,8 @@ subroutine adv_1step(x, time)
 ! a separate model-specific executable), this can be a 
 ! NULL INTERFACE.
 
-real(r8), intent(inout) :: x(:)
-type(time_type), intent(in) :: time
+real(r8),        intent(inout) :: x(:)
+type(time_type), intent(in)    :: time
 
 end subroutine adv_1step
 
@@ -125,7 +168,7 @@ function get_model_size()
 
 integer :: get_model_size
 
-get_model_size = 
+get_model_size = model_size
 
 end function get_model_size
 
@@ -144,6 +187,8 @@ subroutine init_time(time)
 
 type(time_type), intent(out) :: time
 
+! for now, just set to 0
+time = set_time(0,0)
 
 end subroutine init_time
 
@@ -216,20 +261,38 @@ subroutine end_model()
 ! Does any shutdown and clean-up needed for model. Can be a NULL
 ! INTERFACE if the model has no need to clean up storage, etc.
 
+! good style ... perhaps you could deallocate stuff (from static_init_model?).
+! deallocate(state_loc)
+
 end subroutine end_model
 
 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
 !------------------------------------------------------------------
-! Writes the model-specific attributes to a netCDF file
-! TJH Jan 24 2003
+! TJH 24 Oct 2006 -- Writes the model-specific attributes to a netCDF file.
+!     This includes coordinate variables and some metadata, but NOT
+!     the model state vector. We do have to allocate SPACE for the model
+!     state vector, but that variable gets filled as the model advances.
 !
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
+! As it stands, this routine will work for ANY model, with no modification.
+!
+! The simplest possible netCDF file would contain a 3D field
+! containing the state of 'all' the ensemble members. This requires
+! three coordinate variables -- one for each of the dimensions 
+! [model_size, ensemble_member, time]. A little metadata is useful, 
+! so we can also create some 'global' attributes. 
+! This is what is implemented here.
+!
+! Once the simplest case is working, this routine (and nc_write_model_vars)
+! can be extended to create a more logical partitioning of the state vector,
+! fundamentally creating a netCDF file with variables that are easily 
+! plotted. The bgrid model_mod is perhaps a good one to view, keeping
+! in mind it is complicated by the fact it has two coordinate systems. 
+! There are stubs in this template, but they are only stubs.
+!
+! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
 ! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the lorenz_96 model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
 !
 ! assim_model_mod:init_diag_output uses information from the location_mod
 !     to define the location dimension and variable ID. All we need to do
@@ -251,16 +314,177 @@ use netcdf
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
 
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+
+integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
+integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
+integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
+
+integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
+integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
+
+character(len=129)    :: errstring
+
+! we are going to need these to record the creation date in the netCDF file.
+! This is entirely optional, but nice.
+
+character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=NF90_MAX_NAME) :: str1
+
+integer :: i
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file, 
+! and then put into define mode.
+!-------------------------------------------------------------------------------
+
+ierr = -1 ! assume things go poorly
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, &
+                                  nAttributes, unlimitedDimID), "inquire")
+call check(nf90_Redef(ncFileID),"redef")
+
+!-------------------------------------------------------------------------------
+! We need the dimension ID for the number of copies/ensemble members, and
+! we might as well check to make sure that Time is the Unlimited dimension. 
+! Our job is create the 'model size' dimension.
+!-------------------------------------------------------------------------------
+
+call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID),"copy dimid")
+call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID),"time dimid")
+
+if ( TimeDimID /= unlimitedDimId ) then
+   write(errstring,*)"Time Dimension ID ",TimeDimID, &
+                     " should equal Unlimited Dimension ID",unlimitedDimID
+   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
+endif
+
+!-------------------------------------------------------------------------------
+! Define the model size / state variable dimension / whatever ...
+!-------------------------------------------------------------------------------
+call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
+                        len=model_size, dimid = StateVarDimID),"state def_dim")
+
+!-------------------------------------------------------------------------------
+! Write Global Attributes 
+!-------------------------------------------------------------------------------
+
+call DATE_AND_TIME(crdate,crtime,crzone,values)
+write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+                  values(1), values(2), values(3), values(5), values(6), values(7)
+
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ),"creation put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ),"source put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),"revision put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ),"revdate put")
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","template"       ),"model put")
+
+!-------------------------------------------------------------------------------
+! Here is the extensible part. The simplest scenario is to output the state vector,
+! parsing the state vector into model-specific parts is complicated, and you need
+! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
+! complicated part.
+!-------------------------------------------------------------------------------
+
+if ( output_state_vector ) then
+
+   !----------------------------------------------------------------------------
+   ! Create a variable for the state vector
+   !----------------------------------------------------------------------------
+
+  ! Define the state vector coordinate variable and some attributes.
+   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+              dimids=StateVarDimID, varid=StateVarVarID), "statevariable def_var")
+   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"), &
+                                    "statevariable long_name")
+   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
+                                    "statevariable units")
+   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+                                    "statevariable valid_range")
+
+   ! Define the actual (3D) state vector, which gets filled as time goes on ... 
+   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
+              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
+              varid=StateVarID), "state def_var")
+   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
+                                           "state long_name")
+
+   ! Leave define mode so we can fill the coordinate variable.
+   call check(nf90_enddef(ncfileID),"state enddef")
+
+   ! Fill the state variable coordinate variable
+   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
+                                    "state put_var")
+
+else
+
+   !----------------------------------------------------------------------------
+   ! We need to process the prognostic variables.
+   !----------------------------------------------------------------------------
+
+   ! This block is a stub for something more complicated.
+   ! Usually, the control for the execution of this block is a namelist variable.
+   ! Take a peek at the bgrid model_mod.f90 for a (rather complicated) example.
+
+   call check(nf90_enddef(ncfileID), "prognostic enddef")
+
+endif
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+call check(nf90_sync(ncFileID),"atts sync")
+
+ierr = 0 ! If we got here, things went well.
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus, string1)
+  !
+  ! string1 was added to provide some sense of WHERE things were bombing.
+  ! It helps to determine which particular 'nf90_put_att' was generating
+  ! the error, for example.
+
+    integer, intent ( in) :: istatus
+    character(len=*), intent(in), optional :: string1
+
+    character(len=20)  :: myname = 'nc_write_model_atts '
+    character(len=129) :: mystring
+    integer            :: indexN
+
+    if( istatus /= nf90_noerr) then
+
+       if (present(string1) ) then
+          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
+             mystring = myname // trim(adjustl(string1))
+          else
+             indexN = len(mystring) - len(myname)
+             mystring = myname // string1(1:indexN)
+          endif
+       else
+          mystring = myname
+       endif
+
+       call error_handler(E_ERR, mystring, trim(nf90_strerror(istatus)), &
+                          source, revision, revdate)
+    endif
+
+  end subroutine check
+
 end function nc_write_model_atts
 
 
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
 !------------------------------------------------------------------
-! Writes the model variables to a netCDF file
-! TJH 23 May 2003
+! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
 !
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
+! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
 ! return code is always '0 == normal', since the fatal errors stop execution.
 !
 ! For the lorenz_96 model, each state variable is at a separate location.
@@ -288,6 +512,92 @@ real(r8), dimension(:), intent(in) :: statevec
 integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
+
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+
+integer :: StateVarID
+
+!-------------------------------------------------------------------------------
+! make sure ncFileID refers to an open netCDF file, 
+!-------------------------------------------------------------------------------
+
+ierr = -1 ! assume things go poorly
+
+call check(nf90_Inquire(ncFileID, nDimensions, nVariables, &
+                                  nAttributes, unlimitedDimID), "inquire")
+
+if ( output_state_vector ) then
+
+   call check(NF90_inq_varid(ncFileID, "state", StateVarID), "state inq_varid" )
+   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
+                start=(/ 1, copyindex, timeindex /)), "state put_var")                   
+
+else
+
+   !----------------------------------------------------------------------------
+   ! We need to process the prognostic variables.
+   !----------------------------------------------------------------------------
+
+   ! This block is a stub for something more complicated.
+   ! Usually, the control for the execution of this block is a namelist variable.
+   ! Take a peek at the bgrid model_mod.f90 for a (rather complicated) example.
+   !
+   ! Generally, it is necessary to take the statevec and decompose it into 
+   ! the separate prognostic variables. In this (commented out) example,
+   ! global_Var is a user-defined type that has components like:
+   ! global_Var%ps, global_Var%t, ... etc. Each of those can then be passed
+   ! directly to the netcdf put_var routine. This may cause a huge storage
+   ! hit, so large models may want to avoid the duplication if possible.
+
+   ! call vector_to_prog_var(statevec, get_model_size(), global_Var)
+
+   ! the 'start' array is crucial. In the following example, 'ps' is a 2D
+   ! array, and the netCDF variable "ps" is a 4D array [lat,lon,copy,time]
+
+   ! call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
+   ! call check(nf90_put_var( ncFileID, psVarID, global_Var%ps, &
+   !                          start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
+
+endif
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+
+call check(nf90_sync(ncFileID), "sync")
+
+ierr = 0 ! If we got here, things went well.
+
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints 
+  !                       text message each time an error code is returned. 
+  subroutine check(istatus, string1)
+    integer, intent ( in) :: istatus
+    character(len=*), intent(in), optional :: string1
+
+    character(len=20)  :: myname = 'nc_write_model_vars '
+    character(len=129) :: mystring
+    integer            :: indexN
+
+    if( istatus /= nf90_noerr) then
+
+       if (present(string1) ) then
+          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
+             mystring = myname // trim(adjustl(string1))
+          else
+             indexN = len(mystring) - len(myname)
+             mystring = myname // string1(1:indexN)
+          endif
+       else
+          mystring = myname
+       endif
+
+       call error_handler(E_ERR, mystring, trim(nf90_strerror(istatus)), &
+                          source, revision, revdate)
+    endif
+
+  end subroutine check
 
 end function nc_write_model_vars
 
