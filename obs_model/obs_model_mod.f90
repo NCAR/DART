@@ -288,18 +288,11 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
       ! Issue a system command with arguments my_task, my_num_copies, and control_file
       call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
  
-      FOREVER: do
-         ! When control file is deleted by shell script (adv_ens_command) 
-         ! we are free to proceed to read in updated state
-         if(file_exist(control_file_name)) then
-            ! Adjusting sleep time can modify performance
-            ! Use shorter time for shorter expected model advances
-            ! Might want to add this to namelist if it's important ???????
-            call system ('sleep 0.1')
-         else
-            exit FOREVER
-         endif
-      end do FOREVER
+      ! if control file is still here, the advance failed
+      if(file_exist(control_file_name)) then
+        write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
+        call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+      endif
 
    else
    ! Unsupported option for async error
