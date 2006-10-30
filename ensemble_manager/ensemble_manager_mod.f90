@@ -168,8 +168,8 @@ logical,              intent(in),    optional :: force_single_file
 ! Would like to avoid num_vars size storage
 real(r8)                            :: ens(ens_handle%num_vars)
 integer                             :: iunit, i, j
-character(len = LEN(file_name))     :: this_file_name
-character(len = LEN(file_name) + 4) :: extension
+character(len = LEN(file_name) + 5) :: this_file_name
+character(len = 4)                  :: extension
 type(time_type)                     :: ens_time
 integer                             :: global_copy_index
 logical                             :: interf_provided
@@ -268,8 +268,8 @@ real(r8)                            :: ens(ens_handle%num_vars)
 type(time_type)                     :: ens_time
 integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
-character(len = LEN(file_name))     :: this_file_name
-character(len = LEN(FILE_NAME) + 4) :: extension
+character(len = LEN(file_name) + 5) :: this_file_name
+character(len = 4)                  :: extension
 
 ! For single file, need to send restarts to pe0 and it writes them out.
 !-------------- Block for single_restart file -------------
