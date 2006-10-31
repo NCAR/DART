@@ -118,8 +118,9 @@ logical  :: approximate_distance        = .false.
 integer  :: nlon                        = 71
 integer  :: nlat                        = 36
 
-namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
-   vert_normalization_height, vert_normalization_level, approximate_distance
+namelist /location_nml/ horiz_dist_only, vert_normalization_pressure,         &
+   vert_normalization_height, vert_normalization_level, approximate_distance, &
+   nlon, nlat
 !-----------------------------------------------------------------
 
 interface operator(==); module procedure loc_eq; end interface
