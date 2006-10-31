@@ -91,7 +91,6 @@ real(r8),                    intent(in)    ::  sd_lower_bound
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 
-type(time_type) :: init_time
 integer :: restart_unit
 
 ! Load up the structure first to keep track of all details of this inflation type
@@ -145,7 +144,7 @@ if(inf_flavor >= 2) then
    ! Read in initial values from file OR get from subroutine arguments
    if(start_from_restart) then
       call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-         start_from_restart, in_file_name, init_time,  force_single_file = .true.)
+         start_from_restart, in_file_name, force_single_file = .true.)
    else
       ! Get initial values from higher level; requires pe's to have all copies of some vars
       call all_vars_to_all_copies(ens_handle)
