@@ -118,7 +118,7 @@ subroutine get_expected_vortex_info(state_vector, location, vinfo, whichinfo, is
 
 real(r8),            intent(in)  :: state_vector(:)
 type(location_type), intent(in)  :: location
-character*3,         intent(in)  :: whichinfo
+character(len=3),    intent(in)  :: whichinfo
 real(r8),            intent(out) :: vinfo
 integer,             intent(out) :: istatus
 
