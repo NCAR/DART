@@ -15,7 +15,7 @@ MODULE types_mod
 implicit none
 private 
 
-public :: i8, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8, digits12
+public :: i8, r4, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8, digits12
 public :: MISSING_I, MISSING_DATA
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
