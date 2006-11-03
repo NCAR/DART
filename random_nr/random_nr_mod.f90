@@ -12,7 +12,7 @@ module random_nr_mod
 ! $Author$ 
 ! $Name$ 
 
-use     types_mod, only : r8
+use     types_mod, only : digits12
 use utilities_mod, only : register_module, error_handler, E_ERR
 
 implicit none
@@ -29,12 +29,12 @@ revdate  = "$Date$"
 integer, parameter :: m1 = 259200, ia1 = 7141, ic1 = 54773
 integer, parameter :: m2 = 134456, ia2 = 8121, ic2 = 28411
 integer, parameter :: m3 = 243000, ia3 = 4561, ic3 = 51349
-real(r8), parameter :: rm1 = 1.0_r8/m1, rm2 = 1.0_r8/m2
+real(digits12), parameter :: rm1 = 1.0_digits12/m1, rm2 = 1.0_digits12/m2
 
 type random_seq_type
    private
    integer :: ix1, ix2, ix3, iset
-   real(r8) :: r(97), gset
+   real(digits12) :: r(97), gset
 end type random_seq_type
 
 logical, save :: module_initialized = .false.
@@ -94,7 +94,7 @@ function ran1(s)
 implicit none
 
 type(random_seq_type), intent(inout) :: s
-real(r8) :: ran1
+real(digits12) :: ran1
 
 integer :: j
 
@@ -123,18 +123,18 @@ function gasdev(s)
 implicit none
 
 type(random_seq_type), intent(inout) :: s
-real(r8) :: gasdev
+real(digits12) :: gasdev
 
-real(r8) :: v1, v2, r, fac
+real(digits12) :: v1, v2, r, fac
 
 if ( .not. module_initialized ) call initialize_module
 
 if(s%iset == 0) then
-10 v1 = 2.0_r8 * ran1(s) - 1.0_r8
-   v2 = 2.0_r8 * ran1(s) - 1.0_r8
+10 v1 = 2.0_digits12 * ran1(s) - 1.0_digits12
+   v2 = 2.0_digits12 * ran1(s) - 1.0_digits12
    r = v1**2 + v2**2
-   if(r >= 1.0_r8) goto 10
-   fac = sqrt(-2.0_r8 * log(r) / r)
+   if(r >= 1.0_digits12) goto 10
+   fac = sqrt(-2.0_digits12 * log(r) / r)
    s%gset = v1 * fac
    gasdev = v2 * fac
    s%iset = 1
