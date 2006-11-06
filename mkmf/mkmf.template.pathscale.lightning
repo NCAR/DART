@@ -14,7 +14,12 @@
 # NETCDF and LIBS needs to be customized for your site
 #
 # FFLAGS   useful for benchmarking
-#    -O0                     no optimization
+#   -O0                     no optimization
+#   -Wuninitialized         Warn about unitialized automatic variables
+#   -ffortran-bounds-check  check bounds
+#   -fno-fast-math          Conform to ANSI & IEEE math rules at expense of speed
+#   -fno-fast-stdlib        Do not use faster versions of std library functions
+#   -fullwarn               more warnings, especially about missing prototypes
 #
 # FFLAGS   useful for speed
 #    -O                      'same as -O2'
@@ -30,14 +35,17 @@
 #    Thread model: posix
 #    GNU gcc version 3.3.1 (PathScale 2.0 driver)
 
-MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pathscale-2.0-64
-MPIFC=$(MPI_HOME)/bin/mpif90
-MPILD=$(MPI_HOME)/bin/mpif90
+#MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pathscale-2.0-64
+#MPIFC=$(MPI_HOME)/bin/mpif90
+#MPILD=$(MPI_HOME)/bin/mpif90
+MPIFC=mpif90
+MPILD=mpif90
 FC = pathf90
 LD = pathf90
 CPPFLAGS =
 LIST = 
 NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-pathcc-pathf90-2.0-64
 FFLAGS = -O0 -I$(NETCDF)/include
+#FFLAGS = -Wuninitialized -ffortran-bounds-check -fullwarn -O0 -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(LIBS)
