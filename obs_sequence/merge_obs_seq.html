@@ -81,6 +81,13 @@ sequences are linked lists ordered by time, simply keeping track of
 where you inserted the last one greatly simplifies the logic of where
 one starts looking to insert the next observation. Consequently, inserting
 and appending are now equally fast. Snappy!
+<BR><BR>
+<em class=unix>merge_obs_seq</em> can be used to sort observations in an
+observation sequence as well as physically delete broken nodes from 
+the sequence. The only trick is to merge with an empty 
+<em class=file>obs_seq</em> file. The empty <em class=file>obs_seq</em> 
+must be specified first in the list of files to merge, it has to have a header, 
+and first = last = -1. Pretty Sneaky.
 </P>
 
 
