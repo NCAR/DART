@@ -1217,7 +1217,7 @@ else if(scorrel >= 0.995_r8) then
    correl = (1.0_r8 - exp_true_correl(200)) * fract + exp_true_correl(200)
    mean_factor = (1.0_r8 - alpha(200)) * fract + alpha(200)
 else
-   low_indx = (scorrel + 0.995_r8) / 0.01_r8 + 1.0_r8
+   low_indx = floor((scorrel + 0.995_r8) / 0.01_r8) + 1
    low_correl = -0.995_r8 + (low_indx - 1) * 0.01
    low_exp_correl = exp_true_correl(low_indx)
    low_alpha = alpha(low_indx)
