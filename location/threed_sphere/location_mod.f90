@@ -826,9 +826,9 @@ gc%num = num
 ! Begin by computing the number of observations in each box in lat/lon
 gc%count = 0
 do i = 1, num
-   lon_box(i) = int(nlon * obs(i)%lon / (2.0_r8 * PI)) + 1
+   lon_box(i) = floor(nlon * obs(i)%lon / (2.0_r8 * PI)) + 1
    if(lon_box(i) > nlon) lon_box(i) = 1
-   lat_box(i) = int(nlat * (obs(i)%lat + PI / 2.0_r8) / PI) + 1
+   lat_box(i) = floor(nlat * (obs(i)%lat + PI / 2.0_r8) / PI) + 1
    if(lat_box(i) > nlat) lat_box(i) = nlat
    if(lat_box(i) < 1) lat_box(i) = 1
    gc%count(lon_box(i), lat_box(i)) = gc%count(lon_box(i), lat_box(i)) + 1
@@ -883,9 +883,9 @@ do blat_ind = 1, nlat
    base_lon = 360.0_r8 /nlon
    ! Start searching out, have to look for closest point in box being checked
    ! Only have to search latitude boxes that are within maximum distance
-   bot_tlat_ind = blat_ind - int(maxdist * nlat / PI) - 1
+   bot_tlat_ind = blat_ind - floor(maxdist * nlat / PI) - 1
    if(bot_tlat_ind < 1) bot_tlat_ind = 1
-   top_tlat_ind = blat_ind + int(maxdist * nlat / PI) + 1
+   top_tlat_ind = blat_ind + floor(maxdist * nlat / PI) + 1
    if(top_tlat_ind > nlat) top_tlat_ind = nlat
    do tlat_ind = bot_tlat_ind, top_tlat_ind
       ! For lats north of me, search from NE corner as base to SW corner as target
@@ -912,7 +912,7 @@ do blat_ind = 1, nlat
       else
          del_lon = acos(cos_del_lon)
       endif
-      gc%lon_offset(blat_ind, tlat_ind) = int(del_lon * nlon / (2.0 * PI)) + 1
+      gc%lon_offset(blat_ind, tlat_ind) = floor(del_lon * nlon / (2.0 * PI)) + 1
 
    end do
 end do
@@ -943,9 +943,9 @@ integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind
 real(r8) :: this_dist
 
 ! Begin by figuring out which box the base_ob is in
-lon_box = int(nlon * base_obs_loc%lon / (2.0_r8 * PI)) + 1
+lon_box = floor(nlon * base_obs_loc%lon / (2.0_r8 * PI)) + 1
 if(lon_box > nlon) lon_box = 1
-lat_box = int(nlat * (base_obs_loc%lat + PI / 2.0_r8) / PI) + 1
+lat_box = floor(nlat * (base_obs_loc%lat + PI / 2.0_r8) / PI) + 1
 if(lat_box > nlat) lat_box = nlat
 
 num_close = 0
