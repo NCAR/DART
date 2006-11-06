@@ -492,7 +492,7 @@ if ( .not. module_initialized ) call time_manager_init
 ! Could multiply by some large factor n, and seconds could be up to 86399
 ! Need to avoid overflowing integers and wrapping around to negatives
 
-sec_prod = (time%seconds*1.0_digits12) * (n*1.0_digits12)
+sec_prod = real(time%seconds,digits12) * real(n,digits12)
 
 ! If sec_prod is large compared to precision of double precision, things
 ! can go bad.  Need to warn and abort on this.
@@ -504,7 +504,7 @@ if(sec_prod /= 0.0_digits12) then
    endif
 end if
 
-days    = sec_prod / (24.0_digits12 * 60.0_digits12 * 60.0_digits12)
+days    =  floor(sec_prod / (24.0_digits12 * 60.0_digits12 * 60.0_digits12))
 seconds = sec_prod - days * (24.0_digits12 * 60.0_digits12 * 60.0_digits12)
 
 time_scalar_mult = set_time(seconds, time%days * n + days)
@@ -554,7 +554,7 @@ d2 = time2%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time2%secon
 
 ! Get integer quotient of this, check carefully to avoid round-off problems.
 
-time_divide = d1 / d2
+time_divide = floor(d1 / d2)
 
 ! Verify time_divide*time2 is <= time1 and (time_divide + 1)*time2 is > time1
 
@@ -612,10 +612,10 @@ if ( .not. module_initialized ) call time_manager_init
 
 ! Convert time interval to floating point days; risky for general performance?
 
-d   = time%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + (time%seconds*1.0_digits12)
-div = d / (1.0_digits12 * n)
+d   = time%days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12) + real(time%seconds,digits12)
+div = d / real(n,digits12)
 
-days    = div / (60.0_digits12 * 60.0_digits12 * 24.0_digits12)
+days    =  floor(div / (60.0_digits12 * 60.0_digits12 * 24.0_digits12))
 seconds = div - days * (60.0_digits12 * 60.0_digits12 * 24.0_digits12)
 time_scalar_divide = set_time(seconds, days)
 
