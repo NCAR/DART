@@ -25,6 +25,8 @@
 #                precision equivalents (KIND=8). This option does not affect 
 #                variables which appear in type statements with explicit 
 #                sizes (such as REAL (KIND=4) or COMPLEX (KIND=4)).  
+#      -f free   instructs compiler to accept source code written in the 
+#                format for Fortran 90/95 Free Source Form.
 #
 # FFLAGS   used all the time
 #     -YEXT_NAMES=LCS          lower case symbols
@@ -35,6 +37,12 @@
 # FFLAGS   useful for debugging
 #     -en                      warns of non-standard language. (extensions)
 #     -g                       debug symbol table
+#     -N32                     issue a warning when the source code contains 
+#                              an extension to the ANSI F77 standard. 
+#     -wabort                  treat all warnings as errors
+#     -Rb                      check array boundaries
+#     -Rc                      check array conformance (shapes)
+#     -C                       full Checking (too much info ...)
 #
 # FFLAGS   useful for production (untested)
 #     -c                       Generate relocatable object files.
@@ -50,6 +58,8 @@ FC = f90
 LD = f90
 NETCDF = /Users/thoar/Absoft
 INCS = ${NETCDF}/include
-FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -p$(INCS)
 LIBS = -L${NETCDF}/lib -lnetcdf
+#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -p$(INCS)
+#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -N113 -f free -Rb -Rc -p$(INCS) -I$(INCS)
+ FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -p$(INCS) -I$(INCS)
 LDFLAGS = -unixlib -p$(INCS) $(LIBS)
