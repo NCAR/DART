@@ -482,39 +482,39 @@ if(gamma > 0.99_r8) then
    c = lambda_sd_2 * sigma_p_2**2 / 2.0_r8
    d = -1.0_r8 * (lambda_sd_2 * sigma_p_2**2 * dist_2) / 2.0_r8
 
-Q = c - b**2 / 3
-R = d + (2 * b**3) / 27 - (b * c) / 3
+   Q = c - b**2 / 3
+   R = d + (2 * b**3) / 27 - (b * c) / 3
 
-! Compute discriminant, if this is negative have 3 real roots, else 1 real root
-disc = R**2 / 4 + Q**3 / 27
+   ! Compute discriminant, if this is negative have 3 real roots, else 1 real root
+   disc = R**2 / 4 + Q**3 / 27
 
-if(disc < 0.0_r8) then
-   rrr = sqrt(-1.0 * Q**3 / 27)
-   ! Note that rrr is positive so no problem for cube root
-   cube_root_rrr = rrr ** (1.0 / 3.0)
-   angle = acos(-0.5 * R / rrr)
-   do i = 0, 2
-      mx(i+1) = 2.0_r8 * cube_root_rrr * cos((angle + i * 2.0_r8 * PI) / 3.0_r8) - b / 3.0_r8
+   if(disc < 0.0_r8) then
+      rrr = sqrt(-1.0 * Q**3 / 27)
+      ! Note that rrr is positive so no problem for cube root
+      cube_root_rrr = rrr ** (1.0 / 3.0)
+      angle = acos(-0.5 * R / rrr)
+      do i = 0, 2
+         mx(i+1) = 2.0_r8 * cube_root_rrr * cos((angle + i * 2.0_r8 * PI) / 3.0_r8) - b / 3.0_r8
          mlambda(i + 1) = (mx(i + 1) - sigma_o_2) / sigma_p_2
          sep(i+1) = abs(mlambda(i + 1) - lambda_mean)
-   end do
-   ! Root closest to initial peak is appropriate
-   mlambda_index = minloc(sep)
-   new_cov_inflate = mlambda(mlambda_index(1))
+      end do
+      ! Root closest to initial peak is appropriate
+      mlambda_index = minloc(sep)
+      new_cov_inflate = mlambda(mlambda_index(1))
 
-else
-   ! Only one real root here, find it.
+   else
+      ! Only one real root here, find it.
 
-   ! Compute the two primary terms
-   alpha = -R/2 + sqrt(disc)
-   beta = R/2 + sqrt(disc)
+      ! Compute the two primary terms
+      alpha = -R/2 + sqrt(disc)
+      beta = R/2 + sqrt(disc)
 
-   cube_root_alpha = abs(alpha) ** (1.0 / 3.0) * abs(alpha) / alpha
-   cube_root_beta = abs(beta) ** (1.0 / 3.0) * abs(beta) / beta
+      cube_root_alpha = abs(alpha) ** (1.0 / 3.0) * abs(alpha) / alpha
+      cube_root_beta = abs(beta) ** (1.0 / 3.0) * abs(beta) / beta
+   
+      x = cube_root_alpha - cube_root_beta - b / 3.0
 
-   x = cube_root_alpha - cube_root_beta - b / 3.0
-
-   ! This root is the value of x = theta**2
+      ! This root is the value of x = theta**2
       new_cov_inflate = (x - sigma_o_2) / sigma_p_2
 
    endif
@@ -600,7 +600,7 @@ real(r8), intent(inout) :: new_cov_inflate, new_cov_inflate_sd
 
 real(r8) :: theta_bar_2, u_bar, like_exp_bar, v_bar, like_bar, like_prime, theta_bar
 real(r8) :: a, b, c, disc, plus_root, minus_root, dtheta_dlambda
-
+   
 ! Compute value of theta at current lambda_mean
 theta_bar_2 = (1.0_r8 + gamma * (sqrt(lambda_mean) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2
 theta_bar = sqrt(theta_bar_2)
@@ -621,27 +621,12 @@ dtheta_dlambda = 0.5_r8 * sigma_p_2 * gamma *(1.0_r8 - gamma + gamma*sqrt(lambda
    (theta_bar * sqrt(lambda_mean))
 like_prime = (u_bar * v_bar * dtheta_dlambda / theta_bar) * (dist_2 / theta_bar_2 - 1.0_r8)
 
-! FOR NOW, TO AVOID PROBLEMS WITH OVERFLOW/UNDERFLOW, if like_prime is small, assume it is 0
-! SHOULD REALLY FIX THIS BETTER
-if(abs(like_prime) < 1e-8_r8) then
-   new_cov_inflate = lambda_mean
-   new_cov_inflate_sd = sqrt(lambda_sd_2)
-   return
-endif
-
 a = 1.0_r8
 b = like_bar / like_prime - 2.0_r8 * lambda_mean
 c = lambda_mean**2 -lambda_sd_2 - like_bar * lambda_mean / like_prime
 
-! Find the roots using quadratic formula
-disc = b**2 - 4.0_r8 * c
-if(disc < 0.0_r8) then
-   write(*, *) 'disc is negative in linear_bayes: An algorithmic failure', disc
-   stop
-endif   
-
-plus_root = (-1.0*b + sqrt(disc)) / 2.0_r8
-minus_root = (-1.0*b - sqrt(disc)) / 2.0_r8
+! Use nice scaled quadratic solver to avoid precision issues
+call solve_quadratic(a, b, c, plus_root, minus_root)
 
 ! Do a check to pick closest root
 if(abs(minus_root - lambda_mean) < abs(plus_root - lambda_mean)) then
@@ -673,6 +658,36 @@ v_bar = exp(like_exp_bar)
 like_bar = u_bar * v_bar
 
 end subroutine comp_likelihood
+
+!------------------------------------------------------------------------
+
+subroutine solve_quadratic(a, b, c, r1, r2)
+
+real(r8), intent(in)  :: a, b, c
+real(r8), intent(out) :: r1, r2
+
+real(r8) :: scaling, as, bs, cs, disc
+
+! Scale the coefficients to get better round-off tolerance
+scaling = max(abs(a), abs(b), abs(c))
+as = a / scaling
+bs = b / scaling
+cs = c / scaling
+
+! Get discriminant of scaled equation
+disc = sqrt(bs**2 - 4.0_r8 * as * cs)
+
+if(bs > 0.0_r8) then
+   r1 = (-bs - disc) / (2 * as)
+else
+   r1 = (-bs + disc) / (2 * as)
+endif
+
+! Compute the second root given the larger one
+r2 = (cs / as) / r1
+
+end subroutine solve_quadratic
+
 
 !========================================================================
 ! end module adaptive_inflate_mod
