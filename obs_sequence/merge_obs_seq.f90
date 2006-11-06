@@ -157,7 +157,7 @@ do i = 2, num_input_files
    ! Getting the time of the last observation in the first sequence to see
    ! if we can append instead of insert. Appending is MUCH faster.
    is_there_one = get_last_obs(seq1, obs)
-   if (.not. is_there_one ) then
+   if (.not. is_there_one .and. size_seq1 >= 1) then
       call error_handler(E_ERR,'merge_obs_seq', &
        'BAD news - first obs_seq is neverending ...', source,revision,revdate) 
    endif
