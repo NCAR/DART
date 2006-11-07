@@ -12,7 +12,7 @@ module random_nr_mod
 ! $Author$ 
 ! $Name$ 
 
-use     types_mod, only : digits12
+use     types_mod, only : r8, digits12
 use utilities_mod, only : register_module, error_handler, E_ERR
 
 implicit none
@@ -94,7 +94,7 @@ function ran1(s)
 implicit none
 
 type(random_seq_type), intent(inout) :: s
-real(digits12) :: ran1
+real(r8) :: ran1
 
 integer :: j
 
@@ -107,7 +107,7 @@ s%ix2 = mod(ia2*s%ix2 + ic2, m2)
 s%ix3 = mod(ia3*s%ix3 + ic3, m3)
 j = 1 + (97*s%ix3) / m3
 if(j > 97 .or. j < 1) then
-      call error_handler(E_ERR,' ran1', 'Fatal error in random number', source, revision, revdate)
+      call error_handler(E_ERR,' ran1', 'Fatal error in random_nr_mod', source, revision, revdate)
 endif
 ran1 = s%r(j)
 s%r(j) = (s%ix1 + s%ix2*rm2)*rm1
@@ -123,7 +123,7 @@ function gasdev(s)
 implicit none
 
 type(random_seq_type), intent(inout) :: s
-real(digits12) :: gasdev
+real(r8) :: gasdev
 
 real(digits12) :: v1, v2, r, fac
 
