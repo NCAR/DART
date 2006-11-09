@@ -886,7 +886,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          if(ratio > 10.0_r8) then
             call get_time(obs_time,seconds,days)
 
-            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,1x,2f10.2,f7.1,2i7)')
+            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,1x,2f10.2,f7.1,2i7)') &
                  days, seconds, lon0, lat0, ivert, &
                  obs(1), pr_mean, ratio, keys(obsindex), flavor
          endif
