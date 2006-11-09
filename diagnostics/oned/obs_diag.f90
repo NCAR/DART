@@ -64,8 +64,9 @@ real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_sp
 real(r8) :: pr_mean, po_mean ! same as above, without useless dimension 
 real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
 
+integer :: qc_index
 integer :: obs_copy_index, prior_mean_index, posterior_mean_index
-integer :: prior_spread_index, posterior_spread_index, qc_index, dart_qc_index
+integer :: prior_spread_index, posterior_spread_index
 integer :: key_bounds(2), flavor
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 character(len=129) :: obs_seq_read_format
@@ -169,7 +170,7 @@ real(r8) :: rlocation
 !      ----- all can be used -----
 !-----------------------------------------------------------------------
 
-integer             :: qc_integer
+integer             :: dart_qc_index, qc_integer
 integer, parameter  :: QC_MAX = 7
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
@@ -649,7 +650,7 @@ enddo FindNumRegions
          ! where each bin is a single standard deviation. This is 
          ! a one-sided histogram.
 
-         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
+         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var, qc_integer)
          indx         = min(int(ratio), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
 
@@ -670,7 +671,7 @@ enddo FindNumRegions
 
 !           if (flavor > 0 ) then  ! keep all types, for now ...
 
-               ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var)
+               ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var, qc_integer)
 
                if ( ratio > rat_cri ) then
                   if (verbose) then
@@ -969,15 +970,27 @@ call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
 contains
 
-   Function GetRatio(obsval, prmean, prspred, errcov) result (ratio)
+   Function GetRatio(obsval, prmean, prspred, errcov, qcval ) result (ratio)
+
+   ! This function tries to get a handle on the magnitude of the innovations.
+   ! If the ratio of the observation to the prior mean is 'big', it is an outlier. 
+   ! If the prior mean cannot be calculated (i.e. is missing) we give it a HUGE
+   ! innovation -- sufficiently large to put it in the last 'bin' of the crude
+   ! histogram.
+
    real(r8), intent(in) :: obsval, prmean, prspred, errcov
+   integer,  intent(in) :: qcval
    real(r8)             :: ratio
 
    real(r8) :: numer, denom
 
-   numer = abs(prmean- obsval) 
-   denom = sqrt( prspred**2 + errcov )
-   ratio = numer / denom
+   if (qcval <= QC_MAX_PRIOR ) then
+      numer = abs(prmean- obsval) 
+      denom = sqrt( prspred**2 + errcov )
+      ratio = numer / denom
+   else
+      ratio = real(MaxSigmaBins,r8)
+   endif
 
    end Function GetRatio
 
