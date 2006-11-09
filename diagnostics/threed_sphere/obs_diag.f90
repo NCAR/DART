@@ -73,7 +73,26 @@ real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_sp
 real(r8) :: pr_mean, po_mean ! same as above, without useless dimension 
 real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
 
+!---------------------------------------------------------------------
 ! variables associated with quality control
+!
+! qc_index  reflects the 'original' QC value of the observation, if any.
+!           Most frequently represents the value NCEP assigned to their
+!           observations.
+!
+! dart_qc_index 
+! 0     observation assimilated
+! 1     observation evaluated only
+!   --- everything above this means the prior and posterior are OK
+! 2     assimilated, but the posterior forward operator failed
+! 3     Evaluated only, but the posterior forward operator failed
+!   --- everything above this means only the prior is OK
+! 4     prior forward operator failed
+! 5     not used
+! 6     prior QC rejected
+! 7     outlier rejected
+! 8+    reserved for future use
+
 integer             :: qc_index, dart_qc_index
 integer             :: qc_integer
 integer, parameter  :: QC_MAX = 7
@@ -866,7 +885,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
          if(ratio > 10.0_r8) then
             call get_time(obs_time,seconds,days)
-            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,2f8.2,f7.1,2i7)') &
+
+            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,1x,2f10.2,f7.1,2i7)')
                  days, seconds, lon0, lat0, ivert, &
                  obs(1), pr_mean, ratio, keys(obsindex), flavor
          endif
@@ -1583,19 +1603,20 @@ contains
    ! This function tries to get a handle on the magnitude of the innovations.
    ! If the ratio of the observation to the prior mean is 'big', it is an outlier. 
    ! If the prior mean cannot be calculated (i.e. is missing) we give it a HUGE
-   ! innovation.
+   ! innovation -- sufficiently large to put it in the last 'bin' of the crude
+   ! histogram.
 
    real(r8), intent(in) :: obsval, prmean, prspred, errcov, qcval
    real(r8)             :: ratio
 
    real(r8) :: numer, denom
 
-   if ( qcval < QC_MAX_PRIOR ) then
+   if ( qcval <= QC_MAX_PRIOR ) then
       numer = abs(prmean - obsval)
       denom = sqrt( prspred**2 + errcov )
       ratio = numer / denom
    else
-      ratio = huge(ratio)
+      ratio = real(MaxSigmaBins,r8)
    endif
 
    end Function GetRatio
