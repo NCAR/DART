@@ -473,8 +473,19 @@ endif
 lambda_sd_2 = lambda_sd**2
 dist_2 = (x_p - y_o)**2
 
-if(gamma > 0.99_r8) then
-   ! The solution of the cubic below only works if gamma is 1.0
+! Use ONLY the linear approximation, cubic solution below can be numerically
+! unstable for extreme cases. Should look at this later.
+!!!if(gamma > 0.99_r8) then
+if(gamma > 1.01_r8) then
+
+
+   !!!new_cov_inflate = lambda_mean
+   !!!new_cov_inflate_sd = lambda_sd
+   !!!return
+   
+
+
+! The solution of the cubic below only works if gamma is 1.0
 ! Can analytically find the maximum of the product: d/dlambda is a
 ! cubic polynomial in lambda**2; solve using cubic formula for real root
 ! Can write so that coefficient of x**3 is 1, other coefficients are:
@@ -524,7 +535,7 @@ if(gamma > 0.99_r8) then
 else
    ! If gamma is non-zero, have to approximate with Taylor series for likelihood term
    call linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma, &
-      new_cov_inflate, new_cov_inflate_sd, sd_lower_bound_in)
+      new_cov_inflate)
 endif
 
 ! Bail out to save cost when lower bound is reached on lambda standard deviation
@@ -592,11 +603,11 @@ end function compute_new_density
 !---------------------------------------------------------------------
 
 subroutine linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma, &
-   new_cov_inflate, new_cov_inflate_sd, sd_lower_bound_in)
+   new_cov_inflate)
 
 real(r8), intent(in)    :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2
-real(r8), intent(in)    :: gamma, sd_lower_bound_in
-real(r8), intent(inout) :: new_cov_inflate, new_cov_inflate_sd
+real(r8), intent(in)    :: gamma
+real(r8), intent(inout) :: new_cov_inflate
 
 real(r8) :: theta_bar_2, u_bar, like_exp_bar, v_bar, like_bar, like_prime, theta_bar
 real(r8) :: a, b, c, disc, plus_root, minus_root, dtheta_dlambda
@@ -613,6 +624,12 @@ v_bar = exp(like_exp_bar)
 ! Compute value of likelihood at current lambda_bar value
 like_bar = u_bar * v_bar
 
+! If like_bar goes to 0, can't do anything, so just keep current values
+if(like_bar <= 0.0_r8) then
+   new_cov_inflate = lambda_mean
+   return
+endif
+
 ! Next compute derivative of likelihood at this point
 
 ! First compute d/dlambda of theta evaluated at lambda_mean
@@ -620,6 +637,12 @@ like_bar = u_bar * v_bar
 dtheta_dlambda = 0.5_r8 * sigma_p_2 * gamma *(1.0_r8 - gamma + gamma*sqrt(lambda_mean)) / &
    (theta_bar * sqrt(lambda_mean))
 like_prime = (u_bar * v_bar * dtheta_dlambda / theta_bar) * (dist_2 / theta_bar_2 - 1.0_r8)
+
+! If like_prime goes to 0, can't do anything, so just keep current values
+if(like_prime == 0.0_r8) then
+   new_cov_inflate = lambda_mean
+   return
+endif
 
 a = 1.0_r8
 b = like_bar / like_prime - 2.0_r8 * lambda_mean
