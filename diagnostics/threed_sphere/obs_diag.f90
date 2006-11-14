@@ -114,7 +114,7 @@ real(r8)            :: U_pr_mean     = 0.0_r8
 real(r8)            :: U_pr_sprd     = 0.0_r8
 real(r8)            :: U_po_mean     = 0.0_r8
 real(r8)            :: U_po_sprd     = 0.0_r8
-real(r8)            :: U_qc          = 0.0_r8
+integer             :: U_qc          = 0
 
 integer :: obs_index, prior_mean_index, posterior_mean_index
 integer :: prior_spread_index, posterior_spread_index
@@ -829,8 +829,19 @@ ObsFileLoop : do ifile=1, Nepochs*4
          call get_obs_values(observation, posterior_spread, posterior_spread_index)
 
          !--------------------------------------------------------------
+         ! Scale the quantities so they plot sensibly.
+         !--------------------------------------------------------------
+
+         obs(1)  = obs(1)             *scale_factor(flavor)
+         pr_mean = prior_mean(1)      *scale_factor(flavor)
+         po_mean = posterior_mean(1)  *scale_factor(flavor)
+         pr_sprd = prior_spread(1)    *scale_factor(flavor)
+         po_sprd = posterior_spread(1)*scale_factor(flavor)
+
+         !--------------------------------------------------------------
          ! (DEBUG) Summary of observation knowledge at this point
          !--------------------------------------------------------------
+
          if ( 1 == 2 ) then
             write(*,*)'observation # ',obsindex
             write(*,*)'obs_flavor ',flavor
@@ -875,7 +886,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! if the prior_mean is valid.
          !--------------------------------------------------------------
 
-         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var, qc(dart_qc_index))
+         ratio = GetRatio(obs(1), pr_mean, pr_sprd, obs_err_var, qc_integer)
 
          indx         = min(int(ratio), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
@@ -892,16 +903,6 @@ ObsFileLoop : do ifile=1, Nepochs*4
          endif
 
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
-
-         !--------------------------------------------------------------
-         ! Scale the quantities so they plot sensibly.
-         !--------------------------------------------------------------
-
-         obs(1)  = obs(1)             *scale_factor(flavor)
-         pr_mean = prior_mean(1)      *scale_factor(flavor)
-         po_mean = posterior_mean(1)  *scale_factor(flavor)
-         pr_sprd = prior_spread(1)    *scale_factor(flavor)
-         po_sprd = posterior_spread(1)*scale_factor(flavor)
 
          !--------------------------------------------------------------
          ! If it is a U wind component, all we need to do is save it.
@@ -925,7 +926,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             U_pr_sprd     = pr_sprd
             U_po_mean     = po_mean
             U_po_sprd     = po_sprd
-            U_qc          = qc(dart_qc_index)
+            U_qc          = qc_integer
 
             cycle ObservationLoop
 
@@ -1606,7 +1607,8 @@ contains
    ! innovation -- sufficiently large to put it in the last 'bin' of the crude
    ! histogram.
 
-   real(r8), intent(in) :: obsval, prmean, prspred, errcov, qcval
+   real(r8), intent(in) :: obsval, prmean, prspred, errcov
+   integer,  intent(in) :: qcval
    real(r8)             :: ratio
 
    real(r8) :: numer, denom
