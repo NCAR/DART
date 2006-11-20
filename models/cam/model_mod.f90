@@ -368,6 +368,7 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 ! CAM global/module declarations
 
 implicit none
+private
 
 ! The last three lines are for interfaces to CAM specific programs; transXXX, etc.
 public ::                                                            &
@@ -380,10 +381,6 @@ public ::                                                            &
    init_model_instance, end_model_instance, write_cam_init,          &
    get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
 
-private ::  &
-   TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ,  &
-   TYPE_PHIS, TYPE_SGH, TYPE_PBLH, TYPE_TBOT, TYPE_TS, TYPE_TSOCN,     &
-   TYPE_LCWAT, TYPE_QCWAT
 
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
@@ -803,6 +800,9 @@ end if
 if (do_out) write(*,*) 'Entering read_cam_horiz'
 
 if (alloc_phis) allocate (phis(topog_lons, topog_lats))
+
+! Make local space to hold the means
+allocate(ens_mean(model_size))
 
 call read_cam_horiz (ncfileid, phis , topog_lons, topog_lats, 'PHIS    ')
 
@@ -2059,11 +2059,13 @@ end subroutine get_state_meta_data
 
 
 
-   subroutine ens_mean_for_model(ens_mean)
+   subroutine ens_mean_for_model(filter_ens_mean)
 !------------------------------------------------------------------
 ! Not used in low-order models
 
-real(r8), intent(in) :: ens_mean(:)
+real(r8), intent(in) :: filter_ens_mean(:)
+
+ens_mean = filter_ens_mean
 
 ! Fill ps, ps_stagr_lxx if not filled yet.
 ! WATCH OUT that it's not still filled with something other than ens_mean
@@ -4674,6 +4676,9 @@ end subroutine adv_1step
 !
 ! At some point, this stub should coordinate with atmosphere_end but
 ! that requires an instance variable.
+
+! release the local copy of the ensemble means.
+deallocate(ens_mean)
 
 end subroutine end_model
 
