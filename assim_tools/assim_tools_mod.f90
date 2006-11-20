@@ -404,6 +404,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! Need to get thinning out of assim_tools and into something about locations
          ! Compute a new radius if the total_num_close is greater than the desired as
          ! 2*cutoff_rev = sqrt(2*cutoff * adaptive_localization_threshold / total_num_close_obs)
+         ! kdr cheaper calc; cutoff *sqrt(adaptive_localization_threshold / total_num_close_obs)
          cutoff_rev =  sqrt((2.0_r8*cutoff)**2 *adaptive_localization_threshold / &
             total_num_close_obs) / 2.0_r8
       endif
