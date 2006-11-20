@@ -35,6 +35,7 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, &
           KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
           KIND_GPSRO, &
+          KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
           KIND_VORTEX_LON, KIND_VORTEX_LAT, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 
 ! Public access to the observation types is provided here
@@ -71,7 +72,9 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
                       KIND_1D_INTEGRAL                 = 13, &
                       KIND_GRAUPEL_MIXING_RATIO        = 14, &
                       KIND_SNOW_MIXING_RATIO           = 15, &
-                      KIND_GPSRO                       = 16
+                      KIND_GPSRO                       = 16, &
+                      KIND_CLOUD_LIQUID_WATER          = 17, &
+                      KIND_CLOUD_ICE                   = 18
 
 integer, parameter :: KIND_VORTEX_LON                  = 81, &
                       KIND_VORTEX_LAT                  = 82, &
