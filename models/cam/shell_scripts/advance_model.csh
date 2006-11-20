@@ -161,14 +161,10 @@ while($state_copy <= $num_states)
       exit 1
    endif
    
-   echo "before trans_sv_pv"`ncdump -h caminput.nc | grep -i phis`
-   
    # Create an initial CAM.nc file from the DART state vector
    # Times are handled separately in trans_time
    ${CENTRALDIR}/trans_sv_pv
    ls -ltR >> cam_out_temp
-   
-   echo "before run-pc.csh "`ncdump -h caminput.nc | grep -i phis`
    
    # advance cam 
    # 'machine_file' is NOT USED by run-pc.csh in single-threaded executions 
@@ -180,15 +176,11 @@ while($state_copy <= $num_states)
       ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >>& cam_out_temp
    #endif
    
-   echo "after run-pc.csh "`ncdump -h caminput.nc | grep -i phis`
-   
    grep 'END OF MODEL RUN' cam_out_temp > /dev/null
    if ($status == 0) then
       # Extract the new state vector information from the new caminput.nc and
       # put it in temp_ud (time followed by state)
       ${CENTRALDIR}/trans_pv_sv
-   
-      echo "after trans_pv_sv "`ncdump -h caminput.nc | grep -i phis`
    
       # Move updated state vector and new CAM/CLM initial files back to experiment
       # directory for use by filter and the next advance.

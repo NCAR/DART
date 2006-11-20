@@ -81,15 +81,6 @@ echo mkmf_perfect_model_obs
 csh mkmf_perfect_model_obs
 make         || exit 5
 
-# this one needs to be compiled with MPI.
-echo mkmf_filter
-csh mkmf_filter
-echo updating Makefile for MPI
-\cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' -e 's/(CC)/(MPICC)/' Makefile.back > Makefile
-\rm -f Makefile.back
-make         || exit 6
-
 echo mkmf_obs_diag
 csh mkmf_obs_diag
 make         || exit 7
@@ -125,6 +116,15 @@ make         || exit 10
 echo skipping mkmf_smoother
 #csh mkmf_smoother
 #make         || exit 11
+
+# this one needs to be compiled with MPI.
+echo mkmf_filter
+csh mkmf_filter
+echo updating Makefile for MPI
+\cp -f Makefile Makefile.back
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' -e 's/(CC)/(MPICC)/' Makefile.back > Makefile
+\rm -f Makefile.back
+make         || exit 6
 
 echo " "
 echo time to run filter here:

@@ -51,9 +51,15 @@ type(time_type)        :: adv_to_time
 real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, mem_unit, x_size
 character (len = 128)  :: file_name, file_in 
+logical                :: do_output = .false.
+
+if(file_exist('element1')) do_output = .true.
 
 ! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in trans_sv_pv'
+if (do_output) then
+   WRITE(*,'(////A)') '========================================================================='
+   PRINT*,'static_init_assim_model in trans_sv_pv'
+endif
 call static_init_assim_model()
 call init_assim_model(x)
 
@@ -89,6 +95,8 @@ call vector_to_prog_var (x_state, var)
 deallocate (x_state)
 
 ! write fields to the netCDF initial file
+! merge/MPI; this requires no change; a CAM state will exist in model_mod,
+!            but this will ignore it and write out *this* CAM state.
 call write_cam_init(file_name, var)
 
 end program trans_sv_pv

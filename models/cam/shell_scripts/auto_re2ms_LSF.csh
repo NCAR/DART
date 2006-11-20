@@ -22,6 +22,7 @@
 #BSUB -o restart2ms.%J.log
 #BSUB -P 86850054
 #BSUB -q economy
+#BSUB -W 1:00
 #BSUB -n 1
 #xxxx -x
 #xxxx -R "span[ptile=1]"

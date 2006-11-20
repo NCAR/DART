@@ -26,9 +26,9 @@ program trans_pv_sv
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit
-use        model_mod, only : model_type, init_model_instance, end_model_instance, read_cam_init, &
-                             prog_var_to_vector
+use    utilities_mod, only : get_unit, file_exist
+use        model_mod, only : model_type, init_model_instance, end_model_instance, &
+                             prog_var_to_vector, read_cam_init
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
    init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
    set_model_time, open_restart_read, open_restart_write, close_restart, &
@@ -53,10 +53,14 @@ character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ud', &
 type(assim_model_type) :: x
 type(model_type)       :: var
 type(time_type)        :: model_time, adv_to_time
-real(r8), allocatable  :: x_state(:), x_temp(:)
+real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
+logical                :: do_output = .false.
+
+if(file_exist('element1')) do_output = .true.
 
 ! Static init assim model calls static_init_model
+! which now (merge/MPI) calls read_cam_init)
 call static_init_assim_model()
 
 ! Initialize the assim_model instance
@@ -64,9 +68,13 @@ call init_assim_model(x)
 
 ! Allocate the local state vector
 x_size = get_model_size()
-allocate(x_state(x_size), x_temp(x_size))
+allocate(x_state(x_size))
 
 ! Allocate the instance of the cam model type for storage
+! Nancy; why did we comment this out?  
+!        Do it in read_cam_init?
+!        What about end_model_instance?
+! I'll just point to the space I need, not;    
 call init_model_instance(var)
 
 ! Read the file cam state fragments into var, but not time
@@ -84,7 +92,9 @@ call set_model_state_vector(x, x_state)
 ! so we use the target time of the restart file (from assim_model_state)
 ! as the current model state time.
 file_unit = open_restart_read(file_time)
-call aread_state_restart(model_time, x_temp, file_unit, adv_to_time)
+! We're done with x_state, so it can be uselessly filled in aread_state_restart,
+! while getting model_time.
+call aread_state_restart(model_time, x_state, file_unit, adv_to_time)
 call set_model_time (x, adv_to_time)
 call close_restart(file_unit)
 
