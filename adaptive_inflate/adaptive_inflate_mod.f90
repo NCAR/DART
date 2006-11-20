@@ -478,13 +478,6 @@ dist_2 = (x_p - y_o)**2
 !!!if(gamma > 0.99_r8) then
 if(gamma > 1.01_r8) then
 
-
-   !!!new_cov_inflate = lambda_mean
-   !!!new_cov_inflate_sd = lambda_sd
-   !!!return
-   
-
-
 ! The solution of the cubic below only works if gamma is 1.0
 ! Can analytically find the maximum of the product: d/dlambda is a
 ! cubic polynomial in lambda**2; solve using cubic formula for real root
@@ -533,7 +526,7 @@ if(gamma > 1.01_r8) then
    ! Put in code to approximate the mode (new_cov_inflate)
    !write(*, *) 'old, orig mode is ', lambda_mean, new_cov_inflate
 else
-   ! If gamma is non-zero, have to approximate with Taylor series for likelihood term
+   ! Approximate with Taylor series for likelihood term
    call linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma, &
       new_cov_inflate)
 endif
