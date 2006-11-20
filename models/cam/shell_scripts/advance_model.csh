@@ -112,7 +112,8 @@ while($state_copy <= $num_states)
 
    # this just creates a file that helps you figure out which member is
    # being advanced in this directory. FYI only, you don't need it.
-   echo "junk" >! element$element
+   echo $element >! element
+   ${COPY} element element$element
 
    echo "ls $temp_dir for element $element" >> cam_out_temp
    ls -lRt                                  >> cam_out_temp
