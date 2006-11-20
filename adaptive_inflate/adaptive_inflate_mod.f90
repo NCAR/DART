@@ -122,7 +122,7 @@ if(.not. deterministic) call init_random_seq(inflate_handle%ran_seq)
 
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
 if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
-   write(errstring, *) 'Cannot have non-determinisitic inflation and inf_lower_bound < 1'
+   write(errstring, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
    call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
 endif
 
