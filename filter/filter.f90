@@ -406,6 +406,17 @@ AdvanceTime : do
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
+!-------- Test of posterior inflate ----------------
+
+   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+      call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
+      ! Recompute the mean or the mean and spread as required for diagnostics
+      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+   endif
+
+!-------- End of posterior  inflate ----------------
+
+
    ! Now back to var complete for diagnostics
    call all_copies_to_all_vars(ens_handle)
 
@@ -441,16 +452,7 @@ AdvanceTime : do
 
 !-------- Test of posterior inflate ----------------
  
-   ! Compute mean and spread for inflation and state diagnostics
-      ! Transform to compute mean (and spread) FOLLOWING LINE NOT NEEDED???
-      call all_vars_to_all_copies(ens_handle)
-      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
-      call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
-      ! Recompute the mean or the mean and spread as required for diagnostics
-      call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
       ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
       call all_vars_to_all_copies(obs_ens_handle)
       call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
@@ -460,7 +462,6 @@ AdvanceTime : do
          OBS_PRIOR_VAR_END, inflate_only = .true.)
       call all_copies_to_all_vars(ens_handle)
    endif
-
 
 !-------- End of posterior  inflate ----------------
 
