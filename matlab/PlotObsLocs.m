@@ -216,7 +216,7 @@ for epoch = epochlist
  % setup before looping over observations:
  mobs = max(s(:,4));       % max obs type number found in file
  nobstypes = 0;            % running count of obs types found
- lmax = 1;                 % largest level found (default 1 so not degenerate)
+ lmax = 0;                 % largest level found
  obs_labels = {};          % legend labels
  
  % if we are only looking at specific observation types loop over those.
@@ -282,6 +282,9 @@ for epoch = epochlist
        if (size(arg_box,2) > 4)
           use_box = arg_box;
        else
+          if (lmax == 0)   
+             lmax = 1; 
+          end
           use_box = [arg_box 0 lmax];
        end
        if (arg_invertz == 1)
@@ -293,6 +296,9 @@ for epoch = epochlist
       if (arg_plotd == 2)
         use_box = [0 360 -90 90];
       else
+        if (lmax == 0)   
+           lmax = 1; 
+        end
         use_box = [0 360 -90 90 0 lmax];
         if (arg_invertz == 1)
            set(gca,'ZDir','reverse');
@@ -322,7 +328,9 @@ for epoch = epochlist
    legendloc = arg_legend3dloc;
  end
 
- h = legend( obs_labels , 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
+ % splitting this into 2 lines makes matlab 6.5 happier. 
+ h = legend( obs_labels );
+ legend( h, 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
  
  % example of how to escape only underscores if we still want to use tex
  % in the strings. (instead of turning the interpreter off completely).
@@ -332,7 +340,6 @@ for epoch = epochlist
  if (arg_world)
  
     % add a 2D plot of the world continent outlines
-lmax
     worldmap(lmax);
     
     % these plots are generally longer than high, and add 3d-box.
@@ -351,7 +358,7 @@ lmax
    xlabel('Longitude (degrees)', 'FontSize', 14);
    ylabel('Latitude (degrees)', 'FontSize', 14);
    if (arg_plotd == 3)
-     zlabel('Height (units = pressure?)', 'FontSize', 14);
+     zlabel('Height (units = ?)', 'FontSize', 14);
    end
  else
    xlabel('First coordinate', 'FontSize', 14);
