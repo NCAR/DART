@@ -64,7 +64,7 @@ type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc
 
 !---------------------
-integer :: obsindex, i, j, iunit, ierr, io, ivarcount
+integer :: obsindex, i, j, iunit, lunit, ierr, io, ivarcount
 character(len = 129) :: obs_seq_in_file_name
 character(len =  40) :: obs_kind_names   ! 8 longer than length of obs_def_mod:get_obs_name 
 
@@ -148,6 +148,7 @@ integer :: Nregions       = 4
 real(r8):: rat_cri        = 3.0_r8   ! QC ratio
 real(r8):: qc_threshold   = 4.0_r8   ! maximum NCEP QC factor
 logical :: print_mismatched_locs = .false.
+logical :: print_obs_locations = .false.
 logical :: verbose = .false.
 
 ! TJH - South Pole == lat 0   after you convert from radians.
@@ -166,7 +167,7 @@ namelist /obs_diag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
                        plevel, hlevel, mlevel, obs_select, rat_cri, qc_threshold, &
                        Nregions, lonlim1, lonlim2, latlim1, latlim2, &
-                       reg_names, print_mismatched_locs, verbose
+                       reg_names, print_mismatched_locs, print_obs_locations, verbose
 
 integer  :: iregion, iepoch, ivar, ifile, num_obs_in_epoch
 real(r8) :: lon0, lat0, obsloc3(3)
@@ -253,6 +254,7 @@ type(time_type) :: obs_time, skip_time
 
 character(len =   6) :: day_num 
 character(len = 129) :: gesName, anlName, msgstring
+character(len = 129) :: locName, locstring_good, locstring_bad
 character(len =  32) :: str1, str2, str3
 
 !-----------------------------------------------------------------------
@@ -345,7 +347,7 @@ write(    *      ,nml=obs_diag_nml)
 
 ! Open file for histogram of innovations, as a function of standard deviation.
 nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
-write(nsigmaUnit,*) '  day   secs    lon    lat   level    obs   guess  ratio    key   kind'
+write(nsigmaUnit,'(a)') '   day   secs    lon      lat    level         obs         guess   ratio   key   kind'
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
 !----------------------------------------------------------------------
@@ -735,6 +737,14 @@ ObsFileLoop : do ifile=1, Nepochs*4
       write(logfileunit, *) 'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
       write(     *     , *) 'num_obs_in_epoch (', iepoch, ') = ', num_obs_in_epoch
 
+      ! Open each epoch file here if writing out auxiliary location files
+      if (print_obs_locations) then
+          ! Append epoch number to name
+          write(locName,'(a,i3.3,a)') 'observation_locations.', iepoch, '.dat'
+          lunit = open_file(trim(adjustl(locName)),form='formatted',action='rewind')
+          write(lunit, '(a)') '   lon      lat    lev     kind   key    used'
+      endif
+
       allocate(keys(num_obs_in_epoch))
 
       call get_time_range_keys(seq, key_bounds, num_obs_in_epoch, keys)
@@ -754,6 +764,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! variable to ask which identity observation you would
          ! like to track. Maybe tomorrow ...
  
+         ! nsc -- are these ignored?
          if (flavor < 0) then
             Nidentity = Nidentity + 1
             cycle ObservationLoop
@@ -854,6 +865,14 @@ ObsFileLoop : do ifile=1, Nepochs*4
             write(*,*)'pr_sprd,po_sprd ',pr_sprd,po_sprd
          endif
 
+         ! Format both strings here, then wait to see if it's a 'keeper' or not
+         if (print_obs_locations) then
+             write(locstring_good, FMT='(2f8.2,i7,1x,3i7)') &
+                                   lon0, lat0, ivert, flavor, keys(obsindex), 1
+             write(locstring_bad,  FMT='(2f8.2,i7,1x,3i7)') &
+                                   lon0, lat0, ivert, flavor, keys(obsindex), 0
+         endif
+
          !--------------------------------------------------------------
          ! A Whole bunch of reasons to be rejected
          !--------------------------------------------------------------
@@ -862,6 +881,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          if ( .not. keeper ) then
             write(*,*)'obs ',obsindex,' rejected by CheckObsType ',flavor
             NwrongType = NwrongType + 1
+            if (print_obs_locations) write(lunit, '(a)') trim(locstring_bad)
             cycle ObservationLoop
          endif
 
@@ -870,12 +890,14 @@ ObsFileLoop : do ifile=1, Nepochs*4
          !  write(*,*)'obs ',obsindex,' rejected. ivert was ',ivert,&
          !                            ' for which_vert ',which_vert(flavor)
             NbadLevel = NbadLevel + 1
+            if (print_obs_locations) write(lunit, '(a)') trim(locstring_bad)
             cycle ObservationLoop
          endif
 
          if( qc(qc_index) >= qc_threshold ) then
          !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(qc_index)
             NbadQC = NbadQC + 1
+            if (print_obs_locations) write(lunit, '(a)') trim(locstring_bad)
             cycle ObservationLoop
          endif
 
@@ -897,7 +919,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          if(ratio > 10.0_r8) then
             call get_time(obs_time,seconds,days)
 
-            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f7.2,i6,1x,2f10.2,f7.1,2i7)') &
+            write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f8.2,i7,1x,2f13.2,f8.1,2i7)') &
                  days, seconds, lon0, lat0, ivert, &
                  obs(1), pr_mean, ratio, keys(obsindex), flavor
          endif
@@ -931,6 +953,12 @@ ObsFileLoop : do ifile=1, Nepochs*4
             cycle ObservationLoop
 
          endif
+
+         !--------------------------------------------------------------
+         ! Print out location of observation if namelist item is true
+         !--------------------------------------------------------------
+
+         if (print_obs_locations) write(lunit, '(a)') trim(locstring_good)
 
          !--------------------------------------------------------------
          ! We have Nregions of interest
@@ -1268,6 +1296,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
       write(     *     ,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
    endif
 
+   if (print_obs_locations) close(lunit)
+
    call destroy_obs(obs1)
    call destroy_obs(obsN)
    call destroy_obs(observation)
@@ -1515,6 +1545,15 @@ AllLevels : do ivar=1,max_obs_kinds
 enddo AllLevels
 
 610 format(i5, 4(1x,f13.3,1x,i8) )
+
+!-----------------------------------------------------------------------
+! Add the observation kind strings to the matlab attribute file
+!-----------------------------------------------------------------------
+do ivar = 1,max_obs_kinds
+   obs_kind_names = get_obs_kind_name(ivar)
+   write(iunit,98) ivar, trim(adjustl(obs_kind_names))
+enddo
+98 format('Observation_Kind(',i3,') = {''',a,'''};')
 
 !-----------------------------------------------------------------------
 close(iunit)   ! Finally close the 'master' matlab diagnostic file.
