@@ -176,7 +176,7 @@ utilities_mod
       bin_separation, bin_width, time_to_skip, max_num_bins, 
       plevel, hlevel, <em class=changed>mlevel</em>, obs_select, rat_cri, qc_threshold, 
       Nregions, lonlim1, lonlim2, latlim1, latlim2, reg_names,
-      print_mismatched_locs, verbose
+      print_mismatched_locs, print_obs_locations, verbose
    </pre></div>
 </P>
 
@@ -327,8 +327,14 @@ utilities_mod
 
 <TR><!--contents--><TD valign=top>   print_mismatched_locs </TD>
     <!--  type  --><TD valign=top>   logical               </TD>
-    <!--descript--><TD>print instances where U and V "pairs" don't have the 
+    <!--descript--><TD>Print instances where U and V "pairs" don't have the 
 	    same location.<BR>
+	    Default: .false. </TD></TR>  
+
+<TR><!--contents--><TD valign=top>   print_obs_locations </TD>
+    <!--  type  --><TD valign=top>   logical             </TD>
+    <!--descript--><TD>Create additional output files with the lat/lon
+            location of each observation plus obs type.<BR>
 	    Default: .false. </TD></TR>  
 
 <TR><!--contents--><TD valign=top>   verbose   </TD>
