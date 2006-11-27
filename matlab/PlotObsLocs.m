@@ -328,9 +328,11 @@ for epoch = epochlist
    legendloc = arg_legend3dloc;
  end
 
- % splitting this into 2 lines makes matlab 6.5 happier. 
- h = legend( obs_labels );
- legend( h, 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
+ % If you have Matlab v6.5 or before, this must be split into 2 lines
+ %h = legend( obs_labels );
+ %legend( h, 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
+ % Matlab v7.0+ requires it all in one go.  Anyone know a way which works for both?
+ legend( obs_labels , 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
  
  % example of how to escape only underscores if we still want to use tex
  % in the strings. (instead of turning the interpreter off completely).
