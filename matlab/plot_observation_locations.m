@@ -122,7 +122,7 @@ while done == 0
          viewlist = reply;
       end
    
-      reply = input('Input 1 to invert of Z axis (e.g. for pressure); 0 otherwise:  ');
+      reply = input('Input 1 to invert Z axis (e.g. for pressure); 0 otherwise:  ');
       if (~isempty(reply))
          invertz = reply;
       end
