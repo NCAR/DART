@@ -1,18 +1,20 @@
-function worldmap(ifill,lonorg)
+function h = worldmap(ifill,lonorg,level)
 % WORLDMAP  overlays the continents on an existing figure as a F(lon,lat).
 %           The continents can be filled or "hollow".
 %
 %           This is not appropriate for use with a real MAP (i.e. anything
 %           other than a simple lon vs. lat plot)
 %
-% USAGE: worldmap([fill],[lonorigin])
+% USAGE: worldmap([fill],[lonorigin],[level])
 %
 % fill == 'hollow' 		=> outline of landmasses (DEFAULT) 
 % fill == 'solid' 		=> solid black landmasses
+% fill == 'light' 		=> solid grey landmasses
 % lonorigin == 'greenwich'	=> Greenwich Meridian  [   0,360]
 % lonorigin == 'dateline'	=> Greenwich Meridian  [-180,180]
+% level == 123                  => Z location to plot the 2d sheet
 %
-% The order of the arguments is immaterial. They are both optional.
+% The order of the arguments is immaterial. They are all optional.
 %
 % This basically gets 1degree elevation data and then contours it
 % around zero ... It tries to be intelligent about whether you are 
@@ -31,6 +33,8 @@ function worldmap(ifill,lonorg)
 % worldmap('solid');			% SOLID LANDMASSES
 %
 
+% tjh   1998.mar.26
+
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2006, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
@@ -43,36 +47,60 @@ function worldmap(ifill,lonorg)
 
 filltype  = 'hollow';
 lonorigin = 'greenwich';
+zlevel = 0.0;
 
-if (nargin == 1)
+if (nargin >= 1)
 
-   switch lower(ifill)
-      case 'hollow', 	filltype  = 'hollow';
-      case 'solid',  	filltype  = 'solid';
-      case 'greenwich',	lonorigin = 'greenwich';
-      case 'dateline',  lonorigin = 'dateline';
-      otherwise, error('argument unknown')
+   if (isa(ifill,'char'))
+      switch lower(ifill)
+         case 'light', 		filltype  = 'light';
+         case 'hollow', 	filltype  = 'hollow';
+         case 'solid',  	filltype  = 'solid';
+         case 'greenwich',	lonorigin = 'greenwich';
+         case 'dateline',  	lonorigin = 'dateline';
+         otherwise, error('argument unknown')
+      end
+   else
+      zlevel = ifill;
    end
 
-elseif (nargin == 2)
+end
 
-   switch lower(ifill)
-      case 'hollow', 	filltype  = 'hollow';
-      case 'solid',  	filltype  = 'solid';
-      case 'greenwich',	lonorigin = 'greenwich';
-      case 'dateline',  lonorigin = 'dateline';
-      otherwise, error('first argument unknown')
+if (nargin >= 2)
+
+   if (isa(lonorg,'char'))
+      switch lower(lonorg)
+         case 'light', 		filltype  = 'light';
+         case 'hollow', 	filltype  = 'hollow';
+         case 'solid',  	filltype  = 'solid';
+         case 'greenwich',	lonorigin = 'greenwich';
+         case 'dateline',  	lonorigin = 'dateline';
+         otherwise, error('second argument unknown')
+      end
+   else
+      zlevel = lonorg;
    end
 
-   switch lower(lonorg)
-      case 'hollow', 	filltype  = 'hollow';
-      case 'solid',  	filltype  = 'solid';
-      case 'greenwich',	lonorigin = 'greenwich';
-      case 'dateline',  lonorigin = 'dateline';
-      otherwise, error('second argument unknown')
-   end
+end
    
-elseif (nargin > 2)
+if (nargin >= 3)
+
+   if (isa(level,'char'))
+      switch lower(level)
+         case 'light', 		filltype  = 'light';
+         case 'hollow', 	filltype  = 'hollow';
+         case 'solid',  	filltype  = 'solid';
+         case 'greenwich',	lonorigin = 'greenwich';
+         case 'dateline',  	lonorigin = 'dateline';
+         otherwise, error('third argument unknown')
+      end
+   else
+      zlevel = level;
+   end
+
+end
+   
+if (nargin >= 4)
 
    disp(' ')
    disp('AAAAAAAAHHHHH! Thump.')
@@ -90,6 +118,8 @@ lats = [-89.5:89.5];                    % CREATE LAT ARRAY FOR TOPO MATRIX
 lons = [0.5:359.5];                     % CREATE LON ARRAY FOR TOPO MATRIX
 nlon = length(lons);
 nlat = length(lats);
+
+topo = topo + zlevel;       % optional shift of vertical level 
 
 %---------------------------------------------------------------------------
 % IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
@@ -129,20 +159,42 @@ y    = lats(lat_ind1:lat_ind2);
 
 %---------------------------------------------------------------------------
 % Contour the "subset"
+% There are differences between 6.5 and 7.0 that make changing the colors
+% of the filled contours a real pain. Providing both solutions.
 %---------------------------------------------------------------------------
 
 orgholdstate = ishold;
 hold on;
 
 if strcmp(filltype,'hollow')
-   [c,h] = contour(x,y,elev,[0.0 0.0],'k-');
-else
-   [c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
-   for i=1:length(h),                      % FOR EACH LANDMASS
-      set(h(i),'FaceColor',[0 0 0]);       % SET COLOR TO BLACK
+
+   [c,h] = contour(x,y,elev,[zlevel zlevel],'k-');
+
+elseif strcmp(filltype,'light')
+
+   [c,h] = contourf(x,y,elev,[zlevel zlevel],'k-');
+
+   if (length(h) == 1)    % do it the 'new' way
+      kids = get(h,'Children'); 
+      set(kids,'FaceColor',[0.7 0.7 0.7]); % SET COLOR TO lt gray
+   else
+      set(h   ,'FaceColor',[0.7 0.7 0.7]); % SET COLOR TO lt gray
    end
+
+else
+
+   [c,h] = contourf(x,y,elev,[zlevel zlevel],'k-');
+
+   if (length(h) == 1)    % do it the 'new' way
+      kids = get(h,'Children'); 
+      set(kids,'FaceColor',[0.0 0.0 0.0]); % SET COLOR TO black
+   else
+      set(h   ,'FaceColor',[0.0 0.0 0.0]); % SET COLOR TO black
+   end
+
 end
 
 if (orgholdstate == 0) hold off; end;
 
 axis(ax);				% MAINTAIN ORIGINAL LIMITS
+
