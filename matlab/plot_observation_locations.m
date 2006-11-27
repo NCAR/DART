@@ -1,6 +1,6 @@
 % PLOT_OBSERVATION_LOCATIONS : Plots the locations of the input observations
 %
-% By default, this command creates 2d plots of observation locations,
+% By default this command creates 2d plots of observation locations,
 % one per time epoch, from data output from the obs_diag program if
 % the 'print_obs_locations' namelist item in the &obs_diag list is .true.
 %
