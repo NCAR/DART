@@ -166,30 +166,48 @@ y    = lats(lat_ind1:lat_ind2);
 orgholdstate = ishold;
 hold on;
 
+% outlines only.  contour3 works in both 2D and 3D plots.
 if strcmp(filltype,'hollow')
 
-   [c,h] = contour(x,y,elev,[zlevel zlevel],'k-');
-
-elseif strcmp(filltype,'light')
-
-   [c,h] = contourf(x,y,elev,[zlevel zlevel],'k-');
-
-   if (length(h) == 1)    % do it the 'new' way
-      kids = get(h,'Children'); 
-      set(kids,'FaceColor',[0.7 0.7 0.7]); % SET COLOR TO lt gray
-   else
-      set(h   ,'FaceColor',[0.7 0.7 0.7]); % SET COLOR TO lt gray
-   end
+   [c,h] = contour3(x,y,elev,[zlevel zlevel],'k-');
 
 else
 
+   % must use contourf first, then alter color and possibly level.
+   if strcmp(filltype,'light')
+      fcolor = [0.7 0.7 0.7];    % light grey
+   else
+      fcolor = [0.0 0.0 0.0];    % black
+   end
+
+   % compute the filled contour lines.
    [c,h] = contourf(x,y,elev,[zlevel zlevel],'k-');
 
-   if (length(h) == 1)    % do it the 'new' way
+   % give them the requested color
+   if (length(h) == 1)    % matlab v 7.0 and above
       kids = get(h,'Children'); 
-      set(kids,'FaceColor',[0.0 0.0 0.0]); % SET COLOR TO black
-   else
-      set(h   ,'FaceColor',[0.0 0.0 0.0]); % SET COLOR TO black
+      set(kids,'FaceColor',fcolor);
+   else                   % matlab 6.5 and below
+      set(h   ,'FaceColor',fcolor);
+   end
+
+   % if not in the 2d plane, add z coordinates at the right level
+   % (contourf is 2D only; no filled contour3() option exists.)
+   if (zlevel ~= 0.0)  
+      if (length(h) == 1)    % matlab v 7.0 and above
+         kids = get(h,'Children'); 
+         for i=1:length(kids)
+           mz = get(kids(i), 'XData');
+           z = zeros(length(mz), 1) + zlevel;
+           set(kids(i), 'ZData', z);
+         end
+      else                   % matlab 6.5 and below
+         for i=1:length(h)
+            mz = get(h(i), 'XData');
+            z = zeros(length(mz), 1) + zlevel;
+            set(h(i), 'ZData', z);
+         end
+      end
    end
 
 end
