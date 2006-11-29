@@ -857,7 +857,7 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
    if(.not. input_qc_ok(input_qc(1))) then
       ! The forward operator value is set to -99 if prior qc was failed
-      forward_op_ens_handle%vars(j, 1:my_num_copies) = -99
+      forward_op_ens_handle%vars(j, :) = -99
       obs_ens_handle%vars(j, 1:my_num_copies) = missing_r8 
       ! No need to do anything else for a failed observation
       cycle ALL_OBSERVATIONS
