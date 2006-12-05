@@ -53,8 +53,8 @@ end
 % Get some information from the diagn_file 
 fd = netcdf(pinfo.diagn_file);
 d.model      = fd.model(:);
-d.num_copies = ncsize(fd('copy')); % determine # of ensemble members
-d.num_times  = ncsize(fd('time')); % determine # of output times
+d.num_copies = length(fd('copy')); % determine # of ensemble members
+d.num_times  = length(fd('time')); % determine # of output times
 close(fd);
 
 % Get the indices for the ensemble mean
