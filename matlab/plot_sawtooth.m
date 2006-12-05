@@ -57,6 +57,8 @@ pstruct.posterior_file = posterior_file;
 if ( exist(truth_file) == 2 )
    CheckModelCompatibility(truth_file, prior_file)
    pstruct.truth_file  = truth_file;
+else
+   pstruct.truth_file  = [];
 end
 
 
@@ -72,16 +74,19 @@ switch lower(pstruct.model)
       pinfo               = SetVariableID(pstruct);
       pstruct.var         = pinfo.var;
       pstruct.var_inds    = pinfo.var_inds;
-
-      copyindices         = SetCopyID(prior_file);
-      pstruct.copyindices = copyindices;
+      pstruct.copyindices = SetCopyID(prior_file);
 
    case 'fms_bgrid'
 
       pstruct = GetBgridInfo(prior_file, 'PlotSawtooth');
-      pstruct.truth_file     = truth_file;
       pstruct.prior_file     = prior_file;
       pstruct.posterior_file = posterior_file;
+
+   case 'cam'
+
+      pstruct = GetCamInfo(pstruct,'PlotSawtooth');
+      pstruct.copyindices = SetCopyID2(pstruct.prior_file);
+      pstruct.copies      = length(pstruct.copyindices);
 
    otherwise
 
