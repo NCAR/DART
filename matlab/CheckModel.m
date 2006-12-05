@@ -182,6 +182,32 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy));
 
+   case 'cam'
+
+      % A more robust way would be to use the netcdf low-level ops:
+      % bob = var(f);     % bob is a cell array of ncvars
+      % name(bob{1})       % is the variable name string
+      % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
+      % have not yet figured out a way to only use non-coordinate variables.
+
+      varnames = {'PS','T','U','V','Q','CLDLIQ','CLDICE'};
+      num_vars = length(varnames);
+      nlevels  = ncsize(f('lev')); % determine # of state variables
+      if (prod(size(nlevels)) > 1 ) 
+          error(sprintf('%s has no ''lev'' dimension.',fname))
+      end
+
+      atts = dim(f{'time'}); num_times  = length(atts{1}); % determine # of output times
+
+      vars = struct('model',model, ...
+              'num_state_vars',num_vars, ...
+              'num_ens_members',num_copies, ...
+              'time_series_length',num_times, ...
+              'min_ens_mem',min(copy), ...
+              'max_ens_mem',max(copy) );
+         %    'max_ens_mem',max(copy), ...
+         %    'varnames',varnames);
+
    case 'pbl_1d'
 
       % A more robust way would be to use the netcdf low-level ops:
