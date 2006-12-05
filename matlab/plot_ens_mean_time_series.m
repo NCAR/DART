@@ -35,15 +35,21 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-CheckModelCompatibility(truth_file, diagn_file)
-vars  = CheckModel(truth_file);   % also gets default values for this model.
-varid = SetVariableID(vars);      % queries for variable IDs if needed.
+vars  = CheckModel(diagn_file);   % also gets default values for this model.
+
+if (exist(truth_file)==2)
+   CheckModelCompatibility(truth_file, diagn_file)
+   truth_file = truth_file;
+else
+   truth_file = [];
+end
 
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04','forced_lorenz_96'} 
 
+      varid = SetVariableID(vars);      % queries for variable IDs if needed.
       pinfo = struct('truth_file', truth_file, ...
                      'diagn_file', diagn_file, ...
                      'var'       , varid.var, ...
@@ -58,13 +64,25 @@ switch lower(vars.model)
       pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
       pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
 
-      pinfo
+   case 'cam'
+
+      vars.truth_file     = truth_file;
+      vars.diagn_file     = diagn_file;
+      vars.prior_file     = [];
+      vars.posterior_file = [];
+      pinfo               = GetCamInfo(vars, 'PlotEnsMeanTimeSeries');
+   %  pinfo.copyindices   = SetCopyID2(vars.diagn_file);
+   %  pinfo.copies        = length(pinfo.copyindices);
+      pinfo.truth_file    = truth_file;
+      pinfo.diagn_file    = diagn_file;
 
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
+
+pinfo % echo for posterity.
 
 PlotEnsMeanTimeSeries( pinfo )
 clear vars varid
