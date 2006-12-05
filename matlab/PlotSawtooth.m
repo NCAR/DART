@@ -58,9 +58,7 @@ if ( exist(pinfo.truth_file,'file') == 2 )
 
    ft = netcdf(pinfo.truth_file);
    truth.model      = ft.model(:);
-   truth.num_vars   = ncsize(ft('StateVariable')); % determine # of state variables
-   truth.num_copies = ncsize(ft('copy'));          % determine # of ensemble members
-   truth.num_times  = ncsize(ft('time'));          % determine # of output times
+   truth.num_times  = length(ft('time'));          % determine # of output times
    close(ft);
 
    truth.truth_index  = get_copy_index(pinfo.truth_file, 'true state' );
@@ -71,18 +69,14 @@ end
 % Get some information from the prior_file 
 fpr = netcdf(pinfo.prior_file);
 prior.model      = fpr.model(:);
-prior.num_vars   = ncsize(fpr('StateVariable')); % determine # of state variables
-prior.num_copies = ncsize(fpr('copy'));          % determine # of ensemble members
-prior.num_times  = ncsize(fpr('time'));          % determine # of output times
+prior.num_times  = length(fpr('time'));          % determine # of output times
 prior.times      = getnc(pinfo.prior_file,'time');
 close(fpr);
 
 % Get some information from the posterior_file 
 fpo = netcdf(pinfo.posterior_file);
 post.model      = fpo.model(:);
-post.num_vars   = ncsize(fpo('StateVariable')); % determine # of state variables
-post.num_copies = ncsize(fpo('copy'));          % determine # of ensemble members
-post.num_times  = ncsize(fpo('time'));          % determine # of output times
+post.num_times  = length(fpo('time'));          % determine # of output times
 post.timeunits  = fpo{'time'}.units(:);
 post.calendar   = fpo{'time'}.calendar(:);
 close(fpr);
