@@ -20,6 +20,8 @@ function pinfo = GetCamInfo(pstruct,routine);
 
 if (     exist(pstruct.truth_file) )
        fname = pstruct.truth_file;
+elseif ( exist(pstruct.diagn_file) )
+       fname = pstruct.diagn_file;
 elseif ( exist(pstruct.prior_file) )
        fname = pstruct.prior_file;
 elseif ( exist(pstruct.posterior_file) )
