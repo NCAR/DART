@@ -70,8 +70,6 @@ switch lower(vars.model)
       pinfo               = GetCamInfo(vars, 'PlotEnsTimeSeries');
       pinfo.truth_file    = truth_file;
       pinfo.diagn_file    = diagn_file;
-%     pinfo.copyindices   = SetCopyID2(pinfo.diagn_file);
-%     pinfo.copies        = length(pinfo.copyindices);
 
    otherwise
       error(sprintf('model %s not implemented yet', vars.model))
