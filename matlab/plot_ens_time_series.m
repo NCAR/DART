@@ -16,6 +16,7 @@
 % $Name$
  
 if (exist('truth_file') ~= 1)
+   disp('If the True_State.nc exists, it will be plotted. If not, don''t worry.')
    truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
    if isempty(truth_file)
       truth_file = 'True_State.nc';
@@ -30,15 +31,21 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-CheckModelCompatibility(truth_file, diagn_file)
-vars  = CheckModel(truth_file);   % also gets default values for this model.
-varid = SetVariableID(vars);      % queries for variable IDs if needed.
+vars  = CheckModel(diagn_file);   % also gets default values for this model.
+
+if (exist(truth_file)==2)
+   CheckModelCompatibility(truth_file, diagn_file)
+   truth_file = truth_file;
+else
+   truth_file = [];
+end
 
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	   'forced_lorenz_96', 'lorenz_04'}
 
+      varid = SetVariableID(vars);      % queries for variable IDs if needed.
       pinfo = struct('truth_file', truth_file, ...
                      'diagn_file', diagn_file, ...
                      'var'       , varid.var, ...
@@ -49,12 +56,24 @@ switch lower(vars.model)
 
    case 'fms_bgrid'
 
+      varid = SetVariableID(vars);      % queries for variable IDs if needed.
       pinfo = GetBgridInfo(diagn_file, 'PlotEnsTimeSeries');
       pinfo.truth_file = truth_file;   % known to be compatible.
       pinfo.diagn_file = diagn_file;   % known to be compatible.
 
-   otherwise
+   case 'cam'
 
+      vars.truth_file     = truth_file; 
+      vars.diagn_file     = diagn_file; 
+      vars.prior_file     = []; 
+      vars.posterior_file = []; 
+      pinfo               = GetCamInfo(vars, 'PlotEnsTimeSeries');
+      pinfo.truth_file    = truth_file;
+      pinfo.diagn_file    = diagn_file;
+%     pinfo.copyindices   = SetCopyID2(pinfo.diagn_file);
+%     pinfo.copies        = length(pinfo.copyindices);
+
+   otherwise
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
