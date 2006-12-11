@@ -1,0 +1,18 @@
+# Notes for obs_def_radar_mod_nml:
+# (1) Reflectivity limit can be applied both to observations or state (forward operator).
+# (2) Default lowest_reflectivity values DART will use (if apply_reflectivity_limit = .true.)
+#     is missing_r8. If you want to use the default, delete the line of respective
+#     lowest_reflectivity.
+# (3) As it is not clear how to assimilate Z (for now), "convert_to_dbz" is reset to .true.
+#     even if you set it to .false. here in the namelist.
+
+&obs_def_radar_mod_nml
+   convert_to_dbz            =  .true. ,
+   dbz_threshold             =   0.001 ,
+   apply_ref_limit_to_obs    = .false. ,
+   reflectivity_limit_obs    =     0.0 ,
+   lowest_reflectivity_obs   =     0.0 ,
+   apply_ref_limit_to_state  = .false. ,
+   reflectivity_limit_state  =     0.0 ,
+   lowest_reflectivity_state =     0.0  /
+
