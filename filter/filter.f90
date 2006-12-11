@@ -914,11 +914,11 @@ subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size
 
 type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle
 integer,                 intent(in)    :: ens_size
+integer,                 intent(in)    :: num_obs_in_set
 integer,                 intent(in)    :: keys(num_obs_in_set), prior_post
 integer,                 intent(in)    :: num_output_members, members_index
 integer,                 intent(in)    :: ens_mean_index, ens_spread_index
 type(obs_sequence_type), intent(inout) :: seq
-integer,                 intent(in)    :: num_obs_in_set
 integer,                 intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
