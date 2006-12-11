@@ -270,12 +270,18 @@ integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
 character(len = LEN(file_name) + 5) :: this_file_name
 character(len = 4)                  :: extension
+logical                             :: single_file_forced
+
+if (present(force_single_file) ) then
+        single_file_forced = force_single_file
+else
+        single_file_forced = .FALSE.
+endif
 
 ! For single file, need to send restarts to pe0 and it writes them out.
 !-------------- Block for single_restart file -------------
 ! Need to force single restart file for inflation files
-if(single_restart_file_out .or. present(force_single_file) .and. &
-   force_single_file) then
+if(single_restart_file_out .or. single_file_forced) then
 
    ! Single restart file is written only by the master_pe
    if(my_pe == 0) then
