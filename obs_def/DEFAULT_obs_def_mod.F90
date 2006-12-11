@@ -326,17 +326,26 @@ endif
 
 end subroutine get_expected_obs_from_def
 
+
+
+  subroutine read_obs_def(ifile, obs_def, key, obs_val, fform)
 !----------------------------------------------------------------------------
-
-subroutine read_obs_def(ifile, obs_def, key, fform)
-
+! subroutine read_obs_def(ifile, obs_def, key, obs_val, fform)
+!
+! ifile
+! obs_def
+! key
+! obs_val    needed if you want to perform operations based on value 
+! fform
+!
 ! Reads an obs_def from file which is just an integer unit number in the
 ! current preliminary implementation.
 
-type(obs_def_type),      intent(inout) :: obs_def
-integer,                 intent(in)    :: ifile
-integer,                 intent(in)    :: key
-character(len=*), intent(in), optional :: fform
+integer,                    intent(in)    :: ifile
+type(obs_def_type),         intent(inout) :: obs_def
+integer,                    intent(in)    :: key
+real(r8),                   intent(inout) :: obs_val
+character(len=*), optional, intent(in)    :: fform
 
 character(len=5)  :: header
 character(len=32) :: fileformat
