@@ -1554,15 +1554,22 @@ end subroutine write_obs
 !-------------------------------------------------
 
 subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, &
-   obs, read_format)
+                    obs, read_format)
 
 ! Read in observation from file, watch for allocation of storage
+! This RELIES on the fact that obs%values(1) is ALWAYS the observation value
+! (as opposed to the prior or mean or ...)
+!
+! Are the checks for num_copies == 0 or <0 necessary? 
+! When would this ever occur?
 
-integer, intent(in) :: file_id, num_copies, add_copies, num_qc, add_qc, key
-character(len = 129), intent(in) :: read_format
-type(obs_type), intent(inout) :: obs
+integer,              intent(in)    :: file_id, num_copies, add_copies, num_qc, add_qc, key
+character(len = 129), intent(in)    :: read_format
+type(obs_type),       intent(inout) :: obs
 
-integer :: i
+integer  :: i
+
+obs%values(1) = missing_r8
 
 ! Read in values and qc
 if(num_copies > 0) then
@@ -1587,10 +1594,10 @@ endif
 
 if(read_format == 'unformatted') then
    read(file_id) obs%prev_time, obs%next_time, obs%cov_group
-   call read_obs_def(file_id, obs%def, key, 'unformatted')
+   call read_obs_def(file_id, obs%def, key, obs%values(1), 'unformatted')
 else
    read(file_id, *) obs%prev_time, obs%next_time, obs%cov_group
-   call read_obs_def(file_id, obs%def, key)
+   call read_obs_def(file_id, obs%def, key, obs%values(1))
 endif
 
 
