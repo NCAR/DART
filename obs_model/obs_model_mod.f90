@@ -87,6 +87,10 @@ if(.not. module_initialized) then
    module_initialized = .true.
 endif
 
+! Prepare values for 'early' returns
+num_obs_in_set  =   0
+key_bounds(1:2) = -99
+
 ! Violating the private boundaries on ens_handle by direct access
 ! If none of my copies are regular ensemble members no need to advance
 if(ens_handle%my_num_copies < 1) return
@@ -102,16 +106,10 @@ if(last_key_used > 0) then
    call get_obs_from_key(seq, last_key_used, observation)
    call get_next_obs(seq, observation, observation, is_this_last)
    ! If the end of the observation sequence has been passed, return
-   if(is_this_last) then
-      key_bounds(1:2) = -99
-      return
-   endif
+   if(is_this_last) return
 else
    is_there_one = get_first_obs(seq, observation)
-   if(.not. is_there_one) then
-      key_bounds(1:2) = -99
-      return
-   endif
+   if(.not. is_there_one) return
 endif
 
 ! Get the time of this observation
