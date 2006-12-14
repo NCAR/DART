@@ -214,7 +214,7 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
 endif
 
 ! Time step number is used to do periodic diagnostic output
-time_step_number = 0
+time_step_number = -1
 
 ! Advance model to the closest time to the next available observations
 AdvanceTime: do
