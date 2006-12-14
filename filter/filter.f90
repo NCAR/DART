@@ -291,7 +291,7 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
 endif
 
 ! Time step number is used to do periodic diagnostic output
-time_step_number = 0
+time_step_number = -1
 
 AdvanceTime : do
 
@@ -336,15 +336,7 @@ AdvanceTime : do
    ! Get all the keys associated with this set of observations
    ! Is there a way to distribute this?
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
- 
-   ! Compute the ensemble of prior observations, load up the obs_err_var and obs_values
-   ! ens_size is the number of regular ensemble members, not the number of copies
-   call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
 
-   ! Although they are integer, keys are one 'copy' of obs ensemble (the last one?)
-   call put_copy(0, obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)
- 
    ! Compute mean and spread for inflation and state diagnostics
    call all_vars_to_all_copies(ens_handle)
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -357,6 +349,14 @@ AdvanceTime : do
 
    ! Back to state space for diagnostics if required
    call all_copies_to_all_vars(ens_handle) 
+
+   ! Compute the ensemble of prior observations, load up the obs_err_var and obs_values
+   ! ens_size is the number of regular ensemble members, not the number of copies
+   call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
+      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
+
+   ! Although they are integer, keys are one 'copy' of obs ensemble (the last one?)
+   call put_copy(0, obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)
 
    ! Ship the ensemble mean to the model; some models need this for computing distances
    ! Who stores the ensemble mean copy
