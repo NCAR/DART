@@ -27,7 +27,7 @@ public :: location_type, get_location, set_location, set_location_missing, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, get_close_obs, &
           get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist
+          operator(==), operator(/=), get_dist, get_close_obs_destroy
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -360,8 +360,15 @@ type(location_type),  intent(in)    :: obs(num)
 ! Set the value of num_obs in the structure
 gc%num = num
 
-end subroutine 
+end subroutine get_close_obs_init
 
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs_destroy(gc)
+
+type(get_close_type), intent(inout) :: gc
+
+end subroutine get_close_obs_destroy
 !----------------------------------------------------------------------------
 
 subroutine get_close_maxdist_init(gc, maxdist)
