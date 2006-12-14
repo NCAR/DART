@@ -86,7 +86,17 @@ else if ($?OCOTILLO_NODEFILE) then
    # echo "node3" >> $OCOTILLO_NODEFILE
    #  alias submit 'csh \!*'
 
-   mpirun -machinefile ${OCOTILLO_NODEFILE} -np 1 ./filterscript
+   echo "running with nodes specified in $OCOTILLO_NODEFILE"
+
+ # At one point, there was reason to believe you needed another
+ # script that cd'd to the right working directory and then
+ # launch filter.
+ #
+ # echo "cd /your/favorite/runtime/directory"    >! filterscript
+ # echo "./filter"                               >> filterscript
+ # mpirun -machinefile ${OCOTILLO_NODEFILE} -np 1 ./filterscript
+
+   mpirun -machinefile ${OCOTILLO_NODEFILE} -np 1 ./filter
 
 else
 
@@ -94,7 +104,8 @@ else
    # already run 'lamboot' once to start the lam server.
    # alias submit 'mpirun \!*'
 
-   mpirun -np 1 ./filterscript
+   echo "running interactively"
+   mpirun -np 1 ./filter
 
 endif
 
