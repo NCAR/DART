@@ -86,9 +86,7 @@ else if ($?OCOTILLO_NODEFILE) then
    # echo "node3" >> $OCOTILLO_NODEFILE
    #  alias submit 'csh \!*'
 
-   foreach i ( `cat $OCOTILLO_NODEFILE` )
-     ssh $i "cd `pwd`; ./filter"
-   end 
+   mpirun -machinefile ${OCOTILLO_NODEFILE} -np 1 ./filterscript
 
 else
 
@@ -96,7 +94,7 @@ else
    # already run 'lamboot' once to start the lam server.
    # alias submit 'mpirun \!*'
 
-   mpirun -np 8 ./filter
+   mpirun -np 1 ./filterscript
 
 endif
 
