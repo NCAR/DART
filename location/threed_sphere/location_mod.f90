@@ -39,7 +39,7 @@ public :: location_type, get_location, set_location, set_location_missing, &
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
           horiz_dist_only, get_close_obs, get_close_type, &
-          get_close_maxdist_init, get_close_obs_init, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy, &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
           VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist
 
@@ -68,10 +68,14 @@ end type location_type
 type get_close_type
    integer          :: num
    real(r8)         :: maxdist 
-   integer, pointer :: lon_offset(:, :)
-   integer, pointer :: obs_box(:)
-   integer, pointer :: count(:, :)
-   integer, pointer :: start(:, :)
+   integer, pointer :: lon_offset(:, :)     ! (nlat, nlat); 
+   integer, pointer :: obs_box(:)           ! (nobs); List of obs indices in boxes
+   integer, pointer :: count(:, :)          ! (nlon, nlat); # of obs in each box
+   integer, pointer :: start(:, :)          ! (nlon, nlat); Start of list of obs in this box
+   real(r8)         :: bot_lat, top_lat     ! Bottom and top latitudes of latitude boxes
+   real(r8)         :: bot_lon, top_lon     ! Bottom and top longitudes of longitude boxes
+   real(r8)         :: lon_width, lat_width ! Width of boxes in lon and lat
+   logical          :: lon_cyclic           ! Do boxes wraparound in longitude?
 end type get_close_type
 
 type(random_seq_type) :: ran_seq
@@ -94,6 +98,9 @@ real(r8) :: my_sin(-630:630), my_cos(-630:630), my_acos(-1000:1000)
 integer :: last_maxdist = -1.0
 
 character(len=129) :: errstring
+
+! Option for verification using exhaustive search
+logical :: COMPARE_TO_CORRECT = .false.
 
 !-----------------------------------------------------------------
 ! Namelist with default values
@@ -814,7 +821,11 @@ type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 type(location_type),  intent(in)    :: obs(num)
 
-integer :: i, j, cum_start, lon_box(num), lat_box(num), tstart(nlon, nlat)
+integer :: blat_ind, tlat_ind
+integer :: bot_tlat_ind, top_tlat_ind
+real(r8) :: base_lat(2), target_lat(2), del_lon, cos_del_lon
+real(r8) :: max_del_lon
+integer :: i, j, cum_start, lon_box(num), lat_box(num), tstart(nlon, nlat), tj, bj
 
 ! Allocate storage for obs number dependent part
 allocate(gc%obs_box(num))
@@ -823,12 +834,67 @@ gc%obs_box(:) = -1
 ! Set the value of num_obs in the structure
 gc%num = num
 
+! Determine where the boxes should be for this set of obs and maxdist
+call find_box_ranges(gc, obs, num)
+
+! Figure out which boxes are close to a box on a given latitude circle
+! MIGHT AVOID DOING THIS WITH A COPY ROUTINE: HAVE SAME BOXES OFTEN
+do blat_ind = 1, nlat
+   ! Search from east side of base block
+   ! Start searching out, have to look for closest point in box being checked
+   ! Only have to search latitude boxes that are within maximum distance
+   bot_tlat_ind = blat_ind - floor(gc%maxdist / gc%lat_width ) - 1
+   if(bot_tlat_ind < 1) bot_tlat_ind = 1
+   top_tlat_ind = blat_ind + floor(gc%maxdist / gc%lat_width) + 1
+   if(top_tlat_ind > nlat) top_tlat_ind = nlat
+   do tlat_ind = bot_tlat_ind, top_tlat_ind
+      ! Spherical geometry can be tricky
+      ! We want to find the MINIMUM distance between two lat/lon boxes
+      ! This distance is known to be corners of the boxes. It is also known
+      ! to be between the corners such that the longitude difference between
+      ! the corners is a minimum. HOWEVER, determining whether it is between
+      ! the closest latitudes or not is a non-trivial computation. Hence,
+      ! since this isn't done much, we just check all four possible combinations
+      ! of latitude and pick the one that gives the closest distance.
+      do j = 1, 2
+         base_lat(j) = gc%bot_lat + (blat_ind - 2 + j) * gc%lat_width
+         target_lat(j) = gc%bot_lat + (tlat_ind - 2 + j) * gc%lat_width
+      end do
+
+      ! Find the maximum longitude offset for the different possible latitudes edges
+      max_del_lon = 0.0_r8
+      do tj = 1, 2
+         do bj = 1, 2
+            ! Compute the lon offset directly by inverting distance
+            cos_del_lon = (cos(gc%maxdist) - sin(base_lat(bj)) * sin(target_lat(tj))) / &
+               (cos(base_lat(bj)) * cos(target_lat(tj)))
+            if(cos_del_lon < -1) then
+               del_lon = PI
+            else if(cos_del_lon > 1) then
+               del_lon = 0
+            else
+               del_lon = acos(cos_del_lon)
+            endif
+            if(del_lon > max_del_lon) max_del_lon = del_lon
+         
+         end do
+      end do
+      
+      ! Compute the number of boxes to search in longitude for maximum del_lon
+      gc%lon_offset(blat_ind, tlat_ind) = floor(max_del_lon / gc%lon_width) + 1
+      ! Watch for roundoff leading to a search of more offsets than exist
+      if(gc%lon_offset(blat_ind, tlat_ind) > nlon / 2) &
+         gc%lon_offset(blat_ind, tlat_ind) = nlon / 2
+
+   end do
+end do
+
 ! Begin by computing the number of observations in each box in lat/lon
 gc%count = 0
 do i = 1, num
-   lon_box(i) = floor(nlon * obs(i)%lon / (2.0_r8 * PI)) + 1
-   if(lon_box(i) > nlon) lon_box(i) = 1
-   lat_box(i) = floor(nlat * (obs(i)%lat + PI / 2.0_r8) / PI) + 1
+   lon_box(i) = get_lon_box(gc, obs(i)%lon)
+   lat_box(i) = floor((obs(i)%lat - gc%bot_lat) / gc%lat_width) + 1
+
    if(lat_box(i) > nlat) lat_box(i) = nlat
    if(lat_box(i) < 1) lat_box(i) = 1
    gc%count(lon_box(i), lat_box(i)) = gc%count(lon_box(i), lat_box(i)) + 1
@@ -855,16 +921,22 @@ end subroutine get_close_obs_init
 
 !----------------------------------------------------------------------------
 
+subroutine get_close_obs_destroy(gc)
+
+type(get_close_type), intent(inout) :: gc
+
+deallocate(gc%obs_box, gc%lon_offset, gc%count, gc%start)
+
+end subroutine get_close_obs_destroy
+
+!----------------------------------------------------------------------------
+
 subroutine get_close_maxdist_init(gc, maxdist)
 
 implicit none
 
 type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
-
-integer :: i, j, blat_ind, tlat_ind
-integer :: bot_tlat_ind, top_tlat_ind
-real(r8) :: base_lon, base_lat, target_lat, del_lon, cos_del_lon
 
 ! Allocate the storage for the grid dependent boxes
 allocate(gc%lon_offset(nlat, nlat), gc%count(nlon, nlat), gc%start(nlon, nlat))
@@ -874,48 +946,6 @@ gc%start      = -1
 
 ! Set the maximum distance in the structure
 gc%maxdist = maxdist
-
-! MIGHT AVOID DOING THIS WITH A COPY ROUTINE: HAVE SAME BOXES OFTEN
-
-! Figure out which boxes are close to a box on a given latitude circle
-do blat_ind = 1, nlat
-   ! Search from east side of base block
-   base_lon = 360.0_r8 /nlon
-   ! Start searching out, have to look for closest point in box being checked
-   ! Only have to search latitude boxes that are within maximum distance
-   bot_tlat_ind = blat_ind - floor(maxdist * nlat / PI) - 1
-   if(bot_tlat_ind < 1) bot_tlat_ind = 1
-   top_tlat_ind = blat_ind + floor(maxdist * nlat / PI) + 1
-   if(top_tlat_ind > nlat) top_tlat_ind = nlat
-   do tlat_ind = bot_tlat_ind, top_tlat_ind
-      ! For lats north of me, search from NE corner as base to SW corner as target
-      if(tlat_ind > blat_ind) then
-         base_lat = -90.0_r8 + blat_ind * 180.0_r8 / nlat
-         target_lat = -90.0_r8 + (tlat_ind - 1) * 180.0_r8 / nlat
-      else if(tlat_ind < blat_ind) then
-         ! Otherwise, want to search from SE corner to NW corner
-         base_lat = -90.0_r8 + (blat_ind - 1) * 180.0_r8 / nlat
-         target_lat = -90.0_r8 + tlat_ind * 180.0_r8 / nlat
-      else
-         ! When same latitude, do both from southern corner
-         base_lat = -90.0_r8 + (blat_ind - 1) * 180.0_r8 / nlat
-         target_lat = base_lat
-      endif
-
-      ! Compute the lon offset directly by inverting distance
-      cos_del_lon = (cos(maxdist) - sin(base_lat*DEG2RAD) * sin(target_lat*DEG2RAD)) / &
-         (cos(base_lat*DEG2RAD) * cos(target_lat*DEG2RAD))
-      if(cos_del_lon < -1) then
-         del_lon = PI
-      else if(cos_del_lon > 1) then
-         del_lon = 0
-      else
-         del_lon = acos(cos_del_lon)
-      endif
-      gc%lon_offset(blat_ind, tlat_ind) = floor(del_lon * nlon / (2.0 * PI)) + 1
-
-   end do
-end do
 
 end subroutine get_close_maxdist_init
 
@@ -942,30 +972,62 @@ real(r8),             optional,   intent(out) :: dist(:)
 integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind
 real(r8) :: this_dist
 
-! Begin by figuring out which box the base_ob is in
-lon_box = floor(nlon * base_obs_loc%lon / (2.0_r8 * PI)) + 1
-if(lon_box > nlon) lon_box = 1
-lat_box = floor(nlat * (base_obs_loc%lat + PI / 2.0_r8) / PI) + 1
-if(lat_box > nlat) lat_box = nlat
+! Variables needed for comparing against correct case
+integer :: cnum_close, cclose_ind(size(obs))
+real(r8) :: cdist(size(obs))
 
+! First, set the intent out arguments to a missing value
 num_close = 0
+close_ind = -99
+if(present(dist)) dist = -99.0_r8
+
+!--------------------------------------------------------------
+! For validation, it is useful to be able to compare against exact
+! exhaustive search
+if(COMPARE_TO_CORRECT) then
+   cnum_close = 0
+   do i = 1, gc%num
+      this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
+      if(this_dist < gc%maxdist) then
+         ! Add this obs to correct list
+         cnum_close = cnum_close + 1
+         cclose_ind(cnum_close) = i
+         cdist(cnum_close) = this_dist
+      endif
+   end do
+endif
+
+!--------------------------------------------------------------
+
+! Begin by figuring out which box the base_ob is in
+lon_box = get_lon_box(gc, base_obs_loc%lon)
+lat_box = floor((base_obs_loc%lat - gc%bot_lat) / gc%lat_width) + 1
+
+! If it is not in any box, then it is more than the maxdist away from everybody
+if(lat_box > nlat .or. lat_box < 1 .or. lon_box < 0) return
 
 ! Next, loop through to find each box that is close to this box
 do j = 1, nlat
    n_lon = gc%lon_offset(lat_box, j)
-   if(n_lon > 0) then
-      do i = -1 * (n_lon -1), n_lon - 1
-         ! Search a box at this latitude j offset in longitude by i
+   if(n_lon >= 0) then
+      LON_OFFSET: do i = -1 * n_lon, n_lon
          lon_ind = lon_box + i
-         if(lon_ind > nlon) lon_ind = lon_ind - nlon
-         if(lon_ind < 1) lon_ind = lon_ind + nlon
+         ! Search a box at this latitude j offset in longitude by i
+         ! If domain is cyclic, need to wrap around
+         if(gc%lon_cyclic) then
+            if(lon_ind > nlon) lon_ind = lon_ind - nlon
+            if(lon_ind < 1) lon_ind = lon_ind + nlon
+         else
+            ! Domain is not cyclic, don't search if outside of range
+            if(lon_ind > nlon .or. lon_ind < 1) cycle LON_OFFSET
+         endif
          ! Box to search is lon_ind, j
          n_in_box = gc%count(lon_ind, j)
          st = gc%start(lon_ind, j)
          ! Loop to check how close all obs in the box are; add those that are close
          do k = 1, n_in_box
 
-! SHOULD ADD IN OPTIONAL ARGUMENT FOR DOING THIS!!!
+            ! SHOULD ADD IN OPTIONAL ARGUMENT FOR DOING THIS!!!
             ! Could avoid adding any that have nums lower than base_ob???
             t_ind = gc%obs_box(st - 1 + k)
             ! Can compute total distance here if verts are the same
@@ -991,11 +1053,294 @@ do j = 1, nlat
                dist(num_close) = this_dist
             endif
          end do
-      end do
+      end do LON_OFFSET
    endif
 end do
 
+!------------------------ Verify by comparing to exhaustive search --------------
+if(COMPARE_TO_CORRECT) then
+   ! Do comparisons against full search
+   if(num_close /= cnum_close) then
+      write(*, *) 'ERROR: num_close, cnum_close', num_close, cnum_close
+      stop
+   endif
+endif
+!--------------------End of verify by comparing to exhaustive search --------------
+
+
 end subroutine get_close_obs
+
+
+
+subroutine find_box_ranges(gc, obs, num)
+!--------------------------------------------------------------------------
+!
+! Finds boundaries for boxes in N/S direction. If data is localized in N/S
+! tries to find boxes that only span the range of the data.
+! 
+type(get_close_type), intent(inout) :: gc
+integer,              intent(in)    :: num
+type(location_type),  intent(in)    :: obs(num)
+
+real(r8) :: min_lat, max_lat, beg_box_lon, end_box_lon, first_obs_lon, last_obs_lon
+real(r8) :: longitude_range
+integer  :: i, indx, gap_start, gap_end, gap_length
+logical  :: lon_box_full(360)
+
+! Initialize boxes used to see where observations are
+lon_box_full = .false.
+
+! Figure out domain over which an additional obs MIGHT be close to one in this set
+min_lat = minval(obs(:)%lat) - gc%maxdist
+max_lat = maxval(obs(:)%lat) + gc%maxdist
+if(min_lat < PI / 2.0_r8) min_lat = -PI / 2.0_r8
+if(max_lat > PI / 2.0_r8) max_lat = PI / 2.0_r8
+
+! Put this into storage for this get_close_type
+gc%bot_lat = min_lat
+gc%top_lat  = max_lat
+gc%lat_width = (max_lat - min_lat) / nlat
+if(COMPARE_TO_CORRECT) write(*, *) 'min and max lat and width', gc%bot_lat, gc%top_lat, gc%lat_width
+
+! Finding the longitude range is tricky because of cyclic nature
+! Want to find minimum range spanned by obs even if they wrap-around Greenwich
+! Would like to do this without sorting if possible at low-cost
+! First, partition into 360 1-degree boxes and find the biggest gap
+do i = 1, num
+   indx = floor(obs(i)%lon * 180.0_r8 / PI) + 1
+   ! Look out for roundoff error (assume that things are really supposed to be 0->2PI)
+   if(indx > 360) indx = 360
+   if(indx <   1)   indx = 1
+   lon_box_full(indx) = .true.
+end do
+
+! Find the longest sequence of empty boxes
+call find_longest_gap(lon_box_full, 360, gap_start, gap_end, gap_length)
+if(gap_length > 0) then
+   ! There is a gap; figure out obs that are closest to ends of non-gap
+   beg_box_lon = (gap_end / 180.0_r8) * PI
+   end_box_lon = ((gap_start -1) / 180.0_r8) * PI
+   first_obs_lon = find_closest_to_start(beg_box_lon, obs, num)
+   last_obs_lon  = find_closest_to_end  (end_box_lon, obs, num)
+   ! Determine the final longitude range
+   longitude_range = last_obs_lon - first_obs_lon
+   if(longitude_range <= 0.0_r8) longitude_range = longitude_range + 2.0_r8 * PI
+   
+   ! Add on the extra distance needed for the boxes
+
+   ! To avoid any hard thinking about wraparound with sub-domain boxes
+   ! Must span less than 180 degrees to get smaller boxes
+   ! If addition of halos for close obs fills more than half of space things go 0 to 2PI
+   if(longitude_range + 2.0_r8 * gc%maxdist > PI) then
+      first_obs_lon = 0.0_r8
+      last_obs_lon  = 2.0_r8 * PI
+      gc%lon_cyclic = .true.
+   else
+      first_obs_lon = first_obs_lon - gc%maxdist 
+      if(first_obs_lon < 0.0_r8) first_obs_lon = first_obs_lon + 2.0_r8 * PI
+      last_obs_lon   = last_obs_lon + gc%maxdist 
+      if(last_obs_lon > 2.0_r8 * PI) last_obs_lon = last_obs_lon - 2.0_r8 * PI
+      gc%lon_cyclic = .false.
+   endif
+else
+   ! No gap was found: all 360 boxes had an observation in them
+   first_obs_lon = 0.0_r8
+   last_obs_lon  = 2.0_r8 * PI
+   gc%lon_cyclic = .true.
+endif
+
+! Put in storage for structure
+gc%bot_lon = first_obs_lon
+gc%top_lon = last_obs_lon
+longitude_range = last_obs_lon - first_obs_lon
+if(longitude_range <= 0.0_r8) longitude_range = longitude_range + 2.0_r8 * PI
+gc%lon_width = longitude_range / nlon
+if(COMPARE_TO_CORRECT) write(*, *) 'lon bot, top, width ', gc%bot_lon, gc%top_lon, gc%lon_width
+
+end subroutine find_box_ranges
+
+
+!----------------------------------------------------------------------------
+
+subroutine find_longest_gap(lon_box_full, num_boxes, gap_start, gap_end, gap_length)
+
+! Find the longest gap in the boxes (take the first one if there's a tie)
+integer, intent(in) :: num_boxes
+integer, intent(out) :: gap_start, gap_end, gap_length
+logical, intent(in)  :: lon_box_full(num_boxes)
+
+integer :: g_start, g_end, g_length, next_box, i
+logical :: all_done
+
+gap_start  = -1
+gap_end    = -1
+gap_length = -1
+
+next_box = 1
+! Loop long enough to be sure we go around
+do i = 1, num_boxes
+   call find_next_gap(next_box, lon_box_full, num_boxes, g_start, g_end, g_length) 
+   next_box = g_end
+   ! Easy way to terminate at cost of some small additional computation
+   if(g_start == gap_start .and. g_end == gap_end) all_done = .true.
+   if(g_length > gap_length) then
+      gap_start  = g_start
+      gap_end    = g_end
+      gap_length = g_length
+   endif
+   ! Exit if longest has been found twice
+   if(all_done) return
+end do
+
+end subroutine find_longest_gap
+
+!----------------------------------------------------------------------------
+
+subroutine find_next_gap(start_box, lon_box_full, num_boxes, gap_start, gap_end, gap_length)
+integer, intent(in)  :: start_box, num_boxes
+integer, intent(out) :: gap_start, gap_end, gap_length
+logical, intent(in)  :: lon_box_full(num_boxes)
+
+integer :: next_full
+
+! Finds the next gap of empty boxes in the cyclic set
+! First, find the next full box from the start
+next_full = next_full_box(start_box, lon_box_full, num_boxes)
+! Find the next empty after that, make it the start of the gap
+gap_start = next_empty_box(next_full, lon_box_full, num_boxes)
+! Find the next full, box before that is the end of the gap
+gap_end = next_full_box(gap_start, lon_box_full, num_boxes) - 1
+if(gap_end < 1) gap_end = gap_end + num_boxes
+! Carefully compute gap length
+if(gap_end >= gap_start) then
+   gap_length = gap_end - gap_start + 1
+else
+   gap_length = gap_end - gap_start + 360 + 1
+endif
+
+end subroutine find_next_gap
+
+
+!----------------------------------------------------------------------------
+
+function next_full_box(start_box, lon_box_full, num_boxes)
+
+integer             :: next_full_box
+integer, intent(in) :: start_box, num_boxes
+logical, intent(in) :: lon_box_full(num_boxes)
+
+integer :: i, indx
+
+do i = 0, num_boxes
+   indx = start_box + i
+   if(indx > num_boxes) indx = indx - num_boxes
+   if(lon_box_full(indx)) then
+      next_full_box = indx
+      return
+   endif
+end do
+
+end function next_full_box
+
+!----------------------------------------------------------------------------
+
+function next_empty_box(start_box, lon_box_full, num_boxes)
+
+integer             :: next_empty_box
+integer, intent(in) :: start_box, num_boxes
+logical, intent(in) :: lon_box_full(num_boxes)
+
+integer :: i, indx
+
+do i = 0, num_boxes
+   indx = start_box + i
+   if(indx > num_boxes) indx = indx - num_boxes
+   if(.not. lon_box_full(indx)) then
+      next_empty_box = indx
+      return
+   endif
+end do
+
+end function next_empty_box
+
+!----------------------------------------------------------------------------
+
+function find_closest_to_start(beg_box_lon, obs, num)
+
+real(r8)                        :: find_closest_to_start
+real(r8),            intent(in) :: beg_box_lon
+integer,             intent(in) :: num
+type(location_type), intent(in) :: obs(num)
+
+real(r8) :: least_dist, dist
+integer  :: i
+
+! Start with large value
+least_dist = 2.0_r8 * PI
+
+do i = 1, num
+   dist = obs(i)%lon - beg_box_lon
+   if(dist < 0.0_r8) dist = dist + 2.0_r8 * PI
+   if(dist < least_dist) then
+      least_dist = dist
+      find_closest_to_start = obs(i)%lon
+   endif 
+end do
+
+end function find_closest_to_start
+
+!----------------------------------------------------------------------------
+
+function find_closest_to_end(end_box_lon, obs, num)
+
+real(r8)                        :: find_closest_to_end
+real(r8),            intent(in) :: end_box_lon
+integer,             intent(in) :: num
+type(location_type), intent(in) :: obs(num)
+
+real(r8) :: least_dist, dist
+integer  :: i
+
+! Start with large value
+least_dist = 2.0_r8 * PI
+
+do i = 1, num
+   dist = end_box_lon - obs(i)%lon
+   if(dist < 0.0_r8) dist = dist + 2.0_r8 * PI
+   if(dist < least_dist) then
+      least_dist = dist
+      find_closest_to_end = obs(i)%lon
+   endif 
+end do
+
+end function find_closest_to_end
+
+
+!----------------------------------------------------------------------------
+
+function get_lon_box(gc, lon)
+
+integer                          :: get_lon_box
+type(get_close_type), intent(in) :: gc
+real(r8),             intent(in) :: lon
+
+real(r8) :: del_lon
+
+del_lon = lon - gc%bot_lon
+if(del_lon < 0.0_r8) del_lon = del_lon + 2.0_r8 * PI
+get_lon_box = floor(del_lon / gc%lon_width) + 1
+! On wraparound, correct for truncation
+! If not wraparound, then we're not in one of the boxes
+if(get_lon_box > nlon) then
+   if(gc%lon_cyclic) then
+      get_lon_box = 1
+   else
+      if(gc%lon_cyclic) get_lon_box = -1
+   endif
+endif
+
+end function get_lon_box
+
 
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90
