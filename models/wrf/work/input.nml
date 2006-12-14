@@ -54,7 +54,7 @@
 /
 
 &ensemble_manager_nml
-   single_restart_file_in = .true.,
+   single_restart_file_in  = .true.,
    single_restart_file_out = .true. /
 
 &smoother_nml
@@ -80,7 +80,7 @@
 
 &location_nml
    horiz_dist_only = .true.,
-   vert_normalization_pressure = 6666666.7, 
+   vert_normalization_pressure = 6666666.7,
    vert_normalization_height = 5000000.0,
    vert_normalization_level = 2666.7,
    approximate_distance = .false.  /
@@ -100,9 +100,7 @@
    h_diab = .true.,
    assimilation_period_seconds =  120,
    adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe",
-   vert_localization_coord = 2,
-   center_search_size = 20,
-   center_spline_grid_scale = 10  /
+   vert_localization_coord = 2  /
 
 &utilities_nml
    TERMLEVEL = 1
@@ -117,10 +115,6 @@
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 
-&ensemble_manager_nml
-   single_restart_file_in = .true.,
-   single_restart_file_out = .true.  /
-
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
@@ -134,10 +128,19 @@
                               '../../../obs_def/obs_def_vortex_mod.f90'  /
 
 &obs_kind_nml
-    assimilate_these_obs_types = 'RADAR_REFLECTIVITY',
-                                 'DOPPLER_RADIAL_VELOCITY',
-    evaluate_these_obs_types   = 'METAR_U_10_METER_WIND' /
-
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                'METAR_U_10_METER_WIND',
+                                'METAR_V_10_METER_WIND',
+                                'METAR_TEMPERATURE_2_METER',
+                                'RADIOSONDE_U_WIND_COMPONENT',
+                                'RADIOSONDE_SPECIFIC_HUMIDITY',
+                                'DOPPLER_RADIAL_VELOCITY',
+                                'DEW_POINT_2_METER',
+                                'SAT_U_WIND_COMPONENT',
+                                'SAT_V_WIND_COMPONENT',
+                                'GPSRO_REFRACTIVITY',
+                                'RADAR_REFLECTIVITY',
+     evaluate_these_obs_types = 'RADIOSONDE_V_WIND_COMPONENT'  /
 
 # Notes for obs_def_radar_mod_nml:
 # (1) Reflectivity limit can be applied both to observations or state (forward operator).
@@ -148,14 +151,14 @@
 #     even if you set it to .false. here in the namelist.
 
 &obs_def_radar_mod_nml
-   convert_to_dbz                    = .true. ,
-   dbz_threshold                     = 0.00001 ,
-   apply_ref_limit_to_obs            = .true. ,
-   reflectivity_limit_obs            = 20.0 ,
-   lowest_reflectivity_obs           = 20.0 ,
-   apply_ref_limit_to_state          = .true. ,
-   reflectivity_limit_state          = 0.0 ,
-   lowest_reflectivity_state         = 0.0 /
+   convert_to_dbz             =  .true. ,
+   dbz_threshold              =   0.001 ,
+   apply_ref_limit_to_obs     = .false. ,
+   reflectivity_limit_obs     =     0.0 ,
+   lowest_reflectivity_obs    =     0.0 ,
+   apply_ref_limit_to_state   = .false. ,
+   reflectivity_limit_state   =     0.0 ,
+   lowest_reflectivity_state  =     0.0 /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
