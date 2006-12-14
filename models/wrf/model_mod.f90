@@ -97,13 +97,13 @@ revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
 logical :: output_state_vector  = .false.     ! output prognostic variables
-integer :: num_moist_vars       = 0
+integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
-logical :: surf_obs             = .false.
+logical :: surf_obs             = .true.
 logical :: h_diab               = .false.
-character(len = 72) :: adv_mod_command = 'wrf.exe'
+character(len = 72) :: adv_mod_command = './wrf.exe'
 integer :: center_search_size       = 25
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT

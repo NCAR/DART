@@ -2,8 +2,8 @@
    start_from_restart    = .true.,
    output_restart        = .true.,
    async                 = 2,
-   init_time_days        = 0,
-   init_time_seconds     = 0,
+   init_time_days        = -1,
+   init_time_seconds     = -1,
    first_obs_days           = -1,
    first_obs_seconds        = -1,
    last_obs_days            = -1,
@@ -18,7 +18,7 @@
 &filter_nml
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 32,
+   ens_size                 = 50,
    start_from_restart       = .true.,
    output_restart           = .false.,
    obs_sequence_in_name     = "obs_seq.out",
@@ -26,20 +26,20 @@
    restart_in_file_name     = "filter_ics",
    restart_out_file_name    = "filter_restart", 
    init_time_days           = -1,
-   init_time_seconds        = 0,
+   init_time_seconds        = -1,
    first_obs_days           = -1,
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 1,
-   num_output_obs_members   = 32,
+   num_output_state_members = 0,
+   num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
    ncep_qc_threshold        = 4.0,
    outlier_threshold        =-1.0,
    output_forward_op_errors = .false.,
 
-   inf_flavor               = 2,                      0,
+   inf_flavor               = 0,                      0,
    inf_start_from_restart   = .false.,                .false.,
    inf_output_restart       = .true.,                 .true.,
    inf_deterministic        = .true.,                 .true.,
@@ -54,12 +54,19 @@
 /
 
 &ensemble_manager_nml
-   single_restart_file_in = .false.,
-   single_restart_file_out = .false. /
+   single_restart_file_in = .true.,
+   single_restart_file_out = .true. /
+
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart' /
 
 &assim_tools_nml
    filter_kind = 1,
-   cutoff = 0.1,
+   cutoff = 0.0004,
    sort_obs_inc = .false.,
    spread_restoration = .false.,
    sampling_error_correction = .false.,
@@ -73,20 +80,27 @@
 
 &location_nml
    horiz_dist_only = .true.,
-   vert_normalization_pressure = 100000.0, 
-   vert_normalization_height = 6370000.0,
-   vert_normalization_level = 20.0,
+   vert_normalization_pressure = 6666666.7, 
+   vert_normalization_height = 5000000.0,
+   vert_normalization_level = 2666.7,
    approximate_distance = .false.  /
+
+# Notes for model_nml:
+# (1) vert_localization_coord must be one of:
+#     1 = model level
+#     2 = pressure
+#     3 = height
 
 &model_nml
    output_state_vector = .false.,
-   num_moist_vars = 3,
+   num_moist_vars = 6,
    num_domains = 1,
    calendar_type = 3,
-   surf_obs = .true.,
-   h_diab = .false.,
-   assimilation_period_seconds =  3600,
+   surf_obs = .false.,
+   h_diab = .true.,
+   assimilation_period_seconds =  120,
    adv_mod_command = "mpirun -np 1 -machinefile nfile wrf.exe",
+   vert_localization_coord = 2,
    center_search_size = 20,
    center_spline_grid_scale = 10  /
 
@@ -120,22 +134,28 @@
                               '../../../obs_def/obs_def_vortex_mod.f90'  /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'METAR_U_10_METER_WIND',
-                                'METAR_V_10_METER_WIND',
-                                'METAR_TEMPERATURE_2_METER',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
-                                'RADIOSONDE_SPECIFIC_HUMIDITY',
-                                'DOPPLER_RADIAL_VELOCITY',
-                                'DEW_POINT_2_METER',
-                                'SAT_U_WIND_COMPONENT',
-                                'SAT_V_WIND_COMPONENT',
-                                'VORTEX_LON',
-                                'VORTEX_LAT',
-                                'VORTEX_PMIN',
-                                'GPSRO_REFRACTIVITY',
-     evaluate_these_obs_types = 'RADAR_REFLECTIVITY'  /
+    assimilate_these_obs_types = 'RADAR_REFLECTIVITY',
+                                 'DOPPLER_RADIAL_VELOCITY',
+    evaluate_these_obs_types   = 'METAR_U_10_METER_WIND' /
+
+
+# Notes for obs_def_radar_mod_nml:
+# (1) Reflectivity limit can be applied both to observations or state (forward operator).
+# (2) Default lowest_reflectivity values DART will use (if apply_reflectivity_limit = .true.)
+#     is missing_r8. If you want to use the default, delete the line of respective
+#     lowest_reflectivity.
+# (3) As it is not clear how to assimilate Z (for now), "convert_to_dbz" is reset to .true.
+#     even if you set it to .false. here in the namelist.
+
+&obs_def_radar_mod_nml
+   convert_to_dbz                    = .true. ,
+   dbz_threshold                     = 0.00001 ,
+   apply_ref_limit_to_obs            = .true. ,
+   reflectivity_limit_obs            = 20.0 ,
+   lowest_reflectivity_obs           = 20.0 ,
+   apply_ref_limit_to_state          = .true. ,
+   reflectivity_limit_state          = 0.0 ,
+   lowest_reflectivity_state         = 0.0 /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
