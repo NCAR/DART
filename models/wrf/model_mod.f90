@@ -31,7 +31,9 @@ use      location_mod, only : location_type, get_location, set_location, &
                               LocationDims, LocationName, LocationLName, &
                               query_location, vert_is_undef, vert_is_surface, &
                               vert_is_level, vert_is_pressure, vert_is_height, &
-                              get_close_maxdist_init, get_close_obs_init, get_close_obs
+                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,&
+                              get_close_type, get_dist, get_close_maxdist_init, get_close_obs_init, &
+                              loc_get_close_obs => get_close_obs
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, &
@@ -42,6 +44,9 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
                               KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
                               KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
+                              KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
+                              KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
+                              KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
@@ -58,12 +63,16 @@ private
 public ::  get_model_size,                    &
            get_state_meta_data,               &
            model_interpolate,                 &
+           vert_interpolate,                  &
            get_model_time_step,               &
            static_init_model,                 &
            pert_model_state,                  &
            nc_write_model_atts,               &
            nc_write_model_vars,               &
-           get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+           get_close_obs,                     &
+           ens_mean_for_model,                &
+           get_close_maxdist_init,            &
+           get_close_obs_init
 
 
 !  public stubs 
@@ -97,10 +106,14 @@ logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = 'wrf.exe'
 integer :: center_search_size       = 25
 integer :: center_spline_grid_scale = 10
+integer :: vert_localization_coord = VERTISHEIGHT
+
+real(r8), allocatable :: ens_mean(:)
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
+                     vert_localization_coord, &
                      center_search_size, center_spline_grid_scale
 
 !-----------------------------------------------------------------------
@@ -135,6 +148,7 @@ TYPE wrf_static_data_for_dart
 
    integer  :: n_moist
    logical  :: surf_obs
+   integer  :: vert_coord
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
    real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
@@ -144,6 +158,7 @@ TYPE wrf_static_data_for_dart
    integer, dimension(:,:), pointer :: var_index
    integer, dimension(:,:), pointer :: var_size
    integer, dimension(:),   pointer :: var_type
+   integer, dimension(:),   pointer :: dart_kind
    integer, dimension(:,:), pointer :: land
 
    integer, dimension(:,:,:,:), pointer :: dart_ind
@@ -176,6 +191,7 @@ integer               :: var_id, ind, i, j, k, id, dart_index, model_type
 
 integer  :: proj_code
 real(r8) :: stdlon,truelat1,truelat2,dt
+character(len=129) :: errstring
 
 !----------------------------------------------------------------------
 
@@ -213,6 +229,22 @@ if ( debug ) then
 endif
 
 call set_calendar_type(calendar_type)
+
+! Store vertical localization coordinate
+! Only 3 are allowed: level(1), pressure(2), or height(3)
+! Everything else is assumed height
+if (vert_localization_coord == VERTISLEVEL) then
+   wrf%dom(:)%vert_coord = VERTISLEVEL
+elseif (vert_localization_coord == VERTISPRESSURE) then
+   wrf%dom(:)%vert_coord = VERTISPRESSURE
+elseif (vert_localization_coord == VERTISHEIGHT) then
+   wrf%dom(:)%vert_coord = VERTISHEIGHT
+else
+   write(errstring,*)'vert_localization_coord must be one of ', VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
+   call error_handler(E_MSG,'static_init_model', errstring, source, revision,revdate)
+   write(errstring,*)'vert_localization_coord is ', vert_localization_coord
+   call error_handler(E_ERR,'static_init_model', errstring, source, revision,revdate)
+endif
 
 dart_index = 1
 
@@ -428,58 +460,83 @@ do id=1,num_domains
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 1
    endif
    allocate(wrf%dom(id)%var_type(wrf%dom(id)%number_of_wrf_variables))
+
+   allocate(wrf%dom(id)%dart_kind(wrf%dom(id)%number_of_wrf_variables))
    wrf%dom(id)%var_type(1)  = TYPE_U
+   wrf%dom(id)%dart_kind(1) = KIND_U_WIND_COMPONENT
    wrf%dom(id)%var_type(2)  = TYPE_V
+   wrf%dom(id)%dart_kind(2) = KIND_V_WIND_COMPONENT
    wrf%dom(id)%var_type(3)  = TYPE_W
+   wrf%dom(id)%dart_kind(3) = KIND_VERTICAL_VELOCITY
    wrf%dom(id)%var_type(4)  = TYPE_GZ
+   wrf%dom(id)%dart_kind(4) = KIND_GEOPOTENTIAL_HEIGHT
    wrf%dom(id)%var_type(5)  = TYPE_T
+   wrf%dom(id)%dart_kind(5) = KIND_TEMPERATURE
    wrf%dom(id)%var_type(6)  = TYPE_MU
+   wrf%dom(id)%dart_kind(6) = KIND_PRESSURE
    wrf%dom(id)%var_type(7)  = TYPE_TSLB
+   wrf%dom(id)%dart_kind(7) = KIND_TEMPERATURE
    wrf%dom(id)%var_type(8)  = TYPE_TSK
+   wrf%dom(id)%dart_kind(8) = KIND_TEMPERATURE
+
    ind = 8
    if( wrf%dom(id)%n_moist >= 1) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_QV
+      wrf%dom(id)%dart_kind(ind) = KIND_VAPOR_MIXING_RATIO
    end if
    if( wrf%dom(id)%n_moist >= 2) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_QC
+      wrf%dom(id)%dart_kind(ind) = KIND_CLOUD_LIQUID_WATER
    end if
    if( wrf%dom(id)%n_moist >= 3) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QR
+      wrf%dom(id)%dart_kind(ind) = KIND_RAINWATER_MIXING_RATIO
    end if
    if( wrf%dom(id)%n_moist >= 4) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QI
+      wrf%dom(id)%dart_kind(ind) = KIND_CLOUD_ICE
    end if
    if( wrf%dom(id)%n_moist >= 5) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QS
+      wrf%dom(id)%dart_kind(ind) = KIND_SNOW_MIXING_RATIO
    end if
    if( wrf%dom(id)%n_moist >= 6) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QG
+      wrf%dom(id)%dart_kind(ind) = KIND_GRAUPEL_MIXING_RATIO
    end if
    if( wrf%dom(id)%n_moist == 7) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_QNICE
+      wrf%dom(id)%dart_kind(ind) = KIND_ICE_NUMBER_CONCENTRATION
    end if
    if( wrf%dom(id)%surf_obs ) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_U10
+      wrf%dom(id)%dart_kind(ind) = KIND_U_WIND_COMPONENT
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_V10
+      wrf%dom(id)%dart_kind(ind) = KIND_V_WIND_COMPONENT
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_T2
+      wrf%dom(id)%dart_kind(ind) = KIND_TEMPERATURE
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_Q2
+      wrf%dom(id)%dart_kind(ind) = KIND_SPECIFIC_HUMIDITY
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_PS
+      wrf%dom(id)%dart_kind(ind) = KIND_PRESSURE
    end if
    if( h_diab ) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_HDIAB
+      wrf%dom(id)%dart_kind(ind) = KIND_CONDENSATIONAL_HEATING
+
    end if
 
 ! indices into 1D array
@@ -668,6 +725,7 @@ enddo
 write(*,*)
 
 wrf%model_size = dart_index - 1
+allocate (ens_mean(wrf%model_size))
 if(debug) write(*,*) ' wrf model size is ',wrf%model_size
 
 contains
@@ -723,12 +781,13 @@ get_model_time_step = set_time(assim_dt)
 
 end function get_model_time_step
 
+
 !#######################################################################
 
+
 subroutine get_state_meta_data(index_in, location, var_type_out, id_out)
-!---------------------------------------------------------------------
-!
-! Given an integer index into the state vector structure, returns the
+
+! Given an integer index into the DART state vector structure, returns the
 ! associated location. This is not a function because the more general
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
@@ -737,7 +796,7 @@ integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type_out, id_out
 
-integer  :: var_type
+integer  :: var_type, dart_type
 integer  :: index, ip, jp, kp
 integer  :: nz, ny, nx
 logical  :: var_found
@@ -752,7 +811,9 @@ if(debug) then
    call error_handler(E_MSG,'get_state_meta_data',errstring,' ',' ',' ')
 endif
 
-index = index_in
+! index_in can be negative if ob is identity ob...
+index = abs(index_in)
+
 var_found = .false.
 
 !  first find var_type
@@ -766,6 +827,7 @@ if(debug) then
    enddo
 endif
 
+! first find var_type and domain id
 i = 0
 id = 1
 do while (.not. var_found)
@@ -785,7 +847,8 @@ do while (.not. var_found)
    if( (index .ge. wrf%dom(id)%var_index(1,i) ) .and.  &
        (index .le. wrf%dom(id)%var_index(2,i) )       )  then
       var_found = .true.
-      var_type = wrf%dom(id)%var_type(i)
+      var_type  = wrf%dom(id)%var_type(i)
+      dart_type = wrf%dom(id)%dart_kind(i)
       index = index - wrf%dom(id)%var_index(1,i) + 1
    end if
 end do
@@ -802,23 +865,38 @@ kp = 1 + (index-1)/(nx*ny)
 jp = 1 + (index - (kp-1)*nx*ny - 1)/nx
 ip = index - (kp-1)*nx*ny - (jp-1)*nx
 
+! at this point, (ip,jp,kp) refer to indices in the variable's own grid
+
 if(debug) write(*,*) ' ip, jp, kp for index ',ip,jp,kp,index
 if(debug) write(*,*) ' Var type: ',var_type
 
+! first obtain lat/lon from (ip,jp)
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )
 
-if( (var_type == type_w ) .or. (var_type == type_gz) ) then
-   lev = real(kp) - 0.5_r8 ! This is the index of the vertical
-else
-   lev = real(kp) ! This is the index of the vertical
+! now convert to desired vertical coordinate (defined in the namelist)
+if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
+   ! here we need level index of mass grid
+   if( (var_type == type_w ) .or. (var_type == type_gz) ) then
+      lev = real(kp) - 0.5_r8
+   else
+      lev = real(kp)
+   endif
+elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
+   ! directly convert to pressure
+   lev = model_pressure(ip,jp,kp,id,var_type,ens_mean)
+elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
+   lev = model_height(ip,jp,kp,id,var_type,ens_mean)
 endif
 
 if(debug) write(*,*) 'lon, lat, lev: ',lon, lat, lev
 
-! lev is an index here, so which_vert is OK to be hardwired to a 1
-location = set_location(lon, lat, lev, 1) 
+! convert to DART location type
+location = set_location(lon, lat, lev, wrf%dom(id)%vert_coord)
 
-if(present(var_type_out)) var_type_out = var_type
+! return DART variable kind if requested
+if(present(var_type_out)) var_type_out = dart_type
+
+! return domain id if requested
 if(present(id_out)) id_out = id
 
 end subroutine get_state_meta_data
@@ -826,11 +904,24 @@ end subroutine get_state_meta_data
 !#######################################################################
 
 
- subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
-!----------------------------------------------------------------------
-!subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
-!
+subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
+
+! This is the main forward operator subroutine for WRF.
+! Given an ob (its DART location and kind), the corresponding model
+! value is computed at nearest i,j,k. Thus, first i,j,k is obtained
+! from ob lon,lat,z and then the state value that corresponds to
+! the ob kind is interpolated.
+
+! No location conversions are carried out in this subroutine. See
+! get_close_obs, where ob vertical location information is converted
+! to the requested vertical coordinate type.
+
+! x:       Full DART state vector relevant to what's being updated
+!          in the filter (mean or individual members).
+! istatus: Returned 0 if everything is OK, 1 if error occured.
+
 ! modified 26 June 2006 to accomodate vortex attributes
+! modified 13 December 2006 to accomodate changes for the mpi version
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
@@ -861,123 +952,108 @@ real(r8) :: clat, clon, cxmin, cymin
 integer :: center_track_xmin, center_track_ymin, &
            center_track_xmax, center_track_ymax
 
-! local vars, used in calculating density, pressure
+! local vars, used in calculating density, pressure, height
 real(r8)            :: rho1 , rho2 , rho3, rho4
 real(r8)            :: pres1, pres2, pres3, pres4, pres
 
-logical  :: dom_found
-
-dom_found = .false.
 
 istatus = 0
+obs_val = missing_r8
+
+
+! - - - - - - - - - !
+
+! This part determines model i,j,k from ob lon,lat,z (location).
+! This information is only needed if this is not an identity ob.
+! For an identity ob, (absolute) obs_kind is directly the index
+! into the state vector.
 
 xyz_loc = get_location(location)
 
-id = num_domains
-do while (.not. dom_found)
+if (obs_kind > 0) then
+   ! first obtain domain id, and mass points (i,j)
+   call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
 
-   ! Checking for exact equality on real variable types is generally a bad idea.
+   if (id==0) then
+      istatus = 1
+      return
+   endif
 
-   if( (wrf%dom(id)%proj%hemi ==  1.0_r8 .and. xyz_loc(2) == -90.0_r8) .or. &
-       (wrf%dom(id)%proj%hemi == -1.0_r8 .and. xyz_loc(2) ==  90.0_r8) .or. &
-       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(xyz_loc(2)) >= 90.0_r8) ) then
+   if(debug) then
+      i = xloc
+      j = yloc
+      print*,xyz_loc(2), xyz_loc(1), xloc,yloc
+      write(*,*) ' corners of lat '
+      write(*,*) wrf%dom(id)%latitude(i,j),wrf%dom(id)%latitude(i+1,j),  &
+           wrf%dom(id)%latitude(i,j+1), &
+           wrf%dom(id)%latitude(i+1,j+1)
+      write(*,*) ' corners of long '
+      write(*,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%longitude(i+1,j),  &
+           wrf%dom(id)%longitude(i,j+1), &
+           wrf%dom(id)%longitude(i+1,j+1)
+   endif
+
+   allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
+
+   ! get integer (west/south) grid point and distances to neighboring grid points
+   ! distances are used as weights to carry out horizontal interpolations
+   call toGrid(xloc,i,dx,dxm)
+   call toGrid(yloc,j,dy,dym)
+
+   ! Determine corresponding model level for obs location
+   ! This depends on the obs vertical coordinate
+   if(vert_is_level(location)) then
+      ! Ob is by model level
+      zloc = xyz_loc(3)
+
+   elseif(vert_is_pressure(location)) then
+      ! Ob is by pressure: get corresponding mass level zloc from
+      ! computed column pressure profile
+      call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
+      ! get pressure vertical co-ordinate
+      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
+      if(debug.and.obs_kind /= KIND_SURFACE_PRESSURE) print*,' obs is by pressure and zloc =',zloc
+      if(debug) print*,'model pressure profile'
+      if(debug) print*,v_p
+      
+   elseif(vert_is_height(location)) then
+      ! Ob is by height: get corresponding mass level zloc from
+      ! computed column height profile
+      call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
+      if(debug) print*,'model height profile'
+      if(debug) print*,v_h
+      ! get height vertical co-ordinate
+      call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
+      if(debug) print*,' obs is by height and zloc =',zloc
+   
+   elseif(vert_is_surface(location)) then
+      zloc = 1.0_r8
+      if(debug) print*,' obs is at the surface = ', xyz_loc(3)
+
+   elseif(vert_is_undef(location)) then
+      zloc  = missing_r8
 
    else
-
-      call latlon_to_ij(wrf%dom(id)%proj, xyz_loc(2), xyz_loc(1), xloc,yloc)
-
-      if ( (xloc >= 1 .and. xloc <= wrf%dom(id)%we .and. &
-           yloc >= 1 .and. yloc <= wrf%dom(id)%sn) ) then
-
-         dom_found = .true.
-
-      endif
+      write(errstring,*) 'wrong option for which_vert ',nint(query_location(location,'which_vert'))
+      call error_handler(E_ERR,'model_interpolate', errstring, &
+           source, revision, revdate)
 
    endif
 
-   if (.not. dom_found) then
-      if (id == 1) then
-         obs_val = missing_r8
-         istatus = 1
-         return
-      else
-         id = id - 1
-      endif
-   endif
-
-end do
-
-if(debug) then
-
-   i = xloc
-   j = yloc
-
-   print*,xyz_loc(2), xyz_loc(1), xloc,yloc
-   write(*,*) ' corners of lat '
-   write(*,*) wrf%dom(id)%latitude(i,j),wrf%dom(id)%latitude(i+1,j),  &
-        wrf%dom(id)%latitude(i,j+1), &
-        wrf%dom(id)%latitude(i+1,j+1)
-   write(*,*) ' corners of long '
-   write(*,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%longitude(i+1,j),  &
-        wrf%dom(id)%longitude(i,j+1), &
-        wrf%dom(id)%longitude(i+1,j+1)
-
-endif
-
-allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
-
-call toGrid(xloc,i,dx,dxm)
-call toGrid(yloc,j,dy,dym)
-
-if(vert_is_level(location)) then
-
-   ! If obs is by model level
-   zloc = xyz_loc(3)
-   if(debug) print*,' obs is by model level and zloc =',zloc
-else if(vert_is_pressure(location)) then
-   if(xyz_loc(3) < 10000.0_r8) then
+   if(zloc == missing_r8) then
       obs_val = missing_r8
       istatus = 1
       deallocate(v_h, v_p)
       return
    endif
-   ! get model pressure profile
-   call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
-   ! get pressure vertical co-ordinate
-   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
-   if(debug.and.obs_kind /= KIND_SURFACE_PRESSURE) print*,' obs is by pressure and zloc =',zloc
-   if(debug) print*,'model pressure profile'
-   if(debug) print*,v_p
-else if(vert_is_height(location)) then
-   ! get model height profile
-   call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
-   if(debug) print*,'model height profile'
-   if(debug) print*,v_h
-   ! get height vertical co-ordinate
-   call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
-   if(debug) print*,' obs is by height and zloc =',zloc
-else if(vert_is_surface(location)) then
-   ! get terrain height
-   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
-                   dx*wrf%dom(id)%hgt(i+1,j) ) + &
-             dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
-                   dx*wrf%dom(id)%hgt(i+1,j+1) )
-   zloc = 0.0_r8
-   if(debug) print*,' obs is at the surface = ', xyz_loc(3)
-else
-   write(errstring,*) 'wrong option for which_vert ',nint(query_location(location,'which_vert'))
-   call error_handler(E_ERR,'model_interpolate', errstring, &
-        source, revision, revdate)
-end if
 
-if(zloc == missing_r8) then
-   obs_val = missing_r8
-   istatus = 1
-   deallocate(v_h, v_p)
-   return
+   k = max(1,int(zloc))
+
 endif
 
-k = max(1,int(zloc))
+! - - - - - - - - - !
+
+! This part is the forward operator -- compute desired model state value for given point.
 
 ! Get the desired field to be interpolated
 if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then        ! U, V
@@ -989,7 +1065,7 @@ if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) th
       call toGrid(xloc_u,i_u,dx_u,dxm_u)
       call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-      if(i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
+      if(  i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
            j   >= 1 .and. j   < wrf%dom(id)%var_size(2,TYPE_U) .and. &
            i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
            j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
@@ -1489,14 +1565,23 @@ else if( obs_kind == KIND_VORTEX_LAT .or. &
       fld(1) = missing_r8
 
    endif
+
+elseif (obs_kind < 0) then
+
+   ! identity observation -> -(obs_kind)=DART state vector index
+   ! obtain state value directly from index
+   fld(1) = x(-1*obs_kind)
+
 else
-   write(errstring,*)'do not recognize obs kind ',obs_kind
+
+   write(errstring,*)'Obs kind not recognized for following kind: ',obs_kind
    call error_handler(E_ERR,'model_interpolate', errstring, &
         source, revision, revdate)
+
 end if
 
-! Do vertical interpolation
-if(.not. vert_is_surface(location)) then
+! Do vertical interpolation (only for non-surface, non-indetity obs)
+if ((.not. vert_is_surface(location)).and.(obs_kind > 0)) then
 
    call toGrid(zloc, k, dz, dzm)
 
@@ -1520,11 +1605,291 @@ if(debug) print*,' interpolated value= ',obs_val
 
 deallocate(v_h, v_p)
 
+
 end subroutine model_interpolate
+
 
 !#######################################################################
 
-!-----------------------------------------------------------------
+
+subroutine vert_interpolate(x, location, obs_kind, istatus)
+
+! This subroutine converts a given ob/state vertical coordinate to
+! the vertical coordinate type requested through the model_mod namelist.
+
+! Notes: (1) obs_kind is only necessary to check whether the ob
+!            is an identity ob.
+!        (2) This subroutine can convert both obs' and state points'
+!            vertical coordinates. Remember that state points get
+!            their DART location information from get_state_meta_data
+!            which is called by filter_assim during the assimilation
+!            process.
+!        (3) x is the relevant DART state vector for carrying out
+!            interpolations necessary for the vertical coordinate
+!            transformations. As the vertical coordinate is only used
+!            in distance computations, this is actually the "expected"
+!            vertical coordinate, so that computed distance is the
+!            "expected" distance. Thus, under normal circumstances,
+!            x that is supplied to vert_interpolate should be the
+!            ensemble mean. Nevertheless, the subroutine has the
+!            functionality to operate on any DART state vector that
+!            is supplied to it.
+
+real(r8),            intent(in)    :: x(:)
+integer,             intent(in)    :: obs_kind
+type(location_type), intent(inout) :: location
+integer,             intent(out)   :: istatus
+
+real(r8)            :: xloc, yloc, zloc, xyz_loc(3), zvert
+integer             :: id, i, j, k
+real(r8)            :: dx,dy,dz,dxm,dym,dzm
+
+character(len=129) :: errstring
+
+real(r8), allocatable, dimension(:) :: v_h, v_p
+
+! local vars, used in calculating pressure and height
+real(r8)            :: pres1, pres2, pres3, pres4, pres
+real(r8)            :: presa, presb
+real(r8)            :: hgt1, hgt2, hgt3, hgt4, hgta, hgtb
+
+
+istatus = 0
+
+! first off, check if ob is identity ob
+if (obs_kind < 0) then
+   call get_state_meta_data(obs_kind,location)
+   return
+endif
+
+xyz_loc = get_location(location)
+
+! first obtain domain id, and mass points (i,j)
+call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
+
+if (id==0) then
+   istatus = 1
+   return
+endif
+
+allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
+
+! get integer (west/south) grid point and distances to neighboring grid points
+! distances are used as weights to carry out horizontal interpolations
+call toGrid(xloc,i,dx,dxm)
+call toGrid(yloc,j,dy,dym)
+
+! Determine corresponding model level for obs location
+! This depends on the obs vertical coordinate
+! Obs vertical coordinate will also be converted to the desired
+! vertical coordinate as specified by the namelist variable
+! "vert_localization_coord" (stored in wrf structure pointer "vert_coord")
+if(vert_is_level(location)) then
+   ! If obs is by model level: get neighboring mass level indices
+   ! and compute weights to zloc
+   zloc = xyz_loc(3)
+   ! convert obs vert coordinate to desired coordinate type
+   if (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
+      call toGrid(zloc,k,dz,dzm)
+      if ( ((k<1) .or. (k>=wrf%dom(id)%bt)) .or. &
+           ((j<1) .or. (j>=wrf%dom(id)%sn)) .or. &
+           ((i<1) .or. (i>=wrf%dom(id)%we)) ) then
+         zloc  = missing_r8
+         zvert = missing_r8
+      else
+         ! need to compute pressure at all neighboring mass points
+         ! and interpolate
+         presa = model_pressure_t(i  ,j  ,k  ,id,x)
+         presb = model_pressure_t(i  ,j  ,k+1,id,x)
+         pres1 = dzm*presa + dz*presb
+         presa = model_pressure_t(i+1,j  ,k  ,id,x)
+         presb = model_pressure_t(i+1,j  ,k+1,id,x)
+         pres2 = dzm*presa + dz*presb
+         presa = model_pressure_t(i  ,j+1,k  ,id,x)
+         presb = model_pressure_t(i  ,j+1,k+1,id,x)
+         pres3 = dzm*presa + dz*presb
+         presa = model_pressure_t(i+1,j+1,k  ,id,x)
+         presb = model_pressure_t(i+1,j+1,k+1,id,x)
+         pres4 = dzm*presa + dz*presb
+         zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+      endif
+   elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
+      ! need to add half a grid to get to staggered vertical coordinate
+      call toGrid(zloc+0.5,k,dz,dzm)
+      if ( ((k<1) .or. (k>=wrf%dom(id)%bts)) .or. &
+           ((j<1) .or. (j>=wrf%dom(id)%sn )) .or. &
+           ((i<1) .or. (i>=wrf%dom(id)%we )) ) then
+         zloc  = missing_r8
+         zvert = missing_r8
+      else
+         ! need to compute height at all neighboring vertically staggered points
+         ! and interpolate
+         hgta = model_height_w(i  ,j  ,k  ,id,x)
+         hgtb = model_height_w(i  ,j  ,k+1,id,x)
+         hgt1 = dzm*hgta + dz*hgtb
+         hgta = model_height_w(i+1,j  ,k  ,id,x)
+         hgtb = model_height_w(i+1,j  ,k+1,id,x)
+         hgt2 = dzm*hgta + dz*hgtb
+         hgta = model_height_w(i  ,j+1,k  ,id,x)
+         hgtb = model_height_w(i  ,j+1,k+1,id,x)
+         hgt3 = dzm*hgta + dz*hgtb
+         hgta = model_height_w(i+1,j+1,k  ,id,x)
+         hgtb = model_height_w(i+1,j+1,k+1,id,x)
+         hgt4 = dzm*hgta + dz*hgtb
+         zvert = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+      endif
+   else
+      if ((zloc<1.0).or.(zloc>=real(wrf%dom(id)%bt))) then
+         zloc  = missing_r8
+         zvert = missing_r8
+      else
+         zvert = zloc
+      endif
+   endif
+
+elseif(vert_is_pressure(location)) then
+   ! If obs is by pressure: get corresponding mass level zk,
+   ! then get neighboring mass level indices
+   ! and compute weights to zloc
+   ! get model pressure profile
+   call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
+   ! get pressure vertical co-ordinate
+   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
+   ! convert obs vert coordinate to desired coordinate type
+   if (zloc==missing_r8) then
+      zvert = missing_r8
+   else
+      if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
+         zvert = zloc
+      elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
+         ! adding 0.5 to get to the staggered vertical grid
+         ! because height is on staggered vertical grid
+         call toGrid(zloc+0.5,k,dz,dzm)
+         if ( ((k<1) .or. (k>=wrf%dom(id)%bts)) .or. &
+              ((j<1) .or. (j>=wrf%dom(id)%sn )) .or. &
+              ((i<1) .or. (i>=wrf%dom(id)%we )) ) then
+            zloc  = missing_r8
+            zvert = missing_r8
+         else
+            ! need to compute height at all neighboring vertically staggered points
+            ! and interpolate
+            hgta = model_height_w(i  ,j  ,k  ,id,x)
+            hgtb = model_height_w(i  ,j  ,k+1,id,x)
+            hgt1 = dzm*hgta + dz*hgtb
+            hgta = model_height_w(i+1,j  ,k  ,id,x)
+            hgtb = model_height_w(i+1,j  ,k+1,id,x)
+            hgt2 = dzm*hgta + dz*hgtb
+            hgta = model_height_w(i  ,j+1,k  ,id,x)
+            hgtb = model_height_w(i  ,j+1,k+1,id,x)
+            hgt3 = dzm*hgta + dz*hgtb
+            hgta = model_height_w(i+1,j+1,k  ,id,x)
+            hgtb = model_height_w(i+1,j+1,k+1,id,x)
+            hgt4 = dzm*hgta + dz*hgtb
+            zvert = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+         endif
+      else
+         ! take pressure directly
+         zvert  = xyz_loc(3)
+      endif
+   endif
+
+elseif(vert_is_height(location)) then
+   ! If obs is by height: get corresponding mass level zk,
+   ! then get neighboring mass level indices
+   ! and compute weights to zloc
+   ! get model height profile
+   call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
+   ! get height vertical co-ordinate
+   call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
+   ! convert obs vert coordinate to desired coordinate type
+   if (zloc==missing_r8) then
+      zvert = missing_r8
+   else
+      if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
+         zvert = zloc
+      elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
+         call toGrid(zloc,k,dz,dzm)
+         if ( ((k<1) .or. (k>=wrf%dom(id)%bt)) .or. &
+              ((j<1) .or. (j>=wrf%dom(id)%sn)) .or. &
+              ((i<1) .or. (i>=wrf%dom(id)%we)) ) then
+            zloc  = missing_r8
+            zvert = missing_r8
+         else
+            ! need to compute pressure at all neighboring mass points
+            ! and interpolate
+            presa = model_pressure_t(i  ,j  ,k  ,id,x)
+            presb = model_pressure_t(i  ,j  ,k+1,id,x)
+            pres1 = dzm*presa + dz*presb
+            presa = model_pressure_t(i+1,j  ,k  ,id,x)
+            presb = model_pressure_t(i+1,j  ,k+1,id,x)
+            pres2 = dzm*presa + dz*presb
+            presa = model_pressure_t(i  ,j+1,k  ,id,x)
+            presb = model_pressure_t(i  ,j+1,k+1,id,x)
+            pres3 = dzm*presa + dz*presb
+            presa = model_pressure_t(i+1,j+1,k  ,id,x)
+            presb = model_pressure_t(i+1,j+1,k+1,id,x)
+            pres4 = dzm*presa + dz*presb
+            zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+         endif
+      else
+         ! take height directly
+         zvert  = xyz_loc(3)
+      endif
+   endif
+
+elseif(vert_is_surface(location)) then
+   zloc = 1.0_r8
+   ! convert obs vert coordinate to desired coordinate type
+   if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
+      zvert = zloc
+   elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
+      ! need to compute surface pressure at all neighboring mass points
+      ! and interpolate
+      pres1 = model_pressure_s(i  ,j  ,id,x)
+      pres2 = model_pressure_s(i+1,j  ,id,x)
+      pres3 = model_pressure_s(i  ,j+1,id,x)
+      pres4 = model_pressure_s(i+1,j+1,id,x)
+      zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+   else
+      ! a surface ob is assumed to have height as vertical coordinate...
+      ! this may need to be revised if this is not always true (in which
+      ! case, just need to uncomment below lines to get terrain height
+      ! from model)
+      zvert = xyz_loc(3)
+      !! directly interpolate terrain height at neighboring mass points
+      !zvert = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
+      !             dx*wrf%dom(id)%hgt(i+1,j) ) + &
+      !        dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
+      !             dx*wrf%dom(id)%hgt(i+1,j+1) )
+   endif
+
+elseif(vert_is_undef(location)) then
+   zloc  = missing_r8
+   zvert = missing_r8
+
+else
+   write(errstring,*) 'Vertical coordinate not recognized: ',nint(query_location(location,'which_vert'))
+   call error_handler(E_ERR,'vert_interpolate', errstring, &
+        source, revision, revdate)
+
+endif
+
+deallocate(v_h, v_p)
+
+if(zloc == missing_r8) then
+   istatus = 1
+   return
+else
+   location = set_location(xyz_loc(1),xyz_loc(2),zvert,wrf%dom(id)%vert_coord)
+   return
+endif
+
+
+end subroutine vert_interpolate
+
+
+!#######################################################################
+
 
 function get_wrf_index( i,j,k,var_type,id )
 
@@ -1575,7 +1940,7 @@ real(r8), intent(out) :: long, lat
 ! find lat and long, must
 ! correct for possible u or v staggering in x, y
 
-if(var_type == type_u) then
+if (var_type == type_u) then
 
    if (i == 1) then
       long = wrf%dom(id)%longitude(1,j) - &
@@ -1601,7 +1966,7 @@ if(var_type == type_u) then
       lat = 0.5_r8*(wrf%dom(id)%latitude(i,j) +wrf%dom(id)%latitude(i-1,j))
    end if
 
-else if( var_type == type_v) then
+elseif (var_type == type_v) then
 
    if (j == 1) then
       long = wrf%dom(id)%longitude(i,1) - &
@@ -1644,6 +2009,9 @@ end do
 
 end subroutine get_wrf_horizontal_location
 
+
+
+!***********************************************************************
 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
@@ -2952,19 +3320,7 @@ elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
         var_type == type_v10 .or. var_type == type_t2 .or. &
         var_type == type_q2  .or. var_type == type_tsk) then
 
-   if(wrf%dom(id)%surf_obs ) then
-
-!!$      ips = get_wrf_index(i,j,1,TYPE_PS,id)
-      ips = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
-      model_pressure = x(ips)
-
-   else
-
-!!$      imu = get_wrf_index(i,j,1,TYPE_MU,id)
-      imu = wrf%dom(id)%dart_ind(i,j,1,TYPE_MU)
-      model_pressure = wrf%dom(id)%p_top + wrf%dom(id)%mub(i,j) + x(imu)
-
-   endif
+   model_pressure = model_pressure_s(i,j,id,x)
 
 else
 
@@ -3011,6 +3367,31 @@ model_pressure_t = ps0 * ( (gas_constant*(ts0+x(it))*qvf1) / &
      (ps0/rho) )**cpovcv
 
 end function model_pressure_t
+
+!#######################################################
+
+function model_pressure_s(i,j,id,x)
+
+! compute pressure at surface at mass point
+
+integer,  intent(in)  :: i,j,id
+real(r8), intent(in)  :: x(:)
+real(r8)              :: model_pressure_s
+
+integer  :: ips, imu
+
+if(wrf%dom(id)%surf_obs ) then
+   ips = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
+   model_pressure_s = x(ips)
+
+else
+   imu = wrf%dom(id)%dart_ind(i,j,1,TYPE_MU)
+   model_pressure_s = wrf%dom(id)%p_top + wrf%dom(id)%mub(i,j) + x(imu)
+
+endif
+
+
+end function model_pressure_s
 
 !#######################################################
 
@@ -3081,9 +3462,9 @@ if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
       v_h(k) = 0.5_r8*(fll(k) + fll(k+1) )
    end do
 
-   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
-                   dx*wrf%dom(id)%hgt(i+1,j) ) + &
-             dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
+   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i  ,j  ) + &
+                   dx*wrf%dom(id)%hgt(i+1,j  ) ) + &
+             dy*( dxm*wrf%dom(id)%hgt(i  ,j+1) + &
                    dx*wrf%dom(id)%hgt(i+1,j+1) )
 
 else
@@ -3239,12 +3620,30 @@ endif
 
 end function model_height
 
+!#######################################################
+
+function model_height_w(i,j,k,id,x)
+
+! return total height at staggered vertical coordinate
+! and horizontal mass coordinates
+
+integer,  intent(in)  :: i,j,k,id
+real(r8), intent(in)  :: x(:)
+real(r8)              :: model_height_w
+
+integer   :: i1
+
+i1 = wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ)
+
+model_height_w = (wrf%dom(id)%phb(i,j,k) + x(i1))/gravity
+
+end function model_height_w
+
+!#######################################################
 
 
 subroutine pert_model_state(state, pert_state, interf_provided)
-!----------------------------------------------------------------------
-! subroutine pert_model_state(state, pert_state, interf_provided)
-!
+
 ! Perturbs a model state for generating initial ensembles
 ! Returning interf_provided means go ahead and do this with uniform
 ! small independent perturbations.
@@ -3578,15 +3977,156 @@ END subroutine splint
 !cys_add_end
 
 
+!#######################################################################
 
 
-subroutine ens_mean_for_model(ens_mean)
-!------------------------------------------------------------------
+subroutine ens_mean_for_model(filter_ens_mean)
+
 ! Not used in low-order models
+! Stores provided ensemble mean within the module for later use
 
-real(r8), intent(in) :: ens_mean(:)
+real(r8), intent(in) :: filter_ens_mean(:)
+
+ens_mean = filter_ens_mean
 
 end subroutine ens_mean_for_model
+
+
+!#######################################################################
+
+subroutine get_domain_info(obslon,obslat,id,iloc,jloc)
+
+real(r8), intent(in)  :: obslon, obslat
+integer, intent(out)  :: id
+real(r8), intent(out) :: iloc, jloc
+
+logical               :: dom_found
+
+! given arbitrary lat and lon values, returns closest domain id and
+! horizontal mass point grid points (xloc,yloc)
+
+dom_found = .false.
+
+id = num_domains
+do while (.not. dom_found)
+
+   ! Checking for exact equality on real variable types is generally a bad idea.
+
+   if( (wrf%dom(id)%proj%hemi ==  1.0_r8 .and. obslat == -90.0_r8) .or. &
+       (wrf%dom(id)%proj%hemi == -1.0_r8 .and. obslat ==  90.0_r8) .or. &
+       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(obslat) >= 90.0_r8) ) then
+
+   else
+      call latlon_to_ij(wrf%dom(id)%proj,obslat,obslon,iloc,jloc)
+      if ( (iloc >= 1 .and. iloc <= wrf%dom(id)%we .and. &
+           jloc >= 1 .and. jloc <= wrf%dom(id)%sn) ) then
+         dom_found = .true.
+      endif
+
+   endif
+
+   if (.not. dom_found) then
+      id = id - 1
+      if (id == 0) return
+   endif
+
+end do
+
+end subroutine get_domain_info
+
+!#######################################################################
+
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                            num_close, close_ind, dist)
+
+! Given a DART ob (referred to as "base") and a set of obs priors or state variables
+! (obs_loc, obs_kind), returns the subset of close ones to the "base" ob, their
+! indices, and their distances to the "base" ob...
+
+! For vertical distance computations, general philosophy is to convert all vertical
+! coordinates to a common coordinate. This coordinate type is defined in the namelist
+! with the variable "vert_localization_coord".
+
+! Vertical conversion is carried out by the subroutine vert_interpolate.
+
+! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
+! locations are possibly modified here and returned as such to the calling routine.
+! The calling routine is always filter_assim and these arrays are local arrays
+! within filter_assim. In other words, these modifications will only matter within
+! filter_assim, but will not propagate backwards to filter.
+      
+implicit none
+
+type(get_close_type), intent(in)     :: gc
+type(location_type),  intent(inout)  :: base_obs_loc, obs_loc(:)
+integer,              intent(in)     :: base_obs_kind, obs_kind(:)
+integer,              intent(out)    :: num_close, close_ind(:)
+real(r8),             intent(out)    :: dist(:)
+
+integer                :: t_ind, istatus, k
+integer                :: base_which, local_obs_which
+real(r8), dimension(3) :: base_array, local_obs_array
+type(location_type)    :: local_obs_loc
+
+
+istatus = 0
+
+! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
+
+base_array = get_location(base_obs_loc) 
+base_which = nint(query_location(base_obs_loc))
+
+if (base_which /= wrf%dom(1)%vert_coord) then
+   call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus)
+elseif (base_array(3) == missing_r8) then
+   istatus = 1
+end if
+
+if (istatus == 0) then
+
+   ! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
+   ! This way, we are decreasing the number of distance computations that will follow.
+   ! This is a horizontal-distance operation and we don't need to have the relevant vertical
+   ! coordinate information yet (for obs_loc).
+   call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                          num_close, close_ind)
+
+   ! Loop over potentially close subset of obs priors or state variables
+   do k = 1, num_close
+
+      t_ind = close_ind(k)
+      local_obs_loc   = obs_loc(t_ind)
+      local_obs_which = nint(query_location(local_obs_loc))
+
+      ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
+      ! This should only be necessary for obs priors, as state location information already
+      ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
+      if (local_obs_which /= wrf%dom(1)%vert_coord) then
+         call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus)
+         ! Store the "new" location into the original full local array
+         obs_loc(t_ind) = local_obs_loc
+      endif
+
+      ! Compute distance - set distance to a very large value if vert coordinate is missing
+      local_obs_array = get_location(local_obs_loc)
+      if (local_obs_array(3) == missing_R8) then
+         dist(k) = 1.0e9        
+      else
+         dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+      end if
+
+   end do
+
+else
+
+   ! This means that the base ob does not have a good vertical coordinate, so just skip
+   num_close = 0
+   close_ind = 0
+   dist      = 1.0e9
+
+endif
+
+end subroutine get_close_obs
 
 
 

@@ -1,3 +1,9 @@
+# Notes for model_nml:
+# (1) vert_localization_coord must be one of:
+#     1 = model level
+#     2 = pressure
+#     3 = height
+
 &model_nml
    output_state_vector = .false.,
    num_moist_vars = 0,
@@ -7,6 +13,7 @@
    h_diab = .false.,
    assimilation_period_seconds = 21600,
    adv_mod_command = './wrf.exe',
+   vert_localization_coord = 3,
    center_search_size = 25,
    center_spline_grid_scale = 10  /
 
