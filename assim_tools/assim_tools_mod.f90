@@ -33,7 +33,7 @@ use       cov_cutoff_mod, only : comp_cov_factor
 
 use       reg_factor_mod, only : comp_reg_factor
 
-use         location_mod, only : location_type, get_close_type
+use         location_mod, only : location_type, get_close_type, get_close_obs_destroy
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index
@@ -579,6 +579,8 @@ endif
 
 ! Free up the storage
 call destroy_obs(observation)
+call get_close_obs_destroy(gc_state)
+call get_close_obs_destroy(gc_obs)
 
 end subroutine filter_assim
 
