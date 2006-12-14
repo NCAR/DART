@@ -78,10 +78,6 @@ echo mkmf_perfect_model_obs
 csh mkmf_perfect_model_obs
 make         || exit 5
 
-echo mkmf_filter
-csh mkmf_filter
-make         || exit 6
-
 echo mkmf_obs_diag
 csh mkmf_obs_diag
 make         || exit 7
@@ -118,9 +114,21 @@ echo mkmf_pert_wrf_bc
 csh mkmf_pert_wrf_bc
 make         || exit 18
 
+# filter needs to be compiled with MPI.
+echo mkmf_filter
+csh mkmf_filter
+echo 'adding mpi directives to Makefile'
+\cp -f Makefile Makefile.back
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
+\rm -f Makefile.back
+## some compilers seem to need all the files compiled with the
+## mpi wrapper; others do not.  this seems to be the safest, if slower.
+rm *.o *.mod  
+make         || exit 6
+rm *.o *.mod  
 
-echo running perfect_model_obs
-./perfect_model_obs || exit 20
+#echo running perfect_model_obs
+#./perfect_model_obs || exit 20
 
 echo " "
 echo time to run filter here:
