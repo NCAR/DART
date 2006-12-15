@@ -37,20 +37,10 @@ if ( VarExist(f1,'time') )
 else
    error(sprintf('%s has no ''time'' dimension.',file1))
 end
-if ( VarExist(f1,'StateVariable') ) 
-   tnum_vars   = length(f1('StateVariable')); % determine # of state variables
-else
-   latexist = VarExist(f1,'lat'  );
-   lonexist = VarExist(f1,'lon'  );
-   lvlexist = VarExist(f1,'lev');
-   if ( latexist && lonexist && lvlexist )
-      tnum_lons = prod(size(f1('lon')));
-      tnum_lats = prod(size(f1('lat')));
-      tnum_lvls = prod(size(f1('lev')));
-      tnum_vars = tnum_lons * tnum_lats * tnum_lvls;
-   else
-      error(sprintf('Unable to determine resolution of %s.',file1))
-   end
+
+[tnum_vars,tdims] = ModelDimension(f1,tmodel);
+if ( tnum_vars <= 0 )
+   error(sprintf('Unable to determine resolution of %s.',file1))
 end
 close(f1); 
 
@@ -71,20 +61,9 @@ if (VarExist(f2,'time'))
 else
    error(sprintf('%s has no ''time'' dimension.',file2))
 end
-if (VarExist(f2,'StateVariable')) 
-   dnum_vars   = ncsize(f2('StateVariable')); % determine # of state variables
-else
-   latexist = VarExist(f2,'lat'  );
-   lonexist = VarExist(f2,'lon'  );
-   lvlexist = VarExist(f2,'lev');
-   if ( latexist && lonexist && lvlexist )
-      dnum_lons = prod(size(f2('lon')));
-      dnum_lats = prod(size(f2('lat')));
-      dnum_lvls = prod(size(f2('lev')));
-      dnum_vars = dnum_lons * dnum_lats * dnum_lvls;
-   else
-      error(sprintf('Unable to determine resolution of %s.',file2))
-   end
+[dnum_vars,ddims] = ModelDimension(f2,dmodel);
+if ( dnum_vars <= 0 )
+   error(sprintf('Unable to determine resolution of %s.',file2))
 end
 close(f2); 
 
@@ -94,9 +73,9 @@ if (strcmp(tmodel,dmodel) ~= 1)
    disp(sprintf('%s has model %s ',file2,dmodel))
    error('no No NO ... models must be the same')
 end
-if (tnum_vars ~= dnum_vars)
-   disp(sprintf('%s has %d state variables',file1,tnum_vars))
-   disp(sprintf('%s has %d state variables',file2,dnum_vars))
+if (prod(tnum_vars) ~= prod(dnum_vars))
+   disp(sprintf('%s has %d state variables',file1,prod(tnum_vars)))
+   disp(sprintf('%s has %d state variables',file2,prod(dnum_vars)))
    error('no No NO ... both files must have same shape of state variables.')
 end
 if (tnum_times ~= dnum_times)
@@ -126,3 +105,45 @@ for i=1:length(dimensions)
       x = 1;   % true ... variables exists in the netcdf file.
    end
 end
+
+
+function [x,y] = ModelDimension(ncid,modelname)
+
+x = 0;
+y = NaN;
+
+switch lower(modelname)
+
+   case 'cam'
+      lonexist = VarExist(ncid,'lon'  );
+      latexist = VarExist(ncid,'lat'  );
+      lvlexist = VarExist(ncid,'lev');
+      if ( latexist && lonexist && lvlexist )
+         dnum_lons = prod(size(ncid('lon')));
+         dnum_lats = prod(size(ncid('lat')));
+         dnum_lvls = prod(size(ncid('lev')));
+         x = 3;
+         y = [dnum_lons dnum_lats dnum_lvls];
+      end
+
+   case 'fms_bgrid'
+      lonexist = VarExist(ncid,'TmpI'  );
+      latexist = VarExist(ncid,'TmpJ'  );
+      lvlexist = VarExist(ncid,'level');
+      if ( latexist && lonexist && lvlexist )
+         dnum_lons = prod(size(ncid('TmpI')));
+         dnum_lats = prod(size(ncid('TmpJ')));
+         dnum_lvls = prod(size(ncid('level')));
+         x = 3;
+         y = [dnum_lons dnum_lats dnum_lvls];
+      end
+
+   otherwise
+%     disp(sprintf('working with %s',modelname))
+      if ( VarExist(ncid,'StateVariable')) 
+         y = ncsize(ncid('StateVariable'));
+	 x = 1;
+      end
+
+end
+
