@@ -1075,7 +1075,6 @@ if(read_format == 'unformatted') then
 else
    read(file_id, *) label(1),seq%first_time,label(2), seq%last_time
 endif
-
 ! Now read in all the previously defined observations
 do i = 1, num_obs
    if(.not. read_format == 'unformatted') read(file_id,*) label(1)
@@ -1561,15 +1560,14 @@ subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, &
 ! (as opposed to the prior or mean or ...)
 !
 ! Are the checks for num_copies == 0 or <0 necessary? 
-! When would this ever occur?
+! Yes, they happen in create_fixed_network_sequence
 
 integer,              intent(in)    :: file_id, num_copies, add_copies, num_qc, add_qc, key
 character(len = 129), intent(in)    :: read_format
 type(obs_type),       intent(inout) :: obs
 
 integer  :: i
-
-obs%values(1) = missing_r8
+real(r8) :: temp_val
 
 ! Read in values and qc
 if(num_copies > 0) then
@@ -1592,14 +1590,23 @@ if(num_qc > 0) then
    endif
 endif
 
+! Need to pass the value if available
+if(num_copies > 0) then
+   temp_val = obs%values(1)
+else
+   temp_val = missing_r8
+endif 
+
 if(read_format == 'unformatted') then
    read(file_id) obs%prev_time, obs%next_time, obs%cov_group
-   call read_obs_def(file_id, obs%def, key, obs%values(1), 'unformatted')
+   call read_obs_def(file_id, obs%def, key, temp_val, 'unformatted')
 else
    read(file_id, *) obs%prev_time, obs%next_time, obs%cov_group
-   call read_obs_def(file_id, obs%def, key, obs%values(1))
+   call read_obs_def(file_id, obs%def, key, temp_val)
 endif
 
+! Copy the temp_val back to obs%values(1) if there are copies of data
+if(num_copies > 0) obs%values(1) = temp_val
 
 end subroutine read_obs
 
