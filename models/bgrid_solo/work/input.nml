@@ -107,12 +107,15 @@
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height = 10000.0,
    vert_normalization_level = 20.0,
-   approximate_distance = .true. /
+   approximate_distance = .true.,
+   nlon = 71,
+   nlat = 36  /
 
 
 &utilities_nml
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
+
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:

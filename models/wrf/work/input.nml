@@ -83,7 +83,9 @@
    vert_normalization_pressure = 6666666.7,
    vert_normalization_height = 5000000.0,
    vert_normalization_level = 2666.7,
-   approximate_distance = .false.  /
+   approximate_distance = .false.,
+   nlon = 71,
+   nlat = 36  /
 
 # Notes for model_nml:
 # (1) vert_localization_coord must be one of:
