@@ -25,19 +25,23 @@ module model_mod
 
 use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
                               gas_constant, gas_constant_v, gravity
+
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
+
 use      location_mod, only : location_type, get_location, set_location, &
                               horiz_dist_only, &
                               LocationDims, LocationName, LocationLName, &
                               query_location, vert_is_undef, vert_is_surface, &
                               vert_is_level, vert_is_pressure, vert_is_height, &
-                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,&
-                              get_close_type, get_dist, get_close_maxdist_init, get_close_obs_init, &
-                              loc_get_close_obs => get_close_obs
+                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
+                              VERTISHEIGHT,&
+                              get_close_type, get_dist, get_close_maxdist_init, &
+                              get_close_obs_init, loc_get_close_obs => get_close_obs
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, &
                               E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
+
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
                               KIND_SPECIFIC_HUMIDITY, &
@@ -49,6 +53,7 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
+
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                               ij_to_latlon, gridwind_to_truewind
@@ -240,7 +245,8 @@ elseif (vert_localization_coord == VERTISPRESSURE) then
 elseif (vert_localization_coord == VERTISHEIGHT) then
    wrf%dom(:)%vert_coord = VERTISHEIGHT
 else
-   write(errstring,*)'vert_localization_coord must be one of ', VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
+   write(errstring,*)'vert_localization_coord must be one of ', &
+                     VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
    call error_handler(E_MSG,'static_init_model', errstring, source, revision,revdate)
    write(errstring,*)'vert_localization_coord is ', vert_localization_coord
    call error_handler(E_ERR,'static_init_model', errstring, source, revision,revdate)
@@ -1012,7 +1018,8 @@ if (obs_kind > 0) then
       call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
       ! get pressure vertical co-ordinate
       call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
-      if(debug.and.obs_kind /= KIND_SURFACE_PRESSURE) print*,' obs is by pressure and zloc =',zloc
+      if(debug.and.obs_kind /= KIND_SURFACE_PRESSURE) &
+                print*,' obs is by pressure and zloc =',zloc
       if(debug) print*,'model pressure profile'
       if(debug) print*,v_p
       
@@ -1034,7 +1041,8 @@ if (obs_kind > 0) then
       zloc  = missing_r8
 
    else
-      write(errstring,*) 'wrong option for which_vert ',nint(query_location(location,'which_vert'))
+      write(errstring,*) 'wrong option for which_vert ', &
+                         nint(query_location(location,'which_vert'))
       call error_handler(E_ERR,'model_interpolate', errstring, &
            source, revision, revdate)
 
@@ -1056,7 +1064,7 @@ endif
 ! This part is the forward operator -- compute desired model state value for given point.
 
 ! Get the desired field to be interpolated
-if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then        ! U, V
+if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
 
    if(.not. vert_is_surface(location)) then
 
@@ -1668,6 +1676,9 @@ xyz_loc = get_location(location)
 call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
 
 if (id==0) then
+   ! Note: need to reset location using the namelist variable directly because
+   ! wrf%dom(id)%vert_coord is not defined for id=0
+   location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,vert_localization_coord)
    istatus = 1
    return
 endif
@@ -1876,14 +1887,10 @@ endif
 
 deallocate(v_h, v_p)
 
-if(zloc == missing_r8) then
-   istatus = 1
-   return
-else
-   location = set_location(xyz_loc(1),xyz_loc(2),zvert,wrf%dom(id)%vert_coord)
-   return
-endif
+if(zvert == missing_r8) istatus = 1
 
+! Reset location   
+location = set_location(xyz_loc(1),xyz_loc(2),zvert,wrf%dom(id)%vert_coord)
 
 end subroutine vert_interpolate
 
@@ -4063,13 +4070,14 @@ integer,              intent(in)     :: base_obs_kind, obs_kind(:)
 integer,              intent(out)    :: num_close, close_ind(:)
 real(r8),             intent(out)    :: dist(:)
 
-integer                :: t_ind, istatus, k
+integer                :: t_ind, istatus1, istatus2, k
 integer                :: base_which, local_obs_which
 real(r8), dimension(3) :: base_array, local_obs_array
 type(location_type)    :: local_obs_loc
 
 
-istatus = 0
+istatus1 = 0
+istatus2 = 0
 
 ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
 
@@ -4077,12 +4085,12 @@ base_array = get_location(base_obs_loc)
 base_which = nint(query_location(base_obs_loc))
 
 if (base_which /= wrf%dom(1)%vert_coord) then
-   call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus)
+   call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus1)
 elseif (base_array(3) == missing_r8) then
-   istatus = 1
+   istatus1 = 1
 end if
 
-if (istatus == 0) then
+if (istatus1 == 0) then
 
    ! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
    ! This way, we are decreasing the number of distance computations that will follow.
@@ -4102,14 +4110,15 @@ if (istatus == 0) then
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
       if (local_obs_which /= wrf%dom(1)%vert_coord) then
-         call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus)
+         call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
          ! Store the "new" location into the original full local array
          obs_loc(t_ind) = local_obs_loc
       endif
 
       ! Compute distance - set distance to a very large value if vert coordinate is missing
+      ! or vert_interpolate returned error (istatus2=1)
       local_obs_array = get_location(local_obs_loc)
-      if (local_obs_array(3) == missing_R8) then
+      if ((local_obs_array(3) == missing_r8).or.(istatus2 == 1)) then
          dist(k) = 1.0e9        
       else
          dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
