@@ -1,0 +1,29 @@
+#!/bin/csh 
+#
+# The following directories are not needed for the distribution.
+#
+
+set SNAME = $0
+
+if ( ! -d DART ) then
+   echo "$SNAME:t must be run from ABOVE the top-level"
+   echo "DART directory -- please try again."
+   exit 1
+endif
+
+foreach DIRECTORY ( chisq  \
+   leeuwen_particle_filter \
+   models/forced_barot     \
+   models/gswm             \
+   models/null_model       \
+   models/oned_wave        \
+   models/oscillator       \
+   models/rose             \
+   ncep_obs/bufr_lib       \
+   qc                      \
+   system_simulation )
+
+   echo "Removing $DIRECTORY from the DART distribution."
+   \rm -rf DART/$DIRECTORY
+
+end
