@@ -2,6 +2,14 @@
 #
 # The following directories are not needed for the distribution.
 #
+# Keyword check follows:
+#
+# $Date$
+# $Revision$
+# $Author$
+# $HeadURL$
+# $Id$
+#
 
 set SNAME = $0
 
