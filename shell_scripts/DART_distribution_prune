@@ -9,6 +9,8 @@
 # $Author$
 # $HeadURL$
 # $Id$
+# $Source$
+# $Name$
 #
 
 set SNAME = $0
