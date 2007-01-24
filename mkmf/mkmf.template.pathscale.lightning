@@ -35,9 +35,12 @@
 #    Thread model: posix
 #    GNU gcc version 3.3.1 (PathScale 2.0 driver)
 
+#----------------------------------------------------------------------
+# if the pathScale module is loaded, these things are properly set.
 #MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pathscale-2.0-64
 #MPIFC=$(MPI_HOME)/bin/mpif90
 #MPILD=$(MPI_HOME)/bin/mpif90
+#----------------------------------------------------------------------
 MPIFC=mpif90
 MPILD=mpif90
 FC = pathf90
@@ -46,6 +49,7 @@ CPPFLAGS =
 LIST = 
 NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-pathcc-pathf90-2.0-64
 FFLAGS = -O0 -I$(NETCDF)/include
+#FFLAGS = -O0 -I$(NETCDF)/include -freeform -r8
 #FFLAGS = -Wuninitialized -ffortran-bounds-check -fullwarn -O0 -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(LIBS)
