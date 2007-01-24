@@ -41,20 +41,22 @@ end type wrf_dom
 ! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector  = .true.  ! output prognostic variables
-integer :: num_moist_vars       = 0
+logical :: output_state_vector  = .false.  ! state vs. prognostic format
+integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
-logical :: surf_obs             = .false.
+logical :: surf_obs             = .true.
 logical :: h_diab               = .false.
-character(len = 72) :: adv_mod_command = 'wrf.exe'
+character(len = 72) :: adv_mod_command = './wrf.exe'
 integer :: center_search_size       = 25
 integer :: center_spline_grid_scale = 10
+integer :: vert_localization_coord  =  3  ! 1,2,3 == level,pressure,height
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
+                     vert_localization_coord, &
                      center_search_size, center_spline_grid_scale
 
 !-------------------------------------------------------------
