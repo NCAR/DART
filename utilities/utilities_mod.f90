@@ -45,9 +45,19 @@ module utilities_mod
 !                       made from set_output.  Useful for messages which cannot
 !                       go through the normal error handler (e.g. namelists).
 !
+!      set_tasknum      Only called for an MPI job with multiple tasks.
+!                       Sets the 'multi-task' flag and records the local task
+!                       number for later error and info messages.
+!
+!      nc_check         Check netcdf return codes, and if not ok, extract
+!                       the netcdf error string and pass that to the error
+!                       handler routine.  Two optional strings allow the caller
+!                       to provide the subroutine name and some context.
+!
 !-----------------------------------------------------------------------
 
 use types_mod, only : r8
+use netcdf
 
 implicit none
 private
@@ -56,20 +66,22 @@ private
 
 integer, private :: num_nml_error_codes, nml_error_codes(5)
 logical, private :: do_output_flag = .true.
+logical, private :: single_task = .true.
+integer, private :: task_number = 0
 
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
-public :: file_exist, get_unit, open_file, timestamp, &
-       close_file, register_module, error_handler, logfileunit, &
+public :: file_exist, get_unit, open_file, timestamp, set_tasknum, &
+       close_file, register_module, error_handler, logfileunit, nc_check, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
        find_namelist_in_file, check_namelist_read, do_output, set_output, &
-       E_DBG, E_MSG, E_WARN, E_ERR, &
+       E_DBG, E_MSG, E_WARN, E_ERR, & 
        DEBUG, MESSAGE, WARNING, FATAL
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/utilities/utilities_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -87,8 +99,9 @@ contains
 
 !#######################################################################
 
-   subroutine initialize_utilities(progname)
+   subroutine initialize_utilities(progname, alternatename)
    character(len=*), intent(in), optional :: progname
+   character(len=*), intent(in), optional :: alternatename
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
@@ -96,6 +109,7 @@ contains
    character(len=10) :: ctime
    character(len= 5) :: zone
    integer, dimension(8) :: values
+   character(len=129) :: lname
 
 
       if ( module_initialized ) then ! nothing to do
@@ -133,10 +147,16 @@ contains
             stop 99
          endif
 
-         write(*,*)'Trying to log to unit ', logfileunit
-         write(*,*)'Trying to open file ', trim(adjustl(logfilename))
+         if (present(alternatename)) then
+            lname = alternatename
+         else
+            lname = logfilename
+         endif
 
-         open(logfileunit, file=trim(adjustl(logfilename)), form='formatted', &
+         write(*,*)'Trying to log to unit ', logfileunit
+         write(*,*)'Trying to open file ', trim(adjustl(lname))
+
+         open(logfileunit, file=trim(adjustl(lname)), form='formatted', &
                            position='append', iostat = io )
          if ( io /= 0 ) then
             write(*,*)'FATAL ERROR in initialize_utilities'
@@ -144,7 +164,7 @@ contains
             write(*,*)'  ',trim(revision)
             write(*,*)'  ',trim(revdate)
             write(*,*)'   unable to open the logfile.'
-            write(*,*)'   the intended file name was <',trim(logfilename),'>'
+            write(*,*)'   the intended file name was <',trim(lname),'>'
             write(*,*)'   stopping.'
             stop 99
          endif
@@ -546,6 +566,8 @@ integer, intent(in) :: level
 character(len = *), intent(in) :: routine, text, src, rev, rdate
 character(len = *), intent(in), OPTIONAL :: aut
 
+character(len = 8) :: taskstr
+
 if ( .not. module_initialized ) call initialize_utilities
 
 ! current choice is to log all errors and warnings regardless
@@ -556,19 +578,37 @@ select case(level)
    case (E_MSG)
 
       if ( .not. do_output_flag) return
-      write(     *     , *) trim(routine),' ', trim(text)
-      write(logfileunit, *) trim(routine),' ', trim(text)
+      if ( single_task ) then
+        write(     *     , *) trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(routine),' ', trim(text)
+      else
+        if (task_number < 10) then
+            write(taskstr, '(a,i1)' ) "PE ", task_number
+        else if (task_number < 100) then
+            write(taskstr, '(a,i2)' ) "PE ", task_number
+        else
+            write(taskstr, '(a,i5)' ) "PE ", task_number
+        endif
+        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
+      endif
 
    case (E_WARN)
 
       write(     *     , *) 'WARNING FROM:'
+      if ( .not. single_task ) &
+      write(     *     , *) '   task id       : ', task_number
       write(     *     , *) '   routine       : ', trim(routine)
       write(     *     , *) '   source file   : ', trim(src)
       write(     *     , *) '   file revision : ', trim(rev)
       write(     *     , *) '   revision date : ', trim(rdate)
+      if(present(aut)) &
+      write(     *     , *) '   last editor   : ', trim(aut)
       write(     *     , *) '   message       : ', trim(text)
 
       write(logfileunit, *) 'WARNING FROM:'
+      if ( .not. single_task ) &
+      write(logfileunit, *) '   task id       : ', task_number
       write(logfileunit, *) '   routine       : ', trim(routine)
       write(logfileunit, *) '   source file   : ', trim(src)
       write(logfileunit, *) '   file revision : ', trim(rev)
@@ -580,13 +620,19 @@ select case(level)
    case(E_ERR)
 
       write(     *     , *) 'ERROR FROM:'
+      if ( .not. single_task ) &
+      write(     *     , *) '   task id       : ', task_number
       write(     *     , *) '   routine       : ', trim(routine)
       write(     *     , *) '   source file   : ', trim(src)
       write(     *     , *) '   file revision : ', trim(rev)
       write(     *     , *) '   revision date : ', trim(rdate)
+      if(present(aut)) &
+      write(     *     , *) '   last editor   : ', trim(aut)
       write(     *     , *) '   message       : ', trim(text)
 
       write(logfileunit, *) 'ERROR FROM:'
+      if ( .not. single_task ) &
+      write(logfileunit, *) '   task id       : ', task_number
       write(logfileunit, *) '   routine       : ', trim(routine)
       write(logfileunit, *) '   source file   : ', trim(src)
       write(logfileunit, *) '   file revision : ', trim(rev)
@@ -749,6 +795,24 @@ end subroutine error_handler
 
 !#######################################################################
 
+
+   subroutine set_tasknum (tasknum)
+
+! *** for multiple-task jobs, set the task number for error msgs ***
+!
+!    in:  tasknum  = task number, 0 to N-1
+
+   integer, intent(in) :: tasknum
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   single_task = .false. 
+   task_number = tasknum
+
+   end subroutine set_tasknum
+
+
+!#######################################################################
 
 
 subroutine close_file(iunit)
@@ -925,8 +989,38 @@ endif
 
 end subroutine check_namelist_read
 
+!#######################################################################
+
+   subroutine nc_check(istatus, subr_name, context)
+      integer, intent (in)                   :: istatus
+      character(len=*), intent(in)           :: subr_name
+      character(len=*), intent(in), optional :: context
+  
+      character(len=129) :: error_msg
+  
+      ! if no error, nothing to do here.  we are done.
+      if( istatus == nf90_noerr) return
+
+
+      ! something wrong.  construct an error string and call the handler.
+
+      ! context is optional, but is very useful if specified.
+      ! if context + error code > 129, the assignment will truncate.
+      if (present(context) ) then
+          error_msg = trim(context) // ': ' // trim(nf90_strerror(istatus))
+      else
+          error_msg = nf90_strerror(istatus)
+      endif
+
+      ! this does not return 
+      call error_mesg(subr_name, error_msg, FATAL)
+  
+
+   end subroutine nc_check
+
 !=======================================================================
 ! End of utilities_mod
 !=======================================================================
-!
+
 end module utilities_mod
+
