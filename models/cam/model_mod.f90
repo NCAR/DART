@@ -1,11 +1,17 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
-! search for debug for diagnostics to remove when it's working.
-
+! <next five lines automatically updated by CVS, do not edit>
+! $Source: /home/thoar/CVS.REPOS/DART/models/cam/model_mod.f90,v $
+! $Revision$
+! $Date$
+! $Author$
+! $Name:  $
+ 
 !--------------------------------------------------------------------
 ! DISTRIBUTION;
 ! > instructions for use
@@ -104,13 +110,14 @@ module model_mod
 !           (easier to use, but slower?) to model_heights? 
 !    x  > See 'premature' below for something else to fix
 !    x  > clean out old code from alter_dist, after I'm sure that it works
-!       > clean out maxval section, when I'm convinced it works.
+!    x  > clean out maxval section, when I'm convinced it works.
+!    x  > compile with options to tell me about unused variables, etc.
 !       > change (private only) subroutine argument lists; structures first, regardless of in/out
 !         then output, and input variables.
 !       > change declarations to have dummy argument integers used as dimensions first
-!       > compile with options to tell me about unused variables, etc.
-!       > test with a single ob (to see how get_state_meta_data indexing works
-!       > document before compiling (and forgetting!)
+!       > deallocate grid_1d_arrays using end_1d_grid_instance in end_model
+!       > test with a single ob (to see how get_state_meta_data indexing works)
+!    (x) > document before compiling (and forgetting!)
 !          - model_interpolate (and called routines?)
 !       > new qc; are my istatus = [012] still good?
 !       > More error checking?
@@ -122,13 +129,16 @@ module model_mod
 !       + index_from_grid (and others?) could be more efficient by calculating and 
 !         globally storing the beginning index of each cfld and/or the size of each cfld.
 !       + searchs through dimensions are inefficient
-!       + simplify plevs_cam; eliminate a loop and argument(s?)
+!     x + simplify plevs_cam; eliminate a loop and argument(s?)
 !       + add dimid to grid_1d_type; to reduce need to call find_names?
 !       + pointers may slow down computations by up to 75%.  Dereference them by passing
 !         the pointer array to a subroutine, which will then handle the data directly
 !         instead of through a pointer.
 !       + global storage of height fields?  but need them on staggered grids (only sometimes)
 
+! ISSUE; In P[oste]rior_Diag.nc ensemble members are written out *between* the field mean/spread
+!        pair and the inflation mean/sd pair.  Would it make more sense to put members after
+!        both pairs?  Easy to do?
 
 ! ISSUE?; model_interpolate assumes that obs with a vertical location have 2 horizontal locations 
 !          too.  The state vector may have fields for which this isn't true, but no obs we've seen
@@ -144,6 +154,7 @@ module model_mod
 
 ! ISSUE; is there a machine precision defined somewhere, which I could use for testing differences
 !        betwen real numbers?  search for E-12 to see instances.
+!   FIX; Fortran intrinsic function; not implemented yet
 
 ! ISSUE: In model_get_close_states the P on levels is calculated for each column within
 !        radius of the ob location.  So P is recalculated for the same columns many times
@@ -385,9 +396,9 @@ public ::                                                            &
 !-----------------------------------------------------------------------
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: version = "$Id$"
-character(len=128) :: tag = "$Name$"
+character(len=128) :: tag = "$Name:  $"
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/models/cam/model_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 !-----------------------------------------------------------------------
@@ -563,7 +574,7 @@ type(random_seq_type)   :: random_seq
 ! Variable for keeping track of which ensemble member is to be perturbed
 ! by pert_model_state, which is called by filter for each ensemble member
 ! for a cold start.
-integer                 :: ens_member , write_out
+integer                 :: ens_member
 data ens_member /0/
 logical                 :: do_out
 
@@ -662,9 +673,6 @@ integer            :: calendar_type = GREGORIAN
 character(len=129) :: errstring
 integer            :: lon_index, slon_index, lat_index, slat_index
 
-
-! debug
-write_out = 0
 
 ! Register the module
 call register_module(source, revision, revdate)
@@ -796,8 +804,6 @@ end if
 
 ! Read surface geopotential from topog_file for use in vertical interpolation in height.
 ! Coordinate order not affected by CAM model version.
-! debug
-if (do_out) write(*,*) 'Entering read_cam_horiz'
 
 if (alloc_phis) allocate (phis(topog_lons, topog_lats))
 
@@ -865,24 +871,13 @@ call trans_coord(ncfileid)
 ! The arrays into which CAM fields are put are dimensioned by the largest values of
 ! the sizes of the dimensions listed in Y_dim_RANKd, Y=[sf], RANK=[1-3] .
 ! The second dimension denotes the rank of the array for which the firs dim gives the max size(s).
-!f_dim_max(1, 1) = maxval(f_dim_1d(1,:), dim = 2)   ! gets the max value  of f_dim_1d (1, :)
 f_dim_max(1:2, 1) = maxval(f_dim_1d, dim=2)   ! gets the max value  of f_dim_1d (1:2, :)
 f_dim_max(1:3, 2) = maxval(f_dim_2d, dim=2)   ! gets the max values of f_dim_2d (1:3, :)
-! f_dim_max(1, 2) = maxval(f_dim_2d(1,:), dim = 2)   ! gets the max values of f_dim_2d (1, :)
-! f_dim_max(2, 2) = maxval(f_dim_2d(2,:), dim = 2)   ! gets the max values of f_dim_2d (2, :)
 f_dim_max(1:4, 3) = maxval(f_dim_3d, dim=2)   ! gets the max values of f_dim_3d (1:4, :)
-! f_dim_max(1, 3) = maxval(f_dim_3d(1,:), dim = 2)   ! gets the max values of f_dim_3d (1, :)
-! f_dim_max(2, 3) = maxval(f_dim_3d(2,:), dim = 2)   ! gets the max values of f_dim_3d (2, :)
-! f_dim_max(3, 3) = maxval(f_dim_3d(3,:), dim = 2)   ! gets the max values of f_dim_3d (3, :)
 
 s_dim_max(1  , 1) = maxval(s_dim_1d, dim=1)   ! gets the max value  of s_dim_1d (:)
 s_dim_max(1:2, 2) = maxval(s_dim_2d, dim=2)   ! gets the max values of s_dim_2d (1:2, :)
-! s_dim_max(1, 2) = maxval(s_dim_2d(1,:), dim = 2)   ! gets the max values of s_dim_2d (1, :)
-! s_dim_max(2, 2) = maxval(s_dim_2d(2,:), dim = 2)   ! gets the max values of s_dim_2d (2, :)
 s_dim_max(1:3, 3) = maxval(s_dim_3d, dim=2)   ! gets the max values of s_dim_3d (1:3, :)
-! s_dim_max(1, 3) = maxval(s_dim_3d(1,:), dim = 2)   ! gets the max values of s_dim_3d (1, :)
-! s_dim_max(2, 3) = maxval(s_dim_3d(2,:), dim = 2)   ! gets the max values of s_dim_3d (2, :)
-! s_dim_max(3, 3) = maxval(s_dim_3d(3,:), dim = 2)   ! gets the max values of s_dim_3d (3, :)
 
 !debug   where will this be written?
 if (do_out) then
@@ -896,7 +891,10 @@ if (do_out) then
    end do
    
    do i=1,3
-      write(*,*) 's_dim_3d = ',(s_dim_3d(i,j),j=1,state_num_3d),'s_dim_max = ',s_dim_max(i,3)
+      write(*,'(/A,(10I4))') 's_dim_3d = ',(s_dim_3d(i,j),j=1,state_num_3d)
+      write(*,'(A,(10I4))') 's_dim_max = ',s_dim_max(i,3)
+      write(*,'(A,(10I4))') 'f_dim_3d = ',(f_dim_3d(i,j),j=1,state_num_3d)
+      write(*,'(A,(10I4))') 'f_dim_max = ',f_dim_max(i,3)
    end do
 end if
 !debug end
@@ -977,7 +975,7 @@ end if
 
 do i = 1,state_num_3d
    ! Get variable id for a  3d field
-   call check(nf90_inq_varid       (ncfileid, state_names_3d(i), varid))
+   call check(nf90_inq_varid(ncfileid, state_names_3d(i), varid), state_names_3d(i))
    ! Get dimension ids for the dimensions of the field
    call check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_3d(1:4,i)))
 
@@ -1020,7 +1018,7 @@ if (state_num_2d > 0) then
 end if
 
 do i = 1,state_num_2d
-   call check(nf90_inq_varid       (ncfileid, state_names_2d(i), varid))
+   call check(nf90_inq_varid(ncfileid, state_names_2d(i), varid), state_names_2d(i))
    call check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_2d(1:3,i)))
 
    ! extract spatial dimids from the fields dimids
@@ -1070,7 +1068,7 @@ if (state_num_1d > 0) then
 end if
 
 do i = 1,state_num_1d
-   call check(nf90_inq_varid       (ncfileid, state_names_1d(i), varid))
+   call check(nf90_inq_varid       (ncfileid, state_names_1d(i), varid), state_names_1d(i))
    call check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_1d(1:2,i)))
 
    Alldim1: do j = 1,2       ! time and 1 space
@@ -1100,8 +1098,17 @@ contains
 
    ! Internal subroutine - checks error status after each netcdf, prints
    !                       text message each time an error code is returned.
-   subroutine check(istatus) 
-   integer, intent ( in) :: istatus 
+   subroutine check(istatus, string) 
+   integer, intent (in) :: istatus 
+   character(len=*), optional, intent(in) :: string
+   character(len=255) :: errstring
+
+   if (present(string)) then
+      write(errstring, *)trim(adjustl(string))//' '//trim(adjustl(nf90_strerror(istatus)))
+   else
+      write(errstring, *)                            trim(adjustl(nf90_strerror(istatus)))
+   end if
+      
    if (istatus /= nf90_noerr) call error_handler(E_ERR, 'trans_coord', &
           trim(nf90_strerror(istatus)), source, revision, revdate)
    end subroutine check
@@ -1196,7 +1203,7 @@ if (cfield == 'PHIS    ') then
       if (alloc_phis) allocate (phis_stagr_lat (dim_sizes( lon_index), dim_sizes(slat_index)))
       do n=1,dim_sizes(slat_index)
          do m=1,dim_sizes( lon_index)
-            phis_stagr_lat(m,n) = .5 * (phis(m,n) + phis(m+1,n))
+            phis_stagr_lat(m,n) = .5 * (phis(m,n) + phis(m,n+1))
          end do
       end do
    end if
@@ -1296,11 +1303,18 @@ type(grid_1d_type), intent(out) :: var
 
 !----------------------------------------------------------------------
 ! Local workspace
-integer :: i, coord_size, num_atts              ! grid/array indices
+integer :: i, coord_size             ! grid/array indices
 integer :: ncfldid    ! file and field IDs
 integer :: fld_exist  ! some grid fields don't exist on some CAM initial files (slat, slon, ...?)
 integer :: ncerr      ! other nc errors; don't abort
 integer, dimension(nf90_max_var_dims) :: coord_dims
+! Some attributes are _Fillvalue (real) which I'll ignore for now.
+! The following are used to repack the attributes I want into a compact form
+integer :: num_atts, keep_atts  
+integer                                     :: att_type 
+character (len=nf90_max_name)               :: att_name
+character (len=nf90_max_name), allocatable  :: att_names(:)
+character (len=128),           allocatable  :: att_vals(:)
 
 
 ! read CAM 'initial' file field desired
@@ -1323,27 +1337,55 @@ else
    coord_size = dim_sizes(coord_dims(1))
 end if
 
+allocate(att_names(num_atts), att_vals(num_atts))
+
+! get attributes
+keep_atts = 0
+do i=1,num_atts
+   call check(nf90_inq_attname(ncfileid, ncfldid, i, att_name))
+
+! FV initial files have coordinates with attributes that are numerical, not character.
+! (_FillValue).  These are not used because the coordinates are dimensioned exactly
+! the right size.  I'll test for the type of att, and if it's not char, I'll ignore it
+! and reduce the num_atts by 1.
+
+! Otherwise I need a var@atts_type and separate var%atts_vals_YYY for each NetCDF 
+! external type (6 of them) I might run into.
+
+   call check(nf90_inquire_attribute(ncfileid, ncfldid, att_name, xtype=att_type) )
+
+   if (att_type == nf90_char) then
+      keep_atts = keep_atts + 1
+      att_names(keep_atts) = att_name
+      call check(nf90_get_att(ncfileid, ncfldid, att_name, att_vals(keep_atts)))
+
+   else
+      if (do_out) write(*,*) '                ignoring attribute ',att_name,    &
+                    ' because it is not a character type'
+   endif
+end do
+
 ! allocate space for this grid structure, and put vector length and # attributes in structure
-call init_grid_1d_instance(var, coord_size, num_atts)
+call init_grid_1d_instance(var, coord_size, keep_atts)
 
 var%label = cfield
 var%dim_id = coord_dims(1)
+
+do i = 1,keep_atts
+   var%atts_names(i) = att_names(i)
+   var%atts_vals(i)  = att_vals(i)
+enddo
 
 ! call check(nf90_get_var(ncfileid, ncfldid, var%vals(1:coord_size) ,start=(/1/) &
 call check(nf90_get_var(ncfileid, ncfldid, var%vals, start=(/1/) &
     ,count=(/coord_size/) ))
 
-! get attributes
-do i=1,num_atts
-   var%atts_vals(i) = ' '
-   call check(nf90_inq_attname(ncfileid, ncfldid, i, var%atts_names(i) ))
-   call check(nf90_get_att    (ncfileid, ncfldid, var%atts_names(i), var%atts_vals(i) ))
-end do
-
 if (do_out) then
    PRINT*,'reading ',cfield,' using id ',ncfldid,' size ',coord_size
    WRITE(*,*) (var%vals(i),i=1,coord_size)
 end if
+
+deallocate(att_names, att_vals)
 
 contains 
 
@@ -1545,7 +1587,7 @@ end if
 ! correspondence of obs fields with state fields, I may want code like:
 ! The max size of KIND_ should come from obs_kind_mod
 ! do i=1,state_num_3d
-!    if (state_name_3d(i)(1:1) == 'T' .and. &
+!    if (state_names_3d(i)(1:1) == 'T' .and. &
 !        KIND_TEMPERATURE <= 100) ) dart_to_cam_kinds(KIND_TEMPERATURE) = TYPE_3D(i)
 ! end do 
 
@@ -1700,22 +1742,26 @@ end subroutine read_cam_init
 
    subroutine write_cam_coord_def(ncFileID, c_name, coord, dim_id, c_id)
 !=======================================================================================
-! subroutine write_cam_coord_def(ncFileID, c_name, coord, c_id)
+! subroutine write_cam_coord_def(ncFileID, c_name, coord, dim_id, c_id)
 
 character (len=8),  intent(in)  :: c_name
 integer,            intent(in)  :: ncFileID, dim_id
 type(grid_1d_type), intent(in)  :: coord
 integer,            intent(out) :: c_id
 
-integer  :: i
-
+integer  :: i, nch
 
 call check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
                         varid=c_id) )
 if (do_out) write(*,'(/A,A)') 'write_cam_coord_def;  ', trim(c_name)
+
 do i=1,coord%num_atts
-   if (do_out) write(*,*) '   i, att_name, att_val', &
-      i,trim(coord%atts_names(i)),' ', trim(coord%atts_vals(i))
+   if (do_out) then
+!      nch = len_trim(coord%atts_vals(i))
+!                 i,trim(coord%atts_names(i)),' ', coord%atts_vals(i)(1:nch)
+      write(*,*) '   i, att_name, att_val', &
+                 i,trim(coord%atts_names(i)),' ', trim(coord%atts_vals(i))
+   endif
    call check(nf90_put_att(ncFileID, c_id, coord%atts_names(i), coord%atts_vals(i)))
 end do
 
@@ -1748,11 +1794,14 @@ call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid)
  
 ! The temporary arrays into which fields are read are dimensioned by the largest values of
 ! the sizes of the dimensions listed in coord_RANKd
+! debug
+! ! ! This may not work for writing fields that have smaller sizes!
+!     Unless array section is explicitly given in array argument
 allocate (temp_3d(f_dim_max(1,3),f_dim_max(2,3),f_dim_max(3,3)))
 allocate (temp_2d(f_dim_max(1,2),f_dim_max(2,2)))
 
-if (do_out) write(*,*) 'write_cam_init; f_dim_max(:2) = ',f_dim_max(1,2),f_dim_max(2,2)
 
+if (do_out) write(*,*) 'write_cam_init; f_dim_max(:2) = ',f_dim_max(1,2),f_dim_max(2,2)
 
 ifld = 0
 ! 0d fields are first
@@ -1776,7 +1825,9 @@ end do
 
 ! 2d fields ; tricky because coordinates may have been rearranged to put them in the order
 ! of (lev, lon, lat) choosing only 2.  The original coordinate order is in f_dimid_2d.
-if (do_out) write(*,'(A/A)') 'write_cam_init 2D','       i        f_dim1        f_dim2'
+! debug 
+! if (do_out) write(*,'(A/A)') 'write_cam_init 2D',' i f_dim1 f_dim2'
+
 do i = 1, state_num_2d
    if (f_dimid_2d(1,i) == s_dimid_2d(1,i)) then
       ! model_mod and caminput store this variable with the same coordinate order.
@@ -1807,7 +1858,7 @@ do i = 1, state_num_2d
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
 !   writing part of temp_2d defined by start and count; don't need indices.
 !   call check(nf90_put_var(ncfileid, ncfldid, temp_2d(1:f_dim1, 1:f_dim2), &
-   call check(nf90_put_var(ncfileid, ncfldid, temp_2d, &   
+   call check(nf90_put_var(ncfileid, ncfldid, temp_2d(1:f_dim1,1:f_dim2), &   
                            start=(/1, 1, 1/), count = (/f_dim1, f_dim2, 1/)))
 !   call check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(1:s_dim_2d(1,i), 1:s_dim_2d(1,i), i), &
 !                               start=(/1, 1, 1/), count = (/s_dim_2d(1,i),   s_dim_2d(2,i), 1/)))
@@ -1840,7 +1891,8 @@ do i = 1, state_num_3d
 
    ifld = ifld + 1
    call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, temp_3d &
+   call check(nf90_put_var(ncfileid, ncfldid                                               &
+             ,temp_3d(1:f_dim_3d(1,i), 1:f_dim_3d(2,i), 1:f_dim_3d(3,i)) &
              ,start=(/1,1,1,1/) ,count=(/f_dim_3d(1,i), f_dim_3d(2,i), f_dim_3d(3,i), 1/) ))
 end do
 
@@ -1911,9 +1963,6 @@ do i=1,state_num_0d
    end if
 end do
 
-!debug
-!if (do_out) write(*,*) 'after 0d nfld = ',nfld
-
 ! Cycle through 1d state variables
 ! Note that indices of fields can have varying dimensions.
 do i=1,state_num_1d
@@ -1936,15 +1985,10 @@ do i=1,state_num_1d
    end if
 end do
 
-!debug
-!if (do_out) write(*,*) 'after 1d nfld = ',nfld
-
 ! Cycle through 2d state variables.
 ! Note that indices of fields can have varying dimensions.
 do i=1,state_num_2d
    nfld = nfld + 1
-!debug
-!   if (do_out) write(*,*) 'in 2d nfld,state_num_2d = ',nfld,state_num_2d
    slice = s_dim_2d(1,i) * s_dim_2d(2,i)
    if (indx > slice ) then
       indx = indx - slice
@@ -1957,31 +2001,23 @@ do i=1,state_num_2d
          index_1 = indx - (index_2 * s_dim_2d(1,i))
          dim_name = dim_names(s_dimid_2d(1,i))
          ! Find the coordinate value (i.e. 270.5) of the first dimension index (i.e. 54)
-!debug
-!    if (do_out) write(*,'((A,I6))') 'get_state_meta_data; nfld = ',nfld, &
-!        'index_in', index_in, 'index_1 = ',index_1,  'index_2 = ',index_2,               &
-!        'indx = ',indx, 'slice = ',slice
-!    if (do_out)  write(*,'((A,A))') 'dimension = ',dim_name
-        if (dim_name == 'lev     ') then
-           lev_val = real(index_1)
-        else
-           call coord_val(dim_name, index_1, lon_val, lat_val, lev_val)
-        endif
+         if (dim_name == 'lev     ') then
+            lev_val = real(index_1)
+         else
+            call coord_val(dim_name, index_1, lon_val, lat_val, lev_val)
+         endif
 
          ! index_2 of the variable in question is 1 more than the # subtracted of to get index_1
          index_2 = index_2 + 1
          dim_name = dim_names(s_dimid_2d(2,i))
-!    if (do_out) write(*,'((A,I6))')'    index_2 = ',index_2
-!    if (do_out)  write(*,'((A,A))') 'dimension = ',dim_name
-        if (dim_name == 'lev     ') then
-           lev_val = real(index_2)
-        else
-           call coord_val(dim_name, index_2, lon_val, lat_val, lev_val)
-        endif
+         if (dim_name == 'lev     ') then
+            lev_val = real(index_2)
+         else
+            call coord_val(dim_name, index_2, lon_val, lat_val, lev_val)
+         endif
 
          which_vert = which_vert_2d(i)
 
-!      if (do_out) write(*,*) 'It is a 2d field, skipping 3d'
       end if
       goto 10
    end if
@@ -2020,9 +2056,6 @@ do i=1,state_num_3d
          index_3 = index_3 + 1
          dim_name = dim_names(s_dimid_3d(3,i))
          call coord_val(dim_name, index_3, lon_val, lat_val, lev_val)
-         if (do_out .and. index_1 > 26)  &
-             write(*,*) 'get_state_meta_data; index_in, index_1-3, [lon,lat,lev]_val = ', &
-                      index_in
    
          which_vert = which_vert_3d(i)
       end if
@@ -2044,15 +2077,6 @@ if (present(var_kind)) then
       location = set_location(lon_val, lat_val, lev_val, which_vert)  
    end if
 end if
-
-! debug
-! if (do_out ) 
-!if (index_in < 0)  then
-!   write(*,'((A,I8))') 'get_state_meta_data; nfld = ',nfld,'   index_in', index_in,  &
-!                    '   indx = ',indx, '   var_kind = ',var_kind
-!   write(*,'((A,I8))') '   index_1 = ',index_1, '   index_2 = ',index_2, '   index_3 = ',index_3
-! 'slice = ',slice, 'box = ',box
-!end if
 
 end subroutine get_state_meta_data
 
@@ -2156,8 +2180,6 @@ if ( TimeDimID /= unlimitedDimId ) then
   write(errstring,*)'Time dimension ID ',TimeDimID,'must match Unlimited Dimension ID ',unlimitedDimId
   call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
 end if
-! debug
-!if (do_out) write(*,*) 'nc_write_model_atts; passed dimids of # copies'
 
 !-------------------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
@@ -2177,8 +2199,6 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
-! debug
-!if (do_out) write(*,*) 'nc_write_model_atts; passed def of global attribs'
 
 ! how about namelist input? might be nice to save ...
 
@@ -2190,15 +2210,13 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
 ! and some will be used to define the coordinate variables below.
 ! They have different dimids for this file than they had for caminput.nc
 ! P_id serves as a map between the 2 sets.
+if (do_out) write(*,*) 'dimens ,name      ,size, cam dim_id, P[oste]rior id'
 do i = 1,num_dims
-   if (do_out) write(*,*) i,trim(dim_names(i)),dim_sizes(i), dim_ids(i)
    if (trim(dim_names(i)) /= 'time')  call check(nf90_def_dim                    &
       (ncid=ncFileID, name=trim(dim_names(i)), len=dim_sizes(i), dimid=P_id(i)))
+   if (do_out) write(*,'(A7,A8,3(I4,5X))') i,trim(dim_names(i)),dim_sizes(i), dim_ids(i), P_id(i)
 end do
 call check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID))
-
-! debug
-!if (do_out) write(*,*) 'nc_write_model_atts; passed def of dimids'
 
 !-------------------------------------------------------------------------------
 ! Create the (empty) Coordinate Variables and their attributes
@@ -2340,9 +2358,6 @@ else
 !       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
    end do
 
-! debug
-!   if (do_out) write(*,*) 'nc_write_model_atts; defining 2d fields'
-
    ! 2-d fields
    do i = 1,state_num_2d
       ifld = ifld + 1
@@ -2377,8 +2392,7 @@ else
 ! The default values of 'start' and 'count'  write out the whole thing.
 !-------------------------------------------------------------------------------
 
-! debug
-   if (do_out) write(*,*) 'nc_write_model_atts; filling coords'
+if (do_out) write(*,*) 'nc_write_model_atts; filling coords'
 
 if (lon%label  /= '        ')  &
     call check(nf90_put_var(ncFileID, grid_id(find_name('lon     ',grid_names_1d)),  lon%vals ))
@@ -2597,7 +2611,7 @@ character (len=8) :: lon_name, lat_name, lev_name
 ! 3         unfamiliar obs type      no                     no
 
 ! These are fields which were observed, and will have 3d locations, but the 
-! corresponding state-vector component could, conceivably, be missing one of the dimensions.
+! corresponding state-vector component could, concievably, be missing one of the dimensions.
 ! The only use for such fields I have thought of is parameterization tuning.
 ! Such fields would not have observations associated with them.
 ! for now I will assume that observed fields are not missing any dimensions.
@@ -2621,6 +2635,7 @@ lon_lat_lev = get_location(location)
 ! Pressure (3d) can't be specified as a state vector field (so s_type will = MISSING_I), 
 ! but can be calculated for CAM, so obs_type = KIND_PRESSURE is acceptable.
 s_type = dart_to_cam_kinds(obs_type) 
+
 if (s_type == MISSING_I .and. obs_type .ne. KIND_PRESSURE) then
    istatus = 3
    interp_val = 0._r8
@@ -2694,6 +2709,7 @@ end if
 !        slat =   -88.,...,88.
    
 call coord_index(lat_name, lon_lat_lev(2), lat_ind_above, lat_ind_below)
+
 if (lat_ind_above == lat_ind_below) then
    if (lat_ind_above == 1) then
       lat_fract = 0.0_r8
@@ -2756,8 +2772,6 @@ elseif (vert_is_height(location)) then
       (vals(2, 1), x, lon_ind_above, lat_ind_below, height, obs_type, vstatus)
    if (vstatus /= 1) call get_val_height   &
       (vals(2, 2), x, lon_ind_above, lat_ind_above, height, obs_type, vstatus)
-! check
-   write(*,*) 'height, 4 nearby values = ',height, vals
 
 elseif (vert_is_surface(location)) then
    ! location_mod:interactive_location asks for surface obs to have vertical coord = ps(hPa)
@@ -2770,16 +2784,9 @@ elseif (vert_is_surface(location)) then
 
 end if
 
-! if (pflag > 0) write(53,'(A,2F7.2/)') '  subsurface obs lat, lon = ',lat,lon
-
-! Do the weighted average for interpolation
-!write(*, *) 'fracts ', lon_fract, lat_fract
-!
 ! lat is already converted to degrees by get_location
 if (abs(lon_lat_lev(2)) > max_obs_lat_degree .and. vstatus /= 1) then
    istatus = 2
-! debug
-!   write(*,*) 'lat > max_obs_lat_degree ',lon_lat_lev(2) ,max_obs_lat_degree
 else
    istatus = vstatus
 end if
@@ -2794,9 +2801,6 @@ else
    ! ? Should this return MISSING_R8?
    interp_val = 0.0_r8
 end if
-
-! check
-! if (do_out) write(*,*) 'model_interpolate; at end interp_val = ',interp_val
 
 ! Set the element of ps that's tested elsewhere back to MISSING_R8, to signal
 ! other routines to calculate the ps arrays for themselves
@@ -2843,8 +2847,6 @@ if (level > num_levs .or. level < 1) then
    istatus = 1
    ! Should this be MISSING_r8?
    val = 0._r8
-! check
-   write(*,*) 'get_val_level; level, bottom and top levels = ',level, num_levs, 1
 else 
    if (highest_obs_level == MISSING_R8) then
       allocate(pfull(num_levs))
@@ -2960,8 +2962,6 @@ end if
 num_levs = dim_sizes(find_name('lev     ',dim_names))
 allocate (pfull(num_levs))
 call plevs_cam (p_surf, num_levs, pfull)
-!write(*, *) 'surface pressure is ', p_surf
-!write(*, *) 'pressure levs in model are ', pfull
 
 if (pressure <= pfull(1) .or. pressure >= pfull(num_levs)) then
    ! Exclude obs below the model's lowest level and above the highest level
@@ -2973,9 +2973,6 @@ else
    if (pressure < highest_obs_pressure_mb * 100.0_r8) then
       ! Exclude from assimilation the obs above a user specified level
       ! but still calculate the expected obs.
-! debug
-!      write_out = write_out + 1
-!      if (mod(write_out,20) == 0) write(*,*) '    ignored because p = ',pressure
       istatus = 2
    else
       istatus = 0
@@ -3055,6 +3052,8 @@ logical  :: stagr_lon, stagr_lat
 ! No errors to start with
 istatus = 0
 vstatus = 0
+stagr_lon = .false.
+stagr_lat = .false.
 
 ! Need to get the surface pressure at this point for dcz2. 
 ! Assuming we'll only need pressures on model mid-point levels, not interface levels.
@@ -3084,8 +3083,6 @@ call model_heights(vec, p_surf, lon_index, lat_index, num_levs, stagr_lon, stagr
                    model_h, vstatus)
 
 ! check
-write(*, *) 'height is ', height
-write(*, *) 'heights in model are ', model_h
 
 ! Interpolate in vertical to get two bounding levels
 if (height >= model_h(1) .or. height <= model_h(num_levs)) then
@@ -3093,7 +3090,6 @@ if (height >= model_h(1) .or. height <= model_h(num_levs)) then
    istatus = 1
    val = 0._r8
 ! check
-   write(*,*) 'get_val_height; height, bottom and top heights = ',height, model_h(num_levs), model_h(1)
 else 
    if (highest_obs_height_m == MISSING_R8) then
       allocate(pfull(num_levs))
@@ -3112,6 +3108,7 @@ else
       ! but still calculate the expected obs.
       istatus = 2
 ! check
+      if (do_out) &
       write(*,*) 'get_val_height; height, highest_obs_height_m = ',height, highest_obs_height_m
    else
       istatus = 0
@@ -3125,7 +3122,6 @@ else
          frac = (model_h(i) - height      ) / &
                 (model_h(i) - model_h(i-1))
 ! check
-         write(*,*) 'get_val_height; height, bot_lev, frac = ',height, i, frac
          goto 21
       end if
    end do
@@ -3263,9 +3259,13 @@ end do
 !  so if there is some spatial searching; all the pole points will be closer together
 !  in memory than in the previous/Bgrid structure.
 do nf= 1, state_num_3d
-   write(errstring, *) 'fld, nlons, nlats, nlevs ',nf &
-                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
-   call error_handler(E_MSG, 'prog_var_to_vector', errstring, source, revision, revdate)
+
+   if (do_out) then
+      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
+                          ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
+      call error_handler(E_MSG, 'prog_var_to_vector', errstring, source, revision, revdate)
+   endif
+
    do i=1,s_dim_3d(3,nf)   !lats
    do j=1,s_dim_3d(2,nf)   !lons
    do k=1,s_dim_3d(1,nf)   !levs  both reads and writes will be contiguous in this case
@@ -3327,11 +3327,11 @@ end do
 
 ! 3D fields; see comments in prog_var_to_vect
 do nf = 1, state_num_3d
-!   if (do_out) then
-!      write(errstring, *) 'fld, nlons, nlats, nlevs ',nf &
-!                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
-!      call error_handler(E_MSG, 'vector_to_prog_var', errstring, source, revision, revdate)
-!   end if
+   if (do_out) then
+      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
+                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
+      call error_handler(E_MSG, 'vector_to_prog_var', errstring, source, revision, revdate)
+   end if
    do i = 1, s_dim_3d(3,nf)
    do j = 1, s_dim_3d(2,nf)
    do k = 1, s_dim_3d(1,nf)
@@ -3391,34 +3391,13 @@ if (base_which == VERTISPRESSURE) then
 else
    base_array = get_location(base_obs_loc)
    call convert_vert(base_array, base_which, local_base_array, local_base_which, base_obs_kind)
-   ! Actual observations *must* come with vertical location and which_vert /= -2
-   ! if (local_base_array(3) == MISSING_R8) then
-   !    local_base_obs_loc = old_loc
-   ! else   
-      local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
-                             local_base_which)
-      ! debug for write statement below
-!      local_base_array(1) = base_array(1)
-!      local_base_array(2) = base_array(2)
-   ! end if
+   local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
+                                     local_base_which)
 end if
 
 ! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
 call loc_get_close_obs(gc, local_base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
                        num_close, close_ind)
-
-! if (do_out) then
-!   write(*,'(A,I8,3F10.2)') 'get_close_obs; num_close, base_ob_loc = ',num_close, &
-!   (local_base_array(k), k=1,3)
-!   if (num_close == 0)  then
-!      write(*,'(A,I4,3(1x,F10.2))') 'num_close = 0 for base_obs_kind ',base_obs_kind, &
-!           (local_base_array(i), i=1,3)
-!      do k=1,1001,100
-!         local_obs_array = get_location(obs_loc(k))
-!         write(*,'(A,I8,3F10.2)') '    ',k, (local_obs_array(i), i=1,3)
-!      end do
-!   end if
-! end if
 
 threshold = highest_state_pressure_mb *100._r8
 thresh_wght = 1._r8/(threshold * threshold)
@@ -3674,7 +3653,6 @@ elseif (old_which == VERTISLEVEL ) then
    new_array(3) = p_col(nint(old_array(3)))
    new_which    = 2
    deallocate (p_col)
-!      write(*,*) 'convert_vert; new_array(3), new_which = ',new_array(3), new_which
 elseif (old_which == VERTISHEIGHT) then
    num_levs = dim_sizes(find_name('lev     ',dim_names))
    allocate (model_h(num_levs), p_col(num_levs))
@@ -3951,13 +3929,15 @@ real(r8),          intent(inout) :: lon_val, lat_val, lev_val
 
 ! Check for acceptable value of indx?
 
-! debug
-! if (do_out) write(*,*) 'coord_val; dim_name, indx = ',dim_name,indx
-
 if (dim_name == 'lon     ') lon_val = lon%vals(indx)
 if (dim_name == 'lat     ') lat_val = lat%vals(indx)
 if (dim_name == 'lev     ') lev_val = lev%vals(indx)
-if (dim_name == 'slon    ') lon_val = slon%vals(indx)
+if (dim_name == 'slon    ') then
+   lon_val = slon%vals(indx)
+   ! CAM staggered longitude grid -2.5, ..., 352.5 (FV4x5)
+   ! but DART wants to see 0.,...,360.  only.
+   if (lon_val < 0._r8) lon_val = lon_val + 360._r8
+endif
 if (dim_name == 'slat    ') lat_val = slat%vals(indx)
 if (dim_name == 'ilev    ') lev_val = ilev%vals(indx)
 ! Add more for other coords?  hyam...?  Not for now; never referenced indirectly
@@ -3982,8 +3962,8 @@ integer,           intent(out) :: indx
 integer, optional, intent(out) :: other_indx
 
 real(r8), pointer :: coord(:)
-real(r8)          :: diff_upper, diff_lower
-integer           :: coord_len, val_local, i
+real(r8)          :: diff_upper, diff_lower, val_local 
+integer           :: coord_len, i
 
 val_local = val
 
@@ -3999,7 +3979,7 @@ elseif (dim_name == 'lev     ') then
 elseif (dim_name == 'slon    ') then
    coord     => slon%vals
    coord_len =  slon%length
-   ! Make certain longitudes conform to the wierd CAM staggered grid.
+   ! Make sure longitudes conform to the wierd CAM staggered grid.
    if ((val - coord(coord_len)) >= (coord(coord_len)-coord(coord_len-1))) &
       val_local = val_local - 360._r8
 elseif (dim_name == 'slat    ') then
@@ -4028,8 +4008,9 @@ elseif (val_local > coord(coord_len)) then
 else
    do i=1, coord_len - 1
       diff_upper = coord(i+1) - val_local
-      if (diff_upper > 0) then
+      if (diff_upper >= 0.0_r8) then
          diff_lower = val_local - coord(i)
+         ! Alway return the closer coord point in the first (non-optional) argument
          if (diff_upper > diff_lower) then
             indx = i
             if (present(other_indx)) other_indx = i + 1
@@ -4177,7 +4158,7 @@ real(r8),      intent(out) ::  model_h(num_levs)
 
 ! local variables; ps must be dimensioned as an array because dcz2 has it that way
 real (r8):: phi(num_levs), tv(num_levs), q(num_levs), t(num_levs)
-real (r8):: pmln(num_levs+1), hyba(2,num_levs+1), hybb(2,num_levs+1), pterm(num_levs)
+real (r8):: pmln(num_levs+1), hyba(num_levs+1,2), hybb(num_levs+1,2), pterm(num_levs)
 real (r8):: phi_surf, gmh, ht_tmp, rd, rv, rr_factor, local_lat
             
 integer :: k, i, vstatus
@@ -4299,20 +4280,22 @@ var = 0._r8
 ! Find the profile with the same lat and lon index
 
 !  For now this only handles interpolations of 3D fields.
-fld_index = find_name(cflds(kind_cam), state_names_3d)
+! fld_index = find_name(cflds(kind_cam), state_names_3d)
 ! if (fld_index == 0)  fld_index = find_name(cflds(dart_to_cam_kinds(kind_dart)), state_names_2d)
 ! if (fld_index == 0)  fld_index = find_name(cflds(dart_to_cam_kinds(kind_dart)), state_names_1d)
 
 ! Always do the nearest point
 !   var(1:num_levs,0,0) = state%vars_3d(1:num_levs ,lon_index,lat_index, fld_index)
-vec_ind = index_from_grid(1,lon_index   ,lat_index   , fld_index)
+! index_from_grid wants kind within whole state vector, not 3d fields
+!     vec_ind = index_from_grid(1,lon_index   ,lat_index   , fld_index)
+vec_ind = index_from_grid(1,lon_index   ,lat_index   , kind_cam)
 var(1:num_levs,0,0) = vec(vec_ind:vec_ind +num_levs -1)
 weight = 1.0_r8
 
 if (stagr_lat) then
    ! Find the profile to the north
    ! var(1:num_levs,0,1) = state%vars_3d(1:num_levs ,lon_index  ,lat_index +1, fld_index)
-   vec_ind = index_from_grid(1,lon_index   ,lat_index +1, fld_index)
+   vec_ind = index_from_grid(1,lon_index   ,lat_index +1, kind_cam)
    var(1:num_levs,0,1) = vec(vec_ind:vec_ind +num_levs -1)
    ! This weighting is not strictly correct for Gaussian latitudes, 
    ! but is correct for CAM-FV, which has equally spaced latitudes.
@@ -4331,7 +4314,7 @@ if (stagr_lon) then
       lon_index_local = lon_index -1
       ! var(1:num_levs,1,0) = state%vars_3d(1:num_levs ,lon_index_local,lat_index, fld_index)
    end if
-   vec_ind = index_from_grid(1,lon_index_local ,lat_index, fld_index)
+   vec_ind = index_from_grid(1,lon_index_local ,lat_index, kind_cam)
    var(1:num_levs,1,0) = vec(vec_ind:vec_ind +num_levs -1)
    weight = weight / 2.0_r8
 end if
@@ -4339,7 +4322,7 @@ end if
 if (stagr_lon .and. stagr_lat) then
    ! Find the profile to the northwest
    ! var(1:num_levs,1,1) = state%vars_3d(1:num_levs ,lon_index_local,lat_index +1, fld_index)
-   vec_ind = index_from_grid(1,lon_index_local ,lat_index +1, fld_index)
+   vec_ind = index_from_grid(1,lon_index_local ,lat_index +1, kind_cam)
    var(1:num_levs,1,1) = vec(vec_ind:vec_ind +num_levs -1)
 end if
 
