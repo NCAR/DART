@@ -53,7 +53,7 @@
 
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
 \rm -f perfect_model_obs filter obs_diag integrate_model
-\rm -f merge_obs_seq smoother
+\rm -f merge_obs_seq
 \rm -f *.o *.mod
 
 csh mkmf_preprocess
