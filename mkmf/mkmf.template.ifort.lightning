@@ -38,13 +38,21 @@
 #
 # FFLAGS   useful for production
 #     -O2      optimize
-
-MPI_HOME = /contrib/mpich-gm/1.2.6..13b-intel-8.1-64
-MPIFC = $(MPI_HOME)/bin/mpif90
-MPILD = $(MPI_HOME)/bin/mpif90
-FC = /contrib/2.6/intel/9.0/bin/ifort
-LD = /contrib/2.6/intel/9.0/bin/ifort
-NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort9.0.025
+#
+#----------------------------------------------------------------------
+# if the intel.9.1 module is loaded, these things are properly set.
+#
+# MPI_HOME = /contrib/2.6/mpich-gm/1.2.6..14a-intel-9.1.042-64/bin/mpif90
+# MPIFC = $(MPI_HOME)/bin/mpif90
+# MPILD = $(MPI_HOME)/bin/mpif90
+# FC=/contrib/2.6/intel/9.1.036-64/bin/ifort
+# LD=/contrib/2.6/intel/9.1.036-64/bin/ifort
+#----------------------------------------------------------------------
+MPIFC=mpif90
+MPILD=mpif90
+FC=ifort
+LD=ifort
+NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort9.1.036
 INCS = -I$(NETCDF)/include
 #FFLAGS = -pc64 -O0 -warn all $(INCS)
 #FFLAGS = -free -C -r8 -pc64 -O0 -warn all $(INCS)
