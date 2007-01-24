@@ -1,7 +1,8 @@
 # template for Intel 8.x Fortran Compiler on a Fedora Core 2 Intel architecture
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next two lines are maintained by CVS, please do not edit>
@@ -33,6 +34,7 @@ FC = ifort
 LD = ifort
 NETCDF = /ocotillo/users/caya/netcdf
 INCS = -I$(NETCDF)/include
-FFLAGS = -O0 $(INCS)
-LIBS = -L$(NETCDF)/lib -lnetcdf -L/ocotillo/users/caya/udunits-1.12.1/lib -ludunits
+#FFLAGS = -CA -CB -CS -CU -CV -check overflow,underflow,bounds,shape -O0 $(INCS)
+FFLAGS = -CU -CV -check overflow -O0 $(INCS)
+LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(INCS) $(LIBS)
