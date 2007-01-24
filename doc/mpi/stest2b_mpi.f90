@@ -13,12 +13,10 @@ program fred
 ! this version expects to be able to read the task number from unit 5
 ! (so it must be started:  echo N | ./stest2b_mpi or the equiv)
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 !!include "mpif.h"
 

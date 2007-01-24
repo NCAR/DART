@@ -5,12 +5,10 @@
 
 program ftest_nml
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 ! very simple fortran program which reads in an external namelist file.
 ! if successful, will print a message and exit.

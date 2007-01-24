@@ -5,12 +5,10 @@
 
 program ftest
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 ! very simple fortran program.  used to test compile and run
 ! of fortran.  if successful, will print a message and exit.

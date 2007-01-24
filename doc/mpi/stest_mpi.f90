@@ -12,12 +12,10 @@ program fred
 !
 ! this version has mpi and creates a pipe per mpi task
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 include "mpif.h"
 

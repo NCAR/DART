@@ -4,13 +4,12 @@
 #
 # Keyword check follows:
 #
-# $Date: 2007-01-18 17:15:10 -0700 (Thu, 18 Jan 2007) $
-# $Revision: 2530 $
-# $Author: thoar $
-# $HeadURL: http://subversion.ucar.edu/DAReS/DART/trunk/shell_scripts/DART_distribution_prune $
-# $Id: DART_distribution_prune 2530 2007-01-19 00:15:10Z thoar $
+# $Date$
+# $Revision$
+# $Author$
+# $HeadURL$
+# $Id$
 # $Source$
-# $Name$
 #
 # That would be too cool if it worked.
 

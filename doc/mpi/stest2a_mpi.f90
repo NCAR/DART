@@ -10,12 +10,10 @@ program fred
 ! waits to read a line written by the 2b version of the program (which is
 ! started from here with a system() call.
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 include "mpif.h"
 

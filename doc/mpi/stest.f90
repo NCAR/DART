@@ -10,12 +10,10 @@ program fred
 ! pause until there is something to read, so the program does not
 ! have to sleep and loop.
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 character(len=128) :: junk
 

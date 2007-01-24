@@ -10,12 +10,10 @@ use commtest_mod, only:  setup, transpose_state_compl, select_statevars, &
                          broadcast_increments, advance_model, &
                          transpose_ensemb_compl, takedown
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 !-----------------------------------------------------------------------------
 ! ---- namelist (saved in file commtest.nml)

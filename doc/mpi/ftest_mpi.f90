@@ -7,12 +7,10 @@ namelist /x/ fred, bob
 
 program ftest_mpi
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 ! simple MPI fortran program.  use to test running interactively
 ! with MPI parallel communication libraries.  warning -- this program

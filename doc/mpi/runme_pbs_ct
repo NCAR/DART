@@ -1,4 +1,11 @@
 #!/bin/sh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
+# $Id$
 
 #----------------------------------------------------------------------
 # directives to allow this to run as a batch jobs under PBS.

@@ -10,12 +10,10 @@ program fred
 ! to be launched by stest2a with a system call.  it writes to the pipe.
 ! the main program will read what this program writes.
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 character(len=128) :: junk
 
