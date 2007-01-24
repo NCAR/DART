@@ -1,7 +1,7 @@
 # template for Intel 9.x Fortran Compiler on a Fedora Core 4 Intel architecture
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, 2006 Data Assimilation Initiative, 
+# Copyright 2004-2006 Data Assimilation Research Section, 
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
@@ -15,6 +15,9 @@
 # NETCDF and LIBS needs to be customized for your site
 #     fisher    NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
 #     dart      NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
+#     coral     NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64
+#     lightning NETCDF = /gpfs/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort8.1-64
+#     bangkok   NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046_pe050.1
 #
 # FFLAGS   use when you like, if you must
 #     -fpp     run Fortran preprocessor on source files prior to compilation
@@ -49,11 +52,9 @@
 #
 #FFLAGS = -r8 -free $(INCS)   (pbl_1d flags)
 
-# dart has only lam-mpi which does not come with the standard mpif90 
-# wrapper; use the mpif77 instead, which does handle fortran 90 files.
-
-MPIFC = mpif77
-MPILD = mpif77
+# if not using the default mpi wrappers, set MPI_HOME to the location
+MPIFC = mpif90
+MPILD = mpif90
 FC = ifort
 LD = ifort
 NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
