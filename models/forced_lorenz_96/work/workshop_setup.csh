@@ -52,7 +52,7 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag merge_obs_seq smoother
+\rm -f perfect_model_obs filter obs_diag merge_obs_seq
 
 csh mkmf_preprocess
 make         || exit 1
@@ -74,8 +74,6 @@ csh mkmf_obs_diag
 make                || exit 7
 csh mkmf_merge_obs_seq
 make                || exit 8
-csh mkmf_smoother
-make                || exit 9
 
 ./perfect_model_obs || exit 20
 
