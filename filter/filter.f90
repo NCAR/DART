@@ -416,9 +416,13 @@ AdvanceTime : do
 
 !-------- End of posterior  inflate ----------------
 
-
    ! Now back to var complete for diagnostics
    call all_copies_to_all_vars(ens_handle)
+   
+   ! Compute the ensemble of posterior observations, load up the obs_err_var and obs_values
+   ! ens_size is the number of regular ensemble members, not the number of copies
+   call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
+      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
 
    if(ds) call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -437,11 +441,6 @@ AdvanceTime : do
    ! Increment the number of current lags if smoother set not yet fully spun up
    if(ds) call smoother_inc_lags()
   
-   ! Compute the ensemble of posterior observations, load up the obs_err_var and obs_values
-   ! ens_size is the number of regular ensemble members, not the number of copies
-   call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
-
    ! Do posterior observation space diagnostics
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
       POSTERIOR_DIAG, num_output_obs_members, in_obs_copy + 2, &
@@ -453,6 +452,21 @@ AdvanceTime : do
 !-------- Test of posterior inflate ----------------
  
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+
+      ! Ship the ensemble mean to the model; some models need this for computing distances
+      ! Who stores the ensemble mean copy
+      call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
+      ! Broadcast it to everybody else
+      if(my_task_id() == mean_owner) then
+         ens_mean = ens_handle%vars(:, mean_owners_index)
+         call broadcast_send(mean_owner, ens_mean, small_temp)
+      else
+         call broadcast_recv(mean_owner, ens_mean, small_temp)
+      endif
+   
+      ! Now send the mean to the model in case it's needed
+      call ens_mean_for_model(ens_mean)
+
       ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
       call all_vars_to_all_copies(obs_ens_handle)
       call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
@@ -464,8 +478,6 @@ AdvanceTime : do
    endif
 
 !-------- End of posterior  inflate ----------------
-
-
 
    ! If observation space inflation, output the diagnostics
    if(do_obs_inflate(prior_inflate) .and. my_task_id() == 0) & 
