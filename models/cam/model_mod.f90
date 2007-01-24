@@ -2872,15 +2872,15 @@ else
       ! Since the hybrid coord system is pure pressure at the top levels, I'll ignore these for now.
       call get_val(p_surf, x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
       call plevs_cam (p_surf, num_levs, pfull)
-      highest_obs_level = 1
+      highest_obs_level = 1.0_r8
       threshold = highest_obs_pressure_mb*100.0_r8
       do while ((pfull(nint(highest_obs_level))) < threshold )
-         highest_obs_level = highest_obs_level +1
+         highest_obs_level = highest_obs_level + 1.0_r8
       end do
       deallocate(pfull)
    end if
 
-   if (level < highest_obs_level) then
+   if (level < nint(highest_obs_level)) then
       ! Exclude from assimilation the obs above a user specified level
       ! but still calculate the expected obs.
       istatus = 2
