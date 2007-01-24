@@ -1,12 +1,18 @@
 #!/bin/csh
-
-# Saves restart files to MSS. CAM/CLM, and filter. This is the batch driver
-# for auto_re2ms.csh ...
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
 # $Id$
-# $Source$
-# $Name$
+# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/auto_re2ms_LSF.csh,v $
+# $Name:  $
+
+#
+# Saves restart files to MSS. CAM/CLM, and filter. This is the batch driver
+# for auto_re2ms.csh ...
 #
 
 #### LSF options for BSUB
@@ -21,7 +27,7 @@
 #BSUB -J restart2ms
 #BSUB -o restart2ms.%J.log
 #BSUB -P 86850054
-#BSUB -q economy
+#BSUB -q standby
 #BSUB -W 1:00
 #BSUB -n 1
 #xxxx -x
@@ -73,7 +79,7 @@ echo "   for size_element(uncomp) = $size_element * 100"
 echo "                for num_ens = $num_ens"              
 
 
-~raeder/auto_re2ms $num_ens $num_per_batch comp
+../../auto_re2ms.csh $num_ens $num_per_batch comp
 
 echo "finished with auto_re2ms at " `date` 
 
