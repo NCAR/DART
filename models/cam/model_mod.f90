@@ -2857,7 +2857,7 @@ else
       call plevs_cam (p_surf, num_levs, pfull)
       highest_obs_level = 1
       threshold = highest_obs_pressure_mb*100.0_r8
-      do while ((pfull(highest_obs_level)) < threshold )
+      do while ((pfull(nint(highest_obs_level))) < threshold )
          highest_obs_level = highest_obs_level +1
       end do
       deallocate(pfull)
