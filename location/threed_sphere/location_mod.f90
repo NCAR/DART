@@ -161,7 +161,7 @@ write(     *     , nml=location_nml)
 ! Make sure that the number of longitudes, nlon, for get_close_obs is odd
 if(nlon / 2 * 2 == nlon) then
    call error_handler(E_ERR, 'initialize_module', 'nlon must be odd', &
-      errstring, source, revision, revdate)
+      source, revision, revdate)
 endif
 
 ! Copy the normalization factors in the vertical into an array
@@ -1093,7 +1093,7 @@ lon_box_full = .false.
 ! Figure out domain over which an additional obs MIGHT be close to one in this set
 min_lat = minval(obs(:)%lat) - gc%maxdist
 max_lat = maxval(obs(:)%lat) + gc%maxdist
-if(min_lat < PI / 2.0_r8) min_lat = -PI / 2.0_r8
+if(min_lat < -PI / 2.0_r8) min_lat = -PI / 2.0_r8
 if(max_lat > PI / 2.0_r8) max_lat = PI / 2.0_r8
 
 ! Put this into storage for this get_close_type
@@ -1169,13 +1169,24 @@ integer, intent(in) :: num_boxes
 integer, intent(out) :: gap_start, gap_end, gap_length
 logical, intent(in)  :: lon_box_full(num_boxes)
 
-integer :: g_start, g_end, g_length, next_box, i
+integer :: g_start, g_end, g_length, next_box, i, full_count
 logical :: all_done
 
-gap_start  = -1
-gap_end    = -1
-gap_length = -1
+! If more than half of the boxes are full, then assume that there is no
+! meaningful gap and just use the whole domain for get_close
+full_count = 0
+do i = 1, num_boxes
+   if(lon_box_full(i)) full_count = full_count + 1
+end do
+if(full_count >= num_boxes / 2) then
+   gap_start  = -1
+   gap_end    = -1
+   gap_length = -1
+   return
+endif
 
+! More than half of the boxes were empty, try to hone in on potentially
+! local locations
 next_box = 1
 ! Loop long enough to be sure we go around
 do i = 1, num_boxes
@@ -1202,6 +1213,10 @@ integer, intent(out) :: gap_start, gap_end, gap_length
 logical, intent(in)  :: lon_box_full(num_boxes)
 
 integer :: next_full
+
+! This never gets called unless at least half of the boxes are empty
+! No need to error check for all boxes empty (means num is 0) or for
+! all boxes full.
 
 ! Finds the next gap of empty boxes in the cyclic set
 ! First, find the next full box from the start
@@ -1240,6 +1255,11 @@ do i = 0, num_boxes
    endif
 end do
 
+! Should never fall off the end since all boxes should not be empty
+! Fatal error if this happens
+call error_handler(E_ERR, 'next_full_box', 'All boxes empty:should not happen', &
+   source, revision, revdate)
+
 end function next_full_box
 
 !----------------------------------------------------------------------------
@@ -1260,6 +1280,11 @@ do i = 0, num_boxes
       return
    endif
 end do
+
+! Should never fall off the end since all boxes should not be full
+! Fatal error if this happens
+call error_handler(E_ERR, 'next_empty_box', 'All boxes full:should not happen', &
+   source, revision, revdate)
 
 end function next_empty_box
 
