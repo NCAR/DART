@@ -1188,6 +1188,7 @@ endif
 ! More than half of the boxes were empty, try to hone in on potentially
 ! local locations
 next_box = 1
+all_done = .false.
 ! Loop long enough to be sure we go around
 do i = 1, num_boxes
    call find_next_gap(next_box, lon_box_full, num_boxes, g_start, g_end, g_length) 
