@@ -68,6 +68,8 @@ make         || exit 1
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
+# Build all the single-threaded targets first.
+#----------------------------------------------------------------------
 
 echo mkmf_create_obs_sequence
 csh mkmf_create_obs_sequence
@@ -113,16 +115,17 @@ echo mkmf_merge_obs_seq
 csh mkmf_merge_obs_seq
 make         || exit 10
 
-echo skipping mkmf_smoother
-#csh mkmf_smoother
-#make         || exit 11
+#----------------------------------------------------------------------
+# Build the MPI-enabled target(s) 
+#----------------------------------------------------------------------
 
-# this one needs to be compiled with MPI.
+\rm -f *.o *.mod
+
 echo mkmf_filter
 csh mkmf_filter
 echo updating Makefile for MPI
 \cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' -e 's/(CC)/(MPICC)/' Makefile.back > Makefile
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' -e 's/(CC)/(MPICC)/' Makefile.back >! Makefile
 \rm -f Makefile.back
 make         || exit 6
 
@@ -131,6 +134,3 @@ echo time to run filter here:
 echo ' for lsf run "bsub < job.simple.csh"'
 echo ' for pbs run "qsub job.simple.csh"'
 echo ' for lam-mpi run "lamboot" once, then "job.simple.csh"'
-
-#\rm -f go_end_filter
-
