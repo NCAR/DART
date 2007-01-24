@@ -173,7 +173,7 @@ real(r8), allocatable   :: ens_mean(:)
 
 logical                 :: ds, all_gone
 
-call filter_initialize_modules_used(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+call filter_initialize_modules_used()
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "filter_nml", iunit)
@@ -246,7 +246,10 @@ call filter_set_initial_time(time1)
 call filter_read_restart(ens_handle, time1, model_size)
 
 ! Read in or initialize smoother restarts as needed
-if(ds) call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
+if(ds) then
+   call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+   call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
+endif
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_start_from_restart(1), &
@@ -317,13 +320,13 @@ AdvanceTime : do
       call broadcast_send(0, rkey_bounds, rnum_obs_in_set)
    else
       call broadcast_recv(0, rkey_bounds, rnum_obs_in_set)
-      key_bounds = rkey_bounds
-      num_obs_in_set = rnum_obs_in_set(1)
+      key_bounds =     nint(rkey_bounds)
+      num_obs_in_set = nint(rnum_obs_in_set(1))
    endif
    if(key_bounds(1) < 0) exit AdvanceTime
 
-   ! Create an ensemble for the observations from this time plus &
-   ! obs_error_variance, observed value, key from sequence, then mean for each
+   ! Create an ensemble for the observations from this time plus
+   ! obs_error_variance, observed value, key from sequence, global qc, then mean for each
    ! group, then variance for each group
    TOTAL_OBS_COPIES = ens_size + 4 + 2*num_groups
    call init_ensemble_manager(obs_ens_handle, TOTAL_OBS_COPIES, num_obs_in_set, 1)
@@ -343,7 +346,7 @@ AdvanceTime : do
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
-      ! Recompute the mean or the mean and spread as required for diagnostics
+      ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
    endif
 
@@ -398,7 +401,7 @@ AdvanceTime : do
 
    ! Do the update for the smoother lagged fields, too.
    ! Would be more efficient to do these all at once inside filter_assim in the future
-   call smoother_assim(obs_ens_handle, seq, keys, ens_size, num_groups, obs_val_index, &
+   if(ds) call smoother_assim(obs_ens_handle, seq, keys, ens_size, num_groups, obs_val_index, &
       ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, &
       OBS_GLOBAL_QC_COPY, OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
       OBS_PRIOR_VAR_END)
@@ -551,7 +554,9 @@ integer,                     intent(out)   :: prior_obs_spread_index, posterior_
 ! output file which contains both prior and posterior data.
 
 character(len=129) :: prior_meta_data, posterior_meta_data
-! The 4 is for mean, spread plus mean and spread of inflation
+! The 4 is for mean and spread plus mean and spread of inflation
+! The prior file contains the prior inflation mean and spread only
+! Posterior file contains the posterior inflation mean and spread only
 character(len=129) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
 
@@ -641,10 +646,7 @@ end subroutine filter_generate_copy_meta_data
 
 !-------------------------------------------------------------------------
 
-subroutine filter_initialize_modules_used(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in) :: POST_INF_COPY, POST_INF_SD_COPY
+subroutine filter_initialize_modules_used()
 
 ! Initialize modules used that require it
 call initialize_mpi_utilities()
@@ -658,9 +660,6 @@ call static_init_obs_sequence()
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
 
-! Initialize the smoother module
-call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-
 end subroutine filter_initialize_modules_used
 
 !-------------------------------------------------------------------------
@@ -672,7 +671,6 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
 
-!!!real(r8)             :: qc(1)
 character(len = 129) :: qc_meta_data = 'DART quality control'
 character(len = 129) :: obs_seq_read_format
 integer              :: obs_seq_file_id, num_obs_copies
@@ -680,6 +678,7 @@ integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc
 logical              :: pre_I_format
 
 ! Determine the number of output obs space fields
+! 4 is for prior/posterior mean and spread, 
 ! Prior and posterior values for all selected fields (so times 2)
 num_obs_copies = 2 * num_output_obs_members + 4
 
@@ -713,12 +712,6 @@ call init_obs(observation, get_num_copies(seq), num_qc)
 ! Set initial DART quality control to 0 for all observations
 ! Leaving them uninitialized, obs_space_diagnostics should set them all without reading them
 call set_qc_meta_data(seq, DART_qc_index, qc_meta_data)
-!!!qc(1) = 0.0_r8
-!!!do i = 1, get_num_obs(seq)
-   !!!call get_obs_from_key(seq, i, observation)
-   !!!call set_qc(observation, qc, DART_qc_index)
-   !!!call set_obs(seq, observation, i)
-!!!end do
 
 ! Determine which copy has actual obs
 obs_val_index = get_obs_copy_index(seq)
@@ -805,8 +798,8 @@ end subroutine filter_read_restart
 
 subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY)
 
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in)    :: inflate_copy, ENS_MEAN_COPY
+type(ensemble_type),         intent(inout) :: ens_handle
+integer,                     intent(in)    :: inflate_copy, ENS_MEAN_COPY
 type(adaptive_inflate_type), intent(inout) :: inflate
 
 integer :: j, group, grp_bot, grp_top, grp_size
@@ -838,11 +831,11 @@ subroutine get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, k
 ! Computes forward observation operators and related quality control indicators.
 
 type(ensemble_type),     intent(in)    :: ens_handle
-type(ensemble_type),     intent(out)   :: obs_ens_handle, forward_op_ens_handle 
+type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle 
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
-integer,                 intent(in)    ::  obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY
-integer,                 intent(in)    :: OBS_VAL_COPY
+integer,                 intent(in)    :: obs_val_index, num_obs_in_set
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 
 real(r8)           :: input_qc(1), obs_value(1), obs_err_var
 integer            :: j, k, my_num_copies, istatus , global_ens_index
@@ -862,7 +855,7 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation)
    call get_obs_def(observation, obs_def)
    ! Check to see if this observation fails input qc test
-! PAR WARNING: WHAT IF THERE IS NO INPUT QC FIELD??? NEED TO BE PREPARED FOR THIS
+!!!PAR WARNING: WHAT IF THERE IS NO INPUT QC FIELD??? NEED TO BE PREPARED FOR THIS
    call get_qc(observation, input_qc, qc_indx = 1)
    ! If it is bad, set forward operator status value to -99 and return missing_r8 for obs_value
 
@@ -870,7 +863,7 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    if(.not. input_qc_ok(input_qc(1))) then
       ! The forward operator value is set to -99 if prior qc was failed
       forward_op_ens_handle%vars(j, :) = -99
-      obs_ens_handle%vars(j, 1:my_num_copies) = missing_r8 
+      obs_ens_handle%vars(j, :) = missing_r8 
       ! No need to do anything else for a failed observation
       cycle ALL_OBSERVATIONS
    endif
@@ -890,6 +883,7 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
          ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
          ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
          ! in the forward operator evaluation field
+!!!WATCH ASSUMPTIONS ABOUT INDEXING
          if(istatus == 0) then
             if(assimilate_this_ob) then
                forward_op_ens_handle%vars(j, k) = 0
@@ -938,7 +932,7 @@ integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 integer               :: j, k, ens_offset, forward_min, forward_max, forward_unit
 real(r8)              :: error, diff_sd, ratio, obs_temp(num_obs_in_set)
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
-real(r8), allocatable :: forward_temp(:)
+real(r8)              :: forward_temp(num_obs_in_set)
 logical               :: do_outlier
 
 ! Assume that mean and spread have been computed if needed???
@@ -965,7 +959,6 @@ if(output_forward_op_errors) then
       endif
    endif
 
-   allocate(forward_temp(num_obs_in_set))
    do k = 1, ens_size
       ! Get this copy to PE 0
       call get_copy(0, forward_op_ens_handle, k, forward_temp)
@@ -979,7 +972,6 @@ if(output_forward_op_errors) then
       endif
    end do
    ! PE 0 does the output for each copy in turn
-   deallocate(forward_temp)
    if(my_task_id() == 0) then
       call close_file(forward_unit)
    endif
