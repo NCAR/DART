@@ -367,11 +367,16 @@ real(r8),                    intent(in)    :: mean, inflate
 real(r8), optional,          intent(in)    :: var_in
 
 integer  :: i, ens_size
-real(r8) :: rand_sd, var
+real(r8) :: rand_sd, var, sd_inflate
 
 if(inflate_handle%deterministic) then
    ! Just spread the ensemble out linearly for deterministic
-   ens = (ens - mean) * sqrt(inflate) + mean
+   ! Following line can lead to inflation of 1.0 changing ens on some compilers
+   !!! ens = (ens - mean) * sqrt(inflate) + mean
+   ! Following gives 1.0 inflation having no impact on known compilers
+   sd_inflate = sqrt(inflate) 
+   ens = ens * sd_inflate + mean * (1.0_r8 - sd_inflate)
+
 else
    ! Use a stochastic algorithm to spread out.
    ens_size = size(ens)
