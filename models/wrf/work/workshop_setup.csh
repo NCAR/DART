@@ -65,67 +65,71 @@ make         || exit 1
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
+# Build all the single-threaded targets first.
+#----------------------------------------------------------------------
 
 echo mkmf_create_obs_sequence
-csh mkmf_create_obs_sequence
-make         || exit 3
+csh  mkmf_create_obs_sequence
+make || exit 3
 
 echo mkmf_create_fixed_network_seq
-csh mkmf_create_fixed_network_seq
-make         || exit 4
+csh  mkmf_create_fixed_network_seq
+make || exit 4
 
 echo mkmf_perfect_model_obs
-csh mkmf_perfect_model_obs
-make         || exit 5
+csh  mkmf_perfect_model_obs
+make || exit 5
 
 echo mkmf_obs_diag
-csh mkmf_obs_diag
-make         || exit 7
+csh  mkmf_obs_diag
+make || exit 7
 
 echo mkmf_dart_tf_wrf
-csh mkmf_dart_tf_wrf
-make         || exit 9
+csh  mkmf_dart_tf_wrf
+make || exit 9
 
 echo mkmf_ensemble_init
-csh mkmf_ensemble_init
-make         || exit 10
+csh  mkmf_ensemble_init
+make || exit 10
 
 echo mkmf_update_wrf_bc
-csh mkmf_update_wrf_bc
-make         || exit 11
+csh  mkmf_update_wrf_bc
+make || exit 11
 
 echo mkmf_extract
-csh mkmf_extract
-make         || exit 12
+csh  mkmf_extract
+make || exit 12
 
 echo mkmf_select
-csh mkmf_select
-make         || exit 13
+csh  mkmf_select
+make || exit 13
 
 echo mkmf_merge_obs_seq
-csh mkmf_merge_obs_seq
-make         || exit 16
+csh  mkmf_merge_obs_seq
+make || exit 16
 
 echo mkmf_convertdate
-csh mkmf_convertdate
-make         || exit 17
+csh  mkmf_convertdate
+make || exit 17
 
 echo mkmf_pert_wrf_bc
-csh mkmf_pert_wrf_bc
-make         || exit 18
+csh  mkmf_pert_wrf_bc
+make || exit 18
 
-# filter needs to be compiled with MPI.
+#----------------------------------------------------------------------
+# Build the MPI-enabled target(s) 
+#----------------------------------------------------------------------
+
+\rm -f *.o *.mod  
+
 echo mkmf_filter
-csh mkmf_filter
-echo 'adding mpi directives to Makefile'
+csh  mkmf_filter
+echo 'updating Makefile for MPI'
 \cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back > Makefile
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
 \rm -f Makefile.back
-## some compilers seem to need all the files compiled with the
-## mpi wrapper; others do not.  this seems to be the safest, if slower.
-rm *.o *.mod  
-make         || exit 6
-rm *.o *.mod  
+make || exit 6
+\rm -f *.o *.mod  
 
 #echo running perfect_model_obs
 #./perfect_model_obs || exit 20
@@ -135,5 +139,3 @@ echo time to run filter here:
 echo ' for lsf run "bsub < runme_filter"'
 echo ' for pbs run "qsub runme_filter"'
 echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-
-#\rm -f go_end_filter
