@@ -462,6 +462,7 @@ type grid_1d_type
    character (len=128), pointer :: atts_vals(:)
 end type grid_1d_type
 
+integer :: iii
 ! integer :: grid_num_0d = 0              ! # of grid scalars to read from file
 ! P0 now a "coordinate",  and may be removed entirely
 ! character (len=8),dimension(100) :: grid_names_0d = (/'P0      ',('        ',iii=1,100)/)
@@ -517,7 +518,6 @@ integer :: state_num_2d = 1              ! # of 2d fields to read from file
 integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
 ! make these allocatable?  Where would I define the default values?
-integer :: iii
 character (len=8),dimension(1000) :: state_names_0d = (/('        ',iii=1,1000)/)
 character (len=8),dimension(1000) :: state_names_1d = (/('        ',iii=1,1000)/)
 character (len=8),dimension(1000) :: state_names_2d = (/'PS      ',('        ',iii=1,999)/)
@@ -870,14 +870,31 @@ call trans_coord(ncfileid)
 
 ! The arrays into which CAM fields are put are dimensioned by the largest values of
 ! the sizes of the dimensions listed in Y_dim_RANKd, Y=[sf], RANK=[1-3] .
-! The second dimension denotes the rank of the array for which the firs dim gives the max size(s).
-f_dim_max(1:2, 1) = maxval(f_dim_1d, dim=2)   ! gets the max value  of f_dim_1d (1:2, :)
-f_dim_max(1:3, 2) = maxval(f_dim_2d, dim=2)   ! gets the max values of f_dim_2d (1:3, :)
-f_dim_max(1:4, 3) = maxval(f_dim_3d, dim=2)   ! gets the max values of f_dim_3d (1:4, :)
+! The second dimension denotes the rank of the array for which the first dim 
+! gives the max size(s).
+if (state_num_1d > 0) then
+   f_dim_max(1:2, 1) = maxval(f_dim_1d, dim=2)   ! gets the max value of f_dim_1d (1:2, :)
+   s_dim_max(1  , 1) = maxval(s_dim_1d, dim=1)   ! gets the max value of s_dim_1d (:)
+else
+   f_dim_max(1:2, 1) = 0
+   s_dim_max(1  , 1) = 0
+endif
 
-s_dim_max(1  , 1) = maxval(s_dim_1d, dim=1)   ! gets the max value  of s_dim_1d (:)
-s_dim_max(1:2, 2) = maxval(s_dim_2d, dim=2)   ! gets the max values of s_dim_2d (1:2, :)
-s_dim_max(1:3, 3) = maxval(s_dim_3d, dim=2)   ! gets the max values of s_dim_3d (1:3, :)
+if (state_num_2d > 0) then 
+   f_dim_max(1:3, 2) = maxval(f_dim_2d, dim=2)   ! gets the max values of f_dim_2d (1:3, :)
+   s_dim_max(1:2, 2) = maxval(s_dim_2d, dim=2)   ! gets the max values of s_dim_2d (1:2, :)
+else
+   f_dim_max(1:3, 2) = 0
+   s_dim_max(1:2, 2) = 0
+endif
+
+if (state_num_3d > 0) then 
+   f_dim_max(1:4, 3) = maxval(f_dim_3d, dim=2)   ! gets the max values of f_dim_3d (1:4, :)
+   s_dim_max(1:3, 3) = maxval(s_dim_3d, dim=2)   ! gets the max values of s_dim_3d (1:3, :)
+else
+   f_dim_max(1:4, 3) = 0
+   s_dim_max(1:3, 3) = 0
+endif
 
 !debug   where will this be written?
 if (do_out) then
@@ -3895,8 +3912,8 @@ end function index_from_grid
 ! function find_nam(nam, list)
 
 integer                                    :: find_name 
-character (len=8),              intent(in) :: nam
-character (len=8), dimension(:),intent(in) :: list
+character (len=*),              intent(in) :: nam
+character (len=*), dimension(:),intent(in) :: list
 
 integer :: i
 
