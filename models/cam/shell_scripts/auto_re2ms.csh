@@ -1,14 +1,19 @@
 #!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2006, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id$
+# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/auto_re2ms.csh,v $
+# $Name:  $
 
 # script for copying 1 day/obs_seq of restart files to the mass store.
 # CAM,CLM, and possibly filter_ic for each ensemble member are lumped together
 # so that we can retrieve a subset of the ensemble members for a new experiment.
 # Then it lumps together ensemble members into batches to reduce the number of files.
-
-# <next three lines automatically updated by CVS, do not edit>
-# $Id$
-# $Source$
-# $Name$
 
 # change for lightning?
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/dcs/lib
@@ -33,7 +38,7 @@ set num_ens = $1
 set num_per_batch = $2
 
 # set proj_num = 86850054
-set proj_num = 39510050
+set proj_num = 86850054
 set ret_period = 1000
 set write_pass = da$$
 echo "with write password $write_pass" > saved_restart
@@ -56,26 +61,61 @@ cd ${exp_dir}/${obs_seq}
 set ms_root = /RAEDER/DAI/$case/${exp_dir}/${obs_seq}/${1}x${2}
 set ms_dir = mss:$ms_root
 echo "files will be written to ${ms_root}/batch#" >> saved_restart
+echo "files will be written to ${ms_root}/batch#" 
 
 # Figure out how many files to divide ensemble members among
 @ nbatch = $num_ens / $num_per_batch
 if ($num_ens % $num_per_batch != 0 ) @ nbatch++
 
+set msrcp_opts = "-pe $ret_period -pr $proj_num -wpwd $write_pass"
+
 set ok_to_remove = true
 
+# Tally up and list the extra (non-filter) ic files
+# Add more if blocks as needed.
+set DART_list = ' '
+set num_files = 0
+set do_filter = false
+if (-e DART/assim_tools_ics) then
+   set DART_list = ($DART_list assim_tools_ics)
+   @ num_files++
+endif
+if (-e DART/prior_inf_ic)    then
+   set DART_list = ($DART_list prior_inf_ic)
+   @ num_files++
+endif
+if (-e DART/post_inf_ic)     then
+   set DART_list = ($DART_list post_inf_ic)
+   @ num_files++
+endif
 if (-e DART/filter_ic) then
-   set do_filter = false
-   if (-e DART/assim_tools_ics) then
-      msrcp -pe $ret_period -pr $proj_num -wpwd $write_pass \
-            DART/filter_ic DART/assim_tools_ics ${ms_dir}/DART &
-   else
-      msrcp -pe $ret_period -pr $proj_num -wpwd $write_pass DART/filter_ic ${ms_dir}/DART/filter_ic &
-   endif
+   set DART_list = ($DART_list filter_ic)
+   @ num_files++
 else if (-e DART/filter_ic*0$num_ens || -e DART/filter_ic*.$num_ens) then
    set do_filter = true
 else
    echo 'NOT ENOUGH ENSEMBLE MEMBERS IN .../DART' >> saved_restart
    exit
+endif
+
+echo "DART_list = ($DART_list) " >> saved_restart
+echo "DART_list = ($DART_list) "
+
+# convert wordlist into a single character string (insert ,s)
+set n = 1
+if ($n <= $num_files) then
+   set DART_files = $DART_list[1]
+   while ($n < $num_files)
+      @ n++
+      set DART_files = "$DART_files,$DART_list[$n]"
+   end
+else
+   set DART_files = 'none'
+endif
+
+if ($DART_files != 'none' && do_filter == false) then
+   tar c -f ic_files.tar DART/{$DART_files}
+   msrcp $msrcp_opts ic_files.tar ${ms_dir}/DART/ic_files.tar &
 endif
 
 # Do this here, manually, or within tar; -z not available on tempest
@@ -84,6 +124,7 @@ if ($comp != ' ') then
    gzip -r CAM
    gzip -r CLM
 endif
+echo "compressed CAM and CLM"
 
 set batch = 1
 while($batch <= $nbatch)
@@ -94,16 +135,22 @@ while($batch <= $nbatch)
       set member = 0
 # BUT will there be a filter_ic.0000 ?
    echo base and member $base $member >> saved_restart
+   echo base and member $base $member 
 
    # create the tar file using the first ensemble member of this batch
    if ($do_filter == true) then
-      if (-e DART/assim_tools_ics && $member <= $base) then
+      # if (-e DART/assim_tools_ics && $member <= $base) then
+      if ($DART_files != 'none' && $member <= $base) then
 # won't work for $member < $base?            
         tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
-                 CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/assim_tools_ics 
+                 CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/{$DART_files}
+        echo "tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
+                 CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/{$DART_files} "
       else
         tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
-               CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
+                 CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
+        echo "tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
+                 CLM/clminput_$member.nc* DART/filter_ic*[.0]$member "
       endif
    else
         tar c -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
@@ -121,6 +168,8 @@ while($batch <= $nbatch)
         if ($do_filter == true) then
            tar r -f batch${batch}${comp} CAM/caminput_$member.nc* \
                CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
+           echo "tar r -f batch${batch}${comp} CAM/caminput_$member.nc* \
+               CLM/clminput_$member.nc* DART/filter_ic*[.0]$member "
         else
            tar r -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
         endif
@@ -128,7 +177,7 @@ while($batch <= $nbatch)
      @ n++
    end
 
-   msrcp -pe $ret_period -pr $proj_num -wpwd $write_pass batch${batch}${comp} ${ms_dir}/batch${batch}${comp}
+   msrcp $msrcp_opts batch${batch}${comp} ${ms_dir}/batch${batch}${comp}
    if ($batch < $nbatch) rm batch${batch}${comp}
 
    @ batch++
@@ -136,7 +185,7 @@ end
 # correct batch back to value of last batch, for use below.
 @ batch = $batch - 1
 
-# msrcp -pe $ret_period -pr $proj_num -wpwd $write_pass batch*${comp} ${ms_dir}
+# msrcp $msrcp_opts batch*${comp} ${ms_dir}
 mscomment -R -wpwd $write_pass -c "write password $write_pass" ${ms_root}
 
 wait
