@@ -113,7 +113,7 @@ while($state_copy <= $num_states)
    # this just creates a file that helps you figure out which member is
    # being advanced in this directory. FYI only, you don't need it.
    echo $element >! element
-   ${COPY} element element$element
+   cp element element$element
 
    echo "ls $temp_dir for element $element" >> cam_out_temp
    ls -lRt                                  >> cam_out_temp
@@ -154,7 +154,7 @@ while($state_copy <= $num_states)
    # This info is passed to CAM through the creation of its namelist
    if (-e temp_ic && -e ${CENTRALDIR}/trans_time) then
       echo 'advance_model; executing trans_time '`date` >> cam_out_temp
-      ${CENTRALDIR}/trans_time
+      ${CENTRALDIR}/trans_time                          >> cam_out_temp
       ls -lt >> cam_out_temp
       ${COPY} times ${CENTRALDIR}
    else
@@ -164,7 +164,9 @@ while($state_copy <= $num_states)
    
    # Create an initial CAM.nc file from the DART state vector
    # Times are handled separately in trans_time
-   ${CENTRALDIR}/trans_sv_pv
+   echo ' '                           >> cam_out_temp
+   echo 'Executing trans_sv_pv'       >> cam_out_temp
+   ${CENTRALDIR}/trans_sv_pv          >> cam_out_temp
    ls -ltR >> cam_out_temp
    
    # advance cam 
@@ -181,7 +183,9 @@ while($state_copy <= $num_states)
    if ($status == 0) then
       # Extract the new state vector information from the new caminput.nc and
       # put it in temp_ud (time followed by state)
-      ${CENTRALDIR}/trans_pv_sv
+   echo ' '                           >> cam_out_temp
+   echo 'Executing trans_pv_sv'       >> cam_out_temp
+      ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
    
       # Move updated state vector and new CAM/CLM initial files back to experiment
       # directory for use by filter and the next advance.
