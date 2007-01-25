@@ -145,9 +145,11 @@ use utilities_mod, only : register_module, error_handler, &
                           set_output
 use time_manager_mod, only : time_type, get_time, set_time
 
-!
+! BUILD TIP
 ! Some MPI installations have an MPI module; if one is present, use that.
+! (i.e. 'use mpi')
 ! If not, there will be an MPI include file which defines the parameters.
+! (i.e. 'include mpif.h')
 ! Use one but not both.  For help on compiling a module which uses MPI
 ! see the $DART/doc/mpi directory.
 

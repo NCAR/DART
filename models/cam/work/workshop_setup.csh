@@ -5,10 +5,9 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines updated by version control software, do not edit>
 # $Id$
-# $Source$
-# $Name$
+# $URL$
 
 #----------------------------------------------------------------------
 # Script to manage the compilation of all components for this model;
@@ -55,13 +54,11 @@
 \rm -f perfect_model_obs filter obs_diag assim_region column_rand
 \rm -f trans_date_to_dart trans_pv_sv trans_pv_sv_time0 trans_sv_pv
 \rm -f trans_time merge_obs_seq
-
-# optional to really clean and start fresh
 \rm -f *.o *.mod
 
 echo mkmf_preprocess
-csh mkmf_preprocess
-make         || exit 1
+csh  mkmf_preprocess
+make || exit 1
 
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
@@ -72,48 +69,48 @@ make         || exit 1
 #----------------------------------------------------------------------
 
 echo mkmf_create_obs_sequence
-csh mkmf_create_obs_sequence
-make         || exit 3
+csh  mkmf_create_obs_sequence
+make || exit 3
 
 echo mkmf_create_fixed_network_seq
-csh mkmf_create_fixed_network_seq
-make         || exit 4
+csh  mkmf_create_fixed_network_seq
+make || exit 4
 
 echo mkmf_perfect_model_obs
-csh mkmf_perfect_model_obs
-make         || exit 5
+csh  mkmf_perfect_model_obs
+make || exit 5
 
 echo mkmf_obs_diag
-csh mkmf_obs_diag
-make         || exit 7
+csh  mkmf_obs_diag
+make || exit 7
 
 echo mkmf_column_rand
-csh mkmf_column_rand
-make         || exit 9
+csh  mkmf_column_rand
+make || exit 9
 
 echo mkmf_trans_date_to_dart
-csh mkmf_trans_date_to_dart
-make         || exit 10
+csh  mkmf_trans_date_to_dart
+make || exit 10
 
 echo mkmf_trans_pv_sv
-csh mkmf_trans_pv_sv
-make         || exit 11
+csh  mkmf_trans_pv_sv
+make || exit 11
 
 echo mkmf_trans_pv_sv_time0
-csh mkmf_trans_pv_sv_time0
-make         || exit 12
+csh  mkmf_trans_pv_sv_time0
+make || exit 12
 
 echo mkmf_trans_sv_pv
-csh mkmf_trans_sv_pv
-make         || exit 13 
+csh  mkmf_trans_sv_pv
+make || exit 13 
 
 echo mkmf_trans_time
-csh mkmf_trans_time
-make         || exit 14
+csh  mkmf_trans_time
+make || exit 14
 
 echo mkmf_merge_obs_seq
-csh mkmf_merge_obs_seq
-make         || exit 10
+csh  mkmf_merge_obs_seq
+make || exit 10
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
@@ -121,16 +118,26 @@ make         || exit 10
 
 \rm -f *.o *.mod
 
-echo mkmf_filter
-csh mkmf_filter
-echo updating Makefile for MPI
+echo 'mkmf_filter'
+csh   mkmf_filter
+echo 'updating Makefile for MPI'
 \cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' -e 's/(CC)/(MPICC)/' Makefile.back >! Makefile
+sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
 \rm -f Makefile.back
-make         || exit 6
+make
 
-echo " "
-echo time to run filter here:
+if ($status != 0) then
+   echo
+   echo "If this died in mpi_utilities_mod, see code comment"
+   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+   echo
+   exit 6
+endif
+
+\rm -f *.o *.mod
+
+echo
+echo 'time to run filter here:'
 echo ' for lsf run "bsub < job.simple.csh"'
 echo ' for pbs run "qsub job.simple.csh"'
 echo ' for lam-mpi run "lamboot" once, then "job.simple.csh"'

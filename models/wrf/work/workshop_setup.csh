@@ -5,10 +5,9 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines updated by version control software, do not edit>
 # $Id$
-# $Source$
-# $Name$
+# $URL$
 
 #----------------------------------------------------------------------
 # Script to manage the compilation of all components for this model;
@@ -58,8 +57,9 @@
 \rm -f *.o *mod
 
 echo mkmf_preprocess
-csh mkmf_preprocess
-make         || exit 1
+csh  mkmf_preprocess
+make || exit 1
+
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 ./preprocess || exit 2
@@ -120,22 +120,28 @@ make || exit 18
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f *.o *.mod  
+\rm -f *.o *.mod
 
-echo mkmf_filter
-csh  mkmf_filter
+echo 'mkmf_filter'
+csh   mkmf_filter
 echo 'updating Makefile for MPI'
 \cp -f Makefile Makefile.back
 sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
 \rm -f Makefile.back
-make || exit 6
-\rm -f *.o *.mod  
+make
 
-#echo running perfect_model_obs
-#./perfect_model_obs || exit 20
+if ($status != 0) then
+   echo
+   echo "If this died in mpi_utilities_mod, see code comment"
+   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+   echo
+   exit 6
+endif
 
-echo " "
-echo time to run filter here:
+\rm -f *.o *.mod
+
+echo
+echo 'time to run filter here:'
 echo ' for lsf run "bsub < runme_filter"'
 echo ' for pbs run "qsub runme_filter"'
 echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
