@@ -53,12 +53,11 @@ character(len = 7) :: ic_file_name = "temp_ic", ud_file_name = 'temp_ud'
 !----------------------------------------------------------------
 
 ! This program should only be run with a single process
-call initialize_mpi_utilities()
+call initialize_mpi_utilities('integrate_model')
 if(task_count() > 1) &
    call error_handler(E_ERR,'integrate_model','Only use single process', &
    source,revision,revdate)
 
-call initialize_utilities('integrate_model')
 call register_module(source,revision,revdate)
 
 
