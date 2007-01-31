@@ -154,7 +154,7 @@ endif
 #ifeq ($(DART_TARGET),Linux_Intel_9_Lam)
 ifeq ($(DART_TARGET),Linux_dart)
 FC = ifort
-MPIFC = mpif77
+MPIFC = mpif90
 MPI_HOME = /contrib/lam
 endif
 
