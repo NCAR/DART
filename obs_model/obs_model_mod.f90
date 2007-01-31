@@ -6,11 +6,11 @@
 module obs_model_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/obs_model/obs_model_mod.f90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 
 use types_mod,            only : r8
 use utilities_mod,        only : register_module, error_handler, E_ERR, E_MSG, E_WARN, &
@@ -21,13 +21,14 @@ use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step
                                  aread_state_restart
 use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_obs_from_key,      &
                                  get_obs_def, init_obs, destroy_obs, get_num_copies, &
-                                 get_num_qc, get_first_obs, get_next_obs, get_obs_time_range
+                                 get_num_qc, get_first_obs, get_next_obs_from_key,   &
+                                 get_obs_time_range
 use obs_def_mod,          only : obs_def_type, get_obs_def_time
 use time_manager_mod,     only : time_type, operator(/=), operator(>), set_time, get_time, &
                                  operator(-), operator(/), operator(+), print_time,        &
                                  operator(<), operator(==)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
-use mpi_utilities_mod,    only : my_task_id
+use mpi_utilities_mod,    only : my_task_id, task_sync
 
 implicit none
 private
@@ -36,11 +37,12 @@ public :: move_ahead, advance_state
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_model/obs_model_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
 logical :: module_initialized = .false.
+logical :: single_advance = .false.
 
 ! Module storage for writing error messages
 character(len = 129) :: errstring
@@ -78,7 +80,7 @@ character(len = *),      intent(in)    :: adv_ens_command
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
-logical            :: is_this_last, is_there_one, out_of_range
+logical            :: is_this_last, is_there_one, out_of_range, no_work_for_me
 integer            :: sec, day
 
 ! Initialize if needed
@@ -91,20 +93,44 @@ endif
 num_obs_in_set  =   0
 key_bounds(1:2) = -99
 
-! Violating the private boundaries on ens_handle by direct access
-! If none of my copies are regular ensemble members no need to advance
-if(ens_handle%my_num_copies < 1) return
-! Next assumes that ensemble copies are in the first ens_size global copies of ensemble
-! And that global indices are monotonically increasing in each pes local copies
-if(ens_handle%my_copies(1) > ens_size) return
+! If none of my copies are regular ensemble members no need to advance. 
+! This is true either if I have no copies or if the copies I have are
+! all larger than the ensemble size.  This does assume that ensemble 
+! copies are in the first ens_size global copies of ensemble and that 
+! global indices are monotonically increasing in each pes local copies
+! (note: Violating the private boundaries on ens_handle by direct access)
+! (second note: the following machinations are to avoid a compiler
+! which evaluates both sides of the .or. before checking the results.
+! We want to avoid referencing my_copies(1) if there are none.)
+! This is the original code:
+!   if((ens_handle%my_num_copies < 1) .or. (ens_handle%my_copies(1) > ens_size)) then
+
+no_work_for_me = .false.
+if(ens_handle%my_num_copies < 1) no_work_for_me = .true.
+if(ens_handle%my_num_copies >= 1) then
+   if(ens_handle%my_copies(1) > ens_size) no_work_for_me = .true.
+endif
+if (no_work_for_me) then
+   ! For the inline advances, nothing extra to do here but return.
+   ! If all tasks who have models to advance handle their own advances,
+   ! there is no reason to sync all the jobs.  However, if only task 0 is
+   ! handling the advances for everyone, we have to be sure they are all
+   ! done writing out the ic files, and then afterwards that they do not
+   ! try to read the ud files before they are done.   These two syncs 
+   ! allow the rest of the tasks to advance when everyone has checked in.
+   if (single_advance .and. (async /= 0)) then
+      call task_sync()   ! Sync point before calling model advances
+      call task_sync()   ! Sync point after all are advanced
+   endif
+   return
+endif
 
 ! Initialize a temporary observation type to use
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
 ! Get the next observation in the sequence that hasn't already been assimilated
 if(last_key_used > 0) then
-   call get_obs_from_key(seq, last_key_used, observation)
-   call get_next_obs(seq, observation, observation, is_this_last)
+   call get_next_obs_from_key(seq, last_key_used, observation, is_this_last)
    ! If the end of the observation sequence has been passed, return
    if(is_this_last) return
 else
@@ -186,6 +212,7 @@ type(time_type) :: time_step
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
 integer         :: i, control_unit, ic_file_unit, ud_file_unit
 
+
 ! Initialize if needed
 if(.not. module_initialized) then
    call initialize_module
@@ -264,32 +291,77 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
       'Can only have 10000 processes', source, revision, revdate)
    write(control_file_name, '("filter_control", i5.5)') my_task_id()
 
+   if (.not. single_advance) then
 
-   ! Write the ic and ud file names to the control file
-   control_unit = get_unit()
-   open(unit = control_unit, file = trim(control_file_name))
-   ! Write out the file names to a control file
-   ! Also write out the global ensemble member number for the script 
-   ! if it needs to create unique filenames for its own use.
-   do i = 1, my_num_state_copies
-      write(control_unit, '(i5)') ens_handle%my_copies(i)
-      write(control_unit, '(a)' ) trim(ic_file_name(i))
-      write(control_unit, '(a)' ) trim(ud_file_name(i))
-   end do
-   close(control_unit)
+      ! Everyone writes the ic and ud file names to the control file
+      control_unit = get_unit()
+      open(unit = control_unit, file = trim(control_file_name))
+      ! Write out the file names to a control file
+      ! Also write out the global ensemble member number for the script 
+      ! if it needs to create unique filenames for its own use.
+      do i = 1, my_num_state_copies
+         write(control_unit, '(i5)') ens_handle%my_copies(i)
+         write(control_unit, '(a)' ) trim(ic_file_name(i))
+         write(control_unit, '(a)' ) trim(ud_file_name(i))
+      end do
+      close(control_unit)
+
+   else
+
+      ! Only task 0 writes all ens names to file, and ensures
+      ! all tasks are here first.
+      call task_sync()
+      if (my_task_id() == 0) then
+        ! Write the ic and ud file names to the control file
+        control_unit = get_unit()
+        open(unit = control_unit, file = trim(control_file_name))
+        ! Write out the file names to a control file
+        ! Also write out the global ensemble member number for the script 
+        ! if it needs to create unique filenames for its own use.
+        do i = 1, ens_size
+           write(control_unit, '(i5)') i
+           write(control_unit, '("assim_model_state_ic", i5.5)') i
+           write(control_unit, '("assim_model_state_ud", i5.5)') i
+        end do
+        close(control_unit)
+      endif
+
+   endif
 
    if(async == 2) then
 
-      ! Arguments to advance model script are unique id and number of copies
-      write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
-     
-      ! Issue a system command with arguments my_task, my_num_copies, and control_file
-      call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
- 
-      ! if control file is still here, the advance failed
-      if(file_exist(control_file_name)) then
-        write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
-        call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+      if (.not. single_advance) then
+         ! Arguments to advance model script are unique id and number of copies
+         write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
+        
+         ! Issue a system command with arguments my_task, my_num_copies, and control_file
+         call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
+    
+         ! if control file is still here, the advance failed
+         if(file_exist(control_file_name)) then
+           write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
+           call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+         endif
+      else
+         if (my_task_id() == 0) then
+
+            ! this assumes the script has already called 'mkfifo filter.status'
+
+            ! this does not return until script has read the data (and blocks).
+            call system('echo advance > ./filter.status')
+
+            ! get text back when advance is finished (this blocks also).
+            call system('cat ./filter.status')
+
+            ! if control file is still here, the advance failed
+            if(file_exist(control_file_name)) then
+              write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
+              call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+            endif
+
+         endif
+         ! if you are not task 0, you have to wait here before proceeding
+         call task_sync()
       endif
 
    else
