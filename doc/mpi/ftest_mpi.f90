@@ -3,8 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-namelist /x/ fred, bob
-
 program ftest_mpi
 
 ! <next few lines automatically updated by version control software, do not edit>
@@ -40,8 +38,6 @@ integer :: ierror, myrank, totalprocs
    endif
 
    print *, "MPI initialized successfully"
-
-   write ( *, nml=x)
 
    myrank = -1
    call MPI_Comm_rank(MPI_COMM_WORLD, myrank, ierror)
