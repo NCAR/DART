@@ -22,7 +22,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail, replace_obs_values, replace_qc_values
+                                 delete_seq_tail, replace_obs_values, replace_qc
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-)
@@ -1111,7 +1111,7 @@ if(my_task_id() == 0) then
    ! Loop through the observations for this time
    do j = 1, obs_ens_handle%num_vars
       rvalue(1) = obs_temp(j)
-      call replace_qc_values(seq, keys(j), rvalue, DART_qc_index)
+      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
    end do
 endif
 
