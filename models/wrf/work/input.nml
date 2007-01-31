@@ -65,12 +65,13 @@
    restart_out_file_name = 'smoother_restart' /
 
 &assim_tools_nml
-   filter_kind = 1,
-   cutoff = 0.0004,
-   sort_obs_inc = .false.,
-   spread_restoration = .false.,
-   sampling_error_correction = .false.,
-   adaptive_localization_threshold = -1 /
+   filter_kind                     = 1,
+   cutoff                          = 0.0004,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,         
+   print_every_nth_obs             = 0,
+   adaptive_localization_threshold = -1 /             
 
 &cov_cutoff_nml
    select_localization = 1  /
