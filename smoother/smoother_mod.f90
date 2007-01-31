@@ -195,7 +195,7 @@ integer, intent(in) :: num_output_state_members
 ! Figures out the strings describing the output copies for the smoother state output files.
 ! These are the prior and posterior state output files. 
 
-! The 2 is for mean and spread
+! The 4 is for ensemble mean and spread plus inflation mean and spread
 character(len = 129) :: state_meta(num_output_state_members + 4)
 character(len = 14)  :: file_name
 character(len = 15)  :: meta_data_string
