@@ -26,7 +26,7 @@
 -->
 
 <HTML>
-<TITLE>module xxxxxxx</TITLE>
+<TITLE>module mpi_utilities_mod</TITLE>
 <link rel=stylesheet type=text/css href=doc.css>
 <BODY>
 
@@ -50,7 +50,7 @@
    <TR><TD>Contact:       </TD><TD> Nancy Collins                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$            </TD></TR>
-   <TR><TD>Release Name:  </TD><TD> $Name$                    </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name:  $                    </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log                  </TD></TR>
 </TABLE>
@@ -76,7 +76,7 @@ To compile without using MPI substitute the
 types_mod
 utilities_mod
 time_manager_mod
-mpi_mod
+mpi
 </PRE>
 
 <!--==================================================================-->
@@ -137,7 +137,12 @@ may be supported.  It would be read from file <em class=file>input.nml</em>.
 <A NAME="initialize_mpi_utilities"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call initialize_mpi_utilities( )</em>
+<em class=call>call initialize_mpi_utilities( 
+<em class=optionalcode>[progname]</em>
+<em class=optionalcode>[, alternatename]</em>)</em>
+<pre>
+character(len=*), intent(in), optional         :: <em class=optionalcode>progname</em>
+character(len=*), intent(in), optional         :: <em class=optionalcode>alternatename</em>
 <pre>
 </pre></div>
 
@@ -146,7 +151,11 @@ may be supported.  It would be read from file <em class=file>input.nml</em>.
 <P>
 Initializes the MPI library, creates a private communicator, stores the
 total number of tasks and the local task number for later use, and
-registers this module.   On some implementations of MPI (in particular
+registers this module.    This routine calls <em class=code>initialize_utilities()</em>
+internally before returning, so the calling program need only call this one routine
+to initialize the DART internals.
+</P>
+<P>On some implementations of MPI (in particular
 some variants of MPICH) it is best to initialize MPI before any I/O is
 done from any of the parallel tasks, so this routine should be
 called as close to the process startup as possible.
@@ -163,6 +172,14 @@ It is an error to call any of the other routines in this file before
 calling this routine.
 </P>
 
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>progname&nbsp; &nbsp; </em></TD>
+    <TD>If given, written to the log file to document which program is
+         being started.</TD></TR>
+<TR><TD valign=top><em class=code>alternatename&nbsp; &nbsp; </em></TD>
+    <TD>If given, use this name as the log file instead of the default
+         <em class=code>dart_log.out</em>.</TD></TR>
+</TABLE>
 <BR>
 <!-- <H3 class=indent1>Notes</H3> -->
 <!--                              -->
@@ -593,11 +610,29 @@ by <em class=code>if (iam_task0()) then ... </em>.
 <A NAME="broadcast_send"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call broadcast_send(from, array1, array2)</em>
+<em class=call>call broadcast_send(from, array1 
+<em class=optionalcode>[, array2]</em>
+<em class=optionalcode>[, array3]</em>
+<em class=optionalcode>[, array4]</em>
+<em class=optionalcode>[, array5]</em>
+<em class=optionalcode>[, scalar1]</em>
+<em class=optionalcode>[, scalar2]</em>
+<em class=optionalcode>[, scalar3]</em>
+<em class=optionalcode>[, scalar4]</em>
+<em class=optionalcode>[, scalar5]</em>
+                                 )</em>
 <pre>
 integer, intent(in)                   :: <em class=code>from</em>
 real(r8), dimension(:), intent(inout) :: <em class=code>array1</em>
-real(r8), dimension(:), intent(inout) :: <em class=code>array2</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array2</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array3</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array4</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array5</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar1</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar2</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar3</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar4</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar5</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -610,14 +645,19 @@ This call must be matched with the companion call
 This routine should only be called on the task 
 which is the root of the broadcast; 
 it will be the data source.  All other tasks must call 
-<em class=code>broadcast_recv()</em>.  This routine sends 2 data arrays
-because this is a common code pattern in the DART filter code. 
+<em class=code>broadcast_recv()</em>.  
+This routine sends up to 5 data arrays
+and 5 scalars in a single call.  A common pattern in the DART filter
+code is sending 2 arrays, but other combinations exist.
 This routine ensures that <em class=code>from</em> is the same
-as the current task ID.
+as the current task ID.  The arguments to this call must be matched
+exactly in number and type with the companion call to 
+<em class=code><A HREF="#broadcast_recv">broadcast_recv()</A></em>
+or an error (or hang) will occur.
 </P>
 
 <P>
-In reality the data arrays here are <em class=code>intent(in)</em> only but
+In reality the data here are <em class=code>intent(in)</em> only but
 this routine
 will be calling <em class=code>array_broadcast()</em> internally and so
 must be <em class=code>intent(inout)</em> to match.
@@ -628,8 +668,24 @@ must be <em class=code>intent(inout)</em> to match.
     <TD> Current task ID; the root task for the data broadcast. </TD></TR>
 <TR><TD valign=top><em class=code>array1 &nbsp; &nbsp; </em></TD>
     <TD> First data array to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=code>array2 &nbsp; &nbsp; </em></TD>
-    <TD> Second data array to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array2 &nbsp; &nbsp; </em></TD>
+    <TD> If given, second data array to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array3 &nbsp; &nbsp; </em></TD>
+    <TD> If given, third data array to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array4 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fourth data array to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array5 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fifth data array to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar1 &nbsp; &nbsp; </em></TD>
+    <TD> If given, first data scalar to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar2 &nbsp; &nbsp; </em></TD>
+    <TD> If given, second data scalar to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar3 &nbsp; &nbsp; </em></TD>
+    <TD> If given, third data scalar to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar4 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fourth data scalar to be broadcast. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar5 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fifth data scalar to be broadcast. </TD></TR>
 </TABLE>
 <BR>
 
@@ -647,11 +703,29 @@ block until everyone has called one of these two routines.
 <A NAME="broadcast_recv"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call broadcast_recv(from, array1, array2)</em>
+<em class=call>call broadcast_send(from, array1 
+<em class=optionalcode>[, array2]</em>
+<em class=optionalcode>[, array3]</em>
+<em class=optionalcode>[, array4]</em>
+<em class=optionalcode>[, array5]</em>
+<em class=optionalcode>[, scalar1]</em>
+<em class=optionalcode>[, scalar2]</em>
+<em class=optionalcode>[, scalar3]</em>
+<em class=optionalcode>[, scalar4]</em>
+<em class=optionalcode>[, scalar5]</em>
+                                 )</em>
 <pre>
 integer, intent(in)                   :: <em class=code>from</em>
 real(r8), dimension(:), intent(inout) :: <em class=code>array1</em>
-real(r8), dimension(:), intent(inout) :: <em class=code>array2</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array2</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array3</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array4</em>
+real(r8), dimension(:), intent(inout), optional :: <em class=optionalcode>array5</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar1</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar2</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar3</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar4</em>
+real(r8), intent(inout), optional :: <em class=optionalcode>scalar5</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -662,13 +736,17 @@ Cover routine for
 This call must be matched with the companion call
 <em class=code><A HREF="#broadcast_send">broadcast_send()</A></em>.
 This routine must be called on all tasks which are <em>not</em> the root of 
-the broadcast; the array arguments specify the location in which to
+the broadcast; the arguments specify the location in which to
 receive data from the root. 
 (The root task should call <em class=code>broadcast_send()</em>.)
-This routine receives 2 data arrays
-because this is a common code pattern in the DART filter code.
+This routine receives up to 5 data arrays
+and 5 scalars in a single call.  A common pattern in the DART filter
+code is receiving 2 arrays, but other combinations exist.
 This routine ensures that <em class=code>from</em> is <em>not</em> the same
-as the current task ID.
+as the current task ID.  The arguments to this call must be matched
+exactly in number and type with the companion call to 
+<em class=code><A HREF="#broadcast_recv">broadcast_send()</A></em>
+or an error (or hang) will occur.
 </P>
 <P>
 In reality the data arrays here are <em class=code>intent(out)</em> only but
@@ -682,8 +760,24 @@ must be <em class=code>intent(inout)</em> to match.
     <TD> The task ID for the data broadcast source. </TD></TR>
 <TR><TD valign=top><em class=code>array1 &nbsp; &nbsp; </em></TD>
     <TD> First array location to receive data into. </TD></TR>
-<TR><TD valign=top><em class=code>array2 &nbsp; &nbsp; </em></TD>
-    <TD> Second array location to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array2 &nbsp; &nbsp; </em></TD>
+    <TD> If given, second data array to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array3 &nbsp; &nbsp; </em></TD>
+    <TD> If given, third data array to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array4 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fourth data array to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>array5 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fifth data array to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar1 &nbsp; &nbsp; </em></TD>
+    <TD> If given, first data scalar to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar2 &nbsp; &nbsp; </em></TD>
+    <TD> If given, second data scalar to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar3 &nbsp; &nbsp; </em></TD>
+    <TD> If given, third data scalar to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar4 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fourth data scalar to receive data into. </TD></TR>
+<TR><TD valign=top><em class=optionalcode>scalar5 &nbsp; &nbsp; </em></TD>
+    <TD> If given, fifth data scalar to receive data into. </TD></TR>
 </TABLE>
 <BR>
 
