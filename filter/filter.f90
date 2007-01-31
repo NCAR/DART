@@ -22,7 +22,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail
+                                 delete_seq_tail, replace_obs_values, replace_qc_values
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-)
@@ -268,6 +268,13 @@ if(my_task_id() == 0) then
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index)
    if(ds) call smoother_gen_copy_meta_data(num_output_state_members)
+else
+  output_state_mean_index = 0
+  output_state_spread_index = 0
+  prior_obs_mean_index = 0
+  posterior_obs_mean_index = 0
+  prior_obs_spread_index = 0 
+  posterior_obs_spread_index = 0
 endif
 
 ! Need to find first obs with appropriate time, delete all earlier ones
@@ -298,15 +305,19 @@ time_step_number = -1
 
 AdvanceTime : do
 
-   if(my_task_id() == 0) write(*, *) 'starting advance time loop;'
+   if(my_task_id() == 0) write(*, *) 'Starting advance time loop'
    time_step_number = time_step_number + 1
 
    ! Advance the lagged distribution
    if(ds) call advance_smoother(ens_handle)
 
    ! Get the model to a good time to use a next set of observations
+   ! FIXME: timing debug
+   if (do_output()) call timestamp("Before move_ahead", pos='debug')
    call move_ahead(ens_handle, ens_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
+   call task_sync()
+   if (do_output()) call timestamp("After move_ahead", pos='debug')
 
 
    ! Only processes with an ensemble copy know to exit; 
@@ -388,16 +399,18 @@ AdvanceTime : do
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
       PRIOR_DIAG, num_output_obs_members, in_obs_copy + 1, &
       prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
-      OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
-      OBS_ERR_VAR_COPY, DART_qc_index)
+      OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, &
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
   
    ! Need obs to be copy complete for assimilation
    call all_vars_to_all_copies(obs_ens_handle)
+   if (do_output()) call timestamp("Before filter_assim", pos='debug')
    call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
       obs_val_index, prior_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
       OBS_PRIOR_VAR_END, inflate_only = .false.)
+   if (do_output()) call timestamp("After filter_assim", pos='debug')
 
    ! Do the update for the smoother lagged fields, too.
    ! Would be more efficient to do these all at once inside filter_assim in the future
@@ -447,9 +460,9 @@ AdvanceTime : do
    ! Do posterior observation space diagnostics
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
       POSTERIOR_DIAG, num_output_obs_members, in_obs_copy + 2, &
-      posterior_obs_mean_index, posterior_obs_spread_index, &
-      num_obs_in_set, OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, &
-       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
+      posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
+      OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, &
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    
 
 !-------- Test of posterior inflate ----------------
@@ -472,11 +485,13 @@ AdvanceTime : do
 
       ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
       call all_vars_to_all_copies(obs_ens_handle)
+      if (do_output()) call timestamp("Before filter_assim2", pos='debug')
       call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
          obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
          POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
          OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
          OBS_PRIOR_VAR_END, inflate_only = .true.)
+      if (do_output()) call timestamp("After filter_assim2", pos='debug')
       call all_copies_to_all_vars(ens_handle)
    endif
 
@@ -522,10 +537,11 @@ if(my_task_id() == 0) then
    write(logfileunit,*)
 endif
 
-call finalize_mpi_utilities()
 
 ! Master task must close the log file
 if(my_task_id() == 0) call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+
+call finalize_mpi_utilities()
 
 ! Free up the observation kind
 call destroy_obs(observation)
@@ -554,11 +570,14 @@ integer,                     intent(out)   :: prior_obs_spread_index, posterior_
 ! output file which contains both prior and posterior data.
 
 character(len=129) :: prior_meta_data, posterior_meta_data
-! The 4 is for mean and spread plus mean and spread of inflation
+! The 4 is for ensemble mean and spread plus inflation mean and spread
 ! The prior file contains the prior inflation mean and spread only
 ! Posterior file contains the posterior inflation mean and spread only
 character(len=129) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
+
+
+! Section for state variables + other generated data stored with them.
 
 ! Ensemble mean goes first 
 num_state_copies = num_output_state_members + 2
@@ -584,16 +603,11 @@ do i = 1, num_output_state_members
    write(state_meta(i + ensemble_offset), '(a15, 1x, i6)') 'ensemble member', i
 end do
 
-! Netcdf output diagnostics for inflation; inefficient for single spatial
-!!! nsc - temporary fix.  for now always allow space in the netcdf file for
-!!! a single copy of the inflation values.  this should be changed to handle
-!!! prior, posterior, both, or neither inflation.  but it must match what is
-!!! written out in filter_state_space_diagnostics() below.
-!!!if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
-   num_state_copies = num_state_copies + 2
-   state_meta(num_state_copies -1) = 'inflation mean'
-   state_meta(num_state_copies) = 'inflation sd'
-!!!endif
+! Next two slots are for inflation mean and sd
+num_state_copies = num_state_copies + 2
+state_meta(num_state_copies -1) = 'inflation mean'
+state_meta(num_state_copies) = 'inflation sd'
+
 
 ! Set up diagnostic output for model state, if output is desired
 PriorStateUnit     = init_diag_output('Prior_Diag', &
@@ -602,8 +616,9 @@ PosteriorStateUnit = init_diag_output('Posterior_Diag', &
                         'posterior ensemble state', num_state_copies, state_meta)
 
 
-! Set up the metadata for the output ensemble observations space file
-! Set up ensemble mean if requested
+! Set the metadata for the observations.
+
+! Set up obs ensemble mean
 num_obs_copies = in_obs_copy
 num_obs_copies = num_obs_copies + 1
 prior_meta_data = 'prior ensemble mean'
@@ -614,7 +629,7 @@ posterior_meta_data = 'posterior ensemble mean'
 call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
 posterior_obs_mean_index = num_obs_copies 
 
-! Set up ensemble spread if requested
+! Set up obs ensemble spread 
 num_obs_copies = num_obs_copies + 1
 prior_meta_data = 'prior ensemble spread'
 call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
@@ -631,7 +646,7 @@ if(num_output_obs_members > 10000) then
    call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
 endif
 
-! Set up ensemble members as requested
+! Set up obs ensemble members as requested
 do i = 1, num_output_obs_members
    write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
    write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
@@ -649,9 +664,8 @@ end subroutine filter_generate_copy_meta_data
 subroutine filter_initialize_modules_used()
 
 ! Initialize modules used that require it
-call initialize_mpi_utilities()
+call initialize_mpi_utilities('Filter')
 
-call initialize_utilities('Filter')
 call register_module(source,revision,revdate)
 
 ! Initialize the obs sequence module
@@ -837,8 +851,8 @@ integer,                 intent(in)    :: keys(:)
 integer,                 intent(in)    :: obs_val_index, num_obs_in_set
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 
-real(r8)           :: input_qc(1), obs_value(1), obs_err_var
-integer            :: j, k, my_num_copies, istatus , global_ens_index
+real(r8)           :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
+integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1)
 logical            :: evaluate_this_ob, assimilate_this_ob
 type(obs_def_type) :: obs_def
 
@@ -878,8 +892,17 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
       ! If I have a copy that is a standard ensemble member, compute expected value
       if(global_ens_index <= ens_size) then
          ! Compute the expected observation value; direct access to storage
-         call get_expected_obs(seq, keys(j:j), ens_handle%vars(:, k), &
-            obs_ens_handle%vars(j:j, k), istatus, assimilate_this_ob, evaluate_this_ob)
+         ! Debug: The PGI 6.1.3 compiler was making internal copies of the array sections
+         ! very slowly, causing the filter process to take > 12 hours (vs minutes).
+         ! Try making local copies/non-sections to convince the compiler to run fast.
+         ! The original code was:
+         !    call get_expected_obs(seq, keys(j:j), ens_handle%vars(:, k), &
+         !       obs_ens_handle%vars(j:j, k), istatus, assimilate_this_ob, evaluate_this_ob)
+         ! and keys is intent in only, vars intent out only.
+         thiskey(1) = keys(j)
+         call get_expected_obs(seq, thiskey, ens_handle%vars(:, k), &
+            thisvar, istatus, assimilate_this_ob, evaluate_this_ob)
+         obs_ens_handle%vars(j, k) = thisvar(1)
          ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
          ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
          ! in the forward operator evaluation field
@@ -929,10 +952,10 @@ integer,                 intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_ST
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 
-integer               :: j, k, ens_offset, forward_min, forward_max, forward_unit
+integer               :: j, k, ens_offset, forward_min, forward_max, forward_unit, ivalue
 real(r8)              :: error, diff_sd, ratio, obs_temp(num_obs_in_set)
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
-real(r8)              :: forward_temp(num_obs_in_set)
+real(r8)              :: forward_temp(num_obs_in_set), rvalue(1)
 logical               :: do_outlier
 
 ! Assume that mean and spread have been computed if needed???
@@ -1042,10 +1065,9 @@ call get_copy(0, obs_ens_handle, OBS_PRIOR_MEAN_START, obs_temp)
 if(my_task_id() == 0) then
      ! Loop through the observations for this time
      do j = 1, obs_ens_handle%num_vars
-        call get_obs_from_key(seq, keys(j), observation)
-        call set_obs_values(observation, obs_temp(j:j), ens_mean_index)
-        ! Store the observation into the sequence
-        call set_obs(seq, observation, keys(j))
+      ! update the mean in each obs
+      rvalue(1) = obs_temp(j)
+      call replace_obs_values(seq, keys(j), rvalue, ens_mean_index)
      end do
   endif
 
@@ -1056,10 +1078,9 @@ call get_copy(0, obs_ens_handle, OBS_PRIOR_VAR_START, obs_temp)
 if(my_task_id() == 0) then
    ! Loop through the observations for this time
    do j = 1, obs_ens_handle%num_vars
-      call get_obs_from_key(seq, keys(j), observation)
-      call set_obs_values(observation, sqrt(obs_temp(j:j)), ens_spread_index)
-      ! Store the observation into the sequence
-      call set_obs(seq, observation, keys(j))
+      ! update the spread in each obs
+      rvalue(1) = sqrt(obs_temp(j))
+      call replace_obs_values(seq, keys(j), rvalue, ens_spread_index)
    end do
 endif
 
@@ -1074,10 +1095,10 @@ do k = 1, num_output_members
    if(my_task_id() == 0) then
       ! Loop through the observations for this time
       do j = 1, obs_ens_handle%num_vars
-         call get_obs_from_key(seq, keys(j), observation)
-         call set_obs_values(observation, obs_temp(j:j), ens_offset + 2 * (k - 1))
-         ! Store the observation into the sequence
-         call set_obs(seq, observation, keys(j))
+         ! update the obs values 
+         rvalue(1) = obs_temp(j)
+         ivalue = ens_offset + 2 * (k - 1)
+         call replace_obs_values(seq, keys(j), rvalue, ivalue)
       end do
    endif
 end do
@@ -1089,10 +1110,8 @@ call get_copy(0, obs_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
 if(my_task_id() == 0) then
    ! Loop through the observations for this time
    do j = 1, obs_ens_handle%num_vars
-      call get_obs_from_key(seq, keys(j), observation)
-      call set_qc(observation, obs_temp(j:j), DART_qc_index)
-      ! Store the observation into the sequence
-      call set_obs(seq, observation, keys(j))
+      rvalue(1) = obs_temp(j)
+      call replace_qc_values(seq, keys(j), rvalue, DART_qc_index)
    end do
 endif
 
