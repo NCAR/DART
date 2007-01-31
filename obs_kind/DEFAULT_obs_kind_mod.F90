@@ -154,6 +154,7 @@ call error_handler(E_MSG,'initialize_module','obs_kind_nml values are',' ',' ','
 write(logfileunit, *) 'assimilate_these_obs_types'
 write(*, *)
 write(*, *) '-------------- ASSIMILATE_THESE_OBS_TYPES --------------'
+num_kind_assimilate = 0
 do i = 1, max_obs_kinds
    if(assimilate_these_obs_types(i) == 'null') goto 22
    write(logfileunit, *) trim(assimilate_these_obs_types(i))
@@ -162,6 +163,7 @@ do i = 1, max_obs_kinds
 end do
 22 write(logfileunit, *) 'evaluate_these_obs_types'
 write(*, *) '-------------- EVALUATE_THESE_OBS_TYPES --------------'
+num_kind_evaluate = 0
 do i = 1, max_obs_kinds
    if(evaluate_these_obs_types(i) == 'null') goto 33
    write(logfileunit, *) trim(evaluate_these_obs_types(i))
@@ -174,36 +176,40 @@ write(*, *)
 
 ! Figure out which kinds are being used, look for errors
 ! Start by loading up kinds to assimilate
-do i = 1, num_kind_assimilate
-   ! Search for the matching string
-   do j = 1, max_obs_kinds
-      if(assimilate_these_obs_types(i) == obs_kind_info(j)%name) then
-         obs_kind_info(j)%assimilate = .true.
-         goto 44
-      endif
+if (num_kind_assimilate > 0) then
+   do i = 1, num_kind_assimilate
+      ! Search for the matching string
+      do j = 1, max_obs_kinds
+         if(assimilate_these_obs_types(i) == obs_kind_info(j)%name) then
+            obs_kind_info(j)%assimilate = .true.
+            goto 44
+         endif
+      end do
+      ! Falling off the end is an error
+      write(err_string, *) trim(assimilate_these_obs_types(i)), &
+         ' from obs_kind_nml is not a legal observation kind'
+      call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
+      44 continue
    end do
-   ! Falling off the end is an error
-   write(err_string, *) trim(assimilate_these_obs_types(i)), &
-      ' from obs_kind_nml is not a legal observation kind'
-   call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
-   44 continue
-end do
+endif
 
 ! Now look for kinds to evaluate
-do i = 1, num_kind_evaluate
-   ! Search for the matching string
-   do j = 1, max_obs_kinds
-      if(evaluate_these_obs_types(i) == obs_kind_info(j)%name) then
-         obs_kind_info(j)%evaluate = .true.
-         goto 55
-      endif
+if (num_kind_evaluate > 0) then
+   do i = 1, num_kind_evaluate
+      ! Search for the matching string
+      do j = 1, max_obs_kinds
+         if(evaluate_these_obs_types(i) == obs_kind_info(j)%name) then
+            obs_kind_info(j)%evaluate = .true.
+            goto 55
+         endif
+      end do
+      ! Falling off the end is an error
+      write(err_string, *) trim(evaluate_these_obs_types(i)), &
+         ' from obs_kind_nml is not a legal observation kind'
+      call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
+      55 continue
    end do
-   ! Falling off the end is an error
-   write(err_string, *) trim(evaluate_these_obs_types(i)), &
-      ' from obs_kind_nml is not a legal observation kind'
-   call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
-   55 continue
-end do
+endif
 
 ! Make it an error to ask to assimilate AND evaluate the same obs kind
 do i = 1, max_obs_kinds
