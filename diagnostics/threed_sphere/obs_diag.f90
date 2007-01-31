@@ -488,6 +488,15 @@ NbadQClevel    = 0
 ObsFileLoop : do ifile=1, Nepochs*4
 !-----------------------------------------------------------------------
 
+   ! TODO:  consider opening obs_sequence_name directly relative to the
+   ! current directory, and only if it is not found then start prepending
+   ! 01_01, 01_02, etc to the name.  or better -- allow some pattern character 
+   ! in the filename (e.g. obs_seq.final.MMDD) and substitute for the string
+   ! for each successive filename.  this has the advantage that you could
+   ! make the default filename MM_DD/obs_seq.final and it would be backwards 
+   ! compatible.  nsc 2007/01/24
+
+
    write(day_num, '(i2.2,''_'',i2.2,''/'')') first_bin_center(2), ifile 
    write(obs_seq_in_file_name,*)trim(adjustl(day_num))//trim(adjustl(obs_sequence_name))
 
@@ -660,8 +669,13 @@ ObsFileLoop : do ifile=1, Nepochs*4
       write(msgstring,*)'metadata:Quality Control not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
-   if ( any( (/obs_index, prior_mean_index, posterior_mean_index, qc_index, & 
-               prior_spread_index, posterior_spread_index /) < 0) ) then
+   !if ( any( (/obs_index, prior_mean_index, posterior_mean_index, qc_index, & 
+   !            prior_spread_index, posterior_spread_index /) < 0) ) then
+   ! Only require obs_index and qc_index to be present; this allows the program
+   ! to be run on obs_seq.in files which have no means or spread.  You can get
+   ! less info from them, but for plotting locations, etc, there are reasons
+   ! you might want to run diags on them.
+   if ( any( (/ obs_index, qc_index /) < 0) ) then
       write(msgstring,*)'metadata incomplete'
       call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
    endif
@@ -678,30 +692,38 @@ ObsFileLoop : do ifile=1, Nepochs*4
         obs_index, trim(adjustl(get_copy_meta_data(seq,obs_index)))
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
-   write(msgstring,'(''prior mean       index '',i2,'' metadata '',a)') &
-        prior_mean_index, trim(adjustl(get_copy_meta_data(seq,prior_mean_index)))
-   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   if (prior_mean_index > 0 ) then
+      write(msgstring,'(''prior mean       index '',i2,'' metadata '',a)') &
+           prior_mean_index, trim(adjustl(get_copy_meta_data(seq,prior_mean_index)))
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
 
-   write(msgstring,'(''posterior mean   index '',i2,'' metadata '',a)') &
-        posterior_mean_index, trim(adjustl(get_copy_meta_data(seq,posterior_mean_index)))
-   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate) 
+   if (posterior_mean_index > 0 ) then
+      write(msgstring,'(''posterior mean   index '',i2,'' metadata '',a)') &
+           posterior_mean_index, trim(adjustl(get_copy_meta_data(seq,posterior_mean_index)))
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate) 
+   endif
 
-   write(msgstring,'(''prior spread     index '',i2,'' metadata '',a)') &
-        prior_spread_index, trim(adjustl(get_copy_meta_data(seq,prior_spread_index)))
-   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   if (prior_spread_index > 0 ) then
+      write(msgstring,'(''prior spread     index '',i2,'' metadata '',a)') &
+           prior_spread_index, trim(adjustl(get_copy_meta_data(seq,prior_spread_index)))
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
 
-   write(msgstring,'(''posterior spread index '',i2,'' metadata '',a)') &
-        posterior_spread_index, trim(adjustl(get_copy_meta_data(seq,posterior_spread_index)))
-   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   if (posterior_spread_index > 0 ) then
+      write(msgstring,'(''posterior spread index '',i2,'' metadata '',a)') &
+           posterior_spread_index, trim(adjustl(get_copy_meta_data(seq,posterior_spread_index)))
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
 
    write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
         qc_index,      trim(adjustl(get_qc_meta_data(seq,     qc_index)))
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
    if (dart_qc_index > 0 ) then
-   write(msgstring,'(''DART quality control index '',i2,'' metadata '',a)') &
-        dart_qc_index, trim(adjustl(get_qc_meta_data(seq,dart_qc_index)))
-   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+      write(msgstring,'(''DART quality control index '',i2,'' metadata '',a)') &
+           dart_qc_index, trim(adjustl(get_qc_meta_data(seq,dart_qc_index)))
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    !====================================================================
@@ -834,10 +856,20 @@ ObsFileLoop : do ifile=1, Nepochs*4
          !--------------------------------------------------------------
 
          call get_obs_values(observation,              obs,              obs_index)
-         call get_obs_values(observation,       prior_mean,       prior_mean_index)
-         call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
-         call get_obs_values(observation,     prior_spread,     prior_spread_index)
-         call get_obs_values(observation, posterior_spread, posterior_spread_index)
+
+         prior_mean(1)       = 0.0_r8
+         posterior_mean(1)   = 0.0_r8
+         prior_spread(1)     = 0.0_r8
+         posterior_spread(1) = 0.0_r8
+
+         if (prior_mean_index > 0) &
+            call get_obs_values(observation,       prior_mean,       prior_mean_index)
+         if (posterior_mean_index > 0) &
+            call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
+         if (prior_spread_index > 0) &
+            call get_obs_values(observation,     prior_spread,     prior_spread_index)
+         if (posterior_spread_index > 0) &
+            call get_obs_values(observation, posterior_spread, posterior_spread_index)
 
          !--------------------------------------------------------------
          ! Scale the quantities so they plot sensibly.
