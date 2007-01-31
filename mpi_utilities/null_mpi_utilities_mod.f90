@@ -149,7 +149,7 @@ module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 
 use types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, & 
+use utilities_mod, only : register_module, error_handler, initialize_utilities, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file
 use time_manager_mod, only : time_type, get_time, set_time
 
@@ -167,7 +167,7 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe, exit_all
+          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all
 public :: task_sync, array_broadcast, array_distribute, &
           send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
           shell_execute, sleep_seconds, sum_across_tasks
@@ -182,18 +182,33 @@ logical, save :: module_initialized = .false.
 
 character(len = 129) :: errstring
 
-! forward declaration of external function
-interface
- function system(string)
-  character(len=*) :: string
-  integer :: system
- end function system
-end interface
-
-
-! Namelist input - placeholder for now.
-
+! Namelist input - placeholder for now; no options yet in this module.
 !namelist /mpi_utilities_nml/ x
+
+
+! BUILD TIP 
+! On some platforms the compiler will complain unless the system() function
+! is declared here.  We are trying to get a return code back from the
+! function by calling it:
+!  rc = system()
+! If we had been just trying to execute it and did not care about the return
+! code (and detecting failures), doing this:
+!  call system()
+! does not seem to need this interface block.
+! However, on some platforms the compiler complains if you *do* specify
+! an interface block.  So, first try leaving this alone.  If you get an error
+! at link time about an undefined symbol (something like '_system_') then
+! comment this entire block out and try again.
+
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+
 
 contains
 
@@ -201,7 +216,9 @@ contains
 ! mpi cover routines
 !-----------------------------------------------------------------------------
 
-subroutine initialize_mpi_utilities()
+subroutine initialize_mpi_utilities(progname, alternatename)
+ character(len=*), intent(in), optional :: progname
+ character(len=*), intent(in), optional :: alternatename
 
 ! Initialize MPI and query it for global information.  Make a duplicate
 ! communicator so that any user code which wants to call MPI will not 
@@ -217,6 +234,8 @@ if ( module_initialized ) then
    return
 endif
 
+call initialize_utilities(progname, alternatename)
+
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities
    call register_module(source, revision, revdate)
@@ -231,6 +250,8 @@ total_tasks = 1
 comm_size = total_tasks
 
 ! MPI successfully initialized.
+call error_handler(E_MSG,'initialize_mpi_utilities: ','Running single process', &
+                   source, revision, revdate)
 
 end subroutine initialize_mpi_utilities
 
@@ -502,10 +523,13 @@ iam_task0 = (myrank == 0)
 end function iam_task0
 
 !-----------------------------------------------------------------------------
-subroutine broadcast_send(from, array1, array2)
+subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5)
  integer, intent(in) :: from
  ! really only intent(in) here, but must match array_broadcast() call.
- real(r8), intent(inout) :: array1(:), array2(:)
+ real(r8), intent(inout) :: array1(:)
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
 ! cover routine for array broadcast.  one additional sanity check -- make 
 ! sure the 'from' matches my local task id.  also, these arrays are
@@ -528,15 +552,17 @@ endif
 ! it will not return until all tasks in the communications group have
 ! made the call.
 call array_broadcast(array1, from)
-call array_broadcast(array2, from)
 
 end subroutine broadcast_send
 
 !-----------------------------------------------------------------------------
-subroutine broadcast_recv(from, array1, array2)
+subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5)
  integer, intent(in) :: from
  ! really only intent(out) here, but must match array_broadcast() call.
- real(r8), intent(inout) :: array1(:), array2(:)
+ real(r8), intent(inout) :: array1(:)
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
 ! cover routine for array broadcast.  one additional sanity check -- make 
 ! sure the 'from' is not the same as my local task id.  these arrays are
@@ -559,7 +585,6 @@ endif
 ! it will not return until all tasks in the communications group have
 ! made the call.
 call array_broadcast(array1, from)
-call array_broadcast(array2, from)
 
 end subroutine broadcast_recv
 
@@ -698,7 +723,15 @@ end subroutine destroy_pipe
 !                         info is useful to exchange between processes.) 
 !                         This routine blocks until data is available.
 !
-subroutine read_pipe()
+subroutine read_pipe(iunit, chardata)
+ integer, intent(in) :: iunit
+ character(len=*), intent(out) :: chardata
+
+write(errstring, *) 'not implemented yet'
+call error_handler(E_ERR,'read_pipe', errstring, source, revision, revdate)
+
+chardata = " "
+ 
 end subroutine
 
 !-----------------------------------------------------------------------------
@@ -707,7 +740,13 @@ end subroutine
 !                         info is useful to exchange between processes.) 
 !                         This routine writes and returns immediately.
 !
-subroutine write_pipe()
+subroutine write_pipe(iunit, chardata)
+ integer, intent(in) :: iunit
+ character(len=*), intent(in) :: chardata
+
+write(errstring, *) 'not implemented yet'
+call error_handler(E_ERR,'write_pipe', errstring, source, revision, revdate)
+ 
 end subroutine
 
 

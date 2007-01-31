@@ -6,11 +6,11 @@
 module mpi_utilities_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/mpi_utilities/mpi_utilities_mod.f90,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 
 !-----------------------------------------------------------------------------
 !
@@ -90,12 +90,12 @@ module mpi_utilities_mod
 !  *** destroy_pipe()     The unit number is closed and the pipe file is 
 !                         removed.
 !
-!    * read_pipe()        The character string is read from the pipe.
+!  *** read_pipe()        The character string is read from the pipe.
 !                         (Can be overloaded to read ints if time or status
 !                         info is useful to exchange between processes.) 
 !                         This routine blocks until data is available.
 !
-!    * write_pipe()       The character string is written to the pipe.
+!  *** write_pipe()       The character string is written to the pipe.
 !                         (Can be overloaded to write ints if time or status
 !                         info is useful to exchange between processes.) 
 !                         This routine writes and returns immediately.
@@ -142,16 +142,19 @@ module mpi_utilities_mod
 use types_mod, only : r8, digits12
 use utilities_mod, only : register_module, error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
-                          set_output
+                          set_output, set_tasknum, initialize_utilities
 use time_manager_mod, only : time_type, get_time, set_time
 
-! BUILD TIP
+! BUILD TIP 1
 ! Some MPI installations have an MPI module; if one is present, use that.
 ! (i.e. 'use mpi')
 ! If not, there will be an MPI include file which defines the parameters.
 ! (i.e. 'include mpif.h')
-! Use one but not both.  For help on compiling a module which uses MPI
-! see the $DART/doc/mpi directory.
+! Use one but not both.   Plus, the placement relative to the 'implicit none' 
+! and 'private' lines matters - the 'use' must be first, 'include' after.  
+! Go figure.
+! For more help on compiling a module which uses MPI see the 
+! $DART/doc/mpi directory. 
 
 !use mpi
 
@@ -159,6 +162,7 @@ implicit none
 private
 
 include "mpif.h"
+
 
 
 !   ---- private data for mpi_utilities ----
@@ -172,23 +176,47 @@ integer :: datasize        ! which MPI type corresponds to our r8 definition
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe, exit_all
+          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all
 public :: task_sync, array_broadcast, array_distribute, &
           send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
           shell_execute, sleep_seconds, sum_across_tasks
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/mpi_utilities/mpi_utilities_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
+logical, save :: verbose = .false.
 
 character(len = 129) :: errstring
 
-! Namelist input - placeholder for now.
+! Namelist input - placeholder for now.  mpi_utilities has no options.
 !namelist /mpi_utilities_nml/ x
+
+! BUILD TIP 2
+! On some platforms the compiler will complain unless the system() function 
+! is declared here.  We are trying to get a return code back from the 
+! function by calling it:
+!  rc = system()
+! If we had been just trying to execute it and did not care about the return
+! code (and detecting failures), doing this:
+!  call system() 
+! does not seem to need this interface block.
+! However, on some platforms the compiler complains if you *do* specify 
+! an interface block.  So, first try leaving this alone.  If you get an error 
+! at link time about an undefined symbol (something like '_system_') then
+! comment this entire block out and try again.
+ 
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
 
 contains
 
@@ -196,7 +224,10 @@ contains
 ! mpi cover routines
 !-----------------------------------------------------------------------------
 
-subroutine initialize_mpi_utilities()
+subroutine initialize_mpi_utilities(progname, alternatename)
+ character(len=*), intent(in), optional :: progname
+ character(len=*), intent(in), optional :: alternatename
+
 
 ! Initialize MPI and query it for global information.  Make a duplicate
 ! communicator so that any user code which wants to call MPI will not 
@@ -214,6 +245,19 @@ if ( module_initialized ) then
    call error_handler(E_WARN,'initialize_mpi_utilities', errstring, source, revision, revdate)
    return
 endif
+
+! some implementations of mpich need this to happen before any I/O is done.
+! this makes the startup sequence very tricky.  test this more.
+
+errcode = -999 
+call MPI_Init(errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(*, *) 'MPI_Init returned error code ', errcode
+   call exit(-99)
+endif
+
+! these need to be args into this routine?
+call initialize_utilities(progname, alternatename)
 
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities
@@ -244,6 +288,10 @@ endif
 ! calls to MPI.  All subsequent mpi calls here will use the local communicator
 ! and not the global world comm.
 call MPI_Comm_dup(MPI_COMM_WORLD, my_local_comm, errcode)
+! option here: do not duplicate communicator, use world.   comment in the next
+! two lines and comment out the previous one to try this.
+!!my_local_comm = MPI_COMM_WORLD
+!!errcode = MPI_SUCCESS
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Comm_dup returned error code ', errcode
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
@@ -271,6 +319,7 @@ comm_size = total_tasks
 ! TODO: this should be controlled by a namelist option, to enable selected
 !       mpi tasks to default to printing for debugging.
 if (myrank /= 0) call set_output(.FALSE.)
+call set_tasknum(myrank)
 
 ! Users have the option of redefining the DART r8 kind to be the same size
 ! as r4.  But when we call the MPI routines we have to know what MPI type
@@ -287,7 +336,13 @@ else
   !print *, "using real * 4 for datasize of r8"
 endif
 
-! MPI successfully initialized.
+! MPI successfully initialized.  Log for the record how many tasks.
+if (verbose) write(*,*) "PE", myrank, ": MPI successfully initialized"
+
+if (myrank == 0) then
+   write(errstring, *) 'Running with ', total_tasks, ' MPI processes.'
+   call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
+endif
 
 end subroutine initialize_mpi_utilities
 
@@ -311,10 +366,12 @@ if ( .not. module_initialized ) then
 endif
 
 ! Release the private communicator we created at init time.
-call MPI_Comm_free(my_local_comm, errcode)
-if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a,i8)') 'MPI_Comm_free returned error code ', errcode
-   call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
+if (my_local_comm /= MPI_COMM_WORLD) then
+   call MPI_Comm_free(my_local_comm, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a,i8)') 'MPI_Comm_free returned error code ', errcode
+      call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
+   endif
 endif
 
 ! If the optional argument is not given, or is given and is true, 
@@ -336,6 +393,7 @@ if (dofinalize) then
    endif
 endif
 
+if (verbose) write(*,*) "PE", myrank, ": MPI successfully finalized"
 
 end subroutine finalize_mpi_utilities
 
@@ -392,11 +450,14 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
 endif
 
+if (verbose) write(*,*) "PE", myrank, ": waiting at MPI Barrier"
 call MPI_Barrier(my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Barrier returned error code ', errcode
    call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
 endif
+
+if (verbose) write(*,*) "PE", myrank, ": MPI Barrier released"
 
 end subroutine task_sync
 
@@ -416,6 +477,9 @@ subroutine send_to(dest_id, srcarray, time)
 
 integer :: i, tag, errcode
 integer :: itime(2)
+real(r8) :: tmpdata(size(srcarray))
+
+if (verbose) write(*,*) "PE", myrank, ": start of send_to "
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -429,11 +493,22 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
 
+if (verbose) write(*,*) "PE", myrank, ": send_to itemsize ", size(srcarray), " dest ", dest_id
+
 ! use my task id as the tag; unused at this point.
 tag = myrank
 
+! this copy should be unneeded, but on the intel fortran 9.0 compiler and mpich
+! on one platform, calling this routine with an array section resulted in some
+! apparently random memory corruption.  making a copy of the data into a local,
+! contiguous buffer before send and receive fixed the corruption.  this should
+! be examined at some later time for any performance impact.
+tmpdata = srcarray
+
+if (verbose) write(*,*) "PE", myrank, ": send_to alloctmp ", size(tmpdata), " dest ", dest_id
+
 ! call MPI to send the data to the remote task
-call MPI_Ssend(srcarray, size(srcarray), datasize, dest_id, tag, &
+call MPI_Ssend(tmpdata, size(tmpdata), datasize, dest_id, tag, &
               my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
@@ -442,13 +517,17 @@ endif
 
 ! if time specified, call MPI again to send the 2 time ints.
 if (present(time)) then
+   if (verbose) write(*,*) "PE", myrank, ": time present"
    call get_time(time, itime(1), itime(2))
    call MPI_Ssend(itime, 2, MPI_INTEGER, dest_id, tag*2, my_local_comm, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
       call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
    endif
+   if (verbose) write(*,*) "PE", myrank, ": sent time to ", dest_id
 endif
+
+if (verbose) write(*,*) "PE", myrank, ": end of send_to "
 
 
 end subroutine send_to
@@ -458,7 +537,7 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time)
  integer, intent(in) :: src_id
- real(r8), intent(out) :: destarray(:)
+ real(r8), intent(inout) :: destarray(:)
  type(time_type), intent(out), optional :: time
 
 ! Receive data into the destination array from the src task.
@@ -469,8 +548,10 @@ subroutine receive_from(src_id, destarray, time)
 
 integer :: i, tag, errcode
 integer :: itime(2)
-real(r8), pointer :: temparray(:)
 integer :: status(MPI_STATUS_SIZE)
+real(r8) :: tmpdata(size(destarray))
+
+if (verbose) write(*,*) "PE", myrank, ": start of receive_from "
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -484,19 +565,33 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
 
+if (verbose) write(*,*) "PE", myrank, ": receive_from itemsize ", size(destarray), " src ", src_id
+
 ! send_to uses its own id as the tag.
 tag = src_id
 
+
+if (verbose) write(*,*) "PE", myrank, ": receive_from alloctmp ", size(tmpdata), " src ", src_id
+
 ! call MPI to receive the data from the remote task
-call MPI_Recv(destarray, size(destarray), datasize, src_id, MPI_ANY_TAG, &
+call MPI_Recv(tmpdata, size(tmpdata), datasize, src_id, MPI_ANY_TAG, &
               my_local_comm, status, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
 
+if (verbose) write(*,*) "PE", myrank, ": received from ", src_id
+
+! see comment in send_to() about why this code receives into a temp array
+! and then does a contents copy into the actual destination.
+destarray = tmpdata
+
+if (verbose) write(*,*) "PE", myrank, ": copied to final dataarray"
+
 ! if time specified, call MPI again to send the 2 time ints.
 if (present(time)) then
+   if (verbose) write(*,*) "PE", myrank, ": time present"
    call MPI_Recv(itime, 2, MPI_INTEGER, src_id, tag*2, &
                  my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
@@ -510,7 +605,10 @@ if (present(time)) then
    else
       time = set_time(itime(1), itime(2))
    endif
+   if (verbose) write(*,*) "PE", myrank, ": received time from ", src_id
 endif
+
+if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
 
 
 end subroutine receive_from
@@ -583,6 +681,11 @@ if ((root < 0) .or. (root >= total_tasks)) then
 endif
 
 itemcount = size(array)
+
+!if (verbose) then
+!   if (myrank == root) write(*,*) "PE", myrank, ": bcast itemsize here ", itemcount
+!endif
+!!if (verbose) write(*,*) "PE", myrank, ": bcast itemsize ", itemcount, " root ", root
 
 call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
@@ -731,15 +834,21 @@ iam_task0 = (myrank == 0)
 end function iam_task0
 
 !-----------------------------------------------------------------------------
-subroutine broadcast_send(from, array1, array2)
+subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5)
  integer, intent(in) :: from
  ! really only intent(in) here, but must match array_broadcast() call.
- real(r8), intent(inout) :: array1(:), array2(:)
+ real(r8), intent(inout) :: array1(:)
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
 ! cover routine for array broadcast.  one additional sanity check -- make 
 ! sure the 'from' matches my local task id.  also, these arrays are
 ! intent(in) here, but they call a routine which is intent(inout) so they
 ! must be the same here.
+ 
+ real(r8) :: local(5)
+ logical :: dolocal
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -753,24 +862,59 @@ if (from /= myrank) then
    call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
 endif
 
-! this must be paired with broadcast_recv() on all other tasks. 
-! it will not return until all tasks in the communications group have
-! made the call.
+! this must be paired with the same number of broadcast_recv()s on all 
+! other tasks.  it will not return until all tasks in the communications 
+! group have made the call.
 call array_broadcast(array1, from)
-call array_broadcast(array2, from)
+if (present(array2)) call array_broadcast(array2, from)
+if (present(array3)) call array_broadcast(array3, from)
+if (present(array4)) call array_broadcast(array4, from)
+if (present(array5)) call array_broadcast(array5, from)
+
+dolocal = .false.
+local = 0.0_r8
+
+if (present(scalar1)) then
+  dolocal = .true.
+  local(1) = scalar1
+endif
+if (present(scalar2)) then
+  dolocal = .true.
+  local(2) = scalar2
+endif
+if (present(scalar3)) then
+  dolocal = .true.
+  local(3) = scalar3
+endif
+if (present(scalar4)) then
+  dolocal = .true.
+  local(4) = scalar4
+endif
+if (present(scalar5)) then
+  dolocal = .true.
+  local(5) = scalar5
+endif
+
+if (dolocal) call array_broadcast(local, from)
 
 end subroutine broadcast_send
 
 !-----------------------------------------------------------------------------
-subroutine broadcast_recv(from, array1, array2)
+subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5)
  integer, intent(in) :: from
  ! really only intent(out) here, but must match array_broadcast() call.
- real(r8), intent(inout) :: array1(:), array2(:)
+ real(r8), intent(inout) :: array1(:)
+ real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
+ real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
 ! cover routine for array broadcast.  one additional sanity check -- make 
 ! sure the 'from' is not the same as my local task id.  these arrays are
 ! intent(out) here, but they call a routine which is intent(inout) so they
 ! must be the same here.
+
+ real(r8) :: local(5)
+ logical :: dolocal
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -784,11 +928,29 @@ if (from == myrank) then
    call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
 endif
 
-! this must be paired with a single broadcast_send() on the 'from' task.
+! this must be paired with broadcast_send() on all other tasks, and it must 
+! match exactly the number of args in the sending call.
 ! it will not return until all tasks in the communications group have
 ! made the call.
 call array_broadcast(array1, from)
-call array_broadcast(array2, from)
+if (present(array2)) call array_broadcast(array2, from)
+if (present(array3)) call array_broadcast(array3, from)
+if (present(array4)) call array_broadcast(array4, from)
+if (present(array5)) call array_broadcast(array5, from)
+
+dolocal = .false.
+local = 0.0_r8
+
+if (present(scalar1) .or. present(scalar2) .or. present(scalar3) &
+                     .or. present(scalar4) .or. present(scalar5)) dolocal = .true.
+
+if (dolocal) call array_broadcast(local, from)
+
+if (present(scalar1)) scalar1 = local(1)
+if (present(scalar2)) scalar2 = local(2)
+if (present(scalar3)) scalar3 = local(3)
+if (present(scalar4)) scalar4 = local(4)
+if (present(scalar5)) scalar5 = local(5)
 
 end subroutine broadcast_recv
 
@@ -808,6 +970,8 @@ if ( .not. module_initialized ) then
 endif
 
 localaddend(1) = addend
+
+if (verbose) write(*,*) "PE", myrank, ": Allreduce called"
 
 call MPI_Allreduce(localaddend, localsum, 1, MPI_INTEGER, MPI_SUM, &
                    my_local_comm, errcode)
@@ -836,14 +1000,6 @@ function make_pipe(pipename, exists) result (iunit)
  character(len=*), intent(in) :: pipename
  logical, intent(in), optional :: exists
  integer :: iunit
-
- ! forward declaration of external function
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
 
 ! Create, open, and return a fortran unit number for a named pipe.
 ! The local MPI rank number will be appended to the given name to create
@@ -910,14 +1066,6 @@ end function make_pipe
 subroutine destroy_pipe(iunit)
  integer, intent(in) :: iunit
 
- ! forward declaration of external function
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
-
 character(len=128) :: pipename
 integer :: ios, rc
 
@@ -953,7 +1101,18 @@ end subroutine destroy_pipe
 !                         info is useful to exchange between processes.) 
 !                         This routine blocks until data is available.
 !
-subroutine read_pipe()
+subroutine read_pipe(iunit, chardata)
+ integer, intent(in) :: iunit
+ character(len=*), intent(out) :: chardata
+ 
+ integer :: ios
+
+ read(iunit, *, iostat=ios) chardata
+ if (ios /= 0) then
+   write(errstring, '(a,i4)') 'failure trying to read from unit ', iunit
+   call error_handler(E_ERR,'read_pipe', errstring, source, revision, revdate)
+endif
+
 end subroutine
 
 !-----------------------------------------------------------------------------
@@ -962,7 +1121,19 @@ end subroutine
 !                         info is useful to exchange between processes.) 
 !                         This routine writes and returns immediately.
 !
-subroutine write_pipe()
+subroutine write_pipe(iunit, chardata)
+ integer, intent(in) :: iunit
+ character(len=*), intent(in) :: chardata
+ 
+ integer :: ios
+
+ write(iunit, *, iostat=ios) chardata
+ if (ios /= 0) then
+   write(errstring, '(a,i4)') 'failure trying to write from unit ', iunit
+   call error_handler(E_ERR,'write_pipe', errstring, source, revision, revdate)
+endif
+
+
 end subroutine
 
 
@@ -974,14 +1145,6 @@ function shell_execute(execute_string, serialize)
  logical, intent(in), optional :: serialize
  integer :: shell_execute
 
- ! forward declaration of external function
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
-
 ! Use the system() command to execute a command string.
 ! Will wait for the command to complete and returns an
 ! error code unless you end the command with & to put
@@ -992,94 +1155,92 @@ function shell_execute(execute_string, serialize)
 ! not reentrant on some platforms.  if serialize is set and
 ! is true, do each call serially.
 
-character(len=255) :: doit
-logical :: ripit
-integer :: i, errcode, dummy
+logical :: all_at_once
+integer :: i, errcode, dummy(1)
 integer :: status(MPI_STATUS_SIZE)
 
    ! default to everyone running concurrently, but if set and not true,
    ! serialize the calls to system() so they do not step on each other.
    if (present(serialize)) then
-      ripit = .not. serialize
+      all_at_once = .not. serialize
    else
-      ripit = .TRUE.
+      all_at_once = .TRUE.
    endif
 
-   print *, "in-string is: ", trim(execute_string)
+   if (verbose) write(*,*) "system string is: ", trim(execute_string)
+   shell_execute = -1
 
-   !write(doit, "(a, 1x, a, 1x, a, a1)") "sh -c '", trim(execute_string), &
-   !            "' < /dev/null >> fred.out", char(0)
+   ! this is the normal (default) case
+   if (all_at_once) then
 
-   write(doit, "(a, 1x, a1)") trim(execute_string), char(0)
+      ! all tasks call system at the same time
+      shell_execute = system(trim(execute_string))
+      if (verbose) write(*,*) "execution returns, rc = ", shell_execute
 
-   print *, "about to run: ", trim(doit)
-   print *, "input string length = ", len(trim(doit))
+      return
+   endif
 
-   if (ripit) then
-      shell_execute = system(doit)
-      print *, "execution returns, rc = ", shell_execute
-   else
-      ! make each task wait for a message from the (N-1)th task.
-      if (myrank == 0) then
+   ! only one task at a time calls system, and all wait their turn by
+   ! making each task wait for a message from the (N-1)th task.
+   
+   ! this is used only to signal; the value it contains is unused.
+   dummy = 0
 
-         ! my turn to execute
-         shell_execute = system(doit)
-         print *, "execution returns, rc = ", shell_execute, "iam = ", myrank
+   if (myrank == 0) then
 
-         call MPI_Send(dummy, 1, MPI_INTEGER, i+1, i+1, my_local_comm, errcode)
+      ! my turn to execute
+      shell_execute = system(trim(execute_string))
+      if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+
+      if (total_tasks > 1) then
+         ! tell next task it can continue
+         call MPI_Send(dummy, 1, MPI_INTEGER, 1, 1, my_local_comm, errcode)
          if (errcode /= MPI_SUCCESS) then
             write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
                                         errcode
-            call error_handler(E_ERR,'send_to', errstring, source, &
+            call error_handler(E_ERR,'shell_execute', errstring, source, &
                                revision, revdate)
          endif
-
-      else if (myrank /= (total_tasks-1)) then
-         ! wait for a message from task (me-1) that i can continue.
-         call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
-                       my_local_comm, status, errcode)
-         if (errcode /= MPI_SUCCESS) then
-            write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-            call error_handler(E_ERR,'receive_from', errstring, source, &
-                               revision, revdate)
-         endif
-
-         ! my turn to execute
-         shell_execute = system(doit)
-         print *, "execution returns, rc = ", shell_execute, "iam = ", myrank
-
-	 ! send a message to the next task that it is good to go
-         ! (unless there is no "next task").
-         call MPI_Send(dummy, 1, MPI_INTEGER, i+1, i+1, my_local_comm, errcode)
-         if (errcode /= MPI_SUCCESS) then
-            write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
-                                        errcode
-            call error_handler(E_ERR,'send_to', errstring, source, &
-                               revision, revdate)
-         endif
-      else
-         ! last task, no one else to send to.
-         call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
-                       my_local_comm, status, errcode)
-         if (errcode /= MPI_SUCCESS) then
-            write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-            call error_handler(E_ERR,'receive_from', errstring, source, &
-                               revision, revdate)
-         endif
-
-         ! my turn to execute
-         shell_execute = system(doit)
-         print *, "execution returns, rc = ", shell_execute, "iam = ", myrank
-
       endif
-       
+
+   else if (myrank /= (total_tasks-1)) then
+      ! wait for (me-1) to tell me it is my turn
+      call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
+                    my_local_comm, status, errcode)
+      if (errcode /= MPI_SUCCESS) then
+         write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+         call error_handler(E_ERR,'shell_execute', errstring, source, &
+                            revision, revdate)
+      endif
+
+      ! my turn to execute
+      shell_execute = system(trim(execute_string))
+      if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+
+      ! and now tell (me+1) to go
+      call MPI_Send(dummy, 1, MPI_INTEGER, myrank+1, myrank+1, my_local_comm, errcode)
+      if (errcode /= MPI_SUCCESS) then
+         write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
+                                     errcode
+         call error_handler(E_ERR,'shell_execute', errstring, source, &
+                            revision, revdate)
+      endif
+   else
+      ! last task, no one else to send to.
+      call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
+                    my_local_comm, status, errcode)
+      if (errcode /= MPI_SUCCESS) then
+         write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+         call error_handler(E_ERR,'shell_execute', errstring, source, &
+                            revision, revdate)
+      endif
+
+      ! my turn to execute
+      shell_execute = system(trim(execute_string))
+      if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    endif
-
-   ! debug only.
-   !print *, "*** BYPASSING call to SYSTEM() *** "
-   !shell_execute = 0
-
+       
 
 end function shell_execute
 
