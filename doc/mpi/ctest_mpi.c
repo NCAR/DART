@@ -4,9 +4,8 @@
 /* Licensed under the GPL -- www.gpl.org/licenses/gpl.html  */
 
 /* <next few lines automatically updated by version control software, do not edit> */
-/* $Source: /home/thoar/CVS.REPOS/DART/filter/filter.f90,v $                       */
-/* $Revision$                                                              */
-/* $Date$                                                    */
+/* $Revision$  */
+/* $Date$ */
 /* $Id$ */
 
 /* a "c" which calls the MPI parallel communication libraries */
