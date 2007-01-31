@@ -331,7 +331,7 @@ while($state_copy <= $num_states)
    #  dart_tf_wrf is expecting only a single time per file
     /frames_per_outfile/c\
     frames_per_outfile         = 1, 1, 1,
-   EOF
+EOF
    
     sed -f script.sed \
        ${CENTRALDIR}/namelist.input > namelist.input
