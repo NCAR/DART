@@ -54,12 +54,12 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, &
    append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
    get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
-   get_expected_obs, delete_seq_head, delete_seq_tail
+   get_expected_obs, delete_seq_head, delete_seq_tail, get_next_obs_from_key, get_prev_obs_from_key
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
-   get_obs_values, set_obs_values, get_qc, set_qc, write_obs, read_obs, &
-   interactive_obs, copy_obs, assignment(=)
+   get_obs_values, set_obs_values, replace_obs_values, get_qc, set_qc, &  
+   read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=)
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -81,7 +81,7 @@ type obs_sequence_type
    integer :: first_time
    integer :: last_time
 !   integer :: first_avail_time, last_avail_time
-   type(obs_type), pointer :: obs(:)
+   type(obs_type), pointer :: obs(:) 
 ! What to do about groups
 end type obs_sequence_type
 
@@ -91,7 +91,7 @@ type obs_type
 ! Do I want to enforce the identity of the particular obs_sequence?
    integer :: key
    type(obs_def_type) :: def
-   real(r8), pointer :: values(:)
+   real(r8), pointer :: values(:) 
    real(r8), pointer :: qc(:)
 ! Put sort indices directly into the data structure
    integer :: prev_time, next_time
@@ -103,6 +103,9 @@ type obs_cov_type
    integer :: num_cov_groups
 ! ??????
 end type obs_cov_type
+
+! for errors
+character(len=129) :: msg_string
 
 !-------------------------------------------------------------
 ! Namelist with default values
@@ -469,6 +472,54 @@ obs = seq%obs(key)
 
 end subroutine get_obs_from_key
 
+!-------------------------------------------------
+
+subroutine get_next_obs_from_key(seq, last_key_used, next_obs, is_this_last)
+
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: last_key_used
+type(obs_type), intent(out) :: next_obs
+logical, intent(out) :: is_this_last
+
+integer :: next_index
+
+! Get index of the next observation
+next_index = seq%obs(last_key_used)%next_time
+if(next_index == -1) then
+   is_this_last = .true.
+   return
+else
+   is_this_last = .false.
+   next_obs = seq%obs(next_index)
+endif
+
+end subroutine get_next_obs_from_key
+
+!-------------------------------------------------
+
+subroutine get_prev_obs_from_key(seq, last_key_used, prev_obs, is_this_first)
+
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: last_key_used
+type(obs_type), intent(out) :: prev_obs
+logical, intent(out) :: is_this_first
+
+integer :: prev_index
+
+! Get index of the next observation
+prev_index = seq%obs(last_key_used)%prev_time
+if(prev_index == -1) then
+   is_this_first= .true.
+   return
+else
+   is_this_first= .false.
+   prev_obs = seq%obs(prev_index)
+endif
+
+end subroutine get_prev_obs_from_key
+
 !-----------------------------------------------------------------
 
 subroutine set_obs(seq, obs, key_in)
@@ -604,18 +655,17 @@ type(obs_type),   intent(in), optional :: prev_obs
 type(time_type) :: obs_time, current_time
 integer :: prev, next, current
 
-character(len=129) :: msgstring
 ! Inserts an observation into a sequence, optional argument
 ! prev_obs says that this was the predecessor in time.
 ! This avoids time search in cases where one is building
 ! a sequence from scratch.
 
 ! Make sure there is room, fail for now if not
-if(seq%num_obs == seq%max_num_obs) then
+if(seq%num_obs >= seq%max_num_obs) then
    ! Later do an increase of space and copy
-   write(msgstring,*) 'ran out of room, num_obs (',seq%num_obs, &
+   write(msg_string,*) 'ran out of room, num_obs (',seq%num_obs, &
                                ') > max_num_obs (',seq%max_num_obs,')'
-   call error_handler(E_ERR,'insert_obs_in_seq',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'insert_obs_in_seq',msg_string,source,revision,revdate)
 endif
 
 ! Set the key for the observation
@@ -697,7 +747,6 @@ type(obs_type), intent(inout) :: obs
 
 type(obs_type) :: last_obs
 type(time_type) :: obs_time, last_time
-character(len=129) :: msgstring
 
 ! Initialize obs_type before using
 call init_obs(last_obs, 0, 0)
@@ -714,18 +763,18 @@ else
    obs_time = get_obs_def_time(obs%def)
    last_time = get_obs_def_time(last_obs%def)
    if(obs_time < last_time) then
-      write(msgstring, *) 'tried to append an obs to sequence with bad time'
-      call error_handler(E_ERR,'append_obs_to_seq',msgstring,source,revision,revdate)
+      write(msg_string, *) 'tried to append an obs to sequence with bad time'
+      call error_handler(E_ERR,'append_obs_to_seq',msg_string,source,revision,revdate)
    endif
 
 !!!   call insert_obs_in_seq(seq, obs)
 !!!   if(1 == 1) return
 
 ! Make sure there is room, fail for now if not
-   if(seq%num_obs == seq%max_num_obs) then
+   if(seq%num_obs >= seq%max_num_obs) then
 ! Later do an increase of space and copy
-      write(msgstring,*) 'ran out of room, max_num_obs = ',seq%max_num_obs
-      call error_handler(E_ERR,'append_obs_to_seq',msgstring,source,revision,revdate)
+      write(msg_string,*) 'ran out of room, max_num_obs = ',seq%max_num_obs
+      call error_handler(E_ERR,'append_obs_to_seq',msg_string,source,revision,revdate)
    endif
 
 ! Set the key for the observation
@@ -770,6 +819,10 @@ integer :: prev, next
 prev = obs%prev_time
 next = obs%next_time
 
+! update obs count??  i think this should be done, but other code
+! is not prepared to deal with it.
+!seq%num_obs = seq%num_obs - 1
+
 ! If only one obs, seq first_time and last_time to -1
 if(prev == -1 .and. next == -1) then
   seq%first_time = -1
@@ -804,6 +857,12 @@ type(obs_sequence_type), intent(inout) :: seq
 integer, intent(in) :: copy_num
 character(len = 129), intent(in) :: meta_data
 
+if (copy_num > seq%num_copies) then
+   write(msg_string,*) 'trying to set copy (', copy_num, &
+                      ') which is larger than num_copies (', seq%num_copies, ')'
+   call error_handler(E_ERR,'set_copy_meta_data',msg_string,source,revision,revdate)
+endif
+
 seq%copy_meta_data(copy_num) = meta_data
 
 end subroutine set_copy_meta_data
@@ -816,6 +875,12 @@ subroutine set_qc_meta_data(seq, qc_num, meta_data)
 type(obs_sequence_type), intent(inout) :: seq
 integer, intent(in) :: qc_num
 character(len = 129), intent(in) :: meta_data
+
+if (qc_num > seq%num_qc) then
+   write(msg_string,*) 'trying to set qc (', qc_num, &
+                      ') which is larger than num_qc (', seq%num_qc, ')'
+   call error_handler(E_ERR,'set_qc_meta_data',msg_string,source,revision,revdate)
+endif
 
 seq%qc_meta_data(qc_num) = meta_data
 
@@ -962,20 +1027,20 @@ type(obs_sequence_type), intent(in) :: seq
 character(len = 129),    intent(in) :: file_name
 
 integer :: i, file_id
-character(len=129) :: msgstring,myfilename
+character(len=129) :: myfilename
 
 ! Open the file
 file_id = get_unit()
 if(write_binary_obs_sequence) then
-   write(msgstring, *) 'opening unformatted file ',trim(file_name)
-   call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
+   write(msg_string, *) 'opening unformatted file ',trim(file_name)
+   call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
    open(unit = file_id, file = file_name, form = "unformatted")
    ! Write the initial string for help in figuring out binary
    write(file_id) 'obs_sequence'
    call write_obs_kind(file_id, 'unformatted')
 else
-   write(msgstring, *) 'opening formatted file ',trim(file_name)
-   call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
+   write(msg_string, *) 'opening formatted file ',trim(file_name)
+   call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
    open(unit = file_id, file = file_name)
    ! Write the initial string for help in figuring out binary
    write(file_id, *) 'obs_sequence'
@@ -1021,8 +1086,8 @@ end do
 inquire(unit=file_id,name=myfilename)
 call close_file(file_id)
 
-write(msgstring, *) 'closed file ',trim(myfilename)
-call error_handler(E_MSG,'write_obs_seq',msgstring,source,revision,revdate)
+write(msg_string, *) 'closed file ',trim(myfilename)
+call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
 
 end subroutine write_obs_seq
 
@@ -1036,7 +1101,7 @@ character(len = 129),    intent(in)  :: file_name
 integer,                 intent(in)  :: add_copies, add_qc, add_obs
 type(obs_sequence_type), intent(out) :: seq
 
-integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id
+integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id, io
 character(len = 16) :: label(2)
 logical :: pre_I_format
 character(len = 129) :: read_format
@@ -1054,32 +1119,66 @@ seq%num_obs = num_obs
 ! Get the available copy_meta_data
 do i = 1, num_copies
    if(read_format == 'unformatted') then
-      read(file_id) seq%copy_meta_data(i)
+      read(file_id, iostat=io) seq%copy_meta_data(i)
    else
-      read(file_id, '(a129)') seq%copy_meta_data(i)
+      read(file_id, '(a129)', iostat=io) seq%copy_meta_data(i)
+   endif
+   if (io /= 0) then
+      ! Read error of some type
+      write(msg_string, *) 'Read error in copy metadata ', i, ' rc= ', io
+      call error_handler(E_ERR, 'read_obs_seq', msg_string, &
+         source, revision, revdate)
    endif
 end do
 
 ! Get the available qc_meta_data
 do i = 1, num_qc
    if(read_format == 'unformatted') then
-      read(file_id) seq%qc_meta_data(i)
+      read(file_id, iostat=io) seq%qc_meta_data(i)
    else
-      read(file_id, '(a129)') seq%qc_meta_data(i)
+      read(file_id, '(a129)', iostat=io) seq%qc_meta_data(i)
+   endif
+   if (io /= 0) then
+      ! Read error of some type
+      write(msg_string, *) 'Read error in qc metadata ', i, ' rc= ', io
+      call error_handler(E_ERR, 'read_obs_seq', msg_string, &
+         source, revision, revdate)
    endif
 end do
 
 ! Read the first and last avail_time pointers
 if(read_format == 'unformatted') then
-   read(file_id) seq%first_time, seq%last_time
+   read(file_id, iostat=io) seq%first_time, seq%last_time
 else
-   read(file_id, *) label(1),seq%first_time,label(2), seq%last_time
+   read(file_id, *, iostat=io) label(1),seq%first_time,label(2), seq%last_time
 endif
+if (io /= 0) then
+   ! Read error of some type
+   write(msg_string, *) 'Read error in first/last times, rc= ', io
+   call error_handler(E_ERR, 'read_obs_seq', msg_string, &
+      source, revision, revdate)
+endif
+
+if (seq%first_time < -1 .or. seq%first_time > max_num_obs) then
+   write(msg_string, *) 'Bad value for first', seq%first_time, ', min is -1, max is ', max_num_obs 
+   call error_handler(E_ERR, 'read_obs_seq', msg_string, source, revision, revdate)
+endif
+if (seq%last_time < -1 .or. seq%last_time > max_num_obs) then
+   write(msg_string, *) 'Bad value for last', seq%last_time, ', min is -1, max is ', max_num_obs 
+   call error_handler(E_ERR, 'read_obs_seq', msg_string, source, revision, revdate)
+endif
+
 ! Now read in all the previously defined observations
 do i = 1, num_obs
-   if(.not. read_format == 'unformatted') read(file_id,*) label(1)
+   if(.not. read_format == 'unformatted') read(file_id,*, iostat=io) label(1)
+   if (io /= 0) then
+      ! Read error of some type
+      write(msg_string, *) 'Read error in obs label', i, ' rc= ', io
+      call error_handler(E_ERR, 'read_obs_seq', msg_string, &
+         source, revision, revdate)
+   endif
    call read_obs(file_id, num_copies, add_copies, num_qc, add_qc, i, seq%obs(i), &
-      read_format)
+      read_format, num_obs)
 ! Also set the key in the obs
    seq%obs(i)%key = i
 end do
@@ -1104,7 +1203,6 @@ logical,      intent(in), optional :: close_the_file
 
 character(len = 16) label(2)
 character(len = 12) header
-character(len = 129) msg_string
 integer :: ios
 
 ! Determine the format for an obs_sequence file to be read. Options are:
@@ -1400,11 +1498,11 @@ call copy_obs_def(obs1%def, obs2%def)
 
 !write(*, *) 'in copy obs'
 !write(*, *) 'size of obs1, obs2 ', size(obs1%values), size(obs2%values)
-if(size(obs1%values) /= size(obs2%values) .or. &
-      size(obs1%qc) /= size(obs2%qc)) then
-   deallocate(obs1%values)
-   deallocate(obs1%qc)
-!   write(*, *) 'allocating in copy_obs'
+if (.not.associated(obs1%values) .or. .not.associated(obs1%qc) .or. &
+    size(obs1%values) /= size(obs2%values) .or. size(obs1%qc) /= size(obs2%qc)) then
+   if (associated(obs1%values)) deallocate(obs1%values)
+   if (associated(obs1%qc)) deallocate(obs1%qc)
+   !write(*, *) 'allocating in copy_obs'
    allocate(obs1%values(size(obs2%values)), obs1%qc(size(obs2%qc)))
 endif
 obs1%values = obs2%values
@@ -1449,7 +1547,9 @@ type(obs_def_type), intent(in) :: obs_def
 call copy_obs_def(obs%def, obs_def)
 
 end subroutine set_obs_def
+
 !-------------------------------------------------
+
 subroutine get_obs_values(obs, values, copy_indx)
 
 
@@ -1469,8 +1569,7 @@ end subroutine get_obs_values
 
 subroutine set_obs_values(obs, values, copy_indx)
 
-
-type(obs_type), intent(out) :: obs
+type(obs_type), intent(inout) :: obs
 real(r8), intent(in) :: values(:)
 integer, optional, intent(in) :: copy_indx
 
@@ -1481,6 +1580,23 @@ else
 endif
 
 end subroutine set_obs_values
+
+!-------------------------------------------------
+
+subroutine replace_obs_values(seq, key, values, copy_indx)
+
+type(obs_sequence_type), intent(inout) :: seq
+integer, intent(in) :: key
+real(r8), intent(in) :: values(:)
+integer, optional, intent(in) :: copy_indx
+
+if(present(copy_indx)) then
+   seq%obs(key)%values(copy_indx) = values(1)
+else
+   seq%obs(key)%values = values
+endif
+
+end subroutine replace_obs_values
 
 !-------------------------------------------------
 subroutine get_qc(obs, qc, qc_indx)
@@ -1501,7 +1617,7 @@ end subroutine get_qc
 !-------------------------------------------------
 subroutine set_qc(obs, qc, qc_indx)
 
-type(obs_type),   intent(out) :: obs
+type(obs_type),   intent(inout) :: obs
 real(r8),          intent(in) :: qc(:)
 integer, optional, intent(in) :: qc_indx
 
@@ -1512,6 +1628,23 @@ else
 endif
 
 end subroutine set_qc
+
+!-------------------------------------------------
+
+subroutine replace_qc(seq, key, qc, qc_indx)
+
+type(obs_sequence_type), intent(inout) :: seq
+integer, intent(in) :: key
+real(r8), intent(in) :: qc(:)
+integer, optional, intent(in) :: qc_indx
+
+if(present(qc_indx)) then
+   seq%obs(key)%qc(qc_indx) = qc(1)
+else
+   seq%obs(key)%qc = qc
+endif
+
+end subroutine replace_qc
 
 !-------------------------------------------------
 
@@ -1553,7 +1686,7 @@ end subroutine write_obs
 !-------------------------------------------------
 
 subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, &
-                    obs, read_format)
+                    obs, read_format, max_obs)
 
 ! Read in observation from file, watch for allocation of storage
 ! This RELIES on the fact that obs%values(1) is ALWAYS the observation value
@@ -1562,31 +1695,57 @@ subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, &
 ! Are the checks for num_copies == 0 or <0 necessary? 
 ! Yes, they happen in create_fixed_network_sequence
 
-integer,              intent(in)    :: file_id, num_copies, add_copies, num_qc, add_qc, key
+integer,              intent(in)    :: file_id, num_copies, add_copies
+integer,              intent(in)    :: num_qc, add_qc, key
 character(len = 129), intent(in)    :: read_format
 type(obs_type),       intent(inout) :: obs
+integer, optional,    intent(in)    :: max_obs
 
-integer  :: i
+integer  :: i, io
 real(r8) :: temp_val
 
 ! Read in values and qc
 if(num_copies > 0) then
    if(read_format == 'unformatted') then
       do i = 1, num_copies
-         read(file_id) obs%values(i)
+         read(file_id, iostat=io) obs%values(i)
+         if (io /= 0) then
+            ! Read error of some type
+            write(msg_string, *) 'Read error in obs values, obs ', i, ' rc= ', io
+            call error_handler(E_ERR, 'read_obs', msg_string, &
+               source, revision, revdate)
+         endif
       end do
    else
-      read(file_id, *) obs%values(1:num_copies)
+      read(file_id, *, iostat=io) obs%values(1:num_copies)
+      if (io /= 0) then
+         ! Read error of some type
+         write(msg_string, *) 'Read error in obs values, rc= ', io
+         call error_handler(E_ERR, 'read_obs', msg_string, &
+            source, revision, revdate)
+      endif
    endif
 endif
 
 if(num_qc > 0) then
    if(read_format == 'unformatted') then
       do i = 1, num_qc
-         read(file_id) obs%qc(i)
+         read(file_id, iostat=io) obs%qc(i)
+         if (io /= 0) then
+            ! Read error of some type
+            write(msg_string, *) 'Read error in qc values, obs ', i, ' rc= ', io
+            call error_handler(E_ERR, 'read_obs', msg_string, &
+               source, revision, revdate)
+         endif
       end do
    else
-      read(file_id, *) obs%qc(1:num_qc)
+      read(file_id, *, iostat=io) obs%qc(1:num_qc)
+      if (io /= 0) then
+         ! Read error of some type
+         write(msg_string, *) 'Read error in qc values, rc= ', io
+         call error_handler(E_ERR, 'read_obs', msg_string, &
+            source, revision, revdate)
+      endif
    endif
 endif
 
@@ -1597,11 +1756,38 @@ else
    temp_val = missing_r8
 endif 
 
+! Read in linked list pointers and error check
 if(read_format == 'unformatted') then
-   read(file_id) obs%prev_time, obs%next_time, obs%cov_group
+   read(file_id, iostat=io) obs%prev_time, obs%next_time, obs%cov_group
+else
+   read(file_id, *, iostat=io) obs%prev_time, obs%next_time, obs%cov_group
+endif
+if (io /= 0) then
+   ! Read error of some type
+   write(msg_string, *) 'Read error in linked list or cov grp, rc= ', io
+   call error_handler(E_ERR, 'read_obs', msg_string, &
+      source, revision, revdate)
+endif
+
+! if max_obs specified, do additional error checking
+if (present(max_obs)) then
+   ! -1 is ok; used for first and last entries.
+   if (obs%prev_time < -1 .or. obs%prev_time > max_obs) then
+      write(msg_string, *) 'Bad value for previous obs, ', obs%prev_time, ', in obs ', key 
+      call error_handler(E_ERR, 'read_obs', msg_string, &
+         source, revision, revdate)
+   endif
+   if (obs%next_time < -1 .or. obs%next_time > max_obs) then
+      write(msg_string, *) 'Bad value for next obs, ', obs%next_time, ', in obs ', key
+      call error_handler(E_ERR, 'read_obs', msg_string, &
+         source, revision, revdate)
+   endif
+endif
+
+! Get model-dependent values
+if(read_format == 'unformatted') then
    call read_obs_def(file_id, obs%def, key, temp_val, 'unformatted')
 else
-   read(file_id, *) obs%prev_time, obs%next_time, obs%cov_group
    call read_obs_def(file_id, obs%def, key, temp_val)
 endif
 
