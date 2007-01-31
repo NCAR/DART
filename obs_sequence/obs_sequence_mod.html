@@ -111,6 +111,8 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_qc_meta_data">get_qc_meta_data</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_next_obs">get_next_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_prev_obs">get_prev_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_next_obs_from_key">get_next_obs_from_key</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_prev_obs_from_key">get_prev_obs_from_key</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#insert_obs_in_seq">insert_obs_in_seq</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#delete_obs_from_seq">delete_obs_from_seq</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_copy_meta_data">set_copy_meta_data</A></TD></TR>
@@ -143,8 +145,10 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def">set_obs_def</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_values">get_obs_values</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_values">set_obs_values</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#replace_obs_values">replace_obs_values</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_qc">get_qc</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_qc">set_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#replace_qc">replace_qc</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_obs">write_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_obs">read_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_obs">interactive_obs</A></TD></TR>
@@ -541,6 +545,64 @@ to true.
      <TD>An observation sequence.</TD></TR>
  <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
      <TD>Find the previous observation before this one.</TD></TR>
+ <TR><TD valign=top><em class=code>prev_obs&nbsp; &nbsp; </em></TD>
+     <TD>Return the previous observation here.</TD></TR>
+ <TR><TD valign=top><em class=code>is_this_first&nbsp; &nbsp; </em></TD>
+     <TD>True if obs is the first obs in sequence.</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_next_obs_from_key"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_next_obs_from_key(seq,last_key_used,next_obs,is_this_last) </em>
+ <pre>
+ type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+ integer, intent(in)                 :: <em class=code>last_key_used</em>
+ type(obs_type), intent(out)         :: <em class=code>next_obs</em>
+ logical, intent(out)                :: <em class=code>is_this_last</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Given the last key used in a sequence, returns the next observation in
+the sequence. If there is no next observation, is_this_last is set
+to true.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>An observation sequence.</TD></TR>
+ <TR><TD valign=top><em class=code>last_key_used&nbsp; &nbsp; </em></TD>
+     <TD>Find the next observation after this key.</TD></TR>
+ <TR><TD valign=top><em class=code>next_obs&nbsp; &nbsp; </em></TD>
+     <TD>Return the next observation here.</TD></TR>
+ <TR><TD valign=top><em class=code>is_this_last&nbsp; &nbsp; </em></TD>
+     <TD>True if obs is the last obs in sequence.</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_prev_obs_from_key"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_prev_obs_from_key(seq,last_key_used,prev_obs,is_this_first) </em>
+ <pre>
+ type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+ integer, intent(in)                 :: <em class=code>last_key_used</em>
+ type(obs_type), intent(out)         :: <em class=code>prev_obs</em>
+ logical, intent(out)                :: <em class=code>is_this_first</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Given the last key used in a sequence, returns the previous observation in
+the sequence. If there is no previous observation, is_this_first is set
+to true.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>An observation sequence.</TD></TR>
+ <TR><TD valign=top><em class=code>last_key_used&nbsp; &nbsp; </em></TD>
+     <TD>Find the previous observation before this key.</TD></TR>
  <TR><TD valign=top><em class=code>prev_obs&nbsp; &nbsp; </em></TD>
      <TD>Return the previous observation here.</TD></TR>
  <TR><TD valign=top><em class=code>is_this_first&nbsp; &nbsp; </em></TD>
@@ -1221,6 +1283,38 @@ to set the copy corresponding to copy_indx.
  <BR>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="replace_obs_values"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call replace_obs_values(seq,key,values
+    <em class=optionalcode>[,copy_indx]</em>) </em>
+ <pre>
+ type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+ integer, intent(in)                    :: <em class=code>key</em>
+ real(r8), dimension(:), intent(in)     :: <em class=code>values</em>
+ integer, optional, intent(in)          :: <em class=code>copy_indx</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Set value(s) of data associated with this observation. If copy_indx
+is not present, then values must be the same size as the total
+number of values associated with the observation and all values are
+set. If copy_indx is present, only the first value in values is used
+to set the copy corresponding to copy_indx. 
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>Sequence which contains observation to update.</TD></TR>
+ <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+     <TD>Key to select which observation in the sequence has values being set.</TD></TR>
+ <TR><TD valign=top><em class=code>values&nbsp; &nbsp; </em></TD>
+     <TD>Array of value(s) to be set.</TD></TR>
+ <TR><TD valign=top><em class=code>copy_indx&nbsp; &nbsp; </em></TD>
+     <TD>If present, just set this copy of data, else set all copies.</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="set_qc"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -1243,6 +1337,39 @@ value in qc is used.
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
      <TD>Observation having its qc fields set.</TD></TR>
+ <TR><TD valign=top><em class=code>qc&nbsp; &nbsp; </em></TD>
+     <TD>Input values of qc fields.</TD></TR>
+ <TR><TD valign=top><em class=code>qc_indx&nbsp; &nbsp; </em></TD>
+     <TD>If present, only update single qc field, else update all qc fields.</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="replace_qc"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call replace_qc(seq,key,qc
+    <em class=optionalcode>[,qc_indx]</em>) </em>
+ <pre>
+ type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+ integer, intent(in)                    :: <em class=code>key</em>
+ real(r8), dimension(:), intent(in)     :: <em class=code>qc</em>
+ integer, optional, intent(in)          :: <em class=code>qc_indx</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Sets the value of the quality control fields associated with an
+observation. If qc_indx is not present, qc should be the size of
+the total number of qc fields associated with this observation and
+all values are set. If qc_indx is present, then only the quality
+control field corresponding to qc_indx is set and only the first 
+value in qc is used.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>Observation sequence containing observation to update.</TD></TR>
+ <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+     <TD>Key in sequence to select which observation is having its qc fields set.</TD></TR>
  <TR><TD valign=top><em class=code>qc&nbsp; &nbsp; </em></TD>
      <TD>Input values of qc fields.</TD></TR>
  <TR><TD valign=top><em class=code>qc_indx&nbsp; &nbsp; </em></TD>
