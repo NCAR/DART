@@ -76,6 +76,7 @@ arguments, and and error handler.
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
+netCDF
 </PRE>
 
 <!--==================================================================-->
@@ -101,6 +102,7 @@ types_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#dump_unit_attributes">dump_unit_attributes</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#find_namelist_in_file">find_namelist_in_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_read">check_namelist_read</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_check">nc_check</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_DBG, DEBUG</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_MSG, MESSAGE</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_WARN, WARNING</A></TD></TR>
@@ -421,6 +423,47 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
 
 
 
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="nc_check"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call nc_check(istatus, subr_name
+               <em class=optionalcode>[, context]</em>) </em>
+ <pre>
+ integer, intent(in)                    :: <em class=code>istatus</em>
+ character(len=*), intent(in)           :: <em class=code>subr_name</em>
+ character(len=*), optional, intent(in) :: <em class=optionalcode>context</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Check the return code from a netcdf call.  If no error, return without
+  taking any action.  If an error is indicated (in the <em class=code>istatus</em>
+  argument) then call the error handler with the subroutine name and any additional
+  context information (e.g. which file or which variable was being processed at
+  the time of the error).  All errors are currently hardcoded to be 
+  <em class=code>FATAL</em> and this routine will not return. 
+ </P>
+  This routine calls a netCDF library routine to construct the text
+  error message corresponding to the error code in the first argument.
+  An example use of this routine is:
+ <pre>
+ call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = nf90_share, ncid = ncFileID%ncid), &#38
+              'init_diag_output', 'create '//trim(ncFileID%fname))
+
+ </pre>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
+     <TD>The return value from any netCDF call.</TD></TR>
+ <TR><TD valign=top><em class=code>subr_name&nbsp; &nbsp; </em></TD>
+     <TD>String name of the current subroutine, used in case of error.</TD></TR>
+ <TR><TD valign=top><em class=optionalcode>context&nbsp; &nbsp; </em></TD>
+     <TD>Additional text to be used in the error message, for example to 
+         indicate which file or which variable is being processed.</TD></TR>
+ </TABLE>
+ <BR>
+
+
+
 <!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
  <P></P><HR><P></P>
@@ -460,14 +503,28 @@ to control at which level program termination should occur.</TD></TR>
  <A NAME="initialize_utilities"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call initialize_utilities() </em>
+ <em class=call> call initialize_utilities( 
+                              <em class=optionalcode>[progname]</em>
+                              <em class=optionalcode>[, alternatename]</em>
+                                          ) </em>
  <pre>
+ character(len=*), intent(in), optional :: <em class=optionalcode>progname</em>
+ character(len=*), intent(in), optional :: <em class=optionalcode>alternatename</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
  Reads the namelist and opens the logfile. Records the values of the
 namelist and registers this module.
  </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=optionalcode>progname&nbsp; &nbsp; </em></TD>
+     <TD>If given, use in the timestamp message in the log file to say which
+         program is being started.</TD></TR>
+ <TR><TD valign=top><em class=optionalcode>alternatename&nbsp; &nbsp; </em></TD>
+     <TD>If given, log filename to use instead of 
+         <em class=code>dart_log.out</em>.</TD></TR>
+
+ </TABLE>
  <BR>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
