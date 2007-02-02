@@ -23,7 +23,7 @@ program trans_date_to_dart
 !
 !----------------------------------------------------------------------
 
-use utilities_mod,    only : get_unit
+use utilities_mod,    only : get_unit, initialize_utilities, finalize_utilities
 use time_manager_mod, only : time_type, write_time, &
                              get_time, set_time, get_date, set_date, &
                              set_calendar_type, GREGORIAN, get_calendar_type
@@ -42,6 +42,8 @@ integer               :: file_unit, seconds, &
                          cam_date, cam_tod
 type(time_type)       :: dart_time
 character (len = 128) :: file_name = 'date_greg'
+
+call initialize_utilities('Trans_date_to_dart')
 
 call set_calendar_type(calendar_type)
 ! debug
@@ -66,5 +68,7 @@ cam_tod  = hour*3600 + minute*60 + second
 write (file_unit,'(2I8)') cam_date, cam_tod
 
 close(unit = file_unit)
+
+call finalize_utilities()
 
 end program trans_date_to_dart
