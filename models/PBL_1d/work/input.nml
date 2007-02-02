@@ -45,16 +45,25 @@
    single_restart_file_out = .true. /
 
 &assim_tools_nml
-   filter_kind = 1,
-   cutoff = 1000.,
-   sort_obs_inc = .false.,
-   do_parallel = 0,
-   num_domains = 1,
-   parallel_command = "./assim_filter.csh",
-   spread_restoration = .false.,
-   internal_outlier_threshold = -1.0, 
-   sampling_error_correction = .false.,
-   num_close_threshold = 10000000 /
+   filter_kind                     = 1,
+   cutoff                          = 1000.,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,         
+   print_every_nth_obs             = 0,
+   adaptive_localization_threshold = -1 /             
+
+! old values
+!   filter_kind = 1,
+!   cutoff = 1000.,
+!   sort_obs_inc = .false.,
+!   do_parallel = 0,
+!   num_domains = 1,
+!   parallel_command = "./assim_filter.csh",
+!   spread_restoration = .false.,
+!   internal_outlier_threshold = -1.0, 
+!   sampling_error_correction = .false.,
+!   num_close_threshold = 10000000 /
 
 &adaptive_inflate_nml
    do_obs_inflate = .false.,
