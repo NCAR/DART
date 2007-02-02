@@ -16,7 +16,7 @@ program column_rand
 ! observation stations with full column of obs for CAM model. 
 
 use      types_mod, only : r8, PI
-use  utilities_mod, only : get_unit
+use  utilities_mod, only : get_unit, initialize_utilities, finalize_utilities
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -31,6 +31,9 @@ integer, allocatable :: levels(:)
 integer  :: level, num_cols, num_levs, i, iunit
 real(r8) :: lat, lon, t_err_var, uv_err_var, ps_err_var, q_err_var
 type(random_seq_type) :: r
+
+! Initialize the utilities
+call initialize_utilities('Column_rand')
 
 ! Initialize the random sequence
 call init_random_seq(r)
@@ -151,5 +154,8 @@ do i = 1, num_cols
 end do
 
 write(iunit, *) 'set_def.out'
+
+! Shut down the utilities cleanly
+call finalize_utilities()
 
 end program column_rand
