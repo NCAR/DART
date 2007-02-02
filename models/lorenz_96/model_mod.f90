@@ -19,7 +19,7 @@ use     location_mod, only : location_type, set_location, get_location, &
                              get_close_maxdist_init, get_close_obs_init, get_close_obs
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
-                             find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read, nc_check
 
 implicit none
 private
@@ -575,26 +575,21 @@ ierr = 0                      ! assume normal termination
 ! make sure ncFileID refers to an open netCDF file
 !--------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_write_model_vars', 'inquire') ! //trim(ncFileID%fname))
 
 ! no matter the value of "output_state_vector", we only do one thing.
 
-call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
-call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-             start=(/ 1, copyindex, timeindex /)))
+call nc_check(NF90_inq_varid(ncFileID, "state", StateVarID), & 
+              'nc_write_model_vars', 'inq_varid state') ! //trim(ncFileID%fname))
+call nc_check(NF90_put_var(ncFileID, StateVarID, statevec,  &
+              start=(/ 1, copyindex, timeindex /)),  &
+              'nc_write_model_vars', 'put_var state vector') ! //trim(ncFileID%fname))
 
 ! write (*,*)'Finished filling variables ...'
-call check(nf90_sync(ncFileID))
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync') ! //trim(ncFileID%fname))
 ! write (*,*)'netCDF file is synched ...'
 
-contains
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
-      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars',&
-         trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 end function nc_write_model_vars
 
 
