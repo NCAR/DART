@@ -26,7 +26,8 @@ program trans_pv_sv
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit, file_exist
+use    utilities_mod, only : get_unit, file_exist, &
+                             initialize_utilities, finalize_utilities
 use        model_mod, only : model_type, init_model_instance, end_model_instance, &
                              prog_var_to_vector, read_cam_init
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
@@ -56,6 +57,8 @@ type(time_type)        :: model_time, adv_to_time
 real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
 logical                :: do_output = .false.
+
+call initialize_utilities('Trans_pv_sv')
 
 if(file_exist('element1')) do_output = .true.
 
@@ -103,5 +106,7 @@ call close_restart(file_unit)
 file_unit = open_restart_write(file_out)
 call write_state_restart(x, file_unit)
 call close_restart(file_unit)
+
+call finalize_utilities()
 
 end program trans_pv_sv

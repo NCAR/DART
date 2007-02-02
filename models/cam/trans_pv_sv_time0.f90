@@ -26,7 +26,7 @@ program trans_pv_sv_time0
 
 use        types_mod, only : r8
 use    utilities_mod, only : logfileunit, error_handler, E_ERR, E_MSG, find_namelist_in_file, &
-                             check_namelist_read
+                             check_namelist_read, initialize_utilities, finalize_utilities
 use        model_mod, only : model_type, init_model_instance, read_cam_init, &
                              prog_var_to_vector
 
@@ -78,6 +78,8 @@ namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
 
 !-------------------------
 
+call initialize_utilities('Trans_sv_pv_time0')
+
 ! Static init assim model calls static_init_model
 PRINT*,'static_init_assim_model in trans_pv_sv'
 call static_init_assim_model()
@@ -125,6 +127,8 @@ PRINT*,' '
 ! write out state vector in "proprietary" format
 call write_state_restart(x, file_unit)
 call close_restart(file_unit)
+
+call finalize_utilities()
 
 contains
 

@@ -28,7 +28,7 @@ use time_manager_mod, only : time_type, read_time, write_time, &
                              set_calendar_type, GREGORIAN, NOLEAP
 use  assim_model_mod, only : static_init_assim_model, init_assim_model, open_restart_read, close_restart, &
                              get_model_size, get_model_time, read_state_restart, assim_model_type
-use    utilities_mod, only : get_unit
+use    utilities_mod, only : get_unit, initialize_utilities, finalize_utilities
 use        types_mod, only : r8
 
 implicit none
@@ -45,6 +45,8 @@ integer :: file_unit(2), year, month, day, hour, minute, second, &
 type(time_type)       :: dart_time(2), forecast_length
 character (len = 128) :: file_name = 'temp_ic', file_out = 'times'
 type(assim_model_type)  :: x
+
+call initialize_utilities('Trans_time')
 
 call set_calendar_type(calendar_type)
 
@@ -95,5 +97,7 @@ nhtfrq = -1*(day*24 + hour)
 write (file_unit(2),'(I8)') nhtfrq
 
 close(file_unit(2))
+
+call finalize_utilities()
 
 end program trans_time

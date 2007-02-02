@@ -28,7 +28,8 @@ program trans_sv_pv
 !----------------------------------------------------------------------
 
 use       types_mod, only : r8
-use   utilities_mod, only : get_unit, file_exist, open_file
+use   utilities_mod, only : get_unit, file_exist, open_file, &
+                            initialize_utilities, finalize_utilities
 use       model_mod, only : model_type, init_model_instance, write_cam_init, &
    vector_to_prog_var 
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
@@ -52,6 +53,8 @@ real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, mem_unit, x_size
 character (len = 128)  :: file_name, file_in 
 logical                :: do_output = .false.
+
+call initialize_utilities('Trans_sv_pv')
 
 if(file_exist('element1')) do_output = .true.
 
@@ -98,5 +101,7 @@ deallocate (x_state)
 ! merge/MPI; this requires no change; a CAM state will exist in model_mod,
 !            but this will ignore it and write out *this* CAM state.
 call write_cam_init(file_name, var)
+
+call finalize_utilities()
 
 end program trans_sv_pv
