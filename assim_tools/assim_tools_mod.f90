@@ -91,9 +91,11 @@ logical  :: sort_obs_inc                    = .false.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
 integer  :: adaptive_localization_threshold = -1
+integer  :: print_every_nth_obs             = 0
 
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
-   spread_restoration, sampling_error_correction, adaptive_localization_threshold
+   spread_restoration, sampling_error_correction, adaptive_localization_threshold, &
+   print_every_nth_obs
 
 !============================================================================
 
@@ -275,6 +277,18 @@ call get_close_obs_init(gc_obs, my_num_obs, my_obs_loc)
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
+   ! If requested, print out a message every Nth observation
+   ! to indicate progress is being made and to allow estimates 
+   ! of how long the assim will take.
+   if (print_every_nth_obs > 0 .and. my_task_id() == 0 .and. &
+      mod(i, print_every_nth_obs) == 0) then
+      write(*, *) 'Processing observation ', i, ' of ', obs_ens_handle%num_vars
+! or if you want timestamps:
+!     write(errstring, '(a,1x,i8,1x,a,i8)') 'Processing observation ', i, &
+!                                        ' of ', obs_ens_handle%num_vars
+!     call timestamp(errstring, pos="debug")
+   endif
+
    ! Every pe has information about obs sequence
    call get_obs_from_key(obs_seq, keys(i), observation)
    call get_obs_def(observation, obs_def)
@@ -351,13 +365,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       !Broadcast the info from this obs to all other processes
       ! What gets broadcast depends on what kind of inflation is being done
       if(local_varying_ss_inflate) then
-         call my_broadcast_send1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, obs_qc)
+         call broadcast_send(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
+            orig_obs_prior_var, scalar1=obs_qc)
+
       else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call my_broadcast_send2(owner, obs_prior, obs_inc, my_inflate, &
-            my_inflate_sd, obs_qc)
+         call broadcast_send(owner, obs_prior, obs_inc, scalar1=my_inflate, &
+           scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call my_broadcast_send3(owner, obs_prior, obs_inc, obs_qc)
+         call broadcast_send(owner, obs_prior, obs_inc, scalar1=obs_qc)
       endif
 
    ! Next block is done by processes that do NOT own this observation
@@ -366,13 +381,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! I don't store this obs; receive the obs prior and increment from broadcast
       ! Also get qc and inflation information if needed
       if(local_varying_ss_inflate) then
-         call my_broadcast_recv1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, obs_qc)
+         call broadcast_recv(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
+            orig_obs_prior_var, scalar1=obs_qc)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call my_broadcast_recv2(owner, obs_prior, obs_inc, my_inflate, &
-            my_inflate_sd, obs_qc)
+         call broadcast_recv(owner, obs_prior, obs_inc, scalar1=my_inflate, &
+            scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call my_broadcast_recv3(owner, obs_prior, obs_inc, obs_qc)
+         call broadcast_recv(owner, obs_prior, obs_inc, scalar1=obs_qc)
       endif
    endif
    !-----------------------------------------------------------------------
@@ -1261,123 +1276,6 @@ endif
 expected_true_correl = correl
 
 end subroutine get_correction_from_file
-
-!------------------------------------------------------------------------
-
-! A set of communication intermediary wrappers
-! Move these into mpi_utilities module???
-
-subroutine my_broadcast_send1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
-         orig_obs_prior_var, qc)
-
-integer,  intent(in)    :: owner
-real(r8), intent(inout) :: obs_prior(:), obs_inc(:), orig_obs_prior_mean(:)
-real(r8), intent(inout) :: orig_obs_prior_var(:), qc
-
-real(r8) :: temp(size(obs_inc) + size(orig_obs_prior_mean) + size(orig_obs_prior_var) + 1)
-
-! Pack stuff together into two arrays and use broadcast_send
-temp(1:size(obs_inc)) = obs_inc
-temp(size(obs_inc) + 1: size(obs_inc) + size(orig_obs_prior_mean)) = orig_obs_prior_mean
-temp(size(obs_inc) + size(orig_obs_prior_mean) + 1:size(temp) - 1) = orig_obs_prior_var
-temp(size(temp)) = qc
-call broadcast_send(owner, obs_prior, temp)
-
-end subroutine my_broadcast_send1
-
-!------------------------------------------------------------------------
-
-
-subroutine my_broadcast_recv1(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
-         orig_obs_prior_var, qc)
-
-integer,  intent(in)    :: owner
-real(r8), intent(inout) :: obs_prior(:), obs_inc(:), orig_obs_prior_mean(:)
-real(r8), intent(inout) :: orig_obs_prior_var(:), qc
-
-real(r8) :: temp(size(obs_inc) + size(orig_obs_prior_mean) + size(orig_obs_prior_var) + 1)
-
-! Pack stuff together into two arrays and use broadcast_recv
-call broadcast_recv(owner, obs_prior, temp)
-obs_inc = temp(1:size(obs_inc))
-orig_obs_prior_mean = temp(size(obs_inc) + 1: size(obs_inc) + size(orig_obs_prior_mean))
-orig_obs_prior_var = temp(size(obs_inc) + size(orig_obs_prior_mean) + 1: size(temp) - 1)
-qc = temp(size(temp))
-
-end subroutine my_broadcast_recv1
-
-!------------------------------------------------------------------------
-
-subroutine my_broadcast_send2(owner, obs_prior, obs_inc, ss_inflate, ss_inflate_sd, qc)
-
-integer,  intent(in)    :: owner
-real(r8), intent(inout) :: obs_prior(:), obs_inc(:), ss_inflate, ss_inflate_sd, qc
-
-real(r8) :: temp(size(obs_inc) + 3)
-
-! Pack stuff together into two arrays and use broadcast_send
-temp(1:size(obs_inc)) = obs_inc
-temp(size(obs_inc) + 1) = ss_inflate
-temp(size(obs_inc) + 2) = ss_inflate_sd
-temp(size(temp)) = qc
-call broadcast_send(owner, obs_prior, temp)
-
-end subroutine my_broadcast_send2
-
-!------------------------------------------------------------------------
-
-subroutine my_broadcast_recv2(owner, obs_prior, obs_inc, ss_inflate, ss_inflate_sd, qc)
-
-integer,  intent(in)    :: owner
-real(r8), intent(inout) :: obs_prior(:), obs_inc(:), ss_inflate, ss_inflate_sd, qc
-
-real(r8) :: temp(size(obs_inc) + 3)
-
-call broadcast_recv(owner, obs_prior, temp)
-
-! Pack stuff together into two arrays and use broadcast_recv
-obs_inc = temp(1:size(obs_inc))
-ss_inflate = temp(size(obs_inc) + 1)
-ss_inflate_sd = temp(size(obs_inc) + 2)
-qc = temp(size(temp))
-
-end subroutine my_broadcast_recv2
-
-!------------------------------------------------------------------------
-
-subroutine my_broadcast_send3(owner, obs_prior, obs_inc, obs_qc)
-
-integer,  intent(in)    :: owner
-real(r8), intent(inout) :: obs_prior(:), obs_inc(:), obs_qc
-
-real(r8) :: temp(size(obs_inc) + 1)
-
-! Pack the increment and qc
-temp(1:size(obs_inc)) = obs_inc
-temp(size(temp)) = obs_qc
-
-call broadcast_send(owner, obs_prior, temp)
-
-end subroutine my_broadcast_send3
-
-!------------------------------------------------------------------------
-
-subroutine my_broadcast_recv3(owner, obs_prior, obs_inc, obs_qc)
-
-integer,  intent(in)    :: owner
-real(r8), intent(inout) :: obs_prior(:), obs_inc(:), obs_qc
-
-real(r8) :: temp(size(obs_inc) + 1)
-
-call broadcast_recv(owner, obs_prior, temp)
-
-! Extract the increment and qc
-obs_inc = temp(1:size(obs_inc))
-obs_qc = temp(size(temp))
-
-end subroutine my_broadcast_recv3
-
-!------------------------------------------------------------------------
 
 
 !========================================================================
