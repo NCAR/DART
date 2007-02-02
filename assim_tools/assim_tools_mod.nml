@@ -1,8 +1,9 @@
 &assim_tools_nml
-   filter_kind = 1,
-   cutoff = 0.2,
-   sort_obs_inc = .false.,
-   spread_restoration = .false.,
-   sampling_error_correction = .false.,
-   adaptive_localization_threshold = 10000000 /
+   filter_kind                     = 1,
+   cutoff                          = 0.2,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   print_every_nth_obs             = 0  /
 
