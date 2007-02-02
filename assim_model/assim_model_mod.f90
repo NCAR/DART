@@ -25,7 +25,7 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time, get_cal
 use utilities_mod,     only : get_unit, close_file, register_module, error_handler, &
                               E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, do_output,  &
                               dump_unit_attributes, find_namelist_in_file,          &
-                          check_namelist_read
+                              check_namelist_read, nc_check
 
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
                               get_model_time_step, model_interpolate, init_conditions, &
@@ -224,36 +224,46 @@ metadata_length = LEN(meta_data_per_copy(1))
 
 ! Create the file
 ncFileID%fname = trim(adjustl(FileName))//".nc"
-call check(nf90_create(path = trim(ncFileID%fname), cmode = nf90_share, ncid = ncFileID%ncid))
+call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = nf90_share, ncid = ncFileID%ncid), &
+              'init_diag_output', 'create '//trim(ncFileID%fname))
 
 write(msgstring,*)trim(ncFileID%fname), ' is ncFileID ',ncFileID%ncid
 call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
 
 ! Define the dimensions
-call check(nf90_def_dim(ncid=ncFileID%ncid, &
-             name="metadatalength", len = metadata_length,        dimid = metadataDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+              name="metadatalength", len = metadata_length,        dimid = metadataDimID), &
+              'init_diag_output', 'def_dim metadatalength '//trim(ncFileID%fname))
 
-call check(nf90_def_dim(ncid=ncFileID%ncid, &
-             name="locationrank",   len = LocationDims,           dimid = LocationDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+              name="locationrank",   len = LocationDims,           dimid = LocationDimID), &
+              'init_diag_output', 'def_dim locationrank '//trim(ncFileID%fname))
 
-call check(nf90_def_dim(ncid=ncFileID%ncid, &
-             name="copy",           len=copies_of_field_per_time, dimid = MemberDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+              name="copy",           len=copies_of_field_per_time, dimid = MemberDimID), &
+              'init_diag_output', 'def_dim copy '//trim(ncFileID%fname))
 
-call check(nf90_def_dim(ncid=ncFileID%ncid, &
-             name="time",           len = nf90_unlimited,         dimid = TimeDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+              name="time",           len = nf90_unlimited,         dimid = TimeDimID), &
+              'init_diag_output', 'def_dim time '//trim(ncFileID%fname))
 
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "title", global_meta_data))
-call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", source ))
-call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ))
-call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ))
+call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "title", global_meta_data), &
+              'init_diag_output', 'put_att title '//trim(ncFileID%fname))
+call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", source ), &
+              'init_diag_output', 'put_att assim_model_source '//trim(ncFileID%fname))
+call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ), &
+              'init_diag_output', 'put_att assim_model_revision '//trim(ncFileID%fname))
+call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ), &
+              'init_diag_output', 'put_att assim_model_revdate '//trim(ncFileID%fname))
 
 if (present(lagID)) then
-call check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ))
+   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ), 'init_diag_output', &
+                 'put_att lag '//trim(ncFileID%fname))
 
 write(*,*)'Got this far ... lag is present'
 
@@ -266,23 +276,27 @@ endif
 !-------------------------------------------------------------------------------
 
 !    Copy ID
-call check(nf90_def_var(ncid=ncFileID%ncid, name="copy", xtype=nf90_int, dimids=MemberDimID, &
-                                                                    varid=MemberVarID))
-call check(nf90_put_att(ncFileID%ncid, MemberVarID, "long_name", "ensemble member or copy"))
-call check(nf90_put_att(ncFileID%ncid, MemberVarID, "units",     "nondimensional") )
-call check(nf90_put_att(ncFileID%ncid, MemberVarID, "valid_range", (/ 1, copies_of_field_per_time /)))
+call nc_check(nf90_def_var(ncid=ncFileID%ncid, name="copy", xtype=nf90_int, &
+              dimids=MemberDimID, varid=MemberVarID), 'init_diag_output', 'def_var copy')
+call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "long_name", "ensemble member or copy"), &
+              'init_diag_output', 'long_name')
+call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "units",     "nondimensional"), &
+              'init_diag_output', 'units')
+call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "valid_range", &
+              (/ 1, copies_of_field_per_time /)), 'init_diag_output', 'put_att valid_range')
 
 
 !    Metadata for each Copy
-call check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_char,    &
-                        dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID))
-call check(nf90_put_att(ncFileID%ncid, metadataVarID, "long_name",       &
-                        "Metadata for each copy/member"))
+call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_char,    &
+              dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID), &
+              'init_diag_output', 'def_var CopyMetaData')
+call nc_check(nf90_put_att(ncFileID%ncid, metadataVarID, "long_name",       &
+              "Metadata for each copy/member"), 'init_diag_output', 'put_att long_name')
 
 
 !    Time -- the unlimited dimension
-call check(nf90_def_var(ncFileID%ncid, name="time", xtype=nf90_double, dimids=TimeDimID, &
-                                                                  varid =TimeVarID) )
+call nc_check(nf90_def_var(ncFileID%ncid, name="time", xtype=nf90_double, dimids=TimeDimID, &
+              varid =TimeVarID), 'init_diag_output', 'def_var time' )
 i = nc_write_calendar_atts(ncFileID, TimeVarID)     ! comes from time_manager_mod
 if ( i /= 0 ) then
    write(msgstring, *)'nc_write_calendar_atts  bombed with error ', i
@@ -299,22 +313,23 @@ allocate(ncFileID%rtimes(ncFileID%NtimesMAX), ncFileID%times(ncFileID%NtimesMAX)
 !-------------------------------------------------------------------------------
 ! Leave define mode so we can fill
 !-------------------------------------------------------------------------------
-call check(nf90_enddef(ncFileID%ncid))
+call nc_check(nf90_enddef(ncFileID%ncid), 'init_diag_output', 'enddef '//trim(ncFileID%fname))
 
 !-------------------------------------------------------------------------------
 ! Fill the coordinate variables.
 ! The time variable is filled as time progresses.
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID%ncid, MemberVarID,   (/ (i,i=1,copies_of_field_per_time) /) ))
-call check(nf90_put_var(ncFileID%ncid, metadataVarID, meta_data_per_copy ))
+call nc_check(nf90_put_var(ncFileID%ncid, MemberVarID, (/ (i,i=1,copies_of_field_per_time) /) ), &
+              'init_diag_output', 'put_var MemberVarID')
+call nc_check(nf90_put_var(ncFileID%ncid, metadataVarID, meta_data_per_copy ), &
+              'init_diag_output', 'put_var metadataVarID')
 
 !-------------------------------------------------------------------------------
 ! sync to disk, but leave open
 !-------------------------------------------------------------------------------
 
-call check(nf90_sync(ncFileID%ncid))
-
+call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
 !-------------------------------------------------------------------------------
 ! Define the model-specific components
 !-------------------------------------------------------------------------------
@@ -326,22 +341,15 @@ if ( i /= 0 ) then
 endif
 
 !-------------------------------------------------------------------------------
-call check(nf90_sync(ncFileID%ncid))               ! sync to disk, but leave open
+! sync again, but still leave open
+!-------------------------------------------------------------------------------
+
+call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
 !-------------------------------------------------------------------------------
 
 write(logfileunit,*)trim(ncFileID%fname), ' is ncid ',ncFileID%ncid
 write(logfileunit,*)'ncFileID%NtimesMAX is ',ncFileID%NtimesMAX
 write(logfileunit,*)'ncFileID%Ntimes    is ',ncFileID%Ntimes
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(status)
-    integer, intent ( in) :: status
-    if(status /= nf90_noerr) call error_handler(E_ERR,'init_diag_output', &
-                                  trim(nf90_strerror(status)), source, revision, revdate)
-  end subroutine check  
 
 end function init_diag_output
 
@@ -1111,9 +1119,11 @@ lngth = -1 ! assume a bad termination
 
 ncid = ncFileID%ncid
 
-call check(NF90_Inquire(ncid, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(NF90_Inq_Varid(ncid, "time", TimeVarID))
-call check(NF90_Inquire_Variable(ncid, TimeVarID, varname, xtype, ndims, dimids, nAtts))
+call nc_check(NF90_Inquire(ncid, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_append_time', 'inquire '//ncFileID%fname)
+call nc_check(NF90_Inq_Varid(ncid, "time", TimeVarID), 'nc_append_time', 'inq_varid time')
+call nc_check(NF90_Inquire_Variable(ncid, TimeVarID, varname, xtype, ndims, dimids, nAtts), &
+             'nc_append_time', 'inquire_variable time')
 
 if ( ndims /= 1 ) call error_handler(E_ERR,'nc_append_time', &
            '"time" expected to be rank-1',source,revision,revdate)
@@ -1122,7 +1132,8 @@ if ( dimids(1) /= unlimitedDimID ) call error_handler(E_ERR,'nc_append_time', &
            'unlimited dimension expected to be slowest-moving',source,revision,revdate)
 
 ! make sure the mirror and the netcdf file are in sync
-call check(NF90_Inquire_Dimension(ncid, unlimitedDimID, varname, lngth ))
+call nc_check(NF90_Inquire_Dimension(ncid, unlimitedDimID, varname, lngth ), &
+           'nc_append_time', 'inquire_dimension unlimited')
 
 if (lngth /= ncFileId%Ntimes) call error_handler(E_ERR,'nc_append_time', &
            'time mirror and netcdf file time dimension out-of-sync',source,revision,revdate)
@@ -1155,7 +1166,8 @@ realtime = days + secs/86400.0_digits12 ! time base is "days since ..."
 lngth           = lngth + 1             ! index of new time 
 ncFileID%Ntimes = lngth                 ! new working length of time mirror
 
-call check(nf90_put_var(ncid, TimeVarID, realtime, start=(/ lngth /) ))
+call nc_check(nf90_put_var(ncid, TimeVarID, realtime, start=(/ lngth /) ), &
+           'nc_append_time', 'put_var time')
 
 ncFileID%times( lngth) = time
 ncFileID%rtimes(lngth) = realtime
@@ -1163,16 +1175,6 @@ ncFileID%rtimes(lngth) = realtime
 write(msgstring,*)'ncFileID (',ncid,') : ',trim(adjustl(varname)), &
          ' (should be "time") has length ',lngth, ' appending t= ',realtime
 call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(status)
-    integer, intent ( in) :: status
-    if(status /= nf90_noerr) call error_handler(E_ERR,'nc_append_time', &
-        trim(nf90_strerror(status)), source,revision,revdate)
-  end subroutine check
 
 end function nc_append_time
 
@@ -1238,11 +1240,15 @@ ncid = ncFileID%ncid
 !        if the statetime does not match any netcdf time ... we're in trouble
 !        if the statetime > last netcdf time ... append a time ... 
 
-call check(NF90_Sync(ncid))    
-call check(NF90_Inquire(ncid, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(NF90_Inq_Varid(ncid, "time", TimeVarID))
-call check(NF90_Inquire_Variable(ncid, TimeVarID, varname, xtype, ndims, dimids, nAtts))
-call check(NF90_Inquire_Dimension(ncid, unlimitedDimID, varname, nTlen))
+call nc_check(NF90_Sync(ncid), 'nc_get_tindex', 'sync '//trim(ncFileID%fname))    
+call nc_check(NF90_Inquire(ncid, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_get_tindex', 'inquire '//trim(ncFileID%fname))
+call nc_check(NF90_Inq_Varid(ncid, "time", TimeVarID), &
+              'nc_get_tindex', 'inq_varid time '//trim(ncFileID%fname))
+call nc_check(NF90_Inquire_Variable(ncid, TimeVarID, varname, xtype, ndims, dimids, nAtts), &
+              'nc_get_tindex', 'inquire_variable time '//trim(ncFileID%fname))
+call nc_check(NF90_Inquire_Dimension(ncid, unlimitedDimID, varname, nTlen), &
+              'nc_get_tindex', 'inquire_dimension unlimited '//trim(ncFileID%fname))
 
 ! Sanity check all cases first.
 
@@ -1351,16 +1357,6 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
    
 endif
 
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(status)
-    integer, intent ( in) :: status
-    if(status /= nf90_noerr) call error_handler(E_ERR,'nc_get_tindex',&
-      trim(nf90_strerror(status)), source,revision,revdate)
-  end subroutine check
-
 end function nc_get_tindex
 
 
@@ -1395,34 +1391,33 @@ ncid = ncFileID%ncid
 !      'unlimited dimension is not time', source,revision,revdate)
 !endif
 
-call check(nf90_put_att(ncid, TimeVarID, "long_name", "time"))
-call check(nf90_put_att(ncid, TimeVarID, "axis", "T"))
-call check(nf90_put_att(ncid, TimeVarID, "cartesian_axis", "T"))
+call nc_check(nf90_put_att(ncid, TimeVarID, "long_name", "time"), &
+              'nc_write_calendar_atts', 'put_att long_name '//trim(ncFileID%fname))
+call nc_check(nf90_put_att(ncid, TimeVarID, "axis", "T"), &
+              'nc_write_calendar_atts', 'put_att axis '//trim(ncFileID%fname))
+call nc_check(nf90_put_att(ncid, TimeVarID, "cartesian_axis", "T"), &
+              'nc_write_calendar_atts', 'put_att cartesian_axis '//trim(ncFileID%fname))
 
 select case( get_calendar_type() )
 case(THIRTY_DAY_MONTHS)
 !  call get_date_thirty(time, year, month, day, hour, minute, second)
 case(GREGORIAN)
-   call check(nf90_put_att(ncid, TimeVarID, "calendar", "gregorian" ))
-   call check(nf90_put_att(ncid, TimeVarID, "units", "days since 1601-01-01 00:00:00"))
+   call nc_check(nf90_put_att(ncid, TimeVarID, "calendar", "gregorian" ), &
+              'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
+   call nc_check(nf90_put_att(ncid, TimeVarID, "units", "days since 1601-01-01 00:00:00"), &
+              'nc_write_calendar_atts', 'put_att units '//trim(ncFileID%fname))
 case(JULIAN)
-   call check(nf90_put_att(ncid, TimeVarID, "calendar", "julian" ))
+   call nc_check(nf90_put_att(ncid, TimeVarID, "calendar", "julian" ), &
+              'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
 case(NOLEAP)
-   call check(nf90_put_att(ncid, TimeVarID, "calendar", "no_leap" ))
+   call nc_check(nf90_put_att(ncid, TimeVarID, "calendar", "no_leap" ), &
+              'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
 case default
-   call check(nf90_put_att(ncid, TimeVarID, "calendar", "no calendar" ))
-   call check(nf90_put_att(ncid, TimeVarID, "units", "days since 0000-00-00 00:00:00"))
+   call nc_check(nf90_put_att(ncid, TimeVarID, "calendar", "no calendar" ), &
+              'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
+   call nc_check(nf90_put_att(ncid, TimeVarID, "units", "days since 0000-00-00 00:00:00"), &
+              'nc_write_calendar_atts', 'put_att units '//trim(ncFileID%fname))
 end select
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(status)
-    integer, intent ( in) :: status
-    if(status /= nf90_noerr) call error_handler(E_ERR,'nc_write_calendar_atts', &
-         trim(nf90_strerror(status)), source,revision,revdate )
-  end subroutine check
 
 end function nc_write_calendar_atts
 
