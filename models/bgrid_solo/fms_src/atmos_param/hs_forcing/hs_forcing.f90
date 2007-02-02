@@ -140,7 +140,14 @@ contains
 !-----------------------------------------------------------------------
 !     rayleigh damping of wind components near the surface
 
-      call rayleigh_damping ( ps, p_full, u, v, utnd, vtnd, mask=mask )
+      ! unnecessary extra test on the optional mask argument; this code
+      ! is a work-around for a gfortran compiler bug; it was incorrectly
+      ! passing down garbage as the optional mask argument if not specified.
+      if (present(mask)) then
+        call rayleigh_damping ( ps, p_full, u, v, utnd, vtnd, mask )
+      else
+        call rayleigh_damping ( ps, p_full, u, v, utnd, vtnd )
+      endif
 
       if (do_conserve_energy) then
          ttnd = -((um+.5*utnd*dt)*utnd + (vm+.5*vtnd*dt)*vtnd)/CP
@@ -165,7 +172,14 @@ contains
 !-----------------------------------------------------------------------
 !     thermal forcing for held & suarez (1994) benchmark calculation
 
-      call newtonian_damping ( lat, ps, p_full, t, ttnd, teq, mask )
+      ! unnecessary extra test on the optional mask argument; this code
+      ! is a work-around for a gfortran compiler bug; it was incorrectly
+      ! passing down garbage as the optional mask argument if not specified.
+      if (present(mask)) then
+        call newtonian_damping ( lat, ps, p_full, t, ttnd, teq, mask )
+      else
+        call newtonian_damping ( lat, ps, p_full, t, ttnd, teq )
+      endif
 
       tdt = tdt + ttnd
 
