@@ -71,6 +71,7 @@
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
+   print_every_nth_obs             = 0,
    adaptive_localization_threshold = 1000/
 
 &cov_cutoff_nml
