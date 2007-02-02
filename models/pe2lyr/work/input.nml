@@ -66,12 +66,13 @@
    perturbation_amplitude  = 0.2 /
 
 &assim_tools_nml
-   filter_kind = 1,
-   cutoff = 0.2,
-   sort_obs_inc = .true.,
-   spread_restoration = .false.,
-   sampling_error_correction = .false.,
-   adaptive_localization_threshold = -1 /
+   filter_kind                     = 1,
+   cutoff                          = 0.2,
+   sort_obs_inc                    = .true.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,         
+   print_every_nth_obs             = 0,
+   adaptive_localization_threshold = -1 /             
 
 &cov_cutoff_nml
    select_localization = 1  /
