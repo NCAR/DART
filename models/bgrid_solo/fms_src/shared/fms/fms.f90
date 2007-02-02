@@ -215,7 +215,7 @@ integer :: log_unit
 !  ---- version number -----
 
   character(len=128) :: version = '$Id$'
-  character(len=128) :: tagname = '$Name$'
+  character(len=128) :: tagname = '$Name:  $'
 
   logical :: module_is_initialized = .FALSE.
 
@@ -697,10 +697,14 @@ character(len=128) :: text
 
  integer, parameter :: co=iachar('a')-iachar('A') ! case offset
     
-    ca = transfer(cs,"x",len(cs)) 
-    where (ca >= "A" .and. ca <= "Z") ca = achar(iachar(ca)+co) 
-    lowercase = transfer(ca,cs) 
+    !ca = transfer(cs,"x",len(cs)) 
+    !where (ca >= "A" .and. ca <= "Z") ca = achar(iachar(ca)+co) 
+    !lowercase = transfer(ca,cs) 
     
+    ! the transfer function is not implemented in the gfortran compiler.
+    ! make this a no-op!
+    lowercase = cs
+
  end function lowercase 
 ! </FUNCTION>
 
@@ -736,9 +740,13 @@ character(len=128) :: text
 
  integer, parameter :: co=iachar('A')-iachar('a') ! case offset
     
-    ca = transfer(cs,"x",len(cs)) 
-    where (ca >= "a" .and. ca <= "z") ca = achar(iachar(ca)+co) 
-    uppercase = transfer(ca,cs) 
+    !ca = transfer(cs,"x",len(cs)) 
+    !where (ca >= "a" .and. ca <= "z") ca = achar(iachar(ca)+co) 
+    !uppercase = transfer(ca,cs) 
+
+    ! the transfer function is not implemented in the gfortran compiler.
+    ! make this a no-op!
+    uppercase = cs
     
  end function uppercase 
 ! </FUNCTION>
