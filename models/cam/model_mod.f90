@@ -135,6 +135,9 @@ module model_mod
 !         the pointer array to a subroutine, which will then handle the data directly
 !         instead of through a pointer.
 !       + global storage of height fields?  but need them on staggered grids (only sometimes)
+!       ! Some compilers can't handle passing a section of an array to a subroutine/function;
+!         I do this in nc_write_model_vars(?) and/or write_cam_init(?); replace with an 
+!         exactly sized array?
 
 ! ISSUE; In P[oste]rior_Diag.nc ensemble members are written out *between* the field mean/spread
 !        pair and the inflation mean/sd pair.  Would it make more sense to put members after
@@ -314,7 +317,7 @@ use time_manager_mod, only : time_type, set_time, print_time, set_calendar_type,
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use    utilities_mod, only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                              register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                             logfileunit, do_output
+                             logfileunit, do_output, nc_check
 
 !-------------------------------------------------------------------------
 use     location_mod, only : location_type, get_location, set_location, query_location,            &
@@ -709,7 +712,8 @@ Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
 if (do_out) call print_time(Time_step_atmos)
 
 ! read CAM 'initial' file domain info
-call check(nf90_open(path = trim(model_config_file), mode = nf90_write, ncid = ncfileid))
+call nc_check(nf90_open(path = trim(model_config_file), mode = nf90_write, ncid = ncfileid), &
+             'static_init_model', 'opening '//trim(model_config_file))
 
 ! Get sizes of dimensions/coordinates from netcdf and put in global storage.
 call read_cam_init_size(ncfileid)
@@ -774,7 +778,8 @@ call nc_read_model_atts('long_name', state_long_names, nflds, ncfileid)
 call nc_read_model_atts('units', state_units, nflds, ncfileid)
 ! call nc_read_model_atts('units_long_name', state_units_long_names, nflds)
 
-call check(nf90_close(ncfileid))
+call nc_check(nf90_close(ncfileid), &
+              'static_init_model', 'closing '//trim(model_config_file))
 
 !------------------------------------------------------------------------
 ! height
@@ -782,7 +787,8 @@ call check(nf90_close(ncfileid))
 ! This subroutines also opens the file for reading fields.
 ! read CAM 'initial' file domain info
 if (file_exist(topog_file)) then
-   call check(nf90_open(path = trim(topog_file), mode = nf90_nowrite, ncid = ncfileid))
+   call nc_check(nf90_open(path = trim(topog_file), mode = nf90_nowrite, ncid = ncfileid), &
+              'static_init_model', 'opening '//trim(topog_file))
    if (do_out) write(*, *) 'file_name for surface geopotential height is ', trim(topog_file)
 
    call read_topog_size(ncfileid, topog_lons, topog_lats)
@@ -812,24 +818,12 @@ allocate(ens_mean(model_size))
 
 call read_cam_horiz (ncfileid, phis , topog_lons, topog_lats, 'PHIS    ')
 
-call check(nf90_close(ncfileid))
+call nc_check(nf90_close(ncfileid), 'static_init_model', 'closing '//trim(topog_file))
 
 !------------------------------------------------------------------------
 ! arrays for the linking of obs_kinds (KIND_) to model field TYPE_s; 
 !    dart_to_cam_kinds and cam_to_dart_kinds
 call map_kinds()
-
-contains 
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-
-   integer, intent ( in) :: istatus
-
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'static_init_model', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-
-   end subroutine check
 
 end subroutine static_init_model
 
@@ -847,7 +841,7 @@ integer :: i,j
 
 !------------------------------------
 ! learn how many dimensions are defined in this file.
-call check(nf90_inquire(ncfileid, num_dims))
+call nc_check(nf90_inquire(ncfileid, num_dims), 'read_cam_init_size', 'inquire num_dims')
 
 ! where to deallocate?
 allocate (dim_ids(num_dims), dim_names(num_dims), dim_sizes(num_dims))
@@ -856,7 +850,8 @@ allocate (dim_ids(num_dims), dim_names(num_dims), dim_sizes(num_dims))
 ! Dimension ids are sequential integers on the NetCDF file.
 do i = 1,num_dims
    dim_ids(i) = i
-   call check(nf90_inquire_dimension(ncfileid, i, dim_names(i), dim_sizes(i)))
+   call nc_check(nf90_inquire_dimension(ncfileid, i, dim_names(i), dim_sizes(i)), &
+                 'read_cam_init_size', 'inquire for '//trim(dim_names(i)))
    if (do_out) write(*,*) 'Dims info = ',i, trim(dim_names(i)), dim_sizes(i)
 end do
 
@@ -915,16 +910,6 @@ if (do_out) then
    end do
 end if
 !debug end
-
-contains 
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus) 
-   integer, intent ( in) :: istatus 
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_init_size', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end subroutine read_cam_init_size
 
@@ -992,9 +977,11 @@ end if
 
 do i = 1,state_num_3d
    ! Get variable id for a  3d field
-   call check(nf90_inq_varid(ncfileid, state_names_3d(i), varid), state_names_3d(i))
+   call nc_check(nf90_inq_varid(ncfileid, state_names_3d(i), varid), &
+                 'trans_coord', 'inq_varid '//trim(state_names_3d(i)))
    ! Get dimension ids for the dimensions of the field
-   call check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_3d(1:4,i)))
+   call nc_check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_3d(1:4,i)), &
+                 'trans_coord', 'inquire_variable'//trim(state_names_3d(i)))
 
    Alldim3: do j = 1,4                          ! time and 3 space
       k = f_dimid_3d(j,i)                       ! shorthand; the dimid of this fields current dim
@@ -1035,8 +1022,10 @@ if (state_num_2d > 0) then
 end if
 
 do i = 1,state_num_2d
-   call check(nf90_inq_varid(ncfileid, state_names_2d(i), varid), state_names_2d(i))
-   call check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_2d(1:3,i)))
+   call nc_check(nf90_inq_varid(ncfileid, state_names_2d(i), varid), &
+              'trans_coord', 'inq_varid '//trim(state_names_2d(i)))
+   call nc_check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_2d(1:3,i)), &
+              'trans_coord', 'inquire_variable '//trim(state_names_2d(i)))
 
    ! extract spatial dimids from the fields dimids
    next = 1
@@ -1085,8 +1074,10 @@ if (state_num_1d > 0) then
 end if
 
 do i = 1,state_num_1d
-   call check(nf90_inq_varid       (ncfileid, state_names_1d(i), varid), state_names_1d(i))
-   call check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_1d(1:2,i)))
+   call nc_check(nf90_inq_varid       (ncfileid, state_names_1d(i), varid), &
+              'trans_coord', 'inq_varid '//trim(state_names_1d(i)))
+   call nc_check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_1d(1:2,i)), &
+              'trans_coord', 'inq_varid '//trim(state_names_1d(i)))
 
    Alldim1: do j = 1,2       ! time and 1 space
       k = f_dimid_1d(j,i)
@@ -1111,25 +1102,6 @@ do i = 1,state_num_1d
    end if
 end do
 
-contains 
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus, string) 
-   integer, intent (in) :: istatus 
-   character(len=*), optional, intent(in) :: string
-   character(len=255) :: errstring
-
-   if (present(string)) then
-      write(errstring, *)trim(adjustl(string))//' '//trim(adjustl(nf90_strerror(istatus)))
-   else
-      write(errstring, *)                            trim(adjustl(nf90_strerror(istatus)))
-   end if
-      
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'trans_coord', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
-
 end subroutine trans_coord
 
 
@@ -1148,27 +1120,21 @@ integer                       :: phis_dimids(3)
 character (len=NF90_MAX_NAME) :: clon,clat
 
 ! get field id
-call check(nf90_inq_varid(ncfileid, 'PHIS', ncfldid))
+call nc_check(nf90_inq_varid(ncfileid, 'PHIS', ncfldid), &
+           'read_topog_size', 'inq_varid: PHIS')
 ! get dimension 'id's
-call check(nf90_inquire_variable(ncfileid, ncfldid, dimids = phis_dimids))
-! call check(nf90_inq_dimid(ncfileid, 'lon', londimid))
-! call check(nf90_inq_dimid(ncfileid, 'lat', latdimid))
+call nc_check(nf90_inquire_variable(ncfileid, ncfldid, dimids = phis_dimids), &
+           'read_topog_size', 'inquire_varible: PHIS')
+! call nc_check(nf90_inq_dimid(ncfileid, 'lon', londimid), 'read_topog_size', 'inq_dimid: lon')
+! call nc_check(nf90_inq_dimid(ncfileid, 'lat', latdimid), 'read_topog_size', 'inq_dimid: lat')
 
 ! get dimension sizes
-call check(nf90_inquire_dimension(ncfileid, phis_dimids(1), clon , num_lons ))
-call check(nf90_inquire_dimension(ncfileid, phis_dimids(2), clat , num_lats )) 
+call nc_check(nf90_inquire_dimension(ncfileid, phis_dimids(1), clon, num_lons ), &
+           'read_topog_size', 'inquire_dimension: lon')
+call nc_check(nf90_inquire_dimension(ncfileid, phis_dimids(2), clat, num_lats ), &
+           'read_topog_size', 'inquire_dimension: lat')
 
 ! check for correct order will be done (implicitly) in calling routine.
-
-contains
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_topog_size', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end subroutine read_topog_size
 
@@ -1190,9 +1156,10 @@ integer :: ncfldid
 integer :: n,m, slon_index, slat_index, lat_index, lon_index
 
 if (do_out) PRINT*,'read_cam_horiz; reading ',cfield
-call check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid), cfield)
-call check(nf90_get_var(ncfileid, ncfldid, var, start=(/1,1,1/), &
-           count=(/dim1, dim2, 1/)), trim(cfield))
+call nc_check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid), &
+              'read_cam_horiz', 'inq_varid '//trim(cfield))
+call nc_check(nf90_get_var(ncfileid, ncfldid, var, start=(/1,1,1/), &
+           count=(/dim1, dim2, 1/)), 'read_cam_horiz', trim(cfield))
 
 if (do_out) PRINT*,'read_cam_horiz; reading ',cfield,' using id ',ncfldid, dim1, dim2
 
@@ -1227,25 +1194,6 @@ if (cfield == 'PHIS    ') then
    alloc_phis = .false.
 end if
 
-contains
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus,string)
-   integer,                    intent(in) :: istatus
-   character(len=*), optional, intent(in) :: string
-   character(len=255) :: errstring
-
-   if (present(string)) then
-      write(errstring, *)trim(adjustl(string))//' '//trim(adjustl(nf90_strerror(istatus)))
-   else
-      write(errstring, *)                            trim(adjustl(nf90_strerror(istatus)))
-   end if
-      
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_horiz', &
-          errstring, source, revision, revdate)
-   end subroutine check
-
 end subroutine read_cam_horiz
 
 
@@ -1275,32 +1223,24 @@ character (len=128), dimension(nflds), intent(out)  :: att_vals
 !           ncid = ncfileid))
 
 ! read CAM 'initial' file attribute desired
-if (do_out) PRINT*,'reading ',att
+if (do_out) PRINT*,'reading ',trim(att)
 do i = 1,nflds
-   call check(nf90_inq_varid(ncfileid, trim(cflds(i)), ncfldid))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(i)), ncfldid), 'nc_read_model_atts', &
+                 'inq_varid '//trim(cflds(i)))
+              
 ! could be inquire_attribute
 ! 
    ierr = nf90_inquire_attribute(ncfileid, ncfldid, trim(att), att_type, nchars, ncattid) 
 
    if (ierr == nf90_noerr) then
-      att_vals(i)(1:64) = '                                                                '
-      att_vals(i)(65:128) = '                                                                '
-      call check(nf90_get_att(ncfileid, ncfldid, trim(att) ,att_vals(i) ))
-      if (do_out) WRITE(*,'(I6,2A)') ncfldid, cflds(i), trim(att_vals(i))
+      call nc_check(nf90_get_att(ncfileid, ncfldid, trim(att) ,att_vals(i) ), &
+                    'nc_read_model_atts', 'get_att '//trim(att))
+      att_vals(i)(nchars+1:128) = ' '
+      if (do_out) WRITE(*,'(A,1X,I6,I6,A,1X,A)') att, ncfldid, nchars, cflds(i), trim(att_vals(i))
    else
       WRITE(*,*) ncfldid, cflds(i), 'NOT AVAILABLE'
    end if
 end do
-
-contains 
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus) 
-   integer, intent ( in) :: istatus 
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_read_model_atts', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end subroutine nc_read_model_atts
 
@@ -1327,7 +1267,7 @@ integer :: ncerr      ! other nc errors; don't abort
 integer, dimension(nf90_max_var_dims) :: coord_dims
 ! Some attributes are _Fillvalue (real) which I'll ignore for now.
 ! The following are used to repack the attributes I want into a compact form
-integer :: num_atts, keep_atts  
+integer :: num_atts, keep_atts, alen
 integer                                     :: att_type 
 character (len=nf90_max_name)               :: att_name
 character (len=nf90_max_name), allocatable  :: att_names(:)
@@ -1359,7 +1299,8 @@ allocate(att_names(num_atts), att_vals(num_atts))
 ! get attributes
 keep_atts = 0
 do i=1,num_atts
-   call check(nf90_inq_attname(ncfileid, ncfldid, i, att_name))
+   call nc_check(nf90_inq_attname(ncfileid, ncfldid, i, att_name), &
+                 'read_cam_coord', 'inq_attname '//trim(att_name))
 
 ! FV initial files have coordinates with attributes that are numerical, not character.
 ! (_FillValue).  These are not used because the coordinates are dimensioned exactly
@@ -1369,15 +1310,18 @@ do i=1,num_atts
 ! Otherwise I need a var@atts_type and separate var%atts_vals_YYY for each NetCDF 
 ! external type (6 of them) I might run into.
 
-   call check(nf90_inquire_attribute(ncfileid, ncfldid, att_name, xtype=att_type) )
+   call nc_check(nf90_inquire_attribute(ncfileid, ncfldid, att_name, xtype=att_type,len=alen ), &
+                 'read_cam_coord', 'inquire_attribute '//trim(att_name))
 
    if (att_type == nf90_char) then
       keep_atts = keep_atts + 1
       att_names(keep_atts) = att_name
-      call check(nf90_get_att(ncfileid, ncfldid, att_name, att_vals(keep_atts)))
+      call nc_check(nf90_get_att(ncfileid, ncfldid, att_name, att_vals(keep_atts)), &
+                    'read_cam_coord', 'get_att '//trim(att_name) )
+      att_vals(keep_atts)(alen+1:128) = ' '
 
    else
-      if (do_out) write(*,*) '                ignoring attribute ',att_name,    &
+      if (do_out) write(*,*) '                ignoring attribute ',trim(att_name),    &
                     ' because it is not a character type'
    endif
 end do
@@ -1394,8 +1338,8 @@ do i = 1,keep_atts
 enddo
 
 ! call check(nf90_get_var(ncfileid, ncfldid, var%vals(1:coord_size) ,start=(/1/) &
-call check(nf90_get_var(ncfileid, ncfldid, var%vals, start=(/1/) &
-    ,count=(/coord_size/) ))
+call nc_check(nf90_get_var(ncfileid, ncfldid, var%vals, start=(/1/) &
+    ,count=(/coord_size/) ), 'read_cam_coord' ,'get_var '//cfield)
 
 if (do_out) then
    PRINT*,'reading ',cfield,' using id ',ncfldid,' size ',coord_size
@@ -1403,16 +1347,6 @@ if (do_out) then
 end if
 
 deallocate(att_names, att_vals)
-
-contains 
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus) 
-   integer, intent ( in) :: istatus 
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_coord', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end subroutine read_cam_coord
 
@@ -1632,7 +1566,8 @@ real(r8), allocatable :: temp_3d(:,:,:), temp_2d(:,:)
 
 !----------------------------------------------------------------------
 ! read CAM 'initial' file domain info
-call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
+call nc_check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid), &
+      'read_cam_init', 'opening '//trim(file_name))
 
 ! The temporary arrays into which fields are read are dimensioned by the largest values of
 ! the sizes of the dimensions listed in f_dim_RANKd
@@ -1654,39 +1589,45 @@ ifld = 0
 !      scalar put_var, and then choked when it saw the count = ...
 do i= 1, state_num_0d
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
+                'read_cam_init', 'inq_varid '//trim(cflds(ifld)))
    if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 1D; TIME(=1)
-   call check(nf90_get_var(ncfileid, ncfldid, var%vars_0d(i) ))
+   call nc_check(nf90_get_var(ncfileid, ncfldid, var%vars_0d(i) ), &
+                'read_cam_init', 'get_var '//trim(cflds(ifld)))
 end do
              
 
 !1d fields
 do i= 1, state_num_1d
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
+                'read_cam_init', 'inq_varid '//trim(cflds(ifld)))
 ! debug; remove next two lines when I'm sure I don't need them.  Also for 2d and 3d
 ! done in trans_coord already
 !   call check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_1d(1:2,i)))
    if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
    
    ! s_dim_1d should = f_dim_1d
-   call check(nf90_get_var(ncfileid, ncfldid, var%vars_1d(1:s_dim_1d(i), i) &
-             ,start=(/1,1/) ,count=(/f_dim_1d(1,i), 1/) ))
+   call nc_check(nf90_get_var(ncfileid, ncfldid, var%vars_1d(1:s_dim_1d(i), i) &
+             ,start=(/1,1/) ,count=(/f_dim_1d(1,i), 1/) ), &
+             'read_cam_init', 'get_var '//trim(cflds(ifld)))
 end do
 
 !2d fields
 do i= 1, state_num_2d
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
+                'read_cam_init', 'inq_varid '//trim(cflds(ifld)))
 ! done in trans_coord already
 !   call check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_2d(1:3,i)))
    if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
    ! fields on file are 3D; lon, lat, (ususally) and then  TIME(=1)
    ! Need to use temp_Nd here too; I am coding for not knowing what 2 of the 3 dimensions the
    ! 2d fields will have.
-   call check(nf90_get_var(ncfileid, ncfldid, temp_2d(1:f_dim_2d(1,i), 1:f_dim_2d(2,i))  &
-                              ,start=(/1,1,1/) ,count=(/f_dim_2d(1,i),   f_dim_2d(2,i), 1/) ))
+   call nc_check(nf90_get_var(ncfileid, ncfldid, temp_2d(1:f_dim_2d(1,i), 1:f_dim_2d(2,i))  &
+                              ,start=(/1,1,1/) ,count=(/f_dim_2d(1,i),   f_dim_2d(2,i), 1/) ), &
+             'read_cam_init', 'get_var '//trim(cflds(ifld)))
    if (s_dim_2d(1,i) == f_dim_2d(1,i)) then
       var%vars_2d(1:s_dim_2d(1,i), 1:s_dim_2d(2,i),i) = &
           temp_2d(1:f_dim_2d(1,i), 1:f_dim_2d(2,i)  )
@@ -1704,15 +1645,18 @@ end do
 ! 3d fields
 do i=1, state_num_3d
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
+                'read_cam_init', 'inq_varid '//trim(cflds(ifld)))
 ! done in trans_coord already
-!   call check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_3d(1:4,i)))
+!   call nc_check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_3d(1:4,i)), &
+!                 'read_cam_init')
    if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 4D; lon, lev, lat, TIME(=1) 
 !                     or; lon, lat, lev, TIME
-   call check(nf90_get_var(ncfileid, ncfldid                                                 &
+   call nc_check(nf90_get_var(ncfileid, ncfldid                                                 &
              ,temp_3d(1:f_dim_3d(1,i), 1:f_dim_3d(2,i), 1:f_dim_3d(3,i)) ,start=(/1,1,1,1/)  &
-             ,count=(/  f_dim_3d(1,i),   f_dim_3d(2,i),   f_dim_3d(3,i),1 /) ))
+             ,count=(/  f_dim_3d(1,i),   f_dim_3d(2,i),   f_dim_3d(3,i),1 /) ), &
+             'read_cam_init', 'get_var '//trim(cflds(ifld)))
 ! read into dummy variable, then repackage depending on coord_order
 ! put it into lon,lev,lat order for continuity with Tim's/historical.
    if (coord_order == 1) then
@@ -1739,19 +1683,9 @@ do i=1, state_num_3d
    end if
 end do
 
-call check(nf90_close(ncfileid))
+call nc_check(nf90_close(ncfileid), 'read_cam_init', 'closing '//trim(file_name))
 
 deallocate (temp_3d,temp_2d)
-
-contains 
-
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus) 
-   integer, intent ( in) :: istatus 
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'read_cam_init', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end subroutine read_cam_init
 
@@ -1768,8 +1702,8 @@ integer,            intent(out) :: c_id
 
 integer  :: i, nch
 
-call check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
-                        varid=c_id) )
+call nc_check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
+                        varid=c_id), 'write_cam_coord_def', 'def_var '//trim(c_name))
 if (do_out) write(*,'(/A,A)') 'write_cam_coord_def;  ', trim(c_name)
 
 do i=1,coord%num_atts
@@ -1779,18 +1713,11 @@ do i=1,coord%num_atts
       write(*,*) '   i, att_name, att_val', &
                  i,trim(coord%atts_names(i)),' ', trim(coord%atts_vals(i))
    endif
-   call check(nf90_put_att(ncFileID, c_id, coord%atts_names(i), coord%atts_vals(i)))
+   call nc_check(nf90_put_att(ncFileID, c_id, coord%atts_names(i), coord%atts_vals(i)), &
+                 'write_cam_coord_def', 'put_att '//trim(coord%atts_names(i)))
 end do
 
 return
-contains
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'write_cam_coord_def', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end subroutine write_cam_coord_def
 
@@ -1807,7 +1734,8 @@ integer               :: i, k, n, m, ifld, ncfileid, ncfldid, f_dim1, f_dim2
 real(r8), allocatable :: temp_3d(:,:,:), temp_2d(:,:)
 
 ! Read CAM 'initial' file domain info
-call check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid))
+call nc_check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid), &
+           'write_cam_init', 'opening '//trim(file_name))
  
 ! The temporary arrays into which fields are read are dimensioned by the largest values of
 ! the sizes of the dimensions listed in coord_RANKd
@@ -1828,16 +1756,20 @@ ifld = 0
 !      So, this padding is probably not necessary.
 do i = 1, state_num_0d
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, var%vars_0d(i) ))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
+                 'write_cam_init', 'put_var '//trim(cflds(ifld)))
+   call nc_check(nf90_put_var(ncfileid, ncfldid, var%vars_0d(i) ), &
+                 'write_cam_init', 'put_var '//trim(cflds(ifld)))
 end do 
 
 ! 1d fields 
 do i = 1, state_num_1d
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid, var%vars_1d(1:s_dim_1d(i), i), &
-                                  start=(/1, 1/), count = (/s_dim_1d(i), 1/)))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
+                 'write_cam_init', 'inq_var '//trim(cflds(ifld)))
+   call nc_check(nf90_put_var(ncfileid, ncfldid, var%vars_1d(1:s_dim_1d(i), i), &
+                                  start=(/1, 1/), count = (/s_dim_1d(i), 1/)),  &
+                 'write_cam_init', 'inq_var '//trim(cflds(ifld)))
 end do 
 
 ! 2d fields ; tricky because coordinates may have been rearranged to put them in the order
@@ -1872,13 +1804,16 @@ do i = 1, state_num_2d
    end if
    
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid),           &
+                 'write_cam_init','inq_varid '//trim(cflds(ifld)))
 !   writing part of temp_2d defined by start and count; don't need indices.
-!   call check(nf90_put_var(ncfileid, ncfldid, temp_2d(1:f_dim1, 1:f_dim2), &
-   call check(nf90_put_var(ncfileid, ncfldid, temp_2d(1:f_dim1,1:f_dim2), &   
-                           start=(/1, 1, 1/), count = (/f_dim1, f_dim2, 1/)))
-!   call check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(1:s_dim_2d(1,i), 1:s_dim_2d(1,i), i), &
-!                               start=(/1, 1, 1/), count = (/s_dim_2d(1,i),   s_dim_2d(2,i), 1/)))
+!   call nc_check(nf90_put_var(ncfileid, ncfldid, temp_2d(1:f_dim1, 1:f_dim2),    &
+   call nc_check(nf90_put_var(ncfileid, ncfldid, temp_2d(1:f_dim1,1:f_dim2),     &   
+                           start=(/1, 1, 1/), count = (/f_dim1, f_dim2, 1/)),    &
+                 'write_cam_init','put_var '//trim(cflds(ifld)))
+!   call nc_check(nf90_put_var(ncfileid, ncfldid, var%vars_2d(1:s_dim_2d(1,i), 1:s_dim_2d(1,i), i),&
+!                               start=(/1, 1, 1/), count = (/s_dim_2d(1,i),   s_dim_2d(2,i), 1/)), &
+!                 'write_cam_init')
 end do 
 
 ! 3d fields; all 3 coordinates are present, and the order for model_mod fields is always the same.
@@ -1907,27 +1842,17 @@ do i = 1, state_num_3d
    end if
 
    ifld = ifld + 1
-   call check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid))
-   call check(nf90_put_var(ncfileid, ncfldid                                               &
+   call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid),   &
+                 'write_cam_init', 'inq_varid '//trim(cflds(ifld)))
+   call nc_check(nf90_put_var(ncfileid, ncfldid                          &
              ,temp_3d(1:f_dim_3d(1,i), 1:f_dim_3d(2,i), 1:f_dim_3d(3,i)) &
-             ,start=(/1,1,1,1/) ,count=(/f_dim_3d(1,i), f_dim_3d(2,i), f_dim_3d(3,i), 1/) ))
+             ,start=(/1,1,1,1/) ,count=(/f_dim_3d(1,i), f_dim_3d(2,i), f_dim_3d(3,i), 1/) ), &
+                 'write_cam_init', 'put_var '//trim(cflds(ifld)))
 end do
 
-call check(nf90_close(ncfileid))
+call nc_check(nf90_close(ncfileid), 'write_cam_init', 'close cam initial file')
 
 deallocate (temp_3d, temp_2d)
-
-contains 
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-
-   integer, intent ( in) :: istatus
-
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'write_cam_init', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-
-   end subroutine check
 
 end subroutine write_cam_init
 
@@ -2183,15 +2108,19 @@ ierr = 0     ! assume normal termination
 !    More dimensions, variables and attributes will be added in this routine.
 !-------------------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(nf90_Redef(ncFileID))
+write(errstring,'(I4)') ncFileID
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_write_model_atts', 'Inquire '//trim(errstring))
+call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '//trim(errstring))
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies
 !-------------------------------------------------------------------------------
 
-call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
-call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
+              'nc_write_model_atts', 'inq_dimid copy')
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
+              'nc_write_model_atts', 'inq_dimid time')
 
 if ( TimeDimID /= unlimitedDimId ) then
   write(errstring,*)'Time dimension ID ',TimeDimID,'must match Unlimited Dimension ID ',unlimitedDimId
@@ -2201,21 +2130,28 @@ end if
 !-------------------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
 !-------------------------------------------------------------------------------
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
-                        len=model_size, dimid = StateVarDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
+                        len=model_size, dimid = StateVarDimID),  &
+              'nc_write_model_atts', 'def_dim StateVariable')
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes
 !-------------------------------------------------------------------------------
 
 call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+! I think this format is screwing up the next statement
+! write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+write(str1,'("YYYY MM DD HH MM SS = ",i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1),        &
+              'nc_write_model_atts', 'put_att creation_date'//trim(str1))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),   &
+              'nc_write_model_atts', 'put_att model_revision'//trim(revision))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate),     &
+              'nc_write_model_atts', 'put_att model_revdate'//trim(revdate))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"),               &
+              'nc_write_model_atts','put_att model CAM')
 
 ! how about namelist input? might be nice to save ...
 
@@ -2229,11 +2165,16 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"))
 ! P_id serves as a map between the 2 sets.
 if (do_out) write(*,*) 'dimens ,name      ,size, cam dim_id, P[oste]rior id'
 do i = 1,num_dims
-   if (trim(dim_names(i)) /= 'time')  call check(nf90_def_dim                    &
-      (ncid=ncFileID, name=trim(dim_names(i)), len=dim_sizes(i), dimid=P_id(i)))
-   if (do_out) write(*,'(A7,A8,3(I4,5X))') i,trim(dim_names(i)),dim_sizes(i), dim_ids(i), P_id(i)
+   if (trim(dim_names(i)) /= 'time')  then
+      call nc_check(nf90_def_dim (ncid=ncFileID, name=trim(dim_names(i)), len=dim_sizes(i),  &
+                               dimid=P_id(i)), 'nc_write_model_atts','def_dim '//trim(dim_names(i)))
+   else
+     P_id(i) = 0
+   endif
+   if (do_out) write(*,'(I5,1X,A13,1X,3(I7,2X))') i,trim(dim_names(i)),dim_sizes(i), dim_ids(i), P_id(i)
 end do
-call check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID) &
+             ,'nc_write_model_atts', 'def_dim scalar')
 
 !-------------------------------------------------------------------------------
 ! Create the (empty) Coordinate Variables and their attributes
@@ -2314,7 +2255,7 @@ end if
 
 if (do_out) then
 do i=1,grid_num_1d
-   write(*,*) 'grid_ = ', i, grid_id(i), grid_names_1d(i)
+   write(*,*) 'grid_ = ', i, grid_id(i), trim(grid_names_1d(i))
 end do
 end if
 
@@ -2328,23 +2269,30 @@ if ( output_state_vector ) then
    !----------------------------------------------------------------------------
 
    ! Define the state vector coordinate variable
-   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
-
+   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int,           &
+              dimids=StateVarDimID, varid=StateVarVarID),                                   &
+                 'nc_write_model_atts','def_var  state vector')
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"),   &
+                 'nc_write_model_atts','put_att long_name state vector ')
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"),           &
+                 'nc_write_model_atts','put_att units state vector ' )
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+                 'nc_write_model_atts','put_att valid range state vector ')
    ! Define the actual state vector
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
-              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID))
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
-   call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","CAM"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real,                 &
+              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID), &
+                 'nc_write_model_atts','def_var state vector')
+   call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"),   &
+                 'nc_write_model_atts','put_att long_name model state or fcopy ')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","CAM"),            &
+                 'nc_write_model_atts','put_att vector_to_prog_var CAM ')
 
    ! Leave define mode so we can fill 
-   call check(nf90_enddef(ncfileID))
+   call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts','enddef ')
 
    ! Fill the state variable coordinate variable
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
+   call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ),         &
+                 'nc_write_model_atts','put_var StateVar ')
 
 else
 
@@ -2356,52 +2304,69 @@ else
    ifld = 0
    do i = 1,state_num_0d
       ifld = ifld + 1
-      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-                 dimids = (/ MemberDimID, unlimitedDimID /), &
-                 varid  = xVarID))
-      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
-      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
-!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+                 dimids = (/ MemberDimID, unlimitedDimID /),                             &
+                 varid  = xVarID),                                                       &
+                 'nc_write_model_atts','def_var 0d '//trim(cflds(ifld)))
+      call nc_check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)), &
+                 'nc_write_model_atts','put_att long_name ')
+      call nc_check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)),          &
+                 'nc_write_model_atts','put_att units ')
+!       call nc_check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)),                         &
+!                 'nc_write_model_atts','def_var ')
    end do
 
    ! 1-d fields
    do i = 1,state_num_1d
       ifld = ifld + 1
-      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-                 dimids = (/ P_id(s_dimid_1d(1)), MemberDimID, unlimitedDimID /), &
-                 varid  = xVarID))
-      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
-      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
-!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+                 dimids = (/ P_id(s_dimid_1d(1)), MemberDimID, unlimitedDimID /),        &
+                 varid  = xVarID),                                                       &
+                 'nc_write_model_atts','def_var 1d '//trim(cflds(ifld)))
+      call nc_check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)), &
+                 'nc_write_model_atts','put_att long_name ')
+      call nc_check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)),          &
+                 'nc_write_model_atts','put_att units ')
+!       call nc_check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)),                         &
+!                 'nc_write_model_atts','def_var ')
    end do
 
    ! 2-d fields
    do i = 1,state_num_2d
       ifld = ifld + 1
-      call check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
-                 dimids = (/ P_id(s_dimid_2d(1,i)), P_id(s_dimid_2d(2,i)),            &
-                             MemberDimID, unlimitedDimID /),                          &
-                 varid  = xVarID))
-      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
-      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
-!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real, &
+                 dimids = (/ P_id(s_dimid_2d(1,i)), P_id(s_dimid_2d(2,i)),               &
+                             MemberDimID, unlimitedDimID /),                             &
+                 varid  = xVarID),                                                       &
+                 'nc_write_model_atts','def_var 2d '//trim(cflds(ifld)))
+      call nc_check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)), &
+                 'nc_write_model_atts','put_att long_name ')
+      call nc_check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)),          &
+                 'nc_write_model_atts','put_att units ')
+!       call nc_check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)),                         &
+!                 'nc_write_model_atts','def_var ')
    end do
 
    ! 3-d fields
    do i = 1,state_num_3d
       ifld = ifld + 1
-      call check(nf90_def_var                                                                 &
+      call nc_check(nf90_def_var                                                              &
            (ncid=ncFileID, name=trim(cflds(ifld)), xtype=nf90_real,                           &
             dimids = (/ P_id(s_dimid_3d(1,i)), P_id(s_dimid_3d(2,i)), P_id(s_dimid_3d(3,i)),  &
                         MemberDimID, unlimitedDimID /),                                       &
-            varid  = xVarID))
-      call check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)))
-      call check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)))
-!       call check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)))
+            varid  = xVarID),                                                                 &
+                 'nc_write_model_atts','def_var 3d'//trim(cflds(ifld)))
+      call nc_check(nf90_put_att(ncFileID, xVarID, "long_name", state_long_names(ifld)),      &
+                 'nc_write_model_atts','put_att long_name ')
+      call nc_check(nf90_put_att(ncFileID, xVarID, "units", state_units(ifld)),               &
+                 'nc_write_model_atts','put_att units ')
+!       call nc_check(nf90_put_att(ncFileID, xVarID, "units_long_name", state_units_long_names(ifld)),                         &
+!                 'nc_write_model_atts','def_var ')
    end do
 
    ! Leave define mode so we can fill variables
-   call check(nf90_enddef(ncfileID))
+   call nc_check(nf90_enddef(ncfileID),                         &
+                 'nc_write_model_atts','enddef ')
 
 !-------------------------------------------------------------------------------
 ! Fill the coordinate variables
@@ -2411,48 +2376,51 @@ else
 
 if (do_out) write(*,*) 'nc_write_model_atts; filling coords'
 
-if (lon%label  /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('lon     ',grid_names_1d)),  lon%vals ))
-if (lat%label  /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('lat     ',grid_names_1d)),  lat%vals ))
-if (lev%label  /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('lev     ',grid_names_1d)),  lev%vals ))
-if (gw%label   /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('gw      ',grid_names_1d)),   gw%vals ))
-if (hyam%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('hyam    ',grid_names_1d)), hyam%vals ))
-if (hybm%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('hybm    ',grid_names_1d)), hybm%vals ))
-if (hyai%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('hyai    ',grid_names_1d)), hyai%vals ))
-if (hybi%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('hybi    ',grid_names_1d)), hybi%vals ))
-if (slon%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('slon    ',grid_names_1d)), slon%vals ))
-if (slat%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('slat    ',grid_names_1d)), slat%vals ))
-if (ilev%label /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('ilev    ',grid_names_1d)), ilev%vals ))
-if (P0%label   /= '        ')  &
-    call check(nf90_put_var(ncFileID, grid_id(find_name('P0      ',grid_names_1d)),   P0%vals ))
+if (lon%label  /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('lon     ',grid_names_1d)),  lon%vals) &
+                 ,'nc_write_model_atts', 'put_var lon')
+if (lat%label  /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('lat     ',grid_names_1d)),  lat%vals) &
+                 ,'nc_write_model_atts', 'put_var lat')
+if (lev%label  /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('lev     ',grid_names_1d)),  lev%vals) &
+                 ,'nc_write_model_atts', 'put_var lev')
+if (gw%label   /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('gw      ',grid_names_1d)),   gw%vals) &
+                 ,'nc_write_model_atts', 'put_var gw')
+if (hyam%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('hyam    ',grid_names_1d)), hyam%vals) &
+                 ,'nc_write_model_atts', 'put_var hyam')
+if (hybm%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('hybm    ',grid_names_1d)), hybm%vals) &
+                 ,'nc_write_model_atts', 'put_var hybm')
+if (hyai%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('hyai    ',grid_names_1d)), hyai%vals) &
+                 ,'nc_write_model_atts', 'put_var hyai')
+if (hybi%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('hybi    ',grid_names_1d)), hybi%vals) &
+                 ,'nc_write_model_atts', 'put_var hybi')
+if (slon%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('slon    ',grid_names_1d)), slon%vals) &
+                 ,'nc_write_model_atts', 'put_var slon')
+if (slat%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('slat    ',grid_names_1d)), slat%vals) &
+                 ,'nc_write_model_atts', 'put_var slat')
+if (ilev%label /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('ilev    ',grid_names_1d)), ilev%vals) &
+                 ,'nc_write_model_atts', 'put_var ilev')
+if (P0%label   /= '        ')                                                                     &
+    call nc_check(nf90_put_var(ncFileID, grid_id(find_name('P0      ',grid_names_1d)),   P0%vals) &
+                 ,'nc_write_model_atts', 'put_var P0')
 
 end if
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call check(nf90_sync(ncFileID))
+call nc_check(nf90_sync(ncFileID),'nc_write_model_atts', 'sync ')
 
 write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...' 
-
-contains
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end function nc_write_model_atts
 
@@ -2471,7 +2439,6 @@ real(r8), dimension(:), intent(in) :: statevec
 integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
-integer                            :: dim_lev, dim_lat  ! old/new CAM coord order accounting
 
 !-----------------------------------------------------------------------------------------
 type(model_type) :: Var
@@ -2479,6 +2446,8 @@ type(model_type) :: Var
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarID, ncfldid
 integer :: ifld, i
+
+character (len=8) :: cfield
 
 ierr = 0     ! assume normal termination
 
@@ -2491,13 +2460,14 @@ ierr = 0     ! assume normal termination
 ! then get all the Variable ID's we need.
 !-------------------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_write_model_vars','Inquire ')
 
 if ( output_state_vector ) then
 
-   call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
-   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)))                               
+   call nc_check(nf90_inq_varid(ncFileID, "state", StateVarID),'nc_write_model_vars ','inq_varid state' )
+   call nc_check(nf90_put_var(ncFileID, StateVarID, statevec,  &
+                start=(/ 1, copyindex, timeindex /)),'nc_write_model_vars ','put_var state')                               
 
 else
 
@@ -2512,9 +2482,12 @@ else
    ifld = 0
    ZeroDVars : do i = 1, state_num_0d    
       ifld = ifld + 1
-      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
-      call check(nf90_put_var( ncFileID, ncfldid, Var%vars_0d(i), &
-                 start=(/ copyindex, timeindex /) ))
+      cfield = trim(cflds(ifld))
+      call nc_check(nf90_inq_varid(ncFileID, cfield, ncfldid),       &
+                    'nc_write_model_vars ','inq_varid 0d '//cfield)
+      call nc_check(nf90_put_var(ncFileID, ncfldid, Var%vars_0d(i),             &
+                                 start=(/ copyindex, timeindex /) ),            &
+                    'nc_write_model_vars ','inq_varid 0d '//cfield)
 !, &
 !                 count=(/1, 1/) ))
    end do ZeroDVars
@@ -2523,11 +2496,14 @@ else
    ! values for the dimensions of the rank N fields, but some of the fields are smaller than that.
    OneDVars : do i = 1, state_num_1d    
       ifld = ifld + 1
-      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
-      call check(nf90_put_var( ncFileID, ncfldid,               &
-           Var%vars_1d(1:s_dim_1d(  i), i),                      &
-              start=(/ 1              ,copyindex, timeindex /), &
-              count=(/   s_dim_1d(  i),1        , 1/) ))
+      cfield = trim(cflds(ifld))
+      call nc_check(nf90_inq_varid(ncFileID, cfield, ncfldid),                                    &
+                    'nc_write_model_vars ','inq_varid 1d '//cfield)
+      call nc_check(nf90_put_var(ncFileID, ncfldid,                                               &
+                    Var%vars_1d(1:s_dim_1d(  i), i),                                              &
+                    start=   (/ 1              ,copyindex, timeindex /),                          &
+                    count=   (/   s_dim_1d(  i),1        , 1/) ),                                 &
+                    'nc_write_model_vars ','inq_varid 1d '//cfield)
    end do OneDVars
 
    ! Write out 2D variables as 2 of (lev,lon,lat), in that order, regardless of caminput.nc 
@@ -2536,21 +2512,27 @@ else
    ! P_Diag.nc file, because the dimids were mapped correctly in nc_write_model_atts.
    TwoDVars : do i = 1, state_num_2d    
       ifld = ifld + 1
-      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
-      call check(nf90_put_var( ncFileID, ncfldid,                                &
-           Var%vars_2d(1:s_dim_2d(1,i),1:s_dim_2d(2,i), i),                       &
-              start=(/ 1              ,1              , copyindex, timeindex /), &
-              count=(/   s_dim_2d(1,i),  s_dim_2d(2,i), 1        , 1/) ))
+      cfield = trim(cflds(ifld))
+      call nc_check(nf90_inq_varid(ncFileID, cfield, ncfldid),                                    &
+                    'nc_write_model_vars ','inq_varid 2d '//cfield)
+      call nc_check(nf90_put_var(ncFileID, ncfldid,                                               &
+                    Var%vars_2d(1:s_dim_2d(1,i),1:s_dim_2d(2,i), i),                              &
+                    start=   (/ 1              ,1              , copyindex, timeindex /),         &
+                    count=   (/   s_dim_2d(1,i),  s_dim_2d(2,i), 1        , 1/) ),                &
+                    'nc_write_model_vars ','inq_varid 2d '//cfield)
    end do TwoDVars
 
    ! Write out 3D variables as (lev,lon,lat) regardless of caminput.nc coordinate order
    ThreeDVars : do i = 1,state_num_3d
       ifld = ifld + 1
-      call check(NF90_inq_varid(ncFileID, trim(cflds(ifld)), ncfldid))
-      call check(nf90_put_var( ncFileID, ncfldid,                                            &
-           Var%vars_3d(1:s_dim_3d(1,i),1:s_dim_3d(2,i),1:s_dim_3d(3,i),i)                    &
-              ,start=(/1              ,1              ,1              ,copyindex,timeindex /)&
-              ,count=(/  s_dim_3d(1,i),  s_dim_3d(2,i),  s_dim_3d(3,i),1        ,1/) ))
+      cfield = trim(cflds(ifld))
+      call nc_check(nf90_inq_varid(ncFileID, cfield, ncfldid),                                    &
+                    'nc_write_model_vars ','inq_varid 3d '//cfield)
+      call nc_check(nf90_put_var(ncFileID, ncfldid,                                               &
+                 Var%vars_3d(1:s_dim_3d(1,i),1:s_dim_3d(2,i),1:s_dim_3d(3,i),i)                   &
+                 ,start=   (/1              ,1              ,1              ,copyindex,timeindex/)&
+                 ,count=   (/  s_dim_3d(1,i),  s_dim_3d(2,i),  s_dim_3d(3,i),1        ,1/) ),     &
+                    'nc_write_model_vars ','inq_varid 3d '//cfield)
    end do ThreeDVars
 
 end if
@@ -2560,7 +2542,7 @@ end if
 !-------------------------------------------------------------------------------
 
 write (*,*)'Finished filling variables ...'
-call check(nf90_sync(ncFileID))
+call nc_check(nf90_sync(ncFileID),'nc_write_model_vars ','sync ')
 write (*,*)'netCDF file is synched ...'
 
 call end_model_instance(Var)   ! should avoid any memory leaking
@@ -2576,15 +2558,6 @@ call end_model_instance(Var)   ! should avoid any memory leaking
 ! highest_obs_level    = MISSING_R8
 ! highest_obs_height_m = MISSING_R8
 
-
-contains
-   ! Internal subroutine - checks error status after each netcdf, prints 
-   !                       text message each time an error code is returned. 
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
-   if (istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_vars', &
-          trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 
 end function nc_write_model_vars
 
