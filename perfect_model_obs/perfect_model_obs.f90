@@ -312,10 +312,9 @@ end subroutine perfect_main
 subroutine perfect_initialize_modules_used()
 
 ! Fire up mpi so we can use the ensemble manager
-call initialize_mpi_utilities()
+call initialize_mpi_utilities('Perfect_model_obs')
 
 ! Initialize modules used that require it
-call initialize_utilities('Perfect_model_obs')
 call register_module(source,revision,revdate)
 
 ! Initialize the obs sequence module
