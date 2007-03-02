@@ -1,12 +1,12 @@
-# template for PGI 5.2.4 f90 Compiler on Fedora Core 2 Intel architecture
+# template for PGI 6.1.1 f90 Compiler on Fedora Core 4 Intel architecture
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next two lines automatically updated by CVS, do not edit>
+# <next few lines updated by version control software, do not edit>
 # $Id$
-# $Name$
 #
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
@@ -36,9 +36,9 @@
 # NETCDF = /usr/local/netcdf-3.5.1-gcc-g++-pgif90.5.1-3
 #
 # Compiler Information (pgf90 -V):
-#    pgf90 5.2-4
+#    pgf90 6.1-1 32-bit target on x86 Linux 
 #    Copyright 1989-2000, The Portland Group, Inc.  All Rights Reserved.
-#    Copyright 2000-2004, STMicroelectronics, Inc.  All Rights Reserved.
+#    Copyright 2000-2005, STMicroelectronics, Inc.  All Rights Reserved.
 
 # fisher has no mpi; replace mpi_utilities_mod.f90 with null_mpi_utilities_mod.f90
 # and use the standard compiler.
@@ -47,8 +47,7 @@ MPILD = pgf90
 FC = pgf90
 LD = pgf90
 CPPFLAGS =
-LIST = -Mlist
-NETCDF = /contrib/netcdf-3.5.1-cc-c++-pgif90.5.2-4
-FFLAGS = -O0 -Ktrap=fp -pc 64 -v -I$(NETCDF)/include
+NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-pgf90.6.1-1
+FFLAGS = -O0 -Ktrap=fp -pc 64 -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(LIBS)
