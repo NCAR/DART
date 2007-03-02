@@ -328,9 +328,13 @@ while($state_copy <= $num_states)
     end_minute                 = ${END_MIN}, ${END_MIN}, ${END_MIN}
     /end_second/c\
     end_second                 = ${END_SEC}, ${END_SEC}, ${END_SEC}
-   #  dart_tf_wrf is expecting only a single time per file
-    /frames_per_outfile/c\
-    frames_per_outfile         = 1, 1, 1,
+# set history interval equal to run interval to make sure you have
+# a wrfoutput file at the end of the run interval
+ /history_interval/c\
+ history_interval           = ${INTERVAL_MIN}, ${INTERVAL_MIN}, ${INTERVAL_MIN}
+#  dart_tf_wrf is expecting only a single time per file
+ /frames_per_outfile/c\
+ frames_per_outfile         = 1, 1, 1,
 EOF
    
     sed -f script.sed \
@@ -352,7 +356,7 @@ EOF
       if ($SUCCESS == 0) then
          echo $element >> ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
       endif
-   
+
    if ( -e ${CENTRALDIR}/extract ) then
       if ( $element == 1 ) then
          ls wrfout_d0${MY_NUM_DOMAINS}_* > wrfout.list
