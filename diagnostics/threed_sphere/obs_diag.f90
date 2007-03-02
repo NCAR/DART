@@ -526,7 +526,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
    call init_obs(       obsN, num_copies, num_qc)   ! Last  obs in sequence
    call init_obs(observation, num_copies, num_qc)   ! current obs
    call init_obs(   next_obs, num_copies, num_qc)   ! duh ...
-   allocate( qc(num_qc) )
+
+   if (num_qc > 0) allocate( qc(num_qc) )
 
    if ( 1 == 2 ) then
       write(logfileunit,*)'num_copies          is ',num_copies
@@ -581,7 +582,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call destroy_obs(observation)
       call destroy_obs(next_obs)
       call destroy_obs_sequence(seq)
-      deallocate( qc )
+      if (allocated(qc)) deallocate( qc )
       cycle ObsFileLoop
    else
       if (verbose) write(*,*)'seqTN > TimeMin ... using ',trim(adjustl(obs_seq_in_file_name))
@@ -598,7 +599,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call destroy_obs(observation)
       call destroy_obs(next_obs)
       call destroy_obs_sequence(seq)
-      deallocate( qc )
+      if (allocated(qc)) deallocate( qc )
       exit ObsFileLoop
    else
       if (verbose) write(*,*)'seqT1 < TimeMax ... using ',trim(adjustl(obs_seq_in_file_name))
@@ -669,19 +670,19 @@ ObsFileLoop : do ifile=1, Nepochs*4
       write(msgstring,*)'metadata:Quality Control not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
-   !if ( any( (/obs_index, prior_mean_index, posterior_mean_index, qc_index, & 
-   !            prior_spread_index, posterior_spread_index /) < 0) ) then
-   ! Only require obs_index and qc_index to be present; this allows the program
-   ! to be run on obs_seq.in files which have no means or spread.  You can get
-   ! less info from them, but for plotting locations, etc, there are reasons
-   ! you might want to run diags on them.
-   if ( any( (/ obs_index, qc_index /) < 0) ) then
-      write(msgstring,*)'metadata incomplete'
-      call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
-   endif
    if (          dart_qc_index < 0 ) then 
       write(msgstring,*)'metadata:DART quality control not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
+   !if ( any( (/obs_index, prior_mean_index, posterior_mean_index, qc_index, & 
+   !            prior_spread_index, posterior_spread_index /) < 0) ) then
+   ! Only require obs_index to be present; this allows the program
+   ! to be run on obs_seq.in files which have no means or spread.  You can get
+   ! less info from them, but for plotting locations, etc, there are reasons
+   ! you might want to run diags on them.
+   if ( any( (/ obs_index /) < 0) ) then
+      write(msgstring,*)'observation metadata incomplete'
+      call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    !--------------------------------------------------------------------
@@ -716,9 +717,11 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
-   write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
-        qc_index,      trim(adjustl(get_qc_meta_data(seq,     qc_index)))
-   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   if (qc_index > 0 ) then
+      write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
+           qc_index,      trim(adjustl(get_qc_meta_data(seq,     qc_index)))
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   endif
 
    if (dart_qc_index > 0 ) then
       write(msgstring,'(''DART quality control index '',i2,'' metadata '',a)') &
@@ -926,11 +929,13 @@ ObsFileLoop : do ifile=1, Nepochs*4
             cycle ObservationLoop
          endif
 
-         if( qc(qc_index) >= qc_threshold ) then
-         !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(qc_index)
-            NbadQC = NbadQC + 1
-            if (print_obs_locations) write(lunit, '(a)') trim(locstring_bad)
-            cycle ObservationLoop
+         if( qc_index > 0) then
+            if (qc(qc_index) >= qc_threshold ) then
+            !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(qc_index)
+               NbadQC = NbadQC + 1
+               if (print_obs_locations) write(lunit, '(a)') trim(locstring_bad)
+               cycle ObservationLoop
+            endif
          endif
 
          !--------------------------------------------------------------
@@ -1335,7 +1340,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
    call destroy_obs(observation)
    call destroy_obs(next_obs)
    call destroy_obs_sequence(seq)
-   deallocate( qc )
+   if (allocated(qc)) deallocate( qc )
 
 enddo ObsFileLoop
 
