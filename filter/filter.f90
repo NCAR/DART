@@ -96,6 +96,7 @@ integer  :: num_groups = 1
 real(r8) :: outlier_threshold = -1.0_r8
 real(r8) :: ncep_qc_threshold = 4.0_r8
 logical  :: output_forward_op_errors = .false.
+logical  :: output_timestamps = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -126,11 +127,12 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       init_time_seconds, first_obs_days, first_obs_seconds, last_obs_days, &
                       last_obs_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
-                      ncep_qc_threshold, output_forward_op_errors, inf_flavor, &
-                      inf_start_from_restart, &
+                      ncep_qc_threshold, output_forward_op_errors, output_timestamps, &
+                      inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
+
 
 !----------------------------------------------------------------
 
@@ -172,6 +174,7 @@ real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1), small_temp(1)
 real(r8), allocatable   :: ens_mean(:)
 
 logical                 :: ds, all_gone
+
 
 call filter_initialize_modules_used()
 
@@ -312,12 +315,20 @@ AdvanceTime : do
    if(ds) call advance_smoother(ens_handle)
 
    ! Get the model to a good time to use a next set of observations
-   ! FIXME: timing debug
-   if (do_output()) call timestamp("Before move_ahead", pos='debug')
+   if (output_timestamps) then
+      call task_sync()
+      if (do_output()) call timestamp("Before model advance", pos='debug')
+   endif
+
    call move_ahead(ens_handle, ens_size, seq, last_key_used, &
       key_bounds, num_obs_in_set, async, adv_ens_command)
-   call task_sync()
-   if (do_output()) call timestamp("After move_ahead", pos='debug')
+
+   if (output_timestamps) then
+       ! only need to sync here since we want to wait for the
+       ! slowest task to finish before outputting the time.
+       call task_sync()  
+       if (do_output()) call timestamp("After model advance", pos='debug')
+   endif
 
 
    ! Only processes with an ensemble copy know to exit; 
@@ -404,13 +415,17 @@ AdvanceTime : do
   
    ! Need obs to be copy complete for assimilation
    call all_vars_to_all_copies(obs_ens_handle)
-   if (do_output()) call timestamp("Before filter_assim", pos='debug')
+   if (output_timestamps) then
+      if (do_output()) call timestamp("Before observation assimilation", pos='debug')
+   endif
    call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
       obs_val_index, prior_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
       OBS_PRIOR_VAR_END, inflate_only = .false.)
-   if (do_output()) call timestamp("After filter_assim", pos='debug')
+   if (output_timestamps) then
+      if (do_output()) call timestamp("After observation assimilation", pos='debug')
+   endif
 
    ! Do the update for the smoother lagged fields, too.
    ! Would be more efficient to do these all at once inside filter_assim in the future
@@ -485,13 +500,17 @@ AdvanceTime : do
 
       ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
       call all_vars_to_all_copies(obs_ens_handle)
-      if (do_output()) call timestamp("Before filter_assim2", pos='debug')
+      if (output_timestamps) then
+         if (do_output()) call timestamp("Before posterior inflation", pos='debug')
+      endif
       call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
          obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
          POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
          OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
          OBS_PRIOR_VAR_END, inflate_only = .true.)
-      if (do_output()) call timestamp("After filter_assim2", pos='debug')
+      if (output_timestamps) then
+         if (do_output()) call timestamp("After posterior inflation", pos='debug')
+      endif
       call all_copies_to_all_vars(ens_handle)
    endif
 
@@ -539,7 +558,7 @@ endif
 
 
 ! Master task must close the log file
-if(my_task_id() == 0) call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
 
 call finalize_mpi_utilities()
 
@@ -958,6 +977,7 @@ real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: forward_temp(num_obs_in_set), rvalue(1)
 logical               :: do_outlier
 
+
 ! Assume that mean and spread have been computed if needed???
 ! Assume that things are copy complete???
 
@@ -1043,10 +1063,15 @@ do j = 1, obs_ens_handle%my_num_vars
    else
       ! For posterior, only check for failed forward operator if prior successful
       if(forward_min == 0 .and. forward_max > 0) then
-         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) &
+         ! Both the following 2 tests and assignments were on single executable lines,
+         ! but one compiler (gfortran) was confused by this, so they were put in
+         ! if/endif blocks.
+         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) then 
             obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 2
-         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 1) &
+         endif
+         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 1) then 
             obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 3
+         endif
       endif
    endif
 enddo
