@@ -10,7 +10,7 @@ module assim_tools_mod
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 !
 ! A variety of operations required by assimilation.
 
