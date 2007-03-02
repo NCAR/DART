@@ -28,7 +28,7 @@ module location_mod
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
-                           find_namelist_in_file, check_namelist_read
+                           find_namelist_in_file, check_namelist_read, do_output
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -41,7 +41,7 @@ public :: location_type, get_location, set_location, set_location_missing, &
           horiz_dist_only, get_close_obs, get_close_type, &
           get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy, &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
-          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist
+          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist, print_get_close_type
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
@@ -124,10 +124,11 @@ real(r8) :: vert_normalization_level    = 20.0_r8
 logical  :: approximate_distance        = .false.
 integer  :: nlon                        = 71
 integer  :: nlat                        = 36
+logical  :: output_box_info             = .false.
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure,         &
    vert_normalization_height, vert_normalization_level, approximate_distance, &
-   nlon, nlat
+   nlon, nlat, output_box_info
 !-----------------------------------------------------------------
 
 interface operator(==); module procedure loc_eq; end interface
@@ -834,6 +835,9 @@ gc%obs_box(:) = -1
 ! Set the value of num_obs in the structure
 gc%num = num
 
+! If num == 0, no point in going any further.
+if (num == 0) return
+
 ! Determine where the boxes should be for this set of obs and maxdist
 call find_box_ranges(gc, obs, num)
 
@@ -916,7 +920,14 @@ do i = 1, num
    tstart(lon_box(i), lat_box(i)) = tstart(lon_box(i), lat_box(i)) + 1
 end do
 
+! debug - if you want to see what boxes are being used and how dense
+! or sparse they are.  warning, this can generate a reasonable amount
+! of output, but not all possible values.  if you really want to see
+! every shred of info, pass .true. as a second argument after gc.
+if (output_box_info .and. do_output()) call print_get_close_type(gc)
+
 end subroutine get_close_obs_init
+
 
 
 !----------------------------------------------------------------------------
@@ -981,6 +992,9 @@ num_close = 0
 close_ind = -99
 if(present(dist)) dist = -99.0_r8
 this_dist = 999999.0_r8   ! something big.
+
+! If num == 0, no point in going any further. 
+if (gc%num == 0) return
 
 
 !--------------------------------------------------------------
@@ -1368,6 +1382,175 @@ if(get_lon_box > nlon) then
 endif
 
 end function get_lon_box
+
+
+!----------------------------------------------------------------------------
+
+subroutine print_get_close_type(gc, all)
+
+type(get_close_type), intent(in) :: gc
+logical, intent(in), optional    :: all
+
+integer :: i, j, k, first, index, sample, nfull, nempty, total
+logical :: tickmark(gc%num)
+logical :: printall
+
+! idea for enhancement:  make the second arg an int.
+! 0 = very terse, only box summary (default).  
+! 1 = structs and first part of arrays.
+! 2 = all parts of all arrays.
+
+! by default do not print all the obs_box or start contents (it can be
+! very long).  but give an option, which if true, forces an
+! entire contents dump.  'sample' is the number to print for
+! the short version.  (this value prints about 5-6 lines of data.)
+if (present(all)) then
+  printall = all
+else
+  printall = .false.
+  sample = 39
+endif
+
+! print the get_close_type derived type values
+
+write(*,*) 'get_close_type values are:'
+
+write(*,*) ' num = ', gc%num
+write(*,*) ' maxdist = ', gc%maxdist
+write(*,*) ' bot_lat, top_lat = ', gc%bot_lat, gc%top_lat
+write(*,*) ' bot_lon, top_lon = ', gc%bot_lon, gc%top_lon
+write(*,*) ' lon_width, lat_width = ', gc%lon_width, gc%lat_width
+write(*,*) ' lon_cyclic = ', gc%lon_cyclic
+
+! this one can be very large.   print only the first nth unless
+! instructed otherwise.  (print n+1 because 1 more value fits on
+! the line because it prints ( i ) and not ( i, j ) like the others.)
+if (associated(gc%obs_box)) then
+   i = size(gc%obs_box,1)
+   if (i/= gc%num) then
+      write(*,*) ' warning: size of obs_box incorrect, nobs, i =', gc%num, i
+   endif
+   if (printall) then
+      write(*,*) ' obs_box(',i,') =', gc%obs_box    ! (nobs)
+   else
+      write(*,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))    ! (nobs)
+      write(*,*) '  <rest of obs_box omitted>'
+   endif
+else
+   write(*,*) ' obs_box unallocated'
+endif
+
+! like obs_box, this one can be very large.   print only the first nth unless
+! instructed otherwise
+if (associated(gc%start)) then
+   i = size(gc%start,1)
+   j = size(gc%start,2)
+   if ((i /= nlon) .or. (j /= nlat)) then
+      write(*,*) ' warning: size of start incorrect, nlon, nlat, i, j =', nlon, nlat, i, j
+   endif
+   if (printall) then
+      write(*,*) ' start(',i,j,') =', gc%start    ! (nlon, nlat)
+   else
+      write(*,*) ' start(',i,j,') =', gc%start(1:min(i,sample), 1)    ! (nlon, nlat)
+      write(*,*) '  <rest of start omitted>'
+   endif
+else
+   write(*,*) ' start unallocated'
+endif
+
+! as above, print only first n unless second arg is .true.
+if (associated(gc%lon_offset)) then
+   i = size(gc%lon_offset,1)
+   j = size(gc%lon_offset,2)
+   if ((i /= nlat) .or. (j /= nlat)) then
+      write(*,*) ' warning: size of lon_offset incorrect, nlat, i, j =', nlat, i, j
+   endif
+   if (printall) then
+      write(*,*) ' lon_offset(',i,j,') =', gc%lon_offset    ! (nlon, nlat)
+   else
+      write(*,*) ' lon_offset(',i,j,') =', gc%lon_offset(1:min(i,sample), 1)    ! (nlon, nlat)
+      write(*,*) '  <rest of lon_offset omitted>'
+   endif
+else
+   write(*,*) ' lon_offset unallocated'
+endif
+
+! as above, print only first n unless second arg is .true.
+if (associated(gc%count)) then
+   i = size(gc%count,1)
+   j = size(gc%count,2)
+   if ((i /= nlon) .or. (j /= nlat)) then
+      write(*,*) ' warning: size of count incorrect, nlon, nlat, i, j =', &
+                      nlon, nlat, i, j
+   endif
+   if (printall) then
+      write(*,*) ' count(',i,j,') =', gc%count    ! (nlon, nlat)
+   else
+      write(*,*) ' count(',i,j,') =', gc%count(1:min(i,sample), 1)    ! (nlon, nlat)
+      write(*,*) '  <rest of count omitted>'
+   endif
+else
+   write(*,*) ' count unallocated'
+endif
+
+
+! end of print.  strictly speaking the following code is validation code,
+! not a simple print.
+
+
+! initialize all ticks to false.  turn them true as they are found
+! in the obs_box list, and complain about duplicates or misses.
+tickmark = .FALSE.
+
+do i=1, nlon
+   do j=1, nlat
+      first = gc%start(i, j)
+      do k=1, gc%count(i, j)
+         index = first + k - 1
+         if ((index < 1) .or. (index > gc%num)) then
+            write(*, *) 'error: bad obs list index, in box: ', index, i, j
+         endif
+         if (tickmark(index)) then
+            write(*, *) 'error: obs found in more than one box list.  index, box: ', &
+                         index, i, j
+         endif
+         tickmark(index) = .TRUE.
+      enddo
+   enddo
+enddo
+
+do i=1, gc%num
+  if (.not. tickmark(i)) then
+     write(*,*) 'error: obs found in no box list: ', i
+  endif
+enddo
+
+! and print out some potentially useful stats?
+nfull = 0
+nempty = 0
+total = 0
+
+do i=1, nlon
+   do j=1, nlat
+      if (gc%count(i, j) > 0) then
+         nfull = nfull + 1
+         total = total + gc%count(i, j)
+      else
+         nempty = nempty + 1
+      endif
+   enddo
+enddo
+
+write(*, *) "Some box statistics:"
+write(*, *) " Total boxes: ", nfull + nempty
+write(*, *) " Total full:  ", nfull
+write(*, *) " Total empty: ", nempty
+if (nfull > 0) then
+   write(*, *) " Average counts per full box: ", real(total, r8) / nfull
+endif
+
+
+end subroutine print_get_close_type
 
 
 !----------------------------------------------------------------------------
