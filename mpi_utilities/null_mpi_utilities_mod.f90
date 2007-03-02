@@ -167,7 +167,8 @@ integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all
+          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all, &
+          block_task, restart_task
 public :: task_sync, array_broadcast, array_distribute, &
           send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
           shell_execute, sleep_seconds, sum_across_tasks
@@ -606,7 +607,34 @@ end subroutine sum_across_tasks
 
 
 !-----------------------------------------------------------------------------
-! pipe utilities
+! pipe-related utilities
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+subroutine block_task()
+
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+endif
+ 
+ 
+end subroutine block_task
+
+!-----------------------------------------------------------------------------
+subroutine restart_task()
+   
+   
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
+endif
+
+
+end subroutine restart_task
+
+
 !-----------------------------------------------------------------------------
 !    * make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
