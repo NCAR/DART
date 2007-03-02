@@ -21,6 +21,7 @@
    ncep_qc_threshold        =  4.0,
    outlier_threshold        = -1.0,
    output_forward_op_errors = .false.,
+   output_timestamps        = .false.,
 
    inf_flavor               = 0,                      0,
    inf_start_from_restart   = .false.,                .false.,
