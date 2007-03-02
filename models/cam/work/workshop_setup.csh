@@ -53,7 +53,7 @@
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
 \rm -f perfect_model_obs filter obs_diag assim_region column_rand
 \rm -f trans_date_to_dart trans_pv_sv trans_pv_sv_time0 trans_sv_pv
-\rm -f trans_time merge_obs_seq
+\rm -f trans_time merge_obs_seq filter_restart
 \rm -f *.o *.mod
 
 echo mkmf_preprocess
@@ -112,18 +112,15 @@ echo mkmf_merge_obs_seq
 csh  mkmf_merge_obs_seq
 make || exit 10
 
+
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
 \rm -f *.o *.mod
 
-echo 'mkmf_filter'
-csh   mkmf_filter
-echo 'updating Makefile for MPI'
-\cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
-\rm -f Makefile.back
+echo  mkmf_filter
+csh   mkmf_filter -mpi
 make
 
 if ($status != 0) then
@@ -133,6 +130,10 @@ if ($status != 0) then
    echo
    exit 6
 endif
+
+echo mkmf_filter_restart
+csh  mkmf_filter_restart -mpi
+make || exit 11
 
 \rm -f *.o *.mod
 
