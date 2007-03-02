@@ -31,7 +31,7 @@ use strict;
 use File::Basename;
 use Getopt::Std;
 use Config;			# use to put in platform-specific stuff
-use vars qw( $opt_a $opt_c $opt_d $opt_f $opt_m $opt_p $opt_t $opt_v $opt_x ); # declare these global to be shared with Getopt:Std
+use vars qw( $opt_a $opt_c $opt_d $opt_f $opt_m $opt_p $opt_t $opt_v $opt_w $opt_x ); # declare these global to be shared with Getopt:Std
 
 #subroutines
 sub ensureTrailingSlash {
@@ -42,7 +42,7 @@ sub ensureTrailingSlash {
 my $version = '$Id$ ';
 
 # initialize variables: use getopts for these
-getopts( 'a:c:dfm:p:t:vx' ) || die "\aSyntax: $0 [-a abspath] [-c cppdefs] [-d] [-f] [-m makefile] [-p program] [-t template] [-v] [-x] [targets]\n";
+getopts( 'a:c:dfm:p:t:vwx' ) || die "\aSyntax: $0 [-a abspath] [-c cppdefs] [-d] [-f] [-m makefile] [-p program] [-t template] [-v] [-w] [-x] [targets]\n";
 $opt_v = 1 if $opt_d;	# debug flag turns on verbose flag also
 print "$0 $version\n" if $opt_v;
 
@@ -68,12 +68,23 @@ my @src_suffixes = ( q/\.F/, q/\.F90/, q/\.c/, q/\.f/, q/\.f90/ );
 my @inc_suffixes = ( q/\.H/, q/\.fh/, q/\.h/, q/\.inc/ );
 push @inc_suffixes, @src_suffixes; # sourcefiles can be includefiles too
 
-my %compile_cmd = (			# command to create .o file from a given source file suffix
+print "Using MPI wrappers\n" if $opt_w;
+my %compile_cmd;
+if ( $opt_w ) {
+   %compile_cmd = (	# mpi wrappers to create .o file from a given source file suffix
+	       q/.F/   => q/$(MPIFC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c/,
+ 	       q/.F90/ => q/$(MPIFC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c/,
+ 	       q/.c/   => q/$(MPICC) $(CPPDEFS) $(CPPFLAGS) $(CFLAGS) -c/,
+ 	       q/.f/   => q/$(MPIFC) $(FFLAGS) -c/,
+  	       q/.f90/ => q/$(MPIFC) $(FFLAGS) -c/              );
+} else {
+   %compile_cmd = (	# default command to create .o file from a given source file suffix
 	       q/.F/   => q/$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c/,
  	       q/.F90/ => q/$(FC) $(CPPDEFS) $(CPPFLAGS) $(FFLAGS) -c/,
  	       q/.c/   => q/$(CC) $(CPPDEFS) $(CPPFLAGS) $(CFLAGS) -c/,
  	       q/.f/   => q/$(FC) $(FFLAGS) -c/,
   	       q/.f90/ => q/$(FC) $(FFLAGS) -c/              );
+}
 my %delim_match = ( q/'/ => q/'/,	# hash to find includefile delimiter pair
 		    q/"/ => q/"/,
 		    q/</ => q/>/ );
@@ -109,8 +120,13 @@ if ( $opt_c ) {
       $cppdefs_xlf =~ s/,/\\,/g; # escape any commas already there
       $cppdefs_xlf =~ s/\s+/,/g; # replace whitespace with commas
       &print_formatted_list("CPPDEFS_XLF = $cppdefs_xlf");
-      $compile_cmd{'.F'}   = q/$(FC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
-      $compile_cmd{'.F90'} = q/$(FC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
+      if ( $opt_w ) {
+          $compile_cmd{'.F'}   = q/$(MPIFC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
+          $compile_cmd{'.F90'} = q/$(MPIFC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
+      } else {
+          $compile_cmd{'.F'}   = q/$(FC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
+          $compile_cmd{'.F90'} = q/$(FC) $(CPPDEFS_XLF) $(FFLAGS) -c/;
+      }
    }
    &print_formatted_list("CPPDEFS = $opt_c") if $opt_c;
 }
@@ -428,7 +444,11 @@ print MAKEFILE "neat:\n\t-rm -f \$(TMPFILES)\n";
 print MAKEFILE "localize: \$(OFF)\n\tcp \$(OFF) .\n" if $noff > 0;
 print MAKEFILE "TAGS: \$(SRC)\n\tetags \$(SRC)\n";
 print MAKEFILE "tags: \$(SRC)\n\tctags \$(SRC)\n";
-print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(LD) \$(OBJ) -o $opt_p \$(LDFLAGS)\n";
+if ( $opt_w ) {
+   print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(MPILD) \$(OBJ) -o $opt_p \$(LDFLAGS)\n";
+} else {
+   print MAKEFILE "$opt_p: \$(OBJ)\n\t\$(LD) \$(OBJ) -o $opt_p \$(LDFLAGS)\n";
+}
 close MAKEFILE;
 print " $opt_m is ready.\n";
 
