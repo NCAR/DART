@@ -7,8 +7,8 @@
 #
 # <next three lines automatically updated by CVS, do not edit>
 # $Id$
-# $Source$
-# $Name$
+# $Source: /home/thoar/CVS.REPOS/DART/models/bgrid_solo/work/workshop_setup.csh,v $
+# $Name:  $
 
 #----------------------------------------------------------------------
 # Script to manage the compilation of all components for this model;
@@ -70,14 +70,44 @@ csh mkmf_create_fixed_network_seq
 make         || exit 4
 csh mkmf_perfect_model_obs
 make         || exit 5
-csh mkmf_filter
-make         || exit 6
 csh mkmf_obs_diag
-make         || exit 7
+make         || exit 6
 csh mkmf_merge_obs_seq
+make         || exit 7
+csh mkmf_integrate_model
 make         || exit 8
 
+# normal compile without the MPI parallel libraries:
+
+csh mkmf_filter
+make         || exit 9
+
+# to enable an MPI parallel version of filter for this model, comment
+# out the previous 2 lines and comment in the following section:
+
+#rm *.o *.mod
+#
+#csh mkmf_filter -mpi
+#make
+#
+#if ($status != 0) then
+#   echo
+#   echo "If this died in mpi_utilities_mod, see code comments"
+#   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+#   echo
+#   exit 9
+#endif
+#
+
+#----------------------------------------------------------------------
+
 ./perfect_model_obs || exit 20
-./filter            || exit 21
-\rm -f go_end_filter
+if ( -e using_mpi_for_filter ) then
+   mpirun -np 2 ./filter            || exit 21
+   # or bsub < runme_filter
+   # or qsub runme_filter 
+   # to make your batch system happy.
+else
+   ./filter            || exit 21
+endif
 
