@@ -662,19 +662,21 @@ call destroy_obs(observation)
 call get_close_obs_destroy(gc_state)
 call get_close_obs_destroy(gc_obs)
 
-! diagnostics
-if (get_close_buffering) then
-   print *, "Total number of calls made    to get_close_obs for obs:    ", num_close_obs_calls_made
-   print *, "Total number of calls avoided to get_close_obs for obs:    ", num_close_obs_buffered
-   if (num_close_obs_buffered+num_close_obs_calls_made > 0) then 
-      print *, "Percent saved: ", 100. * (real(num_close_obs_buffered, r8) /  &
-                                  (num_close_obs_calls_made + num_close_obs_buffered))
-   endif
-   print *, "Total number of calls made    to get_close_obs for states: ", num_close_states_calls_made
-   print *, "Total number of calls avoided to get_close_obs for states: ", num_close_states_buffered
-   if (num_close_states_buffered+num_close_states_calls_made > 0) then 
-      print *, "Percent saved: ", 100. * (real(num_close_states_buffered, r8)  /  &
-                                  (num_close_states_calls_made + num_close_states_buffered))
+! diagnostics for stats on saving calls by remembering obs at the same location.
+! change .true. to .false. in the line below to remove the output completely.
+if (get_close_buffering .and. .true.) then
+   if (num_close_obs_buffered > 0 .and. do_output()) then
+      print *, "Total number of calls made    to get_close_obs for obs/states:    ", &
+                num_close_obs_calls_made + num_close_states_calls_made
+      print *, "Total number of calls avoided to get_close_obs for obs/states:    ", &
+                num_close_obs_buffered + num_close_states_buffered
+      if (num_close_obs_buffered+num_close_obs_calls_made+ &
+          num_close_states_buffered+num_close_states_calls_made > 0) then 
+         print *, "Percent saved: ", 100. * &
+                   (real(num_close_obs_buffered+num_close_states_buffered, r8) /  &
+                   (num_close_obs_calls_made+num_close_obs_buffered+ &
+		    num_close_states_calls_made+num_close_states_buffered))
+      endif
    endif
 endif
 
