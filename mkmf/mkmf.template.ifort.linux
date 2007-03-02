@@ -26,7 +26,7 @@
 #
 # FFLAGS   useful for debugging
 #     -CB      enable runtime bounds check
-#     -g       include symbol table
+#     -g       include symbol table -- Note that -g does NOT IMPLY -O0 
 #     -check all       [bounds,overflow,format,args]
 #     -[no]warn <keywords>
 #           specifies the level of warning messages issued.
@@ -34,6 +34,10 @@
 #                      [no]errors, [no]fileopt, [no]general, [no]ignore_loc, 
 #                      [no]stderrors, [no]truncated_source, [no]uncalled,
 #                      [no]uninitialized, [no]unused, [no]usage
+#     -fpstkchk  catches conditions where the FP stack is not correct.
+#     Typically this is when a real function is called as if it were a
+#     subroutine, OR a subroutine is called as if it were a function (return
+#     values left of FP stack OR too much data is taken off the FP stack)
 #
 # FFLAGS   useful for benchmarking
 #     -O0      disable optimizations
