@@ -287,7 +287,7 @@ call get_close_obs_init(gc_state, my_num_state, my_state_loc)
 call get_close_maxdist_init(gc_obs, 2.0_r8*cutoff)
 call get_close_obs_init(gc_obs, my_num_obs, my_obs_loc)
 
-if (get_close_buffering == .true.) then
+if (get_close_buffering) then
    ! Initialize last obs and state get_close lookups, to take advantage below 
    ! of sequential observations at the same location (e.g. U,V, possibly T,Q)
    ! (this is getting long enough it probably should go into a subroutine. nsc.)
