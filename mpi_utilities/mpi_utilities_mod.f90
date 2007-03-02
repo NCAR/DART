@@ -79,6 +79,21 @@ module mpi_utilities_mod
 !   code to open a named pipe per MPI task, read and write from them, and
 !   close and/or remove them.
 !
+!    # block_task()       Create a named pipe (fifo) and read from it to
+!                         block the process in such a way that it consumes
+!                         no CPU time.  NOTE that once you put yourself to
+!                         sleep, you cannot wake yourself up.  Some other MPI
+!                         task must call restart_task(), on the same set of
+!                         processors the original program was distributed over.
+!
+!    # restart_task()     Write into the pipe to restart the reading task.
+!                         Note that this must be an entirely separate executable
+!                         from the one which called block_task(), because it is
+!                         asleep like Sleeping Beauty and cannot wake itself.
+!                         See filter and filter_restart for examples
+!                         of a program pair which uses these calls.
+! 
+!
 !  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
 !                         already exists or is already open; it will skip
@@ -176,7 +191,8 @@ integer :: datasize        ! which MPI type corresponds to our r8 definition
 
 public :: task_count, my_task_id, transpose_array, &
           initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all
+          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all, &
+          block_task, restart_task
 public :: task_sync, array_broadcast, array_distribute, &
           send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
           shell_execute, sleep_seconds, sum_across_tasks
@@ -986,7 +1002,84 @@ end subroutine sum_across_tasks
 
 
 !-----------------------------------------------------------------------------
-! pipe utilities
+! pipe-related utilities
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+subroutine block_task()
+
+! block by reading a named pipe file until some other task
+! writes a string into it.  this ensures the task is not
+! spinning and using CPU cycles, but is asleep waiting in
+! the kernel.   one subtlety with this approach is that even
+! though named pipes are created in the filesystem, they are
+! implemented in the kernel, so on a multiprocessor machine
+! the write into the pipe file must occur on the same PE as
+! the reader is waiting.  see the 'filter_restart' program for
+! the MPI job which spreads out on all the PEs for this job
+! and writes into the file from the correct PE.
+
+character(len = 32) :: fifo_name
+integer :: rc
+logical :: verbose
+
+verbose = .true.
+
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
+endif
+
+if (verbose) write(*,*) 'putting to sleep task id ', myrank
+
+! if you change this in any way, change the corresponding string in 
+! restart_task() below.
+write(fifo_name, '(a, i2.2)') "filter_task", myrank
+
+if (verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
+rc = system('mkfifo '//trim(fifo_name)//' '//char(0))
+
+if (verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
+rc = system('cat < '//trim(fifo_name)//' '//char(0))
+
+if (verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
+rc = system('rm -f '//trim(fifo_name)//' '//char(0))
+
+end subroutine block_task
+
+!-----------------------------------------------------------------------------
+subroutine restart_task()
+
+
+character(len = 32) :: fifo_name
+integer :: rc
+logical :: verbose
+
+verbose = .true.
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'restart_task', errstring, source, revision, revdate)
+endif
+
+! process 0 is handled differently in the code.
+if (myrank == 0) return
+
+
+if (verbose) write(*,*) 'waking up task id ', myrank
+
+write(fifo_name,"(a,i2.2)") "filter_task", myrank
+
+if (verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
+rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
+
+if (verbose) write(*,*) 'response was read from lock file: '//trim(fifo_name)
+
+
+end subroutine restart_task
+
+
 !-----------------------------------------------------------------------------
 !    * make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
@@ -1174,7 +1267,7 @@ integer :: status(MPI_STATUS_SIZE)
    if (all_at_once) then
 
       ! all tasks call system at the same time
-      shell_execute = system(trim(execute_string))
+      shell_execute = system(trim(execute_string)//' '//char(0))
       if (verbose) write(*,*) "execution returns, rc = ", shell_execute
 
       return
@@ -1189,7 +1282,7 @@ integer :: status(MPI_STATUS_SIZE)
    if (myrank == 0) then
 
       ! my turn to execute
-      shell_execute = system(trim(execute_string))
+      shell_execute = system(trim(execute_string)//' '//char(0))
       if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
       if (total_tasks > 1) then
@@ -1214,7 +1307,7 @@ integer :: status(MPI_STATUS_SIZE)
       endif
 
       ! my turn to execute
-      shell_execute = system(trim(execute_string))
+      shell_execute = system(trim(execute_string)//' '//char(0))
       if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
       ! and now tell (me+1) to go
@@ -1236,7 +1329,7 @@ integer :: status(MPI_STATUS_SIZE)
       endif
 
       ! my turn to execute
-      shell_execute = system(trim(execute_string))
+      shell_execute = system(trim(execute_string)//' '//char(0))
       if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    endif
