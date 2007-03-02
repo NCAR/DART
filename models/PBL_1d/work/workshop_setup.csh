@@ -5,10 +5,10 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines updated by version control software, do not edit>
 # $Id$
-# $Source$
-# $Name$
+# $Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/work/workshop_setup.csh,v $
+# $Name:  $
 
 #----------------------------------------------------------------------
 # Script to manage the compilation of all components for this model;
@@ -82,25 +82,22 @@ echo "If the following compile fails read the comments in the workshop_setup.csh
 echo "script for more help."
 echo ""
 
+@ n = 2
+foreach TARGET ( mkmf_* )
 
-csh mkmf_gen_init
-make         || exit 3
-csh mkmf_create_obs_sequence
-make         || exit 4
-csh mkmf_create_fixed_network_seq
-make         || exit 5
-csh mkmf_perfect_model_obs
-make         || exit 6
-csh mkmf_filter
-make         || exit 7
-csh mkmf_obs_diag
-make         || exit 8
-csh mkmf_create_real_network_seq
-make         || exit 9
-csh mkmf_driver
-make         || exit 10
-csh mkmf_merge_obs_seq
-make         || exit 11
+   switch ( $TARGET )
+   case mkmf_preprocess:
+      breaksw
+   default:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "build number $n is ${TARGET}" 
+      csh $TARGET
+      make || exit $n
+      breaksw
+   endsw
+end
 
 #----------------------------------------------------------------------
 # check for the input data files.  they are large ( > 90Mb ) and
@@ -110,7 +107,7 @@ make         || exit 11
 if ( ! -f ../indata/wrfrt_2006.nc ) then
     echo "Error:"
     echo "This model requires some large data files as input which are"
-    echo "not packaged as part of the DART tarball.  To run this model"
+    echo "not packaged as part of the DART distribution. To run this model"
     echo "contact thoar at ucar dot edu for more information on how"
     echo "to get a copy of the data."
     exit 100
