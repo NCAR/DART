@@ -28,7 +28,8 @@ use time_manager_mod,     only : time_type, operator(/=), operator(>), set_time,
                                  operator(-), operator(/), operator(+), print_time,        &
                                  operator(<), operator(==)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
-use mpi_utilities_mod,    only : my_task_id, task_sync
+use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, &
+                                 sum_across_tasks
 
 implicit none
 private
@@ -42,7 +43,6 @@ revision = "$Revision$", &
 revdate  = "$Date$"
 
 logical :: module_initialized = .false.
-logical :: single_advance = .false.
 
 ! Module storage for writing error messages
 character(len = 129) :: errstring
@@ -80,8 +80,8 @@ character(len = *),      intent(in)    :: adv_ens_command
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
-logical            :: is_this_last, is_there_one, out_of_range, no_work_for_me
-integer            :: sec, day
+logical            :: is_this_last, is_there_one, out_of_range
+integer            :: sec, day, my_first_copy, leaving_early, temp
 
 ! Initialize if needed
 if(.not. module_initialized) then
@@ -92,6 +92,7 @@ endif
 ! Prepare values for 'early' returns
 num_obs_in_set  =   0
 key_bounds(1:2) = -99
+leaving_early   =   0
 
 ! If none of my copies are regular ensemble members no need to advance. 
 ! This is true either if I have no copies or if the copies I have are
@@ -99,31 +100,26 @@ key_bounds(1:2) = -99
 ! copies are in the first ens_size global copies of ensemble and that 
 ! global indices are monotonically increasing in each pes local copies
 ! (note: Violating the private boundaries on ens_handle by direct access)
-! (second note: the following machinations are to avoid a compiler
-! which evaluates both sides of the .or. before checking the results.
-! We want to avoid referencing my_copies(1) if there are none.)
-! This is the original code:
+! This was the original code:
 !   if((ens_handle%my_num_copies < 1) .or. (ens_handle%my_copies(1) > ens_size)) then
 
-no_work_for_me = .false.
-if(ens_handle%my_num_copies < 1) no_work_for_me = .true.
 if(ens_handle%my_num_copies >= 1) then
-   if(ens_handle%my_copies(1) > ens_size) no_work_for_me = .true.
+   my_first_copy = ens_handle%my_copies(1)
+else
+   my_first_copy = 0
 endif
-if (no_work_for_me) then
-   ! For the inline advances, nothing extra to do here but return.
-   ! If all tasks who have models to advance handle their own advances,
-   ! there is no reason to sync all the jobs.  However, if only task 0 is
-   ! handling the advances for everyone, we have to be sure they are all
-   ! done writing out the ic files, and then afterwards that they do not
-   ! try to read the ud files before they are done.   These two syncs 
-   ! allow the rest of the tasks to advance when everyone has checked in.
-   if (single_advance .and. (async /= 0)) then
-      call task_sync()   ! Sync point before calling model advances
-      call task_sync()   ! Sync point after all are advanced
-   endif
+
+! if this task has no ensembles to advance, return directly from here.
+! this routine has code to sync up with the other ensembles which do
+! have an advance to do - it will not return until the others are done.
+if ((ens_handle%my_num_copies < 1) .or. (my_first_copy > ens_size)) then
+   call wait_if_needed(async)
    return
 endif
+
+! if you get here, this task has at least one ensemble to try to advance;
+! it is possible we are at the end of the observations and there in fact
+! is no need to advance.  if so, we need to tell any sleepers to give up.
 
 ! Initialize a temporary observation type to use
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
@@ -132,10 +128,15 @@ call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 if(last_key_used > 0) then
    call get_next_obs_from_key(seq, last_key_used, observation, is_this_last)
    ! If the end of the observation sequence has been passed, return
-   if(is_this_last) return
+   if(is_this_last) leaving_early = 1
 else
    is_there_one = get_first_obs(seq, observation)
-   if(.not. is_there_one) return
+   if(.not. is_there_one) leaving_early = 1
+endif
+
+if (leaving_early > 0) then
+   call wait_if_needed(async)
+   return
 endif
 
 ! Get the time of this observation
@@ -236,7 +237,10 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
    my_num_state_copies = my_num_state_copies + 1
 
    ! If no need to advance return
-   if(ens_handle%time(i) == target_time) return
+   if(ens_handle%time(i) == target_time) then
+      call wait_if_needed(async)
+      return
+   endif
 
    ! Check for time error
    if(ens_handle%time(i) > target_time) then
@@ -291,7 +295,7 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
       'Can only have 10000 processes', source, revision, revdate)
    write(control_file_name, '("filter_control", i5.5)') my_task_id()
 
-   if (.not. single_advance) then
+   if (async == 2) then
 
       ! Everyone writes the ic and ud file names to the control file
       control_unit = get_unit()
@@ -306,11 +310,21 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
       end do
       close(control_unit)
 
-   else
+      ! Arguments to advance model script are unique id and number of copies
+      write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
+     
+      ! Issue a system command with arguments my_task, my_num_copies, and control_file
+      call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
+   
+      ! if control file is still here, the advance failed
+      if(file_exist(control_file_name)) then
+        write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
+        call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+      endif
 
-      ! Only task 0 writes all ens names to file, and ensures
-      ! all tasks are here first.
-      call task_sync()
+   else if (async == 4) then
+
+      ! Only task 0 writes all ens names to file.
       if (my_task_id() == 0) then
         ! Write the ic and ud file names to the control file
         control_unit = get_unit()
@@ -326,47 +340,46 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
         close(control_unit)
       endif
 
-   endif
+      ! make sure all tasks have finished writing their initial condition
+      ! files before letting process 0 start the model advances.
+      call task_sync()
 
-   if(async == 2) then
+      ! PE0 starts the advance script here.
+      if (my_task_id() == 0) then
 
-      if (.not. single_advance) then
-         ! Arguments to advance model script are unique id and number of copies
-         write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
-        
-         ! Issue a system command with arguments my_task, my_num_copies, and control_file
-         call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
-    
+         ! this assumes the script has already called 'mkfifo filter.status'
+         ! tell any waiting tasks that we are indeed doing a model advance
+         ! here and they need to block.
+         call sum_across_tasks(1, i)
+
+         ! this tells the script it is time to start the model advance.
+         ! it should return as soon as the script reads the string.
+         call system('echo advance > ./filter.status')
+
+         ! now block here until the advance has finished and written
+         ! something back into the pipe file.   this will take as long
+         ! as it takes to advance all the ensembles.
+         call system('cat < ./filter.status')
+
          ! if control file is still here, the advance failed
          if(file_exist(control_file_name)) then
            write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
            call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
          endif
+
       else
-         if (my_task_id() == 0) then
+ 
+         ! tell any waiting tasks that indeed we are going to block. 
+         call sum_across_tasks(1, i)
 
-            ! this assumes the script has already called 'mkfifo filter.status'
+         ! block, not spin, until the model advance is done.
+         call block_task()
 
-            ! this does not return until script has read the data (and blocks).
-            call system('echo advance > ./filter.status')
-
-            ! get text back when advance is finished (this blocks also).
-            call system('cat ./filter.status')
-
-            ! if control file is still here, the advance failed
-            if(file_exist(control_file_name)) then
-              write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
-              call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
-            endif
-
-         endif
-         ! if you are not task 0, you have to wait here before proceeding
-         call task_sync()
       endif
 
    else
    ! Unsupported option for async error
-      write(errstring,*)'input.nml - async is ',async,' must be 0, or 2'
+      write(errstring,*)'input.nml - async is ',async,' must be 0, 2, or 4'
       call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
    endif
 
@@ -380,6 +393,71 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
 end if SHELL_ADVANCE_METHODS
 
 end subroutine advance_state
+
+!--------------------------------------------------------------------
+
+subroutine wait_if_needed(async) 
+
+! returns true if this task has at least one ensemble to advance.
+! if not, this routine blocks until it is safe to return in sync
+! with all other tasks with work to do.
+
+integer,             intent(in)    :: async
+
+integer :: should_block, should_sync
+
+! debug messages, off by default
+logical :: verbose
+
+verbose = .false.
+
+
+! if async = 0 or 2, no synchronizing needed.  return now.
+if (async == 0) then
+   if (verbose) write(*,*) 'work_to_do: false, but async=0, PE', my_task_id()
+   return
+endif
+if (async == 2) then
+   if (verbose) write(*,*) 'work_to_do: false, but async=2, PE', my_task_id()
+   return
+endif
+
+
+! If only task 0 is handling the advances for all tasks, we have to 
+! be sure they are all done writing out the ic files, and then afterwards
+! that they do not try to read the ud files before they are done.  
+! Also, this task needs to block, not spin, while the model advances.
+
+if (async == 4) then
+
+   ! make sure all tasks have finished writing their initial condition
+   ! files before letting process 0 start the model advances.
+   if (verbose) write(*,*) 'work_to_do: false, async=4, sync1, PE', my_task_id()
+   call task_sync()
+
+   ! collective call to see if the code is planning to block or not.
+   ! do not block only on this tasks behalf.  if no one needs to block, 
+   ! return here.
+   call sum_across_tasks(0, should_block)
+   if (should_block == 0) then
+      if (verbose) write(*,*) 'work_to_do: false, async=4, no sync, PE', my_task_id()
+      return
+   endif
+
+   ! sleep (not spin) until the model advance has finished.
+   if (verbose) write(*,*) 'work_to_do: false, async=4, block, PE', my_task_id()
+   call block_task()
+ 
+   if (verbose) write(*,*) 'work_to_do: false, async=4, done, PE', my_task_id()
+   return
+
+endif
+
+! should not reach here with valid values of async.
+write(errstring,*) 'input.nml - async is ',async,' must be 0, 2, or 4'
+call error_handler(E_ERR, 'work_to_do', errstring, '', '', '')
+
+end subroutine wait_if_needed
 
 !--------------------------------------------------------------------
 
