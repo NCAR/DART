@@ -14,7 +14,7 @@ module assim_tools_mod
 !
 ! A variety of operations required by assimilation.
 
-use      types_mod,       only : r8
+use      types_mod,       only : r8, digits12, PI
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, logfileunit
@@ -675,7 +675,7 @@ if (get_close_buffering .and. .true.) then
          print *, "Percent saved: ", 100. * &
                    (real(num_close_obs_buffered+num_close_states_buffered, r8) /  &
                    (num_close_obs_calls_made+num_close_obs_buffered+ &
-		    num_close_states_calls_made+num_close_states_buffered))
+                    num_close_states_calls_made+num_close_states_buffered))
       endif
    endif
 endif
@@ -701,6 +701,8 @@ real(r8),                    intent(out)   :: net_a
 real(r8) :: ens(ens_size), inflate_inc(ens_size)
 real(r8) :: prior_mean, prior_var, new_val(ens_size)
 integer  :: i, ens_index(ens_size), new_index(ens_size)
+
+real(r8) :: rel_weights(ens_size)
 
 ! Copy the input ensemble to something that can be modified
 ens = ens_in
@@ -751,9 +753,11 @@ else if(filter_kind == 5) then
    call obs_increment_ran_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 else if(filter_kind == 6) then
    call obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
+else if(filter_kind == 7) then
+   call obs_increment_hybrid(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
 else 
    call error_handler(E_ERR,'obs_increment', &
-              'Illegal value of filter_kind in assim_tools namelist [1-6 OK]', &
+              'Illegal value of filter_kind in assim_tools namelist [1-7 OK]', &
               source, revision, revdate)
 endif
 
@@ -1359,6 +1363,370 @@ endif
 expected_true_correl = correl
 
 end subroutine get_correction_from_file
+
+
+
+subroutine obs_increment_hybrid(ens, ens_size, obs, obs_var, obs_inc, rel_weight)
+!------------------------------------------------------------------------
+!
+! Observation space only test of hybrid particle ensemble filter strategy
+! devised in San Antonio. Idea is that ensemble is assumed to be associated
+! with a density function as follows. Take the ensemble points. Find the mid-points
+! between each of these. Will now have 2N - 1 points that divide the line
+! into 2N bins. Put 1/2N of the mass into each bin. This will give 1/N mass
+! between each adjacent ensemble pair, and 1/2N in the two exterior bins.
+! The mass between each ensemble member and the adjacent half points is assumed
+! to be associated with that ensemble member. Now, compute the weights for each
+! ensemble member and normalize. Now, multiply the associated mass by the
+! normalized factor (mass should be conserved). Make the new ensemble points
+! to be so that they partition this updated mass appropriately with the original
+! sampling. Compute increments and return.
+
+! DOESN'T MAINTAIN SPREAD. Outer bins should really have twice as much mass as the rest
+! by the standard bin idea. Try this. Compute the mass in each bin at start as
+! 1/(n+1) in the outer bins; 1 / 2(n + 1) in the inner half bins.
+
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+real(r8), intent(out) :: rel_weight(ens_size)
+
+integer  :: i, e_ind(ens_size)
+real(r8) :: a, prod_weight, total_mass_right, total_mass_left
+real(r8) :: sx, s_x2, prior_mean, prior_var, prior_sd
+real(r8) :: var_ratio, new_var, new_sd, new_mean
+real(r8) :: mass(2*ens_size), weight(ens_size)
+
+! The factor a is not defined for this filter for now (could it be???)
+a = -1.0_r8
+
+! Feb. 6 attempt. Use bins in inner, gaussian tails on outer bins.
+! Feb. 15 revision, switch to all ensemble points have equal associated weights
+! by making outermost bins have only 1/2 the weight they had before
+
+! Do an index sort of the ensemble members
+call index_sort(ens, e_ind, ens_size)
+
+! So, prior distribution is boxcar in the central bins with 1/(n+1) density
+! in each intermediate bin. BUT, distribution on the wings is a normal with
+! 1/(2*n) assuming the standard deviation of the input distribution.
+
+! Begin by computing a weight for each of the prior ensemble members
+do i = 1, ens_size
+   weight(i) = exp(-1.0_r8 * (ens(i) - obs)**2 / (2.0_r8 * obs_var))
+end do
+
+! Compute the s.d. of the ensemble for getting the gaussian wings
+sx         = sum(ens)
+s_x2       = sum(ens * ens)
+prior_mean = sx / ens_size
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+prior_sd = sqrt(prior_var)
+
+! Need to normalize the wings so they have 1/(2*ens_size) mass outside
+! Use cdf to find out how much mass is left of 1st member, right of last
+total_mass_left = norm_cdf(ens(e_ind(1)), prior_mean, prior_sd)
+total_mass_right = 1.0_r8 - norm_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd)
+
+! Find a normalization factor to get tail mass right
+! CAREFUL, THIS DIVISION MIGHT BE UNSTABLE IF total_mass_??? is very small?
+if(total_mass_left > 0.0_r8) then
+   alpha(1) = 1.0_r8 / (total_mass_left * 2.0_r8 * ens_size)
+else
+   alpha(1) = 0.0_r8
+endif
+if(total_mass_right > 0.0_r8) then
+   alpha(2) = 1.0_r8 / (total_mass_right * 2.0_r8 * ens_size)
+else
+   alpha(2) = 0.0_r8
+endif
+
+! Compute the product of the obs error gaussian with the fitted prior gaussian (EAKF)
+var_ratio = obs_var / (prior_var + obs_var)
+new_var = var_ratio * prior_var
+new_sd = sqrt(new_var)
+new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+! REMEMBER, this product has an associated weight which must be taken into account
+prod_weight =  2.71828_r8 ** (-0.5_r8 * (prior_mean**2 / prior_var + &
+      obs**2 / obs_var - new_mean**2 / new_var))
+
+! Split into 2*ens_size domains; mass in each is computed
+! Start by computing mass in the outermost (gaussian) regions
+mass(1) = norm_cdf(ens(e_ind(1)), new_mean, new_sd) * alpha(1) * prod_weight
+mass(2*ens_size) = (1.0_r8 - norm_cdf(ens(e_ind(ens_size)), new_mean, &
+   new_sd)) * alpha(2) * prod_weight
+
+! Compute mass in the inner half boxes that have ensemble point on the left
+do i = 2, 2*ens_size - 2, 2
+   mass(i) = (1.0_r8 / (2.0_r8 * ens_size) ) * weight(e_ind(i/2))
+end do
+
+! Now right inner half boxes
+do i = 3, 2*ens_size - 1, 2
+   mass(i) = (1.0_r8 / (2.0_r8 * ens_size)) * weight(e_ind(i/2 + 1))
+end do
+
+! Now normalize the mass in the different bins
+mass = mass / sum(mass)
+
+! Compute the relative weight for each ensemble member (sum of surrounding domains)
+do i = 1, ens_size
+   rel_weight(e_ind(i)) = mass(2*i - 1) + mass(2*i)
+end do
+
+! Here, go directly to increments from weights
+call update_ens_from_weights(ens, ens_size, rel_weight, obs_inc)
+
+end subroutine obs_increment_hybrid
+
+
+subroutine update_ens_from_weights(ens, ens_size, rel_weight, ens_inc)
+!------------------------------------------------------------------------
+! Given relative weights for an ensemble, compute increments for the
+! ensemble members. Assumes that prior distributon is equal uniform mass
+! between each ensemble member. On the edges, have a normal with the
+! sample mean and s.d. BUT normalized by a factor alpha so that only
+! 1/(2*ens_size) of the total mass lies on each flank.
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), rel_weight(ens_size)
+real(r8), intent(out) :: ens_inc(ens_size)
+
+integer  :: i, j, lowest_box
+integer  :: e_ind(ens_size)
+real(r8) :: x(1:2*ens_size - 1), cumul_mass(1:2*ens_size - 1), new_ens(ens_size)
+real(r8) :: sort_inc(ens_size), updated_mass(2 * ens_size)
+real(r8) :: sx, prior_mean, prior_var, prior_sd, mass
+real(r8) :: total_mass_left, total_mass_right, alpha(2)
+
+! Do an index sort of the ensemble members
+call index_sort(ens, e_ind, ens_size)
+
+! Have half boxes between all ensembles in the interior
+! Total number of mass boxes is 2*ens_size
+
+! Compute the points that bound all the updated mass boxes; start with ensemble
+do i = 1, ens_size
+   x(2*i - 1) = ens(e_ind(i))
+end do
+! Compute the mid-point interior boundaries; these are halfway between ensembles
+do i = 2, 2*ens_size - 2, 2
+   x(i) = (x(i - 1) + x(i + 1)) / 2.0_r8
+end do
+
+! Compute the mean and s.d. of the prior ensemble to handle wings
+sx         = sum(ens)
+prior_mean = sx / ens_size
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+prior_sd = sqrt(prior_var)
+
+! Need to normalize the wings so they have 1/(2*ens_size) mass outside
+! Use cdf to find out how much mass is left of 1st member, right of last
+total_mass_left = norm_cdf(ens(e_ind(1)), prior_mean, prior_sd)
+total_mass_right = 1.0_r8 - norm_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd)
+
+! Find the mass in each division given the initial equal partition and the weights
+updated_mass(1) = rel_weight(e_ind(1)) / (2.0_r8 * ens_size)
+updated_mass(2 * ens_size) = rel_weight(e_ind(ens_size)) / (2.0_r8 * ens_size)
+do i = 2, 2*ens_size - 2, 2
+   updated_mass(i) = rel_weight(e_ind(i / 2)) / (2.0_r8 * ens_size)
+end do
+do i = 3, 2*ens_size - 1, 2
+   updated_mass(i) = rel_weight(e_ind((i+1) / 2)) / (2.0_r8 * ens_size)
+end do
+
+! Normalize the mass; (COULD IT EVER BE 0 necessitating error check?)
+updated_mass = updated_mass / sum(updated_mass)
+
+! Find a normalization factor to get tail mass right
+if(total_mass_left > 0.0_r8) then
+   alpha(1) = updated_mass(1) / total_mass_left
+else
+   alpha(1) = 0.0_r8
+endif
+if(total_mass_right > 0.0_r8) then
+   alpha(2) = updated_mass(2 * ens_size) / total_mass_right
+else
+   alpha(2) = 0.0_r8
+endif
+
+! Find cumulative mass at each box boundary and middle boundary
+cumul_mass(1) = updated_mass(1)
+do i = 2, 2*ens_size - 1
+   cumul_mass(i) = cumul_mass(i - 1) + updated_mass(i)
+end do
+
+! Get resampled position an inefficient way
+! Need 1/ens_size between each EXCEPT for outers which get half of this
+mass = 1.0_r8 / (2.0_r8 * ens_size)
+
+do i = 1, ens_size
+   ! If it's in the inner or outer range have to use normal
+   if(mass < cumul_mass(1)) then
+      ! In the first normal box
+      call weighted_norm_inv(alpha(1), prior_mean, prior_sd, mass, new_ens(i))
+   else if(mass > cumul_mass(2*ens_size - 1)) then
+      ! In the last normal box; Come in from the outside
+      call weighted_norm_inv(alpha(2), prior_mean, prior_sd, 1.0_r8 - mass, new_ens(i))
+      new_ens(i) = prior_mean + (prior_mean - new_ens(i))
+   else
+      ! In one of the inner uniform boxes. Make this much more efficient search?
+      lowest_box = 1
+      FIND_BOX:do j = lowest_box, 2 * ens_size - 2
+         ! Find the box that this mass is in
+         if(mass >= cumul_mass(j) .and. mass <= cumul_mass(j + 1)) then
+            new_ens(i) = x(j) + ((mass - cumul_mass(j)) / (cumul_mass(j+1) - cumul_mass(j))) * &
+               (x(j + 1) - x(j))
+            ! Don't need to search lower boxes again
+            lowest_box = j
+            exit FIND_BOX
+         end if
+      end do FIND_BOX
+   endif
+   ! Want equally partitioned mass in update with exception that outermost boxes have half
+   mass = mass + 1.0_r8 / ens_size
+end do
+
+! Can now compute sorted increments
+do i = 1, ens_size
+   sort_inc(i) = new_ens(i) - ens(e_ind(i))
+end do
+
+! Now, need to convert to increments for unsorted
+do i = 1, ens_size
+   ens_inc(e_ind(i)) = sort_inc(i)
+end do
+
+end subroutine update_ens_from_weights
+
+
+!------------------------------------------------------------------------
+
+function norm_cdf(x_in, mean, sd)
+
+! Approximate cumulative distribution function for normal
+! with mean and sd evaluated at point x_in
+! Only works for x>= 0.
+
+real(r8)             :: norm_cdf
+real(r8), intent(in) :: x_in, mean, sd
+
+real(digits12) :: x, p, b1, b2, b3, b4, b5, t, density, nx
+
+! Convert to a standard normal
+nx = (x_in - mean) / sd
+
+x = abs(nx) 
+
+
+! Use formula from Abramowitz and Stegun to approximate
+p = 0.2316419_digits12
+b1 = 0.319381530_digits12
+b2 = -0.356563782_digits12
+b3 = 1.781477937_digits12
+b4 = -1.821255978_digits12
+b5 = 1.330274429_digits12
+
+t = 1.0_digits12 / (1.0_digits12 + p * x)
+
+density = (1.0_digits12 / sqrt(2.0_digits12 * PI)) * exp(-x*x / 2.0_digits12)
+
+norm_cdf = 1.0_digits12 - density * &
+   ((((b5 * t + b4) * t + b3) * t + b2) * t + b1) * t
+
+if(nx < 0.0_digits12) norm_cdf = 1.0_digits12 - norm_cdf
+
+!write(*, *) 'cdf is ', norm_cdf
+
+end function norm_cdf
+
+
+!------------------------------------------------------------------------
+
+subroutine weighted_norm_inv(alpha, mean, sd, p, x)
+
+! Find the value of x for which the cdf of a N(mean, sd) multiplied times
+! alpha has value p.
+
+real(r8), intent(in)  :: alpha, mean, sd, p
+real(r8), intent(out) :: x
+
+real(r8) :: np
+
+! Can search in a standard normal, then multiply by sd at end and add mean
+! Divide p by alpha to get the right place for weighted normal
+np = p / alpha
+
+! Find spot in standard normal
+call norm_inv(np, x)
+
+! Add in the mean and normalize by sd
+x = mean + x * sd
+
+end subroutine weighted_norm_inv
+
+
+!------------------------------------------------------------------------
+
+subroutine norm_inv(p, x)
+
+real(r8), intent(in)  :: p
+real(r8), intent(out) :: x
+
+! normal inverse
+! translate from http://home.online.no/~pjacklam/notes/invnorm
+! a routine written by john herrero
+
+real(r8) :: p_low,p_high
+real(r8) :: a1,a2,a3,a4,a5,a6
+real(r8) :: b1,b2,b3,b4,b5
+real(r8) :: c1,c2,c3,c4,c5,c6
+real(r8) :: d1,d2,d3,d4
+real(r8) :: q,r
+a1 = -39.69683028665376_digits12
+a2 =  220.9460984245205_digits12
+a3 = -275.9285104469687_digits12
+a4 =  138.357751867269_digits12
+a5 = -30.66479806614716_digits12
+a6 =  2.506628277459239_digits12
+b1 = -54.4760987982241_digits12
+b2 =  161.5858368580409_digits12
+b3 = -155.6989798598866_digits12
+b4 =  66.80131188771972_digits12
+b5 = -13.28068155288572_digits12
+c1 = -0.007784894002430293_digits12
+c2 = -0.3223964580411365_digits12
+c3 = -2.400758277161838_digits12
+c4 = -2.549732539343734_digits12
+c5 =  4.374664141464968_digits12
+c6 =  2.938163982698783_digits12
+d1 =  0.007784695709041462_digits12
+d2 =  0.3224671290700398_digits12
+d3 =  2.445134137142996_digits12
+d4 =  3.754408661907416_digits12
+p_low  = 0.02425_digits12
+p_high = 1_digits12 - p_low
+! Split into an inner and two outer regions which have separate fits
+if(p < p_low) then
+   q = sqrt(-2.0_digits12 * log(p))
+   x = (((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
+      ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
+else if(p > p_high) then
+   q = sqrt(-2.0_digits12 * log(1.0_digits12 - p))
+   x = -(((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / &
+      ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0_digits12)
+else 
+   q = p - 0.5_digits12
+   r = q*q
+   x = (((((a1*r + a2)*r + a3)*r + a4)*r + a5)*r + a6)*q / &
+      (((((b1*r + b2)*r + b3)*r + b4)*r + b5)*r + 1.0_digits12)
+endif
+
+end subroutine norm_inv
+
+!------------------------------------------------------------------------
+
 
 
 !========================================================================
