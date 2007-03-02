@@ -33,7 +33,8 @@ use       cov_cutoff_mod, only : comp_cov_factor
 
 use       reg_factor_mod, only : comp_reg_factor
 
-use         location_mod, only : location_type, get_close_type, get_close_obs_destroy
+use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
+                                 operator(==), set_location_missing
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index
@@ -70,7 +71,7 @@ logical                :: first_get_correction = .true.
 real(r8)               :: exp_true_correl(200), alpha(200)                                                                      
 ! CVS Generated file description for error handling, do not edit
 character(len=128), parameter :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/assim_tools/assim_tools_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -159,6 +160,8 @@ real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
 real(r8) :: close_obs_dist(obs_ens_handle%my_num_vars)
 real(r8) :: close_state_dist(ens_handle%my_num_vars)
+real(r8) :: last_close_obs_dist(obs_ens_handle%my_num_vars)
+real(r8) :: last_close_state_dist(ens_handle%my_num_vars)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer  :: my_obs(obs_ens_handle%my_num_vars), my_state(ens_handle%my_num_vars)
@@ -166,12 +169,17 @@ integer  :: this_obs_key, obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: close_state_ind(ens_handle%my_num_vars)
+integer  :: last_close_obs_ind(obs_ens_handle%my_num_vars)
+integer  :: last_close_state_ind(ens_handle%my_num_vars)
 integer  :: num_close_obs, obs_index, num_close_states, state_index
-integer  :: total_num_close_obs
+integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
 integer  :: base_obs_kind, my_obs_kind(obs_ens_handle%my_num_vars)
 integer  :: my_state_kind(ens_handle%my_num_vars)
+integer  :: num_close_obs_buffered, num_close_states_buffered
+integer  :: num_close_obs_calls_made, num_close_states_calls_made
 
-type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars), base_obs_loc
+type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
+type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
 type(location_type)  :: my_state_loc(ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
@@ -182,15 +190,20 @@ type(time_type)      :: obs_time
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_obs_inflate
+logical :: get_close_buffering
 
 !PAR: THIS SHOULD COME FROM SOMEWHERE ELSE AND BE NAMELIST CONTOLLED
 real(r8) :: qc_threshold = 10.0_r8
+
 
 ! Initialize assim_tools_module if needed
 if(.not. module_initialized) then
    call assim_tools_init
    module_initialized = .true.
 endif
+
+! turn on and off the close buffering
+get_close_buffering = .true.
 
 ! For performance, make local copies of these settings which
 ! are really in the inflate derived type.
@@ -273,6 +286,24 @@ call get_close_obs_init(gc_state, my_num_state, my_state_loc)
 ! Initialize the method for getting obs close to a given ob on my process
 call get_close_maxdist_init(gc_obs, 2.0_r8*cutoff)
 call get_close_obs_init(gc_obs, my_num_obs, my_obs_loc)
+
+if (get_close_buffering == .true.) then
+   ! Initialize last obs and state get_close lookups, to take advantage below 
+   ! of sequential observations at the same location (e.g. U,V, possibly T,Q)
+   ! (this is getting long enough it probably should go into a subroutine. nsc.)
+   last_base_obs_loc           = set_location_missing()
+   last_base_states_loc        = set_location_missing()
+   last_num_close_obs          = -1
+   last_num_close_states       = -1
+   last_close_obs_ind(:)       = -1
+   last_close_state_ind(:)     = -1
+   last_close_obs_dist(:)      = 888888.0_r8   ! something big, not small
+   last_close_state_dist(:)    = 888888.0_r8   ! ditto
+   num_close_obs_buffered      = 0
+   num_close_states_buffered   = 0
+   num_close_obs_calls_made    = 0
+   num_close_states_calls_made = 0
+endif
 
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
@@ -405,8 +436,25 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    end do
 
    ! Need to get obs density first in case of adaptive localization
-   call get_close_obs(gc_obs, base_obs_loc, base_obs_kind, my_obs_loc, my_obs_kind, &
-      num_close_obs, close_obs_ind, close_obs_dist)
+   if (.not. get_close_buffering) then
+      call get_close_obs(gc_obs, base_obs_loc, base_obs_kind, my_obs_loc, my_obs_kind, &
+         num_close_obs, close_obs_ind, close_obs_dist)
+   else
+      if (base_obs_loc == last_base_obs_loc) then
+         num_close_obs     = last_num_close_obs
+         close_obs_ind(:)  = last_close_obs_ind(:)
+         close_obs_dist(:) = last_close_obs_dist(:)
+         num_close_obs_buffered = num_close_obs_buffered + 1
+      else
+         call get_close_obs(gc_obs, base_obs_loc, base_obs_kind, my_obs_loc, my_obs_kind, &
+            num_close_obs, close_obs_ind, close_obs_dist)
+         last_base_obs_loc      = base_obs_loc
+         last_num_close_obs     = num_close_obs
+         last_close_obs_ind(:)  = close_obs_ind(:)
+         last_close_obs_dist(:) = close_obs_dist(:)
+         num_close_obs_calls_made = num_close_obs_calls_made +1
+      endif
+   endif
 
    ! For adaptive localization, need number of other obs close to the chosen observation
    cutoff_rev = cutoff
@@ -427,8 +475,25 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
-   call get_close_obs(gc_state, base_obs_loc, base_obs_kind, my_state_loc, my_state_kind, &
-      num_close_states, close_state_ind, close_state_dist)
+   if (.not. get_close_buffering) then
+      call get_close_obs(gc_state, base_obs_loc, base_obs_kind, my_state_loc, my_state_kind, &
+         num_close_states, close_state_ind, close_state_dist)
+   else
+      if (base_obs_loc == last_base_states_loc) then
+         num_close_states    = last_num_close_states
+         close_state_ind(:)  = last_close_state_ind(:)
+         close_state_dist(:) = last_close_state_dist(:)
+         num_close_states_buffered = num_close_states_buffered + 1
+      else
+         call get_close_obs(gc_state, base_obs_loc, base_obs_kind, my_state_loc, my_state_kind, &
+            num_close_states, close_state_ind, close_state_dist)
+         last_base_states_loc     = base_obs_loc
+         last_num_close_states    = num_close_states
+         last_close_state_ind(:)  = close_state_ind(:)
+         last_close_state_dist(:) = close_state_dist(:)
+         num_close_states_calls_made = num_close_states_calls_made + 1 
+      endif
+   endif
 
    ! Loop through to update each of my state variables that is potentially close
    STATE_UPDATE: do j = 1, num_close_states
@@ -596,6 +661,22 @@ endif
 call destroy_obs(observation)
 call get_close_obs_destroy(gc_state)
 call get_close_obs_destroy(gc_obs)
+
+! diagnostics
+if (get_close_buffering) then
+   print *, "Total number of calls made    to get_close_obs for obs:    ", num_close_obs_calls_made
+   print *, "Total number of calls avoided to get_close_obs for obs:    ", num_close_obs_buffered
+   if (num_close_obs_buffered+num_close_obs_calls_made > 0) then 
+      print *, "Percent saved: ", 100. * (real(num_close_obs_buffered, r8) /  &
+                                  (num_close_obs_calls_made + num_close_obs_buffered))
+   endif
+   print *, "Total number of calls made    to get_close_obs for states: ", num_close_states_calls_made
+   print *, "Total number of calls avoided to get_close_obs for states: ", num_close_states_buffered
+   if (num_close_states_buffered+num_close_states_calls_made > 0) then 
+      print *, "Percent saved: ", 100. * (real(num_close_states_buffered, r8)  /  &
+                                  (num_close_states_calls_made + num_close_states_buffered))
+   endif
+endif
 
 end subroutine filter_assim
 
