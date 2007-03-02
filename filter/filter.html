@@ -126,15 +126,42 @@ smoother_mod
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / filter_nml / </em>
- async, adv_ens_command, ens_size, start_from_restart, 
- output_restart, obs_sequence_in_name, obs_sequence_out_name, 
- restart_in_file_name, restart_out_file_name, init_time_days, 
- init_time_seconds, num_output_state_members, 
- num_output_obs_members, output_interval, num_groups, outlier_threshold,
- ncep_qc_threshold, inf_flavor, inf_start_from_restart, 
- inf_output_restart, inf_deterministic, inf_in_file_name, 
- inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, 
- inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
+   async,
+   adv_ens_command,
+   ens_size,
+   start_from_restart,
+   output_restart,
+   obs_sequence_in_name,
+   obs_sequence_out_name,
+   restart_in_file_name,
+   restart_out_file_name,
+   init_time_days,
+   init_time_seconds,
+   first_obs_days,
+   first_obs_seconds,
+   last_obs_days,
+   last_obs_seconds,
+   num_output_state_members,
+   num_output_obs_members,
+   output_interval,
+   num_groups,
+   ncep_qc_threshold,
+   outlier_threshold,
+   output_forward_op_errors,
+   output_timestamps,
+     
+   inf_flavor,
+   inf_start_from_restart,
+   inf_output_restart,
+   inf_deterministic,
+   inf_in_file_name,
+   inf_out_file_name,
+   inf_diag_file_name,
+   inf_initial,
+   inf_sd_initial,
+   inf_lower_bound,
+   inf_upper_bound,
+   inf_sd_lower_bound
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
@@ -241,6 +268,17 @@ being for the posterior inflation.
                         'ncep_qc_threshold' value. Incoming observations have a
                         QC value (usually set by NCEP). 
                         Default: 4.0_r8</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_forward_op_errors</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>True means output errors from forward observation operators.
+                        Default: .false.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_timestamps</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>True means output timestamps before and after the model advance
+                        and the observation assimilation phases.
+                        Default: .false.</TD></TR>
 
  <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br>
                    The first element is for the prior, the second element is 
