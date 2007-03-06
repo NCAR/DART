@@ -53,7 +53,7 @@
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
 \rm -f perfect_model_obs filter obs_diag assim_region column_rand
 \rm -f trans_date_to_dart trans_pv_sv trans_pv_sv_time0 trans_sv_pv
-\rm -f trans_time merge_obs_seq filter_restart
+\rm -f trans_time merge_obs_seq wakeup_filter
 \rm -f *.o *.mod
 
 echo mkmf_preprocess
@@ -131,8 +131,8 @@ if ($status != 0) then
    exit 6
 endif
 
-echo mkmf_filter_restart
-csh  mkmf_filter_restart -mpi
+echo mkmf_wakeup_filter
+csh  mkmf_wakeup_filter -mpi
 make || exit 11
 
 \rm -f *.o *.mod

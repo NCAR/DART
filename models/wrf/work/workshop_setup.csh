@@ -53,7 +53,7 @@
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
 \rm -f perfect_model_obs filter obs_diag assim_region dart_tf_wrf
 \rm -f ensemble_init update_wrf_bc extract select merge_obs_seq
-\rm -f convertdate pert_wrf_bc
+\rm -f convertdate pert_wrf_bc wakeup_filter
 \rm -f *.o *mod
 
 echo mkmf_preprocess
@@ -122,12 +122,7 @@ make || exit 18
 
 \rm -f *.o *.mod
 
-echo 'mkmf_filter'
-csh   mkmf_filter
-echo 'updating Makefile for MPI'
-\cp -f Makefile Makefile.back
-sed -e 's/(LD)/(MPILD)/' -e 's/(FC)/(MPIFC)/' Makefile.back >! Makefile
-\rm -f Makefile.back
+csh   mkmf_filter -mpi
 make
 
 if ($status != 0) then
@@ -137,6 +132,9 @@ if ($status != 0) then
    echo
    exit 6
 endif
+
+csh   mkmf_wakeup_filter -mpi
+make
 
 \rm -f *.o *.mod
 

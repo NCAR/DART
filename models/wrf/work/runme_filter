@@ -1,9 +1,14 @@
 #!/bin/tcsh 
-
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2006, Data Assimilation Research Section, 
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# $Id$
+#
 # start at a generic run script for the mpi version.  this should probably
 # end up in the shell scripts directory - but it is here for now.  nsc.
-
-# this code shamelessly stolen from tim.
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
 # LSF is used on the IBM   Linux cluster 'lightning'
@@ -23,8 +28,9 @@
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -q regular
-#BSUB -n 32
+#BSUB -q standby
+#BSUB -n 4
+##BSUB -P nnnnnnnn
 #BSUB -W 1:00
 #
 #
@@ -51,7 +57,18 @@
 #PBS -e filter.err
 #PBS -o filter.log
 #PBS -q medium
-#PBS -l nodes=16:ppn=2
+#PBS -l nodes=4:ppn=2
+
+echo ""
+
+# if async=2, e.g. you are going to run 'mpirun -np 1 wrf.exe', so each 
+# processor advances one ensemble independently of the others, leave this 
+# as false.
+# if async=4, e.g.  all the processors advance each wrf.exe in turn with
+# mpirun -np 64 wrf.exe (or whatever) for as many ensembles as you have,
+# set this to "true"
+
+setenv parallel_model "false"
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -64,7 +81,61 @@ if ($?LS_SUBCWD) then
    # LSF has a list of processors already in a variable (LSB_HOSTS)
    #  alias submit 'bsub < \!*'
 
-   mpirun.lsf ./filter
+
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+   
+     mpirun.lsf ./filter
+   
+   else
+   
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
+     rm -f filter.status 
+     mkfifo filter.status 
+   
+     # this starts filter but also returns control back to
+     # this script immediately.
+     (mpirun.lsf  ./filter; echo finished > filter.status) &
+      
+     while ( -e filter.status )
+       
+       set todo=`( echo $< ) < filter.status`
+       echo todo received, value = ${todo}
+       
+       if ( "${todo}" == "finished" ) then
+         echo main script: filter done.
+         break                                
+       else if ( "${todo}" == "advance" ) then
+         
+         # the second number below (16) must match the number
+         # of ensembles.  and in input.nml, the advance model
+         # command must have -np N with N equal to the number
+         # of processors this job is using.
+   
+         echo calling real advance now:                
+         ./advance_model.csh 0 16 filter_control00000  true
+         
+         echo restarting filter.     
+         mpirun.lsf  ./wakeup_filter
+         echo done > filter.status
+       
+       else
+         
+         echo main script: unexpected value received.
+         break
+       
+       endif
+      
+     end
+      
+     echo filter finished, removing pipe.
+     rm -f filter.status
+   
+   endif
    
 
 else if ($?PBS_O_WORKDIR) then
@@ -72,18 +143,73 @@ else if ($?PBS_O_WORKDIR) then
    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
    #  alias submit 'qsub \!*'
 
-   mpirun ./filter
+
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+   
+     mpirun.lsf ./filter
+   
+   else
+   
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
+     rm -f filter.status 
+     mkfifo filter.status 
+   
+     # this starts filter but also returns control back to
+     # this script immediately.
+     (mpirun.lsf  ./filter; echo finished > filter.status) &
+      
+     while ( -e filter.status )
+       
+       set todo=`( echo $< ) < filter.status`
+       echo todo received, value = ${todo}
+       
+       if ( "${todo}" == "finished" ) then
+         echo main script: filter done.
+         break                                
+       else if ( "${todo}" == "advance" ) then
+         
+         # the second number below (16) must match the number
+         # of ensembles.  and in input.nml, the advance model
+         # command must have -np N with N equal to the number
+         # of processors this job is using.
+   
+         echo calling real advance now:                
+         ./advance_model.csh 0 16 filter_control00000  true
+         
+         echo restarting filter.     
+         mpirun.lsf  ./wakeup_filter
+         echo done > filter.status
+       
+       else
+         
+         echo main script: unexpected value received.
+         break
+       
+       endif
+      
+     end
+      
+     echo filter finished, removing pipe.
+     rm -f filter.status
+   
+   endif
+   
 
 else if ($?OCOTILLO_NODEFILE) then
 
-   # ocotillo is a 'special case'. It is the only cluster I know of with
-   # no queueing system.  You must generate a list of processors in a
-   # file whose name is in $OCOTILLO_NODEFILE.  For example ...
+   # ocotillo runs without a queueing system.  Generate a list 
+   # of run nodes in $OCOTILLO_NODEFILE.  For example ...
    # setenv OCOTILLO_NODEFILE  my_favorite_processors
    # echo "node1"  > $OCOTILLO_NODEFILE
    # echo "node5" >> $OCOTILLO_NODEFILE
    # echo "node7" >> $OCOTILLO_NODEFILE
    # echo "node3" >> $OCOTILLO_NODEFILE
+   # then run this.
    #  alias submit 'csh \!*'
 
    echo "running with nodes specified in $OCOTILLO_NODEFILE"
@@ -96,7 +222,66 @@ else if ($?OCOTILLO_NODEFILE) then
  # echo "./filter"                               >> filterscript
  # mpirun -machinefile ${OCOTILLO_NODEFILE} -np 1 ./filterscript
 
-   mpirun -machinefile ${OCOTILLO_NODEFILE} -np 1 ./filter
+   # set this to the number of tasks you want to use.
+   setenv num_procs 4
+
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+   
+     mpirun -machinefile ${OCOTILLO_NODEFILE} -np ${num_procs} ./filter
+   
+   else
+   
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
+     rm -f filter.status 
+     mkfifo filter.status 
+   
+     # this starts filter but also returns control back to
+     # this script immediately.  when filter exists, it writes
+     # into the pipe file.
+     (mpirun -machinefile ${OCOTILLO_NODEFILE} -np ${num_procs} ./filter; echo finished > filter.status) &
+      
+     while ( -e filter.status )
+       
+       set todo=`( echo $< ) < filter.status`
+       echo todo received, value = ${todo}
+       
+       if ( "${todo}" == "finished" ) then
+         echo main script: filter done.
+         break                                
+       else if ( "${todo}" == "advance" ) then
+         
+         # the second number below (16) must match the number
+         # of ensembles.  and in input.nml, the advance model
+         # command must have -np N with N equal to the number
+         # of processors this job is using.
+   
+         echo calling real advance now:                
+         ./advance_model.csh 0 16 filter_control00000  true
+         
+         echo restarting filter.     
+         mpirun -machinefile ${OCOTILLO_NODEFILE} -np ${num_procs} ./wakeup_filter
+         echo done > filter.status
+       
+       else
+         
+         echo main script: unexpected value received.
+         break
+       
+       endif
+      
+     end
+      
+     echo filter finished, removing pipe.
+     rm -f filter.status
+   
+   endif
+   
+
 
 else
 

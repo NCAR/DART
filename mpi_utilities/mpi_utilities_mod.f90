@@ -90,7 +90,7 @@ module mpi_utilities_mod
 !                         Note that this must be an entirely separate executable
 !                         from the one which called block_task(), because it is
 !                         asleep like Sleeping Beauty and cannot wake itself.
-!                         See filter and filter_restart for examples
+!                         See filter and wakeup_filter for examples
 !                         of a program pair which uses these calls.
 ! 
 !
@@ -1015,7 +1015,7 @@ subroutine block_task()
 ! though named pipes are created in the filesystem, they are
 ! implemented in the kernel, so on a multiprocessor machine
 ! the write into the pipe file must occur on the same PE as
-! the reader is waiting.  see the 'filter_restart' program for
+! the reader is waiting.  see the 'wakeup_filter' program for
 ! the MPI job which spreads out on all the PEs for this job
 ! and writes into the file from the correct PE.
 
