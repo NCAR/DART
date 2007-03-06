@@ -5,10 +5,11 @@ MODULE module_namelist
   IMPLICIT NONE
 
 ! record 1
-  LOGICAL :: init_f, rnd_init, rnd_force
-  CHARACTER(len=3)  :: init_f_type
+  LOGICAL :: init_f 
+  CHARACTER(len=3)  :: init_f_type, force_f_type
   CHARACTER(len=15) :: bl_pbl_physics,sf_sfclay_physics,sf_surface_physics,&
        &bucket_model
+  INTEGER :: rnd_init, rnd_force     
   REAL :: dt,deep_soil_moisture
   INTEGER :: nz
   INTEGER :: n_moist,P_QV,P_QC,P_QR,P_QI,P_QS,P_QG
@@ -19,17 +20,18 @@ MODULE module_namelist
 ! record 2
   CHARACTER(len=120) :: init_f_file,out_f_file,init_soil_file,&
                         init_flux_file, init_smos_file, uvg_file,&
-                        &sfc_file
+                        &sfc_file,&
+                        eofs_file_init, eofs_file_forc
   LOGICAL :: output_state_vector, force_uvg, force_flux, calc_sfc, &
              calc_ust, t_advection, qv_advection 
   INTEGER :: start_year_f, start_month_f, start_day_f, &
              start_hour_f, interval_f, interval_flux, &
              interval_soil, interval_smos, interval_sfc,&
              &start_minute_f, &
-             start_forecast, forecast_length, interval_uvg
+             start_forecast, forecast_length, interval_uvg,n_eo
   INTEGER :: splineinterval, splineinterval_flux, splineinterval_smos,&
        &splineinterval_sfc, splineinterval_advection
-  REAL :: outfinterval
+  REAL :: outfinterval, scales
   INTEGER :: rnd_seed_val
   REAL :: z_g
 
@@ -60,7 +62,7 @@ CONTAINS
     
     INTEGER, INTENT(IN)  :: logfileunit, unit_nml
     
-    NAMELIST /RECORD1/ init_f,init_f_type,bl_pbl_physics,&
+    NAMELIST /RECORD1/ init_f,init_f_type,force_f_type,bl_pbl_physics,&
          &sf_sfclay_physics,sf_surface_physics,&
          bucket_model,&
          dt,deep_soil_moisture,P_QV,P_QC,P_QR,P_QI,P_QS,P_QG,&
@@ -68,6 +70,7 @@ CONTAINS
     
     NAMELIST /RECORD2/ init_f_file,out_f_file,init_soil_file,&
                         init_flux_file, init_smos_file, uvg_file, &
+                        eofs_file_init, eofs_file_forc,&
                         sfc_file,output_state_vector, force_uvg, &
                         &calc_sfc, calc_ust, t_advection, qv_advection, &
                         start_year_f, start_month_f, start_day_f, &
@@ -80,7 +83,7 @@ CONTAINS
                         splineinterval_smos,splineinterval_sfc,&
                         splineinterval_advection, &
                         outfinterval,&
-                        rnd_seed_val,z_g
+                        rnd_seed_val,z_g,n_eo,scales
 
     NAMELIST /RECORD3/ odayfraction,totdayfraction,outinterval,&
          dtamplitude_ref,dtdz_ref,u_g_ref,v_g_ref,qsrat_ref,rland_ref,&
@@ -167,6 +170,8 @@ CONTAINS
     init_flux_file=TRIM(indir)//'/'//init_flux_file
     init_smos_file=TRIM(indir)//'/'//init_smos_file
     uvg_file=TRIM(indir)//'/'//uvg_file
+    eofs_file_init=TRIM(indir)//'/'//eofs_file_init
+    eofs_file_forc=TRIM(indir)//'/'//eofs_file_forc
     sfc_file=TRIM(indir)//'/'//sfc_file
 
   END SUBROUTINE do_namelist_wrf1d

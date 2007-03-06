@@ -35,6 +35,7 @@ models/PBL_1d/src/module_namelist.F
 models/PBL_1d/src/module_nr_procedures.F
 models/PBL_1d/src/module_pbl_driver.F
 models/PBL_1d/src/module_sf_myjsfc.F
+models/PBL_1d/src/module_sf_urban.F
 models/PBL_1d/src/module_sf_noahlsm.F
 models/PBL_1d/src/module_sf_ruclsm.F
 models/PBL_1d/src/module_sf_sfcdiags.F

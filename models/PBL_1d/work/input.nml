@@ -1,97 +1,80 @@
 &perfect_model_obs_nml
-   async = 0,
-   adv_ens_command = "./advance_ens.csh",
-   obs_seq_in_file_name = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   start_from_restart = .false.,
-   output_restart = .false.,
-   restart_in_file_name = "perfect_ics",
+   start_from_restart    = .false.,
+   output_restart        = .true.,
+   async                 = 0,
+   init_time_days        = 146952,
+   init_time_seconds     = 43200,
+   first_obs_days        = -1,
+   first_obs_seconds     = -1,
+   last_obs_days         = -1,
+   last_obs_seconds      = -1,
+   output_interval       = 1,
+   restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
-   init_time_days = 148074,
-   init_time_seconds = 43200,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   output_interval = 1  /
+   obs_seq_in_file_name  = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   adv_ens_command       = "./advance_model.csh"  /
 
 &filter_nml
-   async = 0,
-   adv_ens_command = "./advance_ens.csh",
-   ens_size = 20, 
-   start_from_restart = .false.,
-   output_restart = .false.,
-   obs_sequence_in_name = "obs_seq.out",
-   obs_sequence_out_name = "obs_seq.final",
-   restart_in_file_name = "filter_ics",
-   restart_out_file_name = "filter_restart", 
-   init_time_days = 148074,
-   init_time_seconds = 43200,
+   async                    = 0,
+   adv_ens_command          = "./advance_model.csh",
+   ens_size                 = 20, 
+   start_from_restart       = .false.,
+   output_restart           = .false.,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart",
+   init_time_days           = 146952,
+   init_time_seconds        = 43200,
    first_obs_days           = -1,
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 10,
-   num_output_obs_members = 0,
-   output_interval = 1,
-   num_groups = 1,
-   ncep_qc_threshold =  4.0,
-   outlier_threshold = -1.0, 
-   output_forward_op_errors = .false. /
+   num_output_state_members = 0,
+   num_output_obs_members   = 0,
+   output_interval          = 1,
+   num_groups               = 1,
+   ncep_qc_threshold        =  4.0,
+   outlier_threshold        = -1.0,
+   output_forward_op_errors = .false.,
+
+   inf_flavor               = 0,                      0,
+   inf_start_from_restart   = .false.,                .false.,
+   inf_output_restart       = .false.,                .false.,
+   inf_deterministic        = .true.,                 .true.,
+   inf_in_file_name         = 'not_initialized',      'not_initialized',
+   inf_out_file_name        = 'not_initialized',      'not_initialized',
+   inf_diag_file_name       = 'not_initialized',      'not_initialized',
+   inf_initial              = 1.0,                    1.0,
+   inf_sd_initial           = 0.0,                    0.0,
+   inf_lower_bound          = 1.0,                    1.0,
+   inf_upper_bound          = 1000000.0,              1000000.0,
+   inf_sd_lower_bound       = 0.0,                    0.0
+/
 
 &ensemble_manager_nml
-   in_core = .true.,
-   single_restart_file_in = .true.,
-   single_restart_file_out = .true. /
+   single_restart_file_in  = .true.,
+   single_restart_file_out = .true.,
+   perturbation_amplitude  = 0.2 /
 
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 1000.,
+   cutoff                          = 0.1,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
-   sampling_error_correction       = .false.,         
-   print_every_nth_obs             = 0,
-   adaptive_localization_threshold = -1 /             
-
-! old values
-!   filter_kind = 1,
-!   cutoff = 1000.,
-!   sort_obs_inc = .false.,
-!   do_parallel = 0,
-!   num_domains = 1,
-!   parallel_command = "./assim_filter.csh",
-!   spread_restoration = .false.,
-!   internal_outlier_threshold = -1.0, 
-!   sampling_error_correction = .false.,
-!   num_close_threshold = 10000000 /
-
-&adaptive_inflate_nml
-   do_obs_inflate = .false.,
-   do_varying_ss_inflate = .false.,
-   do_single_ss_inflate = .false.,
-   start_from_inflate_restart = .false.,
-   output_restart = .true., 
-   deterministic_inflate = .true.,
-   inflate_in_file_name = "inflate_ics",
-   inflate_out_file_name = "inflate_restart",
-   obs_inf_initial = 1.0,
-   obs_inf_sd_initial = 0.0,
-   obs_sd_lower_bound = 0.0,
-   obs_inf_upper_bound = 1000000.0,
-   ss_inf_initial = 1.0,
-   ss_inf_sd_initial = 0.0,
-   ss_sd_lower_bound = 0.0,
-   ss_inf_upper_bound = 1000000.0,
-   diagnostic_file_name = "inflate_diag" /
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   print_every_nth_obs             = 0  /
 
 &cov_cutoff_nml
-   select_localization = 2  /
+   select_localization = 1  /
 
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg" 
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics'  /
+   reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
@@ -108,13 +91,31 @@
                                 'METAR_SURFACE_PRESSURE'  /
 
 &assim_model_nml
-   write_binary_restart_files = .true. /
+   write_binary_restart_files = .false. /
+
+&model_nml
+   num_est_params = 0,
+   est_param_types = 604,
+   pert_init_sd = 0.01,
+   pert_param_sd = 0.0,
+   pert_init_beta_1 = -1,
+   pert_init_beta_2 = -1,
+   pert_param_min = 0.00000001,
+   pert_param_max = 0.99999999,
+   maintain_initial_spread = .false.,
+   dist_shape = 'beta', 
+   real_obs_period = 1800, 
+   start_real_obs = 1800  /
+
+&create_real_network
+  seconds_start = 43200
+  obs_period    =  3600  /
 
 &location_nml
-   horiz_dist_only = .true.,
+   horiz_dist_only = .false.,
    vert_normalization_pressure = 100000.0, 
-   vert_normalization_height = 10000.0,
-   vert_normalization_level = 20.0,
+   vert_normalization_height = 25000.0,
+   vert_normalization_level = 32.0,
    approximate_distance = .false. /
 
 &utilities_nml
@@ -131,8 +132,8 @@
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
-   first_bin_center =  2006, 6, 1, 0, 0, 0,
-   last_bin_center  =  2006, 6, 2, 0, 0, 0,
+   first_bin_center =  2003, 5, 6, 0, 0, 0,
+   last_bin_center  =  2003, 5, 7, 0, 0, 0,
    bin_separation   =     0, 0, 0, 1, 0, 0,
    bin_width        =     0, 0, 0, 1, 0, 0,
    time_to_skip     =     0, 0, 0, 0, 0, 0,
@@ -143,7 +144,7 @@
    obs_select = 1,
    Nregions   = 1,
    rat_cri    = 3.0,
-   ncep_qc_threshold = 4.0,
+   qc_threshold = 4.0,
    lonlim1    =   0.0,
    lonlim2    = 360.0,
    latlim1    = -90.0,
@@ -156,17 +157,3 @@
    filename_seq    = 'obs_seq.one', 'obs_seq.two',
    filename_out    = 'obs_seq.merged'   /
 
-&model_nml
-   num_est_params = 0,
-   est_param_types = 604,
-   pert_init_sd = 0.01,
-   pert_param_sd = 0.0,
-   pert_init_beta_1 = -1,
-   pert_init_beta_2 = -1,
-   pert_param_min = 0.00000001,
-   pert_param_max = 0.99999999,
-   maintain_initial_spread = .false.,
-   dist_shape = 'beta', 
-   real_obs_period = 1800, 
-   start_real_obs = 1800  /
- 

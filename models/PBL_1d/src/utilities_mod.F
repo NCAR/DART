@@ -1,15 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module utilities_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/src/utilities_mod.F,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 
 !-----------------------------------------------------------------------
 !
@@ -24,10 +25,6 @@ module utilities_mod
 !      error_handler    Print warning and error messages, 
 !                       terminates program for error messages.
 !
-!      check_nml_error  Checks the iostat returned when reading
-!                       namelists and determines if the error code
-!                       is valid, if not the program is terminated.
-!
 !      open_file        Opens a given file name for i/o and returns
 !                       a unit number.  If the file is already open
 !                       the unit number is returned.
@@ -38,9 +35,29 @@ module utilities_mod
 !      print_version_number    Prints out a routine name and
 !                              version number to a specified unit
 !
+!      set_output       Set the status of printing.  Can be set on a per-task
+!                       basis if you are running with multiple tasks.
+!                       If set to false only warnings and fatal errors will 
+!                       write to the log.
+!
+!      do_output        Logical function which returns whether informational
+!                       messages should be output.  Controlled by the setting
+!                       made from set_output.  Useful for messages which cannot
+!                       go through the normal error handler (e.g. namelists).
+!
+!      set_tasknum      Only called for an MPI job with multiple tasks.
+!                       Sets the 'multi-task' flag and records the local task
+!                       number for later error and info messages.
+!
+!      nc_check         Check netcdf return codes, and if not ok, extract
+!                       the netcdf error string and pass that to the error
+!                       handler routine.  Two optional strings allow the caller
+!                       to provide the subroutine name and some context.
+!
 !-----------------------------------------------------------------------
 
 use types_mod, only : r8
+use netcdf
 
 implicit none
 private
@@ -48,22 +65,23 @@ private
 !   ---- private data for check_nml_error ----
 
 integer, private :: num_nml_error_codes, nml_error_codes(5)
-logical, private :: do_nml_error_init = .true.
-private  nml_error_init
+logical, private :: do_output_flag = .true.
+logical, private :: single_task = .true.
+integer, private :: task_number = 0
 
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
-public :: file_exist, get_unit, check_nml_error, open_file, timestamp, &
-       close_file, register_module, error_handler, logfileunit, &
+public :: file_exist, get_unit, open_file, timestamp, set_tasknum, &
+       close_file, register_module, error_handler, logfileunit, nc_check, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       find_namelist_in_file, check_namelist_read, &
-       E_DBG, E_MSG, E_WARN, E_ERR, &
+       find_namelist_in_file, check_namelist_read, do_output, set_output, &
+       E_DBG, E_MSG, E_WARN, E_ERR, & 
        DEBUG, MESSAGE, WARNING, FATAL
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/src/utilities_mod.F,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -81,8 +99,9 @@ contains
 
 !#######################################################################
 
-   subroutine initialize_utilities(progname)
+   subroutine initialize_utilities(progname, alternatename)
    character(len=*), intent(in), optional :: progname
+   character(len=*), intent(in), optional :: alternatename
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
@@ -90,6 +109,7 @@ contains
    character(len=10) :: ctime
    character(len= 5) :: zone
    integer, dimension(8) :: values
+   character(len=129) :: lname
 
 
       if ( module_initialized ) then ! nothing to do
@@ -127,10 +147,16 @@ contains
             stop 99
          endif
 
-         write(*,*)'Trying to log to unit ', logfileunit
-         write(*,*)'Trying to open file ', trim(adjustl(logfilename))
+         if (present(alternatename)) then
+            lname = alternatename
+         else
+            lname = logfilename
+         endif
 
-         open(logfileunit, file=trim(adjustl(logfilename)), form='formatted', &
+         write(*,*)'Trying to log to unit ', logfileunit
+         write(*,*)'Trying to open file ', trim(adjustl(lname))
+
+         open(logfileunit, file=trim(adjustl(lname)), form='formatted', &
                            position='append', iostat = io )
          if ( io /= 0 ) then
             write(*,*)'FATAL ERROR in initialize_utilities'
@@ -138,7 +164,7 @@ contains
             write(*,*)'  ',trim(revision)
             write(*,*)'  ',trim(revdate)
             write(*,*)'   unable to open the logfile.'
-            write(*,*)'   the intended file name was <',trim(logfilename),'>'
+            write(*,*)'   the intended file name was <',trim(lname),'>'
             write(*,*)'   stopping.'
             stop 99
          endif
@@ -169,8 +195,8 @@ contains
          call register_module(source, revision, revdate)
 
          ! Echo the namelist values for this module using normal mechanism
-         write(logfileunit, nml=utilities_nml)
-         write(     *     , nml=utilities_nml)
+         if (do_output_flag) write(logfileunit, nml=utilities_nml)
+         if (do_output_flag) write(     *     , nml=utilities_nml)
 
       endif
 
@@ -233,6 +259,7 @@ contains
    character(len=*), intent(in) :: src, rev, rdate
 
       if ( .not. module_initialized ) call initialize_utilities
+      if ( .not. do_output_flag) return
 
 
       write(logfileunit,*)
@@ -276,6 +303,7 @@ contains
       integer, dimension(8) :: values
 
       if ( .not. module_initialized ) call initialize_utilities
+      if ( .not. do_output_flag) return
 
       call DATE_AND_TIME(cdate, ctime, zone, values)
 
@@ -509,6 +537,7 @@ contains
 
           select case (iabs(level))
              case (0)
+                if ( .not. do_output_flag) return
                 print *, ' MESSAGE from ',routine(1:len_trim(routine))
                 print *, ' ',message(1:len_trim(message))
              case (1)
@@ -537,24 +566,49 @@ integer, intent(in) :: level
 character(len = *), intent(in) :: routine, text, src, rev, rdate
 character(len = *), intent(in), OPTIONAL :: aut
 
+character(len = 8) :: taskstr
+
 if ( .not. module_initialized ) call initialize_utilities
+
+! current choice is to log all errors and warnings regardless
+! of setting of output flag.  messages only print from those
+! tasks which are allowed to print.
 
 select case(level)
    case (E_MSG)
 
-      write(     *     , *) trim(routine),' ', trim(text)
-      write(logfileunit, *) trim(routine),' ', trim(text)
+      if ( .not. do_output_flag) return
+      if ( single_task ) then
+        write(     *     , *) trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(routine),' ', trim(text)
+      else
+        if (task_number < 10) then
+            write(taskstr, '(a,i1)' ) "PE ", task_number
+        else if (task_number < 100) then
+            write(taskstr, '(a,i2)' ) "PE ", task_number
+        else
+            write(taskstr, '(a,i5)' ) "PE ", task_number
+        endif
+        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
+      endif
 
    case (E_WARN)
 
       write(     *     , *) 'WARNING FROM:'
+      if ( .not. single_task ) &
+      write(     *     , *) '   task id       : ', task_number
       write(     *     , *) '   routine       : ', trim(routine)
       write(     *     , *) '   source file   : ', trim(src)
       write(     *     , *) '   file revision : ', trim(rev)
       write(     *     , *) '   revision date : ', trim(rdate)
+      if(present(aut)) &
+      write(     *     , *) '   last editor   : ', trim(aut)
       write(     *     , *) '   message       : ', trim(text)
 
       write(logfileunit, *) 'WARNING FROM:'
+      if ( .not. single_task ) &
+      write(logfileunit, *) '   task id       : ', task_number
       write(logfileunit, *) '   routine       : ', trim(routine)
       write(logfileunit, *) '   source file   : ', trim(src)
       write(logfileunit, *) '   file revision : ', trim(rev)
@@ -566,13 +620,19 @@ select case(level)
    case(E_ERR)
 
       write(     *     , *) 'ERROR FROM:'
+      if ( .not. single_task ) &
+      write(     *     , *) '   task id       : ', task_number
       write(     *     , *) '   routine       : ', trim(routine)
       write(     *     , *) '   source file   : ', trim(src)
       write(     *     , *) '   file revision : ', trim(rev)
       write(     *     , *) '   revision date : ', trim(rdate)
+      if(present(aut)) &
+      write(     *     , *) '   last editor   : ', trim(aut)
       write(     *     , *) '   message       : ', trim(text)
 
       write(logfileunit, *) 'ERROR FROM:'
+      if ( .not. single_task ) &
+      write(logfileunit, *) '   task id       : ', task_number
       write(logfileunit, *) '   routine       : ', trim(routine)
       write(logfileunit, *) '   source file   : ', trim(src)
       write(logfileunit, *) '   file revision : ', trim(rev)
@@ -588,73 +648,6 @@ if( level >= TERMLEVEL ) call exit( 99 )
 
 end subroutine error_handler
 
-!#######################################################################
-
-function check_nml_error (iostat, nml_name) result (error_code)
-
-   integer,          intent(in) :: iostat
-   character(len=*), intent(in) :: nml_name
-   integer   error_code, i
-   character(len=128) :: err_str
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   if (do_nml_error_init) call nml_error_init
-
-   error_code = iostat
-
-   do i = 1, num_nml_error_codes
-        if (error_code == nml_error_codes(i)) return
-   enddo
-
-!  ------ fatal namelist error -------
-   write (err_str,*) 'while reading namelist ',  &
-                     nml_name(1:len_trim(nml_name)),  &
-                     ', iostat = ',error_code
-
-   call error_handler(E_ERR, 'check_nml_error', &
-            err_str, source, revision, revdate)
-
-end function check_nml_error
-
-!-----------------------------------------------------------------------
-
-subroutine nml_error_init
-
-!   private routine for initializing allowable error codes
-
-   integer  iunit, io, ir
-   real(r8) ::  b=1.0_r8
-   namelist /b_nml/  b
-
-      if ( .not. module_initialized ) call initialize_utilities
-
-      nml_error_codes(1) = 0
-
-!     ---- create dummy namelist file ----
-      iunit=get_unit(); open (iunit, file='_read_error.nml')
-      write (iunit, 10)
-  10  format (' &a_nml  a=1.  /',  &
-             /'-------------------',  &
-             /' &b_nml  e=5.  &end')
-      close (iunit)
-
-!     ---- read namelist file and save error codes ----
-      iunit=get_unit(); open (iunit, file='_read_error.nml')
-      ir=1; io=1; do
-         read  (iunit, nml=b_nml, iostat=io, end=20)
-         if (io == 0) exit
-         ir=ir+1; nml_error_codes(ir)=io
-      enddo
-  20  close (iunit, status='delete')
-
-      num_nml_error_codes = ir
-!del  print *, 'nml_error_codes=', nml_error_codes(1:ir)
-      do_nml_error_init = .false.
-
-end subroutine nml_error_init
-
-!#######################################################################
 !#######################################################################
 
    function open_file (fname, form, action) result (iunit)
@@ -748,6 +741,7 @@ end subroutine nml_error_init
    character(len=8)  :: vers
 
    if ( .not. module_initialized ) call initialize_utilities
+   if ( .not. do_output_flag) return
 
      n = min(len(routine),20); name = adjustl(routine(1:n))
      n = min(len(version), 8); vers = adjustl(version(1:n))
@@ -769,6 +763,56 @@ end subroutine nml_error_init
 
 !#######################################################################
 
+   subroutine set_output (doflag)
+
+! *** set whether output is written to a log file or simply ignored ***
+!
+!    in:  doflag  = whether to output log information or not
+
+   logical, intent(in) :: doflag
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   do_output_flag = doflag
+
+   end subroutine set_output
+
+
+!#######################################################################
+
+   function do_output ()
+
+! *** return whether output should be written from this task ***
+!
+
+   logical :: do_output
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   do_output = do_output_flag
+
+   end function do_output
+
+!#######################################################################
+
+
+   subroutine set_tasknum (tasknum)
+
+! *** for multiple-task jobs, set the task number for error msgs ***
+!
+!    in:  tasknum  = task number, 0 to N-1
+
+   integer, intent(in) :: tasknum
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   single_task = .false. 
+   task_number = tasknum
+
+   end subroutine set_tasknum
+
+
+!#######################################################################
 
 
 subroutine close_file(iunit)
@@ -945,8 +989,38 @@ endif
 
 end subroutine check_namelist_read
 
+!#######################################################################
+
+   subroutine nc_check(istatus, subr_name, context)
+      integer, intent (in)                   :: istatus
+      character(len=*), intent(in)           :: subr_name
+      character(len=*), intent(in), optional :: context
+  
+      character(len=129) :: error_msg
+  
+      ! if no error, nothing to do here.  we are done.
+      if( istatus == nf90_noerr) return
+
+
+      ! something wrong.  construct an error string and call the handler.
+
+      ! context is optional, but is very useful if specified.
+      ! if context + error code > 129, the assignment will truncate.
+      if (present(context) ) then
+          error_msg = trim(context) // ': ' // trim(nf90_strerror(istatus))
+      else
+          error_msg = nf90_strerror(istatus)
+      endif
+
+      ! this does not return 
+      call error_mesg(subr_name, error_msg, FATAL)
+  
+
+   end subroutine nc_check
+
 !=======================================================================
 ! End of utilities_mod
 !=======================================================================
-!
+
 end module utilities_mod
+

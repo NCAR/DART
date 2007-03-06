@@ -18,11 +18,11 @@ CONTAINS
      &                 ,PMID,PINT,TH,T,QV,QC,U,V,Q2                    &
      &                 ,TSK,QSFC,THZ0,QZ0,UZ0,VZ0                      &
      &                 ,LOWLYR,XLAND                                   &
-     &                 ,USTAR,ZNT,PBLH,MAVAIL,RMOL                     &
+     &                 ,USTAR,ZNT,Z0BASE,PBLH,MAVAIL,RMOL              &
      &                 ,AKHS,AKMS                                      &
      &                 ,CHS,CHS2,CQS2,HFX,QFX,FLX_LH,FLHC,FLQC         &
      &                 ,QGH,CPM,CT                                     &
-     &                 ,U10,V10,TSHLTR,TH10,QSHLTR,Q10,PSHLTR          &
+     &          ,U10,V10,T02,TH02,TSHLTR,TH10,Q02,QSHLTR,Q10,PSHLTR    &
      &     ,calc_ust,z_o,z_t,z_q&
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
@@ -40,9 +40,10 @@ CONTAINS
 !
       INTEGER,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: LOWLYR
 !
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: HT,XLAND, MAVAIL
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: HT,MAVAIL      &
+     &                                             ,XLAND,Z0BASE
 !
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(inout) :: TSK
+!
 
       LOGICAL :: calc_ust
 
@@ -54,9 +55,12 @@ CONTAINS
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT) :: FLX_LH,PSHLTR &
      &                                              ,Q10,QSHLTR    &
-     &                                              ,TH10,TSHLTR       &
-     &                                              ,U10,V10
+     &                                              ,TH10,TSHLTR,T02       &
+     &                                              ,U10,V10,TH02,Q02
+
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(in) :: HFX,QFX
+
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(inout) :: TSK
 
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: AKHS,AKMS       &
@@ -78,17 +82,18 @@ CONTAINS
 !***
       INTEGER :: I,J,K,KFLIP,LMH,LPBL,NTSD
 !
-      REAL :: A,ADEN,APESFC,AUBR,B,BDEN,BTGX,BUBR,CWMLOW               &
+      REAL :: A,APESFC,B,BTGX,CWMLOW                                   &
      &       ,DQDT,DTDIF,DTDT,DUDT,DVDT                                &
-     &       ,ELOQ2X,FIS,GHK,GMK                                       &
-     &       ,P02P,P10P,PLOW,PSFC,PTOP,QLOW,QOL2ST,QOL2UN,QS02,QS10    &
+     &       ,FIS                                                      &
+     &       ,P02P,P10P,PLOW,PSFC,PTOP,QLOW,QS02,QS10                  &
      &       ,RAPA,RAPA02,RAPA10,RATIOMX,RDZ,SEAMASK,SM                &
      &       ,T02P,T10P,TEM,TH02P,TH10P,THLOW,THELOW,THM               &
      &       ,TLOW,TZ0,ULOW,VLOW,ZSL
 !
       REAL,DIMENSION(KTS:KTE) :: CWMK,PK,Q2K,QK,THEK,THK,TK,UK,VK
 !
-      REAL,DIMENSION(KTS:KTE-1) :: AKHK,AKMK,EL,ELM,GH,GM
+      REAL,DIMENSION(KTS:KTE-1) :: EL,ELM
+
 !
       REAL,DIMENSION(KTS:KTE+1) :: ZHK
 !
@@ -208,66 +213,24 @@ CONTAINS
             VK(K)=V(I,KFLIP,J)
           ENDDO
 !
-!----------------------------------------------------------------------
-!***  COMPUTE THE HEIGHT OF THE BOUNDARY LAYER
-!----------------------------------------------------------------------
-!
-          DO K=KTS,LMH-1
-            RDZ=2./(ZHK(K)-ZHK(K+2))
-            GMK=((UK(K)-UK(K+1))**2+(VK(K)-VK(K+1))**2)*RDZ*RDZ
-            GM(K)=MAX(GMK,EPSGM)
-!
-            TEM=(TK(K)+TK(K+1))*0.5
-            THM=(THEK(K)+THEK(K+1))*0.5
-!
-            A=THM*P608
-            B=(ELOCP/TEM-1.-P608)*THM
-!
-            GHK=((THEK(K)-THEK(K+1)+CT(I,J))                           &
-     &          *((QK(K)+QK(K+1)+CWMK(K)+CWMK(K+1))*(0.5*P608)+1.)     &
-     &          +(QK(K)-QK(K+1)+CWMK(K)-CWMK(K+1))*A                   &
-     &          +(CWMK(K)-CWMK(K+1))*B)*RDZ
-            IF(ABS(GHK)<=EPSGH)GHK=EPSGH
-!
-            GH(K)=GHK
-          ENDDO
-!
-!***  FIND MAXIMUM MIXING LENGTHS AND THE LEVEL OF THE PBL TOP
-!
+!***  FIND THE HEIGHT OF THE PBL
           LPBL=LMH
-!
-          DO K=1,LMH-1
-            GMK=GM(K)
-            GHK=GH(K)
-!
-            IF(GHK>=EPSGH)THEN
-!
-              IF(GMK/GHK<=REQU)THEN
-                ELM(K)=EPSL
-                LPBL=K
-              ELSE
-                AUBR=(AUBM*GMK+AUBH*GHK)*GHK
-                BUBR= BUBM*GMK+BUBH*GHK
-                QOL2ST=(-0.5*BUBR+SQRT(BUBR*BUBR*0.25-AUBR*CUBR))*RCUBR
-                ELOQ2X=1./QOL2ST
-                ELM(K)=MAX(SQRT(ELOQ2X*Q2K(K)),EPSL)
-              ENDIF
-!
-            ELSE
-              ADEN=(ADNM*GMK+ADNH*GHK)*GHK
-              BDEN= BDNM*GMK+BDNH*GHK
-              QOL2UN=-0.5*BDEN+SQRT(BDEN*BDEN*0.25-ADEN)
-              ELOQ2X=1./(QOL2UN+EPSRU)  !  repsr1/qol2un
-              ELM(K)=MAX(SQRT(ELOQ2X*Q2K(K)),EPSL)
+          DO K=LMH-1,1,-1
+            IF(Q2K(K)<=EPSQ2*FH) THEN
+               LPBL=K
+               GO TO 110
             ENDIF
 !
+
           ENDDO
+
+          LPBL=1
 !
-          IF(ELM(LMH-1)==EPSL)LPBL=LMH
+!--------------THE HEIGHT OF THE PBL------------------------------------
+!-----------------------------------------------------------------------
 !
-!***  THE HEIGHT OF THE PBL
-!
-          PBLH(I,J)=ZHK(LPBL)-ZHK(LMH+1)
+ 110      PBLH(I,J)=ZHK(LPBL)-ZHK(LMH+1)
+
 !
 !----------------------------------------------------------------------
 !***
@@ -290,7 +253,7 @@ CONTAINS
 
           CALL SFCDIF_fluxforce(NTSD,SEAMASK,THSK(I,J),QSFC(I,J),PSFC  &
      &               ,UZ0(I,J),VZ0(I,J),TZ0,THZ0(I,J),QZ0(I,J)         &
-     &               ,USTAR(I,J),ZNT(I,J),CT(I,J),RMOL(I,J)            &
+     &               ,USTAR(I,J),ZNT(I,J),Z0BASE(I,J),CT(I,J),RMOL(I,J) &
      &               ,AKMS(I,J),AKHS(I,J),PBLH(I,J),MAVAIL(I,J)        &
      &               ,CHS(I,J),CHS2(I,J),CQS2(I,J)                     &
      &               ,HFX(I,J),QFX(I,J),FLX_LH(I,J)                    &
@@ -302,7 +265,7 @@ CONTAINS
      &,calc_ust,z_o,z_t,z_q&
      &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
      &               ,IMS,IME,JMS,JME,KMS,KME                          &
-     &               ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+     &               ,ITS,ITE,JTS,JTE,KTS,KTE,i,j,ZHK(LMH+1))
 
 !
 !***  REMOVE SUPERATURATION AT 2M AND 10M
@@ -313,12 +276,15 @@ CONTAINS
           RAPA=APESFC
           TH02P=TSHLTR(I,J)
           TH10P=TH10(I,J)
+          TH02(I,J)=TSHLTR(I,J)
 !
           RAPA02=RAPA-GOCP02/TH02P
           RAPA10=RAPA-GOCP10/TH10P
 !
           T02P=TH02P*RAPA02
           T10P=TH10P*RAPA10
+! 1 may 06 tgs         T02(I,J) = T02P
+          T02(I,J) = TH02(I,J)*APESFC
 !
           P02P=(RAPA02**RCAP)*1.E5
           P10P=(RAPA10**RCAP)*1.E5
@@ -328,6 +294,7 @@ CONTAINS
 !
           IF(QSHLTR(I,J)>QS02)QSHLTR(I,J)=QS02
           IF(Q10   (I,J)>QS10)Q10   (I,J)=QS10
+          Q02(I,J)=QSHLTR(I,J)/(1.-QSHLTR(I,J))
 !----------------------------------------------------------------------
 !
         ENDDO
@@ -341,7 +308,7 @@ CONTAINS
 !----------------------------------------------------------------------
    SUBROUTINE SFCDIF_fluxforce(NTSD,SEAMASK,THS,QS,PSFC              &
      &                 ,UZ0,VZ0,TZ0,THZ0,QZ0                           &
-     &                 ,USTAR,Z0,CT,RLMO,AKMS,AKHS,PBLH,WETM           &
+     &                 ,USTAR,Z0,Z0BASE,CT,RLMO,AKMS,AKHS,PBLH,WETM    &
      &                 ,CHS,CHS2,CQS2,HFX,QFX,FLX_LH,FLHC,FLQC,QGH,CPM &
      &                 ,ULOW,VLOW,TLOW,THLOW,THELOW,QLOW,CWMLOW        &
      &                 ,ZSL,PLOW                                       &
@@ -349,7 +316,7 @@ CONTAINS
      &                 ,calc_ust,z_o,z_t,z_q&
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
-     &                 ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+     &                 ,ITS,ITE,JTS,JTE,KTS,KTE,i,j,ZSFC)
 !     ****************************************************************
 !     *                                                              *
 !     *                       SURFACE LAYER                          *
@@ -373,13 +340,15 @@ CONTAINS
 
       LOGICAL :: calc_ust
 
-      REAL,INTENT(IN) :: CWMLOW,PBLH,PLOW,QLOW,PSFC,SEAMASK            &
-     &                  ,THELOW,THLOW,TLOW,TZ0,ULOW,VLOW,WETM,ZSL
-!
-      REAL,INTENT(inOUT) :: THS
+      REAL,INTENT(IN) :: CWMLOW,PBLH,PLOW,QLOW,PSFC,SEAMASK,ZSFC       &
+     &                  ,THELOW,THLOW,TLOW,TZ0,ULOW,VLOW,WETM,ZSL  &
+     &                  ,Z0BASE
 
+!
       REAL,INTENT(OUT) :: CHS,CHS2,CPM,CQS2,CT,FLHC,FLQC,FLX_LH    &
      &                   ,PSHLTR,Q02,Q10,QGH,RLMO,TH02,TH10,U10,V10
+!
+      REAL,INTENT(inOUT) :: THS
 
       REAL,INTENT(in) :: HFX,QFX
 !
@@ -399,7 +368,7 @@ CONTAINS
      &       ,RLOGT,RLOGU,RWGH,RZ,RZST,RZSU,SIMH,SIMM,TEM,THM          &
      &       ,UMFLX,USTARK,VMFLX,WGHT,WGHTT,WGHTQ,WSTAR2               &
      &       ,X,XLT,XLT4,XLU,XLU4,XT,XT4,XU,XU4,ZETALT,ZETALU          &
-     &       ,ZETAT,ZETAU,ZQ,ZSLT,ZSLU,ZT,ZU
+     &       ,ZETAT,ZETAU,ZQ,ZSLT,ZSLU,ZT,ZU,TOPOTERM,ZZIL
 !
 !***  DIAGNOSTICS
 !
@@ -520,14 +489,11 @@ CONTAINS
             VZ0=0.
 !
             ZT=Z0
-            IF(NTSD>1)THEN
-            ELSE
-               THZ0=THS
-               QZ0=QS
-            ENDIF
+            THZ0=THS
+            QZ0=QS
+
 !
             ZQ=Z0
-!            QZ0=QS
 
             z_o=zu
             z_t=zt
@@ -678,16 +644,32 @@ CONTAINS
         RLOGU=LOG(RZSU)
         ZSLT=ZSL+ZU
 
+
+!mp   Topo modification of ZILFC term
+!
+          TOPOTERM=TOPOFAC*ZSFC**2.
+          TOPOTERM=MAX(TOPOTERM,3.0)
+!
+
+          IF(hvflx < 0.)THEN
+            ZZIL=ZILFC*TOPOTERM
+          ELSE
+            ZZIL=ZILFC
+          ENDIF
+!
+!-
+
+
 !----------------------------------------------------------------------
 !
-          DO ITR=1,ITRMX
+          land_point_iteration: DO ITR=1,ITRMX
 !
 !----------------------------------------------------------------------
 !***  ZILITINKEVITCH FIX FOR ZT
 !----------------------------------------------------------------------
 !
-            ZT=MAX(EXP(ZILFC*SQRT(USTAR*ZU))*ZU,EPSZT)
-!zj         ZT=EXP(ZILFC*SQRT(USTAR*ZU))*ZU
+! oldform   ZT=MAX(EXP(ZZIL*SQRT(USTAR*ZU))*ZU,EPSZT)
+            ZT=MAX(EXP(ZZIL*SQRT(USTAR*Z0BASE))*Z0BASE,EPSZT)
             RZST=ZSLT/ZT
             RLOGT=LOG(RZST)
 
@@ -782,14 +764,14 @@ CONTAINS
             
 !
 !----------------------------------------------------------------------
-         ENDDO  !  End of iteration for land points
+         ENDDO land_point_iteration  !  End of iteration for land points
 !----------------------------------------------------------------------
 !
 !       ENDIF  !  End of turbulant branch over land
 !
 !----------------------------------------------------------------------
 !
-       ENDIF  !  End of land/sea branch
+      ENDIF  !  End of land/sea branch
 
 !no need to recalculate skin temp for water
 
@@ -797,13 +779,13 @@ CONTAINS
 !----------------------------------------------------------------------
 !***  COUNTERGRADIENT FIX
 !----------------------------------------------------------------------
-      HV=hvflx
-      IF(HV>0.)THEN
-        FCT=-10.*(BTGX)**(-1./3.)
-        CT=FCT*(HV/(PBLH*PBLH))**(2./3.)
-      ELSE
+!      HV=hvflx
+!      IF(HV>0.)THEN
+!        FCT=-10.*(BTGX)**(-1./3.)
+!        CT=FCT*(HV/(PBLH*PBLH))**(2./3.)
+!      ELSE
         CT=0.
-      ENDIF
+!      ENDIF
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -972,8 +954,9 @@ CONTAINS
 !
       IF(SEAMASK<0.5)THEN
 !
-        ZUUZ=MIN(0.5*ZU,0.1)
-        ZU=MAX(0.1*ZU,ZUUZ)
+        ZUUZ=AMIN1(ZU*0.50,0.18)
+        ZU=AMAX1(ZU*0.35,ZUUZ)
+
 !
         ZU10=ZU+10.
         RZSU=ZU10/ZU

@@ -5,12 +5,12 @@
 
 program create_real_network_seq
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines automatically updated by version control software, do not edit>
+! $Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/create_real_network/create_real_network.f90,v $
+! $URL: /home/thoar/CVS.REPOS/DART/models/PBL_1d/create_real_network/create_real_network.f90,v $
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
+! $Id$
 
 ! JPH
 ! This code originated from create_fixed_network.  It uses module_wrf to get
@@ -202,6 +202,7 @@ call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
 ! 2.  T and winds are in correct units (K and m/s)
 
 call init_wrf(wrf_rnd_seed)
+
 !do i = 1,num_times
 !  print*,t2_init_f(i),u10_init_f(i),v10_init_f(i),q2_init_f(i)
 !enddo
@@ -274,14 +275,19 @@ if ( is_there_one ) then
 
      this_obs_val = get_obs_from_input(ob_time,obs_kind_ind,num_times)
      this_qc_val  = get_qc_from_obs(obs_kind_ind,this_obs_val)
-     call get_qc(new_obs,qc_sequence(i:i),1)
-     this_qc_val = max(this_qc_val,qc_sequence(i))
+     if ( num_qc > 0 ) then
+       call get_qc(new_obs,qc_sequence(i:i),1)
+       this_qc_val = max(this_qc_val,qc_sequence(i))
+     endif
 
      ! for input, all copies are the same
      obs_vals = this_obs_val
-     qc_vals = this_qc_val
      call set_obs_values(new_obs,obs_vals)
-     call set_qc(new_obs,qc_vals)
+     qc_vals = this_qc_val
+
+     if ( num_qc > 0 ) then
+       call set_qc(new_obs,qc_vals)
+     endif
        
      call set_obs_def(new_obs, obs_def)
 

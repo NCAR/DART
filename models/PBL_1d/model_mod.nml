@@ -1,12 +1,14 @@
 &model_nml
-   num_est_params = 0,
-   est_param_types = 600,
-   pert_init_sd = 0.0,
-   pert_param_sd = 0.0,
-   pert_param_min = 0.00001,
-   pert_param_max = 1.0,
+   num_est_params   = 0,
+   est_param_types  = 600,
+   pert_init_sd     = 0.0,
+   pert_param_sd    = 0.0,
+   pert_param_min   = 0.00001,
+   pert_param_max   = 0.99999,
+   pert_init_beta_1 = -1.0,
+   pert_init_beta_2 = -1.0,
    maintain_initial_spread = .false.,
-   dist_shape = 'logn',
-   real_obs_period = 1800, 
-   start_real_obs = 1800 /
+   dist_shape       = 'logn',
+   real_obs_period  = 1800, 
+   start_real_obs   = 1800  /
 

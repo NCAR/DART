@@ -96,13 +96,19 @@ MODULE module_wrf
 ! forcing netCDF file IDs
    INTEGER                             :: ncid_f, ncid_soil, &
                                           ncid_flux, ncid_smos, &
-                                          ncid_uvg, ncid_sfc
+                                          ncid_uvg, ncid_sfc, &
+                                          ncid_eofs_forc
+                                          
+! base grid heights
+  REAL, dimension(:), ALLOCATABLE      :: z_grid_stag, z_grid
 
 ! forcing number for soil, atmos, and times
    INTEGER                             :: ns_f, nz_f, nz_uvg, &
                                           nt_f, nt_f_flux, &
                                           nt_f_soil, nt_f_smos, nt_uvg,&
                                           &nt_f_sfc 
+! DO. I added here the following
+   INTEGER                             :: nz_stag_uvg,nrecords_uvg
 
    INTEGER                             :: itimestep,STEPBL,itime_f=1
 
@@ -111,6 +117,8 @@ MODULE module_wrf
    INTEGER, DIMENSION( ims:ime , jms:jme )  :: LOWLYR
 
    LOGICAL                             ::   warm_rain
+
+   INTEGER :: ucmcall=0 ! all urban variables set to zero
 
    REAL, ALLOCATABLE, DIMENSION(:,:,:) ::  p_phy, &
                                            pi_phy, &
@@ -220,9 +228,10 @@ MODULE module_wrf
    REAL, DIMENSION( ims:ime, jms:jme ) ::  lu_index
 
    REAL, ALLOCATABLE, DIMENSION(:,:,:) :: TSLB,SMOIS,KEEPFR3DFLAG, &
-                                          SMFR3D,SH2O
+                                          SMFR3D,SH2O,TRL_URB3D, &
+                                          TBL_URB3D, TGL_URB3D
 
-   REAL,  ALLOCATABLE, DIMENSION(:)    :: DZS,ZS
+   REAL,  ALLOCATABLE, DIMENSION(:)    :: DZS,ZS,DZR,DZG,DZB
 
    INTEGER                             :: num_st_levels_input, &
                                           num_sm_levels_input
@@ -330,6 +339,14 @@ MODULE module_wrf
    REAL, DIMENSION(:,:), ALLOCATABLE   :: z_f_stag
 
    INTEGER :: ra_lw_physics=1,sst_update=0
+
+! DO eofs related stuff *** Maybe this is not needed at all
+  INTEGER  :: ncid_eofs_init, nz_eo, ns_eo, nt_eo
+
+! DO I add the following to pass information from init to uvg
+  INTEGER  :: itran1, itran2
+  REAL     :: control_w
+  REAL, DIMENSION(:), ALLOCATABLE :: gasdo
    
 contains
 
@@ -370,9 +387,27 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
              th_init(1:nz), exn_init(1:nz), q_init(1:nz), p_init(1:nz), &
              rho_init(1:nz))
     ALLOCATE(z8w_init(1:nz+1), p8w_init(1:nz+1))
+    ALLOCATE(z_grid_stag(1:nz+1), z_grid(1:nz))
     ALLOCATE(uflux(1:nz), vflux(1:nz), hflux(1:nz), &
              qflux(1:nz), k_t(1:nz),k_m(1:nz))
     ALLOCATE(u_g(1:nz), v_g(1:nz))
+    
+    PRINT*,'n_eo',n_eo
+    ALLOCATE(gasdo(n_eo))
+
+!   go ahead and read the grid here - redundant
+    OPEN(55,file='grid_wrf1d.ascii')
+
+    z_grid_stag=0.
+    DO k=1,nz
+       READ(55,*)i,z_grid_stag(k+1)
+    ENDDO
+
+    CLOSE(55)
+
+    DO k=1,nz
+       z_grid(k)=.5*(z_grid_stag(k)+z_grid_stag(k+1))
+    ENDDO
 
 !   Explicit zeroing is unfortunately necessary for PGF 
     moist = 0.0   
@@ -487,7 +522,13 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
              &SMFR3D( ims:ime , 1:num_soil_layers, jms:jme ),&
              &SH2O( ims:ime , 1:num_soil_layers, jms:jme ),&
              &DZS(1:num_soil_layers),&
-             &ZS(1:num_soil_layers))
+             &ZS(1:num_soil_layers), &
+             &DZR(1:num_soil_layers), &
+             &DZB(1:num_soil_layers), &
+             &DZG(1:num_soil_layers), &
+             &TRL_URB3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &TBL_URB3D( ims:ime , 1:num_soil_layers, jms:jme ),&
+             &TGL_URB3D( ims:ime , 1:num_soil_layers, jms:jme ))
      ENDIF
 
    ELSEIF (sf_surface_physics=='RUCLSMSCHEME') THEN
@@ -590,7 +631,6 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
            &splinetimes_smos(nsplinetimes_smos),&
            u_g_f(nz,nsplinetimes),v_g_f(nz,nsplinetimes),&
          p_f(nz,nsplinetimes),p8w_f(nz,nsplinetimes),&
-         
         glw_f(nsplinetimes_flux),gsw_f(nsplinetimes_flux),&
          precip_f(nsplinetimes_smos))
          p_f = 0.0
@@ -684,10 +724,23 @@ SUBROUTINE STATIC_INIT_WRF(allocate_wrf)
          
       ENDIF
 
+  ENDIF
 ! need to get another set of time series for the geostrophic wind if using
       IF ( force_uvg ) THEN
-         CALL uvg_f_dims(ncid_uvg, nz_uvg, nt_uvg) 
-      ENDIF
+
+! DO -  Add the possibility of forcing geostrophic winds with WRF or with
+! RUC. RUC files structure is 'soundings like', while WRF's is 'WRF model like'
+    SELECT CASE (force_f_type) 
+    
+      CASE('RUC')
+      CALL uvg_ruc_f_dims(ncid_uvg, nz_uvg, nt_uvg)!the same subroutine that was
+!  before just changed the name to be RUC specific      
+
+      CASE('WRF')
+      CALL uvg_wrf_f_dims(ncid_uvg,nz_uvg,nz_stag_uvg,nrecords_uvg,nt_uvg)!I consider that nz_uvg, nt_uvg are the same
+! as for wrf, previous select case, further check *****
+
+   END SELECT
 
    ENDIF
 
@@ -787,7 +840,8 @@ SUBROUTINE INIT_WRF(wrf_rnd_seed)
                     tslb_init_f,smois_init_f,tmn_init_f,&
                     precip_init_f, &
                     vegfra_f,isltyp_f,lu_index_f,ivgtyp_f, terrain_f, dx, &
-                    times_f,times_f_flux,times_f_soil,times_f_smos,idum)
+                    times_f,times_f_flux,times_f_soil,times_f_smos,idum,&
+                    itran1,itran2,control_w,gasdo)
 
          CASE('OBS')
 
@@ -989,9 +1043,32 @@ SUBROUTINE INIT_WRF(wrf_rnd_seed)
      IF ( force_uvg ) THEN
 
         idum = wrf_rnd_seed
-        CALL uvg_f_bc(ncid_uvg, nz_uvg, nt_uvg, terrain_f, nz, z,  &
+
+      SELECT CASE (force_f_type)
+       
+       CASE('RUC')
+
+        CALL uvg_ruc_f_bc(ncid_uvg, nz_uvg, nt_uvg, terrain_f, nz, z,  &
                       u_g_f, v_g_f, nsplinetimes, splinetimes, init_f_type, &
                       idum, ims,ime,jms,jme,kms,kme)
+
+       CASE('WRF')
+
+         CALL uvg_wrf_f_bc(ncid_uvg, nz_uvg, nt_uvg, terrain_f, nz, z,  &
+                      u_g_f, v_g_f, nsplinetimes, splinetimes, &
+                      glw_init_f, gsw_init_f, &
+                      glw_f, gsw_f, &
+                      nt_f_flux, nsplinetimes_flux, splinetimes_flux, &
+                      init_f_type, &
+                      idum, ims,ime,jms,jme,kms,kme,ncid_eofs_forc, &
+                      itran1,itran2,control_w,gasdo,nz_stag_uvg,nrecords_uvg)
+
+       CASE DEFAULT
+        print*, 'Do not know how to force from type ',force_f_type
+        stop 'module_wrf'
+       
+       END SELECT
+        
         wrf_rnd_seed = idum
 
      ENDIF
@@ -1099,11 +1176,11 @@ SUBROUTINE INIT_WRF(wrf_rnd_seed)
 END SUBROUTINE INIT_WRF
 
 !------------------------------------------------------------------
-SUBROUTINE WRF(dart_seconds,dart_days)
+SUBROUTINE WRF(seconds,days)
 
    IMPLICIT NONE
 
-   INTEGER, INTENT(IN) :: dart_days, dart_seconds
+   INTEGER, INTENT(IN) :: days, seconds
    LOGICAL             :: debug1, debug2, debug3, debug4, debug5
 
 
@@ -1124,7 +1201,7 @@ SUBROUTINE WRF(dart_seconds,dart_days)
 
 
 !  here we compute the time step to keep pace with dart
-   itimestep = (dart_days * 86400 + dart_seconds) / dt + 1
+   itimestep = (days * 86400 + seconds) / dt + 1
 
 !   DO itimestep=1,ntime+1
 
@@ -1367,6 +1444,29 @@ SUBROUTINE WRF(dart_seconds,dart_days)
      &        ,WSPD=wspd          ,XICE=xice          ,XLAND=xland        &
      &        ,Z0=z0              ,Z=z                ,ZNT=znt            &
      &        ,ZS=zs                                                      &
+     &        ,DECLIN_URB=0.  ,COSZ_URB2D=(/0.,0./) & !I urban
+     &        ,OMG_URB2D=(/0.,0./)    ,xlat_urb2d=(/0.,0/)        & !I urban
+     &        ,NUM_ROOF_LAYERS=0                          & !I urban
+     &        ,NUM_WALL_LAYERS=0                          & !I urban
+     &        ,NUM_ROAD_LAYERS=0                          &
+     &        ,DZR=DZR ,DZB=DZB ,DZG=DZG                 & !I urban
+     &        ,TR_URB2D=(/0.,0./) ,TB_URB2D=(/0.,0./)           &
+     &        ,TG_URB2D=(/0.,0./)                                   & !H urban
+     &        ,TC_URB2D=(/0.,0./) ,QC_URB2D=(/0.,0./)           & !H urban
+     &        ,UC_URB2D=(/0.,0./)                                 & !H urban
+     &        ,XXXR_URB2D=(/0.,0./)                               &
+     &        ,XXXB_URB2D=(/0.,0./)                               & !H urban
+     &        ,XXXG_URB2D=(/0.,0./)                               &
+     &        ,XXXC_URB2D=(/0.,0./)                               & !H urban
+     &        ,TRL_URB3D=TRL_URB3D   ,TBL_URB3D=TBL_URB3D     & !H urban
+     &        ,TGL_URB3D=TBL_URB3D                                 & !H urban
+     &        ,SH_URB2D=(/0.,0./)     ,LH_URB2D=(/0.,0./)       &
+     &        ,G_URB2D=(/0.,0./)                                     & !H urban
+     &        ,RN_URB2D=(/0.,0./)     , TS_URB2D=(/0.,0./)      & !H urban
+     &        ,FRC_URB2D=(/0.,0./)                                 & !H urban
+     &        ,UTYPE_URB2D=(/0,0/)                             & !H urban
+     &        ,ucmcall=ucmcall                                     & !H urban
+
            ! Indexes
      &        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde          &
      &        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme          &

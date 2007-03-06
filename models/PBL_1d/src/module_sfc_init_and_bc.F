@@ -158,7 +158,7 @@ CONTAINS
      time_sfc = missingVal
    ELSE WHERE
      secs_list = mod(time_sfc,86400.0)
-     days_list = (time_sfc - secs_list) / 86400.0
+     days_list = (time_sfc - secs_list) / 86400 
    END WHERE
 
    DO i = 1, nsfc_file

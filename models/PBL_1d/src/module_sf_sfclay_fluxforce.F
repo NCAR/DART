@@ -117,13 +117,11 @@ CONTAINS
                                                               T3D
 
       REAL,     DIMENSION( ims:ime, jms:jme )                    , &
-                INTENT(INOUT)               ::               QSFC
-
-      REAL,     DIMENSION( ims:ime, jms:jme )                    , &
                 INTENT(IN   )               ::             MAVAIL, &
                                                              PBLH, &
                                                             XLAND, &
-                                                              TSK
+                                                              TSK, &
+                                                              QSFC
 
       REAL,     DIMENSION( ims:ime, jms:jme )                    , &
                 INTENT(OUT  )               ::                U10, &
@@ -131,6 +129,12 @@ CONTAINS
                                                               TH2, &
                                                                T2, &
                                                                Q2
+
+
+!
+
+
+
 !
       REAL,     DIMENSION( ims:ime, jms:jme )                    , &
                 INTENT(INOUT)               ::             REGIME, &
@@ -286,7 +290,12 @@ CONTAINS
 
       REAL,     DIMENSION( ims:ime )                             , &
                 INTENT(OUT)     ::                        U10,V10, &
-                                                TH2,T2,Q2,QSFC,LH
+                                                TH2,T2,Q2, LH
+
+      REAL,     DIMENSION( ims:ime ), INTENT(IN) :: QSFC
+
+
+
                                     
       REAL,     INTENT(IN   )               ::   CP,G,ROVCP,R,XLV,DX
 
@@ -504,6 +513,8 @@ CONTAINS
 !                                                                                
         IF(BR(I).LT.0.2)GOTO 270                                                 
         REGIME(I)=1.                                                           
+        GOTO 320
+
         PSIM(I)=-10.*GZ1OZ0(I)                                                   
 !    LOWER LIMIT ON PSI IN STABLE CONDITIONS                                     
         PSIM(I)=AMAX1(PSIM(I),-10.)                                              
@@ -515,12 +526,25 @@ CONTAINS
         PSIM2(I)=AMAX1(PSIM2(I),-10.)                              
         PSIH2(I)=PSIM2(I)                                         
 
+!       1.0 over Monin-Obukhov length
+        IF(UST(I).LT.0.01)THEN
+           RMOL(I)=BR(I)*GZ1OZ0(I) !ZA/L
+        ELSE
+           RMOL(I)=KARMAN*GOVRTH(I)*ZA(I)*MOL(I)/(UST(I)*UST(I)) !ZA/L
+        ENDIF
+        RMOL(I)=AMIN1(RMOL(I),9.999) ! ZA/L
+        RMOL(I) = RMOL(I)/ZA(I) !1.0/L
+
+
         GOTO 320                                                                 
 !                                                                                
 !-----CLASS 2; DAMPED MECHANICAL TURBULENCE:                                     
 !                                                                                
   270   IF(BR(I).EQ.0.0)GOTO 280                                                 
         REGIME(I)=2.                                                           
+        GOTO 320
+
+
         PSIM(I)=-5.0*BR(I)*GZ1OZ0(I)/(1.1-5.0*BR(I))                             
 !    LOWER LIMIT ON PSI IN STABLE CONDITIONS                                     
         PSIM(I)=AMAX1(PSIM(I),-10.)                                              
@@ -532,11 +556,34 @@ CONTAINS
         PSIM2(I)=2./ZA(I)*PSIM(I)
         PSIM2(I)=AMAX1(PSIM2(I),-10.)                              
         PSIH2(I)=PSIM2(I)                                         
+
+       ! Linear form: PSIM = -0.5*ZA/L; e.g, see eqn 16 of
+        ! Blackadar, Modeling the nocturnal boundary layer, Preprints,
+        ! Third Symposium on Atmospheric Turbulence Diffusion and Air Quality,
+        ! Raleigh, NC, 1976
+        ZOL(I) = BR(I)*GZ1OZ0(I)/(1.00001-5.0*BR(I))
+
+        if ( ZOL(I) .GT. 0.5 ) then ! linear form ok
+           ! Holtslag and de Bruin, J. App. Meteor 27, 689-704, 1988;
+           ! see also, Launiainen, Boundary-Layer Meteor 76,165-179, 1995
+           ! Eqn (8) of Launiainen, 1995
+           ZOL(I) = ( 1.89*GZ1OZ0(I) + 44.2 ) * BR(I)*BR(I)    &
+                + ( 1.18*GZ1OZ0(I) - 1.37 ) * BR(I)
+           ZOL(I)=AMIN1(ZOL(I),9.999)
+        end if
+
+        ! 1.0 over Monin-Obukhov length
+        RMOL(I)= ZOL(I)/ZA(I)
+
+
+
         GOTO 320                                                                 
 !                                                                                
 !-----CLASS 3; FORCED CONVECTION:                                                
 !                                                                                
   280   REGIME(I)=3.                                                           
+        GOTO 320
+
         PSIM(I)=0.0                                                              
         PSIH(I)=PSIM(I)                                                          
         PSIM10(I)=0.                                                   
@@ -550,6 +597,7 @@ CONTAINS
         ELSE                                                                     
           ZOL(I)=KARMAN*GOVRTH(I)*ZA(I)*MOL(I)/(UST(I)*UST(I)) 
         ENDIF                                                                    
+        RMOL(I) = ZOL(I)/ZA(I)  
 
         GOTO 320                                                                 
 !                                                                                
@@ -557,6 +605,8 @@ CONTAINS
 !                                                                                
   310   CONTINUE                                                                 
         REGIME(I)=4.                                                           
+        GOTO 320
+
         IF(UST(I).LT.0.01)THEN                                                 
           ZOL(I)=BR(I)*GZ1OZ0(I)                                               
         ELSE                                                                     
@@ -591,6 +641,9 @@ CONTAINS
         PSIM(I)=AMIN1(PSIM(I),0.9*GZ1OZ0(I))
         PSIH2(I)=AMIN1(PSIH2(I),0.9*GZ2OZ0(I))
         PSIM10(I)=AMIN1(PSIM10(I),0.9*GZ10OZ0(I))
+
+        RMOL(I) = ZOL(I)/ZA(I)  
+
   320 CONTINUE                                                                   
 !                                                                                
 !-----COMPUTE THE FRICTIONAL VELOCITY:                                           
@@ -607,6 +660,8 @@ CONTAINS
          IF (ABS(molength) < epsilonmol) THEN
             molength=SIGN(1.,molength)*epsilonmol
          ENDIF
+
+         rmol=1./molength
 
          zeta=ZA(I)/molength
          zeta2=2./molength
@@ -705,6 +760,7 @@ CONTAINS
 !       VA10(I,J) = V10(I)                                     
 !       write(*,1002)UST(I),KARMAN*WSPD(I),PSIX,KARMAN*WSPD(I)/PSIX
 !                                                                                
+
         IF (calc_ust) THEN
 
            USTM=AMAX1(UST(I),0.1)                                                 
@@ -815,13 +871,13 @@ CONTAINS
                                                                         
   410 CONTINUE                                                                   
 !jdf
-      DO I=its,ite
-        IF(UST(I).GE.0.1) THEN
-          RMOL(I)=RMOL(I)*(-FLHC(I))/(UST(I)*UST(I)*UST(I))
-        ELSE
-          RMOL(I)=RMOL(I)*(-FLHC(I))/(0.1*0.1*0.1)
-        ENDIF
-      ENDDO
+!      DO I=its,ite
+!        IF(UST(I).GE.0.1) THEN
+!          RMOL(I)=RMOL(I)*(-FLHC(I))/(UST(I)*UST(I)*UST(I))
+!        ELSE
+!          RMOL(I)=RMOL(I)*(-FLHC(I))/(0.1*0.1*0.1)
+!        ENDIF
+!      ENDDO
 !jdf
 
 !                                                                                

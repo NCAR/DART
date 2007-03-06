@@ -3,9 +3,57 @@ December 1, 2005
 What's new:
 1.  A set of code to read real surface observations and produce an obs sequence, based on the dates set in wrf1d_namelist.input.  This is called create_real_network.
 
-2.  The model is date-aware now, and it will be very helpful when running ixperiments to understand all the time controls.  The GREGORIAN calendar is synched between DART and the model.  One must make sure that the initialization times given to DART makes sense relative to the date specified in wrf1d_namelist.input.
+The following steps should be followed to create a set of real surface observations (e.g., for the BAMEX period using the observations from the ARM site) to be assimilated:
 
-3.  The ability to initialize the soil and profiles from observations.  We have not implemented a perterbation method about observed profiles, so only single runs can be initialized from obs.
+a. Run create_obs_sequence.
+   * For surface observations from ARM there is no need for quality control values as the observations are already quality controled.
+b. Run create_real_network_seq
+   * Edit wrf1d.namelist.input and input.nml properly:
+
+    wrf1d.namelist.input:
+     * At present only sequences from true observations files  can be produced (i.e., it is not possible to produce "observations" sequences based on WRF output).
+     * The following options have to be chosen in wrf1.namelist.input:
+
+        init_f = .TRUE.
+	rnd_init = .FALSE.
+	rnd_force = .FALSE.
+	init_f_type = 'OBS'
+  
+       For BAMEX period for example, the following options should be chosen:
+       The soundings file:
+        init_f_file='sgpsondewnpnC1.b1.BAMEX.nc'
+       The surface observations file (SMOS):
+        init_smos_file='sgp30smosE13.b1.BAMEX.nc'
+       Sequences of surface observations are produced only for days for which soundings are available.
+       The following is an example of chosen suitable dates and hours for BAMEX soundings:
+         start_year_f=2003
+         start_month_f=5
+         start_day_f=10
+         start_hour_f=11
+         start_minute_f=30
+         start_forecast=0 
+       The length of the surface observations sequence is determined by "forecast_length".
+	Soundings for BAMEX period are available every 6 hours, therefore
+         interval_f=21600
+        All other intervals according to the available observations files.
+	
+	input.nml:
+         The relevant parameters to create the sequence of real observations are:
+        * start_real_obs: The time in seconds, after initialization, at which we want to start the assimilation of surface observations in the DART-PBL_1D run. For example, if we want to start assimilation of surface observations at 13Z when running DART-PBL_1D, we will run create_real_network_seq with "start_hour_f=11" and "start_minute_f=30" in wrf1d.namelist.input as described above, and "start_real_obs=5400" in input.nml. 
+        * real_obs_period: the surface observations frequency we want in our real observations file (i.e., the assimilation frequency of surface observations). For BAMEX example, surface observations are available every 1800 secs, therefore, real_obs_period can be any factor of 1800.
+
+
+2.  The model is date-aware now, and it will be very helpful when running experiments to understand all the time controls.  The GREGORIAN calendar is synched between DART and the model.  One must make sure that the initialization times given to DART makes sense relative to the date specified in wrf1d_namelist.input.
+  The following parameters should be chosen carefuly:
+    start_year_f
+    start_month_f
+    start_day_f
+    start_hour_f
+    start_minute_f
+  These denote date and time of the day at which soundings used for initialization and forcing of the PBL_1D model are available, or initialization times of WRF runs used for initialization and forcing of the PBL_1D. These are given in GREGORIAN notation.
+   start_forecast: seconds after the date and time defined above to start the PBL_1D run. These does not mean that the assimilation of surface observations is started at this time. 
+
+3.  The ability to initialize the soil and profiles from observations.  We have not implemented a perturbation method about observed profiles, so only single runs can be initialized from obs.
 
 4.  More robust initialization with lots more error checking.
 
@@ -37,7 +85,10 @@ init_f  - TRUE if input is obtained from profiles derived from 3d WRF runs
          (follows to &record2)
          FALSE if input is idealized (follows to &record2)
 
-rnd_init - TRUE if requesting random selection for input (i.e. a random ensemble member)
+rnd_init - TRUE if requesting random selection for input (i.e. a random ensemble member) 
+
+*** As of now rnd_init works only with WRF profiles?****
+
            FALSE if requesting input from a specific date/time
            
 init_f_type - OBS to get initialization and forcing input from provided obs
@@ -101,9 +152,14 @@ namelist below
 
 output_state_vector - TRUE to output DART vector (only used with DART)
 
-The following time variables are the Gregorian start of the model.
+The following time variables are the Gregorian start of the model. *** Of the column?*** It is not clear because
+we have start_forecast too ***
 If init_rnd = .FALSE. they also request specific input forcing for the
 OBS case.
+
+*** If init_rnd = .TRUE. only start_hour_f and start_minute_f are relevant to define the initialization time of
+WRF runs, dates are not needed as random combinations of profiles from different days valid at a given time are used.
+
 
   start_year_f 
   start_month_f 
@@ -111,13 +167,13 @@ OBS case.
   start_hour_f 
   start_minute_f
 
-start_forecast - time interval after the above time to begin column
+start_forecast - time interval after the above time (above time is sounding availability or WRF initialization, right?) to begin column ***?
 simulation (seconds)
 
-forecast_length - length of 1d WRF forecast (seconds)
+forecast_length - length of PBL_1D simulation (seconds). This does not mean that assimilation of surface observations starts at this time. Assimilation of surface obs will start at any time greater or equal to this at which obs are avavailable in the real obs file (created as explained above).
 
 interval_f - intervals at which WRF|OBS is available for forcing
-the profiles (seconds)
+the profiles (seconds). ***It is the users responsibility to provided this correctly. If provided incorrectly wrong profiles from WRF will be chosen to initialize and force the PBL_1D
 
 interval_flux - intervals at which WRF|OBS is available for forcing
 the radiative fluxes (seconds)
@@ -214,6 +270,11 @@ lat_ref - latitude  of the place
 
 lon_ref - longitude of the place
 
+***Some selected parameters from input.nml***
 
+   init_time_days = 146956,
+   init_time_seconds = 43200,
+
+These have to match the times given in wrf1d.namelist.input
 
 

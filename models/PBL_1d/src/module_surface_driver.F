@@ -20,9 +20,21 @@ CONTAINS
      &          ,vz0,v_frame,v_phy,warm_rain,wspd,xice,xland,z,znt,zs &
      &          ,ct,tke_myj                                           &
      &          ,albbck,lh,sh2o,shdmax,shdmin,z0                      &
-     &          ,flqc,flhc,psfc,sst,sst_update                        &
+     &          ,flqc,flhc,psfc,sst,sst_update,t2,emiss               &
      &          ,sf_sfclay_physics,sf_surface_physics,ra_lw_physics   &
      &,bl_pbl_physics&
+            !  Optional urban 
+     &          ,declin_urb,cosz_urb2d,omg_urb2d,xlat_urb2d           & !I urban
+     &          ,num_roof_layers, num_wall_layers                     & !I urban
+     &          ,num_road_layers, dzr, dzb, dzg                       & !I urban
+     &          ,tr_urb2d,tb_urb2d,tg_urb2d,tc_urb2d,qc_urb2d         & !H urban
+     &          ,uc_urb2d                                             & !H urban
+     &          ,xxxr_urb2d,xxxb_urb2d,xxxg_urb2d,xxxc_urb2d          & !H urban
+     &          ,trl_urb3d,tbl_urb3d,tgl_urb3d                        & !H urban
+     &          ,sh_urb2d,lh_urb2d,g_urb2d,rn_urb2d,ts_urb2d          & !H urban
+     &          ,frc_urb2d, utype_urb2d                               & !H urban
+     &          ,ucmcall                                              & ! urban
+ 
      &          , ids,ide,jds,jde,kds,kde                             &
      &          , ims,ime,jms,jme,kms,kme                             &
      &          , i_start,i_end,j_start,j_end,kts,kte,num_tiles       &
@@ -33,13 +45,12 @@ CONTAINS
      &           ,f_qv,f_qc,f_qr                                      &
      &           ,f_qi,f_qs,f_qg                                      &
              !  Other optionals (more or less em specific)
-     &          ,capg,emiss,hol,mol                                   &
-     &          ,rainncv,rainbl,regime,t2,thc                         &
+     &          ,capg,hol,mol                                   &
+     &          ,rainncv,rainbl,regime,thc                         &
      &          ,qsg,qvg,qcg,soilt1,tsnav                             &
      &          ,smfr3d,keepfr3dflag                                  &
              !  Other optionals (more or less nmm specific)
      &          ,potevp,snopcx,soiltb,sr,                              &
-
      &ts_ref,ps_ref,dtamplitude_ref,mavail_ref,time,&
      &bucket_model,maxm,minm,erate,&
      &calc_ust,z_o,z_t,z_q&
@@ -210,6 +221,7 @@ CONTAINS
      &          ,ims,ime,jms,jme,kms,kme                              &
      &          ,kts,kte,num_tiles
 
+   INTEGER, INTENT(IN) :: ucmcall                                     !urban
 
    INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                       &
      &           i_start,i_end,j_start,j_end
@@ -319,6 +331,7 @@ CONTAINS
 ! Optional
 !
 !
+
 ! Flags relating to the optional tendency arrays declared above
 ! Models that carry the optional tendencies will provdide the
 ! optional arguments at compile time; these flags all the model
@@ -357,7 +370,7 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   potevp ! NMM LSM
    REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   snopcx ! NMM LSM
    REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   soiltb ! NMM LSM
-   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(IN)::      sr ! NMM LSM
+   REAL, DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)::   sr ! NMM LSM
    REAL, DIMENSION( ims:ime, 1:num_soil_layers, jms:jme ), OPTIONAL, INTENT(INOUT)::   smfr3d
    REAL, DIMENSION( ims:ime, 1:num_soil_layers, jms:jme ), OPTIONAL, INTENT(INOUT)::   keepfr3dflag
 
@@ -366,10 +379,7 @@ CONTAINS
    REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::v_phytmp
    REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::u_phytmp
 
-   REAL,       DIMENSION( ims:ime, jms:jme )          ::  TSKOLD, &
-                                                          USTOLD, &
-                                                          ZNTOLD, &
-                                                             ZOL
+   REAL,       DIMENSION( ims:ime, jms:jme )          :: ZOL
 
    REAL,       DIMENSION( ims:ime, jms:jme )          ::          &
                                                              QGH, &
@@ -381,7 +391,59 @@ CONTAINS
    REAL    :: DTMIN,DTBL
 !
    INTEGER :: i,J,K,NK,jj,ij
-   LOGICAL :: radiation
+   LOGICAL :: radiation,myj,frpcpn
+!-------------------------------------------------
+! urban related variables are added to declaration
+!-------------------------------------------------
+     REAL, OPTIONAL, INTENT(IN) :: DECLIN_URB                                 !urban
+     REAL, OPTIONAL , DIMENSION( ims:ime, jms:jme ), INTENT(IN) :: COSZ_URB2D  !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(IN) :: OMG_URB2D   !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme ), INTENT(IN) :: XLAT_URB2D  !urban
+     INTEGER,  OPTIONAL, INTENT(IN) :: num_roof_layers                         !urban
+     INTEGER,  OPTIONAL, INTENT(IN) :: num_wall_layers                         !urban
+     INTEGER,  OPTIONAL, INTENT(IN) :: num_road_layers                         !urban
+     REAL, OPTIONAL, DIMENSION(1:num_soil_layers), INTENT(IN) :: DZR          !urban
+     REAL, OPTIONAL, DIMENSION(1:num_soil_layers), INTENT(IN) :: DZB          !urban
+     REAL, OPTIONAL, DIMENSION(1:num_soil_layers), INTENT(IN) :: DZG          !urban
+
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: TR_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: TB_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: TG_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: TC_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: QC_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: UC_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: XXXR_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: XXXB_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: XXXG_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: XXXC_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ) &       !urban
+           :: TRL_URB3D                                 !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ) &       !urban
+           :: TBL_URB3D                                 !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime , 1:num_soil_layers, jms:jme ) &       !urban
+           :: TGL_URB3D                                 !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: SH_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: LH_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: G_URB2D  !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: RN_URB2D !urban
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: TS_URB2D !urban
+!
+     REAL, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: FRC_URB2D  !urban 
+     INTEGER, OPTIONAL, DIMENSION( ims:ime, jms:jme )  :: UTYPE_URB2D  !urban 
+
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: PSIM_URB2D  !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: PSIH_URB2D  !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: GZ1OZ0_URB2D  !urban local var
+!m     REAL, DIMENSION( ims:ime, jms:jme ) :: AKHS_URB2D  !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: AKMS_URB2D  !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: U10_URB2D   !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: V10_URB2D   !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: TH2_URB2D   !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: Q2_URB2D    !urban local var
+     REAL,  DIMENSION( ims:ime, jms:jme )  :: UST_URB2D  !urban local var
+
+
+
    CHARACTER*256 :: message
 !
 !
@@ -392,9 +454,6 @@ CONTAINS
 
   v_phytmp = 0.
   u_phytmp = 0.
-  TSKOLD = 0.
-  USTOLD = 0.
-  ZNTOLD = 0.
   ZOL = 0.
   QGH = 0.
   CHS = 0.
@@ -447,6 +506,9 @@ CONTAINS
   IF (itimestep .eq. 1 .or. mod(itimestep,STEPBL) .eq. 0) THEN
 
   radiation = .false.
+  myj = .false.
+  frpcpn = .false.
+
   IF (ra_lw_physics .gt. 0) radiation = .true.
 
 !---- 
@@ -465,9 +527,6 @@ CONTAINS
      DO ij = 1 , num_tiles
        DO j=j_start(ij),j_end(ij)
        DO i=i_start(ij),i_end(ij)
-          TSKOLD(i,j)=TSK(i,j)
-          USTOLD(i,j)=UST(i,j)
-          ZNTOLD(i,j)=ZNT(i,j)
 ! PSFC : in Pa
           PSFC(I,J)=p8w(I,kts,J)
 ! REVERSE ORDER IN THE VERTICAL DIRECTION
@@ -499,7 +558,7 @@ CONTAINS
          CALL wrf_debug( 100, 'in SFCLAY' )
          CALL SFCLAY(u_phytmp,v_phytmp,t_phy,qv_curr,&
                p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
-               zntold,ustold,pblh,mavail,zol,mol,regime,psim,psih, &
+               znt,ust,pblh,mavail,zol,mol,regime,psim,psih, &
                xland,hfx,qfx,lh,tsk,flhc,flqc,qgh,qsfc,rmol,       &
                u10,v10,th2,t2,q2,                                  &
                gz1oz0,wspd,br,isfflx,dx,                           &
@@ -514,18 +573,15 @@ CONTAINS
 
 ! SET NEW VALUES
 
-       DO j=j_start(ij),j_end(ij)
-       DO i=i_start(ij),i_end(ij)
-          UST(i,j)=USTOLD(i,j)
-          ZNT(i,j)=ZNTOLD(i,j)
-       ENDDO
-       ENDDO
 #else
        CALL wrf_error_fatal('SFCLAY cannot be used with NMM')
 #endif
       CASE ('MYJSFCSCHEME')
        IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
                                                       .TRUE. ) THEN
+
+          myj =.TRUE.
+
             CALL wrf_debug(100,'in MYJSFC')
             CaLL MYJSFC(itimestep,ht,dz8w,                         &
               p_phy,p8w,th_phy,t_phy,                              &
@@ -534,10 +590,10 @@ CONTAINS
               tsk,qsfc,thz0,qz0,uz0,vz0,                           &
               lowlyr,                                              &
               xland,                                               &
-              ust,znt,pblh,mavail,rmol,                            &
+              ust,znt,z0,pblh,mavail,rmol,                         &
               akhs,akms,                                           &
               chs,chs2,cqs2,hfx,qfx,lh,flhc,flqc,qgh,cpm,ct,       &
-              u10,v10,tshltr,th10,qshltr,q10,pshltr,               &
+              u10,v10,t2,th2,tshltr,th10,q2,qshltr,q10,pshltr,     &
               z_o,z_t,z_q,&
               ids,ide, jds,jde, kds,kde,                           &
               ims,ime, jms,jme, kms,kme,                           &
@@ -593,8 +649,7 @@ CONTAINS
      CASE ('SLABSCHEME')
 
        IF (PRESENT(qv_curr)                            .AND.    &
-           PRESENT(capg)       .AND.  PRESENT(emiss )  .AND.    &
-           PRESENT(t2  )                               .AND.    &
+            PRESENT(capg)       .AND. &
                                                       .TRUE. ) THEN
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
@@ -613,6 +668,13 @@ CONTAINS
              ids,ide, jds,jde, kds,kde,                           &
              ims,ime, jms,jme, kms,kme,                           &
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+
+           DO j=j_start(ij),j_end(ij)
+           DO i=i_start(ij),i_end(ij)
+              SFCEVP(I,J)= SFCEVP(I,J) + QFX(I,J)*DTBL
+           ENDDO
+           ENDDO
+
 
         CALL wrf_debug(100,'in SFCDIAGS')
           CALL SFCDIAGS(hfx,qfx,tsk,qsfc,chs2,cqs2,t2,th2,q2,      &
@@ -659,6 +721,7 @@ CONTAINS
                                                       .TRUE. ) THEN
 !------------------------------------------------------------------
          CALL wrf_debug(100,'in NOAH LSM')
+
            CALL lsm(dz8w,qv_curr,p8w,t_phy,tsk,                 &
                 hfx,qfx,lh,grdflx,qgh,gsw,glw,smstav,smstot,    &
                 sfcrunoff,udrunoff,ivgtyp,isltyp,vegfra,        &
@@ -668,15 +731,34 @@ CONTAINS
                 smois,tslb,snow,canwat,                         &
                 chs, chs2, cqs2, cpm,rcp,                       &    
                 sh2o,snowh,                                     & !h  
+                u_phy,v_phy,                                    & !I
                 snoalb,shdmin,shdmax,                           & !i
                 acsnom,acsnow,                                  & !o 
                 ids,ide, jds,jde, kds,kde,                      &
                 ims,ime, jms,jme, kms,kme,                      &
-                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte,    &
+                ucmcall                                         &
+!Optional urban
+                ,tr_urb2d,tb_urb2d,tg_urb2d,tc_urb2d,qc_urb2d,  & !H urban
+                uc_urb2d,                                       & !H urban
+                xxxr_urb2d,xxxb_urb2d,xxxg_urb2d,xxxc_urb2d,    & !H urban
+                trl_urb3d,tbl_urb3d,tgl_urb3d,                  & !H urban
+                sh_urb2d,lh_urb2d,g_urb2d,rn_urb2d,ts_urb2d,    & !H urban
+                psim_urb2d,psih_urb2d,u10_urb2d,v10_urb2d,      & !O urban
+                GZ1OZ0_urb2d, AKMS_URB2D,                       & !O urban
+                th2_urb2d,q2_urb2d,ust_urb2d,                   & !O urban
+                declin_urb,cosz_urb2d,omg_urb2d,                & !I urban
+                xlat_urb2d,                                     & !I urban
+                num_roof_layers, num_wall_layers,               & !I urban
+                num_road_layers, DZR, DZB, DZG,                 & !I urban
+                FRC_URB2D, UTYPE_URB2D                          & ! urban
+                )
+
 
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
               CHKLOWQ(I,J)= 1.0
+              SFCEVP(I,J)= SFCEVP(I,J) + QFX(I,J)*DTBL
            ENDDO
            ENDDO
 
@@ -687,6 +769,33 @@ CONTAINS
                      ims,ime, jms,jme, kms,kme,                    &
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
+!urban
+     IF(UCMCALL.eq.1) THEN
+       DO j=j_start(ij),j_end(ij)                             !urban
+         DO i=i_start(ij),i_end(ij)                           !urban
+          IF( IVGTYP(I,J) == 1 .OR. IVGTYP(I,J) == 31 .or. &  !urban
+              IVGTYP(I,J) == 32 .OR. IVGTYP(I,J) == 33 ) THEN !urban
+!             TH2(I,J)  = TH2_URB2D(I,J)                       !urban
+!             T2(I,J)   = TH2_URB2D(I,J)/(1.E5/PSFC(I,J))**RCP !urban
+!m             T2(I,J)   = TH2_URB2D(I,J)                       !urban
+             T2(I,J)   = FRC_URB2D(i,j)*TH2_URB2D(I,J) + (1-FRC_URB2D(i,j))*T2(I,J) !urban
+             TH2(I,J) = T2(I,J)*(1.E5/PSFC(I,J))**RCP                               !urban
+!m             Q2(I,J)   = Q2_URB2D(I,J)                                            !urban
+             Q2(I,J)   = FRC_URB2D(i,j)*Q2_URB2D(I,J) +(1-FRC_URB2D(i,j))* Q2(I,J)  !urban
+             U10(I,J)  = U10_URB2D(I,J)                       !urban
+             V10(I,J)  = V10_URB2D(I,J)                       !urban
+             PSIM(I,J) = PSIM_URB2D(I,J)                      !urban
+             PSIH(I,J) = PSIH_URB2D(I,J)                      !urban
+             GZ1OZ0(I,J) = GZ1OZ0_URB2D(I,J)                  !urban
+!m             AKHS(I,J) = AKHS_URB2D(I,J)                    !urban
+             AKHS(I,J) = CHS(I,J)                             !urban
+             AKMS(I,J) = AKMS_URB2D(I,J)                      !urban
+           END IF                                             !urban
+         ENDDO                                                !urban
+       ENDDO                                                  !urban
+     ENDIF
+
+
 
 !------------------------------------------------------------------
 
@@ -694,72 +803,57 @@ CONTAINS
          CALL wrf_error_fatal('Lacking arguments for LSM in surface driver')
        ENDIF
 
-     CASE ('RUCLSMSCHEME')
+    CASE ('RUCLSMSCHEME')
        IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
-           PRESENT(emiss)      .AND.  PRESENT(t2)      .AND.    &
-           PRESENT(qsg)        .AND.  PRESENT(qvg)     .AND.    &
-           PRESENT(qcg)        .AND.  PRESENT(soilt1)  .AND.    &
-           PRESENT(tsnav)      .AND.  PRESENT(smfr3d)  .AND.    &
-           PRESENT(keepfr3dflag) .AND. PRESENT(rainbl) .AND.    &
-                                                      .TRUE. ) THEN
-           CALL wrf_debug(100,'in RUC LSM')
-           IF (bl_pbl_physics=='MYJPBLSCHEME') THEN
-              CALL LSMRUC(dtbl,itimestep,num_soil_layers,          &
-                   zs,rainbl,snow,snowh,snowc,sr,                  &
-                   dz8w,p8w,t_phy,qv_curr,qc_curr,rho,             & !p8w in [pa]
-                   glw,gsw,emiss,chklowq,                          &
-                   flqc,flhc,mavail,canwat,vegfra,albedo,znt,      &
-                   qsfc,qsg,qvg,qcg,soilt1,tsnav,                  &
-                   tmn,ivgtyp,isltyp,xland,xice,                   &
-                   cp,g,xlv,stbolt,                                &
-                   smois,smstav,smstot,tslb,tsk,hfx,qfx,lh,        &
-                   sfcrunoff,udrunoff,sfcexc,                      &
-                   sfcevp,grdflx,acsnow,                           &
-                   smfr3d,keepfr3dflag,                            &
-                   .TRUE., &
-                   ids,ide, jds,jde, kds,kde,                      &
-                   ims,ime, jms,jme, kms,kme,                      &
-                   i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
+!           PRESENT(emiss)      .AND.  PRESENT(t2)      .AND.    &
+            PRESENT(qsg)        .AND.  PRESENT(qvg)     .AND.    &
+            PRESENT(qcg)        .AND.  PRESENT(soilt1)  .AND.    &
+            PRESENT(tsnav)      .AND.  PRESENT(smfr3d)  .AND.    &
+            PRESENT(keepfr3dflag) .AND. PRESENT(rainbl) .AND.    &
+            .TRUE. ) THEN
+          
+          IF( PRESENT(sr) ) THEN
+             frpcpn=.TRUE.
+          ELSE
+             SR = 1.
+          ENDIF
+          
 
-           ELSE
-
-              CALL LSMRUC(dtbl,itimestep,num_soil_layers,          &
-                   zs,rainbl,snow,snowh,snowc,sr,                  &
-                   dz8w,p8w,t_phy,qv_curr,qc_curr,rho,             & !p8w in [pa]
-                   glw,gsw,emiss,chklowq,                          &
-                   flqc,flhc,mavail,canwat,vegfra,albedo,znt,      &
-                   qsfc,qsg,qvg,qcg,soilt1,tsnav,                  &
-                   tmn,ivgtyp,isltyp,xland,xice,                   &
-                   cp,g,xlv,stbolt,                                &
-                   smois,smstav,smstot,tslb,tsk,hfx,qfx,lh,        &
-                   sfcrunoff,udrunoff,sfcexc,                      &
-                   sfcevp,grdflx,acsnow,                           &
-                   smfr3d,keepfr3dflag,                            &
-                   .FALSE., &
-                   ids,ide, jds,jde, kds,kde,                      &
-                   ims,ime, jms,jme, kms,kme,                      &
-                   i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
-
-           ENDIF
-              
-!           DO j=j_start(ij),j_end(ij)
-!           DO i=i_start(ij),i_end(ij)
-!              CHKLOWQ(I,J)= 1.0
-!           ENDDO
-!           ENDDO
-
-
-           CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
-                PSFC,CP,R_d,RCP,                              &
-                ids,ide, jds,jde, kds,kde,                    &
-                ims,ime, jms,jme, kms,kme,                    &
-                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
-           
+          CALL wrf_debug(100,'in RUC LSM')
+          CALL LSMRUC(dtbl,itimestep,num_soil_layers,          &
+               zs,rainbl,snow,snowh,snowc,sr,frpcpn,           &
+               dz8w,p8w,t_phy,qv_curr,qc_curr,rho,             & !p8w in [pa]
+               glw,gsw,emiss,chklowq,                          &
+               flqc,flhc,mavail,canwat,vegfra,albedo,znt,      &
+               qsfc,qsg,qvg,qcg,soilt1,tsnav,                  &
+               tmn,ivgtyp,isltyp,xland,xice,                   &
+               cp,g,xlv,stbolt,                                &
+               smois,smstav,smstot,tslb,tsk,hfx,qfx,lh,        &
+               sfcrunoff,udrunoff,sfcexc,                      &
+               sfcevp,grdflx,acsnow,                           &
+               smfr3d,keepfr3dflag,                            &
+               myj,                                            &
+               ids,ide, jds,jde, kds,kde,                      &
+               ims,ime, jms,jme, kms,kme,                      &
+               i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
+          
+          IF(.NOT. MYJ) THEN
+             
+             CALL SFCDIAGS(HFX,QFX,TSK,QVG,CHS2,CQS2,T2,TH2,Q2,      &
+                  
+                  PSFC,CP,R_d,RCP,                              &
+                  ids,ide, jds,jde, kds,kde,                    &
+                  ims,ime, jms,jme, kms,kme,                    &
+                  i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
+          ENDIF
+          
+          
        ELSE
          CALL wrf_error_fatal('Lacking arguments for RUCLSM in surface driver')
-       ENDIF
-       
-     CASE ('FRSCHEME')
+      ENDIF
+      
+   
+   CASE ('FRSCHEME')
 
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
@@ -824,7 +918,7 @@ CONTAINS
 
             CALL SFCLAY_fluxforce(u_phytmp,v_phytmp,t_phy,qv_curr,&
                p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
-               zntold,ustold,pblh,mavail,zol,mol,regime,psim,psih, &
+               znt,ust,pblh,mavail,zol,mol,regime,psim,psih, &
                xland,hfx,qfx,lh,tsk,flhc,flqc,qgh,qsfc,rmol,       &
                u10,v10,th2,t2,q2,                                  &
                gz1oz0,wspd,br,isfflx,dx,                           &
@@ -861,10 +955,10 @@ CONTAINS
                     tsk,qsfc,thz0,qz0,uz0,vz0,                           &
                     lowlyr,                                              &
                     xland,                                               &
-                    ust,znt,pblh,mavail,rmol,                            &
+                    ust,znt,z0,pblh,mavail,rmol,                         &
                     akhs,akms,                                           &
                     chs,chs2,cqs2,hfx,qfx,lh,flhc,flqc,qgh,cpm,ct,       &
-                    u10,v10,tshltr,th10,qshltr,q10,pshltr,               &
+                    u10,v10,t2,th2,tshltr,th10,q2,qshltr,q10,pshltr,     &
                     calc_ust,z_o,z_t,z_q,&
                     ids,ide, jds,jde, kds,kde,                           &
                     ims,ime, jms,jme, kms,kme,                           &

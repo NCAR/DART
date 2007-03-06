@@ -25,7 +25,7 @@ USE module_soil_pre,        only: init_soil_depth_1, init_soil_depth_2, &
                                   init_soil_2_real, init_soil_3_real,&
                                   &init_soil_depth_0,init_soil_0_real
 
-USE module_sf_noahlsm,      only: lsminit
+USE module_sf_noahlsm,      only: lsminit, maxsmc, wltsmc
 
 USE module_sf_ruclsm,       only: lsmrucinit
 
@@ -99,6 +99,7 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
    REAL, DIMENSION(:),     INTENT(out) :: zs, dzs
    CHARACTER(len=4), INTENT(inout) :: mminlu
    LOGICAL,  INTENT(in)         :: flag_sst, fndsoilw, fndsnowh, restart
+   REAL, DIMENSION(ims:ime,jms:jme) :: smois_frac
 
 ! local
    INTEGER                      :: k 
@@ -290,8 +291,10 @@ SUBROUTINE init_soil_real_wrf(julday, lu_index, ivgtyp, &
            ims,ime, jms,jme, kms,kme,                &
            its,ite, jts,jte, kts,kte                 )
 
+      smois_frac = (smois(:,1,:)-wltsmc(isltyp(1,1)))/(maxsmc(isltyp(1,1))-wltsmc(isltyp(1,1)))
       IF  (qsfc(1,1) <= 0.) THEN
-         qsfc(1,1)=qsat(ps_ref,tsk(1,1))*smois(1,1,1)
+         qsfc(1,1)=qsat(ps_ref,tsk(1,1))*smois_frac(1,1) !smois(1,1,1)
+!         qsfc(1,1)=qsat(ps_ref,tsk(1,1))*smois(1,1,1)
       ENDIF
       
    ELSEIF (sf_surface_physics=='RUCLSMSCHEME') THEN

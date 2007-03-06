@@ -31,7 +31,6 @@ models/PBL_1d/src/module_interpolations.F
 models/PBL_1d/src/module_gfs_machine.F
 models/PBL_1d/src/module_gfs_physcons.F
 models/PBL_1d/src/module_progtm.F
-models/PBL_1d/src/module_sf_gfs.F
 models/PBL_1d/src/module_snd_init_and_bc.F
 models/PBL_1d/src/module_wrf_init_and_bc.F
 models/PBL_1d/src/module_luse_init.F
@@ -39,12 +38,14 @@ models/PBL_1d/src/module_model_constants.F
 models/PBL_1d/src/module_namelist.F
 models/PBL_1d/src/module_nr_procedures.F
 models/PBL_1d/src/module_pbl_driver.F
+models/PBL_1d/src/module_sf_gfs.F
 models/PBL_1d/src/module_sf_myjsfc.F
 models/PBL_1d/src/module_sf_noahlsm.F
 models/PBL_1d/src/module_sf_ruclsm.F
 models/PBL_1d/src/module_sf_sfcdiags.F
 models/PBL_1d/src/module_sf_sfclay.F
 models/PBL_1d/src/module_sf_slab.F
+models/PBL_1d/src/module_sf_urban.F
 models/PBL_1d/src/module_sf_force_restore.F
 models/PBL_1d/src/module_soil_pre.F
 models/PBL_1d/src/module_surface_driver.F

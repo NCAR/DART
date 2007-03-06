@@ -372,9 +372,9 @@ CONTAINS
                                                          RQIBLTEN
    INTEGER :: i, j, k, itf, jtf, ktf
 
-   jtf=min0(jte,jde-1)
+   jtf=min0(jte,jde)
    ktf=min0(kte,kde-1)
-   itf=min0(ite,ide-1)
+   itf=min0(ite,ide)
 
    IF(.not.restart)THEN
      DO j=jts,jtf

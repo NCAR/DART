@@ -1,27 +1,29 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2006, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 MODULE types_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/src/types_mod.F,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 
 implicit none
 private 
 
-public :: i8, r8, PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8, digits12
+public :: i4, i8, r4, c4, r8, c8, digits12
+public :: PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
 public :: MISSING_I, MISSING_DATA
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/src/types_mod.F,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -45,7 +47,9 @@ SAVE
   integer, parameter :: i8 = SELECTED_INT_KIND(13)
   integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
   integer, parameter :: c4 = SELECTED_REAL_KIND(6,30)
-  integer, parameter :: r8 = SELECTED_REAL_KIND(12)
+! comment in only one of the following lines, not both.   the first is the default.
+  integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
+!!integer, parameter :: r8 = r4                       ! alias r8 to r4
   integer, parameter :: c8 = SELECTED_REAL_KIND(12)
 
 ! 'digits12' is reserved for real variables that MUST retain 64 bits of

@@ -9,7 +9,7 @@ CONTAINS
 !-----------------------------------------------------------------
     SUBROUTINE LSMRUC(                                           &
                    DT,KTAU,NSL,ZS,                               &
-                   RAINBL,SNOW,SNOWH,SNOWC,FRZFRAC,              &
+                   RAINBL,SNOW,SNOWH,SNOWC,FRZFRAC,frpcpn,      &
                    Z3D,P8W,T3D,QV3D,QC3D,RHO3D,                  & !p8W in [PA]
                    GLW,GSW,EMISS,CHKLOWQ,                         & 
                    FLQC,FLHC,MAVAIL,CANWAT,VEGFRA,ALB,ZNT,       &
@@ -89,7 +89,7 @@ CONTAINS
    INTEGER,     PARAMETER            ::     nvegclas=24
 
    REAL,       INTENT(IN   )    ::     DT
-   LOGICAL,    INTENT(IN   )    ::     myj
+   LOGICAL,    INTENT(IN   )    ::     myj,frpcpn
    INTEGER,    INTENT(IN   )    ::     ktau, nsl,                 &
                                        ims,ime, jms,jme, kms,kme, &
                                        ids,ide, jds,jde, kds,kde, &
@@ -344,7 +344,7 @@ CONTAINS
 !-----------------------------------------------------------------
 
         PRCPMS = 0.
-        NROOT  = 4
+!        NROOT  = 4
 
 
    DO J=jts,jte
@@ -383,10 +383,22 @@ CONTAINS
 !         CONFLX    = 5.
          RHO       = RHO3D(I,kms,J)
 !--- 1*e-3 is to convert from mm/s to m/s
+
+       IF(FRPCPN) THEN
          PRCPMS    = (RAINBL(i,j)/DT*1.e-3)*(1-FRZFRAC(I,J))
          NEWSNMS  = (RAINBL(i,j)/DT*1.e-3)*FRZFRAC(I,J)
+       ELSE
+          if (tabs.le.273.15) then
+         PRCPMS    = 0.
+         NEWSNMS   = RAINBL(i,j)/DT*1.e-3
+          else
+         PRCPMS    = RAINBL(i,j)/DT*1.e-3
+         NEWSNMS   = 0.
+          endif
+       ENDIF
+
 !--- rooting depth is 5 levels for forests
-        if(iforest(ivgtyp(i,j)).eq.1) nroot=5
+!        if(iforest(ivgtyp(i,j)).eq.1) nroot=5
 !--- convert exchange coeff to [m/s]
          QKMS=FLQC(I,J)/RHO/MAVAIL(I,J)
          TKMS=FLHC(I,J)/RHO/CP
@@ -402,6 +414,29 @@ CONTAINS
              zsmain(k)= zs(k)
              zshalf(k)=0.5*(zsmain(k-1) + zsmain(k))
           enddo
+
+
+!-- definition of number of soil levels in the rooting zone
+     IF(iforest(ivgtyp(i,j)).ne.1) THEN
+!---- non forests
+         DO k=2,nzs
+         if(zsmain(k).ge.0.4) then
+            NROOT=K
+            goto  111
+         endif
+         enddo
+
+     ELSE
+!---- forests
+         DO k=2,nzs
+         if(zsmain(k).ge.1.1) then
+            NROOT=K
+            goto  111
+         endif
+         enddo
+     ENDIF
+ 111   continue
+
 
 !-----
     IF ( wrf_at_debug_level(LSMRUC_DBG_LVL) ) THEN
@@ -458,7 +493,7 @@ CONTAINS
        endif
 
 !--- initializing soil and surface properties
-     CALL SOILVEGIN  ( ILAND,ISOIL,IFOREST,                     &
+     CALL SOILVEGIN  ( ILAND,ISOIL,MYJ,IFOREST,                     &
                      EMISSL(I,J),PC(i,j),ZNT(I,J),QWRTZ,       &
 !                     EMISSL(I,J),PC(i,j),ZNTL(I,J),QWRTZ,       &
                      RHOCS,BCLH,DQM,KSAT,PSIS,QMIN,REF,WILT     )
@@ -581,6 +616,7 @@ CONTAINS
                 GLW(I,J),GSW(I,J),EMISSL(I,J),                   &
                 QKMS,TKMS,PC(I,J),LMAVAIL(I,J),                  &
                 canwatr,vegfra(I,J),alb(I,J),znt(I,J),           &
+                myj, &
 !--- soil fixed fields
                 QWRTZ,                                           &
                 rhocs,dqm,qmin,ref,                              &
@@ -710,6 +746,7 @@ CONTAINS
                 PATM,TABS,QVATM,QCATM,rho,                       &
                 GLW,GSW,EMISS,QKMS,TKMS,PC,                      &
                 MAVAIL,CST,VEGFRA,ALB,ZNT,                       &
+                MYJ,                                             &
 !--- soil fixed fields
                 QWRTZ,rhocs,dqm,qmin,ref,wilt,psis,bclh,ksat,    &
                 sat,cn,zsmain,zshalf,DTDZS,DTDZS2,tbq,           &
@@ -735,6 +772,7 @@ CONTAINS
 
    REAL,     INTENT(IN   )   ::  DELT,CONFLX
    REAL,     INTENT(IN   )   ::  C1SN,C2SN
+   LOGICAL,    INTENT(IN   )    ::     myj
 !--- 3-D Atmospheric variables
    REAL                                                        , &
             INTENT(IN   )    ::                            PATM, &
@@ -1010,6 +1048,7 @@ CONTAINS
             GLW,GSWnew,EMISS,RNET,IVGTYP,                       &
             QKMS,TKMS,PC,CST,                                   &
             RHO,VEGFRAC,ALB,ZNT,                                &
+            MYJ,                                                &
 !--- soil fixed fields
             QWRTZ,rhocs,dqm,qmin,ref,wilt,psis,bclh,ksat,       &
             sat,cn,zsmain,zshalf,DTDZS,DTDZS2,tbq,              & 
@@ -1625,6 +1664,7 @@ CONTAINS
              PATM,QVATM,QCATM,                                 &
              GLW,GSW,EMISS,RNET,IVGTYP,                        &
              QKMS,TKMS,PC,cst,rho,vegfrac,alb,znt,             & 
+             MYJ,                                              &
 !--- soil fixed fields
              QWRTZ,rhocs,dqm,qmin,ref,wilt,psis,bclh,ksat,     &
              sat,cn,zsmain,zshalf,DTDZS,DTDZS2,tbq,            &
@@ -1718,6 +1758,8 @@ CONTAINS
 
    REAL,     INTENT(IN   )   ::  DELT,CONFLX,PRCPMS            , &
                                  RAINF,NEWSNOW
+
+   LOGICAL,    INTENT(IN   )    ::     myj
 
 !--- 3-D Atmospheric variables
    REAL,                                                         &
@@ -2189,7 +2231,7 @@ print *, 'TSO before calling SNOWTEMP: ', tso
 !-- Restore land-use parameters if snow is less than threshold
          IF(SNHEI.LE.2.E-2)  then
           tsnav=soilt-273.15
-          CALL SNOWFREE(ivgtyp,emiss,                              & 
+          CALL SNOWFREE(ivgtyp,myj,emiss,                              & 
                         znt,iland)
           smelt=smelt+snwe/delt
 !          snwe=0.
@@ -3439,7 +3481,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
             RUNOFF2=runoff2+(FLXSAT-FLX)*DELT
             RUNOFF=RUNOFF+(FLXSAT-FLX)
           ELSE
-            SOILMOIS(1)=QQ
+             SOILMOIS(1)=MAX(1.e-8,QQ)
           END IF
 
 !--- FINAL SOLUTION FOR SOILMOIS 
@@ -3459,7 +3501,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
                RUNOFF2=RUNOFF2+(QQ-DQM)*(ZSMAIN(K+1)-ZSHALF(K))
              ENDIF
            ELSE
-            SOILMOIS(K)= QQ
+              SOILMOIS(K)=MAX(1.e-8,QQ)
            END IF
           END DO
 
@@ -3840,7 +3882,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 !-----------------------------------------------------------------------
 
 
-     SUBROUTINE SOILVEGIN  ( IVGTYP,ISLTYP,IFOREST,                &
+     SUBROUTINE SOILVEGIN  ( IVGTYP,ISLTYP,myj,IFOREST,                &
                      EMISS,PC,ZNT,QWRTZ,                           &
                      RHOCS,BCLH,DQM,KSAT,PSIS,QMIN,REF,WILT        )
 
@@ -4037,6 +4079,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
                                                          IVGTYP, &
                                                          ISLTYP
 
+   LOGICAL,    INTENT(IN   )    ::     myj
 
 
    REAL                                                        , &
@@ -4081,6 +4124,11 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 ! values of roughness length, and not redefine it here.
 ! The table in this routine is the one we use in RUC with RUC LSM.
 
+
+        if (.not. myj) then
+        ZNT   = LROU(IVGTYP)
+        endif
+
 !        ZNT   = LROU(IVGTYP)
         PC     = LPC (IVGTYP)
 
@@ -4099,8 +4147,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
    END SUBROUTINE SOILVEGIN
 !--------------------------------------------------------------------------
 
-
-      SUBROUTINE SNOWFREE (ivgtyp,emiss,znt,iland)
+      SUBROUTINE SNOWFREE (ivgtyp,myj,emiss,znt,iland)
 !************************************************************************
 !  Set-up soil and vegetation Parameters in the case when
 !  snow disappears during the forecast and snow parameters
@@ -4114,6 +4161,11 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 
 
    INTEGER                   ::      IVGTYP
+
+
+   LOGICAL,    INTENT(IN   )    ::     myj
+
+   
    REAL,     INTENT(INOUT)   ::                                 &
                                                          emiss, &
                                                            znt  
@@ -4122,6 +4174,7 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 !----  Below are the arrays for the vegetation parameters 
    REAL,    DIMENSION( 1:nvegclas )   ::                  LALB, &
                                                           LEMI, &
+                                                       LROU_MYJ,&
                                                           LROU
 
 !************************************************************************
@@ -4132,22 +4185,31 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
         DATA LEMI/.88,4*.92,.93,.92,.88,.9,.92,.93,.94,                 &
                   .95,.95,.94,.98,.95,.95,.85,.92,.93,.92,.85,.95/
 !-- Roughness length is changed for forests and some others
-!        DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.8,.85,       &
-!                  2.0,1.0,.563,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
-
-! With MYJSFC better use the table from MYJSFCINIT
-        DATA LROU/1.0,.07,.07,.07,.07,.15,.08,.03,.05,.86,.8,.85,       &
-                  2.65,1.09,.8,.001,.04,.05,.01,.04,.06,.05,.03,.001/
-
 ! next 2 lines - table from RUC
+        DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.8,.85,       &
+                  2.0,1.0,.563,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+
 !         DATA LROU/.5,.06,.075,.065,.05,.2,.075,.1,.11,.15,.5,.5,           &
 !                   .5,.5,.5,.0001,.2,.4,.05,.1,.15,.1,.065,.05/
+
+! With MYJSFC better use the table from MYJSFCINIT
+        DATA LROU_MYJ/1.0,.07,.07,.07,.07,.15,.08,.03,.05,.86,.8,.85,       &
+                  2.65,1.09,.8,.001,.04,.05,.01,.04,.06,.05,.03,.001/
+
+
+
+
+
 
 
 !--------------------------------------------------------------------------
 
         EMISS  = LEMI(IVGTYP)
+       if(myj) then
+        ZNT    = LROU_MYJ(IVGTYP)
+       else
         ZNT    = LROU(IVGTYP)
+       endif
         ILAND  =      IVGTYP
 ! --- 
 
@@ -4192,8 +4254,8 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
   INTEGER ::  I,J,L,itf,jtf
   REAL    ::  RIW,XLMELT,TLN,DQM,REF,PSIS,QMIN,BCLH
 
-   itf=min0(ite,ide-1)
-   jtf=min0(jte,jde-1)
+   itf=min0(ite,ide)
+   jtf=min0(jte,jde)
 
 
         RIW=900.*1.e-3
@@ -4209,11 +4271,13 @@ print *, 'D9SN,SOILT,TSOB : ', D9SN,SOILT,TSOB
 !--- and initialize MAVAIL
 
      IF (.not.restart) THEN
-    if(isltyp(i,j).ne.14) then
-           mavail(i,j) = max(0.00001,min(1.,smois(i,1,j)/dqm))
+    IF(isltyp(i,j).ne.14) then
+           mavail(i,j) = MAX(0.00001,MIN(1.,smois(i,1,j)/dqm))
+!           mavail(i,j) = max(0.00001,min(1.,smois(i,1,j)/(ref-qmin)))
     else
            mavail(i,j) = 1.
     endif
+
          DO L=1,NZS
     if(isltyp(i,j).ne.14) then
 !-- for land points initialize soil ice

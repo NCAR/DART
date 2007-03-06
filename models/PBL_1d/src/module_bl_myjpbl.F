@@ -31,7 +31,8 @@
       REAL,PARAMETER :: CAPA=R_D/CP
       REAL,PARAMETER :: RLIVWV=XLS/XLV,ELOCP=2.72E6/CP
       REAL,PARAMETER :: EPS1=1.E-12,EPS2=0.
-      REAL,PARAMETER :: EPSL=0.10,EPSRU=1.E-7,EPSRS=1.E-7               &
+!      REAL,PARAMETER :: EPSL=0.10,EPSRU=1.E-7,EPSRS=1.E-7               &
+      REAL,PARAMETER :: EPSL=0.32,EPSRU=1.E-7,EPSRS=1.E-7               &
      &                 ,EPSTRB=1.E-24
       REAL,PARAMETER :: EPSA=1.E-8,EPSIT=1.E-4,EPSU2=1.E-4,EPSUST=0.07  &
      &                 ,FH=1.01
@@ -202,8 +203,10 @@
 !
       INTEGER,DIMENSION(ITS:ITE,JTS:JTE) :: LPBL
 !
-      REAL :: APEX,DCDT,DELTAZ,DQDT,DTDIF,DTDT,DTTURBL,DUDT,DVDT       &
-     &       ,EXNSFC,FFSK,PLOW,PSFC,PTOP,QFC1,QLOW,QOLD                &
+!      REAL :: APEX,DCDT,DELTAZ,DQDT,DTDIF,DTDT,DTTURBL,DUDT,DVDT       &
+!     &       ,EXNSFC,FFSK,PLOW,PSFC,PTOP,QFC1,QLOW,QOLD                &
+      REAL :: AKHS_DENS,AKMS_DENS,APEX,DCDT,DELTAZ,DQDT,DTDIF,DTDT     &
+     &       ,DTTURBL,DUDT,DVDT,EXNSFC,PSFC,PTOP,QFC1,QLOW,QOLD        &
      &       ,RATIOMX,RDTTURBL,RG,RWMSK,SEAMASK,THNEW,THOLD,TX         &
      &       ,ULOW,VLOW,WMSK
 !
@@ -215,7 +218,7 @@
 !
       REAL,DIMENSION(ITS:ITE,JTS:JTE) :: THSK
 !
-      REAL,DIMENSION(ITS:ITE,KTS:KTE) :: RHOD
+      REAL,DIMENSION(KTS:KTE,ITS:ITE) :: RHOK
 !
       REAL,DIMENSION(ITS:ITE,KTS:KTE,JTS:JTE) :: APE,THE
 !
@@ -226,6 +229,14 @@
 
       REAL :: rdz
       INTEGER :: ktmp
+
+
+!***  Begin debugging
+      REAL :: ZSL_DIAG
+      INTEGER :: IMD,JMD,PRINT_DIAG
+!***  End debugging
+!
+
 
 
 
@@ -326,6 +337,18 @@
 !
           ENDDO
           ZHK(KTE+1)=HT(I,J)          ! Z at bottom of lowest sigma layer
+
+!
+!***  Begin debugging
+!         IF(I==IMD.AND.J==JMD)THEN
+!           PRINT_DIAG=1
+!         ELSE
+!           PRINT_DIAG=0
+!         ENDIF
+!         IF(I==227.AND.J==363)PRINT_DIAG=2
+!***  End debugging
+!
+
 !----------------------------------------------------------------------
 !***
 !***  FIND THE MIXING LENGTH
@@ -361,7 +384,7 @@
           CALL DIFCOF(LMH,LMXL,GM,GH,EL,TK,Q2K,ZHK,AKMK,AKHK           &
      &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
      &               ,IMS,IME,JMS,JME,KMS,KME                          &
-     &               ,ITS,ITE,JTS,JTE,KTS,KTE)
+     &               ,ITS,ITE,JTS,JTE,KTS,KTE,PRINT_DIAG)   ! debug
 !
 !***  COUNTING DOWNWARD FROM THE TOP, THE EXCHANGE COEFFICIENTS AKH 
 !***  ARE DEFINED ON THE BOTTOMS OF THE LAYERS KTS TO KTE-1.  COUNTING 
@@ -399,7 +422,8 @@
             KFLIP=KTE+1-K
             Q2K(KFLIP)=AMAX1(Q2K(KFLIP),EPSQ2)
             TKE_MYJ(I,K,J)=0.5*Q2K(KFLIP)
-            IF ( K .LT. KTE ) EL_MYJ(I,K,J)=EL(K)   ! EL IS NOT DEFINED AT KTE
+!            IF ( K .LT. KTE ) EL_MYJ(I,K,J)=EL(K)   ! EL IS NOT DEFINED AT KTE
+            IF(K<KTE)EL_MYJ(I,K,J)=EL(K)   ! EL IS NOT DEFINED AT KTE
           ENDDO
 !
 !
@@ -430,10 +454,6 @@
 !***  AND FLIP DIRECTION SINCE MYJ SCHEME
 !***  COUNTS DOWNWARD FROM THE DOMAIN'S TOP
 !
-          DO K=KTE-1,KTS,-1
-            KFLIP=KTE-K
-            AKHK(K)=AKH(I,K,J)
-          ENDDO 
 !
           DO K=KTE,KTS,-1
             KFLIP=KTE+1-K
@@ -442,6 +462,16 @@
             QK(K)=RATIOMX/(1.+RATIOMX)
             CWMK(K)=CWM(I,KFLIP,J)
             ZHK(K)=ZINT(I,K,J)
+            RHOK(K,I)=PMID(I,KFLIP,J)/(R_D*T(I,KFLIP,J)*               &
+     &                                (1.+P608*QK(K)-CWMK(K)))
+          ENDDO
+!
+!***  COUNTING DOWNWARD FROM THE TOP, THE EXCHANGE COEFFICIENTS AKH
+!***  ARE DEFINED ON THE BOTTOMS OF THE LAYERS KTS TO KTE-1.  THESE COEFFICIENTS
+!***  ARE ALSO MULTIPLIED BY THE DENSITY AT THE BOTTOM INTERFACE LEVEL.
+!
+          DO K=KTS,KTE-1
+            AKHK(K)=AKH(I,K,J)*0.5*(RHOK(K,I)+RHOK(K+1,I))
           ENDDO
 !
           ZHK(KTE+1)=ZINT(I,KTE+1,J)
@@ -451,22 +481,21 @@
           IF (sf_surface_physics /= 'FLUXFORCE') THEN
              THZ0(I,J)=(1.-SEAMASK)*THSK(I,J)+SEAMASK*THZ0(I,J)
           ENDIF
+
+          LLOW=LOWLYR(I,J)
+          AKHS_DENS=AKHS(I,J)*RHOK(KTE+1-LLOW,I)
+
+!
 !
           IF(SEAMASK<0.5)THEN
-            LLOW=LOWLYR(I,J)
-            PLOW=PMID(I,LLOW,J)
-            QLOW=QK(KTE+1-LLOW)
-            FFSK=AKHS(I,J)*PLOW/                                       &
-     &           ((QLOW*P608-CWM(I,LLOW,J)+1.)*T(I,LLOW,J)*R_D)
-            QFC1=FFSK*XLV
-            QFC1=QFC1*CHKLOWQ(I,J)
+             QFC1=XLV*CHKLOWQ(I,J)*AKHS_DENS
 !
             IF(SNOW(I,J)>0..OR.SICE(I,J)>0.5)THEN
               QFC1=QFC1*RLIVWV
             ENDIF
 !
             IF(QFC1>0.)THEN
-
+               QLOW=QK(KTE+1-LLOW)
 !mp@
                IF ((sf_surface_physics /= 'SIMPLESCHEME')) THEN
                   QSFC(I,J)=QLOW+ELFLX(I,J)/QFC1
@@ -474,13 +503,11 @@
 
             ENDIF
 !
-            PSFC=PINT(I,LOWLYR(I,J),J)
-            EXNSFC=(1.E5/PSFC)**CAPA
 
          ELSE
+
             PSFC=PINT(I,LOWLYR(I,J),J)
             EXNSFC=(1.E5/PSFC)**CAPA
-
             QSFC(I,J)=PQ0SEA/PSFC            &
                  & *EXP(A2*(THSK(I,J)-A3*EXNSFC)/(THSK(I,J)-A4*EXNSFC))
          ENDIF
@@ -504,8 +531,8 @@
           IF (sf_surface_physics == 'FLUXFORCE') THEN
              
              CALL VDIFH_fluxforce(DTDIF,LMH,THZ0(I,J),QZ0(I,J)   &
-                  &              ,AKHS(I,J),CHKLOWQ(I,J),CT(I,J) &
-                  &              ,THEK,QK,CWMK,AKHK,ZHK,exnsfc   &
+                  &              ,AKHS_DENS,CHKLOWQ(I,J),CT(I,J) &
+                  &              ,THEK,QK,CWMK,AKHK,ZHK,RHOK(KTS,I)&
                   &              ,IDS,IDE,JDS,JDE,KDS,KDE        &
                   &              ,IMS,IME,JMS,JME,KMS,KME        &
                   &              ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
@@ -513,8 +540,8 @@
           ELSE
 
              CALL VDIFH(DTDIF,LMH,THZ0(I,J),QZ0(I,J)             &
-                  &              ,AKHS(I,J),CHKLOWQ(I,J),CT(I,J) &
-                  &              ,THEK,QK,CWMK,AKHK,ZHK          &
+                  &              ,AKHS_DENS,CHKLOWQ(I,J),CT(I,J) &
+                  &              ,THEK,QK,CWMK,AKHK,ZHK,RHOK(KTS,I) &
                   &              ,IDS,IDE,JDS,JDE,KDS,KDE        &
                   &              ,IMS,IME,JMS,JME,KMS,KME        &
                   &              ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
@@ -534,7 +561,6 @@
             DQDT=(QK(KFLIP)-QOLD)*RDTTURBL
             DCDT=(CWMK(KFLIP)-CWM(I,K,J))*RDTTURBL
 !
-            RHOD(I,K)=PMID(I,K,J)/(R_D*T(I,K,J))
             RTHBLTEN(I,K,J)=DTDT
             RQVBLTEN(I,K,J)=DQDT/(1.-QK(KFLIP))**2
             RQCBLTEN(I,K,J)=DCDT
@@ -565,9 +591,16 @@
 !***  AND FLIP DIRECTION SINCE MYJ SCHEME
 !***  COUNTS DOWNWARD FROM THE DOMAIN'S TOP
 !
-          DO K=KTE-1,KTS,-1
+
+          DO K=KTS,KTE-1
             AKMK(K)=AKM(I,K,J)
+            AKMK(K)=AKMK(K)*(RHOK(K,I)+RHOK(K+1,I))*0.5
           ENDDO
+!
+          LLOW=LOWLYR(I,J)
+          AKMS_DENS=AKMS(I,J)*RHOK(KTE+1-LLOW,I)
+!
+
 !
           DO K=KTE,KTS,-1
             KFLIP=KTE+1-K
@@ -583,10 +616,10 @@
 !----------------------------------------------------------------------
 !
           CALL VDIFV(LMH,DTDIF,UZ0(I,J),VZ0(I,J)                       &
-     &              ,AKMS(I,J),UK,VK,AKMK,ZHK                          &
+     &              ,AKMS_DENS,UK,VK,AKMK,ZHK,RHOK(KTS,I)        &
      &              ,IDS,IDE,JDS,JDE,KDS,KDE                           &
      &              ,IMS,IME,JMS,JME,KMS,KME                           &
-     &              ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+     &              ,ITS,ITE,JTS,JTE,KTS,KTE,I,J)
 !
 !----------------------------------------------------------------------
 !***
@@ -653,7 +686,7 @@
 !
       INTEGER,INTENT(IN) :: LMH
 !
-      INTEGER,INTENT(OUT) :: LPBL
+      INTEGER,INTENT(OUT) :: LMXL,LPBL
 !
       REAL,DIMENSION(KTS:KTE),INTENT(IN) :: CWM,Q,Q2,T,THE,U,V
 !
@@ -668,9 +701,9 @@
 !***
 !***  LOCAL VARIABLES
 !***
-      INTEGER :: K,LMXL,LPBLM
+      INTEGER :: K,LPBLM
 !
-      REAL :: A,ADEN,B,BDEN,AUBR,BLMX,BUBR,EL0,ELOQ2X,GHL,GML          &
+      REAL :: A,ADEN,B,BDEN,AUBR,BUBR,BLMX,EL0,ELOQ2X,GHL,GML           &
      &       ,QOL2ST,QOL2UN,QDZL,RDZ,SQ,SREL,SZQ,TEM,THM,VKRMZ
 !
       REAL,DIMENSION(KTS:KTE) :: Q1
@@ -1032,16 +1065,18 @@
 !----------------------------------------------------------------------
 !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 !----------------------------------------------------------------------
-                           SUBROUTINE DIFCOF                           &
+      SUBROUTINE DIFCOF                           &
 !   ******************************************************************
 !   *                                                                *
 !   *                LEVEL 2.5 DIFFUSION COEFFICIENTS                *
 !   *                                                                *
 !   ******************************************************************
-     &(LMH,LMXL,GM,GH,EL,T,Q2,Z,AKM,AKH                                &
-     &,IDS,IDE,JDS,JDE,KDS,KDE                                         &
-     &,IMS,IME,JMS,JME,KMS,KME                                         &
-     &,ITS,ITE,JTS,JTE,KTS,KTE)
+           &(LMH,LMXL,GM,GH,EL,T,Q2,Z,AKM,AKH                      &
+           &,IDS,IDE,JDS,JDE,KDS,KDE                               &
+           &,IMS,IME,JMS,JME,KMS,KME                               &
+           &,ITS,ITE,JTS,JTE,KTS,KTE,PRINT_DIAG)
+
+
 !----------------------------------------------------------------------
 !
       IMPLICIT NONE
@@ -1066,6 +1101,10 @@
 !
       REAL :: ADEN,AKMIN,BDEN,BESH,BESM,CDEN,D2T,ELL,ELOQ2,ELOQ4,ELQDZ &
      &       ,ESH,ESM,GHL,GML,Q1L,RDEN,RDZ
+
+
+      INTEGER,INTENT(IN) :: PRINT_DIAG
+
 !
 !----------------------------------------------------------------------
 !**********************************************************************
@@ -1130,7 +1169,7 @@
 !***  INVERSIONS
 !----------------------------------------------------------------------
 !
-!     IF(LMXL==LMH-1)THEN
+!     IF(LMXL==LMH)THEN
 !
 !       KINV=LMH
 !       DO K=LMH/2,LMH-1
@@ -1234,125 +1273,11 @@
       END SUBROUTINE VDIFQ
 !
 !----------------------------------------------------------------------
-!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-!---------------------------------------------------------------------
-      SUBROUTINE VDIFH_fluxforce(DTDIF,LMH,THZ0,QZ0,AKHS,CHKLOWQ,CT   &
-     &                ,THE,Q,CWM,AKH,Z,exnsfc                         &
+      SUBROUTINE VDIFH(DTDIF,LMH,THZ0,QZ0,RKHS,CHKLOWQ,CT             &
+     &                ,THE,Q,CWM,RKH,Z,RHO                            &
      &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                ,IMS,IME,JMS,JME,KMS,KME                        &
-     &                ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
-!     ***************************************************************
-!     *                                                             *
-!     *         VERTICAL DIFFUSION OF MASS VARIABLES                *
-!     *                                                             *
-!     ***************************************************************
-!---------------------------------------------------------------------
-!
-        USE module_ideal, only : qsat
-
-      IMPLICIT NONE
-!
-!---------------------------------------------------------------------
-      INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
-     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
-     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
-!
-      INTEGER,INTENT(IN) :: LMH
-!
-      REAL,INTENT(IN) :: AKHS,CHKLOWQ,CT,DTDIF,QZ0,THZ0
-!
-      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: AKH
-      REAL,DIMENSION(KTS:KTE+1),INTENT(IN) :: Z
-      REAL,DIMENSION(KTS:KTE),INTENT(INOUT) :: CWM,Q,THE
-      real :: exnsfc
-! 
-!----------------------------------------------------------------------
-!***
-!***  LOCAL VARIABLES
-!***
-      INTEGER :: K
-!
-      REAL :: AKHH,AKQS,CF,CMB,CMCB,CMQB,CMTB,CTHF,DTOZL,DTOZS         &
-     &       ,RCML,RSCB,RSQB,RSTB
-!
-      REAL,DIMENSION(KTS:KTE-1) :: AKCT,CM,CR,DTOZ,RSC,RSQ,RST
-
-
-      REAL :: z1,tsk,psfc
-!
-!----------------------------------------------------------------------
-!**********************************************************************
-!----------------------------------------------------------------------
-      CTHF=0.5*CT
-!
-
-      DO K=KTS,LMH-1
-        DTOZ(K)=DTDIF/(Z(K)-Z(K+1))
-        CR(K)=-DTOZ(K)*AKH(K)
-        AKCT(K)=AKH(K)*(Z(K)-Z(K+2))*CTHF
-      ENDDO
-!
-      CM(KTS)=DTOZ(KTS)*AKH(KTS)+1.
-!----------------------------------------------------------------------
-      RST(KTS)=-AKCT(KTS)*DTOZ(KTS)+THE(KTS)
-      RSQ(KTS)=Q(KTS)
-      RSC(KTS)=CWM(KTS)
-!----------------------------------------------------------------------
-      DO K=KTS+1,LMH-1
-        DTOZL=DTOZ(K)
-        CF=-DTOZL*AKH(K-1)/CM(K-1)
-        CM(K)=-CR(K-1)*CF+(AKH(K-1)+AKH(K))*DTOZL+1.
-        RST(K)=-RST(K-1)*CF+(AKCT(K-1)-AKCT(K))*DTOZL+THE(K)
-        RSQ(K)=-RSQ(K-1)*CF+Q(K)
-        RSC(K)=-RSC(K-1)*CF+CWM(K)
-      ENDDO
-!
-      DTOZS=DTDIF/(Z(LMH)-Z(LMH+1))
-      AKHH=AKH(LMH-1)
-!
-      CF=-DTOZS*AKHH/CM(LMH-1)
-      AKQS=AKHS*CHKLOWQ
-!
-      CMB=CR(LMH-1)*CF
-      CMTB=-CMB+AKHH*DTOZS+1.
-!      CMTB=-CMB+(AKHH+AKHS)*DTOZS+1.
-      CMQB=-CMB+AKHH*DTOZS+1.
-!      CMQB=-CMB+(AKHH+AKQS)*DTOZS+1.
-      CMCB=-CMB+(AKHH     )*DTOZS+1.
-!
-      z1=z(lmh)*.5
-!      RSTB=-RST(LMH-1)*CF+(AKCT(LMH-1)-AKHS*CT*z1)*DTOZS+THE(LMH)
-      RSTB=-RST(LMH-1)*CF+AKCT(LMH-1)*DTOZS+THE(LMH)
-      RSQB=-RSQ(LMH-1)*CF+Q(LMH)
-      RSCB=-RSC(LMH-1)*CF+CWM(LMH)
-!----------------------------------------------------------------------
-!      THE(LMH)=(DTOZS*AKHS*THZ0+RSTB)/CMTB
-!      PRINT *,AKHS*(THZ0-THE(LMH)),'222',thz0
-!      PRINT *,AKHS*(QZ0-Q(LMH)),'222',qz0
-      THE(LMH)=(DTOZS*AKHS*(THZ0-THE(LMH))+RSTB)/CMTB
-      psfc=p1000mb/EXNSFC**(1./rcp)
-      tsk=THE(LMH)/exnsfc
-      Q(LMH)=(DTOZS*AKQS*(QZ0-Q(LMH)) +RSQB)/CMQB
-!      Q(LMH)=MIN((DTOZS*AKQS*(QZ0-Q(LMH)) +RSQB)/CMQB,&
-!           &qsat(psfc,tsk))
-!      Q(LMH)  =(DTOZS*AKQS*QZ0 +RSQB)/CMQB
-      CWM(LMH)=(                RSCB)/CMCB
-!----------------------------------------------------------------------
-      DO K=LMH-1,KTS,-1
-        RCML=1./CM(K)
-        THE(K)=(-CR(K)*THE(K+1)+RST(K))*RCML
-        Q(K)  =(-CR(K)*  Q(K+1)+RSQ(K))*RCML
-        CWM(K)=(-CR(K)*CWM(K+1)+RSC(K))*RCML
-      ENDDO
-!----------------------------------------------------------------------
-!
-    END SUBROUTINE VDIFH_FLUXFORCE
-
-      SUBROUTINE VDIFH(DTDIF,LMH,THZ0,QZ0,AKHS,CHKLOWQ,CT             &
-     &                ,THE,Q,CWM,AKH,Z                                &
-     &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
-     &                ,IMS,IME,JMS,JME,KMS,KME                        &
-     &                ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+     &                ,ITS,ITE,JTS,JTE,KTS,KTE,I,J)
 !     ***************************************************************
 !     *                                                             *
 !     *         VERTICAL DIFFUSION OF MASS VARIABLES                *
@@ -1365,26 +1290,27 @@
 !---------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
      &                     ,IMS,IME,JMS,JME,KMS,KME                    &
-     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,I,J
 !
       INTEGER,INTENT(IN) :: LMH
 !
-      REAL,INTENT(IN) :: AKHS,CHKLOWQ,CT,DTDIF,QZ0,THZ0
+      REAL,INTENT(IN) :: CHKLOWQ,CT,DTDIF,QZ0,RKHS,THZ0
 !
-      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: AKH
+      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: RKH
+      REAL,DIMENSION(KTS:KTE),INTENT(IN) :: RHO
       REAL,DIMENSION(KTS:KTE+1),INTENT(IN) :: Z
       REAL,DIMENSION(KTS:KTE),INTENT(INOUT) :: CWM,Q,THE
-! 
+!
 !----------------------------------------------------------------------
 !***
 !***  LOCAL VARIABLES
 !***
       INTEGER :: K
 !
-      REAL :: AKHH,AKQS,CF,CMB,CMCB,CMQB,CMTB,CTHF,DTOZL,DTOZS         &
-     &       ,RCML,RSCB,RSQB,RSTB
+      REAL :: CF,CMB,CMCB,CMQB,CMTB,CTHF,DTOZL,DTOZS                   &
+     &       ,RCML,RKHH,RKQS,RSCB,RSQB,RSTB
 !
-      REAL,DIMENSION(KTS:KTE-1) :: AKCT,CM,CR,DTOZ,RSC,RSQ,RST
+      REAL,DIMENSION(KTS:KTE-1) :: CM,CR,DTOZ,RKCT,RSC,RSQ,RST
 !
 !----------------------------------------------------------------------
 !**********************************************************************
@@ -1393,43 +1319,43 @@
 !
       DO K=KTS,LMH-1
         DTOZ(K)=DTDIF/(Z(K)-Z(K+1))
-        CR(K)=-DTOZ(K)*AKH(K)
-        AKCT(K)=AKH(K)*(Z(K)-Z(K+2))*CTHF
+        CR(K)=-DTOZ(K)*RKH(K)
+        RKCT(K)=RKH(K)*(Z(K)-Z(K+2))*CTHF
       ENDDO
 !
-      CM(KTS)=DTOZ(KTS)*AKH(KTS)+1.
+      CM(KTS)=DTOZ(KTS)*RKH(KTS)+RHO(KTS)
 !----------------------------------------------------------------------
-      RST(KTS)=-AKCT(KTS)*DTOZ(KTS)+THE(KTS)
-      RSQ(KTS)=Q(KTS)
-      RSC(KTS)=CWM(KTS)
+      RST(KTS)=-RKCT(KTS)*DTOZ(KTS)                                    &
+     &         +THE(KTS)*RHO(KTS)
+      RSQ(KTS)=Q(KTS)  *RHO(KTS)
+      RSC(KTS)=CWM(KTS)*RHO(KTS)
 !----------------------------------------------------------------------
       DO K=KTS+1,LMH-1
         DTOZL=DTOZ(K)
-        CF=-DTOZL*AKH(K-1)/CM(K-1)
-        CM(K)=-CR(K-1)*CF+(AKH(K-1)+AKH(K))*DTOZL+1.
-        RST(K)=-RST(K-1)*CF+(AKCT(K-1)-AKCT(K))*DTOZL+THE(K)
-        RSQ(K)=-RSQ(K-1)*CF+Q(K)
-        RSC(K)=-RSC(K-1)*CF+CWM(K)
+        CF=-DTOZL*RKH(K-1)/CM(K-1)
+        CM(K)=-CR(K-1)*CF+(RKH(K-1)+RKH(K))*DTOZL+RHO(K)
+        RST(K)=-RST(K-1)*CF+(RKCT(K-1)-RKCT(K))*DTOZL+THE(K)*RHO(K)
+        RSQ(K)=-RSQ(K-1)*CF+Q(K)  *RHO(K)
+        RSC(K)=-RSC(K-1)*CF+CWM(K)*RHO(K)
       ENDDO
 !
       DTOZS=DTDIF/(Z(LMH)-Z(LMH+1))
-      AKHH=AKH(LMH-1)
+      RKHH=RKH(LMH-1)
 !
-      CF=-DTOZS*AKHH/CM(LMH-1)
-      AKQS=AKHS*CHKLOWQ
+      CF=-DTOZS*RKHH/CM(LMH-1)
+      RKQS=RKHS*CHKLOWQ
 !
       CMB=CR(LMH-1)*CF
-      CMTB=-CMB+(AKHH+AKHS)*DTOZS+1.
-      CMQB=-CMB+(AKHH+AKQS)*DTOZS+1.
-      CMCB=-CMB+(AKHH     )*DTOZS+1.
+      CMTB=-CMB+(RKHH+RKHS)*DTOZS+RHO(LMH)
+      CMQB=-CMB+(RKHH+RKQS)*DTOZS+RHO(LMH)
+      CMCB=-CMB+(RKHH     )*DTOZS+RHO(LMH)
 !
-!      RSTB=-RST(LMH-1)*CF+(AKCT(LMH-1)-AKHS*CT)*DTOZS+THE(LMH)
-      RSTB=-RST(LMH-1)*CF+AKCT(LMH-1)*DTOZS+THE(LMH)
-      RSQB=-RSQ(LMH-1)*CF+Q(LMH)
-      RSCB=-RSC(LMH-1)*CF+CWM(LMH)
+      RSTB=-RST(LMH-1)*CF+RKCT(LMH-1)*DTOZS+THE(LMH)*RHO(LMH)
+      RSQB=-RSQ(LMH-1)*CF+Q(LMH)  *RHO(LMH)
+      RSCB=-RSC(LMH-1)*CF+CWM(LMH)*RHO(LMH)
 !----------------------------------------------------------------------
-      THE(LMH)=(DTOZS*AKHS*THZ0+RSTB)/CMTB
-      Q(LMH)  =(DTOZS*AKQS*QZ0 +RSQB)/CMQB
+      THE(LMH)=(DTOZS*RKHS*THZ0+RSTB)/CMTB
+      Q(LMH)  =(DTOZS*RKQS*QZ0 +RSQB)/CMQB
       CWM(LMH)=(                RSCB)/CMCB
 !----------------------------------------------------------------------
       DO K=LMH-1,KTS,-1
@@ -1443,14 +1369,13 @@
       END SUBROUTINE VDIFH
 
 
-
-!---------------------------------------------------------------------
 !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 !---------------------------------------------------------------------
-      SUBROUTINE VDIFV(LMH,DTDIF,UZ0,VZ0,AKMS,U,V,AKM,Z               &
+
+      SUBROUTINE VDIFV(LMH,DTDIF,UZ0,VZ0,RKMS,U,V,RKM,Z,RHO           &
      &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                ,IMS,IME,JMS,JME,KMS,KME                        &
-                      ,ITS,ITE,JTS,JTE,KTS,KTE,i,j)
+                      ,ITS,ITE,JTS,JTE,KTS,KTE,I,J)
 !     ***************************************************************
 !     *                                                             *
 !     *        VERTICAL DIFFUSION OF VELOCITY COMPONENTS            *
@@ -1463,13 +1388,14 @@
 !---------------------------------------------------------------------
       INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                   &
      &                     ,IMS,IME,JMS,JME,KMS,KME                   &
-     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,i,j
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,I,J
 !
       INTEGER,INTENT(IN) :: LMH
 !
-      REAL,INTENT(IN) :: AKMS,DTDIF,UZ0,VZ0
+      REAL,INTENT(IN) :: RKMS,DTDIF,UZ0,VZ0
 !
-      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: AKM
+      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: RKM
+      REAL,DIMENSION(KTS:KTE),INTENT(IN) :: RHO
       REAL,DIMENSION(KTS:KTE+1),INTENT(IN) :: Z
 !
       REAL,DIMENSION(KTS:KTE),INTENT(INOUT) :: U,V
@@ -1479,7 +1405,7 @@
 !***
       INTEGER :: K
 !
-      REAL :: AKMH,CF,DTOZAK,DTOZL,DTOZS,RCML,RCMVB
+      REAL :: CF,DTOZAK,DTOZL,DTOZS,RCML,RCMVB,RHOK,RKMH
 !
       REAL,DIMENSION(KTS:KTE-1) :: CM,CR,DTOZ,RSU,RSV
 !----------------------------------------------------------------------
@@ -1487,30 +1413,33 @@
 !----------------------------------------------------------------------
       DO K=1,LMH-1
         DTOZ(K)=DTDIF/(Z(K)-Z(K+1))
-        CR(K)=-DTOZ(K)*AKM(K)
+        CR(K)=-DTOZ(K)*RKM(K)
       ENDDO
 !
-      CM(1)=DTOZ(1)*AKM(1)+1.
-      RSU(1)=U(1)
-      RSV(1)=V(1)
+      RHOK=RHO(1)
+      CM(1)=DTOZ(1)*RKM(1)+RHOK
+      RSU(1)=U(1)*RHOK
+      RSV(1)=V(1)*RHOK
 !----------------------------------------------------------------------
       DO K=2,LMH-1
         DTOZL=DTOZ(K)
-        CF=-DTOZL*AKM(K-1)/CM(K-1)
-        CM(K)=-CR(K-1)*CF+(AKM(K-1)+AKM(K))*DTOZL+1.
-        RSU(K)=-RSU(K-1)*CF+U(K)
-        RSV(K)=-RSV(K-1)*CF+V(K)
+        CF=-DTOZL*RKM(K-1)/CM(K-1)
+        RHOK=RHO(K)
+        CM(K)=-CR(K-1)*CF+(RKM(K-1)+RKM(K))*DTOZL+RHOK
+        RSU(K)=-RSU(K-1)*CF+U(K)*RHOK
+        RSV(K)=-RSV(K-1)*CF+V(K)*RHOK
       ENDDO
 !----------------------------------------------------------------------
       DTOZS=DTDIF/(Z(LMH)-Z(LMH+1))
-      AKMH=AKM(LMH-1)
+      RKMH=RKM(LMH-1)
 !
-      CF=-DTOZS*AKMH/CM(LMH-1)
-      RCMVB=1./((AKMH+AKMS)*DTOZS-CR(LMH-1)*CF+1.)
-      DTOZAK=DTOZS*AKMS
+      CF=-DTOZS*RKMH/CM(LMH-1)
+      RHOK=RHO(LMH)
+      RCMVB=1./((RKMH+RKMS)*DTOZS-CR(LMH-1)*CF+RHOK)
+      DTOZAK=DTOZS*RKMS
 !----------------------------------------------------------------------
-      U(LMH)=(DTOZAK*UZ0-RSU(LMH-1)*CF+U(LMH))*RCMVB
-      V(LMH)=(DTOZAK*VZ0-RSV(LMH-1)*CF+V(LMH))*RCMVB
+      U(LMH)=(DTOZAK*UZ0-RSU(LMH-1)*CF+U(LMH)*RHOK)*RCMVB
+      V(LMH)=(DTOZAK*VZ0-RSV(LMH-1)*CF+V(LMH)*RHOK)*RCMVB
 !----------------------------------------------------------------------
       DO K=LMH-1,1,-1
         RCML=1./CM(K)
@@ -1555,7 +1484,7 @@
         DO J=JTS,JTF
         DO K=KTS,KTF
         DO I=ITS,ITF
-          TKE_MYJ(I,K,J)=.5*EPSQ2
+          TKE_MYJ(I,K,J)=EPSQ2
           RUBLTEN(I,K,J)=0.
           RVBLTEN(I,K,J)=0.
           RTHBLTEN(I,K,J)=0.
@@ -1567,6 +1496,109 @@
       ENDIF
 
       END SUBROUTINE MYJPBLINIT
+
+
+      SUBROUTINE VDIFH_fluxforce(DTDIF,LMH,THZ0,QZ0,RKHS,CHKLOWQ,CT   &
+     &                ,THE,Q,CWM,RKH,Z,RHO                            &
+     &                ,IDS,IDE,JDS,JDE,KDS,KDE                        &
+     &                ,IMS,IME,JMS,JME,KMS,KME                        &
+     &                ,ITS,ITE,JTS,JTE,KTS,KTE,I,J)
+!     ***************************************************************
+!     *                                                             *
+!     *         VERTICAL DIFFUSION OF MASS VARIABLES                *
+!     *                                                             *
+!     ***************************************************************
+!---------------------------------------------------------------------
+!
+      IMPLICIT NONE
+!
+!---------------------------------------------------------------------
+      INTEGER,INTENT(IN) :: IDS,IDE,JDS,JDE,KDS,KDE                    &
+     &                     ,IMS,IME,JMS,JME,KMS,KME                    &
+     &                     ,ITS,ITE,JTS,JTE,KTS,KTE,I,J
+!
+      INTEGER,INTENT(IN) :: LMH
+!
+      REAL,INTENT(IN) :: CHKLOWQ,CT,DTDIF,QZ0,RKHS,THZ0
+!
+      REAL,DIMENSION(KTS:KTE-1),INTENT(IN) :: RKH
+      REAL,DIMENSION(KTS:KTE),INTENT(IN) :: RHO
+      REAL,DIMENSION(KTS:KTE+1),INTENT(IN) :: Z
+      REAL,DIMENSION(KTS:KTE),INTENT(INOUT) :: CWM,Q,THE
+!
+!----------------------------------------------------------------------
+!***
+!***  LOCAL VARIABLES
+!***
+      INTEGER :: K
+!
+      REAL :: CF,CMB,CMCB,CMQB,CMTB,CTHF,DTOZL,DTOZS                   &
+     &       ,RCML,RKHH,RKQS,RSCB,RSQB,RSTB
+!
+      REAL,DIMENSION(KTS:KTE-1) :: CM,CR,DTOZ,RKCT,RSC,RSQ,RST
+!
+!----------------------------------------------------------------------
+!**********************************************************************
+!----------------------------------------------------------------------
+      CTHF=0.5*CT
+!
+      DO K=KTS,LMH-1
+        DTOZ(K)=DTDIF/(Z(K)-Z(K+1))
+        CR(K)=-DTOZ(K)*RKH(K)
+        RKCT(K)=RKH(K)*(Z(K)-Z(K+2))*CTHF
+      ENDDO
+!
+      CM(KTS)=DTOZ(KTS)*RKH(KTS)+RHO(KTS)
+!----------------------------------------------------------------------
+      RST(KTS)=-RKCT(KTS)*DTOZ(KTS)                                    &
+     &         +THE(KTS)*RHO(KTS)
+      RSQ(KTS)=Q(KTS)  *RHO(KTS)
+      RSC(KTS)=CWM(KTS)*RHO(KTS)
+!----------------------------------------------------------------------
+      DO K=KTS+1,LMH-1
+        DTOZL=DTOZ(K)
+        CF=-DTOZL*RKH(K-1)/CM(K-1)
+        CM(K)=-CR(K-1)*CF+(RKH(K-1)+RKH(K))*DTOZL+RHO(K)
+        RST(K)=-RST(K-1)*CF+(RKCT(K-1)-RKCT(K))*DTOZL+THE(K)*RHO(K)
+        RSQ(K)=-RSQ(K-1)*CF+Q(K)  *RHO(K)
+        RSC(K)=-RSC(K-1)*CF+CWM(K)*RHO(K)
+      ENDDO
+!
+      DTOZS=DTDIF/(Z(LMH)-Z(LMH+1))
+      RKHH=RKH(LMH-1)
+!
+      CF=-DTOZS*RKHH/CM(LMH-1)
+      RKQS=RKHS*CHKLOWQ
+!
+      CMB=CR(LMH-1)*CF
+!      CMTB=-CMB+(RKHH+RKHS)*DTOZS+RHO(LMH)
+      CMTB=-CMB+RKHH*DTOZS+RHO(LMH)
+!      CMQB=-CMB+(RKHH+RKQS)*DTOZS+RHO(LMH)
+      CMQB=-CMB+RKHH*DTOZS+RHO(LMH)
+      CMCB=-CMB+(RKHH     )*DTOZS+RHO(LMH)
+!
+      RSTB=-RST(LMH-1)*CF+RKCT(LMH-1)*DTOZS+THE(LMH)*RHO(LMH)
+      RSQB=-RSQ(LMH-1)*CF+Q(LMH)  *RHO(LMH)
+      RSCB=-RSC(LMH-1)*CF+CWM(LMH)*RHO(LMH)
+!----------------------------------------------------------------------
+      THE(LMH)=(DTOZS*RKHS*(THZ0-THE(LMH))+RSTB)/CMTB
+!      psfc=p1000mb/EXNSFC**(1./rcp)
+!      tsk=THE(LMH)/exnsfc
+      Q(LMH)=(DTOZS*RKQS*(QZ0-Q(LMH)) +RSQB)/CMQB
+      CWM(LMH)=(                RSCB)/CMCB
+!----------------------------------------------------------------------
+      DO K=LMH-1,KTS,-1
+        RCML=1./CM(K)
+        THE(K)=(-CR(K)*THE(K+1)+RST(K))*RCML
+        Q(K)  =(-CR(K)*  Q(K+1)+RSQ(K))*RCML
+        CWM(K)=(-CR(K)*CWM(K+1)+RSC(K))*RCML
+      ENDDO
+!----------------------------------------------------------------------
+!
+    END SUBROUTINE VDIFH_FLUXFORCE
+
+
+
 !-----------------------------------------------------------------------
 !
       END MODULE MODULE_BL_MYJPBL

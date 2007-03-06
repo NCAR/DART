@@ -66,7 +66,7 @@
 
 \rm -f preprocess gen_init create_obs_sequence create_fixed_network_seq
 \rm -f perfect_model_obs filter obs_diag create_real_network_seq 
-\rm -f driver.x merge_obs_seq
+\rm -f driver.x merge_obs_seq driver_enf.x
 
 csh mkmf_preprocess
 make         || exit 1
@@ -114,6 +114,7 @@ if ( ! -f ../indata/wrfrt_2006.nc ) then
 endif
 
 ./perfect_model_obs  || exit 20
+\mv perfect_restart filter_ics
 ./filter             || exit 21
 
 #----------------------------------------------------------------------
@@ -121,15 +122,17 @@ endif
 # In order to match the bahavior of the other models that use the threed_sphere
 # location module, the obs_diag.final  file must exist in a directory.
 # We're hardcoding that here. Clearly suboptimal.
+#
+# The wrf boundary conditions and obs_seq.in are valid for May 2003 
 
-if (! -d 06_01) then
-   mkdir 06_01
+if (! -d 05_01) then
+   mkdir 05_01
 endif
 
-if ( -e 06_01/obs_seq.final ) then
-     mv -v 06_01/obs_seq.final 06_01/obs_seq.final.old
+if ( -e 05_01/obs_seq.final ) then
+     mv -v 05_01/obs_seq.final 05_01/obs_seq.final.old
 endif
 
-\cp -p obs_seq.final 06_01/obs_seq.final
+\cp -p obs_seq.final 05_01/obs_seq.final
 
 ./obs_diag   || exit 99

@@ -43,6 +43,7 @@ models/PBL_1d/src/module_sf_ruclsm.F
 models/PBL_1d/src/module_sf_sfcdiags.F
 models/PBL_1d/src/module_sf_sfclay.F
 models/PBL_1d/src/module_sf_slab.F
+models/PBL_1d/src/module_sf_urban.F
 models/PBL_1d/src/module_sf_force_restore.F
 models/PBL_1d/src/module_soil_pre.F
 models/PBL_1d/src/module_surface_driver.F

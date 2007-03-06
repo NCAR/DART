@@ -293,7 +293,8 @@ contains
       real afac, phifac, qmin
       real d1,d2,d3
       real h1,h2
-      parameter (rlam = 150.,prmin = 0.25,prmax = 4.)
+!      parameter (rlam = 150.,prmin = 0.25,prmax = 4.)
+      PARAMETER (rlam = 30.,prmin = 0.25,prmax = 4.)
       parameter (brcr = 0.0,bfac = 6.8,pfac = 2.0,sfcfrac = 0.1)
       parameter (afac = 6.8,phifac = 8.,qmin=1.e-2)
       parameter (d1 = 0.02, d2 = 0.05, d3 = 0.001)
@@ -302,6 +303,8 @@ contains
       parameter (gamcrt = 3.,gamcrq = 2.e-3)
       parameter (xka = 2.4e-5)
 !
+      REAL, PARAMETER :: hpblmin=0.
+
       integer,  intent(in   )   ::      ids,ide, jds,jde, kds,kde, &
                                         ims,ime, jms,jme, kms,kme, &
                                         its,ite, jts,jte, kts,kte, j
@@ -394,8 +397,10 @@ contains
 !
       real,    dimension( its:ite, kts:kte )    ::      xkzm,xkzh, &
 							    f1,f2, &
+                                                            r1,r2, &
                                                             ad,au, &
                                                                al, &
+                                                               cu, &
                                                              zfac, &
                                                              scr4
       LOGICAL ::  calc_ust
@@ -403,7 +408,7 @@ contains
 !jdf added exch_hx
       real,    dimension( ims:ime, kms:kme )                     , &
                intent(inout)   ::                         exch_hx
-      real,    dimension( its:ite, kts:kte, ncloud)  ::        f3
+      REAL,    DIMENSION( its:ite, kts:kte, ncloud)  ::      r3,f3
 !
       logical, dimension( its:ite )             ::         pblflg, &
 					                   sfcflg, &
@@ -412,7 +417,8 @@ contains
       integer ::  n,i,k,l,nzol,imvdif,ic
       integer ::  klpbl
 !
-      integer, dimension( its:ite )             ::           kpbl
+      INTEGER, DIMENSION( its:ite )             ::           kpbl, &
+                                                             kmin
 !
       real    ::  zoln,x,y,thcon,tvcon,e1,dtstep
       real    ::  zl,tskv,dthvdz,dthvm,vconv,rzol
@@ -523,6 +529,22 @@ contains
       do i = its,ite
         govrth(i) = g/thx(i,1)
       enddo
+
+!wig 16-sep-2005: Determine the k level associated with hpblmin.
+      if( hpblmin >= 1. ) then
+         DO i = its,ite
+            kmin(i) = 1
+            DO k = kte-1,kts,-1
+               IF( zq(i,k) <= hpblmin ) then
+                  kmin(i) = k
+                  exit
+               end if
+            end do
+         end do
+      end if
+!
+!-----initialize v
+
 !
 !-----initialize vertical tendencies and
 !
@@ -616,8 +638,13 @@ contains
         thermal(i)= thvx(i,1)
         pblflg(i) = .true.
         sfcflg(i) = .true.
-        if(br(i).gt.0.0) sfcflg(i) = .false.
+!        if(br(i).gt.0.0) sfcflg(i) = .false.
+
+!wig 12-aug-2004: Turn off check for sfc stability if using a minimum
+!                 pbl height > 0.
+        if(br(i).gt.0.0 .and. hpblmin<=1.) sfcflg(i) = .false.
       enddo
+
 !
 !     compute the first guess of pbl height
 !
@@ -648,7 +675,16 @@ contains
           brint = (brcr-brdn(i))/(brup(i)-brdn(i))
         endif
         hpbl(i) = za(i,k-1)+brint*(za(i,k)-za(i,k-1))
-        if(hpbl(i).lt.zq(i,2)) kpbl(i) = 1
+!        if(hpbl(i).lt.zq(i,2)) kpbl(i) = 1
+
+!wig 16-sep-2005: rig a minimum PBL heigt
+        if( hpblmin >= 1. .and. hpbl(i).lt.hpblmin) then
+           kpbl(i) = kmin(i)
+           hpbl(i) = hpblmin
+        else
+           IF(hpbl(i).LT.zq(i,2)) kpbl(i) = 1
+        end if
+
         if(kpbl(i).le.1) pblflg(i) = .false.
       enddo
 !
@@ -745,7 +781,14 @@ contains
             brint = (brcr-brdn(i))/(brup(i)-brdn(i))
           endif
           hpbl(i) = za(i,k-1)+brint*(za(i,k)-za(i,k-1))
-          if(hpbl(i).lt.zq(i,2)) kpbl(i) = 1
+!          if(hpbl(i).lt.zq(i,2)) kpbl(i) = 1
+!wig 16-sep-2005: rig a minimum PBL heigt
+          if(hpblmin >= 1. .and. hpbl(i).lt.hpblmin) then
+             kpbl(i) = kmin(i)
+             hpbl(i) = hpblmin
+          else
+             IF(hpbl(i).LT.zq(i,2)) kpbl(i) = 1
+          end if
           if(kpbl(i).le.1) pblflg(i) = .false.
         endif
       enddo
@@ -837,7 +880,9 @@ contains
             xkzm(i,k) = max(xkzm(i,k),xkzmin)
             xkzh(i,k) = min(xkzh(i,k),xkzmax)
             xkzh(i,k) = max(xkzh(i,k),xkzmin)
-            exch_hx(i,k) = xkzh(i,k)
+!wig 16-sep-2005: This code is unnecessary. exch_hx will get overwritten
+!                 with the same values further down in this routine
+!            exch_hx(i,k) = xkzh(i,k)
           endif
         enddo
       enddo
@@ -886,7 +931,10 @@ contains
             xkzh(i,k) = max(xkzh(i,k),xkzmin)
             xkzml(i,k) = xkzm(i,k)
             xkzhl(i,k) = xkzh(i,k)
-            exch_hx(i,k) = xkzh(i,k)
+!wig 16-sep-2005: This code is unnecessary. exch_hx will get overwritten
+!                 further down in this routine after adjustments are made
+!                 for entrainment.
+!            exch_hx(i,k) = xkzh(i,k)
           endif
         enddo
       enddo
@@ -1004,11 +1052,33 @@ contains
           enddo
         enddo
       endif
+
+
+! copies here to avoid duplicate input args for tridin
+
+      DO k = kts,kte
+        DO i = its,ite
+          cu(i,k) = au(i,k)
+          r1(i,k) = f1(i,k)
+        enddo
+      enddo
+!
+      DO ic = 1,ncloud
+        DO k = kts,kte
+          DO i = its,ite
+            r3(i,k,ic) = f3(i,k,ic)
+          enddo
+        enddo
+      enddo
+!
+!
+
 !
 !     solve tridiagonal problem for heat and moisture, and clouds
 !
-      call tridin(al,ad,au,f1,f3,au,f1,f3,                 &
+      CALL tridin(al,ad,cu,r1,r3,au,f1,f3,                 &
 		  its,ite,kts,kte,ncloud                   )
+
 !
 !     recover tendencies of heat and moisture
 !
@@ -1111,10 +1181,24 @@ contains
           ad(i,k+1) = 1.-al(i,k)
         enddo
       enddo
+
+
+! copies here to avoid duplicate input args for tridin
+
+      DO k = kts,kte
+        DO i = its,ite
+          cu(i,k) = au(i,k)
+          r1(i,k) = f1(i,k)
+          r2(i,k) = f2(i,k)
+        enddo
+      enddo
+!
+!
+
 !
 !     solve tridiagonal problem for momentum
 !
-      call tridin(al,ad,au,f1,f2,au,f1,f2,                 &
+      CALL tridin(al,ad,cu,r1,r2,au,f1,f2,                 &
 		  its,ite,kts,kte,1                         )
 !
 !     recover tendencies of momentum
@@ -1247,9 +1331,9 @@ contains
                                                          rqiblten
    integer :: i, j, k, itf, jtf, ktf
 !
-   jtf = min0(jte,jde-1)
+   jtf = min0(jte,jde)
    ktf = min0(kte,kde-1)
-   itf = min0(ite,ide-1)
+   itf = min0(ite,ide)
 !
    if(.not.restart)then
      do j = jts,jtf

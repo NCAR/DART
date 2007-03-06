@@ -444,7 +444,7 @@ CONTAINS
         ENDIF                                                                    
    70 CONTINUE                                                                   
 !     IF(ISOIL.EQ.1)THEN                                                         
-      IF(num_soil_layers .gt. 1)THEN                                                         
+      IF(num_soil_layers .GT. 1)THEN                                                         
          NSOIL=1+IFIX(SOILFAC*4*DIFSL/DZS(1)*DELTSM/DZS(1))   
 
 !mp@ start
@@ -496,8 +496,9 @@ CONTAINS
    75         CONTINUE                                                           
             ENDDO                                                                
           ENDDO                                                                  
-        ENDDO                                                                    
-      ENDIF                                                                      
+       ENDDO
+
+    ENDIF
 !           
 
       DO 80 I=its,ite
@@ -591,8 +592,8 @@ CONTAINS
    INTEGER                   ::      L,J,I,itf,jtf
 !----------------------------------------------------------------
  
-   itf=min0(ite,ide-1)
-   jtf=min0(jte,jde-1)
+   itf=min0(ite,ide)
+   jtf=min0(jte,jde)
 
  END SUBROUTINE frinit
 

@@ -528,8 +528,8 @@ CONTAINS
    INTEGER                   ::      L,J,I,itf,jtf
 !----------------------------------------------------------------
  
-   itf=min0(ite,ide-1)
-   jtf=min0(jte,jde-1)
+   itf=min0(ite,ide)
+   jtf=min0(jte,jde)
 
    END SUBROUTINE slabinit
 
