@@ -22,7 +22,7 @@ if ( ! -d DART ) then
 endif
 
 foreach DIRECTORY ( chisq  \
-   xxxxxxxxxxxxxxxxxxxxxxx \
+   uuuuuuuuuuuuuuuuuuuuuuu \
    models/forced_barot     \
    models/gswm             \
    models/null_model       \
