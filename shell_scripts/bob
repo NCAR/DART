@@ -22,7 +22,7 @@ if ( ! -d DART ) then
 endif
 
 foreach DIRECTORY ( chisq  \
-   leeuwen_particle_filter \
+   yyyyyyyyyyyyyyyyyyyyyyy \
    models/forced_barot     \
    models/gswm             \
    models/null_model       \
