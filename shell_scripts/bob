@@ -30,7 +30,7 @@ foreach DIRECTORY ( chisq  \
    models/oscillator       \
    models/rose             \
    ncep_obs/bufr_lib       \
-   qc                      \
+   browntrout              \
    system_simulation )
 
    echo "Removing $DIRECTORY from the DART distribution."
