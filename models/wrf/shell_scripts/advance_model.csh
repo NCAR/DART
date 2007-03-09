@@ -7,8 +7,8 @@
 #
 # <next three lines automatically updated by CVS, do not edit>
 # $Id$
-# $Source$
-# $Name$
+# $Source: /home/thoar/CVS.REPOS/DART/models/wrf/shell_scripts/advance_model.csh,v $
+# $Name:  $
 #
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
@@ -40,7 +40,7 @@ set temp_dir = 'advance_temp'${process}
 
 set days_in_month = ( 31 28 31 30 31 30 31 31 30 31 30 31 )
    
-set REMOVE = 'rm -rf'
+set REMOVE = '/bin/rm -rf'
 set   COPY = 'cp -p'
 set   MOVE = 'mv -f'
    
@@ -67,7 +67,7 @@ while($state_copy <= $num_states)
    set output_file     = `head -$output_file_line     ../$control_file | tail -1`
 
 
-   @ element = $ensemble_member
+   set element = $ensemble_member
    
    set infl = 0.0
    
@@ -138,9 +138,9 @@ while($state_copy <= $num_states)
       set imem = 1
       while ( $imem <= $NBLOWN )
          if ( $MBLOWN[$imem] == $element ) then
-            @ BLOWN ++
+            set BLOWN = `expr $BLOWN \+ 1`
          endif
-         @ imem ++
+         set imem = `expr $imem \+ 1`
       end
       if ( $BLOWN > 0 ) then
          set infl = 0.0
@@ -170,10 +170,11 @@ while($state_copy <= $num_states)
    set ifile = 1
    set iday = 1
    set isec = 2
+   if ( -e keys ) ${REMOVE} keys
    while ( $ifile <= $num_files )
       set key = `echo "$items[$iday] * 86400 + $items[$isec]" | bc`
       echo $key >> keys
-      @ ifile ++
+      set ifile = `expr $ifile \+ 1`
       set iday = `expr $iday \+ 3`
       set isec = `expr $isec \+ 3`
    end
@@ -213,7 +214,7 @@ while($state_copy <= $num_states)
    
    while ( $keys[${ifile}] <= $wrfkey )
       if ($ifile < $num_files ) then
-         @ ifile ++
+         set ifile = `expr $ifile \+ 1`
       else
          echo No boundary file available to move beyond
          echo ${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:${START_MIN}:${START_SEC}
@@ -247,25 +248,25 @@ while($state_copy <= $num_states)
       set RUN_SECONDS = `expr $REMAIN \% 60`
       set INTERVAL_MIN = `expr $INTERVAL_SS \/ 60`
    
-      @ END_SEC = $END_SEC + $INTERVAL_SS
-      while ( $END_SEC >= 60 )
-         @ END_SEC = $END_SEC - 60
-         @ END_MIN ++
-         if ($END_MIN >= 60 ) then
-            @ END_MIN = $END_MIN - 60
-            @ END_HOUR ++
+      set END_SEC = `expr $END_SEC \+ $INTERVAL_SS`
+      while ( `expr $END_SEC - 60` >= 0 )
+         set END_SEC = `expr $END_SEC \- 60`
+         set END_MIN = `expr $END_MIN \+ 1`
+         if ( `expr $END_MIN - 60` >= 0 ) then
+            set END_MIN = `expr $END_MIN \- 60`
+            set END_HOUR = `expr $END_HOUR \+ 1`
          endif
-         if ($END_HOUR >= 24 ) then
-            @ END_HOUR = $END_HOUR - 24
-            @ END_DAY ++
+         if ( `expr $END_HOUR - 24` >= 0 ) then
+            set END_HOUR = `expr $END_HOUR \- 24`
+            set END_DAY  = `expr $END_DAY \+ 1`
          endif
-         if ($END_DAY > $days_in_month[$END_MONTH] ) then
+         if ( `expr $END_DAY - $days_in_month[$END_MONTH]` > 0 ) then
             set END_DAY = 1
-            @ END_MONTH ++
+            set END_MONTH = `expr $END_MONTH \+ 1`
          endif
-         if ($END_MONTH > 12 ) then
+         if ( `expr $END_MONTH - 12` > 0 ) then
             set END_MONTH = 1
-            @ END_YEAR ++
+            set END_YEAR  = `expr $END_YEAR \+ 1`
    
             if ( `expr $END_YEAR \% 4` == 0 ) then
                set days_in_month[2] = 29
@@ -371,7 +372,7 @@ EOF
       set dn = 1
       while ( $dn <= $MY_NUM_DOMAINS )
          ${MOVE} wrfout_d0${dn}_${END_YEAR}-${END_MONTH}-${END_DAY}_${END_HOUR}:${END_MIN}:${END_SEC} wrfinput_d0${dn}
-         @ dn ++
+         set dn = `expr $dn \+ 1`
       end
    
       ${REMOVE} wrfout*
@@ -383,7 +384,7 @@ EOF
       set START_MIN   = $END_MIN
       set START_SEC   = $END_SEC
       set wrfkey = $keys[$ifile]
-      @ ifile ++
+      set ifile = `expr $ifile \+ 1`
    
    end
    
@@ -396,16 +397,17 @@ EOF
    
    ${MOVE} dart_wrf_vector ${CENTRALDIR}/$output_file
 
-   @ state_copy++
-   @ ensemble_member_line = $ensemble_member_line + 3
-   @ input_file_line = $input_file_line + 3
-   @ output_file_line = $output_file_line + 3
+   set state_copy = `expr $state_copy \+ 1`
+   set ensemble_member_line = `expr $ensemble_member_line \+ 3`
+   set input_file_line = `expr $input_file_line \+ 3`
+   set output_file_line = `expr $output_file_line \+ 3`
 end
 
 
 
 # Change back to working directory and get rid of temporary directory
 cd ${CENTRALDIR}
+echo ${REMOVE} ${temp_dir}
 ${REMOVE} ${temp_dir}
 
 # Remove the filter_control file to signal completeion
