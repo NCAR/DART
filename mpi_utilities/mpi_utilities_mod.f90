@@ -93,6 +93,8 @@ module mpi_utilities_mod
 !                         See filter and wakeup_filter for examples
 !                         of a program pair which uses these calls.
 ! 
+!    # finished_task()    Called from finalize_mpi_utilities, if async=4 writes
+!                         out a string to the model pipe to tell it filter is exiting.
 !
 !  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
@@ -263,17 +265,36 @@ if ( module_initialized ) then
 endif
 
 ! some implementations of mpich need this to happen before any I/O is done.
-! this makes the startup sequence very tricky.  test this more.
-
+! this makes the startup sequence very tricky. 
+! still, allow for the possibility that the user code has already initialized
+! the MPI libs and do not try to call initialize again.
 errcode = -999 
-call MPI_Init(errcode)
+call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
-   write(*, *) 'MPI_Init returned error code ', errcode
+   write(*, *) 'MPI_Initialized returned error code ', errcode
+   call exit(-99)
+endif
+if (.not.already) then
+   call MPI_Init(errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(*, *) 'MPI_Init returned error code ', errcode
+      call exit(-99)
+   endif
+endif
+
+call MPI_Comm_rank(MPI_COMM_WORLD, myrank, errcode)
+if (errcode /= MPI_SUCCESS) then
+   write(*, *) 'MPI_Comm_rank returned error code ', errcode
    call exit(-99)
 endif
 
-! these need to be args into this routine?
-call initialize_utilities(progname, alternatename)
+! pass the arguments through so the utilities can log the program name
+! only PE0 gets to output, whenever possible.
+if (myrank == 0) then
+   call initialize_utilities(progname, alternatename, .true.)
+else
+   call initialize_utilities(progname, alternatename, .false.)
+endif
 
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities
@@ -281,24 +302,6 @@ if ( .not. module_initialized ) then
    module_initialized = .true.
 endif
 
-! allow for the possibility that the user code has already initialized
-! the MPI libs and do not try to call initialize again.
-
-call MPI_Initialized(already, errcode)
-if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a,i8)') 'MPI_Initialized returned error code ', errcode
-   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
-endif
-
-! generally this will be the first use of mpi and this code will be executed.
-if (.not.already) then
-   errcode = -999
-   call MPI_Init(errcode)
-   if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a,i8)') 'MPI_Init returned error code ', errcode
-      call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
-   endif
-endif
 
 ! duplicate the world communicator to isolate us from any other user
 ! calls to MPI.  All subsequent mpi calls here will use the local communicator
@@ -345,11 +348,14 @@ call set_tasknum(myrank)
 ! do this to cut down on the space requirements.)
 
 if (r8 == digits12) then
-  datasize = MPI_REAL8
-  !print *, "using real * 8 for datasize of r8"
+   datasize = MPI_REAL8
+   !print *, "using real * 8 for datasize of r8"
 else
-  datasize = MPI_REAL4
-  !print *, "using real * 4 for datasize of r8"
+   datasize = MPI_REAL4
+   if (myrank == 0) then
+      write(errstring, *) "Using real * 4 for datasize of r8"
+      call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
+   endif
 endif
 
 ! MPI successfully initialized.  Log for the record how many tasks.
@@ -364,8 +370,9 @@ end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------
 
-subroutine finalize_mpi_utilities(callfinalize)
+subroutine finalize_mpi_utilities(callfinalize, async)
  logical, intent(in), optional :: callfinalize
+ integer, intent(in), optional :: async
 
 ! Shut down MPI cleanly.  This must be done before the program exits; on
 ! some implementations of MPI the final I/O flushes are not done until this
@@ -380,6 +387,17 @@ if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
 endif
+
+! give the async=4 case a chance to tell the script to shut down.
+if (present(async)) then
+   call finished_task(async)
+endif
+
+! For the SGI implementation of MPI in particular, sync before shutting
+! down MPI.  Once MPI is shut down, no other output can be written; it causes
+! tasks to hang if they try.  Make sure all tasks are here and ready to
+! close down at the same time.
+call task_sync()
 
 ! Release the private communicator we created at init time.
 if (my_local_comm /= MPI_COMM_WORLD) then
@@ -1019,7 +1037,7 @@ subroutine block_task()
 ! the MPI job which spreads out on all the PEs for this job
 ! and writes into the file from the correct PE.
 
-character(len = 32) :: fifo_name
+character(len = 32) :: fifo_name, filter_to_model, model_to_filter
 integer :: rc
 logical :: verbose
 
@@ -1031,11 +1049,32 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
 endif
 
+filter_to_model = 'filter_to_model.lock'
+model_to_filter = 'model_to_filter.lock'
+
+! the i5.5 format below will not handle task counts larger than this.
+if (total_tasks > 99999) then
+   write(errstring, *) 'cannot handle task counts > 99999'
+   call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
+endif
+
 if (verbose) write(*,*) 'putting to sleep task id ', myrank
+
+if (myrank == 0) then
+   if (verbose) write(*,*) 'PE0 telling script to advance model'
+   rc = system('echo advance > '//trim(filter_to_model)//' '//char(0))
+
+   if (verbose) write(*,*) 'PE0 waiting to read from lock file'
+   rc = system('cat < '//trim(model_to_filter)//' '//char(0))
+
+else
 
 ! if you change this in any way, change the corresponding string in 
 ! restart_task() below.
-write(fifo_name, '(a, i2.2)') "filter_task", myrank
+   write(fifo_name, '(a, i5.5)') "filter_lock", myrank
+   
+   if (verbose) write(*,*) 'removing any previous lock file: '//trim(fifo_name)
+   rc = system('rm -f '//trim(fifo_name)//' '//char(0))
 
 if (verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
 rc = system('mkfifo '//trim(fifo_name)//' '//char(0))
@@ -1046,13 +1085,15 @@ rc = system('cat < '//trim(fifo_name)//' '//char(0))
 if (verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
 rc = system('rm -f '//trim(fifo_name)//' '//char(0))
 
+endif
+
 end subroutine block_task
 
 !-----------------------------------------------------------------------------
 subroutine restart_task()
 
 
-character(len = 32) :: fifo_name
+character(len = 32) :: fifo_name, filter_to_model, model_to_filter
 integer :: rc
 logical :: verbose
 
@@ -1063,21 +1104,68 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'restart_task', errstring, source, revision, revdate)
 endif
 
-! process 0 is handled differently in the code.
-if (myrank == 0) return
+filter_to_model = 'filter_to_model.lock'
+model_to_filter = 'model_to_filter.lock'
 
+! the i5.5 format below will not handle task counts larger than this.
+if (total_tasks > 99999) then
+   write(errstring, *) 'cannot handle task counts > 99999'
+   call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
+endif
+
+! process 0 is handled differently in the code.
+if (myrank == 0) then
+
+   if (verbose) write(*,*) 'PE0 script telling filter ok to restart'
+   rc = system('echo restart > '//trim(model_to_filter)//' '//char(0))
+
+else
 
 if (verbose) write(*,*) 'waking up task id ', myrank
 
-write(fifo_name,"(a,i2.2)") "filter_task", myrank
+   write(fifo_name,"(a,i5.5)") "filter_lock", myrank
 
 if (verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
 rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
 
 if (verbose) write(*,*) 'response was read from lock file: '//trim(fifo_name)
 
+endif
 
 end subroutine restart_task
+
+!-----------------------------------------------------------------------------
+subroutine finished_task(async)
+ integer, intent(in) :: async
+
+character(len = 32) :: fifo_name, filter_to_model, model_to_filter
+integer :: rc
+logical :: verbose
+
+verbose = .true.
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'restart_task', errstring, source, revision, revdate)
+endif
+
+! only in the async=4 case does this matter.
+if (async /= 4) return
+
+filter_to_model = 'filter_to_model.lock'
+model_to_filter = 'model_to_filter.lock'
+
+
+! only process 0 needs to do anything.
+if (myrank == 0) then
+
+   if (verbose) write(*,*) 'PE0 telling script we are done'
+   rc = system('echo finished > '//trim(filter_to_model)//' '//char(0))
+
+   
+endif
+
+end subroutine finished_task
 
 
 !-----------------------------------------------------------------------------
