@@ -6,18 +6,19 @@
 module obs_kind_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/obs_kind/DEFAULT_obs_kind_mod.F90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 
 ! This module is used in conjunction with the preprocessor and a set of obs_kind
 ! modules to construct a final fortran 90 obs_kind_mod for use with a DART
 ! assimilation.
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                             logfileunit, find_namelist_in_file, check_namelist_read
+                             logfileunit, find_namelist_in_file,           &
+                             check_namelist_read, do_output
 
 implicit none
 private
@@ -46,7 +47,7 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_kind/DEFAULT_obs_kind_mod.F90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -150,29 +151,45 @@ call check_namelist_read(iunit, io, "obs_kind_nml")
 ! DART PREPROCESS OBS_KIND_INFO INSERTED HERE
 
 
-call error_handler(E_MSG,'initialize_module','obs_kind_nml values are',' ',' ',' ')
-write(logfileunit, *) 'assimilate_these_obs_types'
-write(*, *)
-write(*, *) '-------------- ASSIMILATE_THESE_OBS_TYPES --------------'
+! count here, then output below 
+
 num_kind_assimilate = 0
 do i = 1, max_obs_kinds
-   if(assimilate_these_obs_types(i) == 'null') goto 22
-   write(logfileunit, *) trim(assimilate_these_obs_types(i))
-   write(*, *) trim(assimilate_these_obs_types(i))
+   if(assimilate_these_obs_types(i) == 'null') exit
    num_kind_assimilate = i
 end do
-22 write(logfileunit, *) 'evaluate_these_obs_types'
-write(*, *) '-------------- EVALUATE_THESE_OBS_TYPES --------------'
+
 num_kind_evaluate = 0
 do i = 1, max_obs_kinds
-   if(evaluate_these_obs_types(i) == 'null') goto 33
-   write(logfileunit, *) trim(evaluate_these_obs_types(i))
-   write(*, *) trim(evaluate_these_obs_types(i))
+   if(evaluate_these_obs_types(i) == 'null') exit
    num_kind_evaluate = i
 end do
-33 continue
-write(*, *) '------------------------------------------------------'
-write(*, *)
+
+if (do_output()) then
+   write(*, *) '------------------------------------------------------'
+   write(*, *)
+
+   call error_handler(E_MSG,'initialize_module','obs_kind_nml values are',' ',' ',' ')
+   write(logfileunit, *) 'assimilate_these_obs_types'
+   write(*, *)
+   write(*, *) '-------------- ASSIMILATE_THESE_OBS_TYPES --------------'
+
+   do i = 1, num_kind_assimilate
+      write(logfileunit, *) trim(assimilate_these_obs_types(i))
+      write(*, *) trim(assimilate_these_obs_types(i))
+   end do
+
+   write(logfileunit, *) 'evaluate_these_obs_types'
+   write(*, *) '-------------- EVALUATE_THESE_OBS_TYPES --------------'
+
+   do i = 1, num_kind_evaluate
+      write(logfileunit, *) trim(evaluate_these_obs_types(i))
+      write(*, *) trim(evaluate_these_obs_types(i))
+   end do
+   write(*, *) '------------------------------------------------------'
+   write(*, *)
+endif
+
 
 ! Figure out which kinds are being used, look for errors
 ! Start by loading up kinds to assimilate
