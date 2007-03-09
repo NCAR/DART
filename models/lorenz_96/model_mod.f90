@@ -6,20 +6,22 @@
 module model_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/models/lorenz_96/model_mod.f90,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, set_location, get_location, &
                              LocationDims, LocationName, LocationLName, &
-                             get_close_maxdist_init, get_close_obs_init, get_close_obs
+                             get_close_maxdist_init, get_close_obs_init, &
+                             get_close_obs
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
-                             find_namelist_in_file, check_namelist_read, nc_check
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             logfileunit, find_namelist_in_file,           &
+                             check_namelist_read, nc_check, do_output
 
 implicit none
 private
@@ -40,7 +42,7 @@ public :: get_model_size, &
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/models/lorenz_96/model_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -87,9 +89,11 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
+if (do_output()) then
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 write(logfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
+endif
 
 ! Create storage for locations
 allocate(state_loc(model_size))
