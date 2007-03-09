@@ -6,11 +6,11 @@
 module utilities_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/utilities/utilities_mod.f90,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 
 !-----------------------------------------------------------------------
 !
@@ -53,6 +53,23 @@ module utilities_mod
 !                       the netcdf error string and pass that to the error
 !                       handler routine.  Two optional strings allow the caller
 !                       to provide the subroutine name and some context.
+!
+! nsc start 31jan07
+!   idea - add some unit number routine here?
+!   you can extract the filename associated with a fortran unit number
+!   with the inquire function on the unit.  this seems useful for
+!   automatically generating filenames in messages.  here is an example
+!   of how that code works:
+!
+!character(len=128) :: filename
+!logical :: is_named
+!integer :: rc
+!
+!inquire(ncFileID, named=is_named, name=filename, iostat=rc)
+!print *, 'is_named =', is_named, 'name = ', trim(filename)
+!if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
+!
+! nsc end 31jan07
 !
 !-----------------------------------------------------------------------
 
@@ -99,9 +116,10 @@ contains
 
 !#######################################################################
 
-   subroutine initialize_utilities(progname, alternatename)
+   subroutine initialize_utilities(progname, alternatename, output_flag)
    character(len=*), intent(in), optional :: progname
    character(len=*), intent(in), optional :: alternatename
+   logical, intent(in), optional          :: output_flag
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
@@ -122,6 +140,8 @@ contains
          
          module_initialized = .true.
 
+         if (present(output_flag)) do_output_flag = output_flag
+
          ! Since the logfile is not open yet, the error terminations
          ! must be handled differently than all other cases.
          ! The routines that normally write to the logfile cannot
@@ -129,10 +149,10 @@ contains
          ! always abort execution at this step.
 
          if ( present(progname) ) then
-            write(*,*)'Starting program ',trim(adjustl(progname))
+            if (do_output_flag) write(*,*)'Starting program ',trim(adjustl(progname))
          endif
 
-         write(*,*)'Initializing the utilities module.'
+         if (do_output_flag) write(*,*)'Initializing the utilities module.'
 
          ! Read the namelist entry
          call find_namelist_in_file("input.nml", "utilities_nml", iunit, .false.)
@@ -153,8 +173,8 @@ contains
             lname = logfilename
          endif
 
-         write(*,*)'Trying to log to unit ', logfileunit
-         write(*,*)'Trying to open file ', trim(adjustl(lname))
+         if (do_output_flag) write(*,*)'Trying to log to unit ', logfileunit
+         if (do_output_flag) write(*,*)'Trying to open file ', trim(adjustl(lname))
 
          open(logfileunit, file=trim(adjustl(lname)), form='formatted', &
                            position='append', iostat = io )
@@ -173,6 +193,7 @@ contains
 
          call DATE_AND_TIME(cdate, ctime, zone, values)
 
+         if (do_output_flag) then
          write(logfileunit,*)
          write(logfileunit,*)'--------------------------------------'
          if ( present(progname) ) then
@@ -187,6 +208,7 @@ contains
          write(logfileunit,*)'time zone offset is ',values(4),' minutes.'
          write(logfileunit,*)'--------------------------------------'
          write(logfileunit,*)
+         endif
 
          ! Check to make sure termlevel is set to a reasonable value
          call checkTermLevel
@@ -771,9 +793,13 @@ end subroutine error_handler
 
    logical, intent(in) :: doflag
 
-   if ( .not. module_initialized ) call initialize_utilities
+!! THIS ONE IS DIFFERENT.  Set the flag FIRST before doing the
+!! standard initialization, so if you are turning off writing
+!! for some tasks you do not get output you are trying to avoid.
 
    do_output_flag = doflag
+
+   if ( .not. module_initialized ) call initialize_utilities
 
    end subroutine set_output
 
