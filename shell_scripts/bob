@@ -24,7 +24,7 @@ endif
 foreach DIRECTORY ( chisq  \
    nothing \
    models/forced_barot     \
-   models/gswm             \
+   models/GSWM             \
    models/null_model       \
    models/oned_wave        \
    models/oscillator       \
