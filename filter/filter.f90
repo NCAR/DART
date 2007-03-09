@@ -6,11 +6,11 @@
 program filter
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/filter/filter.f90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 
 !-----------------------------------------------------------------------------------------
 use types_mod,            only : r8, missing_r8
@@ -62,7 +62,7 @@ implicit none
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/filter/filter.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -120,6 +120,7 @@ real(r8)             :: inf_sd_initial(2)         = 0.0_r8
 real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
+logical              :: output_inflation          = .true.
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -131,7 +132,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
-                      inf_lower_bound, inf_upper_bound, inf_sd_lower_bound
+                      inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation
 
 
 !----------------------------------------------------------------
@@ -167,7 +168,7 @@ integer                 :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END, TOTAL_OBS_COP
 integer                 :: input_qc_index, DART_qc_index
 integer                 :: mean_owner, mean_owners_index
 
-real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1), small_temp(1)
+real(r8)                :: rkey_bounds(2), rnum_obs_in_set(1)
 
 ! For now, have model_size real storage for the ensemble mean, don't really want this
 ! in the long run
@@ -270,7 +271,7 @@ if(my_task_id() == 0) then
    PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index)
-   if(ds) call smoother_gen_copy_meta_data(num_output_state_members)
+   if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
 else
   output_state_mean_index = 0
   output_state_spread_index = 0
@@ -378,7 +379,7 @@ AdvanceTime : do
    ! Compute the ensemble of prior observations, load up the obs_err_var and obs_values
    ! ens_size is the number of regular ensemble members, not the number of copies
    call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
+      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
 
    ! Although they are integer, keys are one 'copy' of obs ensemble (the last one?)
    call put_copy(0, obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)
@@ -389,9 +390,9 @@ AdvanceTime : do
    ! Broadcast it to everybody else
    if(my_task_id() == mean_owner) then
       ens_mean = ens_handle%vars(:, mean_owners_index)
-      call broadcast_send(mean_owner, ens_mean, small_temp)
+      call broadcast_send(mean_owner, ens_mean)
    else
-      call broadcast_recv(mean_owner, ens_mean, small_temp)
+      call broadcast_recv(mean_owner, ens_mean)
    endif
 
    ! Now send the mean to the model in case it's needed
@@ -402,7 +403,7 @@ AdvanceTime : do
    if(time_step_number / output_interval * output_interval == time_step_number) then
       call filter_state_space_diagnostics(PriorStateUnit, ens_handle, model_size, &
          num_output_state_members, output_state_mean_index, output_state_spread_index, &
-         ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
+         output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
    endif
   
@@ -453,7 +454,7 @@ AdvanceTime : do
    ! Compute the ensemble of posterior observations, load up the obs_err_var and obs_values
    ! ens_size is the number of regular ensemble members, not the number of copies
    call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
+      obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
 
    if(ds) call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -461,12 +462,12 @@ AdvanceTime : do
    if(time_step_number / output_interval * output_interval == time_step_number) then
       call filter_state_space_diagnostics(PosteriorStateUnit, ens_handle, model_size, &
          num_output_state_members, output_state_mean_index, output_state_spread_index, &
-         ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
+         output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
       ! Cyclic storage for lags with most recent pointed to by smoother_head
       ! ens_mean is passed to avoid extra temp storage in diagnostics
-      call smoother_ss_diagnostics(model_size, num_output_state_members, ens_mean, &
-         ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
+      call smoother_ss_diagnostics(model_size, num_output_state_members, output_inflation, &
+         ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
    endif
 
    ! Increment the number of current lags if smoother set not yet fully spun up
@@ -490,9 +491,9 @@ AdvanceTime : do
       ! Broadcast it to everybody else
       if(my_task_id() == mean_owner) then
          ens_mean = ens_handle%vars(:, mean_owners_index)
-         call broadcast_send(mean_owner, ens_mean, small_temp)
+         call broadcast_send(mean_owner, ens_mean)
       else
-         call broadcast_recv(mean_owner, ens_mean, small_temp)
+         call broadcast_recv(mean_owner, ens_mean)
       endif
    
       ! Now send the mean to the model in case it's needed
@@ -560,12 +561,13 @@ endif
 ! Master task must close the log file
 if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
 
-call finalize_mpi_utilities()
-
 ! Free up the observation kind
 call destroy_obs(observation)
 
 if(ds) call smoother_end()
+
+! Make this the last thing done, especially for SGI systems.
+call finalize_mpi_utilities(async=async)
 
 end subroutine filter_main
 
@@ -622,10 +624,14 @@ do i = 1, num_output_state_members
    write(state_meta(i + ensemble_offset), '(a15, 1x, i6)') 'ensemble member', i
 end do
 
-! Next two slots are for inflation mean and sd
-num_state_copies = num_state_copies + 2
-state_meta(num_state_copies -1) = 'inflation mean'
-state_meta(num_state_copies) = 'inflation sd'
+! Next two slots are for inflation mean and sd metadata
+! To avoid writing out inflation values to the Prior and Posterior netcdf files,
+! set output_inflation to false in the filter section of input.nml 
+if(output_inflation) then
+   num_state_copies = num_state_copies + 2
+   state_meta(num_state_copies -1) = 'inflation mean'
+   state_meta(num_state_copies) = 'inflation sd'
+endif
 
 
 ! Set up diagnostic output for model state, if output is desired
@@ -705,6 +711,7 @@ integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
 
 character(len = 129) :: qc_meta_data = 'DART quality control'
+character(len = 129) :: no_qc_meta_data = 'No incoming data QC'
 character(len = 129) :: obs_seq_read_format
 integer              :: obs_seq_file_id, num_obs_copies
 integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc, num_qc
@@ -720,18 +727,23 @@ num_obs_copies = 2 * num_output_obs_members + 4
 call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, &
    obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
 if(tnum_qc == 0) then
-   input_qc_index = 0
-   DART_qc_index = 1
+   input_qc_index = 1
+   DART_qc_index = 2
+   ! Need 2 new qc fields, for dummy incoming qc and for the DART qc
+   qc_num_inc = 2
+   ! original code
+   !input_qc_index = 0
+   !DART_qc_index = 1
 else if(tnum_qc == 1) then
    input_qc_index = 1
    DART_qc_index = 2
+   ! Need 1 new qc field for the DART quality control
+   qc_num_inc = 1
 else
    write(*, msgstring) 'input obs_seq file has ', tnum_qc, ' qc fields; must be < 2'
    call error_handler(E_ERR,'filter_setup_obs_sequence', msgstring, source, revision, revdate)
 endif
 
-! Need a new qc field for the DART quality control
-qc_num_inc = 1
 ! Read in with enough space for diagnostic output values and add'l qc field
 call read_obs_seq(obs_sequence_in_name, num_obs_copies, qc_num_inc, 0, seq)
 
@@ -745,6 +757,9 @@ call init_obs(observation, get_num_copies(seq), num_qc)
 ! Set initial DART quality control to 0 for all observations
 ! Leaving them uninitialized, obs_space_diagnostics should set them all without reading them
 call set_qc_meta_data(seq, DART_qc_index, qc_meta_data)
+
+! If we are constructing a dummy QC, label it as such
+if (tnum_qc == 0) call set_qc_meta_data(seq, input_qc_index, no_qc_meta_data)
 
 ! Determine which copy has actual obs
 obs_val_index = get_obs_copy_index(seq)
@@ -859,7 +874,7 @@ end subroutine filter_ensemble_inflate
 !-------------------------------------------------------------------------
 
 subroutine get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-   obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY)
+   obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
 
 ! Computes forward observation operators and related quality control indicators.
 
@@ -869,6 +884,7 @@ type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
 integer,                 intent(in)    :: obs_val_index, num_obs_in_set
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
+integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 
 real(r8)           :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
 integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1)
@@ -896,7 +912,18 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    if(.not. input_qc_ok(input_qc(1))) then
       ! The forward operator value is set to -99 if prior qc was failed
       forward_op_ens_handle%vars(j, :) = -99
-      obs_ens_handle%vars(j, :) = missing_r8 
+      do k=1, my_num_copies
+        global_ens_index = obs_ens_handle%my_copies(k)
+        ! Update prior/post obs values, mean, etc - but leave the key copy
+        ! and the QC copy alone.
+        if ((global_ens_index /= OBS_KEY_COPY) .and. &
+            (global_ens_index /= OBS_GLOBAL_QC_COPY)) then 
+            obs_ens_handle%vars(j, k) = missing_r8
+        endif
+      enddo
+      ! previous code was at various times one of these equivalent lines:
+      !obs_ens_handle%vars(j, 1:my_num_copies) = missing_r8
+      !obs_ens_handle%vars(j, :) = missing_r8 
       ! No need to do anything else for a failed observation
       cycle ALL_OBSERVATIONS
    endif
