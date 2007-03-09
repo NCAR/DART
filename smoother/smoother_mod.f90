@@ -6,11 +6,11 @@
 module smoother_mod 
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/smoother/smoother_mod.f90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 !
 ! Tools for turning the filter into a fixed lag smoother for the full state vector.
 
@@ -43,7 +43,7 @@ public :: smoother_read_restart, advance_smoother,                          &
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128), parameter :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/smoother/smoother_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -188,9 +188,10 @@ end subroutine advance_smoother
 
 !-------------------------------------------------------------------------
 
-subroutine smoother_gen_copy_meta_data( num_output_state_members)
+subroutine smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
 
 integer, intent(in) :: num_output_state_members
+logical, intent(in) :: output_inflation
 
 ! Figures out the strings describing the output copies for the smoother state output files.
 ! These are the prior and posterior state output files. 
@@ -226,15 +227,17 @@ do i = 1, num_output_state_members
 end do
 
 ! Netcdf output diagnostics for inflation; inefficient for single spatial
-!!! nsc - temporary fix.  for now always allow space in the netcdf file for
-!!! a single copy of the inflation values.  this should be changed to handle
-!!! prior, posterior, both, or neither inflation.  but it must match what is
-!!! written out in filter_state_space_diagnostics() below.
+! NOTE: this should be changed to handle prior, posterior, both, or 
+! neither inflation.  it must match what is written out in 
+! filter_state_space_diagnostics() below.  space for an array state_space size
+! long is created unless turned off by the namelist 'output_inflation' value,
+! regardless of the actual inflation settings.
 !!!if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+if (output_inflation) then
    num_state_copies = num_state_copies + 2
    state_meta(num_state_copies -1) = 'inflation mean'
    state_meta(num_state_copies) = 'inflation sd'
-!!!endif
+endif
 
 ! Set up diagnostic output for model state, if output is desired
 do i = 1, num_lags
@@ -335,7 +338,7 @@ end subroutine smoother_mean_spread
 
 subroutine filter_state_space_diagnostics(out_unit, ens_handle, model_size, &
    num_output_state_members, output_state_mean_index, output_state_spread_index, &
-   temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
+   output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
 
 type(netcdf_file_type),      intent(inout) :: out_unit
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -345,6 +348,7 @@ integer,                     intent(in)    :: output_state_mean_index, output_st
 real(r8),                    intent(out)   :: temp_ens(model_size)
 type(adaptive_inflate_type), intent(in)    :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
+logical,                     intent(in)    :: output_inflation
 
 type(time_type) :: temp_time
 integer         :: ens_offset, j
@@ -369,35 +373,39 @@ do j = 1, num_output_state_members
    if(my_task_id() == 0) call aoutput_diagnostics( out_unit, temp_time, temp_ens, ens_offset + j)
 end do
 
-! Output the spatially varying inflation if used
-if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
-   call get_copy(0, ens_handle, INF_COPY, temp_ens)
-else
-   ! Output inflation value as 1 if not in use (no inflation)
-   temp_ens = 1.0_r8
-endif
-if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, &
-   ens_offset + num_output_state_members + 1)
+! Unless specifically asked not to, output inflation
+if (output_inflation) then
+   ! Output the spatially varying inflation if used
+   if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
+      call get_copy(0, ens_handle, INF_COPY, temp_ens)
+   else
+      ! Output inflation value as 1 if not in use (no inflation)
+      temp_ens = 1.0_r8
+   endif
+   if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, &
+      ens_offset + num_output_state_members + 1)
 
 
-if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
-   call get_copy(0, ens_handle, INF_SD_COPY, temp_ens)
-else
-   ! Output inflation sd as 0 if not in use
-   temp_ens = 0.0_r8
+   if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
+      call get_copy(0, ens_handle, INF_SD_COPY, temp_ens)
+   else
+      ! Output inflation sd as 0 if not in use
+      temp_ens = 0.0_r8
+   endif
+   if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, &
+      ens_offset + num_output_state_members + 2)
 endif
-if(my_task_id() == 0) call aoutput_diagnostics(out_unit, ens_handle%time(1), temp_ens, &
-   ens_offset + num_output_state_members + 2)
 
 end subroutine filter_state_space_diagnostics
 
 
 !-----------------------------------------------------------
 
-subroutine smoother_ss_diagnostics(model_size, num_output_state_members, &
+subroutine smoother_ss_diagnostics(model_size, num_output_state_members, output_inflation, &
    temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
 
    integer,  intent(in)  :: model_size, num_output_state_members
+   logical,  intent(in)  :: output_inflation
    real(r8), intent(out) :: temp_ens(model_size)
    integer,  intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 
@@ -408,7 +416,7 @@ do i = 1, num_current_lags
    if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
    call filter_state_space_diagnostics(SmootherStateUnit(i), lag_handle(smoother_index), &
       model_size, num_output_state_members, &
-      smoother_state_mean_index, smoother_state_spread_index, temp_ens, &
+      smoother_state_mean_index, smoother_state_spread_index, output_inflation, temp_ens, &
       ENS_MEAN_COPY, ENS_SD_COPY, lag_inflate, POST_INF_COPY, POST_INF_SD_COPY)
 end do
 
