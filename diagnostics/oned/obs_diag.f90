@@ -6,11 +6,11 @@
 program obs_diag
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/diagnostics/oned/obs_diag.f90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 
 !-----------------------------------------------------------------------
 ! The programs defines a series of epochs (periods of time) and geographic
@@ -38,13 +38,13 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, logfileunit, timestamp, &
-                             find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read, do_output
 
 implicit none
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/diagnostics/oned/obs_diag.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -211,9 +211,11 @@ read(iunit, nml = obs_diag_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_diag_nml")
 
 ! Record the namelist values used for the run ...
+if (do_output()) then
 call error_handler(E_MSG,'obs_diag','obs_diag_nml values are',' ',' ',' ')
 write(logfileunit, nml=obs_diag_nml)
 write(     *     , nml=obs_diag_nml)
+endif
 
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
