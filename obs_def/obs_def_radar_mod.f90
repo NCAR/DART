@@ -45,16 +45,16 @@ module obs_def_radar_mod
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_radar_mod.f90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity, DEG2RAD
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file, &
-                             logfileunit
+                             logfileunit, do_output
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location
 use  assim_model_mod, only : interpolate
@@ -73,7 +73,7 @@ public :: write_rad_vel, read_rad_vel, set_rad_vel, interactive_rad_vel, &
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_radar_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -170,10 +170,10 @@ read(iunit, nml = obs_def_radar_mod_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_def_radar_mod_nml")
 
 ! Record the namelist values used for the run ... 
-call error_handler(E_MSG,'obs_def_radar_mod:initialize_module',&
+if (do_output()) call error_handler(E_MSG,'obs_def_radar_mod:initialize_module',&
                          'obs_def_radar_mod_nml values are',' ',' ',' ')
-write(logfileunit, nml=obs_def_radar_mod_nml)
-write(     *     , nml=obs_def_radar_mod_nml)
+if (do_output()) write(logfileunit, nml=obs_def_radar_mod_nml)
+if (do_output()) write(     *     , nml=obs_def_radar_mod_nml)
 
 ! This is temporary as it is not clear how to assimilate Z
 convert_to_dbz = .true.
