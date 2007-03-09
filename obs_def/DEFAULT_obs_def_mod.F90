@@ -6,11 +6,11 @@
 module obs_def_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $Source: /home/thoar/CVS.REPOS/DART/obs_def/DEFAULT_obs_def_mod.F90,v $
 ! $Revision$
 ! $Date$
 ! $Author$
-! $Name$
+! $Name:  $
 
 ! Contains the basic parts of a module for defining and evaluating observation
 ! definitions. Can evaluate identity observations as is. The DART preprocess
@@ -48,7 +48,7 @@ interface assignment(=)
    module procedure copy_obs_def
 end interface
 
-public :: init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
+public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_kind, get_obs_def_time, &
           get_obs_def_error_variance, set_obs_def_location, set_obs_def_kind, set_obs_def_time, &
           set_obs_def_error_variance, set_obs_def_key, interactive_obs_def, write_obs_def, &
           read_obs_def, obs_def_type, get_expected_obs_from_def, destroy_obs_def, &
@@ -56,7 +56,7 @@ public :: init_obs_def, get_obs_def_location, get_obs_kind, get_obs_def_time, &
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/DEFAULT_obs_def_mod.F90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -133,6 +133,19 @@ obs_def1%key            = obs_def2%key
 !obs_def1%aperture = obs_def2%aperture
 
 end subroutine copy_obs_def
+
+!----------------------------------------------------------------------------
+
+function get_obs_def_key(obs_def)
+
+type(obs_def_type), intent(in) :: obs_def
+integer                        :: get_obs_def_key
+
+if ( .not. module_initialized ) call initialize_module
+
+get_obs_def_key = obs_def%key
+
+end function get_obs_def_key
 
 !----------------------------------------------------------------------------
 
