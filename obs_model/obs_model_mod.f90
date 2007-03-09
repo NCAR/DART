@@ -326,59 +326,48 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
 
       ! Only task 0 writes all ens names to file.
       if (my_task_id() == 0) then
-        ! Write the ic and ud file names to the control file
-        control_unit = get_unit()
-        open(unit = control_unit, file = trim(control_file_name))
-        ! Write out the file names to a control file
-        ! Also write out the global ensemble member number for the script 
-        ! if it needs to create unique filenames for its own use.
-        do i = 1, ens_size
-           write(control_unit, '(i5)') i
-           write(control_unit, '("assim_model_state_ic", i5.5)') i
-           write(control_unit, '("assim_model_state_ud", i5.5)') i
-        end do
-        close(control_unit)
+         ! Write the ic and ud file names to the control file
+         control_unit = get_unit()
+         open(unit = control_unit, file = trim(control_file_name))
+         ! Write out the file names to a control file
+         ! Also write out the global ensemble member number for the script 
+         ! if it needs to create unique filenames for its own use.
+         do i = 1, ens_size
+            write(control_unit, '(i5)') i
+            write(control_unit, '("assim_model_state_ic", i5.5)') i
+            write(control_unit, '("assim_model_state_ud", i5.5)') i
+         end do
+         close(control_unit)
       endif
 
       ! make sure all tasks have finished writing their initial condition
       ! files before letting process 0 start the model advances.
       call task_sync()
 
-      ! PE0 starts the advance script here.
-      if (my_task_id() == 0) then
+      ! PE0 tells the run script to all the model advance script here, then sleeps.  
+      ! the other tasks just sleep.  TODO: this code is too intertwined with the
+      ! run script - it assumes that the script has already created 2 fifo/pipe 
+      ! files with specific names:  mkfifo filter_to_model.lock model_to_filter.lock
+      ! eventually it should probably be yet another separate executable which
+      ! keeps the code all together in the mpi module.
 
-         ! this assumes the script has already called 'mkfifo filter.status'
-         ! tell any waiting tasks that we are indeed doing a model advance
-         ! here and they need to block.
-         call sum_across_tasks(1, i)
+      ! tell any waiting tasks that we are indeed doing a model advance
+      ! here and they need to block.
+      call sum_across_tasks(1, i)
 
-         ! this tells the script it is time to start the model advance.
-         ! it should return as soon as the script reads the string.
-         call system('echo advance > ./filter.status')
+      ! block, not spin, until the model advance is done.
+      ! the code does not resume running until the separate program 'wakeup_filter'
+      ! calls the companion 'resume_task()'.
+      call block_task()
 
-         ! now block here until the advance has finished and written
-         ! something back into the pipe file.   this will take as long
-         ! as it takes to advance all the ensembles.
-         call system('cat < ./filter.status')
-
-         ! if control file is still here, the advance failed
-         if(file_exist(control_file_name)) then
-           write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
-           call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
-         endif
-
-      else
- 
-         ! tell any waiting tasks that indeed we are going to block. 
-         call sum_across_tasks(1, i)
-
-         ! block, not spin, until the model advance is done.
-         call block_task()
-
+      ! if control file is still here, the advance failed
+      if(file_exist(control_file_name)) then
+         write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
+         call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
       endif
 
    else
-   ! Unsupported option for async error
+      ! Unsupported option for async error
       write(errstring,*)'input.nml - async is ',async,' must be 0, 2, or 4'
       call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
    endif
