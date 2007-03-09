@@ -6,11 +6,11 @@
 module mpi_utilities_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/mpi_utilities/null_mpi_utilities_mod.f90,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 
 !-----------------------------------------------------------------------------
 !
@@ -148,9 +148,9 @@ module mpi_utilities_mod
 !
 !-----------------------------------------------------------------------------
 
-use types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, initialize_utilities, & 
-                          E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file
+use types_mod, only        : r8, digits12
+use utilities_mod, only    : register_module, error_handler, initialize_utilities, & 
+                             E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file
 use time_manager_mod, only : time_type, get_time, set_time
 
 
@@ -175,7 +175,7 @@ public :: task_sync, array_broadcast, array_distribute, &
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/mpi_utilities/null_mpi_utilities_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -250,7 +250,12 @@ total_tasks = 1
 ! need to take that into account and not participate if they are > comm_size.
 comm_size = total_tasks
 
-! MPI successfully initialized.
+if (r8 /= digits12) then
+   write(errstring, *) "Using real * 4 for datasize of r8"
+   call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
+endif
+
+! non-MPI successfully initialized.
 call error_handler(E_MSG,'initialize_mpi_utilities: ','Running single process', &
                    source, revision, revdate)
 
@@ -258,8 +263,9 @@ end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------
 
-subroutine finalize_mpi_utilities(callfinalize)
+subroutine finalize_mpi_utilities(callfinalize, async)
  logical, intent(in), optional :: callfinalize
+ integer, intent(in), optional :: async
 
 ! Shut down MPI cleanly.  This must be done before the program exits; on
 ! some implementations of MPI the final I/O flushes are not done until this
