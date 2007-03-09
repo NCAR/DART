@@ -6,11 +6,11 @@
 module location_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
+! $Source: /home/thoar/CVS.REPOS/DART/location/threed_sphere/location_mod.f90,v $ 
 ! $Revision$ 
 ! $Date$ 
 ! $Author$ 
-! $Name$ 
+! $Name:  $ 
 !
 
 ! Implements location interfaces for a three dimensional spherical shell 
@@ -27,8 +27,9 @@ module location_mod
 ! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
-use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
-                           find_namelist_in_file, check_namelist_read, do_output
+use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                           logfileunit, find_namelist_in_file,           &
+                           check_namelist_read, do_output
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -41,11 +42,12 @@ public :: location_type, get_location, set_location, set_location_missing, &
           horiz_dist_only, get_close_obs, get_close_type, &
           get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy, &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
-          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist, print_get_close_type
+          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist,                &
+          print_get_close_type
 
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source$", &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/location/threed_sphere/location_mod.f90,v $", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
@@ -155,9 +157,9 @@ call check_namelist_read(iunit, io, "location_nml")
 
 ! Write the namelist values to the log file
 
-call error_handler(E_MSG,'initialize_module','location_nml values',' ',' ',' ')
-write(logfileunit, nml=location_nml)
-write(     *     , nml=location_nml)
+if(do_output()) call error_handler(E_MSG,'initialize_module','location_nml values',' ',' ',' ')
+if(do_output()) write(logfileunit, nml=location_nml)
+if(do_output()) write(     *     , nml=location_nml)
 
 ! Make sure that the number of longitudes, nlon, for get_close_obs is odd
 if(nlon / 2 * 2 == nlon) then
@@ -828,6 +830,8 @@ real(r8) :: base_lat(2), target_lat(2), del_lon, cos_del_lon
 real(r8) :: max_del_lon
 integer :: i, j, cum_start, lon_box(num), lat_box(num), tstart(nlon, nlat), tj, bj
 
+if ( .not. module_initialized ) call initialize_module
+
 ! Allocate storage for obs number dependent part
 allocate(gc%obs_box(num))
 gc%obs_box(:) = -1
@@ -920,11 +924,12 @@ do i = 1, num
    tstart(lon_box(i), lat_box(i)) = tstart(lon_box(i), lat_box(i)) + 1
 end do
 
-! debug - if you want to see what boxes are being used and how dense
-! or sparse they are.  warning, this can generate a reasonable amount
-! of output, but not all possible values.  if you really want to see
-! every shred of info, pass .true. as a second argument after gc.
-if (output_box_info .and. do_output()) call print_get_close_type(gc)
+! info on how well the boxes are working.  by default print brief info
+! on number of filled boxes and how full they are on average.  to see
+! way more detail, set 'output_box_info' to .true. in the namelist.  
+! to see a dump of the entire structure, go into print_get_close_type()
+! and set 'howmuch' from 1 to 2 at the start.
+if (do_output()) call print_get_close_type(gc, output_box_info)
 
 end subroutine get_close_obs_init
 
@@ -1188,18 +1193,18 @@ logical, intent(in)  :: lon_box_full(num_boxes)
 integer :: g_start, g_end, g_length, next_box, i, full_count
 logical :: all_done
 
+! Initialize these to known values.
+gap_start  = -1
+gap_end    = -1
+gap_length = -1
+
 ! If more than half of the boxes are full, then assume that there is no
 ! meaningful gap and just use the whole domain for get_close
 full_count = 0
 do i = 1, num_boxes
    if(lon_box_full(i)) full_count = full_count + 1
 end do
-if(full_count >= num_boxes / 2) then
-   gap_start  = -1
-   gap_end    = -1
-   gap_length = -1
-   return
-endif
+if(full_count >= num_boxes / 2) return
 
 ! More than half of the boxes were empty, try to hone in on potentially
 ! local locations
@@ -1391,11 +1396,11 @@ subroutine print_get_close_type(gc, all)
 type(get_close_type), intent(in) :: gc
 logical, intent(in), optional    :: all
 
-integer :: i, j, k, first, index, sample, nfull, nempty, total
+integer :: i, j, k, first, index
+integer :: sample, nfull, nempty, total, howmuch, maxcount, maxi, maxj
 logical :: tickmark(gc%num)
-logical :: printall
 
-! idea for enhancement:  make the second arg an int.
+! second arg should probably be an int, not logical, and mean:
 ! 0 = very terse, only box summary (default).  
 ! 1 = structs and first part of arrays.
 ! 2 = all parts of all arrays.
@@ -1404,23 +1409,26 @@ logical :: printall
 ! very long).  but give an option, which if true, forces an
 ! entire contents dump.  'sample' is the number to print for
 ! the short version.  (this value prints about 5-6 lines of data.)
+! to get a full dump, change howmuch to 2 below.
+howmuch = 0
+sample = 39
+
 if (present(all)) then
-  printall = all
-else
-  printall = .false.
-  sample = 39
+   if (all) howmuch = 1
 endif
 
 ! print the get_close_type derived type values
 
-write(*,*) 'get_close_type values are:'
+if (howmuch > 0) then
+   write(*,*) 'get_close_type values are:'
 
-write(*,*) ' num = ', gc%num
-write(*,*) ' maxdist = ', gc%maxdist
-write(*,*) ' bot_lat, top_lat = ', gc%bot_lat, gc%top_lat
-write(*,*) ' bot_lon, top_lon = ', gc%bot_lon, gc%top_lon
-write(*,*) ' lon_width, lat_width = ', gc%lon_width, gc%lat_width
-write(*,*) ' lon_cyclic = ', gc%lon_cyclic
+   write(*,*) ' num = ', gc%num
+   write(*,*) ' maxdist = ', gc%maxdist
+   write(*,*) ' bot_lat, top_lat = ', gc%bot_lat, gc%top_lat
+   write(*,*) ' bot_lon, top_lon = ', gc%bot_lon, gc%top_lon
+   write(*,*) ' lon_width, lat_width = ', gc%lon_width, gc%lat_width
+   write(*,*) ' lon_cyclic = ', gc%lon_cyclic
+endif
 
 ! this one can be very large.   print only the first nth unless
 ! instructed otherwise.  (print n+1 because 1 more value fits on
@@ -1430,14 +1438,14 @@ if (associated(gc%obs_box)) then
    if (i/= gc%num) then
       write(*,*) ' warning: size of obs_box incorrect, nobs, i =', gc%num, i
    endif
-   if (printall) then
+   if (howmuch > 1) then
       write(*,*) ' obs_box(',i,') =', gc%obs_box    ! (nobs)
-   else
+   else if(howmuch > 0) then
       write(*,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))    ! (nobs)
       write(*,*) '  <rest of obs_box omitted>'
    endif
 else
-   write(*,*) ' obs_box unallocated'
+   if (howmuch > 0) write(*,*) ' obs_box unallocated'
 endif
 
 ! like obs_box, this one can be very large.   print only the first nth unless
@@ -1448,14 +1456,14 @@ if (associated(gc%start)) then
    if ((i /= nlon) .or. (j /= nlat)) then
       write(*,*) ' warning: size of start incorrect, nlon, nlat, i, j =', nlon, nlat, i, j
    endif
-   if (printall) then
+   if (howmuch > 1) then
       write(*,*) ' start(',i,j,') =', gc%start    ! (nlon, nlat)
-   else
+   else if (howmuch > 0) then
       write(*,*) ' start(',i,j,') =', gc%start(1:min(i,sample), 1)    ! (nlon, nlat)
       write(*,*) '  <rest of start omitted>'
    endif
 else
-   write(*,*) ' start unallocated'
+   if (howmuch > 0) write(*,*) ' start unallocated'
 endif
 
 ! as above, print only first n unless second arg is .true.
@@ -1465,14 +1473,14 @@ if (associated(gc%lon_offset)) then
    if ((i /= nlat) .or. (j /= nlat)) then
       write(*,*) ' warning: size of lon_offset incorrect, nlat, i, j =', nlat, i, j
    endif
-   if (printall) then
+   if (howmuch > 1) then
       write(*,*) ' lon_offset(',i,j,') =', gc%lon_offset    ! (nlon, nlat)
-   else
+   else if (howmuch > 0) then
       write(*,*) ' lon_offset(',i,j,') =', gc%lon_offset(1:min(i,sample), 1)    ! (nlon, nlat)
       write(*,*) '  <rest of lon_offset omitted>'
    endif
 else
-   write(*,*) ' lon_offset unallocated'
+   if (howmuch > 0) write(*,*) ' lon_offset unallocated'
 endif
 
 ! as above, print only first n unless second arg is .true.
@@ -1483,14 +1491,14 @@ if (associated(gc%count)) then
       write(*,*) ' warning: size of count incorrect, nlon, nlat, i, j =', &
                       nlon, nlat, i, j
    endif
-   if (printall) then
+   if (howmuch > 1) then
       write(*,*) ' count(',i,j,') =', gc%count    ! (nlon, nlat)
-   else
+   else if (howmuch > 0) then
       write(*,*) ' count(',i,j,') =', gc%count(1:min(i,sample), 1)    ! (nlon, nlat)
       write(*,*) '  <rest of count omitted>'
    endif
 else
-   write(*,*) ' count unallocated'
+   if (howmuch > 0) write(*,*) ' count unallocated'
 endif
 
 
@@ -1509,10 +1517,14 @@ do i=1, nlon
          index = first + k - 1
          if ((index < 1) .or. (index > gc%num)) then
             write(*, *) 'error: bad obs list index, in box: ', index, i, j
+            write(*, *) 'exiting without checking further'
+            exit
          endif
          if (tickmark(index)) then
             write(*, *) 'error: obs found in more than one box list.  index, box: ', &
                          index, i, j
+            write(*, *) 'exiting without checking further'
+            exit
          endif
          tickmark(index) = .TRUE.
       enddo
@@ -1522,31 +1534,53 @@ enddo
 do i=1, gc%num
   if (.not. tickmark(i)) then
      write(*,*) 'error: obs found in no box list: ', i
+     write(*, *) 'exiting without checking further'
+     exit
   endif
 enddo
 
-! and print out some potentially useful stats?
+! print out some hopefully useful stats
 nfull = 0
 nempty = 0
 total = 0
+maxcount = 0
+maxi = 0
+maxj = 0
 
 do i=1, nlon
    do j=1, nlat
       if (gc%count(i, j) > 0) then
          nfull = nfull + 1
          total = total + gc%count(i, j)
+         if (gc%count(i, j) > maxcount) then
+            maxcount = gc%count(i, j)
+            maxi = i
+            maxj = j
+         endif
       else
          nempty = nempty + 1
       endif
    enddo
 enddo
 
-write(*, *) "Some box statistics:"
-write(*, *) " Total boxes: ", nfull + nempty
-write(*, *) " Total full:  ", nfull
-write(*, *) " Total empty: ", nempty
+! these print out always - make sure they are useful to end users.
+write(*, '(a)') "Location module statistics:"
+write(*, '(a,i8)') " Total boxes (nlon * nlat): ", nfull + nempty
+write(*, '(a,i8)') " Total items to put in boxes: ", gc%num
+if (howmuch > 0) then
+   write(*, '(a,i8)') " Total boxes with 1+ items: ", nfull
+write(*, '(a,i8)') " Total boxes empty: ", nempty
+endif
 if (nfull > 0) then
-   write(*, *) " Average counts per full box: ", real(total, r8) / nfull
+   write(*, '(a,f6.3)') " Percent boxes with 1+ items: ", nfull / real(nfull + nempty, r8) * 100.
+   write(*, '(a,f6.3)') " Average #items per non-empty box: ", real(total, r8) / nfull
+endif
+if (maxcount > 0) then
+   write(*, '(a,i8)') " Largest #items in one box: ", maxcount
+! leave this out for now.  one, if there are multiple boxes with
+! the same maxcount this is just the last one found.  two, the
+! index numbers do not seem very helpful.
+!   if (howmuch > 0) write(*, '(a,i8,i8)') " That box index: ", maxi, maxj
 endif
 
 
