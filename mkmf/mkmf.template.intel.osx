@@ -1,0 +1,40 @@
+# Template for Intel ifort and Mac OSX
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Initiative, 
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next two lines are maintained by CVS, please do not edit>
+# $Id: mkmf.template.intel.osx,v 1.1 2007/03/09 00:18:00 nancy Exp $
+# $Name:  $
+#
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# Most likely NETCDF and LIBS need to be customized for your site
+#
+# 
+# Building DART with the commercial Intel compiler for the iMacs:
+# 
+# You will need to have a version of the (free) netCDF software
+# library package:
+#
+#      http://www.unidata.ucar.edu/software/netcdf
+# 
+#
+# users have had problems with the default stack size on OS X.
+# the -Wl,-stack_size argument below increases the stack large
+# enough to run large models.
+#
+
+MPIFC = mpif90
+MPILC = mpif90
+FC = ifort
+LD = ifort
+NETCDF = /usr/local
+INCS = ${NETCDF}/include
+FFLAGS = -I$(INCS) -O2 
+LIBS = -L${NETCDF}/lib -lnetcdf
+LDFLAGS = -I$(INCS) -Wl,-stack_size,10000000 $(LIBS)
+
