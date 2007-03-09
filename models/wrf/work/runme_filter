@@ -72,7 +72,7 @@
 # has the right number of ensemble members below; it must match
 # the input.nml number.
 
-set parallel_model = "true"
+set parallel_model = "false"
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -84,7 +84,6 @@ if ($?LS_SUBCWD) then
 
    # LSF has a list of processors already in a variable (LSB_HOSTS)
    #  alias submit 'bsub < \!*'
-
 
    # each filter task advances the ensembles, each running on 1 proc.
    if ( "$parallel_model" == "false" ) then
@@ -153,7 +152,18 @@ else if ($?PBS_O_WORKDIR) then
    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
    #  alias submit 'qsub \!*'
 
-
+   # each filter task advances the ensembles, each running on 1 proc.
+   if ( "$parallel_model" == "false" ) then
+   
+     mpirun ./filter
+   
+   else
+   
+   # filter runs in parallel until time to do a model advance,
+   # and then this script starts up the wrf.exe jobs, each one
+   # running in parallel.  then it runs wakeup_filter to wake
+   # up filter so it can continue.
+   
      rm -f model_to_filter.lock filter_to_model.lock
      mkfifo model_to_filter.lock filter_to_model.lock
 
@@ -205,35 +215,33 @@ else if ($?PBS_O_WORKDIR) then
    
 else if ($?OCOTILLO_MPINODES) then
 
-   # ocotillo has no queue system; just launch the job with
-   # mpirun and a nodefile.  Generate a list of nodes for the
-   # nodefile something like this:
-   # setenv OCOTILLO_MPINODES  ~/my_node_list
-   # echo "node1"  > $OCOTILLO_MPINODES
-   # echo "node5" >> $OCOTILLO_MPINODES
-   # echo "node7" >> $OCOTILLO_MPINODES
-   # echo "node3" >> $OCOTILLO_MPINODES
-   # then run this script.
+   # If you have a linux cluster with no queuing software, use this
+   # section.  The list of computational nodes is given to the mpirun
+   # command and it assigns them as they appear in the file.  In some
+   # cases it seems to be necessary to wrap the command in a small
+   # script that changes to the current directory before running.
+   # (ocotillo is a local ncar cluster, and also a type of desert tree)
 
    echo "running on ocotillo"
 
-   echo "running with nodes specified in $OCOTILLO_MPINODES"
-   setenv NUM_PROCS 12
+   # before running this script, do this once.  the syntax is
+   # node name : how many tasks you can run on it
+   #setenv OCOTILLO_MPINODES  ~/nodelist
+   #echo "node7:2" >! $OCOTILLO_MPINODES
+   #echo "node5:2" >> $OCOTILLO_MPINODES
+   #echo "node3:2" >> $OCOTILLO_MPINODES
+   #echo "node1:2" >> $OCOTILLO_MPINODES
+
+   setenv NUM_PROCS 8
+   echo "running with $NUM_PROCS nodes specified from $OCOTILLO_MPINODES"
 
    # each filter task advances the ensembles, each running on 1 proc.
    if ( "$parallel_model" == "false" ) then
 
- # At one point, there was reason to believe you needed another
- # script that cd'd to the right working directory and then
- # launch filter.
- #
-     #echo "cd `pwd`"  >! filterscript
-     #echo "./filter"  >> filterscript
-
-     mpirun -machinefile ${OCOTILLO_MPINODES} -np ${NUM_PROCS} ./filter
+      mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./filter
 
    else
-   
+
    # filter runs in parallel until time to do a model advance,
    # and then this script starts up the wrf.exe jobs, each one
    # running in parallel.  then it runs wakeup_filter to wake
@@ -249,7 +257,7 @@ else if ($?OCOTILLO_MPINODES) then
      # this script immediately.
       
      (setenv HOME $filterhome; \
-      mpirun -machinefile ${OCOTILLO_MPINODES} -np ${NUM_PROCS} ./filter ) &
+      mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./filter ) &
        
      while ( -e filter_to_model.lock )
        
@@ -271,7 +279,7 @@ else if ($?OCOTILLO_MPINODES) then
          ./advance_model.csh 0 16 filter_control00000  true
          
          echo restarting filter.     
-         mpirun -machinefile ${OCOTILLO_MPINODES} -np ${NUM_PROCS} ./wakeup_filter
+         mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./wakeup_filter
        
        else
          
@@ -289,15 +297,14 @@ else if ($?OCOTILLO_MPINODES) then
      if ( -d $filterhome) rmdir $filterhome
    endif
    
-
 else
 
    # interactive - assume you are using 'lam-mpi' and that you have
-   # already run 'lamboot' once to start the lam server.
-   # alias submit 'mpirun \!*'
+   # already run 'lamboot' once to start the lam server, or that you
+   # are running with a machine that has mpich installed.
 
    echo "running interactively"
-   mpirun -np 1 ./filter
+   mpirun -np 4 ./filter
 
 endif
 
