@@ -140,6 +140,7 @@ if ($?LS_SUBCWD) then
       
      end
       
+     wait
      echo filter finished, removing pipes.
      rm -f model_to_filter.lock filter_to_model.lock
    
@@ -195,6 +196,7 @@ else if ($?PBS_O_WORKDIR) then
       
      end
       
+     wait
      echo filter finished, removing pipes.
      rm -f model_to_filter.lock filter_to_model.lock
    
@@ -215,7 +217,7 @@ else if ($?OCOTILLO_MPINODES) then
 
    echo "running on ocotillo"
 
-   echo "running with nodes specified in $OCOTILLO_NODEFILE"
+   echo "running with nodes specified in $OCOTILLO_MPINODES"
    setenv NUM_PROCS 12
 
    # each filter task advances the ensembles, each running on 1 proc.
@@ -280,6 +282,7 @@ else if ($?OCOTILLO_MPINODES) then
       
      end
       
+     wait
      echo filter finished, removing pipes.
      rm -f model_to_filter.lock filter_to_model.lock
    
