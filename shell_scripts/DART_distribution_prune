@@ -2,16 +2,12 @@
 #
 # The following directories are not needed for the distribution.
 #
-# Keyword check follows:
-#
 # $Date$
 # $Revision$
 # $Author$
-# $HeadURL$
+# $URL$
 # $Id$
-# $Source$
 #
-# That would be too cool if it worked.
 
 set SNAME = $0
 

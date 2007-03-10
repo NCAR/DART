@@ -22,7 +22,7 @@ function DiffnetCDFstate(file1,file2,outfile)
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-% $Id: DiffnetCDFstate.m,v 1.1 2007/01/26 21:16:43 thoar Exp $
+% $Id$
 
 %----------------------------------------------------------------------
 % Check for the existence of the two input files.

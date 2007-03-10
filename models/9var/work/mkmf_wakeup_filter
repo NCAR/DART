@@ -8,9 +8,9 @@
 #
 # <next few lines automatically updated by version control software, do not edit>
 # $ID: $
-# $URL: $
-# $Revision: 1.1 $
-# $Date: 2007/03/06 22:15:47 $
+# $URL$
+# $Revision$
+# $Date$
 #
 
 # usage: mkmf_wakeup_filter [ -mpi ]

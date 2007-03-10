@@ -6,7 +6,7 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
-# $Id: ms2restart.csh,v 1.1 2006/12/28 20:24:05 thoar Exp $
+# $Id$
 # $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/ms2restart.csh,v $
 # $Name:  $
 

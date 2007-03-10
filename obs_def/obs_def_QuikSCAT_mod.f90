@@ -5,11 +5,11 @@
 
 ! <next few lines automatically updated by version control software, do not edit>
 ! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_QuikSCAT_mod.f90,v $
-! $URL: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_radar_mod.f90,v $
-! $Revision: 1.1 $
-! $Date: 2007/02/15 21:06:32 $
-! $Author: thoar $
-! $Id: obs_def_QuikSCAT_mod.f90,v 1.1 2007/02/15 21:06:32 thoar Exp $
+! $URL$
+! $Revision$
+! $Date$
+! $Author$
+! $Id$
 
 ! This module supports the observation types from the SeaWinds instrument
 ! on the QuiKSCAT satellite.

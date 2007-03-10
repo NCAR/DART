@@ -6,7 +6,7 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next three lines automatically updated by CVS, do not edit>
-# $Id: job_mpi.csh,v 1.1 2006/12/28 20:41:03 thoar Exp $
+# $Id$
 # $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/job_mpi.csh,v $
 # $Name:  $
 

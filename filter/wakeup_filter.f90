@@ -11,9 +11,9 @@ program wakeup_filter
 !
 
 ! <next few lines automatically updated by version control software, do not edit>
-! $Revision: 1.1 $
-! $Date: 2007/03/06 22:15:47 $
-! $Id: wakeup_filter.f90,v 1.1 2007/03/06 22:15:47 thoar Exp $
+! $Revision$
+! $Date$
+! $Id$
 
 
 use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &

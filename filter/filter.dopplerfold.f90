@@ -7,9 +7,9 @@ program filter
 
 ! <next five lines automatically updated by CVS, do not edit>
 ! $Source: /home/thoar/CVS.REPOS/DART/filter/filter.dopplerfold.f90,v $
-! $Revision: 1.1 $
-! $Date: 2007/03/08 23:14:46 $
-! $Author: nancy $
+! $Revision$
+! $Date$
+! $Author$
 ! $Name:  $
 
 !-----------------------------------------------------------------------------------------
@@ -63,8 +63,8 @@ implicit none
 ! CVS Generated file description for error handling, do not edit
 character(len=128) :: &
 source   = "$Source: /home/thoar/CVS.REPOS/DART/filter/filter.dopplerfold.f90,v $", &
-revision = "$Revision: 1.1 $", &
-revdate  = "$Date: 2007/03/08 23:14:46 $"
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 ! Some convenient global storage items
 character(len=129)      :: msgstring

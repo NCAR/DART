@@ -6,7 +6,7 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next few lines automatically updated by version control software, do not edit>
-# $Id: workshop_setup.csh,v 1.1 2007/01/24 00:50:33 thoar Exp $
+# $Id$
 # $Source: /home/thoar/CVS.REPOS/DART/models/template/work/workshop_setup.csh,v $
 
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
