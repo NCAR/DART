@@ -1,4 +1,11 @@
 #!/bin/sh 
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+
 #  ------------------------------------------------------------------------
 #  This script will make executables which extract data
 #  from ADP BUFR input files, and place the data into a basic text file.

@@ -1,15 +1,16 @@
 #!/bin/csh
-
+#
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next few lines updated by version control software, do not edit>
-# $Id$
+# <next few lines under version control, do not edit>
 # $URL$
+# $Id$
+# $Revision$
+# $Date$
 
-#----------------------------------------------------------------------
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
 # observation sequence file (obs_seq.in) and initial conditions appropriate 

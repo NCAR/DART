@@ -5,13 +5,11 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-#
-# <next few lines automatically updated by version control software, do not edit>
-# $ID: $
+# <next few lines under version control, do not edit>
 # $URL$
+# $Id$
 # $Revision$
 # $Date$
-#
 
 # usage: mkmf_filter [ -mpi ]
 #  without any args, builds filter without mpi libraries, and it will run

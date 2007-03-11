@@ -3,15 +3,16 @@ function corr = ens_correl(base_var, base_time, state_var)
 % another variable (could be the same one)
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2006, Data Assimilation Research Section
+% Copyright 2004-2007, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
- 
+% $Revision$
+% $Date$
+
 %Extract sample of base at base time
 %base_ens = base_var(base_time, :);
 

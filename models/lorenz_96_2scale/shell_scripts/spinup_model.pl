@@ -1,16 +1,19 @@
 #!/usr/bin/perl
-use File::Copy;
-use File::Path;
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source$
-# $Name$
-#
+# $Revision$
+# $Date$
+
+use File::Copy;
+use File::Path;
+
 my $num_spinup_days = 1000;
 
 my $ensemble_size = 100;

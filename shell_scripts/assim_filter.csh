@@ -1,15 +1,16 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section, 
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source$
-# $Name$
-#
+# $Revision$
+# $Date$
+
 # DESCRIPTION:
 #
 #
@@ -25,7 +26,6 @@
 # to generic equivalents so that the vast majority of the script stays the
 # same, i.e, we are not dragging around queuing-system-specific variables
 # any longer than necessary.  TJH 13 Dec 2005
-#
 
 ##=============================================================================
 ## This block of directives constitutes the preamble for the LSF queuing system 

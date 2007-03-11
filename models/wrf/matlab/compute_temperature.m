@@ -1,6 +1,5 @@
 function temp = compute_temperature( pres, theta, Cp, Rd, p0 )
-%
-% Computes temperature from potential temperature.
+% FUNCTION compute_temperature - Computes temperature from potential temperature.
 %
 % Inputs:  
 %	pres     = pressure, at mass pts
@@ -10,13 +9,15 @@ function temp = compute_temperature( pres, theta, Cp, Rd, p0 )
 %	temp     = temperature, at mass pts
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.htm
-
-% <next three lines automatically updated by CVS, do not edit>
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
+% $Revision$
+% $Date$
 
 kappa = Rd / Cp ;
 

@@ -4,13 +4,15 @@ function var_interp = interp_to_pressure( var_in, pressure, p_level)
 % Set var_interp to NaN where p_level is beneath (>) pressure(1,:,:).
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
+% $Revision$
+% $Date$
 
  [Nk Nj Ni] = size(pressure) ; 
 

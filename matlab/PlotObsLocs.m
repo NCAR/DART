@@ -1,8 +1,7 @@
-% PLOTOBSLOCS
-%
-% Plot an observation_locations.NNN.dat file as output from the 
-% latest obs_diag program in DART.  (You must enable a namelist entry
-% to get the output files; they are not created by default.)
+function PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_plotd, in_world, in_invertz, in_writeplot, in_legend2dloc, in_legend3dloc, in_viewlist)
+% PLOTOBSLOCS - Plot an observation_locations.NNN.dat file as output from the latest obs_diag program in DART.
+% (You must enable an obs_diag_nml namelist entry to get the output files; 
+% they are not created by default.)
 %
 % warning: this has a very long argument list, because it is intended that 
 % it be called from another program or function.   all the arguments can be 
@@ -71,11 +70,17 @@
 %               printed in the lower left corner during the rotation; these
 %               views can be used to create .ps files if you are saving the 
 %               plots to a file or if you want the same viewpoints reused.
-% 
-% 
 
-%------------------------------------------------------
-function PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_plotd, in_world, in_invertz, in_writeplot, in_legend2dloc, in_legend3dloc, in_viewlist)
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 % data subset selections:
 %  used vs unused (or both) obs

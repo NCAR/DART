@@ -1,15 +1,18 @@
 #!/bin/csh
 
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source$
-# $Name$
+# $Revision$
+# $Date$
 
 #----------------------------------------------------------------------
+#
 # Script to manage the execution of advance_model and assim_region.
 # Submitted to batch queue by job.csh (the main control script).
 #
@@ -19,8 +22,6 @@
 # Executes on a set of compute processors; 
 #    each processor advances an ensemble member and (possibly) a region.
 #
-# 11/11/04 Kevin Raeder
-# modified by committee 3/31/05 Kevin Raeder, Alain Caya, typing by Tim Hoar
 #----------------------------------------------------------------------
 #
 # It is wise to coordinate the number of nodes requested here with the number

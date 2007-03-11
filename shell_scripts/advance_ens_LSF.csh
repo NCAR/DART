@@ -1,14 +1,16 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-# 
-# <next three lines automatically updated by CVS, do not edit>
-# $Id$
-# $Source$
-# $Name$
 #
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+
 # The number of processors (NPROCS) is determined by one of two things.
 # If this script is run interactively, NPROCS is unity.
 # If this script is run in batch mode, NPROCS is user-defined by  

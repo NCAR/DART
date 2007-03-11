@@ -1,5 +1,11 @@
 #!/bin/csh -ef
+#
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
+# $Revision$
+# $Date$ 
+
 #-----------------------------------------------------------------------
 #              list_paths: CVS administrative script
 #

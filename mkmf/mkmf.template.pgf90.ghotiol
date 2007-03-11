@@ -5,9 +5,12 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next few lines updated by version control software, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-#
+# $Revision$
+# $Date$
+
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
 #

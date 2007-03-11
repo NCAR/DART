@@ -2,14 +2,15 @@ function bins = rank_hist(ens, verif)
 %RANK_HIST: Computes a rank histogram given time series of ensemble and verification 
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2006, Data Assimilation Research Section
+% Copyright 2004-2007, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
- 
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
+% $Revision$
+% $Date$
 
 % Determine how long the time series is
 num_times = size(ens, 1);

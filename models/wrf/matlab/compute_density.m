@@ -1,6 +1,6 @@
 function rho = compute_density( mu, dnw, phi )
-%
-% Computes density.
+% FUNCTION rho : Computes density of dry air, computed from the
+%    hydrostatic relation for dry air: - dphi/deta = -mu alpha.
 %
 % Inputs:  
 %	mu  = (full) dry hydrostatic surf. press (2d)
@@ -12,16 +12,15 @@ function rho = compute_density( mu, dnw, phi )
 % See wrf subroutine calc_p_rho_phi.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.htm
-
-% <next three lines automatically updated by CVS, do not edit>
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
-
-% rho = density of dry air, computed from hydrostatic relation
-% for the dry air:  - dphi/deta = -mu alpha.
+% $Revision$
+% $Date$
 
 phi_eta = ( phi(2:end,:,:) - phi(1:end-1,:,:) ) ./ repmat( dnw(:), [1 size(mu)] );
 

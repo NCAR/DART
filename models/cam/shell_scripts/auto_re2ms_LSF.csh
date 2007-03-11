@@ -1,19 +1,18 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/auto_re2ms_LSF.csh,v $
-# $Name:  $
+# $Revision$
+# $Date$
 
-#
 # Saves restart files to MSS. CAM/CLM, and filter. This is the batch driver
 # for auto_re2ms.csh ...
-#
 
 #### LSF options for BSUB
 ### -J      job name    (master script job.csh presumes filter.xxxx.log)

@@ -2,14 +2,15 @@ function err = total_err(pred, verif, w)
 %TOTAL_ERR: Computes Total error for time series of set of state variables
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2006, Data Assimilation Research Section
+% Copyright 2004-2007, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
- 
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
+% $Revision$
+% $Date$
 
 % Pred and verif are time_series_length x number of variables
 num_times = size(pred, 1);

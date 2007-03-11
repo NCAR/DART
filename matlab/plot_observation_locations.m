@@ -10,22 +10,20 @@
 %
 % See the documentation for PlotObsLocs() -- it has a lot of arguments in the
 % calling sequence.
-%
-%
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2006, Data Assimilation Research Section
+% Copyright 2004-2007, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
+% $Revision$
+% $Date$
 
 % setup all args to be the string 'default', which will be interpreted by 
 % the PlotObsLocs routine to use the default values.   
-
  
 plotd       = 'default';
 used        = 'default';

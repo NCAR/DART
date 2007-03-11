@@ -1,15 +1,16 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section, 
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-# 
-# <next three lines automatically updated by CVS, do not edit>
-# $Id$
-# $Source$
-# $Name$
 #
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+
 # Script to run the filter executable.
 #
 # Signals filter_server.csh to advance the model or assimilate the regions.
@@ -24,12 +25,6 @@
 #    semaphor files must (dis)appear there, 
 #    I/O between filter and advance_model and assim_region goes through there.
 #    Final output is put there
-# 
-# written 11/1/04 Kevin Raeder
-# revised 11/11/04 Kevin Raeder
-# modified by committee 3/31/05 Kevin Raeder, Alain Caya, typing by Tim Hoar
-# revised 6/15/06 Tim Hoar
-#
 
 ##=============================================================================
 # The 'common' strategy between batch submission mechanisms is that the batch

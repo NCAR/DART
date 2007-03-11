@@ -1,15 +1,16 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source$
-# $Name$
-#
+# $Revision$
+# $Date$
+
 # script for copying multiple day/obs_seq of diagnostics files to mass store.
 # For lack of better bookkeeping, the diag2ms.csh script needs to be copied
 # to $HOME ... at some point, this may be streamlined by integrating diag2ms.csh

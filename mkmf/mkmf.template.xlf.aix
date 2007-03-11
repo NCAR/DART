@@ -1,13 +1,16 @@
 # Template for IBM XLF compiler on an IBM AIX platform
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next two lines are maintained by CVS, please do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Name$
-#
+# $Revision$
+# $Date$
+
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
 #

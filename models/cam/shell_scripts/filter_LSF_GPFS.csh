@@ -1,26 +1,21 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source$
-# $Name$
-#
-#-------------------------
+# $Revision$
+# $Date$
+
 # Script to run the filter executable and signals filter_server to advance the model
 #    or assimilate the regions
 # Submitted to batch queue by job.csh (the main control script).
 # Executes filter on a compute node, distinct from those used by filter_server.csh
-# 
-# written 11/1/04 Kevin Raeder
-# revised 11/11/04 Kevin Raeder
-# modified by committee 3/31/05 Kevin Raeder, Alain Caya, typing by Tim Hoar
-#-------------------------
-#
+
 #### LSF options for BSUB
 ### -J      job name    (master script job.csh presumes filter.xxxx.log)
 ### -o      output listing filename 

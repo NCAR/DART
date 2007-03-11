@@ -1,12 +1,14 @@
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
- 
+% $Revision$
+% $Date$
+
 % Plots ensemble errors for all fields and levels, assumes
 % that first copy of data is ensemble mean. Should test and
 % automate.

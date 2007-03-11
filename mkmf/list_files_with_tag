@@ -1,10 +1,16 @@
 #!/usr/bin/perl
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+
 #Contact: arl, pjk
 #Usage: list_files_with_tag tagname
 #   Returns list of files under CVS control, relative to current 
 #   directory, which can be updated or checked out with the tag tagname.
 #Modified to also list files not currently checked out (arl, 4/2002)
-#Version: $Id$
 
 #test that a tagname was given as an argument
 if( "$#ARGV" ne "0" ) {

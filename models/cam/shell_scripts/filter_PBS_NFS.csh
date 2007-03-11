@@ -1,25 +1,20 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source$
-# $Name$
+# $Revision$
+# $Date$
 
-#-------------------------
 # Script to run the filter executable and signals filter_server to advance the model
 #    or assimilate the regions
 # Submitted to batch queue by job.csh (the main control script).
 # Executes filter on a compute node, distinct from those used by filter_server.csh
-# 
-# written 11/1/04 Kevin Raeder
-# last revised 11/11/04 Kevin Raeder
-# last revised  9/28/05 Tim Hoar ... verbose flags
-#-------------------------
 
 ### Job name
 #PBS -N run_filter

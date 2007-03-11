@@ -5,14 +5,15 @@
 % plot_total_err
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2006, Data Assimilation Research Section
+% Copyright 2004-2007, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-% <next three lines automatically updated by CVS, do not edit>
+%
+% <next few lines under version control, do not edit>
+% $URL$
 % $Id$
-% $Source$
-% $Name$
+% $Revision$
+% $Date$
 
 if (exist('truth_file') ~= 1)
    truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
