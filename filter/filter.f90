@@ -94,7 +94,7 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval = 1
 integer  :: num_groups = 1
 real(r8) :: outlier_threshold = -1.0_r8
-real(r8) :: ncep_qc_threshold = 4.0_r8
+real(r8) :: input_qc_threshold = 4.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps = .false.
 
@@ -128,7 +128,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       init_time_seconds, first_obs_days, first_obs_seconds, last_obs_days, &
                       last_obs_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
-                      ncep_qc_threshold, output_forward_op_errors, output_timestamps, &
+                      input_qc_threshold, output_forward_op_errors, output_timestamps, &
                       inf_flavor, inf_start_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
@@ -1076,7 +1076,7 @@ do j = 1, obs_ens_handle%my_num_vars
         
       ! PAR: THIS SHOULD BE IN QC MODULE 
       ! Check on the outlier threshold quality control: move to QC module
-      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < ncep_qc_threshold)) then
+      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < input_qc_threshold)) then
          obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START, j)
          obs_prior_var = obs_ens_handle%copies(OBS_PRIOR_VAR_START, j)
          obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
@@ -1180,7 +1180,7 @@ real(r8), intent(in) :: input_qc
 
 ! Do checks on input_qc value with namelist control
 ! For test always return true for now
-if(input_qc < ncep_qc_threshold) then
+if(input_qc < input_qc_threshold) then
    input_qc_ok = .true.
 else
    input_qc_ok = .false.

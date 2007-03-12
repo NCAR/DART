@@ -49,7 +49,7 @@
    <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
    <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
    <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
-   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                        </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
    <TR><TD>Change history:</TD><TD> see CVS log </TD></TR>
 </TABLE>
@@ -145,7 +145,7 @@ smoother_mod
    num_output_obs_members,
    output_interval,
    num_groups,
-   ncep_qc_threshold,
+   input_qc_threshold,
    outlier_threshold,
    output_forward_op_errors,
    output_timestamps,
@@ -262,10 +262,10 @@ being for the posterior inflation.
                         sd's from observation. Negative means no check. 
                         Default: -1.0_r8</TD></TR>
 
- <TR><!--contents--><TD valign=top>ncep_qc_threshold</TD>
+ <TR><!--contents--><TD valign=top>input_qc_threshold</TD>
      <!--  type  --><TD>real(r8)</TD>
      <!--descript--><TD>Reject observation if incoming QC value exceeds
-                        'ncep_qc_threshold' value. Incoming observations have a
+                        'input_qc_threshold' value. Incoming observations have a
                         QC value (usually set by NCEP). 
                         Default: 4.0_r8</TD></TR>
 

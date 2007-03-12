@@ -35,7 +35,7 @@
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
-   ncep_qc_threshold        =  4.0,
+   input_qc_threshold       =  4.0,
    outlier_threshold        = -1.0, 
    output_forward_op_errors = .false.,
 
@@ -120,7 +120,7 @@
    iskip_days = 0,
    obs_select = 1,
    rat_cri    = 14.0,
-   ncep_qc_threshold = 4.0, 
+   input_qc_threshold = 4.0, 
    bin_width_seconds = 0,
    lonlim1   = 0.0, 0.0, 0.5, -1.0,
    lonlim2   = 1.0, 0.5, 1.5, -1.0,

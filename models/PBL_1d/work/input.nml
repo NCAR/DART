@@ -35,7 +35,7 @@
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
-   ncep_qc_threshold        =  4.0,
+   input_qc_threshold       =  4.0,
    outlier_threshold        = -1.0,
    output_forward_op_errors = .false.,
 
