@@ -77,10 +77,7 @@ namelist /smoother_nml/ num_lags, start_from_restart, &
 contains
 
 
-subroutine init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in) :: POST_INF_COPY, POST_INF_SD_COPY
+subroutine static_init_smoother()
 
 integer :: iunit, io
 
@@ -105,6 +102,18 @@ if ( .not. module_initialized ) then
 
 endif
 
+end subroutine static_init_smoother
+
+!-------------------------------------------------------------------------
+
+subroutine init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in) :: POST_INF_COPY, POST_INF_SD_COPY
+
+! static_init_smoother initializes module and read namelist
+if ( .not. module_initialized ) call static_init_smoother()
+
 ! Initialize a null adaptive_inflate type since inflation is not done at lags
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
 if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .true., &
@@ -127,6 +136,12 @@ integer,             intent(in)    :: init_time_days
 ! by the filter namelist.
 integer             :: i
 character(len = 13) :: file_name
+
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_read_restart',errstring,source,revision,revdate)
+endif
 
 ! Initialize the storage space for the lag ensembles
 do i = 1, num_lags
@@ -167,6 +182,12 @@ type(ensemble_type), intent(in) :: ens_handle
 
 integer         :: smoother_tail, j
 
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'advance_smoother',errstring,source,revision,revdate)
+endif
+
 ! Copy the newest state from the ensemble over the oldest state
 ! Storage is cyclic
 smoother_tail = smoother_head - 1
@@ -201,6 +222,12 @@ character(len = 129) :: state_meta(num_output_state_members + 4)
 character(len = 14)  :: file_name
 character(len = 15)  :: meta_data_string
 integer              :: i, ensemble_offset, num_state_copies
+
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_gen_copy_meta_data',errstring,source,revision,revdate)
+endif
 
 ! Ensemble mean goes first 
 num_state_copies = num_output_state_members + 2
@@ -263,6 +290,12 @@ integer,             intent(in)    :: start_copy, end_copy
 character(len = 17) :: file_name
 integer             :: i, index
 
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_write_restart',errstring,source,revision,revdate)
+endif
+
 ! Write out restart to each lag in turn
 ! Storage is cyclic with lag 1 pointed to by head
 do i = 1, num_lags
@@ -293,6 +326,12 @@ integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR
 
 integer :: i
 
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_assim',errstring,source,revision,revdate)
+endif
+
 do i = 1, num_lags
    call all_vars_to_all_copies(lag_handle(i))
    ! NEED A LAG INFLATE TYPE THAT DOES NO INFLATION FOR NOW
@@ -311,6 +350,11 @@ function do_smoothing()
 
 logical :: do_smoothing
 
+! static_init_smoother initializes module and read namelist
+! (which sets num_lags which if > 0 enables the whole process)
+
+if ( .not. module_initialized ) call static_init_smoother()
+
 do_smoothing = num_lags > 0
 
 end function do_smoothing
@@ -322,6 +366,12 @@ subroutine smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 integer, intent(in) :: ens_size, ENS_MEAN_COPY, ENS_SD_COPY
 
 integer :: i
+
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_mean_spread',errstring,source,revision,revdate)
+endif
 
 do i = 1, num_lags
    call compute_copy_mean_sd(lag_handle(i), 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -354,6 +404,12 @@ type(time_type) :: temp_time
 integer         :: ens_offset, j
 
 ! Assumes that mean and spread have already been computed
+
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_state_space_diagnostics',errstring,source,revision,revdate)
+endif
 
 ! Output ensemble mean
 call get_copy(0, ens_handle, ENS_MEAN_COPY, temp_ens)
@@ -410,6 +466,12 @@ subroutine smoother_ss_diagnostics(model_size, num_output_state_members, output_
    integer,  intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 
 integer :: smoother_index, i
+
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_ss_diagnostics',errstring,source,revision,revdate)
+endif
 
 do i = 1, num_current_lags
    smoother_index = smoother_head + i - 1
