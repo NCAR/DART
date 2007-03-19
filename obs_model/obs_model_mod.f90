@@ -109,6 +109,7 @@ else
    my_first_copy = 0
 endif
 
+
 ! if this task has no ensembles to advance, return directly from here.
 ! this routine has code to sync up with the other ensembles which do
 ! have an advance to do - it will not return until the others are done.
@@ -182,7 +183,11 @@ call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
 ! Advance all ensembles to the time for the assimilation
-if(time2 /= ens_time) call advance_state(ens_handle, ens_size, time2, async, adv_ens_command)
+if(time2 /= ens_time) then
+   call advance_state(ens_handle, ens_size, time2, async, adv_ens_command)
+else
+   call wait_if_needed(async)
+endif
 
 ! Release the storage associated with the observation temp variable
 call destroy_obs(observation)
@@ -360,6 +365,7 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
       ! calls the companion 'resume_task()'.
       call block_task()
 
+
       ! if control file is still here, the advance failed
       if(file_exist(control_file_name)) then
          write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
@@ -395,21 +401,9 @@ integer,             intent(in)    :: async
 
 integer :: should_block, should_sync
 
-! debug messages, off by default
-logical :: verbose
-
-verbose = .false.
-
 
 ! if async = 0 or 2, no synchronizing needed.  return now.
-if (async == 0) then
-   if (verbose) write(*,*) 'work_to_do: false, but async=0, PE', my_task_id()
-   return
-endif
-if (async == 2) then
-   if (verbose) write(*,*) 'work_to_do: false, but async=2, PE', my_task_id()
-   return
-endif
+if ((async == 0) .or. (async == 2)) return
 
 
 ! If only task 0 is handling the advances for all tasks, we have to 
@@ -421,23 +415,17 @@ if (async == 4) then
 
    ! make sure all tasks have finished writing their initial condition
    ! files before letting process 0 start the model advances.
-   if (verbose) write(*,*) 'work_to_do: false, async=4, sync1, PE', my_task_id()
    call task_sync()
 
    ! collective call to see if the code is planning to block or not.
    ! do not block only on this tasks behalf.  if no one needs to block, 
    ! return here.
    call sum_across_tasks(0, should_block)
-   if (should_block == 0) then
-      if (verbose) write(*,*) 'work_to_do: false, async=4, no sync, PE', my_task_id()
-      return
-   endif
+   if (should_block == 0) return
 
    ! sleep (not spin) until the model advance has finished.
-   if (verbose) write(*,*) 'work_to_do: false, async=4, block, PE', my_task_id()
    call block_task()
  
-   if (verbose) write(*,*) 'work_to_do: false, async=4, done, PE', my_task_id()
    return
 
 endif
