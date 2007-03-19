@@ -1565,22 +1565,22 @@ enddo
 
 ! these print out always - make sure they are useful to end users.
 write(*, '(a)') "Location module statistics:"
-write(*, '(a,i8)') " Total boxes (nlon * nlat): ", nfull + nempty
-write(*, '(a,i8)') " Total items to put in boxes: ", gc%num
+write(*, '(a,i9)') " Total boxes (nlon * nlat): ", nfull + nempty
+write(*, '(a,i9)') " Total items to put in boxes: ", gc%num
 if (howmuch > 0) then
-   write(*, '(a,i8)') " Total boxes with 1+ items: ", nfull
-write(*, '(a,i8)') " Total boxes empty: ", nempty
+   write(*, '(a,i9)') " Total boxes with 1+ items: ", nfull
+write(*, '(a,i9)') " Total boxes empty: ", nempty
 endif
 if (nfull > 0) then
-   write(*, '(a,f6.3)') " Percent boxes with 1+ items: ", nfull / real(nfull + nempty, r8) * 100.
-   write(*, '(a,f6.3)') " Average #items per non-empty box: ", real(total, r8) / nfull
+   write(*, '(a,f7.2)') " Percent boxes with 1+ items: ", nfull / real(nfull + nempty, r8) * 100.
+   write(*, '(a,f12.2)') " Average #items per non-empty box: ", real(total, r8) / nfull
 endif
 if (maxcount > 0) then
-   write(*, '(a,i8)') " Largest #items in one box: ", maxcount
+   write(*, '(a,i9)') " Largest #items in one box: ", maxcount
 ! leave this out for now.  one, if there are multiple boxes with
 ! the same maxcount this is just the last one found.  two, the
 ! index numbers do not seem very helpful.
-!   if (howmuch > 0) write(*, '(a,i8,i8)') " That box index: ", maxi, maxj
+!   if (howmuch > 0) write(*, '(a,i9,i9)') " That box index: ", maxi, maxj
 endif
 
 
