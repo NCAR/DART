@@ -16,30 +16,31 @@ module assim_model_mod
 ! add capabilities needed by the standard assimilation methods.
 
 use    types_mod, only : r8, digits12
-use location_mod,     only : location_type, read_location, &
+use location_mod, only : location_type, read_location, &
                          LocationDims, LocationName, LocationLName
-use time_manager_mod, only : time_type, get_time, read_time, write_time, get_calendar_type, &
+use time_manager_mod, only : time_type, get_time, read_time, write_time,                &
                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR, &
-                             operator(<), operator(>), operator(+), operator(-), &
-                             operator(/), operator(*), operator(==), operator(/=), print_time
-use utilities_mod,     only : get_unit, close_file, register_module, error_handler, &
-                              E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, do_output,  &
-                              dump_unit_attributes, find_namelist_in_file,          &
-                              check_namelist_read, nc_check
-
-use     model_mod, only : get_model_size, static_init_model, get_state_meta_data, &
-                              get_model_time_step, model_interpolate, init_conditions, &
-                              init_time, adv_1step, end_model, nc_write_model_atts,    &
-                              nc_write_model_vars, pert_model_state, get_close_maxdist_init, &
-                              get_close_obs_init, get_close_obs, ens_mean_for_model
+                             operator(<), operator(>), operator(+), operator(-),        &
+                             operator(/), operator(*), operator(==), operator(/=),      &
+                             get_calendar_type, print_time
+use utilities_mod, only : get_unit, close_file, register_module, error_handler, &
+                          E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, do_output,  &
+                          dump_unit_attributes, find_namelist_in_file,          &
+                          check_namelist_read, nc_check
+use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
+                          get_model_time_step, model_interpolate, init_conditions, &
+                          init_time, adv_1step, end_model, nc_write_model_atts,    &
+                          nc_write_model_vars, pert_model_state,                   &
+                          get_close_maxdist_init, get_close_obs_init,              &
+                          get_close_obs, ens_mean_for_model
 
 implicit none
 private
 
 public :: static_init_assim_model, init_diag_output, get_model_size,                       &
           get_closest_state_time_to, get_initial_condition, get_state_meta_data,           &
-   get_model_time, get_model_state_vector, copy_assim_model, interpolate, &
-   set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
+          get_model_time, get_model_state_vector, copy_assim_model, interpolate,           &
+          set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
           output_diagnostics, end_assim_model, assim_model_type, init_diag_input,          &
           input_diagnostics, get_diag_input_copy_meta_data, init_assim_model,              &
           finalize_diag_output, aoutput_diagnostics,                                       &
