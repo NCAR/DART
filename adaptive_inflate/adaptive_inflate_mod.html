@@ -113,9 +113,9 @@ ensemble_manager_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#adaptive_inflate_type">adaptive_inflate_type</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_inflate">get_inflate</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_inflate">set_inflate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_sd">set_sd</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_sd">set_sd</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#deterministic_inflate">deterministic_inflate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#do_varying_ss_inflate">do_varying_ss_inflate</A></TD></TR>
 </TABLE>
 
 <BR>
@@ -155,11 +155,11 @@ ensemble_manager_mod
  <P>
  Updates the mean and standard deviation of an inflation distribution
  given the prior values, the prior observation ensemble mean and
-variance, and the observation and its error variance. The factor gamma
-is the expected impact (0 to 1) of the state variable corresponding to
-the inflation on the observation and is the product of the ensemble
-correlation plus an additional localization factor or group regression
-factors.
+ variance, and the observation and its error variance. The factor gamma
+ is the expected impact (0 to 1) of the state variable corresponding to
+ the inflation on the observation and is the product of the ensemble
+ correlation plus an additional localization factor or group regression
+ factors.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>inflate_handle&nbsp; &nbsp; </em></TD>
@@ -188,19 +188,18 @@ factors.
  <P></P><HR><P></P>
  <div class=routine>
  <em class=call> call adaptive_inflate_end(inflate_handle,ens_handle,
-ss_inflate_index,ss_inflate_index_sd) </em>
+                             ss_inflate_index,ss_inflate_sd_index) </em>
  <pre>
  type(adaptive_inflate_type), intent(in)    :: <em class=code>inflate_handle</em>
  type(ensemble_type),         intent(inout) :: <em class=code>ens_handle</em>
  integer,                     intent(in)    :: <em class=code>ss_inflate_index</em>
- integer,                     intent(in)    :: <em class=code>ss_inflate_index_sd</
- em>
+ integer,                     intent(in)    :: <em class=code>ss_inflate_sd_index</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Outputs the values of inflation to restart files using the ensemble_manager for
-state space inflation and file output for observation space inflation. Releases
-allocated storage in inflate_handle.
+ Outputs the values of inflation to restart files using the ensemble_manager for
+ state space inflation and file output for observation space inflation. Releases
+ allocated storage in inflate_handle.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>inflate_handle&nbsp; &nbsp; </em></TD>
@@ -210,9 +209,9 @@ allocated storage in inflate_handle.
  </TD></TR>
  <TR><TD valign=top><em class=code>ss_inflate_index&nbsp; &nbsp; </em></TD>
      <TD>Index in ensemble storage copies for state space inflation.</TD></TR>
- <TR><TD valign=top><em class=code>ss_inflate_index_sd&nbsp; &nbsp; </em></TD>
-     <TD>Index in ensemble storage copies for state space inflation standard dev
- iation.</TD></TR>
+ <TR><TD valign=top><em class=code>ss_inflate_sd_index&nbsp; &nbsp; </em></TD>
+     <TD>Index in ensemble storage copies for state space inflation standard 
+         deviation.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -222,7 +221,7 @@ allocated storage in inflate_handle.
  <A NAME="inflate_ens"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call inflate_ens(inflate_handle, ens,mean,inflate,var_in) </em>
+ <em class=call> call inflate_ens(inflate_handle,ens,mean,inflate,var_in) </em>
  <pre>
  type(adaptive_inflate_type),               intent(in)  :: <em class=code>inflate_handle</em>
  real(r8),                    dimension(:), intent(out) :: <em class=code>ens</em>
@@ -352,17 +351,17 @@ are written with calls from filter.f90.
  <div class=routine>
  <em class=call> call adaptive_inflate_init(inflate_handle,inf_flavor,start_from_restart,
 output_restart,deterministic,in_file_name,out_file_name,diag_file_name,inf_initial,
-sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
+sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,
+ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
  <pre>
- type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em
- >
+ type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em>
  integer, intent(in)                        :: <em class=code>inf_flavor</em>
- logical, intent(in)                        :: <em class=code>start_from_restart </em>
- logical, intent(in)                        :: <em class=code>output_restart</em >
+ logical, intent(in)                        :: <em class=code>start_from_restart</em>
+ logical, intent(in)                        :: <em class=code>output_restart</em>
  logical, intent(in)                        :: <em class=code>deterministic</em>
  character(len=*), intent(in)               :: <em class=code>in_file_name</em>
  character(len=*), intent(in)               :: <em class=code>out_file_name</em>
- character(len=*), intent(in)               :: <em class=code>diag_file_name</em >
+ character(len=*), intent(in)               :: <em class=code>diag_file_name</em>
  real(r8), intent(in)                       :: <em class=code>inf_initial</em>
  real(r8), intent(in)                       :: <em class=code>sd_initial</em>
  real(r8), intent(in)                       :: <em class=code>inf_lower_bound</em>
@@ -464,8 +463,7 @@ sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,ens_handle,ss_inflate_
  <div class=routine>
  <em class=call> call set_inflate(inflate_handle,inflate) </em>
  <pre>
- type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em
- >
+ type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em>
  real(r8), intent(in)                       :: <em class=code>inflate</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -488,8 +486,7 @@ sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,ens_handle,ss_inflate_
  <div class=routine>
  <em class=call> call set_sd(inflate_handle,sd) </em>
  <pre>
- type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em
- >
+ type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em>
  real(r8), intent(in)                       :: <em class=code>sd</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -530,7 +527,6 @@ sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,ens_handle,ss_inflate_
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
-<!--kdr no private in code -->
 <A NAME="adaptive_inflate_type"></A>
 <BR><HR><BR>
 <div class=type><pre>
@@ -541,7 +537,7 @@ sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,ens_handle,ss_inflate_
    character(len = 129) :: in_file_name, out_file_name, diag_file_name
    real(r8) :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
    type(random_seq_type) :: ran_seq
-end type ensemble_type
+end type adaptive_inflate_type
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -550,14 +546,15 @@ end type ensemble_type
 Provides a handle for a descriptor of inflation. Includes type of inflation,
 values controlling it, input and output file names, an output file 
 descriptor for observation space inflation diagnotics, and a random
-sequence for doing reproducible non-determinstic inflation.
+sequence for doing reproducible non-determinstic inflation. There are
+2 instances of this type, one for Prior and one for Posterior inflation.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Component      </TH>
     <TH align=left>Description    </TH></TR>
 <TR><TD valign=top> inflation_flavor</TD>
-    <TD> Type of inflation; 1=obs. space, 2=spatially varying, 3=spatially-fixed.  </TD></TR>
+    <TD> Type of inflation; 0=none, 1=obs. space, 2=spatially varying, 3=spatially-fixed.  </TD></TR>
 
 <TR><TD valign=top> obs_diag_unit</TD>
     <TD> Unit descriptor for output diagnostic file.  </TD></TR>
@@ -619,15 +616,22 @@ been moved to filter_nml in filter.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>input.nml
-<LI>inflate_ics:  Default name for file containing initial values of 
-                      inflation mean and standard deviation.
-<LI>inflate_restart:  Default name for file that outputs final values
-		of inflation mean and standard deviation.
-<LI>inflate_diag:  Contains diagnostic history of inflation values for 
-	obs space and spatially-fixed state space inflation. Diagnostics
-	for spatially-varying state space inflation are extra fields on
-	the Posterior and Prior diagnostic netcdf files created in filter.f90.
+Three files are opened from this module, but all names are passed in
+from the filter_nml now, and there are 2 values for each name: one
+for the prior and one for the posterior inflation.
+<UL>
+<LI>inf_in_file_name
+<br>
+Mean and standard deviation values read in restart file format.
+<LI>inf_out_file_name
+<br>
+Mean and standard deviation values written in restart file format.
+<LI>inf_diag_file_name
+<br>
+Contains diagnostic history of inflation values for 
+obs space and spatially-fixed state space inflation. Diagnostics
+for spatially-varying state space inflation are extra fields on
+the Posterior and Prior diagnostic netcdf files created in filter.f90.
 </UL>
 
 <!--==================================================================-->
