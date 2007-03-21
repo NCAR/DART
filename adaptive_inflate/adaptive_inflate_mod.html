@@ -532,10 +532,19 @@ ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
 <div class=type><pre>
 <em class=call>type adaptive_inflate_type</em>
    private
-   integer :: inflation_flavor, obs_diag_unit
-   logical :: start_from_restart, output_restart, deterministic
-   character(len = 129) :: in_file_name, out_file_name, diag_file_name
-   real(r8) :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
+   integer :: inflation_flavor
+   integer :: obs_diag_unit
+   logical :: start_from_restart
+   logical :: output_restart
+   logical :: deterministic
+   character(len = 129) :: in_file_name
+   character(len = 129) :: out_file_name
+   character(len = 129) :: diag_file_name
+   real(r8) :: inflate
+   real(r8) :: sd
+   real(r8) :: sd_lower_bound
+   real(r8) :: inf_lower_bound
+   real(r8) :: inf_upper_bound
    type(random_seq_type) :: ran_seq
 end type adaptive_inflate_type
 </pre></div>
