@@ -98,43 +98,47 @@ model_mod
 
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
-                   <TD><A HREF="#yyypubtype1">assim_model_type</A> </TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2">netcdf_file_type</A> </TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1">static_init_assim_model</A> </TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">init_diag_output</A> </TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_closest_state_time_to</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">aget_initial_condition</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">get_model_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">get_model_state_vector</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">copy_assim_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine15">set_model_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine16">set_model_state_vector</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine17">write_state_restart</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine18">read_state_restart</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine19">output_diagnostics</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine20">end_assim_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine22">init_diag_input</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine23">input_diagnostics</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine24">get_diag_input_copy_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine25">init_assim_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine28">finalize_diag_output</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine42">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine31">aget_closest_state_time_to</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5" >aget_initial_condition</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine29">aoutput_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine30">aread_state_restart</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine31">aget_closest_state_time_to</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype1" >assim_model_type</A> </TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine32">awrite_state_restart</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine34">pert_model_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine35">nc_append_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine36">nc_write_calendar_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine37">nc_get_tindex</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine41">close_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">copy_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine20">end_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine44">ens_mean_for_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine28">finalize_diag_output</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine45">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine46">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine47">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4" >get_closest_state_time_to</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine24">get_diag_input_copy_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine43">get_initial_condition</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3" >get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">get_model_state_vector</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9" >get_model_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine38">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6" >get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine25">init_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine22">init_diag_input</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2" >init_diag_output</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine23">input_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine35">nc_append_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine37">nc_get_tindex</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine36">nc_write_calendar_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyypubtype2" >netcdf_file_type</A> </TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine39">open_restart_read</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine40">open_restart_write</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine41">close_restart</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine42">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine43">get_initial_condition</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine19">output_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine34">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine18">read_state_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine16">set_model_state_vector</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine15">set_model_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine1" >static_init_assim_model</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine17">write_state_restart</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -307,8 +311,8 @@ integer                               :: <em class=code>get_model_size </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-  Returns the size of the model state vector. This is a direct pass 
-   through to the model_mod.   
+  Returns the size of the model state vector. 
+  This is a direct pass through to the model_mod.   
 </P>
 
 <BR>
@@ -775,8 +779,8 @@ for passing to the netcdf error handling routines.
 <A NAME="yyyroutine30"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call aread_state_restart(model_time,model_state,funit
-     <em class=optionalcode>[target_time]</em>)
+ <em class=call> call aread_state_restart(model_time,model_state,funit 
+     <em class=optionalcode>[,target_time]</em>) </em>
  <pre>
  type(time_type), intent(out)           :: <em class=code>model_time</em>
  real(r8), dimension(:), intent(out)    :: <em class=code>model_state</em>
@@ -1100,6 +1104,130 @@ documentation for arguments and details.
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>assim_model into which an initial model state can be written.</TD></TR>
+ </TABLE>
+ <BR>
+
+ <!--================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine44"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call ens_mean_for_model(ens_mean) </em>
+ <pre>
+ type(r8), intent(in) :: <em class=code>ens_mean(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ An array of length model_size containing the ensemble means.
+ This is a direct pass through to the model_mod.   
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
+     <TD>Array of length model_size containing the mean for each 
+         entry in the state vector.</TD></TR>
+ </TABLE>
+ <BR>
+
+ <!--================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine45"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ type(r8), intent(in)                :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Sets the threshold distance.  Anything closer than this is deemed to
+ be close.
+ This is a direct pass through to the model_mod, which in turn can pass 
+ through to the location_mod.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>Data for efficiently finding close locations.</TD></TR>
+ <TR><TD valign=top><em class=code>maxdist&nbsp; &nbsp; </em></TD>
+     <TD>Anything closer than this distance is a close location.</TD></TR>
+ </TABLE>
+ <BR>
+
+ <!--================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine46"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, obs,
+                 obs_kind, num_close, close_ind, dist) </em>
+ <pre>
+ type(get_close_type),             intent(in)  :: <em class=code>gc</em>
+ type(location_type),              intent(in)  :: <em class=code>base_obs_loc</em>
+ integer,                          intent(in)  :: <em class=code>base_obs_kind</em>
+ type(location_type),              intent(in)  :: <em class=code>obs(:)</em>
+ integer,                          intent(in)  :: <em class=code>obs_kind(:)</em>
+ integer,                          intent(out) :: <em class=code>num_close</em>
+ integer,                          intent(out) :: <em class=code>close_ind(:)</em>
+ real(r8),             optional,   intent(out) :: <em class=code>dist(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Given a single location and a list of other locations, returns the
+ indices of all the locations close to the single one along with the
+ number of these and the distances for the close ones.
+ The observation kinds are passed in to allow more sophisticated 
+ distance computations to be done if needed.
+ This is a direct pass through to the model_mod, which in turn can pass 
+ through to the location_mod.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>Data for efficiently finding close locations.</TD></TR>
+ <TR><TD valign=top><em class=code>base_obs_loc&nbsp; &nbsp; </em></TD>
+     <TD>Single given location.</TD></TR>
+ <TR><TD valign=top><em class=code>base_obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>Kind of the single location.</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>List of observations from which close ones are to be found.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>Kind associated with observations in obs list.</TD></TR>
+ <TR><TD valign=top><em class=code>num_close&nbsp; &nbsp; </em></TD>
+     <TD>Number of observations close to the given location.</TD></TR>
+ <TR><TD valign=top><em class=code>close_ind&nbsp; &nbsp; </em></TD>
+     <TD>Indices of those locations that are close.</TD></TR>
+ <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
+     <TD>Distance between given location and the close ones 
+         identified in close_ind.</TD></TR>
+ </TABLE>
+ <BR>
+
+ <!--================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="yyyroutine47"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc, num, obs) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ integer, intent(in)                 :: <em class=code>num</em>
+ type(location_type), intent(in)     :: <em class=code>obs(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ Initialize storage for efficient identification of locations close to a 
+ given location.  Allocates storage for keeping track of which 'box' each 
+ observation in the list is in.
+ This is a direct pass through to the model_mod, which in turn can pass 
+ through to the location_mod.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>Data for efficiently finding close locations.</TD></TR>
+ <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
+     <TD>The number of locations in the list.</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>The location of each element in the list, not used 
+         in 1D implementation.</TD></TR>
  </TABLE>
  <BR>
 
