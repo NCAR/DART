@@ -110,19 +110,17 @@ may be read from file <em class=file>input.nml</em>.
  <A NAME="comp_cov_factor"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = comp_cov_factor(z_in,c,obs_loc,obs_kind,target_loc,target
- _kind,localization_override) </em>
+ <em class=call> var = comp_cov_factor(z_in, c, obs_loc, obs_kind, 
+         target_loc, target_kind, localization_override) </em>
  <pre>
- real(r8), intent(out)                     :: <em class=code>comp_cov_factor</em
- >
+ real(r8), intent(out)                     :: <em class=code>comp_cov_factor</em>
  real(r8), intent(in)                      :: <em class=code>z_in</em>
  real(r8), intent(in)                      :: <em class=code>c</em>
  type(location_type), optional, intent(in) :: <em class=code>obs_loc</em>
  integer, optional, intent(in)             :: <em class=code>obs_kind</em>
  type(location_type), optional, intent(in) :: <em class=code>target_loc</em>
  integer, optional, intent(in)             :: <em class=code>target_kind</em>
- integer, optional, intent(in)             :: <em class=code>localization_overri
- de</em>
+ integer, optional, intent(in)             :: <em class=code>localization_override</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -132,7 +130,7 @@ Three options are provided and controlled by a namelist parameter. The
 optional argument localization_override controls the type of localization
 function if present. The optional arguments obs_loc, obs_kind and
 target_loc, target_kind are not used in the default code. They are made
-availabe for users who may want to design more sophisticated localization
+available for users who may want to design more sophisticated localization
 functions.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
@@ -141,8 +139,8 @@ functions.
  <TR><TD valign=top><em class=code>z_in&nbsp; &nbsp; </em></TD>
      <TD>The distance between observation and target.</TD></TR>
  <TR><TD valign=top><em class=code>c&nbsp; &nbsp; </em></TD>
-     <TD>Factor that describes localization funtion. Describes half-with of func
- tions used here.</TD></TR>
+     <TD>Factor that describes localization function. Describes 
+         half-width of functions used here.</TD></TR>
  <TR><TD valign=top><em class=code>obs_loc&nbsp; &nbsp; </em></TD>
      <TD>Location of the observation.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
@@ -152,8 +150,8 @@ functions.
  <TR><TD valign=top><em class=code>target_kind&nbsp; &nbsp; </em></TD>
      <TD>Kind of target.</TD></TR>
  <TR><TD valign=top><em class=code>localization_override&nbsp; &nbsp; </em></TD>
-     <TD>Controls localization type if present. Same values as for namelist cont
- rol.</TD></TR>
+     <TD>Controls localization type if present. Same values as for 
+          namelist control.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
