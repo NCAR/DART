@@ -54,6 +54,7 @@ CheckModelCompatibility(prior_file, posterior_file)
 pstruct                = CheckModel(posterior_file);   % also gets default values
 pstruct.prior_file     = prior_file;
 pstruct.posterior_file = posterior_file;
+pstruct.diagn_file     = [];
 
 if ( exist(truth_file) == 2 )
    CheckModelCompatibility(truth_file, prior_file)

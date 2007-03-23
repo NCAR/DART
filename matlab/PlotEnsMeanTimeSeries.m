@@ -220,8 +220,8 @@ switch lower(d.model)
             legend boxoff
             plot(times,ens_mean,'r','LineWidth',2); %      again - on top
 
-            s2 = sprintf('level %d lat %.2f lon %.2f', ...
-                       pinfo.level, pinfo.latitude, pinfo.longitude);
+            s2 = sprintf('level index %d lat %.2f lon %.2f', ...
+                       pinfo.levelindex, pinfo.latitude, pinfo.longitude);
             title({s1,s2},'interpreter','none','fontweight','bold')
 
             xlabel(sprintf('time (%s) %d timesteps',timeunits, d.num_times))
@@ -241,7 +241,7 @@ end
 function var = GetCopy(fname, copyindex, pinfo)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
-if strcmp(pinfo.var,'ps')
+if strcmp(lower(pinfo.var),'ps')
    corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
    endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
 else
@@ -254,7 +254,7 @@ var = getnc(fname, pinfo.var, corner, endpnt);
 function var = GetCamCopy(fname, copyindex, pinfo)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
-if strcmp(pinfo.var,'PS')
+if strcmp(lower(pinfo.var),'ps')
    corner = [ 1 copyindex pinfo.latindex pinfo.lonindex];
    endpnt = [-1 copyindex pinfo.latindex pinfo.lonindex];
 else
