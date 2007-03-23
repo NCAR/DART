@@ -27,7 +27,7 @@
 
 <HTML>
 <TITLE>module mpi_utilities_mod</TITLE>
-<link rel=stylesheet type=text/css href=doc.css>
+<link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
 <DIV ALIGN=CENTER>
@@ -76,7 +76,7 @@ To compile without using MPI substitute the
 types_mod
 utilities_mod
 time_manager_mod
-mpi
+mpi  (or mpif.h if mpi module not available)
 </PRE>
 
 <!--==================================================================-->
@@ -88,17 +88,14 @@ mpi
 
 <TABLE>
 <TR><TD><em class=call>use mpi_utilities_mod, only : </em></TD>
-                   <TD><A HREF="#task_count">task_count</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#my_task_id ">my_task_id </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#transpose_array">transpose_array</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#initialize_mpi_utilities ">initialize_mpi_utilities </A></TD></TR>
+                   <TD><A HREF="#initialize_mpi_utilities ">initialize_mpi_utilities </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#finalize_mpi_utilities">finalize_mpi_utilities</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#task_sync">task_sync</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#task_count">task_count</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#my_task_id">my_task_id</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#transpose_array">transpose_array</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#my_task_id ">my_task_id </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#task_sync">task_sync</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#block_task">block_task</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#restart_task">restart_task</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#array_broadcast">array_broadcast</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#array_distribute">array_distribute</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#send_to">send_to</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#receive_from">receive_from</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#iam_task0">iam_task0</A></TD></TR>
@@ -107,18 +104,12 @@ mpi
 <TR><TD>&nbsp;</TD><TD><A HREF="#shell_execute">shell_execute</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#sleep_seconds">sleep_seconds</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#sum_across_tasks">sum_across_tasks</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#make_pipe">make_pipe</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#destroy_pipe">destroy_pipe</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#exit_all">exit_all</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
 
 <P>
-No namelist interfaces are currently defined for this module,
-but at some point in the future an optional namelist interface 
-<A HREF="#Namelist"><em class=code>&#38;mpi_utilities_nml</em> </A>
-may be supported.  It would be read from file <em class=file>input.nml</em>.
 </P>
 
 
@@ -141,8 +132,8 @@ may be supported.  It would be read from file <em class=file>input.nml</em>.
 <em class=optionalcode>[progname]</em>
 <em class=optionalcode>[, alternatename]</em>)</em>
 <pre>
-character(len=*), intent(in), optional         :: <em class=optionalcode>progname</em>
-character(len=*), intent(in), optional         :: <em class=optionalcode>alternatename</em>
+character(len=*), intent(in), optional :: <em class=code>progname</em>
+character(len=*), intent(in), optional :: <em class=code>alternatename</em>
 <pre>
 </pre></div>
 
@@ -191,9 +182,12 @@ calling this routine.
 <A NAME="finalize_mpi_utilities"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call finalize_mpi_utilities(<em class=optionalcode>[callfinalize]</em>)</em>
+<em class=call>call finalize_mpi_utilities(
+<em class=optionalcode>[callfinalize]</em>
+<em class=optionalcode>[, async]</em>)</em>
 <pre>
-logical, intent(in), optional         :: <em class=optionalcode>callfinalize</em>
+logical, intent(in), optional  :: <em class=code>callfinalize</em>
+integer, intent(in), optional  :: <em class=code>async</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -205,9 +199,16 @@ and is <em class=code>.FALSE.</em>.
 On some hardware platforms it is problematic to try to call print or write
 from the parallel tasks after finalize has been executed, so this should
 only be called immediately before the process is ready to exit.
-If the application itself is using MPI, the <em class=code>callfinalize</em>
+This routine does an <em class=code>MPI_Barrier()</em> call 
+before calling <em class=code>MPI_Finalize()</em> to ensure all tasks are 
+finished writing.
+</P>
+<P>
+If the application itself is using MPI the <em class=code>callfinalize</em>
 argument can be used to defer closing the MPI library until the application
-does it itself.
+does it itself.  This routine does close the DART log file and releases the
+local communicator even if not calling MPI_Finalize, so no other DART routines
+which might generate output can be used after calling this routine.
 </P>
 <P>
 It is an error to call any of the other routines in this file after
@@ -217,6 +218,11 @@ calling this routine.
 <TABLE width=100% border=0 summary="" celpadding=3>
 <TR><TD valign=top><em class=code>callfinalize&nbsp; &nbsp; </em></TD>
     <TD>If false, do not call the <em class=code>MPI_Finalize()</em> routine.</TD></TR>
+<TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
+    <TD>If the model advance mode (selected by the async namelist value
+        in the filter_nml section) requires any synchronization or actions
+        at shutdown, this is done.  Currently async=4 requires an additional
+        set of actions at shutdown time.</TD></TR>
 </TABLE>
 <BR>
 
@@ -232,7 +238,7 @@ calling this routine.
 <div class=routine>
 <em class=call> var = task_count()</em>
 <pre>
-integer                        :: <em class=code>task_count</em>
+integer         :: <em class=code>task_count</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -240,13 +246,13 @@ integer                        :: <em class=code>task_count</em>
 <P>
 Returns the total number of MPI tasks this job was started with.
 Note that MPI task numbers start at 0, but this is a count.
-So a 4-task job would return 4 here, but the actual task numbers
+So a 4-task job will return 4 here, but the actual task numbers
 will be from 0 to 3.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>task_count &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>var&nbsp; &nbsp;</em></TD>
     <TD>Total number of MPI tasks in this job.</TD></TR>
 </TABLE>
 <BR>
@@ -257,26 +263,26 @@ will be from 0 to 3.
 <P></P><HR><P></P>
 <div class=routine>
 <em class=call> var = my_task_id()</em>
-<pre>
-integer                        :: <em class=code>my_task_id</em>
+<pre
+integer         :: <em class=code>my_task_id</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
 
 <P>
-Returns the MPI task number. 
+Returns the local MPI task number. 
 This is one of the routines in which 
 all tasks can make the same function call but each returns
 a different value.  The return can be useful in creating unique
 filenames or otherwise distinguishing resources which are not shared
 amongst tasks.
 MPI task numbers start at 0, so valid task id numbers for a 
-4-task job would be 0 to 3.
+4-task job will be 0 to 3.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>my_task_id &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>var &nbsp; &nbsp; </em></TD>
     <TD>My unique MPI task id number.</TD></TR>
 </TABLE>
 <BR>
@@ -298,6 +304,7 @@ This call does not return until all tasks
 have called this routine.  This ensures all 
 tasks have reached the same
 place in the code before proceeding.
+All tasks must make this call or the program will hang.
 </P>
 
 <BR>
@@ -315,9 +322,9 @@ place in the code before proceeding.
 <em class=call>call send_to(dest_id, srcarray
                            <em class=optionalcode>[, time]</em>)</em>
 <pre>
-integer, intent(in)                   :: <em class=optionalcode>dest_id</em>
-real(r8), dimension(:), intent(in)    :: <em class=optionalcode>srcarray</em>
-type(time_type), intent(in), optional :: <em class=optionalcode>time</em>
+integer, intent(in)                   :: <em class=code>dest_id</em>
+real(r8), dimension(:), intent(in)    :: <em class=code>srcarray</em>
+type(time_type), intent(in), optional :: <em class=code>time</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -330,10 +337,10 @@ corresponding call to
 <em class=code><A HREF="#receive_from">receive_from()</A></em>.
 </P>
 <P>
-If <em class=optionalcode>time</em> is specified, it is also sent to
+If <em class=code>time</em> is specified, it is also sent to
 the receiving task.  The receiving call must match this sending call
 regarding this argument;
-if <em class=optionalcode>time</em> is specified here it must also be
+if <em class=code>time</em> is specified here it must also be
 specified in the receive; if not given here it cannot be given in
 the receive.
 </P>
@@ -350,7 +357,7 @@ for send and receive.
     <TD>The MPI task id of the receiver.</TD></TR>
 <TR><TD valign=top><em class=code>srcarray &nbsp; &nbsp; </em></TD>
     <TD>The data to be copied to the receiver.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>time &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>time &nbsp; &nbsp; </em></TD>
     <TD>If specified, send the time as well.</TD></TR>
 </TABLE>
 <BR>
@@ -364,7 +371,7 @@ Calling them with different array sizes will result in either a
 run-time error or a core dump.
 The optional time argument must either be given in both calls
 or in neither or one of the tasks will hang.
-(Sense a trend here?)
+(Executive summary: There are lots of ways to go wrong here.)
 </P>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
@@ -375,9 +382,9 @@ or in neither or one of the tasks will hang.
 <em class=call>call receive_from(src_id, destarray
                            <em class=optionalcode>[, time]</em>)</em>
 <pre>
-integer, intent(in)                    :: <em class=optionalcode>src_id</em>
-real(r8), dimension(:), intent(out)    :: <em class=optionalcode>destarray</em>
-type(time_type), intent(out), optional :: <em class=optionalcode>time</em>
+integer, intent(in)                    :: <em class=code>src_id</em>
+real(r8), dimension(:), intent(out)    :: <em class=code>destarray</em>
+type(time_type), intent(out), optional :: <em class=code>time</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -389,10 +396,10 @@ corresponding call to <em class=code><A HREF="#send_to">send_to()</A></em>.
 Unpaired calls to these routines will result in the tasks hanging.
 </P>
 <P>
-If <em class=optionalcode>time</em> is specified, it is also received from
+If <em class=code>time</em> is specified, it is also received from
 the sending task.  The sending call must match this receiving call
 regarding this argument;
-if <em class=optionalcode>time</em> is specified here it must also be
+if <em class=code>time</em> is specified here it must also be
 specified in the send; if not given here it cannot be given in
 the send.
 </P>
@@ -409,7 +416,7 @@ for send and receive.
     <TD>The MPI task id of the sender.</TD></TR>
 <TR><TD valign=top><em class=code>destarray &nbsp; &nbsp; </em></TD>
     <TD>The location where the data from the sender is to be placed.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>time &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>time &nbsp; &nbsp; </em></TD>
     <TD>If specified, receive the time as well.</TD></TR>
 </TABLE>
 <BR>
@@ -427,7 +434,7 @@ of <em class=code><A HREF="#send_to">send_to()</A></em>.
 <div class=routine>
 <em class=call>call exit_all(exit_code)</em>
 <pre>
-integer, intent(in)                   :: <em class=code>exit_code</em>
+integer, intent(in)   :: <em class=code>exit_code</em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
@@ -458,36 +465,13 @@ be passed back to the calling job script.
 <P>
 It would generally be helpful to write out some kind of
 message before calling this routine, to indicate where in
-the code it is dying.  This routine is called by the error
-handler in the utilities module after writing out the
-pending error message.
+the code it is dying.  The eventual intent is that this
+routine will be called by the standard error handler
+in the utilities module after writing out the
+pending error message, but right now that would create
+a circular reference in the modules since the mpi module
+uses the utilities module already for other services.
 </P>                      
-
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="transpose_array"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call transpose_array()</em>
-<pre>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Currently unimplemented; transposes are implemented with a series of calls to
-<em class=code><A HREF="#send_to">send_to()</A></em>
-and
-<em class=code><A HREF="#receive_from">receive_from()</A></em>.
-</P>
-
-<BR>
-
-<!-- <H3 class=indent1>Notes</H3> -->
-<!--                              -->
-<!-- <P>would go here             -->
-<!-- </P>                         -->
-
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
@@ -505,10 +489,10 @@ integer, intent(in)                   :: <em class=code>root</em>
 <P>
 All tasks must make this call together, but the behavior in each task
 differs depending on whether it is the <em class=code>root</em> or not.
-On the task which has an ID equal 
+On the task which has a task id equal 
 to <em class=code>root</em> the contents of the array will be 
-sent to all other tasks.  On any task which has an ID <em>not</em>
-equal to <em class=code>root</em> THE array is the location where
+sent to all other tasks.  On any task which has a task id <em>not</em>
+equal to <em class=code>root</em> the array is the location where
 the data is to be received into.  
 Thus <em class=code>array</em> 
 is intent(in) on root, and intent(out) on all other tasks.
@@ -535,49 +519,6 @@ The MPI call used here is synchronous, so all tasks
 block here until everyone has called this routine.
 </P>                      
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="array_distribute"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call array_distribute(srcarray, root, dstarray, dstcount, how, which)</em>
-<pre>
-real(r8), dimension(:), intent(in)    :: <em class=code>srcarray</em>
-integer, intent(in)                   :: <em class=code>root</em>
-real(r8), dimension(:), intent(out)   :: <em class=code>dstarray</em>
-integer, intent(out)                  :: <em class=code>dstcount</em>
-integer, intent(in)                   :: <em class=code>how</em>
-integer, dimension(:), intent(out)    :: <em class=code>which</em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Currently unimplemented.  Could be used to distribute proper subsets
-of an array across all tasks in a job.
-</P>
-
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>srcarray &nbsp; &nbsp; </em></TD>
-    <TD> Entire data array to be used as a data source. </TD></TR>
-<TR><TD valign=top><em class=code>root &nbsp; &nbsp; </em></TD>
-    <TD> Task ID with source array. </TD></TR>
-<TR><TD valign=top><em class=code>dstarray &nbsp; &nbsp; </em></TD>
-    <TD> Destination array where subset of data is to be placed. </TD></TR>
-<TR><TD valign=top><em class=code>root &nbsp; &nbsp; </em></TD>
-    <TD> Count of how many items are in the <em class=code>dstarray</em>.</TD></TR>
-<TR><TD valign=top><em class=code>how &nbsp; &nbsp; </em></TD>
-    <TD> Select different algorithms for doing the distribution. </TD></TR>
-<TR><TD valign=top><em class=code>which &nbsp; &nbsp; </em></TD>
-    <TD> Integer index array of which values were assigned to this task. </TD></TR>
-</TABLE>
-<BR>
-
-<!-- <H3 class=indent1>Notes</H3> -->
-<!--                              -->
-<!-- <P>would go here             -->
-<!-- </P>                         -->
-
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="iam_task0"></A>
@@ -599,7 +540,7 @@ by <em class=code>if (iam_task0()) then ... </em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>iam_task0 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>var &nbsp; &nbsp; </em></TD>
     <TD> Convenience function to easily test and execute code blocks on 
          task 0 only. </TD></TR>
 </TABLE>
@@ -703,7 +644,7 @@ block until everyone has called one of these two routines.
 <A NAME="broadcast_recv"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call>call broadcast_send(from, array1 
+<em class=call>call broadcast_recv(from, array1 
 <em class=optionalcode>[, array2]</em>
 <em class=optionalcode>[, array3]</em>
 <em class=optionalcode>[, array4]</em>
@@ -826,6 +767,170 @@ and the calls block until this is so.
 </P>                     
 
 
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="block_task"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call block_task()</em>
+<pre>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Create a named pipe (fifo) and read from it to
+block the process in such a way that it consumes
+no CPU time.  Beware that once you put yourself to
+sleep you cannot wake yourself up.  Some other MPI
+program must call restart_task() on the same set of
+processors the original program was distributed over.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+Even though fifos appear to be files, in reality they
+are implemented in the kernel.  The write into the fifo
+must be executed on the same node as the read is pending on.
+See the man pages for the mkfifo(1) command for more details.
+</P>                     
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="restart_task"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call restart_task()</em>
+<pre>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Write into the pipe to restart the reading task.
+Note that this must be an entirely separate executable
+from the one which called block_task(), because it is
+asleep like Sleeping Beauty and cannot wake itself.
+See filter and wakeup_filter for examples
+of a program pair which uses these calls in async=4 mode.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+Even though fifos appear to be files, in reality they
+are implemented in the kernel.  The write into the fifo
+must be executed on the same node as the read is pending on.
+See the man pages for the mkfifo(1) command for more details.
+</P>                     
+
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="finished_task"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call finished_task(async)</em>
+<pre>
+integer, intent(in) :: <em class=code>async</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+For async=4 and task id = 0, write into the main
+filter-to-script fifo to tell the run script that
+filter is exiting.   Does nothing else otherwise.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+Even though fifos appear to be files, in reality they
+are implemented in the kernel.  The write into the fifo
+must be executed on the same node as the read is pending on.
+See the man pages for the mkfifo(1) command for more details.
+</P>                     
+
+<!--===================== DESCRIPTION OF FUNCTION =====================-->
+
+<A NAME="shell_execute"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> rc = shell_execute()</em>
+<pre>
+integer                       :: <em class=code>shell_execute</em>
+character(len=*), intent(in)  :: <em class=code>execute_string</em>
+logical, intent(in), optional :: <em class=code>serialize</em>
+
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Wrapper routine around the system() library function to execute shell
+level commands from inside the Fortran program.  Will wait for the
+command to execute and will return the error code.  0 means ok, any
+other number indicates error.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>rc &nbsp; &nbsp; </em></TD>
+    <TD> Return code from the shell exit after the command has
+         been executed. </TD></TR>
+<TR><TD valign=top><em class=code>execute_string &nbsp; &nbsp; </em></TD>
+    <TD> Command to be executed by the shell. </TD></TR>
+<TR><TD valign=top><em class=code>serialize &nbsp; &nbsp; </em></TD>
+    <TD> If specified and if .TRUE. run the command from each PE
+         in turn, waiting for each to complete before beginning the
+         next.  The default is .FALSE. and does not require that all
+         tasks call this routine.  If given and .TRUE. then all tasks
+         must make this call. </TD></TR>
+</TABLE>
+<BR>
+
+<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+
+<A NAME="sleep_seconds"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call>call sleep_seconds(naplength)</em>
+<pre>
+real(r8), intent(in) :: <em class=code>naplength</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+
+<P>
+Wrapper routine for the sleep command.  Argument is a real
+in seconds.  Some systems have different lower resolutions
+for the minimum time it will sleep.  This routine can round
+up to even seconds if a smaller than 1.0 time is given.
+</P>
+
+<TABLE width=100% border=0 summary="" celpadding=3>
+<TR><TD valign=top><em class=code>naplength &nbsp; &nbsp; </em></TD>
+    <TD> Number of seconds to sleep as a real value. </TD></TR>
+</TABLE>
+<BR>
+
+<H3 class=indent1>Notes</H3>
+<P>
+The amount of time this routine will sleep is not precise
+and might be in units of whole seconds on some platforms.
+</P>                     
+
+
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
@@ -837,15 +942,19 @@ and the calls block until this is so.
 '&#38;' and terminating with a slash '/'.
 </P>
 <P>
-This module currently has no namelist entries.  One expected addition
+No namelist interfaces are currently defined for this module,
+but at some point in the future an optional namelist interface 
+<A HREF="#Namelist"><em class=code>&#38;mpi_utilities_nml</em> </A>
+may be supported.  It would be read from file <em class=file>input.nml</em>.
+</P>
+
+<H3 class=indent1>Discussion</H3>
+<P>
+One anticipated addition
 would be a list of task numbers in which the default option is to print
 out all informational messages; the current default is that messages are
 only printed from task 0 and all others suppressed.  (Warnings and Errors
 print in all cases.)
-
-<H3 class=indent1>Discussion</H3>
-
-<P>This namelist would be read from a file called <em class=file>input.nml</em>
 </P>
 
 
