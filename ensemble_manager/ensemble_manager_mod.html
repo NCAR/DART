@@ -102,23 +102,23 @@ mpi_utilities_mod
 
 <TABLE>
 <TR><TD><em class=call>use ensemble_manager_mod, only : </em></TD>
-                   <TD><A HREF="#ensemble_type">ensemble_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_ensemble_manager">init_ensemble_manager</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#end_ensemble_manager">end_ensemble_manager</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_ensemble_time">get_ensemble_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#duplicate_ens">duplicate_ens</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_var_owner_index">get_var_owner_index</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_num_copies">get_my_num_copies</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_copies">get_my_copies</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_num_vars">get_my_num_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_vars">get_my_vars</A></TD></TR>
+                   <TD><A HREF="#all_copies_to_all_vars">all_copies_to_all_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#all_vars_to_all_copies">all_vars_to_all_copies</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#compute_copy_mean">compute_copy_mean</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#compute_copy_mean_sd">compute_copy_mean_sd</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#compute_copy_mean_var">compute_copy_mean_var</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#duplicate_ens">duplicate_ens</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_ensemble_manager">end_ensemble_manager</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ensemble_type">ensemble_type</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_copy">get_copy</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_ensemble_time">get_ensemble_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_copies">get_my_copies</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_num_copies">get_my_num_copies</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_num_vars">get_my_num_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_my_vars">get_my_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_var_owner_index">get_var_owner_index</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_ensemble_manager">init_ensemble_manager</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#put_copy">put_copy</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#all_vars_to_all_copies">all_vars_to_all_copies</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#all_copies_to_all_vars">all_copies_to_all_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_ensemble_restart">read_ensemble_restart</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_ensemble_restart">write_ensemble_restart</A></TD></TR>
 </TABLE>
@@ -209,8 +209,8 @@ used throughout DART.
  <A NAME="init_ensemble_manager"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call init_ensemble_manager(ens_handle,num_copies,num_vars,distr
- ibution_type_in) </em>
+ <em class=call> call init_ensemble_manager(ens_handle, num_copies, 
+    num_vars, distribution_type_in) </em>
  <pre>
  type(ensemble_type), intent(out) :: <em class=code>ens_handle</em>
  integer, intent(in)              :: <em class=code>num_copies</em>
@@ -239,7 +239,7 @@ size descriptions in the ensemble_type are initialized.
  <A NAME="get_var_owner_index"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_var_owner_index(var_number,owner,owners_index) </em>
+ <em class=call> call get_var_owner_index(var_number, owner, owners_index) </em>
  <pre>
  integer, intent(in)  :: <em class=code>var_number</em>
  integer, intent(out) :: <em class=code>owner</em>
@@ -268,7 +268,7 @@ the local storage index for this variable on that process.
  <A NAME="duplicate_ens"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call duplicate_ens(ens1,ens2,duplicate_time) </em>
+ <em class=call> call duplicate_ens(ens1, ens2, duplicate_time) </em>
  <pre>
  type(ensemble_type), intent(in)    :: <em class=code>ens1</em>
  type(ensemble_type), intent(inout) :: <em class=code>ens2</em>
@@ -307,7 +307,7 @@ times of ens2.
 variables for a subset of copies.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_my_num_copies&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Returns the number of copies stored by this process when storing all 
          variables for a subset of copies. </TD></TR>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -331,7 +331,7 @@ variables for a subset of copies.
 copies of a subset of variables.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_my_num_vars&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Returns the number of vars stored by this process when storing all 
  copies of a subset of variables. </TD></TR>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -345,7 +345,7 @@ copies of a subset of variables.
  <A NAME="get_my_copies"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_my_copies(ens_handle,copies) </em>
+ <em class=call> call get_my_copies(ens_handle, copies) </em>
  <pre>
  type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
  integer, intent(out)            :: <em class=code>copies</em>
@@ -369,7 +369,7 @@ of all variables.
  <A NAME="get_my_vars"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_my_vars(ens_handle,copies) </em>
+ <em class=call> call get_my_vars(ens_handle, copies) </em>
  <pre>
  type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
  integer, intent(out)            :: <em class=code>vars</em>
@@ -394,7 +394,7 @@ of a subset of variables.
  <A NAME="compute_copy_mean"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call compute_copy_mean(ens_handle,start_copy,end_copy,mean_copy,sd_copy) </em>
+ <em class=call> call compute_copy_mean(ens_handle,  start_copy, end_copy, mean_copy) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>start_copy</em>
@@ -405,7 +405,7 @@ of a subset of variables.
  <P>
  Computes the mean of a contiguous subset of copies
 starting with global index start_copy and ending with global index ens_copy.
-Mean is written to mean_copy.
+Mean is written to index mean_copy.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -424,7 +424,7 @@ Mean is written to mean_copy.
  <A NAME="compute_copy_mean_sd"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call compute_copy_mean_sd(ens_handle,start_copy,end_copy,mean_copy,sd_copy) </em>
+ <em class=call> call compute_copy_mean_sd(ens_handle, start_copy, end_copy, mean_copy, sd_copy) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>start_copy</em>
@@ -436,7 +436,7 @@ Mean is written to mean_copy.
  <P>
  Computes the mean and standard deviation of a contiguous subset of copies
 starting with global index start_copy and ending with global index ens_copy.
-Mean is written to mean_copy and standard deviation to sd_copy.
+Mean is written to index mean_copy and standard deviation to index sd_copy.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -457,7 +457,7 @@ Mean is written to mean_copy and standard deviation to sd_copy.
  <A NAME="compute_copy_mean_var"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call compute_copy_mean_var(ens_handle,start_copy,end_copy,mean_copy,sd_copy) </em>
+ <em class=call> call compute_copy_mean_var(ens_handle, start_copy, end_copy, mean_copy, var_copy) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>start_copy</em>
@@ -469,7 +469,7 @@ Mean is written to mean_copy and standard deviation to sd_copy.
  <P>
  Computes the mean and variance of a contiguous subset of copies
 starting with global index start_copy and ending with global index ens_copy.
-Mean is written to mean_copy and variance to var_copy.
+Mean is written to index mean_copy and variance to index var_copy.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -491,7 +491,7 @@ Mean is written to mean_copy and variance to var_copy.
  <A NAME="get_copy"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_copy(receiving_pe,ens_handle,copy,vars,mtime) </em>
+ <em class=call> call get_copy(receiving_pe, ens_handle, copy, vars, mtime) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>receiving_pe</em>
  type(ensemble_type), intent(in)        :: <em class=code>ens_handle</em>
@@ -509,11 +509,13 @@ a single processor to do things with the entire state vector.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>receiving_pe&nbsp; &nbsp; </em></TD>
-     <TD>This process ends up with the requested copy of the state vector.</TD></TR>
+     <TD>This process ends up with the requested copy of the state 
+          vector.</TD></TR>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
      <TD>Handle for ensemble.</TD></TR>
  <TR><TD valign=top><em class=code>copy&nbsp; &nbsp; </em></TD>
-     <TD>The global index of the copy of the state vector that is to be retreived.</TD></TR>
+     <TD>The global index of the copy of the state vector that is to be 
+          retreived.</TD></TR>
  <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
      <TD>One dimensional array in which the requested copy of the state vector 
           is returned.</TD></TR>
@@ -527,7 +529,7 @@ a single processor to do things with the entire state vector.
  <A NAME="put_copy"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call put_copy(sending_pe,ens_handle,copy,vars,mtime) </em>
+ <em class=call> call put_copy(sending_pe, ens_handle, copy, vars, mtime) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>sending_pe</em>
  type(ensemble_type), intent(inout)     :: <em class=code>ens_handle</em>
@@ -537,11 +539,10 @@ a single processor to do things with the entire state vector.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Sends a copy of the state vector, indexed by the global index copy, from
-a given process to the process that stores it. The
-process that is to send the copy is sending_pe which places the copy in the
-one dimensional array vars. The time of the copy is also sent if
-mtime is present. This is generally used for operations, like IO, that require
+Sends a state vector, in vars, from the given process to the process 
+storing the global index copy. 
+The time of the copy is also sent if mtime is present. 
+This is generally used for operations, like IO, that require
 a single processor to do things with the entire state vector. For instance,
 if a single process reads in a state vector, it can be shipped to the storing
 process by this subroutine.
@@ -556,7 +557,7 @@ process by this subroutine.
  </TD></TR>
  <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
      <TD>One dimensional array in which the requested copy of the state vector 
-         is placed.</TD></TR>
+         is located.</TD></TR>
  <TR><TD valign=top><em class=code>mtime&nbsp; &nbsp; </em></TD>
      <TD>If present send the time of the copy.</TD></TR>
  </TABLE>
@@ -614,8 +615,8 @@ current while the other is out of date.
  <A NAME="read_ensemble_restart"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call read_ensemble_restart(ens_handle,start_copy,end_copy,start
- _from_restart,file_name,init_time,force_single_file) </em>
+ <em class=call> call read_ensemble_restart(ens_handle, start_copy, end_copy, 
+    start_from_restart, file_name, init_time, force_single_file) </em>
  <pre>
  type(ensemble_type), intent(inout)    :: <em class=code>ens_handle</em>
  integer, intent(in)                   :: <em class=code>start_copy</em>
@@ -668,8 +669,8 @@ the file names are generated by appending integers to the input file_name.
  <A NAME="write_ensemble_restart"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_ensemble_restart(ens_handle,file_name,start_copy,end_copy,
-force_single_file) </em>
+ <em class=call> call write_ensemble_restart(ens_handle, file_name, start_copy, 
+  end_copy, force_single_file) </em>
  <pre>
  type(ensemble_type), intent(inout)    :: <em class=code>ens_handle</em>
  character(len=*), intent(in)          :: <em class=code>file_name</em>
@@ -734,7 +735,7 @@ Frees up storage associated with an ensemble.
  '&' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / ensemble_manager_nml / </em>
- single_restart_file_in,single_restart_file_out,perturbation_amplitude
+ single_restart_file_in, single_restart_file_out, perturbation_amplitude
 
 
 
