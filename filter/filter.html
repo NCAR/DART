@@ -149,6 +149,7 @@ smoother_mod
    outlier_threshold,
    output_forward_op_errors,
    output_timestamps,
+   output_inflation,
      
    inf_flavor,
    inf_start_from_restart,
@@ -279,6 +280,12 @@ being for the posterior inflation.
      <!--descript--><TD>True means output timestamps before and after the model advance
                         and the observation assimilation phases.
                         Default: .false.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_inflation</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>True means output inflation values in the prior and posterior
+                        diagnostic files.  False omits them.
+                        Default: .true.</TD></TR>
 
  <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br>
                    The first element is for the prior, the second element is 
