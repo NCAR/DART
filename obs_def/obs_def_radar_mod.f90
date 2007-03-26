@@ -435,7 +435,7 @@ subroutine interactive_rad_vel(velkey)
 
 implicit none
 
-integer, intent(out) :: velkey
+integer, intent(inout) :: velkey
 real(r8)             :: orientation(3)
 type(location_type)  :: location
 real(r8)             :: nyquistv
@@ -443,7 +443,7 @@ real(r8)             :: nyquistv
 if ( .not. module_initialized ) call initialize_module
 
 !Make sure enough space is allocated
-if(velkey > max_rad_vel_obs) then
+if(velkey >= max_rad_vel_obs) then
    write(*, *) 'velkey (',velkey,') exceeds max_rad_vel_obs (',max_rad_vel_obs,')'
    call error_handler(E_ERR,'obs_def_radar_mod:interactive_rad_vel', &
               'Increase max_rad_vel_obs.', source, revision, revdate)
@@ -503,12 +503,12 @@ subroutine interactive_rad_ref(refkey)
 
 implicit none
 
-integer, intent(out) :: refkey
+integer, intent(inout) :: refkey
 
 if ( .not. module_initialized ) call initialize_module
 
 !Make sure enough space is allocated
-if(refkey > max_rad_ref_obs) then
+if(refkey >= max_rad_ref_obs) then
    write(*, *) 'refkey (',refkey,') exceeds max_rad_ref_obs (',max_rad_ref_obs,')'
    call error_handler(E_ERR,'obs_def_radar_mod:interactive_rad_ref', &
               'Increase max_rad_ref_obs.', source, revision, revdate)
