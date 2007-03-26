@@ -49,9 +49,10 @@ else
       set BASE = $FILE:r
       set NEWNAME = ${BASE}.F90
 
-      echo -n "Renaming $FILE to $NEWNAME ... "
+      echo "Renaming $FILE to $NEWNAME ... "
 
-      mv $FILE ${NEWNAME} || exit 1
+      # mv $FILE ${NEWNAME} || exit 1
+      svn rename $FILE ${NEWNAME} || exit 1
 
       # now change the path_names files with SED
 
@@ -60,8 +61,6 @@ else
          sed -e "$STRING" $PATHNAMEFILE >! foo
          mv foo $PATHNAMEFILE
       end
-
-      echo "done."
 
    end
 
