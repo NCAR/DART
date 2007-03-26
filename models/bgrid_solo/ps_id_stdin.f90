@@ -1,24 +1,23 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 program main
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: i
 integer, parameter :: interval = 7

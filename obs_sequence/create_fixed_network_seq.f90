@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program create_fixed_network_seq
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8
 use    utilities_mod, only : timestamp, register_module, open_file, close_file, &
@@ -26,11 +25,11 @@ use        model_mod, only : static_init_model
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 
 type(obs_sequence_type) :: seq, seq_in

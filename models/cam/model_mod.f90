@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/models/cam/model_mod.f90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name:  $
  
 !--------------------------------------------------------------------
 ! DISTRIBUTION;
@@ -185,13 +184,6 @@ module model_mod
 ! i.e. GWD parameters.
 
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
-! 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
 !              Translate to/from state_vector and caminput.nc,
@@ -397,13 +389,13 @@ public ::                                                            &
 
 
 !-----------------------------------------------------------------------
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: version = "$Id$"
-character(len=128) :: tag = "$Name:  $"
-character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/models/cam/model_mod.f90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128) :: version = "$Revision$"
+character(len=128) :: tag = "$Id$"
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
 ! merge/MPI; 

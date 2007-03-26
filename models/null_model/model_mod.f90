@@ -1,22 +1,21 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! This module provides very simple models for evaluating filtering algorithms.
 ! It can provide simple linear growth around a fixed point, a random draw from
 ! a Gaussian, or combinations of the two. At present, these combinations are
 ! controlled by modifying the code comments in adv_1step and comp_dt in your
 ! sandbox. 
-
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-! $Name$ 
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
@@ -51,11 +50,11 @@ public :: get_model_size, &
           get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
 
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! Basic model parameters controlled by nameslist; have defaults
 

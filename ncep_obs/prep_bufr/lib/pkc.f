@@ -28,7 +28,7 @@ C*	IBAY		INTEGER(*)	Packed binary array		*
 C**									*
 C* Log:									*
 C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
+C* J. Ator/NCEP		05/01	Added documentation			*
 C************************************************************************
  
       COMMON /CHARAC/ IASCII,IATOE(0:255),IETOA(0:255)

@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program trans_dart_to_MITgcm
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date,  &
@@ -23,11 +22,11 @@ use    utilities_mod, only : get_unit, error_handler,  &
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! Model namelist parameters with default values
@@ -73,7 +72,6 @@ logical  :: binary_restart_files = .true.
 
 namelist /assim_model_nml/ binary_restart_files
 
-! CVS stuff
 call initialize_utilities
 call register_module(source, revision, revdate)
 write(logfileunit,*)'STARTING trans_dart_to_MITgcm ...'

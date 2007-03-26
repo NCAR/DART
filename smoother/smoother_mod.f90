@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module smoother_mod 
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/smoother/smoother_mod.f90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name:  $
 !
 ! Tools for turning the filter into a fixed lag smoother for the full state vector.
 
@@ -41,11 +40,11 @@ public :: smoother_read_restart, advance_smoother,                          &
    smoother_end, smoother_inc_lags
 
 
-! CVS Generated file description for error handling, do not edit
+! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/smoother/smoother_mod.f90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 logical :: module_initialized = .false.
 

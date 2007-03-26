@@ -1,23 +1,21 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module model_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !-----------------------------------------------------------------------
 ! Assimilation interface for 2 layer PE model
-!
-! <next six lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$
-! $Name$
-! $Id$
 !-----------------------------------------------------------------------
-!---------------- m o d u l e   i n f o r m a t i o n ------------------
 
+!---------------- m o d u l e   i n f o r m a t i o n ------------------
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
@@ -56,15 +54,11 @@ public :: get_model_size, &
           get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
 
 
-!-----------------------------------------------------------------------
-! let CVS fill strings ... DO NOT EDIT ...
-
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$", &
-tag      = "$Name$", &
-id       = "$Id$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! Public definition of variable types

@@ -1,17 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 module model_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-! $Name$ 
-!
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! This is a non-divergent barotropic model on the sphere. Currently makes
 ! use of NAG based transforms which are not available on NCAR systems.
 
@@ -31,9 +30,9 @@ public :: init_model, get_model_size, lat_max, num_lon, init_conditions, &
    num_fourier, num_spherical, model_output, trans_spherical_to_grid, &
    get_close_pts, grid_to_dp, state_loc, model_get_close_states
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-   source   = "$Source$", &
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
 

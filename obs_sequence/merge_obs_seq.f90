@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program merge_obs_seq
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
@@ -27,11 +26,11 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! <next few lines under version control, do not edit>
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq1, seq2
 type(obs_type)          :: obs, prev_obs, next_obs, new_obs

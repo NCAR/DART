@@ -1,8 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+! Copyright 2004-2007, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_def_radar_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
@@ -44,13 +51,6 @@ module obs_def_radar_mod
 !         call interactive_rad_ref(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_radar_mod.f90,v $
-! $Revision$
-! $Date$
-! $Author$
-! $Name:  $
-
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity, DEG2RAD
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file, &
@@ -71,11 +71,11 @@ public :: write_rad_vel, read_rad_vel, set_rad_vel, interactive_rad_vel, &
           get_expected_rad_vel, get_expected_rad_ref, &
           get_obs_def_rad_ref, get_obs_def_rad_vel
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_radar_mod.f90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 

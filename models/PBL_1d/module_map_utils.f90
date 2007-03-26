@@ -1,5 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
@@ -36,7 +36,6 @@
 !dis    OF THE SOFTWARE AND DOCUMENTATION FOR ANY PURPOSE.  THEY ASSUME
 !dis    NO RESPONSIBILITY (1) FOR THE USE OF THE SOFTWARE AND
 !dis    DOCUMENTATION; OR (2) TO PROVIDE TECHNICAL SUPPORT TO USERS.
-!dis
 !dis
 
 MODULE map_utils
@@ -167,6 +166,13 @@ MODULE map_utils
 !               Brent L. Shaw, NOAA/FSL (CSU/CIRA)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 
   use         types_mod, only : r8
 

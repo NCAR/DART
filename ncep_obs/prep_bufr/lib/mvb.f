@@ -13,11 +13,11 @@ C-----------------------------------------------------------------------
       JB2 = 8*(NB2-1)                                                   
                                                                         
       DO N=1,NBM                                                        
-      CALL UPB(NVAL(N),8,IB1,JB1)                                          
+      CALL UPB(NVAL(N),8,IB1,JB1)
       ENDDO
 
       DO N=1,NBM
-      CALL PKB(NVAL(N),8,IB2,JB2)                                          
+      CALL PKB(NVAL(N),8,IB2,JB2)
       ENDDO                                                             
                                                                         
       RETURN                                                            

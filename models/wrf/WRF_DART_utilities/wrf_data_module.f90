@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 MODULE wrf_data_module
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$ 
-! $Name$ 
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
@@ -23,11 +22,11 @@ private
 public :: wrf_data, wrf_bdy_data, wrf_open_and_alloc, wrfbdy_open_and_alloc, &
           wrf_dealloc, wrfbdy_dealloc, wrf_io, wrfbdy_io, set_wrf_date, get_wrf_date
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 TYPE wrf_data
 

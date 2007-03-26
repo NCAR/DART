@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module real_obs_mod
 
 ! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 use types_mod,        only : r8, rad2deg
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
@@ -64,11 +63,11 @@ private
 
 public :: real_obs_sequence
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 !-------------------------------------------------

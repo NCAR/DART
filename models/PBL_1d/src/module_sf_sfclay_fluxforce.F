@@ -14,7 +14,7 @@ MODULE module_sf_sfclay_fluxforce
 CONTAINS
 
 !-------------------------------------------------------------------
-   SUBROUTINE SFCLAY_fluxforce(U3D,V3D,T3D,QV3D,P3D,dz8w,         &
+   SUBROUTINE SFCLAY_fluxforce(U3D,V3D,T3D,QV3D,P3D,dz8w,          &
                      CP,G,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,      &
                      ZNT,UST,PBLH,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH, &
                      XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,QGH,QSFC,RMOL, &
@@ -22,7 +22,7 @@ CONTAINS
                      GZ1OZ0,WSPD,BR,ISFFLX,DX,                     &
                      SVP1,SVP2,SVP3,SVPT0,EP1,EP2,                 &
                      KARMAN,EOMEG,STBOLT,                          &
-                     calc_ust,z_o,z_t,z_q,&
+                     calc_ust,z_o,z_t,z_q,                         &
                      ids,ide, jds,jde, kds,kde,                    &
                      ims,ime, jms,jme, kms,kme,                    &
                      its,ite, jts,jte, kts,kte                     )

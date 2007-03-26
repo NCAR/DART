@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 PROGRAM littler_tf_dart
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 use        types_mod, only : r8, DEG2RAD, RAD2DEG, MISSING_I, MISSING_R8
 use    utilities_mod, only : open_file, close_file, file_exist, &
@@ -41,11 +40,11 @@ use time_manager_mod, only : time_type, get_time, set_calendar_type, GREGORIAN, 
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type(obs_sequence_type) :: dart_seq
 type(obs_type)          :: obs, prev_obs

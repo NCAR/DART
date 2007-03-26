@@ -1,17 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module location_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/location/threed_sphere/location_mod.f90,v $ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-! $Name:  $ 
-!
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! Implements location interfaces for a three dimensional spherical shell 
 ! with a pressure vertical coordinate plus
@@ -45,11 +43,11 @@ public :: location_type, get_location, set_location, set_location_missing, &
           VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist,                &
           print_get_close_type
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/location/threed_sphere/location_mod.f90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! The possible values for the location_type%which_vert component.
 ! These are intended to be PRIVATE to this module. Do not make public.

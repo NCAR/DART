@@ -5,21 +5,19 @@
 
 program wakeup_filter
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! spread out on the processors in the same order as the executable
 ! model and filter programs, and echo into the fifo (named pipe)
 ! a message to wake up the sleeping filter program.
-!
 
-! <next few lines automatically updated by version control software, do not edit>
-! $Revision$
-! $Date$
-! $Id$
-
-
-use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
+use mpi_utilities_mod, only : initialize_mpi_utilities, &
+                              finalize_mpi_utilities,   &
                               restart_task
-
-
 
 
 call initialize_mpi_utilities("Wakeup_Filter")

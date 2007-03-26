@@ -1,17 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module assim_tools_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-! $Name:  $ 
-!
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+ 
 ! A variety of operations required by assimilation.
 
 use      types_mod,       only : r8, digits12, PI
@@ -69,11 +68,11 @@ character(len = 129)   :: errstring
 ! Need to read in table for off-line based sampling correction and store it
 logical                :: first_get_correction = .true.
 real(r8)               :: exp_true_correl(200), alpha(200)                                                                      
-! CVS Generated file description for error handling, do not edit
+! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/assim_tools/assim_tools_mod.f90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+   source   = "$URL: ", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 !============================================================================
 

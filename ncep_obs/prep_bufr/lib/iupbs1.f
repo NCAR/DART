@@ -24,7 +24,7 @@ C************************************************************************
  
       DIMENSION MBAY(*)
 
-      DATA IFIRST / 0 /                                                     
+      DATA IFIRST / 0 /
                                                                         
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
@@ -33,7 +33,7 @@ C     If this is the first call to this subroutine, then call subroutine
 C     WRDLEN to initialize some important information about the local
 C     machine, just in case subroutine OPENBF hasn't been called yet!
                                                                         
-      IF ( IFIRST .EQ. 0 ) THEN                                              
+      IF ( IFIRST .EQ. 0 ) THEN
          CALL WRDLEN                                                    
          IFIRST = 1                                                     
       ENDIF                                                             

@@ -26,16 +26,16 @@ C-----------------------------------------------------------------------
 C  POSITION TO READ SUBSET #ISUB FROM MEMORY MESSAGE #IMSG            
 C  -------------------------------------------------------                          
       IF(MSGUNP(LUN).EQ.0) THEN
-         NSUB(LUN) = ISUB-1                                                
-         DO I=1,ISUB-1                                                   
+         NSUB(LUN) = ISUB-1
+         DO I=1,ISUB-1
          MBYT(LUN) = MBYT(LUN) + IUPB(MBAY(1,LUN),MBYT(LUN)+1,16)
-         ENDDO                                                             
+         ENDDO
       ELSEIF(MSGUNP(LUN).EQ.1) THEN
          DO I=1,ISUB-1
          CALL READSB(MUNIT,IRET)
          ENDDO
       ELSEIF(MSGUNP(LUN).EQ.2) THEN
-         NSUB(LUN) = ISUB-1                                                
+         NSUB(LUN) = ISUB-1
       ENDIF
 
 C  READ SUBSET #ISUB FROM MEMORY MESSAGE #IMSG            

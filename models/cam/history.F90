@@ -1,24 +1,23 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
 #include <misc.h>
 #include <params.h>
 
+module history
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! kdr; history.orig has original CAM code
 !      history.initwrite has modified code that output initial file
 !         at the end of the model run
 !      history.F90 now has changes to translate prog_var <-> vector
-
-module history
-
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
 
 !----------------------------------------------------------------------- 
 ! 
@@ -76,13 +75,13 @@ PRIVATE
       integer :: decomp_type                    ! type of decomposition (physics or dynamics)
       integer, pointer :: colperdim3(:)         ! number of valid elements per chunk or lat
    end type field_info
-!
 
-! let CVS fill strings ... DO NOT EDIT ...
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! master_entry: elements of an entry in the master field list
 !

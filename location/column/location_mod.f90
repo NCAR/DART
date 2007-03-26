@@ -1,15 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module location_mod
 
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-!
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! Implements location interfaces for a one dimensional column domain
 
 use      types_mod, only : r8, MISSING_R8, MISSING_I
@@ -25,11 +26,11 @@ public :: location_type, get_dist, get_location, set_location, set_location_miss
           alloc_get_close_obs, get_close_obs, &
           operator(==), operator(/=)
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! The possible values for the location_type%which_vert component.
 ! These are intended to be PRIVATE to this module. Do not make public.

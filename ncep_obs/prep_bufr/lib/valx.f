@@ -23,7 +23,7 @@ C*	VALX		REAL		Decoded real value		*
 C**									*
 C* Log:									*
 C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
+C* J. Ator/NCEP		05/01	Added documentation			*
 C************************************************************************
                                                                         
       CHARACTER*(*) STR
@@ -42,7 +42,7 @@ C----------------------------------------------------------------------
       BSTR(1:LENS) = STR            
       RJ = RJUST(BSTR(1:LENS))
       WRITE(FMT,'(''(F'',I2,''.0)'')') LENS                             
-      READ(BSTR,FMT,ERR=900) VAL                                         
+      READ(BSTR,FMT,ERR=900) VAL
       VALX = VAL                                                        
       RETURN                                                            
 900   VALX = BMISS                                                      

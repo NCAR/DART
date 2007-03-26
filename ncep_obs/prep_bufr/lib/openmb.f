@@ -45,9 +45,9 @@ C  ---------------------
                                                                         
 C  GET SOME SUBSET PARTICULARS                                          
 C  ---------------------------                                          
-                                                                         
-      CALL NEMTBA(LUN,SUBSET,MTYP,MSTB,INOD)                            
-      OPEN = IM.EQ.0.OR.INOD.NE.INODE(LUN).OR.I4DY(JDATE).NE.IDATE(LUN)   
+
+      CALL NEMTBA(LUN,SUBSET,MTYP,MSTB,INOD)
+      OPEN = IM.EQ.0.OR.INOD.NE.INODE(LUN).OR.I4DY(JDATE).NE.IDATE(LUN)
                                                                         
 C  MAYBE OPEN A NEW OR DIFFERENT TYPE OF MESSAGE                        
 C  ---------------------------------------------                        

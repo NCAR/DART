@@ -52,12 +52,12 @@ if (isempty(dmodel))
    error(sprintf('%s has no ''model'' global attribute.',file2))
 end
 if (VarExist(f2,'copy')) 
-   dnum_copies = size(f2('copy')); % determine # of ensemble members
+   dnum_copies = length(f2('copy')); % determine # of ensemble members
 else
    error(sprintf('%s has no ''copy'' dimension.',file2))
 end
 if (VarExist(f2,'time')) 
-   dnum_times  = size(f2('time')); % determine # of output times
+   dnum_times  = length(f2('time')); % determine # of output times
 else
    error(sprintf('%s has no ''time'' dimension.',file2))
 end

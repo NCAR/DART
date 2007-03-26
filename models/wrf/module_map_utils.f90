@@ -1,5 +1,5 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
@@ -41,12 +41,11 @@
 
 MODULE map_utils
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 ! Module that defines constants, data structures, and
 ! subroutines used to convert grid indices to lat/lon
@@ -184,11 +183,11 @@ MODULE map_utils
   public :: proj_info, map_init, map_set, latlon_to_ij, ij_to_latlon, &
        PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, gridwind_to_truewind
 
-! CVS Generated file description for error handling, do not edit
+! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
   ! Define some private constants
   REAL (kind=r8), PARAMETER    :: pi = 3.1415927_r8

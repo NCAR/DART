@@ -1,19 +1,20 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program driver
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 use commtest_mod, only:  setup, transpose_state_compl, select_statevars, &
                          compute_priors, compute_qc, broadcast_obs, &
                          broadcast_increments, advance_model, &
                          transpose_ensemb_compl, takedown
-
-! <next few lines automatically updated by version control software, do not edit>
-! $Revision$
-! $Date$
-! $Id$
 
 !-----------------------------------------------------------------------------
 ! ---- namelist (saved in file commtest.nml)

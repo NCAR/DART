@@ -35,7 +35,7 @@ C  --------------------------------------------------------
          IF(NCON.GT.MAXCON) GOTO 901                                    
          NODC(NCON) = NOD                                               
          KONS(NCON) = KON                                               
-         IVLS(NCON) = NINT(VAL)                                              
+         IVLS(NCON) = NINT(VAL)
       ELSE                                                              
          NNOD = NNOD+1                                                  
          IF(NNOD.GT.MAXNOD) GOTO 902                                    

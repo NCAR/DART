@@ -34,12 +34,12 @@ C  DUMP CENTER YY,MM,DD,HH,MM IS IN THE FIRST EMPTY MESSAGE
 C  --------------------------------------------------------             
                                                                         
       IF(ICHAR(MSTR(31:31)).EQ.0 .AND. ICHAR(MSTR(32:32)).EQ.0) THEN    
-         JDATE(1) = MOD(ICHAR(MSTR(21:21)),100)                             
+         JDATE(1) = MOD(ICHAR(MSTR(21:21)),100)
          JDATE(2) = ICHAR(MSTR(22:22))                                  
          JDATE(3) = ICHAR(MSTR(23:23))                                  
          JDATE(4) = ICHAR(MSTR(24:24))                                  
          JDATE(5) = ICHAR(MSTR(25:25))                                  
-         MCEN     = MAX(0,ICHAR(MSTR(26:26))-MIN(JDATE(1),1))                 
+         MCEN     = MAX(0,ICHAR(MSTR(26:26))-MIN(JDATE(1),1))
       ELSE                                                              
          RETURN                                                         
       ENDIF                                                             
@@ -54,12 +54,12 @@ C  --------------------------------------------------------
       READ(LUNIT,END=100,ERR=100) MSTR                                  
                                                                         
       IF(ICHAR(MSTR(31:31)).EQ.0 .AND. ICHAR(MSTR(32:32)).EQ.0) THEN    
-         JDUMP(1) = MOD(ICHAR(MSTR(21:21)),100)                             
+         JDUMP(1) = MOD(ICHAR(MSTR(21:21)),100)
          JDUMP(2) = ICHAR(MSTR(22:22))                                  
          JDUMP(3) = ICHAR(MSTR(23:23))                                  
          JDUMP(4) = ICHAR(MSTR(24:24))                                  
          JDUMP(5) = ICHAR(MSTR(25:25))                                  
-         MCEN     = MAX(0,ICHAR(MSTR(26:26))-MIN(JDUMP(1),1))                 
+         MCEN     = MAX(0,ICHAR(MSTR(26:26))-MIN(JDUMP(1),1))
       ELSE                                                              
          RETURN                                                         
       ENDIF                                                             
@@ -69,4 +69,4 @@ C  --------------------------------------------------------
       ENDIF
                                                                         
 100   RETURN                                                            
-      END                                                               
+      END

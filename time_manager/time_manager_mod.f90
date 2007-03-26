@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module time_manager_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name$
 
 use     types_mod, only : missing_i, digits12
 use utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
@@ -83,12 +82,11 @@ public :: julian_day
 public :: time_manager_init, print_time, print_date
 public :: write_time, read_time, interactive_time
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = '$Source$', &
-revision = '$Revision$', &
-revdate  = '$Date$'
-
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! Global data to define calendar type
 integer, parameter :: THIRTY_DAY_MONTHS = 1,      JULIAN = 2, &

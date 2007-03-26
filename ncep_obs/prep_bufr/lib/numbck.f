@@ -20,7 +20,7 @@ C*					 -1 = no			*
 C**									*
 C* Log:									*
 C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
+C* J. Ator/NCEP		05/01	Added documentation			*
 C************************************************************************
                                                                         
       CHARACTER*10 CHRSET                                               

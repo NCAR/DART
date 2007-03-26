@@ -35,12 +35,12 @@ C*					  1 = yes			*
 C**									*
 C* Log:									*
 C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
+C* J. Ator/NCEP		05/01	Added documentation			*
 C************************************************************************
 
       PARAMETER (NFILES=32)
                                                                         
-      COMMON /STBFR/ IOLUN(NFILES),IOMSG(NFILES)                                
+      COMMON /STBFR/ IOLUN(NFILES),IOMSG(NFILES)
                                                                         
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------

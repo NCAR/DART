@@ -1,17 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$ 
-! $Revision$ 
-! $Date$ 
-! $Author$ 
-! $Name$ 
-!
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! This version of the spectral barotropic obs model reads in standard
 ! psi field data from some gdas files. Just reads in one field each time
 ! it's called.
@@ -26,9 +25,9 @@ public :: num_obs, obs_var, take_obs, ens_ics, obs_location, state_to_obs
 ! Added to cheat on close_obs for spectral models; 12/1/99
 public :: num_x_obs, num_y_obs, ob2_lon, ob2_lat
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-   source   = "$Source$", &
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
 

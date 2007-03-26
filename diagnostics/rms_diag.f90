@@ -1,21 +1,19 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program rms_diag
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! Sample diagnostic program that computes rms error as function 
 ! of time between a truth found in one file, priors found in 
 ! another, and posterior found in a third.
-
-! <next five lines automatically updated by CVS, do not edit>
-! $Source$
-! $Revision$
-! $Date$
-! $Author$
-! $Name$
-
 
 use       types_mod, only : r8
 use    location_mod, only : location_type
@@ -25,11 +23,11 @@ use assim_model_mod, only : init_diag_input, get_diag_input_copy_meta_data, &
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 integer :: prior_unit, posterior_unit, truth_unit, ens_size, model_size, copies
 type(location_type), allocatable :: location(:)

@@ -7,9 +7,9 @@ CONTAINS
 
 !-------------------------------------------------------------------
    SUBROUTINE SF_GFS(U3D,V3D,T3D,QV3D,P3D,                              &
-		 CP,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,             &
+                     CP,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,             &
                      ZNT,UST,PSIM,PSIH,                                 &
-		 XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,                    &
+                     XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,                    &
                      QGH,QSFC,U10,V10,                                  &
                      GZ1OZ0,WSPD,BR,ISFFLX,                             &
                      EP1,EP2,KARMAN,&
@@ -763,7 +763,7 @@ CONTAINS
         ENDIF
       ENDDO
 
-	  GOTO 5555
+      GOTO 5555
 !
 !  RCP = RHO CP CH V
 !
@@ -787,54 +787,54 @@ CONTAINS
         !  COMPUTE SOIL/SNOW/ICE HEAT FLUX IN PREPARATION FOR SURFACE ENERGY
         !  BALANCE CALCULATION
         !
-	    DO I = 1, IM
-	      GFLUX(I) = 0.
-	      IF(SLIMSK(I).EQ.1.) THEN
-	        SMCZ(I) = .5 * (SMC(I,1) + .20)
-	        DFT0(I) = KTSOIL(SMCZ(I),SOILTYP(I))
-	      ELSEIF(SLIMSK(I).EQ.2.) THEN
+            DO I = 1, IM
+              GFLUX(I) = 0.
+              IF(SLIMSK(I).EQ.1.) THEN
+                SMCZ(I) = .5 * (SMC(I,1) + .20)
+                DFT0(I) = KTSOIL(SMCZ(I),SOILTYP(I))
+              ELSEIF(SLIMSK(I).EQ.2.) THEN
         !  DF FOR ICE IS TAKEN FROM MAYKUT AND UNTERSTEINER
         !  DF IS IN SI UNIT OF W K-1 M-1
-	        DFT0(I) = 2.2
-	      ENDIF
-	    ENDDO
+                DFT0(I) = 2.2
+              ENDIF
+            ENDDO
         !!
-	    DO I=1,IM
-	      IF(SLIMSK(I).NE.0.) THEN
+            DO I=1,IM
+              IF(SLIMSK(I).NE.0.) THEN
         !         IF(SNOWD(I).GT..001) THEN
-	        IF(FLAGSNW(I)) THEN
+                IF(FLAGSNW(I)) THEN
         !
         !  WHEN SNOW COVERED, GROUND HEAT FLUX COMES FROM SNOW
         !
-		TFLX = MIN(T1(I), TSURF(I))
-		GFLUX(I) = -DFSNOW * (TFLX - STSOIL(I,1))                   &
-	   &                 / (FACTSNW(I) * MAX(SNOWD(I),.001_kind_phys))
-	        ELSE
-		GFLUX(I) = DFT0(I) * (STSOIL(I,1) - TSURF(I))               &
-	   &                 / (-.5 * ZSOIL(I,1))
-	        ENDIF
-	        GFLUX(I) = MAX(GFLUX(I),-200._kind_phys)
-	        GFLUX(I) = MIN(GFLUX(I),+200._kind_phys)
-	      ENDIF
-	    ENDDO
-	    DO I = 1, IM
-	      FLAG(I) = SLIMSK(I).NE.0.
-	      PARTLND(I) = 1.
-	      IF(SNOWD(I).GT.0..AND.SNOWD(I).LE..001) THEN
-	        PARTLND(I) = 1. - SNOWD(I) / .001
-	      ENDIF
-	    ENDDO
-	    DO I = 1, IM
-	      SNOEVP(I) = 0.
-	      if(SNOWD(I).gt..001) PARTLND(I) = 0.
-	    ENDDO
+                  TFLX = MIN(T1(I), TSURF(I))
+                  GFLUX(I) = -DFSNOW * (TFLX - STSOIL(I,1))                   &
+           &                 / (FACTSNW(I) * MAX(SNOWD(I),.001_kind_phys))
+                ELSE
+                  GFLUX(I) = DFT0(I) * (STSOIL(I,1) - TSURF(I))               &
+           &                 / (-.5 * ZSOIL(I,1))
+                ENDIF
+                GFLUX(I) = MAX(GFLUX(I),-200._kind_phys)
+                GFLUX(I) = MIN(GFLUX(I),+200._kind_phys)
+              ENDIF
+            ENDDO
+            DO I = 1, IM
+              FLAG(I) = SLIMSK(I).NE.0.
+              PARTLND(I) = 1.
+              IF(SNOWD(I).GT.0..AND.SNOWD(I).LE..001) THEN
+                PARTLND(I) = 1. - SNOWD(I) / .001
+              ENDIF
+            ENDDO
+            DO I = 1, IM
+              SNOEVP(I) = 0.
+              if(SNOWD(I).gt..001) PARTLND(I) = 0.
+            ENDDO
         !
         !  COMPUTE POTENTIAL EVAPORATION FOR LAND AND SEA ICE
         !
-	    DO I = 1, IM
-	      IF(FLAG(I)) THEN
-	        T12 = T1(I) * T1(I)
-	        T14 = T12 * T12
+            DO I = 1, IM
+              IF(FLAG(I)) THEN
+                T12 = T1(I) * T1(I)
+                T14 = T12 * T12
         !
         !  RCAP = FNET - SIGMA T**4 + GFLX - RHO CP CH V (T1-THETA1)
         !

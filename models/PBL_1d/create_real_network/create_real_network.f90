@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 program create_real_network_seq
 
-! <next few lines automatically updated by version control software, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/create_real_network/create_real_network.f90,v $
-! $URL: /home/thoar/CVS.REPOS/DART/models/PBL_1d/create_real_network/create_real_network.f90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Id$
 
 ! JPH
 ! This code originated from create_fixed_network.  It uses module_wrf to get
@@ -52,11 +51,11 @@ use        module_wrf, only : static_init_wrf, init_wrf, nt_f_smos, &
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 
 type(obs_sequence_type) :: seq, seq_in, seq_out

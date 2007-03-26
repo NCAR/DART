@@ -1,16 +1,15 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_def_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/obs_def/DEFAULT_obs_def_mod.F90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name:  $
 
 ! Contains the basic parts of a module for defining and evaluating observation
 ! definitions. Can evaluate identity observations as is. The DART preprocess
@@ -54,11 +53,11 @@ public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_kind, get
           read_obs_def, obs_def_type, get_expected_obs_from_def, destroy_obs_def, &
           copy_obs_def, assignment(=), get_obs_name
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/DEFAULT_obs_def_mod.F90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type obs_def_type
 ! In revision, obs_kind module is responsible for taking care of identity obs kinds, too

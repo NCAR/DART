@@ -8,16 +8,16 @@ CONTAINS
 
 !-------------------------------------------------------------------
    SUBROUTINE SF_GFS_fluxforce(U3D,V3D,T3D,QV3D,P3D,                &
-		 CP,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,             &
-                     ZNT,UST,PSIM,PSIH,                                 &
-		 XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,                    &
-                     QGH,QSFC,U10,V10,                                  &
-                     GZ1OZ0,WSPD,BR,ISFFLX,                             &
-                     EP1,EP2,KARMAN,&
-                     &calc_ust,z_o,z_t,z_q,&
-                     &itimestep,                          &
-                     ids,ide, jds,jde, kds,kde,                         &
-                     ims,ime, jms,jme, kms,kme,                         &
+                 CP,ROVCP,R,XLV,PSFC,CHS,CHS2,CQS2,CPM,             &
+                     ZNT,UST,PSIM,PSIH,                             &
+                     XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,                &
+                     QGH,QSFC,U10,V10,                              &
+                     GZ1OZ0,WSPD,BR,ISFFLX,                         &
+                     EP1,EP2,KARMAN,                                &
+                     calc_ust,z_o,z_t,z_q,                          &
+                     itimestep,                                     &
+                     ids,ide, jds,jde, kds,kde,                     &
+                     ims,ime, jms,jme, kms,kme,                     &
                      its,ite, jts,jte, kts,kte                     )
 !-------------------------------------------------------------------
       USE MODULE_GFS_MACHINE, ONLY : kind_phys

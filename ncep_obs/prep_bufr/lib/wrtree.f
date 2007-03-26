@@ -31,7 +31,7 @@ C  -----------------------------------------
       NODE = INV(N,LUN)                                                 
       IF(ITP(NODE).EQ.1) THEN                                           
          IVAL(N) = VAL(N,LUN)                                           
-      ELSEIF(TYP(NODE).EQ.'NUM') THEN                                       
+      ELSEIF(TYP(NODE).EQ.'NUM') THEN
          IF(VAL(N,LUN).NE.BMISS) THEN
             IVAL(N) = ANINT(PKS(NODE))
          ELSE

@@ -1,6 +1,15 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2007, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 PROGRAM driver_enf
 
-! Dec 2005
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! 1d WRF incorporates original WRF PBL routines for idealized runs.
 ! It can be initialized with idealized profiles of wind, temperature,
@@ -47,11 +56,11 @@ PROGRAM driver_enf
 
   IMPLICIT NONE
 
-! dummies for CVS stuff
-character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/models/PBL_1d/src/driver_enf.F,v $", &
-revision = "$Revision: 1.1 $", &
-revdate  = "$Date: 2007/02/19 17:42:52 $"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! These are the hooks for parameter estimation - they are used in DART
 

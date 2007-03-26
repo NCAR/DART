@@ -24,7 +24,7 @@ C*	IUPM		INTEGER		Unpacked integer		*
 C**									*
 C* Log:									*
 C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
+C* J. Ator/NCEP		05/01	Added documentation			*
 C************************************************************************
  
       COMMON /HRDWRD/ NBYTW,NBITW,NREV,IORD(8)

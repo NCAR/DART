@@ -1,15 +1,13 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2006, Data Assimilation Research Section,
+! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-! <next few lines automatically updated by version control software, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_QuikSCAT_mod.f90,v $
+! <next few lines under version control, do not edit>
 ! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Id$
 
 ! This module supports the observation types from the SeaWinds instrument
 ! on the QuiKSCAT satellite.

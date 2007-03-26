@@ -1,15 +1,15 @@
 c     Data Assimilation Research Testbed -- DART
-c     Copyright 2004-2006, Data Assimilation Research Section
+c     Copyright 2004-2007, Data Assimilation Research Section
 c     University Corporation for Atmospheric Research
 c     Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
       program read_bufr
 
-c     <next four lines automatically updated by CVS, do not edit>
-c     $Source$
+c     <next few lines under version control, do not edit>
+c     $URL$
+c     $Id$
 c     $Revision$
 c     $Date$
-c     $Name$
 
 c     This is the 4nd version of the BUFR preparation program for the
 c     newly revised DART version. Ps and moisture obs are output as well.
