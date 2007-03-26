@@ -105,12 +105,14 @@ end
 # downloaded separately and put in $DART/models/PBL_1d/indata.
 
 if ( ! -f ../indata/wrfrt_2006.nc ) then
-    echo "Error:"
+    echo
+    echo "NOTE:"
     echo "This model requires some large data files as input which are"
     echo "not packaged as part of the DART distribution. To run this model"
     echo "contact thoar at ucar dot edu for more information on how"
     echo "to get a copy of the data."
-    exit 100
+    echo
+    exit
 endif
 
 ./perfect_model_obs  || exit 20
