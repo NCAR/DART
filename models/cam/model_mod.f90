@@ -666,8 +666,6 @@ integer            :: iunit, io, topog_lons, topog_lats, i, num_lons, num_lats, 
 ! calendar types listed in time_manager_mod.f90
 integer            :: calendar_type = GREGORIAN
 character(len=129) :: errstring
-integer            :: lon_index, slon_index, lat_index, slat_index
-
 
 ! Register the module
 call register_module(source, revision, revdate)
@@ -1107,7 +1105,8 @@ end subroutine trans_coord
 
 integer, intent(out)          :: num_lons, num_lats
 
-integer                       :: londimid, levdimid, latdimid, ncfileid, ncfldid
+integer                       :: ncfileid, ncfldid
+!integer                       :: londimid, latdimid
 integer                       :: phis_dimids(3)
 character (len=NF90_MAX_NAME) :: clon,clat
 
@@ -1143,7 +1142,6 @@ real(r8), dimension(dim1, dim2), intent(out) :: var
 character (len=8),               intent(in)  :: cfield
 
 !------------------------------------------------------
-integer :: i, j, ifld             ! grid indices
 integer :: ncfldid
 integer :: n,m, slon_index, slat_index, lat_index, lon_index
 
@@ -1692,7 +1690,8 @@ integer,            intent(in)  :: ncFileID, dim_id
 type(grid_1d_type), intent(in)  :: coord
 integer,            intent(out) :: c_id
 
-integer  :: i, nch
+integer  :: i
+! integer  :: nch
 
 call nc_check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
                         varid=c_id), 'write_cam_coord_def', 'def_var '//trim(c_name))
@@ -1875,7 +1874,6 @@ integer  :: box, slice
 
 real(r8) :: lon_val, lat_val, lev_val
 
-character(len=129) :: errstring
 character(len=8)   :: dim_name
 
 ! In order to find what variable this is, and its location, I must subtract the individual 
@@ -2572,14 +2570,14 @@ integer,            intent(out) :: istatus
 real(r8),           intent(out) :: interp_val
 
 integer  :: i, vstatus
-real(r8) :: bot_lon, top_lon, delta_lon,                                       &
-            lon_below, lon_above, lat_below, lat_above, lev_below, lev_above,  &
-            lon_fract, lat_fract, vals(2, 2), temp_lon, a(2),                  &
+real(r8) :: bot_lon, top_lon, delta_lon,                                &
+            lon_below, lat_below, lat_above, lev_below,                 &
+            lon_fract, lat_fract, vals(2, 2), temp_lon, a(2),           &
             lon_lat_lev(3), level, pressure, height
 
-integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,   &
+integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,                     &
             lon_ind_below, lon_ind_above, lat_ind_below, lat_ind_above, &
-            num_lons, num_lats
+            num_lons
 character (len=8) :: lon_name, lat_name, lev_name
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
@@ -2812,8 +2810,8 @@ real(r8), intent(in)  :: x(:)
 integer,  intent(in)  :: lon_index, lat_index, level, obs_kind
 integer,  intent(out) :: istatus
 
-integer               :: top_lev, bot_lev, i, vstatus, num_levs
-real(r8)              :: bot_val, top_val, frac, p_surf, threshold
+integer               :: vstatus, num_levs
+real(r8)              :: p_surf, threshold
 real(r8), allocatable :: pfull(:)
 
 ! No errors to start with
@@ -2902,7 +2900,7 @@ integer,  intent(out) :: istatus
 real(r8)              :: bot_val, top_val, p_surf, frac
 real(r8), allocatable :: pfull(:)
 integer               :: top_lev, bot_lev, i, vstatus, num_levs
-character(len=129)    :: errstring
+!character(len=129)    :: errstring
 
 ! No errors to start with
 istatus = 0
@@ -3156,7 +3154,6 @@ integer, intent(in) :: lon_index, lat_index, level, obs_kind
 integer, intent(out) :: istatus
 
 integer :: indx, field_type
-character(len=129) :: errstring
 
 ! No errors to start with
 istatus = 0
@@ -3358,10 +3355,11 @@ integer,              intent(out) :: num_close, close_ind(:)
 real(r8),             intent(out) :: dist(:)
 
 ! remove some (unused) variables?
-integer                :: i, k, t_ind
+integer                :: k, t_ind
 integer                :: base_which, local_base_which, obs_which, local_obs_which
 real(r8), dimension(3) :: base_array, local_base_array, obs_array, local_obs_array
-real(r8)               :: increment, threshold, thresh_wght, signed_magnifier
+real(r8)               :: increment, threshold, thresh_wght
+! real(r8)               :: signed_magnifier
 type(location_type)    :: local_base_obs_loc, local_obs_loc
 
 ! If base_obs vert type is not pressure; convert it to pressure
@@ -3467,10 +3465,10 @@ integer,                intent(out)   :: new_which
 real(r8), dimension(3), intent(in)    :: old_array
 real(r8), dimension(3), intent(inout) :: new_array 
 
-integer   :: i, dim_index, num_levs, top_lev, bot_lev
+integer   :: i, num_levs, top_lev, bot_lev
 integer   :: lon_which_dimid=0, lat_which_dimid=0, lon_index=0, lat_index=0
 integer   :: rank_kind, cam_kind, istatus
-real(r8)  :: p_surf,   phi_surf,  frac
+real(r8)  :: p_surf, frac
 logical   :: stagr_lon = .false., stagr_lat = .false.
 real(r8), allocatable :: p_col(:), model_h(:) 
 type(location_type)   :: dum_loc
@@ -3696,7 +3694,7 @@ logical,  intent(out)   :: interf_provided
 
 type(random_seq_type)   :: random_seq
 type(model_type)        :: var_temp
-integer                 :: i, ipert, j, k, m, field_num, iunit, io
+integer                 :: i, ipert, j, k, m, field_num
 integer                 :: dim1, dim2, dim3
 real(r8)                :: pert_val
 
@@ -3799,7 +3797,7 @@ end subroutine init_conditions
 integer, intent(in) :: lev_ind, lon_ind, lat_ind, ifld
 
 integer :: index_from_grid
-integer :: i, j, fld_ind(2), done, indx
+integer :: i, j, fld_ind(2), done
 
 index_from_grid = 0
 done = 0
@@ -3834,7 +3832,7 @@ done = done + state_num_1d
 ! Note that indices of fields can have varying dimensions.
 do i=1,state_num_2d
    if (ifld - done == i) then
-      ! We've found the desired field; now find indx of lev and/or lon and/or lat 
+      ! We've found the desired field; now find index of lev and/or lon and/or lat 
       do j=1,2
          if (dim_names(s_dimid_2d(j,i)) == 'lon     ' .or. & 
              dim_names(s_dimid_2d(j,i)) == 'slon    '     ) fld_ind(j) = lon_ind
@@ -3857,7 +3855,7 @@ done = done + state_num_2d
 ! Note that indices of fields can have varying dimensions.
 do i=1,state_num_3d
    if (ifld - done == i) then
-      ! We've found the desired field; now find indx of lat, lon, lev
+      ! We've found the desired field; now find index of lat, lon, lev
       index_from_grid = index_from_grid  &
                       + (lat_ind-1) * s_dim_3d(2,i) * s_dim_3d(1,i) &
                       + (lon_ind-1) * s_dim_3d(1,i)                 &
@@ -4097,7 +4095,7 @@ real(r8), intent(out) :: pmid(:)   ! Pressure at model levels
 !-----------------------------------------------------------------------
 
 !---------------------------Local workspace-----------------------------
-  integer i,k             ! Longitude, level indices
+integer :: k             ! Longitude, level indices
 !-----------------------------------------------------------------------
 !
 ! Set midpoint pressures and layer thicknesses
@@ -4141,10 +4139,10 @@ real(r8),      intent(out) ::  model_h(num_levs)
 ! local variables; ps must be dimensioned as an array because dcz2 has it that way
 real (r8):: phi(num_levs), tv(num_levs), q(num_levs), t(num_levs)
 real (r8):: pmln(num_levs+1), hyba(num_levs+1,2), hybb(num_levs+1,2), pterm(num_levs)
-real (r8):: phi_surf, gmh, ht_tmp, rd, rv, rr_factor, local_lat
+real (r8):: phi_surf, ht_tmp, rd, rv, rr_factor, local_lat
             
 integer :: k, i, vstatus
-logical :: stagr_lon_local, stagr_lat_local
+logical :: stagr_lat_local
 
 istatus = 0
 vstatus = 0
@@ -4241,8 +4239,8 @@ integer,  intent(in)  :: kind_cam, num_levs, lon_index, lat_index
 logical,  intent(in)  :: stagr_lon, stagr_lat
 
 real(r8)  :: var(num_levs,0:1,0:1), weight 
-integer   :: k, m, n, fld_index, lon_index_local, vec_ind
-character :: cfld
+integer   :: k, lon_index_local, vec_ind
+! integer   :: fld_index
 
 ! lon_index and lat_index are the indices of the point at which we need the profiles,
 !   not necessarily one of the points where the profiles exist.
@@ -4379,7 +4377,7 @@ end subroutine get_interp_prof
       real(r8) ::  hybb(kmax+1,2)
 
 ! Num of longitude points to compute
-      integer imax
+!     integer imax
 ! vertical slice scratch space used to
 !   hold logs of midpoint pressures
       real(r8) ::  pmln(kmax+1)
