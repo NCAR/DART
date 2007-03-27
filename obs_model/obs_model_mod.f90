@@ -80,7 +80,7 @@ type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_ti
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
 logical            :: is_this_last, is_there_one, out_of_range
-integer            :: sec, day, my_first_copy, leaving_early, temp
+integer            :: sec, day, my_first_copy, leaving_early
 
 ! Initialize if needed
 if(.not. module_initialized) then
@@ -398,7 +398,7 @@ subroutine wait_if_needed(async)
 
 integer,             intent(in)    :: async
 
-integer :: should_block, should_sync
+integer :: should_block
 
 
 ! if async = 0 or 2, no synchronizing needed.  return now.

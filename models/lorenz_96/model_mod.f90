@@ -604,8 +604,6 @@ integer :: StateVarID
 !--------------------------------------------------------------------
 
 character(len=128) :: filename
-logical :: is_named
-integer :: rc
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename

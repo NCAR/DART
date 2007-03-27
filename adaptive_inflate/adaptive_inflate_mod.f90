@@ -607,7 +607,7 @@ real(r8), intent(in)    :: gamma
 real(r8), intent(inout) :: new_cov_inflate
 
 real(r8) :: theta_bar_2, u_bar, like_exp_bar, v_bar, like_bar, like_prime, theta_bar
-real(r8) :: a, b, c, disc, plus_root, minus_root, dtheta_dlambda
+real(r8) :: a, b, c, plus_root, minus_root, dtheta_dlambda
    
 ! Compute value of theta at current lambda_mean
 theta_bar_2 = (1.0_r8 + gamma * (sqrt(lambda_mean) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2

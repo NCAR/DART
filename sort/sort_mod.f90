@@ -184,7 +184,7 @@ integer,  intent(in)  :: num
 real(r8), intent(in)  :: x(num)
 integer,  intent(out) :: index(num)
 
-integer  :: evel, ind, i, j, l_val_index, level 
+integer  :: ind, i, j, l_val_index, level 
 real(r8) :: l_val
 
 

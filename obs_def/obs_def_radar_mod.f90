@@ -360,9 +360,8 @@ integer,          intent(out)          :: refkey
 integer,          intent(in)           :: ifile
 character(len=*), intent(in), optional :: fform
 
-character(len=8)    :: header
 character(len=32)   :: fileformat
-logical             :: reftype
+!logical             :: reftype
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -629,7 +628,7 @@ real(r8) :: as_wet
 real(r8) :: as_dry
 real(r8) :: ag_dry
 
-real(r8) :: u, v, w, qr, qg, qs, alpha, wt, rho, temp, precip, ref
+real(r8) :: u, v, w, qr, qg, qs, alpha, wt, rho, temp, ref
 real(r8) :: precip_r, precip_s, precip_g
 
 ar       = n0r*a*gam7b / (PI*rho_r*n0r)**powr
