@@ -109,7 +109,7 @@
    vert_normalization_height = 10000.0,
    vert_normalization_level = 20.0,
    approximate_distance = .true.,
-   output_box_info = .true.,
+   output_box_info = .false.,
    nlon = 71,
    nlat = 36  /
 
