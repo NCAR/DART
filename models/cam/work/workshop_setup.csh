@@ -66,53 +66,29 @@ make || exit 1
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
-# Build all the single-threaded targets first.
+# Build all the single-threaded targets
 #----------------------------------------------------------------------
 
-echo mkmf_create_obs_sequence
-csh  mkmf_create_obs_sequence
-make || exit 3
+@ n = 2
+foreach TARGET ( mkmf_* )
 
-echo mkmf_create_fixed_network_seq
-csh  mkmf_create_fixed_network_seq
-make || exit 4
-
-echo mkmf_perfect_model_obs
-csh  mkmf_perfect_model_obs
-make || exit 5
-
-echo mkmf_obs_diag
-csh  mkmf_obs_diag
-make || exit 7
-
-echo mkmf_column_rand
-csh  mkmf_column_rand
-make || exit 9
-
-echo mkmf_trans_date_to_dart
-csh  mkmf_trans_date_to_dart
-make || exit 10
-
-echo mkmf_trans_pv_sv
-csh  mkmf_trans_pv_sv
-make || exit 11
-
-echo mkmf_trans_pv_sv_time0
-csh  mkmf_trans_pv_sv_time0
-make || exit 12
-
-echo mkmf_trans_sv_pv
-csh  mkmf_trans_sv_pv
-make || exit 13 
-
-echo mkmf_trans_time
-csh  mkmf_trans_time
-make || exit 14
-
-echo mkmf_merge_obs_seq
-csh  mkmf_merge_obs_seq
-make || exit 10
-
+   switch ( $TARGET )
+   case mkmf_preprocess:
+      breaksw
+   case mkmf_filter:
+      breaksw
+   case mkmf_wakeup_filter:
+      breaksw
+   default:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "build number $n is ${TARGET}" 
+      csh $TARGET
+      make || exit $n
+      breaksw
+   endsw
+end
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
@@ -120,7 +96,9 @@ make || exit 10
 
 \rm -f *.o *.mod
 
-echo  mkmf_filter
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_filter"
 csh   mkmf_filter -mpi
 make
 
@@ -129,12 +107,15 @@ if ($status != 0) then
    echo "If this died in mpi_utilities_mod, see code comment"
    echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
    echo
-   exit 6
+   exit $n
 endif
+@ n = $n + 1
 
-echo mkmf_wakeup_filter
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_wakeup_filter"
 csh  mkmf_wakeup_filter -mpi
-make || exit 11
+make || exit $n
 
 \rm -f *.o *.mod
 

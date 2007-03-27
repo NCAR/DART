@@ -1,5 +1,5 @@
 #!/bin/csh
-
+#
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
@@ -66,56 +66,29 @@ make || exit 1
 ./preprocess || exit 2
 
 #----------------------------------------------------------------------
-# Build all the single-threaded targets first.
+# Build all the single-threaded targets
 #----------------------------------------------------------------------
 
-echo mkmf_create_obs_sequence
-csh  mkmf_create_obs_sequence
-make || exit 3
+@ n = 2
+foreach TARGET ( mkmf_* )
 
-echo mkmf_create_fixed_network_seq
-csh  mkmf_create_fixed_network_seq
-make || exit 4
-
-echo mkmf_perfect_model_obs
-csh  mkmf_perfect_model_obs
-make || exit 5
-
-echo mkmf_obs_diag
-csh  mkmf_obs_diag
-make || exit 7
-
-echo mkmf_dart_tf_wrf
-csh  mkmf_dart_tf_wrf
-make || exit 9
-
-echo mkmf_ensemble_init
-csh  mkmf_ensemble_init
-make || exit 10
-
-echo mkmf_update_wrf_bc
-csh  mkmf_update_wrf_bc
-make || exit 11
-
-echo mkmf_extract
-csh  mkmf_extract
-make || exit 12
-
-echo mkmf_select
-csh  mkmf_select
-make || exit 13
-
-echo mkmf_merge_obs_seq
-csh  mkmf_merge_obs_seq
-make || exit 16
-
-echo mkmf_convertdate
-csh  mkmf_convertdate
-make || exit 17
-
-echo mkmf_pert_wrf_bc
-csh  mkmf_pert_wrf_bc
-make || exit 18
+   switch ( $TARGET )
+   case mkmf_preprocess:
+      breaksw
+   case mkmf_filter:
+      breaksw
+   case mkmf_wakeup_filter:
+      breaksw
+   default:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "build number $n is ${TARGET}" 
+      csh $TARGET
+      make || exit $n
+      breaksw
+   endsw
+end
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
@@ -123,6 +96,9 @@ make || exit 18
 
 \rm -f *.o *.mod
 
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_filter"
 csh   mkmf_filter -mpi
 make
 
@@ -131,11 +107,15 @@ if ($status != 0) then
    echo "If this died in mpi_utilities_mod, see code comment"
    echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
    echo
-   exit 6
+   exit $n
 endif
+@ n = $n + 1
 
-csh   mkmf_wakeup_filter -mpi
-make
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_wakeup_filter"
+csh  mkmf_wakeup_filter -mpi
+make || exit $n
 
 \rm -f *.o *.mod
 
