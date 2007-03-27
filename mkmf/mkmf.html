@@ -56,7 +56,7 @@ public revision is 4.12.
 
 <p>The calling syntax is:
 
-<p><tt>mkmf [-a abspath] [-c cppdefs] [-d] [-f] [-m makefile] [-p program] [-t template] [-v] [-x] [args]</tt>
+<p><tt>mkmf [-a abspath] [-c cppdefs] [-d] [-f] [-m makefile] [-p program] [-t template] [-v] [-w] [-x] [args]</tt>
 
 <p><ol>
 
@@ -89,6 +89,11 @@ macros or commands written to the beginning of the makefile;
 
 <li><tt>-v</tt> is a verbosity flag to <tt>mkmf</tt>;
 
+<li><tt>-w</tt> generates compile rules which use the `wrapper' commands 
+MPIFC and MPILD instead of FC and LD.  These can then be defined as 
+the mpif90 compile scripts to ease changing between an MPI and non-MPI
+version;
+
 <li><tt>-x</tt> executes the makefile immediately;
 
 <li><tt>args</tt> are a list of directories and files to be
@@ -118,7 +123,8 @@ match invalidating all subsequent ones. See the <a
 href="#examples">Examples</a> section for a closer look at precedence rules.
 
 <p>The makefile currently runs <tt>$(FC)</tt> on fortran files
-and <tt>$(CC)</tt> on C files. Flags to the compiler can be set
+and <tt>$(CC)</tt> on C files (unless the <tt>-w</tt> flag is specified). 
+Flags to the compiler can be set
 in <tt>$(FFLAGS)</tt> or <tt>$(CFLAGS)</tt>. The final
 loader step executes <tt>$(LD)</tt>. Flags to the loader can be
 set in <tt>$(LDFLAGS)</tt>.  Preprocessor flags are used by
@@ -126,13 +132,19 @@ set in <tt>$(LDFLAGS)</tt>.  Preprocessor flags are used by
 and can be set in <tt>$(CPPFLAGS)</tt>. These macros have a
 default meaning on most systems, and can be modified in the template
 file. The predefined macros can be discovered by running <tt>make
--p</tt>.
+-p</tt>.  
 
 <p>In addition, the macro <tt>$(CPPDEFS)</tt> is applied to the
 preprocessor. This can contain the <tt>cpp #define</tt>s which
 may change from run to run. <tt>cpp</tt> options that do not
 change between compilations should be placed in
 <tt>$(CPPFLAGS)</tt>.
+
+<p>If the <tt>-w</tt> flag is given the commands run are 
+<tt>$(MPIFC)</tt> on fortran files, <tt>$(MPICC)</tt> on C files,
+and <tt>$(MPILD)</tt> for the loader step. The flags retain their
+same values with or without the <tt>-w</tt> flag. (This is a local
+addition.)
 
 <p>Includefiles are recursively searched for embedded includes.
 
