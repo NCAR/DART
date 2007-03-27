@@ -52,7 +52,7 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag assim_region column_rand
+\rm -f perfect_model_obs filter obs_diag column_rand
 \rm -f trans_date_to_dart trans_pv_sv trans_pv_sv_time0 trans_sv_pv
 \rm -f trans_time merge_obs_seq wakeup_filter
 \rm -f *.o *.mod

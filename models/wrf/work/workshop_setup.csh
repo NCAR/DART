@@ -52,7 +52,7 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag assim_region dart_tf_wrf
+\rm -f perfect_model_obs filter obs_diag dart_tf_wrf
 \rm -f ensemble_init update_wrf_bc extract select merge_obs_seq
 \rm -f convertdate pert_wrf_bc wakeup_filter
 \rm -f *.o *mod
