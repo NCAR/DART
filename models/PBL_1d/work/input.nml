@@ -58,6 +58,13 @@
    single_restart_file_out = .true.,
    perturbation_amplitude  = 0.2 /
 
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .true.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart' /
+
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.1,
@@ -106,10 +113,6 @@
    dist_shape = 'beta', 
    real_obs_period = 1800, 
    start_real_obs = 1800  /
-
-&create_real_network
-  seconds_start = 43200
-  obs_period    =  3600  /
 
 &location_nml
    horiz_dist_only = .false.,
