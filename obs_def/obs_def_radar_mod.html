@@ -33,6 +33,7 @@
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> /
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
@@ -59,7 +60,8 @@
 <A NAME="OVERVIEW"></A>
 <HR>
 <H2>OVERVIEW</H2>
-Provides subroutines to calculate radar radial velocity and reflectivity from model variables.
+Provides subroutines to calculate radar radial velocity and reflectivity 
+from model variables.
 <P>
 <BR>
 
@@ -93,6 +95,13 @@ obs_kind_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">get_expected_rad_ref</A></TD></TR>
 </TABLE>
 
+<H3 class=indent1>NOTES</H3>
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&#38;obs_def_radar_mod_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
 <BR>
 
 <!--==================================================================-->
@@ -111,9 +120,10 @@ obs_kind_mod
 <A NAME="yyyroutine1"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_rad_vel(key, ifile<em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> call write_rad_vel(velkey, ifile
+    <em class=optionalcode>[, fform]</em>) </em>
  <pre>
- integer,                    intent(in) :: <em class=code>key</em>
+ integer,                    intent(in) :: <em class=code>velkey</em>
  integer,                    intent(in) :: <em class=code>ifile</em>
  character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
 </pre></div>
@@ -122,7 +132,7 @@ obs_kind_mod
 Writes the obs definition part required for radial velocity.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>valkey&nbsp; &nbsp; </em></TD>
      <TD>Unique identifier associated to this radial velocity observation</TD></TR>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
      <TD>File unit open to output file</TD></TR>
@@ -135,9 +145,10 @@ Writes the obs definition part required for radial velocity.
 <A NAME="yyyroutine2"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call read_rad_vel(key, ifile<em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> call read_rad_vel(velkey, ifile
+      <em class=optionalcode>[, fform]</em>) </em>
  <pre>
- integer,                    intent(in) :: <em class=code>key</em>
+ integer,                    intent(in) :: <em class=code>velkey</em>
  integer,                    intent(in) :: <em class=code>ifile</em>
  character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
 </pre></div>
@@ -146,7 +157,7 @@ Writes the obs definition part required for radial velocity.
 Read companion of write_rad_vel.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>velkey&nbsp; &nbsp; </em></TD>
      <TD>Unique identifier associated to this radial velocity observation</TD></TR>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
      <TD>File unit open to output file</TD></TR>
@@ -159,18 +170,19 @@ Read companion of write_rad_vel.
 <A NAME="yyyroutine3"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call set_rad_vel(key, location, orientation) </em>
+ <em class=call> call set_rad_vel(velkey, location, orientation) </em>
  <pre>
- integer,             intent(in) :: <em class=code>key</em>
+ integer,             intent(in) :: <em class=code>velkey</em>
  type(location_type), intent(in) :: <em class=code>location</em>
  real(r8),            intent(in) :: <em class=code>orientation</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Set the radar location and the orientation of the radar beam at the observation location in the private arrays of the module.
+Set the radar location and the orientation of the radar beam 
+at the observation location in the private arrays of the module.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>velkey&nbsp; &nbsp; </em></TD>
      <TD>Unique identifier associated to this radial velocity observation</TD></TR>
  <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
      <TD>Radar location</TD></TR>
@@ -183,16 +195,17 @@ Set the radar location and the orientation of the radar beam at the observation 
 <A NAME="yyyroutine4"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call interactive_rad_vel(key) </em>
+ <em class=call> call interactive_rad_vel(velkey) </em>
  <pre>
- integer, intent(in) :: <em class=code>key</em>
+ integer, intent(in) :: <em class=code>velkey</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Initializes the specialized part of a radial velocity observation from information provided interactively by the user. Not yet implemented.
+Initializes the specialized part of a radial velocity observation 
+from information provided interactively by the user.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>velkey&nbsp; &nbsp; </em></TD>
      <TD>Unique identifier associated to this radial velocity observation</TD></TR>
  </TABLE>
  <BR>
@@ -201,11 +214,12 @@ Initializes the specialized part of a radial velocity observation from informati
 <A NAME="yyyroutine5"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_expected_rad_vel(state_vector, location, key, vr, istatus) </em>
+ <em class=call> call get_expected_rad_vel(state_vector, location, 
+          velkey, vr, istatus) </em>
  <pre>
  real(r8),            intent(in)  :: <em class=code>state_vector(:)</em>
  type(location_type), intent(in)  :: <em class=code>location</em>
- integer,             intent(in)  :: <em class=code>key</em>
+ integer,             intent(in)  :: <em class=code>velkey</em>
  real(r8),            intent(out) :: <em class=code>vr</em>
  integer,             intent(out) :: <em class=code>istatus</em>
  </pre></div>
@@ -218,7 +232,7 @@ Calculates the radial velocity (m/s).
      <TD>A one dimensional representation of the model state vector</TD></TR>
  <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
      <TD>Location of this obs</TD></TR>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>velkey&nbsp; &nbsp; </em></TD>
      <TD>Unique identifier associated to this radial velocity observation</TD></TR>
  <TR><TD valign=top><em class=code>vr&nbsp; &nbsp; </em></TD>
      <TD>The returned radial velocity value</TD></TR>
@@ -241,7 +255,7 @@ Calculates the radial velocity (m/s).
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Calculates the radar reflectivity (dBZ), where Z (mm^6 m^-3).
+Calculates the radar reflectivity (dBZ), where Z (mm<sup>6</sup> m<sup>-3</sup>).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>state_vector&nbsp; &nbsp; </em></TD>
@@ -287,17 +301,17 @@ Calculates the radar reflectivity (dBZ), where Z (mm^6 m^-3).
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Calculates the radar reflectivity Z (mm^6 m^-3).
+Calculates the radar reflectivity Z (mm<sup>6</sup> m<sup>-3</sup>).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>qr&nbsp; &nbsp; </em></TD>
-     <TD>Rain water content (kg kg^-1)</TD></TR>
+     <TD>Rain water content (kg kg<sup>-1</sup>)</TD></TR>
  <TR><TD valign=top><em class=code>qg&nbsp; &nbsp; </em></TD>
-     <TD>Graupel/hail content (kg kg^-1)</TD></TR>
+     <TD>Graupel/hail content (kg kg<sup>-1</sup>)</TD></TR>
  <TR><TD valign=top><em class=code>qs&nbsp; &nbsp; </em></TD>
-     <TD>Snow content (kg kg^-1)</TD></TR>
+     <TD>Snow content (kg kg<sup>-1</sup>)</TD></TR>
  <TR><TD valign=top><em class=code>rho&nbsp; &nbsp; </em></TD>
-     <TD>Air density (kg m^-3)</TD></TR>
+     <TD>Air density (kg m<sup>-3</sup>)</TD></TR>
  <TR><TD valign=top><em class=code>temp&nbsp; &nbsp; </em></TD>
      <TD>Air temperature (K)</TD></TR>
  <TR><TD valign=top><em class=code>ref&nbsp; &nbsp; </em></TD>
@@ -310,7 +324,8 @@ Calculates the radar reflectivity Z (mm^6 m^-3).
 <A NAME="write_orientation"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_orientation(ifile, orientation<em class=optionalcode>[, fform]</em>) </em>
+ <em class=call> call write_orientation(ifile, orientation
+            <em class=optionalcode>[, fform]</em>) </em>
  <pre>
  integer,                    intent(in) :: <em class=code>ifile</em>
  real(r8),                   intent(in) :: <em class=code>orientation(3)</em>
@@ -335,8 +350,10 @@ Writes the orientation required for radial velocity.
 <A NAME="read_orientation"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> orientation = read_orientation(ifile<em class=optionalcode>[, fform]</em>)</em>
+<em class=call> orientation = read_orientation(ifile
+                   <em class=optionalcode>[, fform]</em>)</em>
 <pre>
+ real(r8), dimension(3)                 :: read_orientation
  integer,                    intent(in) :: <em class=code>ifile</em>
  character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
 </pre></div>
@@ -345,12 +362,102 @@ Writes the orientation required for radial velocity.
 Reads orientation from file that was written by write_orientation.
 </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>orientation&nbsp; &nbsp; </em></TD>
+     <TD>Returns 3 real values for the orientation.  This is specific
+        to the observation kind 'radial velocity'.</TD></TR>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
      <TD>File unit open to output file</TD></TR>
  <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
      <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
  </TABLE>
  <BR>
+
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+
+<A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&#38;' and terminating with a slash '/'.
+<div class=namelist>
+<pre>
+<em class=call>namelist / obs_def_radar_mod_nml / </em> &#38
+   convert_to_dbz, dbz_threshold, &#38
+   apply_ref_limit_to_obs, reflectivity_limit_obs, lowest_reflectivity_obs, &#38
+   apply_ref_limit_to_state, reflectivity_limit_state, lowest_reflectivity_state
+</pre>
+</div>
+</P>
+
+<H3 class=indent1>Discussion</H3>
+
+<P>This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>convert_to_dbz</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD> Convert final reflectivity to dB.  Default .TRUE.  
+                       Note that for now this is forced to .TRUE. in 
+                       initialize_module because it is not clear how to assimilate Z.</TD></TR>
+<TR><!--contents--><TD valign=top>dbz_threshold</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD> 
+Applied if convert_to_dbz is .TRUE.
+Reflectivity below dbz_threshold is set to dbz_threshold, which is chosen
+such to convert to the smallest possible dBZ.
+The purpose is mainly computational: We want to avoid the occurence of log(0).
+Default 0.001 .
+<p>
+Some useful values: 
+<pre>
+Z = 3.163  ->   5.0 dBZ
+Z = 2.512  ->   4.0 dBZ
+Z = 1.259  ->   1.0 dBZ
+Z = 1.0233 ->   0.1 dBZ
+Z = 0.1    -> -10.0 dBZ
+Z = 0.01   -> -20.0 dBZ
+Z = 0.001  -> -30.0 dBZ
+</pre>
+</p>
+</TD></TR>
+<TR><!--contents--><TD valign=top>apply_ref_limit_to_obs</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD> 
+If .TRUE., replace reflectivities below "reflectivity_limit"
+with "lowest_reflectivity". If FALSE, ignore "reflectivity_limit"
+and "lowest_reflectivity".  Default .FALSE.</TD></TR>
+<TR><!--contents--><TD valign=top>reflectivity_limit_obs</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD> Reflectivity below this value is set to 
+"lowest_reflectivity". Default 0.0 </TD></TR>
+<TR><!--contents--><TD valign=top>lowest_reflectivity_obs</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>
+If reflectivity < reflectivity_limit, reflectivity is set to this value.
+The default value of 'missing' is useful for perfect model experiments.
+Suggested options: lowest_reflectivity_obs = missing_r8 or
+lowest_reflectivity_obs = any real value. Default MISSING_R8.</TD></TR>
+<TR><!--contents--><TD valign=top>apply_ref_limit_to_state</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD> 
+Similar to "apply_ref_limit_to_obs" but applied to the state
+(forward operator).  Default .FALSE.</TD></TR>
+<TR><!--contents--><TD valign=top>reflectivity_limit_state</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD> 
+Similar to "reflectivity_limit_obs" for state. Default 0.0 </TD></TR>
+<TR><!--contents--><TD valign=top>lowest_reflectivity_state</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD> 
+Similar to "lowest_reflectivity_obs" for state. Default MISSING_R8.</TD></TR>
+</TABLE>
+
 
 
 <!--==================================================================-->
