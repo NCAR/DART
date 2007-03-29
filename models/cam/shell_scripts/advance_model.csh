@@ -39,6 +39,13 @@
 set process = $1
 set num_states = $2
 set control_file = $3
+echo "advance_model.csh args = $1 $2 $3"
+
+set parallel = ' '
+if ($#argv == 4) set parallel = $4
+echo "advance_model.csh; parallel = $parallel"
+
+set retry_max = 2
 
 # Get unique name for temporary working directory for this process's stuff
 set temp_dir = 'advance_temp'${process}
@@ -67,7 +74,7 @@ if ( ! $?LINK ) then
   set LINK = 'ln -fs'
 endif
 
-echo "CENTRALDIR is ${CENTRALDIR}"                          >> cam_out_temp
+echo "CENTRALDIR is ${CENTRALDIR}"                          >! cam_out_temp
 echo "temp_dir is $temp_dir"                                >> cam_out_temp
 
 # Get information about this experiment from file "casemodel", 
@@ -93,6 +100,7 @@ set state_copy = 1
 set ensemble_number_line = 1
 set input_file_line = 2
 set output_file_line = 3
+
 while($state_copy <= $num_states)
 
    # loop through the control file, extracting lines in groups of 3.
@@ -103,9 +111,12 @@ while($state_copy <= $num_states)
    # the previous script used element instead of ensemble_number.  make them
    # the same for now.
    set element = $ensemble_number
+   touch cam_out_temp
    echo "starting ${myname} for ens member $element at "`date` >> cam_out_temp
 
    # get model state initial conditions for this ensemble member
+   # make sure link target is nonexistent before making the link.
+   ${REMOVE} temp_ic
    ${LINK} ${CENTRALDIR}/$input_file temp_ic
 
    # get filter namelists for use by cam
@@ -176,38 +187,50 @@ while($state_copy <= $num_states)
    #   set machine_file = $4
    #   ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $machine_file >>& cam_out_temp
    #else
-      echo executing: ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
-      ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >>& cam_out_temp
+   #   echo executing: ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
+      set retry = 0
+      while ($retry < $retry_max)
+         echo executing: ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $parallel \
+              >> cam_out_temp
+         ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $parallel       \
+              >>& cam_out_temp
    #endif
    
-   grep 'END OF MODEL RUN' cam_out_temp > /dev/null
-   if ($status == 0) then
+         grep 'END OF MODEL RUN' cam_out_temp > /dev/null
+         if ($status == 0) then
+            set retry = $retry_max
       # Extract the new state vector information from the new caminput.nc and
       # put it in temp_ud (time followed by state)
-   echo ' '                           >> cam_out_temp
-   echo 'Executing trans_pv_sv'       >> cam_out_temp
-      ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
+            echo ' '                           >> cam_out_temp
+            echo 'Executing trans_pv_sv'       >> cam_out_temp
+            ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
    
       # Move updated state vector and new CAM/CLM initial files back to experiment
       # directory for use by filter and the next advance.
-      ${MOVE} temp_ud     ${CENTRALDIR}/$output_file
-      ${MOVE} clminput.nc ${CENTRALDIR}/clminput_${element}.nc
-      ${MOVE} caminput.nc ${CENTRALDIR}/caminput_${element}.nc
-      ${MOVE} namelist    ${CENTRALDIR}
+            ${MOVE} temp_ud     ${CENTRALDIR}/$output_file
+            ${MOVE} clminput.nc ${CENTRALDIR}/clminput_${element}.nc
+            ${MOVE} caminput.nc ${CENTRALDIR}/caminput_${element}.nc
+            ${MOVE} namelist    ${CENTRALDIR}
    
-      echo "finished ${myname} for ens member $element at "`date` >> cam_out_temp
-      ${MOVE} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
-   else
-      set DEADDIR = ${temp_dir}_dead
-      echo "WARNING - CAM $element stopped abnormally; might be retried, see $DEADDIR"
-      echo "WARNING - CAM $element stopped abnormally; might be retried, see $DEADDIR"
-      echo "WARNING - CAM $element stopped abnormally; might be retried, see $DEADDIR" >> cam_out_temp
-      echo "WARNING - CAM $element stopped abnormally; might be retried, see $DEADDIR" >> cam_out_temp
-      ${COPY} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
-      mkdir $DEADDIR
-      ${MOVE} * $DEADDIR
-      exit -${element}
-   endif
+            echo "finished ${myname} for ens member $element at "`date` >> cam_out_temp
+            ${MOVE} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
+         else
+            @ retry++
+            if ($retry < $retry_max) then
+               echo "WARNING - CAM $element stopped abnormally; will be retried"
+               echo "WARNING - CAM $element stopped abnormally; will be retried" >> cam_out_temp
+               echo "===========================================================" >> cam_out_temp
+            else
+               set DEADDIR = ${temp_dir}_dead
+               echo "WARNING - CAM $element stopped abnormally; see $DEADDIR"
+               echo "WARNING - CAM $element stopped abnormally; see $DEADDIR" >> cam_out_temp
+               ${COPY} cam_out_temp ${CENTRALDIR}/cam_out_temp${element}_died
+               mkdir $DEADDIR
+               ${MOVE} * $DEADDIR
+               exit -${element}
+            endif
+         endif
+      end
 
    # if this process needs to advance more than one model, read the next set of
    # filenames and ensemble number at the top of this loop.
