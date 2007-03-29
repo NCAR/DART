@@ -75,10 +75,6 @@ foreach TARGET ( mkmf_* )
    switch ( $TARGET )
    case mkmf_preprocess:
       breaksw
-   case mkmf_filter:
-      breaksw
-   case mkmf_wakeup_filter:
-      breaksw
    default:
       @ n = $n + 1
       echo
