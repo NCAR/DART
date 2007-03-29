@@ -43,7 +43,7 @@ copy          = getnc(fname,'copy');
 
 switch lower(model)
 
-   case {'9var','lorenz_63','lorenz_84'}
+   case {'9var','lorenz_63','lorenz_84','ikeda'}
 
       atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
       if (prod(size(num_vars)) > 1 ) 

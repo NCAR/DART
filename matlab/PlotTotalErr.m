@@ -52,7 +52,7 @@ num_times = length(times);
 
 switch lower(model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','ikeda'}
 
       % Get the appropriate netcdf variables
       truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index);
