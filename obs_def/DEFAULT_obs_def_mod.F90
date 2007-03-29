@@ -365,6 +365,10 @@ integer           :: o_index
 
 if ( .not. module_initialized ) call initialize_module
 
+! this default should probably be 'FORMATTED' to be
+! consistent with the alternative of 'UNFORMATTED'. 
+! (in the code below anything that is not a variant of
+! unformatted is the default case so for now it does not matter.)
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
 
@@ -450,6 +454,10 @@ character(len=32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
+! this default should probably be 'FORMATTED' to be
+! consistent with the alternative of 'UNFORMATTED'. 
+! (in the code below anything that is not a variant of
+! unformatted is the default case so for now it does not matter.)
 fileformat = "ascii"   ! supply default
 if(present(fform)) fileformat = trim(adjustl(fform))
 
