@@ -94,8 +94,8 @@ The obs_kind module contains a table, the obs_kind_info table, that
 defines the details of each observation type that has been created by the 
 preprocess program. Each table entry contains the integer index of the
 observation type which is associated with an integer parameter declaration.
-Also associated with each table entry are the name of the observation type (
-this string is identical to the F90 identifier associated with the
+Also associated with each table entry are the name of the observation type 
+(this string is identical to the F90 identifier associated with the
 integer index via the parameter statement), the integer index of the 
 associated associated generic kind, and two logicals indicating whether this
 observation type is to be assimilated, evaluated only (forward operator is
@@ -158,7 +158,7 @@ utilities_mod
  <div class=routine>
  <em class=call> var = get_obs_kind_name(obs_kind_ind) </em>
  <pre>
- character(len=32), intent(out) :: <em class=code>get_obs_kind_name</em>
+ character(len=32)              :: <em class=code>get_obs_kind_name</em>
  integer, intent(in)            :: <em class=code>obs_kind_ind</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -170,7 +170,7 @@ utilities_mod
  associated with the integer index.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_kind_name&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Name string associated with this entry in the obs_kind_info table.</TD>
  </TR>
  <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
@@ -185,7 +185,7 @@ utilities_mod
  <div class=routine>
  <em class=call> var = assimilate_this_obs_kind(obs_kind_ind) </em>
  <pre>
- logical, intent(out) :: <em class=code>assimilate_this_obs_kind</em>
+ logical              :: <em class=code>assimilate_this_obs_kind</em>
  integer, intent(in)  :: <em class=code>obs_kind_ind</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -196,10 +196,9 @@ utilities_mod
  true if this observation type is to be assimilated, otherwise false.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>assimilate_this_obs_kind&nbsp; &nbsp; </em></
- TD>
-     <TD>Returns true if this entry in the obs_kind_info table is to be assimila
- ted.</TD></TR>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>Returns true if this entry in the obs_kind_info table is to be 
+           assimilated.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
      <TD>An integer index into the obs_kind_info table.</TD></TR>
  </TABLE>
@@ -213,7 +212,7 @@ utilities_mod
  <div class=routine>
  <em class=call> var = evaluate_this_obs_kind(obs_kind_ind) </em>
  <pre>
- logical, intent(out) :: <em class=code>evaluate_this_obs_kind</em>
+ logical              :: <em class=code>evaluate_this_obs_kind</em>
  integer, intent(in)  :: <em class=code>obs_kind_ind</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -224,9 +223,10 @@ utilities_mod
  true if this observation type is to be evaluated, otherwise false.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>evaluate_this_obs_kind&nbsp; &nbsp; </em></
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></
  TD>
-     <TD>Returns true if this entry in the obs_kind_info table is to be evaluated.</TD></TR>
+     <TD>Returns true if this entry in the obs_kind_info table 
+         is to be evaluated.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
      <TD>An integer index into the obs_kind_info table.</TD></TR>
  </TABLE>
@@ -240,7 +240,7 @@ utilities_mod
  <div class=routine>
  <em class=call> var = get_obs_kind_var_type(obs_kind_ind) </em>
  <pre>
- integer, intent(out) :: <em class=code>get_obs_kind_var_type</em>
+ integer              :: <em class=code>get_obs_kind_var_type</em>
  integer, intent(in)  :: <em class=code>obs_kind_ind</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -252,7 +252,7 @@ utilities_mod
  type.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_kind_var_type&nbsp; &nbsp; </em></
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></
  TD>
      <TD>Returns the integer GENERIC kind index associated with this obs type.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
@@ -268,7 +268,7 @@ utilities_mod
  <div class=routine>
  <em class=call> var = get_obs_kind_index(obs_kind_name) </em>
  <pre>
- integer, intent(out)          :: <em class=code>get_obs_kind_index</em>
+ integer                       :: <em class=code>get_obs_kind_index</em>
  character(len=32), intent(in) :: <em class=code>obs_kind_name</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -281,8 +281,8 @@ utilities_mod
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>get_obs_kind_index&nbsp; &nbsp; </em></TD>
-     <TD>Integer index into the obs_kind_info table entry with name string corre
- sponding to obs_kind_name.</TD></TR>
+     <TD>Integer index into the obs_kind_info table entry with name string 
+         corresponding to obs_kind_name.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind_name&nbsp; &nbsp; </em></TD>
      <TD>Name of observation type to be found in obs_kind_info table.</TD></TR>
  </TABLE>
@@ -294,7 +294,8 @@ utilities_mod
  <A NAME="write_obs_kind"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_obs_kind(ifile,fform) </em>
+ <em class=call> call write_obs_kind(ifile
+                   <em class=optionalcode>[, fform]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>ifile</em>
  character(len=*), optional, intent(in) :: <em class=code>fform</em>
@@ -311,7 +312,7 @@ appear in the header of an obs_sequence file.
      <TD>Unit number of output observation sequence file being written.</TD></TR
  >
  <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
-     <TD>Optional format for file. Default is ascii.</TD></TR>
+     <TD>Optional format for file. Default is FORMATTED.</TD></TR>
  </TABLE>
  <P>
  </P>
@@ -321,7 +322,8 @@ appear in the header of an obs_sequence file.
  <A NAME="read_obs_kind"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call read_obs_kind(ifile,pre_I_format,fform) </em>
+ <em class=call> call read_obs_kind(ifile, pre_I_format
+                 <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  integer, intent(in)                    :: <em class=code>ifile</em>
  logical, intent(in)                    :: <em class=code>pre_I_format</em>
@@ -339,13 +341,13 @@ in the file correspond to the storage order of the obs_kind_info table
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
-     <TD>>Unit number of output observation sequence file being written.</TD></T
- R>
+     <TD>Unit number of output observation sequence file being 
+         written.</TD></TR>
  <TR><TD valign=top><em class=code>pre_I_format&nbsp; &nbsp; </em></TD>
-     <TD>True if the file being read has no obs type definition header.</TD></TR
- >
+     <TD>True if the file being read has no obs type definition header.
+         </TD></TR>
  <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
-     <TD>Optional format for file. Default is ascii.</TD></TR>
+     <TD>Optional format for file. Default is FORMATTED.</TD></TR>
  </TABLE>
  <P>
  </P>
@@ -357,15 +359,15 @@ in the file correspond to the storage order of the obs_kind_info table
  <div class=routine>
  <em class=call> var = get_kind_from_menu() </em>
  <pre>
- integer, intent(out) :: <em class=code>get_kind_from_menu</em>
+ integer              :: <em class=code>get_kind_from_menu</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
  Interactive input of observation type from the obs_kind info.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_kind_from_menu&nbsp; &nbsp; </em></TD>
-     <TD>Integer index of observation type.</TD></TR>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>Integer index of observation kind.</TD></TR>
  </TABLE>
  <P>
  </P>
@@ -377,7 +379,7 @@ in the file correspond to the storage order of the obs_kind_info table
  <div class=routine>
  <em class=call> var = map_def_index(obs_def_index) </em>
  <pre>
- integer, intent(out) :: <em class=code>map_def_index</em>
+ integer              :: <em class=code>map_def_index</em>
  integer, intent(in)  :: <em class=code>obs_def_index</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -389,11 +391,11 @@ in the file correspond to the storage order of the obs_kind_info table
  the current obs_kind_mod.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>map_def_index&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Index of this observation type in obs_kind_info table.</TD></TR>
  <TR><TD valign=top><em class=code>obs_def_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of observation type from input observation sequence file.</TD></T
- R>
+     <TD>Index of observation type from input observation 
+         sequence file.</TD></TR>
  </TABLE>
  <P>
  </P>
@@ -408,7 +410,7 @@ in the file correspond to the storage order of the obs_kind_info table
 <pre>
 </pre></div>
 
-<H2 class=indent1>Description</H2>
+<H3 class=indent1>Description</H3>
 
 <P>
 The total number of available observation types in the obs_kind_info table.
@@ -429,7 +431,7 @@ This value is added by the preprocess program.
 <pre>
 </pre></div>
 
-<H2 class=indent1>Description</H2>
+<H3 class=indent1>Description</H3>
 
 <P>
 All generic kinds available are public parameters that begin with KIND_.
@@ -449,7 +451,7 @@ All generic kinds available are public parameters that begin with KIND_.
 <pre>
 </pre></div>
 
-<H2 class=indent1>Description</H2>
+<H3 class=indent1>Description</H3>
 
 <P>
 A list of all observation types that are available is provided as
@@ -465,15 +467,13 @@ in the obs_kind_info table.
 
  <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
- <BR><HR><BR>
+<HR>
+<H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / obs_kind_nml / </em>
- assimilate_these_obs_types,evaluate_these_obs_types
-
-
-
+ <em class=call>namelist / obs_kind_nml / </em> &#38;
+     assimilate_these_obs_types,evaluate_these_obs_types
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
@@ -497,12 +497,13 @@ in the obs_kind_info table.
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>assimilate_these_obs_types</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>Name of observation type to be assimilated only. Default: null</TD></TR>
+     <!--  type  --><TD>character(len=129), dimension(:)</TD>
+ <!--descript--><TD>Names of observation types to be assimilated only. 
+                    <br>Default: null</TD></TR>
  <TR><!--contents--><TD valign=top>evaluate_these_obs_types</TD>
-     <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>Name of observation type to be evaluated only. Default: null
- </TD></TR>
+     <!--  type  --><TD>character(len=129), dimension(:)</TD>
+ <!--descript--><TD>Names of observation types to be evaluated only.
+                    <br>Default: null </TD></TR>
  </TABLE>
  <P>
  </P>
