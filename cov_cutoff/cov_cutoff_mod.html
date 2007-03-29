@@ -110,17 +110,19 @@ may be read from file <em class=file>input.nml</em>.
  <A NAME="comp_cov_factor"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> var = comp_cov_factor(z_in, c, obs_loc, obs_kind, 
-         target_loc, target_kind, localization_override) </em>
+ <em class=call> var = comp_cov_factor(z_in, c
+      <em class=optionalcode>[,obs_loc]
+      [,obs_kind] [,target_loc] [,target_kind] 
+      [,localization_override]</em>) </em>
  <pre>
- real(r8), intent(out)                     :: <em class=code>comp_cov_factor</em>
+ real(r8)                                  :: <em class=code>comp_cov_factor</em>
  real(r8), intent(in)                      :: <em class=code>z_in</em>
  real(r8), intent(in)                      :: <em class=code>c</em>
- type(location_type), optional, intent(in) :: <em class=code>obs_loc</em>
- integer, optional, intent(in)             :: <em class=code>obs_kind</em>
- type(location_type), optional, intent(in) :: <em class=code>target_loc</em>
- integer, optional, intent(in)             :: <em class=code>target_kind</em>
- integer, optional, intent(in)             :: <em class=code>localization_override</em>
+ type(location_type), optional, intent(in) :: <em class=optionalcode>obs_loc</em>
+ integer, optional, intent(in)             :: <em class=optionalcode>obs_kind</em>
+ type(location_type), optional, intent(in) :: <em class=optionalcode>target_loc</em>
+ integer, optional, intent(in)             :: <em class=optionalcode>target_kind</em>
+ integer, optional, intent(in)             :: <em class=optionalcode>localization_override</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -134,7 +136,7 @@ available for users who may want to design more sophisticated localization
 functions.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>comp_cov_factor&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Weighting factor.</TD></TR>
  <TR><TD valign=top><em class=code>z_in&nbsp; &nbsp; </em></TD>
      <TD>The distance between observation and target.</TD></TR>
