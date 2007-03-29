@@ -184,7 +184,7 @@ continue) is required. <BR>
 <!--==================================================================-->
 
 <A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -199,7 +199,7 @@ cov_cutoff_mod
 <!--Note to authors. The first row of the table is different.         -->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>PUBLIC INTERFACE</H2>
 
 <TABLE>
@@ -219,15 +219,15 @@ cov_cutoff_mod
 <!--==================================================================-->
 
 <A NAME="PublicEntities"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>PUBLIC COMPONENTS</H2>
-<BR>
+The following subroutines are public:
 
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="write_1d_integral"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_1d_integral(key,ifile,fileformat) </em>
+ <em class=call> call write_1d_integral(key, ifile, fileformat) </em>
  <pre>
  integer, intent(in)           :: <em class=code>key</em>
  integer, intent(in)           :: <em class=code>ifile</em>
@@ -244,13 +244,13 @@ this observation,
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
-     <TD>Unique integer key associated with the observation being processed.</TD
- ></TR>
+     <TD>Unique integer key associated with the observation being 
+         processed.</TD></TR>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
      <TD>Unit number on which observation sequence file is open</TD></TR>
  <TR><TD valign=top><em class=code>fileformat&nbsp; &nbsp; </em></TD>
-     <TD>String noting whether file is opened for formatted or unformatted IO.</
- TD></TR>
+     <TD>String noting whether file is opened for 'formatted' 
+         or 'unformatted' IO.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -259,9 +259,9 @@ this observation,
  <A NAME="read_1d_integral"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call read_1d_integral(key,ifile,fileformat) </em>
+ <em class=call> call read_1d_integral(key, ifile, fileformat) </em>
  <pre>
- integer, intent(out)           :: <em class=code>key</em>
+ integer, intent(out)          :: <em class=code>key</em>
  integer, intent(in)           :: <em class=code>ifile</em>
  character(len=32), intent(in) :: <em class=code>fileformat</em>
  </pre></div>
@@ -276,13 +276,13 @@ this observation,
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
-     <TD>Unique integer key associated with the observation being processed.</TD
- ></TR>
+     <TD>Unique integer key associated with the observation being 
+        processed.</TD></TR>
  <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
      <TD>Unit number on which observation sequence file is open</TD></TR>
  <TR><TD valign=top><em class=code>fileformat&nbsp; &nbsp; </em></TD>
-     <TD>String noting whether file is opened for formatted or unformatted IO.</
- TD></TR>
+     <TD>String noting whether file is opened for 'formatted' or 
+         'unformatted' IO.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -305,8 +305,8 @@ points) for this key.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
-     <TD>Unique identifier associated with the created observation definition in
-  the obs sequence.</TD></TR>
+     <TD>Unique identifier associated with the created observation definition 
+         in the obs sequence.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -314,7 +314,7 @@ points) for this key.
  <A NAME="get_expected_1d_integral"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call get_expected_1d_integral(state,location,key,val,istatus) </em>
+ <em class=call> call get_expected_1d_integral(state, location, key, val, istatus) </em>
  <pre>
  real(r8), intent(in)            :: <em class=code>state</em>
  type(location_type), intent(in) :: <em class=code>location</em>
@@ -336,8 +336,8 @@ Computes the forward observation operator for a 1d integral observation.
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
      <TD>Returned value of forward observation operator.</TD></TR>
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Returned as 0 if forward operator was successfully computed, else retur
- ned non-zero.</TD></TR>
+     <TD>Returned as 0 if forward operator was successfully computed, 
+         else returned non-zero.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -349,7 +349,7 @@ Computes the forward observation operator for a 1d integral observation.
 <!--==================================================================-->
 </P>
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>FILES</H2>
 <UL><LI>NONE
 </UL>
@@ -359,7 +359,7 @@ Computes the forward observation operator for a 1d integral observation.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>REFERENCES</H2>
 
 <!--==================================================================-->
@@ -375,8 +375,8 @@ Computes the forward observation operator for a 1d integral observation.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>interactive_1d_integral</TD>
-    <!-- message --><TD VALIGN=top>Not enough space for a 1d_integral_obs. Can only
-have max_1d_integral_obs (currently _____).</TD>
+    <!-- message --><TD VALIGN=top>Not enough space for a 1d_integral_obs. 
+                  Can only have max_1d_integral_obs (currently _____).</TD>
     <!-- comment --><TD VALIGN=top> There is only room for a fixed number of
      1d integral observations. The max number is defined by max_1d_integral_obs.
      Set this to a larger value if more are needed. </TD>
@@ -390,7 +390,7 @@ have max_1d_integral_obs (currently _____).</TD>
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>KNOWN BUGS</H2>
 <P>
 </P>
@@ -400,7 +400,7 @@ have max_1d_integral_obs (currently _____).</TD>
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>FUTURE PLANS</H2>
 <P>
 </P>
