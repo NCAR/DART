@@ -64,7 +64,7 @@
 <P>
 Provides a number of tools used by most DART modules including tools for
 file IO, diagnostic tools for registering modules and recording namelist
-arguments, and and error handler.
+arguments, and an error handler.
 </P>
 <P>
 </P>
@@ -90,7 +90,6 @@ netCDF
 <TR><TD><em class=call>use utilities, only : </em></TD>
                    <TD><A HREF="#file_exist">file_exist</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_unit">get_unit</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#check_nml_error">check_nml_error</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#open_file">open_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#timestamp">timestamp</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#close_file">close_file</A></TD></TR>
@@ -103,6 +102,9 @@ netCDF
 <TR><TD>&nbsp;</TD><TD><A HREF="#find_namelist_in_file">find_namelist_in_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_read">check_namelist_read</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_check">nc_check</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_tasknum">set_tasknum</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_output">set_output</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#do_output">do_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_DBG, DEBUG</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_MSG, MESSAGE</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_WARN, WARNING</A></TD></TR>
@@ -142,7 +144,7 @@ may be read from file <em class=file>input.nml</em>.
 Returns true if file_name exists in the working directory, else false. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>file_exist&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>True if file_name exists in working directory.</TD></TR>
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>Name of file to look for.</TD></TR>
@@ -162,34 +164,8 @@ Returns true if file_name exists in the working directory, else false.
 Returns an unused unit number for IO. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_unit&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>An unused unit number.</TD></TR>
- </TABLE>
- <BR>
-
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="check_nml_error"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = check_nml_error(iostat, nml_name) </em>
- <pre>
- integer                      :: <em class=code>check_nml_error</em>
- integer, intent(in)          :: <em class=code>iostat</em>
- character(len=*), intent(in) :: <em class=code>nml_name</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Given the iostat variable from a namelist read and the name of the
-namelist, makes sure that the iostat is an acceptable value. If not,
-generates a call to the error handler.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>check_nml_error&nbsp; &nbsp; </em></TD>
-     <TD>Returned error code (same as iostat input).</TD></TR>
- <TR><TD valign=top><em class=code>iostat&nbsp; &nbsp; </em></TD>
-     <TD>Input error code from a namelist read.</TD></TR>
- <TR><TD valign=top><em class=code>nml_name&nbsp; &nbsp; </em></TD>
-     <TD>Name of the namelist that was read.</TD></TR>
  </TABLE>
  <BR>
 
@@ -212,7 +188,7 @@ formatted IO. Otherwise, it is unformatted. The action string is the
 standard action string for Fortran IO (see F90 language description).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>open_file&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Unit number opened to file fname.</TD></TR>
  <TR><TD valign=top><em class=code>fname&nbsp; &nbsp; </em></TD>
      <TD>Name of file to be opened.</TD></TR>
@@ -277,7 +253,7 @@ Closes the given unit number. If the unit is not open, nothing happens.
  <A NAME="register_module"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call register_module(src,rev,rdate) </em>
+ <em class=call> call register_module(src, rev, rdate) </em>
  <pre>
  character(len=*), intent(in) :: <em class=code>src</em>
  character(len=*), intent(in) :: <em class=code>rev</em>
@@ -346,12 +322,12 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
  <A NAME="find_namelist_in_file"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call find_namelist_in_file(namelist_file_name, nml_name, iunit,
-      <em class=optionalcode>[, write_to_logfile_in]</em>) </em>
+ <em class=call> call find_namelist_in_file(namelist_file_name, nml_name, 
+      iunit, <em class=optionalcode>[,write_to_logfile_in]</em>) </em>
  <pre>
- character(len=*), intent(in)           :: <em class=code>namelist_file_name</em>
- character(len=*), intent(in)           :: <em class=code>nml_name</em>
- integer,          intent(out)           :: <em class=code>iunit</em>
+ character(len=*),  intent(in)          :: <em class=code>namelist_file_name</em>
+ character(len=*),  intent(in)          :: <em class=code>nml_name</em>
+ integer,           intent(out)         :: <em class=code>iunit</em>
  logical, optional, intent(in)          :: <em class=optionalcode>write_to_logfile_in</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -390,12 +366,12 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
  integer, intent(in)                    :: <em class=code>iunit</em>
  integer, intent(in)                    :: <em class=code>iostat_in</em>
  character(len=*), intent(in)           :: <em class=code>nml_name</em>
- character(len=*), optional, intent(in) :: <em class=optionalcode>write_to_logfile_in</em>
+ logical, optional, intent(in)          :: <em class=optionalcode>write_to_logfile_in</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
   Once a namelist has been read from an opened namelist file, this routine checks 
-  for possible errors i the read. If the namelist read was successful, the file
+  for possible errors in the read. If the namelist read was successful, the file
   opened on iunit is closed and the routine returns. If iostat is not zero, an 
   attempt is made to rewind the file on iunit and read the last line that was
   successfully read. If this can be done, this last line is printed with the
@@ -411,7 +387,8 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
      <TD>Error status return from an attempted read of a namelist from
          this file.</TD></TR>
  <TR><TD valign=top><em class=code>nml_name&nbsp; &nbsp; </em></TD>
-     <TD>The name of the namelist that is being read (for instance filter_nml.</TD></TR>
+     <TD>The name of the namelist that is being read (for instance 
+         filter_nml).</TD></TR>
  <TR><TD valign=top><em class=optionalcode>write_to_logfile_in&nbsp; &nbsp; </em></TD>
      <TD>When the namelist for the utilities module is read, the logfile has not
          yet been open because its name is in the namelist. If errors are found,
@@ -420,8 +397,6 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
          applications, it is normally not used (default is false).</TD></TR>
  </TABLE>
  <BR>
-
-
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="nc_check"></A>
@@ -463,38 +438,76 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
  <BR>
 
 
-
-<!--============= DESCRIPTION OF A CONSTANT ========================-->
- <A NAME="ERROR_LEVELS"></A>
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="set_tasknum"></A>
  <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call set_tasknum(tasknum)</em>
  <pre>
- integer :: <em class=code>E_DBG, DEBUG</em>
- integer :: <em class=code>E_MSG, MESSAGE</em>
- integer :: <em class=code>E_WARN, WARNING</em>
- integer :: <em class=code>E_ERR, FATAL</em>
+ integer, intent(in)               :: <em class=code>tasknum</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
+  Intended to be used in the MPI multi-task case.  Sets the
+  local task number, which is then prepended to subsequent messages.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>&nbsp; &nbsp; </em></TD>
-     <TD>Severity levels to be passed to error handler. Levels are debug, 
-message, warning and fatal. The namelist parameter TERMLEVEL can be used
-to control at which level program termination should occur.</TD></TR>
+ <TR><TD valign=top><em class=code>tasknum&nbsp; &nbsp; </em></TD>
+     <TD>Task number returned from MPI_Comm_Rank().  MPI task numbers
+         are 0 based, so for a 4-task job these numbers are 0-3.</TD></TR>
  </TABLE>
  <BR>
 
-<!--============= DESCRIPTION OF A CONSTANT ========================-->
- <A NAME="logfileunit"></A>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="set_output"></A>
  <P></P><HR><P></P>
- integer :: <em class=code>logfileunit</em>
+ <div class=routine>
+ <em class=call> call set_output(doflag)</em>
+ <pre>
+ logical, intent(in)               :: <em class=code>doflag</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
+Set the status of output.  Can be set on a per-task
+basis if you are running with multiple tasks.
+If set to false only warnings and fatal errors will
+write to the log.  The default in the multi-task case
+is controlled by the MPI module initialization code,
+which sets task 0 to .TRUE. and all other tasks to .FALSE.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>logfileunit&nbsp; &nbsp; </em></TD>
-     <TD>Unit opened to file for diagnostic output.</TD></TR>
+ <TR><TD valign=top><em class=code>doflag&nbsp; &nbsp; </em></TD>
+     <TD>Sets, on a per-task basis, whether messages are to be
+         written to the logfile or standard output.  Warnings and
+         errors are always output.</TD><TR> 
+ </TABLE>
+ <BR>
+
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <A NAME="do_output"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = do_output() </em>
+ <pre>
+ logical                      :: <em class=code>do_output</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns true if this task should write to the log, false otherwise.
+Set by the <em class=code>set_output()</em> routine.  Defaults to
+true for the single task case.
+Can be used in code like so:
+<pre>
+if (do_output()) then
+  write(*,*) 'At this point in the code'
+endif
+</pre>
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>True if this task should write output.</TD></TR>
  </TABLE>
  <BR>
 
@@ -521,9 +534,10 @@ namelist and registers this module.
      <TD>If given, use in the timestamp message in the log file to say which
          program is being started.</TD></TR>
  <TR><TD valign=top><em class=optionalcode>alternatename&nbsp; &nbsp; </em></TD>
-     <TD>If given, log filename to use instead of 
-         <em class=code>dart_log.out</em>.</TD></TR>
-
+     <TD>If given, log filename to use instead of the value in the namelist.
+         This permits, for example, different programs sharing the same
+         input.nml file to have different logs. If not given here and no
+         value is specified in the namelist, this defaults to dart_log.out</TD></TR>
  </TABLE>
  <BR>
 
@@ -563,6 +577,7 @@ handler with error level message.
 <!--============= DESCRIPTION OF A CONSTANT ========================-->
  <A NAME="ERROR_LEVELS"></A>
  <P></P><HR><P></P>
+ <div class=routine>
  <pre>
  integer :: <em class=code>E_DBG, DEBUG</em>
  integer :: <em class=code>E_MSG, MESSAGE</em>
@@ -580,11 +595,27 @@ to control at which level program termination should occur.</TD></TR>
  </TABLE>
  <BR>
 
+<!--============= DESCRIPTION OF A CONSTANT ========================-->
+ <A NAME="logfileunit"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <pre>
+ integer :: <em class=code>logfileunit</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>logfileunit&nbsp; &nbsp; </em></TD>
+     <TD>Unit opened to file for diagnostic output.</TD></TR>
+ </TABLE>
+ <BR>
 
 
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
- <BR><HR><BR>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
