@@ -27,7 +27,7 @@
 
 <HTML>
 <TITLE>module smoother_mod</TITLE>
-<link rel=stylesheet type=text/css href=doc.css>
+<link rel=stylesheet type=text/css href=../doc/html/doc.css>
 <BODY>
 
 <DIV ALIGN=CENTER>
@@ -47,12 +47,12 @@
 <H1>MODULE smoother_mod</H1>
 <A NAME="HEADER"></A>
 <TABLE summary="">
-   <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
-   <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
-   <TR><TD>Revision:      </TD><TD> $Revision$             </TD></TR>
-   <TR><TD>Release Name:  </TD><TD> $Name$                       </TD></TR>
+   <TR><TD>Contact:       </TD><TD> Jeff Anderson           </TD></TR>
+   <TR><TD>Reviewers:     </TD><TD> &nbsp;                  </TD></TR>
+   <TR><TD>Revision:      </TD><TD> $Revision$       </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                  </TD></TR>
    <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-   <TR><TD>Change history:</TD><TD> see CVS log (cop-out, I know)</TD></TR>
+   <TR><TD>Change history:</TD><TD> see CVS log</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -62,11 +62,7 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   A note about documentation style. Optional arguments are enclosed in
-   brackets <em class=optionalcode>[like this]</em>.
-</P>
-<P>
-  Implements a fixed lag ensemble smoother as part of the filter. For now,
+Implements a fixed lag ensemble smoother as part of the filter. For now,
 this is done inefficiently with a separate call to filter_assim in 
 assim_tools_mod for each lag. 
 </P>
@@ -99,14 +95,14 @@ adaptive_inflate_mod
 <TR><TD><em class=call>use smoother_mod, only : </em></TD>
                    <TD><A HREF="#smoother_read_restart">smoother_read_restart</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#advance_smoother">advance_smoother</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_generate_copy_meta_data">smoother_generate_copy_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_gen_copy_meta_data">smoother_gen_copy_meta_data</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_write_restart">smoother_write_restart</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_smoother">init_smoother</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#do_smoothing">do_smoothing</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_mean_spread">smoother_mean_spread</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_assim">smoother_assim</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#filter_state_space_diagnostics">filter_state_space_diagnostics</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_state_space_diagnostics">smoother_state_space_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_ss_diagnostics">smoother_ss_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_end">smoother_end</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_inc_lags">smoother_inc_lags</A></TD></TR>
 </TABLE>
@@ -114,7 +110,7 @@ adaptive_inflate_mod
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;lim_obs_seq_nml</em> 
+Optional namelist interface <a href="#Namelist"><em class=code>&#38;smoother_nml</em></a>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -127,7 +123,7 @@ may be read from file <em class=file>input.nml</em>.
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-<P>fill in text here
+<P>The following routines are public:
 </P>
 
 
@@ -135,8 +131,8 @@ may be read from file <em class=file>input.nml</em>.
  <A NAME="smoother_read_restart"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call smoother_read_restart(ens_handle,ens_size,model_size,time1
- ,init_time_days) </em>
+ <em class=call> call smoother_read_restart(ens_handle, ens_size, model_size, 
+  time1, init_time_days) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>ens_size</em>
@@ -150,14 +146,15 @@ Reads in ensemble of states for all lag estimates from a restart file.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle of ensemble manager structure of single state; copied into all lags for startup.</TD></TR>
+     <TD>Handle of ensemble manager structure of single state; 
+        copied into all lags for startup.</TD></TR>
  <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp; </em></TD>
      <TD>Size of the ensemble.</TD></TR>
  <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
      <TD>Size of the model state vector.</TD></TR>
  <TR><TD valign=top><em class=code>time1&nbsp; &nbsp; </em></TD>
-     <TD>Overwrite the time in the restart file with this value if init_time_day
- s is non-negative.</TD></TR>
+     <TD>Overwrite the time in the restart file with this value if 
+         init_time_days is non-negative.</TD></TR>
  <TR><TD valign=top><em class=code>init_time_days&nbsp; &nbsp; </em></TD>
      <TD>If non-negative, use time1 instead of time in restart file.</TD></TR>
  </TABLE>
@@ -189,15 +186,14 @@ lags by 1 (i.e. lag 1 becomes lag2, etc.).
  <!--================================================================-->
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="smoother_generate_copy_meta_data"></A>
+ <A NAME="smoother_gen_copy_meta_data"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call smoother_generate_copy_meta_data(output_state_ens_mean,out
- put_state_ens_spread,num_output_state_members) </em>
+ <em class=call> call smoother_gen_copy_meta_data(num_output_state_members,
+    output_inflation) </em>
  <pre>
- logical, intent(in) :: <em class=code>output_state_ens_mean</em>
- logical, intent(in) :: <em class=code>output_state_ens_spread</em>
  integer, intent(in) :: <em class=code>num_output_state_members</em>
+ logical, intent(in) :: <em class=code>output_inflation</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -205,13 +201,11 @@ Initializes the metadata required for the smoother state space diagnostic
 files.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>output_state_ens_mean&nbsp; &nbsp; </em></TD>
-     <TD>True if smoother state space output should include ensemble mean.</TD></TR>
- <TR><TD valign=top><em class=code>output_state_ens_spread&nbsp; &nbsp; </em></TD>
-     <TD>True if smoother state space output should include ensemble spread.</TD></TR>
  <TR><TD valign=top><em class=code>num_output_state_members&nbsp; &nbsp; </em></TD>
      <TD>Number of copies of smoother state vector that should be in state space
-  diagnostic output.</TD></TR>
+       diagnostic output.</TD></TR>
+ <TR><TD valign=top><em class=code>output_inflation&nbsp; &nbsp; </em></TD>
+     <TD>True if smoother state space output should include inflation values.</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
@@ -220,7 +214,7 @@ files.
  <A NAME="smoother_write_restart"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call smoother_write_restart(start_copy,end_copy) </em>
+ <em class=call> call smoother_write_restart(start_copy, end_copy) </em>
  <pre>
  integer, intent(in) :: <em class=code>start_copy</em>
  integer, intent(in) :: <em class=code>end_copy</em>
@@ -247,7 +241,7 @@ contain the ensemble members.
  <A NAME="init_smoother"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call init_smoother(ens_handle,POST_INF_COPY,POST_INF_SD_COPY) </em>
+ <em class=call> call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>POST_INF_COPY</em>
@@ -330,10 +324,10 @@ output.
  <A NAME="smoother_assim"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call smoother_assim(obs_ens_handle,seq,keys,ens_size,num_groups
- ,obs_val_index,ENS_MEAN_COPY,ENS_SD_COPY,PRIOR_INF_COPY,PRIOR_INF_SD_COPY,
-OBS_KEY_COPY,OBS_GLOBAL_QC_COPY,OBS_PRIOR_MEAN_START,OBS_PRIOR_MEAN_END,
-OBS_PRIOR_VAR_START,OBS_PRIOR_VAR_END) </em>
+ <em class=call> call smoother_assim(obs_ens_handle, seq, keys, ens_size, 
+   num_groups, obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, 
+   PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_PRIOR_MEAN_START, 
+   OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END) </em>
  <pre>
  type(ensemble_type), intent(inout)  :: <em class=code>obs_ens_handle</em>
  type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
@@ -400,19 +394,19 @@ Does assimilation of a set of observations for each smoother lag.
  <A NAME="filter_state_space_diagnostics"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call filter_state_space_diagnostics(out_unit,ens_handle,
-model_size,output_state_ens_mean,output_state_ens_spread,num_output_state_members,
-output_state_mean_index,output_state_spread_index,ENS_MEAN_COPY,ENS_SD_COPY,inflate,
-INF_COPY,INF_SD_COPY) </em>
+ <em class=call> call filter_state_space_diagnostics(out_unit, ens_handle, 
+model_size, num_output_state_members, output_state_mean_index, 
+output_state_spread_index, output_inflation, temp_ens,
+ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY) </em>
  <pre>
  type(netcdf_file_type), intent(inout)   :: <em class=code>out_unit</em>
  type(ensemble_type), intent(inout)      :: <em class=code>ens_handle</em>
  integer, intent(in)                     :: <em class=code>model_size</em>
- logical, intent(in)                     :: <em class=code>output_state_ens_mean </em>
- logical, intent(in)                     :: <em class=code>output_state_ens_spread</em>
  integer, intent(in)                     :: <em class=code>num_output_state_members</em>
  integer, intent(in)                     :: <em class=code>output_state_mean_index</em>
  integer, intent(in)                     :: <em class=code>output_state_spread_index</em>
+ logical, intent(in)                     :: <em class=code>output_inflation</em>
+ real(r8), intent(out)                   :: <em class=code>temp_ens(model_size)</em>
  integer, intent(in)                     :: <em class=code>ENS_MEAN_COPY</em>
  integer, intent(in)                     :: <em class=code>ENS_SD_COPY</em>
  type(adaptive_inflate_type), intent(in) :: <em class=code>inflate</em>
@@ -431,16 +425,16 @@ spread, and inflation mean and spread to a netcdf file.
      <TD>Ensemble handle whose state space values are to be written.</TD></TR>
  <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
      <TD>Size of the model state vector.</TD></TR>
- <TR><TD valign=top><em class=code>output_state_ens_mean&nbsp; &nbsp; </em></TD>
-     <TD>True if the ensemble mean values are to be output.</TD></TR>
- <TR><TD valign=top><em class=code>output_state_ens_spread&nbsp; &nbsp; </em></TD>
-     <TD>True if the ensemble spread values are to be output.</TD></TR>
  <TR><TD valign=top><em class=code>num_output_state_members&nbsp; &nbsp; </em></TD>
      <TD>Number of individual state members to be output.</TD></TR>
  <TR><TD valign=top><em class=code>output_state_mean_index&nbsp; &nbsp; </em></TD>
      <TD>Index in netcdf file for ensemble mean.</TD></TR>
  <TR><TD valign=top><em class=code>output_state_spread_index&nbsp; &nbsp; </em></TD>
      <TD>Index in netcdf file for ensemble spread.</TD></TR>
+ <TR><TD valign=top><em class=code>output_inflation&nbsp; &nbsp; </em></TD>
+     <TD>True if the inflation values are to be output. Default is .TRUE.</TD></TR>
+ <TR><TD valign=top><em class=code>temp_ens&nbsp; &nbsp; </em></TD>
+     <TD>Storage passed in to avoid having to allocate extra space.</TD></TR>
  <TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp; &nbsp; </em></TD>
      <TD>Global index in ens_handle for ensemble mean.</TD></TR>
  <TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp; &nbsp; </em></TD>
@@ -457,21 +451,21 @@ spread, and inflation mean and spread to a netcdf file.
  <!--================================================================-->
 
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="smoother_state_space_diagnostics"></A>
+ <A NAME="smoother_ss_diagnostics"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call smoother_state_space_diagnostics(model_size,
-output_state_ens_mean,output_state_ens_spread,num_output_state_members,
-ENS_MEAN_COPY,ENS_SD_COPY,POST_INF_COPY,POST_INF_SD_COPY) </em>
+ <em class=call> call smoother_ss_diagnostics(model_size, 
+num_output_state_members, output_inflation, temp_ens, 
+ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY) </em>
  <pre>
- integer, intent(in) :: <em class=code>model_size</em>
- logical, intent(in) :: <em class=code>output_state_ens_mean</em>
- logical, intent(in) :: <em class=code>output_state_ens_spread</em>
- integer, intent(in) :: <em class=code>num_output_state_members</em>
- integer, intent(in) :: <em class=code>ENS_MEAN_COPY</em>
- integer, intent(in) :: <em class=code>ENS_SD_COPY</em>
- integer, intent(in) :: <em class=code>POST_INF_COPY</em>
- integer, intent(in) :: <em class=code>POST_INF_SD_COPY</em>
+ integer, intent(in)   :: <em class=code>model_size</em>
+ integer, intent(in)   :: <em class=code>num_output_state_members</em>
+ logical, intent(in)   :: <em class=code>output_inflation</em>
+ real(r8), intent(out) :: <em class=code>temp_ens(model_size)</em>
+ integer, intent(in)   :: <em class=code>ENS_MEAN_COPY</em>
+ integer, intent(in)   :: <em class=code>ENS_SD_COPY</em>
+ integer, intent(in)   :: <em class=code>POST_INF_COPY</em>
+ integer, intent(in)   :: <em class=code>POST_INF_SD_COPY</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -480,12 +474,12 @@ Outputs state space diagnostics files for all smoother lags.
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>model_size&nbsp; &nbsp; </em></TD>
      <TD>Size of the model state vector.</TD></TR>
- <TR><TD valign=top><em class=code>output_state_ens_mean&nbsp; &nbsp; </em></TD>
-     <TD>True if the ensemble mean is to be output in state space diagnostics file.</TD></TR>
- <TR><TD valign=top><em class=code>output_state_ens_spread&nbsp; &nbsp; </em></TD>
-     <TD>True if the ensemble spread is to be output in the state space diagnostics file.</TD></TR>
  <TR><TD valign=top><em class=code>num_output_state_members&nbsp; &nbsp; </em></TD>
      <TD>Number of state copies to be output in the state space diagnostics file.</TD></TR>
+ <TR><TD valign=top><em class=code>output_inflation&nbsp; &nbsp; </em></TD>
+     <TD>True if the inflation values are to be output. Default is .TRUE.</TD></TR>
+ <TR><TD valign=top><em class=code>temp_ens&nbsp; &nbsp; </em></TD>
+     <TD>Storage passed in to avoid having to allocate extra space.</TD></TR>
  <TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp; &nbsp; </em></TD>
      <TD>Global index of the ensemble mean in the lag smoother ensemble handles. </TD></TR>
  <TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp; &nbsp; </em></TD>
@@ -541,14 +535,13 @@ propagate the state to all requested lags.
  <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
+ <H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
+ '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / smoother_nml / </em>
- num_lags,start_from_restart,output_restart,restart_in_file_name,
-restart_out_file_name
-
-
+ <em class=call>namelist / smoother_nml / </em>  &#38;
+    num_lags, start_from_restart, output_restart,  &#38;
+    restart_in_file_name, restart_out_file_name
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
@@ -616,7 +609,7 @@ restart_out_file_name
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>smoother_generate_copy_meta_data</TD>
+<TR><!-- routine --><TD VALIGN=top>smoother_gen_copy_meta_data</TD>
     <!-- message --><TD VALIGN=top>output metadata in smoother needs ensemble size < 10000, not ###</TD>
     <!-- comment --><TD VALIGN=top>Can't output more than 9999 copies.</TD>
 </TR>
