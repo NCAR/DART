@@ -77,14 +77,12 @@ obs_def modules (such as obs_def_1d_state_mod.f90 or obs_def_reanalyis_bufr_mod.
 which are also documented in this directory. If no special obs_def files are 
 included in the preprocessor namelist, a minimal obs_def_mod.f90 is created which
 can only support identity forward observation operators.
-
-<P>
-<BR>
+</P>
 
 <!--==================================================================-->
 
 <A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -93,14 +91,14 @@ location_mod (depends on model choice)
 time_manager_mod
 assim_model_mod
 obs_kind_mod
-Other speical obs_def_kind modules as required
+Other special obs_def_kind modules as required
 </PRE>
 
 <!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>PUBLIC INTERFACE</H2>
 
 <TABLE>
@@ -111,6 +109,7 @@ Other speical obs_def_kind modules as required
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_kind">get_obs_kind</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_time">get_obs_def_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_error_variance">get_obs_def_error_variance</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_key">get_obs_def_key</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_location">set_obs_def_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_kind">set_obs_def_kind</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_time">set_obs_def_time</A></TD></TR>
@@ -135,8 +134,9 @@ Other speical obs_def_kind modules as required
 <!--==================================================================-->
 
 <A NAME="PublicEntities"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>PUBLIC COMPONENTS</H2>
+The following types, functions, and subroutines are public.
 <BR>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
@@ -215,7 +215,7 @@ specified.
 <A NAME="copy_obs_def"></A>
  <BR><HR><BR>
  <div class=routine>
- <em class=call> call copy_obs_def(obs_def1,obs_def2) </em>
+ <em class=call> call copy_obs_def(obs_def1, obs_def2) </em>
  <pre>
  type(obs_def_type), intent(out) :: <em class=code>obs_def1</em>
  type(obs_def_type), intent(in)  :: <em class=code>obs_def2</em>
@@ -233,6 +233,28 @@ Copies obs_def2 to obs_def1, overloaded as assignment (=).
  <BR>
 
 <!--============= DESCRIPTION OF A FUNCTION ========================-->
+<A NAME="get_obs_def_key"></A>
+<BR><HR><BR>
+ <div class=routine>
+ <em class=call> var = get_obs_def_key(obs_def) </em>
+ <pre>
+ integer                        :: <em class=code>get_obs_def_key</em>
+ type(obs_def_type), intent(in) :: <em class=code>obs_def</em>
+ </pre>
+</div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns key from an observation definition.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>Returns key from an obs_def</TD></TR>
+ <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
+     <TD>An obs_def</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
 
 <A NAME="get_obs_def_error_variance"></A>
  <BR><HR><BR>
@@ -244,10 +266,10 @@ Copies obs_def2 to obs_def1, overloaded as assignment (=).
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Returns error variance from an obs_def.
+Returns error variance from an observation definition.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_def_error_variance&nbsp; &nbsp; </em>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em>
  </TD>
      <TD>Error variance from an obs_def</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
@@ -262,15 +284,15 @@ Returns error variance from an obs_def.
  <div class=routine>
  <em class=call> var = get_obs_def_location(obs_def) </em>
  <pre>
- type(location_type), intent(out) :: <em class=code>get_obs_def_location</em>
+ type(location_type)              :: <em class=code>get_obs_def_location</em>
  type(obs_def_type), intent(in)   :: <em class=code>obs_def</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Returns the location from an obs_def. 
+Returns the location from an observation definition. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_def_location&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Returns location from an obs_def</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
@@ -284,7 +306,7 @@ Returns the location from an obs_def.
  <div class=routine>
  <em class=call> var = get_obs_kind(obs_def) </em>
  <pre>
- integer,            intent(out) :: <em class=code>var</em>
+ integer                         :: <em class=code>get_obs_kind</em>
  type(obs_def_type),  intent(in) :: <em class=code>obs_def</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
@@ -293,7 +315,7 @@ Returns the location from an obs_def.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Returns the obs_kind from an obs_def</TD></TR>
+     <TD>Returns the observation kind from an obs_def</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  </TABLE>
@@ -310,10 +332,10 @@ Returns the location from an obs_def.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Returns time from an obs_def.
+Returns time from an observation definition.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_def_time&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Returns time from an obs_def</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
@@ -327,19 +349,18 @@ Returns time from an obs_def.
  <em class=call> obs_name = get_obs_name(obs_kind_ind) </em>
  <pre>
  character(len = 32)            :: <em class=code>get_obs_name</em>
- type(obs_def_type), intent(in) :: <em class=code>obs_def</em>
+ integer, intent(in)            :: <em class=code>obs_kind_ind</em>
  </pre>
 </div>
  <H3 class=indent1>Description</H3>
  <P>
-Given the integer index associated with an observation type, returns the observation name.
-See obs_kind for more detail.
+Returns an observation name from an observation kind.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_name&nbsp; &nbsp; </em></TD>
-     <TD>Returns name from an obs kind</TD></TR>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>Returns name from an observation kind</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
-     <TD>An obs kind</TD></TR>
+     <TD>An observation kind</TD></TR>
  </TABLE>
  <BR>
 
@@ -354,7 +375,7 @@ See obs_kind for more detail.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Set the location in an obs_def.
+Set the location in an observation definition.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
@@ -375,7 +396,7 @@ Set the location in an obs_def.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Set error variance for an obs_def.
+Set error variance for an observation definition.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
@@ -396,7 +417,7 @@ Set error variance for an obs_def.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Set the key for an obs_def.
+Set the key for an observation definition.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
@@ -423,7 +444,7 @@ Set the kind of observation in an observation definition.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>An obs_def</TD></TR>
  <TR><TD valign=top><em class=code>kind&nbsp; &nbsp; </em></TD>
-     <TD>An integer pertaining to a particular kind of observation.</TD></TR>
+     <TD>An integer observation kind</TD></TR>
  </TABLE>
  <BR>
 
@@ -438,7 +459,7 @@ Set the kind of observation in an observation definition.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Sets time for an obs_def.
+Sets time for an observation definition.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
@@ -472,14 +493,14 @@ Compute the observation (forward) operator for a particular obs definition.
  <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
      <TD>descriptor for observation type</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
-     <TD>The input obs_def.</TD></TR>
+     <TD>The input obs_def</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
      <TD>The obs kind</TD></TR>
  <TR><TD valign=top><em class=code>state&nbsp; &nbsp; </em></TD>
      <TD>Model state vector</TD></TR>
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
      <TD>Returned integer describing problems with applying 
-		  forward operator</TD></TR>
+		  forward operator (0 means OK).</TD></TR>
  <TR><TD valign=top><em class=code>assimilate_this_ob&nbsp; &nbsp; </em></TD>
      <TD>Indicates whether to assimilate this obs or not</TD></TR>
  <TR><TD valign=top><em class=code>evaluate_this_ob&nbsp; &nbsp; </em></TD>
@@ -491,13 +512,14 @@ Compute the observation (forward) operator for a particular obs definition.
 <A NAME="read_obs_def"></A>
  <BR><HR><BR>
  <div class=routine>
- <em class=call> call read_obs_def(ifile, obs_def, key,
+ <em class=call> call read_obs_def(ifile, obs_def, key, obs_val
      <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  integer,                    intent(in)    :: <em class=code>ifile</em>
  type(obs_def_type),         intent(inout) :: <em class=code>obs_def</em>
  integer,                    intent(in)    :: <em class=code>key</em>
- character(len=*), optional, intent(in)    :: <em class=optionalcode>fform</em>
+ real(r8),                   intent(inout) :: <em class=code>obs_val</em>
+ character(len=*), optional, intent(in)    :: <em class=code>fform</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -510,10 +532,15 @@ in fform or FORMATTED if fform is not present.
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Observation definition to be read</TD></TR>
  <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
-     <TD>descriptor of xxxx ... unused? </TD></TR>
- <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
-     <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
- </TR>
+     <TD>Present if unique identifier key is needed by some obs kind.  
+         Unused by default code.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_val&nbsp; &nbsp; </em></TD>
+     <TD>Present if needed to perform operations based on value.
+         Unused by default code.</TD></TR>
+ <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
+     <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED
+          (FORMATTED in this case is the human readable/text 
+           option as opposed to UNFORMATTED which is binary.)</TD></TR>
  </TABLE>
  <BR>
 
@@ -522,9 +549,10 @@ in fform or FORMATTED if fform is not present.
 <A NAME="interactive_obs_def"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call interactive_obs_def(obs_def) </em>
+ <em class=call> call interactive_obs_def(obs_def, key) </em>
  <pre>
  type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
+ integer,            intent(in)    :: <em class=code>key</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -532,7 +560,10 @@ Creates an obs_def via input from standard in.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
-     <TD>An obs_def</TD></TR>
+     <TD>An obs_def to be created</TD></TR>
+ <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+     <TD>Present if unique identifier key is needed by some obs kind.
+         Unused by default code.</TD></TR>
  </TABLE>
  <BR>
 
@@ -540,12 +571,13 @@ Creates an obs_def via input from standard in.
 <A NAME="write_obs_def"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call write_obs_def(ifile,obs_def
+ <em class=call> call write_obs_def(ifile, obs_def, key
      <em class=optionalcode>[,fform]</em>) </em>
  <pre>
  integer,                    intent(in) :: <em class=code>ifile</em>
  type(obs_def_type),         intent(in) :: <em class=code>obs_def</em>
- character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
+ integer,                    intent(in) :: <em class=code>key</em>
+ character(len=*), optional, intent(in) :: <em class=code>fform</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -557,7 +589,10 @@ in fform or FORMATTED if fform is not present.
      <TD>File unit open to output file</TD></TR>
  <TR><TD valign=top><em class=code>obs_def&nbsp; &nbsp; </em></TD>
      <TD>Observation definition to be written</TD></TR>
- <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
+     <TD>Present if unique identifier key is needed by some obs kind.
+         Unused by default code.</TD></TR>
+ <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
      <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
  </TR>
  </TABLE>
@@ -587,9 +622,11 @@ Releases all storage associated with an obs_def and its subcomponents.
 <!--==================================================================-->
 </P>
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>FILES</H2>
-<UL><LI>NONE
+<UL><LI>The read_obs_def() and write_obs_def() routines 
+are passed an already-opened file channel/descriptor
+and read to or write from it.
 </UL>
 
 <!--==================================================================-->
@@ -597,7 +634,7 @@ Releases all storage associated with an obs_def and its subcomponents.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>REFERENCES</H2>
 
 <!--==================================================================-->
@@ -613,8 +650,8 @@ Releases all storage associated with an obs_def and its subcomponents.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>get_expected_obs_from_def</TD>
-    <!-- message --><TD VALIGN=top>Attempt to evaluate undefined obs_kind_type</TD>
-    <!-- comment --><TD VALIGN=top>An observation kind integer index for which
+    <!-- message --><TD VALIGN=top>Attempt to evaluate undefined observation kind</TD>
+    <!-- comment --><TD VALIGN=top>An observation kind for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
@@ -629,20 +666,20 @@ Releases all storage associated with an obs_def and its subcomponents.
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>read_obs_def</TD>
-    <!-- message --><TD VALIGN=top>Attempt to read for undefined obs_kind type</TD>
-    <!-- comment --><TD VALIGN=top>Reading for an observation kind integer index for which
+    <!-- message --><TD VALIGN=top>Attempt to read for undefined obs_kind index</TD>
+    <!-- comment --><TD VALIGN=top>Reading for an observation kind for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>write_obs_def</TD>
-    <!-- message --><TD VALIGN=top>Attempt to write for undefined obs_kind type</TD>
-    <!-- comment --><TD VALIGN=top>Writing for an observation kind integer index for which
+    <!-- message --><TD VALIGN=top>Attempt to write for undefined obs_kind index</TD>
+    <!-- comment --><TD VALIGN=top>Writing for an observation kind for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>interactive_obs_def</TD>
-    <!-- message --><TD VALIGN=top>Attempt to  interactively create undefined obs_kind type</TD>
-    <!-- comment --><TD VALIGN=top>Creating an observation kind integer index for which
+    <!-- message --><TD VALIGN=top>Attempt to  interactively create undefined obs_kind index</TD>
+    <!-- comment --><TD VALIGN=top>Creating an observation kind for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
@@ -654,7 +691,7 @@ Releases all storage associated with an obs_def and its subcomponents.
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>KNOWN BUGS</H2>
 <P>
 </P>
@@ -664,7 +701,7 @@ Releases all storage associated with an obs_def and its subcomponents.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<BR><HR>
 <H2>FUTURE PLANS</H2>
 <P>
 </P>
