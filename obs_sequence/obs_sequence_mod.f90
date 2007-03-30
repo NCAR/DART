@@ -925,7 +925,7 @@ end function get_last_obs
 subroutine add_copies(seq, num_to_add)
 
 ! This requires a complete recreation of the entire obs sequence
-! Add additional copyies to an observation sequence. This increases
+! Add additional copies to an observation sequence. This increases
 ! the space for copy meta_data and goes through the whole string of
 ! observations deallocating and allocating (yuck), to add space.
 ! In the long run, may want a smoother way to do this globally.
