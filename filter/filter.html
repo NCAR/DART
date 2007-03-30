@@ -61,7 +61,10 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   Main program for driving ensemble filter assimilations. This program 
+   Main program for driving ensemble filter assimilations. 
+</P>
+
+<P> This program 
    provides a number of options that are driven from its namelist. The
    number of assimilation steps to be done are controlled by the input
    observation sequence and by the time-stepping capabilities of the model
@@ -72,15 +75,25 @@
 <P>
    The filter adds a quality control field with metadata 'DART quality control'
    to the obs_seq.final file. At present, this field can have the following
-   values: 0: Observation is okay; 1: Observation was evaluated only but not
-   used in the assimilation; 2: The observation was used but one or more of
-   the posterior forward observation operators failed; 3: The observation
-   was evaluated only but not used AND one or more of the posterior forward
-   observation operators failed; 4: One or more prior forward observation
-   operators failed so the observation was not used; 5: The observation was
-   not used because it was not selected in the namelist to be assimilated
-   or evaluated; 6: The prior quality control value was too high so the
-   observation was not used.
+   values: 
+ <TABLE border=0 cellpadding=3 width=100%>
+    <TR><TD>0:</TD><TD> Observation is okay </TD></TR>
+    <TR><TD>1:</TD><TD> Observation was evaluated only but not
+       used in the assimilation </TD></TR>
+    <TR><TD>2:</TD><TD> The observation was used but one or more of
+       the posterior forward observation operators failed </TD></TR>
+    <TR><TD>3:</TD><TD> The observation
+       was evaluated only but not used AND one or more of the posterior 
+       forward observation operators failed </TD></TR>
+    <TR><TD>4:</TD><TD> One or more prior forward observation
+       operators failed so the observation was not used </TD></TR>
+    <TR><TD>5:</TD><TD> The observation was
+       not used because it was not selected in the namelist to be assimilated
+       or evaluated </TD></TR>
+    <TR><TD>6:</TD><TD> The prior quality control value was too high so the
+       observation was not used.  </TD></TR>
+    <TR><TD>7:</TD><TD> Outlier test failed (see below)</TR>
+  </TABLE>
 </P>
 
 <P>
@@ -359,7 +372,7 @@ being for the posterior inflation.
                         Default: (/0.0_r8, 0.0_r8/)</TD></TR>
  </TABLE>
 
- <H4 class=indent1>Deprecated or Defunct namlist variables</H4>
+ <H4 class=indent1>Deprecated or Defunct namelist variables</H4>
  <P>The following table contains the deprecated or defunct namelist variables.
     It is a FATAL ERROR to have these in the filter namelist.
  </P>
