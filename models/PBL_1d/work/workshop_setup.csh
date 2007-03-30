@@ -64,16 +64,26 @@
 # absoft    -ffree  (see the mkmf.template for absoft for more on r8)
 #----------------------------------------------------------------------
 
-\rm -f preprocess gen_init create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag create_real_network_seq 
-\rm -f driver.x merge_obs_seq driver_enf.x
-
-csh mkmf_preprocess
-make         || exit 1
+\rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-./preprocess || exit 2
 
+set MODEL = "PBL_1d"
+
+@ n = 1
+
+echo
+echo
+echo "---------------------------------------------------------------"
+echo "${MODEL} build number ${n} is preprocess"
+
+csh  mkmf_preprocess
+make || exit $n
+
+./preprocess || exit 99
+
+#----------------------------------------------------------------------
+# Build all the single-threaded targets
 #----------------------------------------------------------------------
 echo ""
 echo "Building this model generally requires the fortran free-format flag and"
@@ -82,8 +92,9 @@ echo "If the following compile fails read the comments in the workshop_setup.csh
 echo "script for more help."
 echo ""
 
-@ n = 2
 foreach TARGET ( mkmf_* )
+
+   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
 
    switch ( $TARGET )
    case mkmf_preprocess:
@@ -92,9 +103,10 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "build number $n is ${TARGET}" 
-      csh $TARGET
-      make || exit $n
+      echo "${MODEL} build number ${n} is ${PROG}" 
+      \rm -f ${PROG}
+      csh $TARGET || exit $n
+      make        || exit $n
       breaksw
    endsw
 end

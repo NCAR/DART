@@ -11,34 +11,51 @@
 # $Revision$
 # $Date$
 
-\rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag integrate_model
-\rm -f merge_obs_seq
-\rm -f *.o *.mod
-
-csh mkmf_preprocess
-make         || exit 1
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
-./preprocess || exit 2
-
+#----------------------------------------------------------------------
+# 'preprocess' is a program that culls the appropriate sections of the
+# observation module for the observations types in 'input.nml'; the 
+# resulting source file is used by all the remaining programs, 
+# so this MUST be run first.
 #----------------------------------------------------------------------
 
-csh mkmf_create_obs_sequence
-make         || exit 3
-csh mkmf_create_fixed_network_seq
-make         || exit 4
-csh mkmf_perfect_model_obs
-make         || exit 5
-csh mkmf_filter
-make         || exit 6
-csh mkmf_obs_diag
-make         || exit 7
-csh mkmf_integrate_model
-make         || exit 8
-csh mkmf_merge_obs_seq
-make         || exit 9
+\rm -f preprocess *.o *.mod
+\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_kind/obs_kind_mod.f90
 
-#./perfect_model_obs || exit 20
-#./filter            || exit 21
-#\rm -f go_end_filter
+set MODEL = "template"
+
+@ n = 1
+
+echo
+echo
+echo "---------------------------------------------------------------"
+echo "${MODEL} build number ${n} is preprocess"
+
+csh  mkmf_preprocess
+make || exit $n
+
+./preprocess || exit 99
+
+#----------------------------------------------------------------------
+# Build all the single-threaded targets
+#----------------------------------------------------------------------
+
+foreach TARGET ( mkmf_* )
+
+   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+
+   switch ( $TARGET )
+   case mkmf_preprocess:
+      breaksw
+   default:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "${MODEL} build number ${n} is ${PROG}" 
+      \rm -f ${PROG}
+      csh $TARGET || exit $n
+      make        || exit $n
+      breaksw
+   endsw
+end
+

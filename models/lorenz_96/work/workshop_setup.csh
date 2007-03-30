@@ -10,7 +10,7 @@
 # $Id$
 # $Revision$
 # $Date$
- 
+
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
 # observation sequence file (obs_seq.in) and initial conditions appropriate 
@@ -51,38 +51,60 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter obs_diag integrate_model merge_obs_seq 
-\rm -f *.o *.mod
-
-csh mkmf_preprocess
-make         || exit 1
+\rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-./preprocess || exit 2
+
+set MODEL = "lorenz_96"
+
+@ n = 1
+
+echo
+echo
+echo "---------------------------------------------------------------"
+echo "${MODEL} build number ${n} is preprocess"
+
+csh  mkmf_preprocess
+make || exit $n
+
+./preprocess || exit 99
 
 #----------------------------------------------------------------------
+# Build all the single-threaded targets
+#----------------------------------------------------------------------
 
-csh mkmf_create_obs_sequence
-make         || exit 3
-csh mkmf_create_fixed_network_seq
-make         || exit 4
-csh mkmf_perfect_model_obs
-make         || exit 5
-csh mkmf_obs_diag
-make         || exit 6
-csh mkmf_merge_obs_seq
-make         || exit 7
+foreach TARGET ( mkmf_* )
 
-# normal compile without the MPI parallel libraries:
- 
-csh mkmf_filter 
-make         || exit 9
+   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
 
-# to enable an MPI parallel version of filter for this model, comment
-# out the previous 2 lines and comment in the following section:
+   switch ( $TARGET )
+   case mkmf_preprocess:
+      breaksw
+   default:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "${MODEL} build number ${n} is ${PROG}" 
+      \rm -f ${PROG}
+      csh $TARGET || exit $n
+      make        || exit $n
+      breaksw
+   endsw
+end
 
-#rm *.o *.mod
+@ n = $n + 1
+./perfect_model_obs || exit $n
+
+@ n = $n + 1
+./filter            || exit $n
+
+#----------------------------------------------------------------------
+# to enable an MPI parallel version of filter for this model, 
+# uncomment the following block:
+#----------------------------------------------------------------------
+
+# @ n = $n + 1
+#\rm *.o *.mod filter
 #
 #csh mkmf_filter -mpi
 #make
@@ -92,21 +114,13 @@ make         || exit 9
 #   echo "If this died in mpi_utilities_mod, see code comments"
 #   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
 #   echo
-#   exit 9
+#   exit $n
 #endif
 
-
-#----------------------------------------------------------------------
-
-./perfect_model_obs || exit 20
-
-if ( ! -e using_mpi_for_filter ) then
-   ./filter            || exit 21
-else
-   # mpirun -np 4 ./filter            || exit 21
+if ( -e using_mpi_for_filter ) then
+   # mpirun -np 4 ./filter   || exit $n
    # or one of these:
-   bsub < runme_filter            || exit 21
-   # qsub runme_filter              || exit 21
+   bsub < runme_filter       || exit $n
+   # qsub runme_filter       || exit $n
 endif
-
 

@@ -60,6 +60,7 @@ foreach TARGET ( mkmf_* )
       echo
       echo "---------------------------------------------------"
       echo "${MODEL} build number ${n} is ${PROG}" 
+      \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
       breaksw

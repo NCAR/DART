@@ -51,36 +51,50 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess create_obs_sequence create_fixed_network_seq
-\rm -f perfect_model_obs filter dart_to_MITgcm MITgcm_to_dart 
-\rm -f perfect_ics merge_obs_seq
-
-csh mkmf_preprocess
-make         || exit 1
+\rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
-./preprocess || exit 2
+
+set MODEL = "MITgcm_annulus"
+
+@ n = 1
+
+echo
+echo
+echo "---------------------------------------------------------------"
+echo "${MODEL} build number ${n} is preprocess"
+
+csh  mkmf_preprocess
+make || exit $n
+
+./preprocess || exit 99
 
 #----------------------------------------------------------------------
+# Build all the single-threaded targets
+#----------------------------------------------------------------------
 
-csh mkmf_create_obs_sequence
-make         || exit 3
-csh mkmf_create_fixed_network_seq
-make         || exit 4
-csh mkmf_perfect_model_obs
-make         || exit 5
-csh mkmf_filter
-make         || exit 6
-csh mkmf_dart_to_MITgcm
-make         || exit 7
-csh mkmf_MITgcm_to_dart
-make         || exit 8
-csh mkmf_perfect_ics
-make         || exit 9
-csh mkmf_merge_obs_seq
-make         || exit 10
+foreach TARGET ( mkmf_* )
 
-./perfect_model_obs || exit 20
-./filter            || exit 21
-\rm -f go_end_filter
+   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+
+   switch ( $TARGET )
+   case mkmf_preprocess:
+      breaksw
+   default:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "${MODEL} build number ${n} is ${PROG}" 
+      \rm -f ${PROG}
+      csh $TARGET || exit $n
+      make        || exit $n
+      breaksw
+   endsw
+end
+
+@ n = $n + 1
+./perfect_model_obs || exit $n
+
+@ n = $n + 1
+./filter            || exit $n
 
