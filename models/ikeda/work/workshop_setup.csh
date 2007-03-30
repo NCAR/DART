@@ -66,3 +66,9 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
+@ n = $n + 1
+./perfect_model_obs || exit $n
+
+@ n = $n + 1
+./filter            || exit $n
+
