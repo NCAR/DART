@@ -69,14 +69,65 @@ Y.num_times  = length(Y.var_atts{1});   % determine # of output times
 Y.num_copies = length(Y.var_atts{2});   % # of ensemble members
 Y.num_vars   = length(Y.var_atts{3});   % dimension of desired variable
 
-% Get some information for the 'Z' variable
-Z.var_atts   = dim(f{pinfo.var3name});  % cell array of dimensions for the var
-Z.num_times  = length(Z.var_atts{1});   % determine # of output times
-Z.num_copies = length(Z.var_atts{2});   % # of ensemble members
-Z.num_vars   = length(Z.var_atts{3});   % dimension of desired variable
-close(f);
+if ( isfield( pinfo,'var3name') )
+   % Get some information for the 'Z' variable
+   Z.var_atts   = dim(f{pinfo.var3name});  % cell array of dimensions for the var
+   Z.num_times  = length(Z.var_atts{1});   % determine # of output times
+   Z.num_copies = length(Z.var_atts{2});   % # of ensemble members
+   Z.num_vars   = length(Z.var_atts{3});   % dimension of desired variable
+   close(f);
+end
 
 switch lower(model)
+
+   case {'ikeda'}   % only two state variables
+
+      pinfo     
+
+      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem 
+      
+      x = get_var_series(pinfo.fname, pinfo.var1name, ens_mem_id, pinfo.var1ind);
+      y = get_var_series(pinfo.fname, pinfo.var2name, ens_mem_id, pinfo.var2ind);
+
+      h = plot(x,y,pinfo.ltype);
+      axis image
+
+      % datmin = min(min(x,y));
+      % datmax = max(max(x,y));
+      % axis([datmin datmax datmin datmax])
+      
+      % If there is no legend, we are assuming this is the first plot on this
+      % axis. We need to add a title, legend, axes labels, etc.
+      [legh, objh, outh, outm] = legend;
+      if (isempty(legh))
+      
+         % title(sprintf('%s ensemble member %d of %s',model,ens_mem_id,pinfo.fname), ...
+         %    'interpreter','none','fontweight','bold')
+         title('The Ikeda phase space','fontweight','bold')
+         xlabel(sprintf('%s variable # %d',pinfo.var1name, pinfo.var1ind))
+         ylabel(sprintf('%s variable # %d',pinfo.var2name, pinfo.var2ind))
+      
+         s = sprintf('%d %d %s %s %s', pinfo.var1ind, pinfo.var2ind, ...
+                     pinfo.fname, model, pinfo.ens_mem);
+         h = legend(s,0);
+         [legh, objh, outh, outm] = legend;
+         set(objh(1),'interpreter','none')
+      
+      else
+         % Must add salient information to the legend.
+         % legh     handle to the legend axes
+         % objh     handle for the text, lines, and patches in the legend
+         % outh     handle for the lines and patches in the plot
+         % outm     cell array for the text in the legend
+         nlines = length(outm);
+         outm{nlines+1} = sprintf('%d %d %s %s %s', ...
+              pinfo.var1ind, pinfo.var2ind, pinfo.fname, ...
+              model, pinfo.ens_mem);
+         [legh, objh, outh, outm] = legend([outh; h],outm,0);
+ 
+         set(objh(1:nlines+1),'interpreter','none')
+      end
+      legend boxoff
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04','forced_lorenz_96'} 

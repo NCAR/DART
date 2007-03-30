@@ -67,7 +67,7 @@ end
 switch lower(pstruct.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96'} 
+	 'lorenz_04','forced_lorenz_96','ikeda'} 
 
       % determine which variable ['state','X','Y' ...] and
       % determine which variable IDs (locations), as well as

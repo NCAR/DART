@@ -56,6 +56,7 @@ switch lower(model)
                     pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
       comp_mem = GetEns( pinfo.fname, pinfo.comp_var, ...
                     pinfo.comp_lvlind, pinfo.comp_latind, pinfo.comp_lonind );
+      nmembers = size(comp_mem,2);
 
       correl = ens_correl(base_mem, pinfo.base_tmeind, comp_mem);
       times  = getnc(pinfo.fname,'time');
@@ -72,7 +73,7 @@ switch lower(model)
 
       s2 = sprintf('with ''%s'', lvl = %d, lat = %.2f, lon= %.2f, %d ensemble members -- %s', ...
           pinfo.comp_var, pinfo.comp_lvl, pinfo.comp_lat, pinfo.comp_lon, ...
-          num_copies-2,pinfo.fname); 
+          nmembers, pinfo.fname); 
 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
@@ -113,7 +114,8 @@ switch lower(model)
       % Get 'standard' ensemble series 
        base_var = get_ens_series(pinfo.fname, pinfo.base_var,  pinfo.base_var_index);
       state_var = get_ens_series(pinfo.fname, pinfo.state_var, pinfo.state_var_index);
-      
+      nmembers  = size(state_var,2);
+
       % perform a single correlation
       correl = ens_correl(base_var, pinfo.base_time, state_var);
       
@@ -122,7 +124,7 @@ switch lower(model)
       s1 = sprintf('%s Correlation of variable %s %d, T = %d, with variable %s %d', ...
                model, pinfo.base_var, pinfo.base_var_index, pinfo.base_time, ...
                       pinfo.state_var, pinfo.state_var_index);
-      s2 = sprintf('%d ensemble members -- %s', num_copies-2,pinfo.fname); 
+      s2 = sprintf('%d ensemble members -- %s', nmembers, pinfo.fname); 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel('time (timestep #)')
       ylabel('correlation')

@@ -78,6 +78,8 @@ switch lower(d.model)
             ivar = (i - 1)*3 + j;
             ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
             ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+            nmembers    = size(ens_members,2);
+
             if (have_truth) 
                truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
             end
@@ -89,7 +91,7 @@ switch lower(d.model)
                plot(times,   ens_mean,'r','LineWidth',2.0); hold on;
                plot(times,ens_members,'g');
                legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
+                      sprintf('Ensemble Members (%d)',nmembers),0)
 
                legend boxoff
                plot(times,   truth,'b','LineWidth',2.0); % plot again - on top
@@ -110,6 +112,7 @@ switch lower(d.model)
             truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
             ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
             ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+            nmembers    = size(ens_members,2);
 
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
@@ -119,7 +122,7 @@ switch lower(d.model)
                plot(times,   ens_mean,'r','LineWidth',1.0);
                plot(times,ens_members,'g');
                legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
+                      sprintf('Ensemble Members (%d)',nmembers),0)
                legend boxoff
                plot(times,   truth,'b','LineWidth',1.0); % plot again - on top
                plot(times,ens_mean,'r','LineWidth',1.0); %      again - on top
@@ -143,7 +146,7 @@ switch lower(d.model)
       ylabel('state variable 2')
       zlabel('state variable 3')
 
-   case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04'}
+   case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04', 'ikeda'}
 
       % Use one figure with subplots 
       figure(1); clf; iplot = 0;
@@ -152,6 +155,7 @@ switch lower(d.model)
             truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
             ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
             ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+            nmembers    = size(ens_members,2);
 
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
@@ -161,7 +165,7 @@ switch lower(d.model)
                plot(times,   ens_mean,'r','LineWidth',2);
                plot(times,ens_members,'g');
                legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
+                      sprintf('Ensemble Members (%d)',nmembers),0)
                legend boxoff
                plot(times,   truth,'b','LineWidth',2); % plot again - on top
                plot(times,ens_mean,'r','LineWidth',2); %      again - on top
@@ -184,6 +188,7 @@ switch lower(d.model)
       truth       = GetCopy(pinfo.truth_file, truth_index,      pinfo );
       ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
       ens_members = GetEns( pinfo.diagn_file,                   pinfo );
+      nmembers    = size(ens_members,2);
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -196,7 +201,7 @@ switch lower(d.model)
          plot(times,   ens_mean,'r','LineWidth',2);
          plot(times,ens_members,'g');
          legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',d.num_copies-2),0)
+                      sprintf('Ensemble Members (%d)',nmembers),0)
          legend boxoff
          plot(times,   truth,'b','LineWidth',2); % plot again - on top
          plot(times,ens_mean,'r','LineWidth',2); %      again - on top

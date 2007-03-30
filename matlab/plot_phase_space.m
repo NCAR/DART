@@ -139,6 +139,36 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(fname, 'PlotPhaseSpace');
 
+   case {'ikeda'}
+
+      str1 = sprintf('[%d - %d]',vars.min_state_var, vars.max_state_var);
+
+      if (exist('var1') ~=1)
+         s1 = input(sprintf('Input variable index for ''X'' variable %s. <cr> for 1.  ',str1),'s');
+         if isempty(s1), var1 = 1; else var1 = str2num(deblank(s1)); end
+      end 
+
+      if (exist('var2') ~=1)
+         s1 = input(sprintf('Input variable index for ''Y'' variable %s. <cr> for 2.  ',str1),'s');
+         if isempty(s1), var2 = 2; else var2 = str2num(deblank(s1)); end
+      end 
+
+      if (exist('ens_mem') ~=1)
+         s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
+         if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
+      end 
+
+      if (exist('ltype') ~=1)
+         s1 = input('Input line type string. <cr> for ''k-''  ','s');
+         if isempty(s1), ltype = 'k-'; else ltype = s1; end
+      end 
+
+      pinfo = struct('fname'   , fname       , ...
+                     'var1name', vars.def_var, 'var1ind', var1, ...
+                     'var2name', vars.def_var, 'var2ind', var2, ...
+                     'ens_mem' , ens_mem     , ...
+                     'ltype'   , ltype   );
+
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))

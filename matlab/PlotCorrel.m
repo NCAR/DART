@@ -55,7 +55,7 @@ end
 switch(lower(model))
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	   'lorenz_04','forced_lorenz_96'}
+	 'lorenz_04','forced_lorenz_96','ikeda'}
 
       base_var_index = pinfo.base_var_index;
       base_time      = pinfo.base_time;
@@ -83,7 +83,7 @@ switch(lower(model))
          state_var = get_ens_series(pinfo.fname, pinfo.base_var, i);
          correl(i, :) = ens_correl(base, base_time, state_var);
       end
-      
+     
       % Now for the plotting part ...
       disp('Please be patient ... this usually takes a bit ...')
       clf;
@@ -91,8 +91,8 @@ switch(lower(model))
       contour(correl,[-1:0.2:1]);
       s1 = sprintf('%s Correlation of variable %s index %d, T = %d of %s', ...
                model, pinfo.base_var, base_var_index, base_time, pinfo.fname);
-      s2 = sprintf('against all variables, all times, all %d ensemble members', ...
-               num_copies-2); 
+      s2 = sprintf('against all variables, all times, %d ensemble members', ...
+               size(state_var,2)); 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel('time (timestep #)')
       ylabel('state variable (index)')
@@ -152,6 +152,9 @@ switch(lower(model))
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
            model, pinfo.base_var, pinfo.base_lvl, ...
              pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
+
+      % num_copies-2 not correct when inflation values are output.
+
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
                pinfo.comp_var, pinfo.comp_lvl, num_copies-2); 
       title({s1,s2},'interpreter','none','fontweight','bold')

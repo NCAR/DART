@@ -36,7 +36,8 @@ vars = CheckModel(fname);   % also gets default values for this file.
 pinfo.fname = fname;
 
 switch lower(vars.model) 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04', ...
+	 'forced_lorenz_96','ikeda'}
 
       pinfo.base_var  = vars.def_var;
       pinfo.state_var = vars.def_var;
