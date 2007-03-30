@@ -117,7 +117,7 @@ mpi_utilities_mod
  <P></P><HR><P></P>
  <div class=routine>
  <em class=call> call move_ahead(ens_handle, ens_size, seq, 
-	 last_key_used, key_bounds, num_obs_in_set, async, adv_ens_command) </em>
+     last_key_used, key_bounds, num_obs_in_set, async, adv_ens_command) </em>
  <pre>
  type(ensemble_type),     intent(in)  :: <em class=code>ens_handle</em>
  integer,                 intent(in)  :: <em class=code>ens_size</em>
@@ -126,7 +126,7 @@ mpi_utilities_mod
  integer, dimension(2),   intent(out) :: <em class=code>key_bounds</em>
  integer,                 intent(out) :: <em class=code>num_obs_in_set</em>
  integer,                 intent(in)  :: <em class=code>async</em>
- character(len=129),      intent(in)  :: <em class=code>adv_ens_command</em>
+ character(len=*),        intent(in)  :: <em class=code>adv_ens_command</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -151,13 +151,16 @@ and all observations in this window are added to the set to be assimilated.
  <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
      <TD>An observation sequence</TD></TR>
  <TR><TD valign=top><em class=code>last_key_used&nbsp; &nbsp; </em></TD>
-     <TD>Identifies the last observation from the sequence that has been used</TD></TR>
+     <TD>Identifies the last observation from the sequence that has 
+         been used</TD></TR>
  <TR><TD valign=top><em class=code>key_bounds&nbsp; &nbsp; </em></TD>
-     <TD>Returned lower and upper bound on observations to be used at this time</TD></TR>
+     <TD>Returned lower and upper bound on observations to be used 
+         at this time</TD></TR>
  <TR><TD valign=top><em class=code>num_obs_in_set&nbsp; &nbsp; </em></TD>
      <TD>Number of observations to be used at this time</TD></TR>
  <TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
-     <TD>Controls how model is advanced (see filter)</TD></TR>
+     <TD>Controls how model is advanced (see filter and 
+         advance_state() below.)</TD></TR>
  <TR><TD valign=top><em class=code>adv_ens_command&nbsp; &nbsp; </em></TD>
      <TD>Command issued by shell for async option 2 (see filter)</TD></TR>
  </TABLE>
@@ -168,8 +171,8 @@ and all observations in this window are added to the set to be assimilated.
  <A NAME="advance_state"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call advance_state(ens_handle,ens_size,target_time,async,adv_en
- s_command) </em>
+ <em class=call> call advance_state(ens_handle, ens_size, target_time, 
+                 async, adv_ens_command) </em>
  <pre>
  type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
  integer, intent(in)                :: <em class=code>ens_size</em>
@@ -179,10 +182,17 @@ and all observations in this window are added to the set to be assimilated.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-Advances all ensemble size copies of an ensemble stored in ens_handle to the
-target_time. If async=0 this is done by repeated calls to adv_1step
-subroutine. If async=2, a call to the shell with the command adv_ens_command
-is used.
+Advances all ensemble size copies of an ensemble stored in ens_handle 
+to the target_time. 
+If async=0 this is done by repeated calls to 
+the <tt>adv_1step()</tt> subroutine. 
+If async=2, a call to the shell with the 
+command <em class=code>adv_ens_command</em> is used.
+If async=4, the filter program synchronizes with the MPI job shell script
+using the <tt>block_task()</tt> and <tt>restart_task()</tt> routines
+to suspect execution until all model advances have completed.
+The script can start the model advances using MPI and have it execute
+in parallel in this mode.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -192,8 +202,13 @@ is used.
  <TR><TD valign=top><em class=code>target_time&nbsp; &nbsp; </em></TD>
      <TD>Time to which model is to be advanced.</TD></TR>
  <TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
-     <TD>How to advance model: 0=subroutine adv_1step; 2=use shell of adv_ens_co
- mmand.</TD></TR>
+     <TD>How to advance model: 
+          <TABLE width=100% border=0 summary="" celpadding=3>
+           <TR><TD>0 = subroutine adv_1step</TD></TR>
+           <TR><TD>2 = shell executes adv_ens_command</TD></TR>
+           <TR><TD>4 = MPI job script advances models and 
+                      syncs with filter task</TD></TR>
+          </TABLE> </TD></TR>
  <TR><TD valign=top><em class=code>adv_ens_command&nbsp; &nbsp; </em></TD>
      <TD>Command to be issued to shell to advance model if async=2.</TD></TR>
  </TABLE>
