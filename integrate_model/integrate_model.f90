@@ -39,8 +39,8 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-type(time_type)         :: target_time, model_time
-integer                 :: iunit, io, model_size
+type(time_type)         :: target_time
+integer                 :: iunit, model_size
 type(ensemble_type)     :: ens_handle
 character (len=129)     :: adv_ens_command = ''
 
