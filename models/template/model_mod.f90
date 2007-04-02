@@ -62,7 +62,7 @@ type(location_type), allocatable :: state_loc(:)
 logical  :: output_state_vector = .true.
 integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
-!namelist /model_nml/ output_state_vector, time_step_days, time_step_seconds
+namelist /model_nml/ output_state_vector, time_step_days, time_step_seconds
 
 contains
 
