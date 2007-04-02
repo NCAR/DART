@@ -63,10 +63,28 @@
 
 <P>
 Every model that is DART compliant must provide an interface that looks
-like this. The file template/model_mod.f90 under models provides the fortran 
-interfaces for a minimal implementation of this interface. This description
-is generic in that no details of the underlying model impact the 
-interface.
+like this one. The file <em class=code>models/template/model_mod.f90</em> 
+provides the fortran interfaces for a minimal implementation meeting
+these requirements.  When adding a new model to DART you can either 
+start by modifying a
+<em class=code>model_mod.f90</em> file from a similar model already in
+DART or start with the template file.
+Either way, the supplied interface must match these descriptions exactly; 
+no details of the underlying model can impact the interface.
+</P>
+<P>
+Several of the routines listed below are allowed
+to be a NULL INTERFACE.  This means the subroutine or function name
+must exist in this file, but it is ok if it contains no executable code.
+</P>
+<P>
+A few of the routines listed below are allowed
+to be a PASS-THROUGH INTERFACE.  This means the subroutine or function 
+name can be listed on the 'use' line from the <em class=code>location_mod</em>, 
+and no subroutine or function with that name is supplied in this file.
+Alternatively, this file can provide an implementation which calls
+the underlying routines from the <em class=code>location_mod</em> and 
+then alters or augments the results based on model-specific requirements.
 </P>
 
 <!--==================================================================-->
@@ -78,6 +96,7 @@ interface.
 types_mod
 time_manager_mod
 location_mod
+utilities_mod
 POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 </PRE>
 
@@ -103,12 +122,16 @@ POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <em class=code>&#38;model_mod_nml</em> 
+Optional namelist interface <em class=code>&#38;model_nml</em> 
 may be read from file <em class=file>input.nml </em> The details of
 the namelist are always model specific (there are no generic
 namelist values)</em>.
@@ -123,7 +146,8 @@ namelist values)</em>.
 <A NAME="PublicEntities"></A>
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
-<P>fill in text here
+<P>The following routines must be public and will be called by other
+parts of the DART framework.
 </P>
 
 <!--================================================================-->
@@ -141,7 +165,7 @@ namelist values)</em>.
  applications.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_model_size&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>The size of the model state vector.</TD></TR>
  </TABLE>
  <BR>
@@ -159,7 +183,7 @@ namelist values)</em>.
  <H3 class=indent1>Description</H3>
  <P>
 Does a single timestep advance of the model. The input value of
-the vector x is the starting condition and x is updated to reflect
+the vector x is the starting condition and x must be updated to reflect
 the changed state after a timestep. The time argument is intent
 in and is used for models that need to know the date/time to
 compute a timestep, for instance for radiation computations.
@@ -169,7 +193,8 @@ program integrate_model is to be used to advance the model
 state as a separate executable. If one of these options
 is not going to be used (the model will only be advanced as
 a separate model-specific executable), this can be a
-NULL INTERFACE.       
+NULL INTERFACE.  (The subroutine name must still exist,
+but it can contain no code and it will not be called.)
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -196,8 +221,12 @@ NULL INTERFACE.
 Given an integer index into the state vector structure, returns the
 associated location. A second intent(out) optional argument kind
 can be returned if the model has more than one type of field (for
-instance temperature and zonal wind component). This interface is
-required for all filter applications as it is required for computing
+instance temperature and zonal wind component). This routine could
+also be called get_state_location_plus() since it returns not the 
+data value, but the location of that value, plus an optional 
+variable type (e.g. U_WIND or V_WIND). 
+This interface is
+required for all applications as it is used to compute
 the distance between observations and state variables. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
@@ -236,7 +265,8 @@ instance temperature, zonal wind component, etc.). In low order
 models that have no notion of types of variables, this argument can
 be ignored. For applications in which only perfect model experiments
 with identity observations (i.e. only the value of a particular
-state variable is observerd), this can be a NULL INTERFACE. 
+state variable is observed), this can be a NULL INTERFACE.
+Otherwise it is required (which is the most common case).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -269,8 +299,8 @@ in time that the model is capable of advancing the state in a given
 implementation. This interface is required for all applications. 
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_model_time_step&nbsp; &nbsp; </em></TD>
-     <TD>Time step of model.</TD></TR>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>Smallest time step of model.</TD></TR>
  </TABLE>
  <BR>
 
@@ -361,54 +391,6 @@ this can be a NULL INTERFACE.
  </TABLE>
  <BR>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="model_get_close_states"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call model_get_close_states(o_loc,radius,inum,indices,dist,x) </em>
- <pre>
- type(location_type), intent(in)     :: <em class=code>o_loc</em>
- real(r8), intent(in)                :: <em class=code>radius</em>
- integer, intent(out)                :: <em class=code>inum</em>
- integer, dimension(:), intent(out)  :: <em class=code>indices</em>
- real(r8), dimension(:), intent(out) :: <em class=code>dist</em>
- real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Computes a list of model state variable indices that are within
-distance radius of a given location, o_loc. The units of the radius
-and the metric for computing distances is defined by the location module
-that is in  use. The number of state variables that are within radius
-of o_loc is returned in inum. The indices of each of these is 
-returned in indices and the corresponding distance in dist. The model
-state is available in x because it is sometimes required to determine
-the distance (for instance, the current model surface pressure field
-is required to compute the location of state variables in a sigma  
-vertical coordinate model). A model can choose to do no computation
-here and return a value of -1 in inum. If this happens, the filter
-will do a naive search through ALL state variables for close states.
-This can work fine in low-order models, but can be far too expensive
-in large models.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>o_loc&nbsp; &nbsp; </em></TD>
-     <TD>Location around which close states are to be found.</TD></TR>
- <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>Anything closer than this is close.</TD></TR>
- <TR><TD valign=top><em class=code>inum&nbsp; &nbsp; </em></TD>
-     <TD>Number of close states found.</TD></TR>
- <TR><TD valign=top><em class=code>indices&nbsp; &nbsp; </em></TD>
-     <TD>Indices in state vector of close state elements.</TD></TR>
- <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
-     <TD>Distance to corresponding state elements.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>The state vector, needed for computing distance 
-	    in some models.</TD></TR>
- </TABLE>
- <BR>
-
  <!--================================================================-->
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
  <A NAME="nc_write_model_atts"></A>
@@ -421,31 +403,34 @@ in large models.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
- Writes the model-specific attributes to a netCDF file <BR>
- TJH Jan 24 2003 <BR>
-               
- TJH 29 July 2003 -- for the moment, all errors are fatal, so the
- return code is always '0 == normal', since the fatal errors stop execution. <BR>
-
- For the lorenz_96 model, each state variable is at a separate location.
- that's all the model-specific attributes I can think of ... <BR>
- 
- assim_model_mod:init_diag_output uses information from the location_mod
-     to define the location dimension and variable ID. All we need to do
-     is query, verify, and fill ... <BR>
-
- Typical sequence for adding new dimensions,variables,attributes:    <BR>
- NF90_OPEN             ! open existing netCDF dataset                <BR>
-    NF90_redef         ! put into define mode                        <BR>        
-    NF90_def_dim       ! define additional dimensions (if any)       <BR>
-    NF90_def_var       ! define variables: from name, type, and dims <BR>
-    NF90_put_att       ! assign attribute values                     <BR>
- NF90_ENDDEF           ! end definitions: leave define mode          <BR>
-    NF90_put_var       ! provide values for variable                 <BR>
- NF90_CLOSE            ! close: save updated netCDF dataset          <BR>
+This routine must write the model-specific attributes
+to a netCDF file. 
+This includes coordinate variables and any metadata, but NOT
+the model state vector. We do have to allocate SPACE for the model
+state vector, but that variable gets filled as the model advances.
+&nbsp; <em class=code>models/template/model_mod.f90</em> contains code that 
+can be used for any model as-is.  The generic code prepares a
+file which will have the state vector written as a single 1-D array
+of data.  This routine can be modified to save the data in form
+more closely related to the actual grid shape and variable type,
+and could also be extended to write additional attributes if desired.
+This routine is required for all models.
+</P>
+<P>
+ The typical sequence for adding new dimensions, variables, attributes:  
+<pre>
+ NF90_OPEN             ! open existing netCDF dataset               
+    NF90_redef         ! put into define mode                       
+    NF90_def_dim       ! define additional dimensions (if any)     
+    NF90_def_var       ! define variables: from name, type, and dims
+    NF90_put_att       ! assign attribute values                    
+ NF90_ENDDEF           ! end definitions: leave define mode         
+    NF90_put_var       ! provide values for variable                
+ NF90_CLOSE            ! close: save updated netCDF dataset        
+</pre>
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>nc_write_model_atts&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Returns a 0 for successful completion.</TD></TR>
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
      <TD>netCDF file identifier.</TD></TR>
@@ -467,34 +452,33 @@ in large models.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
- Writes the model variables to a netCDF file      
- TJH 23 May 2003                                 <BR>
-
- TJH 29 July 2003 -- for the moment, all errors are fatal, so the
- return code is always '0 == normal', since the fatal errors stop execution. <BR>
-
- For the lorenz_96 model, each state variable is at a separate location.
- that's all the model-specific attributes I can think of ...         <BR>
-
- assim_model_mod:init_diag_output uses information from the location_mod
-     to define the location dimension and variable ID. All we need to do
-     is query, verify, and fill ...                                  <BR>
-
- Typical sequence for adding new dimensions,variables,attributes:    <BR>
- NF90_OPEN             ! open existing netCDF dataset                <BR>
-    NF90_redef         ! put into define mode                        <BR>
-    NF90_def_dim       ! define additional dimensions (if any)       <BR>
-    NF90_def_var       ! define variables: from name, type, and dims <BR>
-    NF90_put_att       ! assign attribute values                     <BR>
- NF90_ENDDEF           ! end definitions: leave define mode          <BR>
-    NF90_put_var       ! provide values for variable                 <BR>
- NF90_CLOSE            ! close: save updated netCDF dataset          <BR>
+This routine must write the model-specific state vector (data)
+to a netCDF file. 
+&nbsp; <em class=code>models/template/model_mod.f90</em> contains code that
+can be used for any model as-is.  It writes the state vector as a single
+1-D array of data.  The code can be modified to write out the data in a
+form more closely resembling the computational grid and variable types if
+if desired.
+This routine is required for all models.
+</P>
+<P>
+ Typical sequence for adding new dimensions,variables,attributes:   
+<pre>
+ NF90_OPEN             ! open existing netCDF dataset               
+    NF90_redef         ! put into define mode                       
+    NF90_def_dim       ! define additional dimensions (if any)      
+    NF90_def_var       ! define variables: from name, type, and dims
+    NF90_put_att       ! assign attribute values                    
+ NF90_ENDDEF           ! end definitions: leave define mode         
+    NF90_put_var       ! provide values for variable                
+ NF90_CLOSE            ! close: save updated netCDF dataset         
+</pre>
 </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>nc_write_model_vars&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Returns 0 for normal completion.</TD></TR>
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
-     <TD>NetCDF file id.</TD></TR>
+     <TD>NetCDF file identifier.</TD></TR>
  <TR><TD valign=top><em class=code>statevec&nbsp; &nbsp; </em></TD>
      <TD>A model state vector.</TD></TR>
  <TR><TD valign=top><em class=code>copyindex&nbsp; &nbsp; </em></TD>
@@ -535,22 +519,263 @@ returned as true.
  <BR>
 
 <!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="ens_mean_for_model"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call ens_mean_for_model(ens_mean) </em>
+ <pre>
+ real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+A model-size vector with the means of the ensembles for each of
+the state vector items.  The model should save a local copy of this 
+data if it needs to use it later to compute distances or other values.
+This routine is called after each model advance and contains
+the updated means.
+If the model has no use for the means this should 
+be a NULL INTERFACE.  See the CAM model_mod for an example
+of how this routine can be used.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble mean state vector</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_maxdist_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ real(r8),             intent(in)    :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+In distance computations any two locations closer than the
+given <em class=code>maxdist</em> will be considered close
+by the <em class=code>get_close_obs()</em> routine.
+In general this is a PASS-THROUGH ROUTINE.  It is listed on
+the use line for the locations_mod, and in the public list
+for this module, but has no subroutine declaration and
+no other code in this module:
+<pre>
+use  location_mod, only: get_close_maxdist_init
+
+public  get_close_maxdist_init
+</pre>
+The location module has code which stores maxdist in the
+gc derived type.
+However, if the model needs to alter the value or wants
+to supply an alternative implementation it can
+intercept the call like so:
+<pre>
+use location_mod, only: &
+         lm_get_close_maxdist_init => get_close_maxdist_init
+
+public  get_close_maxdist_init
+</pre>
+In this case a local <em class=code>get_close_maxdist_init()</em> 
+routine must be supplied.  To call the original code in the location
+module use:
+<pre>
+   call lm_get_close_maxdist_init(gc, mymaxdist)
+</pre>
+This subroutine will be called before <em class=code>get_close_obs_init</em> 
+and <em class=code>get_close_obs</em>.
+</P>
+<P>
+In most cases the PASS-THROUGH ROUTINE will be used.
+
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>The get_close_type which stores precomputed information
+         about the locations to speed up searching</TD></TR>
+ <TR><TD valign=top><em class=code>maxdist&nbsp; &nbsp; </em></TD>
+     <TD>Anything closer than this will be considered close.</TD></TR>
+ </TABLE>
+ <BR>
+
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc, num, obs) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ integer,              intent(in)    :: <em class=code>num</em>
+ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+In general this is a PASS-THROUGH ROUTINE.  The default routine
+in the location module precomputes information to accelerate
+the distance computations done by <em class=code>get_close_obs()</em>.
+Like the other PASS-THROUGH ROUTINES it is listed on
+the use line for the locations_mod, and in the public list
+for this module, but has no subroutine declaration and
+no other code in this module:
+<pre>
+use  location_mod, only: get_close_obs_init
+
+public  get_close_obs_init
+</pre>  
+The location module code bins the list of locations and
+precomputes maximum possible distances between bins.
+However, if the model needs to alter the values or wants
+to supply an alternative implementation it can 
+intercept the call like so:
+<pre>
+use location_mod, only: &
+         lm_get_close_obs_init => get_close_obs_init
+         
+public  get_close_obs_init
+</pre>
+In this case a local <em class=code>get_close_obs_init()</em>
+routine must be supplied.  To call the original code in the location
+module use:
+<pre>
+   call lm_get_close_obs_init(gc, num, obs)
+</pre>
+This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
+and before <em class=code>get_close_obs</em>.
+</P>
+<P>
+In most cases the PASS-THROUGH ROUTINE will be used.
+
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>The get_close_type which stores precomputed information
+         about the locations to speed up searching</TD></TR>
+ <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
+     <TD>The number of items in the third argument</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>A list of locations which will be part
+         of the subsequent distance computations</TD></TR>
+ </TABLE>
+ <BR>
+
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+   obs, obs_kind, num_close, close_ind
+   <em class=code>[, dist]</em>) </em>
+ <pre>
+ type(get_close_type), intent(in)  :: <em class=code>gc</em>
+ type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+ integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+ type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+ integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+ integer,              intent(out) :: <em class=code>num_close</em>
+ integer,              intent(out) :: <em class=code>close_ind(:)</em>
+ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Given a location and kind, compute the distances to all other locations 
+in the <em class=code>obs</em> list.  The return values are the number
+of items which are within maxdist of the base, the index numbers in the 
+original obs list, and optionally the distances.  The <em class=code>gc</em>
+contains precomputed information to speed the computations.
+</P>
+In general this is a PASS-THROUGH ROUTINE.  It is listed on
+the use line for the locations_mod, and in the public list
+for this module, but has no subroutine declaration and
+no other code in this module:
+<pre>
+use  location_mod, only: get_close_obs
+
+public  get_close_obs
+</pre>  
+However, if the model needs to alter the values or wants
+to supply an alternative implementation it can 
+intercept the call like so:
+<pre>
+use location_mod, only: &
+         lm_get_close_obs => get_close_obs
+         
+public  get_close_obs
+</pre>
+In this case a local <em class=code>get_close_obs()</em>
+routine must be supplied.  To call the original code in the location
+module use:
+<pre>
+   call lm_get_close_obs(gc, base_obs_loc, ...)
+</pre>
+This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
+and <em class=code>get_close_obs_init</em>.
+</P>
+<P>
+In most cases the PASS-THROUGH ROUTINE will be used, but some models need
+to alter the actual distances depending on the observation or state vector kind,
+or based on the observation or state vector location.
+It is reasonable in this case to leave 
+<em class=code>get_close_maxdist_init()</em>
+and <em class=code>get_close_obs_init()</em> as pass-through routines and 
+intercept only <em class=code>get_close_obs()</em>.  The local
+<em class=code>get_close_obs()</em> can first call the location mod routine
+and let it return a list of values, and then inspect the list and alter
+or remove any entries as needed.  See the CAM and WRF model_mod files
+for examples of this use.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
+     <TD>The get_close_type which stores precomputed information
+         about the locations to speed up searching</TD></TR>
+ <TR><TD valign=top><em class=code>base_obs_loc&nbsp; &nbsp; </em></TD>
+     <TD>Reference location.  The distances will be computed
+         between this location and every other location in the obs list</TD></TR>
+ <TR><TD valign=top><em class=code>base_obs_kind&nbsp;</em></TD>
+     <TD>The kind of base_obs_loc</TD></TR>
+ <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
+     <TD>Compute the distance between the base_obs_loc and each
+         of the locations in this list</TD></TR>
+ <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>The corresponding kind of each item in the obs list</TD></TR>
+ <TR><TD valign=top><em class=code>num_close&nbsp; &nbsp; </em></TD>
+     <TD>The number of items from the obs list
+         which are within maxdist of the base location</TD></TR>
+ <TR><TD valign=top><em class=code>close_ind&nbsp; &nbsp; </em></TD>
+     <TD>The list of index numbers from the obs list 
+         which are within maxdist of the base location</TD></TR>
+ <TR><TD valign=top><em class=optionalcode>dist&nbsp; &nbsp; </em></TD>
+     <TD>If present, return the distance between each entry
+         in the close_ind list and the base location.  If not
+         present, all items in the obs list which are closer
+         than maxdist will be added to the list but the overhead
+         of computing the exact distances will be skipped.</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--=================================================================-->
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
  <BR><HR><BR>
+ <H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&338;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / model_mod_nml / </em>
-                                                                                
+ <em class=call>namelist / model_nml / </em>
                                                                                 
                                                                
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
-Models are free to include a model_mod namelist which can be read when 
-static_init_model is called. A good example can be found in the lorenz_96
-model_mod.
+Models are free to include a model namelist which can be read when 
+static_init_model is called. A good example can be found in the 
+lorenz_96 model_mod.f90.
  </em>
  </P>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
@@ -574,6 +799,8 @@ model_mod.
 <A NAME="References"></A>
 <BR><HR><BR>
 <H2>REFERENCES</H2>
+<P>
+</P>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
