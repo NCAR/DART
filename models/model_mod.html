@@ -62,8 +62,8 @@
 <H2>OVERVIEW</H2>
 
 <P>
-Every model that is DART compliant must provide an interface that looks
-like this one. The file <em class=code>models/template/model_mod.f90</em> 
+Every model that is DART compliant must provide an interface as documented
+here. The file <em class=code>models/template/model_mod.f90</em> 
 provides the fortran interfaces for a minimal implementation meeting
 these requirements.  When adding a new model to DART you can either 
 start by modifying a
@@ -86,6 +86,13 @@ Alternatively, this file can provide an implementation which calls
 the underlying routines from the <em class=code>location_mod</em> and 
 then alters or augments the results based on model-specific requirements.
 </P>
+<P>
+The system comes with several types of location modules for computing
+distances appropriately.  Two of the
+ones most commonly used are for data in a 1D system and for data in 
+a 3D spherical coordinate system.  Make the selection by listing
+the appropriate choice from <em class=code>location/*/location_mod.f90</em>
+in the corresponding <em class=code>path_names_*</em> file at compilation time.
 
 <!--==================================================================-->
 
@@ -95,7 +102,7 @@ then alters or augments the results based on model-specific requirements.
 <PRE>
 types_mod
 time_manager_mod
-location_mod
+location_mod (multiple choices here)
 utilities_mod
 POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 </PRE>
