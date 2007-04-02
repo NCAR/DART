@@ -92,8 +92,8 @@ real   , dimension(10) :: pert_param_min  = 0.00001
 real   , dimension(10) :: pert_param_max  = 0.99999
 logical                :: maintain_initial_spread = .false.
 character(len=4), dimension(10) :: dist_shape = 'logn'
-
-integer                :: real_obs_period, start_real_obs
+integer                :: real_obs_period = 1800
+integer                :: start_real_obs  = 1800
 
 namelist /model_nml/ num_est_params, est_param_types, pert_param_sd, &
          pert_init_sd, pert_init_beta_1, pert_init_beta_2, &
