@@ -396,7 +396,7 @@ type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)
 integer,              intent(in)  :: base_obs_kind, obs_kind(:)
 integer,              intent(out) :: num_close, close_ind(:)
-real(r8),             intent(out) :: dist(:)
+real(r8), optional,   intent(out) :: dist(:)
 
 integer :: i
 real(r8) :: this_dist
@@ -409,7 +409,7 @@ do i = 1, gc%num
       ! Add this ob to the list
       num_close = num_close + 1
       close_ind(num_close) = i
-      dist(num_close) = this_dist 
+      if (present(dist)) dist(num_close) = this_dist 
    endif
 end do
 
