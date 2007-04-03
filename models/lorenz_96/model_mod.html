@@ -68,8 +68,24 @@ this state, find state variables that are close to a given location,
 and do spatial interpolation for model state variables.
 </P>
 <P>
-The Lorenz-96 model is a subset of Lorenz-95.  See the 
-<A HREF="#References"> references </A> for more details.
+Quoting from the <A HREF="#References"> Lorenz 1998 </A> paper:
+<blockquote>
+We have chosen a model with J variables, denoted by X<sub>1</sub>, ..., X<sub>J</sub>; 
+in most of our experiments we have let J = 40. The governing equations are: <br>
+<pre>
+dX<sub>j</sub>/dt = (X<sub>j+1</sub> - X<sub>j-2</sub>)X<sub>j-1</sub> - X<sub>j</sub> + F         (1)
+</pre>
+for <i>j</i> = 1, ..., J. To make Eq. (1) meaningful for all
+values of <i>j</i> we define X<sub>-1</sub> = X<sub>J-1</sub>, 
+X<sub>0</sub> = X<sub>J</sub>, and X<sub>J+1</sub> = X<sub>1</sub>, so that the
+variables form a cyclic chain, and may be looked at as values of some
+unspecified scalar meteorological quantity, perhaps vorticity or
+temperature, at J equally spaced sites extending around a latitude circle.
+Nothing will simulate the atmosphere's latitudinal or vertical extent.
+</blockquote>
+</P>
+<P>
+See the <A HREF="#References"> references </A> section for more details.
 </P>
 
 <!--==================================================================-->
