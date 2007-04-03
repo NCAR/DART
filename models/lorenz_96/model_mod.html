@@ -30,7 +30,6 @@
 <link rel=stylesheet type=text/css href=../../doc/html/doc.css>
 <BODY>
 
-<!--kdr PRIVATE COMPONENTS has no destination -->
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -39,8 +38,7 @@
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+<A HREF="#FuturePlans">PLANS</A>
 </DIV>
 
 <!--==================================================================-->
@@ -63,11 +61,16 @@
 <H2>OVERVIEW</H2>
 
 <P>
-DART interface module for the Lorenz-96 model. The 13 public interfaces
+DART interface module for the Lorenz-96 model. The 17 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables.
+</P>
+<P>
+See: Lorenz, E. N., 1995: Predictability: A Problem Partly Solved. 
+&nbsp;<i>Proc. Seminar on Predictability.</i>
+<b>1</b>, ECMWF, Reading, Berkshire, UK, 1-18. 
 </P>
 
 <!--==================================================================-->
@@ -100,16 +103,19 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">static_init_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">init_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">init_conditions</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">model_get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;model_mod_nml</em> </A>
+<A HREF="#Namelist"> <em class=code>&#38;model_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -124,6 +130,7 @@ may be read from file <em class=file>input.nml</em>.
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
 <P>
+The following routines are public:
 </P>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
@@ -139,7 +146,8 @@ integer                               :: <em class=code> get_model_size </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Returns the length of the model state vector as an integer.
+Returns the length of the model state vector, which is 
+settable by namelist and defaults to 40.
 </P>
 
 
@@ -157,24 +165,18 @@ type(time_type),          intent(in)    :: <em class=code> time </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Advances a model for a single time step if this operation is defined. 
-The time associated with the initial model state is also required. 
-This interface is only required if `synchronous' model state advance 
-is supported (the model is called directly as a Fortran90 subroutine 
-from the assimilation programs). This is generally not the preferred 
-method for large models which can provide a stub for this interface. 
+Advances a model for a single time step.
+The time associated with the initial model state is also
+input although is it not used in this model.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>x</em></TD>
-    <TD>State vector of length model_size.</TD></TR>
+    <TD>State vector of length model_size</TD></TR>
 
 <TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Gives time of the initial model state. Needed for models that 
-have real time state requirements, for instance the computation of 
-radiational parameters. Note that DART provides a time_manager_mod 
-module that is used to support time computations throughout the facility. </TD></TR>
+    <TD>Gives time of the initial model state</TD></TR>
 
 </TABLE>
 
@@ -197,12 +199,9 @@ integer, optional,        intent(out)   :: <em class=optionalcode> var_type </em
 <P>
  Returns metadata about a given element, indexed by index_in, in the model 
 state vector. The location defines where the state variable is located 
-(at present, a variety of simple location models for support of gridpoint 
-models are provided) while the type of the variable (for instance temperature, 
-or u wind component) is returned by var_type. The integer values used to 
-indicate different variable types in var_type are themselves defined as 
-public interfaces to model_mod if required. Low order models in which var_type 
-is not necessarily meaningful should simply return a single integer value.
+For lorenz-96, variable 1 is at 0.0, variable 2 is at 1/40., variable 3
+is at 2/40., etc. on a cyclic [0, 1] domain.  
+The variable type is always returned as 1.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -211,14 +210,10 @@ is not necessarily meaningful should simply return a single integer value.
     <TD>Index into the long state vector.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
-    <TD>Returns location of indexed state variable. The location should 
-use a location_mod that is appropriate for the model domain. For 
-realistic atmospheric models, for instance, a three-dimensional 
-spherical location module that can represent height in a variety  
-of ways is provided. </TD></TR>
+    <TD>Returns location of indexed state variable.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the type of the indexed state variable as an optional argument.</TD></TR>
+    <TD>If present, always returns 1 as the type</TD></TR>
 
 </TABLE>
 
@@ -242,11 +237,10 @@ integer,                  intent(out) :: <em class=code> istatus </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Given model state, returns the value of variable itype interpolated to a given 
-location by a method of the model's choosing. At present, this is the only 
-support for forward operators that is required from the model_mod. As observations 
-with more complex forward operators are explored a significant additional 
-complexity may be required for forward operator interfaces.
+Given model state, returns the value interpolated to a given location 
+in [0, 1] by linear interpolation.
+The type variable is not used here and istatus is always returned 
+as 0 (successful interpolation).
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -258,14 +252,13 @@ complexity may be required for forward operator interfaces.
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
-    <TD>Integer indexing which type of state variable is to be interpolated. 
-Can be ignored for low order models with a single type of variable.</TD></TR>
+    <TD>Not used</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD> The value of the observation from the model.</TD></TR>
+    <TD> The interpolated value from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Quality control information about the observation of the model state.</TD></TR>
+    <TD>Quality control information, always returned 0 (OK)</TD></TR>
 
 </TABLE>
 
@@ -286,8 +279,7 @@ type(time_type)                       :: <em class=code> get_model_time_step </e
 
 <P>
 Returns the models base time step, or forecast length, as a time_type. 
-In the long run, a more general extended interface may be required that 
-specifies the models range of time stepping possibilities.
+This is settable via namelist and defaults to 1 hour.
 </P>
 
 <H3 class=indent1>Notes</H3>
@@ -305,8 +297,7 @@ specifies the models range of time stepping possibilities.
 <H3 class=indent1>Description</H3>
 
 <P>
-Called when use of a model is completed to clean up storage, etc. 
-Can be a stub for most applications.
+A stub since lorenz 96 requires no cleanup.
 </P>
 
 <H3 class=indent1>Notes</H3>
@@ -346,8 +337,7 @@ type(time_type),          intent(out)    :: <em class=code> time </em>
 
 <P>
 Returns the time at which the model will start if no input initial conditions are 
-to be used. This is frequently used to spin-up models from rest, but is often not 
-meaningfully supported in comprehensive GCMs. 
+to be used.  This model sets the time to 0.
 </P>
 
 <H3 class=indent1>Notes</H3>
@@ -367,8 +357,8 @@ real(r8), dimension(:),   intent(out)   :: <em class=code> x </em>
 
 <P>
 Returns default initial conditions for model; generally used for spinning up 
-initial model states. For GCMs can conceivably just return 0's if initial 
-state is always to be provided from input files.
+initial model states. This model sets all state variables to the forcing value
+and then perturbs the first variable slightly.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -379,61 +369,6 @@ state is always to be provided from input files.
 </TABLE>
 
 <H3 class=indent1>Notes</H3>
-
-
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine10"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call model_get_close_states( o_loc, radius, inum, indices, dist, x) </em>
-<pre>
-type(location_type),      intent(in)    :: <em class=code> o_loc </em>
-real(r8),                 intent(in)    :: <em class=code> radius </em>
-integer,                  intent(out)   :: <em class=code> inum </em>
-integer, dimension(:),    intent(out)   :: <em class=code> indices </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> dist </em>
-real(r8), dimension(:),   intent(in)    :: <em class=code> x </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Returns the number of state variables that are within a given radius (the units 
-for the radius depend upon the location_mod module being used by the model) of 
-an observation at location o_loc. The indices in the long state vector as well 
-as the distance between each close state variable and the observation are also returned, 
-provided there is sufficient storage available for them in the arrays indices and dist. 
-This tends to be the most complicated routine for large models because it must be 
-implemented in a very efficient fashion to support a number of assimilation algorithms.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>o_loc</em></TD>
-    <TD>Location of observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>radius</em></TD>
-    <TD>Maximum distance between state and observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>inum</em></TD>
-    <TD>Number of close state variables.</TD></TR>
-
-<TR><TD valign=top><em class=code>indices</em></TD>
-    <TD>Indices of close state variables found in long model state vector. If 
-allocated size of this array is too small, only a subset of the close indices 
-is returned. The model_mod gets to decide what subset this is.. </TD></TR>
-
-<TR><TD valign=top><em class=code>dist</em></TD>
-    <TD>Distance between observation and state variables indexed in indices array..</TD></TR>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Model state vector.  Often needed by GCMs to calculate vertical distance.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Notes</H3>
-
 
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
@@ -450,9 +385,7 @@ integer,                  intent(in)  :: <em class=code> ncFileId </em>
 <H3 class=indent1>Description</H3>
 
 <P>
- Function to write model specific attributes to a netCDF file. At present, DART 
-is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. This function 
+ Function to write model specific attributes to a netCDF file. This function
 writes the metadata associated with the model to a NetCDF file opened to a file 
 identified by ncFileID.
 </P>
@@ -530,33 +463,101 @@ logical,                  intent(out)   :: <em class=code> interf_provided </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Given a model state, produces a perturbed model state. This is used to generate 
-initial ensemble conditions perturbed around some control trajectory state when one 
-is preparing to spin-up ensembles. A DART compliant model can choose not to provide 
-an implementation of this algorithm and use the default mechanism in DART by simply 
-returning .false. as a returned value for the interf_provided argument. In this case, 
-DART perturbs the state to generate ensemble members by adding a random sample from a 
-N(0.0, 0.002) distribution independently to each state variable. Models should override 
-this if some structure is required for perturbations or if the magnitude of perturbations 
-in DART is too large. For instance, the CAM GCM moisture fields have values that are 
-generally much smaller than 0.002 and perturbing them by this magnitude can cause 
-serious model errors.
+Given a model state, produces a perturbed model state.
+Lorenz-96 does not implement an interface for this and 
+returns .false. for interf_provided.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
+    <TD>State vector to be perturbed</TD></TR>
 
 <TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector is returned. </TD></TR>
+    <TD>Perturbed state vector is NOT returned</TD></TR>
 
 <TR><TD valign=top><em class=code>interf_provided</em></TD>
-    <TD>Return false to have DART perturb state .</TD></TR>
+    <TD>Return false to have DART perturb state</TD></TR>
 
 </TABLE>
 
 <H3 class=indent1>Notes</H3>
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_maxdist_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ real(r8),             intent(in)    :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 1-D locations module. See
+<A HREF="../../location/oned/location_mod.html#get_close_maxdist_init">
+get_close_maxdist_init()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc, num, obs) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ integer,              intent(in)    :: <em class=code>num</em>
+ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 1-D locations module. See
+<A HREF="../../location/oned/location_mod.html#get_close_obs_init">
+get_close_obs_init()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+   obs, obs_kind, num_close, close_ind
+   <em class=code>[, dist]</em>) </em>
+ <pre>
+ type(get_close_type), intent(in)  :: <em class=code>gc</em>
+ type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+ integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+ type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+ integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+ integer,              intent(out) :: <em class=code>num_close</em>
+ integer,              intent(out) :: <em class=code>close_ind(:)</em>
+ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 1-D locations module. See
+<A HREF="../../location/oned/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="ens_mean_for_model"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call ens_mean_for_model(ens_mean) </em>
+ <pre>
+ real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+A NULL INTERFACE in this model.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble mean state vector</TD></TR>
+ </TABLE>
+ <BR>
 
 
 <!--==================================================================-->
@@ -592,13 +593,17 @@ serious model errors.
     <!--descript--><TD>Forcing, F, for model, default 8.0 </TD></TR>
 <TR><!--contents--><TD valign=top>delta_t              </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Non-dimensional timestep, default 0.05</TD></TR>
+    <!--descript--><TD>Non-dimensional timestep, default 0.05
+                This is mapped to the dimensional timestep specified
+                 by time_step_days and time_step_seconds.</TD></TR>
 <TR><!--contents--><TD valign=top>time_step_days       </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>???, default 0</TD></TR>
+    <!--descript--><TD>Number of days for dimensional timestep,
+                       mapped to delta_t. default 0</TD></TR>
 <TR><!--contents--><TD valign=top>time_step_seconds    </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>???, default 3600</TD></TR>
+    <!--descript--><TD>Number of seconds for dimensional timestep,
+                       mapped to delta_t. default 3600</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -620,6 +625,12 @@ serious model errors.
 <A NAME="References"></A>
 <BR><HR><BR>
 <H2>REFERENCES</H2>
+
+<P>
+See: Lorenz, E. N., 1995: Predictability: A Problem Partly Solved. 
+&nbsp;<i>Proc. Seminar on Predictability.</i>
+<b>1</b>, ECMWF, Reading, Berkshire, UK, 1-18. 
+</P>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->

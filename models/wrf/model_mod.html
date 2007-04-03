@@ -62,7 +62,7 @@
 <H2>OVERVIEW</H2>
 
 <P>
-DART interface module for the WRF model. The 13 public interfaces
+DART interface module for the WRF model. The 17 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -100,11 +100,13 @@ typesizes
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">model_interpolate</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_model_time_step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A
-                   HREF="#yyyroutine6">model_get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">adv_1step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">end_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">init_time</A></TD></TR>
@@ -326,73 +328,6 @@ time step, pressure at the top of the model, map projection parameters, etc).
 <H3 class=indent1>Notes</H3>
 
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine6"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call model_get_close_states(o_loc, radius, num_total, indices,
-dist, x) </em>
-<pre>
-type(location_type),      intent(in)    :: <em class=code> o_loc </em>
-real(r8),                 intent(in)    :: <em class=code> radius </em>
-real(r8), dimension(:),   intent(in)    :: <em class=code> x </em>
-integer,                  intent(out)   :: <em class=code> num_total </em>
-integer, dimension(:),    intent(out)   :: <em class=code> indices </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> dist </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Returns the number of state variables that are within a given radius of 
-an observation at location o_loc. The units for the radius depend upon the
-location_mod module being used by the model. The threed_sphere location module
-is used with the WRF model and the units for the radius are radians. The
-physical distance is obtained by multiplying by the earth's radius and is the
-great circle distance. The indices in the long state vector as well 
-as the distance between each close state variable and the observation are also
-returned, 
-provided there is sufficient storage available for them in the arrays indices
-and dist.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>o_loc</em></TD>
-    <TD>Location of observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>radius</em></TD>
-    <TD>Maximum distance between state and observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>num_total</em></TD>
-    <TD>Number of close state variables.</TD></TR>
-
-<TR><TD valign=top><em class=code>indices</em></TD>
-    <TD>Indices of close state variables found in long model state vector. If 
-        allocated size of this array is too small, only a subset of the close
-    indices 
-        is returned. The filter increases the size of this array and calls
-        model_get_close_states until the array is large enough to contain all
-    close
-        model state variables.</TD></TR>
-
-<TR><TD valign=top><em class=code>dist</em></TD>
-    <TD>Distance between observation and state variables indexed in indices
-    array.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Notes</H3>
-
-<P>
-All WRF domains are scanned for possible update by the filter.
-</P>
-
-
 <!--==================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="yyyroutine7"></A>
@@ -491,24 +426,18 @@ logical,                  intent(out)   :: <em class=code> interf_provided
 <H3 class=indent1>Description</H3>
 
 <P>
-Given a model state, produces a perturbed model state. This is used to generate 
-initial ensemble conditions perturbed around some control trajectory state when
-one 
-is preparing to spin-up ensembles. A DART compliant model can choose not to
-provide 
-an implementation of this algorithm and use the default mechanism in DART by
-simply 
-returning .false. as a returned value for the interf_provided argument. In this
-case, 
-DART perturbs the state to generate ensemble members by adding a random sample
-from a 
-N(0.0, 0.002) distribution independently to each state variable. Models should
-override 
-this if some structure is required for perturbations or if the magnitude of
-perturbations 
-in DART is too large. It is thus recommended to
-generate the initial ensemble off-line, perhaps with the tools provided in
-models/wrf/PERTURB/3DVAR-COVAR.
+Given a model state, produces a perturbed model state. This is used to
+generate initial ensemble conditions perturbed around some control
+trajectory state when one is preparing to spin-up ensembles. A DART
+compliant model can choose not to provide an implementation of this
+algorithm and use the default mechanism in DART by simply returning .false.
+as a returned value for the interf_provided argument. In this case, DART
+perturbs the state to generate ensemble members by adding a random sample
+from a N(0.0, 0.002) distribution independently to each state variable.
+Models should override this if some structure is required for perturbations
+or if the magnitude of perturbations in DART is too large. It is thus
+recommended to generate the initial ensemble off-line, perhaps with the
+tools provided in models/wrf/PERTURB/3DVAR-COVAR.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -523,6 +452,83 @@ models/wrf/PERTURB/3DVAR-COVAR.
     <TD>Return false to have DART perturb state .</TD></TR>
 
 </TABLE>
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_maxdist_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ real(r8),             intent(in)    :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_maxdist_init">
+get_close_maxdist_init()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc, num, obs) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ integer,              intent(in)    :: <em class=code>num</em>
+ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs_init">
+get_close_obs_init()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+   obs, obs_kind, num_close, close_ind
+   <em class=code>[, dist]</em>) </em>
+ <pre>
+ type(get_close_type), intent(in)  :: <em class=code>gc</em>
+ type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+ integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+ type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+ integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+ integer,              intent(out) :: <em class=code>num_close</em>
+ integer,              intent(out) :: <em class=code>close_ind(:)</em>
+ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="ens_mean_for_model"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call ens_mean_for_model(ens_mean) </em>
+ <pre>
+ real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+A local copy is kept and used during other computations in the 
+model_mod code.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble mean state vector</TD></TR>
+ </TABLE>
+ <BR>
 
 
 <!--=================== DESCRIPTION OF SUBROUTINE ====================-->
@@ -644,9 +650,11 @@ state is always to be provided from input files.
 '&#38;' and terminating with a slash '/'.
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &#38;
-    output_state_vector, num_moist_vars, num_domains, calendar_type, surf_obs,
-    h_diab, adv_mod_command
+<em class=call>namelist / model_nml / </em>                          &#38;
+    output_state_vector, num_moist_vars, num_domains, calendar_type, &#38; 
+    surf_obs, h_diab, adv_mod_command, assimilation_period_seconds,  &#38;
+    vert_localization_coord, center_search_size, center_spline_grid_scale
+
 </pre>
 </div>
 </P>
@@ -660,19 +668,23 @@ state is always to be provided from input files.
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
+
 <TR><!--contents--><TD valign=top>output_state_vector          </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Controls the output to netCDF files. If .true., output
-    the raw dart state vector. Otherwise, output the prognostic flavor (gridded
-	    data) for easier plotting (recommended).</TD></TR>
+    <!--descript--><TD>Controls the output to netCDF files. If .true., 
+    output the raw dart state vector. Otherwise, output the prognostic 
+    flavor (gridded data) for easier plotting (recommended).
+    Defaults to false</TD></TR>
+
 <TR><!--contents--><TD valign=top>num_moist_vars               </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Number of moist variables in the state vector
-    [0,...,7].</TD></TR>
+    [0,...,7].  Defaults to 3</TD></TR>
+
 <TR><!--contents--><TD valign=top>num_domains                  </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>Total number of WRF domains, including the
-    nest.</TD></TR>
+    nest. Defaults to 1</TD></TR>
 
 <TR><!--contents--><TD valign=top>calendar_type                </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
@@ -683,30 +695,47 @@ state is always to be provided from input files.
     <!--  type  --><TD valign=top>integer                      </TD>
     <!--descript--><TD>The time (in seconds) between assimilations. 
                        This is modified if necessary to be an integer 
-		       multiple of the underlying model timestep.</TD></TR>
+		       multiple of the underlying model timestep.
+                       Default is 21600 (6 hours)</TD></TR>
     
 <TR><!--contents--><TD valign=top>surf_obs                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, includes U10, V10, T2, Q2, and PS in the state
-    vector. The resulting extended state vector permits simpler observational
-	    operators 
-	    for these variables. With this strategy, the surface scheme can be
-	    changed 
-	    without the requirement of changing the observational operators in
-	    DART.</TD></TR>
+    <!--descript--><TD>If true, includes U10, V10, T2, Q2, and PS 
+    in the state vector. The resulting extended state vector permits 
+    simpler observational operators for these variables. With this 
+    strategy, the surface scheme can be changed without the 
+    requirement of changing the observational operators in DART.
+    Defaults to true</TD></TR>
+
 <TR><!--contents--><TD valign=top>h_diab                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>If true, includes H_DIABATIC in the state vector. 
-	    This produces a smoother restart and reduces the spinup problem
-	    during the assimilation. 
-            This is especially useful for convective scale
-	    assimilations.</TD></TR>
+   This produces a smoother restart and reduces the spinup problem
+   during the assimilation.  This is especially useful for convective 
+   scale assimilations. Defaults to false</TD></TR>
+
 <TR><!--contents--><TD valign=top>adv_mod_command              </TD>
     <!--  type  --><TD valign=top>character(len=32)            </TD>
     <!--descript--><TD>For single-threaded, set to 'wrf.exe'. 
 	    For MPI, supports nesting, set to something like, for example, 
 	    'mpirun -np number-of-prcessors wrf.exe' (this depends on the
-	    platform).</TD></TR>
+	    platform). Defaults to 'wrf.exe'</TD></TR>
+
+<TR><!--contents--><TD valign=top>center_search_size  </TD>
+    <!--  type  --><TD valign=top>integer             </TD>
+    <!--descript--><TD>Needs description.
+                       Default is 25</TD></TR>
+    
+<TR><!--contents--><TD valign=top>center_spline_grid_scale  </TD>
+    <!--  type  --><TD valign=top>integer                   </TD>
+    <!--descript--><TD>Needs description.
+                       Default is 10</TD></TR>
+    
+<TR><!--contents--><TD valign=top>vert_localization_coord  </TD>
+    <!--  type  --><TD valign=top>integer                   </TD>
+    <!--descript--><TD>Needs description.
+                       Default is VERTISHEIGHT</TD></TR>
+    
 </TABLE>
 
 <!--==================================================================-->
@@ -716,7 +745,7 @@ state is always to be provided from input files.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL> <LI>model_mod.nml in input.nml
+<UL> <LI>model_nml in input.nml
      <LI>wrfinput_d01, wrfinput_d02, ... (one file for each domain)
      <LI>netCDF output state diagnostics files
 </UL>
@@ -865,37 +894,6 @@ Given grid indices, variable type, and domain identification number, returns
 the index in the model state vector as an integer.
 </P>
 
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call> call grid_close_states( o_loc, radius_in, id, 
-                              close_lon_ind, close_lat_ind, close_vert_ind, 
-                              close_dist, u_pts, v_pts, p_pts, w_pts, x )</em>
-<pre>
-type(location_type),      intent(in)    :: <em class=code> o_loc </em>
-real(r8),                 intent(in)    :: <em class=code> radius_in </em>
-integer,                  intent(in)    :: <em class=code> id </em>
-real(r8), dimension(:),   intent(in)    :: <em class=code> x </em>
-integer, dimension(:),    intent(out)   :: <em class=code> close_lon_ind,
-close_lat_ind, close_vert_ind </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> close_dist </em>
-integer,                  intent(out)   :: <em class=code> u_pts, v_pts, p_pts,
-w_pts </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Called only once by model_get_close_states. Returns the number of grid points
-that are
-within a given radius of an observation at location o_loc for u-, v-, w-, and
-p-grid. The grid indices as well as the distance between each grid points and
-the observation are also returned. In the case where the horiz_dist_only
-location module parameter is true, the distances are only calculated at one
-level. The horizontal distance to the observation is the same at all levels.
-</P>
 
 
 <!--===================== DESCRIPTION OF FUNCTION ====================-->

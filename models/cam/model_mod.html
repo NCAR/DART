@@ -61,7 +61,7 @@
 <H2 class=indent2>OVERVIEW</H2>
 
 <P>
-The 13 public interfaces in model_mod
+The 17 public interfaces in model_mod
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -156,10 +156,13 @@ using CAM and parallel architecture computers, including:
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">model_interpolate</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_model_time_step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">model_get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">adv_1step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">end_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">init_time</A></TD></TR>
@@ -383,69 +386,74 @@ time step, and Gaussian weights, etc).
 <H3 class=indent1>Notes</H3>
 
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_maxdist_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ real(r8),             intent(in)    :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_maxdist_init">
+get_close_maxdist_init()</A> for the documentation of this subroutine.
 
-<A NAME="yyyroutine6"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call model_get_close_states(o_loc, radius, nfound, indices, dist, x) </em>
-<pre>
-type(location_type),      intent(in)    :: <em class=code> o_loc </em>
-real(r8),                 intent(in)    :: <em class=code> radius </em>
-real(r8), dimension(:),   intent(in)    :: <em class=code> x </em>
-integer,                  intent(out)   :: <em class=code> nfound </em>
-integer, dimension(:),    intent(out)   :: <em class=code> indices </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> dist </em>
-</pre></div>
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc, num, obs) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ integer,              intent(in)    :: <em class=code>num</em>
+ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs_init">
+get_close_obs_init()</A> for the documentation of this subroutine.
 
-<H3 class=indent1>Description</H3>
-
-<P>
-Returns the number of state variables that are within a given radius of 
-an observation at location o_loc. The units for the radius depend upon the
-location_mod module being used by the model. The threed_sphere location module
-is used with the CAM model and the units for the radius are radians. The
-physical horizontal distance is obtained by multiplying by the earth's radius 
-and is the great circle distance. The indices into the long state vector as well 
-as the distances between each close state variable and the observation are also returned, 
-provided there is sufficient storage available for them in the arrays indices and dist. 
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>o_loc</em></TD>
-    <TD>Location of observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>radius</em></TD>
-    <TD>Maximum distance between state and observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>nfound</em></TD>
-    <TD>Number of close state variables.</TD></TR>
-
-<TR><TD valign=top><em class=code>indices</em></TD>
-    <TD>Indices of close state variables found in long model state vector. If 
-        allocated size of this array is too small, only a subset of the close indices 
-        is returned. The filter increases the size of this array and calls
-        model_get_close_states until the array is large enough to contain all close
-        model state variables.</TD></TR>
-
-<TR><TD valign=top><em class=code>dist</em></TD>
-    <TD>Distance between observation and state variables indexed in indices array.</TD></TR>
-
-</TABLE>
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+   obs, obs_kind, num_close, close_ind
+   <em class=code>[, dist]</em>) </em>
+ <pre>
+ type(get_close_type), intent(in)  :: <em class=code>gc</em>
+ type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+ integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+ type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+ integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+ integer,              intent(out) :: <em class=code>num_close</em>
+ integer,              intent(out) :: <em class=code>close_ind(:)</em>
+ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+FIXME HERE!  First calls the location module code and then updates
+the distances?
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of this subroutine.
 
 <H3 class=indent1>Notes</H3>
 
 <P>
-The vertical distance calculation is not fully implemented yet.  
+The vertical distance calculation is now fully implemented.  
+FIXME HERE!!
 CAM uses a hybrid vertical coordinate, which requires the surface pressure
 beneath a point in order to determine the point's vertical coordinate.
 When the model state vector is divided up among several regions during
 parallelization, surface pressure points from other regions become unavailable.
-The (temporary) fix is to hard-wire the surface pressure to be 100000 Pa.
 
 Due to the damping at high levels (see model_interpolate) there is also code 
 which reduces the influence of observations on model points above some altitude.
@@ -456,6 +464,27 @@ to 0 above model level 6 for highest_obs_pressure_mb = 150.
 </P>
 
 
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="ens_mean_for_model"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call ens_mean_for_model(ens_mean) </em>
+ <pre>
+ real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+This model saves a local copy of the ensemble means and uses it when
+computing vertical heights.  FIXME HERE!
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble mean state vector</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--=================================================================-->
 <!--==================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="yyyroutine7"></A>

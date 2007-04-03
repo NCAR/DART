@@ -30,7 +30,6 @@
 <link rel=stylesheet type=text/css href=../../doc/html/doc.css>
 <BODY>
 
-<!--kdr PRIVATE COMPONENTS has no destination -->
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -39,8 +38,7 @@
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+<A HREF="#FuturePlans">PLANS</A> 
 </DIV>
 
 <!--==================================================================-->
@@ -63,12 +61,25 @@
 <H2>OVERVIEW</H2>
 
 <P>
-DART interface module for the Lorenz-63 model. The 13 public interfaces
+DART interface module for the Lorenz-63 model. The 17 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables. The distinctive
 part of the model interfaces is the namelist.
+</P>
+<P>
+This is the  3-variable model as described in: &nbsp;
+Lorenz, E. N. 1963. Deterministic nonperiodic flow.
+&nbsp;<i>J. Atmos. Sci.</i>&nbsp; <b>20</b>, 130-141.
+</P>
+<P>
+The system of equations is:
+<pre>
+X' = -sigma*X + sigma*Y
+Y' = -XZ + rX - Y
+Z' =  XY -bZ
+</pre>
 </P>
 
 <!--==================================================================-->
@@ -101,10 +112,13 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">static_init_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">init_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">init_conditions</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">model_get_close_states</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
@@ -125,6 +139,7 @@ may be read from file <em class=file>input.nml</em>.
 <BR><HR><BR>
 <H2>PUBLIC COMPONENTS</H2>
 <P>
+The following are the public entry points:
 </P>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
@@ -273,8 +288,7 @@ type(time_type)                       :: <em class=code> get_model_time_step </e
 
 <P>
 Returns the models base time step as a time_type. 
-In the long run, a more general extended interface may be required that 
-specifies the models range of time stepping possibilities.
+This is settable by namelist and defaults to 1 hour.
 </P>
 
 <H3 class=indent1>Notes</H3>
@@ -332,7 +346,8 @@ type(time_type),          intent(out)    :: <em class=code> time </em>
 
 <P>
 Returns the time at which the model will start if no input initial conditions are 
-to be used. This is used to spin-up the model from rest. 
+to be used. This is used to spin-up the model from rest.  This model
+sets the time to 0.
 </P>
 
 <H3 class=indent1>Notes</H3>
@@ -366,58 +381,6 @@ Values chosen here are 0.1 for all three state variables.
 <H3 class=indent1>Notes</H3>
 
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine10"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call model_get_close_states( o_loc, radius, inum, indices, dist, x) </em>
-<pre>
-type(location_type),      intent(in)    :: <em class=code> o_loc </em>
-real(r8),                 intent(in)    :: <em class=code> radius </em>
-integer,                  intent(out)   :: <em class=code> inum </em>
-integer, dimension(:),    intent(out)   :: <em class=code> indices </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> dist </em>
-real(r8), dimension(:),   intent(in)    :: <em class=code> x </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
-Returns the number of state variables that are within a given radius of 
-an observation at location o_loc. The indices in the long state vector as well 
-as the distance between each close state variable and the observation are also returned, 
-provided there is sufficient storage available for them in the arrays indices and dist. 
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>o_loc</em></TD>
-    <TD>Location of observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>radius</em></TD>
-    <TD>Maximum distance between state and observation.</TD></TR>
-
-<TR><TD valign=top><em class=code>inum</em></TD>
-    <TD>Number of close state variables.</TD></TR>
-
-<TR><TD valign=top><em class=code>indices</em></TD>
-    <TD>Indices of close state variables found in long model state vector. If 
-allocated size of this array is too small, only a subset of the close indices 
-is returned.  </TD></TR>
-
-<TR><TD valign=top><em class=code>dist</em></TD>
-    <TD>Distance between observation and state variables indexed in indices array..</TD></TR>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Model state vector.  Not used in lorenz-63.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Notes</H3>
-
-
-
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="yyyroutine11"></A>
@@ -432,11 +395,9 @@ integer,                  intent(in)  :: <em class=code> ncFileId </em>
 <H3 class=indent1>Description</H3>
 
 <P>
- Function to write model specific attributes to a netCDF file. At present, DART 
-is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. This function 
-writes the metadata associated with the model to a NetCDF file opened to a file 
-identified by ncFileID.
+ Function to write model specific attributes to a netCDF file. 
+This function writes the metadata associated with the model to a 
+NetCDF file opened to a file identified by ncFileID.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -513,7 +474,7 @@ logical,                  intent(out)   :: <em class=code> interf_provided </em>
 
 <P>
 Given a model state, produces a perturbed model state. Lorenz-63 does not implement
-an interface for this and so just returns .false. for interf_provided.
+an interface for this and so returns .false. for interf_provided.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -531,6 +492,82 @@ an interface for this and so just returns .false. for interf_provided.
 
 <H3 class=indent1>Notes</H3>
 
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_maxdist_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ real(r8),             intent(in)    :: <em class=code>maxdist</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 1-D locations module. See
+<A HREF="../../location/oned/location_mod.html#get_close_maxdist_init">
+get_close_maxdist_init()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs_init"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs_init(gc, num, obs) </em>
+ <pre>
+ type(get_close_type), intent(inout) :: <em class=code>gc</em>
+ integer,              intent(in)    :: <em class=code>num</em>
+ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 1-D locations module. See
+<A HREF="../../location/oned/location_mod.html#get_close_obs_init">
+get_close_obs_init()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="get_close_obs"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+   obs, obs_kind, num_close, close_ind
+   <em class=code>[, dist]</em>) </em>
+ <pre>
+ type(get_close_type), intent(in)  :: <em class=code>gc</em>
+ type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+ integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+ type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+ integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+ integer,              intent(out) :: <em class=code>num_close</em>
+ integer,              intent(out) :: <em class=code>close_ind(:)</em>
+ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Pass-through to the 1-D locations module. See
+<A HREF="../../location/oned/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of this subroutine.
+
+<!--=================================================================-->
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="ens_mean_for_model"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call ens_mean_for_model(ens_mean) </em>
+ <pre>
+ real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+A NULL INTERFACE in this model.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
+     <TD>Ensemble mean state vector</TD></TR>
+ </TABLE>
+ <BR>
+
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -543,7 +580,7 @@ an interface for this and so just returns .false. for interf_provided.
 <div class=namelist>
 <pre>
 <em class=call>namelist / model_nml / </em> &#38
-    sigma, r, b, delta_t, time_step_days, time_step_seconds
+    sigma, r, b, deltat, time_step_days, time_step_seconds
 </pre>
 </div>
 </P>
@@ -559,23 +596,29 @@ an interface for this and so just returns .false. for interf_provided.
     <TH align=left>Description </TH></TR>
 <TR><!--contents--><TD valign=top>sigma           </TD>
     <!--  type  --><TD valign=top>real(r8)        </TD>
-    <!--descript--><TD>Model parameter, see comp_dt in code for equations. Default: 10. </TD></TR>
+    <!--descript--><TD>Model parameter, see comp_dt 
+                 in code for equations. Default: 10. </TD></TR>
 <TR><!--contents--><TD valign=top>r               </TD>
     <!--  type  --><TD valign=top>real(r8)        </TD>
-    <!--descript--><TD>Model parameter, see comp_dt in code for equations. Default: 28.</TD></TR>
+    <!--descript--><TD>Model parameter, see comp_dt 
+                  in code for equations. Default: 28.</TD></TR>
 <TR><!--contents--><TD valign=top>b               </TD>
     <!--  type  --><TD valign=top>real(r8)        </TD>
-    <!--descript--><TD>Model parameter, see comp_dt in code for equations. Default: 8/3.</TD></TR>
-<TR><!--contents--><TD valign=top>delta_t              </TD>
+    <!--descript--><TD>Model parameter, see comp_dt 
+                        in code for equations. Default: 8/3.</TD></TR>
+<TR><!--contents--><TD valign=top>deltat              </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Non-dimensional timestep, default 0.05. This is mapped to
-the dimensional timestep specified by time_step_days and time_step_seconds.</TD></TR>
+    <!--descript--><TD>Non-dimensional timestep, default 0.01. 
+               This is mapped to the dimensional timestep specified 
+               by time_step_days and time_step_seconds.</TD></TR>
 <TR><!--contents--><TD valign=top>time_step_days       </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Number of days for dimensional timestep, mapped to delta_t. Default: 0.</TD></TR>
+    <!--descript--><TD>Number of days for dimensional timestep, 
+                       mapped to deltat. Default: 0.</TD></TR>
 <TR><!--contents--><TD valign=top>time_step_seconds    </TD>
     <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Number of seconds for dimensional timestep, mapped to delta_t.  Default: 3600</TD></TR>
+    <!--descript--><TD>Number of seconds for dimensional timestep, 
+                       mapped to deltat.  Default: 3600</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -597,6 +640,8 @@ the dimensional timestep specified by time_step_days and time_step_seconds.</TD>
 <A NAME="References"></A>
 <BR><HR><BR>
 <H2>REFERENCES</H2>
+Lorenz, E. N. 1963. Deterministic nonperiodic flow. 
+&nbsp;<i>J. Atmos. Sci.</i>&nbsp; <b>20</b>, 130-141.
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->

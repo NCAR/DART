@@ -30,7 +30,6 @@
 <link rel=stylesheet type=text/css href=../../doc/html/doc.css>
 <BODY>
 
-<!--kdr PRIVATE COMPONENTS has no destination -->
 <DIV ALIGN=CENTER>
 <A HREF="#Interface">INTERFACE</A> / 
 <A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
@@ -39,8 +38,7 @@
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+<A HREF="#FuturePlans">PLANS</A> 
 </DIV>
 
 <!--==================================================================-->
@@ -468,19 +466,21 @@ logical,                  intent(out)   :: <em class=code> interf_provided </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Does not implement, so returns .false. for interf_provided.
+Given a model state, produces a perturbed model state. 
+This model does not implement
+an interface for this and so returns .false. for interf_provided.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
+    <TD>State vector to be perturbed</TD></TR>
 
 <TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector is returned. </TD></TR>
+    <TD>Perturbed state vector is returned</TD></TR>
 
 <TR><TD valign=top><em class=code>interf_provided</em></TD>
-    <TD>Return false to have DART perturb state .</TD></TR>
+    <TD>Returns false to have DART perturb state</TD></TR>
 
 </TABLE>
 
