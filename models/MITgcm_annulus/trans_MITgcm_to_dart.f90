@@ -17,7 +17,8 @@ program trans_MITgcm_to_dart
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date,  &
                              set_date, operator(-), get_time, print_time, &
-                             set_calendar_type, GREGORIAN, julian_day
+                             set_calendar_type, GREGORIAN, julian_day,    &
+                             set_time, print_time
 use    utilities_mod, only : get_unit, error_handler,  &
                              E_ERR, E_MSG, initialize_utilities,          &
                              finalize_utilities, register_module,         &
@@ -50,17 +51,19 @@ real(r8) :: delta_t           = 0.1_r8
 integer  :: time_step_days    = 0
 integer  :: time_step_seconds = 2160
 
-namelist /model_nml/ model_size, naz, nrad, nzed, ntype, daz, drad, dzed, inner_rad, outer_rad, depth, delta_t, time_step_days, time_step_seconds
+namelist /model_nml/ model_size, naz, nrad, nzed, ntype, daz, drad, dzed, &
+   inner_rad, outer_rad, depth, delta_t, time_step_days, time_step_seconds
 
 !-------------------------------------------------------------
 ! misc local variables
 real(r8), allocatable    :: dart(:)
 real(r8), allocatable    :: r8seg(:)
-type(time_type)          :: dart_time(2), dt_temp
+type(time_type)          :: dart_time(2)
+! type(time_type)          :: dt_temp
 integer                  :: icount, j, k, irec
-integer                  :: ierr, iunit, io, dart_unit
+integer                  :: iunit, io, dart_unit
 logical, parameter       :: debug = .false.
-character(len=129)       :: err_string, nml_string
+integer                  :: days, seconds
 
 !-------------------------------------------------------------
 ! Namelist with default values
@@ -98,9 +101,9 @@ call error_handler(E_MSG,'trans_MITgcm_to_dart','model_nml values are',' ',' ','
 write(logfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
 
-call error_handler(E_MSG,'MITgcm_to_dart',                  &
-                  'Converting an MITgcm restart file into a &
-                   dart file', source, revision, revdate)
+call error_handler(E_MSG,'MITgcm_to_dart',                   &
+       'Converting an MITgcm restart file into a dart file', &
+       source, revision, revdate)
 
 ! allocate space for dart vector
 allocate(dart(model_size))
@@ -206,7 +209,7 @@ close(unit=4)
 
 ! now open the pickup file for the hydrostatic variables
 open(unit=3,file='pickup_nh.in.s',status='old',access='direct',recl=naz*8)
-	
+
 ! read in p (phi_nh in MITgcm-speak)
 do k = 1, nzed
    do j = 1, nrad
@@ -232,12 +235,12 @@ close(unit=4)
 ! write the contents of the second element of dart_time to a file
 ! for use by trans_MITgcm_to_dart
 open(unit=777,file="dart_time.dat",status="old")
-read(777,*) dart_time(1)
+read(777,*) days, seconds
+dart_time(1) = set_time(seconds,days)
 !read(777) dt_temp%seconds
 !read(777) dt_temp%days
 !dart_time(1)=dt_temp
-	
-	write(6,*) 'dart_time in trans_MITgcm_to_dart', dart_time
+call print_time(dart_time(1),'dart_time in trans_MITgcm_to_dart')
 
 close(777)
 
