@@ -1,0 +1,177 @@
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<HTML>
+<TITLE>program wakeup_filter</TITLE>
+<link rel=stylesheet type=text/css href=../doc/html/doc.css>
+<BODY>
+
+<DIV ALIGN=CENTER>
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A>
+</DIV>
+
+<!--==================================================================-->
+
+<H1>PROGRAM wakeup_filter</H1>
+<A NAME="HEADER"></A>
+<TABLE summary="">
+   <TR><TD>Contact:       </TD><TD> Jeff Anderson                </TD></TR>
+   <TR><TD>Reviewers:     </TD><TD> &nbsp;                       </TD></TR>
+   <TR><TD>Revision:      </TD><TD> $Revision: 2751 $             </TD></TR>
+   <TR><TD>Release Name:  </TD><TD> $Name$                        </TD></TR>
+   <TR><TD>Change Date:   </TD><TD> $Date: 2007-03-30 15:49:53 -0600 (Fri, 30 Mar 2007) $ </TD></TR>
+   <TR><TD>Change history:</TD><TD> see CVS log </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+<A NAME="OVERVIEW"></A>
+<HR>
+<H2>OVERVIEW</H2>
+
+<P>
+   Small auxiliary program for use in the "async=4" case where
+   the main filter program is an MPI program and the model being
+   run with DART is also an MPI program.  
+   The main MPI job script runs each of the model
+   advances for the ensemble members, and then runs this program to
+   restart the filter program.
+</P>
+
+<P> There are no namelist options for this program.  It must be run
+    as an MPI program with the same number of tasks as filter was
+    originally started with.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OTHER MODULES USED"></A>
+<HR>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+mpi_utilities_mod
+</PRE>
+
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<HR>
+<H2>FILES</H2>
+<P>
+Named pipes (fifo) files are used to synchronize with the
+main MPI job run script, to ensure that the filter program and
+the script do not do a "busy-wait" in which they consume CPU
+cycles while they are waiting for each other.  The fifo names are:
+<UL><LI>filter_to_model.lock
+    <LI>model_to_filter.lock
+    <LI>filter_lockNNNNN (where NNNNN is the task number with leading 0s)
+</UL>
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<HR>
+<H2>REFERENCES</H2>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class="errors">
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>block_task</TD>
+    <!-- message --><TD VALIGN=top>cannot handle task counts > 99999</TD>
+    <!-- comment --><TD VALIGN=top>Ensemble size must be less than 100,000. </TD>
+
+<TR><!-- routine --><TD VALIGN=top>block_task</TD>
+    <!-- message --><TD VALIGN=top>initialize_mpi_utilities() must be called first</TD>
+    <!-- comment --><TD VALIGN=top>The mpi init routine must be called first</TD>
+
+<TR><!-- routine --><TD VALIGN=top>restart_task</TD>
+    <!-- message --><TD VALIGN=top>cannot handle task counts > 99999</TD>
+    <!-- comment --><TD VALIGN=top>Ensemble size must be less than 100,000. </TD>
+
+<TR><!-- routine --><TD VALIGN=top>restart_task</TD>
+    <!-- message --><TD VALIGN=top>initialize_mpi_utilities() must be called first</TD>
+    <!-- comment --><TD VALIGN=top>The mpi init routine must be called first</TD>
+
+</TR>
+</TR>
+
+</TABLE>
+</div>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR>
+<H2>FUTURE PLANS</H2>
+<P>
+Some queueing systems balk at having multiple MPI jobs active at
+the same time, even if one is sleeping while the other is running.
+At some point filter may exit instead of blocking while the model
+advances are running.  In that case this program will no longer
+be needed.
+</P>
+
+<H3 class=indent1>Discussion</H3>
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>
