@@ -206,7 +206,7 @@ subroutine model_interpolate(x, location, itype, obs_val, istatus)
 ! models that have no notion of types of variables, this argument can
 ! be ignored. For applications in which only perfect model experiments
 ! with identity observations (i.e. only the value of a particular
-! state variable is observerd), this can be a NULL INTERFACE.
+! state variable is observed), this can be a NULL INTERFACE.
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
