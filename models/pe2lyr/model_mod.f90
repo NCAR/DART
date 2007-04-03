@@ -47,7 +47,6 @@ public :: get_model_size, &
           init_time, &
           init_conditions, &
           TYPE_u, TYPE_v, TYPE_z, &
-          model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
@@ -462,24 +461,6 @@ end subroutine init_time
 
 
 !#############################################################
-
-
-subroutine model_get_close_states(o_loc, radius, number, indices, dist, x)
-implicit none
-
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: number, indices(:)
-real(r8), intent(out) :: dist(:)
-real(r8), intent(in) :: x(:)
-
-! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (number = -1 return)
-
-number = -1
-end subroutine model_get_close_states
-
-!############################################################
 function nc_write_model_atts( ncFileID ) result (ierr)
 
 use typeSizes
