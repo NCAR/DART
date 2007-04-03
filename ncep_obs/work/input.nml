@@ -4,7 +4,7 @@
    day = 30,
    tot_days = 2,
    max_num = 700000,
-   ObsBase = '~/Pre-J/DART/ncep_obs/prep_bufr/work/temp_obs.'
+   ObsBase = '~/Pre-J/DART/ncep_obs/prep_bufr/work/temp_obs.',
    select_obs  = 1,
    ADPUPA = .true., 
    AIRCAR = .true., 
@@ -18,7 +18,7 @@
    obs_T  = .true.,
    obs_PS = .false.,
    obs_QV = .true.,
-   daily_file = .true./
+   daily_file = .true.  /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
@@ -27,10 +27,10 @@
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT'
-   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE' /
+   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
 
 &assim_model_nml
-   write_binary_restart_files = .true. /
+   write_binary_restart_files = .true.  /
 
 &model_nml
    output_state_vector      = .false.,
@@ -44,21 +44,21 @@
    state_num_2d             = 1,
    state_num_3d             = 6,
    state_names_2d = 'PS      ',19*'        ',
-   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE   ',14*'        ',
+   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE  ',14*'        ',
    which_vert_1d            =     20*0,
    which_vert_2d            = -1 ,19*0,
    which_vert_3d            = 6*1,14*0,
    state_names_pert         = 20*'        ',
    state_names_sd           = 20*0,
    Time_step_seconds = 21600,
-   Time_step_days = 0    /
+   Time_step_days    = 0  /
 
 &location_nml
-   horiz_dist_only = .true.,
+   horiz_dist_only             = .true.,
    vert_normalization_pressure = 100000.0, 
-   vert_normalization_height = 10000.0,
-   vert_normalization_level = 20.0,
-   approximate_distance = .false. /
+   vert_normalization_height   = 10000.0,
+   vert_normalization_level    = 20.0,
+   approximate_distance        = .false.  /
 
 &utilities_nml
    TERMLEVEL = 1,

@@ -13,7 +13,7 @@
    dbz_threshold             =   0.001 ,
    apply_ref_limit_to_obs    = .false. ,
    reflectivity_limit_obs    =     0.0 ,
-   lowest_reflectivity_obs   = -888888.0 ,
+   lowest_reflectivity_obs   = -888888.0,
    apply_ref_limit_to_state  = .false. ,
    reflectivity_limit_state  =     0.0 ,
    lowest_reflectivity_state = -888888.0  /

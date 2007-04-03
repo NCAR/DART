@@ -20,6 +20,5 @@
    select_algorithm = 1,
    state_complete_algorithm = 3,
    broadcast_algorithm = 3,
-   ensemble_complete_algorithm = 3 /
-
+   ensemble_complete_algorithm = 3  /
 

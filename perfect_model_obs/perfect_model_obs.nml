@@ -10,8 +10,8 @@
    last_obs_seconds      = -1,
    output_interval       = 1,
    restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart"
+   restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./advance_model.csh" /
+   adv_ens_command       = "./advance_model.csh"  /
 

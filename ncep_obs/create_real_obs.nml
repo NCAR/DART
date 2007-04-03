@@ -1,11 +1,11 @@
 &ncepobs_nml
-   year = 2003,
-   month = 1,
-   day = 1,
-   tot_days = 31,
-   max_num = 800000,
-   select_obs  = 0,
-   ObsBase = 'ncepobs/April05/temp_obs.'
+   year       = 2003,
+   month      = 1,
+   day        = 1,
+   tot_days   = 31,
+   max_num    = 800000,
+   select_obs = 0,
+   ObsBase = 'ncepobs/April05/temp_obs.',
    ADPUPA = .false., 
    AIRCAR = .false., 
    AIRCFT = .false., 
