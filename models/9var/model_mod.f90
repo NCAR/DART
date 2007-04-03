@@ -38,7 +38,6 @@ public :: get_model_size, &
           static_init_model, &
           init_time, &
           init_conditions, &
-          model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
@@ -587,28 +586,6 @@ end subroutine end_model
 
 
 
-
-
-
-subroutine model_get_close_states(o_loc, radius, numinds, indices, dist, x)
-!--------------------------------------------------------------------
-! 
-! Stub for computation of get close states
-
-implicit none
-
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius
-integer, intent(out) :: numinds
-integer, intent(in)  :: indices(:)
-real(r8), intent(in) :: dist(:)
-real(r8), intent(in) :: x(:)
-
-! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (numinds = -1 return)
-numinds = -1
-
-end subroutine model_get_close_states
 
 
 

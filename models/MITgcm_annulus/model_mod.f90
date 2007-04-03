@@ -40,7 +40,6 @@ public :: get_model_size,         &
           static_init_model,      &
           init_time,              &
           init_conditions,        &
-          model_get_close_states, &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
           pert_model_state,       &
@@ -469,7 +468,7 @@ end subroutine end_model
 
 
 
-subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
+!subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
 !------------------------------------------------------------------
 !
 ! Returns the number of state variables that are within a given
@@ -752,7 +751,7 @@ inum = -1
 ! write(6,*) i, indices(i), dist(i)
 !Xend do
 
-end subroutine model_get_close_states
+!end subroutine model_get_close_states
 
 
 subroutine vector_to_prog_var(x, var)

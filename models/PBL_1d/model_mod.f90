@@ -59,7 +59,6 @@ public :: get_model_size, &
           static_init_model, &
           init_time, &
           init_conditions, &
-          model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           nc_read_model_vars, &
@@ -1866,59 +1865,6 @@ subroutine end_model()
 
 end subroutine end_model
 
-
-subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
-!------------------------------------------------------------------
-!
-! Gets all states within radius of o_loc
-   
-implicit none
-
-type(location_type), intent(in) :: o_loc
-real(r8), intent(in) :: radius  
-integer, intent(out) :: inum, indices(:)
-real(r8), intent(out) :: dist(:)
-real(r8), intent(in) :: x(:)
-
-integer               :: i
-integer               :: which_vert
-real(r8)              :: obs_location(3)
-real(r8)              :: state_location(3)
-real(r8)              :: dist_tmp
-
-
-which_vert = query_location(o_loc,'which_vert')
-if ( which_vert > 1 ) then
-     call error_handler(E_ERR, 'model_get_close_states; column', &
-         'which_vert is invalid', source, revision, revdate)
-endif
-
-obs_location(:) = get_location(o_loc)
-
-! Only two possibilities here: in the column or out of it.  Distance
-! is entirely dependent on vertical location if it is in the column.
-! Horizontal location is allowed a small tolerance to account for 
-! precision.
-
-inum = 0
-do i = 1, wrf_meta%model_size
-  state_location(:) = get_location(state_loc(i))
-   if ( abs(obs_location(1) - state_location(1)) < 0.001 .and. (obs_location(2) - state_location(2)) < 0.001 ) then
-      if ( which_vert == -1 ) then ! surface
-        dist_tmp = state_location(3)
-      elseif ( which_vert == 1 ) then ! model level
-        dist_tmp = abs(obs_location(3)-state_location(3))
-      endif
-      if ( dist_tmp <= radius ) then
-        inum = inum + 1
-        indices(inum) = i
-        dist(inum) = dist_tmp
-      endif
-   endif
-
-enddo
-
-end subroutine model_get_close_states
 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
