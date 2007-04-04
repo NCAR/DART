@@ -29,7 +29,7 @@
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -q regular
-#BSUB -n 32
+#BSUB -n 16
 ##BSUB -P nnnnnnnn
 #BSUB -W 1:00
 #
@@ -74,6 +74,8 @@
 
 set parallel_model = "false"
 
+set num_ens = 16
+
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
 # This way, we know which queuing mechanism we are working with,
@@ -115,17 +117,18 @@ if ($?LS_SUBCWD) then
        
        if ( "${todo}" == "finished" ) then
          echo main script: filter done.
+         wait
          break                                
 
        else if ( "${todo}" == "advance" ) then
          
-         # the second number below (16) must match the number
+         # the second number below must match the number
          # of ensembles.  and in input.nml, the advance model
          # command must have -np N with N equal to the number
          # of processors this job is using.
    
          echo calling model advance now:                
-         ./advance_model.csh 0 16 filter_control00000  true
+         ./advance_model.csh 0 ${num_ens} filter_control00000  true
          
          echo restarting filter.     
          mpirun.lsf  ./wakeup_filter
@@ -139,7 +142,6 @@ if ($?LS_SUBCWD) then
       
      end
       
-     wait
      echo filter finished, removing pipes.
      rm -f model_to_filter.lock filter_to_model.lock
    
@@ -182,17 +184,18 @@ else if ($?PBS_O_WORKDIR) then
        
        if ( "${todo}" == "finished" ) then
          echo main script: filter done.
+         wait
          break                                
 
        else if ( "${todo}" == "advance" ) then
          
-         # the second number below (16) must match the number
+         # the second number below must match the number
          # of ensembles.  and in input.nml, the advance model
          # command must have -np N with N equal to the number
          # of processors this job is using.
    
          echo calling model advance now:                
-         ./advance_model.csh 0 16 filter_control00000  true
+         ./advance_model.csh 0 ${num_ens} filter_control00000  true
          
          echo restarting filter.     
          mpirun  ./wakeup_filter
@@ -206,7 +209,6 @@ else if ($?PBS_O_WORKDIR) then
       
      end
       
-     wait
      echo filter finished, removing pipes.
      rm -f model_to_filter.lock filter_to_model.lock
    
@@ -266,17 +268,18 @@ else if ($?OCOTILLO_MPINODES) then
        
        if ( "${todo}" == "finished" ) then
          echo main script: filter done.
+         wait
          break                                
 
        else if ( "${todo}" == "advance" ) then
          
-         # the second number below (16) must match the number
+         # the second number below must match the number
          # of ensembles.  and in input.nml, the advance model
          # command must have -np N with N equal to the number
          # of processors this job is using.
    
          echo calling model advance now:                
-         ./advance_model.csh 0 16 filter_control00000  true
+         ./advance_model.csh 0 ${num_ens} filter_control00000  true
          
          echo restarting filter.     
          mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./wakeup_filter
@@ -290,7 +293,6 @@ else if ($?OCOTILLO_MPINODES) then
       
      end
       
-     wait
      echo filter finished, removing pipes.
      rm -f model_to_filter.lock filter_to_model.lock
    
