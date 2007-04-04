@@ -1,0 +1,68 @@
+# Template for SGI Altix systems (Altix clusters are based on Intel chips, 
+#    not MIPS chips like earlier SGI systems.)
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id: mkmf.template.ifort.linuxcluster 2691 2007-03-11 18:18:09Z thoar $
+# $Revision$
+# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
+
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# NETCDF and LIBS needs to be customized for your site -- 
+#  this file is known to work on the COLUMBIA cluster at NASA Ames,
+#  and the ORIGIN cluster at the NSSL in Norman.
+#
+# the location of NETCDF on these two machines is: 
+#     columbia    NETCDF = /opt/pd/netcdf/3.6.0-p1/
+#     origin      NETCDF = /home/wicker/Software/netcdf-3.6.0-p1
+#
+# For MPI programs you still use the 'ifort' compiler but add the
+#   '-lmpi' flag to link in the mpi libraries and also mark the
+#   executable as an MPI job.  This is different from most Linux
+#   clusters which have a separate 'mpif90' script to add the MPI
+#   specific include dirs and link libraries.
+#
+# FFLAGS   use when you like, if you must
+#     -fpp     run Fortran preprocessor on source files prior to compilation
+#     -free    interpret source as free-format, regardless of file extension
+#     -r8      specify default real size ...
+#
+# FFLAGS   useful for debugging
+#     -C       (paritally) enable extensive runtime error checking
+#     -g       include symbol table
+#     -mp1     Improves floating-point precision and consistency.  This option
+#              disables fewer optimizations and has less impact on performance
+#              than -mp or -fltconsistency
+#     -check all       [bounds,overflow,format,args]
+#     -check noarg_temp_created   turns off this one
+#     -[no]warn <keywords>
+#           specifies the level of warning messages issued.
+#           keywords:  [no]alignments, [no]argument_checking, [no]declarations,
+#                      [no]errors, [no]fileopt, [no]general, [no]ignore_loc, 
+#                      [no]stderrors, [no]truncated_source, [no]uncalled,
+#                      [no]uninitialized, [no]unused, [no]usage
+#
+# FFLAGS   useful for benchmarking
+#     -O0      disable optimizations
+#
+# FFLAGS   useful for production
+#     -O2      optimize
+#
+
+MPIFC = ifort
+MPILD = ifort -lmpi
+FC = ifort
+LD = ifort
+NETCDF = /opt/pd/netcdf/3.6.0-p1/
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf 
+FFLAGS = -C -O0 $(INCS)
+LDFLAGS =   -O0 $(INCS) $(LIBS)
+
