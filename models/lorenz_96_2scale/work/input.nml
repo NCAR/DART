@@ -97,7 +97,7 @@
 &model_nml
    model_size_x        = 36,
    y_per_x             = 10,
-   forcing             = 10.00,
+   forcing             = 15.00,
    delta_t             = 0.005,
    coupling_b          = 10.0,
    coupling_c          = 10.0,

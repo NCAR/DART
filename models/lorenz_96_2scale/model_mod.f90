@@ -61,8 +61,8 @@ character(len=128), parameter :: &
 !
 integer  :: model_size_x = 36
 integer  :: y_per_x    = 10
-real(r8) :: forcing    = 8.00_r8
-real(r8) :: delta_t    = 0.05_r8
+real(r8) :: forcing    = 15.0_r8
+real(r8) :: delta_t    = 0.005_r8
 real(r8) :: coupling_b = 10.0_r8
 real(r8) :: coupling_c = 10.0_r8
 real(r8) :: coupling_h = 1.0_r8
