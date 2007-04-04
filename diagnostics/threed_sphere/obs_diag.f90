@@ -145,7 +145,7 @@ integer :: hlevel         = 5000     ! height (meters)
 integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 integer :: Nregions       = 4
 real(r8):: rat_cri        = 3.0_r8   ! QC ratio
-real(r8):: qc_threshold   = 4.0_r8   ! maximum NCEP QC factor
+real(r8):: input_qc_threshold = 4.0_r8   ! maximum NCEP QC factor
 logical :: print_mismatched_locs = .false.
 logical :: print_obs_locations = .false.
 logical :: verbose = .false.
@@ -164,7 +164,7 @@ character(len = 20), dimension(4) :: reg_names = (/ 'Northern Hemisphere ', &
 
 namelist /obs_diag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
-                       plevel, hlevel, mlevel, obs_select, rat_cri, qc_threshold, &
+                       plevel, hlevel, mlevel, obs_select, rat_cri, input_qc_threshold, &
                        Nregions, lonlim1, lonlim2, latlim1, latlim2, &
                        reg_names, print_mismatched_locs, print_obs_locations, verbose
 
@@ -929,7 +929,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          endif
 
          if( qc_index > 0) then
-            if (qc(qc_index) >= qc_threshold ) then
+            if (qc(qc_index) >= input_qc_threshold ) then
             !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(qc_index)
                NbadQC = NbadQC + 1
                if (print_obs_locations) write(lunit, '(a)') trim(locstring_bad)
@@ -1370,7 +1370,7 @@ write(iunit,'(''psurface       = '',i6,'';'')')levels_int(1,VERTISPRESSURE)
 write(iunit,'(''ptop           = '',i6,'';'')')levels_int(nlev+1,VERTISPRESSURE)
 write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
-write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
+write(iunit,'(''qc_threshold   = '',f9.2,'';'')')input_qc_threshold
 write(iunit,'(''plev     = ['',11(1x,i5),''];'')')levels(:,VERTISPRESSURE)
 write(iunit,'(''plev_int = ['',12(1x,i5),''];'')')levels_int(:,VERTISPRESSURE)
 write(iunit,'(''hlev     = ['',11(1x,i5),''];'')')levels(:,VERTISPRESSURE)

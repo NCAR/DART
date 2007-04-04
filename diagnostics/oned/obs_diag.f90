@@ -88,7 +88,7 @@ character(len = 129) :: obs_sequence_name = "obs_seq.final"
 integer :: iskip_days = 0        ! skip the first 'iskip' days
 integer :: obs_select = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
 real(r8):: rat_cri    = 4.0      ! QC ratio
-real(r8):: qc_threshold = 4.0    ! input obs QC values >= this not used
+real(r8):: input_qc_threshold = 4.0    ! input obs QC values >= this not used
 integer :: bin_width_seconds  = 0   ! width of the bin seconds
 logical :: verbose = .false.
 
@@ -104,7 +104,7 @@ character(len=6), dimension(MaxRegions) :: reg_names = &
 
 namelist /obs_diag_nml/ obs_sequence_name, &
                        iskip_days, obs_select, rat_cri, &
-                       qc_threshold, bin_width_seconds, &
+                       input_qc_threshold, bin_width_seconds, &
                        lonlim1, lonlim2, reg_names, verbose
 
 !-----------------------------------------------------------------------
@@ -641,7 +641,7 @@ enddo FindNumRegions
             cycle ObservationLoop
          endif
 
-         if( qc(qc_index) >= qc_threshold ) then
+         if( qc(qc_index) >= input_qc_threshold ) then
          !  write(*,*)'obs ',obsindex,' rejected by qc ',qc
             NbadQC = NbadQC + 1
             cycle ObservationLoop 
@@ -788,7 +788,7 @@ iunit = open_file('ObsDiagAtts.m',form='formatted',action='rewind')
 write(iunit,'(''iskip_days     = '',i6,'';'')')iskip_days
 write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
-write(iunit,'(''qc_threshold   = '',f9.2,'';'')')qc_threshold
+write(iunit,'(''qc_threshold   = '',f9.2,'';'')')input_qc_threshold
 write(iunit,'(''bin_width_seconds = '',i5,'';'')')bin_width_seconds
 write(iunit,'(''t1             = '',f20.6,'';'')')epoch_center(1)
 write(iunit,'(''tN             = '',f20.6,'';'')')epoch_center(Nepochs)
