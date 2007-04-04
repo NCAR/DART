@@ -38,7 +38,8 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
           KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
           KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
-          KIND_VORTEX_LON, KIND_VORTEX_LAT, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
+          KIND_VORTEX_LON, KIND_VORTEX_LAT, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
+          KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION
 
 ! Public access to the observation types is provided here
 ! This is constructed by the preprocessor
@@ -82,6 +83,11 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
                       KIND_ICE_NUMBER_CONCENTRATION    = 21, &
                       KIND_GEOPOTENTIAL_HEIGHT         = 22
 
+! kinds for Gravity Wave Drag (CAM - kevin) 
+integer, parameter :: KIND_GRAV_WAVE_DRAG_EFFIC        = 23, &
+                      KIND_GRAV_WAVE_STRESS_FRACTION   = 24
+
+! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter :: KIND_VORTEX_LON                  = 81, &
                       KIND_VORTEX_LAT                  = 82, &
                       KIND_VORTEX_PMIN                 = 83, &
