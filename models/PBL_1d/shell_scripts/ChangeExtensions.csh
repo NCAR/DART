@@ -38,33 +38,54 @@ if ($#argv != 1) then
    echo "$SNAME:t f90"
    echo
    @ MYSTATUS = 1  
-else
+   exit
+endif
 
-   # need to check on the extension ... it can only be F or f90 ish ...
+# check to see if the requested extension is reasonable
 
-   foreach FILE ( module_* driver* *_mod.* tridiag.* )  # loops through all the files
+switch ( $1 )
+case F90:
+      set FEXT = $1
+      breaksw
+case F:
+      set FEXT = $1
+      breaksw
+case f90:
+      set FEXT = $1
+      breaksw
+case f:
+      set FEXT = $1
+      breaksw
+default:
+      echo "unrecognized extension ( $1 ) doing nothing"
+      exit
+endsw
 
-      # rename the file
+# loop through all the files
 
-      set BASE = $FILE:r
-      set NEWNAME = ${BASE}.F90
+foreach FILE ( module_* driver* *_mod.* tridiag.* )
 
-      echo "Renaming $FILE to $NEWNAME ... "
+   # rename the file
 
-      # mv $FILE ${NEWNAME} || exit 1
-      svn rename $FILE ${NEWNAME} || exit 1
+   set BASE = $FILE:r
+   set NEWNAME = ${BASE}.${FEXT}
 
-      # now change the path_names files with SED
+   echo "Renaming $FILE to $NEWNAME ... "
 
-      foreach PATHNAMEFILE ( ../work/path_names* ) 
-         set STRING = "1,$ s#src/$FILE#src/$NEWNAME#"
-         sed -e "$STRING" $PATHNAMEFILE >! foo
-         mv foo $PATHNAMEFILE
-      end
+   mv $FILE ${NEWNAME} || exit 1
+   # svn rename $FILE ${NEWNAME} || exit 1
 
+   # now change the path_names files with SED
+
+   foreach PATHNAMEFILE ( ../work/path_names* ) 
+      set STRING = "1,$ s#src/$FILE#src/$NEWNAME#"
+      sed -e "$STRING" $PATHNAMEFILE >! foo
+      mv foo $PATHNAMEFILE
    end
 
-   echo "$SNAME:t complete."
+end
 
-   @ MYSTATUS = 0  
-endif
+echo "$SNAME:t complete."
+
+@ MYSTATUS = 0  
+exit
