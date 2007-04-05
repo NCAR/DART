@@ -1,15 +1,16 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
+! Copyright 2004-2006, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_def_dew_point_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
+! <next five lines automatically updated by CVS, do not edit>
+! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_dew_point_mod.f90,v $
 ! $Revision$
 ! $Date$
+! $Author$
+! $Name:  $
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DEW_POINT_TEMPERATURE, KIND_DEW_POINT_TEMPERATURE
@@ -42,25 +43,23 @@ module obs_def_dew_point_mod
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
-use        types_mod, only : r8, missing_r8, t_kelvin, es_alpha, es_beta, es_gamma, &
-                             gas_constant_v, gas_constant, L_over_Rv
+use        types_mod, only : r8, missing_r8, t_kelvin
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE
+use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
 
 implicit none
 private
 
 public :: get_expected_dew_point
 
-! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+! CVS Generated file description for error handling, do not edit
+character(len=128) :: &
+source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_dew_point_mod.f90,v $", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -82,11 +81,17 @@ subroutine get_expected_dew_point(state_vector, location, key, td, istatus)
 real(r8),            intent(in)  :: state_vector(:)
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: key
-real(r8),            intent(out) :: td
+real(r8),            intent(out) :: td               ! dewpoint (K)
 integer,             intent(out) :: istatus
 
 integer  :: ipres
-real(r8) :: t, qv, t_c, es, qvs, p, INVTD, rd_over_rv, rd_over_rv1
+real(r8) :: qv                            ! specific humidity
+real(r8) :: rv                            ! water vapor mixing ratio (kg/kg)
+real(r8) :: e_mb                          ! water vapor pressure (mb)
+real(r8), PARAMETER :: e_min = 0.001_r8   ! threshold for minimum vapor pressure (mb),
+                                          !   to avoid problems near zero in Bolton's equation
+real(r8) :: p_Pa                          ! pressure (Pa)
+real(r8) :: p_mb                          ! pressure (mb)
 
 character(len=129) :: errstring
 
@@ -102,7 +107,7 @@ else
         source, revision, revdate)
 endif
 
-call interpolate(state_vector, location, ipres, p, istatus)
+call interpolate(state_vector, location, ipres, p_Pa, istatus)
 if (istatus /= 0) then
    td = missing_r8
    return
@@ -112,32 +117,29 @@ if (istatus /= 0) then
    td = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_TEMPERATURE, t, istatus)
-if (istatus /= 0) then
-   td = missing_r8
-   return
+
+!------------------------------------------------------------------------------
+!  Compute water vapor pressure.
+!------------------------------------------------------------------------------
+
+if (qv >= 1.0_r8) then
+   write(errstring,*)'invalid qv value ', qv
+   call error_handler(E_ERR,'get_expected_dew_point', errstring, &
+        source, revision, revdate)
+else
+   rv = qv / (1.0_r8 - qv)
 endif
 
-rd_over_rv = gas_constant / gas_constant_v
-rd_over_rv1 = 1.0_r8 - rd_over_rv
+p_mb = p_Pa * 0.01_r8
 
-t_c = t - t_kelvin
-
-!------------------------------------------------------------------------------
-!  Calculate saturation vapour pressure:
-!------------------------------------------------------------------------------
-
-es = es_alpha * exp( es_beta * t_c / ( t_c + es_gamma ) )
+e_mb = rv * p_mb / (0.622_r8 + rv)
+e_mb = max(e_mb, e_min)
 
 !------------------------------------------------------------------------------
-!  Calculate saturation specific humidity:
+!  Use Bolton's approximation to compute dewpoint.
 !------------------------------------------------------------------------------
 
-qvs = rd_over_rv * es / ( p - rd_over_rv1 * es )
-
-INVTD = 1.0_r8/t  - LOG (qv / qvs) / L_over_Rv
-
-td = 1.0_r8 / INVTD
+td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
 
 end subroutine get_expected_dew_point
 
