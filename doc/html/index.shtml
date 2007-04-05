@@ -5,7 +5,7 @@
       <!-- $Id$ -->
       <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
       <title>Data Assimilation Research Testbed -- DART</title>
-      <link href="doc.css" rel="stylesheet" type="text/css">
+      <link href="doc.css" rel="stylesheet" type="text/css"></link>
       <style type="text/css">
                 <!--
                 @import url(/styles/fontsizer.css);
@@ -23,14 +23,22 @@
 <table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
 
    <tr>
-       <!-- SIDE NAVIGATION is formatted by navigation.css-->
-       <td width="20%" valign="top"><!--#include virtual="../navigation.html" --></td>
+      <!-- SIDE NAVIGATION is formatted by navigation.css-->
+      <td width="20%" valign="top"><!--#include virtual="../navigation.html" --></td>
 
-       <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
+      <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
 
-       <td valign="top"><!-- Right HAND SIDE COLUMN --> 
+      <td valign="top"><!-- Right HAND SIDE COLUMN --> 
 
       <H1>The Data Assimilation Research Testbed -- DART</H1>
+
+      <TABLE summary="">     
+      <TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
+      <TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+      <TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+      <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+      </TABLE>
+
       <P>
       The DART software provides a flexible, extensible framework for conducting
       data assimilation research on a wide variety of models and observations.
