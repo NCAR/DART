@@ -1042,10 +1042,10 @@ if(output_forward_op_errors) then
       call get_copy(0, forward_op_ens_handle, k, forward_temp)
 
       ! Loop through each observation in set for this copy
-      ! Forward temp is a real representing an integer; values of 1 or greater get out
+      ! Forward temp is a real representing an integer; values /= 0 get written out
       if(my_task_id() == 0) then
          do j = 1, num_obs_in_set
-            if(nint(forward_temp(j)) > -1) write(forward_unit, *) keys(j), k, nint(forward_temp(j))
+            if(nint(forward_temp(j)) /= 0) write(forward_unit, *) keys(j), k, nint(forward_temp(j))
          end do
       endif
    end do
