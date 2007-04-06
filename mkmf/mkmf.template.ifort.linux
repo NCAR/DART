@@ -1,4 +1,5 @@
-# Template for Intel 9.x Fortran Compiler on a Fedora Core 4 Intel architecture
+# Template for Intel 9.x Fortran Compiler on Linux clusters
+#   and workstations
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -14,12 +15,21 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
 #
-# NETCDF and LIBS needs to be customized for your site
+# NETCDF and LIBS may need to be customized for your site.
+#
 #     fisher    NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
 #     dart      NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
-#     coral     NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64
-#     lightning NETCDF = /gpfs/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort8.1-64
+#     lightning NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-gcc-g++-ifort9.1.036
 #     bangkok   NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-ifort8.0.046_pe050.1
+#  ocotillo 8.0 NETCDF = /ocotillo/users/caya/netcdf
+#  ocotillo 8.1 NETCDF = /ocotillo/users/thoar/netcdf-3.6.1-cc-c++-ifort8.1
+#     coral     NETCDF = /coral/local/netcdf-3.6.0p1-icc-ifort9.0.028-64
+# CORAL note: use the 'module' commmand. It sets a NETCDF env variable that works.
+#
+#
+# If you have multiple machines to compile on and the only difference is
+# where NETCDF is installed, you can comment NETCDF out of this template
+# file and set it as an environment variable.
 #
 # FFLAGS   use when you like, if you must
 #     -fpp     run Fortran preprocessor on source files prior to compilation
@@ -27,9 +37,10 @@
 #     -r8      specify default real size ...
 #
 # FFLAGS   useful for debugging
-#     -CB      enable runtime bounds check
-#     -g       include symbol table -- Note that -g does NOT IMPLY -O0 
+#     -C       (partially) enable extensive runtime error checking
+#     -g       include symbol table
 #     -check all       [bounds,overflow,format,args]
+#     -check noarg_temp_created   turns off this one
 #     -[no]warn <keywords>
 #           specifies the level of warning messages issued.
 #           keywords:  [no]alignments, [no]argument_checking, [no]declarations,
@@ -50,22 +61,40 @@
 #     -O2      optimize
 #     -mp      maintain precision in the face of optimization
 #
+# Just for reference, this template has been used with these versions
+# of the fortran compiler.
+#
 # Compiler Information (ifort -V):  [dart, fisher]
 #    Intel(R) Fortran Compiler for 32-bit applications, Version 9.0
 #    Build 20051201Z Package ID: l_fc_c_9.0.031
 #    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
 #    FOR NON-COMMERCIAL USE ONLY
 #
-#FFLAGS = -r8 -free $(INCS)   (pbl_1d flags)
+# Compiler Information (ifort -V):  [coral]
+#    Intel(R) Fortran Compiler for Intel(R) EM64T-based applications, Version 9.0
+#    Build 20051020 
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
+#
+# Compiler Information (ifort -V):  [lightning]
+#    Intel(R) Fortran Compiler for Intel(R) EM64T-based applications, Version 8.1
+#    Build 20050406 Package ID: l_fce_pc_8.1.027
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
+#
+#
+# The PBL_1d model needs this flag added to whatever others are used:
+#FFLAGS = -r8 
 
-# if not using the default mpi wrappers, set MPI_HOME to the location
 MPIFC = mpif90
 MPILD = mpif90
 FC = ifort
 LD = ifort
-NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-ifort9.0.031
+# this will probably need to be customized for your machine.
+NETCDF = /contrib
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
-FFLAGS = -CB -pc64 -mp -O0 $(INCS)
-LDFLAGS =          -mp -O0 $(INCS) $(LIBS)
+FFLAGS  = -O2 -mp -fpe0 $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# for development or debugging, use this instead:
+#FFLAGS  = -C -check noarg_temp_created -pc64 -fpe0 -mp -O0 $(INCS)
 
