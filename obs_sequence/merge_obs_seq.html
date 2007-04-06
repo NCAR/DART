@@ -31,16 +31,13 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 -->
 
-<!--kdr INTERFACE, PUBLIC COMPONENTS, NAMELIST, ERRORS, PRIVATE COMPONENTS have no destinations -->
 <DIV ALIGN=CENTER>
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+<A HREF="#FuturePlans">PLANS</A>
 </DIV>
 
 <!--==================================================================-->
@@ -111,7 +108,7 @@ obs_sequence_mod
  '&#38;' and terminating with a slash '/'.
  </P>
  <div class=namelist><pre>
- <em class=call>namelist / merge_obs_seq / </em> num_input_file, filename_seq, filename_out
+ <em class=call>namelist / merge_obs_seq / </em> num_input_files, filename_seq, filename_out
  </pre></div>
 
  <H3 class=indent1>Discussion</H3>
@@ -174,9 +171,30 @@ obs_sequence_mod
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis merges a nice effect.         -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class="errors">
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>merge_obs_seq</TD>
+    <!-- message --><TD VALIGN=top>num_input_files &#62; max_num_input_files. 
+		    change max_num_input_files in source file</TD>
+    <!-- comment --><TD VALIGN=top>The default is 50 files. If you're trying to 
+		    merge more than that, you're going about it the wrong way ...</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>merge_obs_seq</TD>
+    <!-- message --><TD VALIGN=top>num_input_files and filename_seq mismatch</TD>
+    <!-- comment --><TD VALIGN=top>methinks you did not specify a file name for the 
+                        number of files you told me you were merging.</TD>
+</TR>
+</TABLE>
+</div>
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
@@ -186,7 +204,7 @@ obs_sequence_mod
 <BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
-There are no known bugs.
+There are no known bugs. Really.
 </P>
 
 <!--==================================================================-->
