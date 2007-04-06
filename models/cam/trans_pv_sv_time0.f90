@@ -57,23 +57,26 @@ type(time_type)        :: model_time
 real(r8), allocatable  :: x_state(:), x_temp(:)
 integer                :: file_unit, x_size, iunit, io
 
-!-------------------------
-! define junk for reading in whole namelist.
-logical :: start_from_restart = .false., output_restart = .false.
+! define exactly the same stuff as in the perfect_model_obs namelist.
+logical :: start_from_restart = .false., output_restart = .false., &
+           interf_provided
 integer :: async = 0
-integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1
+integer :: init_time_days = 0, init_time_seconds = 0, output_interval = 1, &
+           first_obs_days, first_obs_seconds, &
+           last_obs_days,  last_obs_seconds
 character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
                         obs_seq_out_file_name = 'obs_seq.out',     &
-                        adv_ens_command       = './advance_ens.csh'
+                        adv_ens_command       = './advance_model.csh'
 
-
-! namelist /filter_nml/init_time_days, init_time_seconds
-namelist /perfect_model_obs_nml/ async, adv_ens_command, obs_seq_in_file_name, &
-   obs_seq_out_file_name, start_from_restart, output_restart, &
-   restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds, &
-   output_interval
+namelist /perfect_model_obs_nml/                                            &
+          start_from_restart, output_restart, async,                        &
+          init_time_days, first_obs_days, first_obs_seconds, last_obs_days, &
+          last_obs_seconds,init_time_seconds, output_interval,              &
+          restart_in_file_name, restart_out_file_name,                      &
+          obs_seq_in_file_name, obs_seq_out_file_name,                      &
+          adv_ens_command
 
 !-------------------------
 
@@ -119,7 +122,6 @@ call set_model_time (x, model_time)
 call close_restart(file_unit)
 
 ! Get channel for output 
-! debug file_unit = 13
 file_unit = open_restart_write(file_out)
 PRINT*,'In trans_pv_sv file_out unit = ',file_unit
 PRINT*,' '
@@ -129,12 +131,10 @@ call close_restart(file_unit)
 
 call finalize_utilities()
 
-contains
-
-! WARNING: THERE IS SOME DANGER IN USING THESE SCOPED SUBROUTINES
-!==========================================================================
-
 !-------------------------------------------------------------------------
+contains
+!-------------------------------------------------------------------------
+
 subroutine filter_set_initial_time
 
 if(init_time_days >= 0) then

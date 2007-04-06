@@ -71,7 +71,7 @@ character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
                         obs_seq_out_file_name = 'obs_seq.out',     &
-                        adv_ens_command       = './advance_ens.csh'
+                        adv_ens_command       = './advance_model.csh'
 
 namelist /perfect_model_obs_nml/                                            &
           start_from_restart, output_restart, async,                        &
