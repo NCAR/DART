@@ -89,7 +89,7 @@ MPILD = mpif90
 FC = ifort
 LD = ifort
 # this will probably need to be customized for your machine.
-NETCDF = /contrib
+NETCDF = /contrib/netcdf
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 FFLAGS  = -O2 -mp -fpe0 $(INCS)
