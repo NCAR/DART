@@ -58,7 +58,7 @@ switch lower(values)
          aline = fgetl(fid);
 
          tim = sscanf(aline,'%d %*s');
-         tom = deblank(sscanf(aline,'%*d %s'));
+         tom = deblank(sscanf(aline,'%*s %s'));
         
          obskindnumber(idef) = tim;
          obskindstring(idef) = {tom};
@@ -261,8 +261,8 @@ a.cov_group  = cov_group;
 a.loc        = loc;
 a.which_vert = which_vert;
 a.kind       = kind;
-a.metadata   = metadata;
-a.qcdata     = qcdata;
+if ( num_copies > 0); a.metadata = metadata; end;
+if ( num_qc     > 0); a.qcdata   = qcdata; end;
 
 fclose(fid);
 
