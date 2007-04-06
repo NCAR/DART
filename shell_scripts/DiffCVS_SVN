@@ -71,9 +71,9 @@ else
 
    find $ORIGDIR -type f > $TMPFILE
 
-   # exclude comparing backup files
+   # exclude comparing backup files, etc.
 
-   foreach EXTENSION ( "%" "\~" "#" ) 
+   foreach EXTENSION ( "%" "\~" "#" '.o$' '.mod$' ) 
 
       grep -v $EXTENSION $TMPFILE > $NEWFILE
       mv $NEWFILE $TMPFILE
@@ -88,12 +88,27 @@ else
    grep -v "/.svn/" $TMPFILE >! $NEWFILE
    mv $NEWFILE $TMPFILE
 
-   # exclude comparing nuisance text string
-   grep -v "do not edit>" $TMPFILE >! $NEWFILE
+   # exclude comparing bgrid_model source files
+   grep -v "fms_src" $TMPFILE >! $NEWFILE
    mv $NEWFILE $TMPFILE
 
+   # exclude comparing bufr source code
+   grep -v "prep_bufr" $TMPFILE >! $NEWFILE
+   mv $NEWFILE $TMPFILE
+
+   # exclude comparing html files
+   grep -v 'html$' $TMPFILE >! $NEWFILE
+   mv $NEWFILE $TMPFILE
+
+   # exclude comparing anything in the tutorial
+   grep -v "tutorial" $TMPFILE >! $NEWFILE
+   mv $NEWFILE $TMPFILE
+
+   #--------------------------------------------------
    # generate the list of files expected to be in the
-   # second directory.
+   # second directory and start traversing ...
+   #--------------------------------------------------
+
    set STRING = "1,$ s#$ORIGDIR#$NEWDIR#"
    sed -e "$STRING" $TMPFILE >! $NEWFILE
 
@@ -136,23 +151,25 @@ else
 
             default:
 
-               grep -v '$Source'   $OrgFile >! org.$$.1
-               grep -v '$Revision' org.$$.1 >! org.$$.2
-               grep -v '$Date'     org.$$.2 >! org.$$.3
-               grep -v '$Author'   org.$$.3 >! org.$$.4
-               grep -v '$Name'     org.$$.4 >! org.$$.5
-               grep -v '$Id'       org.$$.5 >! org.$$.6
-               grep -v '$URL'      org.$$.6 >! org.$$.7
+               grep -v '$Source'      $OrgFile >! org.$$.1
+               grep -v '$Revision'    org.$$.1 >! org.$$.2
+               grep -v '$Date'        org.$$.2 >! org.$$.3
+               grep -v '$Author'      org.$$.3 >! org.$$.4
+               grep -v '$Name'        org.$$.4 >! org.$$.5
+               grep -v '$Id'          org.$$.5 >! org.$$.6
+               grep -v '$URL'         org.$$.6 >! org.$$.7
+               grep -v 'do not edit>' org.$$.7 >! org.$$.8
 
-               grep -v '$Source'   $NewFile >! new.$$.1
-               grep -v '$Revision' new.$$.1 >! new.$$.2
-               grep -v '$Date'     new.$$.2 >! new.$$.3
-               grep -v '$Author'   new.$$.3 >! new.$$.4
-               grep -v '$Name'     new.$$.4 >! new.$$.5
-               grep -v '$Id'       new.$$.5 >! new.$$.6
-               grep -v '$URL'      new.$$.6 >! new.$$.7
+               grep -v '$Source'      $NewFile >! new.$$.1
+               grep -v '$Revision'    new.$$.1 >! new.$$.2
+               grep -v '$Date'        new.$$.2 >! new.$$.3
+               grep -v '$Author'      new.$$.3 >! new.$$.4
+               grep -v '$Name'        new.$$.4 >! new.$$.5
+               grep -v '$Id'          new.$$.5 >! new.$$.6
+               grep -v '$URL'         new.$$.6 >! new.$$.7
+               grep -v 'do not edit>' new.$$.7 >! new.$$.8
 
-               set numdiffs = `diff org.$$.7 new.$$.7 | wc`
+               set numdiffs = `diff -w org.$$.8 new.$$.8 | wc`
                breaksw
          endsw
 
