@@ -1,5 +1,5 @@
-# Template for SGI MIPSpro f90  (this is not for SGI Altix clusters;
-#  see the other template file with "altix" in the name)
+# Template for SGI MIPSpro f90  (this is NOT for SGI Altix clusters;
+#  see the other SGI template file with "altix" in the name)
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -25,8 +25,10 @@
 #    MIPSpro Compilers: Version 7.4.3m
 #
 #
+MPIFC = f90
+MPILD = f90 -lmpi
 FC = f90
-LD = f90
+LD = f90 
 # NETCDF is location of include (header) files, 
 # NETCDFLIB is location of modules and libs
 NETCDF = /usr/local
