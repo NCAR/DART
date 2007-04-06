@@ -1,4 +1,4 @@
-# Template for GNU gfortran and Mac OSX
+# Template for GNU gfortran on Linux
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id$
+# $Id: mkmf.template.gfortran.osx 2691 2007-03-11 18:18:09Z thoar $
 # $Revision$
-# $Date$
+# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
 
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
@@ -68,7 +68,7 @@ FC = gfortran
 LD = gfortran
 NETCDF = /usr/local
 INCS = ${NETCDF}/include
-FFLAGS = -I$(INCS) -fsecond-underscore
-LIBS = -L${NETCDF}/lib -lnetcdf
+FFLAGS  = -O2 -I$(INCS) -fsecond-underscore
+LIBS    = -L${NETCDF}/lib -lnetcdf
 LDFLAGS = -I$(INCS) $(LIBS)
 

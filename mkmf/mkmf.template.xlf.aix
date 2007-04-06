@@ -42,9 +42,10 @@
 #   -qrealsize=8              autopromote (more than you think)
 #   -qintsize=4               ditto
 #
+MPIFC = mpxlf95_r
+MPILD = mpxlf95_r
 FC = xlf90_r
 LD = xlf90_r
-CC = xlc_r
 CFLAGS = -q64
 INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
 FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qarch=auto -qmaxmem=-1 -O0 -C $(INCS)

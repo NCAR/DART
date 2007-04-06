@@ -19,6 +19,8 @@
 # WARNING -- this is untested with the DART software (no access to a platform)
 #
 
+MPIFC = mpif90
+MPILD = mpif90
 FC = f90
 LD = f90
 CPPFLAGS = -F

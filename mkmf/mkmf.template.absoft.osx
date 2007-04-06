@@ -55,8 +55,10 @@
 #     -unixlib                 resolves 'system' call ... and more.
 #
 # Compiler Information (f90 -v):
-#   Pro Fortran 9.0     (pretty minimalist, if you ask me)
+#   Pro Fortran 9.0     (pretty minimalist message, if you ask me)
 
+MPIFC = mpif90
+MPILD = mpif90
 FC = f90
 LD = f90
 NETCDF = /Users/thoar/Absoft

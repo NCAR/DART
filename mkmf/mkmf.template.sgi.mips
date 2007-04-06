@@ -1,0 +1,39 @@
+# Template for SGI MIPSpro f90  (this is NOT for SGI Altix clusters;
+#  see the other SGI template file with "altix" in the name)
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# NETCDF and LIBS needs to be customized for your site
+#
+# WARNING -- This file is intended for an SGI running the IRIX system on 
+#   MIPS processors.   This will not work on an SGI Altix cluster running
+#   the Intel compilers. 
+#
+# Compiler Information [f90 -version]:
+#    MIPSpro Compilers: Version 7.4.3m
+#
+#
+MPIFC = f90
+MPILD = f90 -lmpi
+FC = f90
+LD = f90 
+# NETCDF is location of include (header) files, 
+# NETCDFLIB is location of modules and libs
+NETCDF = /usr/local
+NETCDFLIB = /usr/local/lib64/r4i4
+INCS = -I$(NETCDF)/include -I$(NETCDFLIB)
+FFLAGS = -64 -i4 -r8 -O0 $(INCS)
+LIBS = -L$(NETCDFLIB) -lnetcdf
+LDFLAGS = -64 -dont_warn_unused $(INCS) $(LIBS)

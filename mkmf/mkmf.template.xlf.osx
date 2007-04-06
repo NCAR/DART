@@ -49,6 +49,8 @@
 #
 #    -O5    Same as -O4, but also implies the -qipa=level=2 option.
 
+MPIFC = mpif90
+MPILD = mpif90
 FC = xlf90
 LD = xlf90
 NETCDF = /Users/thoar/netcdf-3.5.1
