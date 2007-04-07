@@ -32,6 +32,7 @@
 -->
 
 <DIV ALIGN=CENTER>
+<A HREF="#Modules">MODULES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#Usage">USAGE </A> / 
@@ -114,27 +115,30 @@
    information about how the observation was or was not assimilated.
    The DART QC flag is intended to provide information about whether the
    observation was assimilated, evaluated only, whether the assimilation resulted
-   in a 'good' observation, etc. Here is the table that should explain things: 
-   <table>
-	   <tr><th>DART QC flag value</th><th>meaning</th></tr>
-	   <tr><td>0</td><td>observation assimilated</td></tr>
-	   <tr><td>1</td><td>observation evaluated only</td></tr>
-	   <tr>
-	   <th colspan=2>everything above this means the prior and posterior are OK</th>
-	   </tr>
-	   <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
-	   <tr><td>3</td><td>Evaluated only, but the posterior forward operator failed</td></tr>
-	   <tr>
-	   <th colspan=2>everything above this means only the prior is OK</th>
-	   </tr>
-	   <tr><td>4</td><td>prior forward operator failed</td></tr>
-	   <tr><td>5</td><td>not used</td></tr>
-	   <tr><td>6</td><td>prior QC rejected</td></tr>
-	   <tr><td>7</td><td>outlier rejected</td></tr>
-	   <tr><td>8+</td><td>reserved for future use</td></tr>
-   </table>
-</em>
-</P>
+   in a 'good' observation, etc. Here is the table that should explain things: </em>
+</P> 
+
+<table width="80%">
+   <tr><th align="left">DART QC flag value</th><th align="left">meaning</th></tr>
+   <tr><td>0</td><td>observation assimilated</td></tr>
+   <tr><td>1</td><td>observation evaluated only</td></tr>
+
+   <tr><th align="left" colspan=2>DART QC values higher than this means the prior and posterior are OK, but ...</th></tr>
+
+   <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
+   <tr><td>3</td><td>Evaluated only, but the posterior forward operator failed</td></tr>
+
+   <tr><th align="left" colspan=2>DART QC values higher than this means only the prior is OK, but ...</th></tr>
+
+   <tr><td>4</td><td>prior forward operator failed</td></tr>
+   <tr><td>5</td><td>not used because of namelist control</td></tr>
+
+   <tr><th align="left" colspan=2>DART QC values higher than this are bad news.</th></tr>
+
+   <tr><td>6</td><td>prior QC rejected</td></tr>
+   <tr><td>7</td><td>outlier rejected</td></tr>
+   <tr><td>8+</td><td>reserved for future use</td></tr>
+</table>
 
 <P>
    Optional namelist interface
@@ -144,7 +148,7 @@
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
+<A NAME="Modules"></A>
 <BR><HR><BR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
@@ -172,11 +176,11 @@ utilities_mod
    ampersand '&#38;' and terminating with a slash '/'.
    <div class=namelist><pre>
    <em class=call>namelist / obs_diag_nml / </em> &#38;
-      obs_sequence_name, first_bin_center, last_bin_center, 
-      bin_separation, bin_width, time_to_skip, max_num_bins, 
-      plevel, hlevel, <em class=changed>mlevel</em>, obs_select, rat_cri, qc_threshold, 
-      Nregions, lonlim1, lonlim2, latlim1, latlim2, reg_names,
-      print_mismatched_locs, print_obs_locations, verbose
+      obs_sequence_name, first_bin_center, last_bin_center, &#38;
+      bin_separation, bin_width, time_to_skip, max_num_bins, &#38;
+      plevel, hlevel, <em class=changed>mlevel</em>, obs_select, rat_cri, <em class=changed>input_qc_threshold</em>, &#38;
+      Nregions, lonlim1, lonlim2, latlim1, latlim2, &#38;
+      reg_names, print_mismatched_locs, print_obs_locations, verbose
    </pre></div>
 </P>
 
@@ -246,8 +250,8 @@ utilities_mod
 
 <TR><!--contents--><TD valign=top>   plevel     </TD>
     <!--  type  --><TD valign=top>   integer    </TD>
-    <!--descript--><TD>Same as mlevel, but for observations with pressure (hPa)
-	    as the vertical coordinate. Much more common.<BR>
+    <!--descript--><TD>The RMS error, spread, and number of observations at 
+	    this pressure (hPa) will be calculated.<BR>
             Default: 500</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   hlevel     </TD>
@@ -287,7 +291,7 @@ utilities_mod
 	    the distance ratio is saved in <em class="file">nsigma.dat</em><BR>
             Default: 3.0</TD></TR>  
 
-<TR><!--contents--><TD valign=top>   qc_threshold </TD>
+<TR><!--contents--><TD valign=top>   input_qc_threshold </TD>
     <!--  type  --><TD valign=top>   real         </TD>
     <!--descript--><TD>Observations with quality control values greater than this
 	    will be excluded from the diagnostics.<BR>
@@ -468,6 +472,7 @@ metadata, and links to modules providing the models expected observations.
 <BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->

@@ -139,11 +139,10 @@ integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: bin_width        = (/    0, 0, 0, 6, 0, 0 /)
 integer, dimension(6) :: time_to_skip     = (/    0, 0, 1, 0, 0, 0 /)
 integer :: max_num_bins   = 1000     ! maximum number of bins to consider
-integer :: mlevel         = 5        ! model level (integer index) [1,11]
 integer :: plevel         = 500      ! pressure level (hPa)
 integer :: hlevel         = 5000     ! height (meters)
+integer :: mlevel         = 5        ! model level (integer index) [1,11]
 integer :: obs_select     = 1        ! obs type selection: 1=all, 2 =RAonly, 3=noRA
-integer :: Nregions       = 4
 real(r8):: rat_cri        = 3.0_r8   ! QC ratio
 real(r8):: input_qc_threshold = 4.0_r8   ! maximum NCEP QC factor
 logical :: print_mismatched_locs = .false.
@@ -152,6 +151,7 @@ logical :: verbose = .false.
 
 ! TJH - South Pole == lat 0   after you convert from radians.
 
+integer :: Nregions       = 4
 real(r8), dimension(4) :: lonlim1 = (/   0.0_r8,   0.0_r8,   0.0_r8, 235.0_r8 /)
 real(r8), dimension(4) :: lonlim2 = (/ 360.0_r8, 360.0_r8, 360.0_r8, 295.0_r8 /)
 real(r8), dimension(4) :: latlim1 = (/  20.0_r8, -80.0_r8, -20.0_r8,  25.0_r8 /)

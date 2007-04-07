@@ -71,34 +71,43 @@
 	   for each observation type in the observation sequence file.</em>
 </P>
 
+<P>
+   The <em class=program>obs_diag</em> program performs an outlier test on 
+   observations, which can be more restrictive than the outlier test in the 
+   filter, but not less 
+   (see <em class=code>outlier_threshold</em> in <em class=code>filter_nml</em> 
+   and <em class=code>rat_cri</em> here).
+</P>
+
 <P><em class='new'>
-   The J release of DART also implements a DART QC flag that provides 
+   The J release of DART also implements a DART QC flag that provides
    information about how the observation was or was not assimilated.
-   The DART QC flag is intended to provide information about whether the 
-   observation was assimilated, evaluated only, whether the assimilation 
-   resulted in a 'good' observation, etc.
-   Here is the table that should explain things: 
-   <table>
-   <tr><th>DART QC flag value</th>
-       <th>&nbsp;&nbsp;&nbsp;&nbsp;</th>
-       <th align="left">meaning</th></tr>
-   <tr><td>0</td><td>&nbsp;</td><td>observation assimilated</td></tr>
-   <tr><td>1</td><td>&nbsp;</td><td>observation evaluated only</td></tr>
+   The DART QC flag is intended to provide information about whether the
+   observation was assimilated, evaluated only, whether the assimilation resulted
+   in a 'good' observation, etc. Here is the table that should explain things: </em>
+</P> 
 
-   <tr><th align="left" colspan=3>everything above this means the prior and posterior are OK</th></tr>
+<table width="80%">
+   <tr><th align="left">DART QC flag value</th><th align="left">meaning</th></tr>
+   <tr><td>0</td><td>observation assimilated</td></tr>
+   <tr><td>1</td><td>observation evaluated only</td></tr>
 
-   <tr><td>2</td><td>&nbsp;</td><td>assimilated, but the posterior forward operator failed</td></tr>
-   <tr><td>3</td><td>&nbsp;</td><td>Evaluated only, but the posterior forward operator failed</td></tr>
+   <tr><th align="left" colspan=2>DART QC values higher than this means the prior and posterior are OK, but ...</th></tr>
 
-   <tr><th align="left" colspan=3>everything above this means only the prior is OK</th></tr>
+   <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
+   <tr><td>3</td><td>Evaluated only, but the posterior forward operator failed</td></tr>
 
-   <tr><td>4</td><td>&nbsp;</td><td>prior forward operator failed</td></tr>
-   <tr><td>5</td><td>&nbsp;</td><td>not used</td></tr>
-   <tr><td>6</td><td>&nbsp;</td><td>prior QC rejected</td></tr>
-   <tr><td>7</td><td>&nbsp;</td><td>outlier rejected</td></tr>
-   <tr><td>8+</td><td>&nbsp;</td><td>reserved for future use</td></tr>
+   <tr><th align="left" colspan=2>DART QC values higher than this means only the prior is OK, but ...</th></tr>
+
+   <tr><td>4</td><td>prior forward operator failed</td></tr>
+   <tr><td>5</td><td>not used because of namelist control</td></tr>
+
+   <tr><th align="left" colspan=2>DART QC values higher than this are bad news.</th></tr>
+
+   <tr><td>6</td><td>prior QC rejected</td></tr>
+   <tr><td>7</td><td>outlier rejected</td></tr>
+   <tr><td>8+</td><td>reserved for future use</td></tr>
 </table>
-</em></P> 
 
 <P>
    The namelist contains several unused features that are simply used 
@@ -143,9 +152,9 @@ model_mod
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
 '&#38;' and terminating with a slash '/'.
 <div class=namelist><pre>
-<em class=call>namelist / obsdiag_nml / </em>
-      obs_sequence_name, iskip_days, obs_select, rat_cri, 
-      input_qc_threshold, bin_width_sections,
+<em class=call>namelist / obsdiag_nml / </em> &#38;
+      obs_sequence_name, iskip_days, obs_select, rat_cri,  &#38;
+      input_qc_threshold, bin_width_sections, &#38;
       lonlim1, lonlim2, reg_names, verbose
 </pre></div>
 
