@@ -38,6 +38,7 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
           KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
           KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
+          KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
           KIND_VORTEX_LON, KIND_VORTEX_LAT, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
           KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION
 
@@ -81,11 +82,13 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
                       KIND_CONDENSATIONAL_HEATING      = 19, &
                       KIND_VAPOR_MIXING_RATIO          = 20, &
                       KIND_ICE_NUMBER_CONCENTRATION    = 21, &
-                      KIND_GEOPOTENTIAL_HEIGHT         = 22
+                      KIND_GEOPOTENTIAL_HEIGHT         = 22, &
+                      KIND_POTENTIAL_TEMPERATURE       = 23, &
+                      KIND_SOIL_MOISTURE               = 24
 
 ! kinds for Gravity Wave Drag (CAM - kevin) 
-integer, parameter :: KIND_GRAV_WAVE_DRAG_EFFIC        = 23, &
-                      KIND_GRAV_WAVE_STRESS_FRACTION   = 24
+integer, parameter :: KIND_GRAV_WAVE_DRAG_EFFIC        = 25, &
+                      KIND_GRAV_WAVE_STRESS_FRACTION   = 26
 
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter :: KIND_VORTEX_LON                  = 81, &
