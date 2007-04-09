@@ -652,8 +652,8 @@ state is always to be provided from input files.
 <pre>
 <em class=call>namelist / model_nml / </em>                          &#38;
     output_state_vector, num_moist_vars, num_domains, calendar_type, &#38; 
-    surf_obs, h_diab, adv_mod_command, assimilation_period_seconds,  &#38;
-    vert_localization_coord, center_search_size, center_spline_grid_scale
+    surf_obs, soil_data, h_diab, adv_mod_command, assimilation_period_seconds,  &#38;
+    vert_localization_coord, center_search_half_length, center_spline_grid_scale
 
 </pre>
 </div>
@@ -707,12 +707,21 @@ state is always to be provided from input files.
     requirement of changing the observational operators in DART.
     Defaults to true</TD></TR>
 
+<TR><!--contents--><TD valign=top>soil_data                    </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If true, soil temperature (TSLB), 
+    soil moisture (SMOIS), and soil liquid water (SH2O) 
+    are included in the state vector, and they are updated by 
+    the assimilation.
+    Defaults to true</TD></TR>
+
 <TR><!--contents--><TD valign=top>h_diab                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>If true, includes H_DIABATIC in the state vector. 
    This produces a smoother restart and reduces the spinup problem
-   during the assimilation.  This is especially useful for convective 
-   scale assimilations. Defaults to false</TD></TR>
+   during the assimilation. To use it, WRF registry needs to be changed
+   to include H_DIABATIC in WRF input/output files. This is especially 
+   useful for convective scale assimilations. Defaults to false</TD></TR>
 
 <TR><!--contents--><TD valign=top>adv_mod_command              </TD>
     <!--  type  --><TD valign=top>character(len=32)            </TD>
@@ -721,20 +730,23 @@ state is always to be provided from input files.
 	    'mpirun -np number-of-prcessors wrf.exe' (this depends on the
 	    platform). Defaults to 'wrf.exe'</TD></TR>
 
-<TR><!--contents--><TD valign=top>center_search_size  </TD>
-    <!--  type  --><TD valign=top>integer             </TD>
-    <!--descript--><TD>Needs description.
-                       Default is 25</TD></TR>
+<TR><!--contents--><TD valign=top>center_search_half_length    </TD>
+    <!--  type  --><TD valign=top>real(r8)                     </TD>
+    <!--descript--><TD>Half length (in meter) of a square box for searching 
+                       the vortex center.
+                       Default is 500000.0</TD></TR>
     
 <TR><!--contents--><TD valign=top>center_spline_grid_scale  </TD>
     <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>Needs description.
+    <!--descript--><TD>Ratio of refining grid for spline-interpolation in 
+                       determining the vortex center. 
                        Default is 10</TD></TR>
     
 <TR><!--contents--><TD valign=top>vert_localization_coord  </TD>
     <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>Needs description.
-                       Default is VERTISHEIGHT</TD></TR>
+    <!--descript--><TD>Vertical coordinate for vertical localization [1...3]
+                       1 = model level,  2 = pressure,  3 = height.  
+                       Default is 3</TD></TR>
     
 </TABLE>
 

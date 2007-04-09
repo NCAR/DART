@@ -49,6 +49,7 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
                               KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
                               KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
+                              KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 
@@ -95,7 +96,8 @@ character(len=128), parameter :: &
 !-----------------------------------------------------------------------
 ! Model namelist parameters with default values.
 !
-! center_search_size:  grid size for searching minimum pressure at grid point
+! center_search_half_length:  half length (in meter) of the searching box to locate 
+!                             minimum pressure at a grid point
 ! center_spline_scale: coarse grid to spline interp. fine grid ratio
 !-----------------------------------------------------------------------
 
@@ -105,19 +107,21 @@ integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .true.
+logical :: soil_data            = .true.
 logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = './wrf.exe'
-integer :: center_search_size       = 25
+real (kind=r8) :: center_search_half_length = 500000.0_r8
+integer :: center_search_half_size
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
 
 real(r8), allocatable :: ens_mean(:)
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
-                     num_domains, calendar_type, surf_obs, h_diab, &
+                     num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
                      vert_localization_coord, &
-                     center_search_size, center_spline_grid_scale
+                     center_search_half_length, center_spline_grid_scale
 
 !-----------------------------------------------------------------------
 
@@ -127,19 +131,22 @@ integer, parameter :: map_sphere = 0, map_lambert = 1, map_polar_stereo = 2, map
 
 ! Private definition of model variable types
 
-integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
-                      TYPE_GZ  = 4,   TYPE_T   = 5,  TYPE_MU = 6,  &
-                      TYPE_QV  = 7,   TYPE_QC  = 8,  TYPE_QR = 9,  &
-                      TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
-                      TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
-                      TYPE_Q2  = 16,  TYPE_PS  = 17, TYPE_TSLB = 18, &
-                      TYPE_TSK = 19,  TYPE_HDIAB = 20, TYPE_QNICE = 21
-
+integer, parameter :: TYPE_U     = 1,   TYPE_V     = 2,   TYPE_W     = 3,  &
+                      TYPE_GZ    = 4,   TYPE_T     = 5,   TYPE_MU    = 6,  &
+                      TYPE_TSK   = 7,   TYPE_QV    = 8,   TYPE_QC    = 9,  &
+                      TYPE_QR    = 10,  TYPE_QI    = 11,  TYPE_QS    = 12, &
+                      TYPE_QG    = 13,  TYPE_QNICE = 14,  TYPE_U10   = 15, &
+                      TYPE_V10   = 16,  TYPE_T2    = 17,  TYPE_TH2   = 18, &
+                      TYPE_Q2    = 19,  TYPE_PS    = 20,  TYPE_TSLB  = 21, &
+                      TYPE_SMOIS = 22,  TYPE_SH2O  = 23,  TYPE_HDIAB = 24
+integer, parameter :: num_model_var_types = 24
 
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
 
 !---- private data ----
+
+logical :: surf_var             = .false.
 
 TYPE wrf_static_data_for_dart
 
@@ -151,6 +158,7 @@ TYPE wrf_static_data_for_dart
 
    integer  :: n_moist
    logical  :: surf_obs
+   logical  :: soil_data
    integer  :: vert_coord
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
@@ -222,6 +230,7 @@ if( num_moist_vars > 7) then
 endif
 
 wrf%dom(:)%surf_obs = surf_obs
+wrf%dom(:)%soil_data = soil_data
 
 if ( debug ) then
    if ( output_state_vector ) then
@@ -456,9 +465,12 @@ do id=1,num_domains
 
 !  build the map into the 1D DART vector for WRF data
 
-   wrf%dom(id)%number_of_wrf_variables = 8 + wrf%dom(id)%n_moist
+   wrf%dom(id)%number_of_wrf_variables = 7 + wrf%dom(id)%n_moist
    if( wrf%dom(id)%surf_obs ) then
-      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 5
+      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 6
+   endif
+   if( wrf%dom(id)%soil_data ) then
+      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 3
    endif
    if( h_diab ) then
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 1
@@ -478,12 +490,10 @@ do id=1,num_domains
    wrf%dom(id)%dart_kind(5) = KIND_TEMPERATURE
    wrf%dom(id)%var_type(6)  = TYPE_MU
    wrf%dom(id)%dart_kind(6) = KIND_PRESSURE
-   wrf%dom(id)%var_type(7)  = TYPE_TSLB
+   wrf%dom(id)%var_type(7)  = TYPE_TSK
    wrf%dom(id)%dart_kind(7) = KIND_TEMPERATURE
-   wrf%dom(id)%var_type(8)  = TYPE_TSK
-   wrf%dom(id)%dart_kind(8) = KIND_TEMPERATURE
 
-   ind = 8
+   ind = 7
    if( wrf%dom(id)%n_moist >= 1) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_QV
@@ -530,21 +540,34 @@ do id=1,num_domains
       wrf%dom(id)%var_type(ind) = TYPE_T2
       wrf%dom(id)%dart_kind(ind) = KIND_TEMPERATURE
       ind = ind + 1
+      wrf%dom(id)%var_type(ind) = TYPE_TH2
+      wrf%dom(id)%dart_kind(ind) = KIND_POTENTIAL_TEMPERATURE
+      ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_Q2
       wrf%dom(id)%dart_kind(ind) = KIND_SPECIFIC_HUMIDITY
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_PS
       wrf%dom(id)%dart_kind(ind) = KIND_PRESSURE
    end if
+   if( wrf%dom(id)%soil_data ) then
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind)  = TYPE_TSLB
+      wrf%dom(id)%dart_kind(ind) = KIND_TEMPERATURE
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind)  = TYPE_SMOIS
+      wrf%dom(id)%dart_kind(ind) = KIND_SOIL_MOISTURE
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind)  = TYPE_SH2O
+      wrf%dom(id)%dart_kind(ind) = KIND_SOIL_MOISTURE
+   end if
    if( h_diab ) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind) = TYPE_HDIAB
       wrf%dom(id)%dart_kind(ind) = KIND_CONDENSATIONAL_HEATING
-
    end if
 
 ! indices into 1D array
-   allocate(wrf%dom(id)%dart_ind(wrf%dom(id)%wes,wrf%dom(id)%sns,wrf%dom(id)%bts,20))
+   allocate(wrf%dom(id)%dart_ind(wrf%dom(id)%wes,wrf%dom(id)%sns,wrf%dom(id)%bts,num_model_var_types))
    allocate(wrf%dom(id)%var_index(2,wrf%dom(id)%number_of_wrf_variables))
 ! dimension of variables
    allocate(wrf%dom(id)%var_size(3,wrf%dom(id)%number_of_wrf_variables))
@@ -641,21 +664,6 @@ do id=1,num_domains
    enddo
    wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
-   ind = ind + 1                   ! *** tslb field ***
-   wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
-   wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
-   wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
-   wrf%dom(id)%var_index(1,ind) = dart_index
-   do k=1,wrf%dom(id)%var_size(3,ind)
-      do j=1,wrf%dom(id)%var_size(2,ind)
-         do i=1,wrf%dom(id)%var_size(1,ind)
-            wrf%dom(id)%dart_ind(i,j,k,TYPE_TSLB) = dart_index
-            dart_index = dart_index + 1
-         enddo
-      enddo
-   enddo
-   wrf%dom(id)%var_index(2,ind) = dart_index - 1
-
    ind = ind + 1                   ! *** tsk field ***
    wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
    wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
@@ -705,6 +713,53 @@ do id=1,num_domains
          enddo
          wrf%dom(id)%var_index(2,ind) = dart_index - 1
       enddo
+   end if
+
+   if(wrf%dom(id)%soil_data ) then
+      ind = ind + 1                   ! *** tslb field ***
+      wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+      wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+      wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
+      wrf%dom(id)%var_index(1,ind) = dart_index
+      do k=1,wrf%dom(id)%var_size(3,ind)
+         do j=1,wrf%dom(id)%var_size(2,ind)
+            do i=1,wrf%dom(id)%var_size(1,ind)
+               wrf%dom(id)%dart_ind(i,j,k,TYPE_TSLB) = dart_index
+               dart_index = dart_index + 1
+            enddo
+         enddo
+      enddo
+      wrf%dom(id)%var_index(2,ind) = dart_index - 1
+
+      ind = ind + 1                   ! *** smois field ***
+      wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+      wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+      wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
+      wrf%dom(id)%var_index(1,ind) = dart_index
+      do k=1,wrf%dom(id)%var_size(3,ind)
+         do j=1,wrf%dom(id)%var_size(2,ind)
+            do i=1,wrf%dom(id)%var_size(1,ind)
+               wrf%dom(id)%dart_ind(i,j,k,TYPE_SMOIS) = dart_index
+               dart_index = dart_index + 1
+            enddo
+         enddo
+      enddo
+      wrf%dom(id)%var_index(2,ind) = dart_index - 1  
+      
+      ind = ind + 1                   ! *** sh2o field ***
+      wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+      wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+      wrf%dom(id)%var_size(3,ind) = wrf%dom(id)%sls
+      wrf%dom(id)%var_index(1,ind) = dart_index
+      do k=1,wrf%dom(id)%var_size(3,ind)
+         do j=1,wrf%dom(id)%var_size(2,ind)
+            do i=1,wrf%dom(id)%var_size(1,ind)
+               wrf%dom(id)%dart_ind(i,j,k,TYPE_SH2O) = dart_index
+               dart_index = dart_index + 1
+            enddo
+         enddo
+      enddo
+      wrf%dom(id)%var_index(2,ind) = dart_index - 1  
    end if
 
    if(h_diab ) then
@@ -923,6 +978,8 @@ subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 ! x:       Full DART state vector relevant to what's being updated
 !          in the filter (mean or individual members).
 ! istatus: Returned 0 if everything is OK, 1 if error occured.
+!                  -1 if the station height is lower than the lowest model level 
+!                     while the station is located inside the horizontal model domain.
 
 ! modified 26 June 2006 to accomodate vortex attributes
 ! modified 13 December 2006 to accomodate changes for the mpi version
@@ -1046,11 +1103,19 @@ if (obs_kind > 0) then
 
    endif
 
+   surf_var = .false.
+   if(vert_is_surface(location)) surf_var = .true.
    if(zloc == missing_r8) then
+     if(xyz_loc(3) < v_h(0)) then
+      zloc = 1.0_r8
+      istatus = -1                      ! Lower than the model terrain
+      surf_var = .true.                 ! Let's estimate U,V,T,and Q from the model sfc states.
+     else                               !
       obs_val = missing_r8
       istatus = 1
       deallocate(v_h, v_p)
       return
+     endif
    endif
 
    k = max(1,int(zloc))
@@ -1064,7 +1129,7 @@ endif
 ! Get the desired field to be interpolated
 if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
 
-   if(.not. vert_is_surface(location)) then
+   if(.not. vert_is_surface(location) .or. .not. surf_var) then
 
       xloc_u = xloc + 0.5
       yloc_v = yloc + 0.5
@@ -1154,7 +1219,7 @@ else if( obs_kind == KIND_TEMPERATURE ) then
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
-      if(.not. vert_is_surface(location)) then
+     if(.not. vert_is_surface(location) .or. .not. surf_var) then
 
 !!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
 !!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
@@ -1188,6 +1253,52 @@ else if( obs_kind == KIND_TEMPERATURE ) then
 !!$            i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
             i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
             i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
+            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+         else
+
+            fld(1) = missing_r8
+
+         endif
+
+      endif
+
+   else
+
+      fld(:) = missing_r8
+
+   endif
+
+else if( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
+
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+
+!     Note:  T is perturbation potential temperature (potential temperature - ts0)
+!            TH2 is potential temperature at 2 m
+
+      if(.not. vert_is_surface(location)) then
+
+!!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
+!!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_T)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_T)
+         fld(1) = ts0 + dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+!!$         i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
+!!$         i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_T)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_T)
+         fld(2) = ts0 + dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         if(wrf%dom(id)%surf_obs) then
+
+!!$            i1 = get_wrf_index(i,j,1,TYPE_TH2,id)
+!!$            i2 = get_wrf_index(i,j+1,1,TYPE_TH2,id)
+            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_TH2)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_TH2)
             fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
 
          else
@@ -1266,7 +1377,7 @@ else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
 
       if ( wrf%dom(id)%n_moist >= 1) then
 
-         if(.not. vert_is_surface(location)) then
+         if(.not. vert_is_surface(location) .or. .not. surf_var) then
 
 !!$            i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
 !!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
@@ -1474,16 +1585,17 @@ else if( obs_kind == KIND_VORTEX_LAT .or. &
       j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
 
 !!   define a search box bounded by center_track_***
-     center_track_xmin = max(1,i-center_search_size/2)
-     center_track_xmax = min(wrf%dom(id)%var_size(1,TYPE_MU),i+center_search_size/2)
-     center_track_ymin = max(1,j-center_search_size/2)
-     center_track_ymax = min(wrf%dom(id)%var_size(2,TYPE_MU),j+center_search_size/2)
+     center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
+     center_track_xmin = max(1,i-center_search_half_size)
+     center_track_xmax = min(wrf%dom(id)%var_size(1,TYPE_MU),i+center_search_half_size)
+     center_track_ymin = max(1,j-center_search_half_size)
+     center_track_ymax = min(wrf%dom(id)%var_size(2,TYPE_MU),j+center_search_half_size)
      if(center_track_xmin<1 .or. center_track_xmax>wrf%dom(id)%var_size(1,TYPE_MU) .or. &
         center_track_ymin<1 .or. center_track_ymax>wrf%dom(id)%var_size(2,TYPE_MU) .or. &
         center_track_xmin >= center_track_xmax .or. &
         center_track_ymin >= center_track_ymax) then
-          print*,'i,j,center_search_size,center_track_xmin(max),center_track_ymin(max)'
-          print*,i,j,center_search_size,center_track_xmin,center_track_xmax,center_track_ymin,center_track_ymax
+          print*,'i,j,center_search_half_length,center_track_xmin(max),center_track_ymin(max)'
+          print*,i,j,center_search_half_length,center_track_xmin,center_track_xmax,center_track_ymin,center_track_ymax
          write(errstring,*)'Wrong setup in center_track_nml'
          call error_handler(E_ERR,'model_interpolate', errstring, source, revision, revdate)
      endif 
@@ -1549,6 +1661,14 @@ else if( obs_kind == KIND_VORTEX_LAT .or. &
      enddo
      enddo
 
+!!   if too close to the edge of the box, reset to observed center
+     if( cxmin-xx1d(1) < 1_r8 .or. xx1d(xxlen)-cxmin < 1_r8 .or.  &
+         cymin-yy1d(1) < 1_r8 .or. yy1d(yylen)-cymin < 1_r8 ) then
+       cxmin = xloc
+       cymin = yloc
+       call splin2(x1d,y1d,psea,pd,xlen,ylen,cxmin,cymin,pres1)
+     endif
+
      call ij_to_latlon(wrf%dom(id)%proj, cxmin, cymin, clat, clon)
 
      if( obs_kind == KIND_VORTEX_LAT ) then
@@ -1587,7 +1707,7 @@ else
 end if
 
 ! Do vertical interpolation (only for non-surface, non-indetity obs)
-if ((.not. vert_is_surface(location)).and.(obs_kind > 0)) then
+if ((.not. vert_is_surface(location)).and.(obs_kind > 0).and. .not. surf_var) then
 
    call toGrid(zloc, k, dz, dzm)
 
@@ -1846,7 +1966,7 @@ elseif(vert_is_height(location)) then
       endif
    endif
 
-elseif(vert_is_surface(location)) then
+elseif(vert_is_surface(location) .or. surf_var) then
    zloc = 1.0_r8
    ! convert obs vert coordinate to desired coordinate type
    if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
@@ -2350,7 +2470,6 @@ if ( output_state_vector ) then
    call check(nf90_put_att(ncFileID, StateVarId, "GZ_units","m2/s2"))
    call check(nf90_put_att(ncFileID, StateVarId, "T_units","K"))
    call check(nf90_put_att(ncFileID, StateVarId, "MU_units","Pa"))
-   call check(nf90_put_att(ncFileID, StateVarId, "TSLB_units","K"))
    call check(nf90_put_att(ncFileID, StateVarId, "TSK_units","K"))
    if( wrf%dom(num_domains)%n_moist >= 1) then
       call check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"))
@@ -2377,8 +2496,17 @@ if ( output_state_vector ) then
       call check(nf90_put_att(ncFileID, StateVarId, "U10_units","m/s"))
       call check(nf90_put_att(ncFileID, StateVarId, "V10_units","m/s"))
       call check(nf90_put_att(ncFileID, StateVarId, "T2_units","K"))
+      call check(nf90_put_att(ncFileID, StateVarId, "TH2_units","K"))
       call check(nf90_put_att(ncFileID, StateVarId, "Q2_units","kg/kg"))
       call check(nf90_put_att(ncFileID, StateVarId, "PS_units","Pa"))
+   endif
+   if(wrf%dom(num_domains)%soil_data ) then
+      call check(nf90_put_att(ncFileID, StateVarId, "TSLB_units","K"))
+      call check(nf90_put_att(ncFileID, StateVarId, "SMOIS_units","m3/m3"))
+      call check(nf90_put_att(ncFileID, StateVarId, "SH2O_units","m3/m3"))
+   endif
+   if(h_diab ) then
+      call check(nf90_put_att(ncFileID, StateVarId, "H_DIAB_units",""))
    endif
 
    ! Leave define mode so we can actually fill the variables.
@@ -2473,21 +2601,6 @@ do id=1,num_domains
    call check(nf90_put_att(ncFileID, var_id, "units", "pascals"))
    call check(nf90_put_att(ncFileId, var_id, "description", &
         "perturbation dry air mass in column"))
-
-
-   !      float TSLB(Time, soil_layers_stag, south_north, west_east) ;
-   !         TSLB:FieldType = 104 ;
-   !         TSLB:MemoryOrder = "XYZ" ;
-   !         TSLB:description = "SOIL TEMPERATURE" ;
-   !         TSLB:units = "K" ;
-   !         TSLB:stagger = "Z" ;
-   call check(nf90_def_var(ncid=ncFileID, name="TSLB_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "soil temperature"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "K"))
-   call check(nf90_put_att(ncFileId, var_id, "description", &
-        "SOIL TEMPERATURE"))
 
 
    !      float TSK(Time, south_north, west_east) ;
@@ -2602,6 +2715,12 @@ do id=1,num_domains
       call check(nf90_put_att(ncFileID, var_id, "units", "K"))
       call check(nf90_put_att(ncFileID, var_id, "description", "TEMP at 2 m"))
 
+      call check(nf90_def_var(ncid=ncFileID, name="TH2_d0"//idom, xtype=nf90_real, &
+           dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+           varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "units", "K"))
+      call check(nf90_put_att(ncFileID, var_id, "description", "POT TEMP at 2 m"))
+
       call check(nf90_def_var(ncid=ncFileID, name="Q2_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
            varid  = var_id))
@@ -2615,6 +2734,58 @@ do id=1,num_domains
       call check(nf90_put_att(ncFileID, var_id, "description", "Total surface pressure"))
 
    end if
+
+   if(wrf%dom(id)%soil_data) then   
+      !      float TSLB(Time, soil_layers_stag, south_north, west_east) ;
+      !         TSLB:FieldType = 104 ;
+      !         TSLB:MemoryOrder = "XYZ" ;
+      !         TSLB:description = "SOIL TEMPERATURE" ;
+      !         TSLB:units = "K" ;
+      !         TSLB:stagger = "Z" ;
+      call check(nf90_def_var(ncid=ncFileID, name="TSLB_d0"//idom, xtype=nf90_real, &
+           dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
+           unlimitedDimID /), varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "long_name", "soil temperature"))
+      call check(nf90_put_att(ncFileID, var_id, "units", "K"))
+      call check(nf90_put_att(ncFileId, var_id, "description", &
+           "SOIL TEMPERATURE"))
+           
+      call check(nf90_def_var(ncid=ncFileID, name="SMOIS_d0"//idom, xtype=nf90_real, &
+            dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
+            unlimitedDimID /), varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "long_name", "soil moisture"))
+      call check(nf90_put_att(ncFileID, var_id, "units", "m3/m3"))
+      call check(nf90_put_att(ncFileId, var_id, "description", &
+           "SOIL MOISTURE"))
+
+      call check(nf90_def_var(ncid=ncFileID, name="SH2O_d0"//idom, xtype=nf90_real, &
+            dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
+            unlimitedDimID /), varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "long_name", "soil liquid water"))
+      call check(nf90_put_att(ncFileID, var_id, "units", "m3/m3"))
+      call check(nf90_put_att(ncFileId, var_id, "description", &
+           "SOIL LIQUID WATER"))
+
+   endif
+
+   if(h_diab ) then
+      !    float H_DIABATIC(Time, bottom_top, south_north, west_east) ;
+      !            H_DIABATIC:FieldType = 104 ;
+      !            H_DIABATIC:MemoryOrder = "XYZ" ;
+      !            H_DIABATIC:description = "PREVIOUS TIMESTEP CONDENSATIONAL HEATING" ;
+      !            H_DIABATIC:units = "" ;
+      !            H_DIABATIC:stagger = "" ;
+      call check(nf90_def_var(ncid=ncFileID, name="H_DIAB_d0"//idom, xtype=nf90_real, &
+            dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
+            unlimitedDimID /), varid  = var_id))
+      call check(nf90_put_att(ncFileID, var_id, "long_name", "diabatic heating"))
+      call check(nf90_put_att(ncFileID, var_id, "units", ""))
+      call check(nf90_put_att(ncFileID, var_id, "FieldType", 104))
+      call check(nf90_put_att(ncFileID, var_id, "MemoryOrder", "XYZ"))
+      call check(nf90_put_att(ncFileID, var_id, "stagger", ""))
+      call check(nf90_put_att(ncFileId, var_id, "description", &
+           "previous timestep condensational heating"))
+   endif
 
 enddo
 
@@ -2728,7 +2899,7 @@ do id=1,num_domains
    write( idom , '(I1)') id
 
    !----------------------------------------------------------------------------
-   ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,TSLB,TSK,QV,QC,QR,...
+   ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,TSK,QV,QC,QR,...
    !----------------------------------------------------------------------------
 
    !----------------------------------------------------------------------------
@@ -2816,21 +2987,6 @@ do id=1,num_domains
    temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
    call check(nf90_put_var( ncFileID, VarID, temp2d, &
                             start=(/ 1, 1, copyindex, timeindex /) ))
-
-
-   !----------------------------------------------------------------------------
-   varname = 'TSLB_d0'//idom
-   !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
-   i       = j + 1
-   j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
-   if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
-   allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls) )
-   temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
-   deallocate(temp3d)
 
 
    !----------------------------------------------------------------------------
@@ -2992,6 +3148,18 @@ do id=1,num_domains
            start=(/ 1, 1, copyindex, timeindex /) ))
 
       !----------------------------------------------------------------------------
+      varname = 'TH2_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+      temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ))
+
+      !----------------------------------------------------------------------------
       varname = 'Q2_d0'//idom
       !----------------------------------------------------------------------------
       call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
@@ -3017,10 +3185,67 @@ do id=1,num_domains
 
    endif
 
+   if(wrf%dom(id)%soil_data ) then   
+
+      !----------------------------------------------------------------------------
+      varname = 'TSLB_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+      allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls) )
+      temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+      !----------------------------------------------------------------------------
+      varname = 'SMOIS_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+      temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+      !----------------------------------------------------------------------------
+      varname = 'SH2O_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+      temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+
+      deallocate(temp3d)
+
+   endif
+
    deallocate(temp2d)
 
    if( h_diab) then
-      j  = j + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt
+
+      !----------------------------------------------------------------------------
+      varname = 'H_DIAB_d0'//idom
+      !----------------------------------------------------------------------------
+      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+      allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt) )
+      temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
+      call check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      deallocate(temp3d)
+
    end if
 
 enddo
@@ -3320,10 +3545,12 @@ elseif( var_type == type_v ) then
 
    endif
 
-elseif( var_type == type_mu  .or. var_type == type_tslb .or. &
-        var_type == type_ps  .or. var_type == type_u10 .or. &
-        var_type == type_v10 .or. var_type == type_t2 .or. &
-        var_type == type_q2  .or. var_type == type_tsk) then
+elseif( var_type == type_mu    .or. var_type == type_tslb .or. &
+        var_type == type_ps    .or. var_type == type_u10  .or. &
+        var_type == type_v10   .or. var_type == type_t2   .or. &
+        var_type == type_th2   .or.                            &
+        var_type == type_q2    .or. var_type == type_tsk  .or. &
+        var_type == type_smois .or. var_type == type_sh2o) then
 
    model_pressure = model_pressure_s(i,j,id,x)
 
@@ -3599,7 +3826,8 @@ elseif( var_type == type_mu .or. var_type == type_ps .or. &
 
    model_height = wrf%dom(id)%hgt(i,j)
 
-elseif( var_type == type_tslb) then
+elseif( var_type == type_tslb .or. var_type == type_smois .or. &
+        var_type == type_sh2o ) then
 
    model_height = wrf%dom(id)%hgt(i,j) - wrf%dom(id)%zs(k)
 
@@ -3607,7 +3835,7 @@ elseif( var_type == type_u10 .or. var_type == type_v10 ) then
 
    model_height = wrf%dom(id)%hgt(i,j) + 10.0_r8
 
-elseif( var_type == type_t2 .or. var_type == type_q2 ) then
+elseif( var_type == type_t2 .or. var_type == type_th2 .or. var_type == type_q2 ) then
 
    model_height = wrf%dom(id)%hgt(i,j) + 2.0_r8
 
@@ -3671,7 +3899,7 @@ real(r8) :: dt
 integer :: time_step, time_step_fract_num, time_step_fract_den
 integer :: max_dom, feedback, smooth_option
 integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
-integer, dimension(3) :: dx, dy, grid_id, parent_id
+integer, dimension(3) :: dx, dy, ztop, grid_id, parent_id
 integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
 integer, dimension(3) :: parent_time_step_ratio
 integer :: io, iunit, id
@@ -3679,7 +3907,7 @@ integer :: io, iunit, id
 namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
 namelist /domains/ max_dom
 namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
-namelist /domains/ dx, dy, grid_id, parent_id
+namelist /domains/ dx, dy, ztop, grid_id, parent_id
 namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
 namelist /domains/ parent_time_step_ratio
 namelist /domains/ feedback, smooth_option
@@ -3979,8 +4207,6 @@ SUBROUTINE splint(xa,ya,y2a,n,x,y)
       return
 END subroutine splint
 
-!cys_add_end
-
 
 !#######################################################################
 
@@ -4074,6 +4300,11 @@ real(r8), dimension(3) :: base_array, local_obs_array
 type(location_type)    :: local_obs_loc
 
 
+! Initialize variables to missing status
+num_close = 0
+close_ind = -99
+dist      = 1.0e9
+
 istatus1 = 0
 istatus2 = 0
 
@@ -4082,11 +4313,13 @@ istatus2 = 0
 base_array = get_location(base_obs_loc) 
 base_which = nint(query_location(base_obs_loc))
 
-if (base_which /= wrf%dom(1)%vert_coord) then
-   call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus1)
-elseif (base_array(3) == missing_r8) then
-   istatus1 = 1
-end if
+if (.not. horiz_dist_only) then
+   if (base_which /= wrf%dom(1)%vert_coord) then
+      call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus1)
+   elseif (base_array(3) == missing_r8) then
+      istatus1 = 1
+   end if
+endif
 
 if (istatus1 == 0) then
 
@@ -4107,30 +4340,24 @@ if (istatus1 == 0) then
       ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
-      if (local_obs_which /= wrf%dom(1)%vert_coord) then
-         call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
-         ! Store the "new" location into the original full local array
-         obs_loc(t_ind) = local_obs_loc
+      if (.not. horiz_dist_only) then
+         if (local_obs_which /= wrf%dom(1)%vert_coord) then
+            call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
+            ! Store the "new" location into the original full local array
+            obs_loc(t_ind) = local_obs_loc
+         endif
       endif
 
       ! Compute distance - set distance to a very large value if vert coordinate is missing
       ! or vert_interpolate returned error (istatus2=1)
       local_obs_array = get_location(local_obs_loc)
-      if ((local_obs_array(3) == missing_r8).or.(istatus2 == 1)) then
+      if (((.not. horiz_dist_only).and.(local_obs_array(3) == missing_r8)).or.(istatus2 == 1)) then
          dist(k) = 1.0e9        
       else
          dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
       end if
 
    end do
-
-else
-
-   ! This means that the base ob does not have a good vertical coordinate, so just skip
-   num_close = 0
-   close_ind = 0
-   dist      = 1.0e9
-
 endif
 
 end subroutine get_close_obs
