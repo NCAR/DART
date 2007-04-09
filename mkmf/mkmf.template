@@ -1,4 +1,4 @@
-# Template for Lahey F95 Compiler on a Fedora Core 2 Intel Architecture
+# Template for GNU gfortran on Linux
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -14,51 +14,52 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
 #
-# NETCDF and LIBS needs to be customized for your site
+# Most likely NETCDF and LIBS need to be customized for your site
 #
-# FFLAGS   useful for benchmarking
-#    --ap    preserve arithmetic accuracy in the face of optimization
-#    --trap  trap ndp exceptions
-#    --verbose
-#    --warn
-#    --wide
-#    --O0    no optimization
-#    --chk [<args>]
-#             check for:
-#                subscripts and substrings out of bounds,
-#                interface mismatches,
-#                uninitialized variables.
-#             Arguments can be combined (separated by commas).
-#         <args>:
-#             a   argument checking.  
-#             e   array expression shape checking.  
-#             s   subscript checking.  
-#             u   undefined variable checking.  
-#             x   extra checking.
-#    --chkglobal
-#    --verbose
-#    --wo     warn if obsolescent feature
+# 
+# Building DART with open-source software:
+# 
+# All the parts (except matlab, which is optional and used to display results)
+# needed to build and run the DART package are now possible to get free from 
+# the open-source community.  To compile and run DART, you will need:
+# 
 #
-# FFLAGS   useful for production
-#    --li    use Lahey intrinsic procedures
-#    --o1    classical, memory, and interprocedural optimizations
-#    --o2    -o1 + loop and array optimizations
-#    --sse2  optimize using SSE2 instructions
+# 1. The GNU GCC 4.0 version of the gfortran compiler.  See this web page for
+#    information on supported platforms and downloads: 
+#      http://gcc.gnu.org/wiki/GFortran
+# 
+#    (Note that there is a separate G95 project which distributes an alternate
+#    open-source fortran distribution, and I have heard that others have 
+#    successfully compiled other fortran code with that compiler, but I have
+#    not tried it myself.)
+# 
+# 
+# 2. The netCDF software library package.  See:
+#      http://www.unidata.ucar.edu/software/netcdf
+# 
+#    The netcdf 3.6.2 version needed to be configured and compiled like this:
+# 
+#     ./configure CC=gcc FC=gfortran 
+#     make check
+#     make install
+# 
+# 
+# Possibly useful flags:
 #
-# FFLAGS   for historical reasons
-#    --dbl   does the autopromotion
+# -ffree-form          forces input file to be read as free format regardless 
+#                      of what file extension is has.
 #
-# Compiler Information:   (lf95 --version)
-#    Lahey/Fujitsu Fortran 95 Compiler Release L6.20c  S/N: LP073067f 
-#    Copyright (C) 1994-2003 Lahey Computer Systems.  All rights reserved.
-#    Copyright (C) 1998-2003 FUJITSU LIMITED. All rights reserved.
+# -fdefault-real-8     force all real variables to be real*8.
+#
+# 
 
-FC = lf95
-LD = lf95
-CPPFLAGS =
-LIST = --list
-NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-lf95.6.20a
-INCS = -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdf
-FFLAGS = --ap --trap --warn --wide --o2 $(INCS)
-LDFLAGS = $(LIBS)
+MPIFC = mpif90
+MPILD = mpif90
+FC = gfortran
+LD = gfortran
+NETCDF = /usr/local
+INCS = ${NETCDF}/include
+FFLAGS  = -O2 -I$(INCS) 
+LIBS    = -L${NETCDF}/lib -lnetcdf
+LDFLAGS = -I$(INCS) $(LIBS)
+
