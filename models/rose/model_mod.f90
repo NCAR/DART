@@ -109,7 +109,7 @@ integer, parameter :: TYPE_U0 = 0, TYPE_V0 = 1, TYPE_T0 = 2, &
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL $", &
+   source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
