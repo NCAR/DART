@@ -628,9 +628,9 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! Returning interf_provided means go ahead and do this with uniform
 ! small independent perturbations.
 
-real(r8), intent(in)  :: state(:)
-real(r8), intent(in)  :: pert_state(:)
-logical,  intent(out) :: interf_provided
+real(r8), intent(in)     :: state(:)
+real(r8), intent(inout)  :: pert_state(:)
+logical,  intent(out)    :: interf_provided
 
 interf_provided = .false.
 
