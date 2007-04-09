@@ -46,17 +46,18 @@ integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .true.
+logical :: soil_data            = .true.
 logical :: h_diab               = .false.
 character(len = 72) :: adv_mod_command = './wrf.exe'
-integer :: center_search_size       = 25
+real (kind=r8) :: center_search_half_length = 500000.0_r8
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord  =  3  ! 1,2,3 == level,pressure,height
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
-                     num_domains, calendar_type, surf_obs, h_diab, &
+                     num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
                      vert_localization_coord, &
-                     center_search_size, center_spline_grid_scale
+                     center_search_half_length, center_spline_grid_scale
 
 !-------------------------------------------------------------
 
@@ -110,6 +111,7 @@ allocate(wrf%dom(num_domains))
 
 wrf%dom(:)%n_moist = num_moist_vars
 wrf%dom(:)%surf_obs = surf_obs
+wrf%dom(:)%soil_data = soil_data
 wrf%dom(:)%h_diab = h_diab
 
 ! open wrf data netCDF file 'wrfinput_d0x'
@@ -280,7 +282,6 @@ do id=1,num_domains
    n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! geopotential
    n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
-   n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
 ! moist variables. Order is qv, qc, qr, qi, qs, qg, qnice.
@@ -294,7 +295,11 @@ do id=1,num_domains
    endif
 
    if( wrf%dom(id)%surf_obs ) then
-      n_values = n_values + 5 * wrf%dom(id)%sn * wrf%dom(id)%we
+      n_values = n_values + 6 * wrf%dom(id)%sn * wrf%dom(id)%we
+   endif
+
+   if( wrf%dom(id)%soil_data ) then
+      n_values = n_values + 3 * (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb, smois, sh2o
    endif
 
    if( wrf%dom(id)%h_diab ) then
@@ -366,10 +371,6 @@ do id=1,num_domains
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
 
    in = n_values+1
-   call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%tslb,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
-   n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
-
-   in = n_values+1
    call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%tsk,wrf%dom(id)%we,wrf%dom(id)%sn)
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
@@ -437,12 +438,32 @@ do id=1,num_domains
       n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t2
 
       in = n_values+1
+      call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%th2,wrf%dom(id)%we,wrf%dom(id)%sn)
+      n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! th2
+
+      in = n_values+1
       call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%q2,wrf%dom(id)%we,wrf%dom(id)%sn)
       n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! q2
 
       in = n_values+1
       call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%ps,wrf%dom(id)%we,wrf%dom(id)%sn)
       n_values = n_values + (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! ps
+
+   endif
+
+   if( wrf%dom(id)%soil_data ) then
+
+     in = n_values+1
+     call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%tslb,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
+     n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb
+
+     in = n_values+1
+     call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%smois,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
+     n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! smois
+     
+     in = n_values+1
+     call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%sh2o,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
+     n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! sh2o    
 
    endif
 

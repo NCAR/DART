@@ -32,12 +32,14 @@ TYPE wrf_data
 
    integer :: ncid                                    ! netcdf id for file
    integer :: sls_id, sls, bt_id, bt, sn_id, sn, we_id, we
-   integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, tslb_id, mu_id, mub_id, &
+   integer :: u_id, v_id, w_id, ph_id, phb_id, t_id, mu_id, mub_id, &
               tsk_id, qv_id, qc_id, qr_id, qi_id, qs_id, qg_id, qnice_id, &
-              u10_id, v10_id, t2_id, q2_id, ps_id, hdiab_id
+              u10_id, v10_id, t2_id, th2_id, q2_id, ps_id, &
+              tslb_id, smois_id, sh2o_id, hdiab_id
 
    integer :: n_moist
    logical :: surf_obs
+   logical :: soil_data
    logical :: h_diab
 
 
@@ -50,7 +52,6 @@ TYPE wrf_data
    real(r8), pointer :: ph(:,:,:)
    real(r8), pointer :: phb(:,:,:)
    real(r8), pointer :: t(:,:,:)
-   real(r8), pointer :: tslb(:,:,:)
    real(r8), pointer :: tsk(:,:)
    real(r8), pointer :: qv(:,:,:)
    real(r8), pointer :: qc(:,:,:)
@@ -64,8 +65,12 @@ TYPE wrf_data
    real(r8), pointer :: u10(:,:)
    real(r8), pointer :: v10(:,:)
    real(r8), pointer :: t2(:,:)
+   real(r8), pointer :: th2(:,:)
    real(r8), pointer :: q2(:,:)
    real(r8), pointer :: ps(:,:)
+   real(r8), pointer :: tslb(:,:,:)
+   real(r8), pointer :: smois(:,:,:)
+   real(r8), pointer :: sh2o(:,:,:)
    real(r8), pointer :: hdiab(:,:,:)
 
 end type
@@ -162,7 +167,7 @@ character (len=80) :: name
 
 if ( .not. module_initialized ) call initialize_module
 
-if(debug) write(6,*) 'Openning ',file_name
+if(debug) write(6,*) 'Opening ',file_name
 call check ( nf90_open(file_name, mode, wrf%ncid) )
 if(debug) write(6,*) ' wrf%ncid is ',wrf%ncid
 
@@ -216,10 +221,6 @@ allocate(wrf%mu(wrf%we,wrf%sn))
 call check ( nf90_inq_varid(wrf%ncid, "MUB", wrf%mub_id))
 if(debug) write(6,*) ' mub_id = ',wrf%mub_id
 allocate(wrf%mub(wrf%we,wrf%sn))
-
-call check ( nf90_inq_varid(wrf%ncid, "TSLB", wrf%tslb_id))
-if(debug) write(6,*) ' tslb_id = ',wrf%tslb_id
-allocate(wrf%tslb(wrf%we,wrf%sn,wrf%sls))
 
 call check ( nf90_inq_varid(wrf%ncid, "TSK", wrf%tsk_id))
 if(debug) write(6,*) ' tsk_id = ',wrf%tsk_id
@@ -277,6 +278,9 @@ if( wrf%surf_obs ) then
    call check ( nf90_inq_varid(wrf%ncid, "T2", wrf%t2_id))
    allocate(wrf%t2(wrf%we,wrf%sn))
 
+   call check ( nf90_inq_varid(wrf%ncid, "TH2", wrf%th2_id))
+   allocate(wrf%th2(wrf%we,wrf%sn))
+
    call check ( nf90_inq_varid(wrf%ncid, "Q2", wrf%q2_id))
    allocate(wrf%q2(wrf%we,wrf%sn))
 
@@ -297,6 +301,22 @@ if( wrf%surf_obs ) then
          call check( nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /)))
       endif
    endif
+
+endif
+
+if( wrf%soil_data ) then
+
+   call check ( nf90_inq_varid(wrf%ncid, "TSLB", wrf%tslb_id))
+   if(debug) write(6,*) ' tslb_id = ',wrf%tslb_id
+   allocate(wrf%tslb(wrf%we,wrf%sn,wrf%sls))
+
+   call check ( nf90_inq_varid(wrf%ncid, "SMOIS", wrf%smois_id))
+   if(debug) write(6,*) ' smois_id = ',wrf%smois_id
+   allocate(wrf%smois(wrf%we,wrf%sn,wrf%sls))
+
+   call check ( nf90_inq_varid(wrf%ncid, "SH2O", wrf%sh2o_id))
+   if(debug) write(6,*) ' sh2o_id = ',wrf%sh2o_id
+   allocate(wrf%sh2o(wrf%we,wrf%sn,wrf%sls))
 
 endif
 
@@ -358,7 +378,6 @@ deallocate(wrf%phb)
 deallocate(wrf%t)
 deallocate(wrf%mu)
 deallocate(wrf%mub)
-deallocate(wrf%tslb)
 deallocate(wrf%tsk)
 if(wrf%n_moist > 0) then
    deallocate(wrf%qv)
@@ -398,8 +417,15 @@ if( wrf%surf_obs ) then
    deallocate(wrf%u10)
    deallocate(wrf%v10)
    deallocate(wrf%t2)
+   deallocate(wrf%th2)
    deallocate(wrf%q2)
    deallocate(wrf%ps)
+endif
+
+if( wrf%soil_data ) then
+  deallocate(wrf%tslb)
+  deallocate(wrf%smois)
+  deallocate(wrf%sh2o)
 endif
 
 if( wrf%h_diab ) then
@@ -1093,7 +1119,6 @@ if (in_or_out  == "OUTPUT") then
    call check( nf90_put_var(wrf%ncid, wrf%ph_id,   wrf%ph,   start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%t_id,    wrf%t,    start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%mu_id,   wrf%mu,   start = (/ 1, 1, 1 /)))
-   call check( nf90_put_var(wrf%ncid, wrf%tslb_id, wrf%tslb, start = (/ 1, 1, 1, 1 /)))
    call check( nf90_put_var(wrf%ncid, wrf%tsk_id,  wrf%tsk,  start = (/ 1, 1, 1 /)))
    if(wrf%n_moist > 0) then
       call check( nf90_put_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, 1 /)))
@@ -1125,6 +1150,7 @@ if (in_or_out  == "OUTPUT") then
       call check( nf90_put_var(wrf%ncid, wrf%u10_id, wrf%u10, start = (/ 1, 1, 1 /)))
       call check( nf90_put_var(wrf%ncid, wrf%v10_id, wrf%v10, start = (/ 1, 1, 1 /)))
       call check( nf90_put_var(wrf%ncid, wrf%t2_id, wrf%t2, start = (/ 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%th2_id, wrf%th2, start = (/ 1, 1, 1 /)))
       call check( nf90_put_var(wrf%ncid, wrf%q2_id, wrf%q2, start = (/ 1, 1, 1 /)))
       istatus = nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /))
       if(istatus /= nf90_noerr) then
@@ -1138,6 +1164,11 @@ if (in_or_out  == "OUTPUT") then
          call check(nf90_enddef(wrf%ncid))
          call check( nf90_put_var(wrf%ncid, wrf%ps_id, wrf%ps, start = (/ 1, 1, 1 /)))
       endif
+   endif
+   if( wrf%soil_data ) then   
+      call check( nf90_put_var(wrf%ncid, wrf%tslb_id, wrf%tslb, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%smois_id, wrf%smois, start = (/ 1, 1, 1, 1 /)))
+      call check( nf90_put_var(wrf%ncid, wrf%sh2o_id, wrf%sh2o, start = (/ 1, 1, 1, 1 /)))
    endif
    if( wrf%h_diab ) then
       istatus = nf90_put_var(wrf%ncid, wrf%hdiab_id, wrf%hdiab, start = (/ 1, 1, 1, 1 /))
@@ -1155,7 +1186,6 @@ else
    call check( nf90_get_var(wrf%ncid, wrf%t_id,    wrf%t,    start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%mu_id,   wrf%mu,   start = (/ 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%mub_id,  wrf%mub,  start = (/ 1, 1, lngth /)))
-   call check( nf90_get_var(wrf%ncid, wrf%tslb_id, wrf%tslb, start = (/ 1, 1, 1, lngth /)))
    call check( nf90_get_var(wrf%ncid, wrf%tsk_id,  wrf%tsk,  start = (/ 1, 1, lngth /)))
    if(wrf%n_moist > 0) then
       call check( nf90_get_var(wrf%ncid, wrf%qv_id, wrf%qv, start = (/ 1, 1, 1, lngth /)))
@@ -1187,6 +1217,7 @@ else
       call check( nf90_get_var(wrf%ncid, wrf%u10_id,  wrf%u10,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%v10_id,  wrf%v10,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%t2_id,  wrf%t2,  start = (/ 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%th2_id,  wrf%th2,  start = (/ 1, 1, lngth /)))
       call check( nf90_get_var(wrf%ncid, wrf%q2_id,  wrf%q2,  start = (/ 1, 1, lngth /)))
       istatus = nf90_inq_varid(wrf%ncid, "PSFC", wrf%ps_id)
       if(istatus == nf90_noerr) then
@@ -1198,6 +1229,11 @@ else
               'sets PSFC to zero', source, revision, revdate)
          wrf%ps(:,:) = 0.0_r8
       endif
+   endif
+   if( wrf%soil_data ) then
+      call check( nf90_get_var(wrf%ncid, wrf%tslb_id, wrf%tslb, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%smois_id, wrf%smois, start = (/ 1, 1, 1, lngth /)))
+      call check( nf90_get_var(wrf%ncid, wrf%sh2o_id, wrf%sh2o, start = (/ 1, 1, 1, lngth /)))
    endif
    if( wrf%h_diab ) then
       istatus = nf90_get_var(wrf%ncid, wrf%hdiab_id,  wrf%hdiab,  start = (/ 1, 1, 1, lngth /))
