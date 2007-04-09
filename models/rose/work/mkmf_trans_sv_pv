@@ -1,0 +1,13 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id: mkmf_trans_sv_pv,v 1.2 2005/02/26 06:14:24 thoar Exp $
+# $Source: /home/thoar/CVS.REPOS/DART/models/rose/work/mkmf_trans_sv_pv,v $
+# $Name:  $
+#
+../../../mkmf/mkmf -p trans_sv_pv -t ../../../mkmf/mkmf.template -c "-Duse_netCDF" \
+ -a "../../.." path_names_trans_sv_pv
