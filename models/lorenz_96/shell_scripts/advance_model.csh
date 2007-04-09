@@ -19,7 +19,7 @@
 # This script copies the necessary files into the temporary directory
 # and then executes the fortran program integrate_model.
 
-# Arguements are the process number of caller, the number of state copies
+# Arguments are the process number of caller, the number of state copies
 # belonging to that process, and the name of the filter_control_file for
 # that process
 set process = $1
