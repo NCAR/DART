@@ -92,24 +92,23 @@ are incorporated into the DART state vector.
 </P>
 
 <P>
-Expected observations on pressure, height or model levels can be requested from model_interpolate.
-Surface observations can not yet be interpolated, due to the difference
-between the model surface and the earth's surface where the observations are made.
-Model_interpolate can be queried for any (non-surface) variable in the state vector, 
-which are variables native to CAM, plus pressure on height levels.  
-The default state vector is (PS), T, U, V, Q, CLDLIQ, CLDICE.
-Other variables can be added, but minor modifications to model_mod.f90 will be necessary.
-Use the existing code for the current state variables as a template.
-In particular add the TYPE_s in the declarations at the beginning of the module,
-and see subroutines <em class=code>order_state_fields and obs_field_location</em>, 
-where those TYPE_s are used.
-Modify CAM to write the new fields to the initial files, 
-and modify the <em class=code>model_mod_nml</em>
-(in <em class=file>input.nml</em>) to include the new state vector components.
-In the namelist the vertical coordinate type of the new fields must also be specified.
-See <em class=code>which_vert</em> in 
-<A HREF="../../location/threed_sphere/location_mod.html"> location_mod </A>
-
+Expected observations on pressure, height or model levels can be requested
+from model_interpolate.  Surface observations can not yet be interpolated,
+due to the difference between the model surface and the earth's surface
+where the observations are made.  Model_interpolate can be queried for any
+(non-surface) variable in the state vector, which are variables native to
+CAM, plus pressure on height levels.  The default state vector is (PS), T,
+U, V, Q, CLDLIQ, CLDICE.  Other variables can be added, but minor
+modifications to model_mod.f90 will be necessary.  Use the existing code
+for the current state variables as a template.  In particular add the
+TYPE_s in the declarations at the beginning of the module, and see
+subroutines <em class=code>order_state_fields and obs_field_location</em>,
+where those TYPE_s are used.  Modify CAM to write the new fields to the
+initial files, and modify the <em class=code>model_mod_nml</em> 
+(in <em class=file>input.nml</em>) to include the new state vector components.  
+In the namelist the vertical coordinate type of the new fields must also be
+specified.  See <em class=code>which_vert</em> in <A
+HREF="../../location/threed_sphere/location_mod.html"> location_mod </A>
 </P>
 
 <P>
@@ -286,26 +285,25 @@ integer,                  intent(out) :: <em class=code> istatus </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Given model state, returns the value of observation type interpolated to a given 
-location by a method of the model's choosing. 
-Currently observation types: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,
-KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
-are supported, but others can be added.
-KIND_PRESSURE does not have a corresponding field on CAM initial files,
-but is routinely calculated in CAM using its own subroutines.
-Interpolation of this field has been incorporated in order to facilitate
-assimilations of observations which require it, such as GPS radio occultation.
-If the interpolation is valid, istatus = 0. 
-In the case where the observational operator is not
-defined at the given location (e.g. the observation is below the lowest model level
-or above the top level), interp_val is returned as 0.0 and istatus = 1. 
-CAM is highly damped in the upper levels of the model, which has required
-the exclusion of otherwise valid observations above a certain level, which can
-be specified in the model_mod namelist variable highest_obs_pressure_mb.  
-Such cases return istatus = 2, and also do the interpolation and return the value, 
-which is NOT used by filter.
-Eventually such quality control may be moved to another module, but for now is
-performed in subroutine get_val_pressure.
+Given model state, returns the value of observation type interpolated to a
+given location by a method of the model's choosing.  Currently observation
+types: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE,
+KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE are supported, but
+others can be added.  KIND_PRESSURE does not have a corresponding field on
+CAM initial files, but is routinely calculated in CAM using its own
+subroutines.  Interpolation of this field has been incorporated in order to
+facilitate assimilations of observations which require it, such as GPS
+radio occultation.  If the interpolation is valid, istatus = 0.  In the
+case where the observational operator is not defined at the given location
+(e.g. the observation is below the lowest model level or above the top
+level), interp_val is returned as 0.0 and istatus = 1.  CAM is highly
+damped in the upper levels of the model, which has required the exclusion
+of otherwise valid observations above a certain level, which can be
+specified in the model_mod namelist variable highest_obs_pressure_mb.  Such
+cases return istatus = 2, and also do the interpolation and return the
+value, which is NOT used by filter.  Eventually such quality control may be
+moved to another module, but for now is performed in subroutine
+get_val_pressure.  
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -372,14 +370,15 @@ the models range of time stepping possibilities.
 <H3 class=indent1>Description</H3>
 
 <P>
-Used for runtime initialization of the model. This is the first call 
-made to the model by any DART compliant assimilation routine. It reads the model_mod
-namelist parameters, sets the calendar type (the GREGORIAN calendar is used with
-the CAM model), and determines the dart vector length, among other things. 
-This subroutine requires that caminput.nc (or the name in namelist variable 
-model_config_file) be present in the working directory to retrieve model information 
-(grid dimensions and spacing including the vertical hybrid coordinate coefficients, 
-time step, and Gaussian weights, etc).
+Used for runtime initialization of the model. This is the first call made
+to the model by any DART compliant assimilation routine. It reads the
+model_mod namelist parameters, sets the calendar type (the GREGORIAN
+calendar is used with the CAM model), and determines the dart vector
+length, among other things.  This subroutine requires that caminput.nc 
+(or the name in namelist variable model_config_file) be present in the working
+directory to retrieve model information (grid dimensions and spacing
+including the vertical hybrid coordinate coefficients, time step, and
+Gaussian weights, etc).  
 </P>
 
 
@@ -579,29 +578,36 @@ logical,                  intent(out)   :: <em class=code> interf_provided </em>
 <H3 class=indent1>Description</H3>
 
 <P>
-Given a model state, produces a perturbed model state. This is used to generate 
-ensemble initial conditions perturbed around some control trajectory state when one 
-is preparing to spin-up ensembles. A DART compliant model can choose not to provide 
-an implementation of this algorithm and use the default mechanism in DART by simply 
-returning .false. as a returned value for the interf_provided argument. In this case, 
-DART perturbs the state to generate ensemble members by adding a random sample from a 
-N(0.0, 0.002) distribution independently to each state variable. Models should override 
-this if some structure is required for perturbations or if the magnitude of perturbations 
-in DART is wrong. 
+Given a model state, produces a perturbed model state. This is used to
+generate ensemble initial conditions perturbed around some control
+trajectory state when one is preparing to spin-up ensembles. A DART
+compliant model can choose not to provide an implementation of this
+algorithm and use the default mechanism in DART by simply returning .false.
+as a returned value for the interf_provided argument. In this case, DART
+perturbs the state to generate ensemble members by adding a random sample
+from a N(0.0, 0.002) distribution independently to each state variable.
+Models should override this if some structure is required for perturbations
+or if the magnitude of perturbations in DART is wrong.
+</P>
 
-This implementation allows each field in the state vector to be randomly perturbed
-with a separate standard deviation.  The fields to be perturbed, and the associated
-standard deviations are specified in the model_mod namelist using state_names_pert
-and state_names_sd.  The entries in state_names_pert should be in the same order
-as those in state_names_#d (# = 0,1,2,3 in that order).  As in the default,
-the perturbations sd*N[0,1] are added onto the basic state field, so sd should
-not be a percentage of the basic state field, but an actual physical size.
+<P>
+This implementation allows each field in the state vector to be randomly
+perturbed with a separate standard deviation.  The fields to be perturbed,
+and the associated standard deviations are specified in the model_mod
+namelist using state_names_pert and state_names_sd.  The entries in
+state_names_pert should be in the same order as those in state_names_#d (#
+= 0,1,2,3 in that order).  As in the default, the perturbations sd*N[0,1]
+are added onto the basic state field, so sd should not be a percentage of
+the basic state field, but an actual physical size.
+</P>
 
-This subroutine is also used by trans_pv_sv_pert0 for the off-line perturbation of
-fields the model considers to be parameters.  In this use a new random sequence 
-seed must be provided via an input file ("ens_member") for each ensemble member, 
-since trans_pv_sv_pert0 is executed once for each member and can't keep 
-a series of different seeds intact.  </P>
+<P>
+This subroutine is also used by trans_pv_sv_pert0 for the off-line
+perturbation of fields the model considers to be parameters.  In this use a
+new random sequence seed must be provided via an input file ("ens_member")
+for each ensemble member, since trans_pv_sv_pert0 is executed once for each
+member and can't keep a series of different seeds intact.  
+</P>
 
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -735,14 +741,13 @@ state is always to be provided from input files.
 <div class=namelist>
 <pre>
 <em class=call>namelist / model_nml / </em> &
-                      output_state_vector , model_version , model_config_file          &  
-                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d     &
-                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d   &
-                                     ,which_vert_1d  ,which_vert_2d  ,which_vert_3d    &
-		     ,state_names_pert ,state_names_sd ,max_obs_lat_degree             &
-		     ,highest_obs_pressure_mb ,highest_obs_height_m ,highest_obs_level &
-                     ,Time_step_seconds ,Time_step_days
-
+     output_state_vector,  model_version,  model_config_file,          &  
+       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,   &  
+     state_names_0d, state_names_1d, state_names_2d, state_names_3d,   &
+                      which_vert_1d,  which_vert_2d,  which_vert_3d,   &
+     pert_names, pert_sd, pert_base_vals,                              &
+     highest_obs_pressure_mb, highest_state_pressure_mb,               &
+     max_obs_lat_degree, Time_step_seconds, Time_step_days
     
 </pre>
 </div>
@@ -760,12 +765,13 @@ necessary for each separate set of fields which compose the state vector.
 </P>
 
 <P class=indent2>
-The dimension of these lists is hardwired to size 20, which will become
-a problem when long lists of chemical species are to be assimilated.
-We intend to fix this by specifying 2 namelists for model_mod.  The first
-will list the numbers of fields to be incorporated into the state vector.
-Those will be used to dimension the lists of names, vertical types, etc.
-Then the second namelist will fill the lists, etc.
+The dimension of these lists is currently hardwired to size 100. 
+If more variables types need to be assimilated (e.g. many chemical species),
+look for the integer parameter MAX_STATE_NAMES in the source code
+and change it to a long enough value and recompile DART.
+Longer term we intend to investigate using 2 different nameslists
+inside model_mod; one for setting the length of the lists and another
+to actually read in the data which fills the lists.
 </P>
 
 <P class=indent2>
@@ -782,65 +788,86 @@ file field names.
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>output_state_vector             </TD>
+<TR><!--contents--><TD valign=top>output_state_vector  </TD>
     <!--  type  --><TD valign=top>logical              </TD>
-    <!--descript--><TD>Controls the output to netCDF files. If .true., output the raw dart state vector. Otherwise, output the prognostic flavor (gridded data) for easier plotting (recommended).</TD></TR>
-<TR><!--contents--><TD valign=top>model_version              </TD>
-    <!--  type  --><TD valign=top>character(len=128)                        </TD>
-    <!--descript--><TD>The number of the CAM version being used, i.e. '3.0.7'. 
-                       (no letters allowed, so rename cam3_0_p1)
-                       Default = '3.0' .</TD></TR>
-<TR><!--contents--><TD valign=top>model_config_file              </TD>
-    <!--  type  --><TD valign=top>character(len=128)                        </TD>
-    <!--descript--><TD>CAM initial file used to provide configuration information.
-                       Default 'caminput.nc'.</TD></TR>
-<TR><!--contents--><TD valign=top>state_num_#d, #=0,1,2,3             </TD>
-    <!--  type  --><TD valign=top>integer                        </TD>
-    <!--descript--><TD>Numbers of fields of various dimensions to put into the state vector.
-                       Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
-<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3             </TD>
-    <!--  type  --><TD valign=top>character(len=8), dimension(20)                        </TD>
-    <!--descript--><TD>Names of fields of various dimensions to put into the state vector.  Defaults <BR>
+    <!--descript--><TD>Controls the output to netCDF files. 
+     If .true., output the raw dart state vector. If .false.,
+     output the prognostic flavor (gridded data) for easier 
+     plotting (recommended).  Defaults to .false.</TD></TR>
+<TR><!--contents--><TD valign=top>model_version        </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
+    <!--descript--><TD>The number of the CAM version being 
+       used, i.e. '3.0.7'.  (no letters allowed, so rename cam3_0_p1)
+                     Default = '3.0' .</TD></TR>
+<TR><!--contents--><TD valign=top>model_config_file    </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
+    <!--descript--><TD>CAM initial file used to provide 
+       configuration information.  Default 'caminput.nc'.</TD></TR>
+<TR><!--contents--><TD valign=top>state_num_#d, #=0,1,2,3   </TD>
+    <!--  type  --><TD valign=top>integer                   </TD>
+    <!--descript--><TD>Numbers of fields of various dimensions to put 
+                     into the state vector.
+                     Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
+<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3        </TD>
+    <!--  type  --><TD valign=top>character(len=8), dimension(100)  </TD>
+    <!--descript--><TD>Names of fields of various dimensions to put 
+                      into the state vector.  Defaults <BR>
          <PRE>state_names_0d='        ', state_names_1d='        ', </PRE>
          <PRE>state_names_2d='PS      ' </PRE>
          <PRE>state_names_3d='T       ','U       ','V       ','Q       '  </PRE>
      </TD></TR>
-<TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3             </TD>
-    <!--  type  --><TD valign=top>integer, dimension(20)                       </TD>
-    <!--descript--><TD>Vertical location types of fields in state_names_#d.  Defaults 
-                       <UL><LI>which_vert_1d = state_num_1d*-2, 
+<TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3           </TD>
+    <!--  type  --><TD valign=top>integer, dimension(100)           </TD>
+    <!--descript--><TD>Vertical location types of fields in 
+                 state_names_#d.  Defaults 
+                       <UL><LI> which_vert_1d = state_num_1d*-2, 
                            <LI> which_vert_2d = state_num_2d*-1, 
-                           <LI> which_vert_3d = state_num_3d* 1 </UL>
-     </TD></TR>
-<TR><!--contents--><TD valign=top>state_names_pert             </TD>
-    <!--  type  --><TD valign=top>character(len=8)  dimension(20)                      </TD>
-    <!--descript--><TD>Names of the state vector fields to perturb.  Defaults <BR>
-                      <PRE>state_names_pert='        ' </PRE></TD></TR>
+                           <LI> which_vert_3d = state_num_3d* 1 </UL> </TD></TR>
+<TR><!--contents--><TD valign=top>pert_names                         </TD>
+    <!--  type  --><TD valign=top>character(len=8), dimension(100)    </TD>
+    <!--descript--><TD>List of fields which would need to be perturbed even
+                       if starting from restart, e.g. because they are constant
+                       valued model parameters and show no spread when
+                       reading in from a restart file.
+                       Defaults <BR>
+                      <PRE>pert_names='        ' </PRE></TD></TR>
+<TR><!--contents--><TD valign=top>pert_sd                            </TD>
+    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
+    <!--descript--><TD>If positive, the standard deviation of the 
+     perturbation for each field in the pert_names list.  If negative, then
+     pert_names can contain only one entry, and that field will be set to
+     a different constant value for each ensemble member.  Those values
+     come from pert_base_vals.
+                       Defaults to a MISSING real value and
+                       unused unless pert_names is set.  </TD></TR>
+<TR><!--contents--><TD valign=top>pert_base_vals              </TD>
+    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
+    <!--descript--><TD>If pert_sd is negative, the list of values to use
+       for each ensemble member when perturbing the single 
+       field named in pert_names.
+       Defaults to a MISSING real value and unused unless pert_names 
+       is set and pert_sd is negative.
+     (Note:  should be dimensioned ens_size, not MAX_STATE_NAMES).</TD></TR>
 <TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
-    <!--  type  --><TD valign=top>real(r8)  </TD>
-    <!--descript--><TD>Observations closer to the poles than this latitude will be ignored.
+    <!--  type  --><TD valign=top>real(r8)                       </TD>
+    <!--descript--><TD>Observations closer to the poles than this 
+                       latitude will be ignored.
                        Default 90 degrees </TD></TR>
-<TR><!--contents--><TD valign=top>highest_obs_pressure_mb             </TD>
-    <!--  type  --><TD valign=top>real(r8)  </TD>
+<TR><!--contents--><TD valign=top>highest_obs_pressure_mb       </TD>
+    <!--  type  --><TD valign=top>real(r8)                      </TD>
     <!--descript--><TD>Observations higher than this pressure are ignored.
-                       Influence of all obs on model points higher than this is reduced.
-                       Default  30. hPa </TD></TR>
-<TR><!--contents--><TD valign=top>highest_obs_height_m             </TD>
-    <!--  type  --><TD valign=top>real(r8)  </TD>
-    <!--descript--><TD>Observations higher than this height are ignored.
-                       Influence of all obs on model points higher than this is reduced.
-                       Default  30000 m </TD></TR>
-<TR><!--contents--><TD valign=top>highest_obs_level             </TD>
-    <!--  type  --><TD valign=top>integer  </TD>
-    <!--descript--><TD>Observations higher than this level are ignored.
-                       Influence of all obs on model points higher than this is reduced.
-                       Default  11 </TD></TR>
-<TR><!--contents--><TD valign=top>Time_step_seconds        </TD>
-    <!--  type  --><TD valign=top>real(r8)  </TD>
+                       Default  150.0 mb </TD></TR>
+<TR><!--contents--><TD valign=top>highest_state_pressure_mb     </TD>
+    <!--  type  --><TD valign=top>real(r8)                      </TD>
+    <!--descript--><TD>Influence of all obs on model points higher than 
+                       this is reduced.
+                       Default  150.0 mb </TD></TR>
+<TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
+    <!--  type  --><TD valign=top>real(r8)                   </TD>
     <!--descript--><TD>Forecast duration (the part < 1 day)
                        Default  21600 sec </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_days             </TD>
-    <!--  type  --><TD valign=top>real(r8)  </TD>
+    <!--  type  --><TD valign=top>real(r8)                   </TD>
     <!--descript--><TD>Forecast duration (the part > 24*3600 sec)
                        Default  0 days </TD></TR>
 </TABLE>
