@@ -16,12 +16,13 @@
 #
 # NETCDF and LIBS need to be customized for your site
 #  here are some values for the local NCAR machines:
-#    ocotillo    NETCDF = /usr/local/netcdf-pgi
-#    fisher      NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-pgf90.6.1-1
-#    lightning   NETCDF = /contrib/netcdf/3.5.1-pgi6.0-64
-#    coral 32bit NETCDF = /contrib/netcdf-3.6.0p1-pgcc-pgf90-6.0-8-32
-#    coral 64bit NETCDF = /contrib/netcdf-3.6.0p1-cc-pgf90-6.0-8-64
-#    bangkok     NETCDF = /usr/local/netcdf-pgi
+#    ocotillo       NETCDF = /usr/local/netcdf-pgi
+#    fisher         NETCDF = /contrib/netcdf-3.6.0-p1-cc-c++-pgf90.6.1-1
+#    lightning 6.0  NETCDF = /contrib/netcdf/3.5.1-pgi6.0-64   
+#    lightning 6.2  NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-pgcc-pgCC-pgf90-6.2
+#    coral 32bit    NETCDF = /contrib/netcdf-3.6.0p1-pgcc-pgf90-6.0-8-32
+#    coral 64bit    NETCDF = /contrib/netcdf-3.6.0p1-cc-pgf90-6.0-8-64
+#    bangkok        NETCDF = /usr/local/netcdf-pgi
 #
 # if you switch between machines frequently, you can leave
 # the NETCDF variable unset here and set it in your environment.
