@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id$
+# $Id: mkmf.template.gfortran.osx 2811 2007-04-06 20:48:24Z nancy $
 # $Revision$
-# $Date$
+# $Date: 2007-04-06 14:48:24 -0600 (Fri, 06 Apr 2007) $
 
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
