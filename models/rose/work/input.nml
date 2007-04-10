@@ -52,7 +52,7 @@
    inf_sd_initial           = 0.0,                     0.0,
    inf_lower_bound          = 1.0,                     1.0,
    inf_upper_bound          = 1000000.0,               1000000.0,
-   inf_sd_lower_bound       = 0.0,                     0.0,
+   inf_sd_lower_bound       = 0.0,                     0.0
 /
 ! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
