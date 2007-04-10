@@ -39,6 +39,7 @@
    outlier_threshold        = 3.0,
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
+   output_inflation         = .true.,
 
    inf_flavor               = 2,                       0,
    inf_start_from_restart   = .false.,                 .false.,
@@ -52,7 +53,6 @@
    inf_lower_bound          = 1.0,                     1.0,
    inf_upper_bound          = 1000000.0,               1000000.0,
    inf_sd_lower_bound       = 0.0,                     0.0,
-   output_inflation         = .true.
 /
 ! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
