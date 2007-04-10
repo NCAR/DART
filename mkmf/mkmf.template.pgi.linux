@@ -21,6 +21,7 @@
 #    lightning   NETCDF = /contrib/netcdf/3.5.1-pgi6.0-64
 #    coral 32bit NETCDF = /contrib/netcdf-3.6.0p1-pgcc-pgf90-6.0-8-32
 #    coral 64bit NETCDF = /contrib/netcdf-3.6.0p1-cc-pgf90-6.0-8-64
+#    bangkok     NETCDF = /usr/local/netcdf-pgi
 #
 # if you switch between machines frequently, you can leave
 # the NETCDF variable unset here and set it in your environment.
