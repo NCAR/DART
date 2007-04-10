@@ -172,6 +172,7 @@ character(len = 4)                  :: extension
 type(time_type)                     :: ens_time
 integer                             :: global_copy_index
 logical                             :: interf_provided
+logical                             :: single_file_override
 
 ! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
 if(.not. start_from_restart .and. .not. single_restart_file_in) then
@@ -180,10 +181,22 @@ if(.not. start_from_restart .and. .not. single_restart_file_in) then
    call error_handler(E_ERR,'read_ensemble_restart', errstring, source, revision, revdate)
 endif
 
-!-------- Block for single restart file or single member  being perturbed -----
 
+! Some compilers (absoft, but others also) are particularly unhappy about
+! both checking present(N) _and_ evaluating N inside a single if() test.
+! (It evaluates both at the same time and blows up on the not present value.)
+! The standard says they do not have to evaluate right to left.  Common error
+! for anyone with a C programming background.   So -- set a separate local
+! logical variable which always has a value, whether the arg is present or not.
+if (present(force_single_file)) then
+  single_file_override = force_single_file
+else
+  single_file_override = .false.
+endif
+
+!-------- Block for single restart file or single member  being perturbed -----
 if(single_restart_file_in .or. .not. start_from_restart .or. &
-   (present(force_single_file) .and. force_single_file)) then 
+   single_file_override) then 
    ! Single restart file is read only by master_pe and then distributed
    if(my_pe == 0) iunit = open_restart_read(file_name)
 
