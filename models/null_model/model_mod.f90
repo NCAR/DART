@@ -86,8 +86,8 @@ subroutine static_init_model()
 ! the time type for the time stepping.
 
 real(r8) :: x_loc
-integer  :: i, iunit, ierr, io
-character(len=129) :: err_string, nml_string
+integer  :: i, iunit, io
+character(len=129) :: nml_string
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -128,7 +128,6 @@ real(r8), intent( in) ::  x(:)
 real(r8), intent(out) :: dt(:)
 
 integer :: j
-real(r8) :: bound, half_bound
 
 if(first_ens_seq) then
    call init_random_seq(ens_seq)
@@ -140,7 +139,7 @@ do j = 1, model_size
 
 
 ! ADDITION OF SOME NOISE
-   !!!dt(j) = 1.0 * random_gaussian(ens_seq, 0.0_r8, 1.0_r8)
+   dt(j) = 1.0 * random_gaussian(ens_seq, 0.0_r8, 1.0_r8)
 end do
 
 end subroutine comp_dt
