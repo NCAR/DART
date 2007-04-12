@@ -72,7 +72,8 @@ observational operators.
 
 <P>
 This is the DART interface module for the stand-alone CAM model,
-using the Eulerian dynamical core. 
+using the either the Eulerian and Finite Volume dynamical core,
+and possibly the Semi-Lagrangian core. 
 It is designed to work for versions of CAM starting with 2.0.1,
 by specifying the version number in the model_mod namelist.
 This implementation of DART-CAM uses the CAM (and CLM) initial files for 
@@ -86,7 +87,7 @@ state vector via model_mod namelist entries.   This may include quantities
 the model considers to be parameters, although ongoing research is
 being conducted into the difficulties and meaning of 
 assimilating model parameters of various kinds.
-The CLM incorporated in the stand-alone CAM is currently (6/16/2006)
+The CLM incorporated in the stand-alone CAM is currently (4/16/2007)
 treated as a parameterization.  That is, none of its variables
 are incorporated into the DART state vector.
 </P>
@@ -107,8 +108,8 @@ where those TYPE_s are used.  Modify CAM to write the new fields to the
 initial files, and modify the <em class=code>model_mod_nml</em> 
 (in <em class=file>input.nml</em>) to include the new state vector components.  
 In the namelist the vertical coordinate type of the new fields must also be
-specified.  See <em class=code>which_vert</em> in <A
-HREF="../../location/threed_sphere/location_mod.html"> location_mod </A>
+specified.  See <em class=code>which_vert</em> in 
+<A HREF="../../location/threed_sphere/location_mod.html"> location_mod </A>
 </P>
 
 <P>
@@ -117,7 +118,6 @@ Links to information about
 using CAM and parallel architecture computers, including:
 <UL>
     <LI> script and executable calling tree </LI>
-    <LI> script and executable flow chart parallel mode 3</LI>
     <LI> file contents and purposes</LI>
     <LI> output directory structure for use by obs_diag</LI>
     <LI> experiment set-up</LI>
@@ -140,6 +140,7 @@ using CAM and parallel architecture computers, including:
        time_manager_mod
        types_mod
        utilities_mod
+       mpi_utilities (or null_mpi_utilities, depending on the calling program)
 </PRE>
 
 <!--==================================================================-->
@@ -825,29 +826,35 @@ file field names.
                            <LI> which_vert_3d = state_num_3d* 1 </UL> </TD></TR>
 <TR><!--contents--><TD valign=top>pert_names                         </TD>
     <!--  type  --><TD valign=top>character(len=8), dimension(100)    </TD>
-    <!--descript--><TD>List of fields which would need to be perturbed even
-                       if starting from restart, e.g. because they are constant
-                       valued model parameters and show no spread when
-                       reading in from a restart file.
+    <!--descript--><TD>List of field(s) whose values need to be changed at or before 
+                       the beginning of an assimilation.  To make filter generate
+                       an ensemble from a single model state by randomly perturbing it,
+                       list the fields to be perturbed here.  To make trans_pv_sv_pert0
+                       reset a single field to a constant value, list that field here.
+                       Trans_pv_sv_pert0 would be run as many times as there are ensemble
+                       members (see pert_base_vals), in order to provide spread to that 
+                       variable. 
                        Defaults <BR>
                       <PRE>pert_names='        ' </PRE></TD></TR>
 <TR><!--contents--><TD valign=top>pert_sd                            </TD>
     <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
-    <!--descript--><TD>If positive, the standard deviation of the 
-     perturbation for each field in the pert_names list.  If negative, then
-     pert_names can contain only one entry, and that field will be set to
-     a different constant value for each ensemble member.  Those values
-     come from pert_base_vals.
+    <!--descript--><TD>If positive, it's the standard deviation of the 
+     perturbation for each field in the pert_names list (filter).  
+     If negative, then pert_names can contain only one entry, and that field 
+     will be set to a different constant value for each ensemble member 
+     (trans_pv_sv_pert0).  Those values come from pert_base_vals.
                        Defaults to a MISSING real value and
                        unused unless pert_names is set.  </TD></TR>
 <TR><!--contents--><TD valign=top>pert_base_vals              </TD>
     <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
-    <!--descript--><TD>If pert_sd is negative, the list of values to use
-       for each ensemble member when perturbing the single 
+    <!--descript--><TD>If pert_sd (yes, 'sd') is negative, this is the list of 
+       values to use for each ensemble member when perturbing the single 
        field named in pert_names.
+       Otherwise, it's the list of values to which the fieldS listed in
+       pert_names will be reset if filter is told to create an ensemble from
+       a single state vector.
        Defaults to a MISSING real value and unused unless pert_names 
-       is set and pert_sd is negative.
-     (Note:  should be dimensioned ens_size, not MAX_STATE_NAMES).</TD></TR>
+       is set and pert_base_vals is /= this missing value (-888888.0d0).  </TD></TR>
 <TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
     <!--  type  --><TD valign=top>real(r8)                       </TD>
     <!--descript--><TD>Observations closer to the poles than this 
@@ -856,12 +863,12 @@ file field names.
 <TR><!--contents--><TD valign=top>highest_obs_pressure_mb       </TD>
     <!--  type  --><TD valign=top>real(r8)                      </TD>
     <!--descript--><TD>Observations higher than this pressure are ignored.
-                       Default  150.0 mb </TD></TR>
+                       Default  150.0 hPa </TD></TR>
 <TR><!--contents--><TD valign=top>highest_state_pressure_mb     </TD>
     <!--  type  --><TD valign=top>real(r8)                      </TD>
     <!--descript--><TD>Influence of all obs on model points higher than 
                        this is reduced.
-                       Default  150.0 mb </TD></TR>
+                       Default  150.0 hPa </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
     <!--  type  --><TD valign=top>real(r8)                   </TD>
     <!--descript--><TD>Forecast duration (the part < 1 day)
