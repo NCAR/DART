@@ -7,22 +7,6 @@
 
 <!--==================================================================-->
 
-<img src = "../../images/Dartboard4.gif" align="center" alt="snappy DART image"></img>
-<br>
-
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<H1>DART "jamaica release" Documentation</H1>
-
 <DIV ALIGN=LEFT class=disclaimer>
 GNU General Public License
 
@@ -46,6 +30,22 @@ http://www.gnu.org/licenses/gpl.txt
 </DIV>
 
 <!--==================================================================-->
+
+<br>
+<img src = "../../images/Dartboard4.gif" alt="snappy DART image"></img>
+<br>
+<H1>DART "jamaica release" Documentation</H1>
+<A NAME="HEADER"></A>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 
 <A NAME="OVERVIEW"></A>
 <H1>Overview of DART</H1>
@@ -81,6 +81,8 @@ results, but the netCDF files are inherently portable and contain all the
 necessary metadata to interpret the contents.
 </P>
 
+<!--==================================================================-->
+
 <H2 class=indent1>What's New</H2>
 
 <P>
@@ -97,60 +99,83 @@ experienced users should really read the change document.
 <br>
 <br>
 The most visible changes in the <b>jamaica</b> release are:
-<ol><li>changes in the inflation strategies,</li>
-    <li>the complete removal of user-defined 'regions' as the way to achieve
-        parallel data assimilation,</li>
-    <li>the ability to perform localization in the vertical in 3D models, which
-        necessitated a change in the <em class="code">model_mod</em> interface,
-        and perhaps most notably, </li>
-    <li>the <strong>optional</strong> use of MPI that completely replaces
-        the <em class="code">async = 3</em> method of achieving parallel 
-        assimilations and model advances. Using MPI greatly increases the 
-        performance for large models and/or large numbers of observations. 
-        It also greatly <strong>decreases</strong> the shell script complexity.
-        For example, <em class="program">advance_ens.csh</em> and 
-        <em class="program">filter_server.csh </em> no longer exist.
-        The use of MPI is enabled by giving <em class="program">mkmf_filter</em>
-        an optional argument <em class="unix">-mpi</em>&nbsp;.</li>
-    <li>It is also possible to plot (in 3D) the locations of observations 
-        by processing an observation sequence through <em class="program">obs_diag</em>
-        and running the resulting output file through the matlab function 
-        <em class="program">plot_observation_locations</em>.</li>
-</ol>
-The changes in the inflation mechanism now provide the ability to perform inflation 
-in observation-space, fixed-state-space, or spatially-varying-state-space  
-in the prior and/or posterior with either a deterministic or stochastic algorithm.
-<br>
-<br>
-Some assimilation strategies previously controlled by 
-<em class="program">assim_tools_nml</em>, (namely, whether to perform a parallel
-assimilation, how many domains to use, and a few others) have been replaced by
-a new parallel assimilation algorithm. Associated inflation computations
-are documented in the manuscript by Anderson and Collins that is to appear
-in the Journal of Atmospheric and Oceanic Technology and in section 22 of
-the tutorial. Namelist entries <em class="code">do_parallel, num_domains</em>, 
-and <em class="code">parallel_command</em> no longer exist. 
-<br>
-<br>
-The <em class="program">model_mod:get_close_states()</em> and 
-<em class="program">model_mod:get_num_close_states()</em> routines have been 
-replaced by "pass-through" interfaces to routines in 
-<em class="program">location_mod</em>. An optional interface
-<em class="program">model_mod:ens_mean_for_model()</em> is required only
-by some models when performing localization in the vertical. This routine
-provides the ensemble mean so that the same model state is used 
-when computing the vertical localization.
-<br>
-<br>
-The (optional) MPI implementation allows for very large state vectors - some
-model configurations ( i.e. state vectors too large to fit in core ) are now
-possible. And <strong>yes</strong>, it scales rather nicely, thank you.
-There are references throughout the documents and code to MPI - keep in mind
-all the MPI interfaces are in one module 
-<em class="file">mpi_utilities_mod.f90</em>. If you are
-NOT using MPI - there is a simple equivalent module named
-<em class="file">null_mpi_utilities_mod.f90</em> which is the default.
-</P>
+
+   <h4 class="indent1">Changes in the inflation strategies.</h4>
+   <P class="indent1">
+   The changes in the inflation mechanism now provide the ability to 
+   perform inflation in observation-space, fixed-state-space, or 
+   spatially-varying-state-space in the prior and/or posterior with 
+   either a deterministic or stochastic algorithm.</P>
+
+   <h4 class="indent1">Fundamental changes for parallel behavior</h4> 
+   <P class="indent1">
+   The <strong>optional</strong> use of MPI required a complete rewrite 
+   of many of the routines that previously governed attempts at 
+   parallel computations.  This resulted in the removal of the 
+   <em class="code">async = 3</em> method of achieving parallel 
+   assimilations and model advances. As a consequence, 
+   <em class="program">assim_region.csh</em>, 
+   <em class="program">advance_ens.csh</em>, and 
+   <em class="program">filter_server.csh</em> no longer exist.
+   <br>
+   <br>
+   Some assimilation strategies previously controlled by 
+   <em class="program">assim_tools_nml</em>, (namely, whether to 
+   perform a parallel assimilation, how many domains to use, 
+   and a few others) have been replaced by a new parallel assimilation 
+   algorithm. Associated inflation computations are documented in the 
+   manuscript by Anderson and Collins that is to appear in the 
+   <cite>Journal of Atmospheric and Oceanic Technology</cite> 
+   and in section 22 of the tutorial. Namelist entries 
+   <em class="code">do_parallel, num_domains</em>, and 
+   <em class="code">parallel_command</em> no longer exist.
+   <br>
+   <br>
+   The (optional) MPI implementation allows for very large state 
+   vectors - some model configurations (i.e. state vectors too 
+   large to fit in core) are now possible. And <strong>yes</strong>, 
+   it scales rather nicely, thank you.  There are references throughout 
+   the documents and code to MPI - keep in mind all the MPI interfaces 
+   are in one module <em class="file">mpi_utilities_mod.f90</em>. 
+   If you are NOT using MPI - there is a simple equivalent module 
+   named <em class="file">null_mpi_utilities_mod.f90</em> which is 
+   the default.
+   <br>
+   <br>
+   Using MPI greatly increases the performance for large models 
+   and/or large numbers of observations.  It also greatly 
+   <strong>decreases</strong> the shell script complexity. The use 
+   of MPI is enabled by giving <em class="program">mkmf_filter</em> 
+   an optional argument <em class="unix">-mpi</em>&nbsp;.
+   To learn more about DART's implementation of MPI - please refer 
+   to <a href="mpi_intro.html">DART/doc/html/mpi_intro.html</a>&nbsp;.
+   </P>
+
+   <h4 class="indent1">Vertical localization</h4> 
+   <P class="indent1">
+   It is now possible to perform localization in 
+   the vertical in 3D models, which necessitated a change in the 
+   <em class="code">model_mod</em> interface. The 
+   <em class="program">model_mod:get_close_states()</em> and 
+   <em class="program">model_mod:get_num_close_states()</em> 
+   routines have been replaced by "pass-through" interfaces to 
+   routines in <em class="program">location_mod</em>. An optional 
+   interface <em class="program">model_mod:ens_mean_for_model()</em> 
+   is required only by some models when performing localization in 
+   the vertical. This routine provides the ensemble mean so that 
+   the same model state is used when computing the vertical localization.
+   </P>
+
+   <h4 class="indent1">3D plots of observation locations & type</h4> 
+   <P class="indent1">
+   It's more than just eye candy. It is also possible to plot (in 3D) 
+   the locations of observations by processing an observation sequence 
+   through <em class="program">obs_diag</em> and running the resulting 
+   output file through the matlab function 
+   <em class="program">plot_observation_locations</em>.
+   </P>
+
+<!--==================================================================-->
 
 <H2 class=indent1>What's Required</H2>
 <ol><li>a working fortran compiler</li>
