@@ -1,0 +1,129 @@
+<HTML>
+<HEAD>
+<TITLE>DART smoother documentation</TITLE>
+<link rel="stylesheet" type="text/css" href="doc.css"></link> 
+</HEAD>
+<BODY>
+
+<!--==================================================================-->
+
+<img src = "../../images/Dartboard4.gif" align="center" alt="snappy DART image"></img>
+<br>
+
+<A NAME="HEADER"></A>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+<H1>Using the Smoother in DART</H1>
+
+<P>
+To enable the smoother,
+set the number of lags (num_lags) to something larger than 0
+in the smoother_nml section of your input.nml file:
+</p>
+
+<pre>
+&#38;smoother_nml
+   num_lags              = 10,
+   start_from_restart    = .false.,
+   output_restart        = .true.,
+   restart_in_file_name  = 'smoother_ics',
+   restart_out_file_name = 'smoother_restart' /
+</pre>
+<P>
+In the low order models, 10 is a plausible number.
+<br> 
+<br> 
+Run filter as before.
+<br>
+<br>
+In addition to generating Prior_Diag.nc and Posterior_Diag.nc files,
+files of the form Lag_NNNNN_Diag.nc will be generated.   Each of
+these has N fewer timesteps than the lag=0 run, starting at the
+same time but ending N timesteps sooner.  The obs_seq.final file
+and the Prior_Diag.nc and Posterior_Diag.nc files will be the same
+as the non-lagged version; the new output will be in each 
+of the Lag_NNNNN_Diag.nc files.
+<br>
+<br>
+If you have a True_State.nc file and want to use the 'plot_total_err'
+matlab macro to plot the error, you must do the following steps to
+generate analogs of lagged True_State.nc files to use as a comparison.
+(The logic is not currently implemented in the matlab scripts to be able
+to compare netCDF files with unequal time coordinates.)
+<br>
+<br>
+Make N separate versions of the True_State.nc with the last N timesteps
+removed.  Using the netCDF NCO operator program 'ncks' is one way.
+If the True_State.nc file has 1000 time steps, then this command
+removes the last one:
+</P>
+<div class="unix">
+ncks -d time,0,998 True_State.nc True_Lag01.nc
+</div>
+<P>
+Note that the first time is at index 0, so the last timestep is index
+999 in the full file, and 998 in the truncated file.   Repeat this
+step for all N lags.  Here are NCO commands to generate 10 truth
+files for num_lags = 10, 1000 time steps in True_State.nc:
+</P>
+<div class="unix">
+ncks -d time,0,998 True_State.nc True_Lag01.nc<br>
+ncks -d time,0,997 True_State.nc True_Lag02.nc<br>
+ncks -d time,0,996 True_State.nc True_Lag03.nc<br>
+ncks -d time,0,995 True_State.nc True_Lag04.nc<br>
+ncks -d time,0,994 True_State.nc True_Lag05.nc<br>
+ncks -d time,0,993 True_State.nc True_Lag06.nc<br>
+ncks -d time,0,992 True_State.nc True_Lag07.nc<br>
+ncks -d time,0,991 True_State.nc True_Lag08.nc<br>
+ncks -d time,0,990 True_State.nc True_Lag09.nc<br>
+ncks -d time,0,989 True_State.nc True_Lag10.nc<br>
+</div>
+<P>
+Here is an example matlab session which plots the lag=0 results
+and then odd numbered lags from 1 to 9.  It uses the
+<em class="program">plot_total_err</em> 
+function from the $DART/matlab directory:
+</P>
+<pre>
+datadir    = '.';
+truth_file = fullfile(datadir,'True_State.nc');
+diagn_file = fullfile(datadir,'Prior_Diag.nc');
+plot_total_err
+reply = input('original data.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag01.nc');
+diagn_file = fullfile(datadir,'Lag_00001_Diag.nc');
+plot_total_err
+reply = input('Lag 01.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag03.nc');
+diagn_file = fullfile(datadir,'Lag_00003_Diag.nc');
+plot_total_err
+reply = input('Lag 03.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag05.nc');
+diagn_file = fullfile(datadir,'Lag_00005_Diag.nc');
+plot_total_err
+reply = input('Lag 05.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag07.nc');
+diagn_file = fullfile(datadir,'Lag_00007_Diag.nc');
+plot_total_err
+reply = input('Lag 07.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag09.nc');
+diagn_file = fullfile(datadir,'Lag_00009_Diag.nc');
+plot_total_err
+reply = input('Lag 09.  hit enter to continue ');
+</pre>
+
+</BODY>
+</HTML>
