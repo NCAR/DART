@@ -173,7 +173,7 @@ integer  :: last_close_state_ind(ens_handle%my_num_vars)
 integer  :: num_close_obs, obs_index, num_close_states, state_index
 integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
 integer  :: base_obs_kind, my_obs_kind(obs_ens_handle%my_num_vars)
-integer  :: my_state_kind(ens_handle%my_num_vars)
+integer  :: my_state_kind(ens_handle%my_num_vars), nth_obs
 integer  :: num_close_obs_buffered, num_close_states_buffered
 integer  :: num_close_obs_calls_made, num_close_states_calls_made
 
@@ -191,9 +191,6 @@ logical :: local_varying_ss_inflate
 logical :: local_obs_inflate
 logical :: get_close_buffering
 
-!PAR: THIS SHOULD COME FROM SOMEWHERE ELSE AND BE NAMELIST CONTOLLED
-real(r8) :: qc_threshold = 10.0_r8
-
 
 ! Initialize assim_tools_module if needed
 if(.not. module_initialized) then
@@ -209,6 +206,9 @@ get_close_buffering = .true.
 local_single_ss_inflate  = do_single_ss_inflate(inflate)
 local_varying_ss_inflate = do_varying_ss_inflate(inflate)
 local_obs_inflate        = do_obs_inflate(inflate)
+
+! Default to printing nothing
+nth_obs = -1
 
 ! Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
@@ -307,11 +307,13 @@ endif
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
+   ! Some compilers do not like mod by 0, so test first.
+   if (print_every_nth_obs > 0) nth_obs = mod(i, print_every_nth_obs)
+
    ! If requested, print out a message every Nth observation
    ! to indicate progress is being made and to allow estimates 
    ! of how long the assim will take.
-   if (print_every_nth_obs > 0 .and. my_task_id() == 0 .and. &
-      mod(i, print_every_nth_obs) == 0) then
+   if (nth_obs == 0 .and. my_task_id() == 0) then
       write(*, *) 'Processing observation ', i, ' of ', obs_ens_handle%num_vars
 ! or if you want timestamps:
 !     write(errstring, '(a,1x,i8,1x,a,i8)') 'Processing observation ', i, &
