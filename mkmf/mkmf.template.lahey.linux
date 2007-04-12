@@ -19,7 +19,7 @@
 # for machines at NCAR, here are some settings:
 #   fisher     NETCDF = /home/thoar/netcdf-3.5.1-cc-c++-lf95.6.20a
 #   lightning  NETCDF = /contrib/netcdf/3.5.1-lahey-6.2-32
-#   bangkok    NETCDF = /usr/local/netcdf-gcc-g77-lf95
+#   bangkok    NETCDF = /usr/local/netcdf-3.6.1-gcc-3.4.6-lf9562
 #
 # FFLAGS   useful for benchmarking
 #    --ap                    preserve arithmetic accuracy in the face of optimization
