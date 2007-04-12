@@ -39,7 +39,7 @@
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Example">EXAMPLE</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
 </DIV>
 
@@ -63,8 +63,44 @@
 
 <P>
 Implements a fixed lag ensemble smoother as part of the filter. For now,
-this is done inefficiently with a separate call to filter_assim in 
-assim_tools_mod for each lag. 
+this is done inefficiently with a separate call to 
+<em class="program">assim_tools_mod:filter_assim()</em>
+for each lag. 
+<br>
+<br>
+To enable the smoother, set the number of lags (num_lags) to something 
+larger than 0 in the <em class="program">smoother_nml</em> section of 
+your <em class="file">input.nml</em> file and run 
+<em class="program">filter</em> as before.
+</p>
+
+<div class="routine">
+<pre>
+&#38;smoother_nml
+   num_lags              = <em class="changed">10</em>,
+   start_from_restart    = .false.,
+   output_restart        = .true.,
+   restart_in_file_name  = "smoother_ics",
+   restart_out_file_name = "smoother_restart"  /
+</pre>
+</div>
+
+<P>
+In the low order models, 10 is a plausible number.
+<br>
+<br>
+In addition to generating 
+<em class="file">Prior_Diag.nc</em> and 
+<em class="file">Posterior_Diag.nc</em> files,
+files of the form 
+<em class="file">Lag_NNNNN_Diag.nc</em> will be generated.   
+Each of these has N fewer timesteps than the lag=0 run, starting at the
+same time but ending N timesteps sooner.
+The <em class="file">obs_seq.final</em> file
+and the <em class="file">Prior_Diag.nc</em> and <em
+class="file">Posterior_Diag.nc</em> files will be the same
+as the non-lagged version; the new output will be in each
+of the <em class="file">Lag_NNNNN_Diag.nc</em> files.
 </P>
 
 <!--==================================================================-->
@@ -555,22 +591,22 @@ propagate the state to all requested lags.
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>num_lags</TD>
-     <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Number of smoother lags; < 1 means no smoother. Default: 0</TD></TR>
+     <!--  type  --><TD valign=top>integer</TD>
+ <!--descript--><TD>Number of smoother lags; &#60; 1 means no smoother. Default: 0</TD></TR>
  <TR><!--contents--><TD valign=top>start_from_restart</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
  <!--descript--><TD>True if smoother states are to come from restart file. False
   if they are to be spun up from scratch. Default: .false.</TD></TR>
  <TR><!--contents--><TD valign=top>output_restart</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
  <!--descript--><TD>True if restart file is to be written, else false. 
    Default:.false.</TD></TR>
  <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
  <!--descript--><TD>File name from which to read restarts, lag extensions get added. 
        Default: smoother_ics </TD></TR>
  <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
  <!--descript--><TD>File name to which to write smoother restarts, lag extensions get added. 
     Default: smoother_restart</TD></TR>
  </TABLE>
@@ -630,10 +666,83 @@ propagate the state to all requested lags.
 <!-- Descibe Future Plans.                                            -->
 <!--==================================================================-->
 
-<A NAME="FuturePlans"></A>
+<A NAME="example"></A>
 <BR><HR><BR>
-<H2>FUTURE PLANS</H2>
+<H2>EXAMPLE</H2>
 <P>
+If you have a <em class="file">True_State.nc</em> file and want to 
+use the <em class="program">plot_total_err</em> matlab function 
+to plot the error, you must do the following steps to generate analogs 
+of lagged <em class="file">True_State.nc</em> files to use as a comparison.
+(The logic is not currently implemented in the matlab scripts to be able
+to compare netCDF files with unequal time coordinates.)
+<br>
+<br>
+Make N separate versions of the True_State.nc with the last N timesteps
+removed.  Using the netCDF NCO operator program 'ncks' is one way.
+If the True_State.nc file has 1000 time steps, then this command
+removes the last one:
+</P>
+<div class="unix"> 
+ncks -d time,0,998 True_State.nc True_Lag01.nc
+</div>
+<P>
+Note that the first time is at index 0, so the last timestep is index
+999 in the full file, and 998 in the truncated file.   Repeat this
+step for all N lags.  Here are NCO commands to generate 10 truth
+files for num_lags = 10, 1000 time steps in True_State.nc:
+</P>
+<div class="unix">
+ncks -d time,0,998 True_State.nc True_Lag01.nc<br>
+ncks -d time,0,997 True_State.nc True_Lag02.nc<br>
+ncks -d time,0,996 True_State.nc True_Lag03.nc<br>
+ncks -d time,0,995 True_State.nc True_Lag04.nc<br>
+ncks -d time,0,994 True_State.nc True_Lag05.nc<br>
+ncks -d time,0,993 True_State.nc True_Lag06.nc<br>
+ncks -d time,0,992 True_State.nc True_Lag07.nc<br>
+ncks -d time,0,991 True_State.nc True_Lag08.nc<br>
+ncks -d time,0,990 True_State.nc True_Lag09.nc<br>
+ncks -d time,0,989 True_State.nc True_Lag10.nc<br>
+</div>
+<P>
+Here is an example matlab session which plots the lag=0 results
+and then odd numbered lags from 1 to 9.  It uses the
+<em class="program">plot_total_err</em>
+function from the $DART/matlab directory:
+</P>
+<pre>
+datadir    = '.';
+truth_file = fullfile(datadir,'True_State.nc');
+diagn_file = fullfile(datadir,'Prior_Diag.nc');
+plot_total_err
+reply = input('original data.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag01.nc');
+diagn_file = fullfile(datadir,'Lag_00001_Diag.nc');
+plot_total_err
+reply = input('Lag 01.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag03.nc');
+diagn_file = fullfile(datadir,'Lag_00003_Diag.nc');
+plot_total_err
+reply = input('Lag 03.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag05.nc');
+diagn_file = fullfile(datadir,'Lag_00005_Diag.nc');
+plot_total_err
+reply = input('Lag 05.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag07.nc');
+diagn_file = fullfile(datadir,'Lag_00007_Diag.nc');
+plot_total_err
+reply = input('Lag 07.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag09.nc');
+diagn_file = fullfile(datadir,'Lag_00009_Diag.nc');
+plot_total_err
+reply = input('Lag 09.  hit enter to continue ');
+</pre>
+
 </P>
 
 <!--==================================================================-->
