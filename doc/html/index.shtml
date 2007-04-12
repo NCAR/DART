@@ -61,91 +61,152 @@
 
       <H1>DART tested platforms/models/compilers</H1>
       <P>
-      With the Hawaii release of DART, great strides were made in portability.
-      DART has now been compiled under several versions of the Intel Fortran Compiler,
-      the Portland Group Fortran Compiler, the Lahey LF95 Compiler, the IBM XLF Compiler,  
-      and the Absoft Pro Compiler for Mac OSX. 
-      DART has also been exercised on several platforms: 
-      Intel Xeon chips running Fedora Core 2,
-      Red Hat 9.0, and Red Hat 7.1; IBM AIX; 
-      and a G4 PowerBook running OSX 10.3.8. 
-      <BR><BR>
-      The most current version of DART (post_iceland) has been tested on the following: 
+      The most current version of DART (Jamaica) has been tested on the following: 
       </P>
       <TABLE border=0 cellpadding=2 width=100%>
       <TR><TH align=left>hardware</TH>
           <TH align=left>O/S</TH>
           <TH align=left>F90 compiler</TH>
+          <TH align=left>batch manager</TH>
       </TR>
 
-      <TR><TD>Intel cluster             </TD>
+      <TR><TD>Intel cluster/SMP/32 bit  </TD>
           <TD>Red Hat Enterprise        </TD>
-          <TD>Intel 9.0 (build 20051201)</TD></TR>
+          <TD>Intel 9.0 (build 20051201)</TD>
+          <TD>none                      </TD>
+	  </TR>
+
+      <TR><TD>Intel cluster/SMP/32 bit  </TD>
+          <TD>Red Hat Enterprise        </TD>
+          <TD>GNU Fortran 95 4.1.0      </TD>
+          <TD>none                      </TD>
+	  </TR>
+
+      <TR><TD>Intel Nocona</TD>
+          <TD>SUSE        </TD>
+          <TD>PGI 6.0-8   </TD>
+          <TD>LSF         </TD>
+	  </TR>
+
+      <TR><TD>Intel Nocona</TD>
+          <TD>SUSE        </TD>
+          <TD>Intel 9.1 (EM64T) </TD>
+          <TD>LSF         </TD>
+	  </TR>
 
       <TR><TD>Intel iMac      </TD>
           <TD>Mac OS X 10.4.6 </TD>
-          <TD>gfortran 4.2.0  </TD></TR>
+          <TD>gfortran 4.2.0  </TD>
+          <TD>Open-MPI        </TD>
+	  </TR>
 
-      <TR><TD>PowerPC PowerBook </TD>
-          <TD>Mac OS X 10.3.9   </TD>
-          <TD>gfortran 4.2.0    </TD></TR>
+      <TR><TD>IBM Power 5+ </TD>
+          <TD>AIX 5.3      </TD>
+          <TD>XLF 10.1.0   </TD>
+	  <TD>LSF          </TD>
+	  </TR>
 
-      <TR><TD>PowerPC PowerBook      </TD>
-          <TD>Mac OS X 10.4.6        </TD>
-          <TD>Absoft Pro Fortran 9.0 </TD></TR>
+      <TR><TD>Intel         </TD>
+          <TD>Fedora Core 4 </TD>
+          <TD>Intel 9.0     </TD>
+	  <TD>none          </TD>
+	  </TR>
 
-      <TR><TD>Intel cluster </TD>
-          <TD>Fedora Core 2 </TD>
-          <TD>PGI 5.2-4      </TD></TR>
+      <TR><TD>PowerBook G4 (PowerPC) </TD>
+          <TD>Mac OS X 10.4.8        </TD>
+          <TD>Absoft Pro Fortran 9.0 </TD>
+	  <TD>none                   </TD>
+	  </TR>
 
-      <TR><TD>Intel cluster </TD>
-          <TD>Fedora Core 2 </TD>
-          <TD>Lahey 6.20c   </TD></TR>
+      <TR><TD>PowerBook G4 (PowerPC) </TD>
+          <TD>Mac OS X 10.3.9        </TD>
+          <TD>Absoft Pro Fortran 9.0 </TD>
+	  <TD>Lam                    </TD>
+	  </TR>
 
-      <TR><TD>Intel cluster             </TD>
-          <TD>SUSE                      </TD>
-          <TD>Intel 9.0 (build 20051020)</TD></TR>
+      <TR><TD>PowerBook G4 (PowerPC)</TD>
+          <TD>Mac OS X 10.3.9       </TD>
+          <TD>gfortran 4.2.0        </TD>
+	  <TD>Lam                   </TD>
+	  </TR>
 
-      <TR><TD>Intel cluster </TD>
-          <TD>SUSE          </TD>
-          <TD>PGI 6.0-8     </TD></TR>
+      <TR><TD>Intel cluster (Xeon)</TD>
+          <TD>Fedora Core 2       </TD>
+          <TD>PGI 6.0-5           </TD>
+          <TD>PBS                 </TD>
+	  </TR>
+
+      <TR><TD>Intel cluster (Xeon)</TD>
+          <TD>Fedora Core 2       </TD>
+          <TD>PGI 5.2-4           </TD>
+          <TD>PBS                 </TD>
+	  </TR>
+
+      <TR><TD>Intel cluster (Xeon)</TD>
+          <TD>Fedora Core 2       </TD>
+          <TD>Lahey 6.20c         </TD>
+          <TD>PBS                 </TD>
+	  </TR>
 
       <TR><TD>IBM cluster (of opterons)</TD>
           <TD>SUSE Enterprise 8        </TD>
-          <TD>Pathscale 2.4            </TD></TR>
+          <TD>Pathscale 2.4            </TD>
+          <TD>LSF                      </TD>
+	  </TR>
 
-      <TR><TD>IBM Power 5 </TD>
-          <TD>AIX 5.1     </TD>
-          <TD>XLF 8.1.1   </TD></TR>
+      <TR><TD>IBM cluster (of opterons)</TD>
+          <TD>Suse Enterprise 8        </TD>
+          <TD>Intel 9.1 (EM64T)        </TD>
+          <TD>LSF                      </TD>
+	  </TR>
 
-      <TR><TD>SGI           </TD>
-          <TD>IRIX64 6.5    </TD>
-          <TD>MIPSpro 7.4.3m</TD></TR>
+      <TR><TD>IBM cluster (of opterons)</TD>
+          <TD>Suse Enterprise 8        </TD>
+          <TD>PGI 6.2                  </TD>
+          <TD>LSF                      </TD>
+	  </TR>
+
+      <TR><TD>SGI Altix         </TD>
+          <TD>SUSE Linux ES 9.3 </TD>
+          <TD>Intel 9.1         </TD>
+          <TD>PBS               </TD>
+	  </TR>
+
+      <TR><TD>SGI MIPS          </TD>
+          <TD>IRIX 6.5          </TD>
+          <TD>MIPSpro 7.4.3m    </TD>
+          <TD>NQS               </TD>
+	  </TR>
+
+      <TR><TD>Linux cluster     </TD>
+          <TD>Intel             </TD>
+          <TD>Intel 9.1         </TD>
+          <TD>PBS               </TD>
+	  </TR>
+
       </TABLE>
 
       <H1>DART code distributions</H1>
       <P>
-      <b>If</b> you have an account in CGD, you should absolutely, positively, unequivocally
-      use CVS to get the code. This makes updates and comparisons between your sandbox
-      and the latest, greatest version of the code trivially easy. The same cannot be said
-      with a TAR file.
-      The CVS repository is on a filesystem in CGD, so to be able to read from it, you need
-      a CGD account. Contact Tim Hoar if you need assistance with the CVS portion. Contact CGD
-      if you cannot remember your password. The appropriate tag for the stable version 
-      of the code is '<tt>post_iceland_branch</tt>'.
-      </P>
-      <P>
-      If you do not have a CGD account, you can download the tar file containing the 
-      source code by following the links below.
-      <em>Please</em> let us know if you take a copy.
+      <b>SVN</b> access to DART is finally here! There is anonymous readonly 
+      access to the SVN repository to get the code. This makes updates and 
+      comparisons between your sandbox and the latest, greatest version of the 
+      code trivially easy. The same cannot be said with a TAR file.
+      If you are not familiar with SVN (the client application of subversion),
+      you should take a stroll through my <a
+      href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>
+      If you cannot (i.e. are firewalled out) use svn, please let me know and 
+      I'll send you a tarfile ... as a last resort.<br>
+      <br>
+      <br>
       Since the DART software is still an area of active research, there are
       multiple distributions, with more on the way. We'd like to be able to contact
       people to inform them of any bugs or updates. (This includes local users, BTW!)
       As you can see by the timetable of distributions, you could expect to get 
-      about 3 more emails per year. The distribution (gzipped tarfile) can be 
-      downloaded by selecting the 'version'. 
+      about 2 more emails per year, so PLEASE use a real email address when signing up.
       <BR><BR>
-      The <em>iceland</em> version is the latest 'official' version.
+      <a href="/DAReS/DART/DART_download">download instructions for jamaica</a> --
+      the latest 'official' version.
       </P>
       <TABLE border=0 cellpadding=2 width=100%>
       <TR><TH align=left>version</TH>
@@ -153,6 +214,14 @@
           <TH align=left>instructions</TH>
           <TH align=left>most noteable change(s)</TH>
       </TR>
+
+      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">jamaica</A></TD>
+          <!--   date--><TD valign=top>11&nbsp;Apr&nbsp;2007</TD>
+          <!--instruc--><TD valign=top><A HREF="Jamaica_release.html">[doc]</A></TD>
+	  <!-- change--><TD>vertical localization, extensive testing of MPI implementation,
+	                    full documentation for new algorithms, new tutorial sections<BR>
+                            <A HREF="Jamaica_diffs_from_I.html">change log</A>
+                            </TD></TR>
 
       <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">pre_j</A></TD>
           <!--   date--><TD valign=top>02&nbsp;Oct&nbsp;2006</TD>
@@ -209,20 +278,17 @@
           <!--   date--><TD>8&nbsp;March&nbsp;2004</TD>
           <!--instruc--><TD><A HREF="ASP_DART_exercise.html">[doc]</A></TD>
           <!-- change--><TD>initial release</TD></TR>
-      <TR><TD colspan=4>The 'easter' release was used for the ASP Summer Colloquium 
-          in 2003 and has extra documentation:<BR>
-          <A HREF="exercise_overview.pdf">Exercise Overview</A><BR>
-          <A HREF="dart_exercise_doc.pdf">DART Exercise Documentation</A><BR>
-          <A HREF="asp_summer_talk.pdf">Slides from Introductory Talk on Exercises</A><BR>
-          <A HREF="ncar_arg_talk.pdf">A Seminar on Filtering in the Bgrid Dynamical Core</A>
           </TD></TR>
       </TABLE>
       <BR><BR>
 
-      <H1>Here is a partial list of downloadable presentations about DART:</H1>
-      <strong>Browsing the tutorial directory in the current distributions is worth
-          the effort.</strong>
+      <H1>Browsing the tutorial directory in the current distributions is worth
+          the effort. Taking the tutorial is even better!</H1><br>
+
+      <H2>Here is a partial list of downloadable presentations about DART:</H2>
       <OL> 
+      <LI><A HREF="jla_arg_seminar.pdf">The Data Assimilation Research Testbed: Powerful
+      Adpative Fast Assimilation for Geophysical Applications, March. 2007</A></LI>
       <LI><A HREF="tut1.pdf">A tutorial on ensemble filtering, Jan. 2004</A></LI>
       <LI><A HREF="caos_dec_2003.pdf">Talk for CAOS Workshop, Dec. 2003</A></LI>
       <LI><A HREF="agu_2003.pdf">Overview of Filter DA, AGU, Dec. 2003</A></LI>
@@ -230,7 +296,7 @@
 
       <P>
       <A NAME="related"></A>
-      <H1>Related Links</H1>
+      <H2>Related Links</H2>
 
       <ul><li><a href="http://www.gfdl.noaa.gov/~fms">FMS group of GFDL</a></li>
           <li><a href="http://www.esmf.ucar.edu/">ESMF -- Earth System Modeling Framework</a></li>
