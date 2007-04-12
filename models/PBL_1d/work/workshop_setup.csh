@@ -56,7 +56,14 @@
 # Since a lot of the code is inherited from wrf, it comes with a .F 
 # extension even though it is free-format. This makes it necessary to
 # compile with flags that force interpretation of free-format.
-# They also rely on the autopromotion flag ... arghhh ... -r8
+# One way around this is to rename the files and the references in 
+# the path_names_xxxxx files - which is done by ChangeExtensions.csh
+# in the PBL_1d/shell_scripts directory, or try to hunt down the right
+# flag for the compiler you are using. Your choice.
+#
+# The code also relies on the autopromotion flag that coerces all 
+# 'real' variables to be 8byte real variables.
+#
 # Intel     -free -r8
 # gfortran  -ffree-form -fdefault-real-8
 # pathscale -freeform -r8
@@ -85,12 +92,11 @@ make || exit $n
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
-echo ""
-echo "Building this model generally requires the fortran free-format flag and"
-echo "the real*8 override flag be added to the default mkmf.template rules."
-echo "If the following compile fails read the comments in the workshop_setup.csh"
-echo "script for more help."
-echo ""
+echo
+echo "Building this model requires the real*8 override flag be added to the"
+echo "default mkmf.template rules. If the following compile fails read the"
+echo "comments in the workshop_setup.csh script for more help."
+echo
 
 foreach TARGET ( mkmf_* )
 
