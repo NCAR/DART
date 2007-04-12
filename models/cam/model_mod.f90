@@ -23,37 +23,6 @@ module model_mod
 !          caminput_#.nc  (to convert into filter_ic.####)
 
 !--------------------------------------------------------------------
-! DISTANCE CONVERSION;
-! 
-! model_interpolate will continue to use state passed to it;
-!    recalc p_col and model_h columns as needed.
-!    no need to convert to a standard vert coord; no distance calc involved.
-
-! model_mod;get_close_obs will be getting an ob, with its location, and its horizontal distances 
-!    to an array of other locations (and the locations).
-!       These locations were picked out based on the efficient search/box algorithm.
-!    It converts vertical coordinates as needed, 
-!    It tests for being above the highest_obs_pressure_mb threshold, and increases the
-!       vertical distance based on height above highest_.
-!    It calls location_mod/threed_sphere:get_close_obs, 
-!       to which it sends this (converted) array of locations.
-!    It gets back the new total distances and arrays of those locations that are "close"
-!       to the base ob.
-! get_close_obs will use the ensemble average passed through new interface; ens_mean_for_model
-!    Convert the obs and/or state vertical location(s) to a standard (pressure) vertical location
-!    3D model_h would be useful here; calc once and use over and over.
-!       reinstall height/lon slice code for model_heights to facilitate that
-!    3D pressures also useful here; 
-!       reinstall height/lon slice code for plevs_cam to facilitate that
-!    throw away ens_mean after it's been used (or don't worry about it for now).
-! 
-!
-!--------------------------------------------------------------------
-! 
-! I assume that staggered grids (US and VS) are staggered only 1 direction (each), 
-! so that surface pressure interpolations to get staggered ps use only 2 A-grid ps values.
-! The interpolations for columns of heights are more general, but will do a 2 point interp
-!     if the staggering is only in one direction.
 ! 
 ! Describe: 
 !    - The coordinate orders and translations; CAM initial file, model_mod, and DART _Diag.nc. 
@@ -69,48 +38,13 @@ module model_mod
 
 ! 'merge' marks changes for merging fv and eul core model_mods,
 !         although there are so many that most are not marked.
-!    x  > I'll reorganize state vector into columns of single variables.
-!    x  > There can be different numbers of columns for different variables.
-!    x     (Do I need to keep corresponding columns of different variables close to each other?)
-!    x     I'm not, but this would be done in prog_var_to_vect and vect_to_prog_var.
+!  See model_mod.f90 from ~2/1/07 for longer list of (completed) changes for J.
+
 !    x  > init_model_instance allocates space for a CAM format state vector; 
 !    x    I would need to use the max size for each dimension among the variables with the same 
 !    x    dimension
-!    x  > Check every place where init_model_instance is used
-!    x  > converted read_cam_coord (check),  
 !   0   > Convert read_cam_horiz too?   convert phis to a grid_2d_type?
-!    x  > convert prog_xxx_yyy_
-!    x  > get_state_meta_data needs rewriting; new state vector org, and coord dimension names
-!  ? x  > model_get_close_states; the get_close functionality will need rewriting if it will be
-!    x    used under MPI
-!    x  > Put in MPI adaptations (no(?) model_get_close_states, but add model_convert_vert
-!    x    and model_alter_dist)
-!    x  > FV, other grids; must do interpolations of ps to staggered grid in order to do vertical
-!    x    interpolations on staggered grids.
-!    x  > model_interpolate and routines it calls not done yet (?!)
-!    x  > look at all FIX sites for things to change for this merge - pert_model_state
-!    x  > cycle through all the grid arrays; find where they're used and change their references
-!         to structure components.
-!    x  > num_lxxs are used all over the place; search and replace (can't do a universal 
-!         substitution because num_lats has several values now, num_lats num_slats.
-!    x  > read_cam_scalar no longer needed?
-!    x  > look at all slon usage and be sure that I've accounted for wierd CAM staggering
-!    x  > Add interpolations of t and q for calculating heights at staggered grid points
-!    x  > Nancy or F90 book:
-!    x    grid_1d_type ! Should vals be a pointer?  see type model_type
-!    x    Should the contents be private?  components are used within this module.
-!            does private restrict reference to within this module, or this type?
-!    x    coord_index pointers in to coordinate structures
-!    x  > ? standard vertical coordinate?  Ask Jeff.
-!           For get_close_obs, but not for model_interpolate
-!    x  > Derive highest_obs_level and highest_obs_height from highest_obs_pressure_mb
-!            in subroutines that need them.
-!    x  > Should I pass state vector(which is what comes from filter_assim) or cam_state
-!           (easier to use, but slower?) to model_heights? 
 !    x  > See 'premature' below for something else to fix
-!    x  > clean out old code from alter_dist, after I'm sure that it works
-!    x  > clean out maxval section, when I'm convinced it works.
-!    x  > compile with options to tell me about unused variables, etc.
 !       > change (private only) subroutine argument lists; structures first, regardless of in/out
 !         then output, and input variables.
 !       > change declarations to have dummy argument integers used as dimensions first
@@ -124,20 +58,17 @@ module model_mod
 !       > recollect lists of subroutines & functions
 !           document them in web page (and here?)
 
-! EFFICIENCY
+! EFFICIENCY   (see model_mod.f90 from 2/1/07 for speed-ups that were implemented already)
 !       + index_from_grid (and others?) could be more efficient by calculating and 
 !         globally storing the beginning index of each cfld and/or the size of each cfld.
-!       + searchs through dimensions are inefficient
-!     x + simplify plevs_cam; eliminate a loop and argument(s?)
-!       + add dimid to grid_1d_type; to reduce need to call find_names?
-!       + pointers may slow down computations by up to 75%.  Dereference them by passing
-!         the pointer array to a subroutine, which will then handle the data directly
-!         instead of through a pointer.
 !       + global storage of height fields?  but need them on staggered grids (only sometimes)
 !       ! Some compilers can't handle passing a section of an array to a subroutine/function;
 !         I do this in nc_write_model_vars(?) and/or write_cam_init(?); replace with an 
 !         exactly sized array?
+!       + replace lon (and lat) index finders in model_interpolate with (new) coord_index.
 
+! See model_mod.f90 from ~2/1/07 for more ISSUES and resolutions
+!
 ! ISSUE; In P[oste]rior_Diag.nc ensemble members are written out *between* the field mean/spread
 !        pair and the inflation mean/sd pair.  Would it make more sense to put members after
 !        both pairs?  Easy to do?
@@ -149,25 +80,10 @@ module model_mod
 
 ! ISSUE; The KIND_ list from obs_def_mod must be updated when new fields are added to state vector.
 !        This could be done by the preprocessor when it inserts the code bits corresponding to the
-!        lists of observation types, but it currently (10/06) doesn not.  Document accordingly.
+!        lists of observation types, but it currently (10/06) does not.  Document accordingly.
 
 ! ISSUE; In convert_vert, if a 2D field has dimensions (lev, lat) then how is p_surf defined?
 !        I've set it to P0, but is this correct or meaningful?
-
-! ISSUE; is there a machine precision defined somewhere, which I could use for testing differences
-!        betwen real numbers?  search for E-12 to see instances.
-!   FIX; Fortran intrinsic function; not implemented yet
-
-! ISSUE: In model_get_close_states the P on levels is calculated for each column within
-!        radius of the ob location.  So P is recalculated for the same columns many times
-!        for the many obs.  Same for obs on heights.
-!        Model_get_close_states will disappear with MPI, but the functionality is still needed
-!        by new DART routine get_close_obs.  Functionality will be provided by new routine
-!        convert_vert.
-!   FIX; It's not strictly correct, but the calculations of pfull and heights on model levels
-!        could be moved up front (static_init_model?) and done only once for all columns.
-!        Jeff says do this for PHIS, but not for pfull; just make ps a globally accessible
-!        variable, to remove the ps = 100000. kluge.
 
 ! ISSUE: Should get_val_xxxx return MISSING_VALUE instead of 0 for istat = 1 cases?
 
@@ -230,14 +146,15 @@ module model_mod
 !        model_get_close_states has been replaced with new interfaces, including get_close_obs, 
 !     which uses location_mod:get_close_obs.  This allows model_mod to use the 
 !     "generic efficient search algorithm" in DART to find the obs/state variables that
-!     are close to the given base obs, and to modify the distances according to any desired criteria
-!     (obs_kinds, height above a threshold, etc).  
+!     are close to the given base obs, and to modify the distances according to any desired 
+!     criteria (obs_kinds, height above a threshold, etc).  
 !
 !     During the assimilation stage, only a piece of the state vector is available to each 
 !     process, and each process calls parts of model_mod.  In order to handle the conversion 
 !     of vertical coordinates of obs and/or state variables into a consistent coordinate, 
 !     an entire state vector is needed, so the ensemble mean is passed to model_mod before 
-!     the assimilation starts.  All locations are now converted to a standard coordinate 
+!     the assimilation starts.  This is NOT done for model_interpolate; the whole vector is
+!     available, and should be used.  All locations are now converted to a standard coordinate 
 !     (pressure), instead of always converting the state vertical location to that of the ob.
 !     The highest_obs_level and ..._height_m variables are derived from highest_obs_pressure_mb
 !     namelist variable.
@@ -259,18 +176,18 @@ module model_mod
 !     each field to have different dimensions than all the others.  The fields are still grouped 
 !     by the rank of the array used to store them in CAM form; 0d, 1d, 2d, and 3d.  In the 3d case 
 !     all the values of a field for one column are stored continguously, to speed up vertical 
-!     interpolations, and calculations of heights on model levels.  The dimensions of each field 
-!     are stored in globally available arrays and there are functions and subroutines for accessing 
-!     the needed information.
+!     interpolations and calculations of heights on model levels.  The dimensions of each field 
+!     are stored in globally available arrays and there are functions and subroutines for 
+!     accessing the needed information.
 !     
-!     Observations on pressure levels or heights require various pieces of the state vector.
-!     The surface pressure for the former, and that plus the temperature and moisture profiles
-!     for the heights.  These may be needed on the regular A-grid (thermodynamic variables) and
-!     grids staggered relative to the A-grid.   Currently, PS for the A-grid and the 2 staggered
-!     grids is stored for global access and pressures and heights on model leves are (re)calculated
-!     as needed.  In the future it may be deemed worthwhile to store the
-!     3d pressures and heights on the 3 grids, but for now that seemed like too much memory to 
-!     make that worthwhile.
+!     Observations on pressure levels or heights require various pieces of the state vector
+!     in order to calculate the expected observation.  Just the surface pressure is needed for 
+!     the former, while PS plus the temperature and moisture profiles are needed for the heights.  
+!     These may be needed on the regular A-grid (thermodynamic variables) and grids staggered 
+!     relative to the A-grid.   Currently, PS for the A-grid and the 2 staggered grids is 
+!     stored for global access and pressures and heights on model levels are (re)calculated
+!     as needed.  In the future it may be deemed worthwhile to store the 3d pressures and 
+!     heights on the 3 grids, but for now that seemed like too much memory to be worthwhile.
 !
 !     It also corrects a misuse of TYPE_s from pre MPI versions; those model_mod specific 
 !     identifiers are no longer passed back to filter through get_state_meta_data.  Instead, 
@@ -299,25 +216,27 @@ module model_mod
 !==============================================================================================
 !  USE statements
 
-use        netcdf
-use        typeSizes
+use netcdf
+use typeSizes
 
-use        types_mod, only : r8, MISSING_I, MISSING_R8
+use types_mod,         only : r8, MISSING_I, MISSING_R8
 !          add after verification against Hui's tests;  gas_constant_v,gas_constant,ps0,PI,DEG2RAD
 
-use time_manager_mod, only : time_type, set_time, print_time, set_calendar_type,                &
-                             THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
-use    utilities_mod, only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                             logfileunit, do_output, nc_check
+use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type,                &
+                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
+use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
+                              register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
+                              logfileunit, do_output, nc_check
+use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
-use     location_mod, only : location_type, get_location, set_location, query_location,            &
-                             LocationDims, LocationName, LocationLName,                            &
-                             vert_is_level, vert_is_pressure, vert_is_height, vert_is_surface,     &
-                             VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,&
-                             get_close_type, get_close_maxdist_init, get_close_obs_init, get_dist, &
-                             loc_get_close_obs => get_close_obs
+use location_mod,      only : location_type, get_location, set_location, query_location,         &
+                              LocationDims, LocationName, LocationLName, horiz_dist_only,        &
+                              vert_is_level, vert_is_pressure, vert_is_height, vert_is_surface,  &
+                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,                           &
+                              VERTISPRESSURE, VERTISHEIGHT,                                      &
+                              get_close_type, get_close_maxdist_init, get_close_obs_init,        &
+                              get_dist,loc_get_close_obs => get_close_obs
 
 ! get_close_maxdist_init, get_close_obs_init, can be modified here (i.e. to add vertical information
 ! to the initial distance calcs), but will need subroutine pointers like get_close_obs.
@@ -325,7 +244,8 @@ use     location_mod, only : location_type, get_location, set_location, query_lo
 !-----------------------------------------------------------------------------
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,                    &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE
+                             KIND_PRESSURE, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE           &
+                            ,KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION
 ! Other possibilities (names have changed with various CAM versions):
 ! Atmos
 !    CLOUD:       "Cloud fraction" ;
@@ -417,7 +337,7 @@ real(r8), allocatable :: ens_mean(:)
 !   in state_names_Xd.  The explicitly named TYPE_s are for convenience
 integer :: TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ,     &
            TYPE_PHIS, TYPE_SGH, TYPE_PBLH, TYPE_TBOT, TYPE_TS, TYPE_TSOCN,        &
-           TYPE_LCWAT, TYPE_QCWAT 
+           TYPE_LCWAT, TYPE_QCWAT, TYPE_EFGWORO , TYPE_FRACLDV
 integer, allocatable :: TYPE_0D(:), TYPE_1D(:), TYPE_2D(:), TYPE_3D(:)
 
 ! CAM3; additional types, or can TRACER handle the new ones?
@@ -451,11 +371,15 @@ type grid_1d_type
    character (len=8)            :: label
    integer                      :: dim_id
    integer                      :: length
+   real(r8)                     :: resolution
    real(r8), pointer            :: vals(:)
    integer                      :: num_atts
    character (len=128), pointer :: atts_names(:)
    character (len=128), pointer :: atts_vals(:)
 end type grid_1d_type
+
+! temporary output
+integer :: num_calced = 0, num_searched = 0
 
 integer :: iii
 ! integer :: grid_num_0d = 0              ! # of grid scalars to read from file
@@ -495,8 +419,8 @@ character(len = 128) :: model_config_file = 'caminput.nc', &
 ! Define location restrictions on which observations are assimilated
 ! (values are calculated anyway, but istatus is set to 2)
 real(r8) :: max_obs_lat_degree        = 90.0_r8
-real(r8) :: highest_obs_pressure_mb   = 30.0_r8
-real(r8) :: highest_state_pressure_mb = 30.0_r8
+real(r8) :: highest_obs_pressure_mb   = 150.0_r8
+real(r8) :: highest_state_pressure_mb = 150.0_r8
 ! These are not namelist variables, but are related, and calculated from highest_obs_pressure_mb
 real(r8) :: highest_obs_level         = MISSING_R8
 real(r8) :: highest_obs_height_m      = MISSING_R8
@@ -513,22 +437,23 @@ integer :: state_num_2d = 1              ! # of 2d fields to read from file
 integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
 ! make these allocatable?  Where would I define the default values?
-character (len=8),dimension(1000) :: state_names_0d = (/('        ',iii=1,1000)/)
-character (len=8),dimension(1000) :: state_names_1d = (/('        ',iii=1,1000)/)
-character (len=8),dimension(1000) :: state_names_2d = (/'PS      ',('        ',iii=1,999)/)
+integer, parameter :: MAX_STATE_NAMES = 100
+character(len=8),dimension(MAX_STATE_NAMES) :: state_names_0d = (/('        ',iii=1,MAX_STATE_NAMES)/)
+character(len=8),dimension(MAX_STATE_NAMES) :: state_names_1d = (/('        ',iii=1,MAX_STATE_NAMES)/)
+character(len=8),dimension(MAX_STATE_NAMES) :: state_names_2d = (/'PS      ',('        ',iii=1,MAX_STATE_NAMES-1)/)
 
-character (len=8),dimension(1000) :: state_names_3d =  &
+character(len=8),dimension(MAX_STATE_NAMES) :: state_names_3d =  &
           (/'T       ','U       ','V       ', &
-            'Q       ', ('        ',iii=1,996)/)
+            'Q       ', ('        ',iii=1,MAX_STATE_NAMES-4)/)
 
 ! NOVERT  need (a) namelist parameter(s) to define which_vert for each 2D (xD?) field
 !         There's a danger of having a mismatch with the state_names_Xd; should this
 !         definition be part of state_names_Xd, which is parsed into a name and which_vert
 !         after being read?  Not for now.
 
-integer , dimension(1000) :: which_vert_1d = (/(-2,iii=1,1000)/)
-integer , dimension(1000) :: which_vert_2d = (/(-1,iii=1,1000)/)
-integer , dimension(1000) :: which_vert_3d = (/( 1,iii=1,1000)/)
+integer , dimension(MAX_STATE_NAMES) :: which_vert_1d = (/(-2,iii=1,MAX_STATE_NAMES)/)
+integer , dimension(MAX_STATE_NAMES) :: which_vert_2d = (/(-1,iii=1,MAX_STATE_NAMES)/)
+integer , dimension(MAX_STATE_NAMES) :: which_vert_3d = (/( 1,iii=1,MAX_STATE_NAMES)/)
 
 
 ! Is there a way to exclude state_nums from namelist and have those filled in 
@@ -537,8 +462,9 @@ integer , dimension(1000) :: which_vert_3d = (/( 1,iii=1,1000)/)
 
 ! list of fields which trans_pv_sv_pert0 needs to perturb because they're
 ! constant valued model parameters and show no spread when start_from_restart = .true.
-character (len=8),dimension(1000) :: state_names_pert = (/('        ',iii=1,1000)/)
-real(r8), dimension(1000) :: state_names_sd = (/(0.,iii=1,1000)/)
+character (len=8),dimension(MAX_STATE_NAMES) :: pert_names     = (/('        ',iii=1,MAX_STATE_NAMES)/)
+real(r8)         ,dimension(MAX_STATE_NAMES) :: pert_sd        = (/(-888888.0d0,iii=1,MAX_STATE_NAMES)/)
+real(r8)         ,dimension(MAX_STATE_NAMES) :: pert_base_vals = (/(-888888.0d0,iii=1,MAX_STATE_NAMES)/)
 
 
 ! Specify shortest time step that the model will support
@@ -550,7 +476,7 @@ namelist /model_nml/ output_state_vector , model_version , model_config_file &
                      ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d &
                      ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d &
                      ,                which_vert_1d  ,which_vert_2d  ,which_vert_3d &
-                     ,state_names_pert ,state_names_sd &
+                     ,pert_names ,pert_sd ,pert_base_vals &
                      ,highest_obs_pressure_mb , highest_state_pressure_mb  &
                      ,max_obs_lat_degree ,Time_step_seconds ,Time_step_days 
                      
@@ -569,6 +495,8 @@ type(random_seq_type)   :: random_seq
 ! Variable for keeping track of which ensemble member is to be perturbed
 ! by pert_model_state, which is called by filter for each ensemble member
 ! for a cold start.
+integer                 :: num_tasks
+integer                 :: my_task
 integer                 :: ens_member
 data ens_member /0/
 logical                 :: do_out
@@ -602,7 +530,14 @@ integer, dimension(4,3) :: f_dim_max
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Surface pressures, used by vertical interpolation routines.
+!
+! I assume that staggered grids (US and VS) are staggered only 1 direction (each), 
+! so that surface pressure interpolations to get staggered ps use only 2 A-grid ps values.
+! The interpolations for columns of heights are more general, but will do a 2 point interp
+!     if the staggering is only in one direction.
+! 
 ! Need more arrays if any future fields are doubly staggered.
+
 ! ? merge; should this be a grid_2d_type, specified above?
 logical               :: alloc_ps=.true.    ! Flag whether to alloc space for ps[_stagr] 
 real(r8), allocatable :: ps(:, :)           ! surface pressure used to calc P and height profiles.
@@ -620,6 +555,8 @@ real(r8), allocatable :: phis_stagr_lat(:, :) ! surface geopotential staggered a
 ! I'd need 3 of these; 1 for A-grid and 2 for C-grids, so don't keep model_h laying around.
 ! real(r8), allocatable :: model_h(:, :, :) ! cartesian heights of model levels
 
+! columns of pressure and model level heights for use in convert_vert
+real(r8), allocatable :: p_col(:), model_h(:) 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ! CAM3 array 'cflds' is filled with simple loops over state_names_xxx, 
@@ -666,6 +603,8 @@ integer            :: iunit, io, topog_lons, topog_lats, i, num_lons, num_lats, 
 ! calendar types listed in time_manager_mod.f90
 integer            :: calendar_type = GREGORIAN
 character(len=129) :: errstring
+integer            :: max_levs
+
 
 ! Register the module
 call register_module(source, revision, revdate)
@@ -691,6 +630,13 @@ if (file_exist('element')) then
    if (ens_member == 1) do_out = .true.
 else
    do_out = do_output()
+   ! static_init_model is called once(?) for each task(?).
+   ! There may be more or fewer ensemble members than tasks.
+   ! No problem if there are fewer.
+   ! In pert_model_state generate a unique ens_member from my_task and globally stored info 
+   !    about previous calls to pert_model_state.
+   num_tasks = task_count()
+   my_task = my_task_id()
 end if
 
 ! Record the namelist values 
@@ -802,6 +748,11 @@ end if
 ! Coordinate order not affected by CAM model version.
 
 if (alloc_phis) allocate (phis(topog_lons, topog_lats))
+max_levs = lev%length
+if (ilev%label /= '        ') then
+   max_levs = max(ilev%length, lev%length)
+endif
+allocate (p_col(max_levs), model_h(max_levs))
 
 ! Make local space to hold the means
 allocate(ens_mean(model_size))
@@ -820,7 +771,8 @@ end subroutine static_init_model
 
    subroutine read_cam_init_size(ncfileid)
 !=======================================================================
-! subroutine read_cam_init_size(file_name, num_dims, dim_sizes, dim_names)
+! subroutine read_cam_init_size(ncfileid)
+
 !
 ! Gets the number, names, and sizes of field dimensions from a CAM init netcdf file
 ! in file_name (regardless of dynamical core).
@@ -1096,7 +1048,6 @@ end subroutine trans_coord
 
 
    subroutine read_topog_size(ncfileid, num_lons, num_lats)
-                                           
 !=======================================================================
 ! subroutine read_topog_size(file_name, num_lons, num_lats)
 !
@@ -1106,18 +1057,16 @@ end subroutine trans_coord
 integer, intent(out)          :: num_lons, num_lats
 
 integer                       :: ncfileid, ncfldid
-!integer                       :: londimid, latdimid
 integer                       :: phis_dimids(3)
 character (len=NF90_MAX_NAME) :: clon,clat
 
 ! get field id
 call nc_check(nf90_inq_varid(ncfileid, 'PHIS', ncfldid), &
            'read_topog_size', 'inq_varid: PHIS')
+
 ! get dimension 'id's
 call nc_check(nf90_inquire_variable(ncfileid, ncfldid, dimids = phis_dimids), &
            'read_topog_size', 'inquire_varible: PHIS')
-! call nc_check(nf90_inq_dimid(ncfileid, 'lon', londimid), 'read_topog_size', 'inq_dimid: lon')
-! call nc_check(nf90_inq_dimid(ncfileid, 'lat', latdimid), 'read_topog_size', 'inq_dimid: lat')
 
 ! get dimension sizes
 call nc_check(nf90_inquire_dimension(ncfileid, phis_dimids(1), clon, num_lons ), &
@@ -1262,6 +1211,7 @@ integer                                     :: att_type
 character (len=nf90_max_name)               :: att_name
 character (len=nf90_max_name), allocatable  :: att_names(:)
 character (len=128),           allocatable  :: att_vals(:)
+real(r8)                                    :: resol, resol_1, resol_n
 
 
 ! read CAM 'initial' file field desired
@@ -1276,6 +1226,7 @@ if (ncerr /= nf90_noerr ) then
    write(*,*) 'Variable ',cfield,' dimids = ',coord_dims(1)
    write(*,*) nf90_strerror(ncerr)
    var%label = '        '
+   var%dim_id = 0
    return
 end if
 if (coord_dims(1) == 0) then
@@ -1331,8 +1282,30 @@ enddo
 call nc_check(nf90_get_var(ncfileid, ncfldid, var%vals, start=(/1/) &
     ,count=(/coord_size/) ), 'read_cam_coord' ,'get_var '//cfield)
 
+! Determine whether coordinate is regularly spaced, 
+! If so, store the coordinate resolution in the grid_1d_type.
+if (cfield(1:2) == 'hy') then
+   var%resolution = MISSING_R8
+else
+   resol_1 = var%vals(2) - var%vals(1)
+   resol = 1.0_r8/resol_1
+   var%resolution = resol_1
+
+   ! Test all other coordinate spacings.  If any of them differ from the first
+   ! by more than epsilon (smallest meaningful number relative to the coordinate spacings)
+   ! then spacing is irregular.
+   Res: do i = 3,coord_size
+      resol_n = var%vals(i) - var%vals(i-1)
+      if (((resol_n - resol_1) *resol) > epsilon(resol_n)) then
+         var%resolution = -1.0_r8
+         exit Res
+      endif
+   end do Res
+endif
+
 if (do_out) then
-   PRINT*,'reading ',cfield,' using id ',ncfldid,' size ',coord_size
+   PRINT*,'reading ',cfield,' using id ',ncfldid,' size ',coord_size,' resolution ', &
+          var%resolution
    WRITE(*,*) (var%vals(i),i=1,coord_size)
 end if
 
@@ -1415,6 +1388,8 @@ do i=1,state_num_2d
    cflds(nfld)(:) = state_names_2d(i)
    TYPE_2D(i) = nfld
    if (state_names_2d(i) == 'PS      ') TYPE_PS    = nfld
+   if (state_names_2d(i) == 'EFGWORO ') TYPE_EFGWORO = nfld
+   if (state_names_2d(i) == 'FRACLDV ') TYPE_FRACLDV = nfld
    if (state_names_2d(i) == 'TBOT    ') TYPE_TBOT  = nfld
    if (state_names_2d(i) == 'TS      ') TYPE_TS    = nfld
    if (state_names_2d(i) == 'TSOCN   ') TYPE_TSOCN = nfld
@@ -1496,6 +1471,13 @@ integer :: i
 ! 2D fields
 dart_to_cam_kinds(KIND_SURFACE_PRESSURE) = TYPE_PS
 cam_to_dart_kinds(TYPE_PS) = KIND_SURFACE_PRESSURE
+
+dart_to_cam_kinds(KIND_GRAV_WAVE_DRAG_EFFIC) = TYPE_EFGWORO
+cam_to_dart_kinds(TYPE_EFGWORO) = KIND_GRAV_WAVE_DRAG_EFFIC
+
+dart_to_cam_kinds(KIND_GRAV_WAVE_STRESS_FRACTION) = TYPE_FRACLDV
+cam_to_dart_kinds(TYPE_FRACLDV) = KIND_GRAV_WAVE_STRESS_FRACTION
+
 ! dart_to_cam_kinds(KIND_SURFACE_TEMPERATURE  ?  ) = TYPE_TS
 ! dart_to_cam_kinds(KIND_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
 
@@ -1691,7 +1673,7 @@ type(grid_1d_type), intent(in)  :: coord
 integer,            intent(out) :: c_id
 
 integer  :: i
-! integer  :: nch
+!integer  :: nch
 
 call nc_check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
                         varid=c_id), 'write_cam_coord_def', 'def_var '//trim(c_name))
@@ -1874,6 +1856,7 @@ integer  :: box, slice
 
 real(r8) :: lon_val, lat_val, lev_val
 
+character(len=129) :: errstring
 character(len=8)   :: dim_name
 
 ! In order to find what variable this is, and its location, I must subtract the individual 
@@ -1903,7 +1886,6 @@ do i=1,state_num_1d
       indx = indx - s_dim_1d(i)
    else
       ! We've found the desired field; now find lat, lon or lev of indx
-      if (index_in > 0) then
          dim_name = dim_names(s_dimid_1d(i))
          if (dim_name == 'lev     ') then
             lev_val = real(indx)
@@ -1912,7 +1894,6 @@ do i=1,state_num_1d
          endif
    
          which_vert = which_vert_1d(i)
-      end if
       goto 10
    end if
 end do
@@ -1927,7 +1908,7 @@ do i=1,state_num_2d
    else
       ! We've found the desired field. 
       ! Now find lat and/or lon and/or lev of indx if called by assim_tools_mod:filter_assim
-      if (index_in > 0) then
+
          ! # second dimension rows to subtract off; temporary value for index_2
          index_2 = (indx -1) / s_dim_2d(1,i) 
          index_1 = indx - (index_2 * s_dim_2d(1,i))
@@ -1950,7 +1931,6 @@ do i=1,state_num_2d
 
          which_vert = which_vert_2d(i)
 
-      end if
       goto 10
    end if
 end do
@@ -1965,14 +1945,14 @@ do i=1,state_num_3d
    else
       ! We've found the desired field. 
       ! Now find lat and/or lon and/or lev of indx if called by assim_tools_mod:filter_assim
-      if (index_in > 0) then
+
          ! # (first x second dimension) slices to subtract off in order to find the current slice
-! debug; try printing out all this index info when there's just 1 obs to be processed.
+         ! debug; try printing out all this index info when there's just 1 obs to be processed.
          slice = s_dim_3d(1,i) * s_dim_3d(2,i)
          index_3 = (indx -1) / slice         ! temporary value used to find index_2 and index_1
          index_2 = (indx -1 - (index_3 * slice)) / s_dim_3d(1,i)    ! same for index_2 to find index_1
-
          index_1 = (indx - (index_3 * slice) - (index_2 * s_dim_3d(1,i)))
+
    !     Don't return the value of lev(index_1), which = 1000(A+B)
    !      dim_name = dim_names(s_dimid_3d(1,i))
    !      call coord_val(dim_name, index_1, lon_val, lat_val, lev_val)
@@ -1990,13 +1970,21 @@ do i=1,state_num_3d
          call coord_val(dim_name, index_3, lon_val, lat_val, lev_val)
    
          which_vert = which_vert_3d(i)
-      end if
+
       goto 10
    end if
 end do
 
-
 10 continue
+
+! This will malfunction for fields that are with MISSING_r8 for lat_val or lon_val.
+if (lon_val == MISSING_r8 .or. lat_val == MISSING_r8 ) then
+   write(errstring, *) 'Field ',cflds(nfld),' has no lon or lat dimension.  ', &
+         'What should be specified for it in the call to location?'
+   call error_handler(E_ERR, 'get_state_meta_data', errstring, source, revision, revdate)
+else
+   location = set_location(lon_val, lat_val, lev_val, which_vert)  
+endif
 
 ! If the type is wanted, return it
 if (present(var_kind)) then
@@ -2006,7 +1994,6 @@ if (present(var_kind)) then
    else if (index_in > 0) then
       ! used by call from assim_tools_mod:filter_assim
       var_kind = cam_to_dart_kinds(nfld)
-      location = set_location(lon_val, lat_val, lev_val, which_vert)  
    end if
 end if
 
@@ -2153,7 +2140,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"),               
 ! and some will be used to define the coordinate variables below.
 ! They have different dimids for this file than they had for caminput.nc
 ! P_id serves as a map between the 2 sets.
-if (do_out) write(*,*) 'dimens ,name      ,size, cam dim_id, P[oste]rior id'
+if (do_out) write(*,*) ' dimens,       name,  size, cam dim_id, P[oste]rior id'
 do i = 1,num_dims
    if (trim(dim_names(i)) /= 'time')  then
       call nc_check(nf90_def_dim (ncid=ncFileID, name=trim(dim_names(i)), len=dim_sizes(i),  &
@@ -2535,19 +2522,10 @@ write (*,*)'Finished filling variables ...'
 call nc_check(nf90_sync(ncFileID),'nc_write_model_vars ','sync ')
 write (*,*)'netCDF file is synched ...'
 
+! temporary output
+print*,'num_calced, num_searched = ',num_calced, num_searched
+
 call end_model_instance(Var)   ! should avoid any memory leaking
-
-! Reset highest_obs_level and highest_obs_height_m to MISSING_R8 so that next
-! assimilation can use its own values; it might be a new obs_seq file with new
-! input.nml and new highest_obs_pressure_mb.
-! It's here because this is the last, easily identifiable, thing done in
-! model_mod before filter moves on to the next model advance/assimilation.
-! Nah, there's no mechanism to change highest_obs_pressure in the midst of a
-! obs_seq file run, and any values defined here will be lost when a new obs_seq
-! file is processed (meaning a new filter_assim is run).
-! highest_obs_level    = MISSING_R8
-! highest_obs_height_m = MISSING_R8
-
 
 end function nc_write_model_vars
 
@@ -2575,7 +2553,7 @@ real(r8) :: bot_lon, top_lon, delta_lon,                                &
             lon_fract, lat_fract, vals(2, 2), temp_lon, a(2),           &
             lon_lat_lev(3), level, pressure, height
 
-integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,                     &
+integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,   &
             lon_ind_below, lon_ind_above, lat_ind_below, lat_ind_above, &
             num_lons
 character (len=8) :: lon_name, lat_name, lev_name
@@ -2596,6 +2574,10 @@ character (len=8) :: lon_name, lat_name, lev_name
 ! Such fields would not have observations associated with them.
 ! for now I will assume that observed fields are not missing any dimensions.
 ! PS is missing lev, although we have never assimilated those obs.
+
+! model_interpolate will continue to use state passed to it;
+!    recalc p_col and model_h columns as needed.
+!    no need to convert to a standard vert coord; no distance calc involved.
 
 ! Start with no errors in 
 istatus = 0
@@ -2812,7 +2794,6 @@ integer,  intent(out) :: istatus
 
 integer               :: vstatus, num_levs
 real(r8)              :: p_surf, threshold
-real(r8), allocatable :: pfull(:)
 
 ! No errors to start with
 istatus = 0
@@ -2829,18 +2810,16 @@ if (level > num_levs .or. level < 1) then
    val = 0._r8
 else 
    if (highest_obs_level == MISSING_R8) then
-      allocate(pfull(num_levs))
       ! To do this completely right; p_surf would depend on whether obs_kind was on a staggered grid
       ! and highest_obs_level would be recalculated for each location passed in.
       ! Since the hybrid coord system is pure pressure at the top levels, I'll ignore these for now.
       call get_val(p_surf, x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
-      call plevs_cam (p_surf, num_levs, pfull)
+      call plevs_cam (p_surf, num_levs, p_col)
       highest_obs_level = 1.0_r8
       threshold = highest_obs_pressure_mb*100.0_r8
-      do while ((pfull(nint(highest_obs_level))) < threshold )
+      do while ((p_col(nint(highest_obs_level))) < threshold )
          highest_obs_level = highest_obs_level + 1.0_r8
       end do
-      deallocate(pfull)
    end if
 
    if (level < nint(highest_obs_level)) then
@@ -2863,11 +2842,9 @@ else
          return
       end if
       ! Next, get the values on the levels for this ps
-      allocate (pfull(num_levs))
-      call plevs_cam (p_surf, num_levs, pfull)
+      call plevs_cam (p_surf, num_levs, p_col)
 
-      val = pfull(level)
-      deallocate(pfull)
+      val = p_col(level)
    else 
        call get_val(val, x, lon_index, lat_index, level, obs_kind, vstatus)
    end if
@@ -2898,9 +2875,8 @@ integer,  intent(in)  :: lon_index, lat_index, obs_kind
 integer,  intent(out) :: istatus
 
 real(r8)              :: bot_val, top_val, p_surf, frac
-real(r8), allocatable :: pfull(:)
 integer               :: top_lev, bot_lev, i, vstatus, num_levs
-!character(len=129)    :: errstring
+! character(len=129)    :: errstring
 
 ! No errors to start with
 istatus = 0
@@ -2940,10 +2916,9 @@ end if
 ! This pressure column will be for the correct grid for obs_kind, since p_surf was taken
 !     from the grid-correct ps[_stagr] grid
 num_levs = dim_sizes(find_name('lev     ',dim_names))
-allocate (pfull(num_levs))
-call plevs_cam (p_surf, num_levs, pfull)
+call plevs_cam (p_surf, num_levs, p_col)
 
-if (pressure <= pfull(1) .or. pressure >= pfull(num_levs)) then
+if (pressure <= p_col(1) .or. pressure >= p_col(num_levs)) then
    ! Exclude obs below the model's lowest level and above the highest level
    ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
    istatus = 1
@@ -2959,11 +2934,11 @@ else
    end if
    ! Search down through pressures
    do i = 2, num_levs 
-      if (pressure < pfull(i)) then
+      if (pressure < p_col(i)) then
          top_lev = i -1
          bot_lev = i
-         frac = (pfull(i) - pressure) / &
-                (pfull(i) - pfull(i - 1))
+         frac = (p_col(i) - pressure) / &
+                (p_col(i) - p_col(i - 1))
          goto 21
       end if
    end do
@@ -2972,14 +2947,14 @@ else
 
    ! Pobs
    if (obs_kind == KIND_PRESSURE) then
-      ! can't get pressure on levels from state vector; get it from pfull instead
-      ! get_val_pressure is called for 4 different columns, which will have different pfulls 
+      ! can't get pressure on levels from state vector; get it from p_col instead
+      ! get_val_pressure is called for 4 different columns, which will have different p_cols 
       ! for each ps is on A-grid, so no need to check for staggered grids
-      bot_val = pfull(bot_lev)
-      top_val = pfull(top_lev)
+      bot_val = p_col(bot_lev)
+      top_val = p_col(top_lev)
       val = (1.0_r8 - frac) * bot_val + frac * top_val
 !      if (abs((val - pressure)/val) > 1.0E-12) then
-!         ! We're looking for a pressure on a model level, which is exactly what pfull provides,
+!         ! We're looking for a pressure on a model level, which is exactly what p_col provides,
 !! NOT HERE; that happens in get_val_level
 !         write(errstring, *) 'val /= pressure = ',val,pressure,' when val is a P obs '
 !         call error_handler(E_WARN, 'get_val_pressure', errstring, source, revision, revdate)
@@ -2998,8 +2973,6 @@ else
    ! Pobs
 
 end if
-
-deallocate (pfull)
 
 end subroutine get_val_pressure
 
@@ -3023,7 +2996,6 @@ real(r8), intent(in)  :: vec(:), height
 integer,  intent(in)  :: lon_index, lat_index, obs_kind 
 integer,  intent(out) :: istatus
 
-real(r8), allocatable :: pfull(:), model_h(:)
 integer  :: top_lev, bot_lev, i, vstatus, num_levs
 real(r8) :: bot_val, top_val, frac
 real(r8) :: p_surf
@@ -3038,7 +3010,6 @@ stagr_lat = .false.
 ! Need to get the surface pressure at this point for dcz2. 
 ! Assuming we'll only need pressures on model mid-point levels, not interface levels.
 num_levs = dim_sizes(find_name('lev     ',dim_names))
-allocate (model_h(num_levs))
 
 ! Need to get the surface pressure at this point. 
 ! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
@@ -3071,25 +3042,25 @@ if (height >= model_h(1) .or. height <= model_h(num_levs)) then
    val = 0._r8
 ! check
 else 
-   if (highest_obs_height_m == MISSING_R8) then
-      allocate(pfull(num_levs))
-      call plevs_cam (p_surf, num_levs, pfull)
+! This should be redefined every time(?), not just for the first (arbitrary) entry.
+!   if (highest_obs_height_m == MISSING_R8) then
+      call plevs_cam (p_surf, num_levs, p_col)
       do i=1,num_levs
-         if (pfull(i) > highest_obs_pressure_mb*100.0_r8) then
+         if (p_col(i) > highest_obs_pressure_mb*100.0_r8) then
             highest_obs_height_m = model_h(i)
             go to 10
          end if
       end do
-      deallocate(pfull)
-   end if
+!   end if
 
 10 if (height > highest_obs_height_m ) then
       ! Exclude from assimilation the obs above a user specified level
       ! but still calculate the expected obs.
       istatus = 2
 ! check
-      if (do_out) &
-      write(*,*) 'get_val_height; height, highest_obs_height_m = ',height, highest_obs_height_m
+!      if (do_out) &
+!      write(*,'(A,2F12.2)') 'get_val_height; height, highest_obs_height_m = ', &
+!           height, highest_obs_height_m
    else
       istatus = 0
    end if
@@ -3112,16 +3083,14 @@ else
    ! Pobs
    if (obs_kind == KIND_PRESSURE) then
       ! Observing a pressure on a height surface sounds silly.  But for completeness:
-      ! get_val_height is called for 4 different columns, which will have different pfulls for each.
+      ! get_val_height is called for 4 different columns, which will have different p_cols for each.
 
       ! Next, get the values on the levels for this ps
       ! ps is on A-grid, so no need to check for staggered grids
-      allocate (pfull(num_levs))
-      call plevs_cam (p_surf, num_levs, pfull)
+      call plevs_cam (p_surf, num_levs, p_col)
 
-      bot_val = pfull(bot_lev)
-      top_val = pfull(top_lev)
-      deallocate (pfull)
+      bot_val = p_col(bot_lev)
+      top_val = p_col(top_lev)
    else 
    ! Pobs end
                         call get_val(bot_val, vec, lon_index, lat_index, bot_lev, obs_kind, vstatus)
@@ -3136,8 +3105,6 @@ else
       val = 0._r8
    end if
 end if
-
-deallocate (model_h)
 
 end subroutine get_val_height
 
@@ -3342,7 +3309,26 @@ end subroutine vector_to_prog_var
 !----------------------------------------------------------------------------
 
 !!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
+! Done in filter (collins 2/?/07)
 
+! get_close_obs will be getting an ob, with its location, and its horizontal distances 
+!    to an array of other locations (and the locations).
+!       These locations were picked out based on the efficient search/box algorithm.
+!    It converts vertical coordinates as needed, 
+!    It tests for being above the highest_obs_pressure_mb threshold, and increases the
+!       vertical distance based on height above highest_.
+!    It calls location_mod/threed_sphere:get_close_obs, 
+!       to which it sends this (converted) array of locations.
+!    It gets back the new total distances and arrays of those locations that are "close"
+!       to the base ob.
+! get_close_obs will use the ensemble average passed through new interface; ens_mean_for_model
+!    Convert the obs and/or state vertical location(s) to a standard (pressure) vertical location
+!    3D model_h would be useful here; calc once and use over and over.
+!       reinstall height/lon slice code for model_heights to facilitate that
+!    3D pressures also useful here; 
+!       reinstall height/lon slice code for plevs_cam to facilitate that
+!    throw away ens_mean after it's been used (or don't worry about it for now).
+! 
 ! The kinds are available to do more sophisticated distance computations if needed
 
 implicit none
@@ -3359,7 +3345,6 @@ integer                :: k, t_ind
 integer                :: base_which, local_base_which, obs_which, local_obs_which
 real(r8), dimension(3) :: base_array, local_base_array, obs_array, local_obs_array
 real(r8)               :: increment, threshold, thresh_wght
-! real(r8)               :: signed_magnifier
 type(location_type)    :: local_base_obs_loc, local_obs_loc
 
 ! If base_obs vert type is not pressure; convert it to pressure
@@ -3380,7 +3365,7 @@ call loc_get_close_obs(gc, local_base_obs_loc, base_obs_kind, obs_loc, obs_kind,
                        num_close, close_ind)
 
 threshold = highest_state_pressure_mb *100._r8
-thresh_wght = 1._r8/(threshold * threshold)
+if (threshold > 0.0_r8) thresh_wght = 1._r8/(threshold * threshold)
 
 do k = 1, num_close
 
@@ -3388,7 +3373,7 @@ do k = 1, num_close
    obs_array = get_location(obs_loc(t_ind))
    obs_which = nint(query_location(obs_loc(t_ind)))
 
-   if (obs_which == VERTISPRESSURE) then
+   if (obs_which == VERTISPRESSURE .or. horiz_dist_only) then
       ! put the vertical (pressure) of the state/ob in local storage
       local_obs_array(3) = obs_array(3)
       local_obs_which    = obs_which
@@ -3414,35 +3399,16 @@ do k = 1, num_close
    ! This could also change the distance based on the KIND_s of the base_obs and obs.
 
    ! dist = 0 for some for synthetic obs.
-   ! Multiplicative increase of distance doesn't work for those cases.
-   ! I should use additive increase, based on height above threshold.
+   ! Additive increase, based on height above threshold, works better than multiplicative
 
-   ! Push the vertical location of the ob farther from the base_ob.
-   ! The 'sign' function gives the magnitude of A times the sign of B.
-   ! So it gives the direction, and the magnification of the additive part.
-   ! Formula; new_vert_loc = 
-   !          old (+/-) (threshold/old) (threshold - old)
-   !                     magnifier       something to magnify (in case of co-location)
-   ! WATCH OUT: pushing too high will yield press < 0. !
-   !    That's OK; get_dist uses abs(loc1%vloc - loc2%vloc), so dist will be > 0.
-                                   
-! This was much too abrupt; increment is in Pa, but it's being added like radians.
-!   increment = threshold - local_obs_array(3)
-!   if (increment > 0) then
-!      signed_magnifier = sign((threshold/local_obs_array(3)),            &
-!                              (local_obs_array(3)-local_base_array(3)))
-!      dist(k) = dist(k) + increment * signed_magnifier 
-!!      local_obs_array(3) = local_obs_array(3) + increment * signed_magnifier 
-!   end if
+   ! See model_mod circa 1/1/2007 for other damping algorithms.
 
    increment = threshold - local_obs_array(3)
+   ! This if-test handles the case where no damping is performed, i.e. 
+   ! highest_state_pressure_mb = 0 and threshold = 0.
    if (increment > 0) then
-!     This output can be seen in Pre-J/DART/models/cam/work/filter_Tprof_damp_out.out;
-!     it all looks fine.
-!      write(*,'(A,3(1x,F10.2)))') 'damping state at location ',  &
-!           obs_array(1), obs_array(2),local_obs_array(3)
-! too sharp      dist(k) = dist(k) + increment / threshold
       dist(k) = dist(k) + increment * increment * thresh_wght
+! too sharp      dist(k) = dist(k) + increment / threshold
    end if
 
 end do
@@ -3468,9 +3434,8 @@ real(r8), dimension(3), intent(inout) :: new_array
 integer   :: i, num_levs, top_lev, bot_lev
 integer   :: lon_which_dimid=0, lat_which_dimid=0, lon_index=0, lat_index=0
 integer   :: rank_kind, cam_kind, istatus
-real(r8)  :: p_surf, frac
+real(r8)  :: p_surf,   frac
 logical   :: stagr_lon = .false., stagr_lat = .false.
-real(r8), allocatable :: p_col(:), model_h(:) 
 type(location_type)   :: dum_loc
 
 character(len=129)    :: errstring
@@ -3577,11 +3542,14 @@ end if
 10 continue
 
 
-! doubly staggered not handled here
-if     (lat_which_dimid == find_name('slat    ', dim_names)) then 
+! Doubly staggered not handled correctly here.
+! original; if     (lat_which_dimid == find_name('slat    ', dim_names)) then 
+! These dim_ids are from the CAM initial file.
+! The list of dim_names come from 
+if     (lat_which_dimid == slat%dim_id) then 
    stagr_lat = .true.
    p_surf = ps_stagr_lat(lon_index, lat_index)
-elseif (lon_which_dimid == find_name('slon    ', dim_names)) then
+elseif (lon_which_dimid == slon%dim_id) then
    stagr_lon = .true.
    p_surf = ps_stagr_lon(lon_index, lat_index)
 elseif (lon_which_dimid == 0 .or. lat_which_dimid == 0) then
@@ -3623,19 +3591,20 @@ elseif (old_which == VERTISSURFACE ) then
    new_array(3) =  p_surf
    new_which    = 2
 elseif (old_which == VERTISLEVEL ) then
+   ! WHAT ABOUT FIELDS THAT MIGHT COME ON ilevS ?   have lev_which_dimid from above;
+   !     test = ilev%dim_id or lev%dim_id
    ! Next get the values on the levels for this ps
-   num_levs = dim_sizes(find_name('lev     ',dim_names))
-   allocate (p_col(num_levs))
+! unnecessary complication?   num_levs = dim_sizes(find_name('lev     ',dim_names))
+   num_levs = lev%length
    call plevs_cam (p_surf, num_levs, p_col)
 
    ! OR do this for all columns in static_init_model_dist, which would make PS (and P) globally 
    ! available for all regions?
    new_array(3) = p_col(nint(old_array(3)))
    new_which    = 2
-   deallocate (p_col)
 elseif (old_which == VERTISHEIGHT) then
-   num_levs = dim_sizes(find_name('lev     ',dim_names))
-   allocate (model_h(num_levs), p_col(num_levs))
+! unnecessary complication?   num_levs = dim_sizes(find_name('lev     ',dim_names))
+   num_levs = lev%length
    call plevs_cam (p_surf, num_levs, p_col)
    ! ens_mean is global storage that should have been filled 
    ! by a call from filter_assim to ens_mean_for_model.
@@ -3660,7 +3629,6 @@ elseif (old_which == VERTISHEIGHT) then
    new_array(3) = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
    new_which    = 2
 
-   deallocate (model_h, p_col)
 else
    write(errstring, *) 'model which_vert = ',old_which,' not handled in convert_vert '
    call error_handler(E_ERR, 'convert_vert', errstring,source,revision,revdate)
@@ -3677,14 +3645,21 @@ end subroutine convert_vert
 
 ! Initial conditions for DART 
 
-   subroutine pert_model_state(state, pert_state, interf_provided)
-!       call pert_model_state(ens_mean, temp_ens, interf_provided)
+  subroutine pert_model_state(state, pert_state, interf_provided)
 !=======================================================================
 ! subroutine pert_model_state(state, pert_state, interf_provided)
 !
 ! Perturbs a model state for generating initial ensembles
-! Returning interf_provided means go ahead and do this with uniform
+! Returning interf_provided means go ahead and do this with
 ! small independent perturbations.
+!
+! If module storage variable 'pert_sd' is positive, then we will randomly
+! perturb the fields (based on the values of pert_sd) for each of
+! the variable names listed in pert_names.
+!
+! If 'pert_sd' is negative (which includes MISSING) then the field (only one)
+! listed in pert_names is set to a different constant value for each 
+! ensemble member.  Those values come from 'pert_base_vals'.
 
 ! added to give each ens member a different sequence when perturbing model parameter fields
 
@@ -3694,8 +3669,8 @@ logical,  intent(out)   :: interf_provided
 
 type(random_seq_type)   :: random_seq
 type(model_type)        :: var_temp
-integer                 :: i, ipert, j, k, m, field_num
-integer                 :: dim1, dim2, dim3
+integer                 :: i, j, k, m, pert_fld, mode, field_num
+integer                 :: dim1, dim2, dim3, member
 real(r8)                :: pert_val
 
 ! FIX for 1D 0D  fields?
@@ -3718,51 +3693,131 @@ end if
 ! init_random_seq calls init_ran1, but I need to call init_ran1 with a different seed/temp 
 ! for each ens_member.  Get a new seed by keeping track of the previous seed.
 
-ens_member = ens_member + 1
+! Not needed; ens_member is read into static_init_model, after incrementing by the calling
+! script/program.
+!    ens_member = ens_member + 1
+
+! init_ran1 wants negative seeds for some reason.  The algorithm subtracts seed from some
+!           large number, divides by a smaller number, and uses the remainder for other calcs.
+!           The rest of DART also increments by -1, so I'll trust that this gives a different
+!           random sequence for each seed.
+if (ens_member == 0) then
+   ! Change ens_member from 0 for first time pert_model_state is called for by a process.
+   ens_member = my_task + 1
+else
+   ! Subsequent calls from the same process need unique ensemble member #s.
+   ! Adding num_tasks to the previous value should yield the right total set of ens_members.
+   ens_member = ens_member + num_tasks
+endif
 call init_ran1(random_seq,-1*ens_member)
 
-ipert = 1
-do while (state_names_pert(ipert) /= '        ')
-   WRITE(*,*) 'Perturbing ',state_names_pert(ipert)
+pert_fld = 1
+do while (pert_names(pert_fld) /= '        ')
+
+   WRITE(*,*) 'Perturbing ',pert_names(pert_fld),' for ens_member ',ens_member
+
    do m=1,nflds
-      if (state_names_pert(ipert) == cflds(m)) then
+      if (pert_names(pert_fld) == cflds(m)) then
          WRITE(*,*) '   Found match  ',cflds(m)
            
          if (m <= state_num_2d + state_num_1d + state_num_0d) then
             field_num = m - state_num_1d - state_num_0d
             dim1 = dim_sizes(s_dimid_2d(1,field_num))
             dim2 = dim_sizes(s_dimid_2d(2,field_num))
-            WRITE(*,'(A,1p,2E12.4)') '    first and last state = ', &
+
+            ! Choose mode of perturbations/resets; 
+            if (pert_sd(pert_fld) <= 0.0_r8 ) then
+               ! Set each ensemble member to it's own constant value, 
+               ! as found in pert_base_vals(ens_member).
+               ! This only works when setting a single field = to a different constant value
+               ! for each ensemble member.
+               ! Could add more fields by overloading pert_base_vals and 
+               ! adding code to find those values.
+               mode = ens_member
+            else
+               ! Set each *field* to it's own pert_base_val +/- pert_sd
+               mode = pert_fld
+            endif
+
+            if ( pert_base_vals(mode) /= -888888.0d0 ) then
+               WRITE(*,*) '   around new base value ',pert_base_vals(mode)
+               ! reset base values to value provided in namelist.
+               var_temp%vars_2d(1:dim1,1:dim2,field_num) = pert_base_vals(mode)
+            endif
+
+            WRITE(*,'(A,A8,A3,1p,2E12.4)') '    first and last state for ',cflds(m),' = ', &
                    var_temp%vars_2d(1,1,field_num),var_temp%vars_2d(dim1,dim2,field_num)
-            do j = 1, dim2
-            do i = 1, dim1
-               pert_val = random_gaussian(random_seq, var_temp%vars_2d(i,j,field_num), &
-                                          state_names_sd(ipert)) 
-               var_temp%vars_2d(i,j,field_num) = pert_val
-            end do
-            end do
+
+            if (pert_sd(pert_fld) > 0.0_r8 ) then
+               ! randomly perturb each point around its base value.
+               do j = 1, dim2
+               do i = 1, dim1
+                  pert_val = random_gaussian(random_seq, var_temp%vars_2d(i,j,field_num), &
+                                             pert_sd(mode)) 
+                  var_temp%vars_2d(i,j,field_num) = pert_val
+               end do
+               end do
+            endif
+
             WRITE(*,'(A,1p,2E12.4)') ' new first and last state = ', &
                    var_temp%vars_2d(1,1,field_num),var_temp%vars_2d(dim1,dim2,field_num)
-         else  
+
+         else ! do the 3D fields
+
             field_num = m - state_num_2d - state_num_1d - state_num_0d
             dim1 = dim_sizes(s_dimid_3d(1,field_num))
             dim2 = dim_sizes(s_dimid_3d(2,field_num))
             dim3 = dim_sizes(s_dimid_3d(3,field_num))
 
-            do j = 1, dim3
-            do i = 1, dim2
-            do k = 1, dim1
-!              pert_val = rand#(O(0-1)) * standard dev  + mean
-               pert_val = random_gaussian(random_seq, var_temp%vars_3d(k,i,j,field_num), &
-                                          state_names_sd(ipert)) 
-               var_temp%vars_3d(k,i,j,field_num) = pert_val
-            end do
-            end do
-            end do
+            ! Choose mode of perturbations/resets; 
+            if (pert_sd(pert_fld) <= 0.0_r8 ) then
+               ! Set each ensemble member to it's own constant value, 
+               ! as found in pert_base_vals(ens_member).
+               ! This only works when setting a single field = to a different constant value
+               ! for each ensemble member.
+               ! Could add more fields by overloading pert_base_vals and 
+               ! adding code to find those values.
+               mode = ens_member
+            else
+               ! Set each *field* to it's own pert_base_val +/- pert_sd
+               mode = pert_fld
+            endif
+
+            WRITE(*,'(A,A8,A,I4,A3,1p,2E12.4)') '    first and last state for ',cflds(m), &
+                   ' member ',ens_member,' = ', var_temp%vars_3d(1,1,1,field_num),  &
+                          var_temp%vars_3d(dim1,dim2,dim3,field_num)
+
+            ! reset base values to value provided in namelist.
+            if ( pert_base_vals(mode) /= -888888.0d0 ) then
+               WRITE(*,*) '  perturbed around new base value ',pert_base_vals(mode)
+               var_temp%vars_3d(1:dim1,1:dim2,1:dim3,field_num) = pert_base_vals(mode)
+            endif
+
+            ! randomly perturb each point around its base value.
+            if (pert_sd(pert_fld) > 0.0_r8 ) then
+               WRITE(*,*) 'Perturbing ',cflds(m),' of member ',ens_member, &
+                          ' by st dev ',pert_sd(mode)
+               do j = 1, dim3
+               do i = 1, dim2
+               do k = 1, dim1
+                  ! pert_val = rand#(O(0-1)) * standard dev  + mean
+                  pert_val = random_gaussian(random_seq, var_temp%vars_3d(k,i,j,field_num), &
+                                             pert_sd(mode)) 
+                  var_temp%vars_3d(k,i,j,field_num) = pert_val
+               end do
+               end do
+               end do
+               WRITE(*,*) 'Last pert_val for member ',ens_member,' is ',pert_val
+            endif
+
+            WRITE(*,'(A,I4,A3,1p,2E12.4)') ' new first and last state for member ',ens_member, &
+                   ' = ', var_temp%vars_3d(1,1,1,field_num),                                   &
+                          var_temp%vars_3d(dim1,dim2,dim3,field_num)
+
          end if
       end if
    end do
-   ipert = ipert + 1
+   pert_fld = pert_fld + 1
 end do
 call prog_var_to_vector(var_temp,pert_state)
 call end_model_instance(var_temp)
@@ -3942,7 +3997,7 @@ integer,           intent(out) :: indx
 integer, optional, intent(out) :: other_indx
 
 real(r8), pointer :: coord(:)
-real(r8)          :: diff_upper, diff_lower, val_local 
+real(r8)          :: diff_upper, diff_lower, val_local, resol
 integer           :: coord_len, i
 
 val_local = val
@@ -3950,24 +4005,30 @@ val_local = val
 if (dim_name == 'lon     ') then
    coord     => lon%vals
    coord_len =  lon%length
+   resol     =  lon%resolution
 elseif (dim_name == 'lat     ') then
    coord     => lat%vals
    coord_len =  lat%length
+   resol     =  lat%resolution
 elseif (dim_name == 'lev     ') then
    coord     => lev%vals
    coord_len =  lev%length
+   resol     =  lev%resolution
 elseif (dim_name == 'slon    ') then
    coord     => slon%vals
    coord_len =  slon%length
+   resol     =  slon%resolution
    ! Make sure longitudes conform to the wierd CAM staggered grid.
    if ((val - coord(coord_len)) >= (coord(coord_len)-coord(coord_len-1))) &
       val_local = val_local - 360._r8
 elseif (dim_name == 'slat    ') then
    coord     => slat%vals
    coord_len =  slat%length
+   resol     =  slat%resolution
 elseif (dim_name == 'ilev    ') then
    coord     => ilev%vals
    coord_len =  ilev%length
+   resol     =  ilev%resolution
 else
    indx = MISSING_I
 !  PRINT error?
@@ -3977,30 +4038,49 @@ end if
 ! Assumes that coordinates are monotonic; not true for hyam, hyai.  But we don't reference them.
 ! The first 2 if blocks work for latitudes and levels.  Longitudes must be handled in the calling
 !    routine.
-if (val_local < coord(1)) then
+if (val_local <= coord(1)) then
    indx = 1
    if (present(other_indx)) other_indx = 1
    return
-elseif (val_local > coord(coord_len)) then
+elseif (val_local >= coord(coord_len)) then
    indx = coord_len
    if (present(other_indx)) other_indx = coord_len
    return
 else
-   do i=1, coord_len - 1
-      diff_upper = coord(i+1) - val_local
-      if (diff_upper >= 0.0_r8) then
-         diff_lower = val_local - coord(i)
-         ! Alway return the closer coord point in the first (non-optional) argument
-         if (diff_upper > diff_lower) then
-            indx = i
-            if (present(other_indx)) other_indx = i + 1
+   if (resol > 0.0_r8) then
+! temp output
+      num_calced = num_calced + 1
+      ! regularly spaced; calculate the index
+      indx = NINT((val_local - coord(1))/resol) + 1
+
+      if (present(other_indx)) then
+         if (val_local > coord(indx)) then
+            other_indx = indx + 1
          else
-            indx = i + 1
-            if (present(other_indx)) other_indx = i 
+            other_indx = indx - 1
+         endif
+      endif
+   else
+! temp output
+      num_searched = num_searched + 1
+      ! IRregularly spaced; search for the index
+      ! Replace with a binary search?
+      do i=1, coord_len - 1
+         diff_upper = coord(i+1) - val_local
+         if (diff_upper >= 0.0_r8) then
+            diff_lower = val_local - coord(i)
+            ! Alway return the closer coord point in the first (non-optional) argument
+            if (diff_upper > diff_lower) then
+               indx = i
+               if (present(other_indx)) other_indx = i + 1
+            else
+               indx = i + 1
+               if (present(other_indx)) other_indx = i 
+            end if
+            return
          end if
-         return
-      end if
-   end do
+      end do
+   endif
 end if
 
 end subroutine coord_index
@@ -4095,7 +4175,7 @@ real(r8), intent(out) :: pmid(:)   ! Pressure at model levels
 !-----------------------------------------------------------------------
 
 !---------------------------Local workspace-----------------------------
-integer :: k             ! Longitude, level indices
+  integer k             ! Longitude, level indices
 !-----------------------------------------------------------------------
 !
 ! Set midpoint pressures and layer thicknesses
@@ -4168,8 +4248,12 @@ END DO
 k = num_levs +1
 hyba(1,1) = hyai%vals(k)
 hybb(1,1) = hybi%vals(k)
+!   hyam(26) = 0 -> hyba(2,2) = 0, so it would be safe to set hyba(1,2) = 0.
+!   This element is referenced below, but not ultimately used.
+hyba(1,2) = 0.0_r8
+hybb(1,2) = 1.0_r8
 
-! mid-points=2
+! mid-points=2; note that hyXm(num_levs + 1) is not defined (= MISSING_R8)
 do k = 2,num_levs +1
    i = num_levs +2 - k
    hyba(k,1) = hyai%vals(i)
@@ -4220,8 +4304,8 @@ call dcz2(p_surf, phi_surf, tv, P0%vals(1) ,hyba, hybb, num_levs, pmln, pterm, p
 ! calced in dcz2;  pmln, pterm , zslice
 
 do k = 1,num_levs
-   ht_tmp = phi(k) * 0.001        ! convert to km for following call only
-   model_h(k) = gph2gmh (ht_tmp, local_lat) * 1000.0           ! convert back to m
+   ht_tmp = phi(k) * 0.001_r8        ! convert to km for following call only
+   model_h(k) = gph2gmh (ht_tmp, local_lat) * 1000.0_r8           ! convert back to m
 end do
 
 end subroutine  model_heights
@@ -4240,7 +4324,8 @@ logical,  intent(in)  :: stagr_lon, stagr_lat
 
 real(r8)  :: var(num_levs,0:1,0:1), weight 
 integer   :: k, lon_index_local, vec_ind
-! integer   :: fld_index
+!integer :: fld_index
+!character :: cfld
 
 ! lon_index and lat_index are the indices of the point at which we need the profiles,
 !   not necessarily one of the points where the profiles exist.
@@ -4376,8 +4461,6 @@ end subroutine get_interp_prof
 ! Hybrid coord coeffs for surf pressure (in same format as hyba)
       real(r8) ::  hybb(kmax+1,2)
 
-! Num of longitude points to compute
-!     integer imax
 ! vertical slice scratch space used to
 !   hold logs of midpoint pressures
       real(r8) ::  pmln(kmax+1)
@@ -4405,10 +4488,6 @@ end subroutine get_interp_prof
 !
 
 !       Compute intermediate quantities using scratch space
-!       pmln(k+1) is pressure at the midpoint of layer k
-
-          PMLN(1) = DLOG(HPRB*HYBA(KMAX,2)+P_surf *HYBB(KMAX,1))
-          PMLN(KMAX+1) = DLOG(HPRB*HYBA(1,2)+P_surf *HYBB(1,1))
 
 !       Invert vertical loop
 !       Compute top only if top interface pressure is nonzero.
